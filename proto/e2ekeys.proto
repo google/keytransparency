@@ -1,0 +1,79 @@
+// Copyright 2015 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.security.e2ekeys.v1;
+
+option java_package = "com.google.security.e2ekeys.v1";
+option java_multiple_files = true;
+option java_outer_classname = "E2EKeysProto";
+
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+// The E2EKeyProxy API specifies a simplified way to query the
+// [E2EKeyService][google.security.e2ekeys.v2.E2EKeyService], without
+// transparency proofs. Users of this API will not be able to independently
+// verify the server's security properties.
+//
+// The API defines the following resource model:
+//
+// - The API has a collection of [User][google.security.e2ekeys.v2.User]
+//   resources named `/users/*`.
+//
+// - Each User has a collection of
+//  [SignedKey][google.security.e2ekeys.v2.SignedKey] resources named by
+//  `/users/*/keys/*`
+//
+service E2EKeyProxy {
+  // GetUser returns a user's keys and a proof that there is only one entry for
+  // this user and that it is the same one being provided to everyone else.
+  // GetUser also supports querying past values by setting the epoch field.
+  rpc GetUser(GetUserRequest) returns (User) {
+    option (google.api.http) = { get: "/v2/users/{user_id}" };
+  }
+
+}
+
+// The User is the leaf object in the binary Merkle Tree. Its unique location
+// in the tree is identified by a hash of an unpredictable verifiable function
+// The value of the user leaf node is
+// HMAC(nonce, (H(Meta) || H(k1) || H(k2) ... || H(kn))
+message User {
+  // keys is an ordered array of SignedKeys for this user.
+  // When filtering key results, individual SignedKeys may be empty, but the
+  // associated hash will remain in key_ides.
+  repeated SignedKey signed_keys = 2;
+}
+
+// SignedKey contains a Key and associated signatures, showing continuity of
+// key ownership.
+message SignedKey{
+  // A key with metadata.
+  string key = 1;
+}
+
+// Get request for a user object.
+message GetUserRequest {
+  // Absence of the time field indicates a request for the current value.
+  google.protobuf.Timestamp time = 1;
+  // User identifier. Most commonly an email address.
+  string user_id = 2;
+  // Only return the keys belonging to this app.
+  string app_id = 3;
+}
+
+
+
