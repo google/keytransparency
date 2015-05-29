@@ -4,7 +4,7 @@
 # protoc compiler > 2.6.1 from https://github.com/google/protobuf
 apt-get install build-essential
 git clone git@github.com:google/protobuf.git $GOPATH/src/github.com/google/protobuf
-cd protobuf
+cd $GOPATH/src/github.com/google/protobuf
 ./autogen.sh
 ./configure
 make
