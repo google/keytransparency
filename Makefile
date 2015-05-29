@@ -33,11 +33,10 @@
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 OUTPUT:= .
 
-REPLACE=Mgoogle/protobuf/timestamp.proto=github.com/google/googleapis/google/protobuf
+#REPLACE=Mgoogle/protobuf/timestamp.proto=github.com/google/googleapis/google/protobuf
 FLAGS+= --go_out=plugins=grpc,$(REPLACE):$(OUTPUT)
 INCLUDES+= -I=.
 INCLUDES+= -I=$(GOPATH)/src/
-INCLUDES+= -I=$(GOPATH)/src/github.com/google/googleapis/ # proto3 types
 INCLUDES+= -I=$(GOPATH)/src/github.com/google/protobuf/src/ # proto descriptor
 
 main: proto

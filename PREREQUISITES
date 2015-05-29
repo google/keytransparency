@@ -21,5 +21,6 @@ go get -u golang.org/x/net/context
 
 # Proto3 types.  Needs to go in $(GOPATH)/src.
 git clone git@github.com:google/googleapis.git $GOPATH/src/github.com/google/googleapis
+ln -s $GOPATH/src/github.com/google/googleapis/google $GOPATH/src/google
 
 #Shell PATH must include $GOPATH/bin
