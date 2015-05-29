@@ -6,10 +6,10 @@ import (
 	"log"
 	"net"
 
-	"github.com/gdbelvin/e2ekeys/proxy"
-	"github.com/gdbelvin/e2ekeys/rest"
+	"github.com/gdbelvin/key-transparency/proxy"
+	"github.com/gdbelvin/key-transparency/rest"
 
-	pb "github.com/gdbelvin/e2ekeys/proto"
+	pb "github.com/gdbelvin/key-transparency/proto"
 )
 
 var port = flag.Int("port", 50051, "TCP port to listen on")

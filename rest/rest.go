@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gdbelvin/e2ekeys/proxy"
+	"github.com/gdbelvin/key-transparency/proxy"
 	"google.golang.org/grpc"
 
 	proto "github.com/golang/protobuf/proto"
