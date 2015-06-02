@@ -4,7 +4,7 @@ package proxy
 import (
 	"fmt"
 
-	v1pb "github.com/gdbelvin/key-transparency/proto"
+	v1pb "github.com/gdbelvin/e2e-key-transparency/proto"
 	context "golang.org/x/net/context"
 )
 
