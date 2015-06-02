@@ -20,7 +20,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gdbelvin/e2e-key-transparency/proxy"
+	"github.com/gdbelvin/key-server-transparency/proxy"
 	"github.com/gorilla/mux"
 	"google.golang.org/grpc"
 

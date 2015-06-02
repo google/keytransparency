@@ -18,7 +18,7 @@ package proxy
 import (
 	"fmt"
 
-	v1pb "github.com/gdbelvin/e2e-key-transparency/proto"
+	v1pb "github.com/gdbelvin/key-server-transparency/proto"
 	context "golang.org/x/net/context"
 )
 
