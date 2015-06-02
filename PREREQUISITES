@@ -15,6 +15,7 @@ ldconfig
 # go code gen plugin at https://github.com/golang/protobuf
 go get -u github.com/golang/protobuf/proto
 go get -u github.com/golang/protobuf/protoc-gen-go
+go get -u github.com/gorilla/mux
 go get -u golang.org/x/net/context
 
 # Non go packages
