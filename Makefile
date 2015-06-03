@@ -42,6 +42,9 @@ INCLUDES+= -I=$(GOPATH)/src/github.com/google/protobuf/src/ # proto descriptor
 main: proto
 	go build -o svr server.go
 
+test:
+	go test ./rest
+
 proto: $(DEPS) gapis
 
 %.pb.go:  %.proto
