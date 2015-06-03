@@ -18,29 +18,29 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/key-server-transparency/status"
+
 	context "golang.org/x/net/context"
 	v2pb "github.com/google/key-server-transparency/proto/v2"
 )
 
 // TODO: I wish this could be code generated.
-func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	// Json -> Proto.
 	// TODO: insert url params.
 	in := new(v2pb.GetUserRequest)
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&in)
 	if err != nil {
-		http.Error(w, "Error", http.StatusInternalServerError)
+		return status.Errorf(status.InvalidArgument, "decoding error:", err)
 	}
 
 	resp, err := srv.(E2EKeyProxyServer).GetUser(ctx, in)
 	if err != nil {
-		// TODO: Convert error into HTTP status code.
-		http.Error(w, "Error", http.StatusInternalServerError)
-		return
+		return err 
 	}
 	// proto -> json
-	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.Encode(resp)
+	return nil
 }

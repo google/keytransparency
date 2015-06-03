@@ -12,8 +12,9 @@ import (
 type FakeServer struct {
 }
 
-func Fake_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func Fake_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	w.Write([]byte("hi"))
+	return nil
 }
 
 func TestFoo(t *testing.T) {

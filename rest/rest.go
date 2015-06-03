@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/google/key-server-transparency/status"
 
 	context "golang.org/x/net/context"
 )
@@ -58,7 +59,7 @@ func (s *Server) Handlers() *mux.Router {
 // Method is the function type for http handlers. Context will contain security
 // info. Input will be supplied via the appropriate procol buffer, and response
 // will also be provided via a protocol buffer.
-type Handler func(interface{}, context.Context, http.ResponseWriter, *http.Request)
+type Handler func(interface{}, context.Context, http.ResponseWriter, *http.Request) error
 
 // AddHandler tels the server to route request with path and method to m.
 func (s *Server) AddHandler(path string, method string, h Handler) {
@@ -72,6 +73,36 @@ func (s *Server) handle(h Handler) http.HandlerFunc {
 		// TODO insert authentication information.
 
 		w.Header().Set("Content-Type", "application/json")
-		h(s.svr, ctx, w, r)
+		if err := h(s.svr, ctx, w, r); err != nil {
+			toHttpError(err, w)
+		}
+	}
+}
+
+func toHttpError(err error, w http.ResponseWriter) {
+	s, ok := status.FromError(err)
+	if !ok {
+		http.Error(w, "Error", http.StatusInternalServerError)
+		return
+	}
+
+	switch s.Code {
+	case status.OK                 :
+	case status.Canceled           :
+	case status.Unknown            :
+	case status.InvalidArgument    :
+	case status.DeadlineExceeded   :
+	case status.NotFound           :
+	case status.AlreadyExists      :
+	case status.PermissionDenied   :
+	case status.Unauthenticated    :
+	case status.ResourceExhausted  :
+	case status.FailedPrecondition :
+	case status.Aborted            :
+	case status.OutOfRange         :
+	case status.Unimplemented      :
+	case status.Internal           :
+	case status.Unavailable        :
+	case status.DataLoss           :
 	}
 }

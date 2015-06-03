@@ -1,0 +1,75 @@
+// Copyright 2015 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+enum Code {
+  // Not an error; returned on success
+  OK = 0;
+
+  // The operation was cancelled.
+  CANCELLED = 1;
+
+  // Unknown error.  
+  UNKNOWN = 2;
+
+  // Client specified an invalid argument.  Note that this differs
+  // from FAILED_PRECONDITION.  
+  INVALID_ARGUMENT = 3;
+
+  // Deadline expired before operation could complete. 
+  DEADLINE_EXCEEDED = 4;
+
+  // Some requested entity (e.g., file or directory) was not found.
+  NOT_FOUND = 5;
+
+  // Some entity that we attempted to create (e.g., file or directory)
+  // already exists.
+  ALREADY_EXISTS = 6;
+
+  // The caller does not have permission to execute the specified
+  // operation. 
+  PERMISSION_DENIED = 7;
+
+  // The request does not have valid authentication credentials for the
+  // operation.
+  UNAUTHENTICATED = 8;
+
+  // Some resource has been exhausted, perhaps a per-user quota, or
+  // perhaps the entire file system is out of space.
+  RESOURCE_EXHAUSTED = 9;
+
+  // Operation was rejected because the system is not in a state
+  // required for the operation's execution.  
+  FAILED_PRECONDITION = 10;
+
+  // The operation was aborted, typically due to a concurrency issue
+  // like sequencer check failures, transaction aborts, etc.
+  ABORTED = 11;
+
+  // Operation was attempted past the valid range.  E.g., seeking or
+  // reading past end of file.
+  OUT_OF_RANGE = 12;
+
+  // Operation is not implemented or not supported/enabled in this service.
+  UNIMPLEMENTED = 13;
+
+  // Internal errors.  
+  INTERNAL = 14;
+
+  // The service is currently unavailable.  This is a most likely a
+  // transient condition.
+  UNAVAILABLE = 15;
+
+  // Unrecoverable data loss or corruption.
+  DATA_LOSS = 16;
+}
