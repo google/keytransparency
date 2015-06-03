@@ -19,13 +19,14 @@ import (
 	"net/http"
 
 	context "golang.org/x/net/context"
+	v2pb "github.com/google/key-server-transparency/proto/v2"
 )
 
 // TODO: I wish this could be code generated.
 func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// Json -> Proto.
 	// TODO: insert url params.
-	in := new(GetUserRequest)
+	in := new(v2pb.GetUserRequest)
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&in)
 	if err != nil {

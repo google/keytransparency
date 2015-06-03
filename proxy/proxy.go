@@ -18,7 +18,7 @@ package proxy
 import (
 	"fmt"
 
-	v1pb "github.com/google/key-server-transparency/proto/v1"
+	v2pb "github.com/google/key-server-transparency/proto/v2"
 	context "golang.org/x/net/context"
 )
 
@@ -32,7 +32,7 @@ func New() *Server {
 }
 
 // GetUser returns a user's keys.
-func (s *Server) GetUser(ctx context.Context, in *v1pb.GetUserRequest) (*v1pb.User, error) {
+func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.User, error) {
 	fmt.Println("GetUser Called!")
 	return nil, nil
 }
