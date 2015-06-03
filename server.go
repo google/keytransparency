@@ -20,10 +20,10 @@ import (
 	"log"
 	"net"
 
-	"github.com/gdbelvin/key-server-transparency/proxy"
-	"github.com/gdbelvin/key-server-transparency/rest"
+	"github.com/google/key-server-transparency/proxy"
+	"github.com/google/key-server-transparency/rest"
 
-	v1pb "github.com/gdbelvin/key-server-transparency/proto"
+	v1pb "github.com/google/key-server-transparency/proto"
 )
 
 var port = flag.Int("port", 50051, "TCP port to listen on")
