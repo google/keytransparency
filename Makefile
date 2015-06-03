@@ -43,7 +43,7 @@ main: proto
 	go build -o svr server.go
 
 test:
-	go test ./rest
+	go test ./rest ./keyserver
 
 proto: gapis $(DEPS) 
 
