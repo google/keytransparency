@@ -42,6 +42,7 @@ func main() {
 
 	// Manually add routing paths.  TODO: Auto derive from proto.
 	s.AddHandler("/v1/user/{userid}", "GET", v1pb.GetUser_Handler)
+	// TODO: add hkp server api here.
 
 	s.Serve(lis)
 }

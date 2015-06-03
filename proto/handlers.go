@@ -39,6 +39,7 @@ func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter
 		return
 	}
 	// proto -> json
+	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.Encode(resp)
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package rest converts REST HTTP requests into gRPC requests.
+// Package rest converts REST HTTP requests into function calls.
 package rest
 
 import (
@@ -20,9 +20,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gdbelvin/key-server-transparency/proxy"
 	"github.com/gorilla/mux"
-	"google.golang.org/grpc"
 
 	context "golang.org/x/net/context"
 )
@@ -36,9 +34,7 @@ const (
 
 // Server holds internal state for the http rest server.
 type Server struct {
-	*grpc.Server
-	// TODO: hkp server api here.
-	proxy *proxy.Server // v1 API.
+	svr interface{} // Server instance.
 	// TODO: v2 api server here.
 	//creds Authenticator  // TODO define interface.
 	rtr *mux.Router
@@ -46,13 +42,17 @@ type Server struct {
 
 // New creates a new rest server
 // TODO(insert authenitcator as field param here
-func New(proxy *proxy.Server) *Server {
-	return &Server{grpc.NewServer(), proxy, mux.NewRouter()}
+func New(svr interface{}) *Server {
+	return &Server{svr, mux.NewRouter()}
 }
 
 // Serve starts the server loop.
 func (s *Server) Serve(l net.Listener) {
 	log.Fatal(http.Serve(l, nil))
+}
+
+func (s *Server) Handlers() *mux.Router {
+	return s.rtr
 }
 
 // Method is the function type for http handlers. Context will contain security
@@ -71,6 +71,7 @@ func (s *Server) handle(h Handler) http.HandlerFunc {
 		ctx := context.Background()
 		// TODO insert authentication information.
 
-		h(s.proxy, ctx, w, r)
+		w.Header().Set("Content-Type", "application/json")
+		h(s.svr, ctx, w, r)
 	}
 }
