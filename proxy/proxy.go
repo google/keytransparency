@@ -18,7 +18,7 @@ package proxy
 import (
 	"fmt"
 
-	v1pb "github.com/google/key-server-transparency/proto"
+	v1pb "github.com/google/key-server-transparency/proto/v1"
 	context "golang.org/x/net/context"
 )
 

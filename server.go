@@ -23,7 +23,7 @@ import (
 	"github.com/google/key-server-transparency/proxy"
 	"github.com/google/key-server-transparency/rest"
 
-	v1pb "github.com/google/key-server-transparency/proto"
+	v1pb "github.com/google/key-server-transparency/proto/v1"
 )
 
 var port = flag.Int("port", 50051, "TCP port to listen on")
