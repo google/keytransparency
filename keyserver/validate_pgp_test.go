@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/crypto/openpgp/armor"
 	"github.com/google/key-server-transparency/status"
+	"golang.org/x/crypto/openpgp/armor"
 )
 
 const (
