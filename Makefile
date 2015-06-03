@@ -45,7 +45,7 @@ main: proto
 test:
 	go test ./rest
 
-proto: $(DEPS) gapis
+proto: gapis $(DEPS) 
 
 %.pb.go:  %.proto
 	protoc $(INCLUDES) $(FLAGS) $<
