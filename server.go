@@ -20,13 +20,16 @@ import (
 	"log"
 	"net"
 
+	"github.com/google/key-server-transparency/keyserver"
 	"github.com/google/key-server-transparency/proxy"
 	"github.com/google/key-server-transparency/rest"
+	"github.com/google/key-server-transparency/storage"
+	"golang.org/x/net/context"
 
 	v1pb "github.com/google/key-server-transparency/proto/v1"
 )
 
-var port = flag.Int("port", 50051, "TCP port to listen on")
+var port = flag.Int("port", 8080, "TCP port to listen on")
 
 func main() {
 	flag.Parse()
@@ -37,7 +40,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	v1 := proxy.New()
+	v2 := keyserver.Create(storage.CreateMem(context.Background()))
+	v1 := proxy.New(v2)
 	s := rest.New(v1)
 
 	// Manually add routing paths.  TODO: Auto derive from proto.
