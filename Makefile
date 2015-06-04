@@ -43,9 +43,9 @@ main: proto
 	go build -o svr server.go
 
 test:
-	go test ./rest ./keyserver
+	go test ./rest ./keyserver ./proxy
 
-proto: gapis $(DEPS) 
+proto: gapis $(DEPS)
 
 %.pb.go:  %.proto
 	protoc $(INCLUDES) $(FLAGS) $<
