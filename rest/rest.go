@@ -21,7 +21,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/google/key-server-transparency/status"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	context "golang.org/x/net/context"
 )
@@ -80,29 +81,23 @@ func (s *Server) handle(h Handler) http.HandlerFunc {
 }
 
 func toHttpError(err error, w http.ResponseWriter) {
-	s, ok := status.FromError(err)
-	if !ok {
-		http.Error(w, "Error", http.StatusInternalServerError)
-		return
-	}
-
-	switch s.Code {
-	case status.OK                 :
-	case status.Canceled           :
-	case status.Unknown            :
-	case status.InvalidArgument    :
-	case status.DeadlineExceeded   :
-	case status.NotFound           :
-	case status.AlreadyExists      :
-	case status.PermissionDenied   :
-	case status.Unauthenticated    :
-	case status.ResourceExhausted  :
-	case status.FailedPrecondition :
-	case status.Aborted            :
-	case status.OutOfRange         :
-	case status.Unimplemented      :
-	case status.Internal           :
-	case status.Unavailable        :
-	case status.DataLoss           :
+	switch grpc.Code(err) {
+	case codes.OK:
+	case codes.Canceled:
+	case codes.Unknown:
+	case codes.InvalidArgument:
+	case codes.DeadlineExceeded:
+	case codes.NotFound:
+	case codes.AlreadyExists:
+	case codes.PermissionDenied:
+	case codes.Unauthenticated:
+	case codes.ResourceExhausted:
+	case codes.FailedPrecondition:
+	case codes.Aborted:
+	case codes.OutOfRange:
+	case codes.Unimplemented:
+	case codes.Internal:
+	case codes.Unavailable:
+	case codes.DataLoss:
 	}
 }

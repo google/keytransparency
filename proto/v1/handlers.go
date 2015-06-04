@@ -18,7 +18,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/key-server-transparency/status"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	context "golang.org/x/net/context"
 	v2pb "github.com/google/key-server-transparency/proto/v2"
@@ -32,7 +33,7 @@ func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&in)
 	if err != nil {
-		return status.Errorf(status.InvalidArgument, "decoding error:", err)
+		return grpc.Errorf(codes.InvalidArgument, "decoding error:", err)
 	}
 
 	resp, err := srv.(E2EKeyProxyServer).GetUser(ctx, in)

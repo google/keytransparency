@@ -18,7 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/key-server-transparency/status"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"golang.org/x/crypto/openpgp/armor"
 )
 
@@ -266,9 +267,9 @@ func TestGoodKey(t *testing.T) {
 		label  string
 		key    string
 		userID string
-		want   status.Code
+		want   codes.Code
 	}{
-		{"eccGood", eccGood, "<ecc@good.com>", status.OK},
+		{"eccGood", eccGood, "<ecc@good.com>", codes.OK},
 	}
 	for _, test := range tests {
 		block, err := armor.Decode(strings.NewReader(test.key))
@@ -285,18 +286,18 @@ func TestInvalidKeys(t *testing.T) {
 		label  string
 		key    string
 		userID string
-		want   status.Code
+		want   codes.Code
 	}{
-		{"eccBadSignSubkey", eccBadSignSubkey, "<ecc@bad.sign.com>", status.Unknown},
-		{"eccBadSig", eccBadSig, "<ecc@bad.signature.com>", status.InvalidArgument},
-		{"eccMulti", eccMulti, "", status.InvalidArgument},
-		{"eccMutliSubKey", eccMultiSubkey, "<ecc@multi.subkey.com>", status.InvalidArgument},
-		{"expiredUID", expiredUID, "", status.InvalidArgument},
-		{"revokedUID", revokedUID, "", status.InvalidArgument},
-		{"expiredSubkey", expiredSubkey, "expired-subkey", status.InvalidArgument},
-		{"missingCrossSignature", missingCrossSignature, "invalid-signing-subkeys", status.Unknown},
-		{"invalidCrossSignature", invalidCrossSignature, "invalid-signing-subkeys", status.Unknown},
-		{"invalidSubpacketLen", invalidSubpacketLength, "", status.Unknown},
+		{"eccBadSignSubkey", eccBadSignSubkey, "<ecc@bad.sign.com>", codes.Unknown},
+		{"eccBadSig", eccBadSig, "<ecc@bad.signature.com>", codes.InvalidArgument},
+		{"eccMulti", eccMulti, "", codes.InvalidArgument},
+		{"eccMutliSubKey", eccMultiSubkey, "<ecc@multi.subkey.com>", codes.InvalidArgument},
+		{"expiredUID", expiredUID, "", codes.InvalidArgument},
+		{"revokedUID", revokedUID, "", codes.InvalidArgument},
+		{"expiredSubkey", expiredSubkey, "expired-subkey", codes.InvalidArgument},
+		{"missingCrossSignature", missingCrossSignature, "invalid-signing-subkeys", codes.Unknown},
+		{"invalidCrossSignature", invalidCrossSignature, "invalid-signing-subkeys", codes.Unknown},
+		{"invalidSubpacketLen", invalidSubpacketLength, "", codes.Unknown},
 	}
 	for _, test := range tests {
 		block, err := armor.Decode(strings.NewReader(test.key))
@@ -304,7 +305,7 @@ func TestInvalidKeys(t *testing.T) {
 			t.Errorf("test %v: invalid armor", test.label)
 		} else if _, err := validatePGP(test.userID, block.Body); err == nil {
 			t.Errorf("test %v: validatePGP(%q, _) = _, nil, want %v", test.label, test.userID, test.want)
-		} else if got := status.Canonical(err).Code; got != test.want {
+		} else if got := grpc.Code(err); got != test.want {
 			t.Errorf("test %s: validatePGP(%q, _)) = _, %v; want %v", test.label, test.userID, got, test.want)
 		}
 	}

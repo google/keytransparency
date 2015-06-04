@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/key-server-transparency/status"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	v2pb "github.com/google/key-server-transparency/proto/v2"
 	context "golang.org/x/net/context"
@@ -41,7 +42,7 @@ func (s *Server) validateEmail(ctx context.Context, email string) error {
 	}
 
 	if verifiedEmail != email {
-		return status.Error(status.PermissionDenied, "wrong user")
+		return grpc.Errorf(codes.PermissionDenied, "wrong user")
 	}
 	return nil
 }
@@ -53,7 +54,7 @@ func (s *Server) validateEmail(ctx context.Context, email string) error {
 // - Creation time is present and current.
 func (s *Server) validateKey(userID string, key *v2pb.SignedKey_Key) (*Fingerprint, error) {
 	if key == nil {
-		return nil, status.Error(status.InvalidArgument, "Missing Key")
+		return nil, grpc.Errorf(codes.InvalidArgument, "Missing Key")
 	}
 	var fingerprint *Fingerprint
 	switch key.KeyFormat {
@@ -65,21 +66,21 @@ func (s *Server) validateKey(userID string, key *v2pb.SignedKey_Key) (*Fingerpri
 			return nil, err
 		}
 	case v2pb.SignedKey_Key_ECC:
-		return nil, status.Error(status.Unimplemented, "ECC keys not supported yet")
+		return nil, grpc.Errorf(codes.Unimplemented, "ECC keys not supported yet")
 	default:
-		return nil, status.Error(status.InvalidArgument, "Unknown Format")
+		return nil, grpc.Errorf(codes.InvalidArgument, "Unknown Format")
 	}
 	if key.AppId == "" {
-		return nil, status.Error(status.InvalidArgument, "Missing AppId")
+		return nil, grpc.Errorf(codes.InvalidArgument, "Missing AppId")
 	}
 	// Validate CreationTime
 	ct := key.GetCreationTime()
 	if ct == nil {
-		return nil, status.Error(status.InvalidArgument, "Missing CreationTime")
+		return nil, grpc.Errorf(codes.InvalidArgument, "Missing CreationTime")
 	}
 	ct.Nanos = 0 // Quash nano seconds.
 	if drift := time.Since(time.Unix(ct.Seconds, 0)); drift > MaxClockDrift {
-		return nil, status.Errorf(status.InvalidArgument, "CreationTime %v off", drift)
+		return nil, grpc.Errorf(codes.InvalidArgument, "CreationTime %v off", drift)
 	}
 	return fingerprint, nil
 }
@@ -91,7 +92,7 @@ func (s *Server) validateKey(userID string, key *v2pb.SignedKey_Key) (*Fingerpri
 // fills KeyId with the correct value.
 func (s *Server) validateSignedKey(userID string, signedKey *v2pb.SignedKey) error {
 	if signedKey == nil {
-		return status.Error(status.InvalidArgument, "Missing SignedKey")
+		return grpc.Errorf(codes.InvalidArgument, "Missing SignedKey")
 	}
 	// First validate interior fields and set KeyId.
 	fingerprint, err := s.validateKey(userID, signedKey.GetKey())
@@ -104,10 +105,10 @@ func (s *Server) validateSignedKey(userID string, signedKey *v2pb.SignedKey) err
 		// No additional checks needed.
 		return nil
 	case v2pb.SignedKey_Key_ECC:
-		return status.Error(status.Unimplemented, "ECC keys not supported yet")
+		return grpc.Errorf(codes.Unimplemented, "ECC keys not supported yet")
 		// TODO(gbelvin): Verify signatures.
 	default:
-		return status.Error(status.InvalidArgument, "Unknown Format")
+		return grpc.Errorf(codes.InvalidArgument, "Unknown Format")
 	}
 }
 

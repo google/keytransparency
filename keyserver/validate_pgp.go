@@ -22,8 +22,8 @@ import (
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/packet"
 	"golang.org/x/crypto/openpgp/s2k"
-
-	"github.com/google/key-server-transparency/status"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 // Fingerprint is the type used to identify keys.
@@ -49,91 +49,91 @@ func validatePGP(userID string, key io.Reader) (*Fingerprint, error) {
 	}
 	// Only allow one entity / identity key.
 	if got, want := len(entityList), 1; got != want {
-		return &Fingerprint{}, status.Errorf(status.InvalidArgument, "len(entitys) = %v, want %v", got, want)
+		return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "len(entitys) = %v, want %v", got, want)
 	}
 	entity := entityList[0]
 
 	// Only allow one identity / username.
 	if got, want := len(entity.Identities), 1; got != want {
-		return &Fingerprint{}, status.Errorf(status.InvalidArgument, "len(identities) = %v, want %v", got, want)
+		return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "len(identities) = %v, want %v", got, want)
 	}
 	// No revocations allowed.
 	if got, want := len(entity.Revocations), 0; want != got {
-		return &Fingerprint{}, status.Errorf(status.InvalidArgument, "len(revocations) = %v, want %v", got, want)
+		return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "len(revocations) = %v, want %v", got, want)
 	}
 	// Verify the UserId.
 	for _, id := range entity.Identities {
 		if got, want := id.UserId.Id, userID; got != want {
-			return &Fingerprint{}, status.Errorf(status.PermissionDenied, "UserId = %v, want %v", got, want)
+			return &Fingerprint{}, grpc.Errorf(codes.PermissionDenied, "UserId = %v, want %v", got, want)
 		}
 		if id.SelfSignature == nil {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Missing self signature")
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Missing self signature")
 		}
 		// Verify timestamps.
 		if id.SelfSignature.KeyExpired(time.Now()) {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Signature expired")
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Signature expired")
 		}
 		// Verify encryption types. AES-256
 		if got, want := id.SelfSignature.PreferredSymmetric, requiredSymmetric; !setEquals(want, got) {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "PreferredSymmetric = %v, want %v", got, want)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "PreferredSymmetric = %v, want %v", got, want)
 		}
 		// Verify preferred hash types.
 		if got, want := id.SelfSignature.PreferredHash, requiredHash; !setEquals(want, got) {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "PreferredHash = %v, want %v", got, want)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "PreferredHash = %v, want %v", got, want)
 		}
 		// Verify that hash is one of the preferred hash types.
 		hashID, ok := s2k.HashToHashId(id.SelfSignature.Hash)
 		if !ok {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Invalid hash %v", id.SelfSignature.Hash)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Invalid hash %v", id.SelfSignature.Hash)
 		}
 		if _, ok := requiredHash[hashID]; !ok {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Hash algo %v not approved", hashID)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Hash algo %v not approved", hashID)
 		}
 		// Verify flags.
 		if !id.SelfSignature.FlagCertify || !id.SelfSignature.FlagSign {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Self signature missing certify flag")
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Self signature missing certify flag")
 		}
 		if id.SelfSignature.FlagEncryptCommunications || id.SelfSignature.FlagEncryptStorage {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Self signature has encrypt flag")
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Self signature has encrypt flag")
 		}
 		// No extra signatures allowed.
 		if got, want := len(id.Signatures), 0; want != got {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "len(id.Sigs) = %v, want %v", got, want)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "len(id.Sigs) = %v, want %v", got, want)
 		}
 
 	}
 	// Only allow one subkey.
 	if got, want := len(entity.Subkeys), 1; want != got {
-		return &Fingerprint{}, status.Errorf(status.InvalidArgument, "len(Subkeys) = %v, want %v", got, want)
+		return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "len(Subkeys) = %v, want %v", got, want)
 	}
 	for _, subkey := range entity.Subkeys {
 		// Verify expiration.
 		if subkey.Sig.KeyExpired(time.Now()) {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Signature expired")
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Signature expired")
 		}
 		// Only accept ECC keys.
 		if got, want := subkey.PublicKey.PubKeyAlgo, packet.PubKeyAlgoECDH; got != want {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "PubKeyAlgo = %v, want %v", got, want)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "PubKeyAlgo = %v, want %v", got, want)
 		}
 		// Verify flags.
 		if subkey.Sig.FlagCertify || subkey.Sig.FlagSign {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Subkey signature authorized to sign")
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Subkey signature authorized to sign")
 		}
 		if !subkey.Sig.FlagEncryptCommunications || !subkey.Sig.FlagEncryptStorage {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Subkey missing encrypt flag")
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Subkey missing encrypt flag")
 		}
 		// Verify that hash is one of the preferred hash types.
 		hashID, ok := s2k.HashToHashId(subkey.Sig.Hash)
 		if !ok {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Invalid hash %v", subkey.Sig.Hash)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Invalid hash %v", subkey.Sig.Hash)
 		}
 		if _, ok := requiredHash[hashID]; !ok {
-			return &Fingerprint{}, status.Errorf(status.InvalidArgument, "Hash algo %v not approved", hashID)
+			return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "Hash algo %v not approved", hashID)
 		}
 	}
 	// Only accept ECC keys.
 	if got, want := entity.PrimaryKey.PubKeyAlgo, packet.PubKeyAlgoECDSA; got != want {
-		return &Fingerprint{}, status.Errorf(status.InvalidArgument, "PubKeyAlgo = %v, want %v", got, want)
+		return &Fingerprint{}, grpc.Errorf(codes.InvalidArgument, "PubKeyAlgo = %v, want %v", got, want)
 	}
 	var fingerprint = Fingerprint(entity.PrimaryKey.Fingerprint)
 	return &fingerprint, nil
