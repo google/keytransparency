@@ -31,7 +31,7 @@ type MemStorage struct {
 
 // Create creates a storage object from an existing db connection.
 func CreateMem(ctx context.Context) *MemStorage {
-	s := &MemStorage{ }
+	s := &MemStorage{make(map[string]*keyspb.SignedKey)}
 	s.InsertLogTableRow(ctx)
 	return s
 }
