@@ -15,6 +15,9 @@
 package auth
 
 import (
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+
 	context "golang.org/x/net/context"
 )
 
@@ -26,3 +29,16 @@ type Authenticator interface {
 }
 
 //TODO: Implement OAuth authenticator
+type NullAuth struct {}
+
+func New() Authenticator {
+	return &NullAuth{}
+}
+
+func (a *NullAuth) GetAuthenticatedEmail(ctx context.Context) (string, error) {
+	return "", grpc.Errorf(codes.Unimplemented, "Fake auth")
+}
+
+func (a *NullAuth) VerifyScopes(ctx context.Context, scopes []string) error {
+	return grpc.Errorf(codes.Unimplemented, "Fake auth")
+}
