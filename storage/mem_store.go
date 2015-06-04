@@ -16,46 +16,60 @@
 package storage
 
 import (
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+
 	context "golang.org/x/net/context"
 	keyspb "github.com/google/key-server-transparency/proto/v2"
 )
 
 // Storage holds state required to persist data. Open and Create create new Storage objects.
-type MemStorage struct {
-	logID []byte
-}
-
-// Open connects to a given version of the backend.
-func OpenMem(ctx context.Context, logID []byte, universe, environment string) *MemStorage {
-	// Database connection.
-	return CreateMem(ctx, logID)
+type MemStorage struct { 
+	// Map of vuf -> SignedKey
+	keys map[string]*keyspb.SignedKey
 }
 
 // Create creates a storage object from an existing db connection.
-func CreateMem(ctx context.Context, logID []byte) *MemStorage {
-	s := &MemStorage{
-		logID: logID,
-	}
+func CreateMem(ctx context.Context) *MemStorage {
+	s := &MemStorage{ }
 	s.InsertLogTableRow(ctx)
 	return s
 }
 
-func (s *MemStorage) InsertLogTableRow(ctx context.Context) {
+func (s *MemStorage) InsertLogTableRow(ctx context.Context) { }
+
+func (s *MemStorage) ReadKey(ctx context.Context, vuf []byte) (*keyspb.SignedKey, error) {
+	val, ok := s.keys[string(vuf)]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
+	}
+	return val, nil
 }
 // UpdateKey updates a UserKey row. Fails if the row does not already exist.
 func (s *MemStorage) UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf []byte) error {
-return nil
+	_, ok := s.keys[string(vuf)]
+	if !ok {
+		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
+	}
+	s.keys[string(vuf)] = signedKey
+	return nil
 }
 // InsertKey inserts a new UserKey row. Fails if the row already exists.
 func (s *MemStorage) InsertKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf []byte) error {
-return nil
+	_, ok := s.keys[string(vuf)]
+	if ok {
+		return grpc.Errorf(codes.AlreadyExists, "%v Already Exists", vuf)
+	}
+	s.keys[string(vuf)] = signedKey
+	return nil
 }
 // DeleteKey deletes a key.
 func (s *MemStorage) DeleteKey(ctx context.Context, vuf []byte) error {
-return nil
-}
-// ReadKey reads a key.
-func (s *MemStorage) ReadKey(ctx context.Context, vuf []byte) (*keyspb.SignedKey, error) {
-return nil, nil
+	_, ok := s.keys[string(vuf)]
+	if !ok {
+		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
+	}
+	delete(s.keys, string(vuf))
+	return nil
 }
 
