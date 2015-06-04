@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"log"
 
 	context "golang.org/x/net/context"
 	codespb "github.com/google/key-server-transparency/proto/codes"
@@ -90,6 +91,8 @@ func FromError(err error) (*Status, bool) {
 		return nil, true
 	case *statusError:
 		return (*Status)(x), true
+	default:
+		log.Printf("%v not a status error", x)
 	}
 	return nil, false
 }
@@ -100,10 +103,6 @@ func (s *Status) Equal(t *Status) bool {
 	s = nilToZero(s)
 	t = nilToZero(t)
 	return s.Code == t.Code 
-}
-
-func (s *Status) Canonical() *Status {
-	return s
 }
 
 // New returns a *Status wiht the given code and message.
@@ -157,18 +156,9 @@ func Canonical(err error) *Status {
 		return nil
 	}
 	if st, ok := FromError(err); ok {
-		return st.Canonical()
+		return st
 	}
-	var code Code
-	if pe, ok := err.(*os.PathError); ok {
-		if st, ok := FromError(pe.Err); ok {
-			code = st.Code
-		} else {
-			code = convertCode(pe.Err)
-		}
-	} else {
-		code = convertCode(err)
-	}
+	code := convertCode(err)
 	return &Status{Code: code, Msg: err.Error()}
 }
 
