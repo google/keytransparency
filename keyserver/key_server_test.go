@@ -17,21 +17,21 @@ package keyserver
 
 import (
 	"encoding/hex"
+	"log"
 	"math"
+	"net"
 	"strings"
 	"testing"
 	"time"
-	"net"
-	"log"
 
 	"github.com/google/key-server-transparency/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	context "golang.org/x/net/context"
 	proto "github.com/golang/protobuf/proto"
-	proto3 "google/protobuf"
 	keyspb "github.com/google/key-server-transparency/proto/v2"
+	context "golang.org/x/net/context"
+	proto3 "google/protobuf"
 )
 
 const (
@@ -123,26 +123,30 @@ f0dfdb5bb58299068beb8f4eb501`, "\n", "", -1))
 )
 
 type Env struct {
-	s	  *grpc.Server
-	server    *Server
-	conn      *grpc.ClientConn
-	Client    keyspb.E2EKeyServiceClient
-	ctx       context.Context
+	s      *grpc.Server
+	server *Server
+	conn   *grpc.ClientConn
+	Client keyspb.E2EKeyServiceClient
+	ctx    context.Context
 }
 
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
-	addr := ":12345"
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatalf("Failed to listen: %v", err)
 	}
+	_, port, err := net.SplitHostPort(lis.Addr().String())
+	if err != nil {
+		t.Fatal("Failed ot parse listener address: %v", err)
+	}
+	addr := "localhost:" + port
 	s := grpc.NewServer()
 	server := Create(storage.CreateMem(context.Background()))
 	keyspb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
-	cc, err := grpc.Dial(addr, grpc.WithTimeout(time.Millisecond * 500))
+	cc, err := grpc.Dial(addr, grpc.WithTimeout(time.Millisecond*500))
 	if err != nil {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}
