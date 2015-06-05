@@ -42,7 +42,7 @@ type ConiksStorage interface {
 	ReadHistoricProof(ctx context.Context, vuf []byte, epoch time.Time) (*keyspb.Proof, error)
 	ReadKeys(ctx context.Context, vuf []byte) ([]*keyspb.SignedKey, error)
 	ReadHistoricKeys(ctx context.Context, vuf []byte, epoch time.Time) ([]*keyspb.SignedKey, error)
-	ReadKeyPromisess(ctx context.Context, vuf []byte) ([]*keyspb.SignedKey, error)
+	ReadKeyPromises(ctx context.Context, vuf []byte) ([]*keyspb.SignedKey, error)
 
 	// InsertKey inserts a new UserKey row. Fails if the row already exists.
 	InsertKeyPromise(ctx context.Context, signedKey *keyspb.SignedKey, vuf []byte) error
