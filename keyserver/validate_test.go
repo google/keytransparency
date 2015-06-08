@@ -16,7 +16,7 @@ package keyserver
 import (
 	"testing"
 
-	keyspb "github.com/google/key-server-transparency/proto/v2"
+	keyspb "github.com/google/e2e-key-server/proto/v2"
 )
 
 func TestValidateEmail(t *testing.T) {

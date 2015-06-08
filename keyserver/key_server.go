@@ -19,12 +19,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/key-server-transparency/auth"
-	"github.com/google/key-server-transparency/storage"
+	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	keyspb "github.com/google/key-server-transparency/proto/v2"
+	keyspb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 	proto3 "google/protobuf"
 )
@@ -109,7 +109,7 @@ func (s *Server) CreateKey(ctx context.Context, in *keyspb.CreateKeyRequest) (*k
 }
 
 // UpdateKey updates a device key.
-func (s *Server) UpdateKey(ctx context.Context, in *keyspb.UpdateKeyRequest) ( *keyspb.KeyPromise, error) {
+func (s *Server) UpdateKey(ctx context.Context, in *keyspb.UpdateKeyRequest) (*keyspb.KeyPromise, error) {
 	if err := s.validateUpdateKeyRequest(ctx, in); err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (s *Server) UpdateKey(ctx context.Context, in *keyspb.UpdateKeyRequest) ( *
 }
 
 // DeleteKey deletes a key. Returns NOT_FOUND if the key does not exist.
-func (s *Server) DeleteKey(ctx context.Context, in *keyspb.DeleteKeyRequest) (*proto3.Empty, error){
+func (s *Server) DeleteKey(ctx context.Context, in *keyspb.DeleteKeyRequest) (*proto3.Empty, error) {
 	if err := s.validateEmail(ctx, in.UserId); err != nil {
 		return nil, err
 	}

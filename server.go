@@ -20,13 +20,13 @@ import (
 	"log"
 	"net"
 
-	"github.com/google/key-server-transparency/keyserver"
-	"github.com/google/key-server-transparency/proxy"
-	"github.com/google/key-server-transparency/rest"
-	"github.com/google/key-server-transparency/storage"
+	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/proxy"
+	"github.com/google/e2e-key-server/rest"
+	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 
-	v1pb "github.com/google/key-server-transparency/proto/v1"
+	v1pb "github.com/google/e2e-key-server/proto/v1"
 )
 
 var port = flag.Int("port", 8080, "TCP port to listen on")

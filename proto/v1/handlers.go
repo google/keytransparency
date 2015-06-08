@@ -21,8 +21,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
-	v2pb "github.com/google/key-server-transparency/proto/v2"
 )
 
 // TODO: I wish this could be code generated.
@@ -38,7 +38,7 @@ func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter
 
 	resp, err := srv.(E2EKeyProxyServer).GetUser(ctx, in)
 	if err != nil {
-		return err 
+		return err
 	}
 	// proto -> json
 	encoder := json.NewEncoder(w)

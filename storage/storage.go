@@ -17,8 +17,8 @@ package storage
 import (
 	"time"
 
+	keyspb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
-	keyspb "github.com/google/key-server-transparency/proto/v2"
 )
 
 type BasicStorage interface {

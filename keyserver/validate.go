@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	v2pb "github.com/google/key-server-transparency/proto/v2"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 )
 

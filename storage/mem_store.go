@@ -19,12 +19,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	keyspb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
-	keyspb "github.com/google/key-server-transparency/proto/v2"
 )
 
 // Storage holds state required to persist data. Open and Create create new Storage objects.
-type MemStorage struct { 
+type MemStorage struct {
 	// Map of vuf -> SignedKey
 	keys map[string]*keyspb.SignedKey
 }
@@ -36,7 +36,7 @@ func CreateMem(ctx context.Context) *MemStorage {
 	return s
 }
 
-func (s *MemStorage) InsertLogTableRow(ctx context.Context) { }
+func (s *MemStorage) InsertLogTableRow(ctx context.Context) {}
 
 func (s *MemStorage) ReadKey(ctx context.Context, vuf []byte) (*keyspb.SignedKey, error) {
 	val, ok := s.keys[string(vuf)]
@@ -45,6 +45,7 @@ func (s *MemStorage) ReadKey(ctx context.Context, vuf []byte) (*keyspb.SignedKey
 	}
 	return val, nil
 }
+
 // UpdateKey updates a UserKey row. Fails if the row does not already exist.
 func (s *MemStorage) UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf []byte) error {
 	_, ok := s.keys[string(vuf)]
@@ -54,6 +55,7 @@ func (s *MemStorage) UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey,
 	s.keys[string(vuf)] = signedKey
 	return nil
 }
+
 // InsertKey inserts a new UserKey row. Fails if the row already exists.
 func (s *MemStorage) InsertKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf []byte) error {
 	_, ok := s.keys[string(vuf)]
@@ -63,6 +65,7 @@ func (s *MemStorage) InsertKey(ctx context.Context, signedKey *keyspb.SignedKey,
 	s.keys[string(vuf)] = signedKey
 	return nil
 }
+
 // DeleteKey deletes a key.
 func (s *MemStorage) DeleteKey(ctx context.Context, vuf []byte) error {
 	_, ok := s.keys[string(vuf)]
@@ -72,4 +75,3 @@ func (s *MemStorage) DeleteKey(ctx context.Context, vuf []byte) error {
 	delete(s.keys, string(vuf))
 	return nil
 }
-

@@ -24,12 +24,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/key-server-transparency/storage"
+	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	keyspb "github.com/google/key-server-transparency/proto/v2"
+	keyspb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 	proto3 "google/protobuf"
 )

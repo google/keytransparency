@@ -1,4 +1,4 @@
-Key Server Transparency
+End to End Key Server with Transparency
 =======================
 
 The Transparent Key Server for

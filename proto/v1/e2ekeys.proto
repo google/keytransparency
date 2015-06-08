@@ -22,7 +22,7 @@ option java_outer_classname = "E2EKeysProto";
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "github.com/google/key-server-transparency/proto/v2/e2ekeys.proto";
+import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // The E2EKeyProxy API specifies a simplified way to query the
 // [E2EKeyService][google.security.e2ekeys.v2.E2EKeyService], without
