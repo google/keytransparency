@@ -66,8 +66,10 @@ func (s *Server) GetUser(ctx context.Context, in *keyspb.GetUserRequest) (*keysp
 	}
 	p := &keyspb.UserProof{
 		User: &keyspb.User{
-			SignedKeys: []*keyspb.SignedKey{
-				signedKey,
+			KeyList: &keyspb.User_KeyList{
+				SignedKeys: []*keyspb.SignedKey{
+					signedKey,
+				},
 			},
 		},
 	}

@@ -51,7 +51,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.Us
 		signedKeyPromises = append(signedKeyPromises, promise.SignedKeyTimestamp.SignedKey)
 	}
 	out := proof.User
-	out.SignedKeys = append(proof.User.SignedKeys, signedKeyPromises...)
+	out.KeyList.SignedKeys = append(proof.User.KeyList.SignedKeys, signedKeyPromises...)
 	return out, nil
 }
 

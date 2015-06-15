@@ -112,9 +112,9 @@ d1e2db21920e4699ab7e2c6168ec02c70dceff0000005604000000001208
 f0dfdb5bb58299068beb8f4eb501`, "\n", "", -1))
 	primarySignedKey = &keyspb.SignedKey{
 		Key: &keyspb.SignedKey_Key{
-			AppId:     "pgp",
-			Key:       primaryUserKeyRing,
-			KeyFormat: keyspb.SignedKey_Key_PGP_KEYRING,
+			AppId:  "pgp",
+			Key:    primaryUserKeyRing,
+			Format: keyspb.SignedKey_Key_PGP_KEYRING,
 			CreationTime: &proto3.Timestamp{
 				Seconds: time.Now().Unix(),
 			},
@@ -216,11 +216,11 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetUser failed: %v", err)
 	}
-	if got, want := len(res.GetUser().GetSignedKeys()), 1; got != want {
+	if got, want := len(res.GetUser().GetKeyList().GetSignedKeys()), 1; got != want {
 		t.Errorf("len(GetSignedKeys()) = %v, want; %v", got, want)
 		return
 	}
-	if got, want := res.GetUser().GetSignedKeys()[0].GetKey(), primarySignedKey.Key; !proto.Equal(got, want) {
+	if got, want := res.GetUser().GetKeyList().GetSignedKeys()[0].GetKey(), primarySignedKey.Key; !proto.Equal(got, want) {
 		t.Errorf("GetUser(%v) = %v, want: %v", primaryUserEmail, got, want)
 	}
 }

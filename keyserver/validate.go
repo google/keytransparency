@@ -57,7 +57,7 @@ func (s *Server) validateKey(userID string, key *v2pb.SignedKey_Key) (*Fingerpri
 		return nil, grpc.Errorf(codes.InvalidArgument, "Missing Key")
 	}
 	var fingerprint *Fingerprint
-	switch key.KeyFormat {
+	switch key.Format {
 	case v2pb.SignedKey_Key_PGP_KEYRING:
 		var err error
 		pgpUserID := fmt.Sprintf("<%v>", userID)
@@ -100,7 +100,7 @@ func (s *Server) validateSignedKey(userID string, signedKey *v2pb.SignedKey) err
 		return err
 	}
 	signedKey.KeyId = hex.EncodeToString(fingerprint[:])
-	switch signedKey.GetKey().KeyFormat {
+	switch signedKey.GetKey().Format {
 	case v2pb.SignedKey_Key_PGP_KEYRING:
 		// No additional checks needed.
 		return nil

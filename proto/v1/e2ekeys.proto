@@ -26,8 +26,8 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // The E2EKeyProxy API specifies a simplified way to query the
 // [E2EKeyService][google.security.e2ekeys.v2.E2EKeyService], without
-// transparency proofs. Users of this API will not be able to independently
-// verify the server's security properties.
+// transparency proofs or historical values. Users of this API will not be able
+// to independently verify the server's security properties.
 //
 // The API defines the following resource model:
 //
@@ -39,16 +39,12 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 //  `/users/*/keys/*`
 //
 service E2EKeyProxy {
-  // GetUser returns a user's keys and a proof that there is only one entry for
-  // this user and that it is the same one being provided to everyone else.
-  // GetUser also supports querying past values by setting the epoch field.
+  // GetUser returns a user's keys.  Past values are not supported.
   rpc GetUser(v2.GetUserRequest) returns (v2.User) {
     option (google.api.http) = { get: "/v1/users/{user_id}" };
   }
 
-  // CreateKey promises to create a new key for a user on the next epoch.
-  // Multiple new keys can be created each epoch. Clients must verify that each
-  //promise is in-fact in the tree on the next epoch.
+  // CreateKey creates new key.  The key_id must not already exist.
   rpc CreateKey (v2.CreateKeyRequest) returns (v2.SignedKey) {
     option (google.api.http) = {
       post: "/v1/users/{user_id}/keys"
@@ -56,7 +52,7 @@ service E2EKeyProxy {
     };
   }
 
-  // UpdateKey updates a device key.
+  // UpdateKey updates a device key. The key_id must already exist.
   rpc UpdateKey (v2.UpdateKeyRequest) returns (v2.SignedKey) {
     option (google.api.http) = {
       put: "/v1/users/{user_id}/keys/{key_id}"
