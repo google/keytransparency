@@ -212,12 +212,26 @@ message KeyPromise {
   Signature signature = 2;
 }
 
+// One node along a Merkle Tree authentication path.
+message ProofNode {
+  // At most one of the hashes will be set; the one that is along the path
+  // is always left nil, since the client will recompute it during the
+  // verification anyway.
+  bytes left_child_hash = 1;
+  bytes right_child_hash = 2;
+  // If the node is a leaf, the index and value will be set. A leaf node will
+  // only be included in an absence proof.
+  bytes index = 3;
+  bytes value = 4;
+}
+
 // A Proof provides an authentication path through the Merkel Tree that
 // proves that an item is present in the tree.
 message Proof {
-  // Neighbors is a list of all the adacent nodes along the path from the leaf
-  // object to the root.  To save space, hashes for empty subtrees are omitted.
-  repeated bytes neighbors = 1;
+  // The list of nodes along the path. The client can verify the proof by
+  // hashing the nodes and iteratively filling in the missing hash in the next
+  // node until it reaches the root, where it can compare the root hash.
+  repeated ProofNode proof_nodes = 1;
   // The root node in the Merkle tree.
   SignedRoot epoch = 3;
   // Output of an verifiable unpredictable function on user.meta.user_id.
