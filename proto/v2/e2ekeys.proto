@@ -251,9 +251,9 @@ message SharedLeafAbsenceProof {
 message Proof {
   // Only one of {presenceProof, subtreeAbsenceProof, sharedLeafAbsenceProof}
   // will be set.
-  optional HashPath presenceProof = 1;
-  optional SubtreeAbsenceProof subtreeAbsenceProof = 2;
-  optional SharedLeafAbsenceProof sharedLeafAbsenceProof = 3;
+  HashPath presenceProof = 1;
+  SubtreeAbsenceProof subtreeAbsenceProof = 2;
+  SharedLeafAbsenceProof sharedLeafAbsenceProof = 3;
   // The root node in the Merkle tree.
   SignedRoot epoch = 4;
   // Output of an verifiable unpredictable function on user.meta.user_id.
