@@ -212,18 +212,54 @@ message KeyPromise {
   Signature signature = 2;
 }
 
-// A Proof provides an authentication path through the Merkel Tree that
-// proves that an item is present in the tree.
-message Proof {
+// The Merkle hash path that proves that an entry is at a particular position.
+message HashPath {
   // Neighbors is a list of all the adacent nodes along the path from the leaf
-  // object to the root.  To save space, hashes for empty subtrees are omitted.
+  // object to the root. To save space, hashes for empty subtrees are nil, and
+  // the number of hashes is equal to the length of the longest common prefix
+  // with another entry in the tree (since the leaf node is moved up to that
+  // point -- subtrees with a single entry are coalesced into a single node).
   repeated bytes neighbors = 1;
+}
+
+// Proof of absence, case 1: the requested VUF falls under a branch that is
+// empty.
+message SubtreeAbsenceProof {
+  // Neighbors is a list of all the adacent nodes along the path from the
+  // sibling of the empty branch to the root.
+  repeated bytes neighbors = 1;
+}
+
+// Proof of absence, case 2: the requested VUF shares the same path as an
+// existing binding.
+message SharedLeafAbsenceProof {
+  // Neighbors is a list of all the adacent nodes along the path from the leaf
+  // object to the root (this is effectively a HashPath proof for existingVuf).
+  repeated bytes neighbors = 1;
+
+  // This is the VUF for the binding that does exist; it will share a prefix
+  // with the vuf in the Proof message.
+  bytes existingVuf = 2;
+
+  // This is the hash of the leaf for the existing binding, which the client can
+  // use to verify this proof.
+  bytes existingLeafHash = 3;
+}
+
+// A Proof provides an authentication path through the Merkel Tree that
+// proves that an item is or is not present in the tree.
+message Proof {
+  // Only one of {presenceProof, subtreeAbsenceProof, sharedLeafAbsenceProof}
+  // will be set.
+  HashPath presenceProof = 1;
+  SubtreeAbsenceProof subtreeAbsenceProof = 2;
+  SharedLeafAbsenceProof sharedLeafAbsenceProof = 3;
   // The root node in the Merkle tree.
-  SignedRoot epoch = 3;
+  SignedRoot epoch = 4;
   // Output of an verifiable unpredictable function on user.meta.user_id.
   // Prevents an adversary from brute forcing a user's location in the Merkle
   // tree.
-  bytes vuf = 4;
+  bytes vuf = 5;
 }
 
 // SignedRoot represents a signed state of the Merkel tree.
