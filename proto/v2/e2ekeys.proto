@@ -234,7 +234,7 @@ message SubtreeAbsenceProof {
 // existing binding.
 message SharedLeafAbsenceProof {
   // Neighbors is a list of all the adacent nodes along the path from the leaf
-  // object to the root (this is effectively a HashPath proof for otherVuf).
+  // object to the root (this is effectively a HashPath proof for existingVuf).
   repeated bytes neighbors = 1;
 
   // This is the VUF for the binding that does exist; it will share a prefix
