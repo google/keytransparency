@@ -240,27 +240,25 @@ message Proof {
 
 // SignedRoot represents a signed state of the Merkel tree.
 message SignedRoot {
-  // Signature of this epoch's root hash.
-  Signature root_sig = 1;
-  // Hash of this epoch's root.
-  bytes root_hash = 2;
-  // Value of this epoch's root.
-  Root root = 3;
+  // Signature of this epoch's hash.
+  Signature epoch_sig = 1;
+  // This epoch's hash.
+  bytes epoch_hash = 2;
+  // Value of this epoch.
+  Epoch epoch = 3;
 }
 
-// Root is the head node of the Merkle Tree, incorporating left and right sub
-// branches as well as additional metadata for the tree.
-message Root {
+// Epoch corresponds to the signed contents of a signed tree root, containing
+// the epoch's timestamp, number, root node hash, and previous epoch hash.
+message Epoch {
   // The timestamp of the current epoch.
   google.protobuf.Timestamp current_time = 1;
-  // The timestamp of the previous epoch.
-  google.protobuf.Timestamp previous_time = 2;
-  // Hash of previous root.
-  bytes previous_root = 3;
-  // Value of the left branch.  H(sub0).
-  bytes left = 4;
-  // Value of the right branch. H(sub1).
-  bytes right = 5;
+  // The first epoch has epoch_nr 1, and the numbers count up sequentially.
+  int64 epoch_nr = 2;
+  // Hash of previous epoch.
+  bytes previous_epoch = 3;
+  // Hash of the root in the tree.
+  bytes root_node_hash = 4;
 }
 
 
