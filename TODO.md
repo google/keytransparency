@@ -8,7 +8,7 @@ Add your name next to ones you are working on.
 - Storage
 - Auth
 - Docker
-- Tavis
+- Travis
 - Keystore
 
 ===============
