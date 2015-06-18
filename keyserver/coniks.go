@@ -11,16 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 // Package proxy converts v1 API requests into v2 API calls.
 
 package keyserver
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 )
 
 // Vuf is a mock verifiable unpredictable function.
-func (s *Server) Vuf(userID string) ([]byte, []byte, error) {
+func (s *Server) Vuf(userID string) (string, string, error) {
 	hUserID := sha256.Sum256([]byte(userID))
-	return hUserID[:], hUserID[:], nil
+	hexUserID := hex.EncodeToString(hUserID[:])
+	return hexUserID, hexUserID, nil
 }

@@ -38,7 +38,7 @@ func CreateMem(ctx context.Context) *MemStorage {
 
 func (s *MemStorage) InsertLogTableRow(ctx context.Context) {}
 
-func (s *MemStorage) ReadKey(ctx context.Context, vuf []byte) (*keyspb.SignedKey, error) {
+func (s *MemStorage) ReadKey(ctx context.Context, vuf string) (*keyspb.SignedKey, error) {
 	val, ok := s.keys[string(vuf)]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
@@ -47,7 +47,7 @@ func (s *MemStorage) ReadKey(ctx context.Context, vuf []byte) (*keyspb.SignedKey
 }
 
 // UpdateKey updates a UserKey row. Fails if the row does not already exist.
-func (s *MemStorage) UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf []byte) error {
+func (s *MemStorage) UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf string) error {
 	_, ok := s.keys[string(vuf)]
 	if !ok {
 		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
@@ -57,7 +57,7 @@ func (s *MemStorage) UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey,
 }
 
 // InsertKey inserts a new UserKey row. Fails if the row already exists.
-func (s *MemStorage) InsertKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf []byte) error {
+func (s *MemStorage) InsertKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf string) error {
 	_, ok := s.keys[string(vuf)]
 	if ok {
 		return grpc.Errorf(codes.AlreadyExists, "%v Already Exists", vuf)
@@ -67,7 +67,7 @@ func (s *MemStorage) InsertKey(ctx context.Context, signedKey *keyspb.SignedKey,
 }
 
 // DeleteKey deletes a key.
-func (s *MemStorage) DeleteKey(ctx context.Context, vuf []byte) error {
+func (s *MemStorage) DeleteKey(ctx context.Context, vuf string) error {
 	_, ok := s.keys[string(vuf)]
 	if !ok {
 		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)

@@ -197,8 +197,8 @@ message SignedKeyTimestamp {
   SignedKey signed_key = 2;
   // The user this key is for.
   string user_id = 3;
-  // The index in the tree for this user.
-  bytes vuf = 4;
+  // The index in the tree for this user in hex.
+  string vuf = 4;
 }
 
 // A promise to include a given key in the STR on the next epoch.
@@ -223,7 +223,7 @@ message Proof {
   SignedTreeRoot str = 3;
   // Output of an verifiable unpredictable function on user_id.
   // Prevents an adversary from brute forcing a user's index in the tree.
-  bytes vuf = 4;
+  string vuf = 4;
   // This is the VUF for the binding that does exist; it will share a prefix
   // with vuf, but in case the leaf contains the wrong contents, it will be
   // different. It will be nil if the requested VUF falls under an empty branch.
