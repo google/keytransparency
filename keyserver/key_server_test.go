@@ -18,7 +18,6 @@ package keyserver
 
 import (
 	"encoding/hex"
-	"log"
 	"math"
 	"net"
 	"strings"
@@ -200,7 +199,6 @@ func TestGetNonExistantUser(t *testing.T) {
 	_, err := env.Client.GetUser(ctx, &keyspb.GetUserRequest{UserId: "nobody"})
 
 	if got, want := grpc.Code(err), codes.NotFound; got != want {
-		log.Printf("err: %v", err)
 		t.Errorf("Query for nonexistant user = %v, want: %v", got, want)
 	}
 }

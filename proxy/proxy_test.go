@@ -71,7 +71,7 @@ type Env struct {
 	v1svr     *Server
 	v2svr     *keyserver.Server
 	rpcServer *grpc.Server
-	conn      *grpc.ClientConn
+	cc        *grpc.ClientConn
 	Client    v1pb.E2EKeyProxyClient
 	ctx       context.Context
 }
@@ -108,7 +108,7 @@ func NewEnv(t *testing.T) *Env {
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
-	env.conn.Close()
+	env.cc.Close()
 	env.rpcServer.Stop()
 }
 

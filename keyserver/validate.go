@@ -22,22 +22,24 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
-	context "golang.org/x/net/context"
 )
 
 // Maximum period of time to allow between CreationTime and server time.
 const MaxClockDrift = 5 * time.Minute
 
+var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
+
 // validateEmail compares the given email against the one provided by GAIA
 func (s *Server) validateEmail(ctx context.Context, email string) error {
-	if err := s.a.VerifyScopes(ctx, []string{"userinfo.email"}); err != nil {
+	if err := s.a.CheckScopes(ctx, requiredScopes...); err != nil {
 		return err
 	}
-	verifiedEmail, err := s.a.GetAuthenticatedEmail(ctx)
+	verifiedEmail, err := s.a.GetAuthenticatedEmail(ctx, requiredScopes...)
 	if err != nil {
 		return err
 	}

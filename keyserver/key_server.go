@@ -73,7 +73,7 @@ func (s *Server) GetUser(ctx context.Context, in *keyspb.GetUserRequest) (*keysp
 			},
 		},
 	}
-	return p, nil // no error
+	return p, nil
 }
 
 // ListUserHistory returns a list of UserProofs covering a period of time.
