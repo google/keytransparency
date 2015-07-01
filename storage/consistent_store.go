@@ -24,8 +24,8 @@ type Epoch int64
 // TODO: Make this a protobuf
 type ClusterNodeState struct {
 	NodeId            string
-	NewestSTR         *pb.SignedRoot
-	CurrentServingSTR *pb.SignedRoot
+	NewestSTR         *pb.SignedTreeRoot
+	CurrentServingSTR *pb.SignedTreeRoot
 	Hostname          string
 	Port              int32
 }
@@ -58,23 +58,23 @@ type ConsistentStore interface {
 
 	// Inserts a new signed tree root, which should contain all the updates
 	// assigned to its epoch.
-	InsertNewestSTR(str *pb.SignedRoot) error
+	InsertNewestSTR(str *pb.SignedTreeRoot) error
 
-	GetNewestSTR() (*pb.SignedRoot, error)
+	GetNewestSTR() (*pb.SignedTreeRoot, error)
 
 	// Sends the newest STR, followed by updates as they come, to the receiver
 	// chan. If the stop channel is closed, the watch ends and the function
 	// returns.
-	WatchNewestSTR(receiver chan *pb.SignedRoot, stop chan struct{}) error
+	WatchNewestSTR(receiver chan *pb.SignedTreeRoot, stop chan struct{}) error
 
-	GetServingSTR() (*pb.SignedRoot, error)
+	GetServingSTR() (*pb.SignedTreeRoot, error)
 
-	SetServingSTR(str *pb.SignedRoot) error
+	SetServingSTR(str *pb.SignedTreeRoot) error
 
 	// Sends the current serving STR, followed by updates as they come, to the
 	// receiver chan. If the stop channel is closed, the watch ends and the
 	// function returns.
-	WatchServingSTR(receiver chan *pb.SignedRoot, stop chan struct{}) error
+	WatchServingSTR(receiver chan *pb.SignedTreeRoot, stop chan struct{}) error
 
 	// Updates the current node's state.
 	SetClusterNodeState(state *ClusterNodeState) error

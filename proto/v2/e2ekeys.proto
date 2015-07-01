@@ -53,7 +53,8 @@ service E2EKeyService {
   }
 
   // ListUserHistory returns a list of UserProofs covering a period of time.
-  rpc ListUserHistory(ListUserHistoryRequest) returns (ListUserHistoryResponse) {
+  rpc ListUserHistory(ListUserHistoryRequest) returns (ListUserHistoryResponse)
+  {
     option (google.api.http) = { get: "/v2/users/{user_id}/history" };
   }
 
@@ -169,7 +170,7 @@ message SignedKey{
   }
   // Signature of key, by the current key. Proves ownership of new key.
   Signature signature_current = 2;
-  // Signature of key, by either: 1) the same key_id in the previous epoch, proving
+  // Signature of key, by either: 1) the same key_id in the previous epoch,
   // proving that the correct owner of the key is making the rotation or 2) a
   // different key in the previous epoch, proving that the owner of the accout
   // is adding the new key.
@@ -197,7 +198,7 @@ message SignedKeyTimestamp {
   SignedKey signed_key = 2;
   // The user this key is for.
   string user_id = 3;
-  // The index in the tree for this user in hex.
+  // The index in the Merkle tree for this user as a hex string.
   string vuf = 4;
 }
 
@@ -210,7 +211,7 @@ message KeyPromise {
 }
 
 // A Proof provides an authentication path through the Merkle Tree that
-// proves that an item is or is not present in the tree.
+// proves that an item is present in the STR.
 message Proof {
   // Neighbors is a list of all the adacent nodes along the path from the
   // bottommost node to the root. To save space, hashes for empty subtrees are
