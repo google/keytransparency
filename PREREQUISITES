@@ -33,6 +33,7 @@ go get -u github.com/golang/protobuf/protoc-gen-go
 go get -u github.com/gorilla/mux
 go get -u golang.org/x/net/context
 go get -u golang.org/x/crypto/openpgp
+go get -u google.golang.org/grpc
 
 # Non go packages
 
