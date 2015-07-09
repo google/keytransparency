@@ -23,13 +23,31 @@ import (
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
+	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 )
 
+// Struct containing routes info
+type RouteInfo struct {
+	Method      string
+	Initializer handlers.InitializeHandlerInfo
+	Handler     handlers.RequestHandler
+}
+
 var port = flag.Int("port", 8080, "TCP port to listen on")
+
+// Map containing all routes information
+// TODO: find a better way to populate this map
+var v1Routes = map[string]RouteInfo{
+	"/v1/user/{userid}": RouteInfo{
+		"GET",
+		rest.GetUser_InitializeHandlerInfo,
+		rest.GetUser_RequestHandler,
+	},
+}
 
 func main() {
 	flag.Parse()
@@ -44,8 +62,11 @@ func main() {
 	v1 := proxy.New(v2)
 	s := rest.New(v1)
 
-	// Manually add routing paths.  TODO: Auto derive from proto.
-	s.AddHandler("/v1/user/{userid}", "GET", v1pb.GetUser_Handler)
+	// Manually add routing paths.
+	// TODO: Auto derive from proto.
+	for k, v := range v1Routes {
+		s.AddHandler(k, v.Method, v1pb.Handler, v.Initializer, v.Handler)
+	}
 	// TODO: add hkp server api here.
 
 	s.Serve(lis)

@@ -18,23 +18,39 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
+	"github.com/google/e2e-key-server/rest/handlers"
+
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 )
 
 type FakeServer struct {
 }
 
-func Fake_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func Fake_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
 	w.Write([]byte("hi"))
 	return nil
+}
+
+func Fake_Initializer(rHandler handlers.RequestHandler) *handlers.HandlerInfo {
+	return nil
+}
+
+func Fake_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	b := true
+	i := new(interface{})
+	*i = b
+	return i, nil
 }
 
 func TestFoo(t *testing.T) {
 	v1 := &FakeServer{}
 	s := New(v1)
-	s.AddHandler("/hi", "GET", Fake_Handler)
+	s.AddHandler("/hi", "GET", Fake_Handler, Fake_Initializer, Fake_RequestHandler)
 
 	server := httptest.NewServer(s.Handlers())
 	defer server.Close()
@@ -44,5 +60,49 @@ func TestFoo(t *testing.T) {
 	}
 	if got, want := res.StatusCode, http.StatusOK; got != want {
 		t.Errorf("GET: %v = %v, want %v", res.Request.URL, got, want)
+	}
+}
+
+func TestGetUser_InitiateHandlerInfo(t *testing.T) {
+	info := GetUser_InitializeHandlerInfo(Fake_RequestHandler)
+	switch info.Arg.(type) {
+	case *v2pb.GetUserRequest:
+		break
+	default:
+		t.Errorf("info.Arg is not of type v2pb.GetUserRequest")
+	}
+
+	email := "e2eshare.test@gmail.com"
+	appId := "gmail"
+	tm := time.Now().Format(time.RFC3339)
+	s := "/v1/users/" + email + "?appId=" + appId + "&time=" + tm
+	u, err := url.Parse(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = info.Parser(u, &info.Arg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := info.Arg.(*v2pb.GetUserRequest).UserId, email; got != want {
+		t.Errorf("UserId = %v, want %v", got, want)
+	}
+	if got, want := info.Arg.(*v2pb.GetUserRequest).AppId, appId; got != want {
+		t.Errorf("AppId = %v, want %v", got, want)
+	}
+	tt, _ := time.Parse(time.RFC3339, tm)
+	if gots, gotn, wants, wantn := info.Arg.(*v2pb.GetUserRequest).Time.Seconds, info.Arg.(*v2pb.GetUserRequest).Time.Nanos, tt.Unix(), tt.Nanosecond(); gots != wants || gotn != int32(wantn) {
+		t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
+	}
+
+	v1 := &FakeServer{}
+	srv := New(v1)
+	resp, err := info.H(srv, nil, nil)
+	if err != nil {
+		t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+	}
+	if got, want := (*resp).(bool), true; got != want {
+		t.Errorf("resp = %v, want %v.", got, want)
 	}
 }

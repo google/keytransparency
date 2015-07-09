@@ -18,25 +18,30 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/e2e-key-server/rest/handlers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 )
 
 // TODO: I wish this could be code generated.
-func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
+	// Parsing URL params
+	err := info.Parser(r.URL, &info.Arg)
+	if err != nil {
+		return err
+	}
+
 	// Json -> Proto.
-	// TODO: insert url params.
-	in := new(v2pb.GetUserRequest)
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&in)
+	err = decoder.Decode(&info.Arg)
 	if err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "decoding error:", err)
 	}
 
-	resp, err := srv.(E2EKeyProxyServer).GetUser(ctx, in)
+	// Calling the actual API handler
+	resp, err := info.H(srv, ctx, info.Arg)
 	if err != nil {
 		return err
 	}
