@@ -36,7 +36,7 @@ func Fake_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r
 	return nil
 }
 
-func Fake_Initializer(rHandler handlers.RequestHandler) *handlers.HandlerInfo {
+func Fake_Initializer(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	return nil
 }
 
@@ -50,7 +50,14 @@ func Fake_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) 
 func TestFoo(t *testing.T) {
 	v1 := &FakeServer{}
 	s := New(v1)
-	s.AddHandler("/hi", "GET", Fake_Handler, Fake_Initializer, Fake_RequestHandler)
+	rInfo := handlers.RouteInfo{
+		"/hi",
+		-1,
+		"GET",
+		Fake_Initializer,
+		Fake_RequestHandler,
+	}
+	s.AddHandler(rInfo, Fake_Handler)
 
 	server := httptest.NewServer(s.Handlers())
 	defer server.Close()
@@ -64,7 +71,20 @@ func TestFoo(t *testing.T) {
 }
 
 func TestGetUser_InitiateHandlerInfo(t *testing.T) {
-	info := GetUser_InitializeHandlerInfo(Fake_RequestHandler)
+	email := "e2eshare.test@gmail.com"
+	appId := "gmail"
+	tm := time.Now().Format(time.RFC3339)
+	path := "/v1/users/" + email + "?appId=" + appId + "&time=" + tm
+
+	rInfo := handlers.RouteInfo{
+		path,
+		2,
+		"GET",
+		Fake_Initializer,
+		Fake_RequestHandler,
+	}
+	info := GetUser_InitializeHandlerInfo(rInfo)
+
 	switch info.Arg.(type) {
 	case *v2pb.GetUserRequest:
 		break
@@ -72,11 +92,7 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		t.Errorf("info.Arg is not of type v2pb.GetUserRequest")
 	}
 
-	email := "e2eshare.test@gmail.com"
-	appId := "gmail"
-	tm := time.Now().Format(time.RFC3339)
-	s := "/v1/users/" + email + "?appId=" + appId + "&time=" + tm
-	u, err := url.Parse(s)
+	u, err := url.Parse(path)
 	if err != nil {
 		t.Fatal(err)
 	}

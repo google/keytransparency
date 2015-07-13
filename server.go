@@ -30,19 +30,14 @@ import (
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 )
 
-// Struct containing routes info
-type RouteInfo struct {
-	Method      string
-	Initializer handlers.InitializeHandlerInfo
-	Handler     handlers.RequestHandler
-}
-
 var port = flag.Int("port", 8080, "TCP port to listen on")
 
 // Map containing all routes information
-// TODO: find a better way to populate this map
-var v1Routes = map[string]RouteInfo{
-	"/v1/user/{userid}": RouteInfo{
+// TODO(cesarghali): find a better way to populate this map
+var v1Routes = map[string]handlers.RouteInfo{
+	"/v1/users/{userid}": handlers.RouteInfo{
+		"/v1/users/{userid}",
+		2,
 		"GET",
 		rest.GetUser_InitializeHandlerInfo,
 		rest.GetUser_RequestHandler,
@@ -64,8 +59,8 @@ func main() {
 
 	// Manually add routing paths.
 	// TODO: Auto derive from proto.
-	for k, v := range v1Routes {
-		s.AddHandler(k, v.Method, v1pb.Handler, v.Initializer, v.Handler)
+	for _, v := range v1Routes {
+		s.AddHandler(v, v1pb.Handler)
 	}
 	// TODO: add hkp server api here.
 

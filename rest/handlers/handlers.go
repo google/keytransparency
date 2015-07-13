@@ -32,7 +32,7 @@ type URLParser func(*url.URL, *interface{}) error
 type RequestHandler func(interface{}, context.Context, interface{}) (*interface{}, error)
 
 // Function that generates and initializes HandlerInfo
-type InitializeHandlerInfo func(RequestHandler) *HandlerInfo
+type InitializeHandlerInfo func(RouteInfo) *HandlerInfo
 
 // Contains information related to the API handler
 type HandlerInfo struct {
@@ -42,4 +42,20 @@ type HandlerInfo struct {
 	Arg interface{}
 	// Function that parses URL params
 	Parser URLParser
+}
+
+// Struct containing routes info
+type RouteInfo struct {
+	// API Path
+	Path string
+	// UserId index in the path components
+	// TODO(cesarghali): it's better if the index can be detected automatically
+	UserIdIndex int
+	// Request method, e.g. GET, POST, etc
+	Method string
+	// Refer to the function that initialize the request
+	// rest/handlers/handlers.go:HandlerInfo
+	Initializer InitializeHandlerInfo
+	// API handler
+	Handler RequestHandler
 }

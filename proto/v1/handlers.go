@@ -25,6 +25,7 @@ import (
 	context "golang.org/x/net/context"
 )
 
+// Handle v1 API requests and call the appropriate API handler
 // TODO: I wish this could be code generated.
 func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
 	// Parsing URL params

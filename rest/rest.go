@@ -20,8 +20,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/e2e-key-server/rest/handlers"
@@ -74,18 +74,18 @@ func (s *Server) Handlers() *mux.Router {
 type Handler func(interface{}, context.Context, http.ResponseWriter, *http.Request, *handlers.HandlerInfo) error
 
 // AddHandler tels the server to route request with path and method to m.
-func (s *Server) AddHandler(path string, method string, h Handler, init handlers.InitializeHandlerInfo, rHandler handlers.RequestHandler) {
-	s.rtr.HandleFunc(path, s.handle(h, init, rHandler)).Methods(method)
+func (s *Server) AddHandler(rInfo handlers.RouteInfo, h Handler) {
+	s.rtr.HandleFunc(rInfo.Path, s.handle(h, rInfo)).Methods(rInfo.Method)
 }
 
-func (s *Server) handle(h Handler, init handlers.InitializeHandlerInfo, rHandler handlers.RequestHandler) http.HandlerFunc {
+func (s *Server) handle(h Handler, rInfo handlers.RouteInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Build context.
 		ctx := context.Background()
 		// TODO insert authentication information.
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := h(s.svr, ctx, w, r, init(rHandler)); err != nil {
+		if err := h(s.svr, ctx, w, r, rInfo.Initializer(rInfo)); err != nil {
 			toHttpError(err, w)
 		}
 	}
@@ -114,48 +114,42 @@ func toHttpError(err error, w http.ResponseWriter) {
 }
 
 // Initialize HandlerInfo to be be able to call GetUser
-func GetUser_InitializeHandlerInfo(rHandler handlers.RequestHandler) *handlers.HandlerInfo {
+func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
 	// Set the API handler to call the proxy GetUser
-	info.H = rHandler
+	info.H = rInfo.Handler
 	// Create a new GetUserRequest to be passed to the API handler
 	info.Arg = new(v2pb.GetUserRequest)
 	// Create a new function that parses URL parameters
 	info.Parser = func(u *url.URL, arg *interface{}) error {
-		in := (*arg).(*v2pb.GetUserRequest)
-		m, _ := url.ParseQuery(u.RawQuery)
-
-		// Parse time, use current time when the field is absent
-		var t time.Time
-		var err error
-		if val, ok := m["time"]; !ok {
-			t = time.Now()
-		} else {
-			t, err = time.Parse(time.RFC3339, val[0])
-			if err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Invalid timestamp format")
-			}
+		// URL of format: /v1/users/{userid}, it cannot be any different format
+		// otherwise Gorilla mux wouldn't have routed the request here
+		components := strings.Split(strings.TrimLeft(u.Path, "/"), "/")
+		if len(components) < len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")) {
+			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
 		}
-		in.Time = new(google_protobuf3.Timestamp)
-		in.Time.Seconds = t.Unix()
-		in.Time.Nanos = int32(t.Nanosecond())
 
+		in := (*arg).(*v2pb.GetUserRequest)
 		// Parse User ID
-		email := path.Base(u.Path)
-		exp, err := regexp.Compile(EmailAddressRegEx)
+		// components[2] is userId = email
+		userId, err := parseUserId(components, rInfo.UserIdIndex)
 		if err != nil {
 			return err
 		}
-		if !exp.MatchString(email) {
-			return grpc.Errorf(codes.InvalidArgument, "Invalid User ID (email) format")
-		} else {
-			in.UserId = email
+		in.UserId = userId
+
+		m, _ := url.ParseQuery(u.RawQuery)
+		// Parse time, use current time when the field is absent
+		if val, ok := m["time"]; ok {
+			t, err := parseTime(val[0])
+			if err != nil {
+				return err
+			}
+			in.Time = t
 		}
 
 		// Parse App ID
-		if val, ok := m["appId"]; !ok {
-			return grpc.Errorf(codes.InvalidArgument, "Missing App ID in query string")
-		} else {
+		if val, ok := m["appId"]; ok {
 			in.AppId = val[0]
 		}
 
@@ -163,6 +157,37 @@ func GetUser_InitializeHandlerInfo(rHandler handlers.RequestHandler) *handlers.H
 	}
 
 	return info
+}
+
+// Parse RFC 3339 formated time strings and return a Timestamp instance
+func parseTime(value string) (*google_protobuf3.Timestamp, error) {
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid timestamp format")
+	}
+	result := new(google_protobuf3.Timestamp)
+	result.Seconds = t.Unix()
+	result.Nanos = int32(t.Nanosecond())
+	return result, nil
+}
+
+// Parse an API string components, and verify that userId is a format-valid email address
+// and return it
+func parseUserId(components []string, index int) (string, error) {
+	if index < 0 || index >= len(components) {
+		return "", grpc.Errorf(codes.InvalidArgument, "User ID index is not in API path components")
+	}
+
+	userId := components[index]
+	exp, err := regexp.Compile(EmailAddressRegEx)
+	if err != nil {
+		return "", err
+	}
+	if exp.MatchString(userId) {
+		return userId, nil
+	} else {
+		return "", grpc.Errorf(codes.InvalidArgument, "Invalid User ID (email) format")
+	}
 }
 
 // Actually calls proxy.GetUser. This function could be inline in GetUser_InitializeHandlerInfo
