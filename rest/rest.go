@@ -40,9 +40,6 @@ const (
 	POST   = "POST"
 	PUT    = "PUT"
 	DELETE = "DELETE"
-
-	// Source: http://www.regular-expressions.info/email.html
-	EmailAddressRegEx = "[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
 )
 
 // Server holds internal state for the http rest server.
@@ -179,14 +176,17 @@ func parseUserId(components []string, index int) (string, error) {
 	}
 
 	userId := components[index]
-	exp, err := regexp.Compile(EmailAddressRegEx)
+	// Regexp that matches floats
+	floatRegexp := "^[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?$"
+	exp, err := regexp.Compile(floatRegexp)
 	if err != nil {
 		return "", err
 	}
+	// userId should not match the regular expression
 	if exp.MatchString(userId) {
-		return userId, nil
+		return "", grpc.Errorf(codes.InvalidArgument, "Invalid User ID format, must be a string")
 	} else {
-		return "", grpc.Errorf(codes.InvalidArgument, "Invalid User ID (email) format")
+		return userId, nil
 	}
 }
 
