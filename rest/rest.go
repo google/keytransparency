@@ -20,7 +20,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -129,7 +128,7 @@ func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerIn
 		in := (*arg).(*v2pb.GetUserRequest)
 		// Parse User ID
 		// components[2] is userId = email
-		userId, err := parseUserId(components, rInfo.UserIdIndex)
+		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
 		if err != nil {
 			return err
 		}
@@ -170,24 +169,12 @@ func parseTime(value string) (*google_protobuf3.Timestamp, error) {
 
 // Parse an API string components, and verify that userId is a format-valid email address
 // and return it
-func parseUserId(components []string, index int) (string, error) {
+func parseURLComponent(components []string, index int) (string, error) {
 	if index < 0 || index >= len(components) {
 		return "", grpc.Errorf(codes.InvalidArgument, "User ID index is not in API path components")
 	}
 
-	userId := components[index]
-	// Regexp that matches floats
-	floatRegexp := "^[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?$"
-	exp, err := regexp.Compile(floatRegexp)
-	if err != nil {
-		return "", err
-	}
-	// userId should not match the regular expression
-	if exp.MatchString(userId) {
-		return "", grpc.Errorf(codes.InvalidArgument, "Invalid User ID format, must be a string")
-	} else {
-		return userId, nil
-	}
+	return components[index], nil
 }
 
 // Actually calls proxy.GetUser. This function could be inline in GetUser_InitializeHandlerInfo

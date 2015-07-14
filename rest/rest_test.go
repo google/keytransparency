@@ -78,12 +78,14 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		isOutTimeNil bool
 		outSeconds   int64
 		outNanos     int
+		parserNilErr bool
 	}{
-		{"e2eshare.test@gmail.com", "gmail", time.Now().Format(time.RFC3339), false, time.Now().Unix(), 0},
-		{"e2eshare.test@gmail.com", "", time.Now().Format(time.RFC3339), false, time.Now().Unix(), 0},
+		{"e2eshare.test@gmail.com", "gmail", time.Now().Format(time.RFC3339), false, time.Now().Unix(), 0, true},
+		{"e2eshare.test@gmail.com", "", time.Now().Format(time.RFC3339), false, time.Now().Unix(), 0, true},
 		// time.Time{} is default value of time.Time
-		{"e2eshare.test@gmail.com", "gmail", time.Time{}.Format(time.RFC3339), true, 0, 0},
-		{"e2eshare.test@gmail.com", "", time.Time{}.Format(time.RFC3339), true, 0, 0},
+		{"e2eshare.test@gmail.com", "gmail", time.Time{}.Format(time.RFC3339), true, 0, 0, true},
+		{"e2eshare.test@gmail.com", "", time.Time{}.Format(time.RFC3339), true, 0, 0, true},
+		{"e2eshare.test@gmail.com", "gmail", time.Now().Format(time.UnixDate), false, time.Now().Unix(), 0, false},
 	}
 
 	for _, test := range tests {
@@ -118,8 +120,13 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		err = info.Parser(u, &info.Arg)
+		if test.parserNilErr != (err == nil) {
+			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
+		}
+		// If there's an error parsing the test cannot be
+		// completed. The parsing error might be expected
 		if err != nil {
-			t.Fatal(err)
+			return
 		}
 		if got, want := info.Arg.(*v2pb.GetUserRequest).UserId, test.userId; got != want {
 			t.Errorf("UserId = %v, want %v", got, want)
@@ -149,42 +156,23 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 	}
 }
 
-func TestParseUserId(t *testing.T) {
+func TestParseURLComponent(t *testing.T) {
 	var tests = []struct {
-		comp  []string
-		index int
-		out   string
+		comp   []string
+		index  int
+		out    string
+		nilErr bool
 	}{
-		{[]string{"e2eshare.test@gmail.com"}, 0, "e2eshare.test@gmail.com"},
-		{[]string{"e2eshare.test@cs.ox.ac.uk"}, 0, "e2eshare.test@cs.ox.ac.uk"},
-		{[]string{"20"}, 0, ""},
-		{[]string{"-20"}, 0, ""},
-		{[]string{"+20"}, 0, ""},
-		{[]string{"20.2"}, 0, ""},
-		{[]string{"-20.2"}, 0, ""},
-		{[]string{"20.2"}, 0, ""},
-		{[]string{".2"}, 0, ""},
-		{[]string{"-.2"}, 0, ""},
-		{[]string{"+.2"}, 0, ""},
-		{[]string{"20.2.2"}, 0, "20.2.2"},
-		{[]string{"2E10"}, 0, ""},
-		{[]string{"+2E10"}, 0, ""},
-		{[]string{"-2E10"}, 0, ""},
-		{[]string{"2E+10"}, 0, ""},
-		{[]string{"2E-10"}, 0, ""},
-		{[]string{"2e10"}, 0, ""},
-		{[]string{"+2e10"}, 0, ""},
-		{[]string{"-2e10"}, 0, ""},
-		{[]string{"2e+10"}, 0, ""},
-		{[]string{"2e-10"}, 0, ""},
-		{[]string{"2E"}, 0, "2E"},
-		{[]string{"2e"}, 0, "2e"},
+		{[]string{"v1", "users", "e2eshare.test@gmail.com"}, 2, "e2eshare.test@gmail.com", true},
+		{[]string{"v1", "users", "e2eshare.test@cs.ox.ac.uk"}, -1, "", false},
+		{[]string{"v1", "users", "e2eshare.test@cs.ox.ac.uk"}, 3, "", false},
 	}
 	for _, test := range tests {
-		got, _ := parseUserId(test.comp, test.index)
-		want := test.out
-		if got != want {
-			t.Errorf("Error while parsing User ID. Input = (%v, %v), got '%v', want '%v'", test.comp, test.index, got, want)
+		gots, gote := parseURLComponent(test.comp, test.index)
+		wants := test.out
+		wante := test.nilErr
+		if gots != wants || wante != (gote == nil) {
+			t.Errorf("Error while parsing User ID. Input = (%v, %v), got ('%v', %v), want ('%v', nil = %v)", test.comp, test.index, gots, gote, wants, wante)
 		}
 	}
 }
