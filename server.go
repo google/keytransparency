@@ -42,6 +42,13 @@ var v1Routes = map[string]handlers.RouteInfo{
 		rest.GetUser_InitializeHandlerInfo,
 		rest.GetUser_RequestHandler,
 	},
+	"/v1/users/{userid}/keys": handlers.RouteInfo{
+		"/v1/users/{userid}/keys",
+		2,
+		"POST",
+		rest.CreateKey_InitializeHandlerInfo,
+		rest.CreateKey_RequestHandler,
+	},
 }
 
 func main() {

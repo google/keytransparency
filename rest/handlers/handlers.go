@@ -15,7 +15,7 @@
 package handlers
 
 import (
-	"net/url"
+	"net/http"
 
 	context "golang.org/x/net/context"
 )
@@ -23,7 +23,11 @@ import (
 // Function signature that parses URL parameters
 // *interface{} is a protocol buffer generated struct that
 // will be passed to the v1 API call.
-type URLParser func(*url.URL, *interface{}) error
+type URLParser func(*http.Request, *interface{}) error
+
+// Function signature that verifies that all required
+// fields of a protobuf are present before invoking the API
+type FieldsVerifier func(interface{}) error
 
 // Function signature of the actual API call
 // First interface{} parameter is the server instance
@@ -42,6 +46,8 @@ type HandlerInfo struct {
 	Arg interface{}
 	// Function that parses URL params
 	Parser URLParser
+	// Function that verifies the existence of required fields
+	Verifier FieldsVerifier
 }
 
 // Struct containing routes info
