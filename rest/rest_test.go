@@ -69,6 +69,7 @@ func TestFoo(t *testing.T) {
 	rInfo := handlers.RouteInfo{
 		"/hi",
 		-1,
+		-1,
 		"GET",
 		Fake_Initializer,
 		Fake_RequestHandler,
@@ -115,6 +116,7 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		rInfo := handlers.RouteInfo{
 			path,
 			2,
+			-1,
 			"GET",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -214,6 +216,7 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 		rInfo := handlers.RouteInfo{
 			path,
 			test.userIdIndex,
+			-1,
 			"POST",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -261,6 +264,113 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 		}
 		if test.isTimeNil == false {
 			if gots, gotn, wants, wantn := info.Arg.(*v2pb.CreateKeyRequest).SignedKey.Key.CreationTime.Seconds, info.Arg.(*v2pb.CreateKeyRequest).SignedKey.Key.CreationTime.Nanos, test.outSeconds, test.outNanos; gots != wants || gotn != int32(wantn) {
+				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
+			}
+		}
+
+		v1 := &FakeServer{}
+		srv := New(v1)
+		resp, err := info.H(srv, nil, nil)
+		if err != nil {
+			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+		}
+		if got, want := (*resp).(bool), true; got != want {
+			t.Errorf("resp = %v, want %v.", got, want)
+		}
+	}
+}
+
+func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
+	var tests = []struct {
+		userId         string
+		userIdIndex    int
+		keyId          string
+		keyIdIndex     int
+		tm             string
+		isTimeNil      bool
+		outSeconds     int64
+		outNanos       int
+		jsonBody       string
+		parserNilErr   bool
+		verifierNilErr bool
+	}{
+		{"e2eshare.test@gmail.com", 2, "mykey", 4,
+			valid_ts, false, ts_seconds, 0,
+			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
+			true, true},
+		{"e2eshare.test@gmail.com", 2, "mykey", 5,
+			valid_ts, false, ts_seconds, 0,
+			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
+			false, true},
+		{"e2eshare.test@gmail.com", 2, "mykey", -1,
+			valid_ts, false, ts_seconds, 0,
+			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
+			false, true},
+		{"e2eshare.test@gmail.com", 2, "mykey", 4,
+			valid_ts, true, 0, 0,
+			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
+			false, false},
+		{"e2eshare.test@gmail.com", 2, "mykey", 4,
+			valid_ts, true, 0, 0,
+			"{}",
+			true, false},
+	}
+	for _, test := range tests {
+		path := "/v1/users/" + test.userId + "/keys/" + test.keyId
+		rInfo := handlers.RouteInfo{
+			path,
+			test.userIdIndex,
+			test.keyIdIndex,
+			"POST",
+			Fake_Initializer,
+			Fake_RequestHandler,
+		}
+
+		info := UpdateKey_InitializeHandlerInfo(rInfo)
+
+		switch info.Arg.(type) {
+		case *v2pb.UpdateKeyRequest:
+			break
+		default:
+			t.Errorf("info.Arg is not of type v2pb.UpdateKeyRequest")
+		}
+
+		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(test.jsonBody)})
+		err := info.Parser(r, &info.Arg)
+		if test.parserNilErr != (err == nil) {
+			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
+		}
+		// If there's an error parsing, the test cannot be
+		// completed. The parsing error might be expected though
+		if err != nil {
+			continue
+		}
+
+		// Call JSONDecoder to simulate decoding JSON -> Proto
+		err = JSONDecoder(r, &info.Arg)
+		if err != nil {
+			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+		}
+
+		// Verify that all required fields exist
+		err = info.Verifier(info.Arg)
+		if test.verifierNilErr != (err == nil) {
+			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
+		}
+		// If there's an error verifying, the test cannot be
+		// completed. The verifying error might be expected though
+		if err != nil {
+			continue
+		}
+
+		if got, want := info.Arg.(*v2pb.UpdateKeyRequest).UserId, test.userId; got != want {
+			t.Errorf("UserId = %v, want %v", got, want)
+		}
+		if got, want := info.Arg.(*v2pb.UpdateKeyRequest).KeyId, test.keyId; got != want {
+			t.Errorf("KeyId = %v, want %v", got, want)
+		}
+		if test.isTimeNil == false {
+			if gots, gotn, wants, wantn := info.Arg.(*v2pb.UpdateKeyRequest).SignedKey.Key.CreationTime.Seconds, info.Arg.(*v2pb.UpdateKeyRequest).SignedKey.Key.CreationTime.Nanos, test.outSeconds, test.outNanos; gots != wants || gotn != int32(wantn) {
 				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
 			}
 		}

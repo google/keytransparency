@@ -235,6 +235,82 @@ func CreateKey_RequestHandler(srv interface{}, ctx context.Context, arg interfac
 	return &resp, err
 }
 
+// Initialize HandlerInfo to be be able to call UpdateKey
+func UpdateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the proxy UpdateKey
+	info.H = rInfo.Handler
+	// Create a new UpdateKeyRequest to be passed to the API handler
+	info.Arg = new(v2pb.UpdateKeyRequest)
+	// Create a new function that parses URL parameters
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		// URL of format: /v1/users/{userid}/keys, it cannot be any different format
+		// otherwise Gorilla mux wouldn't have routed the request here
+		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
+		if len(components) < len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")) {
+			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
+		}
+
+		in := (*arg).(*v2pb.UpdateKeyRequest)
+		// Parse User ID
+		// components[2] is userId = email
+		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		if err != nil {
+			return err
+		}
+		in.UserId = userId
+
+		// Parse Key ID
+		// components[4] is keyId
+		keyId, err := parseURLComponent(components, rInfo.KeyIdIndex)
+		if err != nil {
+			return err
+		}
+		in.KeyId = keyId
+
+		// Parse UpdateKeyRequest.SignedKey.Key.CreationTime manually
+		// In JSON it's a string in RFC3339 format, but in proto it should be
+		// google_protobuf3.Timestamp
+		// This should be done before attempting JSON decoding
+		if err := parseJSON(r, "creation_time"); err != nil {
+			return err
+		}
+
+		return nil
+	}
+	// Create a new function that verifies required fields
+	info.Verifier = func(arg interface{}) error {
+		in := (arg).(*v2pb.UpdateKeyRequest)
+		// CreationTime is required and verified by the server
+		err := false
+		if in == nil {
+			err = true
+		} else if in.SignedKey == nil {
+			err = true
+		} else if in.SignedKey.Key == nil {
+			err = true
+		} else if in.SignedKey.Key.CreationTime == nil {
+			err = true
+		}
+
+		if err {
+			return grpc.Errorf(codes.InvalidArgument, "Missing key creation time")
+		}
+
+		return nil
+	}
+
+	return info
+}
+
+// Actually calls proxy.UpdateKey. This function could be inline in UpdateKey_InitializeHandlerInfo
+// but it is separated to allow better unit testing
+func UpdateKey_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v1pb.E2EKeyProxyServer).UpdateKey(ctx, arg.(*v2pb.UpdateKeyRequest))
+	return &resp, err
+}
+
 // Parse RFC 3339 formated time strings and return a Timestamp instance
 func parseTime(value string) (*google_protobuf3.Timestamp, error) {
 	t, err := time.Parse(time.RFC3339, value)
@@ -250,7 +326,7 @@ func parseTime(value string) (*google_protobuf3.Timestamp, error) {
 // Parse an API string components, and return the component at the specified index
 func parseURLComponent(components []string, index int) (string, error) {
 	if index < 0 || index >= len(components) {
-		return "", grpc.Errorf(codes.InvalidArgument, "User ID index is not in API path components")
+		return "", grpc.Errorf(codes.InvalidArgument, "Index is not in API path components")
 	}
 
 	return components[index], nil

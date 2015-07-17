@@ -38,6 +38,7 @@ var v1Routes = map[string]handlers.RouteInfo{
 	"/v1/users/{userid}": handlers.RouteInfo{
 		"/v1/users/{userid}",
 		2,
+		-1, // No keyId in the path
 		"GET",
 		rest.GetUser_InitializeHandlerInfo,
 		rest.GetUser_RequestHandler,
@@ -45,9 +46,18 @@ var v1Routes = map[string]handlers.RouteInfo{
 	"/v1/users/{userid}/keys": handlers.RouteInfo{
 		"/v1/users/{userid}/keys",
 		2,
+		-1, // No keyId in the path
 		"POST",
 		rest.CreateKey_InitializeHandlerInfo,
 		rest.CreateKey_RequestHandler,
+	},
+	"/v1/users/{userid}/keys/<keyid>": handlers.RouteInfo{
+		"/v1/users/{userid}/keys/<keyid>",
+		2,
+		4,
+		"PUT",
+		rest.UpdateKey_InitializeHandlerInfo,
+		rest.UpdateKey_RequestHandler,
 	},
 }
 

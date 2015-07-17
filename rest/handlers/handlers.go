@@ -57,6 +57,9 @@ type RouteInfo struct {
 	// UserId index in the path components
 	// TODO(cesarghali): it's better if the index can be detected automatically
 	UserIdIndex int
+	// KeyId index in the path components
+	// TODO(cesarghali): it's better if the index can be detected automatically
+	KeyIdIndex int
 	// Request method, e.g. GET, POST, etc
 	Method string
 	// Refer to the function that initialize the request
