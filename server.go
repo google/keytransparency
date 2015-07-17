@@ -32,13 +32,13 @@ import (
 
 var port = flag.Int("port", 8080, "TCP port to listen on")
 
-// Map containing all routes information
-// TODO(cesarghali): find a better way to populate this map
+// Map containing all routes information.
+// TODO(cesarghali): find a better way to populate this map.
 var v1Routes = map[string]handlers.RouteInfo{
 	"/v1/users/{userid}": handlers.RouteInfo{
 		"/v1/users/{userid}",
 		2,
-		-1, // No keyId in the path
+		-1, // No keyId in the path.
 		"GET",
 		rest.GetUser_InitializeHandlerInfo,
 		rest.GetUser_RequestHandler,
@@ -46,7 +46,7 @@ var v1Routes = map[string]handlers.RouteInfo{
 	"/v1/users/{userid}/keys": handlers.RouteInfo{
 		"/v1/users/{userid}/keys",
 		2,
-		-1, // No keyId in the path
+		-1, // No keyId in the path.
 		"POST",
 		rest.CreateKey_InitializeHandlerInfo,
 		rest.CreateKey_RequestHandler,
@@ -65,7 +65,7 @@ func main() {
 	flag.Parse()
 
 	portString := fmt.Sprintf(":%d", *port)
-	// TODO: fetch private TLS key from repository
+	// TODO: fetch private TLS key from repository.
 	lis, err := net.Listen("tcp", portString)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

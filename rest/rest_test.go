@@ -121,7 +121,7 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 			Fake_Initializer,
 			Fake_RequestHandler,
 		}
-		// Body is empty when invoking get user API
+		// Body is empty when invoking get user API.
 		jsonBody := ""
 
 		info := GetUser_InitializeHandlerInfo(rInfo)
@@ -139,12 +139,12 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be
-		// completed. The parsing error might be expected though
+		// completed. The parsing error might be expected though.
 		if err != nil {
 			continue
 		}
 
-		// Call JSONDecoder to simulate decoding JSON -> Proto
+		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err == nil {
 			t.Errorf("Error while calling JSONDecoder, this should not happen.")
@@ -237,24 +237,24 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be
-		// completed. The parsing error might be expected though
+		// completed. The parsing error might be expected though.
 		if err != nil {
 			continue
 		}
 
-		// Call JSONDecoder to simulate decoding JSON -> Proto
+		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
 			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
 		}
 
-		// Verify that all required fields exist
+		// Verify that all required fields exist.
 		err = info.Verifier(info.Arg)
 		if test.verifierNilErr != (err == nil) {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
 		// If there's an error verifying, the test cannot be
-		// completed. The verifying error might be expected though
+		// completed. The verifying error might be expected though.
 		if err != nil {
 			continue
 		}
@@ -341,24 +341,24 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be
-		// completed. The parsing error might be expected though
+		// completed. The parsing error might be expected though.
 		if err != nil {
 			continue
 		}
 
-		// Call JSONDecoder to simulate decoding JSON -> Proto
+		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
 			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
 		}
 
-		// Verify that all required fields exist
+		// Verify that all required fields exist.
 		err = info.Verifier(info.Arg)
 		if test.verifierNilErr != (err == nil) {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
 		// If there's an error verifying, the test cannot be
-		// completed. The verifying error might be expected though
+		// completed. The verifying error might be expected though.
 		if err != nil {
 			continue
 		}
@@ -419,37 +419,37 @@ func TestParseJson(t *testing.T) {
 		outJSON   string
 		outNilErr bool
 	}{
-		// Basic cases
+		// Basic cases.
 		{"\"creation_time\": \"" + valid_ts + "\"",
 			"\"creation_time\": {\"seconds\": " +
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
 		{"{\"creation_time\": \"" + valid_ts + "\"}",
 			"{\"creation_time\": {\"seconds\": " +
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}}", true},
-		// Nested case
+		// Nested case.
 		{"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			"{\"signed_key\":{\"key\": {\"creation_time\": {\"seconds\": " +
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}}}}", true},
-		// Nothing to be changed
+		// Nothing to be changed.
 		{"nothing to be changed here", "nothing to be changed here", true},
-		// Multiple keywords
+		// Multiple keywords.
 		{"\"creation_time\": \"" + valid_ts + "\", \"creation_time\": \"" +
 			valid_ts + "\"",
 			"\"creation_time\": {\"seconds\": " + strconv.Itoa(ts_seconds) +
 				", \"nanos\": 0}, \"creation_time\": {\"seconds\": " +
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
-		// Invalid timestamp
+		// Invalid timestamp.
 		{"\"creation_time\": \"invalid\"", "\"creation_time\": \"invalid\"", false},
-		// Malformed JSON, missing " at the beginning of invalid timestamp
+		// Malformed JSON, missing " at the beginning of invalid timestamp.
 		{"\"creation_time\": invalid\"", "\"creation_time\": invalid\"", true},
-		// Malformed JSON, missing " at the end of invalid timestamp
+		// Malformed JSON, missing " at the end of invalid timestamp.
 		{"\"creation_time\": \"invalid", "\"creation_time\": \"invalid", true},
-		// Malformed JSON, missing " at the beginning and end of invalid timestamp
+		// Malformed JSON, missing " at the beginning and end of invalid timestamp.
 		{"\"creation_time\": invalid", "\"creation_time\": invalid", true},
-		// Malformed JSON, missing " at the end of valid timestamp
+		// Malformed JSON, missing " at the end of valid timestamp.
 		{"\"creation_time\": \"" + valid_ts, "\"creation_time\": \"" + valid_ts, true},
 		// keyword is not surrounded by "", in four cases:
-		//     invalid timestamp, basic, nested and multiple keywords
+		//     invalid timestamp, basic, nested and multiple keywords.
 		{"creation_time: \"invalid\"", "creation_time: \"invalid\"", false},
 		{"{creation_time: \"" + valid_ts + "\"}",
 			"{creation_time: {\"seconds\": " +
@@ -457,13 +457,13 @@ func TestParseJson(t *testing.T) {
 		{"{\"signed_key\":{\"key\": {creation_time: \"" + valid_ts + "\"}}}",
 			"{\"signed_key\":{\"key\": {creation_time: {\"seconds\": " +
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}}}}", true},
-		// Only first keyword is not surrounded by ""
+		// Only first keyword is not surrounded by "".
 		{"creation_time: \"" + valid_ts + "\", \"creation_time\": \"" +
 			valid_ts + "\"",
 			"creation_time: {\"seconds\": " + strconv.Itoa(ts_seconds) +
 				", \"nanos\": 0}, \"creation_time\": {\"seconds\": " +
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
-		// Timestamp is not surrounded by "" and there's another key:value after
+		// Timestamp is not surrounded by "" and there's another key:value after.
 		{"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
 			", app_id: \"gmail\"}}}",
 			"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
