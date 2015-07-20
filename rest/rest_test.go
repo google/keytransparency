@@ -93,15 +93,13 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		appId        string
 		tm           string
 		isOutTimeNil bool
-		outSeconds   int64
-		outNanos     int
 		parserNilErr bool
 	}{
-		{"e2eshare.test@gmail.com", "gmail", valid_ts, false, ts_seconds, 0, true},
-		{"e2eshare.test@gmail.com", "", valid_ts, false, ts_seconds, 0, true},
-		{"e2eshare.test@gmail.com", "gmail", "", true, 0, 0, true},
-		{"e2eshare.test@gmail.com", "", "", true, 0, 0, true},
-		{"e2eshare.test@gmail.com", "gmail", invalid_ts, false, time.Now().Unix(), 0, false},
+		{"e2eshare.test@gmail.com", "gmail", valid_ts, false, true},
+		{"e2eshare.test@gmail.com", "", valid_ts, false, true},
+		{"e2eshare.test@gmail.com", "gmail", "", true, true},
+		{"e2eshare.test@gmail.com", "", "", true, true},
+		{"e2eshare.test@gmail.com", "gmail", invalid_ts, false, false},
 	}
 
 	for _, test := range tests {
@@ -126,20 +124,17 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 
 		info := GetUser_InitializeHandlerInfo(rInfo)
 
-		switch info.Arg.(type) {
-		case *v2pb.GetUserRequest:
-			break
-		default:
+		if _, ok := info.Arg.(*v2pb.GetUserRequest); !ok {
 			t.Errorf("info.Arg is not of type v2pb.GetUserRequest")
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		err := info.Parser(r, &info.Arg)
-		if test.parserNilErr != (err == nil) {
+		if got, want := (err == nil), test.parserNilErr; got != want {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
-		// If there's an error parsing, the test cannot be
-		// completed. The parsing error might be expected though.
+		// If there's an error parsing, the test cannot be completed.
+		// The parsing error might be expected though.
 		if err != nil {
 			continue
 		}
@@ -157,7 +152,11 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("AppId = %v, want %v", got, want)
 		}
 		if test.isOutTimeNil == false {
-			if gots, gotn, wants, wantn := info.Arg.(*v2pb.GetUserRequest).Time.Seconds, info.Arg.(*v2pb.GetUserRequest).Time.Nanos, test.outSeconds, test.outNanos; gots != wants || gotn != int32(wantn) {
+			tm, err := time.Parse(time.RFC3339, test.tm)
+			if err != nil {
+				t.Errorf("Error while parsing time, this should not happen.")
+			}
+			if gots, gotn, wants, wantn := info.Arg.(*v2pb.GetUserRequest).GetTime().Seconds, info.Arg.(*v2pb.GetUserRequest).GetTime().Nanos, tm.Unix(), tm.Nanosecond(); gots != wants || gotn != int32(wantn) {
 				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
 			}
 		} else {
@@ -184,30 +183,28 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 		userIdIndex    int
 		tm             string
 		isTimeNil      bool
-		outSeconds     int64
-		outNanos       int
 		jsonBody       string
 		parserNilErr   bool
 		verifierNilErr bool
 	}{
 		{"e2eshare.test@gmail.com", 2,
-			valid_ts, false, ts_seconds, 0,
+			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			true, true},
 		{"e2eshare.test@gmail.com", 4,
-			valid_ts, false, ts_seconds, 0,
+			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			false, true},
 		{"e2eshare.test@gmail.com", -1,
-			valid_ts, false, ts_seconds, 0,
+			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			false, true},
 		{"e2eshare.test@gmail.com", 2,
-			valid_ts, true, 0, 0,
+			valid_ts, true,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
 			false, false},
 		{"e2eshare.test@gmail.com", 2,
-			valid_ts, true, 0, 0,
+			valid_ts, true,
 			"{}",
 			true, false},
 	}
@@ -224,20 +221,17 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 
 		info := CreateKey_InitializeHandlerInfo(rInfo)
 
-		switch info.Arg.(type) {
-		case *v2pb.CreateKeyRequest:
-			break
-		default:
+		if _, ok := info.Arg.(*v2pb.CreateKeyRequest); !ok {
 			t.Errorf("info.Arg is not of type v2pb.CreateKeyRequest")
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(test.jsonBody)})
 		err := info.Parser(r, &info.Arg)
-		if test.parserNilErr != (err == nil) {
+		if got, want := (err == nil), test.parserNilErr; got != want {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
-		// If there's an error parsing, the test cannot be
-		// completed. The parsing error might be expected though.
+		// If there's an error parsing, the test cannot be completed.
+		// The parsing error might be expected though.
 		if err != nil {
 			continue
 		}
@@ -248,22 +242,15 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
 		}
 
-		// Verify that all required fields exist.
-		err = info.Verifier(info.Arg)
-		if test.verifierNilErr != (err == nil) {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
-		}
-		// If there's an error verifying, the test cannot be
-		// completed. The verifying error might be expected though.
-		if err != nil {
-			continue
-		}
-
 		if got, want := info.Arg.(*v2pb.CreateKeyRequest).UserId, test.userId; got != want {
 			t.Errorf("UserId = %v, want %v", got, want)
 		}
 		if test.isTimeNil == false {
-			if gots, gotn, wants, wantn := info.Arg.(*v2pb.CreateKeyRequest).SignedKey.Key.CreationTime.Seconds, info.Arg.(*v2pb.CreateKeyRequest).SignedKey.Key.CreationTime.Nanos, test.outSeconds, test.outNanos; gots != wants || gotn != int32(wantn) {
+			tm, err := time.Parse(time.RFC3339, test.tm)
+			if err != nil {
+				t.Errorf("Error while parsing time, this should not happen.")
+			}
+			if gots, gotn, wants, wantn := info.Arg.(*v2pb.CreateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Seconds, info.Arg.(*v2pb.CreateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Nanos, tm.Unix(), tm.Nanosecond(); gots != wants || gotn != int32(wantn) {
 				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
 			}
 		}
@@ -282,38 +269,35 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 
 func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 	var tests = []struct {
-		userId         string
-		userIdIndex    int
-		keyId          string
-		keyIdIndex     int
-		tm             string
-		isTimeNil      bool
-		outSeconds     int64
-		outNanos       int
-		jsonBody       string
-		parserNilErr   bool
-		verifierNilErr bool
+		userId       string
+		userIdIndex  int
+		keyId        string
+		keyIdIndex   int
+		tm           string
+		isTimeNil    bool
+		jsonBody     string
+		parserNilErr bool
 	}{
 		{"e2eshare.test@gmail.com", 2, "mykey", 4,
-			valid_ts, false, ts_seconds, 0,
+			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			true, true},
+			true},
 		{"e2eshare.test@gmail.com", 2, "mykey", 5,
-			valid_ts, false, ts_seconds, 0,
+			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false, true},
+			false},
 		{"e2eshare.test@gmail.com", 2, "mykey", -1,
-			valid_ts, false, ts_seconds, 0,
+			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false, true},
+			false},
 		{"e2eshare.test@gmail.com", 2, "mykey", 4,
-			valid_ts, true, 0, 0,
+			valid_ts, true,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
-			false, false},
+			false},
 		{"e2eshare.test@gmail.com", 2, "mykey", 4,
-			valid_ts, true, 0, 0,
+			valid_ts, true,
 			"{}",
-			true, false},
+			true},
 	}
 	for _, test := range tests {
 		path := "/v1/users/" + test.userId + "/keys/" + test.keyId
@@ -328,20 +312,17 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 
 		info := UpdateKey_InitializeHandlerInfo(rInfo)
 
-		switch info.Arg.(type) {
-		case *v2pb.UpdateKeyRequest:
-			break
-		default:
+		if _, ok := info.Arg.(*v2pb.UpdateKeyRequest); !ok {
 			t.Errorf("info.Arg is not of type v2pb.UpdateKeyRequest")
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(test.jsonBody)})
 		err := info.Parser(r, &info.Arg)
-		if test.parserNilErr != (err == nil) {
+		if got, want := (err == nil), test.parserNilErr; got != want {
 			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
 		}
-		// If there's an error parsing, the test cannot be
-		// completed. The parsing error might be expected though.
+		// If there's an error parsing, the test cannot be completed.
+		// The parsing error might be expected though.
 		if err != nil {
 			continue
 		}
@@ -352,17 +333,6 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
 		}
 
-		// Verify that all required fields exist.
-		err = info.Verifier(info.Arg)
-		if test.verifierNilErr != (err == nil) {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
-		}
-		// If there's an error verifying, the test cannot be
-		// completed. The verifying error might be expected though.
-		if err != nil {
-			continue
-		}
-
 		if got, want := info.Arg.(*v2pb.UpdateKeyRequest).UserId, test.userId; got != want {
 			t.Errorf("UserId = %v, want %v", got, want)
 		}
@@ -370,7 +340,11 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("KeyId = %v, want %v", got, want)
 		}
 		if test.isTimeNil == false {
-			if gots, gotn, wants, wantn := info.Arg.(*v2pb.UpdateKeyRequest).SignedKey.Key.CreationTime.Seconds, info.Arg.(*v2pb.UpdateKeyRequest).SignedKey.Key.CreationTime.Nanos, test.outSeconds, test.outNanos; gots != wants || gotn != int32(wantn) {
+			tm, err := time.Parse(time.RFC3339, test.tm)
+			if err != nil {
+				t.Errorf("Error while parsing time, this should not happen.")
+			}
+			if gots, gotn, wants, wantn := info.Arg.(*v2pb.UpdateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Seconds, info.Arg.(*v2pb.UpdateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Nanos, tm.Unix(), tm.Nanosecond(); gots != wants || gotn != int32(wantn) {
 				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
 			}
 		}
@@ -440,16 +414,18 @@ func TestParseJson(t *testing.T) {
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
 		// Invalid timestamp.
 		{"\"creation_time\": \"invalid\"", "\"creation_time\": \"invalid\"", false},
-		// Malformed JSON, missing " at the beginning of invalid timestamp.
+		// Malformed JSON, missing " at the beginning of invalid
+		// timestamp.
 		{"\"creation_time\": invalid\"", "\"creation_time\": invalid\"", true},
 		// Malformed JSON, missing " at the end of invalid timestamp.
 		{"\"creation_time\": \"invalid", "\"creation_time\": \"invalid", true},
-		// Malformed JSON, missing " at the beginning and end of invalid timestamp.
+		// Malformed JSON, missing " at the beginning and end of
+		// invalid timestamp.
 		{"\"creation_time\": invalid", "\"creation_time\": invalid", true},
 		// Malformed JSON, missing " at the end of valid timestamp.
 		{"\"creation_time\": \"" + valid_ts, "\"creation_time\": \"" + valid_ts, true},
-		// keyword is not surrounded by "", in four cases:
-		//     invalid timestamp, basic, nested and multiple keywords.
+		// keyword is not surrounded by "", in four cases: invalid
+		// timestamp, basic, nested and multiple keywords.
 		{"creation_time: \"invalid\"", "creation_time: \"invalid\"", false},
 		{"{creation_time: \"" + valid_ts + "\"}",
 			"{creation_time: {\"seconds\": " +
@@ -463,7 +439,8 @@ func TestParseJson(t *testing.T) {
 			"creation_time: {\"seconds\": " + strconv.Itoa(ts_seconds) +
 				", \"nanos\": 0}, \"creation_time\": {\"seconds\": " +
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
-		// Timestamp is not surrounded by "" and there's another key:value after.
+		// Timestamp is not surrounded by "" and there's other keys and
+		// values after.
 		{"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
 			", app_id: \"gmail\"}}}",
 			"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +

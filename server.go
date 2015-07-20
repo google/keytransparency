@@ -32,7 +32,7 @@ import (
 
 var port = flag.Int("port", 8080, "TCP port to listen on")
 
-// Map containing all routes information.
+// v1Routes contains all routes information.
 // TODO(cesarghali): find a better way to populate this map.
 var v1Routes = map[string]handlers.RouteInfo{
 	"/v1/users/{userid}": handlers.RouteInfo{

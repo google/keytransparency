@@ -111,7 +111,8 @@ func toHttpError(err error, w http.ResponseWriter) {
 	}
 }
 
-// Initialize HandlerInfo to be be able to call GetUser.
+// GetUser_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call proxy.GetUser API.
 func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
 	// Set the API handler to call the proxy GetUser.
@@ -120,10 +121,11 @@ func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerIn
 	info.Arg = new(v2pb.GetUserRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// URL of format: /v1/users/{userid}, it cannot be any different format
-		// otherwise Gorilla mux wouldn't have routed the request here.
+		// URL of format: /v1/users/{userid}, it cannot be any different
+		// format otherwise Gorilla mux wouldn't have routed the request
+		// here.
 		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-		if len(components) < len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")) {
+		if got, want := len(components), len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")); got < want {
 			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
 		}
 
@@ -152,21 +154,20 @@ func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerIn
 
 		return nil
 	}
-	// Set required fields verifier to nil.
-	info.Verifier = nil
 
 	return info
 }
 
-// Actually calls proxy.GetUser. This function could be inline in
-// GetUser_InitializeHandlerInfo but it is separated to allow better unit testing.
+// GetUser_RequestHandler calls proxy.GetUser and returns its results. An error
+// will be returned if proxy.GetUser returns an error.
 func GetUser_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
 	resp, err := srv.(v1pb.E2EKeyProxyServer).GetUser(ctx, arg.(*v2pb.GetUserRequest))
 	return &resp, err
 }
 
-// Initialize HandlerInfo to be be able to call CreateKey.
+// CreateKey_InitializehandlerInfo initializes and return HandlerInfo preparing
+// to call proxy.CreateKey API.
 func CreateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
 	// Set the API handler to call the proxy CreateKey.
@@ -175,10 +176,11 @@ func CreateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Arg = new(v2pb.CreateKeyRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// URL of format: /v1/users/{userid}/keys, it cannot be any different format
-		// otherwise Gorilla mux wouldn't have routed the request here.
+		// URL of format: /v1/users/{userid}/keys, it cannot be any
+		// different format otherwise Gorilla mux wouldn't have routed
+		// the request here.
 		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-		if len(components) < len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")) {
+		if got, want := len(components), len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")); got < want {
 			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
 		}
 
@@ -191,32 +193,11 @@ func CreateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 		in.UserId = userId
 
 		// Parse CreateKeyRequest.SignedKey.Key.CreationTime manually.
-		// In JSON it's a string in RFC3339 format, but in proto it should be
-		// google_protobuf3.Timestamp.
-		// This should be done before attempting JSON decoding.
+		// In JSON it's a string in RFC3339 format, but in proto it
+		// should be google_protobuf3.Timestamp. This should be done
+		// before attempting JSON decoding.
 		if err := parseJSON(r, "creation_time"); err != nil {
 			return err
-		}
-
-		return nil
-	}
-	// Create a new function that verifies required fields.
-	info.Verifier = func(arg interface{}) error {
-		in := (arg).(*v2pb.CreateKeyRequest)
-		// CreationTime is required and verified by the server.
-		err := false
-		if in == nil {
-			err = true
-		} else if in.SignedKey == nil {
-			err = true
-		} else if in.SignedKey.Key == nil {
-			err = true
-		} else if in.SignedKey.Key.CreationTime == nil {
-			err = true
-		}
-
-		if err {
-			return grpc.Errorf(codes.InvalidArgument, "Missing key creation time")
 		}
 
 		return nil
@@ -225,15 +206,16 @@ func CreateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	return info
 }
 
-// Actually calls proxy.CreateKey. This function could be inline in
-// CreateKey_InitializeHandlerInfo but it is separated to allow better unit testing.
+// CreateKey_RequestHandler calls proxy.CreateKey and returns its results. An
+// error will be returned if proxy.CreateKey returns an error.
 func CreateKey_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
 	resp, err := srv.(v1pb.E2EKeyProxyServer).CreateKey(ctx, arg.(*v2pb.CreateKeyRequest))
 	return &resp, err
 }
 
-// Initialize HandlerInfo to be be able to call UpdateKey.
+// UpdateKey_InitializeHandlerInfo initializes and returns HandlerInfo
+// preparing to call proxy.UpdateKey API.
 func UpdateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
 	// Set the API handler to call the proxy UpdateKey.
@@ -242,10 +224,11 @@ func UpdateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Arg = new(v2pb.UpdateKeyRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// URL of format: /v1/users/{userid}/keys, it cannot be any different format
-		// otherwise Gorilla mux wouldn't have routed the request here.
+		// URL of format: /v1/users/{userid}/keys, it cannot be any
+		// different format otherwise Gorilla mux wouldn't have routed
+		// the request here.
 		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-		if len(components) < len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")) {
+		if got, want := len(components), len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")); got < want {
 			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
 		}
 
@@ -265,32 +248,11 @@ func UpdateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 		in.KeyId = keyId
 
 		// Parse UpdateKeyRequest.SignedKey.Key.CreationTime manually.
-		// In JSON it's a string in RFC3339 format, but in proto it should be
-		// google_protobuf3.Timestamp.
-		// This should be done before attempting JSON decoding.
+		// In JSON it's a string in RFC3339 format, but in proto it
+		// should be google_protobuf3.Timestamp. This should be done
+		// before attempting JSON decoding.
 		if err := parseJSON(r, "creation_time"); err != nil {
 			return err
-		}
-
-		return nil
-	}
-	// Create a new function that verifies required fields.
-	info.Verifier = func(arg interface{}) error {
-		in := (arg).(*v2pb.UpdateKeyRequest)
-		// CreationTime is required and verified by the server.
-		err := false
-		if in == nil {
-			err = true
-		} else if in.SignedKey == nil {
-			err = true
-		} else if in.SignedKey.Key == nil {
-			err = true
-		} else if in.SignedKey.Key.CreationTime == nil {
-			err = true
-		}
-
-		if err {
-			return grpc.Errorf(codes.InvalidArgument, "Missing key creation time")
 		}
 
 		return nil
@@ -299,15 +261,17 @@ func UpdateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	return info
 }
 
-// Actually calls proxy.UpdateKey. This function could be inline in
-// UpdateKey_InitializeHandlerInfo but it is separated to allow better unit testing.
+// UpdateKey_RequestHandler calls proxy.UpdateKey and returns its results. An
+// error will be returned if proxy.UpdateKey returns an error.
 func UpdateKey_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
 	resp, err := srv.(v1pb.E2EKeyProxyServer).UpdateKey(ctx, arg.(*v2pb.UpdateKeyRequest))
 	return &resp, err
 }
 
-// Parse RFC 3339 formated time strings and return a Timestamp instance.
+// parseTime returns a google.protobuf.Timestamp instances generated by parsing
+// a time string of RFC 3339 format. An error will be returned if the time
+// string is not correctly formatted or cannot be parsed into a time object.
 func parseTime(value string) (*google_protobuf3.Timestamp, error) {
 	t, err := time.Parse(time.RFC3339, value)
 	if err != nil {
@@ -319,7 +283,8 @@ func parseTime(value string) (*google_protobuf3.Timestamp, error) {
 	return result, nil
 }
 
-// Parse an API string components, and return the component at the specified index.
+// parseURLComponent returns component[index], or error if index of out of
+// bounds.
 func parseURLComponent(components []string, index int) (string, error) {
 	if index < 0 || index >= len(components) {
 		return "", grpc.Errorf(codes.InvalidArgument, "Index is not in API path components")
@@ -328,31 +293,19 @@ func parseURLComponent(components []string, index int) (string, error) {
 	return components[index], nil
 }
 
-// Parse the JSON body and replace all occurances of creation_time fields, which are string formated
-// in RFC 3339 time, with the format compatible with google.protobuf.Timestamp, i.e.
-// {"seconds": <seconds>, "nanos": <nanos>}. This will allow the JSON decoder to decode the timestamp. The keyword must be a key in the JSON input.
-// For example:
-// {"creation_time": "2015-05-18T23:58:36.000Z"} will be replaced with
-// {"creation_time": {"seconds": 1431993516, "nanos": 0}}.
+// parseJSON replaces all occurances of RFC 3339 formatted string timestamps
+// into a format compatible with google.protobuf.Timestamo, i.e., {"seconds":
+// <seconds>, "nanos": <nanos>}. This will allow the JSON decoder to decode the
+// timestamp. The string timestamp is identified using its key specified in
+// keyword. For example: {"creation_time": "2015-05-18T23:58:36.000Z"} will be
+// replaced with {"creation_time": {"seconds": 1431993516, "nanos": 0}}.
 // TODO(cesarghali): this function is not the best in terms of efficienty.
 //                   Optimally use UnmarshalJSON to assist the JSON decoder.
-func parseJSON(r *http.Request, keyword string) (err error) {
+func parseJSON(r *http.Request, keyword string) error {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(r.Body)
 	oldJSONBody := buf.String()
 	newJSONBody := oldJSONBody
-	defer func() {
-		// When recovering from a panic, revert to the old JSON and return
-		// the error.
-		if rec := recover(); rec != nil {
-			r.Body = jsonParserReader{bytes.NewBufferString(newJSONBody)}
-			var ok bool
-			err, ok = rec.(error)
-			if !ok {
-				panic(rec)
-			}
-		}
-	}()
 
 	keywordLen := len(keyword)
 	index := 0
@@ -367,30 +320,36 @@ func parseJSON(r *http.Request, keyword string) (err error) {
 			if i != -1 {
 				begin := index + keywordLen + i
 
-				// Look for the " after the colon which indicates the
-				// beginning of the timestamp.
+				// Look for the " after the colon which
+				// indicates the beginning of the timestamp.
 				i = strings.Index(newJSONBody[begin:], "\"")
 				if i != -1 {
 					begin = begin + i
 
-					// Look for " which indicate the end of the timestamp.
+					// Look for " which indicate the end of
+					// the timestamp.
 					i = strings.Index(newJSONBody[begin+1:], "\"")
 					if i != -1 {
 						end := begin + 1 + i
 
 						// Found a timestamp attempt parsing it.
 						var tm *google_protobuf3.Timestamp
-						tm, err = parseTime(newJSONBody[begin+1 : end])
+						tm, err := parseTime(newJSONBody[begin+1 : end])
 						if err != nil {
-							panic(err)
+							// Replace the old JSON
+							// with the new one.
+							r.Body = jsonParserReader{bytes.NewBufferString(newJSONBody)}
+							return err
 						}
 
-						// Replace the old timestamp with the new one.
+						// Replace the old timestamp
+						// with the new one.
 						newTime := "{\"seconds\": " + strconv.FormatInt(tm.Seconds, 10) + ", \"nanos\": " + strconv.Itoa(int(tm.Nanos)) + "}"
 						newJSONBody = newJSONBody[:begin] + newTime + newJSONBody[end+1:]
 
-						// Set index to the end of the new timestamp
-						// to prepare for another round of search.
+						// Set index to the end of the
+						// new timestamp to prepare for
+						// another round of search.
 						index = begin + len(newTime)
 					} else {
 						index = i

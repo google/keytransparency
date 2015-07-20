@@ -20,25 +20,19 @@ import (
 	context "golang.org/x/net/context"
 )
 
-// Function signature that parses URL parameters
-// *interface{} is a protocol buffer generated struct that
-// will be passed to the v1 API call.
+// URLParser parses a URL and stores the results in a protobuf structure that
+// will be passed to the API call. An error is returned if parsing returns
+// an error.
 type URLParser func(*http.Request, *interface{}) error
 
-// Function signature that verifies that all required
-// fields of a protobuf are present before invoking the API.
-type FieldsVerifier func(interface{}) error
-
-// Function signature of the actual API call.
-// First interface{} parameter is the server instance.
-// Third interface{} parameter is a protocol buffer generated struct
-// compatible with the API call. Same for the returned *interface{}.
+// RequestHandler returns API call results of a server instance, context and
+// API arguments. It returns an error of the API call returns an error.
 type RequestHandler func(interface{}, context.Context, interface{}) (*interface{}, error)
 
-// Function that generates and initializes HandlerInfo.
+// InitializeHandlerInfo generates and initializes HandlerInfo.
 type InitializeHandlerInfo func(RouteInfo) *HandlerInfo
 
-// Contains information related to the API handler.
+// HandlerInfo contains information related to the API handler.
 type HandlerInfo struct {
 	// API call handler.
 	H RequestHandler
@@ -46,24 +40,23 @@ type HandlerInfo struct {
 	Arg interface{}
 	// Function that parses URL params.
 	Parser URLParser
-	// Function that verifies the existence of required fields.
-	Verifier FieldsVerifier
 }
 
-// Struct containing routes info.
+// RouteInfo contains routes information of v1 RESTful APIs.
 type RouteInfo struct {
 	// API Path.
 	Path string
 	// UserId index in the path components.
-	// TODO(cesarghali): it's better if the index can be detected automatically.
+	// TODO(cesarghali): it's better if the index can be detected
+	// automatically.
 	UserIdIndex int
 	// KeyId index in the path components.
-	// TODO(cesarghali): it's better if the index can be detected automatically.
+	// TODO(cesarghali): it's better if the index can be detected
+	// automatically.
 	KeyIdIndex int
 	// Request method, e.g. GET, POST, etc.
 	Method string
-	// Refer to the function that initialize the request
-	// rest/handlers/handlers.go:HandlerInfo.
+	// The function that initializes the appropriate HandlerInfo.
 	Initializer InitializeHandlerInfo
 	// API handler.
 	Handler RequestHandler
