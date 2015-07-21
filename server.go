@@ -34,8 +34,9 @@ var port = flag.Int("port", 8080, "TCP port to listen on")
 
 // v1Routes contains all routes information.
 // TODO(cesarghali): find a better way to populate this map.
-var v1Routes = map[string]handlers.RouteInfo{
-	"/v1/users/{userid}": handlers.RouteInfo{
+var v1Routes = []handlers.RouteInfo{
+	// GetUser API
+	handlers.RouteInfo{
 		"/v1/users/{userid}",
 		2,
 		-1, // No keyId in the path.
@@ -43,7 +44,8 @@ var v1Routes = map[string]handlers.RouteInfo{
 		rest.GetUser_InitializeHandlerInfo,
 		rest.GetUser_RequestHandler,
 	},
-	"/v1/users/{userid}/keys": handlers.RouteInfo{
+	// CreateKey API
+	handlers.RouteInfo{
 		"/v1/users/{userid}/keys",
 		2,
 		-1, // No keyId in the path.
@@ -51,13 +53,23 @@ var v1Routes = map[string]handlers.RouteInfo{
 		rest.CreateKey_InitializeHandlerInfo,
 		rest.CreateKey_RequestHandler,
 	},
-	"/v1/users/{userid}/keys/<keyid>": handlers.RouteInfo{
+	// UpdateKey API
+	handlers.RouteInfo{
 		"/v1/users/{userid}/keys/<keyid>",
 		2,
 		4,
 		"PUT",
 		rest.UpdateKey_InitializeHandlerInfo,
 		rest.UpdateKey_RequestHandler,
+	},
+	// DeleteKey API
+	handlers.RouteInfo{
+		"/v1/users/{userid}/keys/<keyid>",
+		2,
+		4,
+		"DELETE",
+		rest.DeleteKey_InitializeHandlerInfo,
+		rest.DeleteKey_RequestHandler,
 	},
 }
 

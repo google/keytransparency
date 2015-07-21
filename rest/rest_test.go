@@ -120,7 +120,7 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 			Fake_RequestHandler,
 		}
 		// Body is empty when invoking get user API.
-		jsonBody := ""
+		jsonBody := "{}"
 
 		info := GetUser_InitializeHandlerInfo(rInfo)
 
@@ -141,8 +141,8 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
-		if err == nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen.")
+		if err != nil {
+			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
 		}
 
 		if got, want := info.Arg.(*v2pb.GetUserRequest).UserId, test.userId; got != want {
@@ -305,7 +305,7 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 			path,
 			test.userIdIndex,
 			test.keyIdIndex,
-			"POST",
+			"PUT",
 			Fake_Initializer,
 			Fake_RequestHandler,
 		}
@@ -361,6 +361,75 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 	}
 }
 
+func TestDeleteKey_InitiateHandlerInfo(t *testing.T) {
+	var tests = []struct {
+		userId       string
+		userIdIndex  int
+		keyId        string
+		keyIdIndex   int
+		parserNilErr bool
+	}{
+		{"e2eshare.test@gmail.com", 2, "mykey", 4, true},
+		{"e2eshare.test@gmail.com", 5, "mykey", 4, false},
+		{"e2eshare.test@gmail.com", -1, "mykey", 4, false},
+		{"e2eshare.test@gmail.com", 2, "mykey", 5, false},
+		{"e2eshare.test@gmail.com", 2, "mykey", -1, false},
+	}
+	for _, test := range tests {
+		path := "/v1/users/" + test.userId + "/keys/" + test.keyId
+		rInfo := handlers.RouteInfo{
+			path,
+			test.userIdIndex,
+			test.keyIdIndex,
+			"DELETE",
+			Fake_Initializer,
+			Fake_RequestHandler,
+		}
+		// Body is empty when invoking delete key API.
+		jsonBody := "{}"
+
+		info := DeleteKey_InitializeHandlerInfo(rInfo)
+
+		if _, ok := info.Arg.(*v2pb.DeleteKeyRequest); !ok {
+			t.Errorf("info.Arg is not of type v2pb.DeleteKeyRequest")
+		}
+
+		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
+		err := info.Parser(r, &info.Arg)
+		if got, want := (err == nil), test.parserNilErr; got != want {
+			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
+		}
+		// If there's an error parsing, the test cannot be completed.
+		// The parsing error might be expected though.
+		if err != nil {
+			continue
+		}
+
+		// Call JSONDecoder to simulate decoding JSON -> Proto.
+		err = JSONDecoder(r, &info.Arg)
+		if err != nil {
+			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+		}
+
+		if got, want := info.Arg.(*v2pb.DeleteKeyRequest).UserId, test.userId; got != want {
+			t.Errorf("UserId = %v, want %v", got, want)
+		}
+		if got, want := info.Arg.(*v2pb.DeleteKeyRequest).KeyId, test.keyId; got != want {
+			t.Errorf("KeyId = %v, want %v", got, want)
+		}
+
+		v1 := &FakeServer{}
+		srv := New(v1)
+		resp, err := info.H(srv, nil, nil)
+		if err != nil {
+			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+		}
+		if got, want := (*resp).(bool), true; got != want {
+			t.Errorf("resp = %v, want %v.", got, want)
+		}
+	}
+}
+
 func JSONDecoder(r *http.Request, v interface{}) error {
 	decoder := json.NewDecoder(r.Body)
 	return decoder.Decode(v)
@@ -393,6 +462,8 @@ func TestParseJson(t *testing.T) {
 		outJSON   string
 		outNilErr bool
 	}{
+		// Empty string
+		{"", "", true},
 		// Basic cases.
 		{"\"creation_time\": \"" + valid_ts + "\"",
 			"\"creation_time\": {\"seconds\": " +
