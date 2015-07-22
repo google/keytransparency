@@ -44,11 +44,11 @@ import "google/protobuf/timestamp.proto";
 //  `/users/*/keys/*`
 //
 service E2EKeyService {
-  // GetUser returns a user's data entry, a proof that there is only one entry
-  // for this user, and a proof that it is the same data being provided to
-  // everyone else.
+  // GetUser returns a user's keys, the comittment in the merkle tree, a
+  // proof that there is only one entry for this user, and a proof that it is
+  // the same data being provided to everyone else.
   // GetUser also supports querying past values by setting the epoch field.
-  rpc GetUser(GetUserRequest) returns (UserProof) {
+  rpc GetUser(GetUserRequest) returns (EntryProfileAndProof) {
     option (google.api.http) = { get: "/v2/users/{user_id}" };
   }
 
@@ -58,32 +58,22 @@ service E2EKeyService {
     option (google.api.http) = { get: "/v2/users/{user_id}/history" };
   }
 
-  // Delete / Create cycles are prohibited for user entries.  Once created, a
-  // user's entry must have a contiguous history.
-
-  // CreateKey promises to create a new key for a user on the next epoch.
-  // Multiple new keys can be created each epoch. Clients must verify that each
-  // promise is represented within the STR on the next epoch.
-  rpc CreateKey (CreateKeyRequest) returns (KeyPromise) {
+  // blocking?
+  rpc UpdateUser(UpdateUserRequest) returns (protobuf.Empty)
     option (google.api.http) = {
-      post: "/v2/users/{user_id}/keys"
-      body: "signed_key"
+      put: "/v2/users/{user_id}"
+      body: "update"
     };
+    option (google.api.method_visibility).restriction = "GOOGLE_INTERNAL";
   }
 
-  // UpdateKey updates a key.
-  rpc UpdateKey (UpdateKeyRequest) returns (KeyPromise) {
-    option (google.api.http) = {
-      put: "/v2/users/{user_id}/keys/{key_id}"
-      body: "signed_key"
-    };
+  // from epoch to epoch, list of STHs
+  rpc ListSTH(ListSTHRequest) returns (ListSTHResponse) {
+    option (google.api.http) = { get: "/v2/sth/" };
   }
-
-  // DeleteKey deletes a key. Returns NOT_FOUND if the key does not exist.
-  rpc DeleteKey(DeleteKeyRequest) returns (protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/v2/users/{user_id}/keys/{key_id}"
-    };
+  // from epoch to epoch list of SignedEntryUpdate
+  rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse) {
+    option (google.api.http) = { get: "/v2/update/" };
   }
 }
 
@@ -251,7 +241,7 @@ message TreeHead {
 // Get request for a user object.
 message GetUserRequest {
   // Absence of the time field indicates a request for the current value.
-  google.protobuf.Timestamp time = 1;
+  uint64 epoch = 1;
   // User identifier. Most commonly an email address.
   string user_id = 2;
   // Only return the keys belonging to this app.
@@ -262,36 +252,35 @@ message GetUserRequest {
 message ListUserHistoryRequest {
   // The user identifier.
   string user_id = 1;
-  // The time at which to start pagination.
-  google.protobuf.Timestamp starting_time = 2;
+  // from_epoch is the starting epcoh.
+  uint64 start_epoch = 2;
   // The maximum number of entries to return.
-  int32 page_size = 4;
+  int32 page_size = 3;
+  // compression_mode allows a user to verify thier own entries.
+  Mode compression_mode = 4;
+  enum Mode {
+    // FULL returns every epoch.
+    FULL = 0;
+    // Fast returns an STH for every epoch. For every epoch n where update_count
+    // is incremented, Fast returns full proofs for epoch n and n-1.
+    FAST = 1;
+  }
 }
 
 // A paginated history of values for a user.
 message ListUserHistoryResponse {
   // The list of values this user_id has contained over time.
-  repeated UserProof values = 1;
+  repeated EntryProfileAndProof values = 1;
   // The next time to query for pagination.
-  google.protobuf.Timestamp next_time = 2;
-}
-
-// Create a new key.
-message CreateKeyRequest {
-  // The User to requset for.
-  string user_id = 1;
-  // The new key.
-  SignedKey signed_key = 2;
+  uint64 next_epoch = 2;
 }
 
 // Update a key.
-message UpdateKeyRequest {
+message UpdateUserRequest {
   // The User to update.
-  string user_id = 2;
-  // The key to update.
-  string key_id = 4;
+  string user_id = 1;
   // The new value of the key.
-  SignedKey signed_key = 5;
+  EntryUpdateRequest update = 2;
 }
 
 // Delete a key.
@@ -300,4 +289,26 @@ message DeleteKeyRequest {
   string user_id = 2;
   // The key to delete.
   string key_id = 4;
+}
+
+message ListSTHRequest {
+  // from_epoch is the starting epcoh.
+  uint64 start_epoch = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListSTHResponse {
+  repeated SignedTreeHead heads = 1;
+}
+
+message ListUpdateRequest {
+  // start_sequence is the starting sequence number.
+  uint64 start_sequence = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListUpdateResponse {
+  repeated SignedEntryUpdate updates = 1;
 }
