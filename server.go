@@ -55,7 +55,7 @@ var v1Routes = []handlers.RouteInfo{
 	},
 	// UpdateKey API
 	handlers.RouteInfo{
-		"/v1/users/{userid}/keys/<keyid>",
+		"/v1/users/{userid}/keys/{keyid}",
 		2,
 		4,
 		"PUT",
@@ -64,7 +64,7 @@ var v1Routes = []handlers.RouteInfo{
 	},
 	// DeleteKey API
 	handlers.RouteInfo{
-		"/v1/users/{userid}/keys/<keyid>",
+		"/v1/users/{userid}/keys/{keyid}",
 		2,
 		4,
 		"DELETE",

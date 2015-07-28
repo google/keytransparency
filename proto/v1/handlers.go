@@ -16,6 +16,7 @@ package google_security_e2ekeys_v1
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/google/e2e-key-server/rest/handlers"
@@ -41,7 +42,7 @@ func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *htt
 	// Json -> Proto.
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&info.Arg)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return grpc.Errorf(codes.InvalidArgument, "decoding error:", err)
 	}
 

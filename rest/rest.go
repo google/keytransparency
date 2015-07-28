@@ -59,7 +59,9 @@ func New(svr interface{}) *Server {
 
 // Serve starts the server loop.
 func (s *Server) Serve(l net.Listener) {
-	log.Fatal(http.Serve(l, nil))
+	// If the second paramter (handler) is nil, DefaultServeMux is used.
+	// We should use the gorilla mux router instead.
+	log.Fatal(http.Serve(l, s.rtr))
 }
 
 func (s *Server) Handlers() *mux.Router {
