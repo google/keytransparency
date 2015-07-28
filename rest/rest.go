@@ -123,13 +123,8 @@ func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerIn
 	info.Arg = new(v2pb.GetUserRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// URL of format: /v1/users/{userid}, it cannot be any different
-		// format otherwise Gorilla mux wouldn't have routed the request
-		// here.
+		// Get URL components.
 		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-		if got, want := len(components), len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")); got < want {
-			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
-		}
 
 		in := (*arg).(*v2pb.GetUserRequest)
 		// Parse User ID; components[2] is userId = email.
@@ -178,13 +173,8 @@ func CreateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Arg = new(v2pb.CreateKeyRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// URL of format: /v1/users/{userid}/keys, it cannot be any
-		// different format otherwise Gorilla mux wouldn't have routed
-		// the request here.
+		// Get URL components.
 		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-		if got, want := len(components), len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")); got < want {
-			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
-		}
 
 		in := (*arg).(*v2pb.CreateKeyRequest)
 		// Parse User ID; components[2] is userId = email.
@@ -226,13 +216,8 @@ func UpdateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Arg = new(v2pb.UpdateKeyRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// URL of format: /v1/users/{userid}/keys, it cannot be any
-		// different format otherwise Gorilla mux wouldn't have routed
-		// the request here.
+		// Get URL components.
 		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-		if got, want := len(components), len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")); got < want {
-			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
-		}
 
 		in := (*arg).(*v2pb.UpdateKeyRequest)
 		// Parse User ID; components[2] is userId = email.
@@ -281,13 +266,8 @@ func DeleteKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Arg = new(v2pb.DeleteKeyRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// URL of format: /v1/users/{userid}/keys, it cannot be any
-		// different format otherwise Gorilla mux wouldn't have routed
-		// the request here.
+		// Get URL components.
 		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-		if got, want := len(components), len(strings.Split(strings.TrimLeft(rInfo.Path, "/"), "/")); got < want {
-			return grpc.Errorf(codes.InvalidArgument, "Invalid API url format")
-		}
 
 		in := (*arg).(*v2pb.DeleteKeyRequest)
 		// Parse User ID; components[2] is userId = email.
