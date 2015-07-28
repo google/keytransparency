@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package google.security.e2ekeys.v2;
+
+option java_package = "com.google.security.e2ekeys.v2";
+option java_multiple_files = true;
+option java_outer_classname = "E2EKeysProto";
+
+import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/security/e2ekeys/v2/e2ekeys.proto";
+
+// Internal types for the End to End Key Server.
+
+// EntryStorage is what gets serialized to disk / log.
+message EntryStorage {
+  // epoch allows entry updates to be self contained. Epoch is server supplied.
+  // epoch is the epoch at which this update should be inserted into the merkle
+  // tree.
+  uint64 epoch = 1;
+  // sequence is a sequential update number of the SignedEntryUpdate.
+  uint64 sequence = 2;
+  // entry_update is the actual update contents.
+  SignedEntryUpdate entry_update = 3;
+  // profile is the serialized protobuf Profile.
+  // profile is private and must not be released to verifiers.
+  bytes profile = 4;
+  // domain allows servers to keep track of multiple trees at once.
+  string domain = 5;
+}
+
+// DomainInfo is the information that need to be baked into an application
+// in order to verify information for a domain.
+message DomainInfo {
+  repeated PublicKey public_keys = 1;
+  // required_sigs is the number of valid signatures to require out of
+  // public_keys before considering signed_tree heads legitimate.
+  uint32 required_sigs = 2;
+  // domain is the doman suffix to use when resolving a user_id to a domain.
+  string domain = 3;
+  // api_url is the url prefix to use when querying users on this domain.
+  string api_url = 4;
+}
+
+message VerifierInfo {
+  repeated PublicKey public_keys = 1;
+  // required_sigs is the number of valid signatures to require out of
+  // public_keys before considering signed_tree heads legitimate.
+  uint32 required_sigs = 2;
+  // api_url is the url prefix to use when querying users on this domain.
+  string api_url = 4;
+  // domain is the doman suffix that this verifier is responsible for.
+  string domain = 3;
+}
