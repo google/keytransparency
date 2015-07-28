@@ -21,7 +21,6 @@ option java_multiple_files = true;
 option java_outer_classname = "E2EKeysProto";
 
 import "google/api/annotations.proto";
-import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -29,9 +28,9 @@ import "google/protobuf/timestamp.proto";
 // The key server has the following verifiable security properties:
 // - The server keeps a single history of the directory.
 // - The server gives consistent answers to queries regardless of audience.
-//    - The server publishes a signed tree root (STR) of all its data every
+//    - The server publishes a signed tree head (STH) of all its data every
 //      epoch.
-//    - Users can verify that a given entry is contained in that STR.
+//    - Users can verify that a given entry is contained in that STH.
 //    - Only one entry in the server is valid for any particular user id.
 //
 // The API defines the following resource model:
@@ -44,11 +43,11 @@ import "google/protobuf/timestamp.proto";
 //  `/users/*/keys/*`
 //
 service E2EKeyService {
-  // GetUser returns a user's data entry, a proof that there is only one entry
-  // for this user, and a proof that it is the same data being provided to
-  // everyone else.
+  // GetUser returns a user's keys, the comittment in the merkle tree, a
+  // proof that there is only one entry for this user, and a proof that it is
+  // the same data being provided to everyone else.
   // GetUser also supports querying past values by setting the epoch field.
-  rpc GetUser(GetUserRequest) returns (UserProof) {
+  rpc GetUser(GetUserRequest) returns (EntryProfileAndProof) {
     option (google.api.http) = { get: "/v2/users/{user_id}" };
   }
 
@@ -58,32 +57,25 @@ service E2EKeyService {
     option (google.api.http) = { get: "/v2/users/{user_id}/history" };
   }
 
-  // Delete / Create cycles are prohibited for user entries.  Once created, a
-  // user's entry must have a contiguous history.
-
-  // CreateKey promises to create a new key for a user on the next epoch.
-  // Multiple new keys can be created each epoch. Clients must verify that each
-  // promise is represented within the STR on the next epoch.
-  rpc CreateKey (CreateKeyRequest) returns (KeyPromise) {
+  // blocking or polling?
+  rpc UpdateUser(UpdateUserRequest) returns (protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v2/users/{user_id}/keys"
-      body: "signed_key"
+      put: "/v2/users/{user_id}"
+      body: "update"
     };
   }
 
-  // UpdateKey updates a key.
-  rpc UpdateKey (UpdateKeyRequest) returns (KeyPromise) {
-    option (google.api.http) = {
-      put: "/v2/users/{user_id}/keys/{key_id}"
-      body: "signed_key"
-    };
+  // List the Signed Tree Heads, from epoch to epoch.
+  rpc ListSTH(ListSTHRequest) returns (ListSTHResponse) {
+    option (google.api.http) = { get: "/v2/sth/" };
   }
-
-  // DeleteKey deletes a key. Returns NOT_FOUND if the key does not exist.
-  rpc DeleteKey(DeleteKeyRequest) returns (protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/v2/users/{user_id}/keys/{key_id}"
-    };
+  // List the EntryUpdates by update number.
+  rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse) {
+    option (google.api.http) = { get: "/v2/update/" };
+  }
+  // ListSteps combines STH and EntryUpdates into single list.
+  rpc ListSteps(ListStepsRequest) returns (ListStepsResponse) {
+    option (google.api.http) = { get: "/v2/step/" };
   }
 }
 
@@ -91,173 +83,135 @@ service E2EKeyService {
 // Data types.
 //
 
-// A User entry along with its proof.
-message UserProof {
-  // The user object
-  User user = 1;
-  // The authentication path to the epoch root.
-  Proof proof = 2;
-  // promises is a list of keys that the server has accepted, but hasn't merged
-  // into the STR yet.
-  repeated KeyPromise promises = 4;
+// SignedEpochHead represents a signed state of the Merkel tree.
+message SignedEpochHead {
+  // Signature of this epoch's root hash, using the signature type of the key.
+  bytes root_sig = 1;
+  // Serialized TimestampedTreeHead.
+  bytes head = 2;
+  // key_hash is the first 4 bytes of the SHA256 hash of the key used for
+  // signing. May be used for key rotation and/or multiple signatures.
+  uint64 key_hash = 3;
 }
 
-// The User is the leaf object in the binary Merkle Tree. Its unique location
-// in the tree is identified by a hash of an verifiable unpredictable function
-// on the user_id. The value of the user leaf node is
-// H("leaf" || H(VUF) || HMAC(nonce,  H(Meta) || KeyList))
-message User {
-  // Metadata associated with this user.
-  UserMeta meta = 1;
-  // Nonce prevents an adversary from brute forcing nodes to the side of a user.
-  bytes nonce = 2;
-  // KeyList represents all the user's keys in a compressed form.
-  KeyList key_list = 3;
-
-  // KeyList is a container for a representing all the user's keys, when only a
-  // few of them have been requested by a client application.
-  // The KeyList value is equal to H(k1) || H(k2) ... || H(kn)
-  message KeyList {
-    // signed_keys is an ordered array of SignedKeys for this user. All keys for
-    // a user must be present in either signed_keys or hashed_signed_keys.
-    // Omitted values are null.
-    repeated SignedKey signed_keys = 2;
-    // hashed_signed_keys is an ordered array of H(SignedKey)s for this user.
-    repeated bytes hashed_signed_keys = 3;
-  }
+message TimestampedEpochHead {
+  EpochHead head = 1;
+  // The timestamp of this signature.
+  google.protobuf.Timestamp current_time = 2;
 }
 
-// Meta is a container for user metadata.
-message UserMeta {
-  // reset_count is a monotonically increasing number representing the number
-  // of times this account has been reset. A change in this number generates
-  // a warning the next time a client attempts to message this user.
-  uint32 reset_count = 1;
-
-  // Placeholder for additional provider specific metadata.
-  google.protobuf.Any provider_metadata = 2;
-}
-
-// SignedKey contains a Key and associated signatures, showing continuity of
-// key ownership.
-message SignedKey{
-  // A key with metadata.
-  Key key = 1;
-
-  // Key contains the public key and metadata.
-  // When a user wishes to revoke a key that has been compromised, add a new key
-  // signed by a current key, then delete the compromised key.
-  // Keys not present in the current STR are considered revoked.
-  message Key {
-    // Format for the key.
-    Format format = 1;  // Required.
-    // The encryption key itself.
-    bytes key = 2;  // Required.
-    // The name of the application this key is for.
-    string app_id = 3;  // Required.
-    // Timestamp of when this key was added.  Verified by server.
-    google.protobuf.Timestamp creation_time = 4; // Required.
-
-    // Key Formats.
-    enum Format {
-      // Unknown key format.
-      UNKNOWN = 0;
-      // Eliptic Curve Public Key.
-      ECC = 1;
-      // Raw bytes from decoded PGP key ring ascii armor.
-      PGP_KEYRING = 2;
-    }
-  }
-  // Signature of key, by the current key. Proves ownership of new key.
-  Signature signature_current = 2;
-  // Signature of key, by either: 1) the same key_id in the previous epoch,
-  // proving that the correct owner of the key is making the rotation or 2) a
-  // different key in the previous epoch, proving that the owner of the accout
-  // is adding the new key.
-  Signature signature_old = 3;
-  // key_id is the PGP fingerprint, or for ecc, the hash of the ecc key.
-  // Used to uniquely identify the key.
-  string key_id = 4; // Filled by server.
-}
-
-// Signature represents a digital signature of the hash of an object.
-message Signature {
-  // The key used for signing.
-  string key_id = 1;
-  // The data to be signed.  Usually the hash of a serialized proto.
-  bytes signed_data = 2;
-  // The serialized ECDSA signature.
-  bytes signature = 3;
-}
-
-// A key object, paired with a timestamp.
-message SignedKeyTimestamp {
-  // The time this object was created.
-  google.protobuf.Timestamp creation_time = 1;
-  // The signed new key.
-  SignedKey signed_key = 2;
-  // The user this key is for.
-  string user_id = 3;
-  // The index in the Merkle tree for this user as a hex string.
-  string vuf = 4;
-}
-
-// A promise to include a given key in the STR on the next epoch.
-message KeyPromise {
-  // The key and timestamp.
-  SignedKeyTimestamp signed_key_timestamp = 1;
-  // A signature over the key and timestamp.
-  Signature signature = 2;
-}
-
-// A Proof provides an authentication path through the Merkle Tree that
-// proves that an item is present in the STR.
-message Proof {
-  // Neighbors is a list of all the adacent nodes along the path from the
-  // bottommost node to the root. To save space, hashes for empty subtrees are
-  // nil, and the number of hashes is equal to the length of the longest common
-  // prefix with another entry in the tree (since a leaf node is moved up to
-  // that point -- subtrees with a single entry are coalesced into a single
-  // node).
-  repeated bytes neighbors = 1;
-  // The signed tree root (STR).
-  SignedTreeRoot str = 3;
-  // Output of an verifiable unpredictable function on user_id.
-  // Prevents an adversary from brute forcing a user's index in the tree.
-  string vuf = 4;
-  // This is the VUF for the binding that does exist; it will share a prefix
-  // with vuf, but in case the leaf contains the wrong contents, it will be
-  // different. It will be nil if the requested VUF falls under an empty branch.
-  bytes existingVuf = 5;
-  // This is the commitment for the binding that does exist. If the leaf
-  // contains the wrong contents, the client can use this to verify that it in
-  // fact is at that position in the tree.
-  bytes existingCommitment = 6;
-}
-
-// SignedTreeRoot represents a signed state of the Merkel tree.
-message SignedTreeRoot {
-  // Signature of this epoch's root hash.
-  Signature root_sig = 1;
-  // Hash of this epoch's root.
-  bytes root_hash = 2;
-  // Value of this epoch's root.
-  TreeRoot root = 3;
-}
-
-// TreeRoot is the head node of the Merkle Tree, incorporating left and right
+// TreeHead is the head node of the Merkle Tree, incorporating left and right
 // sub-branches as well as additional metadata for the tree.
-message TreeRoot {
-  // The timestamp of the current epoch.
-  google.protobuf.Timestamp current_time = 1;
-  // The timestamp of the previous epoch.
-  google.protobuf.Timestamp previous_time = 2;
-  // Hash of previous root.
-  bytes previous_root = 3;
-  // Value of the left branch.  H(sub0).
-  bytes left = 4;
-  // Value of the right branch. H(sub1).
-  bytes right = 5;
+message EpochHead {
+  // epoch number
+  uint64 epoch = 1;
+  // Hash of previous STH.
+  bytes previous_sth = 3;
+  // The value of the root node of the merkle tree.
+  bytes head = 4;
+  // realm is the domain...
+  string realm = 5;
+}
+
+message UVF {
+  //TODO: fill with data needed for to verify the Unpredictable Verifiable
+  //Function.
+}
+
+message EntryProfileAndProof {
+  // Entry contains the public portion of the user's data, and a comitment to
+  // profile.
+  Entry entry = 1;
+  // Profile contains the user's keys.
+  bytes profile = 2;
+  // merkle_tree_neighbors is a list of all the adacent nodes along the path
+  // from the bottommost node to the root.
+  repeated bytes merkle_tree_neighbors = 3;
+  // The signed tree head.  A server may choose to return multiple signatures
+  // of the same root for the same epoch.
+  repeated SignedEpochHead str = 4;
+  // index_signature is the signed portion the unpredictable verifiable
+  // function on user_id. If H(index_signature) != entry.index, but they share
+  // a common prefix of len(merkle_tree_neighbors), this is a proof of
+  // non-existance for user_id.
+  UVF index_signature = 5;
+}
+
+// Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads
+// which are made available to verifiers.
+message Step {
+  oneof type {
+    SignedEntryUpdate entry_changed = 1;
+    SignedEpochHead seh = 2;
+  }
+  // epoch of this udpate.
+  uint64 epoch = 3;
+  // sequence is the ordered sequence number of this step.
+  // Equal to epoch_num + update sequence number.
+  uint64 sequence = 4;
+}
+
+// EntryUpdate is the proto a client sends to update their profile.
+message EntryUpdateRequest {
+  // silned_update authorizes the change to profile.
+  SignedEntryUpdate signed_update = 1;
+  // profile is the serialized protobuf Profile.
+  // profile is private and must not be released to verifiers.
+  bytes profile = 4;
+}
+
+message SignedEntryUpdate {
+  // Signature of entry, by the entry_key inside entry.
+  // Proves ownership of new key.
+  bytes signature_new = 2;
+  // Signature of entry, by the entry_key from the previous epoch.
+  // Proves the the correct owner is making this change.
+  bytes signature_old = 3;
+  // entry is the serialized protobuf Entry.
+  bytes entry = 4;
+}
+
+// Entry is the leaf node object for the Merkle Tree. Its unique index in the
+// tree is identified by a hash of an verifiable unpredictable function on the
+// user_id.
+message Entry {
+  // entry_key allows verifiers to validate updates to Entry.
+  // entry_key is a ECDSH key.
+  PublicKey entry_key = 1;
+  // profile_commitment is a cryptographic commitment to the Profile of the form
+  // HMAC(nonce, serialized_profile)
+  bytes profile_commitment = 2;
+  // update_count prevents replaying old signed EntryUpdates.
+  // not nessesarilly incremented by only one each update.
+  uint64 update_count = 3;
+  // index is the location in the merkle tree for this entry.
+  // If signing keys are not unique per user, we need to tie updates to a
+  // particular profile.
+  bytes index = 4;
+}
+
+// Profile contains data hidden behind the crypto comitment.
+message Profile {
+  // Nonce prevents an adversary from brute forcing nodes to the side of a user.
+  uint64 nonce = 1;
+  // key_list is a map from app_id to application defined bytes.
+  map<string, bytes> key_list = 2;
+
+}
+
+// PublicKey defines a key this domain uses to sign EpochHeads with.
+message PublicKey {
+  bytes key = 1;
+
+  // KeyFormats from Keyczar.
+  enum KeyFormat {
+    UNKNOWN = 0;
+    PUBLIC_DSA_2048 = 1;
+    RSA_VERIFYING_SHA256_2048 = 2;
+    ECDSA_VERIFYING_P256 = 3;  // NIST_P256
+  }
+
+  KeyFormat format = 2;
 }
 
 //
@@ -267,53 +221,75 @@ message TreeRoot {
 // Get request for a user object.
 message GetUserRequest {
   // Absence of the time field indicates a request for the current value.
-  google.protobuf.Timestamp time = 1;
+  uint64 epoch = 1;
   // User identifier. Most commonly an email address.
   string user_id = 2;
+  // TODO: implement app_id filtering.
   // Only return the keys belonging to this app.
-  string app_id = 3;
+  // string app_id = 3;
+  // TODO: implement key_hash filtering.
+  // Only respond with STH signatures that are in the key_hash list.
+  // Allows clients to filter the set of STH responses.
 }
 
 // Get a list of historical values for a user.
 message ListUserHistoryRequest {
   // The user identifier.
   string user_id = 1;
-  // The time at which to start pagination.
-  google.protobuf.Timestamp starting_time = 2;
+  // from_epoch is the starting epcoh.
+  uint64 start_epoch = 2;
   // The maximum number of entries to return.
-  int32 page_size = 4;
+  int32 page_size = 3;
+  // compression_mode allows a user to verify thier own entries.
+  // TODO: optional compression mode?
 }
 
 // A paginated history of values for a user.
 message ListUserHistoryResponse {
   // The list of values this user_id has contained over time.
-  repeated UserProof values = 1;
+  repeated EntryProfileAndProof values = 1;
   // The next time to query for pagination.
-  google.protobuf.Timestamp next_time = 2;
-}
-
-// Create a new key.
-message CreateKeyRequest {
-  // The User to requset for.
-  string user_id = 1;
-  // The new key.
-  SignedKey signed_key = 2;
+  uint64 next_epoch = 2;
 }
 
 // Update a key.
-message UpdateKeyRequest {
+message UpdateUserRequest {
   // The User to update.
-  string user_id = 2;
-  // The key to update.
-  string key_id = 4;
+  string user_id = 1;
   // The new value of the key.
-  SignedKey signed_key = 5;
+  EntryUpdateRequest update = 2;
 }
 
-// Delete a key.
-message DeleteKeyRequest {
-  // The User to update.
-  string user_id = 2;
-  // The key to delete.
-  string key_id = 4;
+message ListSTHRequest {
+  // from_epoch is the starting epcoh.
+  uint64 start_epoch = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
 }
+
+message ListSTHResponse {
+  repeated SignedEpochHead heads = 1;
+}
+
+message ListUpdateRequest {
+  // start_sequence is the starting sequence number.
+  uint64 start_sequence = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListUpdateResponse {
+  repeated SignedEntryUpdate updates = 1;
+}
+
+message ListStepsRequest {
+  // start_sequence is the starting sequence number.
+  uint64 start_sequence = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListStepsResponse {
+  repeated Step steps = 1;
+}
+
