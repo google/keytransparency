@@ -21,7 +21,6 @@ option java_multiple_files = true;
 option java_outer_classname = "E2EKeysProto";
 
 import "google/api/annotations.proto";
-import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -59,12 +58,11 @@ service E2EKeyService {
   }
 
   // blocking or polling?
-  rpc UpdateUser(UpdateUserRequest) returns (protobuf.Empty)
+  rpc UpdateUser(UpdateUserRequest) returns (protobuf.Empty) {
     option (google.api.http) = {
       put: "/v2/users/{user_id}"
       body: "update"
     };
-    option (google.api.method_visibility).restriction = "GOOGLE_INTERNAL";
   }
 
   // List the Signed Tree Heads, from epoch to epoch.
@@ -93,7 +91,7 @@ message SignedEpochHead {
   bytes head = 2;
   // key_hash is the first 4 bytes of the SHA256 hash of the key used for
   // signing. May be used for key rotation and/or multiple signatures.
-  bytes key_hash = 3;
+  uint64 key_hash = 3;
 }
 
 message TimestampedEpochHead {
@@ -131,12 +129,12 @@ message EntryProfileAndProof {
   repeated bytes merkle_tree_neighbors = 3;
   // The signed tree head.  A server may choose to return multiple signatures
   // of the same root for the same epoch.
-  repeated SignedEpochHead str = 3;
+  repeated SignedEpochHead str = 4;
   // index_signature is the signed portion the unpredictable verifiable
   // function on user_id. If H(index_signature) != entry.index, but they share
   // a common prefix of len(merkle_tree_neighbors), this is a proof of
   // non-existance for user_id.
-  UVF index_signature = 4;
+  UVF index_signature = 5;
 }
 
 // Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads
@@ -147,10 +145,10 @@ message Step {
     SignedEpochHead seh = 2;
   }
   // epoch of this udpate.
-  uint64 epoch = 1;
+  uint64 epoch = 3;
   // sequence is the ordered sequence number of this step.
   // Equal to epoch_num + update sequence number.
-  uint64 sequence = 2;
+  uint64 sequence = 4;
 }
 
 // EntryUpdate is the proto a client sends to update their profile.
@@ -170,7 +168,7 @@ message SignedEntryUpdate {
   // Proves the the correct owner is making this change.
   bytes signature_old = 3;
   // entry is the serialized protobuf Entry.
-  bytes entry = 3;
+  bytes entry = 4;
 }
 
 // Entry is the leaf node object for the Merkle Tree. Its unique index in the
@@ -214,21 +212,15 @@ message Key {
 message PublicKey {
   bytes key = 1;
 
-  enum HashAlgorithm {
-    NONE = 0;
-    SHA256 = 4;
-    SHA512 = 6;
+  // KeyFormats from Keyczar.
+  enum KeyFormat {
+    UNKNOWN = 0;
+    PUBLIC_DSA_2048 = 1;
+    RSA_VERIFYING_SHA256_2048 = 2;
+    ECDSA_VERIFYING_P256 = 3;  // NIST_P256
   }
 
-  enum SignatureAlgorithm {
-    ANONYMOUS = 0;
-    RSA = 1;
-    DSA = 2;
-    ECDSA = 3;
-  }
-
-  HashAlgorithm hash_algorithm = 1 [ default = NONE ];
-  SignatureAlgorithm sig_algorithm = 2 [ default = ANONYMOUS ];
+  KeyFormat format = 2;
 }
 
 //
@@ -244,6 +236,9 @@ message GetUserRequest {
   // TODO: implement app_id filtering.
   // Only return the keys belonging to this app.
   // string app_id = 3;
+  // TODO: implement key_hash filtering.
+  // Only respond with STH signatures that are in the key_hash list.
+  // Allows clients to filter the set of STH responses.
 }
 
 // Get a list of historical values for a user.
