@@ -179,34 +179,33 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 
 func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 	var tests = []struct {
-		userId         string
-		userIdIndex    int
-		tm             string
-		isTimeNil      bool
-		jsonBody       string
-		parserNilErr   bool
-		verifierNilErr bool
+		userId       string
+		userIdIndex  int
+		tm           string
+		isTimeNil    bool
+		jsonBody     string
+		parserNilErr bool
 	}{
 		{"e2eshare.test@gmail.com", 2,
 			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			true, true},
+			true},
 		{"e2eshare.test@gmail.com", 4,
 			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false, true},
+			false},
 		{"e2eshare.test@gmail.com", -1,
 			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false, true},
+			false},
 		{"e2eshare.test@gmail.com", 2,
 			valid_ts, true,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
-			false, false},
+			false},
 		{"e2eshare.test@gmail.com", 2,
 			valid_ts, true,
 			"{}",
-			true, false},
+			true},
 	}
 	for _, test := range tests {
 		path := "/v1/users/" + test.userId + "/keys"
@@ -485,6 +484,10 @@ func TestParseJson(t *testing.T) {
 				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
 		// Invalid timestamp.
 		{"\"creation_time\": \"invalid\"", "\"creation_time\": \"invalid\"", false},
+		// Empty timestamp.
+		{"\"creation_time\": \"\"", "\"creation_time\": \"\"", false},
+		{"\"creation_time\": \"\", \"creation_time\": \"\"",
+			"\"creation_time\": \"\", \"creation_time\": \"\"", false},
 		// Malformed JSON, missing " at the beginning of invalid
 		// timestamp.
 		{"\"creation_time\": invalid\"", "\"creation_time\": invalid\"", true},
@@ -515,7 +518,7 @@ func TestParseJson(t *testing.T) {
 		{"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
 			", app_id: \"gmail\"}}}",
 			"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
-				", app_id: \"gmail\"}}}", false},
+				", app_id: \"gmail\"}}}", true},
 	}
 
 	for _, test := range tests {
