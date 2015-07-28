@@ -177,7 +177,7 @@ message SignedEntryUpdate {
 message Entry {
   // entry_key allows verifiers to validate updates to Entry.
   // entry_key is a ECDSH key.
-  bytes entry_key = 1;
+  PublicKey entry_key = 1;
   // profile_commitment is a cryptographic commitment to the Profile of the form
   // HMAC(nonce, serialized_profile)
   bytes profile_commitment = 2;
@@ -194,18 +194,9 @@ message Entry {
 message Profile {
   // Nonce prevents an adversary from brute forcing nodes to the side of a user.
   uint64 nonce = 1;
-  // key_list is the full list of keys in the profile.
-  repeated Key key_list = 2;
-  // TODO: create more efficient ways of compacting the key_list.
-}
+  // key_list is a map from app_id to application defined bytes.
+  map<string, bytes> key_list = 2;
 
-// Key contains the public key and metadata.
-message Key {
-  // The encryption key itself.
-  bytes key = 2;  // Required.
-  // The name of the application this key is for. app_id implies the key type.
-  string app_id = 3;  // Required.
-  // key_id is implied from the hash of the key material itself.
 }
 
 // PublicKey defines a key this domain uses to sign EpochHeads with.
