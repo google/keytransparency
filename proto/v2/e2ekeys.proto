@@ -149,24 +149,12 @@ message SignedKey{
   // signed by a current key, then delete the compromised key.
   // Keys not present in the current STR are considered revoked.
   message Key {
-    // Format for the key.
-    Format format = 1;  // Required.
     // The encryption key itself.
     bytes key = 2;  // Required.
     // The name of the application this key is for.
     string app_id = 3;  // Required.
     // Timestamp of when this key was added.  Verified by server.
     google.protobuf.Timestamp creation_time = 4; // Required.
-
-    // Key Formats.
-    enum Format {
-      // Unknown key format.
-      UNKNOWN = 0;
-      // Eliptic Curve Public Key.
-      ECC = 1;
-      // Raw bytes from decoded PGP key ring ascii armor.
-      PGP_KEYRING = 2;
-    }
   }
   // Signature of key, by the current key. Proves ownership of new key.
   Signature signature_current = 2;
