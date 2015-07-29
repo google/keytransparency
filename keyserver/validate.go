@@ -31,6 +31,7 @@ import (
 
 // Maximum period of time to allow between CreationTime and server time.
 const MaxClockDrift = 5 * time.Minute
+const PGPAppID = "pgp"
 
 var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
 
@@ -51,7 +52,6 @@ func (s *Server) validateEmail(ctx context.Context, email string) error {
 }
 
 // validateKey verifies
-// - Format is known.
 // - Key is valid for its format.
 // - AppId is present.
 // - Creation time is present and current.
@@ -60,18 +60,13 @@ func (s *Server) validateKey(userID string, key *v2pb.SignedKey_Key) (*Fingerpri
 		return nil, grpc.Errorf(codes.InvalidArgument, "Missing Key")
 	}
 	var fingerprint *Fingerprint
-	switch key.Format {
-	case v2pb.SignedKey_Key_PGP_KEYRING:
+	if key.AppId == PGPAppID {
 		var err error
 		pgpUserID := fmt.Sprintf("<%v>", userID)
 		fingerprint, err = validatePGP(pgpUserID, bytes.NewBuffer(key.Key))
 		if err != nil {
 			return nil, err
 		}
-	case v2pb.SignedKey_Key_ECC:
-		return nil, grpc.Errorf(codes.Unimplemented, "ECC keys not supported yet")
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "Unknown Format")
 	}
 	if key.AppId == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Missing AppId")
@@ -103,16 +98,7 @@ func (s *Server) validateSignedKey(userID string, signedKey *v2pb.SignedKey) err
 		return err
 	}
 	signedKey.KeyId = hex.EncodeToString(fingerprint[:])
-	switch signedKey.GetKey().Format {
-	case v2pb.SignedKey_Key_PGP_KEYRING:
-		// No additional checks needed.
-		return nil
-	case v2pb.SignedKey_Key_ECC:
-		return grpc.Errorf(codes.Unimplemented, "ECC keys not supported yet")
-		// TODO(gbelvin): Verify signatures.
-	default:
-		return grpc.Errorf(codes.InvalidArgument, "Unknown Format")
-	}
+	return nil
 }
 
 func (s *Server) validateCreateKeyRequest(ctx context.Context, in *v2pb.CreateKeyRequest) error {
