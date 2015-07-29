@@ -59,9 +59,8 @@ ff000000029b0cff00000009904b20db14afb281e30000b3370100b5012d
 a5d613`, "\n", "", -1))
 	primarySignedKey = &v2pb.SignedKey{
 		Key: &v2pb.SignedKey_Key{
-			AppId:  "pgp",
-			Format: v2pb.SignedKey_Key_PGP_KEYRING,
-			Key:    primaryUserKeyRing,
+			AppId: "pgp",
+			Key:   primaryUserKeyRing,
 		},
 	}
 )

@@ -112,9 +112,8 @@ ff000000029b0cff00000009904b20db14afb281e30000b3370100b5012d
 a5d613`, "\n", "", -1))
 	primarySignedKey = &keyspb.SignedKey{
 		Key: &keyspb.SignedKey_Key{
-			AppId:  "pgp",
-			Key:    primaryUserKeyRing,
-			Format: keyspb.SignedKey_Key_PGP_KEYRING,
+			AppId: "pgp",
+			Key:   primaryUserKeyRing,
 			CreationTime: &proto3.Timestamp{
 				Seconds: time.Now().Unix(),
 			},
