@@ -381,7 +381,7 @@ func parseJSON(r *http.Request, keyword string) error {
 			// Each v is of the following format [si1 ei1 si2 ei2
 			// si3 ei3]. si1 and ei1 are start and end indices of the
 			// matched string. si2 and ei2 are start and end indices
-			// of thye first submatched string; the keyword. si3 and
+			// of the first submatched string; the keyword. si3 and
 			// ei3 are the start and end indices of the second
 			// submatched indices; the time string including the
 			// double quotations.

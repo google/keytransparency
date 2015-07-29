@@ -31,9 +31,12 @@ import (
 )
 
 const (
-	valid_ts   = "2015-05-18T23:58:36.000Z"
-	invalid_ts = "Mon May 18 23:58:36 UTC 2015"
-	ts_seconds = 1431993516
+	valid_ts            = "2015-05-18T23:58:36.000Z"
+	invalid_ts          = "Mon May 18 23:58:36 UTC 2015"
+	ts_seconds          = 1431993516
+	primary_test_email  = "e2eshare.test@gmail.com"
+	primary_test_app_id = "gmail"
+	primary_test_key_id = "mykey"
 )
 
 type fakeJSONParserReader struct {
@@ -89,30 +92,30 @@ func TestFoo(t *testing.T) {
 
 func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 	var tests = []struct {
+		path         string
 		userId       string
 		appId        string
 		tm           string
 		isOutTimeNil bool
 		parserNilErr bool
 	}{
-		{"e2eshare.test@gmail.com", "gmail", valid_ts, false, true},
-		{"e2eshare.test@gmail.com", "", valid_ts, false, true},
-		{"e2eshare.test@gmail.com", "gmail", "", true, true},
-		{"e2eshare.test@gmail.com", "", "", true, true},
-		{"e2eshare.test@gmail.com", "gmail", invalid_ts, false, false},
+		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id +
+			"&time=" + valid_ts,
+			primary_test_email, primary_test_app_id, valid_ts, false, true},
+		{"/v1/users/" + primary_test_email + "?time=" + valid_ts,
+			primary_test_email, "", valid_ts, false, true},
+		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id,
+			primary_test_email, primary_test_app_id, "", true, true},
+		{"/v1/users/" + primary_test_email,
+			primary_test_email, "", "", true, true},
+		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id +
+			"&time=" + invalid_ts,
+			primary_test_email, primary_test_app_id, invalid_ts, false, false},
 	}
 
 	for _, test := range tests {
-		path := "/v1/users/" + test.userId
-		if test.appId != "" && test.tm != "" {
-			path += "?app_id=" + test.appId + "&time=" + test.tm
-		} else if test.appId == "" && test.tm != "" {
-			path += "?time=" + test.tm
-		} else if test.appId != "" && test.tm == "" {
-			path += "?app_id=" + test.appId
-		}
 		rInfo := handlers.RouteInfo{
-			path,
+			test.path,
 			2,
 			-1,
 			"GET",
@@ -151,6 +154,9 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		if got, want := info.Arg.(*v2pb.GetUserRequest).AppId, test.appId; got != want {
 			t.Errorf("AppId = %v, want %v", got, want)
 		}
+		if got, want := info.Arg.(*v2pb.GetUserRequest).Time == nil, test.isOutTimeNil; got != want {
+			t.Errorf("Unexpected time = (%v), want nil = %v", info.Arg.(*v2pb.GetUserRequest).Time, want)
+		}
 		if test.isOutTimeNil == false {
 			tm, err := time.Parse(time.RFC3339, test.tm)
 			if err != nil {
@@ -158,10 +164,6 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 			}
 			if gots, gotn, wants, wantn := info.Arg.(*v2pb.GetUserRequest).GetTime().Seconds, info.Arg.(*v2pb.GetUserRequest).GetTime().Nanos, tm.Unix(), tm.Nanosecond(); gots != wants || gotn != int32(wantn) {
 				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
-			}
-		} else {
-			if info.Arg.(*v2pb.GetUserRequest).Time != nil {
-				t.Errorf("Time must be nil and it's not")
 			}
 		}
 
@@ -179,6 +181,7 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 
 func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 	var tests = []struct {
+		path         string
 		userId       string
 		userIdIndex  int
 		tm           string
@@ -186,31 +189,30 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 		jsonBody     string
 		parserNilErr bool
 	}{
-		{"e2eshare.test@gmail.com", 2,
+		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 2,
 			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			true},
-		{"e2eshare.test@gmail.com", 4,
+		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 4,
 			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			false},
-		{"e2eshare.test@gmail.com", -1,
+		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, -1,
 			valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			false},
-		{"e2eshare.test@gmail.com", 2,
+		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 2,
 			valid_ts, true,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
 			false},
-		{"e2eshare.test@gmail.com", 2,
+		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 2,
 			valid_ts, true,
 			"{}",
 			true},
 	}
 	for _, test := range tests {
-		path := "/v1/users/" + test.userId + "/keys"
 		rInfo := handlers.RouteInfo{
-			path,
+			test.path,
 			test.userIdIndex,
 			-1,
 			"POST",
@@ -268,6 +270,7 @@ func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
 
 func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 	var tests = []struct {
+		path         string
 		userId       string
 		userIdIndex  int
 		keyId        string
@@ -277,31 +280,30 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 		jsonBody     string
 		parserNilErr bool
 	}{
-		{"e2eshare.test@gmail.com", 2, "mykey", 4,
-			valid_ts, false,
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, 4, valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			true},
-		{"e2eshare.test@gmail.com", 2, "mykey", 5,
-			valid_ts, false,
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, 5, valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			false},
-		{"e2eshare.test@gmail.com", 2, "mykey", -1,
-			valid_ts, false,
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, -1, valid_ts, false,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
 			false},
-		{"e2eshare.test@gmail.com", 2, "mykey", 4,
-			valid_ts, true,
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, 4, valid_ts, true,
 			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
 			false},
-		{"e2eshare.test@gmail.com", 2, "mykey", 4,
-			valid_ts, true,
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, 4, valid_ts, true,
 			"{}",
 			true},
 	}
 	for _, test := range tests {
-		path := "/v1/users/" + test.userId + "/keys/" + test.keyId
 		rInfo := handlers.RouteInfo{
-			path,
+			test.path,
 			test.userIdIndex,
 			test.keyIdIndex,
 			"PUT",
@@ -362,22 +364,27 @@ func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
 
 func TestDeleteKey_InitiateHandlerInfo(t *testing.T) {
 	var tests = []struct {
+		path         string
 		userId       string
 		userIdIndex  int
 		keyId        string
 		keyIdIndex   int
 		parserNilErr bool
 	}{
-		{"e2eshare.test@gmail.com", 2, "mykey", 4, true},
-		{"e2eshare.test@gmail.com", 5, "mykey", 4, false},
-		{"e2eshare.test@gmail.com", -1, "mykey", 4, false},
-		{"e2eshare.test@gmail.com", 2, "mykey", 5, false},
-		{"e2eshare.test@gmail.com", 2, "mykey", -1, false},
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, 4, true},
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 5, primary_test_key_id, 4, false},
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, -1, primary_test_key_id, 4, false},
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, 5, false},
+		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
+			primary_test_email, 2, primary_test_key_id, -1, false},
 	}
 	for _, test := range tests {
-		path := "/v1/users/" + test.userId + "/keys/" + test.keyId
 		rInfo := handlers.RouteInfo{
-			path,
+			test.path,
 			test.userIdIndex,
 			test.keyIdIndex,
 			"DELETE",
@@ -441,7 +448,7 @@ func TestParseURLComponent(t *testing.T) {
 		out    string
 		nilErr bool
 	}{
-		{[]string{"v1", "users", "e2eshare.test@gmail.com"}, 2, "e2eshare.test@gmail.com", true},
+		{[]string{"v1", "users", primary_test_email}, 2, primary_test_email, true},
 		{[]string{"v1", "users", "e2eshare.test@cs.ox.ac.uk"}, -1, "", false},
 		{[]string{"v1", "users", "e2eshare.test@cs.ox.ac.uk"}, 3, "", false},
 	}
@@ -516,9 +523,9 @@ func TestParseJson(t *testing.T) {
 		// Timestamp is not surrounded by "" and there's other keys and
 		// values after.
 		{"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
-			", app_id: \"gmail\"}}}",
+			", app_id: \"" + primary_test_app_id + "\"}}}",
 			"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
-				", app_id: \"gmail\"}}}", true},
+				", app_id: \"" + primary_test_app_id + "\"}}}", true},
 	}
 
 	for _, test := range tests {
