@@ -23,7 +23,6 @@ server_url = "http://localhost:8080"
 primary_test_email = "e2eshare.test@gmail.com"
 
 app_id = "pgp"
-key_format = 2
 key = str.replace("""mFIEAAAAABMIKoZIzj0DAQcCAwRNDJYwov/h0/XUVEALnyLf4PfMP3bGpJO
 DLtkkIXSAZaC7rKurE6F/h3r8Uq9TMiZO4lvYBLUYRyMQDfYidAaKtBk8ZTJlc2hhcmUudGVzdEBnbWF
 pbC5jb20+iI0EExMIAD//AAAABQJVjCNs/wAAAAIbA/8AAAACiwn/AAAABZUICQoL/wAAAAOWAQL/AAA
@@ -38,7 +37,6 @@ create_key_request = {
     "signed_key": {
         "key": {
             "app_id": app_id,
-            "format": key_format,
             "key": key
         }
     }
@@ -48,7 +46,6 @@ update_key_request = {
     "signed_key": {
         "key": {
             "app_id": app_id,
-            "format": key_format,
             "key": key,
             "creation_time": datetime.datetime.utcnow().isoformat("T") + "Z"
         }
@@ -102,10 +99,6 @@ def GetUser(empty):
     assert "app_id" in dict_response["key_list"]["signed_keys"][0]["key"]
     assert dict_response["key_list"]["signed_keys"][0]["key"][
         "app_id"] == app_id
-    # Format as expected.
-    assert "format" in dict_response["key_list"]["signed_keys"][0]["key"]
-    assert dict_response["key_list"]["signed_keys"][0]["key"][
-        "format"] == key_format
     # Actual key as expected.
     assert "key" in dict_response["key_list"]["signed_keys"][0]["key"]
     assert dict_response["key_list"]["signed_keys"][0]["key"]["key"] == key
@@ -140,9 +133,6 @@ def CreateKey():
   # App ID as expected.
   assert "app_id" in dict_response["key"]
   assert dict_response["key"]["app_id"] == app_id
-  # Format as expected.
-  assert "format" in dict_response["key"]
-  assert dict_response["key"]["format"] == key_format
   # Actual key as expected.
   assert "key" in dict_response["key"]
   assert dict_response["key"]["key"] == key
@@ -175,9 +165,6 @@ def UpdateKey():
   # App ID as expected.
   assert "app_id" in dict_response["key"]
   assert dict_response["key"]["app_id"] == app_id
-  # Format as expected.
-  assert "format" in dict_response["key"]
-  assert dict_response["key"]["format"] == key_format
   # Actual key as expected.
   assert "key" in dict_response["key"]
   assert dict_response["key"]["key"] == key

@@ -42,7 +42,7 @@ INCLUDES+= -I=$(GOPATH)/src/github.com/google/protobuf/src/ # proto descriptor
 main: proto
 	go build -o svr server.go
 
-test:
+test: main
 	go test ./rest ./keyserver ./proxy ./merkle
 	python tests/v1_api_test.py
 
