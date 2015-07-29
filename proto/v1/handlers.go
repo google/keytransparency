@@ -16,31 +16,42 @@ package google_security_e2ekeys_v1
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
+	"github.com/google/e2e-key-server/rest/handlers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 )
 
+// Handler handles v1 API requests, call the appropriate API handler, and
+// return an error if the request cannot be parsed/decoded correctly or
+// the API call returns an error.
 // TODO: I wish this could be code generated.
-func GetUser_Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	// Json -> Proto.
-	// TODO: insert url params.
-	in := new(v2pb.GetUserRequest)
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&in)
-	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "decoding error:", err)
-	}
-
-	resp, err := srv.(E2EKeyProxyServer).GetUser(ctx, in)
+func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
+	// Parsing URL params and JSON. Parsing should always be called before
+	// attemping decoding JSON body because parsing will convert timestamp
+	// to the appropriate format.
+	err := info.Parser(r, &info.Arg)
 	if err != nil {
 		return err
 	}
-	// proto -> json
+
+	// Json -> Proto.
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&info.Arg)
+	if err != nil && err != io.EOF {
+		return grpc.Errorf(codes.InvalidArgument, "decoding error:", err)
+	}
+
+	// Calling the actual API handler.
+	resp, err := info.H(srv, ctx, info.Arg)
+	if err != nil {
+		return err
+	}
+	// Proto -> json.
 	encoder := json.NewEncoder(w)
 	encoder.Encode(resp)
 	return nil

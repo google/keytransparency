@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	testPrimaryUserEmail = "test@gmail.com"
+	testPrimaryUserEmail = "e2eshare.test@gmail.com"
 )
 
 //TODO: Implement OAuth authenticator

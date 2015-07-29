@@ -23,6 +23,7 @@ import (
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
+	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 
@@ -31,11 +32,52 @@ import (
 
 var port = flag.Int("port", 8080, "TCP port to listen on")
 
+// v1Routes contains all routes information.
+// TODO(cesarghali): find a better way to populate this map.
+var v1Routes = []handlers.RouteInfo{
+	// GetUser API
+	handlers.RouteInfo{
+		"/v1/users/{userid}",
+		2,
+		-1, // No keyId in the path.
+		"GET",
+		rest.GetUser_InitializeHandlerInfo,
+		rest.GetUser_RequestHandler,
+	},
+	// CreateKey API
+	handlers.RouteInfo{
+		"/v1/users/{userid}/keys",
+		2,
+		-1, // No keyId in the path.
+		"POST",
+		rest.CreateKey_InitializeHandlerInfo,
+		rest.CreateKey_RequestHandler,
+	},
+	// UpdateKey API
+	handlers.RouteInfo{
+		"/v1/users/{userid}/keys/{keyid}",
+		2,
+		4,
+		"PUT",
+		rest.UpdateKey_InitializeHandlerInfo,
+		rest.UpdateKey_RequestHandler,
+	},
+	// DeleteKey API
+	handlers.RouteInfo{
+		"/v1/users/{userid}/keys/{keyid}",
+		2,
+		4,
+		"DELETE",
+		rest.DeleteKey_InitializeHandlerInfo,
+		rest.DeleteKey_RequestHandler,
+	},
+}
+
 func main() {
 	flag.Parse()
 
 	portString := fmt.Sprintf(":%d", *port)
-	// TODO: fetch private TLS key from repository
+	// TODO: fetch private TLS key from repository.
 	lis, err := net.Listen("tcp", portString)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -44,8 +86,11 @@ func main() {
 	v1 := proxy.New(v2)
 	s := rest.New(v1)
 
-	// Manually add routing paths.  TODO: Auto derive from proto.
-	s.AddHandler("/v1/user/{userid}", "GET", v1pb.GetUser_Handler)
+	// Manually add routing paths.
+	// TODO: Auto derive from proto.
+	for _, v := range v1Routes {
+		s.AddHandler(v, v1pb.Handler)
+	}
 	// TODO: add hkp server api here.
 
 	s.Serve(lis)

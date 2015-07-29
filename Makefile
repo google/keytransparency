@@ -44,6 +44,7 @@ main: proto
 
 test:
 	go test ./rest ./keyserver ./proxy ./merkle
+	python tests/v1_api_test.py
 
 proto: gapis $(DEPS)
 
