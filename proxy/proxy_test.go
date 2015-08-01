@@ -16,7 +16,6 @@ package proxy
 
 import (
 	"encoding/hex"
-	"math"
 	"net"
 	"strings"
 	"testing"
@@ -26,12 +25,10 @@ import (
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
-	proto3 "google/protobuf"
 )
 
 const (
@@ -57,10 +54,14 @@ ff000000029b0cff00000009904b20db14afb281e30000b3370100b5012d
 97d8cace51987a783862c916002c839db6b9a3fac6c1ca058d17f5062c01
 00f167d12ad2e96494a54d3e07ef24f8f5c3a4528c647658a3f13aaad56b
 a5d613`, "\n", "", -1))
-	primarySignedKey = &v2pb.SignedKey{
-		Key: &v2pb.SignedKey_Key{
-			AppId: "pgp",
-			Key:   primaryUserKeyRing,
+	primaryKey = &v2pb.Key{
+		AppId: "pgp",
+		Key:   primaryUserKeyRing,
+	}
+	primaryUserProfile = &v2pb.Profile{
+		// TODO(cesarghali): fill nonce.
+		KeyList: []*v2pb.Key{
+			primaryKey,
 		},
 	}
 )
@@ -70,8 +71,11 @@ type Env struct {
 	v2svr     *keyserver.Server
 	rpcServer *grpc.Server
 	cc        *grpc.ClientConn
-	Client    v1pb.E2EKeyProxyClient
-	ctx       context.Context
+	ClientV1  v1pb.E2EKeyProxyClient
+	// V2 client is needed in order to create user before using v1 client
+	// to try to get it.
+	ClientV2 v2pb.E2EKeyServiceClient
+	ctx      context.Context
 }
 
 // NewEnv sets up common resources for tests.
@@ -97,11 +101,12 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}
 
-	client := v1pb.NewE2EKeyProxyClient(cc)
+	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
+	clientv2 := v2pb.NewE2EKeyServiceClient(cc)
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	return &Env{v1svr, v2svr, s, cc, client, ctx}
+	return &Env{v1svr, v2svr, s, cc, clientv1, clientv2, ctx}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -110,21 +115,24 @@ func (env *Env) Close() {
 	env.rpcServer.Stop()
 }
 
+// createPrimaryUser creates a user using the v2 client. This function is copied
+// from /keyserver/key_server_test.go.
 func (env *Env) createPrimaryUser(t *testing.T) {
-	// insert valid user
-	res, err := env.Client.CreateKey(env.ctx, &v2pb.CreateKeyRequest{
-		UserId:    primaryUserEmail,
-		SignedKey: primarySignedKey,
+	// Insert valid user. Calling update if the user does not exist will
+	// insert the user's profile.
+	p, err := proto.Marshal(primaryUserProfile)
+	if err != nil {
+		t.Fatalf("Unexpected profile marshalling error %v.", err)
+	}
+	_, err = env.ClientV2.UpdateUser(env.ctx, &v2pb.UpdateUserRequest{
+		UserId: primaryUserEmail,
+		Update: &v2pb.EntryUpdateRequest{
+			Profile: p,
+		},
 	})
 	if err != nil {
-		t.Errorf("CreateKey got unexpected error %v.", err)
+		t.Errorf("CreateUser got unexpected error %v.", err)
 		return
-	}
-	// Verify that the server set the timestamp properly.
-	nowSecs := time.Now().Unix()
-	if got, want := math.Abs(float64(res.GetKey().GetCreationTime().Seconds)-float64(nowSecs)), 2.0; got > want {
-
-		t.Errorf("GetCreationTime().Seconds = %v, want: %v", got, want)
 	}
 }
 
@@ -132,60 +140,21 @@ func TestGetValidUser(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	expectedPrimarySignedKey := primarySignedKey
-	expectedPrimarySignedKey.Key.CreationTime = &proto3.Timestamp{Seconds: time.Now().Unix()}
+	expectedPrimaryKey := primaryKey
+
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
+	res, err := env.ClientV1.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
 
 	if err != nil {
 		t.Errorf("GetUser failed: %v", err)
 	}
-	if got, want := len(res.GetKeyList().GetSignedKeys()), 1; got != want {
-		t.Errorf("len(GetSignedKeys()) = %v, want; %v", got, want)
+	if got, want := len(res.GetKeyList()), 1; got != want {
+		t.Errorf("len(GetKeyList()) = %v, want; %v", got, want)
 		return
 	}
-	if got, want := res.GetKeyList().GetSignedKeys()[0].GetKey(), expectedPrimarySignedKey.Key; !proto.Equal(got, want) {
+	if got, want := res.GetKeyList()[0], expectedPrimaryKey; !proto.Equal(got, want) {
 		t.Errorf("GetUser(%v) = %v, want: %v", primaryUserEmail, got, want)
-	}
-}
-
-func TestCreateKey(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close()
-
-	env.createPrimaryUser(t)
-}
-
-// You should not be able to create the same key twice.
-func TestCreateDuplicateKey(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close()
-
-	env.createPrimaryUser(t)
-	_, err := env.Client.CreateKey(env.ctx, &v2pb.CreateKeyRequest{
-		UserId:    primaryUserEmail,
-		SignedKey: primarySignedKey,
-	})
-	if got, want := grpc.Code(err), codes.AlreadyExists; got != want {
-		t.Errorf("CreateKey() = %v, want %v", got, want)
-	}
-}
-
-func TestDeleteKey(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close()
-
-	env.createPrimaryUser(t)
-	if _, err := env.Client.DeleteKey(env.ctx, &v2pb.DeleteKeyRequest{
-		UserId: primaryUserEmail,
-	}); err != nil {
-		t.Errorf("DeleteKey() failed: %v", err)
-		return
-	}
-	_, err := env.Client.GetUser(env.ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
-	if got, want := grpc.Code(err), codes.NotFound; got != want {
-		t.Errorf("Query for deleted user user = %v, want: %v", got, want)
 	}
 }

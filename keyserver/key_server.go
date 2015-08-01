@@ -17,13 +17,13 @@ package keyserver
 
 import (
 	"log"
-	"time"
 
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	internalpb "github.com/google/e2e-key-server/proto/internal"
 	keyspb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 	proto3 "google/protobuf"
@@ -51,29 +51,27 @@ func Create(storage storage.BasicStorage) *Server {
 	return &Server{storage, auth.New()}
 }
 
-// GetUser returns a user's keys and proof that there is only one object for this
-// user and that it is the same one being provided to everyone else.
+// GetUser returns a user's profile and proof that there is only one object for
+// this user and that it is the same one being provided to everyone else.
 // GetUser also supports querying past values by setting the epoch field.
-func (s *Server) GetUser(ctx context.Context, in *keyspb.GetUserRequest) (*keyspb.UserProof, error) {
+func (s *Server) GetUser(ctx context.Context, in *keyspb.GetUserRequest) (*keyspb.EntryProfileAndProof, error) {
 	_, vuf, err := s.Vuf(in.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	signedKey, err := s.s.ReadKey(ctx, vuf)
+	e, err := s.s.ReadEntryStorage(ctx, vuf)
 	if err != nil {
 		return nil, err
 	}
-	p := &keyspb.UserProof{
-		User: &keyspb.User{
-			KeyList: &keyspb.User_KeyList{
-				SignedKeys: []*keyspb.SignedKey{
-					signedKey,
-				},
-			},
-		},
+
+	// This key server doesn't employ a merkle tree yet. This is why most of
+	// fields in EntryProfileAndProof do not exist.
+	// TODO(cesarghali): integrate merkle tree.
+	result := &keyspb.EntryProfileAndProof{
+		Profile: e.Profile,
 	}
-	return p, nil
+	return result, nil
 }
 
 // ListUserHistory returns a list of UserProofs covering a period of time.
@@ -81,11 +79,10 @@ func (s *Server) ListUserHistory(ctx context.Context, in *keyspb.ListUserHistory
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
-// CreateKey promises to create a new key for a user on the next epoch.  Multiple new
-// keys can be created each epoch. Clients must verify that each promise is
-// in-fact in the tree on the next epoch.
-func (s *Server) CreateKey(ctx context.Context, in *keyspb.CreateKeyRequest) (*keyspb.KeyPromise, error) {
-	if err := s.validateCreateKeyRequest(ctx, in); err != nil {
+// UpdateUser updates a user's profile. If the user does not exist, a new
+// profile will be created.
+func (s *Server) UpdateUser(ctx context.Context, in *keyspb.UpdateUserRequest) (*proto3.Empty, error) {
+	if err := s.validateUpdateUserRequest(ctx, in); err != nil {
 		return nil, err
 	}
 
@@ -94,57 +91,36 @@ func (s *Server) CreateKey(ctx context.Context, in *keyspb.CreateKeyRequest) (*k
 		return nil, err
 	}
 
-	if err = s.s.InsertKey(ctx, in.GetSignedKey(), vuf); err != nil {
-		return nil, err
+	e := &internalpb.EntryStorage{
+		EntryUpdate: in.GetUpdate().GetSignedUpdate(),
+		Profile:     in.GetUpdate().Profile,
 	}
 
-	out := &keyspb.KeyPromise{
-		SignedKeyTimestamp: &keyspb.SignedKeyTimestamp{
-			SignedKey: in.GetSignedKey(),
-			CreationTime: &proto3.Timestamp{
-				Seconds: time.Now().Unix(),
-			},
-			Vuf: vuf,
-		},
+	// If entry does not exist, insert it, otherwise update.
+	if exist := s.s.EntryStorageExists(ctx, vuf); exist == false {
+		if err = s.s.InsertEntryStorage(ctx, e, vuf); err != nil {
+			return nil, err
+		}
+	} else {
+		if err = s.s.UpdateEntryStorage(ctx, e, vuf); err != nil {
+			return nil, err
+		}
 	}
-	return out, nil
+
+	return &proto3.Empty{}, nil
 }
 
-// UpdateKey updates a device key.
-func (s *Server) UpdateKey(ctx context.Context, in *keyspb.UpdateKeyRequest) (*keyspb.KeyPromise, error) {
-	if err := s.validateUpdateKeyRequest(ctx, in); err != nil {
-		return nil, err
-	}
-
-	_, vuf, err := s.Vuf(in.UserId)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = s.s.UpdateKey(ctx, in.GetSignedKey(), vuf); err != nil {
-		return nil, err
-	}
-
-	out := &keyspb.KeyPromise{
-		SignedKeyTimestamp: &keyspb.SignedKeyTimestamp{
-			SignedKey: in.GetSignedKey(),
-			CreationTime: &proto3.Timestamp{
-				Seconds: time.Now().Unix(),
-			},
-			Vuf: vuf,
-		},
-	}
-	return out, nil
+// List the Signed Epoch Heads, from epoch to epoch.
+func (s *Server) ListSEH(ctx context.Context, in *keyspb.ListSEHRequest) (*keyspb.ListSEHResponse, error) {
+	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
-// DeleteKey deletes a key. Returns NOT_FOUND if the key does not exist.
-func (s *Server) DeleteKey(ctx context.Context, in *keyspb.DeleteKeyRequest) (*proto3.Empty, error) {
-	if err := s.validateEmail(ctx, in.UserId); err != nil {
-		return nil, err
-	}
-	_, vuf, err := s.Vuf(in.UserId)
-	if err != nil {
-		return nil, err
-	}
-	return &proto3.Empty{}, s.s.DeleteKey(ctx, vuf)
+// List the EntryUpdates by update number.
+func (s *Server) ListUpdate(ctx context.Context, in *keyspb.ListUpdateRequest) (*keyspb.ListUpdateResponse, error) {
+	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
+}
+
+// ListSteps combines SEH and EntryUpdates into single list.
+func (s *Server) ListSteps(ctx context.Context, in *keyspb.ListStepsRequest) (*keyspb.ListStepsResponse, error) {
+	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }

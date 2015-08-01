@@ -18,7 +18,6 @@ package keyserver
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -26,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	proto "github.com/golang/protobuf/proto"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
@@ -35,7 +35,7 @@ const PGPAppID = "pgp"
 
 var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
 
-// validateEmail compares the given email against the one provided by GAIA
+// validateEmail compares the given email against the one provided by GAIA.
 func (s *Server) validateEmail(ctx context.Context, email string) error {
 	if err := s.a.CheckScopes(ctx, requiredScopes...); err != nil {
 		return err
@@ -51,76 +51,47 @@ func (s *Server) validateEmail(ctx context.Context, email string) error {
 	return nil
 }
 
-// validateKey verifies
+// validateKey verifies:
 // - Key is valid for its format.
 // - AppId is present.
-// - Creation time is present and current.
-func (s *Server) validateKey(userID string, key *v2pb.SignedKey_Key) (*Fingerprint, error) {
+func (s *Server) validateKey(userID string, key *v2pb.Key) error {
 	if key == nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Missing Key")
+		return grpc.Errorf(codes.InvalidArgument, "Missing Key")
 	}
-	var fingerprint *Fingerprint
 	if key.AppId == PGPAppID {
 		var err error
 		pgpUserID := fmt.Sprintf("<%v>", userID)
-		fingerprint, err = validatePGP(pgpUserID, bytes.NewBuffer(key.Key))
+		_, err = validatePGP(pgpUserID, bytes.NewBuffer(key.Key))
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if key.AppId == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Missing AppId")
+		return grpc.Errorf(codes.InvalidArgument, "Missing AppId")
 	}
-	// Validate CreationTime
-	ct := key.GetCreationTime()
-	if ct == nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Missing CreationTime")
-	}
-	ct.Nanos = 0 // Quash nano seconds.
-	if drift := time.Since(time.Unix(ct.Seconds, 0)); drift > MaxClockDrift {
-		return nil, grpc.Errorf(codes.InvalidArgument, "CreationTime %v off", drift)
-	}
-	return fingerprint, nil
-}
-
-// validateSignedKey verifies
-// - SignedKey is not nil.
-// - Key is present and valid.
-// - Signatures are valid.
-// fills KeyId with the correct value.
-func (s *Server) validateSignedKey(userID string, signedKey *v2pb.SignedKey) error {
-	if signedKey == nil {
-		return grpc.Errorf(codes.InvalidArgument, "Missing SignedKey")
-	}
-	// First validate interior fields and set KeyId.
-	fingerprint, err := s.validateKey(userID, signedKey.GetKey())
-	if err != nil {
-		return err
-	}
-	signedKey.KeyId = hex.EncodeToString(fingerprint[:])
 	return nil
 }
 
-func (s *Server) validateCreateKeyRequest(ctx context.Context, in *v2pb.CreateKeyRequest) error {
+func (s *Server) validateUpdateUserRequest(ctx context.Context, in *v2pb.UpdateUserRequest) error {
 	// Validate proper authentication.
 	if err := s.validateEmail(ctx, in.UserId); err != nil {
 		return err
 	}
 
-	if err := s.validateSignedKey(in.UserId, in.GetSignedKey()); err != nil {
-		return err
-	}
-	return nil
-}
+	// TODO(cesarghali): validate SignedEntryUpdate.
 
-func (s *Server) validateUpdateKeyRequest(ctx context.Context, in *v2pb.UpdateKeyRequest) error {
-	// Validate proper authentication.
-	if err := s.validateEmail(ctx, in.UserId); err != nil {
-		return err
+	// Unmarshal user's profile.
+	p := new(v2pb.Profile)
+	if err := proto.Unmarshal(in.GetUpdate().Profile, p); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
 
-	if err := s.validateSignedKey(in.UserId, in.GetSignedKey()); err != nil {
-		return err
+	// Validate the keys in the profile.
+	for _, v := range p.GetKeyList() {
+		if err := s.validateKey(in.UserId, v); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }

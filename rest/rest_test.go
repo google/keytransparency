@@ -22,7 +22,6 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/google/e2e-key-server/rest/handlers"
 
@@ -34,6 +33,7 @@ const (
 	valid_ts            = "2015-05-18T23:58:36.000Z"
 	invalid_ts          = "Mon May 18 23:58:36 UTC 2015"
 	ts_seconds          = 1431993516
+	primary_test_epoch  = "2367"
 	primary_test_email  = "e2eshare.test@gmail.com"
 	primary_test_app_id = "gmail"
 	primary_test_key_id = "mykey"
@@ -91,26 +91,27 @@ func TestFoo(t *testing.T) {
 }
 
 func TestGetUser_InitiateHandlerInfo(t *testing.T) {
+	i, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
 	var tests = []struct {
 		path         string
 		userId       string
 		appId        string
-		tm           string
-		isOutTimeNil bool
+		epoch        uint64
 		parserNilErr bool
 	}{
 		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id +
-			"&time=" + valid_ts,
-			primary_test_email, primary_test_app_id, valid_ts, false, true},
-		{"/v1/users/" + primary_test_email + "?time=" + valid_ts,
-			primary_test_email, "", valid_ts, false, true},
+			"&epoch=" + primary_test_epoch,
+			primary_test_email, primary_test_app_id, i, true},
+		{"/v1/users/" + primary_test_email + "?epoch=" + primary_test_epoch,
+			primary_test_email, "", i, true},
 		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id,
-			primary_test_email, primary_test_app_id, "", true, true},
-		{"/v1/users/" + primary_test_email,
-			primary_test_email, "", "", true, true},
-		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id +
-			"&time=" + invalid_ts,
-			primary_test_email, primary_test_app_id, invalid_ts, false, false},
+			primary_test_email, primary_test_app_id, 0, true},
+		{"/v1/users/" + primary_test_email, primary_test_email, "", 0, true},
+		// Invalid epoch format.
+		{"/v1/users/" + primary_test_email + "?epoch=-2587", primary_test_email,
+			"", 0, false},
+		{"/v1/users/" + primary_test_email + "?epoch=greatepoch", primary_test_email,
+			"", 0, false},
 	}
 
 	for _, test := range tests {
@@ -134,7 +135,7 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -154,274 +155,8 @@ func TestGetUser_InitiateHandlerInfo(t *testing.T) {
 		if got, want := info.Arg.(*v2pb.GetUserRequest).AppId, test.appId; got != want {
 			t.Errorf("AppId = %v, want %v", got, want)
 		}
-		if got, want := info.Arg.(*v2pb.GetUserRequest).Time == nil, test.isOutTimeNil; got != want {
-			t.Errorf("Unexpected time = (%v), want nil = %v", info.Arg.(*v2pb.GetUserRequest).Time, want)
-		}
-		if test.isOutTimeNil == false {
-			tm, err := time.Parse(time.RFC3339, test.tm)
-			if err != nil {
-				t.Errorf("Error while parsing time, this should not happen.")
-			}
-			if gots, gotn, wants, wantn := info.Arg.(*v2pb.GetUserRequest).GetTime().Seconds, info.Arg.(*v2pb.GetUserRequest).GetTime().Nanos, tm.Unix(), tm.Nanosecond(); gots != wants || gotn != int32(wantn) {
-				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
-			}
-		}
-
-		v1 := &FakeServer{}
-		srv := New(v1)
-		resp, err := info.H(srv, nil, nil)
-		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
-		}
-		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
-		}
-	}
-}
-
-func TestCreateKey_InitiateHandlerInfo(t *testing.T) {
-	var tests = []struct {
-		path         string
-		userId       string
-		userIdIndex  int
-		tm           string
-		isTimeNil    bool
-		jsonBody     string
-		parserNilErr bool
-	}{
-		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 2,
-			valid_ts, false,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			true},
-		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 4,
-			valid_ts, false,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false},
-		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, -1,
-			valid_ts, false,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false},
-		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 2,
-			valid_ts, true,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
-			false},
-		{"/v1/users/" + primary_test_email + "/keys", primary_test_email, 2,
-			valid_ts, true,
-			"{}",
-			true},
-	}
-	for _, test := range tests {
-		rInfo := handlers.RouteInfo{
-			test.path,
-			test.userIdIndex,
-			-1,
-			"POST",
-			Fake_Initializer,
-			Fake_RequestHandler,
-		}
-
-		info := CreateKey_InitializeHandlerInfo(rInfo)
-
-		if _, ok := info.Arg.(*v2pb.CreateKeyRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.CreateKeyRequest")
-		}
-
-		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(test.jsonBody)})
-		err := info.Parser(r, &info.Arg)
-		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
-		}
-		// If there's an error parsing, the test cannot be completed.
-		// The parsing error might be expected though.
-		if err != nil {
-			continue
-		}
-
-		// Call JSONDecoder to simulate decoding JSON -> Proto.
-		err = JSONDecoder(r, &info.Arg)
-		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
-		}
-
-		if got, want := info.Arg.(*v2pb.CreateKeyRequest).UserId, test.userId; got != want {
-			t.Errorf("UserId = %v, want %v", got, want)
-		}
-		if test.isTimeNil == false {
-			tm, err := time.Parse(time.RFC3339, test.tm)
-			if err != nil {
-				t.Errorf("Error while parsing time, this should not happen.")
-			}
-			if gots, gotn, wants, wantn := info.Arg.(*v2pb.CreateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Seconds, info.Arg.(*v2pb.CreateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Nanos, tm.Unix(), tm.Nanosecond(); gots != wants || gotn != int32(wantn) {
-				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
-			}
-		}
-
-		v1 := &FakeServer{}
-		srv := New(v1)
-		resp, err := info.H(srv, nil, nil)
-		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
-		}
-		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
-		}
-	}
-}
-
-func TestUpdateKey_InitiateHandlerInfo(t *testing.T) {
-	var tests = []struct {
-		path         string
-		userId       string
-		userIdIndex  int
-		keyId        string
-		keyIdIndex   int
-		tm           string
-		isTimeNil    bool
-		jsonBody     string
-		parserNilErr bool
-	}{
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, 4, valid_ts, false,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			true},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, 5, valid_ts, false,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, -1, valid_ts, false,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
-			false},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, 4, valid_ts, true,
-			"{\"signed_key\":{\"key\": {\"creation_time\": \"\"}}}",
-			false},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, 4, valid_ts, true,
-			"{}",
-			true},
-	}
-	for _, test := range tests {
-		rInfo := handlers.RouteInfo{
-			test.path,
-			test.userIdIndex,
-			test.keyIdIndex,
-			"PUT",
-			Fake_Initializer,
-			Fake_RequestHandler,
-		}
-
-		info := UpdateKey_InitializeHandlerInfo(rInfo)
-
-		if _, ok := info.Arg.(*v2pb.UpdateKeyRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.UpdateKeyRequest")
-		}
-
-		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(test.jsonBody)})
-		err := info.Parser(r, &info.Arg)
-		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
-		}
-		// If there's an error parsing, the test cannot be completed.
-		// The parsing error might be expected though.
-		if err != nil {
-			continue
-		}
-
-		// Call JSONDecoder to simulate decoding JSON -> Proto.
-		err = JSONDecoder(r, &info.Arg)
-		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
-		}
-
-		if got, want := info.Arg.(*v2pb.UpdateKeyRequest).UserId, test.userId; got != want {
-			t.Errorf("UserId = %v, want %v", got, want)
-		}
-		if got, want := info.Arg.(*v2pb.UpdateKeyRequest).KeyId, test.keyId; got != want {
-			t.Errorf("KeyId = %v, want %v", got, want)
-		}
-		if test.isTimeNil == false {
-			tm, err := time.Parse(time.RFC3339, test.tm)
-			if err != nil {
-				t.Errorf("Error while parsing time, this should not happen.")
-			}
-			if gots, gotn, wants, wantn := info.Arg.(*v2pb.UpdateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Seconds, info.Arg.(*v2pb.UpdateKeyRequest).GetSignedKey().GetKey().GetCreationTime().Nanos, tm.Unix(), tm.Nanosecond(); gots != wants || gotn != int32(wantn) {
-				t.Errorf("Time = %v [sec] %v [nsec], want %v [sec] %v [nsec]", gots, gotn, wants, wantn)
-			}
-		}
-
-		v1 := &FakeServer{}
-		srv := New(v1)
-		resp, err := info.H(srv, nil, nil)
-		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
-		}
-		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
-		}
-	}
-}
-
-func TestDeleteKey_InitiateHandlerInfo(t *testing.T) {
-	var tests = []struct {
-		path         string
-		userId       string
-		userIdIndex  int
-		keyId        string
-		keyIdIndex   int
-		parserNilErr bool
-	}{
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, 4, true},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 5, primary_test_key_id, 4, false},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, -1, primary_test_key_id, 4, false},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, 5, false},
-		{"/v1/users/" + primary_test_email + "/keys/" + primary_test_key_id,
-			primary_test_email, 2, primary_test_key_id, -1, false},
-	}
-	for _, test := range tests {
-		rInfo := handlers.RouteInfo{
-			test.path,
-			test.userIdIndex,
-			test.keyIdIndex,
-			"DELETE",
-			Fake_Initializer,
-			Fake_RequestHandler,
-		}
-		// Body is empty when invoking delete key API.
-		jsonBody := "{}"
-
-		info := DeleteKey_InitializeHandlerInfo(rInfo)
-
-		if _, ok := info.Arg.(*v2pb.DeleteKeyRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.DeleteKeyRequest")
-		}
-
-		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
-		err := info.Parser(r, &info.Arg)
-		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.parserNilErr)
-		}
-		// If there's an error parsing, the test cannot be completed.
-		// The parsing error might be expected though.
-		if err != nil {
-			continue
-		}
-
-		// Call JSONDecoder to simulate decoding JSON -> Proto.
-		err = JSONDecoder(r, &info.Arg)
-		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
-		}
-
-		if got, want := info.Arg.(*v2pb.DeleteKeyRequest).UserId, test.userId; got != want {
-			t.Errorf("UserId = %v, want %v", got, want)
-		}
-		if got, want := info.Arg.(*v2pb.DeleteKeyRequest).KeyId, test.keyId; got != want {
-			t.Errorf("KeyId = %v, want %v", got, want)
+		if got, want := info.Arg.(*v2pb.GetUserRequest).Epoch, test.epoch; got != want {
+			t.Errorf("Epoch = %v, want %v", got, want)
 		}
 
 		v1 := &FakeServer{}
@@ -532,7 +267,7 @@ func TestParseJson(t *testing.T) {
 		r, _ := http.NewRequest("", "", fakeJSONParserReader{bytes.NewBufferString(test.inJSON)})
 		err := parseJSON(r, "creation_time")
 		if test.outNilErr != (err == nil) {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.outNilErr)
+			t.Errorf("Unexpected JSON parser err = (%v), want nil = %v", err, test.outNilErr)
 		}
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)

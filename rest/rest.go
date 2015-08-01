@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -136,13 +137,13 @@ func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerIn
 		in.UserId = userId
 
 		m, _ := url.ParseQuery(r.URL.RawQuery)
-		// Parse time, use current time when the field is absent.
-		if val, ok := m["time"]; ok {
-			t, err := parseTime(val[0])
-			if err != nil {
-				return err
+		// Parse Epoch. Epoch must be of type uint64.
+		if val, ok := m["epoch"]; ok {
+			if epoch, err := strconv.ParseInt(val[0], 10, 64); err != nil || epoch < 0 {
+				return grpc.Errorf(codes.InvalidArgument, "Epoch must be uint64")
+			} else {
+				in.Epoch = uint64(epoch)
 			}
-			in.Time = t
 		}
 
 		// Parse App ID.
@@ -161,141 +162,6 @@ func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerIn
 func GetUser_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
 	resp, err := srv.(v1pb.E2EKeyProxyServer).GetUser(ctx, arg.(*v2pb.GetUserRequest))
-	return &resp, err
-}
-
-// CreateKey_InitializehandlerInfo initializes and return HandlerInfo preparing
-// to call proxy.CreateKey API.
-func CreateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
-	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the proxy CreateKey.
-	info.H = rInfo.Handler
-	// Create a new CreateKeyRequest to be passed to the API handler.
-	info.Arg = new(v2pb.CreateKeyRequest)
-	// Create a new function that parses URL parameters.
-	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// Get URL components.
-		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-
-		in := (*arg).(*v2pb.CreateKeyRequest)
-		// Parse User ID; components[2] is userId = email.
-		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
-		if err != nil {
-			return err
-		}
-		in.UserId = userId
-
-		// Parse CreateKeyRequest.SignedKey.Key.CreationTime manually.
-		// In JSON it's a string in RFC3339 format, but in proto it
-		// should be google_protobuf3.Timestamp. This should be done
-		// before attempting JSON decoding.
-		if err := parseJSON(r, "creation_time"); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	return info
-}
-
-// CreateKey_RequestHandler calls proxy.CreateKey and returns its results. An
-// error will be returned if proxy.CreateKey returns an error.
-func CreateKey_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
-	var resp interface{}
-	resp, err := srv.(v1pb.E2EKeyProxyServer).CreateKey(ctx, arg.(*v2pb.CreateKeyRequest))
-	return &resp, err
-}
-
-// UpdateKey_InitializeHandlerInfo initializes and returns HandlerInfo
-// preparing to call proxy.UpdateKey API.
-func UpdateKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
-	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the proxy UpdateKey.
-	info.H = rInfo.Handler
-	// Create a new UpdateKeyRequest to be passed to the API handler.
-	info.Arg = new(v2pb.UpdateKeyRequest)
-	// Create a new function that parses URL parameters.
-	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// Get URL components.
-		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-
-		in := (*arg).(*v2pb.UpdateKeyRequest)
-		// Parse User ID; components[2] is userId = email.
-		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
-		if err != nil {
-			return err
-		}
-		in.UserId = userId
-
-		// Parse Key ID; components[4] is keyId.
-		keyId, err := parseURLComponent(components, rInfo.KeyIdIndex)
-		if err != nil {
-			return err
-		}
-		in.KeyId = keyId
-
-		// Parse UpdateKeyRequest.SignedKey.Key.CreationTime manually.
-		// In JSON it's a string in RFC3339 format, but in proto it
-		// should be google_protobuf3.Timestamp. This should be done
-		// before attempting JSON decoding.
-		if err := parseJSON(r, "creation_time"); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	return info
-}
-
-// UpdateKey_RequestHandler calls proxy.UpdateKey and returns its results. An
-// error will be returned if proxy.UpdateKey returns an error.
-func UpdateKey_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
-	var resp interface{}
-	resp, err := srv.(v1pb.E2EKeyProxyServer).UpdateKey(ctx, arg.(*v2pb.UpdateKeyRequest))
-	return &resp, err
-}
-
-// DeleteKey_InitializeHandlerInfo initializes and returns HandlerInfo
-// preparing to call proxy.DeleteKey API.
-func DeleteKey_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
-	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the proxy DeleteKey.
-	info.H = rInfo.Handler
-	// Create a new DeleteKeyRequest to be passed to the API handler.
-	info.Arg = new(v2pb.DeleteKeyRequest)
-	// Create a new function that parses URL parameters.
-	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// Get URL components.
-		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-
-		in := (*arg).(*v2pb.DeleteKeyRequest)
-		// Parse User ID; components[2] is userId = email.
-		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
-		if err != nil {
-			return err
-		}
-		in.UserId = userId
-
-		// Parse Key ID; components[4] is keyId.
-		keyId, err := parseURLComponent(components, rInfo.KeyIdIndex)
-		if err != nil {
-			return err
-		}
-		in.KeyId = keyId
-
-		return nil
-	}
-
-	return info
-}
-
-// DeleteKey_RequestHandler calls proxy.DeleteKey and returns its results. An
-// error will be returned if proxy.DeleteKey returns an error.
-func DeleteKey_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
-	var resp interface{}
-	resp, err := srv.(v1pb.E2EKeyProxyServer).DeleteKey(ctx, arg.(*v2pb.DeleteKeyRequest))
 	return &resp, err
 }
 

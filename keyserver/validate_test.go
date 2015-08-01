@@ -17,6 +17,7 @@ package keyserver
 import (
 	"testing"
 
+	proto "github.com/golang/protobuf/proto"
 	keyspb "github.com/google/e2e-key-server/proto/v2"
 )
 
@@ -33,43 +34,32 @@ func TestValidateEmail(t *testing.T) {
 	}
 }
 
-func TestValidateSignedKey(t *testing.T) {
+func TestValidateKey(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	signedKey := *primarySignedKey
-	if err := env.server.validateSignedKey(primaryUserEmail, &signedKey); err != nil {
-		t.Errorf("validateSignedKey(%v) = %v, wanted nil", &signedKey, err)
-	}
-	if signedKey.KeyId == "" {
-		t.Errorf("KeyId of signed key was not filled.")
+	key := *primaryKey
+	if err := env.server.validateKey(primaryUserEmail, &key); err != nil {
+		t.Errorf("validateKey(%v) = %v, wanted nil", &key, err)
 	}
 }
 
-func TestValidateCreateKeyRequest(t *testing.T) {
+func TestValidateUpdateUserRequest(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	createKeyRequest := &keyspb.CreateKeyRequest{
-		UserId:    primaryUserEmail,
-		SignedKey: primarySignedKey,
+	p, err := proto.Marshal(primaryUserProfile)
+	if err != nil {
+		t.Fatalf("Unexpected profile marshalling error %v.", err)
+	}
+	updateUserRequest := &keyspb.UpdateUserRequest{
+		UserId: primaryUserEmail,
+		Update: &keyspb.EntryUpdateRequest{
+			Profile: p,
+		},
 	}
 
-	if err := env.server.validateCreateKeyRequest(env.ctx, createKeyRequest); err != nil {
-		t.Errorf("validateCreateKeyRequest(ctx, %v) = %v", createKeyRequest, err)
-	}
-}
-
-func TestValidateUpdateKeyRequest(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close()
-
-	updateKeyRequest := &keyspb.UpdateKeyRequest{
-		UserId:    primaryUserEmail,
-		SignedKey: primarySignedKey,
-	}
-
-	if err := env.server.validateUpdateKeyRequest(env.ctx, updateKeyRequest); err != nil {
-		t.Errorf("validateCreateKeyRequest(ctx, %v) = %v", updateKeyRequest, err)
+	if err := env.server.validateUpdateUserRequest(env.ctx, updateUserRequest); err != nil {
+		t.Errorf("validateUpdateUserRequest(ctx, %v) = %v", updateUserRequest, err)
 	}
 }
