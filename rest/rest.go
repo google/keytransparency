@@ -115,9 +115,9 @@ func toHttpError(err error, w http.ResponseWriter) {
 	}
 }
 
-// GetUser_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// GetUserV1_InitializeHandlerInfo initializes and returns HandlerInfo preparing
 // to call proxy.GetUser API.
-func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
 	// Set the API handler to call the proxy GetUser.
 	info.H = rInfo.Handler
@@ -157,11 +157,285 @@ func GetUser_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerIn
 	return info
 }
 
-// GetUser_RequestHandler calls proxy.GetUser and returns its results. An error
+// GetUserV1_RequestHandler calls proxy.GetUser and returns its results. An error
 // will be returned if proxy.GetUser returns an error.
-func GetUser_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+func GetUserV1_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
 	resp, err := srv.(v1pb.E2EKeyProxyServer).GetUser(ctx, arg.(*v2pb.GetUserRequest))
+	return &resp, err
+}
+
+// GetUserV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.GetUser API.
+func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the keyserver GetUser.
+	info.H = rInfo.Handler
+	// Create a new GetUserRequest to be passed to the API handler.
+	info.Arg = new(v2pb.GetUserRequest)
+	// Create a new function that parses URL parameters.
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		// Get URL components.
+		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
+
+		in := (*arg).(*v2pb.GetUserRequest)
+		// Parse User ID; components[2] is userId = email.
+		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		if err != nil {
+			return err
+		}
+		in.UserId = userId
+
+		m, _ := url.ParseQuery(r.URL.RawQuery)
+		// Parse Epoch. Epoch must be of type uint64.
+		if val, ok := m["epoch"]; ok {
+			if epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Epoch must be uint64")
+			} else {
+				in.Epoch = uint64(epoch)
+			}
+		}
+
+		// Parse App ID.
+		if val, ok := m["app_id"]; ok {
+			in.AppId = val[0]
+		}
+
+		return nil
+	}
+
+	return info
+}
+
+// GetUserV2_RequestHandler calls keyserver.GetUser and returns its results. An error
+// will be returned if keyserver.GetUser returns an error.
+func GetUserV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v2pb.E2EKeyServiceClient).GetUser(ctx, arg.(*v2pb.GetUserRequest))
+	return &resp, err
+}
+
+// ListUserHistoryV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.ListUserHistory API.
+func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the keyserver ListUserHistory.
+	info.H = rInfo.Handler
+	// Create a new ListUserHistoryRequest to be passed to the API handler.
+	info.Arg = new(v2pb.ListUserHistoryRequest)
+	// Create a new function that parses URL parameters.
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		// Get URL components.
+		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
+
+		in := (*arg).(*v2pb.ListUserHistoryRequest)
+		// Parse User ID; components[2] is userId = email.
+		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		if err != nil {
+			return err
+		}
+		in.UserId = userId
+
+		m, _ := url.ParseQuery(r.URL.RawQuery)
+		// Parse StartEpoch. StartEpoch must be of type uint64.
+		if val, ok := m["start_epoch"]; ok {
+			if start_epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be uint64")
+			} else {
+				in.StartEpoch = uint64(start_epoch)
+			}
+		}
+
+		// Parse PageSize. PageSize must be of type int32.
+		if val, ok := m["page_size"]; ok {
+			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
+			} else {
+				in.PageSize = int32(page_size)
+			}
+		}
+
+		return nil
+	}
+
+	return info
+}
+
+// ListUserHistoryV2_RequestHandler calls keyserver.ListUserHistory and returns its results. An error
+// will be returned if keyserver.ListUserHistory returns an error.
+func ListUserHistoryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v2pb.E2EKeyServiceClient).ListUserHistory(ctx, arg.(*v2pb.ListUserHistoryRequest))
+	return &resp, err
+}
+
+// UpdateUserV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.UpdateUser API.
+func UpdateUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the keyserver UpdateUser.
+	info.H = rInfo.Handler
+	// Create a new UpdateUserRequest to be passed to the API handler.
+	info.Arg = new(v2pb.UpdateUserRequest)
+	// Create a new function that parses URL parameters.
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		// Get URL components.
+		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
+
+		in := (*arg).(*v2pb.UpdateUserRequest)
+		// Parse User ID; components[2] is userId = email.
+		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		if err != nil {
+			return err
+		}
+		in.UserId = userId
+
+		return nil
+	}
+
+	return info
+}
+
+// UpdateUserV2_RequestHandler calls keyserver.UpdateUser and returns its results. An error
+// will be returned if keyserver.UpdateUser returns an error.
+func UpdateUserV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v2pb.E2EKeyServiceClient).UpdateUser(ctx, arg.(*v2pb.UpdateUserRequest))
+	return &resp, err
+}
+
+// ListSEHV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.ListSEH API.
+func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the keyserver ListSEH.
+	info.H = rInfo.Handler
+	// Create a new ListSEHRequest to be passed to the API handler.
+	info.Arg = new(v2pb.ListSEHRequest)
+	// Create a new function that parses URL parameters.
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		in := (*arg).(*v2pb.ListSEHRequest)
+
+		m, _ := url.ParseQuery(r.URL.RawQuery)
+		// Parse StartEpoch. StartEpoch must be of type uint64.
+		if val, ok := m["start_epoch"]; ok {
+			if start_epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be uint64")
+			} else {
+				in.StartEpoch = uint64(start_epoch)
+			}
+		}
+
+		// Parse PageSize. PageSize must be of type int32.
+		if val, ok := m["page_size"]; ok {
+			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
+			} else {
+				in.PageSize = int32(page_size)
+			}
+		}
+
+		return nil
+	}
+
+	return info
+}
+
+// ListSEHV2_RequestHandler calls keyserver.ListSEH and returns its results. An error
+// will be returned if keyserver.ListSEH returns an error.
+func ListSEHV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v2pb.E2EKeyServiceClient).ListSEH(ctx, arg.(*v2pb.ListSEHRequest))
+	return &resp, err
+}
+
+// ListUpdateV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.ListUpdate API.
+func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the keyserver ListUpdate.
+	info.H = rInfo.Handler
+	// Create a new ListUpdateRequest to be passed to the API handler.
+	info.Arg = new(v2pb.ListUpdateRequest)
+	// Create a new function that parses URL parameters.
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		in := (*arg).(*v2pb.ListUpdateRequest)
+
+		m, _ := url.ParseQuery(r.URL.RawQuery)
+		// Parse StartSequence. StartSequence must be of type uint64.
+		if val, ok := m["start_sequence"]; ok {
+			if start_sequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Start sequence must be uint64")
+			} else {
+				in.StartSequence = uint64(start_sequence)
+			}
+		}
+
+		// Parse PageSize. PageSize must be of type int32.
+		if val, ok := m["page_size"]; ok {
+			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
+			} else {
+				in.PageSize = int32(page_size)
+			}
+		}
+
+		return nil
+	}
+
+	return info
+}
+
+// ListUpdateV2_RequestHandler calls keyserver.ListUpdate and returns its results. An error
+// will be returned if keyserver.ListUpdate returns an error.
+func ListUpdateV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v2pb.E2EKeyServiceClient).ListUpdate(ctx, arg.(*v2pb.ListUpdateRequest))
+	return &resp, err
+}
+
+// ListStepsV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.ListSteps API.
+func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the keyserver ListSteps.
+	info.H = rInfo.Handler
+	// Create a new ListStepsRequest to be passed to the API handler.
+	info.Arg = new(v2pb.ListStepsRequest)
+	// Create a new function that parses URL parameters.
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		in := (*arg).(*v2pb.ListStepsRequest)
+
+		m, _ := url.ParseQuery(r.URL.RawQuery)
+		// Parse StartSequence. StartSequence must be of type uint64.
+		if val, ok := m["start_sequence"]; ok {
+			if start_sequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Start sequence must be uint64")
+			} else {
+				in.StartSequence = uint64(start_sequence)
+			}
+		}
+
+		// Parse PageSize. PageSize must be of type int32.
+		if val, ok := m["page_size"]; ok {
+			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
+			} else {
+				in.PageSize = int32(page_size)
+			}
+		}
+
+		return nil
+	}
+
+	return info
+}
+
+// ListStepsV2_RequestHandler calls keyserver.ListSteps and returns its results. An error
+// will be returned if keyserver.ListSteps returns an error.
+func ListStepsV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v2pb.E2EKeyServiceClient).ListSteps(ctx, arg.(*v2pb.ListStepsRequest))
 	return &resp, err
 }
 
