@@ -28,21 +28,81 @@ import (
 	"golang.org/x/net/context"
 
 	v1pb "github.com/google/e2e-key-server/proto/v1"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
 var port = flag.Int("port", 8080, "TCP port to listen on")
 
-// v1Routes contains all routes information.
+// v1Routes contains all routes information for v1 APIs.
 // TODO(cesarghali): find a better way to populate this map.
 var v1Routes = []handlers.RouteInfo{
 	// GetUser API
 	handlers.RouteInfo{
-		"/v1/users/{userid}",
+		"/v1/users/{user_id}",
 		2,
 		-1, // No keyId in the path.
 		"GET",
-		rest.GetUser_InitializeHandlerInfo,
-		rest.GetUser_RequestHandler,
+		rest.GetUserV1_InitializeHandlerInfo,
+		rest.GetUserV1_RequestHandler,
+	},
+}
+
+// v2Routes contains all routes information for v2 APIs.
+// TODO(cesarghali): find a better way to populate this map.
+var v2Routes = []handlers.RouteInfo{
+	// GetUser API
+	handlers.RouteInfo{
+		"/v2/users/{user_id}",
+		2,
+		-1, // No keyId in the path.
+		"GET",
+		rest.GetUserV2_InitializeHandlerInfo,
+		rest.GetUserV2_RequestHandler,
+	},
+	// ListUserHistory API
+	handlers.RouteInfo{
+		"/v2/users/{user_id}/history",
+		2,
+		-1, // No keyId in the path.
+		"GET",
+		rest.ListUserHistoryV2_InitializeHandlerInfo,
+		rest.ListUserHistoryV2_RequestHandler,
+	},
+	// UpdateUser API
+	handlers.RouteInfo{
+		"/v2/users/{user_id}",
+		2,
+		-1, // No keyId in the path.
+		"PUT",
+		rest.UpdateUserV2_InitializeHandlerInfo,
+		rest.UpdateUserV2_RequestHandler,
+	},
+	// ListSEH API
+	handlers.RouteInfo{
+		"/v2/seh",
+		-1,
+		-1, // No keyId in the path.
+		"GET",
+		rest.ListSEHV2_InitializeHandlerInfo,
+		rest.ListSEHV2_RequestHandler,
+	},
+	// ListUpdate API
+	handlers.RouteInfo{
+		"/v2/update",
+		-1,
+		-1, // No keyId in the path.
+		"GET",
+		rest.ListUpdateV2_InitializeHandlerInfo,
+		rest.ListUpdateV2_RequestHandler,
+	},
+	// ListSteps API
+	handlers.RouteInfo{
+		"/v2/step",
+		-1,
+		-1, // No keyId in the path.
+		"GET",
+		rest.ListStepsV2_InitializeHandlerInfo,
+		rest.ListStepsV2_RequestHandler,
 	},
 }
 
@@ -59,10 +119,15 @@ func main() {
 	v1 := proxy.New(v2)
 	s := rest.New(v1)
 
-	// Manually add routing paths.
+	// Manually add routing paths for v1 APIs.
 	// TODO: Auto derive from proto.
 	for _, v := range v1Routes {
 		s.AddHandler(v, v1pb.Handler)
+	}
+	// Manually add routing paths for v2 APIs.
+	// TODO: Auto derive from proto.
+	for _, v := range v2Routes {
+		s.AddHandler(v, v2pb.Handler)
 	}
 	// TODO: add hkp server api here.
 
