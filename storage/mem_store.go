@@ -19,59 +19,38 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	keyspb "github.com/google/e2e-key-server/proto/v2"
+	internalpb "github.com/google/e2e-key-server/proto/internal"
 	context "golang.org/x/net/context"
 )
 
-// Storage holds state required to persist data. Open and Create create new Storage objects.
+// Storage holds state required to persist data. Open and Create create new
+// Storage objects.
 type MemStorage struct {
-	// Map of vuf -> SignedKey
-	keys map[string]*keyspb.SignedKey
+	// Map of vuf -> EntryStorage
+	profiles map[string]*internalpb.EntryStorage
 }
 
 // Create creates a storage object from an existing db connection.
 func CreateMem(ctx context.Context) *MemStorage {
-	s := &MemStorage{make(map[string]*keyspb.SignedKey)}
+	s := &MemStorage{make(map[string]*internalpb.EntryStorage)}
 	s.InsertLogTableRow(ctx)
 	return s
 }
 
 func (s *MemStorage) InsertLogTableRow(ctx context.Context) {}
 
-func (s *MemStorage) ReadKey(ctx context.Context, vuf string) (*keyspb.SignedKey, error) {
-	val, ok := s.keys[string(vuf)]
+func (s *MemStorage) ReadEntryStorage(ctx context.Context, vuf string) (*internalpb.EntryStorage, error) {
+	val, ok := s.profiles[string(vuf)]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
 	}
 	return val, nil
 }
 
-// UpdateKey updates a UserKey row. Fails if the row does not already exist.
-func (s *MemStorage) UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf string) error {
-	_, ok := s.keys[string(vuf)]
-	if !ok {
-		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
-	}
-	s.keys[string(vuf)] = signedKey
-	return nil
-}
-
-// InsertKey inserts a new UserKey row. Fails if the row already exists.
-func (s *MemStorage) InsertKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf string) error {
-	_, ok := s.keys[string(vuf)]
-	if ok {
-		return grpc.Errorf(codes.AlreadyExists, "%v Already Exists", vuf)
-	}
-	s.keys[string(vuf)] = signedKey
-	return nil
-}
-
-// DeleteKey deletes a key.
-func (s *MemStorage) DeleteKey(ctx context.Context, vuf string) error {
-	_, ok := s.keys[string(vuf)]
-	if !ok {
-		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
-	}
-	delete(s.keys, string(vuf))
+// InsertEntryStorage inserts a new UserEntryStorage row. This function works
+// whether the entry exists or not. If the entry does not exist, it will be
+// inserted, otherwise updated.
+func (s *MemStorage) InsertEntryStorage(ctx context.Context, profile *internalpb.EntryStorage, vuf string) error {
+	s.profiles[string(vuf)] = profile
 	return nil
 }

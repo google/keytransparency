@@ -44,33 +44,6 @@ var v1Routes = []handlers.RouteInfo{
 		rest.GetUser_InitializeHandlerInfo,
 		rest.GetUser_RequestHandler,
 	},
-	// CreateKey API
-	handlers.RouteInfo{
-		"/v1/users/{userid}/keys",
-		2,
-		-1, // No keyId in the path.
-		"POST",
-		rest.CreateKey_InitializeHandlerInfo,
-		rest.CreateKey_RequestHandler,
-	},
-	// UpdateKey API
-	handlers.RouteInfo{
-		"/v1/users/{userid}/keys/{keyid}",
-		2,
-		4,
-		"PUT",
-		rest.UpdateKey_InitializeHandlerInfo,
-		rest.UpdateKey_RequestHandler,
-	},
-	// DeleteKey API
-	handlers.RouteInfo{
-		"/v1/users/{userid}/keys/{keyid}",
-		2,
-		4,
-		"DELETE",
-		rest.DeleteKey_InitializeHandlerInfo,
-		rest.DeleteKey_RequestHandler,
-	},
 }
 
 func main() {

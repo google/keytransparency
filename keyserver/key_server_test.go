@@ -18,7 +18,6 @@ package keyserver
 
 import (
 	"encoding/hex"
-	"math"
 	"net"
 	"strings"
 	"testing"
@@ -31,7 +30,6 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	keyspb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
-	proto3 "google/protobuf"
 )
 
 const (
@@ -110,13 +108,14 @@ ff000000029b0cff00000009904b20db14afb281e30000b3370100b5012d
 97d8cace51987a783862c916002c839db6b9a3fac6c1ca058d17f5062c01
 00f167d12ad2e96494a54d3e07ef24f8f5c3a4528c647658a3f13aaad56b
 a5d613`, "\n", "", -1))
-	primarySignedKey = &keyspb.SignedKey{
-		Key: &keyspb.SignedKey_Key{
-			AppId: "pgp",
-			Key:   primaryUserKeyRing,
-			CreationTime: &proto3.Timestamp{
-				Seconds: time.Now().Unix(),
-			},
+	primaryKey = &keyspb.Key{
+		AppId: "pgp",
+		Key:   primaryUserKeyRing,
+	}
+	primaryUserProfile = &keyspb.Profile{
+		// TODO(cesarghali): fill nonce.
+		KeyList: []*keyspb.Key{
+			primaryKey,
 		},
 	}
 )
@@ -164,30 +163,31 @@ func (env *Env) Close() {
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {
-	// insert valid user
-	res, err := env.Client.CreateKey(env.ctx, &keyspb.CreateKeyRequest{
-		UserId:    primaryUserEmail,
-		SignedKey: primarySignedKey,
+	// Marshaling the user profile.
+	p, err := proto.Marshal(primaryUserProfile)
+	if err != nil {
+		t.Fatalf("Unexpected profile marshalling error %v.", err)
+	}
+
+	// Insert valid user. Calling update if the user does not exist will
+	// insert the user's profile.
+	_, err = env.Client.UpdateUser(env.ctx, &keyspb.UpdateUserRequest{
+		UserId: primaryUserEmail,
+		Update: &keyspb.EntryUpdateRequest{
+			Profile: p,
+		},
 	})
 	if err != nil {
-		t.Errorf("CreateKey got unexpected error %v.", err)
+		t.Errorf("CreateUser got unexpected error %v.", err)
 		return
 	}
-	if res.GetSignedKeyTimestamp() == nil {
-		t.Errorf("Missing signed key timestamp.")
-	}
-	if res.GetSignedKeyTimestamp().GetCreationTime() == nil {
-		t.Errorf("Missing server timestamp.")
-	}
-	nowSecs := time.Now().Unix()
-	timestamp := res.GetSignedKeyTimestamp()
-	if got, want := math.Abs(float64(timestamp.GetCreationTime().Seconds)-float64(nowSecs)), 2.0; got > want {
+}
 
-		t.Errorf("GetCreationTime().Seconds = %v, want: %v", got, want)
-	}
-	if got, want := timestamp.GetSignedKey().GetKey(), primarySignedKey.GetKey(); !proto.Equal(got, want) {
-		t.Errorf("GetSignedKey() = %v, want %v.", got, want)
-	}
+func TestCreateKey(t *testing.T) {
+	env := NewEnv(t)
+	defer env.Close()
+
+	env.createPrimaryUser(t)
 }
 
 func TestGetNonExistantUser(t *testing.T) {
@@ -214,51 +214,17 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetUser failed: %v", err)
 	}
-	if got, want := len(res.GetUser().GetKeyList().GetSignedKeys()), 1; got != want {
-		t.Errorf("len(GetSignedKeys()) = %v, want; %v", got, want)
+	// Unmarshaling the resulted profile.
+	p := new(keyspb.Profile)
+	if err := proto.Unmarshal(res.Profile, p); err != nil {
+		t.Fatalf("Unexpected profile unmarshalling error %v.", err)
+	}
+	if got, want := len(p.GetKeyList()), 1; got != want {
+		t.Errorf("len(GetKeyList()) = %v, want; %v", got, want)
 		return
 	}
-	if got, want := res.GetUser().GetKeyList().GetSignedKeys()[0].GetKey(), primarySignedKey.Key; !proto.Equal(got, want) {
+	if got, want := p.GetKeyList()[0], primaryKey; !proto.Equal(got, want) {
 		t.Errorf("GetUser(%v) = %v, want: %v", primaryUserEmail, got, want)
-	}
-}
-
-func TestCreateKey(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close()
-
-	env.createPrimaryUser(t)
-}
-
-// You should not be able to create the same key twice.
-func TestCreateDuplicateKey(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close()
-
-	env.createPrimaryUser(t)
-	_, err := env.Client.CreateKey(env.ctx, &keyspb.CreateKeyRequest{
-		UserId:    primaryUserEmail,
-		SignedKey: primarySignedKey,
-	})
-	if got, want := grpc.Code(err), codes.AlreadyExists; got != want {
-		t.Errorf("CreateKey() = %v, want %v", got, want)
-	}
-}
-
-func TestDeleteKey(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close()
-
-	env.createPrimaryUser(t)
-	if _, err := env.Client.DeleteKey(env.ctx, &keyspb.DeleteKeyRequest{
-		UserId: primaryUserEmail,
-	}); err != nil {
-		t.Errorf("DeleteKey() failed: %v", err)
-		return
-	}
-	_, err := env.Client.GetUser(env.ctx, &keyspb.GetUserRequest{UserId: primaryUserEmail})
-	if got, want := grpc.Code(err), codes.NotFound; got != want {
-		t.Errorf("Query for deleted user user = %v, want: %v", got, want)
 	}
 }
 
@@ -275,6 +241,9 @@ func TestUnimplemented(t *testing.T) {
 		err  error
 	}{
 		{"ListUserHistory", getErr(env.Client.ListUserHistory(env.ctx, &keyspb.ListUserHistoryRequest{}))},
+		{"ListSEH", getErr(env.Client.ListSEH(env.ctx, &keyspb.ListSEHRequest{}))},
+		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &keyspb.ListUpdateRequest{}))},
+		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &keyspb.ListStepsRequest{}))},
 	}
 	for _, test := range tests {
 		if got, want := grpc.Code(test.err), codes.Unimplemented; got != want {
@@ -292,9 +261,7 @@ func TestUnauthenticated(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"CreateKey", getErr(env.Client.CreateKey(env.ctx, &keyspb.CreateKeyRequest{UserId: "someoneelse"}))},
-		{"UpdateKey", getErr(env.Client.UpdateKey(env.ctx, &keyspb.UpdateKeyRequest{UserId: "someoneelse"}))},
-		{"DeleteKey", getErr(env.Client.DeleteKey(env.ctx, &keyspb.DeleteKeyRequest{UserId: "someoneelse"}))},
+		{"UpdateUser", getErr(env.Client.UpdateUser(env.ctx, &keyspb.UpdateUserRequest{UserId: "someoneelse"}))},
 	}
 	for _, test := range tests {
 		if got, want := grpc.Code(test.err), codes.PermissionDenied; got != want {

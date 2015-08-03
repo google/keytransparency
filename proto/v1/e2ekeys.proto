@@ -31,39 +31,16 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 //
 // The API defines the following resource model:
 //
-// - The API has a collection of [User][google.security.e2ekeys.v2.User]
+// - The API has a collection of [Profile][google.security.e2ekeys.v2.Profile]
 //   resources named `/users/*`.
 //
 // - Each User has a collection of
-//  [SignedKey][google.security.e2ekeys.v2.SignedKey] resources named by
+//  [Key][google.security.e2ekeys.v2.Key] resources named by
 //  `/users/*/keys/*`
 //
 service E2EKeyProxy {
-  // GetUser returns a user's keys.  Past values are not supported.
-  rpc GetUser(v2.GetUserRequest) returns (v2.User) {
+  // GetUser returns a user's profile. Past values are not supported.
+  rpc GetUser(v2.GetUserRequest) returns (v2.Profile) {
     option (google.api.http) = { get: "/v1/users/{user_id}" };
-  }
-
-  // CreateKey creates new key.  The key_id must not already exist.
-  rpc CreateKey (v2.CreateKeyRequest) returns (v2.SignedKey) {
-    option (google.api.http) = {
-      post: "/v1/users/{user_id}/keys"
-      body: "signed_key"
-    };
-  }
-
-  // UpdateKey updates a device key. The key_id must already exist.
-  rpc UpdateKey (v2.UpdateKeyRequest) returns (v2.SignedKey) {
-    option (google.api.http) = {
-      put: "/v1/users/{user_id}/keys/{key_id}"
-      body: "signed_key"
-    };
-  }
-
-  // DeleteKey deletes a key. Returns NOT_FOUND if the key does not exist.
-  rpc DeleteKey(v2.DeleteKeyRequest) returns (protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/v1/users/{user_id}/keys/{key_id}"
-    };
   }
 }

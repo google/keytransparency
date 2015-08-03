@@ -16,39 +16,22 @@
 package storage
 
 import (
-	"time"
+	//"time"
 
-	keyspb "github.com/google/e2e-key-server/proto/v2"
+	internalpb "github.com/google/e2e-key-server/proto/internal"
 	context "golang.org/x/net/context"
 )
 
 type BasicStorage interface {
-	// InsertLogTableRow ensures that there is a valid directory entry for our data.
+	// InsertLogTableRow ensures that there is a valid directory entry for
+	// our data.
 	InsertLogTableRow(ctx context.Context)
-	// UpdateKey updates a UserKey row. Fails if the row does not already exist.
-	UpdateKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf string) error
-	// InsertKey inserts a new UserKey row. Fails if the row already exists.
-	InsertKey(ctx context.Context, signedKey *keyspb.SignedKey, vuf string) error
-	// DeleteKey deletes a key.
-	DeleteKey(ctx context.Context, vuf string) error
-	// ReadKey reads a key.
-	ReadKey(ctx context.Context, vuf string) (*keyspb.SignedKey, error)
+	// InsertEntryStorage inserts a new UserEntryStorage row. Fails if the
+	// row already exists.
+	InsertEntryStorage(ctx context.Context, profile *internalpb.EntryStorage, vuf string) error
+	// ReadEntryStorage reads a profile.
+	ReadEntryStorage(ctx context.Context, vuf string) (*internalpb.EntryStorage, error)
 }
 
-type ConiksStorage interface {
-	// InsertLogTableRow ensures that there is a valid directory entry for our data.
-	InsertLogTableRow(ctx context.Context)
-
-	ReadProof(ctx context.Context, vuf string) (*keyspb.Proof, error)
-	ReadHistoricProof(ctx context.Context, vuf string, epoch time.Time) (*keyspb.Proof, error)
-	ReadKeys(ctx context.Context, vuf string) ([]*keyspb.SignedKey, error)
-	ReadHistoricKeys(ctx context.Context, vuf string, epoch time.Time) ([]*keyspb.SignedKey, error)
-	ReadKeyPromises(ctx context.Context, vuf string) ([]*keyspb.SignedKey, error)
-
-	// InsertKey inserts a new UserKey row. Fails if the row already exists.
-	InsertKeyPromise(ctx context.Context, signedKey *keyspb.SignedKey, vuf string) error
-	// UpdateKey updates a UserKey row. Fails if the row does not already exist.
-	UpdateKeyPromise(ctx context.Context, signedKey *keyspb.SignedKey, vuf string, keyid string) error
-	// DeleteKey deletes a key.
-	DeleteKeyPromise(ctx context.Context, vuf string, keyid string) error
-}
+// TODO(cesarghali): bring back ConkisStorage and make it compatible with the
+// new proto.
