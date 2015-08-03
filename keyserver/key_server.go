@@ -97,14 +97,8 @@ func (s *Server) UpdateUser(ctx context.Context, in *keyspb.UpdateUserRequest) (
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if exist := s.s.EntryStorageExists(ctx, vuf); exist == false {
-		if err = s.s.InsertEntryStorage(ctx, e, vuf); err != nil {
-			return nil, err
-		}
-	} else {
-		if err = s.s.UpdateEntryStorage(ctx, e, vuf); err != nil {
-			return nil, err
-		}
+	if err = s.s.InsertEntryStorage(ctx, e, vuf); err != nil {
+		return nil, err
 	}
 
 	return &proto3.Empty{}, nil

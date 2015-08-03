@@ -26,19 +26,11 @@ type BasicStorage interface {
 	// InsertLogTableRow ensures that there is a valid directory entry for
 	// our data.
 	InsertLogTableRow(ctx context.Context)
-	// UpdateEntryStorage updates a UserEntryStorage row. Fails if the row
-	// does not already exist.
-	UpdateEntryStorage(ctx context.Context, profile *internalpb.EntryStorage, vuf string) error
 	// InsertEntryStorage inserts a new UserEntryStorage row. Fails if the
 	// row already exists.
 	InsertEntryStorage(ctx context.Context, profile *internalpb.EntryStorage, vuf string) error
-	// DeleteEntryStorage deletes a profile.
-	DeleteEntryStorage(ctx context.Context, vuf string) error
 	// ReadEntryStorage reads a profile.
 	ReadEntryStorage(ctx context.Context, vuf string) (*internalpb.EntryStorage, error)
-	// VUFExists returns true if an entry already exists for the given VUF,
-	// and false otherwise.
-	EntryStorageExists(ctx context.Context, vuf string) bool
 }
 
 // TODO(cesarghali): bring back ConkisStorage and make it compatible with the

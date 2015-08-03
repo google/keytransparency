@@ -47,41 +47,10 @@ func (s *MemStorage) ReadEntryStorage(ctx context.Context, vuf string) (*interna
 	return val, nil
 }
 
-// UpdateEntryStorage updates a UserEntryStorage row. Fails if the row does not
-// already exist.
-func (s *MemStorage) UpdateEntryStorage(ctx context.Context, profile *internalpb.EntryStorage, vuf string) error {
-	_, ok := s.profiles[string(vuf)]
-	if !ok {
-		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
-	}
-	s.profiles[string(vuf)] = profile
-	return nil
-}
-
-// InsertEntryStorage inserts a new UserEntryStorage row. Fails if the row
-// already exists.
+// InsertEntryStorage inserts a new UserEntryStorage row. This function works
+// whether the entry exists or not. If the entry does not exist, it will be
+// inserted, otherwise updated.
 func (s *MemStorage) InsertEntryStorage(ctx context.Context, profile *internalpb.EntryStorage, vuf string) error {
-	_, ok := s.profiles[string(vuf)]
-	if ok {
-		return grpc.Errorf(codes.AlreadyExists, "%v Already Exists", vuf)
-	}
 	s.profiles[string(vuf)] = profile
 	return nil
-}
-
-// DeleteEntryStorage deletes a profile.
-func (s *MemStorage) DeleteEntryStorage(ctx context.Context, vuf string) error {
-	_, ok := s.profiles[string(vuf)]
-	if !ok {
-		return grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
-	}
-	delete(s.profiles, string(vuf))
-	return nil
-}
-
-// EntryStorageExists returns true if an entry already exists for the given VUF,
-// and false otherwise.
-func (s *MemStorage) EntryStorageExists(ctx context.Context, vuf string) bool {
-	_, ok := s.profiles[string(vuf)]
-	return ok
 }
