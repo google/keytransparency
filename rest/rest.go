@@ -76,18 +76,18 @@ func (s *Server) Handlers() *mux.Router {
 type Handler func(interface{}, context.Context, http.ResponseWriter, *http.Request, *handlers.HandlerInfo) error
 
 // AddHandler tels the server to route request with path and method to m.
-func (s *Server) AddHandler(rInfo handlers.RouteInfo, h Handler) {
-	s.rtr.HandleFunc(rInfo.Path, s.handle(h, rInfo)).Methods(rInfo.Method)
+func (s *Server) AddHandler(rInfo handlers.RouteInfo, h Handler, srv interface{}) {
+	s.rtr.HandleFunc(rInfo.Path, s.handle(h, rInfo, srv)).Methods(rInfo.Method)
 }
 
-func (s *Server) handle(h Handler, rInfo handlers.RouteInfo) http.HandlerFunc {
+func (s *Server) handle(h Handler, rInfo handlers.RouteInfo, srv interface{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Build context.
 		ctx := context.Background()
 		// TODO insert authentication information.
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := h(s.svr, ctx, w, r, rInfo.Initializer(rInfo)); err != nil {
+		if err := h(srv, ctx, w, r, rInfo.Initializer(rInfo)); err != nil {
 			toHttpError(err, w)
 		}
 	}
@@ -211,7 +211,7 @@ func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 // will be returned if keyserver.GetUser returns an error.
 func GetUserV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceClient).GetUser(ctx, arg.(*v2pb.GetUserRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).GetUser(ctx, arg.(*v2pb.GetUserRequest))
 	return &resp, err
 }
 
@@ -265,7 +265,7 @@ func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers
 // will be returned if keyserver.ListUserHistory returns an error.
 func ListUserHistoryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceClient).ListUserHistory(ctx, arg.(*v2pb.ListUserHistoryRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListUserHistory(ctx, arg.(*v2pb.ListUserHistoryRequest))
 	return &resp, err
 }
 
@@ -300,7 +300,7 @@ func UpdateUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 // will be returned if keyserver.UpdateUser returns an error.
 func UpdateUserV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceClient).UpdateUser(ctx, arg.(*v2pb.UpdateUserRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).UpdateUser(ctx, arg.(*v2pb.UpdateUserRequest))
 	return &resp, err
 }
 
@@ -345,7 +345,7 @@ func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 // will be returned if keyserver.ListSEH returns an error.
 func ListSEHV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceClient).ListSEH(ctx, arg.(*v2pb.ListSEHRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSEH(ctx, arg.(*v2pb.ListSEHRequest))
 	return &resp, err
 }
 
@@ -390,7 +390,7 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 // will be returned if keyserver.ListUpdate returns an error.
 func ListUpdateV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceClient).ListUpdate(ctx, arg.(*v2pb.ListUpdateRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListUpdate(ctx, arg.(*v2pb.ListUpdateRequest))
 	return &resp, err
 }
 
@@ -435,7 +435,7 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 // will be returned if keyserver.ListSteps returns an error.
 func ListStepsV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceClient).ListSteps(ctx, arg.(*v2pb.ListStepsRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSteps(ctx, arg.(*v2pb.ListStepsRequest))
 	return &resp, err
 }
 

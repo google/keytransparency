@@ -79,7 +79,7 @@ func TestFoo(t *testing.T) {
 		Fake_Initializer,
 		Fake_RequestHandler,
 	}
-	s.AddHandler(rInfo, Fake_Handler)
+	s.AddHandler(rInfo, Fake_Handler, v1)
 
 	server := httptest.NewServer(s.Handlers())
 	defer server.Close()
