@@ -122,12 +122,12 @@ func main() {
 	// Manually add routing paths for v1 APIs.
 	// TODO: Auto derive from proto.
 	for _, v := range v1Routes {
-		s.AddHandler(v, v1pb.Handler)
+		s.AddHandler(v, v1pb.Handler, v1)
 	}
 	// Manually add routing paths for v2 APIs.
 	// TODO: Auto derive from proto.
 	for _, v := range v2Routes {
-		s.AddHandler(v, v2pb.Handler)
+		s.AddHandler(v, v2pb.Handler, v2)
 	}
 	// TODO: add hkp server api here.
 
