@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/e2e-key-server/rest/handlers"
+	"github.com/gorilla/mux"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
@@ -73,8 +74,6 @@ func TestFoo(t *testing.T) {
 	s := New(v1)
 	rInfo := handlers.RouteInfo{
 		"/hi",
-		-1,
-		-1,
 		"GET",
 		Fake_Initializer,
 		Fake_RequestHandler,
@@ -93,6 +92,10 @@ func TestFoo(t *testing.T) {
 }
 
 func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
+	mx := mux.NewRouter()
+	mx.KeepContext = true
+	mx.HandleFunc("/v1/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+
 	i, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
 	var tests = []struct {
 		path         string
@@ -119,8 +122,6 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 	for _, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
-			2,
-			-1,
 			"GET",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -135,6 +136,7 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
+		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
 			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
@@ -174,6 +176,10 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
+	mx := mux.NewRouter()
+	mx.KeepContext = true
+	mx.HandleFunc("/v2/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+
 	i, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
 	var tests = []struct {
 		path         string
@@ -200,8 +206,6 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 	for _, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
-			2,
-			-1,
 			"GET",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -216,6 +220,7 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
+		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
 			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
@@ -255,6 +260,10 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
+	mx := mux.NewRouter()
+	mx.KeepContext = true
+	mx.HandleFunc("/v2/users/{"+handlers.USER_ID_KEYWORD+"}/history", Fake_HTTPHandler)
+
 	e, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
 	ps, _ := strconv.ParseUint(primary_test_page_size, 10, 32)
 	var tests = []struct {
@@ -285,8 +294,6 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 	for _, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
-			2,
-			-1,
 			"GET",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -301,6 +308,7 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
+		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
 			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
@@ -340,22 +348,21 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestUpdateUserV2_InitiateHandlerInfo(t *testing.T) {
+	mx := mux.NewRouter()
+	mx.KeepContext = true
+	mx.HandleFunc("/v2/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+
 	var tests = []struct {
 		path         string
 		userId       string
-		userIdIndex  int
 		parserNilErr bool
 	}{
-		{"/v2/users/" + primary_test_email, primary_test_email, 2, true},
-		{"/v2/users/" + primary_test_email, primary_test_email, -1, false},
-		{"/v2/users/" + primary_test_email, primary_test_email, 3, false},
+		{"/v2/users/" + primary_test_email, primary_test_email, true},
 	}
 
 	for _, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
-			test.userIdIndex,
-			-1,
 			"PUT",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -370,6 +377,7 @@ func TestUpdateUserV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
+		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
 			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
@@ -431,8 +439,6 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 	for _, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
-			-1,
-			-1,
 			"GET",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -511,8 +517,6 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 	for _, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
-			-1,
-			-1,
 			"GET",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -591,8 +595,6 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 	for _, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
-			-1,
-			-1,
 			"GET",
 			Fake_Initializer,
 			Fake_RequestHandler,
@@ -648,24 +650,33 @@ func JSONDecoder(r *http.Request, v interface{}) error {
 }
 
 func TestParseURLComponent(t *testing.T) {
+	mx := mux.NewRouter()
+	mx.KeepContext = true
+	mx.HandleFunc("/v1/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+
 	var tests = []struct {
-		comp   []string
-		index  int
-		out    string
-		nilErr bool
+		path    string
+		keyword string
+		out     string
+		nilErr  bool
 	}{
-		{[]string{"v1", "users", primary_test_email}, 2, primary_test_email, true},
-		{[]string{"v1", "users", "e2eshare.test@cs.ox.ac.uk"}, -1, "", false},
-		{[]string{"v1", "users", "e2eshare.test@cs.ox.ac.uk"}, 3, "", false},
+		{"/v1/users/" + primary_test_email, handlers.USER_ID_KEYWORD, primary_test_email, true},
+		{"/v1/users/" + primary_test_email, "random_keyword", "", false},
 	}
 	for _, test := range tests {
-		gots, gote := parseURLComponent(test.comp, test.index)
+		r, _ := http.NewRequest("GET", test.path, nil)
+		mx.ServeHTTP(nil, r)
+		gots, gote := parseURLVariable(r, test.keyword)
 		wants := test.out
 		wante := test.nilErr
 		if gots != wants || wante != (gote == nil) {
-			t.Errorf("Error while parsing User ID. Input = (%v, %v), got ('%v', %v), want ('%v', nil = %v)", test.comp, test.index, gots, gote, wants, wante)
+			t.Errorf("Error while parsing User ID. Input = (%v, %v), got ('%v', %v), want ('%v', nil = %v)", test.path, test.keyword, gots, gote, wants, wante)
 		}
+
 	}
+}
+
+func Fake_HTTPHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestParseJson(t *testing.T) {

@@ -125,12 +125,9 @@ func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Arg = new(v2pb.GetUserRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// Get URL components.
-		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-
 		in := (*arg).(*v2pb.GetUserRequest)
-		// Parse User ID; components[2] is userId = email.
-		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		// Parse User ID.
+		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
 		if err != nil {
 			return err
 		}
@@ -175,12 +172,9 @@ func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Arg = new(v2pb.GetUserRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// Get URL components.
-		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-
 		in := (*arg).(*v2pb.GetUserRequest)
-		// Parse User ID; components[2] is userId = email.
-		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		// Parse User ID.
+		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
 		if err != nil {
 			return err
 		}
@@ -225,12 +219,9 @@ func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers
 	info.Arg = new(v2pb.ListUserHistoryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// Get URL components.
-		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-
 		in := (*arg).(*v2pb.ListUserHistoryRequest)
-		// Parse User ID; components[2] is userId = email.
-		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		// Parse User ID.
+		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
 		if err != nil {
 			return err
 		}
@@ -279,12 +270,9 @@ func UpdateUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 	info.Arg = new(v2pb.UpdateUserRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		// Get URL components.
-		components := strings.Split(strings.TrimLeft(r.URL.Path, "/"), "/")
-
 		in := (*arg).(*v2pb.UpdateUserRequest)
-		// Parse User ID; components[2] is userId = email.
-		userId, err := parseURLComponent(components, rInfo.UserIdIndex)
+		// Parse User ID.
+		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
 		if err != nil {
 			return err
 		}
@@ -465,14 +453,14 @@ func parseTimeString(value string) (string, error) {
 	return fmt.Sprintf("{\"seconds\": %v, \"nanos\": %v}", t.Seconds, t.Nanos), nil
 }
 
-// parseURLComponent returns component[index], or error if index of out of
-// bounds.
-func parseURLComponent(components []string, index int) (string, error) {
-	if index < 0 || index >= len(components) {
-		return "", grpc.Errorf(codes.InvalidArgument, "Index is not in API path components")
+// parseURLVariable returns the value of a URL variable. If this value is an
+// emoty string, parseURLVariable returns an error.
+func parseURLVariable(r *http.Request, keyword string) (string, error) {
+	if value := mux.Vars(r)[keyword]; value != "" {
+		return value, nil
+	} else {
+		return "", grpc.Errorf(codes.InvalidArgument, "Missing variable '"+keyword+"' in URL")
 	}
-
-	return components[index], nil
 }
 
 // parseJSON replaces all occurances of RFC 3339 formatted string timestamps
