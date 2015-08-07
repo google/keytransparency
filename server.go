@@ -38,9 +38,7 @@ var port = flag.Int("port", 8080, "TCP port to listen on")
 var v1Routes = []handlers.RouteInfo{
 	// GetUser API
 	handlers.RouteInfo{
-		"/v1/users/{user_id}",
-		2,
-		-1, // No keyId in the path.
+		fmt.Sprintf("/v1/users/{%v}", handlers.USER_ID_KEYWORD),
 		"GET",
 		rest.GetUserV1_InitializeHandlerInfo,
 		rest.GetUserV1_RequestHandler,
@@ -52,27 +50,21 @@ var v1Routes = []handlers.RouteInfo{
 var v2Routes = []handlers.RouteInfo{
 	// GetUser API
 	handlers.RouteInfo{
-		"/v2/users/{user_id}",
-		2,
-		-1, // No keyId in the path.
+		fmt.Sprintf("/v2/users/{%v}", handlers.USER_ID_KEYWORD),
 		"GET",
 		rest.GetUserV2_InitializeHandlerInfo,
 		rest.GetUserV2_RequestHandler,
 	},
 	// ListUserHistory API
 	handlers.RouteInfo{
-		"/v2/users/{user_id}/history",
-		2,
-		-1, // No keyId in the path.
+		fmt.Sprintf("/v2/users/{%v}/history", handlers.USER_ID_KEYWORD),
 		"GET",
 		rest.ListUserHistoryV2_InitializeHandlerInfo,
 		rest.ListUserHistoryV2_RequestHandler,
 	},
 	// UpdateUser API
 	handlers.RouteInfo{
-		"/v2/users/{user_id}",
-		2,
-		-1, // No keyId in the path.
+		fmt.Sprintf("/v2/users/{%v}", handlers.USER_ID_KEYWORD),
 		"PUT",
 		rest.UpdateUserV2_InitializeHandlerInfo,
 		rest.UpdateUserV2_RequestHandler,
@@ -80,8 +72,6 @@ var v2Routes = []handlers.RouteInfo{
 	// ListSEH API
 	handlers.RouteInfo{
 		"/v2/seh",
-		-1,
-		-1, // No keyId in the path.
 		"GET",
 		rest.ListSEHV2_InitializeHandlerInfo,
 		rest.ListSEHV2_RequestHandler,
@@ -89,8 +79,6 @@ var v2Routes = []handlers.RouteInfo{
 	// ListUpdate API
 	handlers.RouteInfo{
 		"/v2/update",
-		-1,
-		-1, // No keyId in the path.
 		"GET",
 		rest.ListUpdateV2_InitializeHandlerInfo,
 		rest.ListUpdateV2_RequestHandler,
@@ -98,8 +86,6 @@ var v2Routes = []handlers.RouteInfo{
 	// ListSteps API
 	handlers.RouteInfo{
 		"/v2/step",
-		-1,
-		-1, // No keyId in the path.
 		"GET",
 		rest.ListStepsV2_InitializeHandlerInfo,
 		rest.ListStepsV2_RequestHandler,

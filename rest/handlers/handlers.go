@@ -20,6 +20,10 @@ import (
 	context "golang.org/x/net/context"
 )
 
+const (
+	USER_ID_KEYWORD = "user_id"
+)
+
 // URLParser parses a URL and stores the results in a protobuf structure that
 // will be passed to the API call. An error is returned if parsing returns
 // an error.
@@ -46,14 +50,6 @@ type HandlerInfo struct {
 type RouteInfo struct {
 	// API Path.
 	Path string
-	// UserId index in the path components.
-	// TODO(cesarghali): it's better if the index can be detected
-	// automatically.
-	UserIdIndex int
-	// KeyId index in the path components.
-	// TODO(cesarghali): it's better if the index can be detected
-	// automatically.
-	KeyIdIndex int
 	// Request method, e.g. GET, POST, etc.
 	Method string
 	// The function that initializes the appropriate HandlerInfo.
