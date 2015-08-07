@@ -15,6 +15,7 @@
 package proxy
 
 import (
+	"bytes"
 	"encoding/hex"
 	"net"
 	"strings"
@@ -32,8 +33,22 @@ import (
 )
 
 const (
-	primaryUserID    = 12345678
-	primaryUserEmail = "e2eshare.test@gmail.com"
+	primaryUserID     = 12345678
+	primaryUserEmail  = "e2eshare.test@gmail.com"
+	primaryUserPGPKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mFIEAAAAABMIKoZIzj0DAQcCAwRNDJYwov/h0/XUVEALnyLf4PfMP3bGpJODLtkk
+IXSAZaC7rKurE6F/h3r8Uq9TMiZO4lvYBLUYRyMQDfYidAaKtBk8ZTJlc2hhcmUu
+dGVzdEBnbWFpbC5jb20+iI0EExMIAD//AAAABQJVjCNs/wAAAAIbA/8AAAACiwn/
+AAAABZUICQoL/wAAAAOWAQL/AAAAAp4B/wAAAAmQSyDbFK+ygeMAAEaEAQDdUlAS
+Pe+J7E7BZWMI+1lpfvHQsH1Tv6ubkkn9akJ91QD/eG3H3UIVH6KV/fXWft7pEva5
+i6Jsx6ikO63kVWFbYaK4VgQAAAAAEggqhkjOPQMBBwIDBFpSLVgW2RSga/CUSF3a
+2Wnv0kdeybCXdB/G1K+v2LaTb6bNtNu39DlDtf8XDm5u5kfLQcL5LFhDoDe5aGP0
+2iUDAQgHiG0EGBMIAB//AAAABYJVjCNs/wAAAAKbDP8AAAAJkEsg2xSvsoHjAACz
+NwEAtQEtl9jKzlGYeng4YskWACyDnba5o/rGwcoFjRf1BiwBAPFn0SrS6WSUpU0+
+B+8k+PXDpFKMZHZYo/E6qtVrpdYT
+=+kV0
+-----END PGP PUBLIC KEY BLOCK-----`
 )
 
 var (
@@ -156,5 +171,60 @@ func TestGetValidUser(t *testing.T) {
 	}
 	if got, want := res.GetKeyList()[0], expectedPrimaryKey; !proto.Equal(got, want) {
 		t.Errorf("GetUser(%v) = %v, want: %v", primaryUserEmail, got, want)
+	}
+}
+
+func TestHkpLookup(t *testing.T) {
+	env := NewEnv(t)
+	defer env.Close()
+
+	env.createPrimaryUser(t)
+	ctx := context.Background() // Unauthenticated request.
+
+	var tests = []struct {
+		op             string
+		userId         string
+		options        string
+		outBody        string
+		outContentType string
+		outNilErr      bool
+	}{
+		// This should return keys.
+		{"get", primaryUserEmail, "", primaryUserPGPKey, "text/plain", true},
+		{"get", primaryUserEmail, "mr", primaryUserPGPKey, "application/pgp-keys", true},
+		// Looking up non-existing user.
+		{"get", "nobody", "", "", "", false},
+		// Unimplemented operations.
+		{"index", primaryUserEmail, "", primaryUserPGPKey, "text/plain", false},
+		{"vindex", primaryUserEmail, "", primaryUserPGPKey, "text/plain", false},
+		{"index", "", "", "", "", false},
+		{"vindex", "", "", "", "", false},
+	}
+
+	for _, test := range tests {
+		hkpLookupReq := v1pb.HkpLookupRequest{
+			Op:      test.op,
+			Search:  test.userId,
+			Options: test.options,
+		}
+
+		res, err := env.ClientV1.HkpLookup(ctx, &hkpLookupReq)
+		if got, want := (err == nil), test.outNilErr; got != want {
+			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.outNilErr)
+		}
+		if got, want := (res == nil), (err != nil); got != want {
+			t.Errorf("HkpLookup(%v) = (%v), want nil = %v", hkpLookupReq, res, want)
+		}
+
+		// If there's an output error, even expected, the test cannot be
+		// completed.
+		if err != nil {
+			continue
+		}
+
+		buf := bytes.NewBuffer(res.Body)
+		if gotb, wantb, gotct, wantct := buf.String(), test.outBody, res.ContentType, test.outContentType; gotb != wantb || gotct != wantct {
+			t.Errorf("HkpLookup(%v) = (%v, %v), want (%v, %v)", hkpLookupReq, gotct, gotb, wantct, wantb)
+		}
 	}
 }

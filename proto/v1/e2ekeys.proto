@@ -21,7 +21,6 @@ option java_multiple_files = true;
 option java_outer_classname = "E2EKeysProto";
 
 import "google/api/annotations.proto";
-import "google/protobuf/empty.proto";
 import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // The E2EKeyProxy API specifies a simplified way to query the
@@ -43,4 +42,36 @@ service E2EKeyProxy {
   rpc GetUser(v2.GetUserRequest) returns (v2.Profile) {
     option (google.api.http) = { get: "/v1/users/{user_id}" };
   }
+
+  rpc HkpLookup(HkpLookupRequest) returns (HttpResponse) {
+    option (google.api.http) = { get: "/v1/hkp/lookup" };
+  }
+}
+
+// HkpLookupRequest contains query parameters for retrieving PGP keys.
+message HkpLookupRequest {
+  // Op specifies the operation to be performed on the keyserver.
+  // - "get" returns the pgp key specified in the search parameter.
+  // - "index" returns 501 (not implemented).
+  // - "vindex" returns 501 (not implemented).
+  string op = 1;
+  // Search specifies the email address or key id being queried.
+  string search = 2;
+  // Options specifies what output format to use.
+  // - "mr" machine readable will set the content type to "application/pgp-keys"
+  // - other options will be ignored.
+  string options = 3;
+  // Exact specifies an exact match on search. Always on. If specified in the
+  // URL, its value will be ignored.
+  string exact = 4;
+  // fingerprint is ignored.
+  string fingerprint = 5;
+}
+
+// HttpBody represents an http body.
+message HttpResponse {
+  // Header content type.
+  string content_type = 1;
+  // The http body itself.
+  bytes body = 2;
 }
