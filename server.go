@@ -45,6 +45,18 @@ var v1Routes = []handlers.RouteInfo{
 	},
 }
 
+// hkpRoutes contains all routes information for HKP APIs.
+// TODO(cesarghali): find a better way to populate this map.
+var hkpRoutes = []handlers.RouteInfo{
+	// HkpLookup API
+	handlers.RouteInfo{
+		"/v1/hkp/lookup",
+		"GET",
+		rest.HkpLookup_InitializeHandlerInfo,
+		rest.HkpLookup_RequestHandler,
+	},
+}
+
 // v2Routes contains all routes information for v2 APIs.
 // TODO(cesarghali): find a better way to populate this map.
 var v2Routes = []handlers.RouteInfo{
@@ -108,14 +120,18 @@ func main() {
 	// Manually add routing paths for v1 APIs.
 	// TODO: Auto derive from proto.
 	for _, v := range v1Routes {
-		s.AddHandler(v, v1pb.Handler, v1)
+		s.AddHandler(v, v1pb.HandlerV1, v1)
+	}
+	// Manually add routing paths for HKP APIs.
+	// TODO: Auto derive from proto.
+	for _, v := range hkpRoutes {
+		s.AddHandler(v, v1pb.HandlerHkp, v1)
 	}
 	// Manually add routing paths for v2 APIs.
 	// TODO: Auto derive from proto.
 	for _, v := range v2Routes {
-		s.AddHandler(v, v2pb.Handler, v2)
+		s.AddHandler(v, v2pb.HandlerV2, v2)
 	}
-	// TODO: add hkp server api here.
 
 	s.Serve(lis)
 }

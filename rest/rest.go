@@ -86,7 +86,6 @@ func (s *Server) handle(h Handler, rInfo handlers.RouteInfo, srv interface{}) ht
 		ctx := context.Background()
 		// TODO insert authentication information.
 
-		w.Header().Set("Content-Type", "application/json")
 		if err := h(srv, ctx, w, r, rInfo.Initializer(rInfo)); err != nil {
 			toHttpError(err, w)
 		}
@@ -159,6 +158,56 @@ func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 func GetUserV1_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
 	resp, err := srv.(v1pb.E2EKeyProxyServer).GetUser(ctx, arg.(*v2pb.GetUserRequest))
+	return &resp, err
+}
+
+// HkpLookup_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call proxy.HkpLookup API.
+func HkpLookup_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+	info := new(handlers.HandlerInfo)
+	// Set the API handler to call the proxy HkpLookup.
+	info.H = rInfo.Handler
+	// Create a new HkpLookupRequest to be passed to the API handler.
+	info.Arg = new(v1pb.HkpLookupRequest)
+	// Create a new function that parses URL parameters.
+	info.Parser = func(r *http.Request, arg *interface{}) error {
+		in := (*arg).(*v1pb.HkpLookupRequest)
+
+		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+
+		m, _ := url.ParseQuery(unescaped)
+		// Parse operation.
+		if val, ok := m["op"]; ok {
+			in.Op = val[0]
+		}
+
+		// Parse search.
+		if val, ok := m["search"]; ok {
+			in.Search = val[0]
+		}
+
+		// Parse options.
+		if val, ok := m["options"]; ok {
+			in.Options = val[0]
+		}
+
+		// Exact is always true (on).
+		in.Exact = "on"
+
+		return nil
+	}
+
+	return info
+}
+
+// HkpLookup_RequestHandler calls proxy.HkpLookup and returns its results. An
+// error will be returned if proxy.HkpLookup returns an error.
+func HkpLookup_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+	var resp interface{}
+	resp, err := srv.(v1pb.E2EKeyProxyServer).HkpLookup(ctx, arg.(*v1pb.HkpLookupRequest))
 	return &resp, err
 }
 

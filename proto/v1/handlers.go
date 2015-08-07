@@ -26,11 +26,11 @@ import (
 	context "golang.org/x/net/context"
 )
 
-// Handler handles v1 API requests, call the appropriate API handler, and
+// HandlerV1 handles v1 API requests, call the appropriate API handler, and
 // return an error if the request cannot be parsed/decoded correctly or
 // the API call returns an error.
 // TODO: I wish this could be code generated.
-func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
+func HandlerV1(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
 	// Parsing URL params and JSON. Parsing should always be called before
 	// attemping decoding JSON body because parsing will convert timestamp
 	// to the appropriate format.
@@ -51,8 +51,37 @@ func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *htt
 	if err != nil {
 		return err
 	}
+
+	// Content-Type is always application/json.
+	w.Header().Set("Content-Type", "application/json")
 	// Proto -> json.
 	encoder := json.NewEncoder(w)
 	encoder.Encode(resp)
+	return nil
+}
+
+// HandlerHkp handles HKP API requests, call the appropriate API handler, and
+// return an error if the request cannot be parsed/decoded correctly or
+// the API call returns an error.
+// TODO: I wish this could be code generated.
+func HandlerHkp(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
+	// Parsing URL params and JSON. Parsing should always be called before
+	// attemping decoding JSON body because parsing will convert timestamp
+	// to the appropriate format.
+	err := info.Parser(r, &info.Arg)
+	if err != nil {
+		return err
+	}
+
+	// Calling the actual API handler. All HKP calls always return
+	// v1pb.HttpResponse.
+	resp, err := info.H(srv, ctx, info.Arg)
+	if err != nil {
+		return err
+	}
+
+	// Content-Type depends on the request options variable.
+	w.Header().Set("Content-Type", (*resp).(*HttpResponse).ContentType)
+	w.Write((*resp).(*HttpResponse).Body)
 	return nil
 }
