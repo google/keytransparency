@@ -132,7 +132,12 @@ func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 		}
 		in.UserId = userId
 
-		m, _ := url.ParseQuery(r.URL.RawQuery)
+		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+
+		m, _ := url.ParseQuery(unescaped)
 		// Parse Epoch. Epoch must be of type uint64.
 		if val, ok := m["epoch"]; ok {
 			if epoch, err := strconv.ParseInt(val[0], 10, 64); err != nil || epoch < 0 {
@@ -194,9 +199,6 @@ func HkpLookup_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 			in.Options = val[0]
 		}
 
-		// Exact is always true (on).
-		in.Exact = "on"
-
 		return nil
 	}
 
@@ -229,7 +231,12 @@ func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 		}
 		in.UserId = userId
 
-		m, _ := url.ParseQuery(r.URL.RawQuery)
+		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+
+		m, _ := url.ParseQuery(unescaped)
 		// Parse Epoch. Epoch must be of type uint64.
 		if val, ok := m["epoch"]; ok {
 			if epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
@@ -276,7 +283,12 @@ func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers
 		}
 		in.UserId = userId
 
-		m, _ := url.ParseQuery(r.URL.RawQuery)
+		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+
+		m, _ := url.ParseQuery(unescaped)
 		// Parse StartEpoch. StartEpoch must be of type uint64.
 		if val, ok := m["start_epoch"]; ok {
 			if start_epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
@@ -353,7 +365,12 @@ func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Parser = func(r *http.Request, arg *interface{}) error {
 		in := (*arg).(*v2pb.ListSEHRequest)
 
-		m, _ := url.ParseQuery(r.URL.RawQuery)
+		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+
+		m, _ := url.ParseQuery(unescaped)
 		// Parse StartEpoch. StartEpoch must be of type uint64.
 		if val, ok := m["start_epoch"]; ok {
 			if start_epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
@@ -398,7 +415,12 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 	info.Parser = func(r *http.Request, arg *interface{}) error {
 		in := (*arg).(*v2pb.ListUpdateRequest)
 
-		m, _ := url.ParseQuery(r.URL.RawQuery)
+		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+
+		m, _ := url.ParseQuery(unescaped)
 		// Parse StartSequence. StartSequence must be of type uint64.
 		if val, ok := m["start_sequence"]; ok {
 			if start_sequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
@@ -443,7 +465,12 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 	info.Parser = func(r *http.Request, arg *interface{}) error {
 		in := (*arg).(*v2pb.ListStepsRequest)
 
-		m, _ := url.ParseQuery(r.URL.RawQuery)
+		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+
+		m, _ := url.ParseQuery(unescaped)
 		// Parse StartSequence. StartSequence must be of type uint64.
 		if val, ok := m["start_sequence"]; ok {
 			if start_sequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {

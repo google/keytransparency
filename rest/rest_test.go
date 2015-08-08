@@ -251,9 +251,6 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Options, test.options; got != want {
 			t.Errorf("Options = %v, want %v", got, want)
 		}
-		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Exact, "on"; got != want {
-			t.Errorf("Exact = %v, want %v", got, want)
-		}
 
 		v1 := &FakeServer{}
 		srv := New(v1)
