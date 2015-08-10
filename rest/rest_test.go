@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"testing"
 
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/gorilla/mux"
 
+	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 )
@@ -161,6 +163,93 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 		}
 		if got, want := info.Arg.(*v2pb.GetUserRequest).Epoch, test.epoch; got != want {
 			t.Errorf("Epoch = %v, want %v", got, want)
+		}
+
+		v1 := &FakeServer{}
+		srv := New(v1)
+		resp, err := info.H(srv, nil, nil)
+		if err != nil {
+			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+		}
+		if got, want := (*resp).(bool), true; got != want {
+			t.Errorf("resp = %v, want %v.", got, want)
+		}
+	}
+}
+
+func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
+	mx := mux.NewRouter()
+	mx.KeepContext = true
+	mx.HandleFunc("/v1/hkp/lookup", Fake_HTTPHandler)
+
+	var tests = []struct {
+		path         string
+		op           string
+		search       string
+		options      string
+		parserNilErr bool
+	}{
+		// This should pass.
+		{"/v1/hkp/lookup?op=get&search=" + url.QueryEscape(primary_test_email) +
+			"&options=mr", "get", primary_test_email, "mr", true},
+		// Unescaped query string.
+		{"/v1/hkp/lookup?op=get&search=" + primary_test_email +
+			"&options=mr", "get", primary_test_email, "mr", true},
+		// Missing op.
+		{"/v1/hkp/lookup?search=" + url.QueryEscape(primary_test_email) +
+			"&options=mr", "", primary_test_email, "mr", true},
+		// Missing search.
+		{"/v1/hkp/lookup?op=get&options=mr", "get", "", "mr", true},
+		// Missing options.
+		{"/v1/hkp/lookup?op=get&search=" + url.QueryEscape(primary_test_email),
+			"get", primary_test_email, "", true},
+		// Missing op and search.
+		{"/v1/hkp/lookup?options=mr", "", "", "mr", true},
+		// Missing op and options.
+		{"/v1/hkp/lookup?search=" + url.QueryEscape(primary_test_email), "",
+			primary_test_email, "", true},
+		// Missing search and options.
+		{"/v1/hkp/lookup?op=get", "get", "", "", true},
+		// Missing op, search and options.
+		{"/v1/hkp/lookup", "", "", "", true},
+	}
+
+	for _, test := range tests {
+		rInfo := handlers.RouteInfo{
+			test.path,
+			"GET",
+			Fake_Initializer,
+			Fake_RequestHandler,
+		}
+		// Body is empty when invoking HKP lookup API.
+		jsonBody := "{}"
+
+		info := HkpLookup_InitializeHandlerInfo(rInfo)
+
+		if _, ok := info.Arg.(*v1pb.HkpLookupRequest); !ok {
+			t.Errorf("info.Arg is not of type v1pb.HkpLookupRequest")
+		}
+
+		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
+		mx.ServeHTTP(nil, r)
+		err := info.Parser(r, &info.Arg)
+		if got, want := (err == nil), test.parserNilErr; got != want {
+			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+		}
+		// If there's an error parsing, the test cannot be completed.
+		// The parsing error might be expected though.
+		if err != nil {
+			continue
+		}
+
+		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Op, test.op; got != want {
+			t.Errorf("Op = %v, want %v", got, want)
+		}
+		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Search, test.search; got != want {
+			t.Errorf("Search = %v, want %v", got, want)
+		}
+		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Options, test.options; got != want {
+			t.Errorf("Options = %v, want %v", got, want)
 		}
 
 		v1 := &FakeServer{}

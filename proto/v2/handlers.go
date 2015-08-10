@@ -26,11 +26,11 @@ import (
 	context "golang.org/x/net/context"
 )
 
-// Handler handles v2 API requests, call the appropriate API handler, and
+// HandlerV2 handles v2 API requests, call the appropriate API handler, and
 // return an error if the request cannot be parsed/decoded correctly or
 // the API call returns an error.
 // TODO: I wish this could be code generated.
-func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
+func HandlerV2(srv interface{}, ctx context.Context, w http.ResponseWriter, r *http.Request, info *handlers.HandlerInfo) error {
 	// Parsing URL params and JSON. Parsing should always be called before
 	// attemping decoding JSON body because parsing will convert timestamp
 	// to the appropriate format.
@@ -51,6 +51,9 @@ func Handler(srv interface{}, ctx context.Context, w http.ResponseWriter, r *htt
 	if err != nil {
 		return err
 	}
+
+	// Content-Type is always application/json.
+	w.Header().Set("Content-Type", "application/json")
 	// Proto -> json.
 	encoder := json.NewEncoder(w)
 	encoder.Encode(resp)

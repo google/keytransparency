@@ -22,6 +22,20 @@ server_url = "http://localhost:8080"
 primary_test_email = "e2eshare.test@gmail.com"
 
 app_id = "pgp"
+complete_key = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mFIEAAAAABMIKoZIzj0DAQcCAwRNDJYwov/h0/XUVEALnyLf4PfMP3bGpJODLtkk
+IXSAZaC7rKurE6F/h3r8Uq9TMiZO4lvYBLUYRyMQDfYidAaKtBk8ZTJlc2hhcmUu
+dGVzdEBnbWFpbC5jb20+iI0EExMIAD//AAAABQJVjCNs/wAAAAIbA/8AAAACiwn/
+AAAABZUICQoL/wAAAAOWAQL/AAAAAp4B/wAAAAmQSyDbFK+ygeMAAEaEAQDdUlAS
+Pe+J7E7BZWMI+1lpfvHQsH1Tv6ubkkn9akJ91QD/eG3H3UIVH6KV/fXWft7pEva5
+i6Jsx6ikO63kVWFbYaK4VgQAAAAAEggqhkjOPQMBBwIDBFpSLVgW2RSga/CUSF3a
+2Wnv0kdeybCXdB/G1K+v2LaTb6bNtNu39DlDtf8XDm5u5kfLQcL5LFhDoDe5aGP0
+2iUDAQgHiG0EGBMIAB//AAAABYJVjCNs/wAAAAKbDP8AAAAJkEsg2xSvsoHjAACz
+NwEAtQEtl9jKzlGYeng4YskWACyDnba5o/rGwcoFjRf1BiwBAPFn0SrS6WSUpU0+
+B+8k+PXDpFKMZHZYo/E6qtVrpdYT
+=+kV0
+-----END PGP PUBLIC KEY BLOCK-----"""
 key = str.replace("""mFIEAAAAABMIKoZIzj0DAQcCAwRNDJYwov/h0/XUVEALnyLf4PfMP3bGpJO
 DLtkkIXSAZaC7rKurE6F/h3r8Uq9TMiZO4lvYBLUYRyMQDfYidAaKtBk8ZTJlc2hhcmUudGVzdEBnbWF
 pbC5jb20+iI0EExMIAD//AAAABQJVjCNs/wAAAAIbA/8AAAACiwn/AAAABZUICQoL/wAAAAOWAQL/AAA
@@ -69,9 +83,11 @@ def main():
 
   # Start testing.
   GetUserV1(True)
+  HkpGet(True)
   GetUserV2(True)
   UpdateUserV2()
   GetUserV1(False)
+  HkpGet(False)
   GetUserV2(False)
 
   # Kill the server.
@@ -86,6 +102,7 @@ def GetUserV1(empty):
   response = urllib2.urlopen(request)
 
   # HTTP response should be 200.
+  # TODO(cesarghali): test more specific codes once implemented.
   assert response.getcode() == 200
 
   # Ensure that what is returned is as expected.
@@ -109,9 +126,35 @@ def GetUserV1(empty):
   end_time = time.time()
 
   if empty:
-    print "ok\tv1: get empty user\t%.2fs" % (end_time - start_time)
+    print "ok\t v1: get empty user\t%.2fs" % (end_time - start_time)
   else:
-    print "ok\tv1: get non-empty user\t%.2fs" % (end_time - start_time)
+    print "ok\t v1: get non-empty user\t%.2fs" % (end_time - start_time)
+
+
+def HkpGet(empty):
+  start_time = time.time()
+
+  get_api_url = "/v1/hkp/lookup?op=get&search=" + primary_test_email
+  request = urllib2.Request(server_url + get_api_url)
+  response = urllib2.urlopen(request)
+
+  # HTTP response should be 200.
+  # TODO(cesarghali): test more specific codes once implemented.
+  assert response.getcode() == 200
+
+  # Ensure that what is returned is as expected.
+  body = response.read()
+  if empty:
+    assert not body
+  else:
+    assert body == complete_key
+
+  end_time = time.time()
+
+  if empty:
+    print "ok\thkp: get empty key\t%.2fs" % (end_time - start_time)
+  else:
+    print "ok\thkp: get non-empty key\t%.2fs" % (end_time - start_time)
 
 
 def GetUserV2(empty):
@@ -122,6 +165,7 @@ def GetUserV2(empty):
   response = urllib2.urlopen(request)
 
   # HTTP response should be 200.
+  # TODO(cesarghali): test more specific codes once implemented.
   assert response.getcode() == 200
 
   # Ensure that what is returned is as expected.
@@ -137,9 +181,9 @@ def GetUserV2(empty):
   end_time = time.time()
 
   if empty:
-    print "ok\tv2: get empty user\t%.2fs" % (end_time - start_time)
+    print "ok\t v2: get empty user\t%.2fs" % (end_time - start_time)
   else:
-    print "ok\tv2: get non-empty user\t%.2fs" % (end_time - start_time)
+    print "ok\t v2: get non-empty user\t%.2fs" % (end_time - start_time)
 
 
 def UpdateUserV2():
@@ -152,6 +196,7 @@ def UpdateUserV2():
   response = urllib2.urlopen(request, json.dumps(update_user_request))
 
   # HTTP response should be 200.
+  # TODO(cesarghali): test more specific codes once implemented.
   assert response.getcode() == 200
 
   # Ensure that returned JSON is as expected.
@@ -161,7 +206,7 @@ def UpdateUserV2():
 
   end_time = time.time()
 
-  print "ok\tv2: update key\t%.2fs" % (end_time - start_time)
+  print "ok\t v2: update key\t%.2fs" % (end_time - start_time)
 
 
 if __name__ == "__main__":
