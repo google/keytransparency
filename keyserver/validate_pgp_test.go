@@ -18,9 +18,9 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/crypto/openpgp/armor"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"golang.org/x/crypto/openpgp/armor"
 )
 
 const (
@@ -271,12 +271,12 @@ func TestGoodKey(t *testing.T) {
 	}{
 		{"eccGood", eccGood, "<ecc@good.com>", codes.OK},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		block, err := armor.Decode(strings.NewReader(test.key))
 		if err != nil {
-			t.Errorf("test %v: invalid armor", test.label)
+			t.Errorf("Test[%v]: test %v: invalid armor", i, test.label)
 		} else if _, err := validatePGP(test.userID, block.Body); err != nil {
-			t.Errorf("test %s: validatePGP(%q, _)) = _, %v; want nil", test.label, test.userID, err)
+			t.Errorf("Test[%v]: test %s: validatePGP(%q, _)) = _, %v; want nil", i, test.label, test.userID, err)
 		}
 	}
 }
@@ -299,14 +299,14 @@ func TestInvalidKeys(t *testing.T) {
 		{"invalidCrossSignature", invalidCrossSignature, "invalid-signing-subkeys", codes.Unknown},
 		{"invalidSubpacketLen", invalidSubpacketLength, "", codes.Unknown},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		block, err := armor.Decode(strings.NewReader(test.key))
 		if err != nil {
-			t.Errorf("test %v: invalid armor", test.label)
+			t.Errorf("Test[%v]: test %v: invalid armor", i, test.label)
 		} else if _, err := validatePGP(test.userID, block.Body); err == nil {
-			t.Errorf("test %v: validatePGP(%q, _) = _, nil, want %v", test.label, test.userID, test.want)
+			t.Errorf("Test[%v]: test %v: validatePGP(%q, _) = _, nil, want %v", i, test.label, test.userID, test.want)
 		} else if got := grpc.Code(err); got != test.want {
-			t.Errorf("test %s: validatePGP(%q, _)) = _, %v; want %v", test.label, test.userID, got, test.want)
+			t.Errorf("Test[%v]: test %s: validatePGP(%q, _)) = _, %v; want %v", i, test.label, test.userID, got, test.want)
 		}
 	}
 }

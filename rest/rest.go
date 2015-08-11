@@ -43,7 +43,108 @@ const (
 	POST   = "POST"
 	PUT    = "PUT"
 	DELETE = "DELETE"
+	// The following consts are used for WWW-Authenticate response header.
+	// See: https://tools.ietf.org/html/rfc2617#section-3.2.1.
+	// AUTHENTICATION_METHOD could be Bearer, MAC, etc.
+	AUTHENTICATION_METHOD = "Bearer"
+	// AUTHENTICATION_REALM is a string that tells users which credential to
+	// use.
+	AUTHENTICATION_REALM = "registered_users@gmail.com"
 )
+
+// httpErrorInfo contains the HTTP error code and message.
+type httpErrorInfo struct {
+	// code contains the HTTP error code.
+	code int
+	// message contains the Error message.
+	message string
+}
+
+// grpcToHttpError contains the mapping between gRPC error and the appropriate
+// httpErrorInfo. All error messages are title capitalized similar to known HTTP
+// error messages.
+var grpcToHttpError = map[codes.Code]httpErrorInfo{
+	// Canceled
+	codes.Canceled: httpErrorInfo{
+		code:    http.StatusInternalServerError,
+		message: "Request Canceled by Caller",
+	},
+	// Unknown
+	codes.Unknown: httpErrorInfo{
+		code:    http.StatusInternalServerError,
+		message: "Unknown Internal Error",
+	},
+	// InvalidArgument
+	codes.InvalidArgument: httpErrorInfo{
+		code:    http.StatusBadRequest,
+		message: "Bad Request Parameters or Arguments",
+	},
+	// DeadlineExceeded
+	codes.DeadlineExceeded: httpErrorInfo{
+		code:    http.StatusRequestTimeout,
+		message: "Request Timeout",
+	},
+	// NotFound
+	codes.NotFound: httpErrorInfo{
+		code:    http.StatusNotFound,
+		message: "Requested Resource Not Found",
+	},
+	// AlreadyExists
+	codes.AlreadyExists: httpErrorInfo{
+		code:    http.StatusInternalServerError,
+		message: "Created or Updated Resource Already Exists",
+	},
+	// PermissionDenied
+	codes.PermissionDenied: httpErrorInfo{
+		code:    http.StatusForbidden,
+		message: "Permission Denied",
+	},
+	// Unauthenticated
+	codes.Unauthenticated: httpErrorInfo{
+		code:    http.StatusUnauthorized,
+		message: "Authentication Missing",
+	},
+	// ResourceExhausted
+	codes.ResourceExhausted: httpErrorInfo{
+		code:    http.StatusServiceUnavailable,
+		message: "Resource Exhausted",
+	},
+	// FailedPrecondition
+	codes.FailedPrecondition: httpErrorInfo{
+		code:    http.StatusPreconditionFailed,
+		message: "System Is Not in State Required for the Requested Operation",
+	},
+	// Aborted
+	codes.Aborted: httpErrorInfo{
+		code:    http.StatusInternalServerError,
+		message: "Request Aborted",
+	},
+	// OutOfRange
+	codes.OutOfRange: httpErrorInfo{
+		code:    http.StatusBadRequest,
+		message: "Bad Request Parameters or Arguments",
+	},
+	// Unimplemented
+	codes.Unimplemented: httpErrorInfo{
+		code:    http.StatusNotImplemented,
+		message: "Method Is Not Implemented",
+	},
+	// Internal
+	codes.Internal: httpErrorInfo{
+		code:    http.StatusInternalServerError,
+		message: "Internal Server Error",
+	},
+	// Unavailable
+	codes.Unavailable: httpErrorInfo{
+		code:    http.StatusServiceUnavailable,
+		message: "Service Is Not Available",
+	},
+	// DataLoss
+	codes.DataLoss: httpErrorInfo{
+		code:    http.StatusInternalServerError,
+		message: "Unrecoverable Data Loss",
+	},
+}
 
 // Server holds internal state for the http rest server.
 type Server struct {
@@ -93,24 +194,21 @@ func (s *Server) handle(h Handler, rInfo handlers.RouteInfo, srv interface{}) ht
 }
 
 func toHttpError(err error, w http.ResponseWriter) {
-	switch grpc.Code(err) {
-	case codes.OK:
-	case codes.Canceled:
-	case codes.Unknown:
-	case codes.InvalidArgument:
-	case codes.DeadlineExceeded:
-	case codes.NotFound:
-	case codes.AlreadyExists:
-	case codes.PermissionDenied:
-	case codes.Unauthenticated:
-	case codes.ResourceExhausted:
-	case codes.FailedPrecondition:
-	case codes.Aborted:
-	case codes.OutOfRange:
-	case codes.Unimplemented:
-	case codes.Internal:
-	case codes.Unavailable:
-	case codes.DataLoss:
+	// No need to do anything for codes.OK. Writing to w before will
+	// automatically set HTTP code to StatusOK.
+	if c := grpc.Code(err); c != codes.OK {
+		if c == codes.Unauthenticated {
+			// WWW-Authenticate header MUST be included in HTTP
+			// Unauthorized responses. For more details see RFC 2616
+			// section 14.47.
+			w.Header().Set("WWW-Authenticate", fmt.Sprintf("%v realm=\"%v\"", AUTHENTICATION_METHOD, AUTHENTICATION_REALM))
+		}
+
+		// For all other codes, set the appropriate HTTP error.
+		httpError := grpcToHttpError[c]
+		http.Error(w,
+			fmt.Sprintf("%v %v", httpError.code, httpError.message),
+			httpError.code)
 	}
 }
 
@@ -134,7 +232,7 @@ func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
-			return err
+			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
 
 		m, _ := url.ParseQuery(unescaped)
@@ -180,7 +278,7 @@ func HkpLookup_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
-			return err
+			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
 
 		m, _ := url.ParseQuery(unescaped)
@@ -233,7 +331,7 @@ func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
-			return err
+			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
 
 		m, _ := url.ParseQuery(unescaped)
@@ -285,7 +383,7 @@ func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
-			return err
+			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
 
 		m, _ := url.ParseQuery(unescaped)
@@ -367,7 +465,7 @@ func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
-			return err
+			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
 
 		m, _ := url.ParseQuery(unescaped)
@@ -417,7 +515,7 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
-			return err
+			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
 
 		m, _ := url.ParseQuery(unescaped)
@@ -467,7 +565,7 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
-			return err
+			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
 
 		m, _ := url.ParseQuery(unescaped)
@@ -591,7 +689,7 @@ func parseJSON(r *http.Request, keyword string) error {
 			// double quotations.
 			newJSONTime, err := parseTimeString(strings.Trim(oldJSONBody[v[4]:v[5]], "\""))
 			if err != nil {
-				return err
+				return grpc.Errorf(codes.InvalidArgument, err.Error())
 			}
 			// Write unparsed JSON expression up until v[2]
 			outBuf.WriteString(oldJSONBody[index:v[4]])

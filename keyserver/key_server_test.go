@@ -245,9 +245,9 @@ func TestUnimplemented(t *testing.T) {
 		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &keyspb.ListUpdateRequest{}))},
 		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &keyspb.ListStepsRequest{}))},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		if got, want := grpc.Code(test.err), codes.Unimplemented; got != want {
-			t.Errorf("%v(ctx, emptypb) = %v, want %v.", test.desc, got, want)
+			t.Errorf("Test[%v]: %v(ctx, emptypb) = %v, want %v.", i, test.desc, got, want)
 		}
 	}
 }
@@ -263,9 +263,9 @@ func TestUnauthenticated(t *testing.T) {
 	}{
 		{"UpdateUser", getErr(env.Client.UpdateUser(env.ctx, &keyspb.UpdateUserRequest{UserId: "someoneelse"}))},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		if got, want := grpc.Code(test.err), codes.PermissionDenied; got != want {
-			t.Errorf("%v(ctx, emptypb) = %v, want %v.", test.desc, got, want)
+			t.Errorf("Test[%v]: %v(ctx, emptypb) = %v, want %v.", i, test.desc, got, want)
 		}
 	}
 }
