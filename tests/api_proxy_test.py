@@ -99,17 +99,17 @@ def GetUserV1(empty):
 
   get_api_url = "/v1/users/" + primary_test_email
   request = urllib2.Request(server_url + get_api_url)
-  response = urllib2.urlopen(request)
+  try:
+    response = urllib2.urlopen(request)
 
-  # HTTP response should be 200.
-  # TODO(cesarghali): test more specific codes once implemented.
-  assert response.getcode() == 200
+    # Empty should be false here.
+    assert not empty
 
-  # Ensure that what is returned is as expected.
-  body = response.read()
-  if empty:
-    assert not body
-  else:
+    # HTTP response should be 200.
+    assert response.getcode() == 200
+
+    # Ensure that what is returned is as expected.
+    body = response.read()
     dict_response = json.loads(body)
     # Response includes key list.
     assert "key_list" in dict_response
@@ -122,6 +122,8 @@ def GetUserV1(empty):
     # Actual key as expected.
     assert "key" in dict_response["key_list"][0]
     assert dict_response["key_list"][0]["key"] == key
+  except urllib2.HTTPError as err:
+    assert empty and err.code == 404
 
   end_time = time.time()
 
@@ -136,18 +138,20 @@ def HkpGet(empty):
 
   get_api_url = "/v1/hkp/lookup?op=get&search=" + primary_test_email
   request = urllib2.Request(server_url + get_api_url)
-  response = urllib2.urlopen(request)
+  try:
+    response = urllib2.urlopen(request)
 
-  # HTTP response should be 200.
-  # TODO(cesarghali): test more specific codes once implemented.
-  assert response.getcode() == 200
+    # Empty should be false here.
+    assert not empty
 
-  # Ensure that what is returned is as expected.
-  body = response.read()
-  if empty:
-    assert not body
-  else:
+    # HTTP response should be 200.
+    assert response.getcode() == 200
+
+    # Ensure that what is returned is as expected.
+    body = response.read()
     assert body == complete_key
+  except urllib2.HTTPError as err:
+    assert empty and err.code == 404
 
   end_time = time.time()
 
@@ -162,21 +166,23 @@ def GetUserV2(empty):
 
   get_api_url = "/v2/users/" + primary_test_email
   request = urllib2.Request(server_url + get_api_url)
-  response = urllib2.urlopen(request)
+  try:
+    response = urllib2.urlopen(request)
 
-  # HTTP response should be 200.
-  # TODO(cesarghali): test more specific codes once implemented.
-  assert response.getcode() == 200
+    # Empty should be false here.
+    assert not empty
 
-  # Ensure that what is returned is as expected.
-  body = response.read()
-  if empty:
-    assert not body
-  else:
+    # HTTP response should be 200.
+    assert response.getcode() == 200
+
+    # Ensure that what is returned is as expected.
+    body = response.read()
     dict_response = json.loads(body)
     # Response includes profile.
     assert "profile" in dict_response
     assert dict_response["profile"] == primary_user_profile
+  except urllib2.HTTPError as err:
+    assert empty and err.code == 404
 
   end_time = time.time()
 
@@ -196,7 +202,6 @@ def UpdateUserV2():
   response = urllib2.urlopen(request, json.dumps(update_user_request))
 
   # HTTP response should be 200.
-  # TODO(cesarghali): test more specific codes once implemented.
   assert response.getcode() == 200
 
   # Ensure that returned JSON is as expected.
