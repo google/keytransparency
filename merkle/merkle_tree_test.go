@@ -21,9 +21,9 @@ func TestBitString(t *testing.T) {
 		{"0", AllZeros},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		if got, want := BitString(test.input), test.output; got != want {
-			t.Errorf("BitString(%v)=%v, want %v", test.input, got, want)
+			t.Errorf("Test[%v]: BitString(%v)=%v, want %v", i, test.input, got, want)
 		}
 	}
 }
@@ -40,10 +40,10 @@ func TestAddRoot(t *testing.T) {
 		{10, codes.FailedPrecondition},
 		{12, codes.OK},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		_, err := m.addRoot(test.epoch)
 		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("addRoot(%v)=%v, want %v", test.epoch, got, want)
+			t.Errorf("Test[%v]: addRoot(%v)=%v, want %v", i, test.epoch, got, want)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func TestAddLeaf(t *testing.T) {
 	for i, test := range tests {
 		err := m.AddLeaf([]byte{}, test.epoch, test.index)
 		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v, %v",
+			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
 				i, test.epoch, test.index, got, want, err)
 		}
 	}
@@ -187,7 +187,7 @@ func TestAuditDepth(t *testing.T) {
 	for i, test := range tests {
 		err := m.AddLeaf([]byte{}, test.epoch, test.index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
+			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.index, got, want)
 		}
 	}
@@ -195,14 +195,14 @@ func TestAuditDepth(t *testing.T) {
 	for i, test := range tests {
 		audit, err := m.AuditPath(test.epoch, test.index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("%v: AuditPath(_, %v, %v)=%v, want %v",
+			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.index, got, want)
 		}
 		if got, want := len(audit), test.depth; got != want {
 			for j, a := range audit {
 				fmt.Println(j, ": ", a)
 			}
-			t.Errorf("len(audit(%v, %v))=%v, want %v", test.epoch, test.index, got, want)
+			t.Errorf("Test[%v]: len(audit(%v, %v))=%v, want %v", i, test.epoch, test.index, got, want)
 		}
 	}
 }
@@ -223,27 +223,27 @@ func TestAuditNeighors(t *testing.T) {
 		// Insert.
 		err := m.AddLeaf([]byte{}, test.epoch, test.index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
+			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.index, got, want)
 		}
 		// Verify audit path.
 		audit, err := m.AuditPath(test.epoch, test.index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("%v: AuditPath(_, %v, %v)=%v, want %v",
+			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.index, got, want)
 		}
 		if got, want := len(audit), len(test.emptyNeighors)+1; got != want {
 			for j, a := range audit {
 				fmt.Println(j, ": ", a)
 			}
-			t.Errorf("len(audit(%v, %v))=%v, want %v", test.epoch, test.index, got, want)
+			t.Errorf("Test[%v]: len(audit(%v, %v))=%v, want %v", i, test.epoch, test.index, got, want)
 		}
 		for j, v := range test.emptyNeighors {
 			// Starting from the leaf, going to the root. Skipping leaf.
 			depth := len(audit) - 1 - j
 			nstr := neighborOf(BitString(test.index), depth)
 			if got, want := bytes.Equal(audit[j+1], EmptyValue(nstr)), v; got != want {
-				t.Errorf("AuditPath(%v)[%v]=%v, want %v", test.index, j, got, want)
+				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.index, j, got, want)
 			}
 		}
 	}

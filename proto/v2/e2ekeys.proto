@@ -63,8 +63,6 @@ service E2EKeyService {
       put: "/v2/users/{user_id}"
       body: "update"
     };
-    // TODO(cesarghali): this doesn't complie yet.
-    //option (google.api.method_visibility).restriction = "GOOGLE_INTERNAL";
   }
 
   // List the Signed Epoch Heads, from epoch to epoch.

@@ -201,7 +201,7 @@ func TestHkpLookup(t *testing.T) {
 		{"vindex", "", "", "", "", false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		hkpLookupReq := v1pb.HkpLookupRequest{
 			Op:      test.op,
 			Search:  test.userId,
@@ -210,10 +210,10 @@ func TestHkpLookup(t *testing.T) {
 
 		res, err := env.ClientV1.HkpLookup(ctx, &hkpLookupReq)
 		if got, want := (err == nil), test.outNilErr; got != want {
-			t.Errorf("Unexpected err = (%v), want nil = %v", err, test.outNilErr)
+			t.Errorf("Test[%v]: Unexpected err = (%v), want nil = %v", i, err, test.outNilErr)
 		}
 		if got, want := (res == nil), (err != nil); got != want {
-			t.Errorf("HkpLookup(%v) = (%v), want nil = %v", hkpLookupReq, res, want)
+			t.Errorf("Test[%v]: HkpLookup(%v) = (%v), want nil = %v", i, hkpLookupReq, res, want)
 		}
 
 		// If there's an output error, even expected, the test cannot be
@@ -224,7 +224,7 @@ func TestHkpLookup(t *testing.T) {
 
 		buf := bytes.NewBuffer(res.Body)
 		if gotb, wantb, gotct, wantct := buf.String(), test.outBody, res.ContentType, test.outContentType; gotb != wantb || gotct != wantct {
-			t.Errorf("HkpLookup(%v) = (%v, %v), want (%v, %v)", hkpLookupReq, gotct, gotb, wantct, wantb)
+			t.Errorf("Test[%v]: HkpLookup(%v) = (%v, %v), want (%v, %v)", i, hkpLookupReq, gotct, gotb, wantct, wantb)
 		}
 	}
 }

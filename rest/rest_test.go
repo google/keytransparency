@@ -121,7 +121,7 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 			"", 0, false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"GET",
@@ -134,14 +134,14 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 		info := GetUserV1_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v2pb.GetUserRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.GetUserRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v2pb.GetUserRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", i, err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -152,27 +152,27 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
 		if got, want := info.Arg.(*v2pb.GetUserRequest).UserId, test.userId; got != want {
-			t.Errorf("UserId = %v, want %v", got, want)
+			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.GetUserRequest).AppId, test.appId; got != want {
-			t.Errorf("AppId = %v, want %v", got, want)
+			t.Errorf("Test[%v]: AppId = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.GetUserRequest).Epoch, test.epoch; got != want {
-			t.Errorf("Epoch = %v, want %v", got, want)
+			t.Errorf("Test[%v]: Epoch = %v, want %v", i, got, want)
 		}
 
 		v1 := &FakeServer{}
 		srv := New(v1)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -214,7 +214,7 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 		{"/v1/hkp/lookup", "", "", "", true},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"GET",
@@ -227,14 +227,14 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 		info := HkpLookup_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v1pb.HkpLookupRequest); !ok {
-			t.Errorf("info.Arg is not of type v1pb.HkpLookupRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v1pb.HkpLookupRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", i, err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -243,23 +243,23 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Op, test.op; got != want {
-			t.Errorf("Op = %v, want %v", got, want)
+			t.Errorf("Test[%v]: Op = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Search, test.search; got != want {
-			t.Errorf("Search = %v, want %v", got, want)
+			t.Errorf("Test[%v]: Search = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v1pb.HkpLookupRequest).Options, test.options; got != want {
-			t.Errorf("Options = %v, want %v", got, want)
+			t.Errorf("Test[%v]: Options = %v, want %v", i, got, want)
 		}
 
 		v1 := &FakeServer{}
 		srv := New(v1)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -292,7 +292,7 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 			"", 0, false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"GET",
@@ -305,14 +305,14 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 		info := GetUserV2_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v2pb.GetUserRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.GetUserRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v2pb.GetUserRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", i, err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -323,27 +323,27 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
 		if got, want := info.Arg.(*v2pb.GetUserRequest).UserId, test.userId; got != want {
-			t.Errorf("UserId = %v, want %v", got, want)
+			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.GetUserRequest).AppId, test.appId; got != want {
-			t.Errorf("AppId = %v, want %v", got, want)
+			t.Errorf("Test[%v]: AppId = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.GetUserRequest).Epoch, test.epoch; got != want {
-			t.Errorf("Epoch = %v, want %v", got, want)
+			t.Errorf("Test[%v]: Epoch = %v, want %v", i, got, want)
 		}
 
 		v2 := &FakeServer{}
 		srv := New(v2)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -380,7 +380,7 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 			0, 0, false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"GET",
@@ -393,14 +393,14 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 		info := ListUserHistoryV2_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v2pb.ListUserHistoryRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.ListUserHistoryRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListUserHistoryRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", i, err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -411,27 +411,27 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
 		if got, want := info.Arg.(*v2pb.ListUserHistoryRequest).UserId, test.userId; got != want {
-			t.Errorf("UserId = %v, want %v", got, want)
+			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListUserHistoryRequest).StartEpoch, test.startEpoch; got != want {
-			t.Errorf("StartEpoch = %v, want %v", got, want)
+			t.Errorf("Test[%v]: StartEpoch = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListUserHistoryRequest).PageSize, test.pageSize; got != want {
-			t.Errorf("PageSize = %v, want %v", got, want)
+			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 
 		v2 := &FakeServer{}
 		srv := New(v2)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -449,7 +449,7 @@ func TestUpdateUserV2_InitiateHandlerInfo(t *testing.T) {
 		{"/v2/users/" + primary_test_email, primary_test_email, true},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"PUT",
@@ -462,14 +462,14 @@ func TestUpdateUserV2_InitiateHandlerInfo(t *testing.T) {
 		info := UpdateUserV2_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v2pb.UpdateUserRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.UpdateUserRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v2pb.UpdateUserRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		mx.ServeHTTP(nil, r)
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", i, err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -480,21 +480,21 @@ func TestUpdateUserV2_InitiateHandlerInfo(t *testing.T) {
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
 		if got, want := info.Arg.(*v2pb.UpdateUserRequest).UserId, test.userId; got != want {
-			t.Errorf("UserId = %v, want %v", got, want)
+			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
 
 		v2 := &FakeServer{}
 		srv := New(v2)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -525,7 +525,7 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 			0, 0, false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"GET",
@@ -538,13 +538,13 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 		info := ListSEHV2_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v2pb.ListSEHRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.ListSEHRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListSEHRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", i, err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -555,24 +555,24 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
 		if got, want := info.Arg.(*v2pb.ListSEHRequest).StartEpoch, test.startEpoch; got != want {
-			t.Errorf("StartEpoch = %v, want %v", got, want)
+			t.Errorf("Test[%v]: StartEpoch = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListSEHRequest).PageSize, test.pageSize; got != want {
-			t.Errorf("PageSize = %v, want %v", got, want)
+			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 
 		v2 := &FakeServer{}
 		srv := New(v2)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -603,7 +603,7 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 			0, 0, false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"GET",
@@ -616,13 +616,13 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 		info := ListUpdateV2_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v2pb.ListUpdateRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.ListUpdateRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListUpdateRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr, i)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -633,24 +633,24 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
 		if got, want := info.Arg.(*v2pb.ListUpdateRequest).StartSequence, test.startSequence; got != want {
-			t.Errorf("StartSequence = %v, want %v", got, want)
+			t.Errorf("Test[%v]: StartSequence = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListUpdateRequest).PageSize, test.pageSize; got != want {
-			t.Errorf("PageSize = %v, want %v", got, want)
+			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 
 		v2 := &FakeServer{}
 		srv := New(v2)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -681,7 +681,7 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 			0, 0, false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		rInfo := handlers.RouteInfo{
 			test.path,
 			"GET",
@@ -694,13 +694,13 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 		info := ListStepsV2_InitializeHandlerInfo(rInfo)
 
 		if _, ok := info.Arg.(*v2pb.ListStepsRequest); !ok {
-			t.Errorf("info.Arg is not of type v2pb.ListStepsRequest")
+			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListStepsRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
 		err := info.Parser(r, &info.Arg)
 		if got, want := (err == nil), test.parserNilErr; got != want {
-			t.Errorf("Unexpected parser err = (%v), want nil = %v", err, test.parserNilErr)
+			t.Errorf("Test[%v]: Unexpected parser err = (%v), want nil = %v", i, err, test.parserNilErr)
 		}
 		// If there's an error parsing, the test cannot be completed.
 		// The parsing error might be expected though.
@@ -711,24 +711,24 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 		// Call JSONDecoder to simulate decoding JSON -> Proto.
 		err = JSONDecoder(r, &info.Arg)
 		if err != nil {
-			t.Errorf("Error while calling JSONDecoder, this should not happen. err: %v", err)
+			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
 		if got, want := info.Arg.(*v2pb.ListStepsRequest).StartSequence, test.startSequence; got != want {
-			t.Errorf("StartSequence = %v, want %v", got, want)
+			t.Errorf("Test[%v]: StartSequence = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListStepsRequest).PageSize, test.pageSize; got != want {
-			t.Errorf("PageSize = %v, want %v", got, want)
+			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 
 		v2 := &FakeServer{}
 		srv := New(v2)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
-			t.Errorf("Error while calling Fake_RequestHandler, this should not happen.")
+			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
 		}
 		if got, want := (*resp).(bool), true; got != want {
-			t.Errorf("resp = %v, want %v.", got, want)
+			t.Errorf("Test[%v]: resp = %v, want %v.", i, got, want)
 		}
 	}
 }
@@ -752,14 +752,14 @@ func TestParseURLComponent(t *testing.T) {
 		{"/v1/users/" + primary_test_email, handlers.USER_ID_KEYWORD, primary_test_email, true},
 		{"/v1/users/" + primary_test_email, "random_keyword", "", false},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		r, _ := http.NewRequest("GET", test.path, nil)
 		mx.ServeHTTP(nil, r)
 		gots, gote := parseURLVariable(r, test.keyword)
 		wants := test.out
 		wante := test.nilErr
 		if gots != wants || wante != (gote == nil) {
-			t.Errorf("Error while parsing User ID. Input = (%v, %v), got ('%v', %v), want ('%v', nil = %v)", test.path, test.keyword, gots, gote, wants, wante)
+			t.Errorf("Test[%v]: Error while parsing User ID. Input = (%v, %v), got ('%v', %v), want ('%v', nil = %v)", i, test.path, test.keyword, gots, gote, wants, wante)
 		}
 
 	}
@@ -834,16 +834,16 @@ func TestParseJson(t *testing.T) {
 				", app_id: \"" + primary_test_app_id + "\"}}}", true},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		r, _ := http.NewRequest("", "", fakeJSONParserReader{bytes.NewBufferString(test.inJSON)})
 		err := parseJSON(r, "creation_time")
 		if test.outNilErr != (err == nil) {
-			t.Errorf("Unexpected JSON parser err = (%v), want nil = %v", err, test.outNilErr)
+			t.Errorf("Test[%v]: Unexpected JSON parser err = (%v), want nil = %v", i, err, test.outNilErr)
 		}
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 		if got, want := buf.String(), test.outJSON; got != want {
-			t.Errorf("Out JSON = (%v), want (%v)", got, want)
+			t.Errorf("Test[%v]: Out JSON = (%v), want (%v)", i, got, want)
 		}
 	}
 }
