@@ -93,7 +93,7 @@ message SignedEpochHead {
   bytes head = 2;
   // key_hash is the first 4 bytes of the SHA256 hash of the key used for
   // signing. May be used for key rotation and/or multiple signatures.
-  bytes key_hash = 3;
+  uint64 key_hash = 3;
 }
 
 message TimestampedEpochHead {
