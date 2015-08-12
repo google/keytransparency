@@ -178,11 +178,11 @@ func TestAuditDepth(t *testing.T) {
 		index string
 		depth int
 	}{
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", 257},
-		{0, "0000000000000000000000000000000000000000000000000000000000000001", 257},
-		{0, "8000000000000000000000000000000000000000000000000000000000000001", 2},
-		{1, "8000000000000000000000000000000000000000000000000000000000000001", 2},
-		{1, "0000000000000000000000000000000000000000000000000000000000000001", 257},
+		{0, "0000000000000000000000000000000000000000000000000000000000000000", 256},
+		{0, "0000000000000000000000000000000000000000000000000000000000000001", 256},
+		{0, "8000000000000000000000000000000000000000000000000000000000000001", 1},
+		{1, "8000000000000000000000000000000000000000000000000000000000000001", 1},
+		{1, "0000000000000000000000000000000000000000000000000000000000000001", 256},
 	}
 	for i, test := range tests {
 		err := m.AddLeaf([]byte{}, test.epoch, test.index)
@@ -232,7 +232,7 @@ func TestAuditNeighors(t *testing.T) {
 			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.index, got, want)
 		}
-		if got, want := len(audit), len(test.emptyNeighors)+1; got != want {
+		if got, want := len(audit), len(test.emptyNeighors); got != want {
 			for j, a := range audit {
 				fmt.Println(j, ": ", a)
 			}
@@ -240,9 +240,9 @@ func TestAuditNeighors(t *testing.T) {
 		}
 		for j, v := range test.emptyNeighors {
 			// Starting from the leaf, going to the root. Skipping leaf.
-			depth := len(audit) - 1 - j
+			depth := len(audit) - j
 			nstr := neighborOf(BitString(test.index), depth)
-			if got, want := bytes.Equal(audit[j+1], EmptyValue(nstr)), v; got != want {
+			if got, want := bytes.Equal(audit[j], EmptyValue(nstr)), v; got != want {
 				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.index, j, got, want)
 			}
 		}
