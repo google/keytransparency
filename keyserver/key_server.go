@@ -92,7 +92,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *keyspb.UpdateUserRequest) (
 	}
 
 	e := &internalpb.EntryStorage{
-		EntryUpdate: in.GetUpdate().GetSignedUpdate(),
+		EntryUpdate: in.GetUpdate().SignedUpdate,
 		Profile:     in.GetUpdate().Profile,
 	}
 

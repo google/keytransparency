@@ -143,7 +143,8 @@ message EntryProfileAndProof {
 // which are made available to verifiers.
 message Step {
   oneof type {
-    SignedEntryUpdate entry_changed = 1;
+    // entry_changed contains serialized SignedEntryUpdate.
+    bytes entry_changed = 1;
     SignedEpochHead seh = 2;
   }
   // epoch of this udpate.
@@ -155,8 +156,9 @@ message Step {
 
 // EntryUpdate is the proto a client sends to update their profile.
 message EntryUpdateRequest {
-  // signed_update authorizes the change to profile.
-  SignedEntryUpdate signed_update = 1;
+  // signed_update contains serialized SignedEntryUpdate and authorizes the
+  // change to profile.
+  bytes signed_update = 1;
   // profile is the serialized protobuf Profile.
   // profile is private and must not be released to verifiers.
   bytes profile = 2;
@@ -292,7 +294,8 @@ message ListUpdateRequest {
 }
 
 message ListUpdateResponse {
-  repeated SignedEntryUpdate updates = 1;
+  // updates contains serialized SignedEntryUpdate.
+  repeated bytes updates = 1;
 }
 
 message ListStepsRequest {
