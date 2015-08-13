@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"net"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ import (
 const (
 	primaryUserID     = 12345678
 	primaryUserEmail  = "e2eshare.test@gmail.com"
+	primaryAppId      = "pgp"
 	primaryUserPGPKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mFIEAAAAABMIKoZIzj0DAQcCAwRNDJYwov/h0/XUVEALnyLf4PfMP3bGpJODLtkk
@@ -69,15 +71,12 @@ ff000000029b0cff00000009904b20db14afb281e30000b3370100b5012d
 97d8cace51987a783862c916002c839db6b9a3fac6c1ca058d17f5062c01
 00f167d12ad2e96494a54d3e07ef24f8f5c3a4528c647658a3f13aaad56b
 a5d613`, "\n", "", -1))
-	primaryKey = &v2pb.Key{
-		AppId: "pgp",
-		Key:   primaryUserKeyRing,
+	primaryKeys = map[string][]byte{
+		primaryAppId: primaryUserKeyRing,
 	}
 	primaryUserProfile = &v2pb.Profile{
 		// TODO(cesarghali): fill nonce.
-		KeyList: []*v2pb.Key{
-			primaryKey,
-		},
+		Keys: primaryKeys,
 	}
 )
 
@@ -155,7 +154,7 @@ func TestGetValidUser(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	expectedPrimaryKey := primaryKey
+	expectedPrimaryKeys := primaryKeys
 
 	env.createPrimaryUser(t)
 
@@ -165,11 +164,11 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetUser failed: %v", err)
 	}
-	if got, want := len(res.GetKeyList()), 1; got != want {
+	if got, want := len(res.GetKeys()), 1; got != want {
 		t.Errorf("len(GetKeyList()) = %v, want; %v", got, want)
 		return
 	}
-	if got, want := res.GetKeyList()[0], expectedPrimaryKey; !proto.Equal(got, want) {
+	if got, want := res.GetKeys(), expectedPrimaryKeys; !reflect.DeepEqual(got, want) {
 		t.Errorf("GetUser(%v) = %v, want: %v", primaryUserEmail, got, want)
 	}
 }

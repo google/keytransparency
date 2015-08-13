@@ -38,8 +38,8 @@ func TestValidateKey(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	key := *primaryKey
-	if err := env.server.validateKey(primaryUserEmail, &key); err != nil {
+	key := &keyspb.Key{AppId: primaryAppId, Key: primaryKeys[primaryAppId]}
+	if err := env.server.validateKey(primaryUserEmail, key); err != nil {
 		t.Errorf("validateKey(%v) = %v, wanted nil", &key, err)
 	}
 }
