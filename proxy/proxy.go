@@ -86,12 +86,12 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 	}
 
 	// hkpGet only supports returning one key.
-	if got, want := len(profile.GetKeyList()), 1; got != want {
+	if got, want := len(profile.GetKeys()), 1; got != want {
 		return nil, grpc.Errorf(codes.Unimplemented, "Only a single key retrieval is supported")
 	}
 
 	// From here on, there is only one key in the key list.
-	armoredKey, err := armorKey(profile.GetKeyList()[0])
+	armoredKey, err := armorKey(&v2pb.Key{AppId: hkpAppId, Key: profile.GetKeys()[hkpAppId]})
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func armorKey(key *v2pb.Key) ([]byte, error) {
 	if key == nil {
 		return nil, grpc.Errorf(codes.NotFound, "key=nil")
 	}
-	if got, want := key.AppId, "pgp"; got != want {
+	if got, want := key.AppId, hkpAppId; got != want {
 		return nil, grpc.Errorf(codes.NotFound, "key.AppId=%v, want %v", got, want)
 	}
 

@@ -87,8 +87,8 @@ func (s *Server) validateUpdateUserRequest(ctx context.Context, in *v2pb.UpdateU
 	}
 
 	// Validate the keys in the profile.
-	for _, v := range p.GetKeyList() {
-		if err := s.validateKey(in.UserId, v); err != nil {
+	for k, v := range p.GetKeys() {
+		if err := s.validateKey(in.UserId, &v2pb.Key{AppId: k, Key: v}); err != nil {
 			return err
 		}
 	}

@@ -56,15 +56,15 @@ empty_protobuf_json = "{}\n"
 #         "key": key
 #     }
 # }
-primary_user_profile = str.replace("""Es0DEsUDmFIEAAAAABMIKoZIzj0DAQcCAwRNDJYwov
-/h0/XUVEALnyLf4PfMP3bGpJODLtkkIXSAZaC7rKurE6F/h3r8Uq9TMiZO4lvYBLUYRyMQDfYidAaKtB
-k8ZTJlc2hhcmUudGVzdEBnbWFpbC5jb20+iI0EExMIAD//AAAABQJVjCNs/wAAAAIbA/8AAAACiwn/AA
-AABZUICQoL/wAAAAOWAQL/AAAAAp4B/wAAAAmQSyDbFK+ygeMAAEaEAQDdUlASPe+J7E7BZWMI+1lpfv
-HQsH1Tv6ubkkn9akJ91QD/eG3H3UIVH6KV/fXWft7pEva5i6Jsx6ikO63kVWFbYaK4VgQAAAAAEggqhk
-jOPQMBBwIDBFpSLVgW2RSga/CUSF3a2Wnv0kdeybCXdB/G1K+v2LaTb6bNtNu39DlDtf8XDm5u5kfLQc
-L5LFhDoDe5aGP02iUDAQgHiG0EGBMIAB//AAAABYJVjCNs/wAAAAKbDP8AAAAJkEsg2xSvsoHjAACzNw
-EAtQEtl9jKzlGYeng4YskWACyDnba5o/rGwcoFjRf1BiwBAPFn0SrS6WSUpU0+B+8k+PXDpFKMZHZYo/
-E6qtVrpdYTGgNwZ3A=""", "\n", "")
+primary_user_profile = str.replace("""Es0DCgNwZ3ASxQOYUgQAAAAAEwgqhkjOPQMBBwIDBE
+0MljCi/+HT9dRUQAufIt/g98w/dsakk4Mu2SQhdIBloLusq6sToX+HevxSr1MyJk7iW9gEtRhHIxAN9i
+J0Boq0GTxlMmVzaGFyZS50ZXN0QGdtYWlsLmNvbT6IjQQTEwgAP/8AAAAFAlWMI2z/AAAAAhsD/wAAAA
+KLCf8AAAAFlQgJCgv/AAAAA5YBAv8AAAACngH/AAAACZBLINsUr7KB4wAARoQBAN1SUBI974nsTsFlYw
+j7WWl+8dCwfVO/q5uSSf1qQn3VAP94bcfdQhUfopX99dZ+3ukS9rmLomzHqKQ7reRVYVthorhWBAAAAA
+ASCCqGSM49AwEHAgMEWlItWBbZFKBr8JRIXdrZae/SR17JsJd0H8bUr6/YtpNvps2027f0OUO1/xcObm
+7mR8tBwvksWEOgN7loY/TaJQMBCAeIbQQYEwgAH/8AAAAFglWMI2z/AAAAApsM/wAAAAmQSyDbFK+yge
+MAALM3AQC1AS2X2MrOUZh6eDhiyRYALIOdtrmj+sbBygWNF/UGLAEA8WfRKtLpZJSlTT4H7yT49cOkUo
+xkdlij8Tqq1Wul1hM=""", "\n", "")
 
 update_user_request = {
     "user_id": primary_test_email,
@@ -112,16 +112,12 @@ def GetUserV1(empty):
     body = response.read()
     dict_response = json.loads(body)
     # Response includes key list.
-    assert "key_list" in dict_response
+    assert "keys" in dict_response
     # Key list includes a single key.
-    assert len(dict_response["key_list"]) == 1
-    assert "key" in dict_response["key_list"][0]
-    # App ID as expected.
-    assert "app_id" in dict_response["key_list"][0]
-    assert dict_response["key_list"][0]["app_id"] == app_id
+    assert len(dict_response["keys"]) == 1
+    assert app_id in dict_response["keys"]
     # Actual key as expected.
-    assert "key" in dict_response["key_list"][0]
-    assert dict_response["key_list"][0]["key"] == key
+    assert dict_response["keys"][app_id] == key
   except urllib2.HTTPError as err:
     assert empty and err.code == 404
 
