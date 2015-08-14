@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -31,8 +32,9 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	s storage.BasicStorage
+	s storage.DataStore
 	a auth.Authenticator
+	b merkle.Builder
 }
 
 // Open creates a new instance of the key server and connects to the database.
@@ -43,12 +45,22 @@ func Open(ctx context.Context, logID []byte, universe string, environment string
 	}
 
 	// TODO: Add authenticator
-	return &Server{storage, auth.New()}
+	return Create(storage)
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func Create(storage storage.BasicStorage) *Server {
-	return &Server{storage, auth.New()}
+func Create(storage storage.DataStore) *Server {
+	srv := &Server{
+		s: storage,
+		a: auth.New(),
+		b: merkle.Create(storage.GetChannel())}
+	go srv.b.Build()
+	return srv
+}
+
+func (s *Server) Stop() {
+	s.b.Stop()
+	s.s.CloseChannel()
 }
 
 // GetUser returns a user's profile and proof that there is only one object for
@@ -60,7 +72,7 @@ func (s *Server) GetUser(ctx context.Context, in *keyspb.GetUserRequest) (*keysp
 		return nil, err
 	}
 
-	e, err := s.s.ReadEntryStorage(ctx, vuf)
+	e, err := s.s.Read(ctx, vuf)
 	if err != nil {
 		return nil, err
 	}
@@ -92,12 +104,20 @@ func (s *Server) UpdateUser(ctx context.Context, in *keyspb.UpdateUserRequest) (
 	}
 
 	e := &internalpb.EntryStorage{
+		// Epoch is the epoch at which this update should be inserted
+		// into the merkle tree.
+		// TODO(cesarghali): for now epoch = current + 1. This might
+		//                   change in the future.
+		Epoch: uint64(merkle.GetCurrentEpoch()),
+		// TODO(cesarghali): sequence should be set properly.
+		Sequence:    0,
 		EntryUpdate: in.GetUpdate().SignedUpdate,
 		Profile:     in.GetUpdate().Profile,
+		// TODO(cesarghali): set Domain.
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err = s.s.InsertEntryStorage(ctx, e, vuf); err != nil {
+	if err = s.s.Write(ctx, e, vuf); err != nil {
 		return nil, err
 	}
 

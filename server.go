@@ -114,6 +114,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	v2 := keyserver.Create(storage.CreateMem(context.Background()))
+	defer v2.Stop()
 	v1 := proxy.New(v2)
 	s := rest.New(v1)
 

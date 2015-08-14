@@ -22,15 +22,28 @@ import (
 	context "golang.org/x/net/context"
 )
 
-type BasicStorage interface {
-	// InsertLogTableRow ensures that there is a valid directory entry for
-	// our data.
-	InsertLogTableRow(ctx context.Context)
-	// InsertEntryStorage inserts a new UserEntryStorage row. Fails if the
-	// row already exists.
-	InsertEntryStorage(ctx context.Context, profile *internalpb.EntryStorage, vuf string) error
-	// ReadEntryStorage reads a profile.
-	ReadEntryStorage(ctx context.Context, vuf string) (*internalpb.EntryStorage, error)
+type DataStore interface {
+	Reader
+	Writer
+	Watcher
+}
+
+type Reader interface {
+	// Read reads a EntryStroage from the storage.
+	Read(ctx context.Context, vuf string) (*internalpb.EntryStorage, error)
+}
+
+type Writer interface {
+	// Write inserts a new EntryStorage in the storage. Fails if the row
+	// already exists.
+	Write(ctx context.Context, entry *internalpb.EntryStorage, vuf string) error
+}
+
+type Watcher interface {
+	// GetChannel returns a channel.
+	GetChannel() chan interface{}
+	// CloseChannel closes the current channel.
+	CloseChannel()
 }
 
 // TODO(cesarghali): bring back ConkisStorage and make it compatible with the

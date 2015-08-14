@@ -49,7 +49,8 @@ key_id = "470f80552bffbd9b74fb399b4b20db14afb281e3"
 empty_protobuf_json = "{}\n"
 
 # This profile is genrated from (1) marshaling the following profile protobuf
-# and (2) marshling the results into JSON.
+# and (2) marshling the results into base64 which is JSON representation of
+# bytes.
 # primary_user_profile = {
 #     "key_list": {
 #         "app_id": app_id,
@@ -65,11 +66,21 @@ ASCCqGSM49AwEHAgMEWlItWBbZFKBr8JRIXdrZae/SR17JsJd0H8bUr6/YtpNvps2027f0OUO1/xcObm
 7mR8tBwvksWEOgN7loY/TaJQMBCAeIbQQYEwgAH/8AAAAFglWMI2z/AAAAApsM/wAAAAmQSyDbFK+yge
 MAALM3AQC1AS2X2MrOUZh6eDhiyRYALIOdtrmj+sbBygWNF/UGLAEA8WfRKtLpZJSlTT4H7yT49cOkUo
 xkdlij8Tqq1Wul1hM=""", "\n", "")
+# This signed entry update is generated from (1) marshalling the following
+# signed entry update and (2) marshaling the results into base64 which is JSON
+# representation of bytes.
+# signed_entry_update = {
+#     "entry": {
+#         "index": <primary_user_index>
+#     }
+# }
+primary_signed_entry_update = "GiIiIFMz0U4iG5mVzIxhtdSvFKHGiUiWBf7Zb/8yUORcWxsN"
 
 update_user_request = {
     "user_id": primary_test_email,
     "update": {
-        "profile": primary_user_profile
+        "signed_update": primary_signed_entry_update,
+        "profile": primary_user_profile,
     }
 }
 

@@ -55,10 +55,6 @@ var (
 	One = byte('1')
 )
 
-// Epoch is the type used to denote what point in time to query to server.
-// Currently, this is a monotonically increasing number.
-type Epoch uint64
-
 // Tree holds internal state for the Merkle Tree.
 type Tree struct {
 	roots   map[Epoch]*node

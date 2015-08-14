@@ -36,6 +36,8 @@ import (
 const (
 	primaryUserID    = 12345678
 	primaryUserEmail = "e2eshare.test@gmail.com"
+	// This index is the output of keyserver.Server.Vuf(primaryUserEmail).
+	primaryUserIndex = "5333d14e221b9995cc8c61b5d4af14a1c689489605fed96fff3250e45c5b1b0d"
 	primaryAppId     = "pgp"
 )
 
@@ -117,6 +119,10 @@ a5d613`, "\n", "", -1))
 		// TODO(cesarghali): fill nonce.
 		Keys: primaryKeys,
 	}
+	primaryUserIndexBytes, _ = hex.DecodeString(primaryUserIndex)
+	primaryUpdateEntry       = &keyspb.Entry{
+		Index: primaryUserIndexBytes,
+	}
 )
 
 type Env struct {
@@ -163,9 +169,22 @@ func (env *Env) Close() {
 
 func (env *Env) createPrimaryUser(t *testing.T) {
 	// Marshaling the user profile.
-	p, err := proto.Marshal(primaryUserProfile)
+	pBytes, err := proto.Marshal(primaryUserProfile)
 	if err != nil {
 		t.Fatalf("Unexpected profile marshalling error %v.", err)
+	}
+	// Marshaling the update entry.
+	eBytes, err := proto.Marshal(primaryUpdateEntry)
+	if err != nil {
+		t.Fatalf("Unexpected entry marshalling error %v.", err)
+	}
+	seu := &keyspb.SignedEntryUpdate{
+		Entry: eBytes,
+	}
+	// Marshaling the update entry.
+	seuBytes, err := proto.Marshal(seu)
+	if err != nil {
+		t.Fatalf("Unexpected signed entry update marshalling error %v.", err)
 	}
 
 	// Insert valid user. Calling update if the user does not exist will
@@ -173,7 +192,8 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 	_, err = env.Client.UpdateUser(env.ctx, &keyspb.UpdateUserRequest{
 		UserId: primaryUserEmail,
 		Update: &keyspb.EntryUpdateRequest{
-			Profile: p,
+			SignedUpdate: seuBytes,
+			Profile:      pBytes,
 		},
 	})
 	if err != nil {
