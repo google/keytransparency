@@ -22,18 +22,20 @@ func TestAdvance(t *testing.T) {
 	tests := []struct {
 		numOfIncrements int
 		outEpoch        Epoch
+		success         bool
 	}{
 		// Advancing epoch is cumulative.
-		{1, 2},
-		{3, 5},
+		{1, 2, true},
+		{3, 5, true},
+		{1, 0, false},
 	}
 
 	for i, test := range tests {
 		for j := 0; j < test.numOfIncrements; j++ {
 			AdvanceEpoch()
 		}
-		if got, want := GetCurrentEpoch(), test.outEpoch; got != want {
-			t.Errorf("Test[%v]: GetCurrentEpoch()=%v, want %v", i, got, want)
+		if got, want := GetCurrentEpoch() == test.outEpoch, test.success; got != want {
+			t.Errorf("Test[%v]: GetCurrentEpoch()=%v, want %v, should fail: %v", i, GetCurrentEpoch(), test.outEpoch, !test.success)
 		}
 	}
 }

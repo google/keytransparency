@@ -20,6 +20,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
@@ -113,8 +114,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	v2 := keyserver.Create(storage.CreateMem(context.Background()))
-	defer v2.Stop()
+	// Create a memory storage.
+	store := storage.CreateMem(context.Background())
+	// Create the tree builder.
+	b := builder.New(store.NewEntries())
+	// Create the servers.
+	v2 := keyserver.New(store, b.GetTree())
 	v1 := proxy.New(v2)
 	s := rest.New(v1)
 

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
@@ -34,10 +35,8 @@ import (
 )
 
 const (
-	primaryUserID    = 12345678
-	primaryUserEmail = "e2eshare.test@gmail.com"
-	// This index is the output of keyserver.Server.Vuf(primaryUserEmail).
-	primaryUserIndex  = "5333d14e221b9995cc8c61b5d4af14a1c689489605fed96fff3250e45c5b1b0d"
+	primaryUserID     = 12345678
+	primaryUserEmail  = "e2eshare.test@gmail.com"
 	primaryAppId      = "pgp"
 	primaryUserPGPKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 
@@ -80,10 +79,6 @@ a5d613`, "\n", "", -1))
 		// TODO(cesarghali): fill nonce.
 		Keys: primaryKeys,
 	}
-	primaryUserIndexBytes, _ = hex.DecodeString(primaryUserIndex)
-	primaryUpdateEntry       = &v2pb.Entry{
-		Index: primaryUserIndexBytes,
-	}
 )
 
 type Env struct {
@@ -110,7 +105,9 @@ func NewEnv(t *testing.T) *Env {
 	}
 	addr := "localhost:" + port
 	s := grpc.NewServer()
-	v2svr := keyserver.Create(storage.CreateMem(context.Background()))
+	store := storage.CreateMem(context.Background())
+	b := builder.New(store.NewEntries())
+	v2svr := keyserver.New(store, b.GetTree())
 	v1svr := New(v2svr)
 	v2pb.RegisterE2EKeyServiceServer(s, v2svr)
 	v1pb.RegisterE2EKeyProxyServer(s, v1svr)
@@ -144,7 +141,12 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		t.Fatalf("Unexpected profile marshalling error %v.", err)
 	}
 	// Marshaling the update entry.
-	eBytes, err := proto.Marshal(primaryUpdateEntry)
+	_, userIndex, _ := env.v2svr.Vuf(primaryUserEmail)
+	userIndexBytes, _ := hex.DecodeString(userIndex)
+	updateEntry := &v2pb.Entry{
+		Index: userIndexBytes,
+	}
+	eBytes, err := proto.Marshal(updateEntry)
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}

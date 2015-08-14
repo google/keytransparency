@@ -24,35 +24,35 @@ import (
 )
 
 const (
-	// This is the buffer size of the channel used to send an EntryStorage
-	// to the tree builder.
-	CHANNEL_SIZE = 100
+	// ChannelSize is the buffer size of the channel used to send an
+	// EntryStorage to the tree builder.
+	ChannelSize = 100
 )
 
 // Storage holds state required to persist data. Open and Create create new
 // Storage objects.
 type MemStorage struct {
-	// Map of vuf -> EntryStorage
+	// Map of index -> EntryStorage
 	entries map[string]*internalpb.EntryStorage
 	// Whenever an EntryStorage is written in the database, it will be
 	// pushed into ch.
-	ch chan interface{}
+	ch chan *internalpb.EntryStorage
 }
 
 // Create creates a storage object from an existing db connection.
 func CreateMem(ctx context.Context) *MemStorage {
 	s := &MemStorage{
 		entries: make(map[string]*internalpb.EntryStorage),
-		ch:      make(chan interface{}, CHANNEL_SIZE),
+		ch:      make(chan *internalpb.EntryStorage, ChannelSize),
 	}
 	return s
 }
 
 // Read reads a EntryStroage from the storage.
-func (s *MemStorage) Read(ctx context.Context, vuf string) (*internalpb.EntryStorage, error) {
-	val, ok := s.entries[string(vuf)]
+func (s *MemStorage) Read(ctx context.Context, index string) (*internalpb.EntryStorage, error) {
+	val, ok := s.entries[string(index)]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", vuf)
+		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", index)
 	}
 	return val, nil
 }
@@ -60,17 +60,15 @@ func (s *MemStorage) Read(ctx context.Context, vuf string) (*internalpb.EntrySto
 // Write inserts a new EntryStorage in the storage. This function works whether
 // the entry exists or not. If the entry does not exist, it will be inserted,
 // otherwise updated.
-func (s *MemStorage) Write(ctx context.Context, entry *internalpb.EntryStorage, vuf string) error {
-	s.entries[string(vuf)] = entry
+func (s *MemStorage) Write(ctx context.Context, entry *internalpb.EntryStorage, index string) error {
+	s.entries[string(index)] = entry
 	// Push entry in the channel in order to be added to the merkle tree.
 	s.ch <- entry
 	return nil
 }
 
-func (s *MemStorage) GetChannel() chan interface{} {
+// NewEntries  returns a channel containing EntryStorage entries, which are
+// pushed into the channel whenever an EntryStorage is written in the stirage.
+func (s *MemStorage) NewEntries() chan *internalpb.EntryStorage {
 	return s.ch
-}
-
-func (s *MemStorage) CloseChannel() {
-	close(s.ch)
 }
