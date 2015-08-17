@@ -20,7 +20,6 @@ option java_package = "com.google.security.e2ekeys.v1";
 option java_multiple_files = true;
 option java_outer_classname = "E2EKeysProto";
 
-import "google/api/annotations.proto";
 import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // The E2EKeyProxy API specifies a simplified way to query the
@@ -39,13 +38,9 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 //
 service E2EKeyProxy {
   // GetUser returns a user's profile. Past values are not supported.
-  rpc GetUser(v2.GetUserRequest) returns (v2.Profile) {
-    option (google.api.http) = { get: "/v1/users/{user_id}" };
-  }
+  rpc GetUser(v2.GetUserRequest) returns (v2.Profile);
 
-  rpc HkpLookup(HkpLookupRequest) returns (HttpResponse) {
-    option (google.api.http) = { get: "/v1/hkp/lookup" };
-  }
+  rpc HkpLookup(HkpLookupRequest) returns (HttpResponse);
 }
 
 // HkpLookupRequest contains query parameters for retrieving PGP keys.

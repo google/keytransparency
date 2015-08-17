@@ -20,7 +20,6 @@ option java_package = "com.google.security.e2ekeys.v2";
 option java_multiple_files = true;
 option java_outer_classname = "E2EKeysProto";
 
-import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -47,38 +46,22 @@ service E2EKeyService {
   // proof that there is only one entry for this user, and a proof that it is
   // the same data being provided to everyone else.
   // GetUser also supports querying past values by setting the epoch field.
-  rpc GetUser(GetUserRequest) returns (EntryProfileAndProof) {
-    option (google.api.http) = { get: "/v2/users/{user_id}" };
-  }
+  rpc GetUser(GetUserRequest) returns (EntryProfileAndProof);
 
   // ListUserHistory returns a list of UserProofs covering a period of time.
-  rpc ListUserHistory(ListUserHistoryRequest) returns (ListUserHistoryResponse)
-  {
-    option (google.api.http) = { get: "/v2/users/{user_id}/history" };
-  }
+  rpc ListUserHistory(ListUserHistoryRequest) returns (ListUserHistoryResponse);
 
   // blocking or polling?
-  rpc UpdateUser(UpdateUserRequest) returns (protobuf.Empty) {
-    option (google.api.http) = {
-      put: "/v2/users/{user_id}"
-      body: "update"
-    };
-  }
+  rpc UpdateUser(UpdateUserRequest) returns (protobuf.Empty);
 
   // List the Signed Epoch Heads, from epoch to epoch.
-  rpc ListSEH(ListSEHRequest) returns (ListSEHResponse) {
-    option (google.api.http) = { get: "/v2/seh/" };
-  }
+  rpc ListSEH(ListSEHRequest) returns (ListSEHResponse);
 
   // List the EntryUpdates by update number.
-  rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse) {
-    option (google.api.http) = { get: "/v2/update/" };
-  }
+  rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse);
 
   // ListSteps combines SEH and EntryUpdates into single list.
-  rpc ListSteps(ListStepsRequest) returns (ListStepsResponse) {
-    option (google.api.http) = { get: "/v2/step/" };
-  }
+  rpc ListSteps(ListStepsRequest) returns (ListStepsResponse);
 }
 
 //
