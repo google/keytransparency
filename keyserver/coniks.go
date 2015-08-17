@@ -16,14 +16,12 @@
 
 package keyserver
 
-import (
-	"crypto/sha256"
-	"encoding/hex"
-)
+import "github.com/yahoo/coname/vrf"
 
 // Vuf is a mock verifiable unpredictable function.
 func (s *Server) Vuf(userID string) (string, string, error) {
-	hUserID := sha256.Sum256([]byte(userID))
-	hexUserID := hex.EncodeToString(hUserID[:])
-	return hexUserID, hexUserID, nil
+	sk := new([vrf.SecretKeySize]byte) // TODO: keep a persistent secret key
+	idx := vrf.Compute([]byte(userID), sk)
+	pf := vrf.Prove([]byte(userID), sk)
+	return string(pf), string(idx), nil
 }
