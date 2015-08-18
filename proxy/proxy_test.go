@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
@@ -104,7 +105,9 @@ func NewEnv(t *testing.T) *Env {
 	}
 	addr := "localhost:" + port
 	s := grpc.NewServer()
-	v2svr := keyserver.Create(storage.CreateMem(context.Background()))
+	store := storage.CreateMem(context.Background())
+	b := builder.New(store.NewEntries())
+	v2svr := keyserver.New(store, b.GetTree())
 	v1svr := New(v2svr)
 	v2pb.RegisterE2EKeyServiceServer(s, v2svr)
 	v1pb.RegisterE2EKeyProxyServer(s, v1svr)
@@ -132,16 +135,37 @@ func (env *Env) Close() {
 // createPrimaryUser creates a user using the v2 client. This function is copied
 // from /keyserver/key_server_test.go.
 func (env *Env) createPrimaryUser(t *testing.T) {
-	// Insert valid user. Calling update if the user does not exist will
-	// insert the user's profile.
-	p, err := proto.Marshal(primaryUserProfile)
+	// Marshaling the user profile.
+	pBytes, err := proto.Marshal(primaryUserProfile)
 	if err != nil {
 		t.Fatalf("Unexpected profile marshalling error %v.", err)
 	}
+	// Marshaling the update entry.
+	_, userIndex, _ := env.v2svr.Vuf(primaryUserEmail)
+	userIndexBytes, _ := hex.DecodeString(userIndex)
+	updateEntry := &v2pb.Entry{
+		Index: userIndexBytes,
+	}
+	eBytes, err := proto.Marshal(updateEntry)
+	if err != nil {
+		t.Fatalf("Unexpected entry marshalling error %v.", err)
+	}
+	seu := &v2pb.SignedEntryUpdate{
+		Entry: eBytes,
+	}
+	// Marshaling the update entry.
+	seuBytes, err := proto.Marshal(seu)
+	if err != nil {
+		t.Fatalf("Unexpected signed entry update marshalling error %v.", err)
+	}
+
+	// Insert valid user. Calling update if the user does not exist will
+	// insert the user's profile.
 	_, err = env.ClientV2.UpdateUser(env.ctx, &v2pb.UpdateUserRequest{
 		UserId: primaryUserEmail,
 		Update: &v2pb.EntryUpdateRequest{
-			Profile: p,
+			SignedUpdate: seuBytes,
+			Profile:      pBytes,
 		},
 	})
 	if err != nil {

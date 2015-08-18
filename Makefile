@@ -43,7 +43,7 @@ main: proto
 	go build -o svr server.go
 
 test: main
-	go test ./rest ./keyserver ./proxy ./merkle
+	go test ./rest ./keyserver ./proxy ./merkle ./builder
 	python tests/api_proxy_test.py
 
 proto: gapis $(DEPS)

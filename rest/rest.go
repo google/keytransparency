@@ -45,11 +45,11 @@ const (
 	DELETE = "DELETE"
 	// The following consts are used for WWW-Authenticate response header.
 	// See: https://tools.ietf.org/html/rfc2617#section-3.2.1.
-	// AUTHENTICATION_METHOD could be Bearer, MAC, etc.
-	AUTHENTICATION_METHOD = "Bearer"
-	// AUTHENTICATION_REALM is a string that tells users which credential to
+	// AuthenticationMethod could be Bearer, MAC, etc.
+	AuthenticationMethod = "Bearer"
+	// AuthenticationRealm is a string that tells users which credential to
 	// use.
-	AUTHENTICATION_REALM = "registered_users@gmail.com"
+	AuthenticationRealm = "registered_users@gmail.com"
 )
 
 // httpErrorInfo contains the HTTP error code and message.
@@ -201,7 +201,7 @@ func toHttpError(err error, w http.ResponseWriter) {
 			// WWW-Authenticate header MUST be included in HTTP
 			// Unauthorized responses. For more details see RFC 2616
 			// section 14.47.
-			w.Header().Set("WWW-Authenticate", fmt.Sprintf("%v realm=\"%v\"", AUTHENTICATION_METHOD, AUTHENTICATION_REALM))
+			w.Header().Set("WWW-Authenticate", fmt.Sprintf("%v realm=\"%v\"", AuthenticationMethod, AuthenticationRealm))
 		}
 
 		// For all other codes, set the appropriate HTTP error.

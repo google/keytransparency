@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -139,7 +140,9 @@ func NewEnv(t *testing.T) *Env {
 	}
 	addr := "localhost:" + port
 	s := grpc.NewServer()
-	server := Create(storage.CreateMem(context.Background()))
+	store := storage.CreateMem(context.Background())
+	b := builder.New(store.NewEntries())
+	server := New(store, b.GetTree())
 	keyspb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
@@ -163,9 +166,27 @@ func (env *Env) Close() {
 
 func (env *Env) createPrimaryUser(t *testing.T) {
 	// Marshaling the user profile.
-	p, err := proto.Marshal(primaryUserProfile)
+	pBytes, err := proto.Marshal(primaryUserProfile)
 	if err != nil {
 		t.Fatalf("Unexpected profile marshalling error %v.", err)
+	}
+	// Marshaling the update entry.
+	_, userIndex, _ := env.server.Vuf(primaryUserEmail)
+	userIndexBytes, _ := hex.DecodeString(userIndex)
+	updateEntry := &keyspb.Entry{
+		Index: userIndexBytes,
+	}
+	eBytes, err := proto.Marshal(updateEntry)
+	if err != nil {
+		t.Fatalf("Unexpected entry marshalling error %v.", err)
+	}
+	seu := &keyspb.SignedEntryUpdate{
+		Entry: eBytes,
+	}
+	// Marshaling the update entry.
+	seuBytes, err := proto.Marshal(seu)
+	if err != nil {
+		t.Fatalf("Unexpected signed entry update marshalling error %v.", err)
 	}
 
 	// Insert valid user. Calling update if the user does not exist will
@@ -173,7 +194,8 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 	_, err = env.Client.UpdateUser(env.ctx, &keyspb.UpdateUserRequest{
 		UserId: primaryUserEmail,
 		Update: &keyspb.EntryUpdateRequest{
-			Profile: p,
+			SignedUpdate: seuBytes,
+			Profile:      pBytes,
 		},
 	})
 	if err != nil {
