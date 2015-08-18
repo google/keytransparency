@@ -153,10 +153,10 @@ message EntryUpdateRequest {
 message SignedEntryUpdate {
   // Signature of entry, by the entry_key inside entry.
   // Proves ownership of new key.
-  bytes signature_new = 1;
+  map<uint64, bytes> signature_new = 1;
   // Signature of entry, by the entry_key from the previous epoch.
   // Proves the the correct owner is making this change.
-  bytes signature_old = 2;
+  map<uint64, bytes> signature_old = 2;
   // entry is the serialized protobuf Entry.
   bytes entry = 3;
 }
