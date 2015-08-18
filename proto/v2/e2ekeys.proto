@@ -120,6 +120,9 @@ message EntryProfileAndProof {
   // a common prefix of len(merkle_tree_neighbors), this is a proof of
   // non-existance for user_id.
   UVF index_signature = 5;
+  // user_id supports sending this as a complete proof to a third party. 
+  // user_id is not filled by the server.
+  string user_id = 6;
 }
 
 // Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads
