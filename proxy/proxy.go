@@ -41,8 +41,8 @@ type Server struct {
 }
 
 // New creates a new instance of the proxy server.
-func New(svr *keyserver.Server) *Server {
-	return &Server{svr}
+func New(srv *keyserver.Server) *Server {
+	return &Server{srv}
 }
 
 // GetUser returns a user's profile.

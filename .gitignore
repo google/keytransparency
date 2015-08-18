@@ -1,4 +1,6 @@
 *.pb.go
 *.swp
 *~
+srv
+# Old binary
 svr

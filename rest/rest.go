@@ -148,7 +148,7 @@ var grpcToHttpError = map[codes.Code]httpErrorInfo{
 
 // Server holds internal state for the http rest server.
 type Server struct {
-	svr interface{} // Server instance.
+	srv interface{} // Server instance.
 	// TODO: v2 api server here.
 	//creds Authenticator  // TODO define interface.
 	rtr *mux.Router
@@ -156,8 +156,8 @@ type Server struct {
 
 // New creates a new rest server.
 // TODO(insert authenitcator as field param here.
-func New(svr interface{}) *Server {
-	return &Server{svr, mux.NewRouter()}
+func New(srv interface{}) *Server {
+	return &Server{srv, mux.NewRouter()}
 }
 
 // Serve starts the server loop.
@@ -224,7 +224,7 @@ func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Parser = func(r *http.Request, arg *interface{}) error {
 		in := (*arg).(*v2pb.GetUserRequest)
 		// Parse User ID.
-		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
+		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
 			return err
 		}
@@ -323,7 +323,7 @@ func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	info.Parser = func(r *http.Request, arg *interface{}) error {
 		in := (*arg).(*v2pb.GetUserRequest)
 		// Parse User ID.
-		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
+		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
 			return err
 		}
@@ -375,7 +375,7 @@ func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers
 	info.Parser = func(r *http.Request, arg *interface{}) error {
 		in := (*arg).(*v2pb.ListUserHistoryRequest)
 		// Parse User ID.
-		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
+		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
 			return err
 		}
@@ -389,19 +389,19 @@ func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers
 		m, _ := url.ParseQuery(unescaped)
 		// Parse StartEpoch. StartEpoch must be of type uint64.
 		if val, ok := m["start_epoch"]; ok {
-			if start_epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+			if startEpoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be uint64")
 			} else {
-				in.StartEpoch = uint64(start_epoch)
+				in.StartEpoch = uint64(startEpoch)
 			}
 		}
 
 		// Parse PageSize. PageSize must be of type int32.
 		if val, ok := m["page_size"]; ok {
-			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+			if pageSize, err := strconv.ParseInt(val[0], 10, 32); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
 			} else {
-				in.PageSize = int32(page_size)
+				in.PageSize = int32(pageSize)
 			}
 		}
 
@@ -431,7 +431,7 @@ func UpdateUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 	info.Parser = func(r *http.Request, arg *interface{}) error {
 		in := (*arg).(*v2pb.UpdateUserRequest)
 		// Parse User ID.
-		userId, err := parseURLVariable(r, handlers.USER_ID_KEYWORD)
+		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
 			return err
 		}
@@ -471,19 +471,19 @@ func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 		m, _ := url.ParseQuery(unescaped)
 		// Parse StartEpoch. StartEpoch must be of type uint64.
 		if val, ok := m["start_epoch"]; ok {
-			if start_epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+			if startEpoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be uint64")
 			} else {
-				in.StartEpoch = uint64(start_epoch)
+				in.StartEpoch = uint64(startEpoch)
 			}
 		}
 
 		// Parse PageSize. PageSize must be of type int32.
 		if val, ok := m["page_size"]; ok {
-			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+			if pageSize, err := strconv.ParseInt(val[0], 10, 32); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
 			} else {
-				in.PageSize = int32(page_size)
+				in.PageSize = int32(pageSize)
 			}
 		}
 
@@ -521,19 +521,19 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 		m, _ := url.ParseQuery(unescaped)
 		// Parse StartSequence. StartSequence must be of type uint64.
 		if val, ok := m["start_sequence"]; ok {
-			if start_sequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+			if startSequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Start sequence must be uint64")
 			} else {
-				in.StartSequence = uint64(start_sequence)
+				in.StartSequence = uint64(startSequence)
 			}
 		}
 
 		// Parse PageSize. PageSize must be of type int32.
 		if val, ok := m["page_size"]; ok {
-			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+			if pageSize, err := strconv.ParseInt(val[0], 10, 32); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
 			} else {
-				in.PageSize = int32(page_size)
+				in.PageSize = int32(pageSize)
 			}
 		}
 
@@ -571,19 +571,19 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 		m, _ := url.ParseQuery(unescaped)
 		// Parse StartSequence. StartSequence must be of type uint64.
 		if val, ok := m["start_sequence"]; ok {
-			if start_sequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+			if startSequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Start sequence must be uint64")
 			} else {
-				in.StartSequence = uint64(start_sequence)
+				in.StartSequence = uint64(startSequence)
 			}
 		}
 
 		// Parse PageSize. PageSize must be of type int32.
 		if val, ok := m["page_size"]; ok {
-			if page_size, err := strconv.ParseInt(val[0], 10, 32); err != nil {
+			if pageSize, err := strconv.ParseInt(val[0], 10, 32); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
 			} else {
-				in.PageSize = int32(page_size)
+				in.PageSize = int32(pageSize)
 			}
 		}
 

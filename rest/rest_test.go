@@ -33,15 +33,14 @@ import (
 )
 
 const (
-	valid_ts               = "2015-05-18T23:58:36.000Z"
-	invalid_ts             = "Mon May 18 23:58:36 UTC 2015"
-	ts_seconds             = 1431993516
-	primary_test_epoch     = "2367"
-	primary_test_page_size = "653"
-	primary_test_sequence  = "8626"
-	primary_test_email     = "e2eshare.test@gmail.com"
-	primary_test_app_id    = "gmail"
-	primary_test_key_id    = "mykey"
+	validTs             = "2015-05-18T23:58:36.000Z"
+	invalidTs           = "Mon May 18 23:58:36 UTC 2015"
+	tsSeconds           = 1431993516
+	primaryTestEpoch    = "2367"
+	primaryTestPageSize = "653"
+	primaryTestSequence = "8626"
+	primaryUserEmail    = "e2eshare.test@gmail.com"
+	primaryTestAppId    = "gmail"
 )
 
 type fakeJSONParserReader struct {
@@ -96,9 +95,9 @@ func TestFoo(t *testing.T) {
 func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 	mx := mux.NewRouter()
 	mx.KeepContext = true
-	mx.HandleFunc("/v1/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+	mx.HandleFunc("/v1/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
 
-	i, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
+	i, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
 	var tests = []struct {
 		path         string
 		userId       string
@@ -106,18 +105,18 @@ func TestGetUserV1_InitiateHandlerInfo(t *testing.T) {
 		epoch        uint64
 		parserNilErr bool
 	}{
-		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id +
-			"&epoch=" + primary_test_epoch,
-			primary_test_email, primary_test_app_id, i, true},
-		{"/v1/users/" + primary_test_email + "?epoch=" + primary_test_epoch,
-			primary_test_email, "", i, true},
-		{"/v1/users/" + primary_test_email + "?app_id=" + primary_test_app_id,
-			primary_test_email, primary_test_app_id, 0, true},
-		{"/v1/users/" + primary_test_email, primary_test_email, "", 0, true},
+		{"/v1/users/" + primaryUserEmail + "?app_id=" + primaryTestAppId +
+			"&epoch=" + primaryTestEpoch,
+			primaryUserEmail, primaryTestAppId, i, true},
+		{"/v1/users/" + primaryUserEmail + "?epoch=" + primaryTestEpoch,
+			primaryUserEmail, "", i, true},
+		{"/v1/users/" + primaryUserEmail + "?app_id=" + primaryTestAppId,
+			primaryUserEmail, primaryTestAppId, 0, true},
+		{"/v1/users/" + primaryUserEmail, primaryUserEmail, "", 0, true},
 		// Invalid epoch format.
-		{"/v1/users/" + primary_test_email + "?epoch=-2587", primary_test_email,
+		{"/v1/users/" + primaryUserEmail + "?epoch=-2587", primaryUserEmail,
 			"", 0, false},
-		{"/v1/users/" + primary_test_email + "?epoch=greatepoch", primary_test_email,
+		{"/v1/users/" + primaryUserEmail + "?epoch=greatepoch", primaryUserEmail,
 			"", 0, false},
 	}
 
@@ -190,24 +189,24 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 		parserNilErr bool
 	}{
 		// This should pass.
-		{"/v1/hkp/lookup?op=get&search=" + url.QueryEscape(primary_test_email) +
-			"&options=mr", "get", primary_test_email, "mr", true},
+		{"/v1/hkp/lookup?op=get&search=" + url.QueryEscape(primaryUserEmail) +
+			"&options=mr", "get", primaryUserEmail, "mr", true},
 		// Unescaped query string.
-		{"/v1/hkp/lookup?op=get&search=" + primary_test_email +
-			"&options=mr", "get", primary_test_email, "mr", true},
+		{"/v1/hkp/lookup?op=get&search=" + primaryUserEmail +
+			"&options=mr", "get", primaryUserEmail, "mr", true},
 		// Missing op.
-		{"/v1/hkp/lookup?search=" + url.QueryEscape(primary_test_email) +
-			"&options=mr", "", primary_test_email, "mr", true},
+		{"/v1/hkp/lookup?search=" + url.QueryEscape(primaryUserEmail) +
+			"&options=mr", "", primaryUserEmail, "mr", true},
 		// Missing search.
 		{"/v1/hkp/lookup?op=get&options=mr", "get", "", "mr", true},
 		// Missing options.
-		{"/v1/hkp/lookup?op=get&search=" + url.QueryEscape(primary_test_email),
-			"get", primary_test_email, "", true},
+		{"/v1/hkp/lookup?op=get&search=" + url.QueryEscape(primaryUserEmail),
+			"get", primaryUserEmail, "", true},
 		// Missing op and search.
 		{"/v1/hkp/lookup?options=mr", "", "", "mr", true},
 		// Missing op and options.
-		{"/v1/hkp/lookup?search=" + url.QueryEscape(primary_test_email), "",
-			primary_test_email, "", true},
+		{"/v1/hkp/lookup?search=" + url.QueryEscape(primaryUserEmail), "",
+			primaryUserEmail, "", true},
 		// Missing search and options.
 		{"/v1/hkp/lookup?op=get", "get", "", "", true},
 		// Missing op, search and options.
@@ -267,9 +266,9 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 	mx := mux.NewRouter()
 	mx.KeepContext = true
-	mx.HandleFunc("/v2/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
 
-	i, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
+	i, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
 	var tests = []struct {
 		path         string
 		userId       string
@@ -277,18 +276,18 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 		epoch        uint64
 		parserNilErr bool
 	}{
-		{"/v2/users/" + primary_test_email + "?app_id=" + primary_test_app_id +
-			"&epoch=" + primary_test_epoch,
-			primary_test_email, primary_test_app_id, i, true},
-		{"/v2/users/" + primary_test_email + "?epoch=" + primary_test_epoch,
-			primary_test_email, "", i, true},
-		{"/v2/users/" + primary_test_email + "?app_id=" + primary_test_app_id,
-			primary_test_email, primary_test_app_id, 0, true},
-		{"/v2/users/" + primary_test_email, primary_test_email, "", 0, true},
+		{"/v2/users/" + primaryUserEmail + "?app_id=" + primaryTestAppId +
+			"&epoch=" + primaryTestEpoch,
+			primaryUserEmail, primaryTestAppId, i, true},
+		{"/v2/users/" + primaryUserEmail + "?epoch=" + primaryTestEpoch,
+			primaryUserEmail, "", i, true},
+		{"/v2/users/" + primaryUserEmail + "?app_id=" + primaryTestAppId,
+			primaryUserEmail, primaryTestAppId, 0, true},
+		{"/v2/users/" + primaryUserEmail, primaryUserEmail, "", 0, true},
 		// Invalid epoch format.
-		{"/v2/users/" + primary_test_email + "?epoch=-2587", primary_test_email,
+		{"/v2/users/" + primaryUserEmail + "?epoch=-2587", primaryUserEmail,
 			"", 0, false},
-		{"/v2/users/" + primary_test_email + "?epoch=greatepoch", primary_test_email,
+		{"/v2/users/" + primaryUserEmail + "?epoch=greatepoch", primaryUserEmail,
 			"", 0, false},
 	}
 
@@ -351,10 +350,10 @@ func TestGetUserV2_InitiateHandlerInfo(t *testing.T) {
 func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 	mx := mux.NewRouter()
 	mx.KeepContext = true
-	mx.HandleFunc("/v2/users/{"+handlers.USER_ID_KEYWORD+"}/history", Fake_HTTPHandler)
+	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}/history", Fake_HTTPHandler)
 
-	e, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
-	ps, _ := strconv.ParseUint(primary_test_page_size, 10, 32)
+	e, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
+	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path         string
 		userId       string
@@ -362,21 +361,21 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 		pageSize     int32
 		parserNilErr bool
 	}{
-		{"/v2/users/" + primary_test_email + "/history?start_epoch=" + primary_test_epoch +
-			"&page_size=" + primary_test_page_size,
-			primary_test_email, e, int32(ps), true},
-		{"/v2/users/" + primary_test_email + "/history?start_epoch=" + primary_test_epoch,
-			primary_test_email, e, 0, true},
-		{"/v2/users/" + primary_test_email + "/history?page_size=" + primary_test_page_size,
-			primary_test_email, 0, int32(ps), true},
-		{"/v2/users/" + primary_test_email + "/history", primary_test_email, 0, 0, true},
+		{"/v2/users/" + primaryUserEmail + "/history?start_epoch=" + primaryTestEpoch +
+			"&page_size=" + primaryTestPageSize,
+			primaryUserEmail, e, int32(ps), true},
+		{"/v2/users/" + primaryUserEmail + "/history?start_epoch=" + primaryTestEpoch,
+			primaryUserEmail, e, 0, true},
+		{"/v2/users/" + primaryUserEmail + "/history?page_size=" + primaryTestPageSize,
+			primaryUserEmail, 0, int32(ps), true},
+		{"/v2/users/" + primaryUserEmail + "/history", primaryUserEmail, 0, 0, true},
 		// Invalid start_epoch format.
-		{"/v2/users/" + primary_test_email + "/history?start_epoch=-2587", primary_test_email,
+		{"/v2/users/" + primaryUserEmail + "/history?start_epoch=-2587", primaryUserEmail,
 			0, 0, false},
-		{"/v2/users/" + primary_test_email + "/history?start_epoch=greatepoch", primary_test_email,
+		{"/v2/users/" + primaryUserEmail + "/history?start_epoch=greatepoch", primaryUserEmail,
 			0, 0, false},
 		// Invalid page_size format.
-		{"/v2/users/" + primary_test_email + "/history?page_size=bigpagesize", primary_test_email,
+		{"/v2/users/" + primaryUserEmail + "/history?page_size=bigpagesize", primaryUserEmail,
 			0, 0, false},
 	}
 
@@ -439,14 +438,14 @@ func TestListUserHistoryV2_InitiateHandlerInfo(t *testing.T) {
 func TestUpdateUserV2_InitiateHandlerInfo(t *testing.T) {
 	mx := mux.NewRouter()
 	mx.KeepContext = true
-	mx.HandleFunc("/v2/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
 
 	var tests = []struct {
 		path         string
 		userId       string
 		parserNilErr bool
 	}{
-		{"/v2/users/" + primary_test_email, primary_test_email, true},
+		{"/v2/users/" + primaryUserEmail, primaryUserEmail, true},
 	}
 
 	for i, test := range tests {
@@ -500,19 +499,19 @@ func TestUpdateUserV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
-	e, _ := strconv.ParseUint(primary_test_epoch, 10, 64)
-	ps, _ := strconv.ParseUint(primary_test_page_size, 10, 32)
+	e, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
+	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path         string
 		startEpoch   uint64
 		pageSize     int32
 		parserNilErr bool
 	}{
-		{"/v2/seh?start_epoch=" + primary_test_epoch + "&page_size=" + primary_test_page_size,
+		{"/v2/seh?start_epoch=" + primaryTestEpoch + "&page_size=" + primaryTestPageSize,
 			e, int32(ps), true},
-		{"/v2/seh?start_epoch=" + primary_test_epoch,
+		{"/v2/seh?start_epoch=" + primaryTestEpoch,
 			e, 0, true},
-		{"/v2/seh?page_size=" + primary_test_page_size,
+		{"/v2/seh?page_size=" + primaryTestPageSize,
 			0, int32(ps), true},
 		{"/v2/seh", 0, 0, true},
 		// Invalid start_epoch format.
@@ -578,19 +577,19 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
-	e, _ := strconv.ParseUint(primary_test_sequence, 10, 64)
-	ps, _ := strconv.ParseUint(primary_test_page_size, 10, 32)
+	e, _ := strconv.ParseUint(primaryTestSequence, 10, 64)
+	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path          string
 		startSequence uint64
 		pageSize      int32
 		parserNilErr  bool
 	}{
-		{"/v2/seh?start_sequence=" + primary_test_sequence + "&page_size=" + primary_test_page_size,
+		{"/v2/seh?start_sequence=" + primaryTestSequence + "&page_size=" + primaryTestPageSize,
 			e, int32(ps), true},
-		{"/v2/seh?start_sequence=" + primary_test_sequence,
+		{"/v2/seh?start_sequence=" + primaryTestSequence,
 			e, 0, true},
-		{"/v2/seh?page_size=" + primary_test_page_size,
+		{"/v2/seh?page_size=" + primaryTestPageSize,
 			0, int32(ps), true},
 		{"/v2/seh", 0, 0, true},
 		// Invalid start_sequence format.
@@ -656,19 +655,19 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
-	e, _ := strconv.ParseUint(primary_test_sequence, 10, 64)
-	ps, _ := strconv.ParseUint(primary_test_page_size, 10, 32)
+	e, _ := strconv.ParseUint(primaryTestSequence, 10, 64)
+	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path          string
 		startSequence uint64
 		pageSize      int32
 		parserNilErr  bool
 	}{
-		{"/v2/seh?start_sequence=" + primary_test_sequence + "&page_size=" + primary_test_page_size,
+		{"/v2/seh?start_sequence=" + primaryTestSequence + "&page_size=" + primaryTestPageSize,
 			e, int32(ps), true},
-		{"/v2/seh?start_sequence=" + primary_test_sequence,
+		{"/v2/seh?start_sequence=" + primaryTestSequence,
 			e, 0, true},
-		{"/v2/seh?page_size=" + primary_test_page_size,
+		{"/v2/seh?page_size=" + primaryTestPageSize,
 			0, int32(ps), true},
 		{"/v2/seh", 0, 0, true},
 		// Invalid start_sequence format.
@@ -741,7 +740,7 @@ func JSONDecoder(r *http.Request, v interface{}) error {
 func TestParseURLComponent(t *testing.T) {
 	mx := mux.NewRouter()
 	mx.KeepContext = true
-	mx.HandleFunc("/v1/users/{"+handlers.USER_ID_KEYWORD+"}", Fake_HTTPHandler)
+	mx.HandleFunc("/v1/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
 
 	var tests = []struct {
 		path    string
@@ -749,8 +748,8 @@ func TestParseURLComponent(t *testing.T) {
 		out     string
 		nilErr  bool
 	}{
-		{"/v1/users/" + primary_test_email, handlers.USER_ID_KEYWORD, primary_test_email, true},
-		{"/v1/users/" + primary_test_email, "random_keyword", "", false},
+		{"/v1/users/" + primaryUserEmail, handlers.UserIdKeyword, primaryUserEmail, true},
+		{"/v1/users/" + primaryUserEmail, "random_keyword", "", false},
 	}
 	for i, test := range tests {
 		r, _ := http.NewRequest("GET", test.path, nil)
@@ -777,24 +776,24 @@ func TestParseJson(t *testing.T) {
 		// Empty string
 		{"", "", true},
 		// Basic cases.
-		{"\"creation_time\": \"" + valid_ts + "\"",
+		{"\"creation_time\": \"" + validTs + "\"",
 			"\"creation_time\": {\"seconds\": " +
-				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
-		{"{\"creation_time\": \"" + valid_ts + "\"}",
+				strconv.Itoa(tsSeconds) + ", \"nanos\": 0}", true},
+		{"{\"creation_time\": \"" + validTs + "\"}",
 			"{\"creation_time\": {\"seconds\": " +
-				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}}", true},
+				strconv.Itoa(tsSeconds) + ", \"nanos\": 0}}", true},
 		// Nested case.
-		{"{\"signed_key\":{\"key\": {\"creation_time\": \"" + valid_ts + "\"}}}",
+		{"{\"signed_key\":{\"key\": {\"creation_time\": \"" + validTs + "\"}}}",
 			"{\"signed_key\":{\"key\": {\"creation_time\": {\"seconds\": " +
-				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}}}}", true},
+				strconv.Itoa(tsSeconds) + ", \"nanos\": 0}}}}", true},
 		// Nothing to be changed.
 		{"nothing to be changed here", "nothing to be changed here", true},
 		// Multiple keywords.
-		{"\"creation_time\": \"" + valid_ts + "\", \"creation_time\": \"" +
-			valid_ts + "\"",
-			"\"creation_time\": {\"seconds\": " + strconv.Itoa(ts_seconds) +
+		{"\"creation_time\": \"" + validTs + "\", \"creation_time\": \"" +
+			validTs + "\"",
+			"\"creation_time\": {\"seconds\": " + strconv.Itoa(tsSeconds) +
 				", \"nanos\": 0}, \"creation_time\": {\"seconds\": " +
-				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
+				strconv.Itoa(tsSeconds) + ", \"nanos\": 0}", true},
 		// Invalid timestamp.
 		{"\"creation_time\": \"invalid\"", "\"creation_time\": \"invalid\"", false},
 		// Empty timestamp.
@@ -810,28 +809,28 @@ func TestParseJson(t *testing.T) {
 		// invalid timestamp.
 		{"\"creation_time\": invalid", "\"creation_time\": invalid", true},
 		// Malformed JSON, missing " at the end of valid timestamp.
-		{"\"creation_time\": \"" + valid_ts, "\"creation_time\": \"" + valid_ts, true},
+		{"\"creation_time\": \"" + validTs, "\"creation_time\": \"" + validTs, true},
 		// keyword is not surrounded by "", in four cases: invalid
 		// timestamp, basic, nested and multiple keywords.
 		{"creation_time: \"invalid\"", "creation_time: \"invalid\"", false},
-		{"{creation_time: \"" + valid_ts + "\"}",
+		{"{creation_time: \"" + validTs + "\"}",
 			"{creation_time: {\"seconds\": " +
-				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}}", true},
-		{"{\"signed_key\":{\"key\": {creation_time: \"" + valid_ts + "\"}}}",
+				strconv.Itoa(tsSeconds) + ", \"nanos\": 0}}", true},
+		{"{\"signed_key\":{\"key\": {creation_time: \"" + validTs + "\"}}}",
 			"{\"signed_key\":{\"key\": {creation_time: {\"seconds\": " +
-				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}}}}", true},
+				strconv.Itoa(tsSeconds) + ", \"nanos\": 0}}}}", true},
 		// Only first keyword is not surrounded by "".
-		{"creation_time: \"" + valid_ts + "\", \"creation_time\": \"" +
-			valid_ts + "\"",
-			"creation_time: {\"seconds\": " + strconv.Itoa(ts_seconds) +
+		{"creation_time: \"" + validTs + "\", \"creation_time\": \"" +
+			validTs + "\"",
+			"creation_time: {\"seconds\": " + strconv.Itoa(tsSeconds) +
 				", \"nanos\": 0}, \"creation_time\": {\"seconds\": " +
-				strconv.Itoa(ts_seconds) + ", \"nanos\": 0}", true},
+				strconv.Itoa(tsSeconds) + ", \"nanos\": 0}", true},
 		// Timestamp is not surrounded by "" and there's other keys and
 		// values after.
-		{"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
-			", app_id: \"" + primary_test_app_id + "\"}}}",
-			"{\"signed_key\":{\"key\": {\"creation_time\": " + valid_ts +
-				", app_id: \"" + primary_test_app_id + "\"}}}", true},
+		{"{\"signed_key\":{\"key\": {\"creation_time\": " + validTs +
+			", app_id: \"" + primaryTestAppId + "\"}}}",
+			"{\"signed_key\":{\"key\": {\"creation_time\": " + validTs +
+				", app_id: \"" + primaryTestAppId + "\"}}}", true},
 	}
 
 	for i, test := range tests {

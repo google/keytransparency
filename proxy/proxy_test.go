@@ -82,8 +82,8 @@ a5d613`, "\n", "", -1))
 )
 
 type Env struct {
-	v1svr     *Server
-	v2svr     *keyserver.Server
+	v1srv     *Server
+	v2srv     *keyserver.Server
 	rpcServer *grpc.Server
 	cc        *grpc.ClientConn
 	ClientV1  v1pb.E2EKeyProxyClient
@@ -107,10 +107,10 @@ func NewEnv(t *testing.T) *Env {
 	s := grpc.NewServer()
 	store := storage.CreateMem(context.Background())
 	b := builder.New(store.NewEntries())
-	v2svr := keyserver.New(store, b.GetTree())
-	v1svr := New(v2svr)
-	v2pb.RegisterE2EKeyServiceServer(s, v2svr)
-	v1pb.RegisterE2EKeyProxyServer(s, v1svr)
+	v2srv := keyserver.New(store, b.GetTree())
+	v1srv := New(v2srv)
+	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
+	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
 	go s.Serve(lis)
 
 	cc, err := grpc.Dial(addr, grpc.WithTimeout(time.Millisecond*500))
@@ -123,7 +123,7 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	return &Env{v1svr, v2svr, s, cc, clientv1, clientv2, ctx}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -141,7 +141,7 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		t.Fatalf("Unexpected profile marshalling error %v.", err)
 	}
 	// Marshaling the update entry.
-	_, userIndex, _ := env.v2svr.Vuf(primaryUserEmail)
+	_, userIndex, _ := env.v2srv.Vuf(primaryUserEmail)
 	userIndexBytes, _ := hex.DecodeString(userIndex)
 	updateEntry := &v2pb.Entry{
 		Index: userIndexBytes,

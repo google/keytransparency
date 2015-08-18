@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	internalpb "github.com/google/e2e-key-server/proto/internal"
-	keyspb "github.com/google/e2e-key-server/proto/v2"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 	proto3 "google/protobuf"
 )
@@ -48,7 +48,7 @@ func New(storage storage.Storage, tree *merkle.Tree) *Server {
 // GetUser returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
 // GetUser also supports querying past values by setting the epoch field.
-func (s *Server) GetUser(ctx context.Context, in *keyspb.GetUserRequest) (*keyspb.EntryProfileAndProof, error) {
+func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.EntryProfileAndProof, error) {
 	_, index, err := s.Vuf(in.UserId)
 	if err != nil {
 		return nil, err
@@ -62,20 +62,20 @@ func (s *Server) GetUser(ctx context.Context, in *keyspb.GetUserRequest) (*keysp
 	// This key server doesn't employ a merkle tree yet. This is why most of
 	// fields in EntryProfileAndProof do not exist.
 	// TODO(cesarghali): integrate merkle tree.
-	result := &keyspb.EntryProfileAndProof{
+	result := &v2pb.EntryProfileAndProof{
 		Profile: e.Profile,
 	}
 	return result, nil
 }
 
 // ListUserHistory returns a list of UserProofs covering a period of time.
-func (s *Server) ListUserHistory(ctx context.Context, in *keyspb.ListUserHistoryRequest) (*keyspb.ListUserHistoryResponse, error) {
+func (s *Server) ListUserHistory(ctx context.Context, in *v2pb.ListUserHistoryRequest) (*v2pb.ListUserHistoryResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
 // UpdateUser updates a user's profile. If the user does not exist, a new
 // profile will be created.
-func (s *Server) UpdateUser(ctx context.Context, in *keyspb.UpdateUserRequest) (*proto3.Empty, error) {
+func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*proto3.Empty, error) {
 	if err := s.validateUpdateUserRequest(ctx, in); err != nil {
 		return nil, err
 	}
@@ -107,16 +107,16 @@ func (s *Server) UpdateUser(ctx context.Context, in *keyspb.UpdateUserRequest) (
 }
 
 // List the Signed Epoch Heads, from epoch to epoch.
-func (s *Server) ListSEH(ctx context.Context, in *keyspb.ListSEHRequest) (*keyspb.ListSEHResponse, error) {
+func (s *Server) ListSEH(ctx context.Context, in *v2pb.ListSEHRequest) (*v2pb.ListSEHResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
 // List the EntryUpdates by update number.
-func (s *Server) ListUpdate(ctx context.Context, in *keyspb.ListUpdateRequest) (*keyspb.ListUpdateResponse, error) {
+func (s *Server) ListUpdate(ctx context.Context, in *v2pb.ListUpdateRequest) (*v2pb.ListUpdateResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
 // ListSteps combines SEH and EntryUpdates into single list.
-func (s *Server) ListSteps(ctx context.Context, in *keyspb.ListStepsRequest) (*keyspb.ListStepsResponse, error) {
+func (s *Server) ListSteps(ctx context.Context, in *v2pb.ListStepsRequest) (*v2pb.ListStepsResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }

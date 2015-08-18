@@ -40,7 +40,7 @@ INCLUDES+= -I=$(GOPATH)/src/
 INCLUDES+= -I=$(GOPATH)/src/github.com/google/protobuf/src/ # proto descriptor
 
 main: proto
-	go build -o svr server.go
+	go build -o srv server.go
 
 test: main
 	go test ./rest ./keyserver ./proxy ./merkle ./builder

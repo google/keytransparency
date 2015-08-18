@@ -39,7 +39,7 @@ var port = flag.Int("port", 8080, "TCP port to listen on")
 var v1Routes = []handlers.RouteInfo{
 	// GetUser API
 	handlers.RouteInfo{
-		fmt.Sprintf("/v1/users/{%v}", handlers.USER_ID_KEYWORD),
+		fmt.Sprintf("/v1/users/{%v}", handlers.UserIdKeyword),
 		"GET",
 		rest.GetUserV1_InitializeHandlerInfo,
 		rest.GetUserV1_RequestHandler,
@@ -63,21 +63,21 @@ var hkpRoutes = []handlers.RouteInfo{
 var v2Routes = []handlers.RouteInfo{
 	// GetUser API
 	handlers.RouteInfo{
-		fmt.Sprintf("/v2/users/{%v}", handlers.USER_ID_KEYWORD),
+		fmt.Sprintf("/v2/users/{%v}", handlers.UserIdKeyword),
 		"GET",
 		rest.GetUserV2_InitializeHandlerInfo,
 		rest.GetUserV2_RequestHandler,
 	},
 	// ListUserHistory API
 	handlers.RouteInfo{
-		fmt.Sprintf("/v2/users/{%v}/history", handlers.USER_ID_KEYWORD),
+		fmt.Sprintf("/v2/users/{%v}/history", handlers.UserIdKeyword),
 		"GET",
 		rest.ListUserHistoryV2_InitializeHandlerInfo,
 		rest.ListUserHistoryV2_RequestHandler,
 	},
 	// UpdateUser API
 	handlers.RouteInfo{
-		fmt.Sprintf("/v2/users/{%v}", handlers.USER_ID_KEYWORD),
+		fmt.Sprintf("/v2/users/{%v}", handlers.UserIdKeyword),
 		"PUT",
 		rest.UpdateUserV2_InitializeHandlerInfo,
 		rest.UpdateUserV2_RequestHandler,
