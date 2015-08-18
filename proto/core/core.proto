@@ -14,13 +14,12 @@
 
 syntax = "proto3";
 
-package google.security.e2ekeys.v2;
+package google.security.e2ekeys.core;
 
-option java_package = "com.google.security.e2ekeys.v2";
+option java_package = "com.google.security.e2ekeys.core";
 option java_multiple_files = true;
 option java_outer_classname = "E2EKeysProto";
 
-import "google/api/annotations.proto";
 import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // Internal types for the End to End Key Server.
@@ -46,7 +45,7 @@ message EntryStorage {
 // DomainInfo is the information that need to be baked into an application
 // in order to verify information for a domain.
 message DomainInfo {
-  repeated PublicKey public_keys = 1;
+  repeated v2.PublicKey public_keys = 1;
   // required_sigs is the number of valid signatures to require out of
   // public_keys before considering signed_tree heads legitimate.
   uint32 required_sigs = 2;
@@ -57,7 +56,7 @@ message DomainInfo {
 }
 
 message VerifierInfo {
-  repeated PublicKey public_keys = 1;
+  repeated v2.PublicKey public_keys = 1;
   // required_sigs is the number of valid signatures to require out of
   // public_keys before considering signed_tree heads legitimate.
   uint32 required_sigs = 2;

@@ -16,7 +16,7 @@
 package storage
 
 import (
-	internalpb "github.com/google/e2e-key-server/proto/internal"
+	corepb "github.com/google/e2e-key-server/proto/core"
 	context "golang.org/x/net/context"
 )
 
@@ -28,20 +28,20 @@ type Storage interface {
 
 type Reader interface {
 	// Read reads a EntryStroage from the storage.
-	Read(ctx context.Context, index string) (*internalpb.EntryStorage, error)
+	Read(ctx context.Context, index string) (*corepb.EntryStorage, error)
 }
 
 type Writer interface {
 	// Write inserts a new EntryStorage in the storage. Fails if the row
 	// already exists.
-	Write(ctx context.Context, entry *internalpb.EntryStorage, index string) error
+	Write(ctx context.Context, entry *corepb.EntryStorage, index string) error
 }
 
 type Watcher interface {
 	// NewEntries  returns a channel containing EntryStorage entries, which
 	// are pushed into the channel whenever an EntryStorage is written in
 	// the stirage.
-	NewEntries() chan *internalpb.EntryStorage
+	NewEntries() chan *corepb.EntryStorage
 }
 
 // TODO(cesarghali): bring back ConkisStorage and make it compatible with the

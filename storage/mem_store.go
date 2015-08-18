@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	internalpb "github.com/google/e2e-key-server/proto/internal"
+	corepb "github.com/google/e2e-key-server/proto/core"
 	context "golang.org/x/net/context"
 )
 
@@ -33,23 +33,23 @@ const (
 // Storage objects.
 type MemStorage struct {
 	// Map of index -> EntryStorage
-	entries map[string]*internalpb.EntryStorage
+	entries map[string]*corepb.EntryStorage
 	// Whenever an EntryStorage is written in the database, it will be
 	// pushed into ch.
-	ch chan *internalpb.EntryStorage
+	ch chan *corepb.EntryStorage
 }
 
 // Create creates a storage object from an existing db connection.
 func CreateMem(ctx context.Context) *MemStorage {
 	s := &MemStorage{
-		entries: make(map[string]*internalpb.EntryStorage),
-		ch:      make(chan *internalpb.EntryStorage, ChannelSize),
+		entries: make(map[string]*corepb.EntryStorage),
+		ch:      make(chan *corepb.EntryStorage, ChannelSize),
 	}
 	return s
 }
 
 // Read reads a EntryStroage from the storage.
-func (s *MemStorage) Read(ctx context.Context, index string) (*internalpb.EntryStorage, error) {
+func (s *MemStorage) Read(ctx context.Context, index string) (*corepb.EntryStorage, error) {
 	val, ok := s.entries[string(index)]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", index)
@@ -60,7 +60,7 @@ func (s *MemStorage) Read(ctx context.Context, index string) (*internalpb.EntryS
 // Write inserts a new EntryStorage in the storage. This function works whether
 // the entry exists or not. If the entry does not exist, it will be inserted,
 // otherwise updated.
-func (s *MemStorage) Write(ctx context.Context, entry *internalpb.EntryStorage, index string) error {
+func (s *MemStorage) Write(ctx context.Context, entry *corepb.EntryStorage, index string) error {
 	s.entries[string(index)] = entry
 	// Push entry in the channel in order to be added to the merkle tree.
 	s.ch <- entry
@@ -69,6 +69,6 @@ func (s *MemStorage) Write(ctx context.Context, entry *internalpb.EntryStorage, 
 
 // NewEntries  returns a channel containing EntryStorage entries, which are
 // pushed into the channel whenever an EntryStorage is written in the stirage.
-func (s *MemStorage) NewEntries() chan *internalpb.EntryStorage {
+func (s *MemStorage) NewEntries() chan *corepb.EntryStorage {
 	return s.ch
 }
