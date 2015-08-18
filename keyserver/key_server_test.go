@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	keyspb "github.com/google/e2e-key-server/proto/v2"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 )
 
@@ -114,7 +114,7 @@ a5d613`, "\n", "", -1))
 	primaryKeys = map[string][]byte{
 		primaryAppId: primaryUserKeyRing,
 	}
-	primaryUserProfile = &keyspb.Profile{
+	primaryUserProfile = &v2pb.Profile{
 		// TODO(cesarghali): fill nonce.
 		Keys: primaryKeys,
 	}
@@ -124,7 +124,7 @@ type Env struct {
 	s      *grpc.Server
 	server *Server
 	conn   *grpc.ClientConn
-	Client keyspb.E2EKeyServiceClient
+	Client v2pb.E2EKeyServiceClient
 	ctx    context.Context
 }
 
@@ -143,7 +143,7 @@ func NewEnv(t *testing.T) *Env {
 	store := storage.CreateMem(context.Background())
 	b := builder.New(store.NewEntries())
 	server := New(store, b.GetTree())
-	keyspb.RegisterE2EKeyServiceServer(s, server)
+	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
 	cc, err := grpc.Dial(addr, grpc.WithTimeout(time.Millisecond*500))
@@ -151,7 +151,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}
 
-	client := keyspb.NewE2EKeyServiceClient(cc)
+	client := v2pb.NewE2EKeyServiceClient(cc)
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
@@ -173,14 +173,14 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 	// Marshaling the update entry.
 	_, userIndex, _ := env.server.Vuf(primaryUserEmail)
 	userIndexBytes, _ := hex.DecodeString(userIndex)
-	updateEntry := &keyspb.Entry{
+	updateEntry := &v2pb.Entry{
 		Index: userIndexBytes,
 	}
 	eBytes, err := proto.Marshal(updateEntry)
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}
-	seu := &keyspb.SignedEntryUpdate{
+	seu := &v2pb.SignedEntryUpdate{
 		Entry: eBytes,
 	}
 	// Marshaling the update entry.
@@ -191,9 +191,9 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 
 	// Insert valid user. Calling update if the user does not exist will
 	// insert the user's profile.
-	_, err = env.Client.UpdateUser(env.ctx, &keyspb.UpdateUserRequest{
+	_, err = env.Client.UpdateUser(env.ctx, &v2pb.UpdateUserRequest{
 		UserId: primaryUserEmail,
-		Update: &keyspb.EntryUpdateRequest{
+		Update: &v2pb.EntryUpdateRequest{
 			SignedUpdate: seuBytes,
 			Profile:      pBytes,
 		},
@@ -216,7 +216,7 @@ func TestGetNonExistantUser(t *testing.T) {
 	defer env.Close()
 
 	ctx := context.Background() // Unauthenticated request.
-	_, err := env.Client.GetUser(ctx, &keyspb.GetUserRequest{UserId: "nobody"})
+	_, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: "nobody"})
 
 	if got, want := grpc.Code(err), codes.NotFound; got != want {
 		t.Errorf("Query for nonexistant user = %v, want: %v", got, want)
@@ -230,13 +230,13 @@ func TestGetValidUser(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetUser(ctx, &keyspb.GetUserRequest{UserId: primaryUserEmail})
+	res, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
 
 	if err != nil {
 		t.Errorf("GetUser failed: %v", err)
 	}
 	// Unmarshaling the resulted profile.
-	p := new(keyspb.Profile)
+	p := new(v2pb.Profile)
 	if err := proto.Unmarshal(res.Profile, p); err != nil {
 		t.Fatalf("Unexpected profile unmarshalling error %v.", err)
 	}
@@ -261,10 +261,10 @@ func TestUnimplemented(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"ListUserHistory", getErr(env.Client.ListUserHistory(env.ctx, &keyspb.ListUserHistoryRequest{}))},
-		{"ListSEH", getErr(env.Client.ListSEH(env.ctx, &keyspb.ListSEHRequest{}))},
-		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &keyspb.ListUpdateRequest{}))},
-		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &keyspb.ListStepsRequest{}))},
+		{"ListUserHistory", getErr(env.Client.ListUserHistory(env.ctx, &v2pb.ListUserHistoryRequest{}))},
+		{"ListSEH", getErr(env.Client.ListSEH(env.ctx, &v2pb.ListSEHRequest{}))},
+		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &v2pb.ListUpdateRequest{}))},
+		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &v2pb.ListStepsRequest{}))},
 	}
 	for i, test := range tests {
 		if got, want := grpc.Code(test.err), codes.Unimplemented; got != want {
@@ -282,7 +282,7 @@ func TestUnauthenticated(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"UpdateUser", getErr(env.Client.UpdateUser(env.ctx, &keyspb.UpdateUserRequest{UserId: "someoneelse"}))},
+		{"UpdateUser", getErr(env.Client.UpdateUser(env.ctx, &v2pb.UpdateUserRequest{UserId: "someoneelse"}))},
 	}
 	for i, test := range tests {
 		if got, want := grpc.Code(test.err), codes.PermissionDenied; got != want {

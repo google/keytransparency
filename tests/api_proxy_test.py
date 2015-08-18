@@ -88,7 +88,7 @@ update_user_request = {
 def main():
   # Start the server.
   null_output = open(os.devnull, "w")
-  subprocess.Popen(["./svr"], stdout=null_output, stderr=subprocess.STDOUT)
+  subprocess.Popen(["./srv"], stdout=null_output, stderr=subprocess.STDOUT)
   # Wait until the server starts.
   time.sleep(1)
 
@@ -102,7 +102,7 @@ def main():
   GetUserV2(False)
 
   # Kill the server.
-  subprocess.Popen(["killall", "svr"])
+  subprocess.Popen(["killall", "srv"])
 
 
 def GetUserV1(empty):

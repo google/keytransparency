@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	USER_ID_KEYWORD = "user_id"
+	UserIdKeyword = "user_id"
 )
 
 // URLParser parses a URL and stores the results in a protobuf structure that

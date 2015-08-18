@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	proto "github.com/golang/protobuf/proto"
-	keyspb "github.com/google/e2e-key-server/proto/v2"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
 func TestValidateEmail(t *testing.T) {
@@ -38,7 +38,7 @@ func TestValidateKey(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	key := &keyspb.Key{AppId: primaryAppId, Key: primaryKeys[primaryAppId]}
+	key := &v2pb.Key{AppId: primaryAppId, Key: primaryKeys[primaryAppId]}
 	if err := env.server.validateKey(primaryUserEmail, key); err != nil {
 		t.Errorf("validateKey(%v) = %v, wanted nil", &key, err)
 	}
@@ -52,9 +52,9 @@ func TestValidateUpdateUserRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected profile marshalling error %v.", err)
 	}
-	updateUserRequest := &keyspb.UpdateUserRequest{
+	updateUserRequest := &v2pb.UpdateUserRequest{
 		UserId: primaryUserEmail,
-		Update: &keyspb.EntryUpdateRequest{
+		Update: &v2pb.EntryUpdateRequest{
 			Profile: p,
 		},
 	}
