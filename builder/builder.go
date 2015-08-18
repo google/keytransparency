@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	internalpb "github.com/google/e2e-key-server/proto/internal"
+	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
@@ -30,13 +30,13 @@ import (
 type Builder struct {
 	// update is watched by Build(). Whenever an EntryStorage is received,
 	// the appripriate data will be pushed in the tree.
-	update chan *internalpb.EntryStorage
+	update chan *corepb.EntryStorage
 	// t contains the merkle tree.
 	tree *merkle.Tree
 }
 
 // New creates an instance of the tree builder with a given channel.
-func New(update chan *internalpb.EntryStorage) *Builder {
+func New(update chan *corepb.EntryStorage) *Builder {
 	b := &Builder{
 		update: update,
 		tree:   merkle.New(),
@@ -61,7 +61,7 @@ func (b *Builder) build() {
 }
 
 // post posts the appropriate data from EntryStorage into the given merkle tree.
-func post(tree *merkle.Tree, entryStorage *internalpb.EntryStorage) error {
+func post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) error {
 	// Extract the user's index.
 	index, err := index(entryStorage)
 	if err != nil {
@@ -77,7 +77,7 @@ func post(tree *merkle.Tree, entryStorage *internalpb.EntryStorage) error {
 }
 
 // index returns the user's index from EntryStorage.EntryUpdate.Entry.Index.
-func index(entryStorage *internalpb.EntryStorage) ([]byte, error) {
+func index(entryStorage *corepb.EntryStorage) ([]byte, error) {
 	// Unmarshal SignedEntryUpdate.
 	signedUpdate := new(v2pb.SignedEntryUpdate)
 	if err := proto.Unmarshal(entryStorage.EntryUpdate, signedUpdate); err != nil {

@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	internalpb "github.com/google/e2e-key-server/proto/internal"
+	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
@@ -86,7 +86,7 @@ func TestPost(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		es := &internalpb.EntryStorage{
+		es := &corepb.EntryStorage{
 			Epoch:       testEpoch,
 			EntryUpdate: test.entryUpdate,
 		}

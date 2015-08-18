@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	internalpb "github.com/google/e2e-key-server/proto/internal"
+	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 	context "golang.org/x/net/context"
 	proto3 "google/protobuf"
@@ -85,7 +85,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 		return nil, err
 	}
 
-	e := &internalpb.EntryStorage{
+	e := &corepb.EntryStorage{
 		// Epoch is the epoch at which this update should be inserted
 		// into the merkle tree.
 		// TODO(cesarghali): for now epoch = current + 1. This might
