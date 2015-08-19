@@ -80,6 +80,7 @@ func TestAddLeaf(t *testing.T) {
 		// Update a leaf node in the next epoch. Should be placed at the same level as the previous epoch.
 		{1, "8000000000000000000000000000000000000000000000000000000000000001", codes.OK},
 		{1, "0000000000000000000000000000000000000000000000000000000000000001", codes.OK},
+		{5, "8000000000000000000000000000000000000000000000000000000000000001", codes.OK},
 	}
 	for i, test := range tests {
 		err := m.AddLeaf([]byte{}, test.epoch, test.index)

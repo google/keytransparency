@@ -124,16 +124,17 @@ func (t *Tree) addRoot(epoch Epoch) (*node, error) {
 		t.current = t.roots[epoch]
 		return t.current, nil
 	}
-	if epoch == t.current.epoch {
-		return t.current, nil
+	if epoch < t.current.epoch {
+		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want >= %d", epoch, t.current.epoch)
 	}
-	if epoch == t.current.epoch+1 {
+
+	for t.current.epoch < epoch {
 		// Copy the root node from the previous epoch.
-		t.roots[epoch] = &node{epoch, "", 0, nil, t.current.left, t.current.right}
-		t.current = t.roots[epoch]
-		return t.current, nil
+		nextEpoch := t.current.epoch + 1
+		t.roots[nextEpoch] = &node{epoch, "", 0, nil, t.current.left, t.current.right}
+		t.current = t.roots[nextEpoch]
 	}
-	return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want >= %d", epoch, t.current.epoch)
+	return t.current, nil
 }
 
 // Parent node is responsible for creating children.
