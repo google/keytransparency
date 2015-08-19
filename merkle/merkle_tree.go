@@ -115,8 +115,7 @@ func BitString(index string) string {
 }
 
 // addRoot will advance the current epoch by copying the previous root.
-// addRoot will prevent attempts to create epochs other than the current and
-// current + 1 epoch
+// addRoot will prevent attempts to create epochs < current epoch
 func (t *Tree) addRoot(epoch Epoch) (*node, error) {
 	if t.current == nil {
 		// Create the first epoch.
