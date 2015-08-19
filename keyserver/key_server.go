@@ -22,9 +22,9 @@ import (
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
@@ -85,8 +85,8 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	// fields in EntryProfileAndProof do not exist.
 	// TODO(cesarghali): integrate merkle tree.
 	result := &v2pb.EntryProfileAndProof{
-		Entry: entry,
-		Profile: entryStorage.Profile,
+		Entry:          entry,
+		Profile:        entryStorage.Profile,
 		IndexSignature: &v2pb.UVF{[]byte(index)},
 	}
 	return result, nil

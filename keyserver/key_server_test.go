@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
-	"github.com/google/e2e-key-server/storage"
 	"github.com/google/e2e-key-server/client"
-	"google.golang.org/grpc"
+	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"

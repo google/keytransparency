@@ -18,10 +18,10 @@ package keyserver
 
 import (
 	"bytes"
-	"fmt"
-	"time"
 	"crypto/hmac"
 	"crypto/sha256"
+	"fmt"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -101,7 +101,6 @@ func (s *Server) validateEntryUpdateRequest(in *v2pb.EntryUpdateRequest, userID 
 	if !hmac.Equal(entry.ProfileCommitment, expectedMAC) {
 		return grpc.Errorf(codes.InvalidArgument, "Entry.ProfileCommitment does not match Profile")
 	}
-
 
 	// Unmarshal and validte user's profile.
 	p := new(v2pb.Profile)

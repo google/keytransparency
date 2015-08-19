@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-// Client for communicating with the Key server. 
+// Client for communicating with the Key server.
 
 package client
 
@@ -23,9 +22,9 @@ import (
 	"crypto/sha256"
 
 	"github.com/golang/protobuf/proto"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"golang.org/x/net/context"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
@@ -42,7 +41,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(client v2pb.E2EKeyServiceClient) *Client{
+func New(client v2pb.E2EKeyServiceClient) *Client {
 	return &Client{client}
 }
 
@@ -54,7 +53,7 @@ func (c *Client) Update(profile *v2pb.Profile, userID string) (*v2pb.UpdateUserR
 		return nil, grpc.Errorf(codes.Unavailable, "Unable to query server %v", err)
 	}
 
-	return CreateUpdate(profile, userID, resp) 
+	return CreateUpdate(profile, userID, resp)
 }
 
 func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProfileAndProof) (*v2pb.UpdateUserRequest, error) {
@@ -82,7 +81,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 		// TODO: Pull entry key from previous entry.
 		// TODO: Increment update count from previous entry.
 		ProfileCommitment: commitment(nonce, profileData),
-		Index: index,
+		Index:             index,
 	}
 
 	entryData, err := proto.Marshal(entry)
@@ -104,8 +103,8 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 		UserId: userID,
 		Update: &v2pb.EntryUpdateRequest{
 			SignedEntryUpdate: signedEntryUpdateData,
-			Profile:      profileData,
-			ProfileNonce: nonce,
+			Profile:           profileData,
+			ProfileNonce:      nonce,
 		},
 	}, nil
 }
