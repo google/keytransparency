@@ -141,7 +141,7 @@ func NewEnv(t *testing.T) *Env {
 	addr := "localhost:" + port
 	s := grpc.NewServer()
 	store := storage.CreateMem(context.Background())
-	b := builder.New(store.NewEntries())
+	b := builder.New(store.NewEntries(), store.WriteEntryRelatedInfo)
 	server := New(store, b.GetTree())
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)

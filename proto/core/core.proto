@@ -26,20 +26,16 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // EntryStorage is what gets serialized to disk / log.
 message EntryStorage {
-  // epoch allows entry updates to be self contained. Epoch is server supplied.
-  // epoch is the epoch at which this update should be inserted into the merkle
-  // tree.
-  uint64 epoch = 1;
-  // sequence is a sequential update number of the SignedEntryUpdate.
-  uint64 sequence = 2;
+  // commitment_timestamp is a sequential update number of the SignedEntryUpdate.
+  uint64 commitment_timestamp = 1;
   // entry_update contains serialized SignedEntryUpdate and is the actual update
   // contents.
-  bytes entry_update = 3;
+  bytes entry_update = 2;
   // profile is the serialized protobuf Profile.
   // profile is private and must not be released to verifiers.
-  bytes profile = 4;
+  bytes profile = 3;
   // domain allows servers to keep track of multiple trees at once.
-  string domain = 5;
+  string domain = 4;
 }
 
 // DomainInfo is the information that need to be baked into an application

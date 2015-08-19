@@ -117,7 +117,7 @@ func main() {
 	// Create a memory storage.
 	store := storage.CreateMem(context.Background())
 	// Create the tree builder.
-	b := builder.New(store.NewEntries())
+	b := builder.New(store.NewEntries(), store.WriteEntryRelatedInfo)
 	// Create the servers.
 	v2 := keyserver.New(store, b.GetTree())
 	v1 := proxy.New(v2)

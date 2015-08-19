@@ -519,12 +519,12 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse StartSequence. StartSequence must be of type uint64.
-		if val, ok := m["start_sequence"]; ok {
-			if startSequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start sequence must be uint64")
+		// Parse StartCommitmentTimestamp which must be of type uint64.
+		if val, ok := m["start_commitment_timestamp"]; ok {
+			if startCommitmentTimestamp, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be uint64")
 			} else {
-				in.StartSequence = uint64(startSequence)
+				in.StartCommitmentTimestamp = uint64(startCommitmentTimestamp)
 			}
 		}
 
@@ -569,12 +569,12 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse StartSequence. StartSequence must be of type uint64.
-		if val, ok := m["start_sequence"]; ok {
-			if startSequence, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start sequence must be uint64")
+		// Parse StartCommitmentTimestamp which must be of type uint64.
+		if val, ok := m["start_commitment_timestamp"]; ok {
+			if startCommitmentTimestamp, err := strconv.ParseUint(val[0], 10, 64); err != nil {
+				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be uint64")
 			} else {
-				in.StartSequence = uint64(startSequence)
+				in.StartCommitmentTimestamp = uint64(startCommitmentTimestamp)
 			}
 		}
 
