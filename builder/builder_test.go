@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/e2e-key-server/merkle"
+	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -27,14 +28,15 @@ import (
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
-const (
-	testEpoch = 1
-)
-
 var (
 	// Mock user index, no need to use the real one.
 	testUserIndex, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 )
+
+type Env struct {
+	b       *Builder
+	updates *EntryUpdates
+}
 
 type EntryUpdates struct {
 	// Contains a signed entry update with a short index.
@@ -43,6 +45,13 @@ type EntryUpdates struct {
 	invalidEntry []byte
 	// Contains a valid signed entry update
 	validEntryUpdate []byte
+}
+
+func NewEnv(t *testing.T) *Env {
+	b := New(nil, Fake_SaveCommitmentIndexAndEpoch)
+	updates := GenerateEntryUpdates(t)
+
+	return &Env{b, updates}
 }
 
 func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
@@ -70,29 +79,32 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 }
 
 func TestPost(t *testing.T) {
-	updates := GenerateEntryUpdates(t)
+	env := NewEnv(t)
 	m := merkle.New()
 	tests := []struct {
 		entryUpdate []byte
 		code        codes.Code
 	}{
-		{updates.validEntryUpdate, codes.OK},
+		{env.updates.validEntryUpdate, codes.OK},
 		// Taking the first 10 (or any number of, except all) bytes of
 		// the valid entry update simulate a broken entry update that
 		// cannot be unmarshaled.
-		{updates.validEntryUpdate[:10], codes.Internal},
-		{updates.invalidEntry, codes.Internal},
-		{updates.invalidIndex, codes.InvalidArgument},
+		{env.updates.validEntryUpdate[:10], codes.Internal},
+		{env.updates.invalidEntry, codes.Internal},
+		{env.updates.invalidIndex, codes.InvalidArgument},
 	}
 
 	for i, test := range tests {
 		es := &corepb.EntryStorage{
-			Epoch:       testEpoch,
 			EntryUpdate: test.entryUpdate,
 		}
-		err := post(m, es)
+		err := env.b.post(m, es)
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: post()=%v, want %v, %v", i, got, want, err)
 		}
 	}
+}
+
+func Fake_SaveCommitmentIndexAndEpoch(index string, epoch merkle.Epoch, commitment storage.CommitmentTimestamp) error {
+	return nil
 }

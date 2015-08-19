@@ -12,38 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+package storage
 
 import (
 	"sync"
 )
 
-// Epoch is the type used to denote what point in time to query to server.
-// Currently, this is a monotonically increasing number.
-type Epoch uint64
+// CommitmentTimestamp is the type used to denote the commitment timestamp of
+// entries stored in the database. This is a monotonically increasing number.
+// keyserver.Server does not need to know about the commitment timestamp when
+// reading and writing storage entries.
+type CommitmentTimestamp uint64
 
 var (
-	// current contains the current (latest) epoch of the merkle tree.
-	current Epoch = 1
+	// current contains the current (latest) commitment timestamp of the
+	// merkle tree.
+	current CommitmentTimestamp = 1
 
 	// mu syncronizes access to current. mu locks when reading and advancing
-	// current epoch.
+	// current commitment timestamp.
 	mu sync.Mutex
 )
 
-// GetCurrentEpoch returns the current epoch number.
+// GetCurrentCommitmentTimestamp returns the current commitment timestamp.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func GetCurrentEpoch() Epoch {
+func GetCurrentCommitmentTimestamp() CommitmentTimestamp {
 	mu.Lock()
 	defer mu.Unlock()
 	return current
 }
 
-// AdvanceEpoch advances the epoch by one.
+// AdvanceCommitmentTimestamp advances the commitment timestamp by one.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func AdvanceEpoch() Epoch {
+func AdvanceCommitmentTimestamp() CommitmentTimestamp {
 	mu.Lock()
 	defer mu.Unlock()
 	current = current + 1

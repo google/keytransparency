@@ -49,12 +49,18 @@ func New(storage storage.Storage, tree *merkle.Tree) *Server {
 // this user and that it is the same one being provided to everyone else.
 // GetUser also supports querying past values by setting the epoch field.
 func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.EntryProfileAndProof, error) {
+	// index is in hex format.
 	_, index, err := s.Vuf(in.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	e, err := s.s.Read(ctx, index)
+	epoch := merkle.Epoch(in.Epoch)
+	if epoch == 0 {
+		epoch = merkle.GetCurrentEpoch()
+	}
+
+	e, err := s.s.Read(ctx, index, epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -80,26 +86,15 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 		return nil, err
 	}
 
-	_, index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return nil, err
-	}
-
 	e := &corepb.EntryStorage{
-		// Epoch is the epoch at which this update should be inserted
-		// into the merkle tree.
-		// TODO(cesarghali): for now epoch = current + 1. This might
-		//                   change in the future.
-		Epoch: uint64(merkle.GetCurrentEpoch()),
-		// TODO(cesarghali): sequence should be set properly.
-		Sequence:    0,
+		// Sequence is set by storage.
 		EntryUpdate: in.GetUpdate().SignedUpdate,
 		Profile:     in.GetUpdate().Profile,
 		// TODO(cesarghali): set Domain.
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err = s.s.Write(ctx, e, index); err != nil {
+	if err := s.s.Write(ctx, e); err != nil {
 		return nil, err
 	}
 
