@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	hkpAppId = "pgp"
+	pgpAppID = "pgp"
 )
 
 // Server holds internal state for the proxy server.
@@ -79,7 +79,7 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 		return nil, grpc.Errorf(codes.Unimplemented, "Searching by key index are not supported")
 	}
 
-	getUserRequest := v2pb.GetUserRequest{UserId: in.Search, AppId: hkpAppId}
+	getUserRequest := v2pb.GetUserRequest{UserId: in.Search, AppId: pgpAppID}
 	profile, err := s.GetUser(ctx, &getUserRequest)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 	}
 
 	// From here on, there is only one key in the key list.
-	armoredKey, err := armorKey(&v2pb.Key{AppId: hkpAppId, Key: profile.GetKeys()[hkpAppId]})
+	armoredKey, err := armorKey(profile.GetKeys()[pgpAppID])
 	if err != nil {
 		return nil, err
 	}
@@ -109,20 +109,16 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 }
 
 // armorKey converts a Key of pgp type into an armored PGP key.
-func armorKey(key *v2pb.Key) ([]byte, error) {
-	if key == nil {
-		return nil, grpc.Errorf(codes.NotFound, "key=nil")
+func armorKey(key []byte) ([]byte, error) {
+	if len(key) == 0 {
+		return nil, grpc.Errorf(codes.NotFound, "Missing pgp key")
 	}
-	if got, want := key.AppId, hkpAppId; got != want {
-		return nil, grpc.Errorf(codes.NotFound, "key.AppId=%v, want %v", got, want)
-	}
-
 	armoredKey := bytes.NewBuffer(nil)
 	w, err := armor.Encode(armoredKey, openpgp.PublicKeyType, nil)
 	if err != nil {
 		return nil, err
 	}
-	_, err = w.Write(key.Key)
+	_, err = w.Write(key)
 	if err != nil {
 		return nil, err
 	}

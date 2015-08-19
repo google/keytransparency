@@ -16,15 +16,18 @@
 package keyserver
 
 import (
+	"encoding/hex"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc"
+	"golang.org/x/net/context"
 
 	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
-	context "golang.org/x/net/context"
 	proto3 "google/protobuf"
 )
 
@@ -53,17 +56,38 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	if err != nil {
 		return nil, err
 	}
-
-	e, err := s.s.Read(ctx, index)
+	vuf, err := hex.DecodeString(index)
 	if err != nil {
 		return nil, err
+	}
+
+	entryStorage, err := s.s.Read(ctx, index)
+	seu := new(v2pb.SignedEntryUpdate)
+	entry := new(v2pb.Entry)
+	if err != nil {
+		if grpc.Code(err) == codes.NotFound {
+			// Return an empty proof.
+			return &v2pb.EntryProfileAndProof{
+				IndexSignature: &v2pb.UVF{[]byte(vuf)},
+			}, nil
+		}
+		return nil, err
+	}
+
+	if err := proto.Unmarshal(entryStorage.EntryUpdate, seu); err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
+	}
+	if err := proto.Unmarshal(seu.Entry, entry); err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
 	// This key server doesn't employ a merkle tree yet. This is why most of
 	// fields in EntryProfileAndProof do not exist.
 	// TODO(cesarghali): integrate merkle tree.
 	result := &v2pb.EntryProfileAndProof{
-		Profile: e.Profile,
+		Entry: entry,
+		Profile: entryStorage.Profile,
+		IndexSignature: &v2pb.UVF{[]byte(index)},
 	}
 	return result, nil
 }
@@ -93,7 +117,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 		Epoch: uint64(merkle.GetCurrentEpoch()),
 		// TODO(cesarghali): sequence should be set properly.
 		Sequence:    0,
-		EntryUpdate: in.GetUpdate().SignedUpdate,
+		EntryUpdate: in.GetUpdate().SignedEntryUpdate,
 		Profile:     in.GetUpdate().Profile,
 		// TODO(cesarghali): set Domain.
 	}
