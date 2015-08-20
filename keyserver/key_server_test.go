@@ -216,10 +216,17 @@ func TestGetNonExistantUser(t *testing.T) {
 	defer env.Close()
 
 	ctx := context.Background() // Unauthenticated request.
-	_, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: "nobody"})
+	resp, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: "nobody"})
+	if err != nil {
+		t.Fatalf("Query for nonexistant failed %v", err)
+	}
 
-	if got, want := grpc.Code(err), codes.NotFound; got != want {
-		t.Errorf("Query for nonexistant user = %v, want: %v", got, want)
+	// TODO: TEST nonexistant proof.
+	if resp.GetEntry() != nil {
+		t.Errorf("Entry returned for nonexistant user")
+	}
+	if len(resp.Profile) != 0 {
+		t.Errorf("Profile returned for nonexistant user")
 	}
 }
 
@@ -233,7 +240,7 @@ func TestGetValidUser(t *testing.T) {
 	res, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
 
 	if err != nil {
-		t.Errorf("GetUser failed: %v", err)
+		t.Fatalf("GetUser failed: %v", err)
 	}
 	// Unmarshaling the resulted profile.
 	p := new(v2pb.Profile)
