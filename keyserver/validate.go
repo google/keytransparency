@@ -18,6 +18,8 @@ package keyserver
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -30,8 +32,11 @@ import (
 )
 
 // Maximum period of time to allow between CreationTime and server time.
-const MaxClockDrift = 5 * time.Minute
-const PGPAppID = "pgp"
+const (
+	MaxClockDrift = 5 * time.Minute
+	PGPAppID = "pgp"
+	MinNonceLen = 16
+)
 
 var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
 
@@ -73,15 +78,43 @@ func (s *Server) validateUpdateUserRequest(ctx context.Context, in *v2pb.UpdateU
 		return err
 	}
 
-	// TODO(cesarghali): validate SignedEntryUpdate.
+	if err := s.validateEntryUpdateRequest(in.GetUpdate(), in.UserId); err != nil {
+		return err
+	}
 
-	// Unmarshal user's profile.
+	return nil
+}
+
+// validateEntryUpdateRequest verifies
+// - Commitment in SignedEntryUpdate maches the serialized profile.
+// - Profile is a valid.
+func (s *Server) validateEntryUpdateRequest(in *v2pb.EntryUpdateRequest, userID string) error {
+	// Verify that the signed_update is a commitment to the profile.
+	seu := new(v2pb.SignedEntryUpdate)
+	if err := proto.Unmarshal(in.SignedEntryUpdate, seu); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
+	}
+	entry := new(v2pb.Entry)
+	if err := proto.Unmarshal(seu.Entry, entry); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
+	}
+	if got, want := len(in.ProfileNonce), MinNonceLen; got < want {
+		return grpc.Errorf(codes.InvalidArgument, "len(ProfileNonce) = %v, want >= %v", got, want)
+	}
+	mac := hmac.New(sha256.New, in.ProfileNonce)
+	mac.Write(in.Profile)
+	expectedMAC := mac.Sum(nil)
+	if !hmac.Equal(entry.ProfileCommitment, expectedMAC) {
+		return grpc.Errorf(codes.InvalidArgument, "Entry.ProfileCommitment does not match Profile")
+	}
+
+	// Unmarshal and validte user's profile.
 	p := new(v2pb.Profile)
-	if err := proto.Unmarshal(in.GetUpdate().Profile, p); err != nil {
+	if err := proto.Unmarshal(in.Profile, p); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
 
-	if err := s.validateProfile(p, in.UserId); err != nil {
+	if err := s.validateProfile(p, userID); err != nil {
 		return err
 	}
 	return nil
