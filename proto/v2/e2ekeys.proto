@@ -136,9 +136,8 @@ message Step {
   }
   // epoch of this udpate.
   uint64 epoch = 3;
-  // sequence is the ordered sequence number of this step.
-  // Equal to epoch_num + update sequence number.
-  uint64 sequence = 4;
+  // commitment_timestamp is the ordered commitment_timestamp of this step.
+  uint64 commitment_timestamp = 4;
 }
 
 // EntryUpdate is the proto a client sends to update their profile.
@@ -264,8 +263,8 @@ message ListSEHResponse {
 }
 
 message ListUpdateRequest {
-  // start_sequence is the starting sequence number.
-  uint64 start_sequence = 1;
+  // start_commitment_timestamp is the starting commitment timestamp.
+  uint64 start_commitment_timestamp = 1;
   // The maximum number of entries to return.
   int32 page_size = 2;
 }
@@ -276,8 +275,8 @@ message ListUpdateResponse {
 }
 
 message ListStepsRequest {
-  // start_sequence is the starting sequence number.
-  uint64 start_sequence = 1;
+  // start_commitment_timestamp is the starting commitment timestamp.
+  uint64 start_commitment_timestamp = 1;
   // The maximum number of entries to return.
   int32 page_size = 2;
 }
