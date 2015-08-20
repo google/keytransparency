@@ -16,13 +16,11 @@ package merkle
 
 import (
 	"sync"
-
-	"github.com/google/e2e-key-server/common"
 )
 
 var (
 	// current contains the current (latest) epoch of the merkle tree.
-	current common.Epoch = 1
+	current uint64 = 1
 
 	// mu syncronizes access to current. mu locks when reading and advancing
 	// current epoch.
@@ -32,7 +30,7 @@ var (
 // GetCurrentEpoch returns the current epoch number.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func GetCurrentEpoch() common.Epoch {
+func GetCurrentEpoch() uint64 {
 	mu.Lock()
 	defer mu.Unlock()
 	return current
@@ -41,7 +39,7 @@ func GetCurrentEpoch() common.Epoch {
 // AdvanceEpoch advances the epoch by one.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func AdvanceEpoch() common.Epoch {
+func AdvanceEpoch() uint64 {
 	mu.Lock()
 	defer mu.Unlock()
 	current = current + 1

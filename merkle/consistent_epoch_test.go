@@ -16,14 +16,12 @@ package merkle
 
 import (
 	"testing"
-
-	"github.com/google/e2e-key-server/common"
 )
 
 func TestAdvance(t *testing.T) {
 	tests := []struct {
 		numOfIncrements int
-		outEpoch        common.Epoch
+		outEpoch        uint64
 		success         bool
 	}{
 		// Advancing epoch is cumulative.

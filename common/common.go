@@ -16,12 +16,3 @@
 // packages. Types that can cause circular import should be added here.
 package common
 
-// Epoch is the type used to denote what point in time to query to server.
-// Currently, this is a monotonically increasing number.
-type Epoch uint64
-
-// CommitmentTimestamp is the type used to denote the commitment timestamp of
-// entries stored in the database. This is a monotonically increasing number.
-// keyserver.Server does not need to know about the commitment timestamp when
-// reading and writing storage entries.
-type CommitmentTimestamp uint64

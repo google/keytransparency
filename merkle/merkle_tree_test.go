@@ -21,8 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/e2e-key-server/common"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -51,7 +49,7 @@ func TestBitString(t *testing.T) {
 func TestAddRoot(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch common.Epoch
+		epoch uint64
 		code  codes.Code
 	}{
 		{10, codes.OK},
@@ -71,7 +69,7 @@ func TestAddRoot(t *testing.T) {
 func TestAddLeaf(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch common.Epoch
+		epoch uint64
 		index string
 		code  codes.Code
 	}{
@@ -109,7 +107,7 @@ func randSeq(n int) string {
 
 func BenchmarkAddLeaf(b *testing.B) {
 	m := New()
-	var epoch common.Epoch
+	var epoch uint64
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
 		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
@@ -122,7 +120,7 @@ func BenchmarkAddLeaf(b *testing.B) {
 
 func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 	m := New()
-	var epoch common.Epoch
+	var epoch uint64
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
 		epoch++
@@ -136,7 +134,7 @@ func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 
 func BenchmarkAudit(b *testing.B) {
 	m := New()
-	var epoch common.Epoch
+	var epoch uint64
 	items := make([]string, 0, b.N)
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
@@ -180,8 +178,8 @@ func TestCreateBranchCOW(t *testing.T) {
 	r0 := &node{epoch: 0, index: "", left: la, right: lb}
 	r1 := &node{epoch: 1, index: "", left: la, right: lb}
 
-	var e0 common.Epoch
-	var e1 common.Epoch = 1
+	var e0 uint64
+	var e1 uint64 = 1
 
 	r1.createBranch("0")
 	if got, want := r1.left.epoch, e1; got != want {
@@ -195,7 +193,7 @@ func TestCreateBranchCOW(t *testing.T) {
 func TestAuditDepth(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch common.Epoch
+		epoch uint64
 		index string
 		depth int
 	}{
@@ -231,7 +229,7 @@ func TestAuditDepth(t *testing.T) {
 func TestAuditNeighors(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch         common.Epoch
+		epoch         uint64
 		index         string
 		emptyNeighors []bool
 	}{
@@ -281,9 +279,9 @@ func TestGetLeafCommitmentTimestamp(t *testing.T) {
 
 	// Get commitment timestamps.
 	tests := []struct {
-		epoch           common.Epoch
+		epoch           uint64
 		index           string
-		outCommitmentTS common.CommitmentTimestamp
+		outCommitmentTS uint64
 		code            codes.Code
 	}{
 		// Get commitment timestamps of all added leaves. Ordering doesn't matter
@@ -312,9 +310,9 @@ func TestGetLeafCommitmentTimestamp(t *testing.T) {
 
 func addValidLeaves(t *testing.T, m *Tree) {
 	tests := []struct {
-		epoch        common.Epoch
+		epoch        uint64
 		index        string
-		commitmentTS common.CommitmentTimestamp
+		commitmentTS uint64
 		code         codes.Code
 	}{
 		// First insert
