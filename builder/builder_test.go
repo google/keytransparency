@@ -18,7 +18,6 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/merkle"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -48,7 +47,7 @@ type EntryUpdates struct {
 }
 
 func NewEnv(t *testing.T) *Env {
-	b := New(nil, Fake_SaveCommitmentIndexAndEpoch)
+	b := New(nil)
 	updates := GenerateEntryUpdates(t)
 
 	return &Env{b, updates}
@@ -103,8 +102,4 @@ func TestPost(t *testing.T) {
 			t.Errorf("Test[%v]: post()=%v, want %v, %v", i, got, want, err)
 		}
 	}
-}
-
-func Fake_SaveCommitmentIndexAndEpoch(index string, epoch common.Epoch, commitment common.CommitmentTimestamp) error {
-	return nil
 }

@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/merkle"
-	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -35,18 +34,14 @@ type Builder struct {
 	update chan *corepb.EntryStorage
 	// tree contains the merkle tree.
 	tree *merkle.Tree
-	// saveEntryRelatedInfo is a function handler to
-	// storage.Writer.WriteIndexAndEpoch.
-	saveEntryRelatedInfo storage.SaveEntryRelatedInfo
 }
 
 // New creates an instance of the tree builder with a given channel and a
 // handler to save entry related info (commitment timestamp, index, and epoch).
-func New(update chan *corepb.EntryStorage, saveEntryRelatedInfo storage.SaveEntryRelatedInfo) *Builder {
+func New(update chan *corepb.EntryStorage) *Builder {
 	b := &Builder{
-		update:               update,
-		tree:                 merkle.New(),
-		saveEntryRelatedInfo: saveEntryRelatedInfo,
+		update: update,
+		tree:   merkle.New(),
 	}
 	go b.build()
 	return b
@@ -81,11 +76,6 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 	// adding the leaf). This is because the builder will post all storage
 	// entries into the tree and then, advance the epoch.
 	if err := tree.AddLeaf(entryStorage.EntryUpdate, epoch, fmt.Sprintf("%x", index), common.CommitmentTimestamp(entryStorage.CommitmentTimestamp)); err != nil {
-		return err
-	}
-
-	// Save additional entry related information.
-	if err := b.saveEntryRelatedInfo(fmt.Sprintf("%x", index), epoch, common.CommitmentTimestamp(entryStorage.CommitmentTimestamp)); err != nil {
 		return err
 	}
 

@@ -581,7 +581,7 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path              string
-		startCommitmentTs uint64
+		startCommitmentTS uint64
 		pageSize          int32
 		parserNilErr      bool
 	}{
@@ -635,7 +635,7 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListUpdateRequest).StartCommitmentTimestamp, test.startCommitmentTs; got != want {
+		if got, want := info.Arg.(*v2pb.ListUpdateRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
 			t.Errorf("Test[%v]: StartCommitmentTimestamp = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListUpdateRequest).PageSize, test.pageSize; got != want {
@@ -659,7 +659,7 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path              string
-		startCommitmentTs uint64
+		startCommitmentTS uint64
 		pageSize          int32
 		parserNilErr      bool
 	}{
@@ -713,7 +713,7 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListStepsRequest).StartCommitmentTimestamp, test.startCommitmentTs; got != want {
+		if got, want := info.Arg.(*v2pb.ListStepsRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
 			t.Errorf("Test[%v]: StartCommitmentTimestamp = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListStepsRequest).PageSize, test.pageSize; got != want {

@@ -22,10 +22,6 @@ import (
 	context "golang.org/x/net/context"
 )
 
-// SaveEntryRelatedInfo is a handler to the function that stores commitment
-// timestamp, index, and epoch number to the database.
-type SaveEntryRelatedInfo func(string, common.Epoch, common.CommitmentTimestamp) error
-
 type Storage interface {
 	Reader
 	Writer
@@ -34,18 +30,13 @@ type Storage interface {
 
 type Reader interface {
 	// Read reads a EntryStroage from the storage.
-	Read(ctx context.Context, index string, epoch common.Epoch) (*corepb.EntryStorage, error)
+	Read(ctx context.Context, commitmentTS common.CommitmentTimestamp) (*corepb.EntryStorage, error)
 }
 
 type Writer interface {
 	// Write inserts a new EntryStorage in the storage. Fails if the row
 	// already exists.
 	Write(ctx context.Context, entry *corepb.EntryStorage) error
-	// WriteEntryRelatedInfo stores the mapping of epoch -> commitment
-	// timestamp range and (index, epoch) -> commitment timestamp.
-	// TODO(cesarghali): this function might turn into a goroutine with
-	//                   a watcher.
-	WriteEntryRelatedInfo(index string, epoch common.Epoch, commitmentTs common.CommitmentTimestamp) error
 }
 
 type Watcher interface {

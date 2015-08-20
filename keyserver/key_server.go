@@ -31,17 +31,17 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	s storage.Storage
-	a auth.Authenticator
-	t *merkle.Tree
+	srv  storage.Storage
+	auth auth.Authenticator
+	tree *merkle.Tree
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
 func New(storage storage.Storage, tree *merkle.Tree) *Server {
 	srv := &Server{
-		s: storage,
-		a: auth.New(),
-		t: tree,
+		srv:  storage,
+		auth: auth.New(),
+		tree: tree,
 	}
 	return srv
 }
@@ -61,7 +61,12 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		epoch = merkle.GetCurrentEpoch()
 	}
 
-	e, err := s.s.Read(ctx, index, epoch)
+	commitmentTS, err := s.tree.GetLeafCommitmentTimestamp(epoch, index)
+	if err != nil {
+		return nil, err
+	}
+
+	e, err := s.srv.Read(ctx, commitmentTS)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +100,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err := s.s.Write(ctx, e); err != nil {
+	if err := s.srv.Write(ctx, e); err != nil {
 		return nil, err
 	}
 
