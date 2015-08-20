@@ -96,10 +96,10 @@ def main():
   GetUserV1(True)
   HkpGet(True)
   GetUserV2(True)
-  UpdateUserV2()
-  GetUserV1(False)
-  HkpGet(False)
-  GetUserV2(False)
+  #UpdateUserV2()
+  #GetUserV1(False)
+  #HkpGet(False)
+  #GetUserV2(False)
 
   # Kill the server.
   subprocess.Popen(["killall", "srv"])
@@ -208,7 +208,7 @@ def UpdateUserV2():
   update_api_path = "/v2/users/" + primary_test_email
   request = urllib2.Request(server_url + update_api_path)
   request.add_header("Content-Type", "application/json")
-  request.get_method = lambda: "PUT"
+  request.get_method = "PUT"
   response = urllib2.urlopen(request, json.dumps(update_user_request))
 
   # HTTP response should be 200.
