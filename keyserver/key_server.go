@@ -117,7 +117,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 		Epoch: uint64(merkle.GetCurrentEpoch()),
 		// TODO(cesarghali): sequence should be set properly.
 		Sequence:    0,
-		EntryUpdate: in.GetUpdate().SignedUpdate,
+		EntryUpdate: in.GetUpdate().SignedEntryUpdate,
 		Profile:     in.GetUpdate().Profile,
 		// TODO(cesarghali): set Domain.
 	}

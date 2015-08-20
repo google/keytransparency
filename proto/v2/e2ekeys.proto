@@ -143,12 +143,14 @@ message Step {
 
 // EntryUpdate is the proto a client sends to update their profile.
 message EntryUpdateRequest {
-  // signed_update contains serialized SignedEntryUpdate and authorizes the
+  // signed_update contains a serialized SignedEntryUpdate and authorizes the
   // change to profile.
-  bytes signed_update = 1;
+  bytes signed_entry_update = 1;
   // profile is the serialized protobuf Profile.
   // profile is private and must not be released to verifiers.
   bytes profile = 2;
+  // profile_nonce is at least 16 random bytes.
+  bytes profile_nonce = 3;
 }
 
 message SignedEntryUpdate {
@@ -170,7 +172,7 @@ message Entry {
   // entry_key is a ECDSH key.
   bytes entry_key = 1;
   // profile_commitment is a cryptographic commitment to the Profile of the form
-  // HMAC(nonce, serialized_profile)
+  // HMAC(profile_nonce, serialized_profile)
   bytes profile_commitment = 2;
   // update_count prevents replaying old signed EntryUpdates.
   // not nessesarilly incremented by only one each update.
@@ -183,18 +185,8 @@ message Entry {
 
 // Profile contains data hidden behind the crypto comitment.
 message Profile {
-  // Nonce prevents an adversary from brute forcing nodes to the side of a user.
-  uint64 nonce = 1;
   // key_list is an appId and key map.
   map<string, bytes> keys = 2;
-}
-
-message Key {
-  // The encryption key itself.
-  bytes key = 2;  // Required.
-  // The name of the application this key is for. app_id implies the key type.
-  string app_id = 3;  // Required.
-  // key_id is implied from the hash of the key material itself.
 }
 
 // PublicKey defines a key this domain uses to sign EpochHeads with.

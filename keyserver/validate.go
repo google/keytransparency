@@ -18,6 +18,8 @@ package keyserver
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -52,22 +54,17 @@ func (s *Server) validateEmail(ctx context.Context, email string) error {
 }
 
 // validateKey verifies:
+// - appID is present.
 // - Key is valid for its format.
-// - AppId is present.
-func (s *Server) validateKey(userID string, key *v2pb.Key) error {
-	if key == nil {
-		return grpc.Errorf(codes.InvalidArgument, "Missing Key")
+func (s *Server) validateKey(userID, appID string, key []byte) error {
+	if appID == "" {
+		return grpc.Errorf(codes.InvalidArgument, "Missing AppId")
 	}
-	if key.AppId == PGPAppID {
-		var err error
+	if appID == PGPAppID {
 		pgpUserID := fmt.Sprintf("<%v>", userID)
-		_, err = validatePGP(pgpUserID, bytes.NewBuffer(key.Key))
-		if err != nil {
+		if _, err := validatePGP(pgpUserID, bytes.NewBuffer(key)); err != nil {
 			return err
 		}
-	}
-	if key.AppId == "" {
-		return grpc.Errorf(codes.InvalidArgument, "Missing AppId")
 	}
 	return nil
 }
@@ -78,20 +75,50 @@ func (s *Server) validateUpdateUserRequest(ctx context.Context, in *v2pb.UpdateU
 		return err
 	}
 
-	// TODO(cesarghali): validate SignedEntryUpdate.
+	if err := s.validateEntryUpdateRequest(in.GetUpdate(), in.UserId); err != nil {
+		return err
+	}
 
-	// Unmarshal user's profile.
+	return nil
+}
+
+// validateEntryUpdateRequest verifies
+// - Commitment in SignedEntryUpdate maches the serialized profile.
+// - Profile is a valid.
+func (s *Server) validateEntryUpdateRequest(in *v2pb.EntryUpdateRequest, userID string) error {
+	// Verify that the signed_update is a commitment to the profile.
+	seu := new(v2pb.SignedEntryUpdate)
+	if err := proto.Unmarshal(in.SignedEntryUpdate, seu); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
+	}
+	entry := new(v2pb.Entry)
+	if err := proto.Unmarshal(seu.Entry, entry); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
+	}
+	mac := hmac.New(sha256.New, in.ProfileNonce)
+	mac.Write(in.Profile)
+	expectedMAC := mac.Sum(nil)
+	if !hmac.Equal(entry.ProfileCommitment, expectedMAC) {
+		return grpc.Errorf(codes.InvalidArgument, "Entry.ProfileCommitment does not match Profile")
+	}
+
+	// Unmarshal and validte user's profile.
 	p := new(v2pb.Profile)
-	if err := proto.Unmarshal(in.GetUpdate().Profile, p); err != nil {
+	if err := proto.Unmarshal(in.Profile, p); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
 
-	// Validate the keys in the profile.
-	for k, v := range p.GetKeys() {
-		if err := s.validateKey(in.UserId, &v2pb.Key{AppId: k, Key: v}); err != nil {
+	if err := s.validateProfile(p, userID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) validateProfile(p *v2pb.Profile, userID string) error {
+	for appID, key := range p.GetKeys() {
+		if err := s.validateKey(userID, appID, key); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
