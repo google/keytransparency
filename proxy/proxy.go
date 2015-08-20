@@ -47,10 +47,14 @@ func New(srv *keyserver.Server) *Server {
 
 // GetUser returns a user's profile.
 func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.Profile, error) {
-	result, err := s.s.GetUser(ctx, in)
-	if err != nil {
-		return nil, err
-	}
+    result, err := s.s.GetUser(ctx, in)
+    if  err != nil {
+	return nil, err
+    }
+
+    if len(result.Profile) == 0 {
+	return nil, grpc.Errorf(codes.NotFound, "")
+    }
 
 	// Extract and returned the user profile from the resulted
 	// EntryProfileAndProof.

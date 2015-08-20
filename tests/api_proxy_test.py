@@ -113,11 +113,11 @@ def GetUserV1(empty):
   try:
     response = urllib2.urlopen(request)
 
-    # Empty should be false here.
-    assert not empty
-
     # HTTP response should be 200.
     assert response.getcode() == 200
+
+    # Empty should be false here.
+    assert not empty
 
     # Ensure that what is returned is as expected.
     body = response.read()
@@ -176,18 +176,21 @@ def GetUserV2(empty):
   try:
     response = urllib2.urlopen(request)
 
-    # Empty should be false here.
-    assert not empty
-
     # HTTP response should be 200.
     assert response.getcode() == 200
 
     # Ensure that what is returned is as expected.
     body = response.read()
     dict_response = json.loads(body)
-    # Response includes profile.
-    assert "profile" in dict_response
-    assert dict_response["profile"] == primary_user_profile
+    if empty:
+      # Response includes index_signature
+      assert "index_signature" in dict_response
+      # index_signature includes vrf
+      assert "vrf" in dict_response["index_signature"]
+    else:
+      # Response includes profile.
+      assert "profile" in dict_response
+      assert dict_response["profile"] == primary_user_profile
   except urllib2.HTTPError as err:
     assert empty and err.code == 404
 
