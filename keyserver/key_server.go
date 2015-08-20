@@ -17,6 +17,7 @@ package keyserver
 
 import (
 	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
@@ -55,7 +56,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		return nil, err
 	}
 
-	epoch := merkle.Epoch(in.Epoch)
+	epoch := common.Epoch(in.Epoch)
 	if epoch == 0 {
 		epoch = merkle.GetCurrentEpoch()
 	}

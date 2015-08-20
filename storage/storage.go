@@ -16,7 +16,7 @@
 package storage
 
 import (
-	merkle "github.com/google/e2e-key-server/merkle"
+	"github.com/google/e2e-key-server/common"
 
 	corepb "github.com/google/e2e-key-server/proto/core"
 	context "golang.org/x/net/context"
@@ -24,7 +24,7 @@ import (
 
 // SaveEntryRelatedInfo is a handler to the function that stores commitment
 // timestamp, index, and epoch number to the database.
-type SaveEntryRelatedInfo func(string, merkle.Epoch, CommitmentTimestamp) error
+type SaveEntryRelatedInfo func(string, common.Epoch, common.CommitmentTimestamp) error
 
 type Storage interface {
 	Reader
@@ -34,7 +34,7 @@ type Storage interface {
 
 type Reader interface {
 	// Read reads a EntryStroage from the storage.
-	Read(ctx context.Context, index string, epoch merkle.Epoch) (*corepb.EntryStorage, error)
+	Read(ctx context.Context, index string, epoch common.Epoch) (*corepb.EntryStorage, error)
 }
 
 type Writer interface {
@@ -45,7 +45,7 @@ type Writer interface {
 	// timestamp range and (index, epoch) -> commitment timestamp.
 	// TODO(cesarghali): this function might turn into a goroutine with
 	//                   a watcher.
-	WriteEntryRelatedInfo(index string, epoch merkle.Epoch, commitmentTs CommitmentTimestamp) error
+	WriteEntryRelatedInfo(index string, epoch common.Epoch, commitmentTs common.CommitmentTimestamp) error
 }
 
 type Watcher interface {

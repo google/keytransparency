@@ -17,6 +17,7 @@ package builder
 import (
 	"fmt"
 
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
@@ -84,7 +85,7 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 	}
 
 	// Save additional entry related information.
-	if err := b.saveEntryRelatedInfo(fmt.Sprintf("%x", index), epoch, storage.CommitmentTimestamp(entryStorage.CommitmentTimestamp)); err != nil {
+	if err := b.saveEntryRelatedInfo(fmt.Sprintf("%x", index), epoch, common.CommitmentTimestamp(entryStorage.CommitmentTimestamp)); err != nil {
 		return err
 	}
 

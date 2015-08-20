@@ -18,7 +18,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/google/e2e-key-server/merkle"
+	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -33,21 +33,21 @@ const (
 )
 
 type epochInfo struct {
-	startCommitmentTs CommitmentTimestamp
-	endCommitmentTs   CommitmentTimestamp
+	startCommitmentTs common.CommitmentTimestamp
+	endCommitmentTs   common.CommitmentTimestamp
 }
 
 // Storage holds state required to persist data. Open and Create create new
 // Storage objects.
 type MemStorage struct {
 	// Map of commitment timestamp -> EntryStorage.
-	entries map[CommitmentTimestamp]*corepb.EntryStorage
+	entries map[common.CommitmentTimestamp]*corepb.EntryStorage
 	// Map of epoch -> start and end commitment timestamp range.
-	epochs map[merkle.Epoch]epochInfo
+	epochs map[common.Epoch]epochInfo
 	// Map of (index, epoch) -> commitment timestamp. The key is a string
 	// concatenation of both index and epoch. Eventually, this map will be
 	// a database table keyed by index and epoch.
-	indices map[string]CommitmentTimestamp
+	indices map[string]common.CommitmentTimestamp
 	// Whenever an EntryStorage is written in the database, it will be
 	// pushed into ch.
 	ch chan *corepb.EntryStorage
@@ -56,16 +56,16 @@ type MemStorage struct {
 // Create creates a storage object from an existing db connection.
 func CreateMem(ctx context.Context) *MemStorage {
 	s := &MemStorage{
-		entries: make(map[CommitmentTimestamp]*corepb.EntryStorage),
-		epochs:  make(map[merkle.Epoch]epochInfo),
-		indices: make(map[string]CommitmentTimestamp),
+		entries: make(map[common.CommitmentTimestamp]*corepb.EntryStorage),
+		epochs:  make(map[common.Epoch]epochInfo),
+		indices: make(map[string]common.CommitmentTimestamp),
 		ch:      make(chan *corepb.EntryStorage, ChannelSize),
 	}
 	return s
 }
 
 // Read reads a EntryStroage from the storage. index is in hex format.
-func (s *MemStorage) Read(ctx context.Context, index string, epoch merkle.Epoch) (*corepb.EntryStorage, error) {
+func (s *MemStorage) Read(ctx context.Context, index string, epoch common.Epoch) (*corepb.EntryStorage, error) {
 	commitmentTs, ok := s.indices[fmt.Sprintf("%v%v", index, epoch)]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", commitmentTs)
@@ -92,7 +92,7 @@ func (s *MemStorage) Write(ctx context.Context, entry *corepb.EntryStorage) erro
 
 // WriteEntryRelatedInfo stores the mapping of epoch -> commitment timestamp
 // range and (index, epoch) -> commitment timestamp. index is in hex format.
-func (s *MemStorage) WriteEntryRelatedInfo(index string, epoch merkle.Epoch, commitmentTs CommitmentTimestamp) error {
+func (s *MemStorage) WriteEntryRelatedInfo(index string, epoch common.Epoch, commitmentTs common.CommitmentTimestamp) error {
 	// Write epoch -> commitment timestamp range mapping.
 	eInfo, ok := s.epochs[epoch]
 	if ok {

@@ -16,18 +16,14 @@ package storage
 
 import (
 	"sync"
-)
 
-// CommitmentTimestamp is the type used to denote the commitment timestamp of
-// entries stored in the database. This is a monotonically increasing number.
-// keyserver.Server does not need to know about the commitment timestamp when
-// reading and writing storage entries.
-type CommitmentTimestamp uint64
+	"github.com/google/e2e-key-server/common"
+)
 
 var (
 	// current contains the current (latest) commitment timestamp of the
 	// merkle tree.
-	current CommitmentTimestamp = 1
+	current common.CommitmentTimestamp = 1
 
 	// mu syncronizes access to current. mu locks when reading and advancing
 	// current commitment timestamp.
@@ -37,7 +33,7 @@ var (
 // GetCurrentCommitmentTimestamp returns the current commitment timestamp.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func GetCurrentCommitmentTimestamp() CommitmentTimestamp {
+func GetCurrentCommitmentTimestamp() common.CommitmentTimestamp {
 	mu.Lock()
 	defer mu.Unlock()
 	return current
@@ -46,7 +42,7 @@ func GetCurrentCommitmentTimestamp() CommitmentTimestamp {
 // AdvanceCommitmentTimestamp advances the commitment timestamp by one.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func AdvanceCommitmentTimestamp() CommitmentTimestamp {
+func AdvanceCommitmentTimestamp() common.CommitmentTimestamp {
 	mu.Lock()
 	defer mu.Unlock()
 	current = current + 1

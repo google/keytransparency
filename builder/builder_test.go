@@ -18,8 +18,8 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/merkle"
-	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -105,6 +105,6 @@ func TestPost(t *testing.T) {
 	}
 }
 
-func Fake_SaveCommitmentIndexAndEpoch(index string, epoch merkle.Epoch, commitment storage.CommitmentTimestamp) error {
+func Fake_SaveCommitmentIndexAndEpoch(index string, epoch common.Epoch, commitment common.CommitmentTimestamp) error {
 	return nil
 }

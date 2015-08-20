@@ -16,12 +16,14 @@ package storage
 
 import (
 	"testing"
+
+	"github.com/google/e2e-key-server/common"
 )
 
 func TestAdvance(t *testing.T) {
 	tests := []struct {
 		numOfIncrements int
-		outCommitmentTs CommitmentTimestamp
+		outCommitmentTS common.CommitmentTimestamp
 		success         bool
 	}{
 		// Advancing epoch is cumulative.
@@ -34,8 +36,8 @@ func TestAdvance(t *testing.T) {
 		for j := 0; j < test.numOfIncrements; j++ {
 			AdvanceCommitmentTimestamp()
 		}
-		if got, want := GetCurrentCommitmentTimestamp() == test.outCommitmentTs, test.success; got != want {
-			t.Errorf("Test[%v]: GetCurrentCommitmentTimestamp()=%v, want %v, should fail: %v", i, GetCurrentCommitmentTimestamp(), test.outCommitmentTs, !test.success)
+		if got, want := GetCurrentCommitmentTimestamp() == test.outCommitmentTS, test.success; got != want {
+			t.Errorf("Test[%v]: GetCurrentCommitmentTimestamp()=%v, want %v, should fail: %v", i, GetCurrentCommitmentTimestamp(), test.outCommitmentTS, !test.success)
 		}
 	}
 }

@@ -28,6 +28,7 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -57,28 +58,28 @@ var (
 
 // Tree holds internal state for the Merkle Tree.
 type Tree struct {
-	roots   map[Epoch]*node
+	roots   map[common.Epoch]*node
 	current *node      // Current epoch.
 	mu      sync.Mutex // Syncronize access to current.
 }
 
 type node struct {
-	epoch Epoch  // Epoch for this node.
-	index string // Location in the tree.
-	depth int    // Depth of this node. 0 to 256.
-	value []byte // Empty for empty subtrees.
-	left  *node  // Left node.
-	right *node  // Right node.
+	epoch common.Epoch // Epoch for this node.
+	index string       // Location in the tree.
+	depth int          // Depth of this node. 0 to 256.
+	value []byte       // Empty for empty subtrees.
+	left  *node        // Left node.
+	right *node        // Right node.
 }
 
 // New creates and returns a new instance of Tree.
 func New() *Tree {
-	return &Tree{roots: make(map[Epoch]*node)}
+	return &Tree{roots: make(map[common.Epoch]*node)}
 }
 
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
 // must be added in chronological order by epoch.
-func (t *Tree) AddLeaf(value []byte, epoch Epoch, index string) error {
+func (t *Tree) AddLeaf(value []byte, epoch common.Epoch, index string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/4; got != want {
@@ -93,7 +94,7 @@ func (t *Tree) AddLeaf(value []byte, epoch Epoch, index string) error {
 
 // AuditPath returns a slice containing the value of the leaf node followed by
 // each node's neighbor from the bottom to the top.
-func (t *Tree) AuditPath(epoch Epoch, index string) ([][]byte, error) {
+func (t *Tree) AuditPath(epoch common.Epoch, index string) ([][]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/4; got != want {
@@ -117,7 +118,7 @@ func BitString(index string) string {
 // addRoot will advance the current epoch by copying the previous root.
 // addRoot will prevent attempts to create epochs other than the current and
 // current + 1 epoch
-func (t *Tree) addRoot(epoch Epoch) (*node, error) {
+func (t *Tree) addRoot(epoch common.Epoch) (*node, error) {
 	if t.current == nil {
 		// Create the first epoch.
 		t.roots[epoch] = &node{epoch, "", 0, nil, nil, nil}
@@ -138,7 +139,7 @@ func (t *Tree) addRoot(epoch Epoch) (*node, error) {
 
 // Parent node is responsible for creating children.
 // Inserts leafs in the nearest empty sub branch it finds.
-func (n *node) addLeaf(value []byte, epoch Epoch, index string, depth int) error {
+func (n *node) addLeaf(value []byte, epoch common.Epoch, index string, depth int) error {
 	if n.epoch != epoch {
 		return grpc.Errorf(codes.Internal, "epoch = %d want %d", epoch, n.epoch)
 	}

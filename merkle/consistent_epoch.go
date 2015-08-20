@@ -16,15 +16,13 @@ package merkle
 
 import (
 	"sync"
-)
 
-// Epoch is the type used to denote what point in time to query to server.
-// Currently, this is a monotonically increasing number.
-type Epoch uint64
+	"github.com/google/e2e-key-server/common"
+)
 
 var (
 	// current contains the current (latest) epoch of the merkle tree.
-	current Epoch = 1
+	current common.Epoch = 1
 
 	// mu syncronizes access to current. mu locks when reading and advancing
 	// current epoch.
@@ -34,7 +32,7 @@ var (
 // GetCurrentEpoch returns the current epoch number.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func GetCurrentEpoch() Epoch {
+func GetCurrentEpoch() common.Epoch {
 	mu.Lock()
 	defer mu.Unlock()
 	return current
@@ -43,7 +41,7 @@ func GetCurrentEpoch() Epoch {
 // AdvanceEpoch advances the epoch by one.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func AdvanceEpoch() Epoch {
+func AdvanceEpoch() common.Epoch {
 	mu.Lock()
 	defer mu.Unlock()
 	current = current + 1
