@@ -56,6 +56,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	if err != nil {
 		return nil, err
 	}
+
 	vuf, err := hex.DecodeString(index)
 	if err != nil {
 		return nil, err

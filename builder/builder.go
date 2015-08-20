@@ -69,7 +69,11 @@ func post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) error {
 	}
 
 	// Add leaf to the merkle tree.
-	if err := tree.AddLeaf(entryStorage.EntryUpdate, merkle.Epoch(entryStorage.Epoch), fmt.Sprintf("%x", index)); err != nil {
+	epoch := merkle.GetCurrentEpoch()
+	// Epoch will not advance here (after reading current epoch and before
+	// adding the leaf). This is because the builder will post all storage
+	// entries into the tree and then, advance the epoch.
+	if err := tree.AddLeaf(entryStorage.EntryUpdate, epoch, fmt.Sprintf("%x", index)); err != nil {
 		return err
 	}
 

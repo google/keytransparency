@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -45,7 +46,7 @@ func TestBitString(t *testing.T) {
 func TestAddRoot(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch Epoch
+		epoch common.Epoch
 		code  codes.Code
 	}{
 		{10, codes.OK},
@@ -65,7 +66,7 @@ func TestAddRoot(t *testing.T) {
 func TestAddLeaf(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch Epoch
+		epoch common.Epoch
 		index string
 		code  codes.Code
 	}{
@@ -103,7 +104,7 @@ func randSeq(n int) string {
 
 func BenchmarkAddLeaf(b *testing.B) {
 	m := New()
-	var epoch Epoch
+	var epoch common.Epoch
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
 		err := m.AddLeaf([]byte{}, epoch, index)
@@ -116,7 +117,7 @@ func BenchmarkAddLeaf(b *testing.B) {
 
 func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 	m := New()
-	var epoch Epoch
+	var epoch common.Epoch
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
 		epoch++
@@ -130,7 +131,7 @@ func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 
 func BenchmarkAudit(b *testing.B) {
 	m := New()
-	var epoch Epoch
+	var epoch common.Epoch
 	items := make([]string, 0, b.N)
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
@@ -174,8 +175,8 @@ func TestCreateBranchCOW(t *testing.T) {
 	r0 := &node{epoch: 0, index: "", left: la, right: lb}
 	r1 := &node{epoch: 1, index: "", left: la, right: lb}
 
-	var e0 Epoch
-	var e1 Epoch = 1
+	var e0 common.Epoch
+	var e1 common.Epoch = 1
 
 	r1.createBranch("0")
 	if got, want := r1.left.epoch, e1; got != want {
@@ -189,7 +190,7 @@ func TestCreateBranchCOW(t *testing.T) {
 func TestAuditDepth(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch Epoch
+		epoch common.Epoch
 		index string
 		depth int
 	}{
@@ -225,7 +226,7 @@ func TestAuditDepth(t *testing.T) {
 func TestAuditNeighors(t *testing.T) {
 	m := New()
 	tests := []struct {
-		epoch         Epoch
+		epoch         common.Epoch
 		index         string
 		emptyNeighors []bool
 	}{
