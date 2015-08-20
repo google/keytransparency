@@ -52,22 +52,17 @@ func (s *Server) validateEmail(ctx context.Context, email string) error {
 }
 
 // validateKey verifies:
+// - appID is present.
 // - Key is valid for its format.
-// - AppId is present.
-func (s *Server) validateKey(userID string, key *v2pb.Key) error {
-	if key == nil {
-		return grpc.Errorf(codes.InvalidArgument, "Missing Key")
+func (s *Server) validateKey(userID, appID string, key []byte) error {
+	if appID == "" {
+		return grpc.Errorf(codes.InvalidArgument, "Missing AppId")
 	}
-	if key.AppId == PGPAppID {
-		var err error
+	if appID == PGPAppID {
 		pgpUserID := fmt.Sprintf("<%v>", userID)
-		_, err = validatePGP(pgpUserID, bytes.NewBuffer(key.Key))
-		if err != nil {
+		if _, err := validatePGP(pgpUserID, bytes.NewBuffer(key)); err != nil {
 			return err
 		}
-	}
-	if key.AppId == "" {
-		return grpc.Errorf(codes.InvalidArgument, "Missing AppId")
 	}
 	return nil
 }
@@ -86,12 +81,17 @@ func (s *Server) validateUpdateUserRequest(ctx context.Context, in *v2pb.UpdateU
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
 
-	// Validate the keys in the profile.
-	for k, v := range p.GetKeys() {
-		if err := s.validateKey(in.UserId, &v2pb.Key{AppId: k, Key: v}); err != nil {
+	if err := s.validateProfile(p, in.UserId); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) validateProfile(p *v2pb.Profile, userID string) error {
+	for appID, key := range p.GetKeys() {
+		if err := s.validateKey(userID, appID, key); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }

@@ -189,14 +189,6 @@ message Profile {
   map<string, bytes> keys = 2;
 }
 
-message Key {
-  // The encryption key itself.
-  bytes key = 2;  // Required.
-  // The name of the application this key is for. app_id implies the key type.
-  string app_id = 3;  // Required.
-  // key_id is implied from the hash of the key material itself.
-}
-
 // PublicKey defines a key this domain uses to sign EpochHeads with.
 message PublicKey {
   bytes key = 1;

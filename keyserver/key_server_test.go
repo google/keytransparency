@@ -25,13 +25,14 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
+	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/storage"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
-	context "golang.org/x/net/context"
 )
 
 const (
@@ -124,7 +125,7 @@ type Env struct {
 	s      *grpc.Server
 	server *Server
 	conn   *grpc.ClientConn
-	Client v2pb.E2EKeyServiceClient
+	Client *client.Client
 	ctx    context.Context
 }
 
@@ -151,7 +152,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}
 
-	client := v2pb.NewE2EKeyServiceClient(cc)
+	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
@@ -165,39 +166,14 @@ func (env *Env) Close() {
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {
-	// Marshaling the user profile.
-	pBytes, err := proto.Marshal(primaryUserProfile)
+	updateUserRequest, err := env.Client.Update(primaryUserProfile, primaryUserEmail)
 	if err != nil {
-		t.Fatalf("Unexpected profile marshalling error %v.", err)
-	}
-	// Marshaling the update entry.
-	_, userIndex, _ := env.server.Vuf(primaryUserEmail)
-	userIndexBytes, _ := hex.DecodeString(userIndex)
-	updateEntry := &v2pb.Entry{
-		Index: userIndexBytes,
-	}
-	eBytes, err := proto.Marshal(updateEntry)
-	if err != nil {
-		t.Fatalf("Unexpected entry marshalling error %v.", err)
-	}
-	seu := &v2pb.SignedEntryUpdate{
-		Entry: eBytes,
-	}
-	// Marshaling the update entry.
-	seuBytes, err := proto.Marshal(seu)
-	if err != nil {
-		t.Fatalf("Unexpected signed entry update marshalling error %v.", err)
+		t.Fatalf("Error creating update request: %v", err)
 	}
 
 	// Insert valid user. Calling update if the user does not exist will
 	// insert the user's profile.
-	_, err = env.Client.UpdateUser(env.ctx, &v2pb.UpdateUserRequest{
-		UserId: primaryUserEmail,
-		Update: &v2pb.EntryUpdateRequest{
-			SignedEntryUpdate: seuBytes,
-			Profile:      pBytes,
-		},
-	})
+	_, err = env.Client.UpdateUser(env.ctx, updateUserRequest)
 	if err != nil {
 		t.Errorf("CreateUser got unexpected error %v.", err)
 		return

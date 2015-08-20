@@ -17,7 +17,8 @@ package keyserver
 import (
 	"testing"
 
-	proto "github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/client"
+
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
@@ -38,9 +39,8 @@ func TestValidateKey(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	key := &v2pb.Key{AppId: primaryAppId, Key: primaryKeys[primaryAppId]}
-	if err := env.server.validateKey(primaryUserEmail, key); err != nil {
-		t.Errorf("validateKey(%v) = %v, wanted nil", &key, err)
+	if err := env.server.validateKey(primaryUserEmail, primaryAppId, primaryKeys[primaryAppId]); err != nil {
+		t.Errorf("validateKey() = %v, wanted nil", err)
 	}
 }
 
@@ -48,15 +48,13 @@ func TestValidateUpdateUserRequest(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	p, err := proto.Marshal(primaryUserProfile)
-	if err != nil {
-		t.Fatalf("Unexpected profile marshalling error %v.", err)
+	// Use a fake previous entry.
+	previous := &v2pb.EntryProfileAndProof{
+		IndexSignature: &v2pb.UVF{[]byte("Foo")},
 	}
-	updateUserRequest := &v2pb.UpdateUserRequest{
-		UserId: primaryUserEmail,
-		Update: &v2pb.EntryUpdateRequest{
-			Profile: p,
-		},
+	updateUserRequest, err := client.CreateUpdate(primaryUserProfile, primaryUserEmail, previous)
+	if err != nil {
+		t.Fatalf("Failed creating update: %v", err)
 	}
 
 	if err := env.server.validateUpdateUserRequest(env.ctx, updateUserRequest); err != nil {
