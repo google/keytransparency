@@ -17,10 +17,6 @@
 package client
 
 import (
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -64,12 +60,6 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected profile marshalling error: %v", err)
 	}
 
-	// Generate nonce.
-	nonce := make([]byte, nonceBytes)
-	if _, err := rand.Read(nonce); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error generating nonce: %v", err)
-	}
-
 	// Get Index
 	if previous.GetIndexSignature() == nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "UVF missing")
@@ -80,7 +70,6 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 	entry := &v2pb.Entry{
 		// TODO: Pull entry key from previous entry.
 		// TODO: Increment update count from previous entry.
-		ProfileCommitment: commitment(nonce, profileData),
 		Index:             index,
 	}
 
@@ -104,13 +93,6 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 		Update: &v2pb.EntryUpdateRequest{
 			SignedEntryUpdate: signedEntryUpdateData,
 			Profile:           profileData,
-			ProfileNonce:      nonce,
 		},
 	}, nil
-}
-
-func commitment(nonce, profile []byte) []byte {
-	mac := hmac.New(sha256.New, nonce)
-	mac.Write(profile)
-	return mac.Sum(nil)
 }
