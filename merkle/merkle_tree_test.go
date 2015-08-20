@@ -22,8 +22,13 @@ import (
 	"testing"
 
 	"github.com/google/e2e-key-server/common"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+)
+
+const (
+	testCommitmentTimestamp = 1
 )
 
 var AllZeros = strings.Repeat("0", 256)
@@ -83,7 +88,7 @@ func TestAddLeaf(t *testing.T) {
 		{1, "0000000000000000000000000000000000000000000000000000000000000001", codes.OK},
 	}
 	for i, test := range tests {
-		err := m.AddLeaf([]byte{}, test.epoch, test.index)
+		err := m.AddLeaf([]byte{}, test.epoch, test.index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
 				i, test.epoch, test.index, got, want, err)
@@ -106,7 +111,7 @@ func BenchmarkAddLeaf(b *testing.B) {
 	var epoch common.Epoch
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
-		err := m.AddLeaf([]byte{}, epoch, index)
+		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
 				i, epoch, index, got, want)
@@ -120,7 +125,7 @@ func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
 		epoch++
-		err := m.AddLeaf([]byte{}, epoch, index)
+		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
 				i, epoch, index, got, want)
@@ -135,7 +140,7 @@ func BenchmarkAudit(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		index := randSeq(64)
 		items = append(items, index)
-		err := m.AddLeaf([]byte{}, epoch, index)
+		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
 				i, epoch, index, got, want)
@@ -200,7 +205,7 @@ func TestAuditDepth(t *testing.T) {
 		{1, "0000000000000000000000000000000000000000000000000000000000000001", 256},
 	}
 	for i, test := range tests {
-		err := m.AddLeaf([]byte{}, test.epoch, test.index)
+		err := m.AddLeaf([]byte{}, test.epoch, test.index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.index, got, want)
@@ -236,7 +241,7 @@ func TestAuditNeighors(t *testing.T) {
 	}
 	for i, test := range tests {
 		// Insert.
-		err := m.AddLeaf([]byte{}, test.epoch, test.index)
+		err := m.AddLeaf([]byte{}, test.epoch, test.index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.index, got, want)
@@ -266,4 +271,69 @@ func TestAuditNeighors(t *testing.T) {
 
 func neighborOf(index string, depth int) string {
 	return index[:depth-1] + string(neighbor(index[depth-1]))
+}
+
+func TestGetLeafCommitmentTimestamp(t *testing.T) {
+	m := New()
+	// Adding few leaves with commitment timestamps to the tree.
+	addValidLeaves(t, m)
+
+	// Get commitment timestamps.
+	tests := []struct {
+		epoch           common.Epoch
+		index           string
+		outCommitmentTS common.CommitmentTimestamp
+		code            codes.Code
+	}{
+		// Get commitment timestamps of all added leaves. Ordering doesn't matter
+		{1, "8000000000000000000000000000000000000000000000000000000000000001", 4, codes.OK},
+		{0, "0000000000000000000000000000000000000000000000000000000000000000", 1, codes.OK},
+		{1, "0000000000000000000000000000000000000000000000000000000000000001", 5, codes.OK},
+		{0, "0000000000000000000000000000000000000000000000000000000000000001", 2, codes.OK},
+		{0, "8000000000000000000000000000000000000000000000000000000000000001", 3, codes.OK},
+		// Invalid index lengh.
+		{1, "8000", 0, codes.InvalidArgument},
+		// Not found due to missing epoch.
+		{3, "8000000000000000000000000000000000000000000000000000000000000001", 0, codes.NotFound},
+		// Not found due to reaching bottom of the tree.
+		{1, "8000000000000000000000000000000000000000000000000000000000000002", 0, codes.NotFound},
+		// Not found due to reaching bottom of the tree.
+		{0, "0000000000000000000000000000000000000000000000000000000000000002", 0, codes.NotFound},
+	}
+	for i, test := range tests {
+		commitmentTS, err := m.GetLeafCommitmentTimestamp(test.epoch, test.index)
+		if gotc, wantc, gote, wante := commitmentTS, test.outCommitmentTS, grpc.Code(err), test.code; gotc != wantc || gote != wante {
+			t.Errorf("Test[%v]: GetLeafCommitmentTimestamp(%v, %v)=(%v, %v), want (%v, %v), err = %v",
+				i, test.epoch, test.index, gotc, gote, wantc, wante, err)
+		}
+	}
+}
+
+func addValidLeaves(t *testing.T, m *Tree) {
+	tests := []struct {
+		epoch        common.Epoch
+		index        string
+		commitmentTS common.CommitmentTimestamp
+		code         codes.Code
+	}{
+		// First insert
+		{0, "0000000000000000000000000000000000000000000000000000000000000000", 1, codes.OK},
+		// Insert a leaf node with a long shared prefix. Should increase
+		// tree depth to max.
+		{0, "0000000000000000000000000000000000000000000000000000000000000001", 2, codes.OK},
+		// Insert a leaf node with a short shared prefix. Should be
+		// placed near the root.
+		{0, "8000000000000000000000000000000000000000000000000000000000000001", 3, codes.OK},
+		// Update a leaf node in the next epoch. Should be placed at the
+		// same level as the previous epoch.
+		{1, "8000000000000000000000000000000000000000000000000000000000000001", 4, codes.OK},
+		{1, "0000000000000000000000000000000000000000000000000000000000000001", 5, codes.OK},
+	}
+	for i, test := range tests {
+		err := m.AddLeaf([]byte{}, test.epoch, test.index, test.commitmentTS)
+		if got, want := grpc.Code(err), test.code; got != want {
+			t.Fatalf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
+				i, test.epoch, test.index, got, want, err)
+		}
+	}
 }
