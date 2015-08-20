@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
@@ -33,17 +34,17 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	s storage.Storage
-	a auth.Authenticator
-	t *merkle.Tree
+	store  storage.Storage
+	auth auth.Authenticator
+	tree *merkle.Tree
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
 func New(storage storage.Storage, tree *merkle.Tree) *Server {
 	srv := &Server{
-		s: storage,
-		a: auth.New(),
-		t: tree,
+		store:  storage,
+		auth: auth.New(),
+		tree: tree,
 	}
 	return srv
 }
@@ -62,18 +63,30 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		return nil, err
 	}
 
-	entryStorage, err := s.s.Read(ctx, index)
-	seu := new(v2pb.SignedEntryUpdate)
-	entry := new(v2pb.Entry)
+	epoch := common.Epoch(in.Epoch)
+	if epoch == 0 {
+		epoch = merkle.GetCurrentEpoch()
+	}
+	commitmentTS, err := s.tree.GetLeafCommitmentTimestamp(epoch, index)
 	if err != nil {
 		if grpc.Code(err) == codes.NotFound {
 			// Return an empty proof.
-			return &v2pb.EntryProfileAndProof{
-				IndexSignature: &v2pb.UVF{[]byte(vuf)},
-			}, nil
+			return proofOfAbsence(vuf), nil
 		}
 		return nil, err
 	}
+
+	entryStorage, err := s.store.Read(ctx, commitmentTS)
+	if err != nil {
+		if grpc.Code(err) == codes.NotFound {
+			// Return an empty proof.
+			return proofOfAbsence(vuf), nil
+		}
+		return nil, err
+	}
+
+	seu := new(v2pb.SignedEntryUpdate)
+	entry := new(v2pb.Entry)
 
 	if err := proto.Unmarshal(entryStorage.EntryUpdate, seu); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
@@ -93,6 +106,12 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	return result, nil
 }
 
+func proofOfAbsence(vuf []byte) *v2pb.EntryProfileAndProof {
+	return &v2pb.EntryProfileAndProof{
+		IndexSignature: &v2pb.UVF{vuf},
+	}
+}
+
 // ListUserHistory returns a list of UserProofs covering a period of time.
 func (s *Server) ListUserHistory(ctx context.Context, in *v2pb.ListUserHistoryRequest) (*v2pb.ListUserHistoryResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
@@ -102,11 +121,6 @@ func (s *Server) ListUserHistory(ctx context.Context, in *v2pb.ListUserHistoryRe
 // profile will be created.
 func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*proto3.Empty, error) {
 	if err := s.validateUpdateUserRequest(ctx, in); err != nil {
-		return nil, err
-	}
-
-	_, index, err := s.Vuf(in.UserId)
-	if err != nil {
 		return nil, err
 	}
 
@@ -124,7 +138,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err = s.s.Write(ctx, e, index); err != nil {
+	if err := s.store.Write(ctx, e); err != nil {
 		return nil, err
 	}
 

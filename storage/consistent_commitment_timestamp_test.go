@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+package storage
 
 import (
 	"testing"
@@ -23,21 +23,21 @@ import (
 func TestAdvance(t *testing.T) {
 	tests := []struct {
 		numOfIncrements int
-		outEpoch        common.Epoch
+		outCommitmentTS common.CommitmentTimestamp
 		success         bool
 	}{
 		// Advancing epoch is cumulative.
-		{1, 1, true},
-		{3, 4, true},
+		{1, 2, true},
+		{3, 5, true},
 		{1, 0, false},
 	}
 
 	for i, test := range tests {
 		for j := 0; j < test.numOfIncrements; j++ {
-			AdvanceEpoch()
+			AdvanceCommitmentTimestamp()
 		}
-		if got, want := GetCurrentEpoch() == test.outEpoch, test.success; got != want {
-			t.Errorf("Test[%v]: GetCurrentEpoch()=%v, want %v, should fail: %v", i, GetCurrentEpoch(), test.outEpoch, !test.success)
+		if got, want := GetCurrentCommitmentTimestamp() == test.outCommitmentTS, test.success; got != want {
+			t.Errorf("Test[%v]: GetCurrentCommitmentTimestamp()=%v, want %v, should fail: %v", i, GetCurrentCommitmentTimestamp(), test.outCommitmentTS, !test.success)
 		}
 	}
 }

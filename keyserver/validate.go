@@ -42,10 +42,10 @@ var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
 
 // validateEmail compares the given email against the one provided by GAIA.
 func (s *Server) validateEmail(ctx context.Context, email string) error {
-	if err := s.a.CheckScopes(ctx, requiredScopes...); err != nil {
+	if err := s.auth.CheckScopes(ctx, requiredScopes...); err != nil {
 		return err
 	}
-	verifiedEmail, err := s.a.GetAuthenticatedEmail(ctx, requiredScopes...)
+	verifiedEmail, err := s.auth.GetAuthenticatedEmail(ctx, requiredScopes...)
 	if err != nil {
 		return err
 	}

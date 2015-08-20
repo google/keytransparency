@@ -580,10 +580,10 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 	e, _ := strconv.ParseUint(primaryTestCommitmentTimestamp, 10, 64)
 	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
-		path          string
-		startCommitmentTimestamp uint64
-		pageSize      int32
-		parserNilErr  bool
+		path              string
+		startCommitmentTS uint64
+		pageSize          int32
+		parserNilErr      bool
 	}{
 		{"/v2/seh?start_commitment_timestamp=" + primaryTestCommitmentTimestamp + "&page_size=" + primaryTestPageSize,
 			e, int32(ps), true},
@@ -635,7 +635,7 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListUpdateRequest).StartCommitmentTimestamp, test.startCommitmentTimestamp; got != want {
+		if got, want := info.Arg.(*v2pb.ListUpdateRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
 			t.Errorf("Test[%v]: StartCommitmentTimestamp = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListUpdateRequest).PageSize, test.pageSize; got != want {
@@ -658,10 +658,10 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 	e, _ := strconv.ParseUint(primaryTestCommitmentTimestamp, 10, 64)
 	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
-		path          string
-		startCommitmentTimestamp uint64
-		pageSize      int32
-		parserNilErr  bool
+		path              string
+		startCommitmentTS uint64
+		pageSize          int32
+		parserNilErr      bool
 	}{
 		{"/v2/seh?start_commitment_timestamp=" + primaryTestCommitmentTimestamp + "&page_size=" + primaryTestPageSize,
 			e, int32(ps), true},
@@ -713,7 +713,7 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListStepsRequest).StartCommitmentTimestamp, test.startCommitmentTimestamp; got != want {
+		if got, want := info.Arg.(*v2pb.ListStepsRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
 			t.Errorf("Test[%v]: StartCommitmentTimestamp = %v, want %v", i, got, want)
 		}
 		if got, want := info.Arg.(*v2pb.ListStepsRequest).PageSize, test.pageSize; got != want {
