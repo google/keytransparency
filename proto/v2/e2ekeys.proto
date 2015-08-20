@@ -101,6 +101,7 @@ message EpochHead {
 message UVF {
   //TODO: fill with data needed for to verify the Unpredictable Verifiable
   //Function.
+  bytes vrf = 1;
 }
 
 message EntryProfileAndProof {
@@ -129,7 +130,7 @@ message EntryProfileAndProof {
 // which are made available to verifiers.
 message Step {
   oneof type {
-    // entry_changed contains serialized SignedEntryUpdate.
+    // entry_changed contains a serialized SignedEntryUpdate.
     bytes entry_changed = 1;
     SignedEpochHead seh = 2;
   }
