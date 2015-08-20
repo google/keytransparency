@@ -194,7 +194,7 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 	_, err = env.Client.UpdateUser(env.ctx, &v2pb.UpdateUserRequest{
 		UserId: primaryUserEmail,
 		Update: &v2pb.EntryUpdateRequest{
-			SignedUpdate: seuBytes,
+			SignedEntryUpdate: seuBytes,
 			Profile:      pBytes,
 		},
 	})
