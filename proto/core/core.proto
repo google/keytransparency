@@ -28,7 +28,7 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 message EntryStorage {
   // commitment_timestamp is a sequential update number of the SignedEntryUpdate.
   uint64 commitment_timestamp = 2;
-  // entry_update contains serialized SignedEntryUpdate and is the actual update
+  // entry_update contains a serialized SignedEntryUpdate with the actual update
   // contents.
   bytes entry_update = 3;
   // profile is the serialized protobuf Profile.
