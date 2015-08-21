@@ -26,10 +26,6 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // EntryStorage is what gets serialized to disk / log.
 message EntryStorage {
-  // epoch allows entry updates to be self contained. Epoch is server supplied.
-  // epoch is the epoch at which this update should be inserted into the merkle
-  // tree.
-  uint64 epoch = 1;
   // commitment_timestamp is a sequential update number of the SignedEntryUpdate.
   uint64 commitment_timestamp = 2;
   // entry_update contains serialized SignedEntryUpdate and is the actual update

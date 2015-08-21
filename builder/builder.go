@@ -54,14 +54,14 @@ func (b *Builder) GetTree() *merkle.Tree {
 func (b *Builder) build() {
 	for entryStorage := range b.update {
 		// TODO(cesarghali): instead of posting, push to queue.
-		if err := post(b.tree, entryStorage); err != nil {
+		if err := b.post(b.tree, entryStorage); err != nil {
 			panic(err)
 		}
 	}
 }
 
 // post posts the appropriate data from EntryStorage into the given merkle tree.
-func post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) error {
+func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) error {
 	// Extract the user's index.
 	index, err := index(entryStorage)
 	if err != nil {

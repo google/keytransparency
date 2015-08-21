@@ -12,34 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+package storage
 
 import (
 	"sync"
 )
 
 var (
-	// current contains the current (latest) epoch of the merkle tree.
-	current uint64 = 0
+	// current contains the current (latest) commitment timestamp of the
+	// merkle tree.
+	current uint64 = 1
 
 	// mu syncronizes access to current. mu locks when reading and advancing
-	// current epoch.
+	// current commitment timestamp.
 	mu sync.Mutex
 )
 
-// GetCurrentEpoch returns the current epoch number.
+// GetCurrentCommitmentTimestamp returns the current commitment timestamp.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func GetCurrentEpoch() uint64 {
+func GetCurrentCommitmentTimestamp() uint64 {
 	mu.Lock()
 	defer mu.Unlock()
 	return current
 }
 
-// AdvanceEpoch advances the epoch by one.
+// AdvanceCommitmentTimestamp advances the commitment timestamp by one.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func AdvanceEpoch() uint64 {
+func AdvanceCommitmentTimestamp() uint64 {
 	mu.Lock()
 	defer mu.Unlock()
 	current = current + 1

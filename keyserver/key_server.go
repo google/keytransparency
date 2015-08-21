@@ -33,17 +33,17 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	s storage.Storage
-	a auth.Authenticator
-	t *merkle.Tree
+	store  storage.Storage
+	auth auth.Authenticator
+	tree *merkle.Tree
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
 func New(storage storage.Storage, tree *merkle.Tree) *Server {
 	srv := &Server{
-		s: storage,
-		a: auth.New(),
-		t: tree,
+		store:  storage,
+		auth: auth.New(),
+		tree: tree,
 	}
 	return srv
 }
@@ -62,18 +62,30 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		return nil, err
 	}
 
-	entryStorage, err := s.s.Read(ctx, index)
-	seu := new(v2pb.SignedEntryUpdate)
-	entry := new(v2pb.Entry)
+	epoch := in.Epoch
+	if epoch == 0 {
+		epoch = merkle.GetCurrentEpoch()
+	}
+	commitmentTS, err := s.tree.GetLeafCommitmentTimestamp(epoch, index)
 	if err != nil {
 		if grpc.Code(err) == codes.NotFound {
 			// Return an empty proof.
-			return &v2pb.EntryProfileAndProof{
-				IndexSignature: &v2pb.UVF{[]byte(vuf)},
-			}, nil
+			return proofOfAbsence(vuf), nil
 		}
 		return nil, err
 	}
+
+	entryStorage, err := s.store.Read(ctx, commitmentTS)
+	if err != nil {
+		if grpc.Code(err) == codes.NotFound {
+			// Return an empty proof.
+			return proofOfAbsence(vuf), nil
+		}
+		return nil, err
+	}
+
+	seu := new(v2pb.SignedEntryUpdate)
+	entry := new(v2pb.Entry)
 
 	if err := proto.Unmarshal(entryStorage.EntryUpdate, seu); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
@@ -93,6 +105,12 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	return result, nil
 }
 
+func proofOfAbsence(vuf []byte) *v2pb.EntryProfileAndProof {
+	return &v2pb.EntryProfileAndProof{
+		IndexSignature: &v2pb.UVF{vuf},
+	}
+}
+
 // ListUserHistory returns a list of UserProofs covering a period of time.
 func (s *Server) ListUserHistory(ctx context.Context, in *v2pb.ListUserHistoryRequest) (*v2pb.ListUserHistoryResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
@@ -105,26 +123,16 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 		return nil, err
 	}
 
-	_, index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return nil, err
-	}
-
 	e := &corepb.EntryStorage{
-		// Epoch is the epoch at which this update should be inserted
-		// into the merkle tree.
-		// TODO(cesarghali): for now epoch = current + 1. This might
-		//                   change in the future.
-		Epoch: uint64(merkle.GetCurrentEpoch()),
-		// TODO(cesarghali): this should be set properly.
-		CommitmentTimestamp:    0,
+		// CommitmentTimestamp is set by storage.
 		EntryUpdate: in.GetUpdate().SignedEntryUpdate,
 		Profile:     in.GetUpdate().Profile,
+		ProfileNonce: in.GetUpdate().ProfileNonce,
 		// TODO(cesarghali): set Domain.
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err = s.s.Write(ctx, e, index); err != nil {
+	if err := s.store.Write(ctx, e); err != nil {
 		return nil, err
 	}
 

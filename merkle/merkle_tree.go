@@ -74,7 +74,12 @@ type node struct {
 
 // New creates and returns a new instance of Tree.
 func New() *Tree {
-	return &Tree{roots: make(map[uint64]*node)}
+	tree := &Tree{roots: make(map[uint64]*node)}
+	// Initialize the tree with epoch 0 root. This is important because v2
+	// GetUser now queries the tree to read the commitment timestamp of the
+	// user profile in order to read from the database.
+	tree.addRoot(0)
+	return tree
 }
 
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
@@ -142,11 +147,13 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 		return t.current, nil
 	}
 	if epoch < t.current.epoch {
+		fmt.Println(t.roots)
 		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want >= %d", epoch, t.current.epoch)
 	}
 
 	for t.current.epoch < epoch {
 		// Copy the root node from the previous epoch.
+		fmt.Println("*******", t.current.epoch)
 		nextEpoch := t.current.epoch + 1
 		t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, t.current.left, t.current.right}
 		t.current = t.roots[nextEpoch]

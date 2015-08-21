@@ -36,6 +36,11 @@ var (
 	testUserIndex, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 )
 
+type Env struct {
+	b       *Builder
+	updates *EntryUpdates
+}
+
 type EntryUpdates struct {
 	// Contains a signed entry update with a short index.
 	invalidIndex []byte
@@ -43,6 +48,13 @@ type EntryUpdates struct {
 	invalidEntry []byte
 	// Contains a valid signed entry update
 	validEntryUpdate []byte
+}
+
+func NewEnv(t *testing.T) *Env {
+	b := New(nil)
+	updates := GenerateEntryUpdates(t)
+
+	return &Env{b, updates}
 }
 
 func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
@@ -70,27 +82,26 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 }
 
 func TestPost(t *testing.T) {
-	updates := GenerateEntryUpdates(t)
+	env := NewEnv(t)
 	m := merkle.New()
 	tests := []struct {
 		entryUpdate []byte
 		code        codes.Code
 	}{
-		{updates.validEntryUpdate, codes.OK},
+		{env.updates.validEntryUpdate, codes.OK},
 		// Taking the first 10 (or any number of, except all) bytes of
 		// the valid entry update simulate a broken entry update that
 		// cannot be unmarshaled.
-		{updates.validEntryUpdate[:10], codes.Internal},
-		{updates.invalidEntry, codes.Internal},
-		{updates.invalidIndex, codes.InvalidArgument},
+		{env.updates.validEntryUpdate[:10], codes.Internal},
+		{env.updates.invalidEntry, codes.Internal},
+		{env.updates.invalidIndex, codes.InvalidArgument},
 	}
 
 	for i, test := range tests {
 		es := &corepb.EntryStorage{
-			Epoch:       testEpoch,
 			EntryUpdate: test.entryUpdate,
 		}
-		err := post(m, es)
+		err := env.b.post(m, es)
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: post()=%v, want %v, %v", i, got, want, err)
 		}
