@@ -150,9 +150,11 @@ message EntryUpdateRequest {
   bytes profile_nonce = 3;
 }
 
+// SignedEntryUpdate is what users provide to update their profiles.
+// A serialized SignedEntryUpdate is used as the leaf value in the MerkleTree.
 message SignedEntryUpdate {
   // Signature of entry, by the entry_key inside entry.
-  // Proves ownership of new key.
+  // Proves ownership of new keys.
   map<uint64, bytes> signature_new = 1;
   // Signature of entry, by the entry_key from the previous epoch.
   // Proves the the correct owner is making this change.
@@ -166,7 +168,6 @@ message SignedEntryUpdate {
 // user_id.
 message Entry {
   // entry_key allows verifiers to validate updates to Entry.
-  // entry_key is a ECDSH key.
   repeated PublicKey entry_key = 1;
   // profile_commitment is a cryptographic commitment to the Profile of the form
   // HMAC(profile_nonce, serialized_profile)
@@ -178,6 +179,8 @@ message Entry {
   // If signing keys are not unique per user, we need to tie updates to a
   // particular profile.
   bytes index = 4;
+  // Update policy: new Entry must be singed by at least one key from entry_key 
+  // in previous epoch. 
 }
 
 // Profile contains data hidden behind the crypto comitment.
@@ -208,7 +211,7 @@ message GetUserRequest {
   string user_id = 2;
   // TODO(cesarghali): implement app_id filtering.
   // Only return the keys belonging to this app.
-  string app_id = 3;
+  // string app_id = 3;
   // TODO: implement key_hash filtering.
   // Only return SEH's that are signed by these keys.
   repeated uint64 trusted_keys = 4;
@@ -261,7 +264,7 @@ message ListUpdateRequest {
 }
 
 message ListUpdateResponse {
-  // updates contains serialized SignedEntryUpdate.
+  // updates contains a serialized SignedEntryUpdate.
   repeated bytes updates = 1;
 }
 
