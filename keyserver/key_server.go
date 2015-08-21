@@ -20,7 +20,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
-	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
@@ -63,7 +62,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		return nil, err
 	}
 
-	epoch := common.Epoch(in.Epoch)
+	epoch := in.Epoch
 	if epoch == 0 {
 		epoch = merkle.GetCurrentEpoch()
 	}

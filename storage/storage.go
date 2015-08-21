@@ -16,8 +16,6 @@
 package storage
 
 import (
-	"github.com/google/e2e-key-server/common"
-
 	corepb "github.com/google/e2e-key-server/proto/core"
 	context "golang.org/x/net/context"
 )
@@ -30,7 +28,7 @@ type Storage interface {
 
 type Reader interface {
 	// Read reads a EntryStroage from the storage.
-	Read(ctx context.Context, commitmentTS common.CommitmentTimestamp) (*corepb.EntryStorage, error)
+	Read(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error)
 }
 
 type Writer interface {

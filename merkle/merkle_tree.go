@@ -28,7 +28,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -58,15 +57,15 @@ var (
 
 // Tree holds internal state for the Merkle Tree.
 type Tree struct {
-	roots   map[common.Epoch]*node
+	roots   map[uint64]*node
 	current *node      // Current epoch.
 	mu      sync.Mutex // Syncronize access to current.
 }
 
 type node struct {
-	epoch        common.Epoch               // Epoch for this node.
+	epoch        uint64               // Epoch for this node.
 	index        string                     // Location in the tree.
-	commitmentTS common.CommitmentTimestamp // Commitment timestamp for this node.
+	commitmentTS uint64 // Commitment timestamp for this node.
 	depth        int                        // Depth of this node. 0 to 256.
 	value        []byte                     // Empty for empty subtrees.
 	left         *node                      // Left node.
@@ -75,7 +74,7 @@ type node struct {
 
 // New creates and returns a new instance of Tree.
 func New() *Tree {
-	tree := &Tree{roots: make(map[common.Epoch]*node)}
+	tree := &Tree{roots: make(map[uint64]*node)}
 	// Initialize the tree with epoch 0 root. This is important because v2
 	// GetUser now queries the tree to read the commitment timestamp of the
 	// user profile in order to read from the database.
@@ -85,7 +84,7 @@ func New() *Tree {
 
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
 // must be added in chronological order by epoch.
-func (t *Tree) AddLeaf(value []byte, epoch common.Epoch, index string, commitmentTS common.CommitmentTimestamp) error {
+func (t *Tree) AddLeaf(value []byte, epoch uint64, index string, commitmentTS uint64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/4; got != want {
@@ -100,7 +99,7 @@ func (t *Tree) AddLeaf(value []byte, epoch common.Epoch, index string, commitmen
 
 // GetLeafCommitmentTimestamp returns a leaf commitment timestamp for a given
 // epoch and index.
-func (t *Tree) GetLeafCommitmentTimestamp(epoch common.Epoch, index string) (common.CommitmentTimestamp, error) {
+func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index string) (uint64, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/4; got != want {
@@ -116,7 +115,7 @@ func (t *Tree) GetLeafCommitmentTimestamp(epoch common.Epoch, index string) (com
 
 // AuditPath returns a slice containing the value of the leaf node followed by
 // each node's neighbor from the bottom to the top.
-func (t *Tree) AuditPath(epoch common.Epoch, index string) ([][]byte, error) {
+func (t *Tree) AuditPath(epoch uint64, index string) ([][]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/4; got != want {
@@ -140,7 +139,7 @@ func BitString(index string) string {
 // addRoot will advance the current epoch by copying the previous root.
 // addRoot will prevent attempts to create epochs other than the current and
 // current + 1 epoch
-func (t *Tree) addRoot(epoch common.Epoch) (*node, error) {
+func (t *Tree) addRoot(epoch uint64) (*node, error) {
 	if t.current == nil {
 		// Create the first epoch.
 		t.roots[epoch] = &node{epoch, "", 0, 0, nil, nil, nil}
@@ -164,7 +163,7 @@ func (t *Tree) addRoot(epoch common.Epoch) (*node, error) {
 
 // Parent node is responsible for creating children.
 // Inserts leafs in the nearest empty sub branch it finds.
-func (n *node) addLeaf(value []byte, epoch common.Epoch, index string, commitmentTS common.CommitmentTimestamp, depth int) error {
+func (n *node) addLeaf(value []byte, epoch uint64, index string, commitmentTS uint64, depth int) error {
 	if n.epoch != epoch {
 		return grpc.Errorf(codes.Internal, "epoch = %d want %d", epoch, n.epoch)
 	}
@@ -244,7 +243,7 @@ func (n *node) createBranch(index string) *node {
 	return n.child(b)
 }
 
-func (n *node) getLeafCommitmentTimestamp(index string, depth int) (common.CommitmentTimestamp, error) {
+func (n *node) getLeafCommitmentTimestamp(index string, depth int) (uint64, error) {
 	// If n is nil then we reached a nil node that is not at the bottom of
 	// the tree.
 	if n == nil {
@@ -347,21 +346,18 @@ func (n *node) hashIntermediateNode() {
 func (n *node) hashLeaf(value []byte) {
 	depth := make([]byte, 4)
 	binary.BigEndian.PutUint32(depth, uint32(n.depth))
-	commitmentTS := make([]byte, 8)
-	binary.BigEndian.PutUint64(commitmentTS, uint64(n.commitmentTS))
 
 	h := sha256.New()
 	h.Write(TreeNonce[:])
 	h.Write(LeafIdentifier)
 	h.Write(depth)
 	h.Write([]byte(n.index))
-	h.Write(commitmentTS)
 	h.Write(value)
 	n.value = h.Sum(nil)
 }
 
 // setLeaf sets the comittment of the leaf node and updates its hash.
-func (n *node) setLeaf(value []byte, index string, commitmentTS common.CommitmentTimestamp, depth int) {
+func (n *node) setLeaf(value []byte, index string, commitmentTS uint64, depth int) {
 	n.index = index
 	n.commitmentTS = commitmentTS
 	n.depth = depth
