@@ -70,13 +70,11 @@ service E2EKeyService {
 
 // SignedEpochHead represents a signed state of the Merkel tree.
 message SignedEpochHead {
-  // Signature of this epoch's hash, using the signature type of the key.
-  bytes head_sig = 1;
+  // Signature of head, using the signature type of the key.
+  // keyed by the first 8 bytes of the hash of the key.
+  map<uint64, bytes> head_sigs = 1;
   // Serialized TimestampedEpochHead.
   bytes head = 2;
-  // key_hash is the first 4 bytes of the SHA256 hash of the key used for
-  // signing. May be used for key rotation and/or multiple signatures.
-  uint64 key_hash = 3;
 }
 
 message TimestampedEpochHead {
