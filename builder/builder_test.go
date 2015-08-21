@@ -99,7 +99,6 @@ func TestPost(t *testing.T) {
 
 	for i, test := range tests {
 		es := &corepb.EntryStorage{
-			Epoch:       testEpoch,
 			EntryUpdate: test.entryUpdate,
 		}
 		err := env.b.post(m, es)

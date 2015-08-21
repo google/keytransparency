@@ -124,15 +124,10 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 	}
 
 	e := &corepb.EntryStorage{
-		// Epoch is the epoch at which this update should be inserted
-		// into the merkle tree.
-		// TODO(cesarghali): for now epoch = current + 1. This might
-		//                   change in the future.
-		Epoch: uint64(merkle.GetCurrentEpoch()),
-		// TODO(cesarghali): this should be set properly.
-		CommitmentTimestamp:    0,
+		// CommitmentTimestamp is set by storage.
 		EntryUpdate: in.GetUpdate().SignedEntryUpdate,
 		Profile:     in.GetUpdate().Profile,
+		ProfileNonce: in.GetUpdate().ProfileNonce,
 		// TODO(cesarghali): set Domain.
 	}
 
