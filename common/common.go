@@ -12,30 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+// This package contains common type definitions and functions used by other
+// packages. Types that can cause circular import should be added here.
+package common
 
-import (
-	"testing"
-)
-
-func TestAdvance(t *testing.T) {
-	tests := []struct {
-		numOfIncrements int
-		outEpoch        uint64
-		success         bool
-	}{
-		// Advancing epoch is cumulative.
-		{1, 2, true},
-		{3, 5, true},
-		{1, 0, false},
-	}
-
-	for i, test := range tests {
-		for j := 0; j < test.numOfIncrements; j++ {
-			AdvanceEpoch()
-		}
-		if got, want := GetCurrentEpoch() == test.outEpoch, test.success; got != want {
-			t.Errorf("Test[%v]: GetCurrentEpoch()=%v, want %v, should fail: %v", i, GetCurrentEpoch(), test.outEpoch, !test.success)
-		}
-	}
-}

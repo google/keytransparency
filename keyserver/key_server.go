@@ -56,6 +56,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	if err != nil {
 		return nil, err
 	}
+
 	vuf, err := hex.DecodeString(index)
 	if err != nil {
 		return nil, err
@@ -115,8 +116,8 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 		// TODO(cesarghali): for now epoch = current + 1. This might
 		//                   change in the future.
 		Epoch: uint64(merkle.GetCurrentEpoch()),
-		// TODO(cesarghali): sequence should be set properly.
-		Sequence:    0,
+		// TODO(cesarghali): this should be set properly.
+		CommitmentTimestamp:    0,
 		EntryUpdate: in.GetUpdate().SignedEntryUpdate,
 		Profile:     in.GetUpdate().Profile,
 		// TODO(cesarghali): set Domain.

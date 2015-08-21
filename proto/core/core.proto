@@ -30,8 +30,8 @@ message EntryStorage {
   // epoch is the epoch at which this update should be inserted into the merkle
   // tree.
   uint64 epoch = 1;
-  // sequence is a sequential update number of the SignedEntryUpdate.
-  uint64 sequence = 2;
+  // commitment_timestamp is a sequential update number of the SignedEntryUpdate.
+  uint64 commitment_timestamp = 2;
   // entry_update contains serialized SignedEntryUpdate and is the actual update
   // contents.
   bytes entry_update = 3;

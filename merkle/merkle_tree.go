@@ -57,28 +57,29 @@ var (
 
 // Tree holds internal state for the Merkle Tree.
 type Tree struct {
-	roots   map[Epoch]*node
+	roots   map[uint64]*node
 	current *node      // Current epoch.
 	mu      sync.Mutex // Syncronize access to current.
 }
 
 type node struct {
-	epoch Epoch  // Epoch for this node.
-	index string // Location in the tree.
-	depth int    // Depth of this node. 0 to 256.
-	value []byte // Empty for empty subtrees.
-	left  *node  // Left node.
-	right *node  // Right node.
+	epoch        uint64               // Epoch for this node.
+	index        string                     // Location in the tree.
+	commitmentTS uint64 // Commitment timestamp for this node.
+	depth        int                        // Depth of this node. 0 to 256.
+	value        []byte                     // Empty for empty subtrees.
+	left         *node                      // Left node.
+	right        *node                      // Right node.
 }
 
 // New creates and returns a new instance of Tree.
 func New() *Tree {
-	return &Tree{roots: make(map[Epoch]*node)}
+	return &Tree{roots: make(map[uint64]*node)}
 }
 
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
 // must be added in chronological order by epoch.
-func (t *Tree) AddLeaf(value []byte, epoch Epoch, index string) error {
+func (t *Tree) AddLeaf(value []byte, epoch uint64, index string, commitmentTS uint64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/4; got != want {
@@ -88,12 +89,28 @@ func (t *Tree) AddLeaf(value []byte, epoch Epoch, index string) error {
 	if err != nil {
 		return err
 	}
-	return r.addLeaf(value, epoch, BitString(index), 0)
+	return r.addLeaf(value, epoch, BitString(index), commitmentTS, 0)
+}
+
+// GetLeafCommitmentTimestamp returns a leaf commitment timestamp for a given
+// epoch and index.
+func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index string) (uint64, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if got, want := len(index), IndexLen/4; got != want {
+		return 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
+	}
+	r, ok := t.roots[epoch]
+	if !ok {
+		return 0, grpc.Errorf(codes.NotFound, "Epoch does not exist")
+	}
+
+	return r.getLeafCommitmentTimestamp(BitString(index), 0)
 }
 
 // AuditPath returns a slice containing the value of the leaf node followed by
 // each node's neighbor from the bottom to the top.
-func (t *Tree) AuditPath(epoch Epoch, index string) ([][]byte, error) {
+func (t *Tree) AuditPath(epoch uint64, index string) ([][]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/4; got != want {
@@ -115,11 +132,12 @@ func BitString(index string) string {
 }
 
 // addRoot will advance the current epoch by copying the previous root.
-// addRoot will prevent attempts to create epochs < current epoch
-func (t *Tree) addRoot(epoch Epoch) (*node, error) {
+// addRoot will prevent attempts to create epochs other than the current and
+// current + 1 epoch
+func (t *Tree) addRoot(epoch uint64) (*node, error) {
 	if t.current == nil {
 		// Create the first epoch.
-		t.roots[epoch] = &node{epoch, "", 0, nil, nil, nil}
+		t.roots[epoch] = &node{epoch, "", 0, 0, nil, nil, nil}
 		t.current = t.roots[epoch]
 		return t.current, nil
 	}
@@ -130,7 +148,7 @@ func (t *Tree) addRoot(epoch Epoch) (*node, error) {
 	for t.current.epoch < epoch {
 		// Copy the root node from the previous epoch.
 		nextEpoch := t.current.epoch + 1
-		t.roots[nextEpoch] = &node{epoch, "", 0, nil, t.current.left, t.current.right}
+		t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, t.current.left, t.current.right}
 		t.current = t.roots[nextEpoch]
 	}
 	return t.current, nil
@@ -138,14 +156,14 @@ func (t *Tree) addRoot(epoch Epoch) (*node, error) {
 
 // Parent node is responsible for creating children.
 // Inserts leafs in the nearest empty sub branch it finds.
-func (n *node) addLeaf(value []byte, epoch Epoch, index string, depth int) error {
+func (n *node) addLeaf(value []byte, epoch uint64, index string, commitmentTS uint64, depth int) error {
 	if n.epoch != epoch {
 		return grpc.Errorf(codes.Internal, "epoch = %d want %d", epoch, n.epoch)
 	}
 
 	// Base case: we found the first empty sub branch.  Park our value here.
 	if n.empty() {
-		n.setLeaf(value, index, depth)
+		n.setLeaf(value, index, commitmentTS, depth)
 		return nil
 	}
 	// We reached the bottom of the tree and it wasn't empty.
@@ -161,7 +179,7 @@ func (n *node) addLeaf(value []byte, epoch Epoch, index string, depth int) error
 	}
 	// Make sure the interior node is in the current epoch.
 	n.createBranch(index[:depth+1])
-	err := n.child(index[depth]).addLeaf(value, epoch, index, depth+1)
+	err := n.child(index[depth]).addLeaf(value, epoch, index, commitmentTS, depth+1)
 	if err != nil {
 		return err
 	}
@@ -204,18 +222,33 @@ func (n *node) createBranch(index string) *node {
 	switch {
 	case n.child(b) == nil:
 		// New empty branch.
-		n.setChild(b, &node{n.epoch, index, n.depth + 1, nil, nil, nil})
+		n.setChild(b, &node{n.epoch, index, n.commitmentTS, n.depth + 1, nil, nil, nil})
 	case n.child(b).epoch != n.epoch && n.child(b).leaf():
 		// Found leaf in previous epoch. Create empty node.
-		n.setChild(b, &node{n.epoch, index, n.depth + 1, nil, nil, nil})
+		n.setChild(b, &node{n.epoch, index, n.commitmentTS, n.depth + 1, nil, nil, nil})
 	case n.child(b).epoch != n.epoch && !n.child(b).leaf():
 		// Found intermediate in previous epoch.
 		// Create an intermediate node in current epoch with children
 		// pointing to the previous epoch.
 		tmp := n.child(b)
-		n.setChild(b, &node{n.epoch, index, n.depth + 1, tmp.value, tmp.left, tmp.right})
+		n.setChild(b, &node{n.epoch, index, n.commitmentTS, n.depth + 1, tmp.value, tmp.left, tmp.right})
 	}
 	return n.child(b)
+}
+
+func (n *node) getLeafCommitmentTimestamp(index string, depth int) (uint64, error) {
+	// If n is nil then we reached a nil node that is not at the bottom of
+	// the tree.
+	if n == nil {
+		return 0, grpc.Errorf(codes.NotFound, "Reached bottom of the tree")
+	}
+
+	// Base case: if we found a leaf with the same index
+	if n.leaf() && n.index == index {
+		return n.commitmentTS, nil
+	}
+
+	return n.child(index[depth]).getLeafCommitmentTimestamp(index, depth+1)
 }
 
 func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
@@ -317,8 +350,9 @@ func (n *node) hashLeaf(value []byte) {
 }
 
 // setLeaf sets the comittment of the leaf node and updates its hash.
-func (n *node) setLeaf(value []byte, index string, depth int) {
+func (n *node) setLeaf(value []byte, index string, commitmentTS uint64, depth int) {
 	n.index = index
+	n.commitmentTS = commitmentTS
 	n.depth = depth
 	n.left = nil
 	n.right = nil
