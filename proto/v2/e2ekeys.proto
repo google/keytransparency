@@ -188,19 +188,15 @@ message Profile {
 
 // PublicKey defines a key this domain uses to sign EpochHeads with.
 message PublicKey {
-  bytes key = 1;
-
   // KeyFormats from Keyczar.
-  enum KeyFormat {
-    UNKNOWN = 0;
-    PUBLIC_DSA_2048 = 1;
-    RSA_VERIFYING_SHA256_2048 = 2;
-    ECDSA_VERIFYING_P256 = 3;  // NIST_P256
+  oneof key_type {
+    bytes rsa_verifying_sha256_2048 = 1;
+    bytes public_dsa_2048 = 2;
+    bytes ecdsa_verifying_p256 = 3;
   }
 
-  KeyFormat format = 2;
-  // ower_id is the unique string of a particular replica.
-  string owner_id = 3;
+  // replica_id is the unique string of a particular replica.
+  string replica_id = 10;
 }
 
 //
