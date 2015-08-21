@@ -167,7 +167,7 @@ message SignedEntryUpdate {
 message Entry {
   // entry_key allows verifiers to validate updates to Entry.
   // entry_key is a ECDSH key.
-  bytes entry_key = 1;
+  repeated PublicKey entry_key = 1;
   // profile_commitment is a cryptographic commitment to the Profile of the form
   // HMAC(profile_nonce, serialized_profile)
   bytes profile_commitment = 2;
@@ -194,9 +194,6 @@ message PublicKey {
     bytes public_dsa_2048 = 2;
     bytes ecdsa_verifying_p256 = 3;
   }
-
-  // replica_id is the unique string of a particular replica.
-  string replica_id = 10;
 }
 
 //
