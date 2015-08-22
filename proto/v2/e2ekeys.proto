@@ -211,7 +211,7 @@ message GetUserRequest {
   string user_id = 2;
   // TODO(cesarghali): implement app_id filtering.
   // Only return the keys belonging to this app.
-  // string app_id = 3;
+  string app_id = 3;
   // TODO: implement key_hash filtering.
   // Only return SEH's that are signed by these keys.
   repeated uint64 trusted_keys = 4;
