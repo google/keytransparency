@@ -47,23 +47,33 @@ func New(srv *keyserver.Server) *Server {
 
 // GetUser returns a user's profile.
 func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.Profile, error) {
-    result, err := s.s.GetUser(ctx, in)
-    if  err != nil {
-	return nil, err
-    }
+	result, err := s.s.GetUser(ctx, in)
+	if  err != nil {
+		return nil, err
+	}
 
-    if len(result.Profile) == 0 {
-	return nil, grpc.Errorf(codes.NotFound, "")
-    }
+	if len(result.Profile) == 0 {
+		return nil, grpc.Errorf(codes.NotFound, "")
+	}
 
 	// Extract and returned the user profile from the resulted
 	// EntryProfileAndProof.
-	p := new(v2pb.Profile)
-	if err := proto.Unmarshal(result.Profile, p); err != nil {
+	profile := new(v2pb.Profile)
+	if err := proto.Unmarshal(result.Profile, profile); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Provided profile cannot be parsed")
 	}
 
-	return p, nil
+	// Application-specific keys filtering only if app ID is provided.
+	if in.AppId != "" {
+		// Key filtering.
+		key, ok := profile.GetKeys()[in.AppId]
+		profile.Keys = make(map[string][]byte)
+		if ok {
+			profile.Keys[in.AppId] = key
+		}
+	}
+
+	return profile, nil
 }
 
 // HkpLookup implements HKP pgp keys lookup.
