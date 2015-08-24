@@ -30,7 +30,7 @@ message EntryStorage {
   uint64 commitment_timestamp = 2;
   // entry_update contains a serialized SignedEntryUpdate with the actual update
   // contents.
-  bytes entry_update = 3;
+  bytes signed_entry_update = 3;
   // profile is the serialized protobuf Profile.
   // profile is private and must not be released to verifiers.
   bytes profile = 4;

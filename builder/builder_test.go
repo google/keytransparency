@@ -99,7 +99,7 @@ func TestPost(t *testing.T) {
 
 	for i, test := range tests {
 		es := &corepb.EntryStorage{
-			EntryUpdate: test.entryUpdate,
+			SignedEntryUpdate: test.entryUpdate,
 		}
 		err := env.b.post(m, es)
 		if got, want := grpc.Code(err), test.code; got != want {

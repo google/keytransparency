@@ -87,7 +87,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	seu := new(v2pb.SignedEntryUpdate)
 	entry := new(v2pb.Entry)
 
-	if err := proto.Unmarshal(entryStorage.EntryUpdate, seu); err != nil {
+	if err := proto.Unmarshal(entryStorage.SignedEntryUpdate, seu); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
 	}
 	if err := proto.Unmarshal(seu.Entry, entry); err != nil {
@@ -125,7 +125,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 
 	e := &corepb.EntryStorage{
 		// CommitmentTimestamp is set by storage.
-		EntryUpdate: in.GetUpdate().SignedEntryUpdate,
+		SignedEntryUpdate: in.GetUpdate().SignedEntryUpdate,
 		Profile:     in.GetUpdate().Profile,
 		ProfileNonce: in.GetUpdate().ProfileNonce,
 		// TODO(cesarghali): set Domain.
@@ -144,12 +144,12 @@ func (s *Server) ListSEH(ctx context.Context, in *v2pb.ListSEHRequest) (*v2pb.Li
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
-// List the EntryUpdates by update number.
+// List the SignedEntryUpdates by update number.
 func (s *Server) ListUpdate(ctx context.Context, in *v2pb.ListUpdateRequest) (*v2pb.ListUpdateResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
-// ListSteps combines SEH and EntryUpdates into single list.
+// ListSteps combines SEH and SignedEntryUpdates into single list.
 func (s *Server) ListSteps(ctx context.Context, in *v2pb.ListStepsRequest) (*v2pb.ListStepsResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
