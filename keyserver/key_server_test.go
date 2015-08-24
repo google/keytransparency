@@ -228,7 +228,7 @@ func TestGetValidUser(t *testing.T) {
 		return
 	}
 	if got, want := p.GetKeys(), primaryKeys; !reflect.DeepEqual(got, want) {
-		t.Errorf("GetUser(%v) = %v, want: %v", primaryUserEmail, got, want)
+		t.Errorf("GetUser(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
 	}
 }
 

@@ -168,9 +168,48 @@ func TestGetValidUser(t *testing.T) {
 		return
 	}
 	if got, want := res.GetKeys(), expectedPrimaryKeys; !reflect.DeepEqual(got, want) {
-		t.Errorf("GetUser(%v) = %v, want: %v", primaryUserEmail, got, want)
+		t.Errorf("GetUser(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
 	}
 }
+
+func TestAppIDFiltering(t *testing.T) {
+	env := NewEnv(t)
+	defer env.Close()
+
+	env.createPrimaryUser(t)
+
+	ctx := context.Background() // Unauthenticated request.
+
+	tests := []struct {
+		appID string
+		outKeysCount int
+		keyExists bool
+		key []byte
+	}{
+		{primaryAppId, 1, true, primaryUserKeyRing},
+		{"gmail", 0, false, nil},
+	}
+
+	for i, test := range(tests) {
+		res, err := env.ClientV1.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail, AppId: test.appID})
+
+		if err != nil {
+			t.Fatalf("GetUser failed: %v", err)
+		}
+		if got, want := len(res.GetKeys()), test.outKeysCount; got != want {
+			t.Errorf("Test[%v]: len(GetKeyList()) = %v, want; %v", i, got, want)
+			return
+		}
+		key, ok := res.GetKeys()[test.appID]
+		if got, want := ok, test.keyExists; got != want {
+			t.Errorf("Test[%v]: GetUser(%v) key of app ID '%v' does not exist", i, primaryUserEmail, test.appID)
+		}
+		if got, want := key, test.key; !reflect.DeepEqual(got, want) {
+			t.Errorf("Test[%v]: GetUser(%v).GetKeys()[%v] = %v, want: %v", i, primaryUserEmail, test.appID, got, want)
+		}
+	}
+}
+
 
 func TestHkpLookup(t *testing.T) {
 	env := NewEnv(t)
