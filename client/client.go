@@ -111,9 +111,3 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 		},
 	}, nil
 }
-
-// VerifyProfileCommitment returns true if the profile commitment using the
-// nonce matches the provided commitment.
-func (c *Client) VerifyProfileCommitment(nonce []byte, profile []byte, commitment []byte) (bool, error) {
-	return common.VerifyProfileCommitment(nonce, profile, commitment)
-}

@@ -19,6 +19,9 @@ package common
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 // GenerateProfileCommitment calculates and returns the profile commitment based
@@ -26,17 +29,20 @@ import (
 func GenerateProfileCommitment(nonce []byte, profile []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, nonce)
 	if _, err := mac.Write(profile); err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.Internal, "Error while generating profile commitment")
 	}
 	return mac.Sum(nil), nil
 }
 
-// VerifyProfileCommitment returns true if the profile commitment using the
-// nonce matches the provided commitment.
-func VerifyProfileCommitment(nonce []byte, profile []byte, commitment []byte) (bool, error) {
+// VerifyProfileCommitment returns nil if the profile commitment using the
+// nonce matches the provided commitment, and error otherwise.
+func VerifyProfileCommitment(nonce []byte, profile []byte, commitment []byte) error {
 	expectedCommitment, err := GenerateProfileCommitment(nonce, profile)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return hmac.Equal(expectedCommitment, commitment), nil
+	if !hmac.Equal(expectedCommitment, commitment) {
+		return grpc.Errorf(codes.InvalidArgument, "Invalid profile commitment")
+	}
+	return nil
 }

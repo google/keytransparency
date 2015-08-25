@@ -109,12 +109,8 @@ func (s *Server) validateEntryUpdateRequest(in *v2pb.EntryUpdateRequest, userID 
 	}
 
 	// Verify profile nonce.
-	valid, err := common.VerifyProfileCommitment(in.ProfileNonce, in.Profile, entry.ProfileCommitment)
-	if err != nil {
-		return grpc.Errorf(codes.Internal, "Error while verifying profile commitment: %v", err)	
-	}
-	if !valid {
-		return grpc.Errorf(codes.InvalidArgument, "Entry.ProfileCommitment does not match Profile")		
+	if err := common.VerifyProfileCommitment(in.ProfileNonce, in.Profile, entry.ProfileCommitment); err != nil {
+		return err
 	}
 
 	// Validate the profile.

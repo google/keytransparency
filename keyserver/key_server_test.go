@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
@@ -226,12 +227,8 @@ func TestGetValidUser(t *testing.T) {
 	}
 
 	// Verify profile commitment.
-	isValid, err := env.Client.VerifyProfileCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment)
-	if err != nil {
+	if err := common.VerifyProfileCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment); err != nil {
 		t.Errorf("GetUser profile commitment verification failed: %v", err)
-	}
-	if got, want := isValid, true; got != want {
-		t.Errorf("GetUser(%v) commitment is not valid", primaryUserEmail)
 	}
 
 	if got, want := len(p.GetKeys()), 1; got != want {
