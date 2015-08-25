@@ -126,21 +126,6 @@ message TreeProof {
   bytes existing_entry_hash = 3;
 }
 
-// Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads
-// which are made available to verifiers.
-// TODO: see coname VerifierStep
-// message Step {
-//   oneof type {
-//     // entry_changed contains a serialized SignedEntryUpdate.
-//     bytes entry_changed = 1;
-//     SignedEpochHead seh = 2;
-//   }
-//   // epoch of this udpate.
-//   uint64 epoch = 3;
-//   // commitment_timestamp is the ordered commitment_timestamp of this step.
-//   uint64 commitment_timestamp = 4;
-// }
-
 // EntryUpdate is the proto a client sends to update their profile.
 message PutProfileRequest {
   // UserID specifies the id for the new account to be registered. Updates to
