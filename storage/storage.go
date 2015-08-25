@@ -29,6 +29,9 @@ type Storage interface {
 type Reader interface {
 	// Read reads a EntryStroage from the storage.
 	Read(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error)
+	// ReadRange returns a specified size of EntryStroages list starting by
+	// the specified commitment timestamp.
+	ReadRange(ctx context.Context, startCommitmentTS uint64, size int32) ([]*corepb.EntryStorage, error)
 }
 
 type Writer interface {
