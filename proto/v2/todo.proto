@@ -1,0 +1,93 @@
+// Copyright 2015 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+package end2end;
+
+service KeyserverTODO {
+  // ListUserHistory returns a list of UserProofs covering a period of time.
+  rpc ListUserHistory(ListUserHistoryRequest) returns (ListUserHistoryResponse);
+
+  // List the Signed Epoch Heads, from epoch to epoch.
+  rpc ListSEH(ListSEHRequest) returns (ListSEHResponse);
+
+  // List the EntryUpdates by update number.
+  rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse);
+
+  // ListSteps combines SEH and EntryUpdates into single list.
+  // TODO: see coname VerifierStream
+  rpc ListSteps(ListStepsRequest) returns (ListStepsResponse);
+}
+
+// Get a list of historical values for a user.
+message ListUserHistoryRequest {
+  // The user identifier.
+  string user_id = 1;
+  // from_epoch is the starting epcoh.
+  uint64 start_epoch = 2;
+  // The maximum number of entries to return.
+  int32 page_size = 3;
+  // compression_mode allows a user to verify thier own entries.
+  // TODO: optional compression mode?
+}
+
+// A paginated history of values for a user.
+message ListUserHistoryResponse {
+  // The list of values this user_id has contained over time.
+  repeated EntryProfileAndProof values = 1;
+  // The next time to query for pagination.
+  uint64 next_epoch = 2;
+}
+
+// Update a user's profile.
+message UpdateUserRequest {
+  // The User to update.
+  string user_id = 1;
+  // The new value of the key.
+  EntryUpdateRequest update = 2;
+}
+
+message ListSEHRequest {
+  // from_epoch is the starting epcoh.
+  uint64 start_epoch = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListSEHResponse {
+  repeated SignedEpochHead heads = 1;
+}
+
+message ListUpdateRequest {
+  // start_commitment_timestamp is the starting commitment timestamp.
+  uint64 start_commitment_timestamp = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListUpdateResponse {
+  // updates contains a serialized SignedEntryUpdate.
+  repeated bytes updates = 1;
+}
+
+message ListStepsRequest {
+  // start_commitment_timestamp is the starting commitment timestamp.
+  uint64 start_commitment_timestamp = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListStepsResponse {
+  repeated Step steps = 1;
+}
