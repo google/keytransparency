@@ -17,14 +17,13 @@
 package client
 
 import (
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"github.com/google/e2e-key-server/common"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
@@ -77,10 +76,14 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 	index := previous.GetIndexSignature().Vrf
 
 	// Construct Entry.
+	commitment, err := common.GenerateProfileCommitment(nonce, profileData)
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Error generating profile commitment: %v", err)
+	}
 	entry := &v2pb.Entry{
 		// TODO: Pull entry key from previous entry.
 		// TODO: Increment update count from previous entry.
-		ProfileCommitment: commitment(nonce, profileData),
+		ProfileCommitment: commitment,
 		Index:             index,
 	}
 
@@ -104,13 +107,13 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 		Update: &v2pb.EntryUpdateRequest{
 			SignedEntryUpdate: signedEntryUpdateData,
 			Profile:           profileData,
-			ProfileNonce:      nonce,
+			ProfileNonce: nonce,
 		},
 	}, nil
 }
 
-func commitment(nonce, profile []byte) []byte {
-	mac := hmac.New(sha256.New, nonce)
-	mac.Write(profile)
-	return mac.Sum(nil)
+// VerifyProfileCommitment returns true if the profile commitment using the
+// nonce matches the provided commitment.
+func (c *Client) VerifyProfileCommitment(nonce []byte, profile []byte, commitment []byte) (bool, error) {
+	return common.VerifyProfileCommitment(nonce, profile, commitment)
 }

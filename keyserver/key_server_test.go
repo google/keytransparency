@@ -218,11 +218,22 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetUser failed: %v", err)
 	}
+
 	// Unmarshaling the resulted profile.
 	p := new(v2pb.Profile)
 	if err := proto.Unmarshal(res.Profile, p); err != nil {
 		t.Fatalf("Unexpected profile unmarshalling error %v.", err)
 	}
+
+	// Verify profile commitment.
+	isValid, err := env.Client.VerifyProfileCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment)
+	if err != nil {
+		t.Errorf("GetUser profile commitment verification failed: %v", err)
+	}
+	if got, want := isValid, true; got != want {
+		t.Errorf("GetUser(%v) commitment is not valid", primaryUserEmail)
+	}
+
 	if got, want := len(p.GetKeys()), 1; got != want {
 		t.Errorf("len(GetKeyList()) = %v, want; %v", got, want)
 		return
