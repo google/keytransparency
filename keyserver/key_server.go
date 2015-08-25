@@ -100,7 +100,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	result := &v2pb.EntryProfileAndProof{
 		Entry:          entry,
 		Profile:        entryStorage.Profile,
-		IndexSignature: &v2pb.UVF{[]byte(index)},
+		IndexSignature: &v2pb.UVF{[]byte(vuf)},
 	}
 	return result, nil
 }
@@ -113,7 +113,30 @@ func proofOfAbsence(vuf []byte) *v2pb.EntryProfileAndProof {
 
 // ListUserHistory returns a list of UserProofs covering a period of time.
 func (s *Server) ListUserHistory(ctx context.Context, in *v2pb.ListUserHistoryRequest) (*v2pb.ListUserHistoryResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
+	historyResponse := new(v2pb.ListUserHistoryResponse)
+
+	// Read current epoch and build the user history up to it. If the epoch
+	// advances while building the history, future epochs will not be
+	// included.
+	nextEpoch, endEpoch, err := s.getNextAndEndEpoch(in.StartEpoch, merkle.GetCurrentEpoch(), in.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	historyResponse.NextEpoch = nextEpoch
+
+	// Get EntryProfileAndProof in epoch = [startEpoch, endEpoch].
+	for i := in.StartEpoch; i <= endEpoch; i++ {
+		result, err := s.GetUser(ctx, &v2pb.GetUserRequest{
+			Epoch: i,
+			UserId: in.UserId,
+		})
+		if err != nil {
+			return nil, err
+		}
+		historyResponse.Values = append(historyResponse.GetValues(), result)
+	}
+
+	return historyResponse, nil
 }
 
 // UpdateUser updates a user's profile. If the user does not exist, a new
@@ -146,10 +169,52 @@ func (s *Server) ListSEH(ctx context.Context, in *v2pb.ListSEHRequest) (*v2pb.Li
 
 // List the SignedEntryUpdates by update number.
 func (s *Server) ListUpdate(ctx context.Context, in *v2pb.ListUpdateRequest) (*v2pb.ListUpdateResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
+	updateResponse := new(v2pb.ListUpdateResponse)
+
+	// Read current commitment timestamp and build the updates list up to
+	// it. If the timestamp advances while building the history, future
+	// timestamps will not be included.
+	currentCommitmentTS := storage.GetCurrentCommitmentTimestamp()
+	if in.StartCommitmentTimestamp > currentCommitmentTS {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp does not exist")
+	}
+
+	// Get SignedEntryUpdates in timestamp = [startCommitmentTS,
+	// endCommitmentTS].
+	res, err := s.store.ReadRange(ctx, in.StartCommitmentTimestamp, in.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	for _, entryStorage := range(res) {
+		updateResponse.Updates = append(updateResponse.Updates, entryStorage.SignedEntryUpdate)
+	}
+
+	return updateResponse, nil
 }
 
 // ListSteps combines SEH and SignedEntryUpdates into single list.
 func (s *Server) ListSteps(ctx context.Context, in *v2pb.ListStepsRequest) (*v2pb.ListStepsResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
+}
+
+// getNextAndEndEpoch returns the next and end epochs based on start and current
+// epochs.
+func (s *Server) getNextAndEndEpoch(start uint64, current uint64, pageSize int32) (uint64, uint64, error) {
+	if start > current {
+		return 0, 0, grpc.Errorf(codes.InvalidArgument, "Start interval does not exist")
+	}
+
+	// By default next is zero and end is equal to current. Zero next means
+	// all requested entries are returned.
+	next := uint64(0)
+	end := current
+	// pageSize equals to 0 means no limit on number of entries. if it's not
+	// and the calculated next does not exceed or equal to current, set both
+	// end and next to their calculated values.
+	if pageSize != 0 && current > start + uint64(pageSize) - 1 {
+		end = start + uint64(pageSize) - 1
+		next = end + 1
+	}
+
+	return next, end, nil
 }

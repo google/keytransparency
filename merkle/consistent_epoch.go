@@ -20,6 +20,7 @@ import (
 
 var (
 	// current contains the current (latest) epoch of the merkle tree.
+	// Epochs are increasing and sequential uint64.
 	current uint64 = 0
 
 	// mu syncronizes access to current. mu locks when reading and advancing

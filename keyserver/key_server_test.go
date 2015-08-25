@@ -232,6 +232,83 @@ func TestGetValidUser(t *testing.T) {
 	}
 }
 
+func TestListUserHistoryRequest(t *testing.T) {
+	env := NewEnv(t)
+	defer env.Close()
+
+	env.createPrimaryUser(t)
+
+	ctx := context.Background() // Unauthenticated request.
+	historyResponse, err := env.Client.ListUserHistory(ctx, &v2pb.ListUserHistoryRequest{UserId: primaryUserEmail})
+
+	if err != nil {
+		t.Fatalf("ListUserHistory failed: %v", err)
+	}
+
+	if got, want := len(historyResponse.GetValues()), 1; got != want {
+		t.Errorf("ListUserHistory.GetValues() must be of length %v", want)
+		// Cannot continue this test.
+		return
+	}
+
+	if got, want := historyResponse.NextEpoch, uint64(0); got != want {
+		t.Errorf("ListUserHistory().NextEpoch = %v, want %v", got, want)
+	}
+
+	// Unmarshaling the resulted profile.
+	p := new(v2pb.Profile)
+	if err := proto.Unmarshal(historyResponse.GetValues()[0].Profile, p); err != nil {
+		t.Fatalf("Unexpected profile unmarshalling error %v.", err)
+	}
+	if got, want := len(p.GetKeys()), 1; got != want {
+		t.Errorf("len(GetKeyList()) = %v, want; %v", got, want)
+		return
+	}
+	if got, want := p.GetKeys(), primaryKeys; !reflect.DeepEqual(got, want) {
+		t.Errorf("ListUserHistory(%v).EntryProfileAndProof.Profile.Keys = %v, want: %v", primaryUserEmail, got, want)
+	}
+}
+
+func TestListUpdate(t *testing.T) {
+	env := NewEnv(t)
+	defer env.Close()
+
+	env.createPrimaryUser(t)
+
+	ctx := context.Background() // Unauthenticated request.
+	updateResponse, err := env.Client.ListUpdate(ctx, &v2pb.ListUpdateRequest{})
+
+	if err != nil {
+		t.Fatalf("ListUpdate failed: %v", err)
+	}
+
+	if got, want := len(updateResponse.Updates), 1; got != want {
+		t.Errorf("ListUpdate().Updates must be of length %v", want)
+		// Cannot continue this test.
+		return
+	}
+
+	// Get user index (location in tree).
+	entryProfileAndProof, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
+	if err != nil {
+		t.Fatalf("GetUser failed: %v", err)
+	}
+
+	// Unmarshaling the resulted signed entry update.
+	seu := new(v2pb.SignedEntryUpdate)
+	if err := proto.Unmarshal(updateResponse.Updates[0], seu); err != nil {
+		t.Fatalf("Unexpected signed entry update unmarshalling error %v.", err)
+	}
+	// Unmarshaling the resulted entry.
+	e := new(v2pb.Entry)
+	if err := proto.Unmarshal(seu.Entry, e); err != nil {
+		t.Fatalf("Unexpected entry unmarshalling error %v.", err)
+	}
+	if got, want := e.Index, entryProfileAndProof.GetIndexSignature().Vrf; !reflect.DeepEqual(got, want) {
+		t.Errorf("ListUpdate().Updates[0].Entry.Index = %v, want: %v", got, want)
+	}
+}
+
 func getErr(ret interface{}, err error) error {
 	return err
 }
@@ -244,9 +321,7 @@ func TestUnimplemented(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"ListUserHistory", getErr(env.Client.ListUserHistory(env.ctx, &v2pb.ListUserHistoryRequest{}))},
 		{"ListSEH", getErr(env.Client.ListSEH(env.ctx, &v2pb.ListSEHRequest{}))},
-		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &v2pb.ListUpdateRequest{}))},
 		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &v2pb.ListStepsRequest{}))},
 	}
 	for i, test := range tests {
