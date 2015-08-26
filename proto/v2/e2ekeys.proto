@@ -108,20 +108,22 @@ message EntryProfileAndProof {
   Entry entry = 1;
   // Profile contains the user's keys.
   bytes profile = 2;
+  // profile_nonce is at least 16 random bytes.
+  bytes profile_nonce = 3;
   // merkle_tree_neighbors is a list of all the adjacent nodes along the path
   // from the bottommost node to the head.
-  repeated bytes merkle_tree_neighbors = 3;
+  repeated bytes merkle_tree_neighbors = 4;
   // The signed epoch head.  A server may choose to return multiple signatures
   // of the same head for the same epoch.
-  repeated SignedEpochHead seh = 4;
+  repeated SignedEpochHead seh = 5;
   // index_signature is the signed portion the unpredictable verifiable
   // function on user_id. If H(index_signature) != entry.index, but they share
   // a common prefix of len(merkle_tree_neighbors), this is a proof of
   // non-existance for user_id.
-  UVF index_signature = 5;
+  UVF index_signature = 6;
   // user_id supports sending this as a complete proof to a third party. 
   // user_id is not filled by the server.
-  string user_id = 6;
+  string user_id = 7;
 }
 
 // Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads

@@ -16,3 +16,33 @@
 // packages. Types that can cause circular import should be added here.
 package common
 
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+)
+
+// GenerateProfileCommitment calculates and returns the profile commitment based
+// on the provided nonce. Commitment is HMAC(profile, nonce).
+func GenerateProfileCommitment(nonce []byte, profile []byte) ([]byte, error) {
+	mac := hmac.New(sha256.New, nonce)
+	if _, err := mac.Write(profile); err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Error while generating profile commitment")
+	}
+	return mac.Sum(nil), nil
+}
+
+// VerifyProfileCommitment returns nil if the profile commitment using the
+// nonce matches the provided commitment, and error otherwise.
+func VerifyProfileCommitment(nonce []byte, profile []byte, commitment []byte) error {
+	expectedCommitment, err := GenerateProfileCommitment(nonce, profile)
+	if err != nil {
+		return err
+	}
+	if !hmac.Equal(expectedCommitment, commitment) {
+		return grpc.Errorf(codes.InvalidArgument, "Invalid profile commitment")
+	}
+	return nil
+}

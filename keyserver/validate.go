@@ -18,14 +18,13 @@ package keyserver
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
 	"fmt"
 	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"github.com/google/e2e-key-server/common"
 
 	proto "github.com/golang/protobuf/proto"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
@@ -98,22 +97,23 @@ func (s *Server) validateEntryUpdateRequest(in *v2pb.EntryUpdateRequest, userID 
 	if err := proto.Unmarshal(seu.Entry, entry); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
-	if got, want := len(in.ProfileNonce), MinNonceLen; got < want {
-		return grpc.Errorf(codes.InvalidArgument, "len(ProfileNonce) = %v, want >= %v", got, want)
-	}
-	mac := hmac.New(sha256.New, in.ProfileNonce)
-	mac.Write(in.Profile)
-	expectedMAC := mac.Sum(nil)
-	if !hmac.Equal(entry.ProfileCommitment, expectedMAC) {
-		return grpc.Errorf(codes.InvalidArgument, "Entry.ProfileCommitment does not match Profile")
-	}
 
 	// Unmarshal and validte user's profile.
 	p := new(v2pb.Profile)
 	if err := proto.Unmarshal(in.Profile, p); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
+	// Verify nonce length.
+	if got, want := len(in.ProfileNonce), MinNonceLen; got < want {
+		return grpc.Errorf(codes.InvalidArgument, "len(Nonce) = %v, want >= %v", got, want)
+	}
 
+	// Verify profile nonce.
+	if err := common.VerifyProfileCommitment(in.ProfileNonce, in.Profile, entry.ProfileCommitment); err != nil {
+		return err
+	}
+
+	// Validate the profile.
 	if err := s.validateProfile(p, userID); err != nil {
 		return err
 	}

@@ -62,6 +62,8 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		return nil, err
 	}
 
+	// Get the commitment timestamp corresponding to the user's profile in
+	// the given, or latest, epoch.
 	epoch := in.Epoch
 	if epoch == 0 {
 		epoch = merkle.GetCurrentEpoch()
@@ -94,13 +96,12 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
-	// This key server doesn't employ a merkle tree yet. This is why most of
-	// fields in EntryProfileAndProof do not exist.
-	// TODO(cesarghali): integrate merkle tree.
 	result := &v2pb.EntryProfileAndProof{
 		Entry:          entry,
 		Profile:        entryStorage.Profile,
-		IndexSignature: &v2pb.UVF{[]byte(vuf)},
+		ProfileNonce: entryStorage.ProfileNonce,
+		//TODO(cesarghali): add Seh
+		IndexSignature: &v2pb.UVF{vuf},
 	}
 	return result, nil
 }
