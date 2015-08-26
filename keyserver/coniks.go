@@ -22,8 +22,8 @@ import (
 )
 
 // Vuf is a mock verifiable unpredictable function.
-func (s *Server) Vuf(userID string) (string, string, error) {
+func (s *Server) Vuf(userID string) ([]byte, string, error) {
 	hUserID := sha256.Sum256([]byte(userID))
 	hexUserID := hex.EncodeToString(hUserID[:])
-	return hexUserID, hexUserID, nil
+	return hUserID[:], hexUserID, nil
 }

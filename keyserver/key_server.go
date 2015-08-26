@@ -16,8 +16,6 @@
 package keyserver
 
 import (
-	"encoding/hex"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/merkle"
@@ -52,14 +50,9 @@ func New(storage storage.Storage, tree *merkle.Tree) *Server {
 // this user and that it is the same one being provided to everyone else.
 // GetUser also supports querying past values by setting the epoch field.
 func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.EntryProfileAndProof, error) {
-	_, index, err := s.Vuf(in.UserId)
+	vuf, index, err := s.Vuf(in.UserId)
 	if err != nil {
-		return nil, err
-	}
-
-	vuf, err := hex.DecodeString(index)
-	if err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
 	}
 
 	// Get the commitment timestamp corresponding to the user's profile in
