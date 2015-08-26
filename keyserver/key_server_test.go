@@ -247,7 +247,7 @@ func TestListUserHistoryRequest(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	historyResponse, err := env.Client.ListUserHistory(ctx, &v2pb.ListUserHistoryRequest{UserId: primaryUserEmail})
+	historyResponse, err := env.Client.ListUserHistory(ctx, &v2pb.ListUserHistoryRequest{UserId: primaryUserEmail, PageSize: 1})
 
 	if err != nil {
 		t.Fatalf("ListUserHistory failed: %v", err)
@@ -284,7 +284,7 @@ func TestListUpdate(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	updateResponse, err := env.Client.ListUpdate(ctx, &v2pb.ListUpdateRequest{})
+	updateResponse, err := env.Client.ListUpdate(ctx, &v2pb.ListUpdateRequest{PageSize: 1})
 
 	if err != nil {
 		t.Fatalf("ListUpdate failed: %v", err)
