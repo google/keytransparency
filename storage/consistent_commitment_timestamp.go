@@ -18,10 +18,18 @@ import (
 	"sync"
 )
 
+const (
+	// Currently commitment timestamp is implemented as a sequence number.
+	// The following functionality might change when this is implemented as
+	// an actual timestamp.
+	StartingCommitmentTimestamp = 0
+)
+
 var (
 	// current contains the current (latest) commitment timestamp of the
-	// merkle tree.
-	current uint64 = 1
+	// storage. Commitment timestamps are increasing but not sequential
+	// uint64.
+	current uint64 = StartingCommitmentTimestamp
 
 	// mu syncronizes access to current. mu locks when reading and advancing
 	// current commitment timestamp.

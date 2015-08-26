@@ -255,7 +255,10 @@ message ListSEHRequest {
 }
 
 message ListSEHResponse {
+  // The list of signed epoch heads.
   repeated SignedEpochHead heads = 1;
+  // The next time to query for pagination.
+  uint64 next_epoch = 2;
 }
 
 message ListUpdateRequest {

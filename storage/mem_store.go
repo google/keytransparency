@@ -68,6 +68,53 @@ func (s *MemStorage) Read(ctx context.Context, commitmentTS uint64) (*corepb.Ent
 	return val, nil
 }
 
+// ReadRange returns the specified size of EntryStroages list starting by the
+// specified commitment timestamp.
+func (s *MemStorage) ReadRange(ctx context.Context, startCommitmentTS uint64, size int32) ([]*corepb.EntryStorage, error) {
+	// In a real database this function will be implemented by querying the
+	// database, e.g. using SQL, for all storage entries starting with
+	// startCommitmentTS. Since MemStorage uses a map, the only way to
+	// simulate this is by looping over all entries in the map and extract
+	// the relevant ones.
+
+	keys := make([]uint64, len(s.entries))
+	i := 0
+	for k, _ := range(s.entries) {
+		keys[i] = k
+		i++
+	}
+	// Golang sort package doesn't have function to sort uint64, so the sort
+	// is implemented.
+	sortUint64(keys)
+
+	result := make([]*corepb.EntryStorage, 0, size)
+	for _, ts := range(keys) {
+		if ts >= startCommitmentTS {
+			result = append(result, s.entries[ts])
+		}
+		// Stop if size is reached
+		if size != 0 && int32(len(result)) == size {
+			break
+		}
+	}
+	return result, nil
+}
+
+// sortUint64 is used by ReadRange and it bubble sorts a uint64 slice. This
+// sorting is temporary so no need for an efficient one. Eventually, ReadRange
+// will query the database to return entries sorted by commitment timestamp.
+func sortUint64(a []uint64) {
+	for i := 0; i < len(a) - 1; i++ {
+		for j := i + 1; j < len(a); j++ {
+			if a[j] < a[i] {
+				t := a[i]
+				a[i] = a[j]
+				a[j] = t
+			}
+		}
+	}
+}
+
 // Write inserts a new EntryStorage in the storage. This function works whether
 // the entry exists or not. If the entry does not exist, it will be inserted,
 // otherwise updated.
