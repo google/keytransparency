@@ -52,6 +52,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.Pr
 		return nil, err
 	}
 
+	// If result.Profile is empty, then the profile does not exist.
 	if len(result.Profile) == 0 {
 		return nil, grpc.Errorf(codes.NotFound, "")
 	}

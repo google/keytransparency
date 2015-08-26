@@ -29,6 +29,7 @@ import (
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
@@ -185,16 +186,17 @@ func TestAppIDFiltering(t *testing.T) {
 		outKeysCount int
 		keyExists bool
 		key []byte
+		code codes.Code
 	}{
-		{primaryAppId, 1, true, primaryUserKeyRing},
-		{"gmail", 0, false, nil},
+		{primaryAppId, 1, true, primaryUserKeyRing, codes.OK},
+		{"gmail", 0, false, nil, codes.OK},
 	}
 
 	for i, test := range(tests) {
 		res, err := env.ClientV1.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail, AppId: test.appID})
 
-		if err != nil {
-			t.Fatalf("GetUser failed: %v", err)
+		if got, want := grpc.Code(err), test.code; got != want {
+			t.Errorf("Test[%v]: GetUser(%v)=%v, want %v", i, primaryUserEmail, got, want)
 		}
 		if got, want := len(res.GetKeys()), test.outKeysCount; got != want {
 			t.Errorf("Test[%v]: len(GetKeyList()) = %v, want; %v", i, got, want)
@@ -209,7 +211,6 @@ func TestAppIDFiltering(t *testing.T) {
 		}
 	}
 }
-
 
 func TestHkpLookup(t *testing.T) {
 	env := NewEnv(t)

@@ -27,17 +27,17 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 // EntryStorage is what gets serialized to disk / log.
 message EntryStorage {
   // commitment_timestamp is a sequential update number of the SignedEntryUpdate.
-  uint64 commitment_timestamp = 2;
+  uint64 commitment_timestamp = 1;
   // entry_update contains a serialized SignedEntryUpdate with the actual update
   // contents.
-  bytes signed_entry_update = 3;
+  bytes signed_entry_update = 2;
   // profile is the serialized protobuf Profile.
   // profile is private and must not be released to verifiers.
-  bytes profile = 4;
+  bytes profile = 3;
   // profile_nonce is at least 16 random bytes.
-  bytes profile_nonce = 5;
+  bytes profile_nonce = 4;
   // domain allows servers to keep track of multiple trees at once.
-  string domain = 6;
+  string domain = 5;
 }
 
 // DomainInfo is the information that need to be baked into an application

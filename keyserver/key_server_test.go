@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
@@ -218,11 +219,18 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetUser failed: %v", err)
 	}
+
 	// Unmarshaling the resulted profile.
 	p := new(v2pb.Profile)
 	if err := proto.Unmarshal(res.Profile, p); err != nil {
 		t.Fatalf("Unexpected profile unmarshalling error %v.", err)
 	}
+
+	// Verify profile commitment.
+	if err := common.VerifyProfileCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment); err != nil {
+		t.Errorf("GetUser profile commitment verification failed: %v", err)
+	}
+
 	if got, want := len(p.GetKeys()), 1; got != want {
 		t.Errorf("len(GetKeyList()) = %v, want; %v", got, want)
 		return
