@@ -136,16 +136,16 @@ func (env *Env) Close() {
 // createPrimaryUser creates a user using the v2 client. This function is copied
 // from /keyserver/key_server_test.go.
 func (env *Env) createPrimaryUser(t *testing.T) {
-	updateUserRequest, err := env.ClientV2.Update(primaryUserProfile, primaryUserEmail)
+	updateEntryRequest, err := env.ClientV2.Update(primaryUserProfile, primaryUserEmail)
 	if err != nil {
 		t.Fatalf("Error creating update request: %v", err)
 	}
 
 	// Insert valid user. Calling update if the user does not exist will
 	// insert the user's profile.
-	_, err = env.ClientV2.UpdateUser(env.ctx, updateUserRequest)
+	_, err = env.ClientV2.UpdateEntry(env.ctx, updateEntryRequest)
 	if err != nil {
-		t.Errorf("CreateUser got unexpected error %v.", err)
+		t.Errorf("UpdateEntry got unexpected error %v.", err)
 		return
 	}
 }
@@ -159,17 +159,17 @@ func TestGetValidUser(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.ClientV1.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
+	res, err := env.ClientV1.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: primaryUserEmail})
 
 	if err != nil {
-		t.Errorf("GetUser failed: %v", err)
+		t.Errorf("GetEntry failed: %v", err)
 	}
 	if got, want := len(res.GetKeys()), 1; got != want {
 		t.Errorf("len(GetKeyList()) = %v, want; %v", got, want)
 		return
 	}
 	if got, want := res.GetKeys(), expectedPrimaryKeys; !reflect.DeepEqual(got, want) {
-		t.Errorf("GetUser(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
+		t.Errorf("GetEntry(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
 	}
 }
 
@@ -193,7 +193,7 @@ func TestAppIDFiltering(t *testing.T) {
 	}
 
 	for i, test := range(tests) {
-		res, err := env.ClientV1.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail, AppId: test.appID})
+		res, err := env.ClientV1.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: primaryUserEmail, AppId: test.appID})
 
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: GetUser(%v)=%v, want %v", i, primaryUserEmail, got, want)

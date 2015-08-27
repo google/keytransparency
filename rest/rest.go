@@ -212,17 +212,17 @@ func toHttpError(err error, w http.ResponseWriter) {
 	}
 }
 
-// GetUserV1_InitializeHandlerInfo initializes and returns HandlerInfo preparing
-// to call proxy.GetUser API.
-func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+// GetEntryV1_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call proxy.GetEntry API.
+func GetEntryV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the proxy GetUser.
+	// Set the API handler to call the proxy GetEntry.
 	info.H = rInfo.Handler
-	// Create a new GetUserRequest to be passed to the API handler.
-	info.Arg = new(v2pb.GetUserRequest)
+	// Create a new GetEntryRequest to be passed to the API handler.
+	info.Arg = new(v2pb.GetEntryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.GetUserRequest)
+		in := (*arg).(*v2pb.GetEntryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -256,11 +256,11 @@ func GetUserV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	return info
 }
 
-// GetUserV1_RequestHandler calls proxy.GetUser and returns its results. An error
-// will be returned if proxy.GetUser returns an error.
-func GetUserV1_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+// GetEntryV1_RequestHandler calls proxy.GetEntry and returns its results. An error
+// will be returned if proxy.GetEntry returns an error.
+func GetEntryV1_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v1pb.E2EKeyProxyServer).GetUser(ctx, arg.(*v2pb.GetUserRequest))
+	resp, err := srv.(v1pb.E2EKeyProxyServer).GetEntry(ctx, arg.(*v2pb.GetEntryRequest))
 	return &resp, err
 }
 
@@ -311,17 +311,17 @@ func HkpLookup_RequestHandler(srv interface{}, ctx context.Context, arg interfac
 	return &resp, err
 }
 
-// GetUserV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
-// to call keyserver.GetUser API.
-func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+// GetEntryV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.GetEntry API.
+func GetEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the keyserver GetUser.
+	// Set the API handler to call the keyserver GetEntry.
 	info.H = rInfo.Handler
-	// Create a new GetUserRequest to be passed to the API handler.
-	info.Arg = new(v2pb.GetUserRequest)
+	// Create a new GetEntryRequest to be passed to the API handler.
+	info.Arg = new(v2pb.GetEntryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.GetUserRequest)
+		in := (*arg).(*v2pb.GetEntryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -355,25 +355,25 @@ func GetUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	return info
 }
 
-// GetUserV2_RequestHandler calls keyserver.GetUser and returns its results. An error
-// will be returned if keyserver.GetUser returns an error.
-func GetUserV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+// GetEntryV2_RequestHandler calls keyserver.GetEntry and returns its results. An error
+// will be returned if keyserver.GetEntry returns an error.
+func GetEntryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).GetUser(ctx, arg.(*v2pb.GetUserRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).GetEntry(ctx, arg.(*v2pb.GetEntryRequest))
 	return &resp, err
 }
 
-// ListUserHistoryV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
-// to call keyserver.ListUserHistory API.
-func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+// ListEntryHistoryV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.ListEntryHistory API.
+func ListEntryHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the keyserver ListUserHistory.
+	// Set the API handler to call the keyserver ListEntryHistory.
 	info.H = rInfo.Handler
-	// Create a new ListUserHistoryRequest to be passed to the API handler.
-	info.Arg = new(v2pb.ListUserHistoryRequest)
+	// Create a new ListEntryHistoryRequest to be passed to the API handler.
+	info.Arg = new(v2pb.ListEntryHistoryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.ListUserHistoryRequest)
+		in := (*arg).(*v2pb.ListEntryHistoryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -411,25 +411,25 @@ func ListUserHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers
 	return info
 }
 
-// ListUserHistoryV2_RequestHandler calls keyserver.ListUserHistory and returns its results. An error
-// will be returned if keyserver.ListUserHistory returns an error.
-func ListUserHistoryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+// ListEntryHistoryV2_RequestHandler calls keyserver.ListEntryHistory and returns its results. An error
+// will be returned if keyserver.ListEntryHistory returns an error.
+func ListEntryHistoryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListUserHistory(ctx, arg.(*v2pb.ListUserHistoryRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListEntryHistory(ctx, arg.(*v2pb.ListEntryHistoryRequest))
 	return &resp, err
 }
 
-// UpdateUserV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
-// to call keyserver.UpdateUser API.
-func UpdateUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
+// UpdateEntryV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
+// to call keyserver.UpdateEntry API.
+func UpdateEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
 	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the keyserver UpdateUser.
+	// Set the API handler to call the keyserver UpdateEntry.
 	info.H = rInfo.Handler
-	// Create a new UpdateUserRequest to be passed to the API handler.
-	info.Arg = new(v2pb.UpdateUserRequest)
+	// Create a new UpdateEntryRequest to be passed to the API handler.
+	info.Arg = new(v2pb.UpdateEntryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.UpdateUserRequest)
+		in := (*arg).(*v2pb.UpdateEntryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -443,11 +443,11 @@ func UpdateUserV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 	return info
 }
 
-// UpdateUserV2_RequestHandler calls keyserver.UpdateUser and returns its results. An error
-// will be returned if keyserver.UpdateUser returns an error.
-func UpdateUserV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
+// UpdateEntryV2_RequestHandler calls keyserver.UpdateEntry and returns its results. An error
+// will be returned if keyserver.UpdateEntry returns an error.
+func UpdateEntryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).UpdateUser(ctx, arg.(*v2pb.UpdateUserRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).UpdateEntry(ctx, arg.(*v2pb.UpdateEntryRequest))
 	return &resp, err
 }
 

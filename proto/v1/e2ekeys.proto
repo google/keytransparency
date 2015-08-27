@@ -32,13 +32,9 @@ import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 // - The API has a collection of [Profile][google.security.e2ekeys.v2.Profile]
 //   resources named `/users/*`.
 //
-// - Each User has a collection of
-//  [Key][google.security.e2ekeys.v2.Key] resources named by
-//  `/users/*/keys/*`
-//
 service E2EKeyProxy {
-  // GetUser returns a user's profile. Past values are not supported.
-  rpc GetUser(v2.GetUserRequest) returns (v2.Profile);
+  // GetEntry returns a user's current profile.
+  rpc GetEntry(v2.GetEntryRequest) returns (v2.Profile);
 
   rpc HkpLookup(HkpLookupRequest) returns (HttpResponse);
 }

@@ -24,35 +24,28 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 // The E2EKeyService API represents a directory of public keys.
-// The key server has the following verifiable security properties:
-// - The server keeps a single history of the directory.
-// - The server gives consistent answers to queries regardless of audience.
-//    - The server publishes a signed epoch head (SEH) of all its data every
-//      epoch.
-//    - Users can verify that a given entry is contained in that SEH.
-//    - Only one entry in the server is valid for any particular user id.
-//
 // The API defines the following resource model:
 //
-// - The API has a collection of
-//   [EntryProfileAndProof][google.security.e2ekeys.v2.EntryProfileAndProof]
-//   resources named `/users/*`.
+// - The API has a collection of  [Entry][google.security.e2ekeys.v2.Entry]
+//   resources named `/entries/*`.
 //
-// - Each User has a collection of [Key][google.security.e2ekeys.v2.Key] 
-//   resources named by `/users/*/keys/*`.
+// - Entries have a collection of historical
+//   [Entry][google.security.e2ekeys.v2.Entry] resources named 
+//   `/entries/*/history`.
 //
 service E2EKeyService {
-  // GetUser returns a user's profile, the comittment in the merkle tree, a
-  // proof that there is only one entry for this user, and a proof that it is
-  // the same data being provided to everyone else.
-  // GetUser also supports querying past values by setting the epoch field.
-  rpc GetUser(GetUserRequest) returns (EntryProfileAndProof);
+  // GetEntry returns a user's entry in the Merkle Tree. Entries contain 
+  // signed commitments to a profile, which is also returned.
+  rpc GetEntry(GetEntryRequest) returns (GetEntryResponse);
 
-  // ListUserHistory returns a list of UserProofs covering a period of time.
-  rpc ListUserHistory(ListUserHistoryRequest) returns (ListUserHistoryResponse);
+  // ListEntryHistory returns a list of GetEntryRespons covering several epochs.
+  rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse);
 
   // blocking or polling?
-  rpc UpdateUser(UpdateUserRequest) returns (protobuf.Empty);
+  // UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
+  // has been included in an epoch.  Clients must retry until this function 
+  // returns a proof.
+  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse);
 
   // List the Signed Epoch Heads, from epoch to epoch.
   rpc ListSEH(ListSEHRequest) returns (ListSEHResponse);
@@ -96,13 +89,7 @@ message EpochHead {
   string realm = 5;
 }
 
-message UVF {
-  //TODO: fill with data needed for to verify the Unpredictable Verifiable
-  //Function.
-  bytes vrf = 1;
-}
-
-message EntryProfileAndProof {
+message GetEntryResponse {
   // Entry contains the public portion of the user's data, and a comitment to
   // profile.
   Entry entry = 1;
@@ -120,7 +107,7 @@ message EntryProfileAndProof {
   // function on user_id. If H(index_signature) != entry.index, but they share
   // a common prefix of len(merkle_tree_neighbors), this is a proof of
   // non-existance for user_id.
-  UVF index_signature = 6;
+  bytes index_signature = 6;
   // user_id supports sending this as a complete proof to a third party. 
   // user_id is not filled by the server.
   string user_id = 7;
@@ -206,7 +193,7 @@ message PublicKey {
 //
 
 // Get request for a user object.
-message GetUserRequest {
+message GetEntryRequest {
   // Absence of the time field indicates a request for the current value.
   uint64 epoch = 1;
   // User identifier. Most commonly an email address.
@@ -220,7 +207,7 @@ message GetUserRequest {
 }
 
 // Get a list of historical values for a user.
-message ListUserHistoryRequest {
+message ListEntryHistoryRequest {
   // The user identifier.
   string user_id = 1;
   // from_epoch is the starting epcoh.
@@ -232,20 +219,27 @@ message ListUserHistoryRequest {
 }
 
 // A paginated history of values for a user.
-message ListUserHistoryResponse {
+message ListEntryHistoryResponse {
   // The list of values this user_id has contained over time.
-  repeated EntryProfileAndProof values = 1;
+  repeated GetEntryResponse values = 1;
   // The next time to query for pagination.
   uint64 next_epoch = 2;
 }
 
 // Update a user's profile.
-message UpdateUserRequest {
+message UpdateEntryRequest {
   // The User to update.
   string user_id = 1;
   // The new value of the key.
   EntryUpdateRequest update = 2;
 }
+
+// UpdateEntryResponse contains a proof once the update has been included in 
+// the Merkel Tree.
+message UpdateEntryResponse {
+  GetEntryResponse proof = 1;
+}
+
 
 message ListSEHRequest {
   // from_epoch is the starting epcoh.

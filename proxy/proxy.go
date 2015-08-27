@@ -45,9 +45,9 @@ func New(srv *keyserver.Server) *Server {
 	return &Server{srv}
 }
 
-// GetUser returns a user's profile.
-func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.Profile, error) {
-	result, err := s.s.GetUser(ctx, in)
+// GetEntry returns a user's profile.
+func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.Profile, error) {
+	result, err := s.s.GetEntry(ctx, in)
 	if  err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.Pr
 	}
 
 	// Extract and returned the user profile from the resulted
-	// EntryProfileAndProof.
+	// GetEntryResponse.
 	profile := new(v2pb.Profile)
 	if err := proto.Unmarshal(result.Profile, profile); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Provided profile cannot be parsed")
@@ -94,8 +94,8 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 		return nil, grpc.Errorf(codes.Unimplemented, "Searching by key index are not supported")
 	}
 
-	getUserRequest := v2pb.GetUserRequest{UserId: in.Search, AppId: pgpAppID}
-	profile, err := s.GetUser(ctx, &getUserRequest)
+	getEntryRequest := v2pb.GetEntryRequest{UserId: in.Search, AppId: pgpAppID}
+	profile, err := s.GetEntry(ctx, &getEntryRequest)
 	if err != nil {
 		return nil, err
 	}

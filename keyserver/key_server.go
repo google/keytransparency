@@ -26,7 +26,6 @@ import (
 
 	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
-	proto3 "google/protobuf"
 )
 
 // Server holds internal state for the key server.
@@ -46,10 +45,10 @@ func New(storage storage.Storage, tree *merkle.Tree) *Server {
 	return srv
 }
 
-// GetUser returns a user's profile and proof that there is only one object for
+// GetEntry returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
-// GetUser also supports querying past values by setting the epoch field.
-func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.EntryProfileAndProof, error) {
+// GetEntry also supports querying past values by setting the epoch field.
+func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.GetEntryResponse, error) {
 	vuf, index, err := s.Vuf(in.UserId)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
@@ -89,31 +88,31 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
-	result := &v2pb.EntryProfileAndProof{
+	result := &v2pb.GetEntryResponse{
 		Entry:          entry,
 		Profile:        entryStorage.Profile,
 		ProfileNonce: entryStorage.ProfileNonce,
 		//TODO(cesarghali): add Seh
-		IndexSignature: &v2pb.UVF{[]byte(index)},
+		IndexSignature: vuf,
 	}
 	return result, nil
 }
 
-func proofOfAbsence(vuf []byte) *v2pb.EntryProfileAndProof {
-	return &v2pb.EntryProfileAndProof{
-		IndexSignature: &v2pb.UVF{vuf},
+func proofOfAbsence(vuf []byte) *v2pb.GetEntryResponse {
+	return &v2pb.GetEntryResponse{
+		IndexSignature: vuf,
 	}
 }
 
-// ListUserHistory returns a list of UserProofs covering a period of time.
-func (s *Server) ListUserHistory(ctx context.Context, in *v2pb.ListUserHistoryRequest) (*v2pb.ListUserHistoryResponse, error) {
+// ListEntryHistory returns a list of EntryProofs covering a period of time.
+func (s *Server) ListEntryHistory(ctx context.Context, in *v2pb.ListEntryHistoryRequest) (*v2pb.ListEntryHistoryResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
-// UpdateUser updates a user's profile. If the user does not exist, a new
+// UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
-func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*proto3.Empty, error) {
-	if err := s.validateUpdateUserRequest(ctx, in); err != nil {
+func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (*v2pb.UpdateEntryResponse, error) {
+	if err := s.validateUpdateEntryRequest(ctx, in); err != nil {
 		return nil, err
 	}
 
@@ -130,7 +129,8 @@ func (s *Server) UpdateUser(ctx context.Context, in *v2pb.UpdateUserRequest) (*p
 		return nil, err
 	}
 
-	return &proto3.Empty{}, nil
+	return &v2pb.UpdateEntryResponse{}, nil
+	// TODO: return proof if the entry has been added in an epoch alredy.
 }
 
 // List the Signed Epoch Heads, from epoch to epoch.

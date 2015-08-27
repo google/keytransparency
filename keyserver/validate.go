@@ -71,7 +71,7 @@ func (s *Server) validateKey(userID, appID string, key []byte) error {
 	return nil
 }
 
-func (s *Server) validateUpdateUserRequest(ctx context.Context, in *v2pb.UpdateUserRequest) error {
+func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.UpdateEntryRequest) error {
 	// Validate proper authentication.
 	if err := s.validateEmail(ctx, in.UserId); err != nil {
 		return err
