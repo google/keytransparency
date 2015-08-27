@@ -370,6 +370,28 @@ func TestGetLeafCommitmentTimestamp(t *testing.T) {
 	}
 }
 
+func TestGetRootValue(t *testing.T) {
+	m := New()
+	// Adding few leaves with commitment timestamps to the tree.
+	addValidLeaves(t, m)
+
+	tests := []struct {
+		epoch           uint64
+		code            codes.Code
+	}{
+		{0, codes.OK},
+		{1, codes.OK},
+		{5, codes.NotFound},
+	}
+
+	for i, test := range(tests) {
+		_, err := m.GetRootValue(test.epoch)
+		if got, want := grpc.Code(err), test.code; got != want {
+			t.Errorf("Test[%v]: GetRootValue(%v)=%v, want %v", i, test.epoch,  got, want)
+		}
+	}
+}
+
 func addValidLeaves(t *testing.T, m *Tree) {
 	tests := []struct {
 		epoch        uint64

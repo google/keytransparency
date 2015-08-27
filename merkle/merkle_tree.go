@@ -143,6 +143,17 @@ func (t *Tree) AuditPath(epoch uint64, index []byte) ([][]byte, error) {
 	return r.auditPath(BitString(index), 0)
 }
 
+// GetRootValue returns the value of the root node in a specific epoch.
+func (t *Tree) GetRootValue(epoch uint64) ([]byte, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	r, ok := t.roots[epoch]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "Epoch does not exist")
+	}
+	return r.value, nil
+}
+
 // BitString converts a byte slice index into a string of Depth '0' or '1'
 // characters.
 func BitString(index []byte) string {
