@@ -24,6 +24,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"github.com/google/e2e-key-server/common"
 )
 
 const (
@@ -314,7 +315,11 @@ func TestAuditNeighors(t *testing.T) {
 			// Starting from the leaf's neighbor, going to the root.
 			depth := len(audit) - j
 			nstr := neighborOf(BitString(index), depth)
-			if got, want := bytes.Equal(audit[j], EmptyValue(nstr)), v; got != want {
+			value, err := common.EmptyLeafValue(nstr)
+			if err != nil {
+				t.Fatalf("Test[%v]: emptyValue failed: %v", i, err)
+			}
+			if got, want := bytes.Equal(audit[j], value), v; got != want {
 				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.hindex, j, got, want)
 			}
 		}
