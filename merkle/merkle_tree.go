@@ -38,7 +38,7 @@ const (
 	IndexLen = sha256.Size * 8
 	// maxDepth is the maximum allowable value of depth.
 	maxDepth = IndexLen
-	// HashBytes is the number of bytes in each node's value.
+	// HashBytes is the number of bytes in nodes value and data fields.
 	HashBytes = sha256.Size
 )
 
@@ -46,13 +46,13 @@ var (
 	// TreeNonce is a constant value used as a salt in all leaf node calculations.
 	// The TreeNonce prevents different realms from producing collisions.
 	TreeNonce = []byte{241, 71, 100, 55, 62, 119, 69, 16, 150, 179, 228, 81, 34, 200, 144, 6}
-	// LeafIdentifier is the value used to indicate a leaf node.
+	// LeafIdentifier is the data used to indicate a leaf node.
 	LeafIdentifier = []byte("L")
-	// EmptyIdentifier is used while calculating the value of nil sub branches.
+	// EmptyIdentifier is used while calculating the data of nil sub branches.
 	EmptyIdentifier = []byte("E")
-	// Zero is the value used to represent 0 in the index bit string.
+	// Zero is the data used to represent 0 in the index bit string.
 	Zero = byte('0')
-	// One is the value used to represent 1 in the index bit string.
+	// One is the data used to represent 1 in the index bit string.
 	One = byte('1')
 )
 
@@ -66,6 +66,16 @@ var (
 //      name is index. All external tree APIs (exported functions) use
 //      represetation (2).
 
+// Note: data, dataHash, and value
+//  - data: is the actual data (in []byte) that is stored in the node leaf. All
+//    external tree APIs (exported functions) expect to receive data. Currently,
+//    data is a marshaled SignedEntryUpdate proto.
+//  - dataHash: is the hash of data and is stored in the leaf node structure.
+//  - value: is stored in the leaf node structure and can be:
+//     - In leaves: H(TreeNonce || LeafIdentifier || depth || index || dataHash)
+//     - In empty leaves: H(TreeNonce || EmptyIdentifier || depth || index)
+//     - In intermediate nodes: H(left.value || right.value)
+
 // Tree holds internal state for the Merkle Tree.
 type Tree struct {
 	roots   map[uint64]*node
@@ -78,6 +88,7 @@ type node struct {
 	bindex       string // Location in the tree.
 	commitmentTS uint64 // Commitment timestamp for this node.
 	depth        int    // Depth of this node. 0 to 256.
+	dataHash     []byte // Hash of the data stored in the node.
 	value        []byte // Empty for empty subtrees.
 	left         *node  // Left node.
 	right        *node  // Right node.
@@ -95,7 +106,7 @@ func New() *Tree {
 
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
 // must be added in chronological order by epoch.
-func (t *Tree) AddLeaf(value []byte, epoch uint64, index []byte, commitmentTS uint64) error {
+func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uint64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), IndexLen/8; got != want {
@@ -105,7 +116,7 @@ func (t *Tree) AddLeaf(value []byte, epoch uint64, index []byte, commitmentTS ui
 	if err != nil {
 		return err
 	}
-	return r.addLeaf(value, epoch, BitString(index), commitmentTS, 0)
+	return r.addLeaf(data, epoch, BitString(index), commitmentTS, 0)
 }
 
 // GetLeafCommitmentTimestamp returns a leaf commitment timestamp for a given
@@ -154,7 +165,7 @@ func BitString(index []byte) string {
 func (t *Tree) addRoot(epoch uint64) (*node, error) {
 	if t.current == nil {
 		// Create the first epoch.
-		t.roots[epoch] = &node{epoch, "", 0, 0, nil, nil, nil}
+		t.roots[epoch] = &node{epoch, "", 0, 0, nil, nil, nil, nil}
 		t.current = t.roots[epoch]
 		return t.current, nil
 	}
@@ -165,7 +176,7 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 	for t.current.epoch < epoch {
 		// Copy the root node from the previous epoch.
 		nextEpoch := t.current.epoch + 1
-		t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, t.current.left, t.current.right}
+		t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, nil, t.current.left, t.current.right}
 		t.current = t.roots[nextEpoch]
 	}
 	return t.current, nil
@@ -173,19 +184,20 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 
 // Parent node is responsible for creating children.
 // Inserts leafs in the nearest empty sub branch it finds.
-func (n *node) addLeaf(value []byte, epoch uint64, bindex string, commitmentTS uint64, depth int) error {
+func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS uint64, depth int) error {
 	if n.epoch != epoch {
 		return grpc.Errorf(codes.Internal, "epoch = %d want %d", epoch, n.epoch)
 	}
 
-	// Base case: we found the first empty sub branch.  Park our value here.
+	// Base case: we found the first empty sub branch.  Park our data here.
 	if n.empty() {
-		n.setLeaf(value, bindex, commitmentTS, depth)
+		n.setLeaf(data, bindex, commitmentTS, depth)
 		return nil
 	}
 	// We reached the bottom of the tree and it wasn't empty.
 	// Or we found the same node.
 	if depth == maxDepth || n.bindex == bindex {
+		fmt.Println(n)
 		return grpc.Errorf(codes.AlreadyExists, "")
 	}
 	if n.leaf() {
@@ -196,7 +208,7 @@ func (n *node) addLeaf(value []byte, epoch uint64, bindex string, commitmentTS u
 	}
 	// Make sure the interior node is in the current epoch.
 	n.createBranch(bindex[:depth+1])
-	err := n.child(bindex[depth]).addLeaf(value, epoch, bindex, commitmentTS, depth+1)
+	err := n.child(bindex[depth]).addLeaf(data, epoch, bindex, commitmentTS, depth+1)
 	if err != nil {
 		return err
 	}
@@ -206,7 +218,7 @@ func (n *node) addLeaf(value []byte, epoch uint64, bindex string, commitmentTS u
 
 // pushDown takes a leaf node and pushes it one level down in the prefix tree,
 // converting this node into an interior node.  This function does NOT update
-// n.value
+// n.value.
 func (n *node) pushDown() error {
 	if !n.leaf() {
 		return grpc.Errorf(codes.Internal, "Cannot push down interor node")
@@ -218,7 +230,10 @@ func (n *node) pushDown() error {
 	// Create a sub branch and copy this node.
 	b := n.bindex[n.depth]
 	n.createBranch(n.bindex)
-	n.child(b).value = n.value
+	n.child(b).dataHash = n.dataHash
+	// Whenever a node is pushed down, its value must be recalculated.
+	n.child(b).hashLeaf()
+
 	n.bindex = n.bindex[:n.depth] // Convert into an interior node.
 	return nil
 }
@@ -239,16 +254,16 @@ func (n *node) createBranch(bindex string) *node {
 	switch {
 	case n.child(b) == nil:
 		// New empty branch.
-		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, nil, nil})
+		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, nil, nil, nil})
 	case n.child(b).epoch != n.epoch && n.child(b).leaf():
 		// Found leaf in previous epoch. Create empty node.
-		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, nil, nil})
+		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, nil, nil, nil})
 	case n.child(b).epoch != n.epoch && !n.child(b).leaf():
 		// Found intermediate in previous epoch.
 		// Create an intermediate node in current epoch with children
 		// pointing to the previous epoch.
 		tmp := n.child(b)
-		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, tmp.value, tmp.left, tmp.right})
+		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, tmp.value, tmp.left, tmp.right})
 	}
 	return n.child(b)
 }
@@ -291,7 +306,7 @@ func (n *node) leaf() bool {
 	return n.left == nil && n.right == nil
 }
 func (n *node) empty() bool {
-	return n.left == nil && n.right == nil && n.value == nil
+	return n.dataHash == nil && n.left == nil && n.right == nil && n.value == nil
 }
 
 func (n *node) child(b uint8) *node {
@@ -306,12 +321,12 @@ func (n *node) child(b uint8) *node {
 	}
 }
 
-func (n *node) setChild(b uint8, value *node) {
+func (n *node) setChild(b uint8, child *node) {
 	switch b {
 	case Zero:
-		n.left = value
+		n.left = child
 	case One:
-		n.right = value
+		n.right = child
 	default:
 		panic(fmt.Sprintf("invalid bit %v", b))
 	}
@@ -330,7 +345,8 @@ func neighbor(b uint8) uint8 {
 	}
 }
 
-// hashIntermediateNode updates an interior node's value by H(left || right)
+// hashIntermediateNode updates an interior node's value by
+// H(left.value || right.value)
 func (n *node) hashIntermediateNode() {
 	if n.leaf() {
 		return
@@ -351,9 +367,9 @@ func (n *node) hashIntermediateNode() {
 }
 
 // hashLeaf updates a leaf node's value by
-// H(TreeNonce || LeafIdentifier || depth || index || value )
+// H(TreeNonce || LeafIdentifier || depth || index || dataHash )
 // TreeNonce, LeafIdentifier, depth, and index are fixed-length.
-func (n *node) hashLeaf(value []byte) {
+func (n *node) hashLeaf() {
 	depth := make([]byte, 4)
 	binary.BigEndian.PutUint32(depth, uint32(n.depth))
 
@@ -362,18 +378,20 @@ func (n *node) hashLeaf(value []byte) {
 	h.Write(LeafIdentifier)
 	h.Write(depth)
 	h.Write([]byte(n.bindex))
-	h.Write(value)
+	h.Write(n.dataHash)
 	n.value = h.Sum(nil)
 }
 
 // setLeaf sets the comittment of the leaf node and updates its hash.
-func (n *node) setLeaf(value []byte, bindex string, commitmentTS uint64, depth int) {
+func (n *node) setLeaf(data []byte, bindex string, commitmentTS uint64, depth int) {
 	n.bindex = bindex
 	n.commitmentTS = commitmentTS
 	n.depth = depth
+	dataHash := sha256.Sum256(data)
+	n.dataHash = dataHash[:]
 	n.left = nil
 	n.right = nil
-	n.hashLeaf(value)
+	n.hashLeaf()
 }
 
 // EmptyValue computes the value of an empty leaf as
