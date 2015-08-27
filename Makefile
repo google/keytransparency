@@ -1,4 +1,4 @@
-# Go support for Protocol Buffers - Google's data interchange format
+
 #
 # Copyright 2010 The Go Authors.  All rights reserved.
 # https://github.com/golang/protobuf
@@ -29,15 +29,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
+PROTOINCLUDE ?= /usr/local/include
+
 #include $(GOHOME)/src/pkg/github.com/golang/protobuf/Make.protobuf
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
-OUTPUT:= .
-
-#REPLACE=Mgoogle/protobuf/timestamp.proto=github.com/google/googleapis/google/protobuf
-FLAGS+= --go_out=plugins=grpc,$(REPLACE):$(OUTPUT)
+OUTPUT:= $(GOPATH)/src
+FLAGS+= --go_out=plugins=grpc
 INCLUDES+= -I=.
 INCLUDES+= -I=$(GOPATH)/src/
-INCLUDES+= -I=$(GOPATH)/src/github.com/google/protobuf/src/ # proto descriptor
+INCLUDES+= -I=$(PROTOINCLUDE)
+
 
 main: proto
 	go build -o srv server.go
@@ -46,17 +48,14 @@ test: main
 	go test ./rest ./keyserver ./proxy ./merkle ./builder ./storage
 	python tests/api_proxy_test.py
 
-proto: gapis $(DEPS)
+proto: $(DEPS)
+	mkdir -p $(OUTPUT)
+	protoc $(INCLUDES) $(FLAGS),:$(OUTPUT) $(PROTOINCLUDE)/google/protobuf/*.proto
 
-%.pb.go:  %.proto
-	protoc $(INCLUDES) $(FLAGS) $<
-
-# We depend on the google api proto files
-GAPIS := $(GOPATH)/src/github.com/google/googleapis
-gapis:
-	cd $(GAPIS) && $(MAKE) all LANGUAGE=go OUTPUT=.
+./%.pb.go:  %.proto
+	protoc $(INCLUDES) $(FLAGS),:. $(dir $<)*.proto
 
 clean:
-	rm $(DEPS)
-	cd $(GAPIS) && OUTPUT=. $(MAKE) clean
+	rm $(DEPS) 2> /dev/null
+	rm -r $(OUTPUT)/google/protobuf
 

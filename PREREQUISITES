@@ -17,15 +17,20 @@
 # Preconditions:
 
 # protoc compiler > 2.6.1 from https://github.com/google/protobuf
-apt-get install build-essential
-git clone git@github.com:google/protobuf.git $GOPATH/src/github.com/google/protobuf
-cd $GOPATH/src/github.com/google/protobuf
-./autogen.sh
-./configure
-make
-make check
-make install
-ldconfig
+version=`protoc --version | awk '{printf("%d.%d", $2, $3);};'`
+if [[ "$version" < "3.0" ]]; then
+	echo "protoc --version $version < 3.0."
+	echo "Installing protoc"
+	apt-get install build-essential
+	git clone git@github.com:google/protobuf.git $GOPATH/src/github.com/google/protobuf
+	cd $GOPATH/src/github.com/google/protobuf
+	./autogen.sh
+	./configure
+	make
+	make check
+	make install
+	ldconfig
+fi
 
 # go code gen plugin at https://github.com/golang/protobuf
 go get -u github.com/golang/protobuf/proto
@@ -36,9 +41,7 @@ go get -u golang.org/x/crypto/openpgp
 go get -u google.golang.org/grpc
 
 # Non go packages
-
-# Proto3 types.  Needs to go in $(GOPATH)/src.
-git clone git@github.com:google/googleapis.git $GOPATH/src/github.com/google/googleapis
-ln -s $GOPATH/src/github.com/google/googleapis/google $GOPATH/src/google
+#go get -d github.com/google/protobuf
+#ln -s $GOPATH/src/github.com/google/protobuf/src/google $GOPATH/src/google
 
 #Shell PATH must include $GOPATH/bin
