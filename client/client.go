@@ -102,10 +102,8 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 
 	return &v2pb.UpdateEntryRequest{
 		UserId: userID,
-		Update: &v2pb.EntryUpdateRequest{
-			SignedEntryUpdate: signedEntryUpdateData,
-			Profile:           profileData,
-			ProfileNonce: nonce,
-		},
+		SignedEntryUpdate: signedEntryUpdateData,
+		Profile:           profileData,
+		ProfileNonce: nonce,
 	}, nil
 }
