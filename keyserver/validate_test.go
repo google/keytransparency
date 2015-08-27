@@ -44,20 +44,20 @@ func TestValidateKey(t *testing.T) {
 	}
 }
 
-func TestValidateUpdateUserRequest(t *testing.T) {
+func TestValidateUpdateEntryRequest(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
 	// Use a fake previous entry.
-	previous := &v2pb.EntryProfileAndProof{
-		IndexSignature: &v2pb.UVF{[]byte("Foo")},
+	previous := &v2pb.GetEntryResponse{
+		IndexSignature: []byte("Foo"),
 	}
-	updateUserRequest, err := client.CreateUpdate(primaryUserProfile, primaryUserEmail, previous)
+	updateEntryRequest, err := client.CreateUpdate(primaryUserProfile, primaryUserEmail, previous)
 	if err != nil {
 		t.Fatalf("Failed creating update: %v", err)
 	}
 
-	if err := env.server.validateUpdateUserRequest(env.ctx, updateUserRequest); err != nil {
-		t.Errorf("validateUpdateUserRequest(ctx, %v) = %v", updateUserRequest, err)
+	if err := env.server.validateUpdateEntryRequest(env.ctx, updateEntryRequest); err != nil {
+		t.Errorf("validateUpdateEntryRequest(ctx, %v) = %v", updateEntryRequest, err)
 	}
 }

@@ -44,10 +44,10 @@ func New(client v2pb.E2EKeyServiceClient) *Client {
 	return &Client{client}
 }
 
-func (c *Client) Update(profile *v2pb.Profile, userID string) (*v2pb.UpdateUserRequest, error) {
+func (c *Client) Update(profile *v2pb.Profile, userID string) (*v2pb.UpdateEntryRequest, error) {
 	ctx := context.Background()
-	req := &v2pb.GetUserRequest{UserId: userID}
-	resp, err := c.GetUser(ctx, req)
+	req := &v2pb.GetEntryRequest{UserId: userID}
+	resp, err := c.GetEntry(ctx, req)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Unavailable, "Unable to query server %v", err)
 	}
@@ -55,7 +55,7 @@ func (c *Client) Update(profile *v2pb.Profile, userID string) (*v2pb.UpdateUserR
 	return CreateUpdate(profile, userID, resp)
 }
 
-func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProfileAndProof) (*v2pb.UpdateUserRequest, error) {
+func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryResponse) (*v2pb.UpdateEntryRequest, error) {
 
 	// Construct Profile.
 	profileData, err := proto.Marshal(profile)
@@ -70,10 +70,8 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 	}
 
 	// Get Index
-	if previous.GetIndexSignature() == nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "UVF missing")
-	}
-	index := previous.GetIndexSignature().Vrf
+	// TODO: formally define and fix.
+	index := previous.IndexSignature
 
 	// Construct Entry.
 	commitment, err := common.GenerateProfileCommitment(nonce, profileData)
@@ -102,7 +100,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.EntryProf
 		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected SignedEntryUpdate marshalling error: %v", err)
 	}
 
-	return &v2pb.UpdateUserRequest{
+	return &v2pb.UpdateEntryRequest{
 		UserId: userID,
 		Update: &v2pb.EntryUpdateRequest{
 			SignedEntryUpdate: signedEntryUpdateData,

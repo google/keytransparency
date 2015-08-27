@@ -167,16 +167,16 @@ func (env *Env) Close() {
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {
-	updateUserRequest, err := env.Client.Update(primaryUserProfile, primaryUserEmail)
+	updateEntryRequest, err := env.Client.Update(primaryUserProfile, primaryUserEmail)
 	if err != nil {
 		t.Fatalf("Error creating update request: %v", err)
 	}
 
 	// Insert valid user. Calling update if the user does not exist will
 	// insert the user's profile.
-	_, err = env.Client.UpdateUser(env.ctx, updateUserRequest)
+	_, err = env.Client.UpdateEntry(env.ctx, updateEntryRequest)
 	if err != nil {
-		t.Errorf("CreateUser got unexpected error %v.", err)
+		t.Errorf("CreateEntry got unexpected error %v.", err)
 		return
 	}
 }
@@ -193,7 +193,7 @@ func TestGetNonExistantUser(t *testing.T) {
 	defer env.Close()
 
 	ctx := context.Background() // Unauthenticated request.
-	resp, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: "nobody"})
+	resp, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: "nobody"})
 	if err != nil {
 		t.Fatalf("Query for nonexistant failed %v", err)
 	}
@@ -214,10 +214,10 @@ func TestGetValidUser(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetUser(ctx, &v2pb.GetUserRequest{UserId: primaryUserEmail})
+	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: primaryUserEmail})
 
 	if err != nil {
-		t.Fatalf("GetUser failed: %v", err)
+		t.Fatalf("GetEntry failed: %v", err)
 	}
 
 	// Unmarshaling the resulted profile.
@@ -228,7 +228,7 @@ func TestGetValidUser(t *testing.T) {
 
 	// Verify profile commitment.
 	if err := common.VerifyProfileCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment); err != nil {
-		t.Errorf("GetUser profile commitment verification failed: %v", err)
+		t.Errorf("GetEntry profile commitment verification failed: %v", err)
 	}
 
 	if got, want := len(p.GetKeys()), 1; got != want {
@@ -236,7 +236,7 @@ func TestGetValidUser(t *testing.T) {
 		return
 	}
 	if got, want := p.GetKeys(), primaryKeys; !reflect.DeepEqual(got, want) {
-		t.Errorf("GetUser(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
+		t.Errorf("GetEntry(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
 	}
 }
 
@@ -252,7 +252,7 @@ func TestUnimplemented(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"ListUserHistory", getErr(env.Client.ListUserHistory(env.ctx, &v2pb.ListUserHistoryRequest{}))},
+		{"ListEntryHistory", getErr(env.Client.ListEntryHistory(env.ctx, &v2pb.ListEntryHistoryRequest{}))},
 		{"ListSEH", getErr(env.Client.ListSEH(env.ctx, &v2pb.ListSEHRequest{}))},
 		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &v2pb.ListUpdateRequest{}))},
 		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &v2pb.ListStepsRequest{}))},
@@ -273,7 +273,7 @@ func TestUnauthenticated(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"UpdateUser", getErr(env.Client.UpdateUser(env.ctx, &v2pb.UpdateUserRequest{UserId: "someoneelse"}))},
+		{"UpdateEntry", getErr(env.Client.UpdateEntry(env.ctx, &v2pb.UpdateEntryRequest{UserId: "someoneelse"}))},
 	}
 	for i, test := range tests {
 		if got, want := grpc.Code(test.err), codes.PermissionDenied; got != want {

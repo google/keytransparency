@@ -93,19 +93,19 @@ def main():
   time.sleep(1)
 
   # Start testing.
-  GetUserV1(True)
+  GetEntryV1(True)
   HkpGet(True)
-  GetUserV2(True)
-  #UpdateUserV2()
-  #GetUserV1(False)
+  GetEntryV2(True)
+  #UpdateEntryV2()
+  #GetEntryV1(False)
   #HkpGet(False)
-  #GetUserV2(False)
+  #GetEntryV2(False)
 
   # Kill the server.
   subprocess.Popen(["killall", "srv"])
 
 
-def GetUserV1(empty):
+def GetEntryV1(empty):
   start_time = time.time()
 
   get_api_url = "/v1/users/" + primary_test_email
@@ -168,7 +168,7 @@ def HkpGet(empty):
     print "ok\thkp: get non-empty key\t%.2fs" % (end_time - start_time)
 
 
-def GetUserV2(empty):
+def GetEntryV2(empty):
   start_time = time.time()
 
   get_api_url = "/v2/users/" + primary_test_email
@@ -185,8 +185,6 @@ def GetUserV2(empty):
     if empty:
       # Response includes index_signature
       assert "index_signature" in dict_response
-      # index_signature includes vrf
-      assert "vrf" in dict_response["index_signature"]
     else:
       # Response includes profile.
       assert "profile" in dict_response
@@ -202,7 +200,7 @@ def GetUserV2(empty):
     print "ok\t v2: get non-empty user\t%.2fs" % (end_time - start_time)
 
 
-def UpdateUserV2():
+def UpdateEntryV2():
   start_time = time.time()
 
   update_api_path = "/v2/users/" + primary_test_email

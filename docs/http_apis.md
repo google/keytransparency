@@ -7,7 +7,7 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 
 # V1 APIs
 
-### GetUser
+### GetEntry
 
 * Method: `GET`.
 * URL: `/v1/user/<user_id>`.
@@ -60,7 +60,7 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 
 # V2 APIs
 
-### GetUser
+### GetEntry
 
 * Method: `GET`.
 * URL: `/v2/user/<user_id>`.
@@ -68,7 +68,7 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
   * `epoch`: contains the epoch in which the user profile is requested.
   * `app_id`: allows filtering the profile based on a specific application ID.
 * Body: empty.
-* Response: JSON body containing `EntryProfileAndProof` proto.
+* Response: JSON body containing `GetEntryResponse` proto.
 * Requirements: input parameters are not required, anything missing is handled by the key server. The following behavior is currently implemented by the server:
   * missing `epoch`: use the current epoch.
   * missing `app_id`: do not apply application-based filtering of keys.
@@ -81,20 +81,20 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
     * index cannot be processed,
     * or unmarshalling results in any error.
 
-### UpdateUser
+### UpdateEntry
 
 * Method: `PUT`.
 * URL: `/v2/user/<user_id>`.
 * Query String: none.
-* Body: JSON body containing `UpdateUserRequest` proto.
+* Body: JSON body containing `UpdateEntryRequest` proto.
 * Response: empty proto.
-* Requirements: all fields of the input `UpdateUserRequest` proto are not checked for existence by the HTTP proxy. Any requirement is enforced by the key server. The following behavior is implemented by the server:
+* Requirements: all fields of the input `UpdateEntryRequest` proto are not checked for existence by the HTTP proxy. Any requirement is enforced by the key server. The following behavior is implemented by the server:
   * short or missing `profile_nonce`: results in `http.StatusBadRequest` error.
 * Errors:
   * `http.StatusBadRequest`: if:
     * profile nonce is not valid, e.g. shorter than the required minimum.
 
-### ListUserHistory
+### ListEntryHistory
 
 * Method: `GET`.
 * URL: `/v2/user/<user_id>/history`.
@@ -102,7 +102,7 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
   * `start_epoch`: specifies the start epoch of the history.
   * `page_size`: specifies the maximum number of entries to return.
 * Body: empty.
-* Response: JSON body containing `ListUserHistoryResponse` proto.
+* Response: JSON body containing `ListEntryHistoryResponse` proto.
 * Requirements: input parameters are not required, anything missing is handled by the key server. The following behavior is currently implemented by the server:
   * missing `start_epoch`: use the first epoch assuming that the whole history is being requested.
   * missing `page_size`: do not upper bound the number of returned entries.

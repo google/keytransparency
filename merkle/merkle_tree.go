@@ -87,7 +87,7 @@ type node struct {
 func New() *Tree {
 	tree := &Tree{roots: make(map[uint64]*node)}
 	// Initialize the tree with epoch 0 root. This is important because v2
-	// GetUser now queries the tree to read the commitment timestamp of the
+	// GetEntry now queries the tree to read the commitment timestamp of the
 	// user profile in order to read from the database.
 	tree.addRoot(0)
 	return tree

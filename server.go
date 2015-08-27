@@ -37,12 +37,12 @@ var port = flag.Int("port", 8080, "TCP port to listen on")
 // v1Routes contains all routes information for v1 APIs.
 // TODO(cesarghali): find a better way to populate this map.
 var v1Routes = []handlers.RouteInfo{
-	// GetUser API
+	// GetEntry API
 	handlers.RouteInfo{
 		fmt.Sprintf("/v1/users/{%v}", handlers.UserIdKeyword),
 		"GET",
-		rest.GetUserV1_InitializeHandlerInfo,
-		rest.GetUserV1_RequestHandler,
+		rest.GetEntryV1_InitializeHandlerInfo,
+		rest.GetEntryV1_RequestHandler,
 	},
 }
 
@@ -61,26 +61,26 @@ var hkpRoutes = []handlers.RouteInfo{
 // v2Routes contains all routes information for v2 APIs.
 // TODO(cesarghali): find a better way to populate this map.
 var v2Routes = []handlers.RouteInfo{
-	// GetUser API
+	// GetEntry API
 	handlers.RouteInfo{
 		fmt.Sprintf("/v2/users/{%v}", handlers.UserIdKeyword),
 		"GET",
-		rest.GetUserV2_InitializeHandlerInfo,
-		rest.GetUserV2_RequestHandler,
+		rest.GetEntryV2_InitializeHandlerInfo,
+		rest.GetEntryV2_RequestHandler,
 	},
-	// ListUserHistory API
+	// ListEntryHistory API
 	handlers.RouteInfo{
 		fmt.Sprintf("/v2/users/{%v}/history", handlers.UserIdKeyword),
 		"GET",
-		rest.ListUserHistoryV2_InitializeHandlerInfo,
-		rest.ListUserHistoryV2_RequestHandler,
+		rest.ListEntryHistoryV2_InitializeHandlerInfo,
+		rest.ListEntryHistoryV2_RequestHandler,
 	},
-	// UpdateUser API
+	// UpdateEntry API
 	handlers.RouteInfo{
 		fmt.Sprintf("/v2/users/{%v}", handlers.UserIdKeyword),
 		"PUT",
-		rest.UpdateUserV2_InitializeHandlerInfo,
-		rest.UpdateUserV2_RequestHandler,
+		rest.UpdateEntryV2_InitializeHandlerInfo,
+		rest.UpdateEntryV2_RequestHandler,
 	},
 	// ListSEH API
 	handlers.RouteInfo{
