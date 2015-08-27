@@ -15,8 +15,6 @@
 package builder
 
 import (
-	"fmt"
-
 	"github.com/google/e2e-key-server/merkle"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -73,7 +71,7 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 	// Epoch will not advance here (after reading current epoch and before
 	// adding the leaf). This is because the builder will post all storage
 	// entries into the tree and then, advance the epoch.
-	if err := tree.AddLeaf(entryStorage.SignedEntryUpdate, epoch, fmt.Sprintf("%x", index), entryStorage.CommitmentTimestamp); err != nil {
+	if err := tree.AddLeaf(entryStorage.SignedEntryUpdate, epoch, index, entryStorage.CommitmentTimestamp); err != nil {
 		return err
 	}
 

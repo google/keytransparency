@@ -24,6 +24,7 @@ package merkle
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sync"
@@ -55,6 +56,14 @@ var (
 	One = byte('1')
 )
 
+// Note: index has two representation: (1) string which is a bit string
+// representation (a string of '0' and '1' characters), and (2) []byte which is
+// the bytes representation. Internaly, the merkle tree uses representation (2).
+// However, all external tree APIs (exported functions) use represetation (1).
+// Representation (2) is kept in use for ease of implementation and to avoid
+// converting back and forth between the two representations in the internal
+// tree functions.
+
 // Tree holds internal state for the Merkle Tree.
 type Tree struct {
 	roots   map[uint64]*node
@@ -63,13 +72,13 @@ type Tree struct {
 }
 
 type node struct {
-	epoch        uint64               // Epoch for this node.
-	index        string                     // Location in the tree.
+	epoch        uint64 // Epoch for this node.
+	index        string // Location in the tree.
 	commitmentTS uint64 // Commitment timestamp for this node.
-	depth        int                        // Depth of this node. 0 to 256.
-	value        []byte                     // Empty for empty subtrees.
-	left         *node                      // Left node.
-	right        *node                      // Right node.
+	depth        int    // Depth of this node. 0 to 256.
+	value        []byte // Empty for empty subtrees.
+	left         *node  // Left node.
+	right        *node  // Right node.
 }
 
 // New creates and returns a new instance of Tree.
@@ -84,10 +93,10 @@ func New() *Tree {
 
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
 // must be added in chronological order by epoch.
-func (t *Tree) AddLeaf(value []byte, epoch uint64, index string, commitmentTS uint64) error {
+func (t *Tree) AddLeaf(value []byte, epoch uint64, index []byte, commitmentTS uint64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), IndexLen/4; got != want {
+	if got, want := len(index), IndexLen/8; got != want {
 		return grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, err := t.addRoot(epoch)
@@ -99,10 +108,10 @@ func (t *Tree) AddLeaf(value []byte, epoch uint64, index string, commitmentTS ui
 
 // GetLeafCommitmentTimestamp returns a leaf commitment timestamp for a given
 // epoch and index.
-func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index string) (uint64, error) {
+func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index []byte) (uint64, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), IndexLen/4; got != want {
+	if got, want := len(index), IndexLen/8; got != want {
 		return 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
@@ -115,10 +124,10 @@ func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index string) (uint64, e
 
 // AuditPath returns a slice containing the value of the leaf node followed by
 // each node's neighbor from the bottom to the top.
-func (t *Tree) AuditPath(epoch uint64, index string) ([][]byte, error) {
+func (t *Tree) AuditPath(epoch uint64, index []byte) ([][]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), IndexLen/4; got != want {
+	if got, want := len(index), IndexLen/8; got != want {
 		return nil, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
@@ -128,10 +137,11 @@ func (t *Tree) AuditPath(epoch uint64, index string) ([][]byte, error) {
 	return r.auditPath(BitString(index), 0)
 }
 
-// BitString converts a hex prefix into a string of Depth '0' or '1' characters.
-func BitString(index string) string {
+// BitString converts a byte slice index into a string of Depth '0' or '1'
+// characters.
+func BitString(index []byte) string {
 	i := new(big.Int)
-	i.SetString(index, 16)
+	i.SetString(hex.EncodeToString(index), 16)
 	// A 256 character string of bits with leading zeros.
 	return fmt.Sprintf("%0256b", i)
 }
@@ -147,13 +157,11 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 		return t.current, nil
 	}
 	if epoch < t.current.epoch {
-		fmt.Println(t.roots)
 		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want >= %d", epoch, t.current.epoch)
 	}
 
 	for t.current.epoch < epoch {
 		// Copy the root node from the previous epoch.
-		fmt.Println("*******", t.current.epoch)
 		nextEpoch := t.current.epoch + 1
 		t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, t.current.left, t.current.right}
 		t.current = t.roots[nextEpoch]
@@ -258,19 +266,19 @@ func (n *node) getLeafCommitmentTimestamp(index string, depth int) (uint64, erro
 	return n.child(index[depth]).getLeafCommitmentTimestamp(index, depth+1)
 }
 
-func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
+func (n *node) auditPath(index string, depth int) ([][]byte, error) {
 	if depth == maxDepth || n.leaf() {
 		return [][]byte{}, nil
 	}
-	if n.child(bindex[depth]) == nil {
+	if n.child(index[depth]) == nil {
 		return nil, grpc.Errorf(codes.NotFound, "")
 	}
-	deep, err := n.child(bindex[depth]).auditPath(bindex, depth+1)
+	deep, err := n.child(index[depth]).auditPath(index, depth+1)
 	if err != nil {
 		return nil, err
 	}
 
-	b := bindex[depth]
+	b := index[depth]
 	if nbr := n.child(neighbor(b)); nbr != nil {
 		return append(deep, nbr.value), nil
 	}

@@ -50,7 +50,7 @@ func New(storage storage.Storage, tree *merkle.Tree) *Server {
 // this user and that it is the same one being provided to everyone else.
 // GetUser also supports querying past values by setting the epoch field.
 func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.EntryProfileAndProof, error) {
-	vuf, index, err := s.Vuf(in.UserId)
+	index, err := s.Vuf(in.UserId)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
 	}
@@ -65,7 +65,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	if err != nil {
 		if grpc.Code(err) == codes.NotFound {
 			// Return an empty proof.
-			return proofOfAbsence(vuf), nil
+			return proofOfAbsence(index), nil
 		}
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	if err != nil {
 		if grpc.Code(err) == codes.NotFound {
 			// Return an empty proof.
-			return proofOfAbsence(vuf), nil
+			return proofOfAbsence(index), nil
 		}
 		return nil, err
 	}
@@ -99,9 +99,9 @@ func (s *Server) GetUser(ctx context.Context, in *v2pb.GetUserRequest) (*v2pb.En
 	return result, nil
 }
 
-func proofOfAbsence(vuf []byte) *v2pb.EntryProfileAndProof {
+func proofOfAbsence(index []byte) *v2pb.EntryProfileAndProof {
 	return &v2pb.EntryProfileAndProof{
-		IndexSignature: &v2pb.UVF{vuf},
+		IndexSignature: &v2pb.UVF{index},
 	}
 }
 
