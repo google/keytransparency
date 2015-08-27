@@ -16,14 +16,12 @@ package storage
 
 import (
 	"testing"
-
-	"github.com/google/e2e-key-server/common"
 )
 
 func TestAdvance(t *testing.T) {
 	tests := []struct {
 		numOfIncrements int
-		outCommitmentTS common.CommitmentTimestamp
+		outCommitmentTS uint64
 		success         bool
 	}{
 		// Advancing epoch is cumulative.
