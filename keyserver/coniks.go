@@ -18,12 +18,10 @@ package keyserver
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 )
 
 // Vuf is a mock verifiable unpredictable function.
-func (s *Server) Vuf(userID string) ([]byte, string, error) {
+func (s *Server) Vuf(userID string) ([]byte, error) {
 	hUserID := sha256.Sum256([]byte(userID))
-	hexUserID := hex.EncodeToString(hUserID[:])
-	return hUserID[:], hexUserID, nil
+	return hUserID[:], nil
 }
