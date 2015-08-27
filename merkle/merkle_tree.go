@@ -231,6 +231,9 @@ func (n *node) pushDown() error {
 	b := n.bindex[n.depth]
 	n.createBranch(n.bindex)
 	n.child(b).dataHash = n.dataHash
+	// Whenever a node is pushed down, its value must be recalculated.
+	n.child(b).hashLeaf()
+
 	n.bindex = n.bindex[:n.depth] // Convert into an interior node.
 	return nil
 }
