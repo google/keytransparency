@@ -118,9 +118,9 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 
 	e := &corepb.EntryStorage{
 		// CommitmentTimestamp is set by storage.
-		SignedEntryUpdate: in.GetUpdate().SignedEntryUpdate,
-		Profile:     in.GetUpdate().Profile,
-		ProfileNonce: in.GetUpdate().ProfileNonce,
+		SignedEntryUpdate: in.SignedEntryUpdate,
+		Profile:     in.Profile,
+		ProfileNonce: in.ProfileNonce,
 		// TODO(cesarghali): set Domain.
 	}
 

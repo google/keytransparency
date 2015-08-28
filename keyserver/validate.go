@@ -71,23 +71,15 @@ func (s *Server) validateKey(userID, appID string, key []byte) error {
 	return nil
 }
 
+// validateUpdateEntryRequest verifies
+// - Commitment in SignedEntryUpdate maches the serialized profile.
+// - Profile is a valid.
 func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.UpdateEntryRequest) error {
 	// Validate proper authentication.
 	if err := s.validateEmail(ctx, in.UserId); err != nil {
 		return err
 	}
 
-	if err := s.validateEntryUpdateRequest(in.GetUpdate(), in.UserId); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// validateEntryUpdateRequest verifies
-// - Commitment in SignedEntryUpdate maches the serialized profile.
-// - Profile is a valid.
-func (s *Server) validateEntryUpdateRequest(in *v2pb.EntryUpdateRequest, userID string) error {
 	// Verify that the signed_update is a commitment to the profile.
 	seu := new(v2pb.SignedEntryUpdate)
 	if err := proto.Unmarshal(in.SignedEntryUpdate, seu); err != nil {
@@ -114,7 +106,7 @@ func (s *Server) validateEntryUpdateRequest(in *v2pb.EntryUpdateRequest, userID 
 	}
 
 	// Validate the profile.
-	if err := s.validateProfile(p, userID); err != nil {
+	if err := s.validateProfile(p, in.UserId); err != nil {
 		return err
 	}
 	return nil

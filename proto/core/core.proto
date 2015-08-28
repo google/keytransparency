@@ -16,10 +16,6 @@ syntax = "proto3";
 
 package google.security.e2ekeys.core;
 
-option java_package = "com.google.security.e2ekeys.core";
-option java_multiple_files = true;
-option java_outer_classname = "E2EKeysProto";
-
 import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
 
 // Internal types for the End to End Key Server.
