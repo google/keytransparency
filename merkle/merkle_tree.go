@@ -22,7 +22,6 @@
 package merkle
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -195,9 +194,7 @@ func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS ui
 
 	// Base case: we found the first empty sub branch.  Park our data here.
 	if n.empty() {
-		if err := n.setLeaf(data, bindex, commitmentTS, depth); err != nil {
-			return err
-		}
+		n.setLeaf(data, bindex, commitmentTS, depth)
 		return nil
 	}
 	// We reached the bottom of the tree and it wasn't empty.
@@ -238,7 +235,7 @@ func (n *node) pushDown() error {
 	n.createBranch(n.bindex)
 	n.child(b).dataHash = n.dataHash
 	// Whenever a node is pushed down, its value must be recalculated.
-	n.child(b).setLeafValue()
+	n.child(b).updateLeafValue()
 
 	n.bindex = n.bindex[:n.depth] // Convert into an interior node.
 	return nil
@@ -305,10 +302,7 @@ func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
 	if nbr := n.child(neighbor(b)); nbr != nil {
 		return append(deep, nbr.value), nil
 	}
-	value, err := common.EmptyLeafValue(n.bindex+string(neighbor(b)))
-	if err != nil {
-		return nil, err
-	}
+	value := common.EmptyLeafValue(n.bindex+string(neighbor(b)))
 	return append(deep, value), nil
 }
 
@@ -362,54 +356,39 @@ func (n *node) hashIntermediateNode() error {
 		return grpc.Errorf(codes.Internal, "Cannot calcluate the intermediate hash of a leaf node")
 	}
 
-	// Compute left and right node values.
-	left, err := n.left.getValue(n.bindex + string(Zero))
-	if err != nil {
-		return nil
+	// Compute left values.
+	var left []byte
+	if n.left != nil {
+		left = n.left.value
+	} else {
+		left = common.EmptyLeafValue(n.bindex + string(Zero))
 	}
-	right, err := n.right.getValue(n.bindex + string(One))
-	if err != nil {
-		return nil
+
+	// Compute right values.
+	var right []byte
+	if n.right != nil {
+		right = n.right.value
+	} else {
+		right = common.EmptyLeafValue(n.bindex + string(One))
 	}
-	intermediateHash, err := common.HashIntermediateNode(left, right)
-	if err != nil {
-		return err
-	}
-	n.value = intermediateHash
+	n.value = common.HashIntermediateNode(left, right)
 	return nil
 }
 
-// getValue returns the value of the node or an empty value if the node is nil.
-func (n *node) getValue(bindex string) ([]byte, error) {
-	if n != nil {
-		return n.value, nil
-	} else {
-		return common.EmptyLeafValue(bindex)
-	}
-}
-
-// setLeafValue updates a leaf node's value by
+// updateLeafValue updates a leaf node's value by
 // H(TreeNonce || LeafIdentifier || depth || bindex || dataHash )
 // TreeNonce, LeafIdentifier, depth, and bindex are fixed-length.
-func (n *node) setLeafValue() error {
-	depth := make([]byte, 4)
-	binary.BigEndian.PutUint32(depth, uint32(n.depth))
-
-	leafHash, err := common.HashLeaf(common.LeafIdentifier, depth, []byte(n.bindex), n.dataHash)
-	if err != nil {
-		return err
-	}
-	n.value = leafHash
-	return nil
+func (n *node) updateLeafValue() {
+	n.value = common.HashLeaf(common.LeafIdentifier, n.depth, []byte(n.bindex), n.dataHash)
 }
 
 // setLeaf sets the comittment of the leaf node and updates its hash.
-func (n *node) setLeaf(data []byte, bindex string, commitmentTS uint64, depth int) error {
+func (n *node) setLeaf(data []byte, bindex string, commitmentTS uint64, depth int) {
 	n.bindex = bindex
 	n.commitmentTS = commitmentTS
 	n.depth = depth
 	n.dataHash = common.Hash(data)
 	n.left = nil
 	n.right = nil
-	return n.setLeafValue()
+	n.updateLeafValue()
 }

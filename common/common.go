@@ -66,50 +66,32 @@ func VerifyProfileCommitment(nonce []byte, profile []byte, commitment []byte) er
 // HashLeaf calculate the merkle tree leaf node value. This is computed as
 // H(TreeNonce || Identifier || depth || index || dataHash), where TreeNonce,
 // Identifier, depth, and index are fixed-length.
-func HashLeaf(identifier []byte, depth []byte, index []byte, dataHash []byte) ([]byte, error) {
+func HashLeaf(identifier []byte, depth int, index []byte, dataHash []byte) []byte {
+	bdepth := make([]byte, 4)
+	binary.BigEndian.PutUint32(bdepth, uint32(depth))
+
 	h := sha256.New()
-	if _, err := h.Write(TreeNonce); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating leaf node hash: %v", err)
-	}
-	if _, err := h.Write(identifier); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating leaf node hash: %v", err)
-	}
-	if _, err := h.Write(depth); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating leaf node hash: %v", err)
-	}
-	if _, err := h.Write(index); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating leaf node hash: %v", err)
-	}
-	if _, err := h.Write(dataHash); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating leaf node hash: %v", err)
-	}
-	return h.Sum(nil), nil
+	h.Write(TreeNonce)
+	h.Write(identifier)
+	h.Write(bdepth)
+	h.Write(index)
+	h.Write(dataHash)
+	return h.Sum(nil)
 }
 
 // HashIntermediateNode calculates an interior node's value by H(left || right)
-func HashIntermediateNode(left []byte, right []byte) ([]byte, error) {
+func HashIntermediateNode(left []byte, right []byte) []byte {
 	h := sha256.New()
-	if _, err := h.Write(left); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating intermediate node hash: %v", err)
-	}
-	if _, err := h.Write(right); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating intermediate node hash: %v", err)
-	}
-	return h.Sum(nil), nil
+	h.Write(left)
+	h.Write(right)
+	return h.Sum(nil)
 }
 
 // EmptyLeafValue computes the value of an empty leaf as
 // H(TreeNonce || EmptyIdentifier || depth || index), where TreeNonce,
 // EmptyIdentifier, depth, and index are fixed-length.
-func EmptyLeafValue(prefix string) ([]byte, error) {
-	depth := make([]byte, 4)
-	binary.BigEndian.PutUint32(depth, uint32(len(prefix)))
-
-	emptyValueHash, err := HashLeaf(EmptyIdentifier, depth, []byte(prefix), nil)
-	if err != nil {
-		return nil, err
-	}
-	return emptyValueHash, nil
+func EmptyLeafValue(prefix string) []byte {
+	return HashLeaf(EmptyIdentifier, len(prefix), []byte(prefix), nil)
 }
 
 // Hash calculates the hash of the given data.

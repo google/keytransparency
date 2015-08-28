@@ -31,7 +31,52 @@ const (
 	testCommitmentTimestamp = 1
 )
 
-var AllZeros = strings.Repeat("0", 256)
+var (
+	AllZeros = strings.Repeat("0", 256)
+	// validTreeLeaves contains valid leaves that will be added to the test
+	// valid tree. All these leaves will be added to the test tree using the
+	// addValidLeaves function.
+	validTreeLeaves = []Leaf{
+		{0, "0000000000000000000000000000000000000000000000000000000000000000", 1},
+		{0, "0000000000000000000000000000000000000000000000000000000000000001", 2},
+		{0, "8000000000000000000000000000000000000000000000000000000000000001", 3},
+		{1, "8000000000000000000000000000000000000000000000000000000000000001", 4},
+		{1, "0000000000000000000000000000000000000000000000000000000000000001", 5},
+	}
+)
+
+type Leaf struct {
+	epoch        uint64
+	hindex       string
+	commitmentTS uint64
+}
+
+type Env struct {
+	m *Tree
+}
+
+func NewEnv(t *testing.T) *Env {
+	m := New()
+	// Adding few leaves with commitment timestamps to the tree.
+	addValidLeaves(t, m)
+
+	return &Env{m}
+}
+
+func addValidLeaves(t *testing.T, m *Tree) {
+	for i, leaf := range validTreeLeaves {
+		index, err := hexToBytes(leaf.hindex)
+		if err != nil {
+			t.Fatalf("Hex decoding of '%v' failed: %v", leaf.hindex, err)
+		}
+		err = m.AddLeaf([]byte{}, leaf.epoch, index, leaf.commitmentTS)
+		if got, want := grpc.Code(err), codes.OK; got != want {
+			t.Fatalf("Leaf[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
+				i, leaf.epoch, leaf.hindex, got, want, err)
+		}
+	}
+}
+
 
 func hexToBytes(s string) ([]byte, error) {
 	result, err := hex.DecodeString(s)
@@ -76,39 +121,6 @@ func TestAddRoot(t *testing.T) {
 		_, err := m.addRoot(test.epoch)
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: addRoot(%v)=%v, want %v", i, test.epoch, got, want)
-		}
-	}
-}
-
-func TestAddLeaf(t *testing.T) {
-	m := New()
-	tests := []struct {
-		epoch uint64
-		hindex string
-		code  codes.Code
-	}{
-		// First insert
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", codes.OK},
-		// Inserting a duplicate in the same epoch should fail.
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", codes.AlreadyExists},
-		// Insert a leaf node with a long shared prefix. Should increase tree depth to max.
-		{0, "0000000000000000000000000000000000000000000000000000000000000001", codes.OK},
-		// Insert a leaf node with a short shared prefix. Should be placed near the root.
-		{0, "8000000000000000000000000000000000000000000000000000000000000001", codes.OK},
-		// Update a leaf node in the next epoch. Should be placed at the same level as the previous epoch.
-		{1, "8000000000000000000000000000000000000000000000000000000000000001", codes.OK},
-		{1, "0000000000000000000000000000000000000000000000000000000000000001", codes.OK},
-		{5, "8000000000000000000000000000000000000000000000000000000000000001", codes.OK},
-	}
-	for i, test := range tests {
-		index, err := hexToBytes(test.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.hindex, err)
-		}
-		err = m.AddLeaf([]byte{}, test.epoch, index, testCommitmentTimestamp)
-		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
-				i, test.epoch, test.hindex, got, want, err)
 		}
 	}
 }
@@ -233,45 +245,34 @@ func TestCreateBranchCOW(t *testing.T) {
 }
 
 func TestAuditDepth(t *testing.T) {
-	m := New()
+	env := NewEnv(t)
+
 	tests := []struct {
-		epoch uint64
-		hindex string
+		leaf  Leaf
 		depth int
 	}{
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", 256},
-		{0, "0000000000000000000000000000000000000000000000000000000000000001", 256},
-		{0, "8000000000000000000000000000000000000000000000000000000000000001", 1},
-		{1, "8000000000000000000000000000000000000000000000000000000000000001", 1},
-		{1, "0000000000000000000000000000000000000000000000000000000000000001", 256},
-	}
-	for i, test := range tests {
-		index, err := hexToBytes(test.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.hindex, err)
-		}
-		err = m.AddLeaf([]byte{}, test.epoch, index, testCommitmentTimestamp)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v",
-				i, test.epoch, test.hindex, got, want)
-		}
+		{validTreeLeaves[0], 256},
+		{validTreeLeaves[1], 256},
+		{validTreeLeaves[2], 1},
+		{validTreeLeaves[3], 1},
+		{validTreeLeaves[4], 256},
 	}
 
 	for i, test := range tests {
-		index, err := hexToBytes(test.hindex)
+		index, err := hexToBytes(test.leaf.hindex)
 		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.hindex, err)
+			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
-		audit, err := m.AuditPath(test.epoch, index)
+		audit, err := env.m.AuditPath(test.leaf.epoch, index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
-				i, test.epoch, test.hindex, got, want)
+				i, test.leaf.epoch, test.leaf.hindex, got, want)
 		}
 		if got, want := len(audit), test.depth; got != want {
 			for j, a := range audit {
 				fmt.Println(j, ": ", a)
 			}
-			t.Errorf("Test[%v]: len(audit(%v, %v))=%v, want %v", i, test.epoch, test.hindex, got, want)
+			t.Errorf("Test[%v]: len(audit(%v, %v))=%v, want %v", i, test.leaf.epoch, test.leaf.hindex, got, want)
 		}
 	}
 }
@@ -315,10 +316,7 @@ func TestAuditNeighors(t *testing.T) {
 			// Starting from the leaf's neighbor, going to the root.
 			depth := len(audit) - j
 			nstr := neighborOf(BitString(index), depth)
-			value, err := common.EmptyLeafValue(nstr)
-			if err != nil {
-				t.Fatalf("Test[%v]: emptyValue failed: %v", i, err)
-			}
+			value := common.EmptyLeafValue(nstr)
 			if got, want := bytes.Equal(audit[j], value), v; got != want {
 				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.hindex, j, got, want)
 			}
@@ -331,49 +329,44 @@ func neighborOf(hindex string, depth int) string {
 }
 
 func TestGetLeafCommitmentTimestamp(t *testing.T) {
-	m := New()
-	// Adding few leaves with commitment timestamps to the tree.
-	addValidLeaves(t, m)
+	env := NewEnv(t)
 
 	// Get commitment timestamps.
 	tests := []struct {
-		epoch           uint64
-		hindex           string
-		outCommitmentTS uint64
-		code            codes.Code
+		leaf Leaf
+		code codes.Code
 	}{
 		// Get commitment timestamps of all added leaves. Ordering doesn't matter
-		{1, "8000000000000000000000000000000000000000000000000000000000000001", 4, codes.OK},
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", 1, codes.OK},
-		{1, "0000000000000000000000000000000000000000000000000000000000000001", 5, codes.OK},
-		{0, "0000000000000000000000000000000000000000000000000000000000000001", 2, codes.OK},
-		{0, "8000000000000000000000000000000000000000000000000000000000000001", 3, codes.OK},
+		{validTreeLeaves[3], codes.OK},
+		{validTreeLeaves[0], codes.OK},
+		{validTreeLeaves[4], codes.OK},
+		{validTreeLeaves[1], codes.OK},
+		{validTreeLeaves[2], codes.OK},
+		// Add custom testing leaves.
 		// Invalid index lengh.
-		{1, "8000", 0, codes.InvalidArgument},
+		{Leaf{1, "8000", 0}, codes.InvalidArgument},
 		// Not found due to missing epoch.
-		{3, "8000000000000000000000000000000000000000000000000000000000000001", 0, codes.NotFound},
+		{Leaf{3, "8000000000000000000000000000000000000000000000000000000000000001", 0}, codes.NotFound},
 		// Not found due to reaching bottom of the tree.
-		{1, "8000000000000000000000000000000000000000000000000000000000000002", 0, codes.NotFound},
+		{Leaf{1, "8000000000000000000000000000000000000000000000000000000000000002", 0}, codes.NotFound},
 		// Not found due to reaching bottom of the tree.
-		{0, "0000000000000000000000000000000000000000000000000000000000000002", 0, codes.NotFound},
+		{Leaf{0, "0000000000000000000000000000000000000000000000000000000000000002", 0}, codes.NotFound},
 	}
 	for i, test := range tests {
-		index, err := hexToBytes(test.hindex)
+		index, err := hexToBytes(test.leaf.hindex)
 		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.hindex, err)
+			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
-		commitmentTS, err := m.GetLeafCommitmentTimestamp(test.epoch, index)
-		if gotc, wantc, gote, wante := commitmentTS, test.outCommitmentTS, grpc.Code(err), test.code; gotc != wantc || gote != wante {
+		commitmentTS, err := env.m.GetLeafCommitmentTimestamp(test.leaf.epoch, index)
+		if gotc, wantc, gote, wante := commitmentTS, test.leaf.commitmentTS, grpc.Code(err), test.code; gotc != wantc || gote != wante {
 			t.Errorf("Test[%v]: GetLeafCommitmentTimestamp(%v, %v)=(%v, %v), want (%v, %v), err = %v",
-				i, test.epoch, test.hindex, gotc, gote, wantc, wante, err)
+				i, test.leaf.epoch, test.leaf.hindex, gotc, gote, wantc, wante, err)
 		}
 	}
 }
 
 func TestGetRootValue(t *testing.T) {
-	m := New()
-	// Adding few leaves with commitment timestamps to the tree.
-	addValidLeaves(t, m)
+	env := NewEnv(t)
 
 	tests := []struct {
 		epoch           uint64
@@ -385,42 +378,10 @@ func TestGetRootValue(t *testing.T) {
 	}
 
 	for i, test := range(tests) {
-		_, err := m.GetRootValue(test.epoch)
+		_, err := env.m.GetRootValue(test.epoch)
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: GetRootValue(%v)=%v, want %v", i, test.epoch,  got, want)
 		}
 	}
 }
 
-func addValidLeaves(t *testing.T, m *Tree) {
-	tests := []struct {
-		epoch        uint64
-		hindex        string
-		commitmentTS uint64
-		code         codes.Code
-	}{
-		// First insert
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", 1, codes.OK},
-		// Insert a leaf node with a long shared prefix. Should increase
-		// tree depth to max.
-		{0, "0000000000000000000000000000000000000000000000000000000000000001", 2, codes.OK},
-		// Insert a leaf node with a short shared prefix. Should be
-		// placed near the root.
-		{0, "8000000000000000000000000000000000000000000000000000000000000001", 3, codes.OK},
-		// Update a leaf node in the next epoch. Should be placed at the
-		// same level as the previous epoch.
-		{1, "8000000000000000000000000000000000000000000000000000000000000001", 4, codes.OK},
-		{1, "0000000000000000000000000000000000000000000000000000000000000001", 5, codes.OK},
-	}
-	for i, test := range tests {
-		index, err := hexToBytes(test.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.hindex, err)
-		}
-		err = m.AddLeaf([]byte{}, test.epoch, index, test.commitmentTS)
-		if got, want := grpc.Code(err), test.code; got != want {
-			t.Fatalf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
-				i, test.epoch, test.hindex, got, want, err)
-		}
-	}
-}
