@@ -88,11 +88,39 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
+	// Get Merkle tree neighbors.
+	neighbors, err := s.tree.AuditPath(epoch, index)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get signed epoch heads.
+	// TODO(cesarghali): currently SEHs are read from the tree. Eventually,
+	//                   once epochs can be created periodically and stored
+	//                   in the database, SEHs should be read from there.
+	//                   For now, we need SEHs to allow verification of
+	//                   merkle tree neighbors.
+	headValue, err := s.tree.GetRootValue(epoch)
+	if err != nil {
+		return nil, err
+	}
+	epochHead := &v2pb.EpochHead{
+		Epoch: epoch,
+		Head: headValue,
+	}
+	timestampedHead := &v2pb.TimestampedEpochHead{Head: epochHead}
+	timestampedHeadData, err := proto.Marshal(timestampedHead)
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Cannot marshal timestamped epoch head")
+	}
+	seh := &v2pb.SignedEpochHead{Head: timestampedHeadData}
+
 	result := &v2pb.GetEntryResponse{
 		Entry:          entry,
 		Profile:        entryStorage.Profile,
 		ProfileNonce: entryStorage.ProfileNonce,
-		//TODO(cesarghali): add Seh
+		MerkleTreeNeighbors: neighbors,
+		Seh: []*v2pb.SignedEpochHead{seh},
 		IndexSignature: index,
 	}
 	return result, nil

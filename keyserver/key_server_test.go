@@ -223,12 +223,12 @@ func TestGetValidUser(t *testing.T) {
 	// Unmarshaling the resulted profile.
 	p := new(v2pb.Profile)
 	if err := proto.Unmarshal(res.Profile, p); err != nil {
-		t.Fatalf("Unexpected profile unmarshalling error %v.", err)
+		t.Fatalf("Unexpected profile unmarshalling error: %v.", err)
 	}
 
 	// Verify profile commitment.
 	if err := common.VerifyProfileCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment); err != nil {
-		t.Errorf("GetEntry profile commitment verification failed: %v", err)
+		t.Errorf("GetUser(%v) profile commitment verification failed: %v", primaryUserEmail, err)
 	}
 
 	if got, want := len(p.GetKeys()), 1; got != want {
@@ -237,6 +237,16 @@ func TestGetValidUser(t *testing.T) {
 	}
 	if got, want := p.GetKeys(), primaryKeys; !reflect.DeepEqual(got, want) {
 		t.Errorf("GetEntry(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
+	}
+
+	// Verify that there's only a single SEH returned.
+	if got, want := len(res.GetSeh()), 1; got != want {
+		t.Errorf("len(GetSeh()) = %v, want; %v", got, want)
+	}
+
+	// Verify merkle tree neighbors.
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, res.GetSeh(), []byte(common.BitString(res.Entry.Index)), res.Entry); err != nil {
+		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
 }
 

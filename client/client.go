@@ -107,3 +107,54 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 		ProfileNonce: nonce,
 	}, nil
 }
+
+// VerifyMerkleTreeProof returns nil if the merkle tree neighbors list is valid
+// and the provided signed epoch head has a valid signature.
+func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, signedHeads []*v2pb.SignedEpochHead, index []byte, entry *v2pb.Entry) error {
+	// Calculate the leaf hashed value. Depth is the length of the neighbors
+	// list.
+	leafValue, err := CalculateLeafValue(len(neighbors), index, entry)
+	if err != nil {
+		return err
+	}
+
+	// TODO(cesarghali): verify SEH signatures.
+
+	// Pick one of the provided signed epoch heads.
+	// TODO(cesarghali): better pick based on key ID.
+	seh := signedHeads[0]
+	headValue, err := common.GetHeadValue(seh)
+	if err != nil {
+		return err
+	}
+
+	// Verify the tree neighbors.
+	if err := common.VerifyMerkleTreeNeighbors(neighbors, headValue, index, leafValue); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CalculateLeafValue calculate the value of a leaf node based on entry.
+func CalculateLeafValue(depth int, index []byte, entry *v2pb.Entry) ([]byte, error) {
+	// Marshal entry.
+	entryData, err := proto.Marshal(entry)
+	if err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected entry marshalling error: %v", err)
+	}
+
+	// Rebuild the signedEntry update given entry. Client should regenerate
+	// the signatures.
+	signedEntryUpdate := &v2pb.SignedEntryUpdate{
+		// TODO(cesarghali): need to add signatures.
+		Entry: entryData,
+	}
+	signedEntryUpdateData, err := proto.Marshal(signedEntryUpdate)
+	if err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected signed entry update marshalling error: %v", err)
+	}
+
+	// Calculate the SignedEntryUpdate hash.
+	dataHash := common.Hash(signedEntryUpdateData)
+	return common.HashLeaf(common.LeafIdentifier, depth, index, dataHash), nil
+}

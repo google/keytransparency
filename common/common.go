@@ -17,17 +17,26 @@
 package common
 
 import (
-	"encoding/binary"
+	"math/big"
+	"fmt"
 	"crypto/hmac"
 	"crypto/sha256"
+	"reflect"
+	"encoding/binary"
+	"encoding/hex"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+
+	proto "github.com/golang/protobuf/proto"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
 const (
 	// HashSize contains the blocksize of the used hash function in bytes.
 	HashSize = sha256.Size
+	// IndexLen is the maximum number of levels in this Merkle Tree.
+	IndexLen = HashSize * 8
 )
 
 var (
@@ -38,6 +47,10 @@ var (
 	LeafIdentifier = []byte("L")
 	// EmptyIdentifier is used while calculating the data of nil sub branches.
 	EmptyIdentifier = []byte("E")
+	// Zero is the value used to represent 0 in the index bit string.
+	Zero = byte('0')
+	// One is the data used to represent 1 in the index bit string.
+	One = byte('1')
 )
 
 // GenerateProfileCommitment calculates and returns the profile commitment based
@@ -98,4 +111,75 @@ func EmptyLeafValue(prefix string) []byte {
 func Hash(data []byte) []byte {
 	dataHash := sha256.Sum256(data)
 	return dataHash[:]
+}
+
+// VerifyMerkleTreeNeighbors verifies a given merkle tree neighbors list. This
+// function first build a partial merkle tree including the path of the leaf
+// node which neighbors list is being verified and value is given in leafValue.
+// Second the function ensures that the calculated head matches the expected
+// once given in expectedHeadValue.
+func VerifyMerkleTreeNeighbors(neighbors [][]byte, expectedHeadValue []byte, index []byte, leafValue []byte) error {
+	if len(neighbors) > IndexLen {
+		return grpc.Errorf(codes.Internal, "List of neighbor must not be longer than %v", IndexLen)
+	}
+
+	// First build the partial merkle tree.
+	calculatedHeadValue, err := buildPartialMerkleTree(neighbors, BitString(index), leafValue)
+	if err != nil {
+		return err
+	}
+
+	// Second verify that the calculated tree head matches the expected one.
+	return verifyTreeHead(expectedHeadValue, calculatedHeadValue)
+}
+
+// buildPartialMerkleTree parially builds merkle tree including the path of the
+// leave node which neighbors list is being verified. buildPartialMerkleTree
+// returns the calculated head value, or error if the build process cannot be
+// completed.
+func buildPartialMerkleTree(neighbors [][]byte, bindex string, value []byte) ([]byte, error) {
+	calculatedHeadValue := value
+	for i, neighbor := range(neighbors) {
+		// index is processed starting from len(neighbors)-1 down to 0.
+		// If the index bit is 0, then neighbor is on the right,
+		// otherwise, neighbor is on the left.
+		b := uint8(bindex[len(neighbors) - 1 - i])
+		switch b {
+		case Zero:
+			calculatedHeadValue = HashIntermediateNode(calculatedHeadValue, neighbor)
+		case One:
+			calculatedHeadValue = HashIntermediateNode(neighbor, calculatedHeadValue)
+		default:
+			return nil, grpc.Errorf(codes.Internal, "Invalid bit %v", b)
+		}
+	}
+	return calculatedHeadValue, nil
+}
+
+// verifyTreeHead ensures that the given expected and calculated head values
+// matches and returns an error otherwise.
+func verifyTreeHead(expectedHeadValue []byte, calculatedHeadValue []byte) error {
+	// Ensure that the head expected value is equal to the computed one.
+	if !reflect.DeepEqual(expectedHeadValue, calculatedHeadValue) {
+		return grpc.Errorf(codes.InvalidArgument, "Invalid merkle tree neighbors list")
+	}
+	return nil
+}
+
+// GetHeadValue returns the head value from signedHead.Head.Head.
+func GetHeadValue(signedHead *v2pb.SignedEpochHead) ([]byte, error) {
+	timestampedHead := new(v2pb.TimestampedEpochHead)
+	if err := proto.Unmarshal(signedHead.Head, timestampedHead); err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal timestamped epoch head")
+	}
+	return timestampedHead.Head.Head, nil
+}
+
+// BitString converts a byte slice index into a string of Depth '0' or '1'
+// characters.
+func BitString(index []byte) string {
+	i := new(big.Int)
+	i.SetString(hex.EncodeToString(index), 16)
+	// A 256 character string of bits with leading zeros.
+	return fmt.Sprintf("%0256b", i)
 }

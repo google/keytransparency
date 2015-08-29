@@ -22,9 +22,7 @@
 package merkle
 
 import (
-	"encoding/hex"
 	"fmt"
-	"math/big"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -33,19 +31,10 @@ import (
 )
 
 const (
-	// IndexLen is the maximum number of levels in this Merkle Tree.
-	IndexLen = common.HashSize * 8
 	// maxDepth is the maximum allowable value of depth.
-	maxDepth = IndexLen
+	maxDepth = common.IndexLen
 	// HashBytes is the number of bytes in each node's value.
 	HashBytes = common.HashSize
-)
-
-var (
-	// Zero is the value used to represent 0 in the index bit string.
-	Zero = byte('0')
-	// One is the data used to represent 1 in the index bit string.
-	One = byte('1')
 )
 
 // Note: index has two representation:
@@ -101,14 +90,14 @@ func New() *Tree {
 func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uint64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), IndexLen/8; got != want {
+	if got, want := len(index), common.IndexLen/8; got != want {
 		return grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, err := t.addRoot(epoch)
 	if err != nil {
 		return err
 	}
-	return r.addLeaf(data, epoch, BitString(index), commitmentTS, 0)
+	return r.addLeaf(data, epoch, common.BitString(index), commitmentTS, 0)
 }
 
 // GetLeafCommitmentTimestamp returns a leaf commitment timestamp for a given
@@ -116,7 +105,7 @@ func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uin
 func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index []byte) (uint64, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), IndexLen/8; got != want {
+	if got, want := len(index), common.IndexLen/8; got != want {
 		return 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
@@ -124,7 +113,7 @@ func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index []byte) (uint64, e
 		return 0, grpc.Errorf(codes.NotFound, "Epoch does not exist")
 	}
 
-	return r.getLeafCommitmentTimestamp(BitString(index), 0)
+	return r.getLeafCommitmentTimestamp(common.BitString(index), 0)
 }
 
 // AuditPath returns a slice containing each node's neighbor from the bottom to
@@ -132,14 +121,14 @@ func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index []byte) (uint64, e
 func (t *Tree) AuditPath(epoch uint64, index []byte) ([][]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), IndexLen/8; got != want {
+	if got, want := len(index), common.IndexLen/8; got != want {
 		return nil, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
 	if !ok {
 		return nil, grpc.Errorf(codes.InvalidArgument, "epoch %v does not exist", epoch)
 	}
-	return r.auditPath(BitString(index), 0)
+	return r.auditPath(common.BitString(index), 0)
 }
 
 // GetRootValue returns the value of the root node in a specific epoch.
@@ -151,15 +140,6 @@ func (t *Tree) GetRootValue(epoch uint64) ([]byte, error) {
 		return nil, grpc.Errorf(codes.NotFound, "Epoch does not exist")
 	}
 	return r.value, nil
-}
-
-// BitString converts a byte slice index into a string of Depth '0' or '1'
-// characters.
-func BitString(index []byte) string {
-	i := new(big.Int)
-	i.SetString(hex.EncodeToString(index), 16)
-	// A 256 character string of bits with leading zeros.
-	return fmt.Sprintf("%0256b", i)
 }
 
 // addRoot will advance the current epoch by copying the previous root.
@@ -200,7 +180,6 @@ func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS ui
 	// We reached the bottom of the tree and it wasn't empty.
 	// Or we found the same node.
 	if depth == maxDepth || n.bindex == bindex {
-		fmt.Println(n)
 		return grpc.Errorf(codes.AlreadyExists, "")
 	}
 	if n.leaf() {
@@ -315,9 +294,9 @@ func (n *node) empty() bool {
 
 func (n *node) child(b uint8) *node {
 	switch b {
-	case Zero:
+	case common.Zero:
 		return n.left
-	case One:
+	case common.One:
 		return n.right
 	default:
 		panic(fmt.Sprintf("invalid bit %v", b))
@@ -327,9 +306,9 @@ func (n *node) child(b uint8) *node {
 
 func (n *node) setChild(b uint8, child *node) {
 	switch b {
-	case Zero:
+	case common.Zero:
 		n.left = child
-	case One:
+	case common.One:
 		n.right = child
 	default:
 		panic(fmt.Sprintf("invalid bit %v", b))
@@ -339,10 +318,10 @@ func (n *node) setChild(b uint8, child *node) {
 // neighbor converts Zero into One and visa versa.
 func neighbor(b uint8) uint8 {
 	switch b {
-	case Zero:
-		return One
-	case One:
-		return Zero
+	case common.Zero:
+		return common.One
+	case common.One:
+		return common.Zero
 	default:
 		panic(fmt.Sprintf("invalid bit %v", b))
 		return 0
@@ -361,7 +340,7 @@ func (n *node) hashIntermediateNode() error {
 	if n.left != nil {
 		left = n.left.value
 	} else {
-		left = common.EmptyLeafValue(n.bindex + string(Zero))
+		left = common.EmptyLeafValue(n.bindex + string(common.Zero))
 	}
 
 	// Compute right values.
@@ -369,7 +348,7 @@ func (n *node) hashIntermediateNode() error {
 	if n.right != nil {
 		right = n.right.value
 	} else {
-		right = common.EmptyLeafValue(n.bindex + string(One))
+		right = common.EmptyLeafValue(n.bindex + string(common.One))
 	}
 	n.value = common.HashIntermediateNode(left, right)
 	return nil

@@ -86,25 +86,6 @@ func hexToBytes(s string) ([]byte, error) {
 	return result, nil
 }
 
-func TestBitString(t *testing.T) {
-	tests := []struct {
-		input  string
-		output string
-	}{
-		{"00", AllZeros},
-	}
-
-	for i, test := range tests {
-		index, err := hexToBytes(test.input)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.input, err)
-		}
-		if got, want := BitString(index), test.output; got != want {
-			t.Errorf("Test[%v]: BitString(%v)=%v, want %v", i, test.input, got, want)
-		}
-	}
-}
-
 func TestAddRoot(t *testing.T) {
 	m := New()
 	tests := []struct {
@@ -201,7 +182,7 @@ func TestPushDown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
 	}
-	n := &node{bindex: BitString(index)}
+	n := &node{bindex: common.BitString(index)}
 	if !n.leaf() {
 		t.Errorf("node without children was a leaf")
 	}
@@ -219,7 +200,7 @@ func TestCreateBranch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
 	}
-	n := &node{bindex: BitString(index)}
+	n := &node{bindex: common.BitString(index)}
 	n.createBranch("0")
 	if n.left == nil {
 		t.Errorf("nil branch after create")
@@ -315,7 +296,7 @@ func TestAuditNeighors(t *testing.T) {
 		for j, v := range test.emptyNeighors {
 			// Starting from the leaf's neighbor, going to the root.
 			depth := len(audit) - j
-			nstr := neighborOf(BitString(index), depth)
+			nstr := neighborOf(common.BitString(index), depth)
 			value := common.EmptyLeafValue(nstr)
 			if got, want := bytes.Equal(audit[j], value), v; got != want {
 				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.hindex, j, got, want)
@@ -385,3 +366,46 @@ func TestGetRootValue(t *testing.T) {
 	}
 }
 
+// TestVerifyTreeNeighbors tests common.VerifyTreeNeighbors in tree environment.
+func TestVerifyTreeNeighbors(t *testing.T) {
+	env := NewEnv(t)
+
+	tests := []struct{
+		leaf Leaf
+	}{
+		{validTreeLeaves[0]},
+		{validTreeLeaves[1]},
+		{validTreeLeaves[2]},
+		{validTreeLeaves[3]},
+		{validTreeLeaves[4]},
+	}
+
+	for i, test := range(tests) {
+		index, err := hexToBytes(test.leaf.hindex)
+		if err != nil {
+			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
+		}
+		// Get tree neighbors.
+		neighbors, err := env.m.AuditPath(test.leaf.epoch, index)
+		if err != nil {
+			t.Fatalf("Calling AuditPath(%v, %v) failed: %v", test.leaf.epoch, test.leaf.hindex, err)
+		}
+
+		// Calculate the leaf hashed value. Since we're adding dummy
+		// leaf nodes, their data is empty.
+		dataHash := common.Hash([]byte{})
+		value := common.HashLeaf(common.LeafIdentifier, len(neighbors), []byte(common.BitString(index)), dataHash)
+
+		// Get the head value.
+		headValue, err := env.m.GetRootValue(test.leaf.epoch)
+		if err != nil {
+			t.Fatalf("Cannot get tree root: %v", err)
+		}
+
+		// Verify the tree neighbors.
+		err = common.VerifyMerkleTreeNeighbors(neighbors, headValue, index, value)
+		if got, want := grpc.Code(err), codes.OK; got != want {
+			t.Errorf("Test[%v]: VerifyMerkleTreeNeighbors=%v, want %v", i,  got, want)
+		}
+	}
+}
