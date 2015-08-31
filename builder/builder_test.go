@@ -43,11 +43,11 @@ type Env struct {
 
 type EntryUpdates struct {
 	// Contains a signed entry update with a short index.
-	invalidIndex []byte
+	invalidIndex *v2pb.SignedEntryUpdate
 	// Contains a signed entry update with invalid entry.
-	invalidEntry []byte
+	invalidEntry *v2pb.SignedEntryUpdate
 	// Contains a valid signed entry update
-	validEntryUpdate []byte
+	validEntryUpdate *v2pb.SignedEntryUpdate
 }
 
 func NewEnv(t *testing.T) *Env {
@@ -64,7 +64,7 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}
-	invalidIndex, _ := proto.Marshal(&v2pb.SignedEntryUpdate{Entry: invalidEntryBytes})
+	invalidIndex := &v2pb.SignedEntryUpdate{Entry: invalidEntryBytes}
 
 	// Generate a signed entry update with an invalid entry. This is done by
 	// using part of the valid entry update in the signed entry update, e.g.
@@ -73,10 +73,10 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}
-	invalidEntry, _ := proto.Marshal(&v2pb.SignedEntryUpdate{Entry: validEntryBytes[1:]})
+	invalidEntry := &v2pb.SignedEntryUpdate{Entry: validEntryBytes[1:]}
 
 	// Generate a valid signed entry update.
-	validEntryUpdate, _ := proto.Marshal(&v2pb.SignedEntryUpdate{Entry: validEntryBytes})
+	validEntryUpdate := &v2pb.SignedEntryUpdate{Entry: validEntryBytes}
 
 	return &EntryUpdates{invalidIndex, invalidEntry, validEntryUpdate}
 }
@@ -85,14 +85,10 @@ func TestPost(t *testing.T) {
 	env := NewEnv(t)
 	m := merkle.New()
 	tests := []struct {
-		entryUpdate []byte
+		entryUpdate *v2pb.SignedEntryUpdate
 		code        codes.Code
 	}{
 		{env.updates.validEntryUpdate, codes.OK},
-		// Taking the first 10 (or any number of, except all) bytes of
-		// the valid entry update simulate a broken entry update that
-		// cannot be unmarshaled.
-		{env.updates.validEntryUpdate[:10], codes.Internal},
 		{env.updates.invalidEntry, codes.Internal},
 		{env.updates.invalidIndex, codes.InvalidArgument},
 	}

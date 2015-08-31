@@ -71,7 +71,7 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 	// Epoch will not advance here (after reading current epoch and before
 	// adding the leaf). This is because the builder will post all storage
 	// entries into the tree and then, advance the epoch.
-	if err := tree.AddLeaf(entryStorage.SignedEntryUpdate, epoch, index, entryStorage.CommitmentTimestamp); err != nil {
+	if err := tree.AddLeaf(entryStorage.GetSignedEntryUpdate().Entry, epoch, index, entryStorage.CommitmentTimestamp); err != nil {
 		return err
 	}
 
@@ -80,14 +80,9 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 
 // index returns the user's index from EntryStorage.SignedEntryUpdate.Entry.Index.
 func index(entryStorage *corepb.EntryStorage) ([]byte, error) {
-	// Unmarshal SignedEntryUpdate.
-	signedUpdate := new(v2pb.SignedEntryUpdate)
-	if err := proto.Unmarshal(entryStorage.SignedEntryUpdate, signedUpdate); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Builder.Build(): Cannot unmarshal SignedEntryUpdate")
-	}
 	// Unmarshal Entry.
 	entry := new(v2pb.Entry)
-	if err := proto.Unmarshal(signedUpdate.Entry, entry); err != nil {
+	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().Entry, entry); err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Builder.Build(): Cannot unmarshal Entry")
 	}
 

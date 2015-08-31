@@ -81,12 +81,8 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 	}
 
 	// Verify that the signed_update is a commitment to the profile.
-	seu := new(v2pb.SignedEntryUpdate)
-	if err := proto.Unmarshal(in.SignedEntryUpdate, seu); err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
-	}
 	entry := new(v2pb.Entry)
-	if err := proto.Unmarshal(seu.Entry, entry); err != nil {
+	if err := proto.Unmarshal(in.GetSignedEntryUpdate().Entry, entry); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
