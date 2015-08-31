@@ -17,9 +17,11 @@
 package common
 
 import (
-	"encoding/binary"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/binary"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,6 +30,10 @@ import (
 const (
 	// HashSize contains the blocksize of the used hash function in bytes.
 	HashSize = sha256.Size
+
+	// commitmentKeyLen is the number of bytes required to be in the
+	// profile commitment.
+	commitmentKeyLen = 16
 )
 
 var (
@@ -40,24 +46,25 @@ var (
 	EmptyIdentifier = []byte("E")
 )
 
-// GenerateProfileCommitment calculates and returns the profile commitment based
-// on the provided nonce. Commitment is HMAC(profile, nonce).
-func GenerateProfileCommitment(nonce []byte, profile []byte) ([]byte, error) {
-	mac := hmac.New(sha256.New, nonce)
-	if _, err := mac.Write(profile); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while generating profile commitment: %v", err)
+// Commitment returns the commitment key and the profile commitment
+func Commitment(profile []byte) ([]byte, []byte, error) {
+	// Generate commitment key.
+	key := make([]byte, commitmentKeyLen)
+	if _, err := rand.Read(key); err != nil {
+		return nil, nil, grpc.Errorf(codes.Internal, "Error generating key: %v", err)
 	}
-	return mac.Sum(nil), nil
+
+	mac := hmac.New(sha512.New, key)
+	mac.Write(profile)
+	return key, mac.Sum(nil), nil
 }
 
-// VerifyProfileCommitment returns nil if the profile commitment using the
-// nonce matches the provided commitment, and error otherwise.
-func VerifyProfileCommitment(nonce []byte, profile []byte, commitment []byte) error {
-	expectedCommitment, err := GenerateProfileCommitment(nonce, profile)
-	if err != nil {
-		return err
-	}
-	if !hmac.Equal(expectedCommitment, commitment) {
+// VerifyCommitment returns nil if the profile commitment using the
+// key matches the provided commitment, and error otherwise.
+func VerifyCommitment(key []byte, profile []byte, commitment []byte) error {
+	mac := hmac.New(sha512.New, key)
+	mac.Write(profile)
+	if !hmac.Equal(mac.Sum(nil), commitment) {
 		return grpc.Errorf(codes.InvalidArgument, "Invalid profile commitment")
 	}
 	return nil
@@ -96,6 +103,7 @@ func EmptyLeafValue(prefix string) []byte {
 
 // Hash calculates the hash of the given data.
 func Hash(data []byte) []byte {
-	dataHash := sha256.Sum256(data)
-	return dataHash[:]
+	h := sha256.New()
+	h.Write(data)
+	return h.Sum(nil)
 }

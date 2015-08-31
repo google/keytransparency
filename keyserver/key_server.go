@@ -30,17 +30,17 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	store  storage.Storage
-	auth auth.Authenticator
-	tree *merkle.Tree
+	store storage.Storage
+	auth  auth.Authenticator
+	tree  *merkle.Tree
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
 func New(storage storage.Storage, tree *merkle.Tree) *Server {
 	srv := &Server{
-		store:  storage,
-		auth: auth.New(),
-		tree: tree,
+		store: storage,
+		auth:  auth.New(),
+		tree:  tree,
 	}
 	return srv
 }
@@ -85,8 +85,8 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	}
 
 	result := &v2pb.GetEntryResponse{
-		Entry:          entry,
-		Profile:        entryStorage.Profile,
+		Entry:        entry,
+		Profile:      entryStorage.Profile,
 		ProfileNonce: entryStorage.ProfileNonce,
 		//TODO(cesarghali): add Seh
 		IndexSignature: index,
@@ -115,8 +115,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 	e := &corepb.EntryStorage{
 		// CommitmentTimestamp is set by storage.
 		SignedEntryUpdate: in.GetSignedEntryUpdate(),
-		Profile:     in.Profile,
-		ProfileNonce: in.ProfileNonce,
+		Profile:           in.Profile,
+		ProfileNonce:      in.ProfileNonce,
 		// TODO(cesarghali): set Domain.
 	}
 

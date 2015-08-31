@@ -27,9 +27,9 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"github.com/google/e2e-key-server/common"
 )
 
 const (
@@ -302,7 +302,7 @@ func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
 	if nbr := n.child(neighbor(b)); nbr != nil {
 		return append(deep, nbr.value), nil
 	}
-	value := common.EmptyLeafValue(n.bindex+string(neighbor(b)))
+	value := common.EmptyLeafValue(n.bindex + string(neighbor(b)))
 	return append(deep, value), nil
 }
 
