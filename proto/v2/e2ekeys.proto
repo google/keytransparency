@@ -213,9 +213,9 @@ message ListEntryHistoryResponse {
 message UpdateEntryRequest {
   // The User to update.
   string user_id = 1;
-  // signed_update contains a serialized SignedEntryUpdate and authorizes the
+  // signed_update contains a SignedEntryUpdate proto and authorizes the
   // change to profile.
-  bytes signed_entry_update = 2;
+  SignedEntryUpdate signed_entry_update = 2;
   // profile is the serialized protobuf Profile.
   // profile is private and must not be released to verifiers.
   bytes profile = 3;

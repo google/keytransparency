@@ -95,14 +95,10 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 		// TODO: Apply Signatures.
 		Entry: entryData,
 	}
-	signedEntryUpdateData, err := proto.Marshal(signedEntryUpdate)
-	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected SignedEntryUpdate marshalling error: %v", err)
-	}
 
 	return &v2pb.UpdateEntryRequest{
 		UserId: userID,
-		SignedEntryUpdate: signedEntryUpdateData,
+		SignedEntryUpdate: signedEntryUpdate,
 		Profile:           profileData,
 		ProfileNonce: nonce,
 	}, nil

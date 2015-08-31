@@ -78,13 +78,9 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		return nil, err
 	}
 
-	seu := new(v2pb.SignedEntryUpdate)
+	// Unmarshal entry.
 	entry := new(v2pb.Entry)
-
-	if err := proto.Unmarshal(entryStorage.SignedEntryUpdate, seu); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal signed_entry_update")
-	}
-	if err := proto.Unmarshal(seu.Entry, entry); err != nil {
+	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().Entry, entry); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
@@ -146,7 +142,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 
 	e := &corepb.EntryStorage{
 		// CommitmentTimestamp is set by storage.
-		SignedEntryUpdate: in.SignedEntryUpdate,
+		SignedEntryUpdate: in.GetSignedEntryUpdate(),
 		Profile:     in.Profile,
 		ProfileNonce: in.ProfileNonce,
 		// TODO(cesarghali): set Domain.
