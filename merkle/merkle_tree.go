@@ -30,11 +30,13 @@ import (
 	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+
+	cm "github.com/google/e2e-key-server/common/merkle"
 )
 
 const (
 	// maxDepth is the maximum allowable value of depth.
-	maxDepth = common.IndexLen
+	maxDepth = cm.IndexLen
 )
 
 var (
@@ -110,7 +112,7 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 
 	// Add all neighbors to the partial tree.
 	for i, v := range(neighbors) {
-		if got, want := len(v), common.HashSize; got != want {
+		if got, want := len(v), cm.HashSize; got != want {
 			return nil, grpc.Errorf(codes.InvalidArgument, "len(v) = %v, want %v", got, want)
 		}
 
@@ -131,7 +133,7 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uint64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), common.IndexLen/8; got != want {
+	if got, want := len(index), cm.IndexLen/8; got != want {
 		return grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, err := t.addRoot(epoch)
@@ -146,7 +148,7 @@ func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uin
 func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index []byte) (uint64, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), common.IndexLen/8; got != want {
+	if got, want := len(index), cm.IndexLen/8; got != want {
 		return 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
@@ -162,7 +164,7 @@ func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index []byte) (uint64, e
 func (t *Tree) AuditPath(epoch uint64, index []byte) ([][]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), common.IndexLen/8; got != want {
+	if got, want := len(index), cm.IndexLen/8; got != want {
 		return nil, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
@@ -322,7 +324,7 @@ func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
 	if nbr := n.child(neighbor(b)); nbr != nil {
 		return append(deep, nbr.value), nil
 	}
-	value := common.EmptyLeafValue(n.bindex + string(neighbor(b)))
+	value := cm.EmptyLeafValue(n.bindex + string(neighbor(b)))
 	return append(deep, value), nil
 }
 
@@ -381,7 +383,7 @@ func (n *node) hashIntermediateNode() error {
 	if n.left != nil {
 		left = n.left.value
 	} else {
-		left = common.EmptyLeafValue(n.bindex + string(zero))
+		left = cm.EmptyLeafValue(n.bindex + string(zero))
 	}
 
 	// Compute right values.
@@ -389,9 +391,9 @@ func (n *node) hashIntermediateNode() error {
 	if n.right != nil {
 		right = n.right.value
 	} else {
-		right = common.EmptyLeafValue(n.bindex + string(one))
+		right = cm.EmptyLeafValue(n.bindex + string(one))
 	}
-	n.value = common.HashIntermediateNode(left, right)
+	n.value = cm.HashIntermediateNode(left, right)
 	return nil
 }
 
@@ -399,7 +401,7 @@ func (n *node) hashIntermediateNode() error {
 // H(TreeNonce || LeafIdentifier || depth || bindex || dataHash )
 // TreeNonce, LeafIdentifier, depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
-	n.value = common.HashLeaf(common.LeafIdentifier, n.depth, []byte(n.bindex), n.dataHash)
+	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), n.dataHash)
 }
 
 // setNode sets the comittment of the leaf node and updates its hash.
