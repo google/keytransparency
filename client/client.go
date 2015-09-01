@@ -17,8 +17,6 @@
 package client
 
 import (
-	"crypto/rand"
-
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -27,12 +25,6 @@ import (
 	"github.com/google/e2e-key-server/merkle"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
-)
-
-const (
-	// nonceBytes is the number of bytes to use as the nonce in the profile
-	// commitment.
-	nonceBytes = 16
 )
 
 // Client is a helper library for issuing updates to the key server.
@@ -64,18 +56,12 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected profile marshalling error: %v", err)
 	}
 
-	// Generate nonce.
-	nonce := make([]byte, nonceBytes)
-	if _, err := rand.Read(nonce); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error generating nonce: %v", err)
-	}
-
 	// Get Index
 	// TODO: formally define and fix.
 	index := previous.IndexSignature
 
 	// Construct Entry.
-	commitment, err := common.GenerateProfileCommitment(nonce, profileData)
+	commitmentKey, commitment, err := common.Commitment(profileData)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error generating profile commitment: %v", err)
 	}
@@ -98,10 +84,10 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 	}
 
 	return &v2pb.UpdateEntryRequest{
-		UserId: userID,
+		UserId:            userID,
 		SignedEntryUpdate: signedEntryUpdate,
 		Profile:           profileData,
-		ProfileNonce: nonce,
+		ProfileNonce:      commitmentKey,
 	}, nil
 }
 

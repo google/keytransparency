@@ -15,16 +15,16 @@
 package merkle
 
 import (
-	"encoding/hex"
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
 
+	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"github.com/google/e2e-key-server/common"
 )
 
 const (
@@ -76,7 +76,6 @@ func addValidLeaves(t *testing.T, m *Tree) {
 		}
 	}
 }
-
 
 func hexToBytes(s string) ([]byte, error) {
 	result, err := hex.DecodeString(s)
@@ -262,7 +261,7 @@ func TestAuditNeighors(t *testing.T) {
 	m := New()
 	tests := []struct {
 		epoch         uint64
-		hindex         string
+		hindex        string
 		emptyNeighors []bool
 	}{
 		{0, "0000000000000000000000000000000000000000000000000000000000000000", []bool{}},
@@ -350,18 +349,18 @@ func TestGetRootValue(t *testing.T) {
 	env := NewEnv(t)
 
 	tests := []struct {
-		epoch           uint64
-		code            codes.Code
+		epoch uint64
+		code  codes.Code
 	}{
 		{0, codes.OK},
 		{1, codes.OK},
 		{5, codes.NotFound},
 	}
 
-	for i, test := range(tests) {
+	for i, test := range tests {
 		_, err := env.m.GetRootValue(test.epoch)
 		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("Test[%v]: GetRootValue(%v)=%v, want %v", i, test.epoch,  got, want)
+			t.Errorf("Test[%v]: GetRootValue(%v)=%v, want %v", i, test.epoch, got, want)
 		}
 	}
 }

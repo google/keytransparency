@@ -33,14 +33,14 @@ import (
 )
 
 const (
-	validTs             = "2015-05-18T23:58:36.000Z"
-	invalidTs           = "Mon May 18 23:58:36 UTC 2015"
-	tsSeconds           = 1431993516
-	primaryTestEpoch    = "2367"
-	primaryTestPageSize = "653"
+	validTs                        = "2015-05-18T23:58:36.000Z"
+	invalidTs                      = "Mon May 18 23:58:36 UTC 2015"
+	tsSeconds                      = 1431993516
+	primaryTestEpoch               = "2367"
+	primaryTestPageSize            = "653"
 	primaryTestCommitmentTimestamp = "8626"
-	primaryUserEmail    = "e2eshare.test@gmail.com"
-	primaryTestAppId    = "gmail"
+	primaryUserEmail               = "e2eshare.test@gmail.com"
+	primaryTestAppId               = "gmail"
 )
 
 type fakeJSONParserReader struct {

@@ -182,17 +182,17 @@ func TestAppIDFiltering(t *testing.T) {
 	ctx := context.Background() // Unauthenticated request.
 
 	tests := []struct {
-		appID string
+		appID        string
 		outKeysCount int
-		keyExists bool
-		key []byte
-		code codes.Code
+		keyExists    bool
+		key          []byte
+		code         codes.Code
 	}{
 		{primaryAppId, 1, true, primaryUserKeyRing, codes.OK},
 		{"gmail", 0, false, nil, codes.OK},
 	}
 
-	for i, test := range(tests) {
+	for i, test := range tests {
 		res, err := env.ClientV1.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: primaryUserEmail, AppId: test.appID})
 
 		if got, want := grpc.Code(err), test.code; got != want {

@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/e2e-key-server/common"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"github.com/google/e2e-key-server/common"
 
 	proto "github.com/golang/protobuf/proto"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
@@ -33,8 +33,8 @@ import (
 // Maximum period of time to allow between CreationTime and server time.
 const (
 	MaxClockDrift = 5 * time.Minute
-	PGPAppID = "pgp"
-	MinNonceLen = 16
+	PGPAppID      = "pgp"
+	MinNonceLen   = 16
 )
 
 var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
@@ -97,7 +97,7 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 	}
 
 	// Verify profile nonce.
-	if err := common.VerifyProfileCommitment(in.ProfileNonce, in.Profile, entry.ProfileCommitment); err != nil {
+	if err := common.VerifyCommitment(in.ProfileNonce, in.Profile, entry.ProfileCommitment); err != nil {
 		return err
 	}
 

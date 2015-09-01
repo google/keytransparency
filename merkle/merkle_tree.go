@@ -25,9 +25,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/e2e-key-server/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"github.com/google/e2e-key-server/common"
 )
 
 const (
@@ -39,6 +39,12 @@ const (
 	isNeighbor = 2
 )
 
+var (
+	// zero is the value used to represent 0 in the index bit string.
+	zero = byte('0')
+	// one is the data used to represent 1 in the index bit string.
+	one = byte('1')
+)
 // Note: index has two representation:
 //  (1) string which is a bit string representation (a string of '0' and '1'
 //      characters). In this case, the variable name is bindex. Internaly, the
@@ -320,7 +326,7 @@ func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
 	if nbr := n.child(neighbor(b)); nbr != nil {
 		return append(deep, nbr.value), nil
 	}
-	value := common.EmptyLeafValue(n.bindex+string(neighbor(b)))
+	value := common.EmptyLeafValue(n.bindex + string(neighbor(b)))
 	return append(deep, value), nil
 }
 
@@ -333,9 +339,9 @@ func (n *node) empty() bool {
 
 func (n *node) child(b uint8) *node {
 	switch b {
-	case common.Zero:
+	case zero:
 		return n.left
-	case common.One:
+	case one:
 		return n.right
 	default:
 		panic(fmt.Sprintf("invalid bit %v", b))
@@ -345,9 +351,9 @@ func (n *node) child(b uint8) *node {
 
 func (n *node) setChild(b uint8, child *node) {
 	switch b {
-	case common.Zero:
+	case zero:
 		n.left = child
-	case common.One:
+	case one:
 		n.right = child
 	default:
 		panic(fmt.Sprintf("invalid bit %v", b))
@@ -357,10 +363,10 @@ func (n *node) setChild(b uint8, child *node) {
 // neighbor converts Zero into One and visa versa.
 func neighbor(b uint8) uint8 {
 	switch b {
-	case common.Zero:
-		return common.One
-	case common.One:
-		return common.Zero
+	case zero:
+		return one
+	case one:
+		return zero
 	default:
 		panic(fmt.Sprintf("invalid bit %v", b))
 		return 0
@@ -379,7 +385,7 @@ func (n *node) hashIntermediateNode() error {
 	if n.left != nil {
 		left = n.left.value
 	} else {
-		left = common.EmptyLeafValue(n.bindex + string(common.Zero))
+		left = common.EmptyLeafValue(n.bindex + string(zero))
 	}
 
 	// Compute right values.
@@ -387,7 +393,7 @@ func (n *node) hashIntermediateNode() error {
 	if n.right != nil {
 		right = n.right.value
 	} else {
-		right = common.EmptyLeafValue(n.bindex + string(common.One))
+		right = common.EmptyLeafValue(n.bindex + string(one))
 	}
 	n.value = common.HashIntermediateNode(left, right)
 	return nil

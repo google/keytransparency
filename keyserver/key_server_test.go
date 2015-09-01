@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
-	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/client"
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -227,8 +227,8 @@ func TestGetValidUser(t *testing.T) {
 	}
 
 	// Verify profile commitment.
-	if err := common.VerifyProfileCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment); err != nil {
-		t.Errorf("GetUser(%v) profile commitment verification failed: %v", primaryUserEmail, err)
+	if err := common.VerifyCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment); err != nil {
+		t.Errorf("GetEntry profile commitment verification failed: %v", err)
 	}
 
 	if got, want := len(p.GetKeys()), 1; got != want {
