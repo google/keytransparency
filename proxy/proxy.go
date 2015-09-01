@@ -61,7 +61,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	// GetEntryResponse.
 	profile := new(v2pb.Profile)
 	if err := proto.Unmarshal(result.Profile, profile); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Provided profile cannot be parsed")
+		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
 	}
 
 	// Application-specific keys filtering only if app ID is provided.
@@ -131,11 +131,11 @@ func armorKey(key []byte) ([]byte, error) {
 	armoredKey := bytes.NewBuffer(nil)
 	w, err := armor.Encode(armoredKey, openpgp.PublicKeyType, nil)
 	if err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.Internal, "Cannot create HKP key armor encoder")
 	}
 	_, err = w.Write(key)
 	if err != nil {
-		return nil, err
+		return nil, grpc.Errorf(codes.Internal, "Cannot armor HKP key")
 	}
 	w.Close()
 	return armoredKey.Bytes(), nil
