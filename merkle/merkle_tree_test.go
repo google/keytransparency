@@ -93,14 +93,16 @@ func TestAddRoot(t *testing.T) {
 		epoch uint64
 		code  codes.Code
 	}{
-		{10, codes.OK},
-		{10, codes.OK},
-		{11, codes.OK},
+		{0, codes.OK},
+		{1, codes.OK},
+		{2, codes.OK},
+		{3, codes.OK},
+		{3, codes.OK},
+		{1, codes.FailedPrecondition},
 		{10, codes.FailedPrecondition},
-		{12, codes.OK},
 	}
 	for i, test := range tests {
-		_, err := m.addRoot(test.epoch)
+		err := m.AddRoot(test.epoch)
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: addRoot(%v)=%v, want %v", i, test.epoch, got, want)
 		}
