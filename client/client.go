@@ -17,6 +17,8 @@
 package client
 
 import (
+	"crypto/hmac"
+
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -93,28 +95,22 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 
 // VerifyMerkleTreeProof returns nil if the merkle tree neighbors list is valid
 // and the provided signed epoch head has a valid signature.
-func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, signedHeads []*v2pb.SignedEpochHead, index []byte, entry []byte) error {
-	m, err := merkle.BuildExpectedTree(neighbors, index, entry)
+func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedHead []byte, index []byte, entry []byte) error {
+	m, err := merkle.FromNeighbors(neighbors, index, entry)
 	if err != nil {
 		return grpc.Errorf(codes.Internal, "Unexpected building expected tree error: %v", err)
 	}
 
-	// TODO(cesarghali): verify SEH signatures.
-
-	// Pick one of the provided signed epoch heads.
-	// TODO(cesarghali): better pick based on key ID.
-	seh := signedHeads[0]
-	expectedHeadValue, err := common.GetHeadValue(seh)
+	// Get calculated head value.
+	calculatedHead, err := m.Root(0)
 	if err != nil {
 		return err
 	}
 
-	// Get calculated head value.
-	calculatedHeadValue := m.GetRecentRootValue()
-
 	// Verify the built tree head is as expected.
-	if err := common.InspectHead(expectedHeadValue, calculatedHeadValue); err != nil {
-		return err
+	if got, want := hmac.Equal(expectedHead, calculatedHead), true; got != want {
+		return grpc.Errorf(codes.InvalidArgument, "Invalid merkle tree neighbors list")
 	}
+
 	return nil
 }

@@ -96,27 +96,17 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	//                   in the database, SEHs should be read from there.
 	//                   For now, we need SEHs to allow verification of
 	//                   merkle tree neighbors.
-	headValue, err := s.tree.GetRootValue(epoch)
+	seh, err := s.signedEpochHeads(epoch)
 	if err != nil {
 		return nil, err
 	}
-	epochHead := &v2pb.EpochHead{
-		Epoch: epoch,
-		Head: headValue,
-	}
-	timestampedHead := &v2pb.TimestampedEpochHead{Head: epochHead}
-	timestampedHeadData, err := proto.Marshal(timestampedHead)
-	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot marshal timestamped epoch head")
-	}
-	seh := &v2pb.SignedEpochHead{Head: timestampedHeadData}
 
 	result := &v2pb.GetEntryResponse{
 		Entry:        entry,
 		Profile:      entryStorage.Profile,
 		ProfileNonce: entryStorage.ProfileNonce,
 		MerkleTreeNeighbors: neighbors,
-		Seh: []*v2pb.SignedEpochHead{seh},
+		Seh: seh,
 		IndexSignature: index,
 	}
 	return result, nil
@@ -170,4 +160,26 @@ func (s *Server) ListUpdate(ctx context.Context, in *v2pb.ListUpdateRequest) (*v
 // ListSteps combines SEH and SignedEntryUpdates into single list.
 func (s *Server) ListSteps(ctx context.Context, in *v2pb.ListStepsRequest) (*v2pb.ListStepsResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
+}
+
+// TODO: This function will eventually be deleted and replaced by an object that
+//       with a channel that is filled by the database whenever an epoch head is
+//       signed.
+func (s *Server) signedEpochHeads(epoch uint64) ([]*v2pb.SignedEpochHead, error) {
+	headValue, err := s.tree.Root(epoch)
+	if err != nil {
+		return nil, err
+	}
+	epochHead := &v2pb.EpochHead{
+		Epoch: epoch,
+		Head: headValue,
+	}
+	timestampedHead := &v2pb.TimestampedEpochHead{Head: epochHead}
+	timestampedHeadData, err := proto.Marshal(timestampedHead)
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Cannot marshal timestamped epoch head")
+	}
+	seh := &v2pb.SignedEpochHead{Head: timestampedHeadData}
+
+	return []*v2pb.SignedEpochHead{seh}, nil
 }

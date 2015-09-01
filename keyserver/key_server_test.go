@@ -239,17 +239,28 @@ func TestGetValidUser(t *testing.T) {
 		t.Errorf("GetEntry(%v).GetKeys() = %v, want: %v", primaryUserEmail, got, want)
 	}
 
-	// Verify that there's only a single SEH returned.
-	if got, want := len(res.GetSeh()), 1; got != want {
-		t.Errorf("len(GetSeh()) = %v, want; %v", got, want)
+	// Verify that there's at least a single SEH returned.
+	if got, want := len(res.GetSeh()), 1; got < want {
+		t.Errorf("len(GetSeh()) = %v, want >= %v", got, want)
 	}
+
+	// TODO(cesarghali): verify SEH signatures.
+
+	// Pick one of the provided signed epoch heads.
+	// TODO(cesarghali): better pick based on key ID.
+	seh := res.GetSeh()[0]
+	epochHead, err := common.EpochHead(seh)
+	if err != nil {
+		t.Fatalf("Unexpected getting head value error: %v", err)
+	}
+	expectedHead := epochHead.Head
 
 	// Verify merkle tree neighbors.
 	entryData, err := proto.Marshal(res.Entry)
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, res.GetSeh(), res.Entry.Index, entryData); err != nil {
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedHead, res.Entry.Index, entryData); err != nil {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
 }

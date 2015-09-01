@@ -17,15 +17,11 @@
 package common
 
 import (
-	"math/big"
-	"fmt"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
-	"reflect"
 	"encoding/binary"
-	"encoding/hex"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -116,30 +112,12 @@ func Hash(data []byte) []byte {
 	return h.Sum(nil)
 }
 
-// InspectHead ensures that the given expected and calculated head values
-// matches and returns an error otherwise.
-func InspectHead(expectedHeadValue []byte, calculatedHeadValue []byte) error {
-	// Ensure that the head expected value is equal to the computed one.
-	if !reflect.DeepEqual(expectedHeadValue, calculatedHeadValue) {
-		return grpc.Errorf(codes.InvalidArgument, "Invalid merkle tree neighbors list")
-	}
-	return nil
-}
-
-// GetHeadValue returns the head value from signedHead.Head.Head.
-func GetHeadValue(signedHead *v2pb.SignedEpochHead) ([]byte, error) {
+// EpochHead returns the head value from signedHead.Head.Head.
+func EpochHead(signedHead *v2pb.SignedEpochHead) (*v2pb.EpochHead, error) {
 	timestampedHead := new(v2pb.TimestampedEpochHead)
 	if err := proto.Unmarshal(signedHead.Head, timestampedHead); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal timestamped epoch head")
 	}
-	return timestampedHead.Head.Head, nil
+	return timestampedHead.GetHead(), nil
 }
 
-// BitString converts a byte slice index into a string of Depth '0' or '1'
-// characters.
-func BitString(index []byte) string {
-	i := new(big.Int)
-	i.SetString(hex.EncodeToString(index), 16)
-	// A 256 character string of bits with leading zeros.
-	return fmt.Sprintf("%0256b", i)
-}
