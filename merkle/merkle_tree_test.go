@@ -390,7 +390,7 @@ func TestFromNeighbors(t *testing.T) {
 		t.Fatalf("Error while getting tree root value in epoch %v: %v", epoch, err)
 	}
 
-	for i, test := range(tests) {
+	for i, test := range tests {
 		index, err := hexToBytes(test.leaf.hindex)
 		if err != nil {
 			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)

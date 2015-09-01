@@ -20,11 +20,11 @@ import (
 	"crypto/hmac"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/common"
+	"github.com/google/e2e-key-server/merkle"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"github.com/google/e2e-key-server/common"
-	"github.com/google/e2e-key-server/merkle"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )

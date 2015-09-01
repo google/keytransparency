@@ -112,7 +112,7 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 	}
 
 	// Add all neighbors to the partial tree.
-	for i, v := range(neighbors) {
+	for i, v := range neighbors {
 		if got, want := len(v), cm.HashSize; got != want {
 			return nil, grpc.Errorf(codes.InvalidArgument, "len(v) = %v, want %v", got, want)
 		}
@@ -211,8 +211,8 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 		return t.roots[epoch], nil
 	}
 
-	if epoch != t.current.epoch + 1 {
-		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want = %d", epoch, t.current.epoch + 1)
+	if epoch != t.current.epoch+1 {
+		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want = %d", epoch, t.current.epoch+1)
 	}
 
 	// Copy the root node from the previous epoch.
