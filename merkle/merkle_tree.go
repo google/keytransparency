@@ -45,6 +45,7 @@ var (
 	// one is the data used to represent 1 in the index bit string.
 	one = byte('1')
 )
+
 // Note: index has two representation:
 //  (1) string which is a bit string representation (a string of '0' and '1'
 //      characters). In this case, the variable name is bindex. Internaly, the
@@ -128,6 +129,15 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 	return m, nil
 }
 
+// AddRoot adds a new root in the specified epoch. If the epoch is greater than
+// t.current.epoch + 1, an error is returned.
+func (t *Tree) AddRoot(epoch uint64) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	_, err := t.addRoot(epoch)
+	return err
+}
+
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
 // must be added in chronological order by epoch.
 func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uint64) error {
@@ -195,16 +205,20 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 		t.current = t.roots[epoch]
 		return t.current, nil
 	}
-	if epoch < t.current.epoch {
-		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want >= %d", epoch, t.current.epoch)
+
+	// If root already exists and is in current epoch return it.
+	if epoch == t.current.epoch {
+		return t.roots[epoch], nil
 	}
 
-	for t.current.epoch < epoch {
-		// Copy the root node from the previous epoch.
-		nextEpoch := t.current.epoch + 1
-		t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, nil, t.current.left, t.current.right}
-		t.current = t.roots[nextEpoch]
+	if epoch != t.current.epoch + 1 {
+		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want = %d", epoch, t.current.epoch + 1)
 	}
+
+	// Copy the root node from the previous epoch.
+	nextEpoch := t.current.epoch + 1
+	t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, nil, t.current.left, t.current.right}
+	t.current = t.roots[nextEpoch]
 	return t.current, nil
 }
 
