@@ -61,14 +61,8 @@ message SignedEpochHead {
   // Signature of head, using the signature type of the key.
   // keyed by the first 8 bytes of the hash of the key.
   map<uint64, bytes> head_sigs = 1;
-  // Serialized TimestampedEpochHead.
-  bytes head = 2;
-}
-
-message TimestampedEpochHead {
-  EpochHead head = 1;
-  // The timestamp of this signature.
-  google.protobuf.Timestamp current_time = 2;
+  // Serialized EpochHead.
+  bytes epoch_head = 2;
 }
 
 // EpochHead is the head node of the Merkle Tree as well as additional metadata 
@@ -77,11 +71,13 @@ message EpochHead {
   // epoch number
   uint64 epoch = 1;
   // Hash of previous SEH.
-  bytes previous_seh = 3;
-  // The value of the head node of the merkle tree.
-  bytes head = 4;
+  bytes previous_seh = 2;
+  // The value of the root node of the merkle tree.
+  bytes root = 3;
   // realm is the domain...
-  string realm = 5;
+  string realm = 4;
+  // The timestamp of this epoch head.
+  google.protobuf.Timestamp current_time = 5;
 }
 
 message GetEntryResponse {

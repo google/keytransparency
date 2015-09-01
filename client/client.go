@@ -95,20 +95,20 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 
 // VerifyMerkleTreeProof returns nil if the merkle tree neighbors list is valid
 // and the provided signed epoch head has a valid signature.
-func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedHead []byte, index []byte, entry []byte) error {
+func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedRoot []byte, index []byte, entry []byte) error {
 	m, err := merkle.FromNeighbors(neighbors, index, entry)
 	if err != nil {
 		return grpc.Errorf(codes.Internal, "Unexpected building expected tree error: %v", err)
 	}
 
-	// Get calculated head value.
-	calculatedHead, err := m.Root(0)
+	// Get calculated root value.
+	calculatedRoot, err := m.Root(0)
 	if err != nil {
 		return err
 	}
 
-	// Verify the built tree head is as expected.
-	if got, want := hmac.Equal(expectedHead, calculatedHead), true; got != want {
+	// Verify the built tree root is as expected.
+	if got, want := hmac.Equal(expectedRoot, calculatedRoot), true; got != want {
 		return grpc.Errorf(codes.InvalidArgument, "Invalid merkle tree neighbors list")
 	}
 

@@ -64,11 +64,11 @@ func Hash(data []byte) []byte {
 	return h.Sum(nil)
 }
 
-// EpochHead returns the head value from signedHead.Head.Head.
+// EpochHead unmarshal and returns SignedEpochHead.EpochHead.
 func EpochHead(signedHead *v2pb.SignedEpochHead) (*v2pb.EpochHead, error) {
-	timestampedHead := new(v2pb.TimestampedEpochHead)
-	if err := proto.Unmarshal(signedHead.Head, timestampedHead); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal timestamped epoch head")
+	epochHead := new(v2pb.EpochHead)
+	if err := proto.Unmarshal(signedHead.EpochHead, epochHead); err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal epoch head")
 	}
-	return timestampedHead.GetHead(), nil
+	return epochHead, nil
 }

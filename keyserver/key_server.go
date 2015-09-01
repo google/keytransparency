@@ -166,20 +166,19 @@ func (s *Server) ListSteps(ctx context.Context, in *v2pb.ListStepsRequest) (*v2p
 //       with a channel that is filled by the database whenever an epoch head is
 //       signed.
 func (s *Server) signedEpochHeads(epoch uint64) ([]*v2pb.SignedEpochHead, error) {
-	headValue, err := s.tree.Root(epoch)
+	rootValue, err := s.tree.Root(epoch)
 	if err != nil {
 		return nil, err
 	}
 	epochHead := &v2pb.EpochHead{
 		Epoch: epoch,
-		Head:  headValue,
+		Root:  rootValue,
 	}
-	timestampedHead := &v2pb.TimestampedEpochHead{Head: epochHead}
-	timestampedHeadData, err := proto.Marshal(timestampedHead)
+	epochHeadData, err := proto.Marshal(epochHead)
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot marshal timestamped epoch head")
+		return nil, grpc.Errorf(codes.Internal, "Cannot marshal epoch head")
 	}
-	seh := &v2pb.SignedEpochHead{Head: timestampedHeadData}
+	seh := &v2pb.SignedEpochHead{EpochHead: epochHeadData}
 
 	return []*v2pb.SignedEpochHead{seh}, nil
 }

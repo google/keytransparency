@@ -251,16 +251,16 @@ func TestGetValidUser(t *testing.T) {
 	seh := res.GetSeh()[0]
 	epochHead, err := common.EpochHead(seh)
 	if err != nil {
-		t.Fatalf("Unexpected getting head value error: %v", err)
+		t.Fatalf("Unexpected getting epoch head error: %v", err)
 	}
-	expectedHead := epochHead.Head
+	expectedRoot := epochHead.Root
 
 	// Verify merkle tree neighbors.
 	entryData, err := proto.Marshal(res.Entry)
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedHead, res.Entry.Index, entryData); err != nil {
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Entry.Index, entryData); err != nil {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
 }
