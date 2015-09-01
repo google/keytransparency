@@ -25,12 +25,16 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+
+	proto "github.com/golang/protobuf/proto"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
 const (
 	// HashSize contains the blocksize of the used hash function in bytes.
 	HashSize = sha256.Size
-
+	// IndexLen is the maximum number of levels in this Merkle Tree.
+	IndexLen = HashSize * 8
 	// commitmentKeyLen is the number of bytes required to be in the
 	// profile commitment.
 	commitmentKeyLen = 16
@@ -107,3 +111,13 @@ func Hash(data []byte) []byte {
 	h.Write(data)
 	return h.Sum(nil)
 }
+
+// EpochHead returns the head value from signedHead.Head.Head.
+func EpochHead(signedHead *v2pb.SignedEpochHead) (*v2pb.EpochHead, error) {
+	timestampedHead := new(v2pb.TimestampedEpochHead)
+	if err := proto.Unmarshal(signedHead.Head, timestampedHead); err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal timestamped epoch head")
+	}
+	return timestampedHead.GetHead(), nil
+}
+

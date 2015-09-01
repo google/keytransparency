@@ -17,11 +17,14 @@
 package client
 
 import (
+	"crypto/hmac"
+
 	"github.com/golang/protobuf/proto"
-	"github.com/google/e2e-key-server/common"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"github.com/google/e2e-key-server/common"
+	"github.com/google/e2e-key-server/merkle"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
@@ -88,4 +91,26 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 		Profile:           profileData,
 		ProfileNonce:      commitmentKey,
 	}, nil
+}
+
+// VerifyMerkleTreeProof returns nil if the merkle tree neighbors list is valid
+// and the provided signed epoch head has a valid signature.
+func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedHead []byte, index []byte, entry []byte) error {
+	m, err := merkle.FromNeighbors(neighbors, index, entry)
+	if err != nil {
+		return grpc.Errorf(codes.Internal, "Unexpected building expected tree error: %v", err)
+	}
+
+	// Get calculated head value.
+	calculatedHead, err := m.Root(0)
+	if err != nil {
+		return err
+	}
+
+	// Verify the built tree head is as expected.
+	if got, want := hmac.Equal(expectedHead, calculatedHead), true; got != want {
+		return grpc.Errorf(codes.InvalidArgument, "Invalid merkle tree neighbors list")
+	}
+
+	return nil
 }

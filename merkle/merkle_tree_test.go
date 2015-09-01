@@ -16,6 +16,7 @@ package merkle
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -83,25 +84,6 @@ func hexToBytes(s string) ([]byte, error) {
 		return nil, err
 	}
 	return result, nil
-}
-
-func TestBitString(t *testing.T) {
-	tests := []struct {
-		input  string
-		output string
-	}{
-		{"00", AllZeros},
-	}
-
-	for i, test := range tests {
-		index, err := hexToBytes(test.input)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.input, err)
-		}
-		if got, want := BitString(index), test.output; got != want {
-			t.Errorf("Test[%v]: BitString(%v)=%v, want %v", i, test.input, got, want)
-		}
-	}
 }
 
 func TestAddRoot(t *testing.T) {
@@ -200,7 +182,7 @@ func TestPushDown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
 	}
-	n := &node{bindex: BitString(index)}
+	n := &node{bindex: bitString(index)}
 	if !n.leaf() {
 		t.Errorf("node without children was a leaf")
 	}
@@ -218,7 +200,7 @@ func TestCreateBranch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
 	}
-	n := &node{bindex: BitString(index)}
+	n := &node{bindex: bitString(index)}
 	n.createBranch("0")
 	if n.left == nil {
 		t.Errorf("nil branch after create")
@@ -314,7 +296,7 @@ func TestAuditNeighors(t *testing.T) {
 		for j, v := range test.emptyNeighors {
 			// Starting from the leaf's neighbor, going to the root.
 			depth := len(audit) - j
-			nstr := neighborOf(BitString(index), depth)
+			nstr := neighborOf(bitString(index), depth)
 			value := common.EmptyLeafValue(nstr)
 			if got, want := bytes.Equal(audit[j], value), v; got != want {
 				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.hindex, j, got, want)
@@ -364,7 +346,7 @@ func TestGetLeafCommitmentTimestamp(t *testing.T) {
 	}
 }
 
-func TestGetRootValue(t *testing.T) {
+func TestRoot(t *testing.T) {
 	env := NewEnv(t)
 
 	tests := []struct {
@@ -377,9 +359,53 @@ func TestGetRootValue(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		_, err := env.m.GetRootValue(test.epoch)
+		_, err := env.m.Root(test.epoch)
 		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("Test[%v]: GetRootValue(%v)=%v, want %v", i, test.epoch, got, want)
+			t.Errorf("Test[%v]: Root(%v)=%v, want %v", i, test.epoch, got, want)
+		}
+	}
+}
+
+func TestFromNeighbors(t *testing.T) {
+	env := NewEnv(t)
+
+	tests := []struct {
+		leaf Leaf
+	}{
+		{validTreeLeaves[0]},
+		{validTreeLeaves[1]},
+		{validTreeLeaves[2]},
+		{validTreeLeaves[3]},
+		{validTreeLeaves[4]},
+	}
+
+	// Get current epoch of the test tree.
+	epoch := validTreeLeaves[4].epoch
+	// Get expected head.
+	expectedHead, err := env.m.Root(epoch)
+	if err != nil {
+		t.Fatalf("Error while getting tree root value in epoch %v: %v", epoch, err)
+	}
+
+	for i, test := range(tests) {
+		index, err := hexToBytes(test.leaf.hindex)
+		if err != nil {
+			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
+		}
+		neighbors, err := env.m.AuditPath(test.leaf.epoch, index)
+
+		tmp, err := FromNeighbors(neighbors, index, []byte{})
+		if err != nil {
+			t.Fatalf("Error while building the expected tree: %v", err)
+		}
+
+		calculatedHead, err := tmp.Root(0)
+		if err != nil {
+			t.Fatalf("Test[%v]: Error while getting tree root value in epoch %v: %v", i, epoch, err)
+		}
+
+		if got, want := hmac.Equal(expectedHead, calculatedHead), true; got != want {
+			t.Error("Test[%v]: FromNeighbors(_, %v, _)=%v, wamt %v", i, test.leaf.hindex, got, want)
 		}
 	}
 }
