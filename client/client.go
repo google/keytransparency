@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"github.com/google/e2e-key-server/common"
+	"github.com/google/e2e-key-server/merkle"
 
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
@@ -106,12 +107,10 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 
 // VerifyMerkleTreeProof returns nil if the merkle tree neighbors list is valid
 // and the provided signed epoch head has a valid signature.
-func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, signedHeads []*v2pb.SignedEpochHead, index []byte, entry *v2pb.Entry) error {
-	// Calculate the leaf hashed value. Depth is the length of the neighbors
-	// list.
-	leafValue, err := CalculateLeafValue(len(neighbors), index, entry)
+func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, signedHeads []*v2pb.SignedEpochHead, index []byte, entry []byte) error {
+	m, err := merkle.BuildExpectedTree(neighbors, index, entry)
 	if err != nil {
-		return err
+		return grpc.Errorf(codes.Internal, "Unexpected building expected tree error: %v", err)
 	}
 
 	// TODO(cesarghali): verify SEH signatures.
@@ -119,38 +118,17 @@ func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, signedHeads []*v2pb.S
 	// Pick one of the provided signed epoch heads.
 	// TODO(cesarghali): better pick based on key ID.
 	seh := signedHeads[0]
-	headValue, err := common.GetHeadValue(seh)
+	expectedHeadValue, err := common.GetHeadValue(seh)
 	if err != nil {
 		return err
 	}
 
-	// Verify the tree neighbors.
-	if err := common.VerifyMerkleTreeNeighbors(neighbors, headValue, index, leafValue); err != nil {
+	// Get calculated head value.
+	calculatedHeadValue := m.GetRecentRootValue()
+
+	// Verify the built tree head is as expected.
+	if err := common.InspectHead(expectedHeadValue, calculatedHeadValue); err != nil {
 		return err
 	}
 	return nil
-}
-
-// CalculateLeafValue calculate the value of a leaf node based on entry.
-func CalculateLeafValue(depth int, index []byte, entry *v2pb.Entry) ([]byte, error) {
-	// Marshal entry.
-	entryData, err := proto.Marshal(entry)
-	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected entry marshalling error: %v", err)
-	}
-
-	// Rebuild the signedEntry update given entry. Client should regenerate
-	// the signatures.
-	signedEntryUpdate := &v2pb.SignedEntryUpdate{
-		// TODO(cesarghali): need to add signatures.
-		Entry: entryData,
-	}
-	signedEntryUpdateData, err := proto.Marshal(signedEntryUpdate)
-	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Unexpected signed entry update marshalling error: %v", err)
-	}
-
-	// Calculate the SignedEntryUpdate hash.
-	dataHash := common.Hash(signedEntryUpdateData)
-	return common.HashLeaf(common.LeafIdentifier, depth, index, dataHash), nil
 }

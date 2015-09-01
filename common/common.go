@@ -113,52 +113,9 @@ func Hash(data []byte) []byte {
 	return dataHash[:]
 }
 
-// VerifyMerkleTreeNeighbors verifies a given merkle tree neighbors list. This
-// function first build a partial merkle tree including the path of the leaf
-// node which neighbors list is being verified and value is given in leafValue.
-// Second the function ensures that the calculated head matches the expected
-// once given in expectedHeadValue.
-func VerifyMerkleTreeNeighbors(neighbors [][]byte, expectedHeadValue []byte, index []byte, leafValue []byte) error {
-	if len(neighbors) > IndexLen {
-		return grpc.Errorf(codes.Internal, "List of neighbor must not be longer than %v", IndexLen)
-	}
-
-	// First build the partial merkle tree.
-	calculatedHeadValue, err := buildPartialMerkleTree(neighbors, BitString(index), leafValue)
-	if err != nil {
-		return err
-	}
-
-	// Second verify that the calculated tree head matches the expected one.
-	return verifyTreeHead(expectedHeadValue, calculatedHeadValue)
-}
-
-// buildPartialMerkleTree parially builds merkle tree including the path of the
-// leave node which neighbors list is being verified. buildPartialMerkleTree
-// returns the calculated head value, or error if the build process cannot be
-// completed.
-func buildPartialMerkleTree(neighbors [][]byte, bindex string, value []byte) ([]byte, error) {
-	calculatedHeadValue := value
-	for i, neighbor := range(neighbors) {
-		// index is processed starting from len(neighbors)-1 down to 0.
-		// If the index bit is 0, then neighbor is on the right,
-		// otherwise, neighbor is on the left.
-		b := uint8(bindex[len(neighbors) - 1 - i])
-		switch b {
-		case Zero:
-			calculatedHeadValue = HashIntermediateNode(calculatedHeadValue, neighbor)
-		case One:
-			calculatedHeadValue = HashIntermediateNode(neighbor, calculatedHeadValue)
-		default:
-			return nil, grpc.Errorf(codes.Internal, "Invalid bit %v", b)
-		}
-	}
-	return calculatedHeadValue, nil
-}
-
-// verifyTreeHead ensures that the given expected and calculated head values
+// InspectHead ensures that the given expected and calculated head values
 // matches and returns an error otherwise.
-func verifyTreeHead(expectedHeadValue []byte, calculatedHeadValue []byte) error {
+func InspectHead(expectedHeadValue []byte, calculatedHeadValue []byte) error {
 	// Ensure that the head expected value is equal to the computed one.
 	if !reflect.DeepEqual(expectedHeadValue, calculatedHeadValue) {
 		return grpc.Errorf(codes.InvalidArgument, "Invalid merkle tree neighbors list")

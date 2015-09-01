@@ -33,8 +33,10 @@ import (
 const (
 	// maxDepth is the maximum allowable value of depth.
 	maxDepth = common.IndexLen
-	// HashBytes is the number of bytes in each node's value.
-	HashBytes = common.HashSize
+	// isLeaf specifies that the added leaf is of type leaf.
+	isLeaf = 1
+	// isNeighbor specifies that the added leaf is of type neighbor.
+	isNeighbor = 2
 )
 
 // Note: index has two representation:
@@ -85,6 +87,37 @@ func New() *Tree {
 	return tree
 }
 
+// BuildExpectedTree builds a partial merkle tree with the path from the given
+// leaf node at the given index, up to the root including all path neighbors.
+func BuildExpectedTree(neighbors [][]byte, index []byte, data []byte) (*Tree, error) {
+	bindex := common.BitString(index)
+
+	// Create a partial tree.
+	m := New()
+	r, err := m.addRoot(0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add the leaf node to the partial tree.
+	if err := r.addLeaf(data, 0, bindex, 0, 0, isLeaf); err != nil {
+		return nil, err
+	}
+
+	// Add all neighbors to the partial tree.
+	for i, v := range(neighbors) {
+		// index is processed starting from len(neighbors)-1 down to 0.
+		indexBit := len(neighbors) - 1 - i
+		b := uint8(bindex[indexBit])
+		bindexNeighbor := fmt.Sprintf("%v%v", bindex[:indexBit], string(neighbor(b)))
+		// Add a neighbor. In this case, index is not of a full length.
+		if err := r.addLeaf(v, 0, bindexNeighbor, 0, 0, isNeighbor); err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
 // AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
 // must be added in chronological order by epoch.
 func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uint64) error {
@@ -97,7 +130,7 @@ func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uin
 	if err != nil {
 		return err
 	}
-	return r.addLeaf(data, epoch, common.BitString(index), commitmentTS, 0)
+	return r.addLeaf(data, epoch, common.BitString(index), commitmentTS, 0, isLeaf)
 }
 
 // GetLeafCommitmentTimestamp returns a leaf commitment timestamp for a given
@@ -129,6 +162,12 @@ func (t *Tree) AuditPath(epoch uint64, index []byte) ([][]byte, error) {
 		return nil, grpc.Errorf(codes.InvalidArgument, "epoch %v does not exist", epoch)
 	}
 	return r.auditPath(common.BitString(index), 0)
+}
+
+// GetRecentRootValue returns the value of the recent root node.
+func (t *Tree) GetRecentRootValue() []byte {
+	rootValue, _ := t.GetRootValue(t.current.epoch)
+	return rootValue
 }
 
 // GetRootValue returns the value of the root node in a specific epoch.
@@ -167,14 +206,14 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 
 // Parent node is responsible for creating children.
 // Inserts leafs in the nearest empty sub branch it finds.
-func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS uint64, depth int) error {
+func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS uint64, depth int, leafType int) error {
 	if n.epoch != epoch {
 		return grpc.Errorf(codes.Internal, "epoch = %d want %d", epoch, n.epoch)
 	}
 
 	// Base case: we found the first empty sub branch.  Park our data here.
 	if n.empty() {
-		n.setLeaf(data, bindex, commitmentTS, depth)
+		n.setLeaf(data, bindex, commitmentTS, depth, leafType)
 		return nil
 	}
 	// We reached the bottom of the tree and it wasn't empty.
@@ -190,7 +229,7 @@ func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS ui
 	}
 	// Make sure the interior node is in the current epoch.
 	n.createBranch(bindex[:depth+1])
-	err := n.child(bindex[depth]).addLeaf(data, epoch, bindex, commitmentTS, depth+1)
+	err := n.child(bindex[depth]).addLeaf(data, epoch, bindex, commitmentTS, depth+1, leafType)
 	if err != nil {
 		return err
 	}
@@ -362,12 +401,22 @@ func (n *node) updateLeafValue() {
 }
 
 // setLeaf sets the comittment of the leaf node and updates its hash.
-func (n *node) setLeaf(data []byte, bindex string, commitmentTS uint64, depth int) {
+func (n *node) setLeaf(data []byte, bindex string, commitmentTS uint64, depth int, leafType int) {
 	n.bindex = bindex
 	n.commitmentTS = commitmentTS
 	n.depth = depth
-	n.dataHash = common.Hash(data)
 	n.left = nil
 	n.right = nil
-	n.updateLeafValue()
+	switch leafType {
+	case isLeaf:
+		n.dataHash = common.Hash(data)
+		n.updateLeafValue()
+	case isNeighbor:
+		if got, want := len(data), common.HashSize; got != want {
+			panic(fmt.Sprintf("len(data) = %v, want %v", got, want))
+		}
+		n.value = data
+	default:
+		panic("Unknown leaf type")
+	}
 }

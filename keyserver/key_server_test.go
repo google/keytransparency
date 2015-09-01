@@ -245,7 +245,11 @@ func TestGetValidUser(t *testing.T) {
 	}
 
 	// Verify merkle tree neighbors.
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, res.GetSeh(), []byte(common.BitString(res.Entry.Index)), res.Entry); err != nil {
+	entryData, err := proto.Marshal(res.Entry)
+	if err != nil {
+		t.Fatalf("Unexpected entry marshalling error: %v.", err)
+	}
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, res.GetSeh(), res.Entry.Index, entryData); err != nil {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
 }

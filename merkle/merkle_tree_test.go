@@ -366,11 +366,10 @@ func TestGetRootValue(t *testing.T) {
 	}
 }
 
-// TestVerifyTreeNeighbors tests common.VerifyTreeNeighbors in tree environment.
-func TestVerifyTreeNeighbors(t *testing.T) {
+func TestBuildExpectedTree(t *testing.T) {
 	env := NewEnv(t)
 
-	tests := []struct{
+	tests := []struct {
 		leaf Leaf
 	}{
 		{validTreeLeaves[0]},
@@ -380,32 +379,24 @@ func TestVerifyTreeNeighbors(t *testing.T) {
 		{validTreeLeaves[4]},
 	}
 
+	expectedHeadValue := env.m.GetRecentRootValue()
+
 	for i, test := range(tests) {
 		index, err := hexToBytes(test.leaf.hindex)
 		if err != nil {
 			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
-		// Get tree neighbors.
 		neighbors, err := env.m.AuditPath(test.leaf.epoch, index)
+
+		tmp, err := BuildExpectedTree(neighbors, index, []byte{})
 		if err != nil {
-			t.Fatalf("Calling AuditPath(%v, %v) failed: %v", test.leaf.epoch, test.leaf.hindex, err)
+			t.Fatalf("Error while building the expected tree: %v", err)
 		}
 
-		// Calculate the leaf hashed value. Since we're adding dummy
-		// leaf nodes, their data is empty.
-		dataHash := common.Hash([]byte{})
-		value := common.HashLeaf(common.LeafIdentifier, len(neighbors), []byte(common.BitString(index)), dataHash)
+		calculatedHeadValue := tmp.GetRecentRootValue()
 
-		// Get the head value.
-		headValue, err := env.m.GetRootValue(test.leaf.epoch)
-		if err != nil {
-			t.Fatalf("Cannot get tree root: %v", err)
-		}
-
-		// Verify the tree neighbors.
-		err = common.VerifyMerkleTreeNeighbors(neighbors, headValue, index, value)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("Test[%v]: VerifyMerkleTreeNeighbors=%v, want %v", i,  got, want)
+		if got, want := grpc.Code(common.InspectHead(expectedHeadValue, calculatedHeadValue)), codes.OK; got != want {
+			t.Error("Test[%v]: BuildExpectedTree(_, %v, _)=%v, wamt %v", i, test.leaf.hindex, got, want)
 		}
 	}
 }
