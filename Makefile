@@ -41,12 +41,15 @@ INCLUDES+= -I=$(GOPATH)/src/
 INCLUDES+= -I=$(PROTOINCLUDE)
 
 
-main: proto
+main: format proto
 	go build -o srv server.go
 
 test: main
 	go test ./rest ./keyserver ./proxy ./merkle ./builder ./storage
 	python tests/api_proxy_test.py
+
+format:
+	gofmt -w `find . | grep "\.go"`
 
 proto: $(DEPS)
 	mkdir -p $(OUTPUT)
