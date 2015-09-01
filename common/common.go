@@ -72,4 +72,3 @@ func EpochHead(signedHead *v2pb.SignedEpochHead) (*v2pb.EpochHead, error) {
 	}
 	return timestampedHead.GetHead(), nil
 }
-

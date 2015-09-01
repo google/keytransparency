@@ -102,12 +102,12 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	}
 
 	result := &v2pb.GetEntryResponse{
-		Entry:        entry,
-		Profile:      entryStorage.Profile,
-		ProfileNonce: entryStorage.ProfileNonce,
+		Entry:               entry,
+		Profile:             entryStorage.Profile,
+		ProfileNonce:        entryStorage.ProfileNonce,
 		MerkleTreeNeighbors: neighbors,
-		Seh: seh,
-		IndexSignature: index,
+		Seh:                 seh,
+		IndexSignature:      index,
 	}
 	return result, nil
 }
@@ -172,7 +172,7 @@ func (s *Server) signedEpochHeads(epoch uint64) ([]*v2pb.SignedEpochHead, error)
 	}
 	epochHead := &v2pb.EpochHead{
 		Epoch: epoch,
-		Head: headValue,
+		Head:  headValue,
 	}
 	timestampedHead := &v2pb.TimestampedEpochHead{Head: epochHead}
 	timestampedHeadData, err := proto.Marshal(timestampedHead)

@@ -71,4 +71,3 @@ func HashIntermediateNode(left []byte, right []byte) []byte {
 func EmptyLeafValue(prefix string) []byte {
 	return HashLeaf(EmptyIdentifier, len(prefix), []byte(prefix), nil)
 }
-
