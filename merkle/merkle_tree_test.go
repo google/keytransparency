@@ -384,8 +384,8 @@ func TestFromNeighbors(t *testing.T) {
 
 	// Get current epoch of the test tree.
 	epoch := validTreeLeaves[4].epoch
-	// Get expected head.
-	expectedHead, err := env.m.Root(epoch)
+	// Get expected root value.
+	expectedRoot, err := env.m.Root(epoch)
 	if err != nil {
 		t.Fatalf("Error while getting tree root value in epoch %v: %v", epoch, err)
 	}
@@ -402,12 +402,12 @@ func TestFromNeighbors(t *testing.T) {
 			t.Fatalf("Error while building the expected tree: %v", err)
 		}
 
-		calculatedHead, err := tmp.Root(0)
+		calculatedRoot, err := tmp.Root(0)
 		if err != nil {
 			t.Fatalf("Test[%v]: Error while getting tree root value in epoch %v: %v", i, epoch, err)
 		}
 
-		if got, want := hmac.Equal(expectedHead, calculatedHead), true; got != want {
+		if got, want := hmac.Equal(expectedRoot, calculatedRoot), true; got != want {
 			t.Error("Test[%v]: FromNeighbors(_, %v, _)=%v, wamt %v", i, test.leaf.hindex, got, want)
 		}
 	}
