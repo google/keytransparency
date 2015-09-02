@@ -104,10 +104,10 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	result := &v2pb.GetEntryResponse{
 		Entry:               entry,
 		Profile:             entryStorage.Profile,
-		CommitmentKey:        entryStorage.CommitmentKey,
+		CommitmentKey:       entryStorage.CommitmentKey,
 		MerkleTreeNeighbors: neighbors,
-		SignedEpochHeads:                 seh,
-		IndexProof:      index,
+		SignedEpochHeads:    seh,
+		IndexProof:          index,
 	}
 	return result, nil
 }
@@ -134,7 +134,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 		// CommitmentTimestamp is set by storage.
 		SignedEntryUpdate: in.GetSignedEntryUpdate(),
 		Profile:           in.Profile,
-		CommitmentKey:      in.CommitmentKey,
+		CommitmentKey:     in.CommitmentKey,
 		// TODO(cesarghali): set Domain.
 	}
 
