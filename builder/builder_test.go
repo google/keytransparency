@@ -64,7 +64,7 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}
-	invalidIndex := &v2pb.SignedEntryUpdate{Entry: invalidEntryBytes}
+	invalidIndex := &v2pb.SignedEntryUpdate{NewEntry: invalidEntryBytes}
 
 	// Generate a signed entry update with an invalid entry. This is done by
 	// using part of the valid entry update in the signed entry update, e.g.
@@ -73,10 +73,10 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}
-	invalidEntry := &v2pb.SignedEntryUpdate{Entry: validEntryBytes[1:]}
+	invalidEntry := &v2pb.SignedEntryUpdate{NewEntry: validEntryBytes[1:]}
 
 	// Generate a valid signed entry update.
-	validEntryUpdate := &v2pb.SignedEntryUpdate{Entry: validEntryBytes}
+	validEntryUpdate := &v2pb.SignedEntryUpdate{NewEntry: validEntryBytes}
 
 	return &EntryUpdates{invalidIndex, invalidEntry, validEntryUpdate}
 }

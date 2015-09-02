@@ -82,7 +82,7 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 
 	// Verify that the signed_update is a commitment to the profile.
 	entry := new(v2pb.Entry)
-	if err := proto.Unmarshal(in.GetSignedEntryUpdate().Entry, entry); err != nil {
+	if err := proto.Unmarshal(in.GetSignedEntryUpdate().NewEntry, entry); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
@@ -92,12 +92,12 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
 	// Verify nonce length.
-	if got, want := len(in.ProfileNonce), MinNonceLen; got < want {
+	if got, want := len(in.CommitmentKey), MinNonceLen; got < want {
 		return grpc.Errorf(codes.InvalidArgument, "len(Nonce) = %v, want >= %v", got, want)
 	}
 
 	// Verify profile nonce.
-	if err := common.VerifyCommitment(in.ProfileNonce, in.Profile, entry.ProfileCommitment); err != nil {
+	if err := common.VerifyCommitment(in.CommitmentKey, in.Profile, entry.ProfileCommitment); err != nil {
 		return err
 	}
 
