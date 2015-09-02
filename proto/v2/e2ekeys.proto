@@ -110,7 +110,7 @@ message Step {
   oneof type {
     // entry_changed contains a serialized SignedEntryUpdate.
     bytes entry_changed = 1;
-    SignedEpochHead seh = 2;
+    SignedEpochHead signed_epoch_head = 2;
   }
   // epoch of this udpate.
   uint64 epoch = 3;
@@ -121,14 +121,12 @@ message Step {
 // SignedEntryUpdate is what users provide to update their profiles.
 // A serialized SignedEntryUpdate is used as the leaf value in the MerkleTree.
 message SignedEntryUpdate {
-  // Signature of entry, by the entry_key inside entry.
-  // Proves ownership of new keys.
-  map<uint64, bytes> signature_new = 1;
-  // Signature of entry, by the entry_key from the previous epoch.
-  // Proves the the correct owner is making this change.
-  map<uint64, bytes> signature_old = 2;
-  // entry is the serialized protobuf Entry.
-  bytes entry = 3;
+  // NewEntry is the serialized protobuf Entry.
+  bytes new_entry = 1;
+  // Signature of entry, by the entry_key inside entry AND the old key from the
+  // previous epoch. The first proves ownership of new epoch key, and the
+  // second proves the the correct owner is making this change.
+  map<fixed64, bytes> signatures = 2;
 }
 
 // Entry is the leaf node object for the Merkle Tree. Its unique index in the
