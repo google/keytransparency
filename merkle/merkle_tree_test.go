@@ -109,6 +109,27 @@ func TestAddRoot(t *testing.T) {
 	}
 }
 
+func TestAddExistingLeaf(t *testing.T) {
+	env := NewEnv(t)
+	tests := []struct {
+		leaf Leaf
+		code codes.Code
+	}{
+		{validTreeLeaves[4], codes.OK},
+	}
+	for i, test := range tests {
+		index, err := hexToBytes(test.leaf.hindex)
+		if err != nil {
+			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
+		}
+		err = env.m.AddLeaf([]byte{}, test.leaf.epoch, index, test.leaf.commitmentTS)
+		if got, want := grpc.Code(err), codes.OK; got != want {
+			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
+				i, test.leaf.epoch, test.leaf.hindex, got, want, err)
+		}
+	}
+}
+
 var letters = []rune("01234567890abcdef")
 
 func randSeq(n int) string {
