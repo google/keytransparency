@@ -237,7 +237,12 @@ func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS ui
 	// We reached the bottom of the tree and it wasn't empty.
 	// Or we found the same node.
 	if depth == maxDepth || n.bindex == bindex {
-		return grpc.Errorf(codes.AlreadyExists, "")
+		if n.epoch != epoch {
+			// This should never happen, createBranch guarantees it.
+			panic(fmt.Sprintf("n.epoch = %d want %d", n.epoch, epoch))
+		}
+		n.setNode(data, bindex, commitmentTS, depth, isLeaf)
+		return nil
 	}
 	if n.leaf() {
 		// Push leaf down and convert n into an interior node.
