@@ -80,7 +80,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 
 	// Unmarshal entry.
 	entry := new(v2pb.Entry)
-	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().Entry, entry); err != nil {
+	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
@@ -106,15 +106,15 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		Profile:             entryStorage.Profile,
 		ProfileNonce:        entryStorage.ProfileNonce,
 		MerkleTreeNeighbors: neighbors,
-		Seh:                 seh,
-		IndexSignature:      index,
+		SignedEpochHeads:                 seh,
+		IndexProof:      index,
 	}
 	return result, nil
 }
 
 func proofOfAbsence(index []byte) *v2pb.GetEntryResponse {
 	return &v2pb.GetEntryResponse{
-		IndexSignature: index,
+		IndexProof: index,
 	}
 }
 

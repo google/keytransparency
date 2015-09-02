@@ -60,7 +60,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 
 	// Get Index
 	// TODO: formally define and fix.
-	index := previous.IndexSignature
+	index := previous.IndexProof
 
 	// Construct Entry.
 	commitmentKey, commitment, err := common.Commitment(profileData)
@@ -82,7 +82,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 	// Construct SignedEntryUpdate.
 	signedEntryUpdate := &v2pb.SignedEntryUpdate{
 		// TODO: Apply Signatures.
-		Entry: entryData,
+		NewEntry: entryData,
 	}
 
 	return &v2pb.UpdateEntryRequest{

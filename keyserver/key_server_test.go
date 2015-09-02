@@ -240,15 +240,15 @@ func TestGetValidUser(t *testing.T) {
 	}
 
 	// Verify that there's at least a single SEH returned.
-	if got, want := len(res.GetSeh()), 1; got < want {
-		t.Errorf("len(GetSeh()) = %v, want >= %v", got, want)
+	if got, want := len(res.GetSignedEpochHeads()), 1; got < want {
+		t.Errorf("len(GetSignedEpochHeads()) = %v, want >= %v", got, want)
 	}
 
 	// TODO(cesarghali): verify SEH signatures.
 
 	// Pick one of the provided signed epoch heads.
 	// TODO(cesarghali): better pick based on key ID.
-	seh := res.GetSeh()[0]
+	seh := res.GetSignedEpochHeads()[0]
 	epochHead, err := common.EpochHead(seh)
 	if err != nil {
 		t.Fatalf("Unexpected getting epoch head error: %v", err)

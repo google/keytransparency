@@ -50,7 +50,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 
 	// Use a fake previous entry.
 	previous := &v2pb.GetEntryResponse{
-		IndexSignature: []byte("Foo"),
+		IndexProof: []byte("Foo"),
 	}
 	updateEntryRequest, err := client.CreateUpdate(primaryUserProfile, primaryUserEmail, previous)
 	if err != nil {
