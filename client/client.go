@@ -89,7 +89,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 		UserId:            userID,
 		SignedEntryUpdate: signedEntryUpdate,
 		Profile:           profileData,
-		ProfileNonce:      commitmentKey,
+		CommitmentKey:      commitmentKey,
 	}, nil
 }
 

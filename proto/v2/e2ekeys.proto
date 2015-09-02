@@ -102,8 +102,8 @@ message GetEntryResponse {
   Entry entry = 6;
   // Profile contains the user's keys.
   bytes profile = 7;
-  // ProfileNonce is at least 16 random bytes.
-  bytes profile_nonce = 8;
+  // CommitmentKey is 16 random bytes.
+  bytes commitment_key = 8;
 }
 
 // Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads
@@ -145,7 +145,7 @@ message Entry {
   // EntryKey allows verifiers to validate updates to Entry.
   repeated PublicKey entry_key = 3;
   // profile_commitment is a cryptographic commitment to the Profile of the form
-  // HMAC(profile_nonce, serialized_profile)
+  // HMAC(profile_commitment_key, serialized_profile)
   bytes profile_commitment = 4;
   // Update policy: new Entry must be signed by at least one key from entry_key 
   // in previous epoch. 
@@ -214,8 +214,8 @@ message UpdateEntryRequest {
   // Profile is the serialized protobuf Profile.
   // Profile is private and must not be released to verifiers.
   bytes profile = 3;
-  // ProfileNonce is 16 random bytes.
-  bytes profile_nonce = 4;
+  // CommitmentKey is 16 random bytes.
+  bytes commitment_key = 4;
 
   // DkimProof is used to vouch for the validity of a new registration.
   // Used when OAuth is not used.

@@ -227,7 +227,7 @@ func TestGetValidUser(t *testing.T) {
 	}
 
 	// Verify profile commitment.
-	if err := common.VerifyCommitment(res.ProfileNonce, res.Profile, res.Entry.ProfileCommitment); err != nil {
+	if err := common.VerifyCommitment(res.CommitmentKey, res.Profile, res.Entry.ProfileCommitment); err != nil {
 		t.Errorf("GetEntry profile commitment verification failed: %v", err)
 	}
 
