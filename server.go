@@ -26,8 +26,8 @@ import (
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/storage"
-	"golang.org/x/net/context"
 
+	corepb "github.com/google/e2e-key-server/proto/core"
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
@@ -114,10 +114,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	// Create a memory storage.
-	store := storage.CreateMem(context.Background())
 	// Create the tree builder.
-	b := builder.New(store.NewEntries())
+	b := builder.New()
+	// Create a memory storage.
+	store := storage.CreateMem([]chan *corepb.EntryStorage{b.NewEntries()})
 	// Create the servers.
 	v2 := keyserver.New(store, b.GetTree())
 	v1 := proxy.New(v2)

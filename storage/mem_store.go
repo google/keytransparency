@@ -20,13 +20,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	corepb "github.com/google/e2e-key-server/proto/core"
-	context "golang.org/x/net/context"
-)
-
-const (
-	// ChannelSize is the buffer size of the channel used to send an
-	// EntryStorage to the tree builder.
-	ChannelSize = 100
 )
 
 type epochInfo struct {
@@ -34,8 +27,8 @@ type epochInfo struct {
 	endCommitmentTS   uint64
 }
 
-// Storage holds state required to persist data. Open and Create create new
-// Storage objects.
+// MemStorage holds state required to store data in memory. CreateMem creates a
+// new MemStorage objects.
 type MemStorage struct {
 	// Map of commitment timestamp -> EntryStorage.
 	entries map[uint64]*corepb.EntryStorage
@@ -43,23 +36,22 @@ type MemStorage struct {
 	// TODO(cesarghali): this map is not yet used. Use it when epochs
 	//                   are created.
 	epochs map[uint64]epochInfo
-	// Whenever an EntryStorage is written in the database, it will be
-	// pushed into ch.
-	ch chan *corepb.EntryStorage
+	// Whenever an EntryStorage is written in MemStorage, it will be pushed
+	// into these channels.
+	outChan []chan *corepb.EntryStorage
 }
 
 // Create creates a storage object from an existing db connection.
-func CreateMem(ctx context.Context) *MemStorage {
-	s := &MemStorage{
+func CreateMem(outChan []chan *corepb.EntryStorage) *MemStorage {
+	return &MemStorage{
 		entries: make(map[uint64]*corepb.EntryStorage),
 		epochs:  make(map[uint64]epochInfo),
-		ch:      make(chan *corepb.EntryStorage, ChannelSize),
+		outChan: outChan,
 	}
-	return s
 }
 
 // Read reads a EntryStroage from the storage.
-func (s *MemStorage) Read(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error) {
+func (s *MemStorage) Read(commitmentTS uint64) (*corepb.EntryStorage, error) {
 	val, ok := s.entries[commitmentTS]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", commitmentTS)
@@ -71,20 +63,18 @@ func (s *MemStorage) Read(ctx context.Context, commitmentTS uint64) (*corepb.Ent
 // Write inserts a new EntryStorage in the storage. This function works whether
 // the entry exists or not. If the entry does not exist, it will be inserted,
 // otherwise updated.
-func (s *MemStorage) Write(ctx context.Context, entry *corepb.EntryStorage) error {
+func (s *MemStorage) Write(entry *corepb.EntryStorage) error {
 	// Get the current commitment timestamp and use it when writing the
 	// entry.
 	commitmentTS := GetCurrentCommitmentTimestamp()
 	entry.CommitmentTimestamp = uint64(commitmentTS)
 	// Write the entry.
 	s.entries[commitmentTS] = entry
-	// Push entry in the channel in order to be added to the merkle tree.
-	s.ch <- entry
+	// Push entry into the outgoing channels.
+	for _, ch := range s.outChan {
+		if ch != nil {
+			ch <- entry
+		}
+	}
 	return nil
-}
-
-// NewEntries  returns a channel containing EntryStorage entries, which are
-// pushed into the channel whenever an EntryStorage is written in the stirage.
-func (s *MemStorage) NewEntries() chan *corepb.EntryStorage {
-	return s.ch
 }

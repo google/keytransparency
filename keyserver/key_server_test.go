@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
+	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
@@ -142,8 +143,8 @@ func NewEnv(t *testing.T) *Env {
 	}
 	addr := "localhost:" + port
 	s := grpc.NewServer()
-	store := storage.CreateMem(context.Background())
-	b := builder.New(store.NewEntries())
+	b := builder.New()
+	store := storage.CreateMem([]chan *corepb.EntryStorage{b.NewEntries()})
 	server := New(store, b.GetTree())
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)

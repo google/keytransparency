@@ -26,12 +26,23 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
+	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
 const (
 	commitmentKeyLen = 16
+	// ChannelSize is the buffer size of the channel used to send an
+	// EntryStorage to the tree builder.
+	ChannelSize = 100
 )
+
+type Watcher interface {
+	// NewEntries  returns a channel containing EntryStorage entries, which
+	// are pushed into the channel whenever an EntryStorage is written in
+	// the storage.
+	NewEntries() chan *corepb.EntryStorage
+}
 
 // Commitment returns the commitment key and the profile commitment
 func Commitment(profile []byte) ([]byte, []byte, error) {
