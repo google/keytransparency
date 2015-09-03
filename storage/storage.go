@@ -12,36 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package storage provides an API to persistant storage, implemented with spanner.
+// Package storage provides an API to persistant storage.
 package storage
 
 import (
 	corepb "github.com/google/e2e-key-server/proto/core"
-	context "golang.org/x/net/context"
 )
 
 type Storage interface {
 	Reader
 	Writer
-	Watcher
 }
 
 type Reader interface {
 	// Read reads a EntryStroage from the storage.
-	Read(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error)
+	Read(commitmentTS uint64) (*corepb.EntryStorage, error)
 }
 
 type Writer interface {
 	// Write inserts a new EntryStorage in the storage. Fails if the row
 	// already exists.
-	Write(ctx context.Context, entry *corepb.EntryStorage) error
-}
-
-type Watcher interface {
-	// NewEntries  returns a channel containing EntryStorage entries, which
-	// are pushed into the channel whenever an EntryStorage is written in
-	// the stirage.
-	NewEntries() chan *corepb.EntryStorage
+	Write(entry *corepb.EntryStorage) error
 }
 
 // TODO(cesarghali): bring back ConkisStorage and make it compatible with the

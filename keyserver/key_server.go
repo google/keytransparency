@@ -69,7 +69,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		return nil, err
 	}
 
-	entryStorage, err := s.store.Read(ctx, commitmentTS)
+	entryStorage, err := s.store.Read(commitmentTS)
 	if err != nil {
 		if grpc.Code(err) == codes.NotFound {
 			// Return an empty proof.
@@ -139,7 +139,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err := s.store.Write(ctx, e); err != nil {
+	if err := s.store.Write(e); err != nil {
 		return nil, err
 	}
 
