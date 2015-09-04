@@ -47,9 +47,12 @@ const (
 	// See: https://tools.ietf.org/html/rfc2617#section-3.2.1.
 	// AuthenticationMethod could be Bearer, MAC, etc.
 	AuthenticationMethod = "Bearer"
+)
+
+var (
 	// AuthenticationRealm is a string that tells users which credential to
 	// use.
-	AuthenticationRealm = "registered_users@gmail.com"
+	AuthenticationRealm string
 )
 
 // httpErrorInfo contains the HTTP error code and message.
