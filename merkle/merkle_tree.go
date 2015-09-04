@@ -62,8 +62,8 @@ var (
 //    data is a marshaled SignedEntryUpdate proto.
 //  - dataHash: is the hash of data and is stored in the leaf node structure.
 //  - value: is stored in the leaf node structure and can be:
-//     - Leaves: H(TreeNonce || LeafIdentifier || depth || index || dataHash)
-//     - Empty leaves: H(TreeNonce || EmptyIdentifier || depth || index || nil)
+//     - Leaves: H(LeafIdentifier || depth || index || dataHash)
+//     - Empty leaves: H(EmptyIdentifier || depth || index || nil)
 //     - Intermediate nodes: H(left.value || right.value)
 
 // Tree holds internal state for the Merkle Tree.
@@ -417,8 +417,8 @@ func (n *node) hashIntermediateNode() error {
 }
 
 // updateLeafValue updates a leaf node's value by
-// H(TreeNonce || LeafIdentifier || depth || bindex || dataHash )
-// TreeNonce, LeafIdentifier, depth, and bindex are fixed-length.
+// H(LeafIdentifier || depth || bindex || dataHash), where LeafIdentifier,
+// depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
 	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), n.dataHash)
 }
