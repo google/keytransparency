@@ -41,6 +41,7 @@ const (
 	primaryTestCommitmentTimestamp = "8626"
 	primaryUserEmail               = "e2eshare.test@gmail.com"
 	primaryTestAppId               = "gmail"
+	testRealm                      = "google.com"
 )
 
 type fakeJSONParserReader struct {
@@ -72,7 +73,7 @@ func Fake_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) 
 
 func TestFoo(t *testing.T) {
 	v1 := &FakeServer{}
-	s := New(v1)
+	s := New(v1, testRealm)
 	rInfo := handlers.RouteInfo{
 		"/hi",
 		"GET",
@@ -165,7 +166,7 @@ func TestGetEntryV1_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v1 := &FakeServer{}
-		srv := New(v1)
+		srv := New(v1, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
@@ -252,7 +253,7 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v1 := &FakeServer{}
-		srv := New(v1)
+		srv := New(v1, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
@@ -336,7 +337,7 @@ func TestGetEntryV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v2 := &FakeServer{}
-		srv := New(v2)
+		srv := New(v2, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
@@ -424,7 +425,7 @@ func TestListEntryHistoryV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v2 := &FakeServer{}
-		srv := New(v2)
+		srv := New(v2, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
@@ -487,7 +488,7 @@ func TestUpdateEntryV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v2 := &FakeServer{}
-		srv := New(v2)
+		srv := New(v2, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
@@ -565,7 +566,7 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v2 := &FakeServer{}
-		srv := New(v2)
+		srv := New(v2, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
@@ -643,7 +644,7 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v2 := &FakeServer{}
-		srv := New(v2)
+		srv := New(v2, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)
@@ -721,7 +722,7 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 		}
 
 		v2 := &FakeServer{}
-		srv := New(v2)
+		srv := New(v2, testRealm)
 		resp, err := info.H(srv, nil, nil)
 		if err != nil {
 			t.Errorf("Test[%v]: Error while calling Fake_RequestHandler, this should not happen.", i)

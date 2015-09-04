@@ -16,6 +16,7 @@ package builder
 
 import (
 	"github.com/google/e2e-key-server/merkle"
+	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -31,13 +32,16 @@ type Builder struct {
 	update chan *corepb.EntryStorage
 	// t contains the merkle tree.
 	tree *merkle.Tree
+	// store is an instance to LocalStorage.
+	store storage.LocalStorage
 }
 
 // New creates an instance of the tree builder with a given channel.
-func New(update chan *corepb.EntryStorage) *Builder {
+func New(update chan *corepb.EntryStorage, store storage.LocalStorage) *Builder {
 	b := &Builder{
 		update: update,
 		tree:   merkle.New(),
+		store:  store,
 	}
 	go b.build()
 	return b
@@ -47,10 +51,19 @@ func (b *Builder) GetTree() *merkle.Tree {
 	return b.tree
 }
 
-// Build listen to channel Builder.ch and adds a leaf to the tree whenever an
+// Build listens to channel Builder.ch and adds a leaf to the tree whenever an
 // EntryStorage is received.
 func (b *Builder) build() {
 	for entryStorage := range b.update {
+		// LocalStorage ignores context, so nil is passed here.
+		if err := b.store.Write(nil, entryStorage); err != nil {
+			// TODO: for now just panic. However, if Write fails, it
+			//       means something very wrong happened and we
+			//       should implement some DB failure recovery
+			//       mechanism.
+			panic(err)
+		}
+
 		// TODO(cesarghali): instead of posting, push to queue.
 		if err := b.post(b.tree, entryStorage); err != nil {
 			panic(err)

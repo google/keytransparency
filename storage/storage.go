@@ -20,15 +20,27 @@ import (
 	context "golang.org/x/net/context"
 )
 
-type Storage interface {
+const (
+	// ChannelSize is the buffer size of the channel used to send an
+	// EntryStorage to the tree builder.
+	ChannelSize = 100
+)
+
+type ConsistentStorage interface {
 	Reader
 	Writer
-	Watcher
+	Watchable
+}
+
+type LocalStorage interface {
+	Reader
+	Writer
+	Closer
 }
 
 type Reader interface {
 	// Read reads a EntryStroage from the storage.
-	Read(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error)
+	Read(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error)
 }
 
 type Writer interface {
@@ -37,7 +49,12 @@ type Writer interface {
 	Write(ctx context.Context, entry *corepb.EntryStorage) error
 }
 
-type Watcher interface {
+type Closer interface {
+	// Close closes the storage instance and release all resources.
+	Close()
+}
+
+type Watchable interface {
 	// NewEntries  returns a channel containing EntryStorage entries, which
 	// are pushed into the channel whenever an EntryStorage is written in
 	// the stirage.

@@ -37,6 +37,8 @@ var (
 	port = flag.Int("port", 8080, "TCP port to listen on")
 	// Read AuthenticationRealm flag.
 	realm = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
+	// Read EntryStorageDBPath.
+	updateDBPath = flag.String("updates-db-path", "db/updates", "path/to/db that stores updates")
 )
 
 // v1Routes contains all routes information for v1 APIs.
@@ -113,23 +115,28 @@ var v2Routes = []handlers.RouteInfo{
 func main() {
 	flag.Parse()
 
-	// Set flags.
-	rest.AuthenticationRealm = *realm
-
 	portString := fmt.Sprintf(":%d", *port)
 	// TODO: fetch private TLS key from repository.
 	lis, err := net.Listen("tcp", portString)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	ctx := context.Background()
 	// Create a memory storage.
-	store := storage.CreateMem(context.Background())
+	consistentStore := storage.CreateMem(ctx)
+	// Create StaticStorage instance to store EntryStorage.
+	staticStore, err := storage.OpenDB(*updateDBPath)
+	if err != nil {
+		fmt.Printf("Cannot open the database at %v\nExisting the server.", *updateDBPath)
+		return
+	}
+	defer staticStore.Close()
 	// Create the tree builder.
-	b := builder.New(store.NewEntries())
+	b := builder.New(consistentStore.NewEntries(), staticStore)
 	// Create the servers.
-	v2 := keyserver.New(store, b.GetTree())
+	v2 := keyserver.New(consistentStore, b.GetTree())
 	v1 := proxy.New(v2)
-	s := rest.New(v1)
+	s := rest.New(v1, *realm)
 
 	// Manually add routing paths for v1 APIs.
 	// TODO: Auto derive from proto.

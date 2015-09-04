@@ -23,12 +23,6 @@ import (
 	context "golang.org/x/net/context"
 )
 
-const (
-	// ChannelSize is the buffer size of the channel used to send an
-	// EntryStorage to the tree builder.
-	ChannelSize = 100
-)
-
 type epochInfo struct {
 	startCommitmentTS uint64
 	endCommitmentTS   uint64
