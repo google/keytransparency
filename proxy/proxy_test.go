@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	corepb "github.com/google/e2e-key-server/proto/core"
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
@@ -106,9 +107,13 @@ func NewEnv(t *testing.T) *Env {
 	}
 	addr := "localhost:" + port
 	s := grpc.NewServer()
-	store := storage.CreateMem(context.Background())
-	b := builder.New(store.NewEntries())
-	v2srv := keyserver.New(store, b.GetTree())
+
+	// TODO: replace with test credentials for an authenticated user.
+	ctx := context.Background()
+
+	consistentStore := storage.CreateMem(ctx)
+	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{})
+	v2srv := keyserver.New(consistentStore, b.GetTree())
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -121,8 +126,6 @@ func NewEnv(t *testing.T) *Env {
 
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
-	// TODO: replace with test credentials for an authenticated user.
-	ctx := context.Background()
 
 	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx}
 }
@@ -265,4 +268,19 @@ func TestHkpLookup(t *testing.T) {
 			t.Errorf("Test[%v]: HkpLookup(%v) = (%v, %v), want (%v, %v)", i, hkpLookupReq, gotct, gotb, wantct, wantb)
 		}
 	}
+}
+
+// Implementing mock static storage.
+type Fake_StaticStorage struct {
+}
+
+func (s *Fake_StaticStorage) Read(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
+	return nil, nil
+}
+
+func (s *Fake_StaticStorage) Write(ctx context.Context, entry *corepb.EntryStorage) error {
+	return nil
+}
+
+func (s *Fake_StaticStorage) Close() {
 }

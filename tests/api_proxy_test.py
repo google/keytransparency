@@ -17,7 +17,9 @@ import os
 import subprocess
 import time
 import urllib2
+import shutil
 
+testUpdatesDBPath = "/tmp/db/updates"
 server_url = "http://localhost:8080"
 primary_test_email = "e2eshare.test@gmail.com"
 
@@ -88,7 +90,8 @@ update_user_request = {
 def main():
   # Start the server.
   null_output = open(os.devnull, "w")
-  subprocess.Popen(["./srv"], stdout=null_output, stderr=subprocess.STDOUT)
+  subprocess.Popen(["./srv", "-updates-db-path", testUpdatesDBPath],
+                   stdout=null_output, stderr=subprocess.STDOUT)
   # Wait until the server starts.
   time.sleep(1)
 
@@ -103,6 +106,8 @@ def main():
 
   # Kill the server.
   subprocess.Popen(["killall", "srv"])
+  # Remove database tmp directory.
+  shutil.rmtree(testUpdatesDBPath)
 
 
 def GetEntryV1(empty):

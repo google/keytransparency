@@ -30,13 +30,13 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	store storage.Storage
+	store storage.ConsistentStorage
 	auth  auth.Authenticator
 	tree  *merkle.Tree
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(storage storage.Storage, tree *merkle.Tree) *Server {
+func New(storage storage.ConsistentStorage, tree *merkle.Tree) *Server {
 	srv := &Server{
 		store: storage,
 		auth:  auth.New(),
