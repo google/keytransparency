@@ -115,10 +115,6 @@ var v2Routes = []handlers.RouteInfo{
 func main() {
 	flag.Parse()
 
-	// Set flags.
-	rest.AuthenticationRealm = *realm
-	storage.EntryStorageDBPath = *updateDBPath
-
 	portString := fmt.Sprintf(":%d", *port)
 	// TODO: fetch private TLS key from repository.
 	lis, err := net.Listen("tcp", portString)
@@ -129,9 +125,9 @@ func main() {
 	// Create a memory storage.
 	consistentStore := storage.CreateMem(ctx)
 	// Create StaticStorage instance to store EntryStorage.
-	staticStore, err := storage.OpenDB(storage.EntryStorageDBPath)
+	staticStore, err := storage.OpenDB(*updateDBPath)
 	if err != nil {
-		fmt.Printf("Cannot open the database at %v\nExisting the server.", storage.EntryStorageDBPath)
+		fmt.Printf("Cannot open the database at %v\nExisting the server.", *updateDBPath)
 		return
 	}
 	defer staticStore.Close()
@@ -140,7 +136,7 @@ func main() {
 	// Create the servers.
 	v2 := keyserver.New(consistentStore, b.GetTree())
 	v1 := proxy.New(v2)
-	s := rest.New(v1)
+	s := rest.New(v1, *realm)
 
 	// Manually add routing paths for v1 APIs.
 	// TODO: Auto derive from proto.

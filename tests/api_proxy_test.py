@@ -14,12 +14,12 @@
 
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 import time
 import urllib2
-import shutil
 
-testUpdatesDBPath = "/tmp/db/updates"
 server_url = "http://localhost:8080"
 primary_test_email = "e2eshare.test@gmail.com"
 
@@ -88,9 +88,11 @@ update_user_request = {
 
 
 def main():
+  # Create a tmp directory.
+  test_updates_db_path = tempfile.mkdtemp(prefix="db")
   # Start the server.
   null_output = open(os.devnull, "w")
-  subprocess.Popen(["./srv", "-updates-db-path", testUpdatesDBPath],
+  subprocess.Popen(["./srv", "-updates-db-path", test_updates_db_path],
                    stdout=null_output, stderr=subprocess.STDOUT)
   # Wait until the server starts.
   time.sleep(1)
@@ -99,15 +101,15 @@ def main():
   GetEntryV1(True)
   HkpGet(True)
   GetEntryV2(True)
-  #UpdateEntryV2()
-  #GetEntryV1(False)
-  #HkpGet(False)
-  #GetEntryV2(False)
+  # UpdateEntryV2()
+  # GetEntryV1(False)
+  # HkpGet(False)
+  # GetEntryV2(False)
 
   # Kill the server.
   subprocess.Popen(["killall", "srv"])
   # Remove database tmp directory.
-  shutil.rmtree(testUpdatesDBPath)
+  shutil.rmtree(test_updates_db_path)
 
 
 def GetEntryV1(empty):

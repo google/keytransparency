@@ -32,12 +32,12 @@ type Builder struct {
 	update chan *corepb.EntryStorage
 	// t contains the merkle tree.
 	tree *merkle.Tree
-	// store is an instance to StaticStorage.
-	store storage.StaticStorage
+	// store is an instance to LocalStorage.
+	store storage.LocalStorage
 }
 
 // New creates an instance of the tree builder with a given channel.
-func New(update chan *corepb.EntryStorage, store storage.StaticStorage) *Builder {
+func New(update chan *corepb.EntryStorage, store storage.LocalStorage) *Builder {
 	b := &Builder{
 		update: update,
 		tree:   merkle.New(),
@@ -55,7 +55,7 @@ func (b *Builder) GetTree() *merkle.Tree {
 // EntryStorage is received.
 func (b *Builder) build() {
 	for entryStorage := range b.update {
-		// StaticStorage ignores context, so nil is passed here.
+		// LocalStorage ignores context, so nil is passed here.
 		if err := b.store.Write(nil, entryStorage); err != nil {
 			// TODO: for now just panic. However, if Write fails, it
 			//       means something very wrong happened and we

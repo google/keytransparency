@@ -26,19 +26,13 @@ const (
 	ChannelSize = 100
 )
 
-var (
-	// EntryStorageDB contains the path to the leveldb database that stores
-	// EntryStorage.
-	EntryStorageDBPath string
-)
-
 type ConsistentStorage interface {
 	Reader
 	Writer
 	Watchable
 }
 
-type StaticStorage interface {
+type LocalStorage interface {
 	Reader
 	Writer
 	Closer

@@ -49,12 +49,6 @@ const (
 	AuthenticationMethod = "Bearer"
 )
 
-var (
-	// AuthenticationRealm is a string that tells users which credential to
-	// use.
-	AuthenticationRealm string
-)
-
 // httpErrorInfo contains the HTTP error code and message.
 type httpErrorInfo struct {
 	// code contains the HTTP error code.
@@ -154,13 +148,14 @@ type Server struct {
 	srv interface{} // Server instance.
 	// TODO: v2 api server here.
 	//creds Authenticator  // TODO define interface.
-	rtr *mux.Router
+	rtr   *mux.Router
+	realm string
 }
 
 // New creates a new rest server.
 // TODO(insert authenitcator as field param here.
-func New(srv interface{}) *Server {
-	return &Server{srv, mux.NewRouter()}
+func New(srv interface{}, realm string) *Server {
+	return &Server{srv, mux.NewRouter(), realm}
 }
 
 // Serve starts the server loop.
@@ -191,12 +186,12 @@ func (s *Server) handle(h Handler, rInfo handlers.RouteInfo, srv interface{}) ht
 		// TODO insert authentication information.
 
 		if err := h(srv, ctx, w, r, rInfo.Initializer(rInfo)); err != nil {
-			toHttpError(err, w)
+			s.toHttpError(err, w)
 		}
 	}
 }
 
-func toHttpError(err error, w http.ResponseWriter) {
+func (s *Server) toHttpError(err error, w http.ResponseWriter) {
 	// No need to do anything for codes.OK. Writing to w before will
 	// automatically set HTTP code to StatusOK.
 	if c := grpc.Code(err); c != codes.OK {
@@ -204,7 +199,7 @@ func toHttpError(err error, w http.ResponseWriter) {
 			// WWW-Authenticate header MUST be included in HTTP
 			// Unauthorized responses. For more details see RFC 2616
 			// section 14.47.
-			w.Header().Set("WWW-Authenticate", fmt.Sprintf("%v realm=\"%v\"", AuthenticationMethod, AuthenticationRealm))
+			w.Header().Set("WWW-Authenticate", fmt.Sprintf("%v realm=\"%v\"", AuthenticationMethod, s.realm))
 		}
 
 		// For all other codes, set the appropriate HTTP error.

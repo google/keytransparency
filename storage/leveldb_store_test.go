@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -24,10 +25,6 @@ import (
 
 	corepb "github.com/google/e2e-key-server/proto/core"
 	context "golang.org/x/net/context"
-)
-
-const (
-	testEntryStorageDBPath = "tmp/db/updates"
 )
 
 var (
@@ -48,26 +45,31 @@ var (
 )
 
 type Env struct {
-	ctx   context.Context
-	store *LevelDBStorage
+	tmpPath string
+	store   *LevelDBStorage
+	ctx     context.Context
 }
 
 func NewEnv(t *testing.T) *Env {
-	store, err := OpenDB(testEntryStorageDBPath)
+	tmpPath, err := ioutil.TempDir("", "db")
+	if err != nil {
+		t.Fatalf("Cannot create database tmp directory: %v", err)
+	}
+	store, err := OpenDB(tmpPath)
 	if err != nil {
 		t.Fatalf("Error while opening the database: %v", err)
 	}
 
 	ctx := context.Background()
 
-	return &Env{ctx, store}
+	return &Env{tmpPath, store, ctx}
 }
 
 func (env *Env) Close(t *testing.T) {
 	env.store.Close()
 
 	// Remove database tmp directory.
-	if err := os.RemoveAll(testEntryStorageDBPath); err != nil {
+	if err := os.RemoveAll(env.tmpPath); err != nil {
 		t.Fatalf("Cannot remove database tmp directory: %v", err)
 	}
 }
