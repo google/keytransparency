@@ -32,7 +32,12 @@ import (
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
-var port = flag.Int("port", 8080, "TCP port to listen on")
+var (
+	// Read port flag.
+	port = flag.Int("port", 8080, "TCP port to listen on")
+	// Read AuthenticationRealm flag.
+	realm = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
+)
 
 // v1Routes contains all routes information for v1 APIs.
 // TODO(cesarghali): find a better way to populate this map.
@@ -107,6 +112,9 @@ var v2Routes = []handlers.RouteInfo{
 
 func main() {
 	flag.Parse()
+
+	// Set flags.
+	rest.AuthenticationRealm = *realm
 
 	portString := fmt.Sprintf(":%d", *port)
 	// TODO: fetch private TLS key from repository.
