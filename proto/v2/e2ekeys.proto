@@ -216,6 +216,9 @@ message UpdateEntryRequest {
   bytes profile = 3;
   // CommitmentKey is 16 random bytes.
   bytes commitment_key = 4;
+  // TODO: Provide a way for clients to specify a quorum of signatures to wait
+  // on before returning.
+  repeated fixed64 not_used = 5;
 
   // DkimProof is used to vouch for the validity of a new registration.
   // Used when OAuth is not used.
@@ -227,7 +230,6 @@ message UpdateEntryRequest {
 message UpdateEntryResponse {
   GetEntryResponse proof = 1;
 }
-
 
 message ListSEHRequest {
   // from_epoch is the starting epcoh.
