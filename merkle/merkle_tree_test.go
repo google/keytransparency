@@ -333,39 +333,41 @@ func neighborOf(hindex string, depth int) string {
 	return hindex[:depth-1] + string(neighbor(hindex[depth-1]))
 }
 
-func TestGetLeafCommitmentTimestamp(t *testing.T) {
+func TestLongestPrefixMatch(t *testing.T) {
 	env := NewEnv(t)
 
 	// Get commitment timestamps.
 	tests := []struct {
-		leaf Leaf
-		code codes.Code
+		leaf            Leaf
+		outCommitmentTS uint64
+		isExact         bool
+		code            codes.Code
 	}{
 		// Get commitment timestamps of all added leaves. Ordering doesn't matter
-		{validTreeLeaves[3], codes.OK},
-		{validTreeLeaves[0], codes.OK},
-		{validTreeLeaves[4], codes.OK},
-		{validTreeLeaves[1], codes.OK},
-		{validTreeLeaves[2], codes.OK},
+		{validTreeLeaves[3], validTreeLeaves[3].commitmentTS, true, codes.OK},
+		{validTreeLeaves[0], validTreeLeaves[0].commitmentTS, true, codes.OK},
+		{validTreeLeaves[4], validTreeLeaves[4].commitmentTS, true, codes.OK},
+		{validTreeLeaves[1], validTreeLeaves[1].commitmentTS, true, codes.OK},
+		{validTreeLeaves[2], validTreeLeaves[2].commitmentTS, true, codes.OK},
 		// Add custom testing leaves.
 		// Invalid index lengh.
-		{Leaf{1, "8000", 0}, codes.InvalidArgument},
+		{Leaf{1, "8000", 0}, 0, false, codes.InvalidArgument},
 		// Not found due to missing epoch.
-		{Leaf{3, "8000000000000000000000000000000000000000000000000000000000000001", 0}, codes.NotFound},
-		// Not found due to reaching bottom of the tree.
-		{Leaf{1, "8000000000000000000000000000000000000000000000000000000000000002", 0}, codes.NotFound},
-		// Not found due to reaching bottom of the tree.
-		{Leaf{0, "0000000000000000000000000000000000000000000000000000000000000002", 0}, codes.NotFound},
+		{Leaf{3, "8000000000000000000000000000000000000000000000000000000000000001", 0}, 0, false, codes.NotFound},
+		// Found another leaf.
+		{Leaf{1, "8000000000000000000000000000000000000000000000000000000000000002", 0}, 4, false, codes.OK},
+		// Found empty branch.
+		{Leaf{0, "0000000000000000000000000000000000000000000000000000000000000002", 0}, 0, false, codes.NotFound},
 	}
 	for i, test := range tests {
 		index, err := hexToBytes(test.leaf.hindex)
 		if err != nil {
 			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
-		commitmentTS, err := env.m.GetLeafCommitmentTimestamp(test.leaf.epoch, index)
-		if gotc, wantc, gote, wante := commitmentTS, test.leaf.commitmentTS, grpc.Code(err), test.code; gotc != wantc || gote != wante {
-			t.Errorf("Test[%v]: GetLeafCommitmentTimestamp(%v, %v)=(%v, %v), want (%v, %v), err = %v",
-				i, test.leaf.epoch, test.leaf.hindex, gotc, gote, wantc, wante, err)
+		commitmentTS, isExact, err := env.m.LongestPrefixMatch(test.leaf.epoch, index)
+		if gotc, wantc, gotx, wantx, gote, wante := commitmentTS, test.outCommitmentTS, isExact, test.isExact, grpc.Code(err), test.code; gotc != wantc || gote != wante {
+			t.Errorf("Test[%v]: LongestPrefixMatch(%v, %v)=(%v, %v, %v), want (%v, %v, %v), err = %v",
+				i, test.leaf.epoch, test.leaf.hindex, gotc, gotx, gote, wantc, wantx, wante, err)
 		}
 	}
 }

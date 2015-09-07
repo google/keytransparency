@@ -153,20 +153,23 @@ func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uin
 	return r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
 }
 
-// GetLeafCommitmentTimestamp returns a leaf commitment timestamp for a given
-// epoch and index.
-func (t *Tree) GetLeafCommitmentTimestamp(epoch uint64, index []byte) (uint64, error) {
+// LongestPrefixMatch searchs for a leaf with the specified epoch and index.
+// This function returns the commitment timestamp of the found leaf, whether
+// the found leaf has an index that matches the specified one or a prefix. If
+// no leaf node is found with an index prefix shared with the given index, a not
+// found is returned.
+func (t *Tree) LongestPrefixMatch(epoch uint64, index []byte) (uint64, bool, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), cm.IndexLen/8; got != want {
-		return 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
+		return 0, false, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
 	if !ok {
-		return 0, grpc.Errorf(codes.NotFound, "Epoch does not exist")
+		return 0, false, grpc.Errorf(codes.NotFound, "Epoch does not exist")
 	}
 
-	return r.getLeafCommitmentTimestamp(bitString(index), 0)
+	return r.longestPrefixMatch(bitString(index), 0)
 }
 
 // AuditPath returns a slice containing each node's neighbor from the bottom to
@@ -312,19 +315,22 @@ func (n *node) createBranch(bindex string) *node {
 	return n.child(b)
 }
 
-func (n *node) getLeafCommitmentTimestamp(bindex string, depth int) (uint64, error) {
-	// If n is nil then we reached a nil node that is not at the bottom of
-	// the tree.
-	if n == nil {
-		return 0, grpc.Errorf(codes.NotFound, "Reached bottom of the tree")
+func (n *node) longestPrefixMatch(bindex string, depth int) (uint64, bool, error) {
+	if n.leaf() {
+		if n.bindex == "" {
+			// A root is found, which doesn't have an index.
+			return 0, false, grpc.Errorf(codes.NotFound, "Found root")
+		} else {
+			// A leaf is found, return its commitment timestamp and
+			// whether its index matched the given one.
+			return n.commitmentTS, (n.bindex == bindex), nil
+		}
+	} else if n.child(bindex[depth]) == nil {
+		// We find an empty branch, return NotFound error.
+		return 0, false, grpc.Errorf(codes.NotFound, "Found empty branch")
 	}
 
-	// Base case: if we found a leaf with the same bindex.
-	if n.leaf() && n.bindex == bindex {
-		return n.commitmentTS, nil
-	}
-
-	return n.child(bindex[depth]).getLeafCommitmentTimestamp(bindex, depth+1)
+	return n.child(bindex[depth]).longestPrefixMatch(bindex, depth+1)
 }
 
 func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
@@ -332,7 +338,12 @@ func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
 		return [][]byte{}, nil
 	}
 	if n.child(bindex[depth]) == nil {
-		return nil, grpc.Errorf(codes.NotFound, "")
+		// Proof of absence.
+		b := bindex[depth]
+		if nbr := n.child(neighbor(b)); nbr != nil {
+			return [][]byte{nbr.value}, nil
+		}
+		return [][]byte{cm.EmptyLeafValue(n.bindex + string(neighbor(b)))}, nil
 	}
 	deep, err := n.child(bindex[depth]).auditPath(bindex, depth+1)
 	if err != nil {

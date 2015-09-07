@@ -60,28 +60,23 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	if epoch == 0 {
 		epoch = merkle.GetCurrentEpoch()
 	}
-	commitmentTS, err := s.tree.GetLeafCommitmentTimestamp(epoch, index)
-	if err != nil {
-		if grpc.Code(err) == codes.NotFound {
-			// Return an empty proof.
-			return proofOfAbsence(index), nil
-		}
+	commitmentTS, isExact, err := s.tree.LongestPrefixMatch(epoch, index)
+	if err != nil && grpc.Code(err) != codes.NotFound {
+		// Something went wrong while calling LongestPrefixMatch.
 		return nil, err
 	}
 
-	entryStorage, err := s.store.Read(ctx, commitmentTS)
-	if err != nil {
-		if grpc.Code(err) == codes.NotFound {
-			// Return an empty proof.
-			return proofOfAbsence(index), nil
+	// If a leaf node is found, read its data from the storage.
+	var entryStorage *corepb.EntryStorage
+	var readErr error
+	if grpc.Code(err) == codes.OK {
+		entryStorage, readErr = s.store.Read(ctx, commitmentTS)
+		if readErr != nil {
+			// If the index is found in the tree, then it should be
+			// in the data store. Otherwise, an internal error is
+			// generated.
+			return nil, grpc.Errorf(codes.Internal, "Cannot find requested profile in the data store")
 		}
-		return nil, err
-	}
-
-	// Unmarshal entry.
-	entry := new(v2pb.Entry)
-	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 
 	// Get Merkle tree neighbors.
@@ -101,21 +96,55 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		return nil, err
 	}
 
+	// If a leaf is not found, or one with a shared index prefix is fount,
+	// return proof of absence.
+	if grpc.Code(err) == codes.NotFound || !isExact {
+		if proof, err := proofOfAbsence(neighbors, seh, index, entryStorage); err != nil {
+			return nil, err
+		} else {
+			return proof, nil
+		}
+	}
+
+	// Unmarshal entry.
+	entry := new(v2pb.Entry)
+	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
+	}
+
 	result := &v2pb.GetEntryResponse{
 		Entry:               entry,
 		Profile:             entryStorage.Profile,
 		CommitmentKey:       entryStorage.CommitmentKey,
 		MerkleTreeNeighbors: neighbors,
 		SignedEpochHeads:    seh,
-		IndexProof:          index,
+		Index:               index,
+		// TODO(cesarghali): Fill IndexProof.
 	}
 	return result, nil
 }
 
-func proofOfAbsence(index []byte) *v2pb.GetEntryResponse {
-	return &v2pb.GetEntryResponse{
-		IndexProof: index,
+func proofOfAbsence(neighbors [][]byte, seh []*v2pb.SignedEpochHead, index []byte, entryStorage *corepb.EntryStorage) (*v2pb.GetEntryResponse, error) {
+	result := &v2pb.GetEntryResponse{
+		MerkleTreeNeighbors: neighbors,
+		SignedEpochHeads:    seh,
+		Index:               index,
+		// TODO(cesarghali): Fill IndexProof.
 	}
+
+	// If entryStorage is not nil, it means a LongestPrefixMatch returned a
+	// leaf with a shared prefix with the requested index. In this case,
+	// use entryStorage.Entry as part of the proof of absence.
+	if entryStorage != nil {
+		entry := new(v2pb.Entry)
+		if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
+			return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
+		}
+		// Set returned entry.
+		result.Entry = entry
+	}
+
+	return result, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.

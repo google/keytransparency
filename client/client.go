@@ -60,7 +60,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 
 	// Get Index
 	// TODO: formally define and fix.
-	index := previous.IndexProof
+	index := previous.Index
 
 	// Construct Entry.
 	commitmentKey, commitment, err := common.Commitment(profileData)
