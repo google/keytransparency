@@ -16,6 +16,8 @@
 package keyserver
 
 import (
+	"bytes"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/merkle"
@@ -54,35 +56,17 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
 	}
 
+	// result contains the returned GetEntryResponse.
+	result := &v2pb.GetEntryResponse{
+		Index: index,
+		// TODO(cesarghali): Fill IndexProof.
+	}
+
 	// Get the commitment timestamp corresponding to the user's profile in
 	// the given, or latest, epoch.
 	epoch := in.Epoch
 	if epoch == 0 {
 		epoch = merkle.GetCurrentEpoch()
-	}
-	commitmentTS, isExact, err := s.tree.LongestPrefixMatch(epoch, index)
-	if err != nil && grpc.Code(err) != codes.NotFound {
-		// Something went wrong while calling LongestPrefixMatch.
-		return nil, err
-	}
-
-	// If a leaf node is found, read its data from the storage.
-	var entryStorage *corepb.EntryStorage
-	var readErr error
-	if grpc.Code(err) == codes.OK {
-		entryStorage, readErr = s.store.Read(ctx, commitmentTS)
-		if readErr != nil {
-			// If the index is found in the tree, then it should be
-			// in the data store. Otherwise, an internal error is
-			// generated.
-			return nil, grpc.Errorf(codes.Internal, "Cannot find requested profile in the data store")
-		}
-	}
-
-	// Get Merkle tree neighbors.
-	neighbors, err := s.tree.AuditPath(epoch, index)
-	if err != nil {
-		return nil, err
 	}
 
 	// Get signed epoch heads.
@@ -95,53 +79,40 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	if err != nil {
 		return nil, err
 	}
+	result.SignedEpochHeads = seh
 
-	// If a leaf is not found, or one with a shared index prefix is fount,
-	// return proof of absence.
-	if grpc.Code(err) == codes.NotFound || !isExact {
-		if proof, err := proofOfAbsence(neighbors, seh, index, entryStorage); err != nil {
-			return nil, err
-		} else {
-			return proof, nil
+	// Get merkle tree neighbors, and commitment timestamp.
+	neighbors, commitmentTS, err := s.tree.AuditPath(epoch, index)
+	result.MerkleTreeNeighbors = neighbors
+
+	if err != nil {
+		return nil, err
+	}
+
+	// If commitmentTS is equal to 0, then an empty branch was found, and
+	// no Entry should be returned.
+	if commitmentTS != 0 {
+		// Read EntryStorage from the data store.
+		entryStorage, err := s.store.Read(ctx, commitmentTS)
+		if err != nil {
+			return nil, grpc.Errorf(codes.Internal, "Error while reading the requested profile in the data store")
 		}
-	}
 
-	// Unmarshal entry.
-	entry := new(v2pb.Entry)
-	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
-	}
-
-	result := &v2pb.GetEntryResponse{
-		Entry:               entry,
-		Profile:             entryStorage.Profile,
-		CommitmentKey:       entryStorage.CommitmentKey,
-		MerkleTreeNeighbors: neighbors,
-		SignedEpochHeads:    seh,
-		Index:               index,
-		// TODO(cesarghali): Fill IndexProof.
-	}
-	return result, nil
-}
-
-func proofOfAbsence(neighbors [][]byte, seh []*v2pb.SignedEpochHead, index []byte, entryStorage *corepb.EntryStorage) (*v2pb.GetEntryResponse, error) {
-	result := &v2pb.GetEntryResponse{
-		MerkleTreeNeighbors: neighbors,
-		SignedEpochHeads:    seh,
-		Index:               index,
-		// TODO(cesarghali): Fill IndexProof.
-	}
-
-	// If entryStorage is not nil, it means a LongestPrefixMatch returned a
-	// leaf with a shared prefix with the requested index. In this case,
-	// use entryStorage.Entry as part of the proof of absence.
-	if entryStorage != nil {
+		// Unmarshal entry.
 		entry := new(v2pb.Entry)
 		if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
-			return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
+			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
-		// Set returned entry.
+
 		result.Entry = entry
+
+		// If entryStorage.SignedEntryUpdate.NewEntry have an
+		// exact index as the requested one, fill out the
+		// corresponding profile and its commitment.
+		if bytes.Equal(entry.Index, index) {
+			result.Profile = entryStorage.Profile
+			result.CommitmentKey = entryStorage.CommitmentKey
+		}
 	}
 
 	return result, nil

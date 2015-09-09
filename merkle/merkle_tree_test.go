@@ -268,7 +268,7 @@ func TestAuditDepth(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
-		audit, err := env.m.AuditPath(test.leaf.epoch, index)
+		audit, _, err := env.m.AuditPath(test.leaf.epoch, index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
 				i, test.leaf.epoch, test.leaf.hindex, got, want)
@@ -306,7 +306,7 @@ func TestAuditNeighors(t *testing.T) {
 				i, test.epoch, test.hindex, got, want)
 		}
 		// Verify audit path.
-		audit, err := m.AuditPath(test.epoch, index)
+		audit, _, err := m.AuditPath(test.epoch, index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.hindex, got, want)
@@ -340,34 +340,33 @@ func TestLongestPrefixMatch(t *testing.T) {
 	tests := []struct {
 		leaf            Leaf
 		outCommitmentTS uint64
-		isExact         bool
 		code            codes.Code
 	}{
 		// Get commitment timestamps of all added leaves. Ordering doesn't matter
-		{validTreeLeaves[3], validTreeLeaves[3].commitmentTS, true, codes.OK},
-		{validTreeLeaves[0], validTreeLeaves[0].commitmentTS, true, codes.OK},
-		{validTreeLeaves[4], validTreeLeaves[4].commitmentTS, true, codes.OK},
-		{validTreeLeaves[1], validTreeLeaves[1].commitmentTS, true, codes.OK},
-		{validTreeLeaves[2], validTreeLeaves[2].commitmentTS, true, codes.OK},
+		{validTreeLeaves[3], validTreeLeaves[3].commitmentTS, codes.OK},
+		{validTreeLeaves[0], validTreeLeaves[0].commitmentTS, codes.OK},
+		{validTreeLeaves[4], validTreeLeaves[4].commitmentTS, codes.OK},
+		{validTreeLeaves[1], validTreeLeaves[1].commitmentTS, codes.OK},
+		{validTreeLeaves[2], validTreeLeaves[2].commitmentTS, codes.OK},
 		// Add custom testing leaves.
 		// Invalid index lengh.
-		{Leaf{1, "8000", 0}, 0, false, codes.InvalidArgument},
+		{Leaf{1, "8000", 0}, 0, codes.InvalidArgument},
 		// Not found due to missing epoch.
-		{Leaf{3, "8000000000000000000000000000000000000000000000000000000000000001", 0}, 0, false, codes.NotFound},
+		{Leaf{3, "8000000000000000000000000000000000000000000000000000000000000001", 0}, 0, codes.InvalidArgument},
 		// Found another leaf.
-		{Leaf{1, "8000000000000000000000000000000000000000000000000000000000000002", 0}, 4, false, codes.OK},
+		{Leaf{1, "8000000000000000000000000000000000000000000000000000000000000002", 0}, 4, codes.OK},
 		// Found empty branch.
-		{Leaf{0, "0000000000000000000000000000000000000000000000000000000000000002", 0}, 0, false, codes.NotFound},
+		{Leaf{0, "0000000000000000000000000000000000000000000000000000000000000002", 0}, 0, codes.OK},
 	}
 	for i, test := range tests {
 		index, err := hexToBytes(test.leaf.hindex)
 		if err != nil {
 			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
-		commitmentTS, isExact, err := env.m.LongestPrefixMatch(test.leaf.epoch, index)
-		if gotc, wantc, gotx, wantx, gote, wante := commitmentTS, test.outCommitmentTS, isExact, test.isExact, grpc.Code(err), test.code; gotc != wantc || gote != wante {
-			t.Errorf("Test[%v]: LongestPrefixMatch(%v, %v)=(%v, %v, %v), want (%v, %v, %v), err = %v",
-				i, test.leaf.epoch, test.leaf.hindex, gotc, gotx, gote, wantc, wantx, wante, err)
+		_, commitmentTS, err := env.m.AuditPath(test.leaf.epoch, index)
+		if gotc, wantc, gote, wante := commitmentTS, test.outCommitmentTS, grpc.Code(err), test.code; gotc != wantc || gote != wante {
+			t.Errorf("Test[%v]: LongestPrefixMatch(%v, %v)=(%v, %v), want (%v, %v), err = %v",
+				i, test.leaf.epoch, test.leaf.hindex, gotc, gote, wantc, wante, err)
 		}
 	}
 }
@@ -418,7 +417,7 @@ func TestFromNeighbors(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
-		neighbors, err := env.m.AuditPath(test.leaf.epoch, index)
+		neighbors, _, err := env.m.AuditPath(test.leaf.epoch, index)
 
 		tmp, err := FromNeighbors(neighbors, index, []byte{})
 		if err != nil {

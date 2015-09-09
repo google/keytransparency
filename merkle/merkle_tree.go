@@ -94,8 +94,8 @@ func New() *Tree {
 	return tree
 }
 
-// BuildExpectedTree builds a partial merkle tree with the path from the given
-// leaf node at the given index, up to the root including all path neighbors.
+// FromNeighbors builds a partial merkle tree with the path from the given leaf
+// node at the given index, up to the root including all path neighbors.
 func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error) {
 	bindex := bitString(index)
 
@@ -107,7 +107,17 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 	}
 
 	// Add the leaf node to the partial tree.
-	if err := r.addLeaf(data, 0, bindex, 0, 0, true); err != nil {
+	var leafData []byte
+	var isLeaf bool
+	if data == nil {
+		// In this case, an empty branch is the leaf node.
+		leafData = cm.EmptyLeafValue(bindex[:len(neighbors)])
+		isLeaf = false
+	} else {
+		leafData = data
+		isLeaf = true
+	}
+	if err := r.addLeaf(leafData, 0, bindex, 0, 0, isLeaf); err != nil {
 		return nil, err
 	}
 
@@ -153,38 +163,26 @@ func (t *Tree) AddLeaf(data []byte, epoch uint64, index []byte, commitmentTS uin
 	return r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
 }
 
-// LongestPrefixMatch searchs for a leaf with the specified epoch and index.
-// This function returns the commitment timestamp of the found leaf, whether
-// the found leaf has an index that matches the specified one or a prefix. If
-// no leaf node is found with an index prefix shared with the given index, a not
-// found is returned.
-func (t *Tree) LongestPrefixMatch(epoch uint64, index []byte) (uint64, bool, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if got, want := len(index), cm.IndexLen/8; got != want {
-		return 0, false, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
-	}
-	r, ok := t.roots[epoch]
-	if !ok {
-		return 0, false, grpc.Errorf(codes.NotFound, "Epoch does not exist")
-	}
-
-	return r.longestPrefixMatch(bitString(index), 0)
-}
-
 // AuditPath returns a slice containing each node's neighbor from the bottom to
-// the top.
-func (t *Tree) AuditPath(epoch uint64, index []byte) ([][]byte, error) {
+// the top, and the commitment timestamp if a leaf with either matching index or
+// share a prefix with the provided index.
+func (t *Tree) AuditPath(epoch uint64, index []byte) ([][]byte, uint64, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if got, want := len(index), cm.IndexLen/8; got != want {
-		return nil, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
+		return nil, 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.InvalidArgument, "epoch %v does not exist", epoch)
+		return nil, 0, grpc.Errorf(codes.InvalidArgument, "epoch %v does not exist", epoch)
 	}
-	return r.auditPath(bitString(index), 0)
+	bindex := bitString(index)
+	neighbors, leaf := r.auditPath(bindex, 0)
+	commitmentTS := uint64(0)
+	if leaf != nil {
+		commitmentTS = leaf.commitmentTS
+	}
+	return neighbors, commitmentTS, nil
 }
 
 // GetRootValue returns the value of the root node in a specific epoch.
@@ -205,6 +203,11 @@ func (t *Tree) addRoot(epoch uint64) (*node, error) {
 	if t.current == nil {
 		// Create the first epoch.
 		t.roots[epoch] = &node{epoch, "", 0, 0, nil, nil, nil, nil}
+		// When adding an empty root, its value should be initialized
+		// with an empty leaf value. This is important to make the
+		// two cases of empty branch and empty tree similar when calling
+		// FromNeighbors.
+		t.roots[epoch].value = cm.EmptyLeafValue("")
 		t.current = t.roots[epoch]
 		return t.current, nil
 	}
@@ -315,54 +318,35 @@ func (n *node) createBranch(bindex string) *node {
 	return n.child(b)
 }
 
-func (n *node) longestPrefixMatch(bindex string, depth int) (uint64, bool, error) {
-	if n.leaf() {
-		if n.bindex == "" {
-			// A root is found, which doesn't have an index.
-			return 0, false, grpc.Errorf(codes.NotFound, "Found root")
-		} else {
-			// A leaf is found, return its commitment timestamp and
-			// whether its index matched the given one.
-			return n.commitmentTS, (n.bindex == bindex), nil
-		}
-	} else if n.child(bindex[depth]) == nil {
-		// We find an empty branch, return NotFound error.
-		return 0, false, grpc.Errorf(codes.NotFound, "Found empty branch")
-	}
-
-	return n.child(bindex[depth]).longestPrefixMatch(bindex, depth+1)
-}
-
-func (n *node) auditPath(bindex string, depth int) ([][]byte, error) {
-	if depth == maxDepth || n.leaf() {
+func (n *node) auditPath(bindex string, depth int) ([][]byte, *node) {
+	if n == nil {
+		// Proof of absence.
 		return [][]byte{}, nil
 	}
-	if n.child(bindex[depth]) == nil {
-		// Proof of absence.
-		b := bindex[depth]
-		if nbr := n.child(neighbor(b)); nbr != nil {
-			return [][]byte{nbr.value}, nil
-		}
-		return [][]byte{cm.EmptyLeafValue(n.bindex + string(neighbor(b)))}, nil
-	}
-	deep, err := n.child(bindex[depth]).auditPath(bindex, depth+1)
-	if err != nil {
-		return nil, err
+
+	if depth == maxDepth || n.leaf() {
+		return [][]byte{}, n
 	}
 
+	deep, leaf := n.child(bindex[depth]).auditPath(bindex, depth+1)
 	b := bindex[depth]
 	if nbr := n.child(neighbor(b)); nbr != nil {
-		return append(deep, nbr.value), nil
+		return append(deep, nbr.value), leaf
 	}
 	value := cm.EmptyLeafValue(n.bindex + string(neighbor(b)))
-	return append(deep, value), nil
+	return append(deep, value), leaf
 }
 
 func (n *node) leaf() bool {
 	return n.left == nil && n.right == nil
 }
+
+// empty returns if a node is empty. A node is empty if its dataHash and
+// children pointers are nil. The node value should not be considered as
+// a part of the empty test because an empty tree has an empty root with
+// an empty leaf value.
 func (n *node) empty() bool {
-	return n.dataHash == nil && n.left == nil && n.right == nil && n.value == nil
+	return n.dataHash == nil && n.left == nil && n.right == nil
 }
 
 func (n *node) child(b uint8) *node {

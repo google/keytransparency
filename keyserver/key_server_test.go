@@ -232,14 +232,21 @@ func getNonExistantUser(t *testing.T, env *Env) {
 	expectedRoot := epochHead.Root
 
 	// Verify merkle tree neighbors.
+	var entryData []byte
+	var index []byte
 	if res.Entry != nil {
-		entryData, err := proto.Marshal(res.Entry)
+		entryData, err = proto.Marshal(res.Entry)
 		if err != nil {
 			t.Fatalf("Unexpected entry marshalling error: %v.", err)
 		}
-		if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Entry.Index, entryData); err != nil {
-			t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
-		}
+		index = res.Entry.Index
+	} else {
+		entryData = nil
+		index = res.Index
+	}
+
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, index, entryData); err != nil {
+		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
 
 	// TODO(cesarghali): verify IndexProoc.
@@ -298,7 +305,7 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Entry.Index, entryData); err != nil {
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Index, entryData); err != nil {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
 
