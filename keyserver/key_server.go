@@ -16,6 +16,8 @@
 package keyserver
 
 import (
+	"bytes"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/merkle"
@@ -54,40 +56,17 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
 	}
 
+	// result contains the returned GetEntryResponse.
+	result := &v2pb.GetEntryResponse{
+		Index: index,
+		// TODO(cesarghali): Fill IndexProof.
+	}
+
 	// Get the commitment timestamp corresponding to the user's profile in
 	// the given, or latest, epoch.
 	epoch := in.Epoch
 	if epoch == 0 {
 		epoch = merkle.GetCurrentEpoch()
-	}
-	commitmentTS, err := s.tree.GetLeafCommitmentTimestamp(epoch, index)
-	if err != nil {
-		if grpc.Code(err) == codes.NotFound {
-			// Return an empty proof.
-			return proofOfAbsence(index), nil
-		}
-		return nil, err
-	}
-
-	entryStorage, err := s.store.Read(ctx, commitmentTS)
-	if err != nil {
-		if grpc.Code(err) == codes.NotFound {
-			// Return an empty proof.
-			return proofOfAbsence(index), nil
-		}
-		return nil, err
-	}
-
-	// Unmarshal entry.
-	entry := new(v2pb.Entry)
-	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
-	}
-
-	// Get Merkle tree neighbors.
-	neighbors, err := s.tree.AuditPath(epoch, index)
-	if err != nil {
-		return nil, err
 	}
 
 	// Get signed epoch heads.
@@ -100,22 +79,43 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	if err != nil {
 		return nil, err
 	}
+	result.SignedEpochHeads = seh
 
-	result := &v2pb.GetEntryResponse{
-		Entry:               entry,
-		Profile:             entryStorage.Profile,
-		CommitmentKey:       entryStorage.CommitmentKey,
-		MerkleTreeNeighbors: neighbors,
-		SignedEpochHeads:    seh,
-		IndexProof:          index,
+	// Get merkle tree neighbors, and commitment timestamp.
+	neighbors, commitmentTS, err := s.tree.AuditPath(epoch, index)
+	result.MerkleTreeNeighbors = neighbors
+
+	if err != nil {
+		return nil, err
 	}
+
+	// If commitmentTS is equal to 0, then an empty branch was found, and
+	// no Entry should be returned.
+	if commitmentTS != 0 {
+		// Read EntryStorage from the data store.
+		entryStorage, err := s.store.Read(ctx, commitmentTS)
+		if err != nil {
+			return nil, grpc.Errorf(codes.Internal, "Error while reading the requested profile in the data store")
+		}
+
+		// Unmarshal entry.
+		entry := new(v2pb.Entry)
+		if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
+			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
+		}
+
+		result.Entry = entry
+
+		// If entryStorage.SignedEntryUpdate.NewEntry have an
+		// exact index as the requested one, fill out the
+		// corresponding profile and its commitment.
+		if bytes.Equal(entry.Index, index) {
+			result.Profile = entryStorage.Profile
+			result.CommitmentKey = entryStorage.CommitmentKey
+		}
+	}
+
 	return result, nil
-}
-
-func proofOfAbsence(index []byte) *v2pb.GetEntryResponse {
-	return &v2pb.GetEntryResponse{
-		IndexProof: index,
-	}
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.

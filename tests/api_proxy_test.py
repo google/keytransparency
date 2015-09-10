@@ -191,7 +191,7 @@ def GetEntryV2(empty):
     dict_response = json.loads(body)
     if empty:
       # Response includes index_signature
-      assert "index_proof" in dict_response
+      assert "index" in dict_response
     else:
       # Response includes profile.
       assert "profile" in dict_response

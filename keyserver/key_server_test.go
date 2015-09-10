@@ -191,23 +191,65 @@ func TestCreateKey(t *testing.T) {
 	env.createPrimaryUser(t)
 }
 
-func TestGetNonExistantUser(t *testing.T) {
+func TestProofOfAbsence(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
+	// Test proof of absence for an empty branch.
+	getNonExistantUser(t, env)
+
+	// Test proof of absence for a leaf that shares a prefix with the
+	// requested index.
+	env.createPrimaryUser(t)
+	getNonExistantUser(t, env)
+}
+
+func getNonExistantUser(t *testing.T, env *Env) {
 	ctx := context.Background() // Unauthenticated request.
-	resp, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: "nobody"})
+	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: "nobody"})
 	if err != nil {
 		t.Fatalf("Query for nonexistant failed %v", err)
 	}
 
-	// TODO: TEST nonexistant proof.
-	if resp.GetEntry() != nil {
-		t.Errorf("Entry returned for nonexistant user")
-	}
-	if len(resp.Profile) != 0 {
+	if len(res.Profile) != 0 {
 		t.Errorf("Profile returned for nonexistant user")
 	}
+
+	// Verify that there's at least a single SEH returned.
+	if got, want := len(res.GetSignedEpochHeads()), 1; got < want {
+		t.Errorf("len(GetSignedEpochHeads()) = %v, want >= %v", got, want)
+	}
+
+	// TODO(cesarghali): verify SEH signatures.
+
+	// Pick one of the provided signed epoch heads.
+	// TODO(cesarghali): better pick based on key ID.
+	seh := res.GetSignedEpochHeads()[0]
+	epochHead, err := common.EpochHead(seh)
+	if err != nil {
+		t.Fatalf("Unexpected getting epoch head error: %v", err)
+	}
+	expectedRoot := epochHead.Root
+
+	// Verify merkle tree neighbors.
+	var entryData []byte
+	var index []byte
+	if res.Entry != nil {
+		entryData, err = proto.Marshal(res.Entry)
+		if err != nil {
+			t.Fatalf("Unexpected entry marshalling error: %v.", err)
+		}
+		index = res.Entry.Index
+	} else {
+		entryData = nil
+		index = res.Index
+	}
+
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, index, entryData); err != nil {
+		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
+	}
+
+	// TODO(cesarghali): verify IndexProoc.
 }
 
 func TestGetValidUser(t *testing.T) {
@@ -263,9 +305,11 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Entry.Index, entryData); err != nil {
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Index, entryData); err != nil {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
+
+	// TODO(cesarghali): verify IndexProoc.
 }
 
 func getErr(ret interface{}, err error) error {
