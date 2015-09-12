@@ -19,6 +19,8 @@ import (
 )
 
 func TestAdvance(t *testing.T) {
+	e := NewEpoch()
+
 	tests := []struct {
 		numOfIncrements int
 		outEpoch        uint64
@@ -32,10 +34,10 @@ func TestAdvance(t *testing.T) {
 
 	for i, test := range tests {
 		for j := 0; j < test.numOfIncrements; j++ {
-			AdvanceEpoch()
+			e.Advance()
 		}
-		if got, want := GetCurrentEpoch() == test.outEpoch, test.success; got != want {
-			t.Errorf("Test[%v]: GetCurrentEpoch()=%v, want %v, should fail: %v", i, GetCurrentEpoch(), test.outEpoch, !test.success)
+		if got, want := e.Serving() == test.outEpoch, test.success; got != want {
+			t.Errorf("Test[%v]: Serving()=%v, want %v, should fail: %v", i, e.Serving(), test.outEpoch, !test.success)
 		}
 	}
 }

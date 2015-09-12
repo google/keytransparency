@@ -134,7 +134,7 @@ func main() {
 	// Create the tree builder.
 	b := builder.New(consistentStore.NewEntries(), staticStore)
 	// Create the servers.
-	v2 := keyserver.New(consistentStore, b.GetTree())
+	v2 := keyserver.New(consistentStore, b.GetTree(), b.GetEpoch())
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

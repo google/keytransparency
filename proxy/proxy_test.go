@@ -113,7 +113,7 @@ func NewEnv(t *testing.T) *Env {
 
 	consistentStore := storage.CreateMem(ctx)
 	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{})
-	v2srv := keyserver.New(consistentStore, b.GetTree())
+	v2srv := keyserver.New(consistentStore, b.GetTree(), b.GetEpoch())
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)

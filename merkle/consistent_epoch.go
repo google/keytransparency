@@ -18,30 +18,47 @@ import (
 	"sync"
 )
 
-var (
-	// current contains the current (latest) epoch of the merkle tree.
-	current uint64 = 0
-
-	// mu syncronizes access to current. mu locks when reading and advancing
-	// current epoch.
-	mu sync.Mutex
+const (
+	initialEpochNumber = 0
 )
 
-// GetCurrentEpoch returns the current epoch number.
-// TODO(cesarghali): this function should be refactored when adding support for
-//                   multiple consistent key server replicas.
-func GetCurrentEpoch() uint64 {
-	mu.Lock()
-	defer mu.Unlock()
-	return current
+// Epoch represents a merkle tree epoch
+type Epoch struct {
+	// number contains the current (latest) epoch of the merkle tree.
+	number uint64
+	// mu syncronizes access to number. mu locks when reading and advancing
+	// epoch number.
+	mu sync.Mutex
 }
 
-// AdvanceEpoch advances the epoch by one.
+func NewEpoch() *Epoch {
+	return &Epoch{number: initialEpochNumber}
+}
+
+// Building returns the number of the epoch that is been currently built.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func AdvanceEpoch() uint64 {
-	mu.Lock()
-	defer mu.Unlock()
-	current = current + 1
-	return current
+func (e *Epoch) Building() uint64 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.number + 1
+}
+
+// Serving returns the number of the epoch that is been currently served.
+// TODO(cesarghali): this function should be refactored when adding support for
+//                   multiple consistent key server replicas.
+func (e *Epoch) Serving() uint64 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.number
+}
+
+// Advance increases the epoch number by one.
+// TODO(cesarghali): this function should be refactored when adding support for
+//                   multiple consistent key server replicas.
+func (e *Epoch) Advance() uint64 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.number = e.number + 1
+	return e.number
 }
