@@ -184,12 +184,9 @@ func (s *Server) handle(h Handler, rInfo handlers.RouteInfo, srv interface{}) ht
 		// Build context.
 		ctx := context.Background()
 		oauth_header, ok := r.Header["Authorization"]
-		if !ok {
-			s.toHttpError(grpc.Errorf(codes.Unauthenticated, "Missing Authorization header"), w)
-			return
+		if ok {
+			ctx = context.WithValue(ctx, "Authorization", oauth_header)
 		}
-
-		ctx = context.WithValue(ctx, "Authorization", r.Header["Authorization"])
 		if err := h(srv, ctx, w, r, rInfo.Initializer(rInfo)); err != nil {
 			s.toHttpError(err, w)
 		}
