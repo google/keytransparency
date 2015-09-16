@@ -15,6 +15,7 @@
 package builder
 
 import (
+	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
@@ -35,16 +36,16 @@ type Builder struct {
 	// store is an instance to LocalStorage.
 	store storage.LocalStorage
 	// epoch is an instance of merkle.Epoch.
-	epoch *merkle.Epoch
+	epoch *epoch.Epoch
 }
 
 // New creates an instance of the tree builder with a given channel.
-func New(update chan *corepb.EntryStorage, store storage.LocalStorage) *Builder {
+func New(update chan *corepb.EntryStorage, store storage.LocalStorage, epoch *epoch.Epoch) *Builder {
 	b := &Builder{
 		update: update,
 		tree:   merkle.New(),
 		store:  store,
-		epoch:  merkle.NewEpoch(),
+		epoch:  epoch,
 	}
 	go b.build()
 	return b
@@ -53,11 +54,6 @@ func New(update chan *corepb.EntryStorage, store storage.LocalStorage) *Builder 
 // GetTree returns the current instance of the merkle tree.
 func (b *Builder) GetTree() *merkle.Tree {
 	return b.tree
-}
-
-// GetEpoch returns the current instance of the eppch object.
-func (b *Builder) GetEpoch() *merkle.Epoch {
-	return b.epoch
 }
 
 // Build listens to channel Builder.ch and adds a leaf to the tree whenever an

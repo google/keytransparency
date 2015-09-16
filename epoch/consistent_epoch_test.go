@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+package epoch
 
 import (
 	"testing"
 )
 
 func TestAdvance(t *testing.T) {
-	e := NewEpoch()
+	e := New()
 
 	tests := []struct {
 		numOfIncrements int

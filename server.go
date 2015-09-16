@@ -21,6 +21,7 @@ import (
 	"net"
 
 	"github.com/google/e2e-key-server/builder"
+	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
@@ -131,10 +132,12 @@ func main() {
 		return
 	}
 	defer staticStore.Close()
+	// Create an epoch object instance.
+	epoch := epoch.New()
 	// Create the tree builder.
-	b := builder.New(consistentStore.NewEntries(), staticStore)
+	b := builder.New(consistentStore.NewEntries(), staticStore, epoch)
 	// Create the servers.
-	v2 := keyserver.New(consistentStore, b.GetTree(), b.GetEpoch())
+	v2 := keyserver.New(consistentStore, b.GetTree(), epoch)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

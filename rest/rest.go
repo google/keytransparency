@@ -29,9 +29,9 @@ import (
 
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/gorilla/mux"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"golang.org/x/net/context"
 
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"

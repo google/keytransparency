@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+// This package represents an epoch object.
+package epoch
 
 import (
 	"sync"
@@ -27,7 +28,8 @@ type Epoch struct {
 	mu sync.Mutex
 }
 
-func NewEpoch() *Epoch {
+// New creates a new instalce of the epoch object.
+func New() *Epoch {
 	return &Epoch{}
 }
 
