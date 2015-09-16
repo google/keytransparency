@@ -119,7 +119,7 @@ func NewEnv(t *testing.T) *Env {
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
 	go s.Serve(lis)
 
-	cc, err := grpc.Dial(addr, grpc.WithTimeout(time.Millisecond*500))
+	cc, err := grpc.Dial(addr, grpc.WithTimeout(time.Millisecond*500), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}

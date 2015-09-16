@@ -31,10 +31,10 @@ import (
 	"github.com/gorilla/mux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"golang.org/x/net/context"
 
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
-	context "golang.org/x/net/context"
 	google_protobuf3 "google/protobuf"
 )
 
@@ -183,8 +183,10 @@ func (s *Server) handle(h Handler, rInfo handlers.RouteInfo, srv interface{}) ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Build context.
 		ctx := context.Background()
-		// TODO insert authentication information.
-
+		oauth_header, ok := r.Header["Authorization"]
+		if ok {
+			ctx = context.WithValue(ctx, "Authorization", oauth_header)
+		}
 		if err := h(srv, ctx, w, r, rInfo.Initializer(rInfo)); err != nil {
 			s.toHttpError(err, w)
 		}
