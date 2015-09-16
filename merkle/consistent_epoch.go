@@ -18,10 +18,6 @@ import (
 	"sync"
 )
 
-const (
-	initialEpochNumber = 0
-)
-
 // Epoch represents a merkle tree epoch
 type Epoch struct {
 	// number contains the current (latest) epoch of the merkle tree.
@@ -32,10 +28,10 @@ type Epoch struct {
 }
 
 func NewEpoch() *Epoch {
-	return &Epoch{number: initialEpochNumber}
+	return &Epoch{}
 }
 
-// Building returns the number of the epoch that is been currently built.
+// Building returns the epoch number that is been currently built.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
 func (e *Epoch) Building() uint64 {
@@ -44,7 +40,7 @@ func (e *Epoch) Building() uint64 {
 	return e.number + 1
 }
 
-// Serving returns the number of the epoch that is been currently served.
+// Serving returns the epoch number that is been currently served.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
 func (e *Epoch) Serving() uint64 {
