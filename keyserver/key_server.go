@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
@@ -35,16 +36,17 @@ type Server struct {
 	store storage.ConsistentStorage
 	auth  auth.Authenticator
 	tree  *merkle.Tree
+	epoch *epoch.Epoch
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(storage storage.ConsistentStorage, tree *merkle.Tree) *Server {
-	srv := &Server{
+func New(storage storage.ConsistentStorage, tree *merkle.Tree, epoch *epoch.Epoch) *Server {
+	return &Server{
 		store: storage,
 		auth:  auth.New(),
 		tree:  tree,
+		epoch: epoch,
 	}
-	return srv
 }
 
 // GetEntry returns a user's profile and proof that there is only one object for
@@ -66,7 +68,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	// the given, or latest, epoch.
 	epoch := in.Epoch
 	if epoch == 0 {
-		epoch = merkle.GetCurrentEpoch()
+		epoch = s.epoch.Serving()
 	}
 
 	// Get signed epoch heads.

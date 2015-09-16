@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
+	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
@@ -112,8 +113,9 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	consistentStore := storage.CreateMem(ctx)
-	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{})
-	v2srv := keyserver.New(consistentStore, b.GetTree())
+	epoch := epoch.New()
+	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{}, epoch)
+	v2srv := keyserver.New(consistentStore, b.GetTree(), epoch)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)

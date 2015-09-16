@@ -27,6 +27,7 @@ import (
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
+	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -148,8 +149,9 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	consistentStore := storage.CreateMem(ctx)
-	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{})
-	server := New(consistentStore, b.GetTree())
+	epoch := epoch.New()
+	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{}, epoch)
+	server := New(consistentStore, b.GetTree(), epoch)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 

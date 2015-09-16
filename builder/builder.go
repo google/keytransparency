@@ -15,6 +15,7 @@
 package builder
 
 import (
+	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
 	"google.golang.org/grpc"
@@ -34,19 +35,23 @@ type Builder struct {
 	tree *merkle.Tree
 	// store is an instance to LocalStorage.
 	store storage.LocalStorage
+	// epoch is an instance of merkle.Epoch.
+	epoch *epoch.Epoch
 }
 
 // New creates an instance of the tree builder with a given channel.
-func New(update chan *corepb.EntryStorage, store storage.LocalStorage) *Builder {
+func New(update chan *corepb.EntryStorage, store storage.LocalStorage, epoch *epoch.Epoch) *Builder {
 	b := &Builder{
 		update: update,
 		tree:   merkle.New(),
 		store:  store,
+		epoch:  epoch,
 	}
 	go b.build()
 	return b
 }
 
+// GetTree returns the current instance of the merkle tree.
 func (b *Builder) GetTree() *merkle.Tree {
 	return b.tree
 }
@@ -80,7 +85,7 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 	}
 
 	// Add leaf to the merkle tree.
-	epoch := merkle.GetCurrentEpoch()
+	epoch := b.epoch.Serving()
 	// Epoch will not advance here (after reading current epoch and before
 	// adding the leaf). This is because the builder will post all storage
 	// entries into the tree and then, advance the epoch.
