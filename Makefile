@@ -45,7 +45,7 @@ main: proto
 	go build -o srv server.go
 
 test: main
-	go test ./rest ./keyserver ./proxy ./merkle ./builder ./storage ./epoch
+	go test ./rest ./keyserver ./proxy ./merkle ./builder ./storage ./epoch ./utils/queue
 	python tests/api_proxy_test.py
 
 fmt:
