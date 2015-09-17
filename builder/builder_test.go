@@ -28,10 +28,6 @@ import (
 	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
-const (
-	testEpoch = 1
-)
-
 var (
 	// Mock user index, no need to use the real one.
 	testUserIndex, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")

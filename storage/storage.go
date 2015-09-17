@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package storage provides an API to persistant storage, implemented with spanner.
+// Package storage provides an API to persistant storage.
 package storage
 
 import (
@@ -30,6 +30,7 @@ type ConsistentStorage interface {
 	Reader
 	Writer
 	Watchable
+	Helper
 }
 
 type LocalStorage interface {
@@ -39,14 +40,16 @@ type LocalStorage interface {
 }
 
 type Reader interface {
-	// Read reads a EntryStroage from the storage.
-	Read(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error)
+	// ReadUpdate reads a EntryStroage from the storage.
+	ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error)
 }
 
 type Writer interface {
-	// Write inserts a new EntryStorage in the storage. Fails if the row
-	// already exists.
-	Write(ctx context.Context, entry *corepb.EntryStorage) error
+	// WriteUpdate inserts a new EntryStorage in the storage. Fails if the
+	// row already exists.
+	WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error
+	// WriteEpochInfo writes the epoch information in the storage.
+	WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error
 }
 
 type Closer interface {
@@ -55,11 +58,21 @@ type Closer interface {
 }
 
 type Watchable interface {
-	// NewEntries  returns a channel containing EntryStorage entries, which
-	// are pushed into the channel whenever an EntryStorage is written in
-	// the stirage.
-	NewEntries() chan *corepb.EntryStorage
+	// BuilderUpdates returns a channel containing EntryStorage entries,
+	// which are pushed into the channel whenever an EntryStorage is written
+	// in the storage. This channel is watched by the builder.
+	BuilderUpdates() chan *corepb.EntryStorage
+	// SignerUpdates returns a channel containing EntryStorage entries,
+	// which are pushed into the channel whenever an EntryStorage is written
+	// in the storage. This channel is watched by the signer.
+	SignerUpdates() chan *corepb.EntryStorage
+	// EpochInfo returns a channel that is used to transmit EpochInfo to the
+	// builder once the signer creates a new epoch.
+	EpochInfo() chan *corepb.EpochInfo
 }
 
-// TODO(cesarghali): bring back ConkisStorage and make it compatible with the
-// new proto.
+type Helper interface {
+	// LastCommitmentTimestamp returns the timestamp of the last update that
+	// should included in the new epoch.
+	LastCommitmentTimestamp() uint64
+}

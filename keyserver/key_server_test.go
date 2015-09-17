@@ -39,9 +39,10 @@ import (
 )
 
 const (
-	primaryUserID    = 12345678
-	primaryUserEmail = "e2eshare.test@gmail.com"
-	primaryAppId     = "pgp"
+	primaryUserID     = 12345678
+	primaryUserEmail  = "e2eshare.test@gmail.com"
+	primaryAppId      = "pgp"
+	testEpochDuration = 1
 )
 
 var (
@@ -125,11 +126,13 @@ a5d613`, "\n", "", -1))
 )
 
 type Env struct {
-	s      *grpc.Server
-	server *Server
-	conn   *grpc.ClientConn
-	Client *client.Client
-	ctx    context.Context
+	s       *grpc.Server
+	server  *Server
+	conn    *grpc.ClientConn
+	Client  *client.Client
+	ctx     context.Context
+	epoch   *epoch.Epoch
+	builder *builder.Builder
 }
 
 // NewEnv sets up common resources for tests.
@@ -150,7 +153,7 @@ func NewEnv(t *testing.T) *Env {
 
 	consistentStore := storage.CreateMem(ctx)
 	epoch := epoch.New()
-	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{}, epoch)
+	b := builder.New(consistentStore.BuilderUpdates(), &Fake_StaticStorage{}, epoch)
 	server := New(consistentStore, b.GetTree(), epoch)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
@@ -162,7 +165,7 @@ func NewEnv(t *testing.T) *Env {
 
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	return &Env{s, server, cc, client, ctx}
+	return &Env{s, server, cc, client, ctx, epoch, b}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -184,6 +187,12 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		t.Errorf("CreateEntry got unexpected error %v.", err)
 		return
 	}
+
+	// Mock signer: create new epoch and invoke WriteSignedEpochHead to
+	// advance the epoch number.
+	lastCommitmentTS := uint64(1)
+	env.builder.CreateEpoch(lastCommitmentTS)
+	env.epoch.Advance()
 }
 
 func TestCreateKey(t *testing.T) {
@@ -251,7 +260,7 @@ func getNonExistantUser(t *testing.T, env *Env) {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
 	}
 
-	// TODO(cesarghali): verify IndexProoc.
+	// TODO(cesarghali): verify IndexProof.
 }
 
 func TestGetValidUser(t *testing.T) {
@@ -360,13 +369,17 @@ func TestUnauthenticated(t *testing.T) {
 type Fake_StaticStorage struct {
 }
 
-func (s *Fake_StaticStorage) Read(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
+func (s *Fake_StaticStorage) ReadUpdate(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
 	return nil, nil
 }
 
-func (s *Fake_StaticStorage) Write(ctx context.Context, entry *corepb.EntryStorage) error {
+func (s *Fake_StaticStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
 	return nil
 }
 
 func (s *Fake_StaticStorage) Close() {
+}
+
+func (s *Fake_StaticStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, signedEpochHead *corepb.EpochInfo) error {
+	return nil
 }

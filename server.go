@@ -26,6 +26,7 @@ import (
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
+	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 
@@ -38,8 +39,12 @@ var (
 	port = flag.Int("port", 8080, "TCP port to listen on")
 	// Read AuthenticationRealm flag.
 	realm = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
-	// Read EntryStorageDBPath.
-	updateDBPath = flag.String("updates-db-path", "db/updates", "path/to/db that stores updates")
+	// Read server DB path flag.
+	serverDBPath = flag.String("server-db-path", "db/server", "path/to/server/db where the local database will be created/opened.")
+	// Read signer DB path flag.
+	signerDBPath = flag.String("signer-db-path", "db/signer", "path/to/signer/db where the local database will be created/opened.")
+	// Read epoch advancement duration flag.
+	epochDuration = flag.Uint("epoch-duration", 60, "Epoch advancement duration")
 )
 
 // v1Routes contains all routes information for v1 APIs.
@@ -125,17 +130,25 @@ func main() {
 	ctx := context.Background()
 	// Create a memory storage.
 	consistentStore := storage.CreateMem(ctx)
-	// Create StaticStorage instance to store EntryStorage.
-	staticStore, err := storage.OpenDB(*updateDBPath)
+	// Create localStorage instance to store EntryStorage.
+	localStore, err := storage.OpenDB(*serverDBPath)
 	if err != nil {
-		fmt.Printf("Cannot open the database at %v\nExisting the server.", *updateDBPath)
+		fmt.Printf("Cannot open the database at %v\nExisting the server.\n", *serverDBPath)
 		return
 	}
-	defer staticStore.Close()
+	defer localStore.Close()
 	// Create an epoch object instance.
 	epoch := epoch.New()
 	// Create the tree builder.
-	b := builder.New(consistentStore.NewEntries(), staticStore, epoch)
+	// Create a signer.
+	signer, err := signer.New(consistentStore, *signerDBPath, *epochDuration)
+	if err != nil {
+		fmt.Printf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
+		return
+	}
+	defer signer.Stop()
+	// Create the tree builder.
+	b := builder.New(consistentStore.BuilderUpdates(), localStore, epoch)
 	// Create the servers.
 	v2 := keyserver.New(consistentStore, b.GetTree(), epoch)
 	v1 := proxy.New(v2)

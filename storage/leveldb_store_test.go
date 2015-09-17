@@ -76,13 +76,13 @@ func (env *Env) Close(t *testing.T) {
 
 func (env *Env) FillStore(t *testing.T) {
 	for i, entry := range entries {
-		if got, want := grpc.Code(env.store.Write(env.ctx, entry)), codes.OK; got != want {
+		if got, want := grpc.Code(env.store.WriteUpdate(env.ctx, entry)), codes.OK; got != want {
 			t.Fatalf("Entry[%v]: Error while filling leveldb store, got %v, want %v", i, got, want)
 		}
 	}
 }
 
-func TestRead(t *testing.T) {
+func TestReadUpdate(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 
@@ -102,7 +102,7 @@ func TestRead(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		res, err := env.store.Read(env.ctx, test.entry.CommitmentTimestamp)
+		res, err := env.store.ReadUpdate(env.ctx, test.entry.CommitmentTimestamp)
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: Error while reading from leveldb store, got %v, want %v", i, got, want)
 		}

@@ -191,7 +191,7 @@ func (t *Tree) Root(epoch uint64) ([]byte, error) {
 	defer t.mu.Unlock()
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Epoch does not exist")
+		return nil, grpc.Errorf(codes.NotFound, "Epoch %v does not exist", epoch)
 	}
 	return r.value, nil
 }

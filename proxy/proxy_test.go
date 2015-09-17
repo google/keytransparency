@@ -55,6 +55,7 @@ NwEAtQEtl9jKzlGYeng4YskWACyDnba5o/rGwcoFjRf1BiwBAPFn0SrS6WSUpU0+
 B+8k+PXDpFKMZHZYo/E6qtVrpdYT
 =+kV0
 -----END PGP PUBLIC KEY BLOCK-----`
+	testEpochDuration = 1
 )
 
 var (
@@ -94,6 +95,8 @@ type Env struct {
 	// to try to get it.
 	ClientV2 *client.Client
 	ctx      context.Context
+	epoch    *epoch.Epoch
+	builder  *builder.Builder
 }
 
 // NewEnv sets up common resources for tests.
@@ -114,7 +117,7 @@ func NewEnv(t *testing.T) *Env {
 
 	consistentStore := storage.CreateMem(ctx)
 	epoch := epoch.New()
-	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{}, epoch)
+	b := builder.New(consistentStore.BuilderUpdates(), &Fake_StaticStorage{}, epoch)
 	v2srv := keyserver.New(consistentStore, b.GetTree(), epoch)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
@@ -129,7 +132,7 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, epoch, b}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -153,6 +156,12 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		t.Errorf("UpdateEntry got unexpected error %v.", err)
 		return
 	}
+
+	// Mock signer: create new epoch and invoke WriteSignedEpochHead to
+	// advance the epoch number.
+	lastCommitmentTS := uint64(1)
+	env.builder.CreateEpoch(lastCommitmentTS)
+	env.epoch.Advance()
 }
 
 func TestGetValidUser(t *testing.T) {
@@ -276,13 +285,17 @@ func TestHkpLookup(t *testing.T) {
 type Fake_StaticStorage struct {
 }
 
-func (s *Fake_StaticStorage) Read(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
+func (s *Fake_StaticStorage) ReadUpdate(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
 	return nil, nil
 }
 
-func (s *Fake_StaticStorage) Write(ctx context.Context, entry *corepb.EntryStorage) error {
+func (s *Fake_StaticStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
 	return nil
 }
 
 func (s *Fake_StaticStorage) Close() {
+}
+
+func (s *Fake_StaticStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, signedEpochHead *corepb.EpochInfo) error {
+	return nil
 }

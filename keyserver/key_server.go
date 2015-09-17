@@ -95,7 +95,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	// no Entry should be returned.
 	if commitmentTS != 0 {
 		// Read EntryStorage from the data store.
-		entryStorage, err := s.store.Read(ctx, commitmentTS)
+		entryStorage, err := s.store.ReadUpdate(ctx, commitmentTS)
 		if err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Error while reading the requested profile in the data store")
 		}
@@ -141,7 +141,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err := s.store.Write(ctx, e); err != nil {
+	if err := s.store.WriteUpdate(ctx, e); err != nil {
 		return nil, err
 	}
 

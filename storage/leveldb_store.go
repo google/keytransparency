@@ -52,8 +52,8 @@ func (s *LevelDBStorage) Close() {
 	s.db.Close()
 }
 
-// Read reads a EntryStroage from the leveldb database.
-func (s *LevelDBStorage) Read(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error) {
+// ReadUpdate reads a EntryStroage from the leveldb database.
+func (s *LevelDBStorage) ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error) {
 	key := make([]byte, 8)
 	binary.BigEndian.PutUint64(key, primaryKey)
 
@@ -73,10 +73,10 @@ func (s *LevelDBStorage) Read(ctx context.Context, primaryKey uint64) (*corepb.E
 	return entry, nil
 }
 
-// Write inserts a new EntryStorage in the leveldb database. This function works
-// whether the entry exists or not. If the entry does not exist, it will be
-// inserted, otherwise updated.
-func (s *LevelDBStorage) Write(ctx context.Context, entry *corepb.EntryStorage) error {
+// WriteUpdate inserts a new EntryStorage in the leveldb database. This function
+// works whether the entry exists or not. If the entry does not exist, it will
+// be inserted, otherwise updated.
+func (s *LevelDBStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
 	key := make([]byte, 8)
 	binary.BigEndian.PutUint64(key, entry.CommitmentTimestamp)
 
@@ -90,4 +90,9 @@ func (s *LevelDBStorage) Write(ctx context.Context, entry *corepb.EntryStorage) 
 		return grpc.Errorf(codes.Internal, "Error while writing to leveldb database: %v", err)
 	}
 	return nil
+}
+
+// WriteEpochInfo writes the epoch information in the storage.
+func (s *LevelDBStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
+	return grpc.Errorf(codes.Unimplemented, "Method is not implemented")
 }
