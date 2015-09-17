@@ -21,7 +21,6 @@ import (
 	"net"
 
 	"github.com/google/e2e-key-server/builder"
-	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
@@ -130,6 +129,7 @@ func main() {
 	ctx := context.Background()
 	// Create a memory storage.
 	consistentStore := storage.CreateMem(ctx)
+	defer consistentStore.Close()
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := storage.OpenDB(*serverDBPath)
 	if err != nil {
@@ -137,8 +137,6 @@ func main() {
 		return
 	}
 	defer localStore.Close()
-	// Create an epoch object instance.
-	epoch := epoch.New()
 	// Create the tree builder.
 	// Create a signer.
 	signer, err := signer.New(consistentStore, *signerDBPath, *epochDuration)
@@ -148,9 +146,9 @@ func main() {
 	}
 	defer signer.Stop()
 	// Create the tree builder.
-	b := builder.New(consistentStore.BuilderUpdates(), localStore, epoch)
+	b := builder.New(consistentStore.BuilderUpdates(), localStore)
 	// Create the servers.
-	v2 := keyserver.New(consistentStore, b.GetTree(), epoch)
+	v2 := keyserver.New(consistentStore, b)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

@@ -21,6 +21,7 @@ import (
 	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -50,21 +51,16 @@ type Builder struct {
 }
 
 // New creates an instance of the tree builder with a given channel.
-func New(updates chan *corepb.EntryStorage, store storage.LocalStorage, epoch *epoch.Epoch) *Builder {
+func New(updates chan *corepb.EntryStorage, store storage.LocalStorage) *Builder {
 	b := &Builder{
 		updates: updates,
 		tree:    merkle.New(),
 		store:   store,
-		epoch:   epoch,
+		epoch:   epoch.New(),
 	}
 	go b.build()
 	go b.trigger()
 	return b
-}
-
-// GetTree returns the current instance of the merkle tree.
-func (b *Builder) GetTree() *merkle.Tree {
-	return b.tree
 }
 
 // build listens to channel Builder.ch and adds a leaf to the tree whenever an
@@ -89,7 +85,10 @@ func (b *Builder) build() {
 // trigger triggers building an new epoch after the signer creates its own.
 func (b *Builder) trigger() {
 	for info := range b.epochInfo {
-		createdEpochHead := b.CreateEpoch(info.LastCommitmentTimestamp)
+		createdEpochHead, err := b.CreateEpoch(info.LastCommitmentTimestamp, false)
+		if err != nil {
+			panic(err)
+		}
 
 		// Verify that the create epoch matches the one created by the
 		// signer.
@@ -103,6 +102,25 @@ func (b *Builder) trigger() {
 			panic("Created epoch does not match the signer epoch")
 		}
 
+		// Save the created signed epoch head in local storage.
+		// TODO(cesarghali): fill IssueTime and PreviousEpochHeadHash.
+		epochHeadData, err := proto.Marshal(createdEpochHead)
+		if err != nil {
+			panic(err)
+		}
+		signedEpochHead := &v2pb.SignedEpochHead{
+			EpochHead: epochHeadData,
+			// TODO(cesarghali): fill Signatures
+		}
+		info := &corepb.EpochInfo{
+			SignedEpochHead:         signedEpochHead,
+			LastCommitmentTimestamp: info.LastCommitmentTimestamp,
+		}
+		if err := b.store.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
+			panic(err)
+		}
+
+		// Advance the epoch.
 		b.epoch.Advance()
 	}
 }
@@ -129,13 +147,13 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 
 // CreateEpoch posts all StorageEntry in Builder.queue to the merkle tree and
 // and returns the corresponding EpochHead.
-func (b *Builder) CreateEpoch(lastCommitmentTS uint64) *v2pb.EpochHead {
+func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*v2pb.EpochHead, error) {
 	// If EntryStorage is empty, create an empty epoch in the tree.
 	// Otherwise, post all EntryStorage in the queue on the tree.
 	if len(b.queue) == 0 {
 		// Create the new epoch in the tree.
 		if err := b.tree.AddRoot(b.epoch.Building()); err != nil {
-			panic(err)
+			return nil, err
 		}
 	} else {
 		// Read all EntryStorage in the queue that have
@@ -150,7 +168,7 @@ func (b *Builder) CreateEpoch(lastCommitmentTS uint64) *v2pb.EpochHead {
 
 			// Post v to the tree.
 			if err := b.post(b.tree, v); err != nil {
-				panic(err)
+				return nil, err
 			}
 		}
 
@@ -160,7 +178,7 @@ func (b *Builder) CreateEpoch(lastCommitmentTS uint64) *v2pb.EpochHead {
 
 	root, err := b.tree.Root(b.epoch.Building())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	epochHead := &v2pb.EpochHead{
@@ -169,7 +187,12 @@ func (b *Builder) CreateEpoch(lastCommitmentTS uint64) *v2pb.EpochHead {
 		Root:  root,
 	}
 
-	return epochHead
+	// Advance the epoch.
+	if advance {
+		b.epoch.Advance()
+	}
+
+	return epochHead, nil
 }
 
 // index returns the user's index from EntryStorage.SignedEntryUpdate.NewEntry.Index.
@@ -181,4 +204,26 @@ func index(entryStorage *corepb.EntryStorage) ([]byte, error) {
 	}
 
 	return entry.Index, nil
+}
+
+// AuditPath is a wrapper to Tree.AuditPath.
+func (b *Builder) AuditPath(epoch uint64, index []byte) ([][]byte, uint64, error) {
+	if epoch == 0 {
+		epoch = b.epoch.Serving()
+	}
+	return b.tree.AuditPath(epoch, index)
+}
+
+// GetSignedEpochHeads
+func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*v2pb.SignedEpochHead, error) {
+	if epoch == 0 {
+		epoch = b.epoch.Serving()
+	}
+
+	info, err := b.store.ReadEpochInfo(ctx, epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*v2pb.SignedEpochHead{info.GetSignedEpochHead()}, nil
 }

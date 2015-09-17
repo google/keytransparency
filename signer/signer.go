@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
-	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/storage"
 
 	proto "github.com/golang/protobuf/proto"
@@ -31,8 +30,6 @@ import (
 type Signer struct {
 	// consistentStore is an instance to ConsistentStorage.
 	consistentStore storage.ConsistentStorage
-	// epoch is signer's instance of epoch.
-	epoch *epoch.Epoch
 	// builder is signer's instance of builder.
 	builder *builder.Builder
 	// ticker ticks everytime a new epoch should be created.
@@ -47,15 +44,12 @@ func New(consistentStore storage.ConsistentStorage, dbPath string, seconds uint)
 	if err != nil {
 		return nil, err
 	}
-	// Create an epoch object instance.
-	epoch := epoch.New()
 	// Create the tree builder.
-	b := builder.New(consistentStore.SignerUpdates(), localStore, epoch)
+	b := builder.New(consistentStore.SignerUpdates(), localStore)
 
 	// Create a signer instance.
 	signer := &Signer{
 		consistentStore: consistentStore,
-		epoch:           epoch,
 		builder:         b,
 		ticker:          time.NewTicker(time.Second * time.Duration(seconds)),
 		localStore:      localStore,
@@ -69,7 +63,10 @@ func New(consistentStore storage.ConsistentStorage, dbPath string, seconds uint)
 func (s *Signer) createEpoch() {
 	for _ = range s.ticker.C {
 		lastCommitmentTS := s.consistentStore.LastCommitmentTimestamp()
-		epochHead := s.builder.CreateEpoch(lastCommitmentTS)
+		epochHead, err := s.builder.CreateEpoch(lastCommitmentTS, true)
+		if err != nil {
+			panic(err)
+		}
 
 		// Create SignedEpochHead.
 		// TODO(cesarghali): fill IssueTime and PreviousEpochHeadHash.
@@ -90,8 +87,6 @@ func (s *Signer) createEpoch() {
 		if err := s.consistentStore.WriteEpochInfo(nil, epochHead.Epoch, epochInfo); err != nil {
 			panic(err)
 		}
-
-		s.epoch.Advance()
 	}
 }
 

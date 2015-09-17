@@ -18,7 +18,6 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -48,7 +47,7 @@ type EntryUpdates struct {
 }
 
 func NewEnv(t *testing.T) *Env {
-	b := New(nil, nil, epoch.New())
+	b := New(nil, nil)
 	updates := GenerateEntryUpdates(t)
 
 	return &Env{b, updates}

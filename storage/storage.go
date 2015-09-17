@@ -16,8 +16,9 @@
 package storage
 
 import (
+	"golang.org/x/net/context"
+
 	corepb "github.com/google/e2e-key-server/proto/core"
-	context "golang.org/x/net/context"
 )
 
 const (
@@ -31,6 +32,7 @@ type ConsistentStorage interface {
 	Writer
 	Watchable
 	Helper
+	Closer
 }
 
 type LocalStorage interface {
@@ -42,6 +44,8 @@ type LocalStorage interface {
 type Reader interface {
 	// ReadUpdate reads a EntryStroage from the storage.
 	ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error)
+	// ReadEpochInfo reads an EpochInfo from the storage
+	ReadEpochInfo(ctx context.Context, primaryKey uint64) (*corepb.EpochInfo, error)
 }
 
 type Writer interface {

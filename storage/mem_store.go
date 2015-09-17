@@ -72,6 +72,16 @@ func (s *MemStorage) ReadUpdate(ctx context.Context, commitmentTS uint64) (*core
 	return val, nil
 }
 
+// ReadEpochInfo reads an EpochInfo from the storage
+func (s *MemStorage) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
+	val, ok := s.epochs[epoch]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", epoch)
+	}
+
+	return val, nil
+}
+
 // WriteUpdate inserts a new EntryStorage in the storage. This function works
 // whether the entry exists or not. If the entry does not exist, it will be
 // inserted, otherwise updated.
@@ -97,8 +107,6 @@ func (s *MemStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage
 func (s *MemStorage) WriteEpochInfo(ctx context.Context, epoch uint64, info *corepb.EpochInfo) error {
 	s.epochs[epoch] = info
 	s.epochInfo <- info
-	// TODO(cesarghali): write signed epoch head to local storage.
-	// Advance epoch
 	return nil
 }
 
@@ -128,4 +136,11 @@ func (s *MemStorage) LastCommitmentTimestamp() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.lastCommitmentTS
+}
+
+// Close closes the storage instance and release all resources.
+func (s *MemStorage) Close() {
+	close(s.builderUpdates)
+	close(s.signerUpdates)
+	close(s.epochInfo)
 }
