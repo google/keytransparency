@@ -94,11 +94,10 @@ type Env struct {
 	ClientV1  v1pb.E2EKeyProxyClient
 	// V2 client is needed in order to create user before using v1 client
 	// to try to get it.
-	ClientV2        *client.Client
-	ctx             context.Context
-	consistentStore storage.ConsistentStorage
-	builder         *builder.Builder
-	fakeStore       *Fake_LocalStorage
+	ClientV2  *client.Client
+	ctx       context.Context
+	builder   *builder.Builder
+	fakeStore *Fake_LocalStorage
 }
 
 // NewEnv sets up common resources for tests.
@@ -119,7 +118,9 @@ func NewEnv(t *testing.T) *Env {
 
 	consistentStore := storage.CreateMem(ctx)
 	store := &Fake_LocalStorage{}
-	b := builder.New(consistentStore.BuilderUpdates(), store)
+	b := builder.New(store)
+	// Only subscribe the updates channel.
+	consistentStore.SubscribeUpdates(b.Updates())
 	v2srv := keyserver.New(consistentStore, b)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
@@ -134,12 +135,11 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, consistentStore, b, store}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, b, store}
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
-	env.consistentStore.Close()
 	env.cc.Close()
 	env.rpcServer.Stop()
 }

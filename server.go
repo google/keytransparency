@@ -129,7 +129,6 @@ func main() {
 	ctx := context.Background()
 	// Create a memory storage.
 	consistentStore := storage.CreateMem(ctx)
-	defer consistentStore.Close()
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := storage.OpenDB(*serverDBPath)
 	if err != nil {
@@ -146,7 +145,10 @@ func main() {
 	}
 	defer signer.Stop()
 	// Create the tree builder.
-	b := builder.New(consistentStore.BuilderUpdates(), localStore)
+	b := builder.New(localStore)
+	// Subscribe the updates and epochInfo channels.
+	consistentStore.SubscribeUpdates(b.Updates())
+	consistentStore.SubscribeEpochInfo(b.EpochInfo())
 	// Create the servers.
 	v2 := keyserver.New(consistentStore, b)
 	v1 := proxy.New(v2)

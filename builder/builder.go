@@ -16,11 +16,13 @@ package builder
 
 import (
 	"bytes"
-	"sync"
+	"math"
+	"sync/atomic"
 
 	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/storage"
+	"github.com/google/e2e-key-server/utils/queue"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,11 +34,11 @@ import (
 
 // Builder watches a channel and post received elements in the merkle tree.
 type Builder struct {
-	// updates is watched by build(). Whenever an EntryStorage is received,
-	// the appripriate data will be pushed in the tree.
+	// updates is watched by handleUpdates(). Whenever an EntryStorage is
+	// received, the appripriate data will be pushed in the tree.
 	updates chan *corepb.EntryStorage
-	// epochInfo is watched by trigger(). Whenever an EpochInfo is received,
-	// it triggers creating a new epoch.
+	// epochInfo is watched by handleEpochInfo(). Whenever an EpochInfo is
+	// received, it triggers creating a new epoch.
 	epochInfo chan *corepb.EpochInfo
 	// t contains the merkle tree.
 	tree *merkle.Tree
@@ -44,28 +46,31 @@ type Builder struct {
 	store storage.LocalStorage
 	// epoch is an instance of merkle.Epoch.
 	epoch *epoch.Epoch
-	// queue stores the storage entries arrived on the channel
-	queue []*corepb.EntryStorage
-	// mu syncronizes access to queue.
-	mu sync.Mutex
+	// queue is a goroutine safe queue.
+	queue *queue.Queue
+	// Contains the timestamp of the last update to be included in the new
+	// epoch.
+	lastCommitmentTS uint64
 }
 
 // New creates an instance of the tree builder with a given channel.
-func New(updates chan *corepb.EntryStorage, store storage.LocalStorage) *Builder {
+func New(store storage.LocalStorage) *Builder {
 	b := &Builder{
-		updates: updates,
-		tree:    merkle.New(),
-		store:   store,
-		epoch:   epoch.New(),
+		updates:   make(chan *corepb.EntryStorage),
+		epochInfo: make(chan *corepb.EpochInfo),
+		tree:      merkle.New(),
+		store:     store,
+		epoch:     epoch.New(),
+		queue:     queue.New(),
 	}
-	go b.build()
-	go b.trigger()
+	go b.handleUpdates()
+	go b.handleEpochInfo()
 	return b
 }
 
-// build listens to channel Builder.ch and adds a leaf to the tree whenever an
-// EntryStorage is received.
-func (b *Builder) build() {
+// handleUpdates listens to channel Builder.ch and adds a leaf to the tree
+// whenever an EntryStorage is received.
+func (b *Builder) handleUpdates() {
 	for entryStorage := range b.updates {
 		// LocalStorage ignores context, so nil is passed here.
 		if err := b.store.WriteUpdate(nil, entryStorage); err != nil {
@@ -76,16 +81,16 @@ func (b *Builder) build() {
 			panic(err)
 		}
 
-		b.mu.Lock()
-		b.queue = append(b.queue, entryStorage)
-		b.mu.Unlock()
+		b.queue.Enqueue(entryStorage)
+		atomic.StoreUint64(&b.lastCommitmentTS, entryStorage.CommitmentTimestamp)
 	}
 }
 
-// trigger triggers building an new epoch after the signer creates its own.
-func (b *Builder) trigger() {
+// handleEpochInfo triggers building an new epoch after the signer creates its
+// own.
+func (b *Builder) handleEpochInfo() {
 	for info := range b.epochInfo {
-		createdEpochHead, err := b.CreateEpoch(info.LastCommitmentTimestamp, false)
+		localEpochHead, err := b.CreateEpoch(info.LastCommitmentTimestamp, false)
 		if err != nil {
 			panic(err)
 		}
@@ -97,25 +102,12 @@ func (b *Builder) trigger() {
 			panic(err)
 		}
 
-		if !bytes.Equal(signerEpochHead.Root, createdEpochHead.Root) {
+		if !bytes.Equal(signerEpochHead.Root, localEpochHead.Root) {
 			// TODO: implement failuer recovery.
 			panic("Created epoch does not match the signer epoch")
 		}
 
-		// Save the created signed epoch head in local storage.
-		// TODO(cesarghali): fill IssueTime and PreviousEpochHeadHash.
-		epochHeadData, err := proto.Marshal(createdEpochHead)
-		if err != nil {
-			panic(err)
-		}
-		signedEpochHead := &v2pb.SignedEpochHead{
-			EpochHead: epochHeadData,
-			// TODO(cesarghali): fill Signatures
-		}
-		info := &corepb.EpochInfo{
-			SignedEpochHead:         signedEpochHead,
-			LastCommitmentTimestamp: info.LastCommitmentTimestamp,
-		}
+		// Save the signed epoch head in local storage.
 		if err := b.store.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
 			panic(err)
 		}
@@ -148,32 +140,39 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 // CreateEpoch posts all StorageEntry in Builder.queue to the merkle tree and
 // and returns the corresponding EpochHead.
 func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*v2pb.EpochHead, error) {
-	// If EntryStorage is empty, create an empty epoch in the tree.
-	// Otherwise, post all EntryStorage in the queue on the tree.
-	if len(b.queue) == 0 {
-		// Create the new epoch in the tree.
-		if err := b.tree.AddRoot(b.epoch.Building()); err != nil {
+	// Create the new epoch in the tree.
+	if err := b.tree.AddRoot(b.epoch.Building()); err != nil {
+		return nil, err
+	}
+
+	// Read all EntryStorage in the queue that have
+	// timestamp less than lastCommitmentTS and post them to
+	// the tree.
+	for b.queue.Size() > 0 {
+		v, err := b.queue.Peek()
+		if err != nil {
+			return nil, grpc.Errorf(codes.Internal, "Error while peeking at the first element in the queue: %v", err)
+		}
+
+		entryStorage := v.(*corepb.EntryStorage)
+		// If the EntryStorage element in the queue has a timestamp
+		// larger than the last one that should included in ths epoch,
+		// break the loop.
+		if entryStorage.CommitmentTimestamp > lastCommitmentTS {
+			break
+		}
+
+		// Dequeue will always return the same element as Peek. The
+		// reason is because this thread is the only thread that reads
+		// from the queue. If in the future multiple threads will be
+		// reading from the queue, this for loop should be synchronized
+		// by a mutex.
+		b.queue.Dequeue()
+
+		// Post v to the tree.
+		if err := b.post(b.tree, entryStorage); err != nil {
 			return nil, err
 		}
-	} else {
-		// Read all EntryStorage in the queue that have
-		// timestamp less than lastCommitmentTS and post them to
-		// the tree.
-		var i int
-		var v *corepb.EntryStorage
-		for i, v = range b.queue {
-			if v.CommitmentTimestamp > lastCommitmentTS {
-				break
-			}
-
-			// Post v to the tree.
-			if err := b.post(b.tree, v); err != nil {
-				return nil, err
-			}
-		}
-
-		// Remove already processed StorageEntry from the queue
-		b.queue = b.queue[i+1:]
 	}
 
 	root, err := b.tree.Root(b.epoch.Building())
@@ -208,7 +207,7 @@ func index(entryStorage *corepb.EntryStorage) ([]byte, error) {
 
 // AuditPath is a wrapper to Tree.AuditPath.
 func (b *Builder) AuditPath(epoch uint64, index []byte) ([][]byte, uint64, error) {
-	if epoch == 0 {
+	if epoch == math.MaxUint64 {
 		epoch = b.epoch.Serving()
 	}
 	return b.tree.AuditPath(epoch, index)
@@ -216,7 +215,7 @@ func (b *Builder) AuditPath(epoch uint64, index []byte) ([][]byte, uint64, error
 
 // GetSignedEpochHeads
 func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*v2pb.SignedEpochHead, error) {
-	if epoch == 0 {
+	if epoch == math.MaxUint64 {
 		epoch = b.epoch.Serving()
 	}
 
@@ -226,4 +225,19 @@ func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*v2p
 	}
 
 	return []*v2pb.SignedEpochHead{info.GetSignedEpochHead()}, nil
+}
+
+// Updates returns the updates channel.
+func (b *Builder) Updates() chan *corepb.EntryStorage {
+	return b.updates
+}
+
+// EpochInfo returnes the epochInfo channel.
+func (b *Builder) EpochInfo() chan *corepb.EpochInfo {
+	return b.epochInfo
+}
+
+// LastCommitmentTimestamp returns the last commitment timestamp seen.
+func (b *Builder) LastCommitmentTimestamp() uint64 {
+	return atomic.LoadUint64(&b.lastCommitmentTS)
 }

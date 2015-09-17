@@ -18,6 +18,7 @@ package keyserver
 
 import (
 	"encoding/hex"
+	"math"
 	"net"
 	"reflect"
 	"strings"
@@ -126,14 +127,13 @@ a5d613`, "\n", "", -1))
 )
 
 type Env struct {
-	s               *grpc.Server
-	server          *Server
-	conn            *grpc.ClientConn
-	Client          *client.Client
-	ctx             context.Context
-	consistentStore storage.ConsistentStorage
-	builder         *builder.Builder
-	fakeStore       *Fake_LocalStorage
+	s         *grpc.Server
+	server    *Server
+	conn      *grpc.ClientConn
+	Client    *client.Client
+	ctx       context.Context
+	builder   *builder.Builder
+	fakeStore *Fake_LocalStorage
 }
 
 // NewEnv sets up common resources for tests.
@@ -154,7 +154,9 @@ func NewEnv(t *testing.T) *Env {
 
 	consistentStore := storage.CreateMem(ctx)
 	store := &Fake_LocalStorage{}
-	b := builder.New(consistentStore.BuilderUpdates(), store)
+	b := builder.New(store)
+	// Only subscribe the updates channel.
+	consistentStore.SubscribeUpdates(b.Updates())
 	server := New(consistentStore, b)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
@@ -166,12 +168,11 @@ func NewEnv(t *testing.T) *Env {
 
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	return &Env{s, server, cc, client, ctx, consistentStore, b, store}
+	return &Env{s, server, cc, client, ctx, b, store}
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
-	env.consistentStore.Close()
 	env.conn.Close()
 	env.s.Stop()
 }
@@ -239,7 +240,7 @@ func TestProofOfAbsence(t *testing.T) {
 
 func getNonExistantUser(t *testing.T, env *Env) {
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: "nobody"})
+	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxUint64, UserId: "nobody"})
 	if err != nil {
 		t.Fatalf("Query for nonexistant failed %v", err)
 	}
@@ -292,7 +293,7 @@ func TestGetValidUser(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: primaryUserEmail})
+	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxUint64, UserId: primaryUserEmail})
 
 	if err != nil {
 		t.Fatalf("GetEntry failed: %v", err)

@@ -30,9 +30,7 @@ const (
 type ConsistentStorage interface {
 	Reader
 	Writer
-	Watchable
-	Helper
-	Closer
+	Subscriber
 }
 
 type LocalStorage interface {
@@ -56,27 +54,16 @@ type Writer interface {
 	WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error
 }
 
+type Subscriber interface {
+	// SubscribeUpdates subscribes an update channel. All EntryStorage will
+	// be transmitted on all subscribed channels.
+	SubscribeUpdates(ch chan *corepb.EntryStorage)
+	// SubscribeEpochInfo subscribes an epoch info channel. All EpochInfo
+	// will be transmitted on all subscribed channels.
+	SubscribeEpochInfo(ch chan *corepb.EpochInfo)
+}
+
 type Closer interface {
 	// Close closes the storage instance and release all resources.
 	Close()
-}
-
-type Watchable interface {
-	// BuilderUpdates returns a channel containing EntryStorage entries,
-	// which are pushed into the channel whenever an EntryStorage is written
-	// in the storage. This channel is watched by the builder.
-	BuilderUpdates() chan *corepb.EntryStorage
-	// SignerUpdates returns a channel containing EntryStorage entries,
-	// which are pushed into the channel whenever an EntryStorage is written
-	// in the storage. This channel is watched by the signer.
-	SignerUpdates() chan *corepb.EntryStorage
-	// EpochInfo returns a channel that is used to transmit EpochInfo to the
-	// builder once the signer creates a new epoch.
-	EpochInfo() chan *corepb.EpochInfo
-}
-
-type Helper interface {
-	// LastCommitmentTimestamp returns the timestamp of the last update that
-	// should included in the new epoch.
-	LastCommitmentTimestamp() uint64
 }

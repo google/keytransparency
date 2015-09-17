@@ -47,7 +47,7 @@ type EntryUpdates struct {
 }
 
 func NewEnv(t *testing.T) *Env {
-	b := New(nil, nil)
+	b := New(nil)
 	updates := GenerateEntryUpdates(t)
 
 	return &Env{b, updates}

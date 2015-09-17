@@ -16,8 +16,6 @@
 package storage
 
 import (
-	"sync"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -35,29 +33,18 @@ type MemStorage struct {
 	//                   are created.
 	epochs map[uint64]*corepb.EpochInfo
 	// Whenever an EntryStorage is written in the database, it will be
-	// pushed into builderUpdates.
-	builderUpdates chan *corepb.EntryStorage
-	// Whenever an EntryStorage is written in the database, it will be
-	// pushed into signerUpdates.
-	signerUpdates chan *corepb.EntryStorage
+	// pushed into all updates channels.
+	updates []chan *corepb.EntryStorage
 	// Whenever WriteEpochInfo is called, the EpochInfo object being written
-	// in the storage is pushed into epochInfo.
-	epochInfo chan *corepb.EpochInfo
-	// Contains the timestamp of the last update to be included in the new
-	// epoch.
-	lastCommitmentTS uint64
-	// mu synchronizes access to lastCommitmentTS
-	mu sync.Mutex
+	// in the storage is pushed into all epochInfo channels.
+	epochInfo []chan *corepb.EpochInfo
 }
 
 // Create creates a storage object from an existing db connection.
 func CreateMem(ctx context.Context) *MemStorage {
 	s := &MemStorage{
-		entries:        make(map[uint64]*corepb.EntryStorage),
-		epochs:         make(map[uint64]*corepb.EpochInfo),
-		builderUpdates: make(chan *corepb.EntryStorage, ChannelSize),
-		signerUpdates:  make(chan *corepb.EntryStorage, ChannelSize),
-		epochInfo:      make(chan *corepb.EpochInfo, ChannelSize),
+		entries: make(map[uint64]*corepb.EntryStorage),
+		epochs:  make(map[uint64]*corepb.EpochInfo),
 	}
 	return s
 }
@@ -93,54 +80,30 @@ func (s *MemStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage
 	// Write the entry.
 	s.entries[commitmentTS] = entry
 
-	s.mu.Lock()
-	s.lastCommitmentTS = commitmentTS
-	s.mu.Unlock()
-
 	// Push entry in the channel in order to be added to the merkle tree.
-	s.builderUpdates <- entry
-	s.signerUpdates <- entry
+	for _, ch := range s.updates {
+		ch <- entry
+	}
 	return nil
 }
 
 // WriteEpochInfo writes the epoch information in the storage.
 func (s *MemStorage) WriteEpochInfo(ctx context.Context, epoch uint64, info *corepb.EpochInfo) error {
 	s.epochs[epoch] = info
-	s.epochInfo <- info
+	for _, ch := range s.epochInfo {
+		ch <- info
+	}
 	return nil
 }
 
-// BuilderUpdates returns a channel containing EntryStorage entries, which are
-// pushed into the channel whenever an EntryStorage is written in the storage.
-// This channel is watched by the builder.
-func (s *MemStorage) BuilderUpdates() chan *corepb.EntryStorage {
-	return s.builderUpdates
+// SubscribeUpdates subscribes an update channel. All EntryStorage will be
+// transmitted on all subscribed channels.
+func (s *MemStorage) SubscribeUpdates(ch chan *corepb.EntryStorage) {
+	s.updates = append(s.updates, ch)
 }
 
-// SignerUpdates returns a channel containing EntryStorage entries, which are
-// pushed into the channel whenever an EntryStorage is written in the storage.
-// This channel is watched by the signer.
-func (s *MemStorage) SignerUpdates() chan *corepb.EntryStorage {
-	return s.signerUpdates
-}
-
-// EpochInfo returns a channel that is used to transmit EpochInfo to the builder
-// once the signer creates a new epoch.
-func (s *MemStorage) EpochInfo() chan *corepb.EpochInfo {
-	return s.epochInfo
-}
-
-// LastCommitmentTimestamp returns the timestamp of the last update that should
-// included in the new epoch.
-func (s *MemStorage) LastCommitmentTimestamp() uint64 {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.lastCommitmentTS
-}
-
-// Close closes the storage instance and release all resources.
-func (s *MemStorage) Close() {
-	close(s.builderUpdates)
-	close(s.signerUpdates)
-	close(s.epochInfo)
+// SubscribeEpochInfo subscribes an epoch info channel. All EpochInfo will be
+// transmitted on all subscribed channels.
+func (s *MemStorage) SubscribeEpochInfo(ch chan *corepb.EpochInfo) {
+	s.epochInfo = append(s.epochInfo, ch)
 }

@@ -45,7 +45,8 @@ func New(consistentStore storage.ConsistentStorage, dbPath string, seconds uint)
 		return nil, err
 	}
 	// Create the tree builder.
-	b := builder.New(consistentStore.SignerUpdates(), localStore)
+	b := builder.New(localStore)
+	consistentStore.SubscribeUpdates(b.Updates())
 
 	// Create a signer instance.
 	signer := &Signer{
@@ -62,7 +63,7 @@ func New(consistentStore storage.ConsistentStorage, dbPath string, seconds uint)
 // ticker ticks.
 func (s *Signer) createEpoch() {
 	for _ = range s.ticker.C {
-		lastCommitmentTS := s.consistentStore.LastCommitmentTimestamp()
+		lastCommitmentTS := s.builder.LastCommitmentTimestamp()
 		epochHead, err := s.builder.CreateEpoch(lastCommitmentTS, true)
 		if err != nil {
 			panic(err)
