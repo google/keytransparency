@@ -53,6 +53,10 @@ func NewEnv(t *testing.T) *Env {
 	return &Env{b, updates}
 }
 
+func (env *Env) Close() {
+	env.b.Close()
+}
+
 func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 	// Generate a signed entry update with an invalid index length. This is
 	// done by using part of the index, e.g. first 10 bytes.
@@ -79,6 +83,8 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 
 func TestPost(t *testing.T) {
 	env := NewEnv(t)
+	defer env.Close()
+
 	m := merkle.New()
 	tests := []struct {
 		entryUpdate *v2pb.SignedEntryUpdate

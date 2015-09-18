@@ -96,4 +96,5 @@ func (s *Signer) createEpoch() {
 func (s *Signer) Stop() {
 	s.ticker.Stop()
 	s.localStore.Close()
+	s.builder.Close()
 }

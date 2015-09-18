@@ -175,6 +175,7 @@ func NewEnv(t *testing.T) *Env {
 func (env *Env) Close() {
 	env.conn.Close()
 	env.s.Stop()
+	env.builder.Close()
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {

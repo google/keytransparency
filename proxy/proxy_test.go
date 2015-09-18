@@ -142,6 +142,7 @@ func NewEnv(t *testing.T) *Env {
 func (env *Env) Close() {
 	env.cc.Close()
 	env.rpcServer.Stop()
+	env.builder.Close()
 }
 
 // createPrimaryUser creates a user using the v2 client. This function is copied
