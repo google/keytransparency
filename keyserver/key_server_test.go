@@ -172,7 +172,10 @@ func NewEnv(t *testing.T) *Env {
 }
 
 // Close releases resources allocated by NewEnv.
-func (env *Env) Close() {
+func (env *Env) Close(t *testing.T) {
+	if env.conn.State() == grpc.Shutdown {
+		t.Errorf("Closing an already closed client")
+	}
 	env.conn.Close()
 	env.s.Stop()
 }
@@ -220,14 +223,14 @@ func (env *Env) mockSigner(t *testing.T) {
 
 func TestCreateKey(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 }
 
 func TestProofOfAbsence(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	// Test proof of absence for an empty branch.
 	getNonExistantUser(t, env)
@@ -288,7 +291,7 @@ func getNonExistantUser(t *testing.T, env *Env) {
 
 func TestGetValidUser(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 
@@ -352,7 +355,7 @@ func getErr(ret interface{}, err error) error {
 
 func TestUnimplemented(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	tests := []struct {
 		desc string
@@ -373,7 +376,7 @@ func TestUnimplemented(t *testing.T) {
 // Verify that users cannot alter keys for other users.
 func TestUnauthenticated(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	tests := []struct {
 		desc string
