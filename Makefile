@@ -45,11 +45,11 @@ main: proto
 	go build -o srv server.go
 
 test: main
-	go test ./rest ./keyserver ./proxy ./merkle ./builder ./storage ./epoch ./utils/queue
+	go test ./...
 	python tests/api_proxy_test.py
 
 fmt:
-	gofmt -w `find . | grep "\.go"`
+	gofmt -w `find . | grep -e '\.go$$'`
 
 proto: $(DEPS)
 	mkdir -p $(OUTPUT)
