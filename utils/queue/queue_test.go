@@ -37,6 +37,8 @@ func (env *Env) fillQueue() {
 }
 
 func TestSize(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv()
 	if got, want := env.q.Size(), 0; got != want {
 		t.Errorf("Queue size is %v, want %v", got, want)
@@ -49,6 +51,8 @@ func TestSize(t *testing.T) {
 }
 
 func TestDequeue(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv()
 	env.fillQueue()
 
@@ -90,6 +94,8 @@ func TestDequeue(t *testing.T) {
 }
 
 func TestPeek(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv()
 	env.fillQueue()
 

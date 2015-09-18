@@ -83,6 +83,8 @@ func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 }
 
 func TestPost(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close()
 

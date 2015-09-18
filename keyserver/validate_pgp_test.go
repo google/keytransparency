@@ -263,6 +263,8 @@ aCOr+QE=
 )
 
 func TestGoodKey(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		label  string
 		key    string
@@ -282,6 +284,8 @@ func TestGoodKey(t *testing.T) {
 }
 
 func TestInvalidKeys(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		label  string
 		key    string

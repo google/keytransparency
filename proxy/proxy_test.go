@@ -186,6 +186,8 @@ func (env *Env) mockSigner(t *testing.T) {
 }
 
 func TestGetValidUser(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -209,6 +211,8 @@ func TestGetValidUser(t *testing.T) {
 }
 
 func TestAppIDFiltering(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -248,6 +252,8 @@ func TestAppIDFiltering(t *testing.T) {
 }
 
 func TestHkpLookup(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close()
 

@@ -71,7 +71,9 @@ func Fake_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) 
 	return i, nil
 }
 
-func TestFoo(t *testing.T) {
+func TestServer(t *testing.T) {
+	t.Parallel()
+
 	v1 := &FakeServer{}
 	s := New(v1, testRealm)
 	rInfo := handlers.RouteInfo{
@@ -94,6 +96,8 @@ func TestFoo(t *testing.T) {
 }
 
 func TestGetEntryV1_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	mx := mux.NewRouter()
 	mx.KeepContext = true
 	mx.HandleFunc("/v1/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
@@ -178,6 +182,8 @@ func TestGetEntryV1_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	mx := mux.NewRouter()
 	mx.KeepContext = true
 	mx.HandleFunc("/v1/hkp/lookup", Fake_HTTPHandler)
@@ -265,6 +271,8 @@ func TestHkpLookup_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestGetEntryV2_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	mx := mux.NewRouter()
 	mx.KeepContext = true
 	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
@@ -349,6 +357,8 @@ func TestGetEntryV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListEntryHistoryV2_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	mx := mux.NewRouter()
 	mx.KeepContext = true
 	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}/history", Fake_HTTPHandler)
@@ -437,6 +447,8 @@ func TestListEntryHistoryV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestUpdateEntryV2_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	mx := mux.NewRouter()
 	mx.KeepContext = true
 	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
@@ -500,6 +512,8 @@ func TestUpdateEntryV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	e, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
 	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
@@ -578,6 +592,8 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	e, _ := strconv.ParseUint(primaryTestCommitmentTimestamp, 10, 64)
 	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
@@ -656,6 +672,8 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 }
 
 func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
+	t.Parallel()
+
 	e, _ := strconv.ParseUint(primaryTestCommitmentTimestamp, 10, 64)
 	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
 	var tests = []struct {
@@ -739,6 +757,8 @@ func JSONDecoder(r *http.Request, v interface{}) error {
 }
 
 func TestParseURLComponent(t *testing.T) {
+	t.Parallel()
+
 	mx := mux.NewRouter()
 	mx.KeepContext = true
 	mx.HandleFunc("/v1/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
@@ -769,6 +789,8 @@ func Fake_HTTPHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestParseJson(t *testing.T) {
+	t.Parallel()
+
 	var tests = []struct {
 		inJSON    string
 		outJSON   string

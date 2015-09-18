@@ -88,6 +88,8 @@ func hexToBytes(s string) ([]byte, error) {
 }
 
 func TestAddRoot(t *testing.T) {
+	t.Parallel()
+
 	m := New()
 	tests := []struct {
 		epoch uint64
@@ -110,6 +112,8 @@ func TestAddRoot(t *testing.T) {
 }
 
 func TestAddExistingLeaf(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	tests := []struct {
 		leaf Leaf
@@ -202,6 +206,8 @@ func BenchmarkAudit(b *testing.B) {
 }
 
 func TestPushDown(t *testing.T) {
+	t.Parallel()
+
 	index, err := hexToBytes(AllZeros)
 	if err != nil {
 		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
@@ -220,6 +226,8 @@ func TestPushDown(t *testing.T) {
 }
 
 func TestCreateBranch(t *testing.T) {
+	t.Parallel()
+
 	index, err := hexToBytes(AllZeros)
 	if err != nil {
 		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
@@ -232,6 +240,8 @@ func TestCreateBranch(t *testing.T) {
 }
 
 func TestCreateBranchCOW(t *testing.T) {
+	t.Parallel()
+
 	la := &node{epoch: 0, bindex: "0", depth: 1}
 	lb := &node{epoch: 0, bindex: "1", depth: 1}
 	r0 := &node{epoch: 0, bindex: "", left: la, right: lb}
@@ -250,6 +260,8 @@ func TestCreateBranchCOW(t *testing.T) {
 }
 
 func TestAuditDepth(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 
 	tests := []struct {
@@ -283,6 +295,8 @@ func TestAuditDepth(t *testing.T) {
 }
 
 func TestAuditNeighors(t *testing.T) {
+	t.Parallel()
+
 	m := New()
 	tests := []struct {
 		epoch         uint64
@@ -334,6 +348,8 @@ func neighborOf(hindex string, depth int) string {
 }
 
 func TestLongestPrefixMatch(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 
 	// Get commitment timestamps.
@@ -372,6 +388,8 @@ func TestLongestPrefixMatch(t *testing.T) {
 }
 
 func TestRoot(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 
 	tests := []struct {
@@ -392,6 +410,8 @@ func TestRoot(t *testing.T) {
 }
 
 func TestFromNeighbors(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 
 	tests := []struct {
