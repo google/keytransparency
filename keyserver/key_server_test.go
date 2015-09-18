@@ -144,7 +144,7 @@ func NewEnv(t *testing.T) *Env {
 	}
 	_, port, err := net.SplitHostPort(lis.Addr().String())
 	if err != nil {
-		t.Fatal("Failed ot parse listener address: %v", err)
+		t.Fatal("Failed to parse listener address: %v", err)
 	}
 	addr := "localhost:" + port
 	s := grpc.NewServer()
