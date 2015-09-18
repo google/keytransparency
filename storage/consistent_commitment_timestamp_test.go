@@ -19,6 +19,8 @@ import (
 )
 
 func TestAdvance(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		numOfIncrements int
 		outCommitmentTS uint64

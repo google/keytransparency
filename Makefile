@@ -44,8 +44,10 @@ INCLUDES+= -I=$(PROTOINCLUDE)
 main: proto
 	go build -o srv server.go
 
+# The list of returned packages might not be unique. Fortunately go test gets
+# rid of duplicate.
 test: main
-	go test ./...
+	go test `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
 	python tests/api_proxy_test.py
 
 fmt:

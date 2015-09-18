@@ -23,6 +23,8 @@ import (
 )
 
 func TestValidateEmail(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -36,6 +38,8 @@ func TestValidateEmail(t *testing.T) {
 }
 
 func TestValidateKey(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -45,6 +49,8 @@ func TestValidateKey(t *testing.T) {
 }
 
 func TestValidateUpdateEntryRequest(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close()
 

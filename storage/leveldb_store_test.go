@@ -109,6 +109,8 @@ func (env *Env) FillEpochs(t *testing.T) {
 }
 
 func TestReadUpdate(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close(t)
 
@@ -143,6 +145,8 @@ func TestReadUpdate(t *testing.T) {
 }
 
 func TestReadEpochInfo(t *testing.T) {
+	t.Parallel()
+
 	env := NewEnv(t)
 	defer env.Close(t)
 
