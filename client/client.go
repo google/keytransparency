@@ -39,6 +39,7 @@ func New(client v2pb.E2EKeyServiceClient) *Client {
 	return &Client{client}
 }
 
+// Update creates an UpdateEntryRequest for a user.
 func (c *Client) Update(profile *v2pb.Profile, userID string) (*v2pb.UpdateEntryRequest, error) {
 	ctx := context.Background()
 	req := &v2pb.GetEntryRequest{UserId: userID}
@@ -63,7 +64,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 	index := previous.Index
 
 	// Construct Entry.
-	commitmentKey, commitment, err := common.Commitment(profileData)
+	commitmentKey, commitment, err := common.Commitment(userID, profileData)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error generating profile commitment: %v", err)
 	}

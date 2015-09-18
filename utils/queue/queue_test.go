@@ -55,7 +55,7 @@ func TestDequeue(t *testing.T) {
 	tests := []struct {
 		element int
 		size    int
-		isNil  bool
+		isNil   bool
 	}{
 		{0, 9, false},
 		{1, 8, false},
@@ -96,7 +96,7 @@ func TestPeek(t *testing.T) {
 	tests := []struct {
 		element int
 		size    int
-		isNil  bool
+		isNil   bool
 	}{
 		{0, 10, false},
 		{1, 9, false},

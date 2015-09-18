@@ -34,7 +34,7 @@ const (
 )
 
 // Commitment returns the commitment key and the profile commitment
-func Commitment(profile []byte) ([]byte, []byte, error) {
+func Commitment(userID string, profile []byte) ([]byte, []byte, error) {
 	// Generate commitment key.
 	key := make([]byte, commitmentKeyLen)
 	if _, err := rand.Read(key); err != nil {
@@ -42,14 +42,16 @@ func Commitment(profile []byte) ([]byte, []byte, error) {
 	}
 
 	mac := hmac.New(sha512.New, key)
+	mac.Write([]byte(userID))
 	mac.Write(profile)
 	return key, mac.Sum(nil), nil
 }
 
 // VerifyCommitment returns nil if the profile commitment using the
 // key matches the provided commitment, and error otherwise.
-func VerifyCommitment(key []byte, profile []byte, commitment []byte) error {
+func VerifyCommitment(userID string, key, profile, commitment []byte) error {
 	mac := hmac.New(sha512.New, key)
+	mac.Write([]byte(userID))
 	mac.Write(profile)
 	if !hmac.Equal(mac.Sum(nil), commitment) {
 		return grpc.Errorf(codes.InvalidArgument, "Invalid profile commitment")
