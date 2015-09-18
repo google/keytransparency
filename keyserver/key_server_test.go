@@ -23,7 +23,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
@@ -159,7 +158,7 @@ func NewEnv(t *testing.T) *Env {
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
-	cc, err := grpc.Dial(addr, grpc.WithTimeout(time.Millisecond*500), grpc.WithInsecure())
+	cc, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}
