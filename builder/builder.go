@@ -16,6 +16,7 @@ package builder
 
 import (
 	"bytes"
+	"log"
 	"math"
 	"sync/atomic"
 
@@ -74,11 +75,8 @@ func (b *Builder) handleUpdates() {
 	for entryStorage := range b.updates {
 		// LocalStorage ignores context, so nil is passed here.
 		if err := b.store.WriteUpdate(nil, entryStorage); err != nil {
-			// TODO: for now just panic. However, if Write fails, it
-			//       means something very wrong happened and we
-			//       should implement some DB failure recovery
-			//       mechanism.
-			panic(err)
+			log.Fatalf("Failed to save update to disk: %v", err)
+			// TODO: Implement a failure mode.
 		}
 
 		b.queue.Enqueue(entryStorage)
@@ -92,24 +90,25 @@ func (b *Builder) handleEpochInfo() {
 	for info := range b.epochInfo {
 		localEpochHead, err := b.CreateEpoch(info.LastCommitmentTimestamp, false)
 		if err != nil {
-			panic(err)
+			log.Fatalf("Failed to create epoch from timestamp %v: %v",
+				info.LastCommitmentTimestamp, err)
 		}
 
 		// Verify that the create epoch matches the one created by the
 		// signer.
 		signerEpochHead := new(v2pb.EpochHead)
 		if err := proto.Unmarshal(info.GetSignedEpochHead().EpochHead, signerEpochHead); err != nil {
-			panic(err)
+			log.Fatalf("Failed to unmarshal epoch head: %v", err)
 		}
 
 		if !bytes.Equal(signerEpochHead.Root, localEpochHead.Root) {
 			// TODO: implement failuer recovery.
-			panic("Created epoch does not match the signer epoch")
+			log.Fatalf("Created epoch does not match the signer epoch")
 		}
 
 		// Save the signed epoch head in local storage.
 		if err := b.store.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
-			panic(err)
+			log.Fatalf("Failed to write EpochInfo: %v", err)
 		}
 
 		// Advance the epoch.

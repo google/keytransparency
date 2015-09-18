@@ -146,7 +146,7 @@ func main() {
 	defer signer.Stop()
 	// Create the tree builder.
 	b := builder.New(localStore)
-    // TODO: move these operations inside the builder.
+	// TODO: move these operations inside the builder.
 	// Subscribe the updates and epochInfo channels.
 	consistentStore.SubscribeUpdates(b.Updates())
 	consistentStore.SubscribeEpochInfo(b.EpochInfo())

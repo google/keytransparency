@@ -15,6 +15,7 @@
 package signer
 
 import (
+	"log"
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
@@ -66,14 +67,14 @@ func (s *Signer) createEpoch() {
 		lastCommitmentTS := s.builder.LastCommitmentTimestamp()
 		epochHead, err := s.builder.CreateEpoch(lastCommitmentTS, true)
 		if err != nil {
-			panic(err)
+			log.Fatalf("Failed to create epoch: %v", err)
 		}
 
 		// Create SignedEpochHead.
 		// TODO(cesarghali): fill IssueTime and PreviousEpochHeadHash.
 		epochHeadData, err := proto.Marshal(epochHead)
 		if err != nil {
-			panic(err)
+			log.Fatalf("Failed to marshal epoch: %v", err)
 		}
 		signedEpochHead := &v2pb.SignedEpochHead{
 			EpochHead: epochHeadData,
@@ -86,7 +87,7 @@ func (s *Signer) createEpoch() {
 			LastCommitmentTimestamp: lastCommitmentTS,
 		}
 		if err := s.consistentStore.WriteEpochInfo(nil, epochHead.Epoch, epochInfo); err != nil {
-			panic(err)
+			log.Fatalf("Failed to write EpochInfo: %v", err)
 		}
 	}
 }

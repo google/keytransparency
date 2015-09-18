@@ -24,6 +24,7 @@ package merkle
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math/big"
 	"sync"
 
@@ -245,7 +246,7 @@ func (n *node) addLeaf(data []byte, epoch uint64, bindex string, commitmentTS ui
 	if depth == maxDepth || n.bindex == bindex {
 		if n.epoch != epoch {
 			// This should never happen, createBranch guarantees it.
-			panic(fmt.Sprintf("n.epoch = %d want %d", n.epoch, epoch))
+			log.Fatalf("n.epoch = %d want %d", n.epoch, epoch)
 		}
 		n.setNode(data, bindex, commitmentTS, depth, isLeaf)
 		return nil
@@ -294,11 +295,11 @@ func (n *node) pushDown() error {
 func (n *node) createBranch(bindex string) *node {
 	// New branch must have a longer index than n.
 	if got, want := len(bindex), n.depth+1; got < want {
-		panic(fmt.Sprintf("len(%v)=%v, want %v. n.bindex=%v", bindex, got, want, n.bindex))
+		log.Fatalf("len(%v)=%v, want %v. n.bindex=%v", bindex, got, want, n.bindex)
 	}
 	// The new branch must share a common prefix with n.
 	if got, want := bindex[:n.depth], n.bindex[:n.depth]; got != want {
-		panic(fmt.Sprintf("bindex[:%v]=%v, want %v", len(n.bindex), got, want))
+		log.Fatalf("bindex[:%v]=%v, want %v", len(n.bindex), got, want)
 	}
 	b := bindex[n.depth]
 	switch {
@@ -356,7 +357,7 @@ func (n *node) child(b uint8) *node {
 	case one:
 		return n.right
 	default:
-		panic(fmt.Sprintf("invalid bit %v", b))
+		log.Fatalf("invalid bit %v", b)
 		return nil
 	}
 }
@@ -368,7 +369,7 @@ func (n *node) setChild(b uint8, child *node) {
 	case one:
 		n.right = child
 	default:
-		panic(fmt.Sprintf("invalid bit %v", b))
+		log.Fatalf("invalid bit %v", b)
 	}
 }
 
@@ -380,7 +381,7 @@ func neighbor(b uint8) uint8 {
 	case one:
 		return zero
 	default:
-		panic(fmt.Sprintf("invalid bit %v", b))
+		log.Fatalf("invalid bit %v", b)
 		return 0
 	}
 }
