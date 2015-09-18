@@ -145,12 +145,8 @@ func main() {
 	}
 	defer signer.Stop()
 	// Create the tree builder.
-	b := builder.New(localStore)
+	b := builder.NewForServer(consistentStore, localStore)
 	defer b.Close()
-	// TODO: move these operations inside the builder.
-	// Subscribe the updates and epochInfo channels.
-	consistentStore.SubscribeUpdates(b.Updates())
-	consistentStore.SubscribeEpochInfo(b.EpochInfo())
 	// Create the servers.
 	v2 := keyserver.New(consistentStore, b)
 	v1 := proxy.New(v2)
