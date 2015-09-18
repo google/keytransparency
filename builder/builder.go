@@ -237,3 +237,12 @@ func (b *Builder) EpochInfo() chan *corepb.EpochInfo {
 func (b *Builder) LastCommitmentTimestamp() uint64 {
 	return atomic.LoadUint64(&b.lastCommitmentTS)
 }
+
+func (b *Builder) Close() {
+	if b.updates != nil {
+		close(b.updates)
+	}
+	if b.epochInfo != nil {
+		close(b.epochInfo)
+	}
+}
