@@ -18,7 +18,6 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,10 +25,6 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	corepb "github.com/google/e2e-key-server/proto/core"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
-)
-
-const (
-	testEpoch = 1
 )
 
 var (
@@ -52,7 +47,7 @@ type EntryUpdates struct {
 }
 
 func NewEnv(t *testing.T) *Env {
-	b := New(nil, nil, epoch.New())
+	b := New(nil)
 	updates := GenerateEntryUpdates(t)
 
 	return &Env{b, updates}

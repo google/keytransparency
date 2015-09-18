@@ -20,11 +20,12 @@ import (
 	"reflect"
 	"testing"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	corepb "github.com/google/e2e-key-server/proto/core"
-	context "golang.org/x/net/context"
+	v2pb "github.com/google/e2e-key-server/proto/v2"
 )
 
 var (
@@ -41,6 +42,23 @@ var (
 			CommitmentTimestamp: 3,
 			Profile:             []byte{3},
 		},
+	}
+	epochs = []struct {
+		epoch uint64
+		info  *corepb.EpochInfo
+	}{
+		{0, &corepb.EpochInfo{
+			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			LastCommitmentTimestamp: 1,
+		}},
+		{1, &corepb.EpochInfo{
+			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			LastCommitmentTimestamp: 2,
+		}},
+		{3, &corepb.EpochInfo{
+			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			LastCommitmentTimestamp: 3,
+		}},
 	}
 )
 
@@ -74,27 +92,35 @@ func (env *Env) Close(t *testing.T) {
 	}
 }
 
-func (env *Env) FillStore(t *testing.T) {
+func (env *Env) FillEntries(t *testing.T) {
 	for i, entry := range entries {
-		if got, want := grpc.Code(env.store.Write(env.ctx, entry)), codes.OK; got != want {
-			t.Fatalf("Entry[%v]: Error while filling leveldb store, got %v, want %v", i, got, want)
+		if got, want := grpc.Code(env.store.WriteUpdate(env.ctx, entry)), codes.OK; got != want {
+			t.Fatalf("Entry[%v]: Error while filling updates database, got %v, want %v", i, got, want)
 		}
 	}
 }
 
-func TestRead(t *testing.T) {
+func (env *Env) FillEpochs(t *testing.T) {
+	for i, v := range epochs {
+		if got, want := grpc.Code(env.store.WriteEpochInfo(env.ctx, v.epoch, v.info)), codes.OK; got != want {
+			t.Fatalf("Epoch[%v]: Error while filling epochs database, got %v, want %v", i, got, want)
+		}
+	}
+}
+
+func TestReadUpdate(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 
-	env.FillStore(t)
+	env.FillEntries(t)
 
 	tests := []struct {
 		entry *corepb.EntryStorage
 		code  codes.Code
 	}{
 		{entries[0], codes.OK},
-		{entries[0], codes.OK},
-		{entries[0], codes.OK},
+		{entries[1], codes.OK},
+		{entries[2], codes.OK},
 		{&corepb.EntryStorage{
 			CommitmentTimestamp: 4,
 			Profile:             []byte{4},
@@ -102,9 +128,9 @@ func TestRead(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		res, err := env.store.Read(env.ctx, test.entry.CommitmentTimestamp)
+		res, err := env.store.ReadUpdate(env.ctx, test.entry.CommitmentTimestamp)
 		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("Test[%v]: Error while reading from leveldb store, got %v, want %v", i, got, want)
+			t.Errorf("Test[%v]: Error while reading from updates database, got %v, want %v", i, got, want)
 		}
 		if err != nil {
 			continue
@@ -112,6 +138,41 @@ func TestRead(t *testing.T) {
 
 		if !reflect.DeepEqual(test.entry.Profile, res.Profile) {
 			t.Errorf("Test[%v]: Read entry is not as expected, got %v, want %v", res, test.entry)
+		}
+	}
+}
+
+func TestReadEpochInfo(t *testing.T) {
+	env := NewEnv(t)
+	defer env.Close(t)
+
+	env.FillEpochs(t)
+
+	tests := []struct {
+		epoch uint64
+		info  *corepb.EpochInfo
+		code  codes.Code
+	}{
+		{epochs[0].epoch, epochs[0].info, codes.OK},
+		{epochs[1].epoch, epochs[1].info, codes.OK},
+		{epochs[2].epoch, epochs[2].info, codes.OK},
+		{4, &corepb.EpochInfo{
+			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			LastCommitmentTimestamp: 4,
+		}, codes.NotFound},
+	}
+
+	for i, test := range tests {
+		res, err := env.store.ReadEpochInfo(env.ctx, test.epoch)
+		if got, want := grpc.Code(err), test.code; got != want {
+			t.Errorf("Test[%v]: Error while reading from epochs database, got %v, want %v", i, got, want)
+		}
+		if err != nil {
+			continue
+		}
+
+		if got, want := res.LastCommitmentTimestamp, test.info.LastCommitmentTimestamp; got != want {
+			t.Errorf("Test[%v]: Read entry is not as expected, got last timestamp %v, want %v", got, want)
 		}
 	}
 }

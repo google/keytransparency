@@ -89,10 +89,12 @@ update_user_request = {
 
 def main():
   # Create a tmp directory.
-  test_updates_db_path = tempfile.mkdtemp(prefix="db")
+  test_server_db_path = tempfile.mkdtemp(prefix="db-server")
+  test_signer_db_path = tempfile.mkdtemp(prefix="db-signer")
   # Start the server.
   null_output = open(os.devnull, "w")
-  subprocess.Popen(["./srv", "-updates-db-path", test_updates_db_path],
+  subprocess.Popen(["./srv", "-server-db-path", test_server_db_path,
+                    "-signer-db-path", test_signer_db_path],
                    stdout=null_output, stderr=subprocess.STDOUT)
   # Wait until the server starts.
   time.sleep(1)
@@ -109,7 +111,8 @@ def main():
   # Kill the server.
   subprocess.Popen(["killall", "srv"])
   # Remove database tmp directory.
-  shutil.rmtree(test_updates_db_path)
+  shutil.rmtree(test_server_db_path)
+  shutil.rmtree(test_signer_db_path)
 
 
 def GetEntryV1(empty):

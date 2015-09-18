@@ -20,8 +20,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
-	"github.com/google/e2e-key-server/epoch"
-	"github.com/google/e2e-key-server/merkle"
+	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -33,19 +32,17 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	store storage.ConsistentStorage
-	auth  auth.Authenticator
-	tree  *merkle.Tree
-	epoch *epoch.Epoch
+	store   storage.ConsistentStorage
+	auth    auth.Authenticator
+	builder *builder.Builder
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(storage storage.ConsistentStorage, tree *merkle.Tree, epoch *epoch.Epoch) *Server {
+func New(storage storage.ConsistentStorage, builder *builder.Builder) *Server {
 	return &Server{
-		store: storage,
-		auth:  auth.New(),
-		tree:  tree,
-		epoch: epoch,
+		store:   storage,
+		auth:    auth.New(),
+		builder: builder,
 	}
 }
 
@@ -64,27 +61,15 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		// TODO(cesarghali): Fill IndexProof.
 	}
 
-	// Get the commitment timestamp corresponding to the user's profile in
-	// the given, or latest, epoch.
-	epoch := in.Epoch
-	if epoch == 0 {
-		epoch = s.epoch.Serving()
-	}
-
 	// Get signed epoch heads.
-	// TODO(cesarghali): currently SEHs are read from the tree. Eventually,
-	//                   once epochs can be created periodically and stored
-	//                   in the database, SEHs should be read from there.
-	//                   For now, we need SEHs to allow verification of
-	//                   merkle tree neighbors.
-	seh, err := s.signedEpochHeads(epoch)
+	seh, err := s.builder.GetSignedEpochHeads(ctx, in.Epoch)
 	if err != nil {
 		return nil, err
 	}
 	result.SignedEpochHeads = seh
 
 	// Get merkle tree neighbors, and commitment timestamp.
-	neighbors, commitmentTS, err := s.tree.AuditPath(epoch, index)
+	neighbors, commitmentTS, err := s.builder.AuditPath(in.Epoch, index)
 	result.MerkleTreeNeighbors = neighbors
 
 	if err != nil {
@@ -95,7 +80,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	// no Entry should be returned.
 	if commitmentTS != 0 {
 		// Read EntryStorage from the data store.
-		entryStorage, err := s.store.Read(ctx, commitmentTS)
+		entryStorage, err := s.store.ReadUpdate(ctx, commitmentTS)
 		if err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Error while reading the requested profile in the data store")
 		}
@@ -141,7 +126,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 	}
 
 	// If entry does not exist, insert it, otherwise update.
-	if err := s.store.Write(ctx, e); err != nil {
+	if err := s.store.WriteUpdate(ctx, e); err != nil {
 		return nil, err
 	}
 
@@ -162,25 +147,4 @@ func (s *Server) ListUpdate(ctx context.Context, in *v2pb.ListUpdateRequest) (*v
 // ListSteps combines SEH and SignedEntryUpdates into single list.
 func (s *Server) ListSteps(ctx context.Context, in *v2pb.ListStepsRequest) (*v2pb.ListStepsResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
-}
-
-// TODO: This function will eventually be deleted and replaced by an object that
-//       with a channel that is filled by the database whenever an epoch head is
-//       signed.
-func (s *Server) signedEpochHeads(epoch uint64) ([]*v2pb.SignedEpochHead, error) {
-	rootValue, err := s.tree.Root(epoch)
-	if err != nil {
-		return nil, err
-	}
-	epochHead := &v2pb.EpochHead{
-		Epoch: epoch,
-		Root:  rootValue,
-	}
-	epochHeadData, err := proto.Marshal(epochHead)
-	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot marshal epoch head")
-	}
-	seh := &v2pb.SignedEpochHead{EpochHead: epochHeadData}
-
-	return []*v2pb.SignedEpochHead{seh}, nil
 }

@@ -25,13 +25,14 @@ import (
 
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	proto "github.com/golang/protobuf/proto"
+	cm "github.com/google/e2e-key-server/common/merkle"
 	corepb "github.com/google/e2e-key-server/proto/core"
 	v1pb "github.com/google/e2e-key-server/proto/v1"
 	v2pb "github.com/google/e2e-key-server/proto/v2"
@@ -55,6 +56,7 @@ NwEAtQEtl9jKzlGYeng4YskWACyDnba5o/rGwcoFjRf1BiwBAPFn0SrS6WSUpU0+
 B+8k+PXDpFKMZHZYo/E6qtVrpdYT
 =+kV0
 -----END PGP PUBLIC KEY BLOCK-----`
+	testEpochDuration = 1
 )
 
 var (
@@ -92,8 +94,10 @@ type Env struct {
 	ClientV1  v1pb.E2EKeyProxyClient
 	// V2 client is needed in order to create user before using v1 client
 	// to try to get it.
-	ClientV2 *client.Client
-	ctx      context.Context
+	ClientV2  *client.Client
+	ctx       context.Context
+	builder   *builder.Builder
+	fakeStore *Fake_LocalStorage
 }
 
 // NewEnv sets up common resources for tests.
@@ -113,9 +117,11 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	consistentStore := storage.CreateMem(ctx)
-	epoch := epoch.New()
-	b := builder.New(consistentStore.NewEntries(), &Fake_StaticStorage{}, epoch)
-	v2srv := keyserver.New(consistentStore, b.GetTree(), epoch)
+	store := &Fake_LocalStorage{}
+	b := builder.New(store)
+	// Only subscribe the updates channel.
+	consistentStore.SubscribeUpdates(b.Updates())
+	v2srv := keyserver.New(consistentStore, b)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -129,7 +135,7 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, b, store}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -153,6 +159,32 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		t.Errorf("UpdateEntry got unexpected error %v.", err)
 		return
 	}
+
+	env.mockSigner(t)
+}
+
+// Mock signer: create new epoch and store the signed epoch head in the fake
+// local storage.
+func (env *Env) mockSigner(t *testing.T) {
+	lastCommitmentTS := uint64(1)
+	epochHead, err := env.builder.CreateEpoch(lastCommitmentTS, true)
+	if err != nil {
+		t.Fatalf("Cannot create epoch: %v", err)
+	}
+	epochHeadData, err := proto.Marshal(epochHead)
+	if err != nil {
+		t.Fatalf("Unexpected epoch head marshaling error: %v", err)
+	}
+	signedEpochHead := &v2pb.SignedEpochHead{
+		EpochHead: epochHeadData,
+		// TODO: fill signatures.
+	}
+	info := &corepb.EpochInfo{
+		SignedEpochHead:         signedEpochHead,
+		LastCommitmentTimestamp: lastCommitmentTS,
+	}
+	// Store in fake local storage.
+	env.fakeStore.WriteEpochInfo(nil, 0, info)
 }
 
 func TestGetValidUser(t *testing.T) {
@@ -273,16 +305,41 @@ func TestHkpLookup(t *testing.T) {
 }
 
 // Implementing mock static storage.
-type Fake_StaticStorage struct {
+type Fake_LocalStorage struct {
+	info *corepb.EpochInfo
 }
 
-func (s *Fake_StaticStorage) Read(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
+func (s *Fake_LocalStorage) ReadUpdate(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
 	return nil, nil
 }
 
-func (s *Fake_StaticStorage) Write(ctx context.Context, entry *corepb.EntryStorage) error {
+func (s *Fake_LocalStorage) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
+	if s.info == nil {
+		epochHead := &v2pb.EpochHead{
+			Epoch: epoch,
+			Root:  cm.EmptyLeafValue(""),
+		}
+		epochHeadData, err := proto.Marshal(epochHead)
+		if err != nil {
+			return nil, grpc.Errorf(codes.Internal, "Cannot marshal epoch head")
+		}
+		seh := &v2pb.SignedEpochHead{EpochHead: epochHeadData}
+		return &corepb.EpochInfo{
+			SignedEpochHead:         seh,
+			LastCommitmentTimestamp: 1,
+		}, nil
+	}
+	return s.info, nil
+}
+
+func (s *Fake_LocalStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
 	return nil
 }
 
-func (s *Fake_StaticStorage) Close() {
+func (s *Fake_LocalStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
+	s.info = epochInfo
+	return nil
+}
+
+func (s *Fake_LocalStorage) Close() {
 }

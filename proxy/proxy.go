@@ -17,6 +17,7 @@ package proxy
 
 import (
 	"bytes"
+	"math"
 	"strings"
 
 	"github.com/google/e2e-key-server/keyserver"
@@ -47,6 +48,7 @@ func New(srv *keyserver.Server) *Server {
 
 // GetEntry returns a user's profile.
 func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.Profile, error) {
+	in.Epoch = math.MaxUint64
 	result, err := s.s.GetEntry(ctx, in)
 	if err != nil {
 		return nil, err

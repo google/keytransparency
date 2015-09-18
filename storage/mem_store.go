@@ -23,37 +23,34 @@ import (
 	context "golang.org/x/net/context"
 )
 
-type epochInfo struct {
-	startCommitmentTS uint64
-	endCommitmentTS   uint64
-}
-
-// Storage holds state required to persist data. Open and Create create new
-// Storage objects.
+// Storage holds state required to persist data. Create creates new Storage
+// objects.
 type MemStorage struct {
 	// Map of commitment timestamp -> EntryStorage.
 	entries map[uint64]*corepb.EntryStorage
 	// Map of epoch -> start and end commitment timestamp range.
 	// TODO(cesarghali): this map is not yet used. Use it when epochs
 	//                   are created.
-	epochs map[uint64]epochInfo
+	epochs map[uint64]*corepb.EpochInfo
 	// Whenever an EntryStorage is written in the database, it will be
-	// pushed into ch.
-	ch chan *corepb.EntryStorage
+	// pushed into all updates channels.
+	updates []chan *corepb.EntryStorage
+	// Whenever WriteEpochInfo is called, the EpochInfo object being written
+	// in the storage is pushed into all epochInfo channels.
+	epochInfo []chan *corepb.EpochInfo
 }
 
 // Create creates a storage object from an existing db connection.
 func CreateMem(ctx context.Context) *MemStorage {
 	s := &MemStorage{
 		entries: make(map[uint64]*corepb.EntryStorage),
-		epochs:  make(map[uint64]epochInfo),
-		ch:      make(chan *corepb.EntryStorage, ChannelSize),
+		epochs:  make(map[uint64]*corepb.EpochInfo),
 	}
 	return s
 }
 
-// Read reads a EntryStroage from the storage.
-func (s *MemStorage) Read(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error) {
+// ReadUpdate reads a EntryStroage from the storage.
+func (s *MemStorage) ReadUpdate(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error) {
 	val, ok := s.entries[commitmentTS]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", commitmentTS)
@@ -62,23 +59,51 @@ func (s *MemStorage) Read(ctx context.Context, commitmentTS uint64) (*corepb.Ent
 	return val, nil
 }
 
-// Write inserts a new EntryStorage in the storage. This function works whether
-// the entry exists or not. If the entry does not exist, it will be inserted,
-// otherwise updated.
-func (s *MemStorage) Write(ctx context.Context, entry *corepb.EntryStorage) error {
+// ReadEpochInfo reads an EpochInfo from the storage
+func (s *MemStorage) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
+	val, ok := s.epochs[epoch]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", epoch)
+	}
+
+	return val, nil
+}
+
+// WriteUpdate inserts a new EntryStorage in the storage. This function works
+// whether the entry exists or not. If the entry does not exist, it will be
+// inserted, otherwise updated.
+func (s *MemStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
 	// Get the current commitment timestamp and use it when writing the
 	// entry.
 	commitmentTS := GetCurrentCommitmentTimestamp()
 	entry.CommitmentTimestamp = uint64(commitmentTS)
 	// Write the entry.
 	s.entries[commitmentTS] = entry
+
 	// Push entry in the channel in order to be added to the merkle tree.
-	s.ch <- entry
+	for _, ch := range s.updates {
+		ch <- entry
+	}
 	return nil
 }
 
-// NewEntries  returns a channel containing EntryStorage entries, which are
-// pushed into the channel whenever an EntryStorage is written in the stirage.
-func (s *MemStorage) NewEntries() chan *corepb.EntryStorage {
-	return s.ch
+// WriteEpochInfo writes the epoch information in the storage.
+func (s *MemStorage) WriteEpochInfo(ctx context.Context, epoch uint64, info *corepb.EpochInfo) error {
+	s.epochs[epoch] = info
+	for _, ch := range s.epochInfo {
+		ch <- info
+	}
+	return nil
+}
+
+// SubscribeUpdates subscribes an update channel. All EntryStorage will be
+// transmitted on all subscribed channels.
+func (s *MemStorage) SubscribeUpdates(ch chan *corepb.EntryStorage) {
+	s.updates = append(s.updates, ch)
+}
+
+// SubscribeEpochInfo subscribes an epoch info channel. All EpochInfo will be
+// transmitted on all subscribed channels.
+func (s *MemStorage) SubscribeEpochInfo(ch chan *corepb.EpochInfo) {
+	s.epochInfo = append(s.epochInfo, ch)
 }

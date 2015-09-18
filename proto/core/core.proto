@@ -36,6 +36,15 @@ message EntryStorage {
   string domain = 5;
 }
 
+// EpochInfo is what gets serialized to disk / log.
+message EpochInfo {
+  // signed_epoch_head is the signed epoch head of the created epoch.
+  v2.SignedEpochHead signed_epoch_head = 1;
+  // last_commitment_timestamp is the timestamp of the last update included in
+  // created epoch.
+  uint64 last_commitment_timestamp = 2;
+}
+
 // DomainInfo is the information that need to be baked into an application
 // in order to verify information for a domain.
 message DomainInfo {
