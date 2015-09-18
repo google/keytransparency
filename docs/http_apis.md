@@ -10,14 +10,13 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 ### GetEntry
 
 * Method: `GET`.
-* URL: `/v1/user/<user_id>`.
+* URL: `/v1/user/{user_id}`.
 * Query String:
-  * `epoch`: contains the epoch in which the user profile is requested.
+  * `epoch`: the value of this parameter will *always* be replaced with `math.MaxUint64` by the proxy server. This indicates that the requested entry belongs to the current serving epoch.
   * `app_id`: allows application-based filtering of keys of the returned profile.
 * Body: empty.
 * Response: JSON body containing `Profile` proto.
 * Requirements: input parameters are not required, anything missing is handled by the key server. The following behavior is currently implemented by the server:
-  * missing `epoch`: use the current epoch.
   * missing `app_id`: do not apply application-based filtering of keys.
 * Errors:
   * `http.StatusNotFound`: if:
@@ -63,9 +62,9 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 ### GetEntry
 
 * Method: `GET`.
-* URL: `/v2/user/<user_id>`.
+* URL: `/v2/user/{user_id}`.
 * Query String:
-  * `epoch`: contains the epoch in which the user profile is requested.
+  * `epoch`: contains the epoch in which the user profile is requested. Use `math.MaxUint64` to indicate the current serving epoch.
   * `app_id`: allows filtering the profile based on a specific application ID.
 * Body: empty.
 * Response: JSON body containing `GetEntryResponse` proto.
@@ -84,10 +83,10 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 ### UpdateEntry
 
 * Method: `PUT`.
-* URL: `/v2/user/<user_id>`.
+* URL: `/v2/user/{user_id}`.
 * Query String: none.
 * Body: JSON body containing `UpdateEntryRequest` proto.
-* Response: empty proto.
+* Response: JSON body containing `UpdateEntryResponse` proto.
 * Requirements: all fields of the input `UpdateEntryRequest` proto are not checked for existence by the HTTP proxy. Any requirement is enforced by the key server. The following behavior is implemented by the server:
   * short or missing `profile_nonce`: results in `http.StatusBadRequest` error.
 * Errors:
@@ -97,7 +96,7 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 ### ListEntryHistory
 
 * Method: `GET`.
-* URL: `/v2/user/<user_id>/history`.
+* URL: `/v2/user/{user_id}/history`.
 * Query String:
   * `start_epoch`: specifies the start epoch of the history.
   * `page_size`: specifies the maximum number of entries to return.
@@ -135,12 +134,12 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 * Method: `GET`.
 * URL: `/v2/update`.
 * Query String:
-  * `start_commitment_timestamp`: specifies the start commitment timestamp of the updates list.
+  * `start_epoch`: specifies the start epoch of the history.
   * `page_size`: specifies the maximum number of entries to return.
 * Body: empty.
 * Response: JSON body containing `ListUpdateResponse` proto.
 * Requirements: input parameters are not required, anything missing is handled by the key server. The following behavior is currently implemented by the server:
-  * missing `start_commitment_timestamp`: use the first commitment timestamp assuming that the whole list of updates is being requested.
+  * missing `start_epoch`: use the first epoch assuming that the whole list of updates is being requested.
   * missing `page_size`: do not upper bound the number of returned entries.
 * Errors:
   * `http.StatusBadRequest`: if:
@@ -151,12 +150,12 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 * Method: `GET`.
 * URL: `/v2/step`.
 * Query String:
-  * `start_commitment_timestamp`: specifies the start commitment timestamp of the steps list.
+  * `start_epoch`: specifies the start epoch of the history.
   * `page_size`: specifies the maximum number of entries to return.
 * Body: empty.
 * Response: JSON body containing `ListStepsResponse` proto.
 * Requirements: input parameters are not required, anything missing is handled by the key server. The following behavior is currently implemented by the server:
-  * missing `start_commitment_timestamp`: use the first commitment timestamp assuming that the whole list of steps is being requested.
+  * missing `start_epoch`: use the first epoch assuming that the whole list of steps is being requested.
   * missing `page_size`: do not upper bound the number of returned entries.
 * Errors: TBD.
 
