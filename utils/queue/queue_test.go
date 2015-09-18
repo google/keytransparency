@@ -55,27 +55,27 @@ func TestDequeue(t *testing.T) {
 	tests := []struct {
 		element int
 		size    int
-		nilErr  bool
+		isNil  bool
 	}{
-		{0, 9, true},
-		{1, 8, true},
-		{2, 7, true},
-		{3, 6, true},
-		{4, 5, true},
-		{5, 4, true},
-		{6, 3, true},
-		{7, 2, true},
-		{8, 1, true},
-		{9, 0, true},
-		{0, 0, false},
+		{0, 9, false},
+		{1, 8, false},
+		{2, 7, false},
+		{3, 6, false},
+		{4, 5, false},
+		{5, 4, false},
+		{6, 3, false},
+		{7, 2, false},
+		{8, 1, false},
+		{9, 0, false},
+		{0, 0, true},
 	}
 
 	for i, test := range tests {
-		v, err := env.q.Dequeue()
-		if got, want := (err == nil), test.nilErr; got != want {
-			t.Fatalf("Test[%v]: Unexpected Dequeue error (%v), want (%v)", i, got, want)
+		v := env.q.Dequeue()
+		if got, want := (v == nil), test.isNil; got != want {
+			t.Fatalf("Test[%v]: Dequeue returns nil = %v, want %v", i, got, want)
 		}
-		if err != nil {
+		if v == nil {
 			continue
 		}
 
@@ -96,27 +96,27 @@ func TestPeek(t *testing.T) {
 	tests := []struct {
 		element int
 		size    int
-		nilErr  bool
+		isNil  bool
 	}{
-		{0, 10, true},
-		{1, 9, true},
-		{2, 8, true},
-		{3, 7, true},
-		{4, 6, true},
-		{5, 5, true},
-		{6, 4, true},
-		{7, 3, true},
-		{8, 2, true},
-		{9, 1, true},
-		{0, 0, false},
+		{0, 10, false},
+		{1, 9, false},
+		{2, 8, false},
+		{3, 7, false},
+		{4, 6, false},
+		{5, 5, false},
+		{6, 4, false},
+		{7, 3, false},
+		{8, 2, false},
+		{9, 1, false},
+		{0, 0, true},
 	}
 
 	for i, test := range tests {
-		v, err := env.q.Peek()
-		if got, want := (err == nil), test.nilErr; got != want {
-			t.Fatalf("Test[%v]: Unexpected Peek error (%v), want (%v)", i, got, want)
+		v := env.q.Peek()
+		if got, want := (v == nil), test.isNil; got != want {
+			t.Fatalf("Test[%v]: Dequeue returns nil = %v, want %v", i, got, want)
 		}
-		if err != nil {
+		if v == nil {
 			continue
 		}
 

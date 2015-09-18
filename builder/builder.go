@@ -148,10 +148,7 @@ func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*v2pb.Epoc
 	// timestamp less than lastCommitmentTS and post them to
 	// the tree.
 	for b.queue.Size() > 0 {
-		v, err := b.queue.Peek()
-		if err != nil {
-			return nil, grpc.Errorf(codes.Internal, "Error while peeking at the first element in the queue: %v", err)
-		}
+		v := b.queue.Peek()
 
 		entryStorage := v.(*corepb.EntryStorage)
 		// If the EntryStorage element in the queue has a timestamp

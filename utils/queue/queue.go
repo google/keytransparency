@@ -17,7 +17,6 @@ package queue
 
 import (
 	"container/list"
-	"errors"
 	"sync"
 )
 
@@ -36,6 +35,8 @@ func New() *Queue {
 
 // Size returns the number of elements in the queue.
 func (q *Queue) Size() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	return q.list.Len()
 }
 
@@ -47,28 +48,26 @@ func (q *Queue) Enqueue(elem interface{}) {
 }
 
 // Dequeue returns and deletes the element at the beginning of the queue.
-func (q *Queue) Dequeue() (interface{}, error) {
+func (q *Queue) Dequeue() interface{} {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if q.Size() == 0 {
-		return nil, errors.New("Cannot dequeue an empty queue")
-	}
-
 	result := q.list.Front()
+	if result == nil {
+		return nil
+	}
 	q.list.Remove(result)
-	return result.Value, nil
+	return result.Value
 }
 
 // Peek returns the element at the beginning of the queue without deleting it.
-func (q *Queue) Peek() (interface{}, error) {
+func (q *Queue) Peek() interface{} {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if q.Size() == 0 {
-		return nil, errors.New("Cannot dequeue an empty queue")
-	}
-
 	result := q.list.Front()
-	return result.Value, nil
+	if result == nil {
+		return nil
+	}
+	return result.Value
 }
