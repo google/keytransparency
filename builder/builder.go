@@ -44,7 +44,7 @@ type Builder struct {
 	// t contains the merkle tree.
 	tree *merkle.Tree
 	// store is an instance to LocalStorage.
-	store storage.LocalStorage
+	localStore storage.LocalStorage
 	// epoch is an instance of merkle.Epoch.
 	epoch *epoch.Epoch
 	// queue is a goroutine safe queue.
@@ -54,18 +54,44 @@ type Builder struct {
 	lastCommitmentTS uint64
 }
 
-// New creates an instance of the tree builder with a given channel.
-func New(store storage.LocalStorage) *Builder {
+// NewForServer creates an instance of the tree builder with a given channel.
+// The Builder created instance will be ready to use by the key server.
+func NewForServer(consistentStore storage.ConsistentStorage, localStore storage.LocalStorage) *Builder {
 	b := &Builder{
-		updates:   make(chan *corepb.EntryStorage),
-		epochInfo: make(chan *corepb.EpochInfo),
-		tree:      merkle.New(),
-		store:     store,
-		epoch:     epoch.New(),
-		queue:     queue.New(),
+		updates:    make(chan *corepb.EntryStorage),
+		epochInfo:  make(chan *corepb.EpochInfo),
+		tree:       merkle.New(),
+		localStore: localStore,
+		epoch:      epoch.New(),
+		queue:      queue.New(),
 	}
+
+	// Subscribe the updates channel.
+	consistentStore.SubscribeUpdates(b.updates)
 	go b.handleUpdates()
+
+	// Subscribe the epochInfo channel.
+	consistentStore.SubscribeEpochInfo(b.epochInfo)
 	go b.handleEpochInfo()
+
+	return b
+}
+
+// NewForSigner creates an instance of the tree builder with a given channel.
+// The Builder created instance will be ready to use by the signer.
+func NewForSigner(consistentStore storage.ConsistentStorage, localStore storage.LocalStorage) *Builder {
+	b := &Builder{
+		updates:    make(chan *corepb.EntryStorage),
+		tree:       merkle.New(),
+		localStore: localStore,
+		epoch:      epoch.New(),
+		queue:      queue.New(),
+	}
+
+	// Subscribe the updates channel.
+	consistentStore.SubscribeUpdates(b.updates)
+	go b.handleUpdates()
+
 	return b
 }
 
@@ -74,7 +100,7 @@ func New(store storage.LocalStorage) *Builder {
 func (b *Builder) handleUpdates() {
 	for entryStorage := range b.updates {
 		// LocalStorage ignores context, so nil is passed here.
-		if err := b.store.WriteUpdate(nil, entryStorage); err != nil {
+		if err := b.localStore.WriteUpdate(nil, entryStorage); err != nil {
 			log.Fatalf("Failed to save update to disk: %v", err)
 			// TODO: Implement a failure mode.
 		}
@@ -107,7 +133,7 @@ func (b *Builder) handleEpochInfo() {
 		}
 
 		// Save the signed epoch head in local storage.
-		if err := b.store.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
+		if err := b.localStore.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
 			log.Fatalf("Failed to write EpochInfo: %v", err)
 		}
 
@@ -215,7 +241,7 @@ func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*v2p
 		epoch = b.epoch.Serving()
 	}
 
-	info, err := b.store.ReadEpochInfo(ctx, epoch)
+	info, err := b.localStore.ReadEpochInfo(ctx, epoch)
 	if err != nil {
 		return nil, err
 	}

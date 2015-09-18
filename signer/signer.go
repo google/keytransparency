@@ -46,8 +46,7 @@ func New(consistentStore storage.ConsistentStorage, dbPath string, seconds uint)
 		return nil, err
 	}
 	// Create the tree builder.
-	b := builder.New(localStore)
-	consistentStore.SubscribeUpdates(b.Updates())
+	b := builder.NewForSigner(consistentStore, localStore)
 
 	// Create a signer instance.
 	signer := &Signer{

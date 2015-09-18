@@ -118,9 +118,7 @@ func NewEnv(t *testing.T) *Env {
 
 	consistentStore := storage.CreateMem(ctx)
 	store := &Fake_LocalStorage{}
-	b := builder.New(store)
-	// Only subscribe the updates channel.
-	consistentStore.SubscribeUpdates(b.Updates())
+	b := builder.NewForServer(consistentStore, store)
 	v2srv := keyserver.New(consistentStore, b)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)

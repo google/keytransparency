@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/e2e-key-server/merkle"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -47,7 +48,7 @@ type EntryUpdates struct {
 }
 
 func NewEnv(t *testing.T) *Env {
-	b := New(nil)
+	b := NewForServer(&Fake_ConsistentStorage{}, nil)
 	updates := GenerateEntryUpdates(t)
 
 	return &Env{b, updates}
@@ -104,4 +105,30 @@ func TestPost(t *testing.T) {
 			t.Errorf("Test[%v]: post()=%v, want %v, %v", i, got, want, err)
 		}
 	}
+}
+
+// Implementing mock static storage.
+type Fake_ConsistentStorage struct {
+}
+
+func (s *Fake_ConsistentStorage) ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error) {
+	return nil, nil
+}
+
+func (s *Fake_ConsistentStorage) ReadEpochInfo(ctx context.Context, primaryKey uint64) (*corepb.EpochInfo, error) {
+	return nil, nil
+}
+
+func (s *Fake_ConsistentStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
+	return nil
+}
+
+func (s *Fake_ConsistentStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
+	return nil
+}
+
+func (s *Fake_ConsistentStorage) SubscribeUpdates(ch chan *corepb.EntryStorage) {
+}
+
+func (s *Fake_ConsistentStorage) SubscribeEpochInfo(ch chan *corepb.EpochInfo) {
 }
