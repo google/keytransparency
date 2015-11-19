@@ -18,9 +18,9 @@ package storage
 import (
 	"encoding/binary"
 
+	"github.com/golang/leveldb"
+	"github.com/golang/leveldb/db"
 	"github.com/golang/protobuf/proto"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -40,12 +40,12 @@ type LevelDBStorage struct {
 // will be created.
 func OpenDB(path string) (*LevelDBStorage, error) {
 	// Create updates leveldb database.
-	updates, err := leveldb.OpenFile(path+"/updates", nil)
+	updates, err := leveldb.Open(path+"/updates", nil)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error while creating updates database: %v", err)
 	}
 	// Create epochs leveldb database.
-	epochs, err := leveldb.OpenFile(path+"/epochs", nil)
+	epochs, err := leveldb.Open(path+"/epochs", nil)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error while creating epochs info database: %v", err)
 	}
@@ -66,7 +66,7 @@ func (s *LevelDBStorage) ReadUpdate(ctx context.Context, primaryKey uint64) (*co
 
 	val, err := s.updates.Get(key, nil)
 	if err != nil {
-		if err == errors.ErrNotFound {
+		if err == db.ErrNotFound {
 			return nil, grpc.Errorf(codes.NotFound, "%v Not Found", primaryKey)
 		}
 		return nil, grpc.Errorf(codes.Internal, "Error while reading from updates database: %v", err)
@@ -87,7 +87,7 @@ func (s *LevelDBStorage) ReadEpochInfo(ctx context.Context, primaryKey uint64) (
 
 	val, err := s.epochs.Get(key, nil)
 	if err != nil {
-		if err == errors.ErrNotFound {
+		if err == db.ErrNotFound {
 			return nil, grpc.Errorf(codes.NotFound, "%v Not Found", primaryKey)
 		}
 		return nil, grpc.Errorf(codes.Internal, "Error while reading from epochs database: %v", err)
@@ -113,7 +113,7 @@ func (s *LevelDBStorage) WriteUpdate(ctx context.Context, entry *corepb.EntrySto
 		return grpc.Errorf(codes.Internal, "Error while marshaling entry storage: %v", err)
 	}
 
-	if err := s.updates.Put(key, entryData, nil); err != nil {
+	if err := s.updates.Set(key, entryData, nil); err != nil {
 		return grpc.Errorf(codes.Internal, "Error while writing to updates database: %v", err)
 	}
 	return nil
@@ -129,7 +129,7 @@ func (s *LevelDBStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, 
 		return grpc.Errorf(codes.Internal, "Error while marshaling epoch info: %v", err)
 	}
 
-	if err := s.epochs.Put(key, epochInfoData, nil); err != nil {
+	if err := s.epochs.Set(key, epochInfoData, nil); err != nil {
 		return grpc.Errorf(codes.Internal, "Error while writing to epochs database: %v", err)
 	}
 	return nil
