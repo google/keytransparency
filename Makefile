@@ -59,5 +59,6 @@ proto: $(DEPS)
 	protoc $(INCLUDES) $(FLAGS),:. $(dir $<)*.proto
 
 clean:
-	rm $(DEPS) 2> /dev/null
+	rm -f $(DEPS)
+	rm -f srv
 
