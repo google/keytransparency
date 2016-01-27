@@ -41,8 +41,4 @@ go get -u golang.org/x/crypto/openpgp
 go get -u google.golang.org/grpc
 go get -u github.com/golang/leveldb
 
-# Non go packages
-#go get -d github.com/google/protobuf
-#ln -s $GOPATH/src/github.com/google/protobuf/src/google $GOPATH/src/google
-
 #Shell PATH must include $GOPATH/bin

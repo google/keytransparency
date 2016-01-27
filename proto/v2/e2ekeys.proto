@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package google.security.e2ekeys.v2;
 
-import "google/protobuf/timestamp.proto";
+import "github.com/google/e2e-key-server/proto/types/timestamp.proto";
 
 // The E2EKeyService API represents a directory of public keys.
 // The API defines the following resource model:
@@ -25,11 +25,11 @@ import "google/protobuf/timestamp.proto";
 //   resources named `/entries/*`.
 //
 // - Entries have a collection of historical
-//   [Entry][google.security.e2ekeys.v2.Entry] resources named 
+//   [Entry][google.security.e2ekeys.v2.Entry] resources named
 //   `/entries/*/history`.
 //
 service E2EKeyService {
-  // GetEntry returns a user's entry in the Merkle Tree. Entries contain 
+  // GetEntry returns a user's entry in the Merkle Tree. Entries contain
   // signed commitments to a profile, which is also returned.
   rpc GetEntry(GetEntryRequest) returns (GetEntryResponse);
 
@@ -38,7 +38,7 @@ service E2EKeyService {
 
   // blocking or polling?
   // UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
-  // has been included in an epoch.  Clients must retry until this function 
+  // has been included in an epoch.  Clients must retry until this function
   // returns a proof.
   rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse);
 
@@ -65,7 +65,7 @@ message SignedEpochHead {
   map<fixed64, bytes> signatures = 2;
 }
 
-// EpochHead is the head node of the Merkle Tree as well as additional metadata 
+// EpochHead is the head node of the Merkle Tree as well as additional metadata
 // for the tree.
 message EpochHead {
   // Realm is the domain...
@@ -82,12 +82,12 @@ message EpochHead {
 }
 
 message GetEntryResponse {
-  // UserId supports sending this as a complete proof to a third party. 
+  // UserId supports sending this as a complete proof to a third party.
   string user_id = 1; // Optional.
-  // IndexProof is the proof for VUF(user_id). 
+  // IndexProof is the proof for VUF(user_id).
   bytes index_proof = 2;
   // Index is the output of VUF on (user_id).
-  // If index != entry.index,  but they share a common prefix of 
+  // If index != entry.index,  but they share a common prefix of
   // len(merkle_tree_neighbors), this is a proof of absence for user_id.
   bytes index = 3;
   // The signed epoch head.  A server may choose to return multiple signatures
@@ -147,8 +147,8 @@ message Entry {
   // profile_commitment is a cryptographic commitment to the Profile of the form
   // HMAC(profile_commitment_key, serialized_profile)
   bytes profile_commitment = 4;
-  // Update policy: new Entry must be signed by at least one key from entry_key 
-  // in previous epoch. 
+  // Update policy: new Entry must be signed by at least one key from entry_key
+  // in previous epoch.
 }
 
 // Profile contains data hidden behind the crypto comitment.
@@ -207,7 +207,7 @@ message ListEntryHistoryResponse {
 
 // Update a user's profile.
 message UpdateEntryRequest {
-  // UserID specifies the id for the new account to be registered. 
+  // UserID specifies the id for the new account to be registered.
   string user_id = 1; // Optional.
   // SignedEntryUpdate authorizes the change to profile.
   SignedEntryUpdate signed_entry_update = 2;
@@ -225,7 +225,7 @@ message UpdateEntryRequest {
   bytes dkim_proof = 1001; // Optional.
 }
 
-// UpdateEntryResponse contains a proof once the update has been included in 
+// UpdateEntryResponse contains a proof once the update has been included in
 // the Merkel Tree.
 message UpdateEntryResponse {
   GetEntryResponse proof = 1;

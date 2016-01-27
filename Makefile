@@ -54,13 +54,10 @@ fmt:
 	gofmt -w `find . | grep -e '\.go$$'`
 
 proto: $(DEPS)
-	mkdir -p $(OUTPUT)
-	protoc $(INCLUDES) $(FLAGS),:$(OUTPUT) $(PROTOINCLUDE)/google/protobuf/*.proto
 
 ./%.pb.go:  %.proto
 	protoc $(INCLUDES) $(FLAGS),:. $(dir $<)*.proto
 
 clean:
 	rm $(DEPS) 2> /dev/null
-	rm -r $(OUTPUT)/google/protobuf
 
