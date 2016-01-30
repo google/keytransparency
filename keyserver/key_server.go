@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	corepb "github.com/google/e2e-key-server/proto/core"
+	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
 	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
 )
 

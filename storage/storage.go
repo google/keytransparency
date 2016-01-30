@@ -18,7 +18,7 @@ package storage
 import (
 	"golang.org/x/net/context"
 
-	corepb "github.com/google/e2e-key-server/proto/core"
+	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
 )
 
 const (
