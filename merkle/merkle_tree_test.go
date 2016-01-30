@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	cm "github.com/google/e2e-key-server/common/merkle"
+	cm "github.com/google/e2e-key-server/common/common_merkle"
 )
 
 const (
