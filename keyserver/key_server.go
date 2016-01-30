@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	corepb "github.com/google/e2e-key-server/proto/core"
-	v2pb "github.com/google/e2e-key-server/proto/v2"
+	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
 )
 
 // Server holds internal state for the key server.

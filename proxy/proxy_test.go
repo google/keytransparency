@@ -33,8 +33,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	cm "github.com/google/e2e-key-server/common/merkle"
 	corepb "github.com/google/e2e-key-server/proto/core"
-	v1pb "github.com/google/e2e-key-server/proto/v1"
-	v2pb "github.com/google/e2e-key-server/proto/v2"
+	v1pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v1"
+	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
 )
 
 const (

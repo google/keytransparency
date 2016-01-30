@@ -33,9 +33,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	typespb "github.com/google/e2e-key-server/proto/types"
-	v1pb "github.com/google/e2e-key-server/proto/v1"
-	v2pb "github.com/google/e2e-key-server/proto/v2"
+	typespb "github.com/google/e2e-key-server/proto/google_protobuf"
+	v1pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v1"
+	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
 )
 
 const (

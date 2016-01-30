@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package google.security.e2ekeys.v1;
 
-import "github.com/google/e2e-key-server/proto/v2/e2ekeys.proto";
+import "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2/e2ekeys.proto";
 
 // The E2EKeyProxy API specifies a simplified way to query the
 // [E2EKeyService][google.security.e2ekeys.v2.E2EKeyService], without
