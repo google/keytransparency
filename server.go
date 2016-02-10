@@ -120,9 +120,8 @@ var v2Routes = []handlers.RouteInfo{
 func main() {
 	flag.Parse()
 
-	portString := fmt.Sprintf(":%d", *port)
 	// TODO: fetch private TLS key from repository.
-	lis, err := net.Listen("tcp", portString)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -132,7 +131,7 @@ func main() {
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := storage.OpenDB(*serverDBPath)
 	if err != nil {
-		fmt.Printf("Cannot open the database at %v\nExisting the server.\n", *serverDBPath)
+		log.Fatalf("Cannot open the database at %v\nExisting the server.\n", *serverDBPath)
 		return
 	}
 	defer localStore.Close()
@@ -140,7 +139,7 @@ func main() {
 	// Create a signer.
 	signer, err := signer.New(consistentStore, *signerDBPath, *epochDuration)
 	if err != nil {
-		fmt.Printf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
+		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return
 	}
 	defer signer.Stop()
