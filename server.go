@@ -21,12 +21,13 @@ import (
 	"net"
 
 	"github.com/google/e2e-key-server/builder"
+	"github.com/google/e2e-key-server/db/leveldb"
+	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/storage"
 	"golang.org/x/net/context"
 
 	v1pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v1"
@@ -127,9 +128,9 @@ func main() {
 	}
 	ctx := context.Background()
 	// Create a memory storage.
-	consistentStore := storage.CreateMem(ctx)
+	consistentStore := memdb.New(ctx)
 	// Create localStorage instance to store EntryStorage.
-	localStore, err := storage.OpenDB(*serverDBPath)
+	localStore, err := leveldb.Open(*serverDBPath)
 	if err != nil {
 		log.Fatalf("Cannot open the database at %v\nExisting the server.\n", *serverDBPath)
 		return

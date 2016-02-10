@@ -27,7 +27,7 @@ import (
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
-	"github.com/google/e2e-key-server/storage"
+	"github.com/google/e2e-key-server/db/memdb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -151,7 +151,7 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	consistentStore := storage.CreateMem(ctx)
+	consistentStore := memdb.New(ctx)
 	store := &Fake_LocalStorage{}
 	b := builder.NewForServer(consistentStore, store)
 	server := New(consistentStore, b)

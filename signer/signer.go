@@ -19,7 +19,8 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/builder"
-	"github.com/google/e2e-key-server/storage"
+	"github.com/google/e2e-key-server/db"
+	"github.com/google/e2e-key-server/db/leveldb"
 
 	proto "github.com/golang/protobuf/proto"
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
@@ -30,18 +31,18 @@ import (
 // the epoch head once created.
 type Signer struct {
 	// consistentStore is an instance to ConsistentStorage.
-	consistentStore storage.ConsistentStorage
+	consistentStore db.ConsistentStorage
 	// builder is signer's instance of builder.
 	builder *builder.Builder
 	// ticker ticks everytime a new epoch should be created.
 	ticker *time.Ticker
 	// localStore is a local store instance of the signer.
-	localStore storage.LocalStorage
+	localStore db.LocalStorage
 }
 
 // New creates a new instance of the signer.
-func New(consistentStore storage.ConsistentStorage, dbPath string, seconds uint) (*Signer, error) {
-	localStore, err := storage.OpenDB(dbPath)
+func New(consistentStore db.ConsistentStorage, dbPath string, seconds uint) (*Signer, error) {
+	localStore, err := leveldb.Open(dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func (s *Signer) createEpoch() {
 			// TODO(cesarghali): fill Signatures
 		}
 
-		// Write signed epoch head in the storage.
+		// Write signed epoch head in the leveldb.
 		epochInfo := &corepb.EpochInfo{
 			SignedEpochHead:         signedEpochHead,
 			LastCommitmentTimestamp: lastCommitmentTS,

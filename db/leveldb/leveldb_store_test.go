@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package leveldb
 
 import (
 	"io/ioutil"
@@ -73,7 +73,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Cannot create database tmp directory: %v", err)
 	}
-	store, err := OpenDB(tmpPath)
+	store, err := Open(tmpPath)
 	if err != nil {
 		t.Fatalf("Error while opening the database: %v", err)
 	}

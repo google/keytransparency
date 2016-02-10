@@ -13,7 +13,7 @@
 // limitations under the License.
 // Package proxy converts v1 API requests into v2 API calls.
 
-package storage
+package memdb
 
 import (
 	"google.golang.org/grpc"
@@ -41,7 +41,7 @@ type MemStorage struct {
 }
 
 // Create creates a storage object from an existing db connection.
-func CreateMem(ctx context.Context) *MemStorage {
+func New(ctx context.Context) *MemStorage {
 	s := &MemStorage{
 		entries: make(map[uint64]*corepb.EntryStorage),
 		epochs:  make(map[uint64]*corepb.EpochInfo),

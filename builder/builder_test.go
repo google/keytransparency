@@ -109,7 +109,7 @@ func TestPost(t *testing.T) {
 	}
 }
 
-// Implementing mock static storage.
+// Implementing mock static db.
 type Fake_ConsistentStorage struct {
 }
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package storage provides an API to persistant storage.
-package storage
+package db
 
 import (
 	"golang.org/x/net/context"

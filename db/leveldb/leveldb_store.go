@@ -13,7 +13,7 @@
 // limitations under the License.
 // Package proxy converts v1 API requests into v2 API calls.
 
-package storage
+package leveldb
 
 import (
 	"encoding/binary"
@@ -38,7 +38,7 @@ type LevelDBStorage struct {
 // OpebDB creates a LevelDBStorage with a leveldb.DB object pointing to the
 // given path. If a file in the given path exists, it will open, otherwise it
 // will be created.
-func OpenDB(path string) (*LevelDBStorage, error) {
+func Open(path string) (*LevelDBStorage, error) {
 	// Create updates leveldb database.
 	updates, err := leveldb.Open(path+"/updates", nil)
 	if err != nil {

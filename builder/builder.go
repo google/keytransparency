@@ -20,9 +20,9 @@ import (
 	"math"
 	"sync/atomic"
 
+	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/epoch"
 	"github.com/google/e2e-key-server/merkle"
-	"github.com/google/e2e-key-server/storage"
 	"github.com/google/e2e-key-server/utils/queue"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -44,7 +44,7 @@ type Builder struct {
 	// t contains the merkle tree.
 	tree *merkle.Tree
 	// store is an instance to LocalStorage.
-	localStore storage.LocalStorage
+	localStore db.LocalStorage
 	// epoch is an instance of merkle.Epoch.
 	epoch *epoch.Epoch
 	// queue is a goroutine safe queue.
@@ -56,7 +56,7 @@ type Builder struct {
 
 // NewForServer creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the key server.
-func NewForServer(consistentStore storage.ConsistentStorage, localStore storage.LocalStorage) *Builder {
+func NewForServer(consistentStore db.ConsistentStorage, localStore db.LocalStorage) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		epochInfo:  make(chan *corepb.EpochInfo),
@@ -79,7 +79,7 @@ func NewForServer(consistentStore storage.ConsistentStorage, localStore storage.
 
 // NewForSigner creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the signer.
-func NewForSigner(consistentStore storage.ConsistentStorage, localStore storage.LocalStorage) *Builder {
+func NewForSigner(consistentStore db.ConsistentStorage, localStore db.LocalStorage) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		tree:       merkle.New(),
@@ -132,7 +132,7 @@ func (b *Builder) handleEpochInfo() {
 			log.Fatalf("Created epoch does not match the signer epoch")
 		}
 
-		// Save the signed epoch head in local storage.
+		// Save the signed epoch head in local db.
 		if err := b.localStore.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
 			log.Fatalf("Failed to write EpochInfo: %v", err)
 		}
@@ -153,7 +153,7 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 	// Add leaf to the merkle tree.
 	epoch := b.epoch.Building()
 	// Epoch will not advance here (after reading current epoch and before
-	// adding the leaf). This is because the builder will post all storage
+	// adding the leaf). This is because the builder will post all db
 	// entries into the tree and then, advance the epoch.
 	if err := tree.AddLeaf(entryStorage.GetSignedEntryUpdate().NewEntry, epoch, index, entryStorage.CommitmentTimestamp); err != nil {
 		return err

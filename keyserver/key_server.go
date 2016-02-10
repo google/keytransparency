@@ -21,7 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/builder"
-	"github.com/google/e2e-key-server/storage"
+	"github.com/google/e2e-key-server/db"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,13 +32,13 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	store   storage.ConsistentStorage
+	store   db.ConsistentStorage
 	auth    auth.Authenticator
 	builder *builder.Builder
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(storage storage.ConsistentStorage, builder *builder.Builder) *Server {
+func New(storage db.ConsistentStorage, builder *builder.Builder) *Server {
 	return &Server{
 		store:   storage,
 		auth:    auth.New(),
