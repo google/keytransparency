@@ -27,7 +27,8 @@ const (
 	ChannelSize = 100
 )
 
-type Consistent interface {
+// DB is a distributed database
+type Distributed interface {
 	Reader
 	Writer
 	Subscriber

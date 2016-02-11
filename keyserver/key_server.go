@@ -32,13 +32,13 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	store   db.Consistent
+	store   db.Distributed
 	auth    auth.Authenticator
 	builder *builder.Builder
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(storage db.Consistent, builder *builder.Builder) *Server {
+func New(storage db.Distributed, builder *builder.Builder) *Server {
 	return &Server{
 		store:   storage,
 		auth:    auth.New(),

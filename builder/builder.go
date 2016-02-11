@@ -56,7 +56,7 @@ type Builder struct {
 
 // NewForServer creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the key server.
-func NewForServer(consistentStore db.Consistent, localStore db.Local) *Builder {
+func NewForServer(consistentStore db.Distributed, localStore db.Local) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		epochInfo:  make(chan *corepb.EpochInfo),
@@ -79,7 +79,7 @@ func NewForServer(consistentStore db.Consistent, localStore db.Local) *Builder {
 
 // NewForSigner creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the signer.
-func NewForSigner(consistentStore db.Consistent, localStore db.Local) *Builder {
+func NewForSigner(consistentStore db.Distributed, localStore db.Local) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		tree:       merkle.New(),
