@@ -43,8 +43,10 @@ type Builder struct {
 	epochInfo chan *corepb.EpochInfo
 	// t contains the merkle tree.
 	tree *merkle.Tree
-	// store is an instance to Local.
-	localStore db.Local
+	// distributed is a distributed database
+	distributed db.Distributed
+	// local is a local db cache.
+	local db.Local
 	// epoch is an instance of merkle.Epoch.
 	epoch *epoch.Epoch
 	// queue is a goroutine safe queue.
@@ -54,45 +56,29 @@ type Builder struct {
 	lastCommitmentTS uint64
 }
 
-// NewForServer creates an instance of the tree builder with a given channel.
-// The Builder created instance will be ready to use by the key server.
-func NewForServer(distributed db.Distributed, localStore db.Local) *Builder {
+// New creates an instance of the tree builder with a given channel.
+// The Builder created instance will be ready to use by the signer.
+func New(distributed db.Distributed, local db.Local) *Builder {
 	b := &Builder{
-		updates:    make(chan *corepb.EntryStorage),
-		epochInfo:  make(chan *corepb.EpochInfo),
-		tree:       merkle.New(),
-		localStore: localStore,
-		epoch:      epoch.New(),
-		queue:      queue.New(),
+		updates:     make(chan *corepb.EntryStorage),
+		tree:        merkle.New(),
+		local:       local,
+		distributed: distributed,
+		epoch:       epoch.New(),
+		queue:       queue.New(),
 	}
 
 	// Subscribe the updates channel.
 	distributed.SubscribeUpdates(b.updates)
 	go b.handleUpdates()
-
-	// Subscribe the epochInfo channel.
-	distributed.SubscribeEpochInfo(b.epochInfo)
-	go b.handleEpochInfo()
 
 	return b
 }
 
-// NewForSigner creates an instance of the tree builder with a given channel.
-// The Builder created instance will be ready to use by the signer.
-func NewForSigner(distributed db.Distributed, localStore db.Local) *Builder {
-	b := &Builder{
-		updates:    make(chan *corepb.EntryStorage),
-		tree:       merkle.New(),
-		localStore: localStore,
-		epoch:      epoch.New(),
-		queue:      queue.New(),
-	}
-
-	// Subscribe the updates channel.
-	distributed.SubscribeUpdates(b.updates)
-	go b.handleUpdates()
-
-	return b
+func (b *Builder) ListenForEpochUpdates() {
+	// Subscribe the epochInfo channel.
+	b.distributed.SubscribeEpochInfo(b.epochInfo)
+	go b.handleEpochInfo()
 }
 
 // handleUpdates listens to channel Builder.ch and adds a leaf to the tree
@@ -100,7 +86,7 @@ func NewForSigner(distributed db.Distributed, localStore db.Local) *Builder {
 func (b *Builder) handleUpdates() {
 	for entryStorage := range b.updates {
 		// Local ignores context, so nil is passed here.
-		if err := b.localStore.WriteUpdate(nil, entryStorage); err != nil {
+		if err := b.local.WriteUpdate(nil, entryStorage); err != nil {
 			log.Fatalf("Failed to save update to disk: %v", err)
 			// TODO: Implement a failure mode.
 		}
@@ -133,7 +119,7 @@ func (b *Builder) handleEpochInfo() {
 		}
 
 		// Save the signed epoch head in local db.
-		if err := b.localStore.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
+		if err := b.local.WriteEpochInfo(nil, b.epoch.Building(), info); err != nil {
 			log.Fatalf("Failed to write EpochInfo: %v", err)
 		}
 
@@ -237,11 +223,12 @@ func (b *Builder) AuditPath(epoch uint64, index []byte) ([][]byte, uint64, error
 
 // GetSignedEpochHeads
 func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*v2pb.SignedEpochHead, error) {
+	// Swap out cache logic for just querying the database.
 	if epoch == math.MaxUint64 {
 		epoch = b.epoch.Serving()
 	}
 
-	info, err := b.localStore.ReadEpochInfo(ctx, epoch)
+	info, err := b.local.ReadEpochInfo(ctx, epoch)
 	if err != nil {
 		return nil, err
 	}

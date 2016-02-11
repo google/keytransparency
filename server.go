@@ -145,7 +145,8 @@ func main() {
 	}
 	defer signer.Stop()
 	// Create the tree builder.
-	b := builder.NewForServer(db, localStore)
+	b := builder.New(db, localStore)
+	b.ListenForEpochUpdates()
 	defer b.Close()
 	// Create the servers.
 	v2 := keyserver.New(db, b)
