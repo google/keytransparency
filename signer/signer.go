@@ -30,31 +30,31 @@ import (
 // Signer is the object responsible for triggering epoch creation and signing
 // the epoch head once created.
 type Signer struct {
-	// consistentStore is an instance to Distributed.
-	consistentStore db.Distributed
+	// distributed is an instance to Distributed.
+	distributed db.Distributed
 	// builder is signer's instance of builder.
 	builder *builder.Builder
 	// ticker ticks everytime a new epoch should be created.
 	ticker *time.Ticker
-	// localStore is a local store instance of the signer.
-	localStore db.Local
+	// local is a local store instance of the signer.
+	local db.Local
 }
 
 // New creates a new instance of the signer.
-func New(consistentStore db.Distributed, dbPath string, seconds uint) (*Signer, error) {
-	localStore, err := leveldb.Open(dbPath)
+func New(distributed db.Distributed, dbPath string, seconds uint) (*Signer, error) {
+	local, err := leveldb.Open(dbPath)
 	if err != nil {
 		return nil, err
 	}
 	// Create the tree builder.
-	b := builder.NewForSigner(consistentStore, localStore)
+	b := builder.NewForSigner(distributed, local)
 
 	// Create a signer instance.
 	signer := &Signer{
-		consistentStore: consistentStore,
-		builder:         b,
-		ticker:          time.NewTicker(time.Second * time.Duration(seconds)),
-		localStore:      localStore,
+		distributed: distributed,
+		builder:     b,
+		ticker:      time.NewTicker(time.Second * time.Duration(seconds)),
+		local:       local,
 	}
 	go signer.createEpoch()
 	return signer, nil
@@ -86,7 +86,7 @@ func (s *Signer) createEpoch() {
 			SignedEpochHead:         signedEpochHead,
 			LastCommitmentTimestamp: lastCommitmentTS,
 		}
-		if err := s.consistentStore.WriteEpochInfo(nil, epochHead.Epoch, epochInfo); err != nil {
+		if err := s.distributed.WriteEpochInfo(nil, epochHead.Epoch, epochInfo); err != nil {
 			log.Fatalf("Failed to write EpochInfo: %v", err)
 		}
 	}
@@ -95,6 +95,6 @@ func (s *Signer) createEpoch() {
 // Stop stops the signer and release all associated resource.
 func (s *Signer) Stop() {
 	s.ticker.Stop()
-	s.localStore.Close()
+	s.local.Close()
 	s.builder.Close()
 }

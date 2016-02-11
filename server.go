@@ -128,7 +128,7 @@ func main() {
 	}
 	ctx := context.Background()
 	// Create a memory storage.
-	consistentStore := memdb.New(ctx)
+	db := memdb.New(ctx)
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := leveldb.Open(*serverDBPath)
 	if err != nil {
@@ -138,17 +138,17 @@ func main() {
 	defer localStore.Close()
 	// Create the tree builder.
 	// Create a signer.
-	signer, err := signer.New(consistentStore, *signerDBPath, *epochDuration)
+	signer, err := signer.New(db, *signerDBPath, *epochDuration)
 	if err != nil {
 		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return
 	}
 	defer signer.Stop()
 	// Create the tree builder.
-	b := builder.NewForServer(consistentStore, localStore)
+	b := builder.NewForServer(db, localStore)
 	defer b.Close()
 	// Create the servers.
-	v2 := keyserver.New(consistentStore, b)
+	v2 := keyserver.New(db, b)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

@@ -56,7 +56,7 @@ type Builder struct {
 
 // NewForServer creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the key server.
-func NewForServer(consistentStore db.Distributed, localStore db.Local) *Builder {
+func NewForServer(distributed db.Distributed, localStore db.Local) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		epochInfo:  make(chan *corepb.EpochInfo),
@@ -67,11 +67,11 @@ func NewForServer(consistentStore db.Distributed, localStore db.Local) *Builder 
 	}
 
 	// Subscribe the updates channel.
-	consistentStore.SubscribeUpdates(b.updates)
+	distributed.SubscribeUpdates(b.updates)
 	go b.handleUpdates()
 
 	// Subscribe the epochInfo channel.
-	consistentStore.SubscribeEpochInfo(b.epochInfo)
+	distributed.SubscribeEpochInfo(b.epochInfo)
 	go b.handleEpochInfo()
 
 	return b
@@ -79,7 +79,7 @@ func NewForServer(consistentStore db.Distributed, localStore db.Local) *Builder 
 
 // NewForSigner creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the signer.
-func NewForSigner(consistentStore db.Distributed, localStore db.Local) *Builder {
+func NewForSigner(distributed db.Distributed, localStore db.Local) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		tree:       merkle.New(),
@@ -89,7 +89,7 @@ func NewForSigner(consistentStore db.Distributed, localStore db.Local) *Builder 
 	}
 
 	// Subscribe the updates channel.
-	consistentStore.SubscribeUpdates(b.updates)
+	distributed.SubscribeUpdates(b.updates)
 	go b.handleUpdates()
 
 	return b

@@ -151,10 +151,10 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	consistentStore := memdb.New(ctx)
+	db := memdb.New(ctx)
 	store := &Fake_Local{}
-	b := builder.NewForServer(consistentStore, store)
-	server := New(consistentStore, b)
+	b := builder.NewForServer(db, store)
+	server := New(db, b)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
