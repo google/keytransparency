@@ -30,18 +30,18 @@ import (
 // Signer is the object responsible for triggering epoch creation and signing
 // the epoch head once created.
 type Signer struct {
-	// consistentStore is an instance to ConsistentStorage.
-	consistentStore db.ConsistentStorage
+	// consistentStore is an instance to Consistent.
+	consistentStore db.Consistent
 	// builder is signer's instance of builder.
 	builder *builder.Builder
 	// ticker ticks everytime a new epoch should be created.
 	ticker *time.Ticker
 	// localStore is a local store instance of the signer.
-	localStore db.LocalStorage
+	localStore db.Local
 }
 
 // New creates a new instance of the signer.
-func New(consistentStore db.ConsistentStorage, dbPath string, seconds uint) (*Signer, error) {
+func New(consistentStore db.Consistent, dbPath string, seconds uint) (*Signer, error) {
 	localStore, err := leveldb.Open(dbPath)
 	if err != nil {
 		return nil, err

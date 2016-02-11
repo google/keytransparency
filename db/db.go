@@ -27,13 +27,13 @@ const (
 	ChannelSize = 100
 )
 
-type ConsistentStorage interface {
+type Consistent interface {
 	Reader
 	Writer
 	Subscriber
 }
 
-type LocalStorage interface {
+type Local interface {
 	Reader
 	Writer
 	Closer

@@ -33,7 +33,7 @@ import (
 	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
 )
 
-// Builder watches a channel and post received elements in the merkle tree.
+// Builder watches a channel and posts received elements in the merkle tree.
 type Builder struct {
 	// updates is watched by handleUpdates(). Whenever an EntryStorage is
 	// received, the appripriate data will be pushed in the tree.
@@ -43,8 +43,8 @@ type Builder struct {
 	epochInfo chan *corepb.EpochInfo
 	// t contains the merkle tree.
 	tree *merkle.Tree
-	// store is an instance to LocalStorage.
-	localStore db.LocalStorage
+	// store is an instance to Local.
+	localStore db.Local
 	// epoch is an instance of merkle.Epoch.
 	epoch *epoch.Epoch
 	// queue is a goroutine safe queue.
@@ -56,7 +56,7 @@ type Builder struct {
 
 // NewForServer creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the key server.
-func NewForServer(consistentStore db.ConsistentStorage, localStore db.LocalStorage) *Builder {
+func NewForServer(consistentStore db.Consistent, localStore db.Local) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		epochInfo:  make(chan *corepb.EpochInfo),
@@ -79,7 +79,7 @@ func NewForServer(consistentStore db.ConsistentStorage, localStore db.LocalStora
 
 // NewForSigner creates an instance of the tree builder with a given channel.
 // The Builder created instance will be ready to use by the signer.
-func NewForSigner(consistentStore db.ConsistentStorage, localStore db.LocalStorage) *Builder {
+func NewForSigner(consistentStore db.Consistent, localStore db.Local) *Builder {
 	b := &Builder{
 		updates:    make(chan *corepb.EntryStorage),
 		tree:       merkle.New(),
@@ -99,7 +99,7 @@ func NewForSigner(consistentStore db.ConsistentStorage, localStore db.LocalStora
 // whenever an EntryStorage is received.
 func (b *Builder) handleUpdates() {
 	for entryStorage := range b.updates {
-		// LocalStorage ignores context, so nil is passed here.
+		// Local ignores context, so nil is passed here.
 		if err := b.localStore.WriteUpdate(nil, entryStorage); err != nil {
 			log.Fatalf("Failed to save update to disk: %v", err)
 			// TODO: Implement a failure mode.

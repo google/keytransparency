@@ -48,7 +48,7 @@ type EntryUpdates struct {
 }
 
 func NewEnv(t *testing.T) *Env {
-	b := NewForServer(&Fake_ConsistentStorage{}, nil)
+	b := NewForServer(&Fake_Consistent{}, nil)
 	updates := GenerateEntryUpdates(t)
 
 	return &Env{b, updates}
@@ -110,27 +110,27 @@ func TestPost(t *testing.T) {
 }
 
 // Implementing mock static db.
-type Fake_ConsistentStorage struct {
+type Fake_Consistent struct {
 }
 
-func (s *Fake_ConsistentStorage) ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error) {
+func (s *Fake_Consistent) ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error) {
 	return nil, nil
 }
 
-func (s *Fake_ConsistentStorage) ReadEpochInfo(ctx context.Context, primaryKey uint64) (*corepb.EpochInfo, error) {
+func (s *Fake_Consistent) ReadEpochInfo(ctx context.Context, primaryKey uint64) (*corepb.EpochInfo, error) {
 	return nil, nil
 }
 
-func (s *Fake_ConsistentStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
+func (s *Fake_Consistent) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
 	return nil
 }
 
-func (s *Fake_ConsistentStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
+func (s *Fake_Consistent) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
 	return nil
 }
 
-func (s *Fake_ConsistentStorage) SubscribeUpdates(ch chan *corepb.EntryStorage) {
+func (s *Fake_Consistent) SubscribeUpdates(ch chan *corepb.EntryStorage) {
 }
 
-func (s *Fake_ConsistentStorage) SubscribeEpochInfo(ch chan *corepb.EpochInfo) {
+func (s *Fake_Consistent) SubscribeEpochInfo(ch chan *corepb.EpochInfo) {
 }

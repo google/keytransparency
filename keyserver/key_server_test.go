@@ -132,7 +132,7 @@ type Env struct {
 	Client    *client.Client
 	ctx       context.Context
 	builder   *builder.Builder
-	fakeStore *Fake_LocalStorage
+	fakeStore *Fake_Local
 }
 
 // NewEnv sets up common resources for tests.
@@ -152,7 +152,7 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	consistentStore := memdb.New(ctx)
-	store := &Fake_LocalStorage{}
+	store := &Fake_Local{}
 	b := builder.NewForServer(consistentStore, store)
 	server := New(consistentStore, b)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
@@ -397,15 +397,15 @@ func TestUnauthenticated(t *testing.T) {
 }
 
 // Implementing mock static storage.
-type Fake_LocalStorage struct {
+type Fake_Local struct {
 	info *corepb.EpochInfo
 }
 
-func (s *Fake_LocalStorage) ReadUpdate(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
+func (s *Fake_Local) ReadUpdate(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
 	return nil, nil
 }
 
-func (s *Fake_LocalStorage) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
+func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
 	if s.info == nil {
 		epochHead := &v2pb.EpochHead{
 			Epoch: epoch,
@@ -424,14 +424,14 @@ func (s *Fake_LocalStorage) ReadEpochInfo(ctx context.Context, epoch uint64) (*c
 	return s.info, nil
 }
 
-func (s *Fake_LocalStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
+func (s *Fake_Local) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
 	return nil
 }
 
-func (s *Fake_LocalStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
+func (s *Fake_Local) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
 	s.info = epochInfo
 	return nil
 }
 
-func (s *Fake_LocalStorage) Close() {
+func (s *Fake_Local) Close() {
 }
