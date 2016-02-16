@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package google.security.e2ekeys.v2;
 
-import "github.com/google/e2e-key-server/proto/google_protobuf/timestamp.proto";
+import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
 
 // The E2EKeyService API represents a directory of public keys.
 // The API defines the following resource model:
@@ -56,30 +56,6 @@ service E2EKeyService {
 // Data types.
 //
 
-// SignedEpochHead represents a signed state of the Merkel tree.
-message SignedEpochHead {
-  // Serialized EpochHead.
-  bytes epoch_head = 1;
-  // Signature of head, using the signature type of the key.
-  // keyed by the first 64 bits bytes of the hash of the key.
-  map<fixed64, bytes> signatures = 2;
-}
-
-// EpochHead is the head node of the Merkle Tree as well as additional metadata
-// for the tree.
-message EpochHead {
-  // Realm is the domain...
-  string realm = 1;
-  // Epoch number
-  uint64 epoch = 2;
-  // Root is the value of the root node of the merkle tree.
-  bytes root = 3;
-  // IssueTime is the time when this epoch was released. All epochs for the
-  // same keyserver MUST have non-decreasing IssueTimes.
-  google.protobuf.Timestamp issue_time = 4;
-  // Hash of previous SEH. 64 bytes of SHA3-SHAKE256.
-  bytes previous_epoch_head_hash = 5;
-}
 
 message GetEntryResponse {
   // UserId supports sending this as a complete proof to a third party.
@@ -93,63 +69,19 @@ message GetEntryResponse {
   // The signed epoch head.  A server may choose to return multiple signatures
   // of the same head for the same epoch. A client MUST NOT consider the
   // presence of surplus or invalid epoch heads in this field an error.
-  repeated SignedEpochHead signed_epoch_heads = 4; // Optional.
+  repeated security_ctmap.SignedEpochHead signed_epoch_heads = 4; // Optional.
   // MerkleTreeNeighbors is a list of all the adjacent nodes along the path
   // from the bottommost node to the head.
   repeated bytes merkle_tree_neighbors = 5;
   // Entry contains the public portion of the user's data, and a comitment to
   // profile.
-  Entry entry = 6;
+  security_ctmap.Entry entry = 6;
   // Profile contains the user's keys.
   bytes profile = 7;
   // CommitmentKey is 16 random bytes.
   bytes commitment_key = 8;
 }
 
-// Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads
-// which are made available to verifiers.
-message Step {
-  oneof type {
-    // entry_changed contains a serialized SignedEntryUpdate.
-    bytes entry_changed = 1;
-    SignedEpochHead signed_epoch_head = 2;
-  }
-  // epoch of this udpate.
-  uint64 epoch = 3;
-  // commitment_timestamp is the ordered commitment_timestamp of this step.
-  uint64 commitment_timestamp = 4;
-}
-
-// SignedEntryUpdate is what users provide to update their profiles.
-// A serialized SignedEntryUpdate is used as the leaf value in the MerkleTree.
-message SignedEntryUpdate {
-  // NewEntry is the serialized protobuf Entry.
-  bytes new_entry = 1;
-  // Signature of entry, by the entry_key inside entry AND the old key from the
-  // previous epoch. The first proves ownership of new epoch key, and the
-  // second proves the the correct owner is making this change.
-  map<fixed64, bytes> signatures = 2;
-}
-
-// Entry is the leaf node object for the Merkle Tree. Its unique index in the
-// tree is identified by a hash of an verifiable unpredictable function on the
-// user_id.
-message Entry {
-  // Index is the location in the merkle tree for this entry.
-  // If signing keys are not unique per user, we need to tie updates to a
-  // particular profile.
-  bytes index = 1;
-  // UpdateCount prevents replaying old signed EntryUpdates.
-  // not nessesarilly incremented by only one each update.
-  uint64 update_count = 2;
-  // EntryKey allows verifiers to validate updates to Entry.
-  repeated PublicKey entry_key = 3;
-  // profile_commitment is a cryptographic commitment to the Profile of the form
-  // HMAC(profile_commitment_key, serialized_profile)
-  bytes profile_commitment = 4;
-  // Update policy: new Entry must be signed by at least one key from entry_key
-  // in previous epoch.
-}
 
 // Profile contains data hidden behind the crypto comitment.
 message Profile {
@@ -210,7 +142,7 @@ message UpdateEntryRequest {
   // UserID specifies the id for the new account to be registered.
   string user_id = 1; // Optional.
   // SignedEntryUpdate authorizes the change to profile.
-  SignedEntryUpdate signed_entry_update = 2;
+  security_ctmap.SignedEntryUpdate signed_entry_update = 2;
   // Profile is the serialized protobuf Profile.
   // Profile is private and must not be released to verifiers.
   bytes profile = 3;
@@ -239,7 +171,7 @@ message ListSEHRequest {
 }
 
 message ListSEHResponse {
-  repeated SignedEpochHead heads = 1;
+  repeated security_ctmap.SignedEpochHead heads = 1;
 }
 
 message ListUpdateRequest {
@@ -262,5 +194,5 @@ message ListStepsRequest {
 }
 
 message ListStepsResponse {
-  repeated Step steps = 1;
+  repeated security_ctmap.Step steps = 1;
 }

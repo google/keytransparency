@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 const (
@@ -67,8 +67,8 @@ func Hash(data []byte) []byte {
 }
 
 // EpochHead unmarshal and returns SignedEpochHead.EpochHead.
-func EpochHead(signedHead *v2pb.SignedEpochHead) (*v2pb.EpochHead, error) {
-	epochHead := new(v2pb.EpochHead)
+func EpochHead(signedHead *ctmap.SignedEpochHead) (*ctmap.EpochHead, error) {
+	epochHead := new(ctmap.EpochHead)
 	if err := proto.Unmarshal(signedHead.EpochHead, epochHead); err != nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal epoch head")
 	}

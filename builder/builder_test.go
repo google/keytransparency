@@ -25,7 +25,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
-	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 var (
@@ -40,11 +40,11 @@ type Env struct {
 
 type EntryUpdates struct {
 	// Contains a signed entry update with a short index.
-	invalidIndex *v2pb.SignedEntryUpdate
+	invalidIndex *ctmap.SignedEntryUpdate
 	// Contains a signed entry update with invalid entry.
-	invalidEntry *v2pb.SignedEntryUpdate
+	invalidEntry *ctmap.SignedEntryUpdate
 	// Contains a valid signed entry update
-	validEntryUpdate *v2pb.SignedEntryUpdate
+	validEntryUpdate *ctmap.SignedEntryUpdate
 }
 
 func NewEnv(t *testing.T) *Env {
@@ -62,23 +62,23 @@ func (env *Env) Close() {
 func GenerateEntryUpdates(t *testing.T) *EntryUpdates {
 	// Generate a signed entry update with an invalid index length. This is
 	// done by using part of the index, e.g. first 10 bytes.
-	invalidEntryBytes, err := proto.Marshal(&v2pb.Entry{Index: testUserIndex[:10]})
+	invalidEntryBytes, err := proto.Marshal(&ctmap.Entry{Index: testUserIndex[:10]})
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}
-	invalidIndex := &v2pb.SignedEntryUpdate{NewEntry: invalidEntryBytes}
+	invalidIndex := &ctmap.SignedEntryUpdate{NewEntry: invalidEntryBytes}
 
 	// Generate a signed entry update with an invalid entry. This is done by
 	// using part of the valid entry update in the signed entry update, e.g.
 	// all bytes except the first one.
-	validEntryBytes, err := proto.Marshal(&v2pb.Entry{Index: testUserIndex})
+	validEntryBytes, err := proto.Marshal(&ctmap.Entry{Index: testUserIndex})
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error %v.", err)
 	}
-	invalidEntry := &v2pb.SignedEntryUpdate{NewEntry: validEntryBytes[1:]}
+	invalidEntry := &ctmap.SignedEntryUpdate{NewEntry: validEntryBytes[1:]}
 
 	// Generate a valid signed entry update.
-	validEntryUpdate := &v2pb.SignedEntryUpdate{NewEntry: validEntryBytes}
+	validEntryUpdate := &ctmap.SignedEntryUpdate{NewEntry: validEntryBytes}
 
 	return &EntryUpdates{invalidIndex, invalidEntry, validEntryUpdate}
 }
@@ -91,7 +91,7 @@ func TestPost(t *testing.T) {
 
 	m := merkle.New()
 	tests := []struct {
-		entryUpdate *v2pb.SignedEntryUpdate
+		entryUpdate *ctmap.SignedEntryUpdate
 		code        codes.Code
 	}{
 		{env.updates.validEntryUpdate, codes.OK},

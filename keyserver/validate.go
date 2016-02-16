@@ -28,6 +28,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 // Maximum period of time to allow between CreationTime and server time.
@@ -81,7 +82,7 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 	}
 
 	// Verify that the signed_update is a commitment to the profile.
-	entry := new(v2pb.Entry)
+	entry := new(ctmap.Entry)
 	if err := proto.Unmarshal(in.GetSignedEntryUpdate().NewEntry, entry); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}

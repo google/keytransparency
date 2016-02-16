@@ -24,7 +24,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
-	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 // Signer is the object responsible for triggering epoch creation and signing
@@ -76,7 +76,7 @@ func (s *Signer) createEpoch() {
 		if err != nil {
 			log.Fatalf("Failed to marshal epoch: %v", err)
 		}
-		signedEpochHead := &v2pb.SignedEpochHead{
+		signedEpochHead := &ctmap.SignedEpochHead{
 			EpochHead: epochHeadData,
 			// TODO(cesarghali): fill Signatures
 		}

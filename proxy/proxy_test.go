@@ -36,6 +36,7 @@ import (
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
 	v1pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 const (
@@ -176,7 +177,7 @@ func (env *Env) mockSigner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected epoch head marshaling error: %v", err)
 	}
-	signedEpochHead := &v2pb.SignedEpochHead{
+	signedEpochHead := &ctmap.SignedEpochHead{
 		EpochHead: epochHeadData,
 		// TODO: fill signatures.
 	}
@@ -322,7 +323,7 @@ func (s *Fake_Local) ReadUpdate(ctx context.Context, key uint64) (*corepb.EntryS
 
 func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
 	if s.info == nil {
-		epochHead := &v2pb.EpochHead{
+		epochHead := &ctmap.EpochHead{
 			Epoch: epoch,
 			Root:  cm.EmptyLeafValue(""),
 		}
@@ -330,7 +331,7 @@ func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.E
 		if err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Cannot marshal epoch head")
 		}
-		seh := &v2pb.SignedEpochHead{EpochHead: epochHeadData}
+		seh := &ctmap.SignedEpochHead{EpochHead: epochHeadData}
 		return &corepb.EpochInfo{
 			SignedEpochHead:         seh,
 			LastCommitmentTimestamp: 1,

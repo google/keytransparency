@@ -30,7 +30,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
-	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 // Builder watches a channel and posts received elements in the merkle tree.
@@ -108,7 +108,7 @@ func (b *Builder) handleEpochInfo() {
 
 		// Verify that the create epoch matches the one created by the
 		// signer.
-		signerEpochHead := new(v2pb.EpochHead)
+		signerEpochHead := new(ctmap.EpochHead)
 		if err := proto.Unmarshal(info.GetSignedEpochHead().EpochHead, signerEpochHead); err != nil {
 			log.Fatalf("Failed to unmarshal epoch head: %v", err)
 		}
@@ -150,7 +150,7 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 
 // CreateEpoch posts all StorageEntry in Builder.queue to the merkle tree and
 // and returns the corresponding EpochHead.
-func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*v2pb.EpochHead, error) {
+func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*ctmap.EpochHead, error) {
 	// Create the new epoch in the tree.
 	if err := b.tree.AddRoot(b.epoch.Building()); err != nil {
 		return nil, err
@@ -188,7 +188,7 @@ func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*v2pb.Epoc
 		return nil, err
 	}
 
-	epochHead := &v2pb.EpochHead{
+	epochHead := &ctmap.EpochHead{
 		// TODO: set Realm
 		Epoch: b.epoch.Building(),
 		Root:  root,
@@ -205,7 +205,7 @@ func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*v2pb.Epoc
 // index returns the user's index from EntryStorage.SignedEntryUpdate.NewEntry.Index.
 func index(entryStorage *corepb.EntryStorage) ([]byte, error) {
 	// Unmarshal Entry.
-	entry := new(v2pb.Entry)
+	entry := new(ctmap.Entry)
 	if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Builder.Build(): Cannot unmarshal Entry")
 	}
@@ -222,7 +222,7 @@ func (b *Builder) AuditPath(epoch uint64, index []byte) ([][]byte, uint64, error
 }
 
 // GetSignedEpochHeads
-func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*v2pb.SignedEpochHead, error) {
+func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*ctmap.SignedEpochHead, error) {
 	// Swap out cache logic for just querying the database.
 	if epoch == math.MaxUint64 {
 		epoch = b.epoch.Serving()
@@ -233,7 +233,7 @@ func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*v2p
 		return nil, err
 	}
 
-	return []*v2pb.SignedEpochHead{info.GetSignedEpochHead()}, nil
+	return []*ctmap.SignedEpochHead{info.GetSignedEpochHead()}, nil
 }
 
 // Updates returns the updates channel.

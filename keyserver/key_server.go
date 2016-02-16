@@ -28,6 +28,7 @@ import (
 
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
 	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 // Server holds internal state for the key server.
@@ -88,7 +89,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		}
 
 		// Unmarshal entry.
-		entry := new(v2pb.Entry)
+		entry := new(ctmap.Entry)
 		if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}

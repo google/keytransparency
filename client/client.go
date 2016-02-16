@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 // Client is a helper library for issuing updates to the key server.
@@ -68,7 +69,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error generating profile commitment: %v", err)
 	}
-	entry := &v2pb.Entry{
+	entry := &ctmap.Entry{
 		// TODO: Pull entry key from previous entry.
 		// TODO: Increment update count from previous entry.
 		ProfileCommitment: commitment,
@@ -81,7 +82,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 	}
 
 	// Construct SignedEntryUpdate.
-	signedEntryUpdate := &v2pb.SignedEntryUpdate{
+	signedEntryUpdate := &ctmap.SignedEntryUpdate{
 		// TODO: Apply Signatures.
 		NewEntry: entryData,
 	}

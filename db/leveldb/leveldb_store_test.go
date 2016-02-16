@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
-	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 var (
@@ -48,15 +48,15 @@ var (
 		info  *corepb.EpochInfo
 	}{
 		{0, &corepb.EpochInfo{
-			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			SignedEpochHead:         &ctmap.SignedEpochHead{},
 			LastCommitmentTimestamp: 1,
 		}},
 		{1, &corepb.EpochInfo{
-			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			SignedEpochHead:         &ctmap.SignedEpochHead{},
 			LastCommitmentTimestamp: 2,
 		}},
 		{3, &corepb.EpochInfo{
-			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			SignedEpochHead:         &ctmap.SignedEpochHead{},
 			LastCommitmentTimestamp: 3,
 		}},
 	}
@@ -161,7 +161,7 @@ func TestReadEpochInfo(t *testing.T) {
 		{epochs[1].epoch, epochs[1].info, codes.OK},
 		{epochs[2].epoch, epochs[2].info, codes.OK},
 		{4, &corepb.EpochInfo{
-			SignedEpochHead:         &v2pb.SignedEpochHead{},
+			SignedEpochHead:         &ctmap.SignedEpochHead{},
 			LastCommitmentTimestamp: 4,
 		}, codes.NotFound},
 	}

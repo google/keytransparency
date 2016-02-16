@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package google.security.e2ekeys.core;
 
-import "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2/e2ekeys.proto";
+import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
 
 // Internal types for the End to End Key Server.
 
@@ -26,7 +26,7 @@ message EntryStorage {
   uint64 commitment_timestamp = 1;
   // entry_update contains a SignedEntryUpdate proto with the actual update
   // contents.
-  v2.SignedEntryUpdate signed_entry_update = 2;
+  security_ctmap.SignedEntryUpdate signed_entry_update = 2;
   // profile is the serialized protobuf Profile.
   // profile is private and must not be released to verifiers.
   bytes profile = 3;
@@ -39,7 +39,7 @@ message EntryStorage {
 // EpochInfo is what gets serialized to disk / log.
 message EpochInfo {
   // signed_epoch_head is the signed epoch head of the created epoch.
-  v2.SignedEpochHead signed_epoch_head = 1;
+  security_ctmap.SignedEpochHead signed_epoch_head = 1;
   // last_commitment_timestamp is the timestamp of the last update included in
   // created epoch.
   uint64 last_commitment_timestamp = 2;
@@ -48,7 +48,7 @@ message EpochInfo {
 // DomainInfo is the information that need to be baked into an application
 // in order to verify information for a domain.
 message DomainInfo {
-  repeated v2.PublicKey public_keys = 1;
+  repeated security_ctmap.PublicKey public_keys = 1;
   // required_sigs is the number of valid signatures to require out of
   // public_keys before considering signed_tree heads legitimate.
   uint32 required_sigs = 2;
@@ -59,7 +59,7 @@ message DomainInfo {
 }
 
 message VerifierInfo {
-  repeated v2.PublicKey public_keys = 1;
+  repeated security_ctmap.PublicKey public_keys = 1;
   // required_sigs is the number of valid signatures to require out of
   // public_keys before considering signed_tree heads legitimate.
   uint32 required_sigs = 2;
