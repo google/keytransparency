@@ -132,6 +132,33 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 	if err := s.store.WriteUpdate(ctx, e); err != nil {
 		return nil, err
 	}
+	// ---
+	index, err := s.Vuf(in.UserId)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: what should the mutation be?
+	// Option A: an update to the commitment
+	m, err := proto.Marshal(in.GetSignedEntryUpdate())
+	if err != nil {
+		return nil, err
+	}
+	// Option B: an update to the particular key
+	// Update the SignedDataTypes to include the particular keys etc.
+
+	// Unmarshal entry.
+	entry := new(ctmap.Entry)
+	if err := proto.Unmarshal(in.GetSignedEntryUpdate().NewEntry, entry); err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
+	}
+
+	if err := s.queue.WriteCommitment(ctx, entry.ProfileCommitment, in.CommitmentKey, in.Profile); err != nil {
+		return nil, err
+	}
+
+	if err := s.queue.QueueMutation(ctx, index, m); err != nil {
+		return nil, err
+	}
 
 	return &v2pb.UpdateEntryResponse{}, nil
 	// TODO: return proof if the entry has been added in an epoch alredy.

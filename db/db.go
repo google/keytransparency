@@ -47,6 +47,7 @@ type Queuer interface {
 	// epoch. The request may fail if this submition is a duplicate or if
 	// the mutation fails a correctness check by the mapper.
 	QueueMutation(ctx context.Context, index, mutation []byte) error
+	WriteCommitment(ctx context.Context, commitment, key, value []byte) error
 }
 
 type Node struct {
@@ -63,10 +64,19 @@ type Sequencer interface {
 	StartSequencing()
 }
 
+type Commitment struct {
+	// Commitment key
+	Key []byte
+	// Commitment value
+	Data []byte
+}
+
 // Reader reads values from the sparse tree.
 type MapReader interface {
 	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
 	ReadPath(ctx context.Context, index []byte) ([][]byte, error)
+	// ReadAssoc retrieves private data associated with the leaf.
+	ReadCommitment(ctx context.Context, index []byte) (Commitment, error)
 }
 
 // Mutator verifies mutations and transforms values in the map.
