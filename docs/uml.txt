@@ -1,0 +1,30 @@
+@startuml
+[Web] -> [FE]
+[Signer]
+
+() "Reader"
+() "Queuer"
+() "Sequencer"
+
+database "Spanner" {
+	[Mutations]
+	[Queue]
+	[Leafs]
+	[Nodes]
+}
+
+FE --> Queuer
+FE <-- Reader
+Signer --> Sequencer
+
+Queuer -> [Queue]
+Queuer -> [Mutations]
+
+Sequencer <- [Queue]
+Sequencer -> [Leafs]
+Sequencer -> [Nodes]
+
+Reader <- [Leafs]
+Reader <- [Nodes]
+
+@enduml

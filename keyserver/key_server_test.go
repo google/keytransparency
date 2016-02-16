@@ -153,7 +153,8 @@ func NewEnv(t *testing.T) *Env {
 
 	db := memdb.New(ctx)
 	store := &Fake_Local{}
-	b := builder.NewForServer(db, store)
+	b := builder.New(db, store)
+	b.ListenForEpochUpdates()
 	server := New(db, b)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)

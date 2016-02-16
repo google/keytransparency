@@ -48,7 +48,8 @@ type EntryUpdates struct {
 }
 
 func NewEnv(t *testing.T) *Env {
-	b := NewForServer(&Fake_Distributed{}, nil)
+	b := New(&Fake_Distributed{}, nil)
+	b.ListenForEpochUpdates()
 	updates := GenerateEntryUpdates(t)
 
 	return &Env{b, updates}

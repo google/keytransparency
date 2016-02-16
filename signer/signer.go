@@ -47,7 +47,7 @@ func New(distributed db.Distributed, dbPath string, seconds uint) (*Signer, erro
 		return nil, err
 	}
 	// Create the tree builder.
-	b := builder.NewForSigner(distributed, local)
+	b := builder.New(distributed, local)
 
 	// Create a signer instance.
 	signer := &Signer{
