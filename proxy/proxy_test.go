@@ -25,6 +25,7 @@ import (
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/memdb"
+	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -115,11 +116,12 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	db := memdb.New(ctx)
+	db := memstore.New(ctx)
+	queue := memdb.New()
 	store := &Fake_Local{}
 	b := builder.New(db, store)
 	b.ListenForEpochUpdates()
-	v2srv := keyserver.New(db, b)
+	v2srv := keyserver.New(queue, db, b)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)

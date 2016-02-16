@@ -32,14 +32,16 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
+	queue   db.Queuer
 	store   db.Distributed
 	auth    auth.Authenticator
 	builder *builder.Builder
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(storage db.Distributed, builder *builder.Builder) *Server {
+func New(queue db.Queuer, storage db.Distributed, builder *builder.Builder) *Server {
 	return &Server{
+		queue:   queue,
 		store:   storage,
 		auth:    auth.New(),
 		builder: builder,

@@ -13,7 +13,7 @@
 // limitations under the License.
 // Package proxy converts v1 API requests into v2 API calls.
 
-package memdb
+package memstore
 
 import (
 	"google.golang.org/grpc"

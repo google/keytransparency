@@ -23,6 +23,7 @@ import (
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db/leveldb"
 	"github.com/google/e2e-key-server/db/memdb"
+	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
@@ -128,7 +129,8 @@ func main() {
 	}
 	ctx := context.Background()
 	// Create a memory storage.
-	db := memdb.New(ctx)
+	db := memstore.New(ctx)
+	queue := memdb.New()
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := leveldb.Open(*serverDBPath)
 	if err != nil {
@@ -149,7 +151,7 @@ func main() {
 	b.ListenForEpochUpdates()
 	defer b.Close()
 	// Create the servers.
-	v2 := keyserver.New(db, b)
+	v2 := keyserver.New(queue, db, b)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 
