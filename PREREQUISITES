@@ -22,6 +22,7 @@ if [[ "$version" < "3.0" ]]; then
 	echo "protoc --version $version < 3.0."
 	echo "Installing protoc"
 	apt-get install build-essential
+	apt-get install autoconf automake libtool
 	git clone git@github.com:google/protobuf.git $GOPATH/src/github.com/google/protobuf
 	cd $GOPATH/src/github.com/google/protobuf
 	./autogen.sh
