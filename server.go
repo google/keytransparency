@@ -25,6 +25,7 @@ import (
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/mutator/replace"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
@@ -129,8 +130,9 @@ func main() {
 	}
 	ctx := context.Background()
 	// Create a memory storage.
-	db := memstore.New(ctx)
-	queue := memdb.New()
+	store := memstore.New(ctx)
+	db := memdb.New()
+	mutator := replace.New()
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := leveldb.Open(*serverDBPath)
 	if err != nil {
@@ -140,18 +142,18 @@ func main() {
 	defer localStore.Close()
 	// Create the tree builder.
 	// Create a signer.
-	signer, err := signer.New(db, *signerDBPath, *epochDuration)
+	signer, err := signer.New(db, db, mutator, store, *signerDBPath, *epochDuration)
 	if err != nil {
 		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return
 	}
 	defer signer.Stop()
 	// Create the tree builder.
-	b := builder.New(db, localStore)
+	b := builder.New(store, localStore)
 	b.ListenForEpochUpdates()
 	defer b.Close()
 	// Create the servers.
-	v2 := keyserver.New(queue, queue, db, b)
+	v2 := keyserver.New(db, db, store, b)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

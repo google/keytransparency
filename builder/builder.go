@@ -33,7 +33,8 @@ import (
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
-// Builder watches a channel and posts received elements in the merkle tree.
+// Builder watches a channel and posts received elements in the local merkle
+// tree.
 type Builder struct {
 	// updates is watched by handleUpdates(). Whenever an EntryStorage is
 	// received, the appripriate data will be pushed in the tree.

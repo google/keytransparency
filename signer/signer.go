@@ -21,6 +21,10 @@ import (
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/db/leveldb"
+	"github.com/google/e2e-key-server/mutator"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse/memtree"
+	"golang.org/x/net/context"
 
 	proto "github.com/golang/protobuf/proto"
 	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
@@ -30,6 +34,11 @@ import (
 // Signer is the object responsible for triggering epoch creation and signing
 // the epoch head once created.
 type Signer struct {
+	// Sequencer listens to new items on the queue and saves them.
+	sequencer db.Sequencer
+	mutator   mutator.Mutator
+	tree      tree.Sparse
+
 	// distributed is an instance to Distributed.
 	distributed db.Distributed
 	// builder is signer's instance of builder.
@@ -41,7 +50,7 @@ type Signer struct {
 }
 
 // New creates a new instance of the signer.
-func New(distributed db.Distributed, dbPath string, seconds uint) (*Signer, error) {
+func New(sequencer db.Sequencer, treedb db.Mapper, mutator mutator.Mutator, distributed db.Distributed, dbPath string, seconds uint) (*Signer, error) {
 	local, err := leveldb.Open(dbPath)
 	if err != nil {
 		return nil, err
@@ -50,14 +59,43 @@ func New(distributed db.Distributed, dbPath string, seconds uint) (*Signer, erro
 	b := builder.New(distributed, local)
 
 	// Create a signer instance.
-	signer := &Signer{
+	s := &Signer{
+		sequencer:   sequencer,
+		mutator:     mutator,
+		tree:        memtree.New(treedb),
 		distributed: distributed,
 		builder:     b,
 		ticker:      time.NewTicker(time.Second * time.Duration(seconds)),
 		local:       local,
 	}
-	go signer.createEpoch()
-	return signer, nil
+	go s.createEpoch()
+	go s.sequence()
+	return s, nil
+}
+
+func (s *Signer) sequence() {
+	for m := range s.sequencer.Queue() {
+		s.sequenceOne(m.Index, m.Mutation)
+	}
+}
+
+func (s *Signer) sequenceOne(index, mutation []byte) {
+	// Get current value.
+	ctx := context.Background()
+	v, err := s.tree.ReadLeaf(ctx, index)
+	if err != nil {
+		return
+	}
+
+	newV, err := s.mutator.Mutate(v, mutation)
+	if err != nil {
+		return
+	}
+
+	// Save new value and update tree.
+	if err := s.tree.WriteLeaf(ctx, index, newV); err != nil {
+		return
+	}
 }
 
 // createEpoch watches the ticker channel and triggers epoch creation once the
