@@ -27,6 +27,11 @@ const (
 	ChannelSize = 100
 )
 
+type Mapper interface {
+	MapReader
+	MapWriter
+}
+
 // DB is a distributed database
 type Distributed interface {
 	Reader
@@ -49,18 +54,16 @@ type Queuer interface {
 	QueueMutation(ctx context.Context, index, mutation []byte) error
 }
 
-type Node struct {
-	index []byte
-	value []byte
+type Mutation struct {
+	Index    []byte
+	Mutation []byte
 }
 
 // Sequencer applies mutations to the persistant map.
 type Sequencer interface {
-	WriteLeaf(ctx context.Context, index, leaf []byte) error
-	WriteNodes(ctx context.Context, nodes []Node) error
 	// The Sequencer object will want to subscribe to the mutation queue.
 	// This may be internal to the sequencer implementation?
-	StartSequencing()
+	Queue() <-chan Mutation
 }
 
 type Commitment struct {
@@ -77,8 +80,18 @@ type Committer interface {
 
 // Reader reads values from the sparse tree.
 type MapReader interface {
+	ReadPath(ctx context.Context, index [][]byte) ([][]byte, error)
 	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
-	ReadPath(ctx context.Context, index []byte) ([][]byte, error)
+}
+
+type Node struct {
+	Index []byte
+	Value []byte
+}
+
+type MapWriter interface {
+	WriteNodes(ctx context.Context, nodes []Node) error
+	WriteLeaf(ctx context.Context, index, leaf []byte) error
 }
 
 type Reader interface {

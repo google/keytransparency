@@ -25,26 +25,27 @@ const IndexSize = sha512.Size256
 const CommitmentSize = sha512.Size256
 
 type MemDB struct {
-	queue       chan []byte
+	queue       chan db.Mutation
 	leaves      map[[IndexSize]byte][]byte
+	nodes       map[[IndexSize]byte][]byte
 	commitments map[[CommitmentSize]byte]db.Commitment
 }
 
 // Create creates a storage object from an existing db connection.
 func New() *MemDB {
 	return &MemDB{
-		queue:       make(chan []byte, 100),
+		queue:       make(chan db.Mutation, 100),
 		leaves:      make(map[[IndexSize]byte][]byte),
 		commitments: make(map[[CommitmentSize]byte]db.Commitment),
 	}
 }
 
 func (d *MemDB) QueueMutation(ctx context.Context, index, mutation []byte) error {
-	d.queue <- mutation
+	d.queue <- db.Mutation{index, mutation}
 	return nil
 }
 
-func (d *MemDB) Queue() <-chan []byte {
+func (d *MemDB) Queue() <-chan db.Mutation {
 	return d.queue
 }
 
@@ -60,4 +61,33 @@ func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (db.Commi
 	var k [CommitmentSize]byte
 	copy(k[:], commitment[:CommitmentSize])
 	return d.commitments[k], nil
+}
+
+func (d *MemDB) WriteLeaf(ctx context.Context, index, leaf []byte) error {
+	var k [IndexSize]byte
+	copy(k[:], index[:IndexSize])
+	d.leaves[k] = leaf
+	return nil
+}
+func (d *MemDB) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
+	var k [IndexSize]byte
+	copy(k[:], index[:IndexSize])
+	return d.leaves[k], nil
+}
+func (d *MemDB) WriteNodes(ctx context.Context, nodes []db.Node) error {
+	for _, n := range nodes {
+		var k [IndexSize]byte
+		copy(k[:], n.Index[:IndexSize])
+		d.nodes[k] = n.Value
+	}
+	return nil
+}
+func (d *MemDB) ReadPath(ctx context.Context, indexes [][]byte) ([][]byte, error) {
+	values := make([][]byte, len(indexes))
+	for i, index := range indexes {
+		var k [IndexSize]byte
+		copy(k[:], index[:IndexSize])
+		values[i] = d.nodes[k]
+	}
+	return values, nil
 }
