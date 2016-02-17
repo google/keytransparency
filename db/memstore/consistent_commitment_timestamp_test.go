@@ -23,7 +23,7 @@ func TestAdvance(t *testing.T) {
 
 	tests := []struct {
 		numOfIncrements int
-		outCommitmentTS uint64
+		outCommitmentTS int64
 		success         bool
 	}{
 		// Advancing epoch is cumulative.

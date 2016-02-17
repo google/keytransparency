@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package storage provides an API to persistant storage.
+// Package db describes interfaces into database implementations.
 package db
 
 import (
@@ -80,7 +80,7 @@ type Committer interface {
 
 // Reader reads values from the sparse tree.
 type MapReader interface {
-	ReadPath(ctx context.Context, index [][]byte) ([][]byte, error)
+	ReadPath(ctx context.Context, indexes [][]byte) ([][]byte, error)
 	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
 }
 
@@ -96,9 +96,9 @@ type MapWriter interface {
 
 type Reader interface {
 	// ReadUpdate reads a EntryStroage from the storage.
-	ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error)
+	ReadUpdate(ctx context.Context, primaryKey int64) (*corepb.EntryStorage, error)
 	// ReadEpochInfo reads an EpochInfo from the storage
-	ReadEpochInfo(ctx context.Context, primaryKey uint64) (*corepb.EpochInfo, error)
+	ReadEpochInfo(ctx context.Context, primaryKey int64) (*corepb.EpochInfo, error)
 }
 
 type Writer interface {
@@ -106,7 +106,7 @@ type Writer interface {
 	// row already exists.
 	WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error
 	// WriteEpochInfo writes the epoch information in the storage.
-	WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error
+	WriteEpochInfo(ctx context.Context, primaryKey int64, epochInfo *corepb.EpochInfo) error
 }
 
 type Subscriber interface {

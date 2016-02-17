@@ -16,6 +16,7 @@
 package leveldb
 
 import (
+	"bytes"
 	"encoding/binary"
 
 	"github.com/golang/leveldb"
@@ -60,11 +61,11 @@ func (s *LevelDBStorage) Close() {
 }
 
 // ReadUpdate reads a EntryStroage from the leveldb database.
-func (s *LevelDBStorage) ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error) {
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, primaryKey)
+func (s *LevelDBStorage) ReadUpdate(ctx context.Context, primaryKey int64) (*corepb.EntryStorage, error) {
+	buff := new(bytes.Buffer)
+	binary.Write(buff, binary.BigEndian, primaryKey)
 
-	val, err := s.updates.Get(key, nil)
+	val, err := s.updates.Get(buff.Bytes(), nil)
 	if err != nil {
 		if err == db.ErrNotFound {
 			return nil, grpc.Errorf(codes.NotFound, "%v Not Found", primaryKey)
@@ -81,11 +82,11 @@ func (s *LevelDBStorage) ReadUpdate(ctx context.Context, primaryKey uint64) (*co
 }
 
 // ReadEpochInfo reads an EpochInfo from the storage
-func (s *LevelDBStorage) ReadEpochInfo(ctx context.Context, primaryKey uint64) (*corepb.EpochInfo, error) {
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, primaryKey)
+func (s *LevelDBStorage) ReadEpochInfo(ctx context.Context, primaryKey int64) (*corepb.EpochInfo, error) {
+	buff := new(bytes.Buffer)
+	binary.Write(buff, binary.BigEndian, primaryKey)
 
-	val, err := s.epochs.Get(key, nil)
+	val, err := s.epochs.Get(buff.Bytes(), nil)
 	if err != nil {
 		if err == db.ErrNotFound {
 			return nil, grpc.Errorf(codes.NotFound, "%v Not Found", primaryKey)
@@ -105,31 +106,31 @@ func (s *LevelDBStorage) ReadEpochInfo(ctx context.Context, primaryKey uint64) (
 // works whether the entry exists or not. If the entry does not exist, it will
 // be inserted, otherwise updated.
 func (s *LevelDBStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, entry.CommitmentTimestamp)
+	buff := new(bytes.Buffer)
+	binary.Write(buff, binary.BigEndian, entry.CommitmentTimestamp)
 
 	entryData, err := proto.Marshal(entry)
 	if err != nil {
 		return grpc.Errorf(codes.Internal, "Error while marshaling entry storage: %v", err)
 	}
 
-	if err := s.updates.Set(key, entryData, nil); err != nil {
+	if err := s.updates.Set(buff.Bytes(), entryData, nil); err != nil {
 		return grpc.Errorf(codes.Internal, "Error while writing to updates database: %v", err)
 	}
 	return nil
 }
 
 // WriteEpochInfo writes the epoch information in the storage.
-func (s *LevelDBStorage) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, primaryKey)
+func (s *LevelDBStorage) WriteEpochInfo(ctx context.Context, primaryKey int64, epochInfo *corepb.EpochInfo) error {
+	buff := new(bytes.Buffer)
+	binary.Write(buff, binary.BigEndian, primaryKey)
 
 	epochInfoData, err := proto.Marshal(epochInfo)
 	if err != nil {
 		return grpc.Errorf(codes.Internal, "Error while marshaling epoch info: %v", err)
 	}
 
-	if err := s.epochs.Set(key, epochInfoData, nil); err != nil {
+	if err := s.epochs.Set(buff.Bytes(), epochInfoData, nil); err != nil {
 		return grpc.Errorf(codes.Internal, "Error while writing to epochs database: %v", err)
 	}
 	return nil

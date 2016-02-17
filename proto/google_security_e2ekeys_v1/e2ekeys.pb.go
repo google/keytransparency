@@ -17,7 +17,7 @@ package google_security_e2ekeys_v1
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_security_e2ekeys_v21 "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+import google_security_e2ekeys_v2 "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
 
 import (
 	context "golang.org/x/net/context"
@@ -84,7 +84,7 @@ var _ grpc.ClientConn
 
 type E2EKeyProxyClient interface {
 	// GetEntry returns a user's current profile.
-	GetEntry(ctx context.Context, in *google_security_e2ekeys_v21.GetEntryRequest, opts ...grpc.CallOption) (*google_security_e2ekeys_v21.Profile, error)
+	GetEntry(ctx context.Context, in *google_security_e2ekeys_v2.GetEntryRequest, opts ...grpc.CallOption) (*google_security_e2ekeys_v2.Profile, error)
 	HkpLookup(ctx context.Context, in *HkpLookupRequest, opts ...grpc.CallOption) (*HttpResponse, error)
 }
 
@@ -96,8 +96,8 @@ func NewE2EKeyProxyClient(cc *grpc.ClientConn) E2EKeyProxyClient {
 	return &e2EKeyProxyClient{cc}
 }
 
-func (c *e2EKeyProxyClient) GetEntry(ctx context.Context, in *google_security_e2ekeys_v21.GetEntryRequest, opts ...grpc.CallOption) (*google_security_e2ekeys_v21.Profile, error) {
-	out := new(google_security_e2ekeys_v21.Profile)
+func (c *e2EKeyProxyClient) GetEntry(ctx context.Context, in *google_security_e2ekeys_v2.GetEntryRequest, opts ...grpc.CallOption) (*google_security_e2ekeys_v2.Profile, error) {
+	out := new(google_security_e2ekeys_v2.Profile)
 	err := grpc.Invoke(ctx, "/google.security.e2ekeys.v1.E2EKeyProxy/GetEntry", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (c *e2EKeyProxyClient) HkpLookup(ctx context.Context, in *HkpLookupRequest,
 
 type E2EKeyProxyServer interface {
 	// GetEntry returns a user's current profile.
-	GetEntry(context.Context, *google_security_e2ekeys_v21.GetEntryRequest) (*google_security_e2ekeys_v21.Profile, error)
+	GetEntry(context.Context, *google_security_e2ekeys_v2.GetEntryRequest) (*google_security_e2ekeys_v2.Profile, error)
 	HkpLookup(context.Context, *HkpLookupRequest) (*HttpResponse, error)
 }
 
@@ -127,7 +127,7 @@ func RegisterE2EKeyProxyServer(s *grpc.Server, srv E2EKeyProxyServer) {
 }
 
 func _E2EKeyProxy_GetEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(google_security_e2ekeys_v21.GetEntryRequest)
+	in := new(google_security_e2ekeys_v2.GetEntryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}

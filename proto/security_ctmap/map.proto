@@ -23,14 +23,14 @@ message EpochHead {
   // Realm is the domain...
   string realm = 1;
   // Epoch number
-  uint64 epoch = 2;
+  int64 epoch = 2;
   // Root is the value of the root node of the merkle tree.
   bytes root = 3;
   // IssueTime is the time when this epoch was released. All epochs for the
   // same keyserver MUST have non-decreasing IssueTimes.
   google.protobuf.Timestamp issue_time = 4;
-  // Hash of previous SEH. 64 bytes of SHA3-SHAKE256.
-  bytes previous_epoch_head_hash = 5;
+  // Hash of previous SEH. SHA512_256.
+  bytes previous_hash = 5;
 }
 
 // Step is a combined, ordered list of SignedEntryUpdates and SignedEpochHeads
@@ -42,9 +42,9 @@ message Step {
     SignedEpochHead signed_epoch_head = 2;
   }
   // epoch of this udpate.
-  uint64 epoch = 3;
+  int64 epoch = 3;
   // commitment_timestamp is the ordered commitment_timestamp of this step.
-  uint64 commitment_timestamp = 4;
+  int64 commitment_timestamp = 4;
 }
 
 // Entry is the leaf node object for the Merkle Tree. Its unique index in the

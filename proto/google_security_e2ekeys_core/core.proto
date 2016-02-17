@@ -23,7 +23,7 @@ import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
 // EntryStorage is what gets serialized to disk / log.
 message EntryStorage {
   // commitment_timestamp is a sequential update number of the SignedEntryUpdate.
-  uint64 commitment_timestamp = 1;
+  int64 commitment_timestamp = 1;
   // entry_update contains a SignedEntryUpdate proto with the actual update
   // contents.
   security_ctmap.SignedEntryUpdate signed_entry_update = 2;
@@ -42,7 +42,7 @@ message EpochInfo {
   security_ctmap.SignedEpochHead signed_epoch_head = 1;
   // last_commitment_timestamp is the timestamp of the last update included in
   // created epoch.
-  uint64 last_commitment_timestamp = 2;
+  int64 last_commitment_timestamp = 2;
 }
 
 // DomainInfo is the information that need to be baked into an application

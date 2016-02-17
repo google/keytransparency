@@ -27,11 +27,11 @@ import (
 // objects.
 type MemStorage struct {
 	// Map of commitment timestamp -> EntryStorage.
-	entries map[uint64]*corepb.EntryStorage
+	entries map[int64]*corepb.EntryStorage
 	// Map of epoch -> start and end commitment timestamp range.
 	// TODO(cesarghali): this map is not yet used. Use it when epochs
 	//                   are created.
-	epochs map[uint64]*corepb.EpochInfo
+	epochs map[int64]*corepb.EpochInfo
 	// Whenever an EntryStorage is written in the database, it will be
 	// pushed into all updates channels.
 	updates []chan *corepb.EntryStorage
@@ -43,14 +43,14 @@ type MemStorage struct {
 // Create creates a storage object from an existing db connection.
 func New(ctx context.Context) *MemStorage {
 	s := &MemStorage{
-		entries: make(map[uint64]*corepb.EntryStorage),
-		epochs:  make(map[uint64]*corepb.EpochInfo),
+		entries: make(map[int64]*corepb.EntryStorage),
+		epochs:  make(map[int64]*corepb.EpochInfo),
 	}
 	return s
 }
 
 // ReadUpdate reads a EntryStroage from the storage.
-func (s *MemStorage) ReadUpdate(ctx context.Context, commitmentTS uint64) (*corepb.EntryStorage, error) {
+func (s *MemStorage) ReadUpdate(ctx context.Context, commitmentTS int64) (*corepb.EntryStorage, error) {
 	val, ok := s.entries[commitmentTS]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", commitmentTS)
@@ -60,7 +60,7 @@ func (s *MemStorage) ReadUpdate(ctx context.Context, commitmentTS uint64) (*core
 }
 
 // ReadEpochInfo reads an EpochInfo from the storage
-func (s *MemStorage) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
+func (s *MemStorage) ReadEpochInfo(ctx context.Context, epoch int64) (*corepb.EpochInfo, error) {
 	val, ok := s.epochs[epoch]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "%v Not Found", epoch)
@@ -76,7 +76,7 @@ func (s *MemStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage
 	// Get the current commitment timestamp and use it when writing the
 	// entry.
 	commitmentTS := GetCurrentCommitmentTimestamp()
-	entry.CommitmentTimestamp = uint64(commitmentTS)
+	entry.CommitmentTimestamp = int64(commitmentTS)
 	// Write the entry.
 	s.entries[commitmentTS] = entry
 
@@ -88,7 +88,7 @@ func (s *MemStorage) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage
 }
 
 // WriteEpochInfo writes the epoch information in the storage.
-func (s *MemStorage) WriteEpochInfo(ctx context.Context, epoch uint64, info *corepb.EpochInfo) error {
+func (s *MemStorage) WriteEpochInfo(ctx context.Context, epoch int64, info *corepb.EpochInfo) error {
 	s.epochs[epoch] = info
 	for _, ch := range s.epochInfo {
 		ch <- info

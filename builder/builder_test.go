@@ -114,11 +114,11 @@ func TestPost(t *testing.T) {
 type Fake_Distributed struct {
 }
 
-func (s *Fake_Distributed) ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error) {
+func (s *Fake_Distributed) ReadUpdate(ctx context.Context, primaryKey int64) (*corepb.EntryStorage, error) {
 	return nil, nil
 }
 
-func (s *Fake_Distributed) ReadEpochInfo(ctx context.Context, primaryKey uint64) (*corepb.EpochInfo, error) {
+func (s *Fake_Distributed) ReadEpochInfo(ctx context.Context, primaryKey int64) (*corepb.EpochInfo, error) {
 	return nil, nil
 }
 
@@ -126,7 +126,7 @@ func (s *Fake_Distributed) WriteUpdate(ctx context.Context, entry *corepb.EntryS
 	return nil
 }
 
-func (s *Fake_Distributed) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
+func (s *Fake_Distributed) WriteEpochInfo(ctx context.Context, primaryKey int64, epochInfo *corepb.EpochInfo) error {
 	return nil
 }
 

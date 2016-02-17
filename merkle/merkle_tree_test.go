@@ -48,9 +48,9 @@ var (
 )
 
 type Leaf struct {
-	epoch        uint64
+	epoch        int64
 	hindex       string
-	commitmentTS uint64
+	commitmentTS int64
 }
 
 type Env struct {
@@ -92,7 +92,7 @@ func TestAddRoot(t *testing.T) {
 
 	m := New()
 	tests := []struct {
-		epoch uint64
+		epoch int64
 		code  codes.Code
 	}{
 		{0, codes.OK},
@@ -146,7 +146,7 @@ func randSeq(n int) string {
 
 func BenchmarkAddLeaf(b *testing.B) {
 	m := New()
-	var epoch uint64
+	var epoch int64
 	for i := 0; i < b.N; i++ {
 		hindex := randSeq(64)
 		index, err := hexToBytes(hindex)
@@ -163,7 +163,7 @@ func BenchmarkAddLeaf(b *testing.B) {
 
 func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 	m := New()
-	var epoch uint64
+	var epoch int64
 	for i := 0; i < b.N; i++ {
 		hindex := randSeq(64)
 		index, err := hexToBytes(hindex)
@@ -181,7 +181,7 @@ func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 
 func BenchmarkAudit(b *testing.B) {
 	m := New()
-	var epoch uint64
+	var epoch int64
 	items := make([]string, 0, b.N)
 	for i := 0; i < b.N; i++ {
 		hindex := randSeq(64)
@@ -247,8 +247,8 @@ func TestCreateBranchCOW(t *testing.T) {
 	r0 := &node{epoch: 0, bindex: "", left: la, right: lb}
 	r1 := &node{epoch: 1, bindex: "", left: la, right: lb}
 
-	var e0 uint64
-	var e1 uint64 = 1
+	var e0 int64
+	var e1 int64 = 1
 
 	r1.createBranch("0")
 	if got, want := r1.left.epoch, e1; got != want {
@@ -299,7 +299,7 @@ func TestAuditNeighors(t *testing.T) {
 
 	m := New()
 	tests := []struct {
-		epoch         uint64
+		epoch         int64
 		hindex        string
 		emptyNeighors []bool
 	}{
@@ -355,7 +355,7 @@ func TestLongestPrefixMatch(t *testing.T) {
 	// Get commitment timestamps.
 	tests := []struct {
 		leaf            Leaf
-		outCommitmentTS uint64
+		outCommitmentTS int64
 		code            codes.Code
 	}{
 		// Get commitment timestamps of all added leaves. Ordering doesn't matter
@@ -393,7 +393,7 @@ func TestRoot(t *testing.T) {
 	env := NewEnv(t)
 
 	tests := []struct {
-		epoch uint64
+		epoch int64
 		code  codes.Code
 	}{
 		{0, codes.OK},

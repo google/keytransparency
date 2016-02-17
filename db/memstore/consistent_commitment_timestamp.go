@@ -21,7 +21,7 @@ import (
 var (
 	// current contains the current (latest) commitment timestamp of the
 	// merkle tree.
-	current uint64 = 1
+	current int64 = 1
 
 	// mu syncronizes access to current. mu locks when reading and advancing
 	// current commitment timestamp.
@@ -31,7 +31,7 @@ var (
 // GetCurrentCommitmentTimestamp returns the current commitment timestamp.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func GetCurrentCommitmentTimestamp() uint64 {
+func GetCurrentCommitmentTimestamp() int64 {
 	mu.Lock()
 	defer mu.Unlock()
 	return current
@@ -40,7 +40,7 @@ func GetCurrentCommitmentTimestamp() uint64 {
 // AdvanceCommitmentTimestamp advances the commitment timestamp by one.
 // TODO(cesarghali): this function should be refactored when adding support for
 //                   multiple consistent key server replicas.
-func AdvanceCommitmentTimestamp() uint64 {
+func AdvanceCommitmentTimestamp() int64 {
 	mu.Lock()
 	defer mu.Unlock()
 	current = current + 1

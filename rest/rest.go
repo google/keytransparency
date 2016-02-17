@@ -236,12 +236,12 @@ func GetEntryV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse Epoch. Epoch must be of type uint64.
+		// Parse Epoch. Epoch must be of type int64.
 		if val, ok := m["epoch"]; ok {
 			if epoch, err := strconv.ParseInt(val[0], 10, 64); err != nil || epoch < 0 {
-				return grpc.Errorf(codes.InvalidArgument, "Epoch must be uint64")
+				return grpc.Errorf(codes.InvalidArgument, "Epoch must be int64")
 			} else {
-				in.Epoch = uint64(epoch)
+				in.Epoch = int64(epoch)
 			}
 		}
 
@@ -335,12 +335,12 @@ func GetEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse Epoch. Epoch must be of type uint64.
+		// Parse Epoch. Epoch must be of type int64.
 		if val, ok := m["epoch"]; ok {
 			if epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Epoch must be uint64")
+				return grpc.Errorf(codes.InvalidArgument, "Epoch must be int64")
 			} else {
-				in.Epoch = uint64(epoch)
+				in.Epoch = int64(epoch)
 			}
 		}
 
@@ -387,12 +387,12 @@ func ListEntryHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handler
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse StartEpoch. StartEpoch must be of type uint64.
+		// Parse StartEpoch. StartEpoch must be of type int64.
 		if val, ok := m["start_epoch"]; ok {
 			if startEpoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be uint64")
+				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be int64")
 			} else {
-				in.StartEpoch = uint64(startEpoch)
+				in.StartEpoch = int64(startEpoch)
 			}
 		}
 
@@ -469,12 +469,12 @@ func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse StartEpoch. StartEpoch must be of type uint64.
+		// Parse StartEpoch. StartEpoch must be of type int64.
 		if val, ok := m["start_epoch"]; ok {
 			if startEpoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be uint64")
+				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be int64")
 			} else {
-				in.StartEpoch = uint64(startEpoch)
+				in.StartEpoch = int64(startEpoch)
 			}
 		}
 
@@ -519,12 +519,12 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse StartCommitmentTimestamp which must be of type uint64.
+		// Parse StartCommitmentTimestamp which must be of type int64.
 		if val, ok := m["start_commitment_timestamp"]; ok {
 			if startCommitmentTimestamp, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be uint64")
+				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be int64")
 			} else {
-				in.StartCommitmentTimestamp = uint64(startCommitmentTimestamp)
+				in.StartCommitmentTimestamp = int64(startCommitmentTimestamp)
 			}
 		}
 
@@ -569,12 +569,12 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 		}
 
 		m, _ := url.ParseQuery(unescaped)
-		// Parse StartCommitmentTimestamp which must be of type uint64.
+		// Parse StartCommitmentTimestamp which must be of type int64.
 		if val, ok := m["start_commitment_timestamp"]; ok {
 			if startCommitmentTimestamp, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be uint64")
+				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be int64")
 			} else {
-				in.StartCommitmentTimestamp = uint64(startCommitmentTimestamp)
+				in.StartCommitmentTimestamp = int64(startCommitmentTimestamp)
 			}
 		}
 

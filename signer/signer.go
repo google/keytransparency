@@ -18,6 +18,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/db/leveldb"
@@ -27,7 +28,7 @@ import (
 	"golang.org/x/net/context"
 
 	proto "github.com/golang/protobuf/proto"
-	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
+	tspb "github.com/google/e2e-key-server/proto/google_protobuf"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
@@ -38,6 +39,7 @@ type Signer struct {
 	sequencer db.Sequencer
 	mutator   mutator.Mutator
 	tree      tree.Sparse
+	sth       appender.Appender
 
 	// distributed is an instance to Distributed.
 	distributed db.Distributed
@@ -50,7 +52,7 @@ type Signer struct {
 }
 
 // New creates a new instance of the signer.
-func New(sequencer db.Sequencer, treedb db.Mapper, mutator mutator.Mutator, distributed db.Distributed, dbPath string, seconds uint) (*Signer, error) {
+func New(sequencer db.Sequencer, treedb db.Mapper, mutator mutator.Mutator, appender appender.Appender, distributed db.Distributed, dbPath string, seconds uint) (*Signer, error) {
 	local, err := leveldb.Open(dbPath)
 	if err != nil {
 		return nil, err
@@ -63,6 +65,7 @@ func New(sequencer db.Sequencer, treedb db.Mapper, mutator mutator.Mutator, dist
 		sequencer:   sequencer,
 		mutator:     mutator,
 		tree:        memtree.New(treedb),
+		sth:         appender,
 		distributed: distributed,
 		builder:     b,
 		ticker:      time.NewTicker(time.Second * time.Duration(seconds)),
@@ -102,30 +105,36 @@ func (s *Signer) sequenceOne(index, mutation []byte) {
 // ticker ticks.
 func (s *Signer) createEpoch() {
 	for _ = range s.ticker.C {
-		lastCommitmentTS := s.builder.LastCommitmentTimestamp()
-		epochHead, err := s.builder.CreateEpoch(lastCommitmentTS, true)
+		ctx := context.Background()
+		timestamp := time.Now().Unix()
+		root, err := s.tree.ReadRoot(ctx)
 		if err != nil {
 			log.Fatalf("Failed to create epoch: %v", err)
 		}
 
-		// Create SignedEpochHead.
-		// TODO(cesarghali): fill IssueTime and PreviousEpochHeadHash.
-		epochHeadData, err := proto.Marshal(epochHead)
+		prevHash, err := s.sth.GetHLast(ctx)
+		if err != nil {
+			log.Fatalf("Failed to get previous epoch: %v", err)
+		}
+		headData, err := proto.Marshal(&ctmap.EpochHead{
+			// TODO: set Realm
+			IssueTime:    &tspb.Timestamp{timestamp, 0},
+			PreviousHash: prevHash,
+			Epoch:        timestamp,
+			Root:         root,
+		})
 		if err != nil {
 			log.Fatalf("Failed to marshal epoch: %v", err)
 		}
-		signedEpochHead := &ctmap.SignedEpochHead{
-			EpochHead: epochHeadData,
-			// TODO(cesarghali): fill Signatures
+		signedEpochHead, err := proto.Marshal(&ctmap.SignedEpochHead{
+			EpochHead: headData,
+			// TODO: set Signatures
+		})
+		if err != nil {
+			log.Fatalf("Failed to marshal signed epoch: %v", err)
 		}
-
-		// Write signed epoch head in the leveldb.
-		epochInfo := &corepb.EpochInfo{
-			SignedEpochHead:         signedEpochHead,
-			LastCommitmentTimestamp: lastCommitmentTS,
-		}
-		if err := s.distributed.WriteEpochInfo(nil, epochHead.Epoch, epochInfo); err != nil {
-			log.Fatalf("Failed to write EpochInfo: %v", err)
+		if err := s.sth.Append(ctx, signedEpochHead); err != nil {
+			log.Fatalf("Failed to write SignedHead: %v", err)
 		}
 	}
 }

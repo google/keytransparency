@@ -102,12 +102,12 @@ func TestGetEntryV1_InitiateHandlerInfo(t *testing.T) {
 	mx.KeepContext = true
 	mx.HandleFunc("/v1/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
 
-	i, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
+	i, _ := strconv.ParseInt(primaryTestEpoch, 10, 64)
 	var tests = []struct {
 		path         string
 		userId       string
 		appId        string
-		epoch        uint64
+		epoch        int64
 		parserNilErr bool
 	}{
 		{"/v1/users/" + primaryUserEmail + "?app_id=" + primaryTestAppId +
@@ -277,12 +277,12 @@ func TestGetEntryV2_InitiateHandlerInfo(t *testing.T) {
 	mx.KeepContext = true
 	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}", Fake_HTTPHandler)
 
-	i, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
+	i, _ := strconv.ParseInt(primaryTestEpoch, 10, 64)
 	var tests = []struct {
 		path         string
 		userId       string
 		appId        string
-		epoch        uint64
+		epoch        int64
 		parserNilErr bool
 	}{
 		{"/v2/users/" + primaryUserEmail + "?app_id=" + primaryTestAppId +
@@ -363,12 +363,12 @@ func TestListEntryHistoryV2_InitiateHandlerInfo(t *testing.T) {
 	mx.KeepContext = true
 	mx.HandleFunc("/v2/users/{"+handlers.UserIdKeyword+"}/history", Fake_HTTPHandler)
 
-	e, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
-	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
+	e, _ := strconv.ParseInt(primaryTestEpoch, 10, 64)
+	ps, _ := strconv.ParseInt(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path         string
 		userId       string
-		startEpoch   uint64
+		startEpoch   int64
 		pageSize     int32
 		parserNilErr bool
 	}{
@@ -514,11 +514,11 @@ func TestUpdateEntryV2_InitiateHandlerInfo(t *testing.T) {
 func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 	t.Parallel()
 
-	e, _ := strconv.ParseUint(primaryTestEpoch, 10, 64)
-	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
+	e, _ := strconv.ParseInt(primaryTestEpoch, 10, 64)
+	ps, _ := strconv.ParseInt(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path         string
-		startEpoch   uint64
+		startEpoch   int64
 		pageSize     int32
 		parserNilErr bool
 	}{
@@ -594,11 +594,11 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 	t.Parallel()
 
-	e, _ := strconv.ParseUint(primaryTestCommitmentTimestamp, 10, 64)
-	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
+	e, _ := strconv.ParseInt(primaryTestCommitmentTimestamp, 10, 64)
+	ps, _ := strconv.ParseInt(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path              string
-		startCommitmentTS uint64
+		startCommitmentTS int64
 		pageSize          int32
 		parserNilErr      bool
 	}{
@@ -674,11 +674,11 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 	t.Parallel()
 
-	e, _ := strconv.ParseUint(primaryTestCommitmentTimestamp, 10, 64)
-	ps, _ := strconv.ParseUint(primaryTestPageSize, 10, 32)
+	e, _ := strconv.ParseInt(primaryTestCommitmentTimestamp, 10, 64)
+	ps, _ := strconv.ParseInt(primaryTestPageSize, 10, 32)
 	var tests = []struct {
 		path              string
-		startCommitmentTS uint64
+		startCommitmentTS int64
 		pageSize          int32
 		parserNilErr      bool
 	}{

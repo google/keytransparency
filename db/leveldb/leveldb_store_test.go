@@ -44,7 +44,7 @@ var (
 		},
 	}
 	epochs = []struct {
-		epoch uint64
+		epoch int64
 		info  *corepb.EpochInfo
 	}{
 		{0, &corepb.EpochInfo{
@@ -153,7 +153,7 @@ func TestReadEpochInfo(t *testing.T) {
 	env.FillEpochs(t)
 
 	tests := []struct {
-		epoch uint64
+		epoch int64
 		info  *corepb.EpochInfo
 		code  codes.Code
 	}{

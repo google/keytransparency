@@ -48,7 +48,7 @@ func New(srv *keyserver.Server) *Server {
 
 // GetEntry returns a user's profile.
 func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.Profile, error) {
-	in.Epoch = math.MaxUint64
+	in.Epoch = math.MaxInt64
 	result, err := s.s.GetEntry(ctx, in)
 	if err != nil {
 		return nil, err

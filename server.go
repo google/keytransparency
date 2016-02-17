@@ -20,6 +20,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db/leveldb"
 	"github.com/google/e2e-key-server/db/memdb"
@@ -133,6 +134,7 @@ func main() {
 	store := memstore.New(ctx)
 	db := memdb.New()
 	mutator := replace.New()
+	appender := chain.New()
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := leveldb.Open(*serverDBPath)
 	if err != nil {
@@ -142,7 +144,7 @@ func main() {
 	defer localStore.Close()
 	// Create the tree builder.
 	// Create a signer.
-	signer, err := signer.New(db, db, mutator, store, *signerDBPath, *epochDuration)
+	signer, err := signer.New(db, db, mutator, appender, store, *signerDBPath, *epochDuration)
 	if err != nil {
 		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return

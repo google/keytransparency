@@ -54,7 +54,7 @@ type Builder struct {
 	queue *queue.Queue
 	// Contains the timestamp of the last update to be included in the new
 	// epoch.
-	lastCommitmentTS uint64
+	lastCommitmentTS int64
 }
 
 // New creates an instance of the tree builder with a given channel.
@@ -93,7 +93,7 @@ func (b *Builder) handleUpdates() {
 		}
 
 		b.queue.Enqueue(entryStorage)
-		atomic.StoreUint64(&b.lastCommitmentTS, entryStorage.CommitmentTimestamp)
+		atomic.StoreInt64(&b.lastCommitmentTS, entryStorage.CommitmentTimestamp)
 	}
 }
 
@@ -151,7 +151,7 @@ func (b *Builder) post(tree *merkle.Tree, entryStorage *corepb.EntryStorage) err
 
 // CreateEpoch posts all StorageEntry in Builder.queue to the merkle tree and
 // and returns the corresponding EpochHead.
-func (b *Builder) CreateEpoch(lastCommitmentTS uint64, advance bool) (*ctmap.EpochHead, error) {
+func (b *Builder) CreateEpoch(lastCommitmentTS int64, advance bool) (*ctmap.EpochHead, error) {
 	// Create the new epoch in the tree.
 	if err := b.tree.AddRoot(b.epoch.Building()); err != nil {
 		return nil, err
@@ -215,17 +215,17 @@ func index(entryStorage *corepb.EntryStorage) ([]byte, error) {
 }
 
 // AuditPath is a wrapper to Tree.AuditPath.
-func (b *Builder) AuditPath(epoch uint64, index []byte) ([][]byte, uint64, error) {
-	if epoch == math.MaxUint64 {
+func (b *Builder) AuditPath(epoch int64, index []byte) ([][]byte, int64, error) {
+	if epoch == math.MaxInt64 {
 		epoch = b.epoch.Serving()
 	}
 	return b.tree.AuditPath(epoch, index)
 }
 
 // GetSignedEpochHeads
-func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch uint64) ([]*ctmap.SignedEpochHead, error) {
+func (b *Builder) GetSignedEpochHeads(ctx context.Context, epoch int64) ([]*ctmap.SignedEpochHead, error) {
 	// Swap out cache logic for just querying the database.
-	if epoch == math.MaxUint64 {
+	if epoch == math.MaxInt64 {
 		epoch = b.epoch.Serving()
 	}
 
@@ -248,8 +248,8 @@ func (b *Builder) EpochInfo() chan *corepb.EpochInfo {
 }
 
 // LastCommitmentTimestamp returns the last commitment timestamp seen.
-func (b *Builder) LastCommitmentTimestamp() uint64 {
-	return atomic.LoadUint64(&b.lastCommitmentTS)
+func (b *Builder) LastCommitmentTimestamp() int64 {
+	return atomic.LoadInt64(&b.lastCommitmentTS)
 }
 
 func (b *Builder) Close() {

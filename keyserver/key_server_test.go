@@ -199,7 +199,7 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 // Mock signer: create new epoch and store the signed epoch head in the fake
 // local storage.
 func (env *Env) mockSigner(t *testing.T) {
-	lastCommitmentTS := uint64(1)
+	lastCommitmentTS := int64(1)
 	epochHead, err := env.builder.CreateEpoch(lastCommitmentTS, true)
 	if err != nil {
 		t.Fatalf("Cannot create epoch: %v", err)
@@ -246,7 +246,7 @@ func TestProofOfAbsence(t *testing.T) {
 
 func getNonExistantUser(t *testing.T, env *Env) {
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxUint64, UserId: "nobody"})
+	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: "nobody"})
 	if err != nil {
 		t.Fatalf("Query for nonexistant failed %v", err)
 	}
@@ -301,7 +301,7 @@ func TestGetValidUser(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxUint64, UserId: primaryUserEmail})
+	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: primaryUserEmail})
 
 	if err != nil {
 		t.Fatalf("GetEntry failed: %v", err)
@@ -405,11 +405,11 @@ type Fake_Local struct {
 	info *corepb.EpochInfo
 }
 
-func (s *Fake_Local) ReadUpdate(ctx context.Context, key uint64) (*corepb.EntryStorage, error) {
+func (s *Fake_Local) ReadUpdate(ctx context.Context, key int64) (*corepb.EntryStorage, error) {
 	return nil, nil
 }
 
-func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch uint64) (*corepb.EpochInfo, error) {
+func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch int64) (*corepb.EpochInfo, error) {
 	if s.info == nil {
 		epochHead := &ctmap.EpochHead{
 			Epoch: epoch,
@@ -432,7 +432,7 @@ func (s *Fake_Local) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage
 	return nil
 }
 
-func (s *Fake_Local) WriteEpochInfo(ctx context.Context, primaryKey uint64, epochInfo *corepb.EpochInfo) error {
+func (s *Fake_Local) WriteEpochInfo(ctx context.Context, primaryKey int64, epochInfo *corepb.EpochInfo) error {
 	s.info = epochInfo
 	return nil
 }
