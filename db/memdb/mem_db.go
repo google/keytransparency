@@ -55,3 +55,9 @@ func (d *MemDB) WriteCommitment(ctx context.Context, commitment, key, value []by
 	d.commitments[k] = c
 	return nil
 }
+
+func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (db.Commitment, error) {
+	var k [CommitmentSize]byte
+	copy(k[:], commitment[:CommitmentSize])
+	return d.commitments[k], nil
+}

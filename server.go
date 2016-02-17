@@ -151,7 +151,7 @@ func main() {
 	b.ListenForEpochUpdates()
 	defer b.Close()
 	// Create the servers.
-	v2 := keyserver.New(queue, db, b)
+	v2 := keyserver.New(queue, queue, db, b)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

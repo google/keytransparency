@@ -33,19 +33,21 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	queue   db.Queuer
-	store   db.Distributed
-	auth    auth.Authenticator
-	builder *builder.Builder
+	committer db.Committer
+	queue     db.Queuer
+	store     db.Distributed
+	auth      auth.Authenticator
+	builder   *builder.Builder
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(queue db.Queuer, storage db.Distributed, builder *builder.Builder) *Server {
+func New(committer db.Committer, queue db.Queuer, storage db.Distributed, builder *builder.Builder) *Server {
 	return &Server{
-		queue:   queue,
-		store:   storage,
-		auth:    auth.New(),
-		builder: builder,
+		committer: committer,
+		queue:     queue,
+		store:     storage,
+		auth:      auth.New(),
+		builder:   builder,
 	}
 }
 
@@ -152,7 +154,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 		return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 	}
 
-	if err := s.queue.WriteCommitment(ctx, entry.ProfileCommitment, in.CommitmentKey, in.Profile); err != nil {
+	if err := s.committer.WriteCommitment(ctx, entry.ProfileCommitment, in.CommitmentKey, in.Profile); err != nil {
 		return nil, err
 	}
 

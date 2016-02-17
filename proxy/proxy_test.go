@@ -117,12 +117,12 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	db := memstore.New(ctx)
-	queue := memdb.New()
-	store := &Fake_Local{}
-	b := builder.New(db, store)
+	store := memstore.New(ctx)
+	db := memdb.New()
+	localdb := &Fake_Local{}
+	b := builder.New(store, localdb)
 	b.ListenForEpochUpdates()
-	v2srv := keyserver.New(queue, db, b)
+	v2srv := keyserver.New(db, db, store, b)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -136,7 +136,7 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, b, store}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, b, localdb}
 }
 
 // Close releases resources allocated by NewEnv.
