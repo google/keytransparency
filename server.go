@@ -44,8 +44,6 @@ var (
 	realm = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	// Read server DB path flag.
 	serverDBPath = flag.String("server-db-path", "db/server", "path/to/server/db where the local database will be created/opened.")
-	// Read signer DB path flag.
-	signerDBPath = flag.String("signer-db-path", "db/signer", "path/to/signer/db where the local database will be created/opened.")
 	// Read epoch advancement duration flag.
 	epochDuration = flag.Uint("epoch-duration", 60, "Epoch advancement duration")
 )
@@ -144,7 +142,7 @@ func main() {
 	defer localStore.Close()
 	// Create the tree builder.
 	// Create a signer.
-	signer, err := signer.New(db, db, mutator, appender, store, *signerDBPath, *epochDuration)
+	signer, err := signer.New(db, db, mutator, appender, *epochDuration)
 	if err != nil {
 		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return

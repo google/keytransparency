@@ -19,9 +19,7 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db"
-	"github.com/google/e2e-key-server/db/leveldb"
 	"github.com/google/e2e-key-server/mutator"
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/tree/sparse/memtree"
@@ -41,35 +39,19 @@ type Signer struct {
 	tree      tree.Sparse
 	sth       appender.Appender
 
-	// distributed is an instance to Distributed.
-	distributed db.Distributed
-	// builder is signer's instance of builder.
-	builder *builder.Builder
 	// ticker ticks everytime a new epoch should be created.
 	ticker *time.Ticker
-	// local is a local store instance of the signer.
-	local db.Local
 }
 
 // New creates a new instance of the signer.
-func New(sequencer db.Sequencer, treedb db.Mapper, mutator mutator.Mutator, appender appender.Appender, distributed db.Distributed, dbPath string, seconds uint) (*Signer, error) {
-	local, err := leveldb.Open(dbPath)
-	if err != nil {
-		return nil, err
-	}
-	// Create the tree builder.
-	b := builder.New(distributed, local)
-
+func New(sequencer db.Sequencer, treedb db.Mapper, mutator mutator.Mutator, appender appender.Appender, seconds uint) (*Signer, error) {
 	// Create a signer instance.
 	s := &Signer{
-		sequencer:   sequencer,
-		mutator:     mutator,
-		tree:        memtree.New(treedb),
-		sth:         appender,
-		distributed: distributed,
-		builder:     b,
-		ticker:      time.NewTicker(time.Second * time.Duration(seconds)),
-		local:       local,
+		sequencer: sequencer,
+		mutator:   mutator,
+		tree:      memtree.New(treedb),
+		sth:       appender,
+		ticker:    time.NewTicker(time.Second * time.Duration(seconds)),
 	}
 	go s.createEpoch()
 	go s.sequence()
@@ -142,6 +124,4 @@ func (s *Signer) createEpoch() {
 // Stop stops the signer and release all associated resource.
 func (s *Signer) Stop() {
 	s.ticker.Stop()
-	s.local.Close()
-	s.builder.Close()
 }

@@ -38,6 +38,7 @@ NwEAtQEtl9jKzlGYeng4YskWACyDnba5o/rGwcoFjRf1BiwBAPFn0SrS6WSUpU0+
 B+8k+PXDpFKMZHZYo/E6qtVrpdYT
 =+kV0
 -----END PGP PUBLIC KEY BLOCK-----"""
+
 key = str.replace("""mFIEAAAAABMIKoZIzj0DAQcCAwRNDJYwov/h0/XUVEALnyLf4PfMP3bGpJO
 DLtkkIXSAZaC7rKurE6F/h3r8Uq9TMiZO4lvYBLUYRyMQDfYidAaKtBk8ZTJlc2hhcmUudGVzdEBnbWF
 pbC5jb20+iI0EExMIAD//AAAABQJVjCNs/wAAAAIbA/8AAAACiwn/AAAABZUICQoL/wAAAAOWAQL/AAA
@@ -90,12 +91,12 @@ update_user_request = {
 def main():
   # Create a tmp directory.
   test_server_db_path = tempfile.mkdtemp(prefix="db-server")
-  test_signer_db_path = tempfile.mkdtemp(prefix="db-signer")
   # Start the server.
   null_output = open(os.devnull, "w")
-  subprocess.Popen(["./srv", "-server-db-path", test_server_db_path,
-                    "-signer-db-path", test_signer_db_path],
-                   stdout=null_output, stderr=subprocess.STDOUT)
+  subprocess.Popen(
+      ["./srv", "-server-db-path", test_server_db_path],
+      stdout=null_output,
+      stderr=subprocess.STDOUT)
   # Wait until the server starts.
   time.sleep(1)
 
@@ -112,7 +113,6 @@ def main():
   subprocess.Popen(["killall", "srv"])
   # Remove database tmp directory.
   shutil.rmtree(test_server_db_path)
-  shutil.rmtree(test_signer_db_path)
 
 
 def GetEntryV1(empty):
