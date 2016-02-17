@@ -81,14 +81,6 @@ type MapReader interface {
 	ReadPath(ctx context.Context, index []byte) ([][]byte, error)
 }
 
-// Mutator verifies mutations and transforms values in the map.
-type Mutator interface {
-	// CheckMutation verifies that this is a valid mutation for this item.
-	CheckMutation(value, mutation []byte) error
-	// Mutate applies mutation to value
-	Mutate(value, mutation []byte) ([]byte, error)
-}
-
 type Reader interface {
 	// ReadUpdate reads a EntryStroage from the storage.
 	ReadUpdate(ctx context.Context, primaryKey uint64) (*corepb.EntryStorage, error)
