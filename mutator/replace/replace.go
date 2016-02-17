@@ -6,6 +6,10 @@ import ()
 // contents of the mutation.
 type Replace struct{}
 
+func New() *Replace {
+	return &Replace{}
+}
+
 // CheckMutation verifies that this is a valid mutation for this item.
 func (r *Replace) CheckMutation(value, mutation []byte) error {
 	return nil
