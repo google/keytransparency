@@ -5,19 +5,28 @@
 () "Reader"
 () "Queuer"
 () "Sequencer"
+() "Appender"
 
 database "Spanner" {
+folder "Map" {
 	[Mutations]
 	[Queue]
 	[Leafs]
 	[Nodes]
+	[SignedTreeHeads]
+	}
+folder "Privacy" {
 	[Commitments]
+}
 }
 
 FE --> Queuer
 FE <-- Reader
 FE <--> Committer
 Signer --> Sequencer
+Signer --> Appender
+
+Appender <--> SignedTreeHeads
 
 Queuer -> [Queue]
 Queuer -> [Mutations]
@@ -28,6 +37,7 @@ Sequencer -> [Nodes]
 
 Reader <- [Leafs]
 Reader <- [Nodes]
+Reader <- Appender
 
 Committer <- [Commitments]
 Committer -> [Commitments]

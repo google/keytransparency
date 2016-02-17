@@ -20,3 +20,6 @@ func (m *MemTree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
 func (m *MemTree) WriteLeaf(ctx context.Context, index, leaf []byte) error {
 	return m.db.WriteLeaf(ctx, index, leaf)
 }
+func (m *MemTree) ReadRoot(ctx context.Context) ([]byte, error) {
+	return []byte(""), nil
+}

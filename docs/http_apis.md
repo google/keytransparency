@@ -12,7 +12,7 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 * Method: `GET`.
 * URL: `/v1/user/{user_id}`.
 * Query String:
-  * `epoch`: the value of this parameter will *always* be replaced with `math.MaxUint64` by the proxy server. This indicates that the requested entry belongs to the current serving epoch.
+  * `epoch`: the value of this parameter will *always* be replaced with `math.MaxInt64` by the proxy server. This indicates that the requested entry belongs to the current serving epoch.
   * `app_id`: allows application-based filtering of keys of the returned profile.
 * Body: empty.
 * Response: JSON body containing `Profile` proto.
@@ -64,7 +64,7 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
 * Method: `GET`.
 * URL: `/v2/user/{user_id}`.
 * Query String:
-  * `epoch`: contains the epoch in which the user profile is requested. Use `math.MaxUint64` to indicate the current serving epoch.
+  * `epoch`: contains the epoch in which the user profile is requested. Use `math.MaxInt64` to indicate the current serving epoch.
   * `app_id`: allows filtering the profile based on a specific application ID.
 * Body: empty.
 * Response: JSON body containing `GetEntryResponse` proto.
