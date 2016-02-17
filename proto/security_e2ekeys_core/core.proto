@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package google.security.e2ekeys.core;
+package security.e2ekeys.core;
 
 import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
 

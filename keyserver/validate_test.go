@@ -19,7 +19,7 @@ import (
 
 	"github.com/google/e2e-key-server/client"
 
-	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 func TestValidateEmail(t *testing.T) {

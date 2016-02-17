@@ -14,18 +14,18 @@
 
 syntax = "proto3";
 
-package google.security.e2ekeys.v1;
+package security.e2ekeys.v1;
 
-import "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2/e2ekeys.proto";
+import "github.com/google/e2e-key-server/proto/security_e2ekeys_v2/e2ekeys.proto";
 
 // The E2EKeyProxy API specifies a simplified way to query the
-// [E2EKeyService][google.security.e2ekeys.v2.E2EKeyService], without
+// [E2EKeyService][security.e2ekeys.v2.E2EKeyService], without
 // transparency proofs or historical values. Users of this API will not be able
 // to independently verify the server's security properties.
 //
 // The API defines the following resource model:
 //
-// - The API has a collection of [Profile][google.security.e2ekeys.v2.Profile]
+// - The API has a collection of [Profile][security.e2ekeys.v2.Profile]
 //   resources named `/users/*`.
 //
 service E2EKeyProxy {

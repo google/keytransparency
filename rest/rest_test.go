@@ -27,8 +27,8 @@ import (
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/gorilla/mux"
 
-	v1pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v1"
-	v2pb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_v2"
+	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 	context "golang.org/x/net/context"
 )
 

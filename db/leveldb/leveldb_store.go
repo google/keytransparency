@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
+	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 )
 
 // LevelDBStorage holds state required to store data in a leveldb database.

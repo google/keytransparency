@@ -29,7 +29,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	corepb "github.com/google/e2e-key-server/proto/google_security_e2ekeys_core"
+	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 

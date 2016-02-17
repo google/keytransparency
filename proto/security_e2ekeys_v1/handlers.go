@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package google_security_e2ekeys_v1
+package security_e2ekeys_v1
 
 import (
 	"encoding/json"
