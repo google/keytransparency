@@ -1,0 +1,44 @@
+@startuml
+KeyServer o-- Comitter
+KeyServer o-- Queuer
+KeyServer o-- Authenticator
+KeyServer o-- Mutator
+KeyServer o-- SparseTree
+KeyServer o-- Reader
+
+Signer o-- Sequencer
+Signer o-- Appender
+Signer o-- Mutator
+Signer o-- SparseTree
+
+SparseTreeHist <|-- SparseTree
+OAuth <|-- Authenticator
+HashChain <|-- Appender
+CTLog <|-- Appender
+Replacer <|-- Mutator
+MemTree <|-- SparseTree
+SpannerTree <|-- SparseTree
+
+SparseTree : WriteLeaf
+SparseTree : ReadLeaf
+SparseTree : ReadRoot
+
+SparseTreeHist : ReadLeafAt
+
+KeyServer : GetEntry()
+KeyServer : UpdateEntry()
+
+Comitter : WriteCommitment(commitment, key, data)
+Comitter : ReadCommitment(commitment)
+
+Queuer : QueueMutation(index, mutation)
+
+Mutator : CheckMutation(value, mutation)
+Mutator : Mutate(value, mutation)
+
+Sequencer : Queue() <-chan Mutation
+
+Reader : ReadPath
+Reader : ReadLeaf
+
+@enduml
