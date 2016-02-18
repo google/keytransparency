@@ -85,7 +85,7 @@ func (d *MemDB) WriteNodes(ctx context.Context, nodes []db.Node) error {
 	}
 	return nil
 }
-func (d *MemDB) ReadPath(ctx context.Context, indexes [][]byte) ([][]byte, error) {
+func (d *MemDB) ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error) {
 	values := make([][]byte, len(indexes))
 	for i, index := range indexes {
 		var k [IndexSize]byte

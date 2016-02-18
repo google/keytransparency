@@ -41,5 +41,4 @@ Reader <- Appender
 
 Committer <- [Commitments]
 Committer -> [Commitments]
-
 @enduml

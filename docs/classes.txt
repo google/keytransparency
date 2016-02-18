@@ -25,6 +25,20 @@ SparseTree : ReadRoot
 
 SparseTreeHist : ReadLeafAt
 
+MemDB <|-- Queuer
+MemDB <|-- Sequencer
+MemDB <|-- Reader
+MemDB <|-- Writer
+MemDB <|-- Comitter
+MemDB : QueueMutation()
+MemDB : Queue()
+MemDB : WriteCommitment()
+MemDB : ReadCommitment()
+MemDB : WriteLeaf
+MemDB : ReadLeaf
+MemDB : WriteNodes
+MemDB : ReadNodes
+
 KeyServer : GetEntry()
 KeyServer : UpdateEntry()
 
