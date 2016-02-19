@@ -29,6 +29,7 @@ import (
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
+	"github.com/google/e2e-key-server/mutator/entry"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

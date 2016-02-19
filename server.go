@@ -26,7 +26,7 @@ import (
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/mutator/replace"
+	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
@@ -131,7 +131,7 @@ func main() {
 	// Create a memory storage.
 	store := memstore.New(ctx)
 	db := memdb.New()
-	mutator := replace.New()
+	mutator := entry.New()
 	appender := chain.New()
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := leveldb.Open(*serverDBPath)
