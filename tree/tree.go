@@ -14,4 +14,5 @@ type Sparse interface {
 // SparseHist is a temporal sparse merkle tree
 type SparseHist interface {
 	Sparse
+	WriteLeafAt(ctx context.Context, index, leaf []byte, epoch int64) error
 }

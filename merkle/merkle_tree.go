@@ -29,6 +29,7 @@ import (
 	"sync"
 
 	"github.com/google/e2e-key-server/common"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -162,6 +163,16 @@ func (t *Tree) AddLeaf(data []byte, epoch int64, index []byte, commitmentTS int6
 		return err
 	}
 	return r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
+}
+
+// Write leaf saves data at the "next" epoch?
+func (t *Tree) WriteLeaf(ctx context.Context, index, leaf []byte) error {
+	// Get the epoch that we're currently building at.
+	return t.AddLeaf(leaf, t.current.epoch, index, 0)
+}
+
+func (t *Tree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
+	return nil, nil
 }
 
 // AuditPath returns a slice containing each node's neighbor from the bottom to
