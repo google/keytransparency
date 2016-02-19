@@ -35,9 +35,9 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	cm "github.com/google/e2e-key-server/common/common_merkle"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 const (
@@ -158,7 +158,7 @@ func NewEnv(t *testing.T) *Env {
 	store := &Fake_Local{}
 	b := builder.New(db, store)
 	b.ListenForEpochUpdates()
-	server := New(queue, queue, db, b)
+	server := New(queue, queue, db, b.Tree(), b)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 

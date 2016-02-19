@@ -80,7 +80,7 @@ type Committer interface {
 
 // Reader reads values from the sparse tree.
 type MapReader interface {
-	ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error)
+	//ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error)
 	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
 }
 

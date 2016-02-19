@@ -26,9 +26,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 // Server holds internal state for the key server.
@@ -37,17 +37,19 @@ type Server struct {
 	queue     db.Queuer
 	store     db.Distributed
 	auth      auth.Authenticator
+	tree      db.MapReader
 	builder   *builder.Builder
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(committer db.Committer, queue db.Queuer, storage db.Distributed, builder *builder.Builder) *Server {
+func New(committer db.Committer, queue db.Queuer, storage db.Distributed, tree db.MapReader, builder *builder.Builder) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
 		store:     storage,
 		auth:      auth.New(),
 		builder:   builder,
+		tree:      tree,
 	}
 }
 
@@ -74,6 +76,11 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	result.SignedEpochHeads = seh
 
 	// Get merkle tree neighbors, and commitment timestamp.
+	_, err = s.tree.ReadLeaf(ctx, index)
+	if err != nil {
+		return nil, err
+	}
+
 	neighbors, commitmentTS, err := s.builder.AuditPath(in.Epoch, index)
 	result.MerkleTreeNeighbors = neighbors
 

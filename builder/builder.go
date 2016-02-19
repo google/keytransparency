@@ -29,8 +29,8 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 )
 
 // Builder watches a channel and posts received elements in the local merkle
@@ -74,6 +74,10 @@ func New(distributed db.Distributed, local db.Local) *Builder {
 	go b.handleUpdates()
 
 	return b
+}
+
+func (b *Builder) Tree() *merkle.Tree {
+	return b.tree
 }
 
 func (b *Builder) ListenForEpochUpdates() {
