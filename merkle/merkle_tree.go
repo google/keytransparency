@@ -28,7 +28,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/google/e2e-key-server/common"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -58,13 +57,13 @@ var (
 //      name is index. All external tree APIs (exported functions) use
 //      represetation (2).
 
-// Note: data, dataHash, and value
+// Note: data, data, and value
 //  - data: is the actual data (in []byte) that is stored in the node leaf. All
 //    external tree APIs (exported functions) expect to receive data. Currently,
 //    data is a marshaled SignedEntryUpdate proto.
-//  - dataHash: is the hash of data and is stored in the leaf node structure.
+//  - data: is the hash of data and is stored in the leaf node structure.
 //  - value: is stored in the leaf node structure and can be:
-//     - Leaves: H(LeafIdentifier || depth || index || dataHash)
+//     - Leaves: H(LeafIdentifier || depth || index || data)
 //     - Empty leaves: H(EmptyIdentifier || depth || index || nil)
 //     - Intermediate nodes: H(left.value || right.value)
 
@@ -76,7 +75,7 @@ type Tree struct {
 }
 
 type node struct {
-	epoch        int64  // Epoch for this node.
+	epoch        int64  // Etoch for this node.
 	bindex       string // Location in the tree.
 	commitmentTS int64  // Commitment timestamp for this node.
 	depth        int    // Depth of this node. 0 to 256.
@@ -427,11 +426,10 @@ func (n *node) hashIntermediateNode() error {
 }
 
 // updateLeafValue updates a leaf node's value by
-// H(LeafIdentifier || depth || bindex || dataHash), where LeafIdentifier,
+// H(LeafIdentifier || depth || bindex || data), where LeafIdentifier,
 // depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
-	dataHash := common.Hash(n.data)
-	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), dataHash)
+	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), n.data)
 }
 
 // setNode sets the comittment of the leaf node and updates its hash.
