@@ -22,7 +22,6 @@ import (
 	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/mutator"
 	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"golang.org/x/net/context"
 
 	proto "github.com/golang/protobuf/proto"
@@ -44,12 +43,12 @@ type Signer struct {
 }
 
 // New creates a new instance of the signer.
-func New(sequencer db.Sequencer, treedb db.Mapper, mutator mutator.Mutator, appender appender.Appender, seconds uint) (*Signer, error) {
+func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appender appender.Appender, seconds uint) (*Signer, error) {
 	// Create a signer instance.
 	s := &Signer{
 		sequencer: sequencer,
 		mutator:   mutator,
-		tree:      memtree.New(treedb),
+		tree:      tree,
 		sth:       appender,
 		ticker:    time.NewTicker(time.Second * time.Duration(seconds)),
 	}

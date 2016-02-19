@@ -90,7 +90,7 @@ type Node struct {
 }
 
 type MapWriter interface {
-	WriteNodes(ctx context.Context, nodes []Node) error
+	//WriteNodes(ctx context.Context, nodes []Node) error
 	WriteLeaf(ctx context.Context, index, leaf []byte) error
 }
 

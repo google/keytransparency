@@ -141,16 +141,15 @@ func main() {
 	}
 	defer localStore.Close()
 	// Create the tree builder.
+	b := builder.New(store, localStore)
+	b.ListenForEpochUpdates()
 	// Create a signer.
-	signer, err := signer.New(db, db, mutator, appender, *epochDuration)
+	signer, err := signer.New(db, b.Tree(), mutator, appender, *epochDuration)
 	if err != nil {
 		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return
 	}
 	defer signer.Stop()
-	// Create the tree builder.
-	b := builder.New(store, localStore)
-	b.ListenForEpochUpdates()
 	defer b.Close()
 	// Create the servers.
 	v2 := keyserver.New(db, db, store, b.Tree(), b)

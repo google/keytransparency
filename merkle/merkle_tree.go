@@ -199,10 +199,14 @@ func (t *Tree) AuditPath(epoch int64, index []byte) ([][]byte, int64, error) {
 	return neighbors, commitmentTS, nil
 }
 
-// GetRootValue returns the value of the root node in a specific epoch.
-func (t *Tree) Root(epoch int64) ([]byte, error) {
+func (t *Tree) ReadRoot(ctx context.Context) ([]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	return t.Root(t.current.epoch)
+}
+
+// GetRootValue returns the value of the root node in a specific epoch.
+func (t *Tree) Root(epoch int64) ([]byte, error) {
 	r, ok := t.roots[epoch]
 	if !ok {
 		return nil, grpc.Errorf(codes.NotFound, "Epoch %v does not exist", epoch)
