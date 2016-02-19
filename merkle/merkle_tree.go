@@ -80,7 +80,7 @@ type node struct {
 	bindex       string // Location in the tree.
 	commitmentTS int64  // Commitment timestamp for this node.
 	depth        int    // Depth of this node. 0 to 256.
-	dataHash     []byte // Hash of the data stored in the node.
+	data         []byte // Data stored in the node.
 	value        []byte // Empty for empty subtrees.
 	left         *node  // Left node.
 	right        *node  // Right node.
@@ -172,7 +172,10 @@ func (t *Tree) WriteLeaf(ctx context.Context, index, leaf []byte) error {
 }
 
 func (t *Tree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
-	return nil, nil
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	_, leaf := t.current.auditPath(bitString(index), 0)
+	return leaf.data, nil
 }
 
 // AuditPath returns a slice containing each node's neighbor from the bottom to
@@ -292,7 +295,7 @@ func (n *node) pushDown() error {
 	// Create a sub branch and copy this node.
 	b := n.bindex[n.depth]
 	n.createBranch(n.bindex)
-	n.child(b).dataHash = n.dataHash
+	n.child(b).data = n.data
 	// Whenever a node is pushed down, its value must be recalculated.
 	n.child(b).updateLeafValue()
 
@@ -353,12 +356,12 @@ func (n *node) leaf() bool {
 	return n.left == nil && n.right == nil
 }
 
-// empty returns if a node is empty. A node is empty if its dataHash and
+// empty returns if a node is empty. A node is empty if its data and
 // children pointers are nil. The node value should not be considered as
 // a part of the empty test because an empty tree has an empty root with
 // an empty leaf value.
 func (n *node) empty() bool {
-	return n.dataHash == nil && n.left == nil && n.right == nil
+	return n.data == nil && n.left == nil && n.right == nil
 }
 
 func (n *node) child(b uint8) *node {
@@ -427,7 +430,8 @@ func (n *node) hashIntermediateNode() error {
 // H(LeafIdentifier || depth || bindex || dataHash), where LeafIdentifier,
 // depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
-	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), n.dataHash)
+	dataHash := common.Hash(n.data)
+	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), dataHash)
 }
 
 // setNode sets the comittment of the leaf node and updates its hash.
@@ -438,7 +442,7 @@ func (n *node) setNode(data []byte, bindex string, commitmentTS int64, depth int
 	n.left = nil
 	n.right = nil
 	if isLeaf {
-		n.dataHash = common.Hash(data)
+		n.data = data
 		n.updateLeafValue()
 	} else {
 		n.value = data

@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -67,11 +68,8 @@ func NewEnv(t *testing.T) *Env {
 
 func addValidLeaves(t *testing.T, m *Tree) {
 	for i, leaf := range validTreeLeaves {
-		index, err := hexToBytes(leaf.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", leaf.hindex, err)
-		}
-		err = m.AddLeaf([]byte{}, leaf.epoch, index, leaf.commitmentTS)
+		index := hexToBytes(t, leaf.hindex)
+		err := m.AddLeaf([]byte{}, leaf.epoch, index, leaf.commitmentTS)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Fatalf("Leaf[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
 				i, leaf.epoch, leaf.hindex, got, want, err)
@@ -79,12 +77,40 @@ func addValidLeaves(t *testing.T, m *Tree) {
 	}
 }
 
-func hexToBytes(s string) ([]byte, error) {
-	result, err := hex.DecodeString(s)
+func hexToBytes(t testing.TB, h string) []byte {
+	result, err := hex.DecodeString(h)
 	if err != nil {
-		return nil, err
+		t.Fatalf("DecodeString(%v)= %v", h, err)
 	}
-	return result, nil
+	return result
+}
+
+func TestWriteRead(t *testing.T) {
+	t.Parallel()
+	m := New()
+	ctx := context.Background()
+	tests := []struct {
+		hindex string
+		data   []byte
+	}{
+		{"0000000000000000000000000000000000000000000000000000000000000000", []byte("test data")},
+		{"F000000000000000000000000000000000000000000000000000000000000000", []byte("test foo")},
+		{"2000000000000000000000000000000000000000000000000000000000000000", []byte("test bar")},
+		{"C000000000000000000000000000000000000000000000000000000000000000", []byte("test zed")},
+	}
+	for _, test := range tests {
+		index := hexToBytes(t, test.hindex)
+		if err := m.WriteLeaf(ctx, index, test.data); err != nil {
+			t.Errorf("WriteLeaf(%v, %v)=%v)", index, test.data, err)
+		}
+		data, err := m.ReadLeaf(ctx, index)
+		if err != nil {
+			t.Errorf("ReadLeaf(%v)=%v)", index, err)
+		}
+		if got, want, equal := data, test.data, bytes.Equal(data, test.data); !equal {
+			t.Errorf("ReadLeaf(%v)=%v, want %v", index, got, want)
+		}
+	}
 }
 
 func TestAddRoot(t *testing.T) {
@@ -122,11 +148,8 @@ func TestAddExistingLeaf(t *testing.T) {
 		{validTreeLeaves[4], codes.OK},
 	}
 	for i, test := range tests {
-		index, err := hexToBytes(test.leaf.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
-		}
-		err = env.m.AddLeaf([]byte{}, test.leaf.epoch, index, test.leaf.commitmentTS)
+		index := hexToBytes(t, test.leaf.hindex)
+		err := env.m.AddLeaf([]byte{}, test.leaf.epoch, index, test.leaf.commitmentTS)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
 				i, test.leaf.epoch, test.leaf.hindex, got, want, err)
@@ -149,11 +172,8 @@ func BenchmarkAddLeaf(b *testing.B) {
 	var epoch int64
 	for i := 0; i < b.N; i++ {
 		hindex := randSeq(64)
-		index, err := hexToBytes(hindex)
-		if err != nil {
-			b.Fatalf("Hex decoding of '%v' failed: %v", hindex, err)
-		}
-		err = m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
+		index := hexToBytes(b, hindex)
+		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
 				i, epoch, hindex, got, want)
@@ -166,12 +186,9 @@ func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 	var epoch int64
 	for i := 0; i < b.N; i++ {
 		hindex := randSeq(64)
-		index, err := hexToBytes(hindex)
-		if err != nil {
-			b.Fatalf("Hex decoding of '%v' failed: %v", hindex, err)
-		}
+		index := hexToBytes(b, hindex)
 		epoch++
-		err = m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
+		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
 				i, epoch, hindex, got, want)
@@ -182,25 +199,19 @@ func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
 func BenchmarkAudit(b *testing.B) {
 	m := New()
 	var epoch int64
-	items := make([]string, 0, b.N)
+	items := make([]string, b.N)
 	for i := 0; i < b.N; i++ {
 		hindex := randSeq(64)
-		index, err := hexToBytes(hindex)
-		if err != nil {
-			b.Fatalf("Hex decoding of '%v' failed: %v", hindex, err)
-		}
-		items = append(items, hindex)
-		err = m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
+		index := hexToBytes(b, hindex)
+		items[i] = hindex
+		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
 				i, epoch, hindex, got, want)
 		}
 	}
 	for _, v := range items {
-		index, err := hexToBytes(v)
-		if err != nil {
-			b.Fatalf("Hex decoding of '%v' failed: %v", v, err)
-		}
+		index := hexToBytes(b, v)
 		m.AuditPath(epoch, index)
 	}
 }
@@ -208,10 +219,7 @@ func BenchmarkAudit(b *testing.B) {
 func TestPushDown(t *testing.T) {
 	t.Parallel()
 
-	index, err := hexToBytes(AllZeros)
-	if err != nil {
-		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
-	}
+	index := hexToBytes(t, AllZeros)
 	n := &node{bindex: bitString(index)}
 	if !n.leaf() {
 		t.Errorf("node without children was a leaf")
@@ -228,10 +236,7 @@ func TestPushDown(t *testing.T) {
 func TestCreateBranch(t *testing.T) {
 	t.Parallel()
 
-	index, err := hexToBytes(AllZeros)
-	if err != nil {
-		t.Fatalf("Hex decoding of '%v' failed: %v", AllZeros, err)
-	}
+	index := hexToBytes(t, AllZeros)
 	n := &node{bindex: bitString(index)}
 	n.createBranch("0")
 	if n.left == nil {
@@ -276,10 +281,7 @@ func TestAuditDepth(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		index, err := hexToBytes(test.leaf.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
-		}
+		index := hexToBytes(t, test.leaf.hindex)
 		audit, _, err := env.m.AuditPath(test.leaf.epoch, index)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
@@ -309,12 +311,9 @@ func TestAuditNeighors(t *testing.T) {
 		{0, "C000000000000000000000000000000000000000000000000000000000000000", []bool{false, true, false}},
 	}
 	for i, test := range tests {
-		index, err := hexToBytes(test.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.hindex, err)
-		}
+		index := hexToBytes(t, test.hindex)
 		// Insert.
-		err = m.AddLeaf([]byte{}, test.epoch, index, testCommitmentTimestamp)
+		err := m.AddLeaf([]byte{}, test.epoch, index, testCommitmentTimestamp)
 		if got, want := grpc.Code(err), codes.OK; got != want {
 			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v",
 				i, test.epoch, test.hindex, got, want)
@@ -375,10 +374,7 @@ func TestLongestPrefixMatch(t *testing.T) {
 		{Leaf{0, "0000000000000000000000000000000000000000000000000000000000000002", 0}, 0, codes.OK},
 	}
 	for i, test := range tests {
-		index, err := hexToBytes(test.leaf.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
-		}
+		index := hexToBytes(t, test.leaf.hindex)
 		_, commitmentTS, err := env.m.AuditPath(test.leaf.epoch, index)
 		if gotc, wantc, gote, wante := commitmentTS, test.outCommitmentTS, grpc.Code(err), test.code; gotc != wantc || gote != wante {
 			t.Errorf("Test[%v]: LongestPrefixMatch(%v, %v)=(%v, %v), want (%v, %v), err = %v",
@@ -433,7 +429,7 @@ func TestFromNeighbors(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		index, err := hexToBytes(test.leaf.hindex)
+		index := hexToBytes(t, test.leaf.hindex)
 		if err != nil {
 			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
 		}
