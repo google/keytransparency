@@ -17,8 +17,6 @@ package db
 
 import (
 	"golang.org/x/net/context"
-
-	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 )
 
 const (
@@ -30,20 +28,6 @@ const (
 type Mapper interface {
 	MapReader
 	MapWriter
-}
-
-// DB is a distributed database
-type Distributed interface {
-	Reader
-	Writer
-	Subscriber
-}
-
-type Local interface {
-	Reader
-	Writer
-	// Close releases resources.
-	Close()
 }
 
 // Queuer submits new mutations to be processed.
@@ -92,28 +76,4 @@ type Node struct {
 type MapWriter interface {
 	//WriteNodes(ctx context.Context, nodes []Node) error
 	WriteLeaf(ctx context.Context, index, leaf []byte) error
-}
-
-type Reader interface {
-	// ReadUpdate reads a EntryStroage from the storage.
-	ReadUpdate(ctx context.Context, primaryKey int64) (*corepb.EntryStorage, error)
-	// ReadEpochInfo reads an EpochInfo from the storage
-	ReadEpochInfo(ctx context.Context, primaryKey int64) (*corepb.EpochInfo, error)
-}
-
-type Writer interface {
-	// WriteUpdate inserts a new EntryStorage in the storage. Fails if the
-	// row already exists.
-	WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error
-	// WriteEpochInfo writes the epoch information in the storage.
-	WriteEpochInfo(ctx context.Context, primaryKey int64, epochInfo *corepb.EpochInfo) error
-}
-
-type Subscriber interface {
-	// SubscribeUpdates subscribes an update channel. All EntryStorage will
-	// be transmitted on all subscribed channels.
-	SubscribeUpdates(ch chan *corepb.EntryStorage)
-	// SubscribeEpochInfo subscribes an epoch info channel. All EpochInfo
-	// will be transmitted on all subscribed channels.
-	SubscribeEpochInfo(ch chan *corepb.EpochInfo)
 }

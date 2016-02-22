@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
@@ -38,18 +37,16 @@ import (
 type Server struct {
 	committer db.Committer
 	queue     db.Queuer
-	store     db.Distributed
 	auth      auth.Authenticator
 	tree      tree.Sparse
 	appender  appender.Appender
 }
 
-// Create creates a new instance of the key server with an arbitrary datastore.
-func New(committer db.Committer, queue db.Queuer, storage db.Distributed, tree tree.Sparse, appender appender.Appender) *Server {
+// Create creates a new instance of the key server.
+func New(committer db.Committer, queue db.Queuer, tree tree.Sparse, appender appender.Appender) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
-		store:     storage,
 		auth:      auth.New(),
 		tree:      tree,
 		appender:  appender,
@@ -132,31 +129,15 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 		return nil, err
 	}
 
-	e := &corepb.EntryStorage{
-		// CommitmentTimestamp is set by storage.
-		SignedEntryUpdate: in.GetSignedEntryUpdate(),
-		Profile:           in.Profile,
-		CommitmentKey:     in.CommitmentKey,
-		// TODO(cesarghali): set Domain.
-	}
-
-	// If entry does not exist, insert it, otherwise update.
-	if err := s.store.WriteUpdate(ctx, e); err != nil {
-		return nil, err
-	}
-	// ---
 	index, err := s.Vuf(in.UserId)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: what should the mutation be?
-	// Option A: an update to the commitment
+	// The mutation is an update to the commitment.
 	m, err := proto.Marshal(in.GetSignedEntryUpdate())
 	if err != nil {
 		return nil, err
 	}
-	// Option B: an update to the particular key
-	// Update the SignedDataTypes to include the particular keys etc.
 
 	// Unmarshal entry.
 	entry := new(ctmap.Entry)

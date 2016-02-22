@@ -30,7 +30,6 @@ import (
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
@@ -39,9 +38,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	cm "github.com/google/e2e-key-server/common/common_merkle"
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
@@ -133,13 +129,12 @@ a5d613`, "\n", "", -1))
 )
 
 type Env struct {
-	s         *grpc.Server
-	server    *Server
-	conn      *grpc.ClientConn
-	Client    *client.Client
-	ctx       context.Context
-	fakeStore *Fake_Local
-	signer    *signer.Signer
+	s      *grpc.Server
+	server *Server
+	conn   *grpc.ClientConn
+	Client *client.Client
+	ctx    context.Context
+	signer *signer.Signer
 }
 
 // NewEnv sets up common resources for tests.
@@ -158,13 +153,10 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	store := memstore.New(ctx)
 	db := memdb.New()
-	local := &Fake_Local{}
 	tree := merkle.New()
 	appender := chain.New()
-	server := New(db, db, store, tree, appender)
-	// Fake an initial empty tree head.
+	server := New(db, db, tree, appender)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
@@ -174,9 +166,9 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
-	signer, _ := signer.New(db, tree, entry.New(), appender, store)
+	signer, _ := signer.New(db, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{s, server, cc, client, ctx, local, signer}
+	return &Env{s, server, cc, client, ctx, signer}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -384,46 +376,4 @@ func TestUnauthenticated(t *testing.T) {
 			t.Errorf("Test[%v]: %v(ctx, emptypb) = %v, want %v.", i, test.desc, got, want)
 		}
 	}
-}
-
-// Implementing mock static storage.
-type Fake_Local struct {
-	info *corepb.EpochInfo
-}
-
-func (s *Fake_Local) ReadUpdate(ctx context.Context, key int64) (*corepb.EntryStorage, error) {
-	return nil, nil
-}
-
-func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch int64) (*corepb.EpochInfo, error) {
-	if s.info == nil {
-		epochHead := &ctmap.EpochHead{
-			Epoch: epoch,
-			Root:  cm.EmptyLeafValue(""),
-		}
-		epochHeadData, err := proto.Marshal(epochHead)
-		if err != nil {
-			return nil, grpc.Errorf(codes.Internal, "Cannot marshal epoch head")
-		}
-		seh := &ctmap.SignedEpochHead{EpochHead: epochHeadData}
-		return &corepb.EpochInfo{
-			SignedEpochHead:         seh,
-			LastCommitmentTimestamp: 1,
-		}, nil
-	}
-	return s.info, nil
-}
-
-func (s *Fake_Local) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage) error {
-	return nil
-}
-
-func (s *Fake_Local) WriteEpochInfo(ctx context.Context, primaryKey int64, epochInfo *corepb.EpochInfo) error {
-	head, _ := common.EpochHead(epochInfo.SignedEpochHead)
-	log.Printf("local.WriteEpochInfo(%v, %v): %v", primaryKey, epochInfo, head.Root)
-	s.info = epochInfo
-	return nil
-}
-
-func (s *Fake_Local) Close() {
 }

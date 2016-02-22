@@ -25,7 +25,6 @@ import (
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -98,10 +97,9 @@ type Env struct {
 	ClientV1  v1pb.E2EKeyProxyClient
 	// V2 client is needed in order to create user before using v1 client
 	// to try to get it.
-	ClientV2  *client.Client
-	ctx       context.Context
-	fakeStore *Fake_Local
-	signer    *signer.Signer
+	ClientV2 *client.Client
+	ctx      context.Context
+	signer   *signer.Signer
 }
 
 // NewEnv sets up common resources for tests.
@@ -120,12 +118,10 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	store := memstore.New(ctx)
 	db := memdb.New()
-	localdb := &Fake_Local{}
 	tree := merkle.New()
 	appender := chain.New()
-	v2srv := keyserver.New(db, db, store, tree, appender)
+	v2srv := keyserver.New(db, db, tree, appender)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -139,9 +135,9 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	signer, _ := signer.New(db, tree, entry.New(), appender, store)
+	signer, _ := signer.New(db, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, localdb, signer}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer}
 }
 
 // Close releases resources allocated by NewEnv.

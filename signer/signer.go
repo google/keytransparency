@@ -37,19 +37,16 @@ type Signer struct {
 	mutator   mutator.Mutator
 	tree      tree.Sparse
 	appender  appender.Appender
-	// Legacy
-	store db.Writer
 }
 
 // New creates a new instance of the signer.
-func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appender appender.Appender, store db.Writer) (*Signer, error) {
+func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appender appender.Appender) (*Signer, error) {
 	// Create a signer instance.
 	s := &Signer{
 		sequencer: sequencer,
 		mutator:   mutator,
 		tree:      tree,
 		appender:  appender,
-		store:     store,
 	}
 
 	return s, nil
