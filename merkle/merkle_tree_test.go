@@ -409,7 +409,7 @@ func TestFromNeighbors(t *testing.T) {
 
 	for i, test := range validTreeLeaves {
 		index := hexToBytes(t, test.hindex)
-		data := []byte("")
+		data := []byte("hi")
 		if err := m.AddLeaf(data, test.epoch, index, test.commitmentTS); err != nil {
 			t.Fatalf("%v: AddLeaf(-, %v, %v)=%v", i, test.epoch, test.hindex, err)
 		}
@@ -422,7 +422,7 @@ func TestFromNeighbors(t *testing.T) {
 
 		got, want := tmp.Root(0), m.Root(test.epoch)
 		if ok := hmac.Equal(got, want); !ok {
-			t.Error("%v: FromNeighbors().Root=%v, want %v", i, got, want)
+			t.Errorf("%v: FromNeighbors().Root=%v, want %v", i, got, want)
 		}
 	}
 }

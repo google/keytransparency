@@ -61,7 +61,8 @@ type Builder struct {
 // The Builder created instance will be ready to use by the signer.
 func New(distributed db.Distributed, local db.Local) *Builder {
 	b := &Builder{
-		updates:     make(chan *corepb.EntryStorage),
+		updates:     make(chan *corepb.EntryStorage, 100),
+		epochInfo:   make(chan *corepb.EpochInfo, 100),
 		tree:        merkle.New(),
 		local:       local,
 		distributed: distributed,
@@ -105,6 +106,7 @@ func (b *Builder) handleUpdates() {
 // own.
 func (b *Builder) handleEpochInfo() {
 	for info := range b.epochInfo {
+		log.Printf("Builder recieved %v", info)
 		localEpochHead, err := b.CreateEpoch(info.LastCommitmentTimestamp, false)
 		if err != nil {
 			log.Fatalf("Failed to create epoch from timestamp %v: %v",
@@ -188,11 +190,7 @@ func (b *Builder) CreateEpoch(lastCommitmentTS int64, advance bool) (*ctmap.Epoc
 		}
 	}
 
-	root, err := b.tree.Root(b.epoch.Building())
-	if err != nil {
-		return nil, err
-	}
-
+	root := b.tree.Root(b.epoch.Building())
 	epochHead := &ctmap.EpochHead{
 		// TODO: set Realm
 		Epoch: b.epoch.Building(),

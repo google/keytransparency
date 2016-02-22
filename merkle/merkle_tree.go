@@ -102,8 +102,11 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 
 	// Create a partial tree.
 	m := New()
-	if err := m.AddLeaf(data, 0, index, 0); err != nil {
-		return nil, err
+	// We may want to examine an empty sub branch of the tree.
+	if len(index) == cm.IndexLen/8 {
+		if err := m.AddLeaf(data, 0, index, 0); err != nil {
+			return nil, err
+		}
 	}
 
 	// Add all neighbors to the partial tree.
