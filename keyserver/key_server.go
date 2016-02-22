@@ -23,7 +23,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
-	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/tree"
 	"golang.org/x/net/context"
@@ -42,18 +41,16 @@ type Server struct {
 	store     db.Distributed
 	auth      auth.Authenticator
 	tree      tree.Sparse
-	builder   *builder.Builder
 	appender  appender.Appender
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(committer db.Committer, queue db.Queuer, storage db.Distributed, tree tree.Sparse, builder *builder.Builder, appender appender.Appender) *Server {
+func New(committer db.Committer, queue db.Queuer, storage db.Distributed, tree tree.Sparse, appender appender.Appender) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
 		store:     storage,
 		auth:      auth.New(),
-		builder:   builder,
 		tree:      tree,
 		appender:  appender,
 	}

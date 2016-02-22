@@ -23,11 +23,11 @@ import (
 	"testing"
 
 	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
 	"golang.org/x/net/context"
@@ -100,7 +100,6 @@ type Env struct {
 	// to try to get it.
 	ClientV2  *client.Client
 	ctx       context.Context
-	builder   *builder.Builder
 	fakeStore *Fake_Local
 	signer    *signer.Signer
 }
@@ -124,10 +123,9 @@ func NewEnv(t *testing.T) *Env {
 	store := memstore.New(ctx)
 	db := memdb.New()
 	localdb := &Fake_Local{}
-	b := builder.New(store, localdb)
-	b.ListenForEpochUpdates()
+	tree := merkle.New()
 	appender := chain.New()
-	v2srv := keyserver.New(db, db, store, b.Tree(), b, appender)
+	v2srv := keyserver.New(db, db, store, tree, appender)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -141,16 +139,15 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	signer, _ := signer.New(db, b.Tree(), entry.New(), appender, store)
+	signer, _ := signer.New(db, tree, entry.New(), appender, store)
 	signer.CreateEpoch()
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, b, localdb, signer}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, localdb, signer}
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
 	env.cc.Close()
 	env.rpcServer.Stop()
-	env.builder.Close()
 }
 
 // createPrimaryUser creates a user using the v2 client. This function is copied
@@ -169,31 +166,8 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		return
 	}
 
-	env.mockSigner(t)
-}
-
-// Mock signer: create new epoch and store the signed epoch head in the fake
-// local storage.
-func (env *Env) mockSigner(t *testing.T) {
-	lastCommitmentTS := int64(1)
-	epochHead, err := env.builder.CreateEpoch(lastCommitmentTS, true)
-	if err != nil {
-		t.Fatalf("Cannot create epoch: %v", err)
-	}
-	epochHeadData, err := proto.Marshal(epochHead)
-	if err != nil {
-		t.Fatalf("Unexpected epoch head marshaling error: %v", err)
-	}
-	signedEpochHead := &ctmap.SignedEpochHead{
-		EpochHead: epochHeadData,
-		// TODO: fill signatures.
-	}
-	info := &corepb.EpochInfo{
-		SignedEpochHead:         signedEpochHead,
-		LastCommitmentTimestamp: lastCommitmentTS,
-	}
-	// Store in fake local storage.
-	env.fakeStore.WriteEpochInfo(nil, 0, info)
+	env.signer.Sequence()
+	env.signer.CreateEpoch()
 }
 
 func TestGetValidUser(t *testing.T) {

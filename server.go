@@ -22,11 +22,11 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db/leveldb"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
@@ -141,11 +141,9 @@ func main() {
 		return
 	}
 	defer localStore.Close()
-	// Create the tree builder.
-	b := builder.New(store, localStore)
-	b.ListenForEpochUpdates()
+	tree := merkle.New()
 	// Create a signer.
-	signer, err := signer.New(db, b.Tree(), mutator, appender, store)
+	signer, err := signer.New(db, tree, mutator, appender, store)
 	signer.StartSequencing()
 	signer.StartSigning(time.Duration(*epochDuration) * time.Second)
 	if err != nil {
@@ -153,9 +151,8 @@ func main() {
 		return
 	}
 	defer signer.Stop()
-	defer b.Close()
 	// Create the servers.
-	v2 := keyserver.New(db, db, store, b.Tree(), b, appender)
+	v2 := keyserver.New(db, db, store, tree, appender)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

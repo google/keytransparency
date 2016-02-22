@@ -27,11 +27,11 @@ import (
 	"testing"
 
 	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
+	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
 	"golang.org/x/net/context"
@@ -138,7 +138,6 @@ type Env struct {
 	conn      *grpc.ClientConn
 	Client    *client.Client
 	ctx       context.Context
-	builder   *builder.Builder
 	fakeStore *Fake_Local
 	signer    *signer.Signer
 }
@@ -162,10 +161,9 @@ func NewEnv(t *testing.T) *Env {
 	store := memstore.New(ctx)
 	db := memdb.New()
 	local := &Fake_Local{}
-	b := builder.New(store, local)
-	b.ListenForEpochUpdates()
+	tree := merkle.New()
 	appender := chain.New()
-	server := New(db, db, store, b.Tree(), b, appender)
+	server := New(db, db, store, tree, appender)
 	// Fake an initial empty tree head.
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
@@ -176,9 +174,9 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
-	signer, _ := signer.New(db, b.Tree(), entry.New(), appender, store)
+	signer, _ := signer.New(db, tree, entry.New(), appender, store)
 	signer.CreateEpoch()
-	return &Env{s, server, cc, client, ctx, b, local, signer}
+	return &Env{s, server, cc, client, ctx, local, signer}
 }
 
 // Close releases resources allocated by NewEnv.
