@@ -28,7 +28,7 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/google/e2e-key-server/common"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -57,13 +57,13 @@ var (
 //      name is index. All external tree APIs (exported functions) use
 //      represetation (2).
 
-// Note: data, dataHash, and value
+// Note: data, data, and value
 //  - data: is the actual data (in []byte) that is stored in the node leaf. All
 //    external tree APIs (exported functions) expect to receive data. Currently,
 //    data is a marshaled SignedEntryUpdate proto.
-//  - dataHash: is the hash of data and is stored in the leaf node structure.
+//  - data: is the hash of data and is stored in the leaf node structure.
 //  - value: is stored in the leaf node structure and can be:
-//     - Leaves: H(LeafIdentifier || depth || index || dataHash)
+//     - Leaves: H(LeafIdentifier || depth || index || data)
 //     - Empty leaves: H(EmptyIdentifier || depth || index || nil)
 //     - Intermediate nodes: H(left.value || right.value)
 
@@ -75,11 +75,11 @@ type Tree struct {
 }
 
 type node struct {
-	epoch        int64  // Epoch for this node.
+	epoch        int64  // Etoch for this node.
 	bindex       string // Location in the tree.
 	commitmentTS int64  // Commitment timestamp for this node.
 	depth        int    // Depth of this node. 0 to 256.
-	dataHash     []byte // Hash of the data stored in the node.
+	data         []byte // Data stored in the node.
 	value        []byte // Empty for empty subtrees.
 	left         *node  // Left node.
 	right        *node  // Right node.
@@ -102,38 +102,21 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 
 	// Create a partial tree.
 	m := New()
-	r, err := m.addRoot(0)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add the leaf node to the partial tree.
-	var leafData []byte
-	var isLeaf bool
-	if data == nil {
-		// In this case, an empty branch is the leaf node.
-		leafData = cm.EmptyLeafValue(bindex[:len(neighbors)])
-		isLeaf = false
-	} else {
-		leafData = data
-		isLeaf = true
-	}
-	if err := r.addLeaf(leafData, 0, bindex, 0, 0, isLeaf); err != nil {
-		return nil, err
+	// We may want to examine an empty sub branch of the tree.
+	if len(index) == cm.IndexLen/8 {
+		if err := m.AddLeaf(data, 0, index, 0); err != nil {
+			return nil, err
+		}
 	}
 
 	// Add all neighbors to the partial tree.
 	for i, v := range neighbors {
-		if got, want := len(v), cm.HashSize; got != want {
-			return nil, grpc.Errorf(codes.InvalidArgument, "len(v) = %v, want %v", got, want)
-		}
-
 		// index is processed starting from len(neighbors)-1 down to 0.
 		indexBit := len(neighbors) - 1 - i
 		b := uint8(bindex[indexBit])
 		bindexNeighbor := fmt.Sprintf("%v%v", bindex[:indexBit], string(neighbor(b)))
 		// Add a neighbor. In this case, index is not of a full length.
-		if err := r.addLeaf(v, 0, bindexNeighbor, 0, 0, false); err != nil {
+		if err := m.current.addLeaf(v, 0, bindexNeighbor, 0, 0, false); err != nil {
 			return nil, err
 		}
 	}
@@ -161,7 +144,30 @@ func (t *Tree) AddLeaf(data []byte, epoch int64, index []byte, commitmentTS int6
 	if err != nil {
 		return err
 	}
-	return r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
+	err = r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
+	log.Printf("AddLeaf(-, %v, %v, %v): %v", epoch, index, commitmentTS, t.Root(epoch))
+	return err
+}
+
+// Write leaf saves data at the "next" epoch?
+func (t *Tree) WriteLeaf(ctx context.Context, index, leaf []byte) error {
+	// Get the epoch that we're currently building at.
+	return t.AddLeaf(leaf, t.current.epoch, index, 0)
+}
+
+func (t *Tree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	_, leaf := t.current.auditPath(bitString(index), 0)
+	return leaf.data, nil
+}
+
+func (t *Tree) Neighbors(ctx context.Context, index []byte) ([][]byte, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	bindex := bitString(index)
+	neighbors, _ := t.current.auditPath(bindex, 0)
+	return neighbors, nil
 }
 
 // AuditPath returns a slice containing each node's neighbor from the bottom to
@@ -186,15 +192,19 @@ func (t *Tree) AuditPath(epoch int64, index []byte) ([][]byte, int64, error) {
 	return neighbors, commitmentTS, nil
 }
 
-// GetRootValue returns the value of the root node in a specific epoch.
-func (t *Tree) Root(epoch int64) ([]byte, error) {
+func (t *Tree) ReadRoot(ctx context.Context) ([]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	return t.Root(t.current.epoch), nil
+}
+
+// Root returns the value of the root node in a specific epoch.
+func (t *Tree) Root(epoch int64) []byte {
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Epoch %v does not exist", epoch)
+		return make([]byte, 0)
 	}
-	return r.value, nil
+	return r.value
 }
 
 // addRoot will advance the current epoch by copying the previous root.
@@ -281,7 +291,7 @@ func (n *node) pushDown() error {
 	// Create a sub branch and copy this node.
 	b := n.bindex[n.depth]
 	n.createBranch(n.bindex)
-	n.child(b).dataHash = n.dataHash
+	n.child(b).data = n.data
 	// Whenever a node is pushed down, its value must be recalculated.
 	n.child(b).updateLeafValue()
 
@@ -342,12 +352,12 @@ func (n *node) leaf() bool {
 	return n.left == nil && n.right == nil
 }
 
-// empty returns if a node is empty. A node is empty if its dataHash and
+// empty returns if a node is empty. A node is empty if its data and
 // children pointers are nil. The node value should not be considered as
 // a part of the empty test because an empty tree has an empty root with
 // an empty leaf value.
 func (n *node) empty() bool {
-	return n.dataHash == nil && n.left == nil && n.right == nil
+	return n.data == nil && n.left == nil && n.right == nil
 }
 
 func (n *node) child(b uint8) *node {
@@ -413,10 +423,10 @@ func (n *node) hashIntermediateNode() error {
 }
 
 // updateLeafValue updates a leaf node's value by
-// H(LeafIdentifier || depth || bindex || dataHash), where LeafIdentifier,
+// H(LeafIdentifier || depth || bindex || data), where LeafIdentifier,
 // depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
-	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), n.dataHash)
+	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), n.data)
 }
 
 // setNode sets the comittment of the leaf node and updates its hash.
@@ -427,7 +437,7 @@ func (n *node) setNode(data []byte, bindex string, commitmentTS int64, depth int
 	n.left = nil
 	n.right = nil
 	if isLeaf {
-		n.dataHash = common.Hash(data)
+		n.data = data
 		n.updateLeafValue()
 	} else {
 		n.value = data

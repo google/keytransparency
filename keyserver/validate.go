@@ -27,8 +27,8 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 // Maximum period of time to allow between CreationTime and server time.
@@ -85,6 +85,14 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 	entry := new(ctmap.Entry)
 	if err := proto.Unmarshal(in.GetSignedEntryUpdate().NewEntry, entry); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
+	}
+	// Verify Entry
+	index, err := s.Vuf(in.UserId)
+	if err != nil {
+		return err
+	}
+	if got, want, equal := entry.Index, index, bytes.Equal(entry.Index, index); !equal {
+		return grpc.Errorf(codes.InvalidArgument, "entry.Index=%v, want %v", got, want)
 	}
 
 	// Unmarshal and validte user's profile.

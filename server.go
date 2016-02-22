@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/builder"
@@ -26,7 +27,7 @@ import (
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/mutator/replace"
+	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
@@ -131,7 +132,7 @@ func main() {
 	// Create a memory storage.
 	store := memstore.New(ctx)
 	db := memdb.New()
-	mutator := replace.New()
+	mutator := entry.New()
 	appender := chain.New()
 	// Create localStorage instance to store EntryStorage.
 	localStore, err := leveldb.Open(*serverDBPath)
@@ -141,19 +142,20 @@ func main() {
 	}
 	defer localStore.Close()
 	// Create the tree builder.
+	b := builder.New(store, localStore)
+	b.ListenForEpochUpdates()
 	// Create a signer.
-	signer, err := signer.New(db, db, mutator, appender, *epochDuration)
+	signer, err := signer.New(db, b.Tree(), mutator, appender, store)
+	signer.StartSequencing()
+	signer.StartSigning(time.Duration(*epochDuration) * time.Second)
 	if err != nil {
 		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return
 	}
 	defer signer.Stop()
-	// Create the tree builder.
-	b := builder.New(store, localStore)
-	b.ListenForEpochUpdates()
 	defer b.Close()
 	// Create the servers.
-	v2 := keyserver.New(db, db, store, b)
+	v2 := keyserver.New(db, db, store, b.Tree(), b, appender)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

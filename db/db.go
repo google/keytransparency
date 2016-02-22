@@ -75,12 +75,12 @@ type Commitment struct {
 
 type Committer interface {
 	WriteCommitment(ctx context.Context, commitment, key, value []byte) error
-	ReadCommitment(ctx context.Context, commitment []byte) (Commitment, error)
+	ReadCommitment(ctx context.Context, commitment []byte) (*Commitment, error)
 }
 
 // Reader reads values from the sparse tree.
 type MapReader interface {
-	ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error)
+	//ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error)
 	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
 }
 
@@ -90,7 +90,7 @@ type Node struct {
 }
 
 type MapWriter interface {
-	WriteNodes(ctx context.Context, nodes []Node) error
+	//WriteNodes(ctx context.Context, nodes []Node) error
 	WriteLeaf(ctx context.Context, index, leaf []byte) error
 }
 

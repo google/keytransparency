@@ -17,18 +17,22 @@ package keyserver
 
 import (
 	"bytes"
+	"log"
+	"math"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/db"
+	"github.com/google/e2e-key-server/tree"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 // Server holds internal state for the key server.
@@ -37,17 +41,21 @@ type Server struct {
 	queue     db.Queuer
 	store     db.Distributed
 	auth      auth.Authenticator
+	tree      tree.Sparse
 	builder   *builder.Builder
+	appender  appender.Appender
 }
 
 // Create creates a new instance of the key server with an arbitrary datastore.
-func New(committer db.Committer, queue db.Queuer, storage db.Distributed, builder *builder.Builder) *Server {
+func New(committer db.Committer, queue db.Queuer, storage db.Distributed, tree tree.Sparse, builder *builder.Builder, appender appender.Appender) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
 		store:     storage,
 		auth:      auth.New(),
 		builder:   builder,
+		tree:      tree,
+		appender:  appender,
 	}
 }
 
@@ -60,51 +68,56 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
 	}
 
+	// Get an append-only proof for the signed tree head.
+	e := in.Epoch
+	if in.Epoch == math.MaxInt64 {
+		e = s.appender.Latest(ctx)
+	}
+	data, err := s.appender.GetByIndex(ctx, e)
+	if err != nil {
+		return nil, err
+	}
+	seh := ctmap.SignedEpochHead{}
+	err = proto.Unmarshal(data, &seh)
+	if err != nil {
+		return nil, err
+	}
+
 	// result contains the returned GetEntryResponse.
 	result := &v2pb.GetEntryResponse{
-		Index: index,
+		Index:            index,
+		SignedEpochHeads: []*ctmap.SignedEpochHead{&seh},
 		// TODO(cesarghali): Fill IndexProof.
 	}
 
-	// Get signed epoch heads.
-	seh, err := s.builder.GetSignedEpochHeads(ctx, in.Epoch)
-	if err != nil {
-		return nil, err
-	}
-	result.SignedEpochHeads = seh
-
-	// Get merkle tree neighbors, and commitment timestamp.
-	neighbors, commitmentTS, err := s.builder.AuditPath(in.Epoch, index)
-	result.MerkleTreeNeighbors = neighbors
-
-	if err != nil {
-		return nil, err
-	}
-
-	// If commitmentTS is equal to 0, then an empty branch was found, and
-	// no Entry should be returned.
-	if commitmentTS != 0 {
-		// Read EntryStorage from the data store.
-		entryStorage, err := s.store.ReadUpdate(ctx, commitmentTS)
-		if err != nil {
-			return nil, grpc.Errorf(codes.Internal, "Error while reading the requested profile in the data store")
-		}
-
-		// Unmarshal entry.
-		entry := new(ctmap.Entry)
-		if err := proto.Unmarshal(entryStorage.GetSignedEntryUpdate().NewEntry, entry); err != nil {
+	// Retrieve the leaf if this is not a proof of absence.
+	leaf, err := s.tree.ReadLeaf(ctx, index)
+	if err == nil {
+		result.Entry = new(ctmap.Entry)
+		if err := proto.Unmarshal(leaf, result.Entry); err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
-
-		result.Entry = entry
 
 		// If entryStorage.SignedEntryUpdate.NewEntry have an
 		// exact index as the requested one, fill out the
 		// corresponding profile and its commitment.
-		if bytes.Equal(entry.Index, index) {
-			result.Profile = entryStorage.Profile
-			result.CommitmentKey = entryStorage.CommitmentKey
+		if bytes.Equal(result.Entry.Index, index) {
+			commitment, err := s.committer.ReadCommitment(ctx, result.Entry.ProfileCommitment)
+			if err != nil {
+				return nil, err
+			}
+			result.Profile = commitment.Data
+			result.CommitmentKey = commitment.Key
+
 		}
+	}
+
+	neighbors, err := s.tree.Neighbors(ctx, index)
+	log.Printf("Neighbors(%v)=%v,%v", index, neighbors, err)
+	// TODO: return historical values for epoch.
+	result.MerkleTreeNeighbors = neighbors
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil

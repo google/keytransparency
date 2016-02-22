@@ -26,8 +26,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 // Client is a helper library for issuing updates to the key server.
@@ -100,18 +100,15 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedRoot []byte, index []byte, entry []byte) error {
 	m, err := merkle.FromNeighbors(neighbors, index, entry)
 	if err != nil {
-		return grpc.Errorf(codes.Internal, "Unexpected building expected tree error: %v", err)
+		return grpc.Errorf(codes.Internal, "Failed to build verification tree: %v", err)
 	}
 
 	// Get calculated root value.
-	calculatedRoot, err := m.Root(0)
-	if err != nil {
-		return err
-	}
+	calculatedRoot := m.Root(0)
 
 	// Verify the built tree root is as expected.
-	if got, want := hmac.Equal(expectedRoot, calculatedRoot), true; got != want {
-		return grpc.Errorf(codes.InvalidArgument, "Invalid merkle tree neighbors list")
+	if ok := hmac.Equal(expectedRoot, calculatedRoot); !ok {
+		return grpc.Errorf(codes.InvalidArgument, "Merkle Verification Failed. Root=%v, want %v", calculatedRoot, expectedRoot)
 	}
 
 	return nil

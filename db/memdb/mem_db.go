@@ -20,6 +20,8 @@ import (
 	"crypto/sha512"
 
 	"github.com/google/e2e-key-server/db"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"golang.org/x/net/context"
 )
@@ -55,15 +57,18 @@ func (d *MemDB) Queue() <-chan db.Mutation {
 func (d *MemDB) WriteCommitment(ctx context.Context, commitment, key, value []byte) error {
 	var k [CommitmentSize]byte
 	copy(k[:], commitment[:CommitmentSize])
-	c := db.Commitment{key, value}
-	d.commitments[k] = c
+	d.commitments[k] = db.Commitment{key, value}
 	return nil
 }
 
-func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (db.Commitment, error) {
+func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (*db.Commitment, error) {
 	var k [CommitmentSize]byte
 	copy(k[:], commitment[:CommitmentSize])
-	return d.commitments[k], nil
+	c, ok := d.commitments[k]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", commitment)
+	}
+	return &c, nil
 }
 
 func (d *MemDB) WriteLeaf(ctx context.Context, index, leaf []byte) error {

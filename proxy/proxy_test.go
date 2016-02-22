@@ -22,21 +22,24 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/signer"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
 	cm "github.com/google/e2e-key-server/common/common_merkle"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 const (
@@ -99,6 +102,7 @@ type Env struct {
 	ctx       context.Context
 	builder   *builder.Builder
 	fakeStore *Fake_Local
+	signer    *signer.Signer
 }
 
 // NewEnv sets up common resources for tests.
@@ -122,7 +126,8 @@ func NewEnv(t *testing.T) *Env {
 	localdb := &Fake_Local{}
 	b := builder.New(store, localdb)
 	b.ListenForEpochUpdates()
-	v2srv := keyserver.New(db, db, store, b)
+	appender := chain.New()
+	v2srv := keyserver.New(db, db, store, b.Tree(), b, appender)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -136,7 +141,9 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, b, localdb}
+	signer, _ := signer.New(db, b.Tree(), entry.New(), appender, store)
+	signer.CreateEpoch()
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, b, localdb, signer}
 }
 
 // Close releases resources allocated by NewEnv.

@@ -19,9 +19,11 @@ import (
 )
 
 // Appender is an append only interface into a data structure.
+// TODO: Make generic for CT.
 type Appender interface {
-	Append(ctx context.Context, data []byte) error
-	// GetLatest(ctx context.Context) ([]byte, error)
+	Append(ctx context.Context, timestamp int64, data []byte) error
+	GetByIndex(ctx context.Context, index int64) ([]byte, error)
+	GetByTimeStamp(ctx context.Context, timestamp int64) ([]byte, error)
 	GetHLast(ctx context.Context) ([]byte, error)
-	// GetItem(ctx context.Context, index int64) ([]byte, error)
+	Latest(ctx context.Context) int64
 }
