@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+package memhist
 
 import (
 	"bytes"
@@ -27,7 +27,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	cm "github.com/google/e2e-key-server/common/common_merkle"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse"
 )
 
 const (
@@ -218,7 +219,7 @@ func TestPushDown(t *testing.T) {
 	t.Parallel()
 
 	index := hexToBytes(t, AllZeros)
-	n := &node{bindex: bitString(index)}
+	n := &node{bindex: tree.BitString(index)}
 	if !n.leaf() {
 		t.Errorf("node without children was a leaf")
 	}
@@ -235,7 +236,7 @@ func TestCreateBranch(t *testing.T) {
 	t.Parallel()
 
 	index := hexToBytes(t, AllZeros)
-	n := &node{bindex: bitString(index)}
+	n := &node{bindex: tree.BitString(index)}
 	n.createBranch("0")
 	if n.left == nil {
 		t.Errorf("nil branch after create")
@@ -331,17 +332,13 @@ func TestAuditNeighors(t *testing.T) {
 		for j, v := range test.emptyNeighors {
 			// Starting from the leaf's neighbor, going to the root.
 			depth := len(audit) - j
-			nstr := neighborOf(bitString(index), depth)
-			value := cm.EmptyLeafValue(nstr)
+			nstr := tree.NeighborString(tree.BitString(index)[:depth])
+			value := sparse.EmptyLeafValue(nstr)
 			if got, want := bytes.Equal(audit[j], value), v; got != want {
 				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.hindex, j, got, want)
 			}
 		}
 	}
-}
-
-func neighborOf(hindex string, depth int) string {
-	return hindex[:depth-1] + string(neighbor(hindex[depth-1]))
 }
 
 func TestLongestPrefixMatch(t *testing.T) {

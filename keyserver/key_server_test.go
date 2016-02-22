@@ -31,9 +31,9 @@ import (
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
+	"github.com/google/e2e-key-server/tree/sparse/memhist"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -155,7 +155,7 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	db := memdb.New()
-	tree := merkle.New()
+	tree := memhist.New()
 	appender := chain.New()
 	server := New(db, db, tree, appender)
 	v2pb.RegisterE2EKeyServiceServer(s, server)

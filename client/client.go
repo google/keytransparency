@@ -21,7 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/merkle"
+	"github.com/google/e2e-key-server/tree/sparse/memhist"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -98,7 +98,8 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 // VerifyMerkleTreeProof returns nil if the merkle tree neighbors list is valid
 // and the provided signed epoch head has a valid signature.
 func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedRoot []byte, index []byte, entry []byte) error {
-	m, err := merkle.FromNeighbors(neighbors, index, entry)
+	// TODO: replace with static merkle tree
+	m, err := memhist.FromNeighbors(neighbors, index, entry)
 	if err != nil {
 		return grpc.Errorf(codes.Internal, "Failed to build verification tree: %v", err)
 	}

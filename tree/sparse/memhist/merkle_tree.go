@@ -19,32 +19,24 @@
 // the location of each node.  Each branch expresses the longest shared prefix
 // between child nodes. The depth of the tree is the longest shared prefix between
 // all nodes.
-package merkle
+package memhist
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
-	"math/big"
 	"sync"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	cm "github.com/google/e2e-key-server/common/common_merkle"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse"
 )
 
 const (
 	// maxDepth is the maximum allowable value of depth.
-	maxDepth = cm.IndexLen
-)
-
-var (
-	// zero is the value used to represent 0 in the index bit string.
-	zero = byte('0')
-	// one is the data used to represent 1 in the index bit string.
-	one = byte('1')
+	maxDepth = sparse.IndexLen
 )
 
 // Note: index has two representation:
@@ -98,12 +90,12 @@ func New() *Tree {
 // FromNeighbors builds a partial merkle tree with the path from the given leaf
 // node at the given index, up to the root including all path neighbors.
 func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error) {
-	bindex := bitString(index)
+	bindex := tree.BitString(index)
 
 	// Create a partial tree.
 	m := New()
 	// We may want to examine an empty sub branch of the tree.
-	if len(index) == cm.IndexLen/8 {
+	if len(index) == maxDepth/8 {
 		if err := m.AddLeaf(data, 0, index, 0); err != nil {
 			return nil, err
 		}
@@ -114,7 +106,7 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 		// index is processed starting from len(neighbors)-1 down to 0.
 		indexBit := len(neighbors) - 1 - i
 		b := uint8(bindex[indexBit])
-		bindexNeighbor := fmt.Sprintf("%v%v", bindex[:indexBit], string(neighbor(b)))
+		bindexNeighbor := fmt.Sprintf("%v%v", bindex[:indexBit], string(tree.Neighbor(b)))
 		// Add a neighbor. In this case, index is not of a full length.
 		if err := m.current.addLeaf(v, 0, bindexNeighbor, 0, 0, false); err != nil {
 			return nil, err
@@ -137,14 +129,14 @@ func (t *Tree) AddRoot(epoch int64) error {
 func (t *Tree) AddLeaf(data []byte, epoch int64, index []byte, commitmentTS int64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), cm.IndexLen/8; got != want {
+	if got, want := len(index), maxDepth/8; got != want {
 		return grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, err := t.addRoot(epoch)
 	if err != nil {
 		return err
 	}
-	err = r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
+	err = r.addLeaf(data, epoch, tree.BitString(index), commitmentTS, 0, true)
 	log.Printf("AddLeaf(-, %v, %v, %v): %v", epoch, index, commitmentTS, t.Root(epoch))
 	return err
 }
@@ -158,14 +150,14 @@ func (t *Tree) WriteLeaf(ctx context.Context, index, leaf []byte) error {
 func (t *Tree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	_, leaf := t.current.auditPath(bitString(index), 0)
+	_, leaf := t.current.auditPath(tree.BitString(index), 0)
 	return leaf.data, nil
 }
 
 func (t *Tree) Neighbors(ctx context.Context, index []byte) ([][]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	bindex := bitString(index)
+	bindex := tree.BitString(index)
 	neighbors, _ := t.current.auditPath(bindex, 0)
 	return neighbors, nil
 }
@@ -176,14 +168,14 @@ func (t *Tree) Neighbors(ctx context.Context, index []byte) ([][]byte, error) {
 func (t *Tree) AuditPath(epoch int64, index []byte) ([][]byte, int64, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if got, want := len(index), cm.IndexLen/8; got != want {
+	if got, want := len(index), maxDepth/8; got != want {
 		return nil, 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
 	}
 	r, ok := t.roots[epoch]
 	if !ok {
 		return nil, 0, grpc.Errorf(codes.InvalidArgument, "epoch %v does not exist", epoch)
 	}
-	bindex := bitString(index)
+	bindex := tree.BitString(index)
 	neighbors, leaf := r.auditPath(bindex, 0)
 	commitmentTS := int64(0)
 	if leaf != nil {
@@ -218,7 +210,7 @@ func (t *Tree) addRoot(epoch int64) (*node, error) {
 		// with an empty leaf value. This is important to make the
 		// two cases of empty branch and empty tree similar when calling
 		// FromNeighbors.
-		t.roots[epoch].value = cm.EmptyLeafValue("")
+		t.roots[epoch].value = sparse.EmptyLeafValue("")
 		t.current = t.roots[epoch]
 		return t.current, nil
 	}
@@ -341,10 +333,10 @@ func (n *node) auditPath(bindex string, depth int) ([][]byte, *node) {
 
 	deep, leaf := n.child(bindex[depth]).auditPath(bindex, depth+1)
 	b := bindex[depth]
-	if nbr := n.child(neighbor(b)); nbr != nil {
+	if nbr := n.child(tree.Neighbor(b)); nbr != nil {
 		return append(deep, nbr.value), leaf
 	}
-	value := cm.EmptyLeafValue(n.bindex + string(neighbor(b)))
+	value := sparse.EmptyLeafValue(n.bindex + string(tree.Neighbor(b)))
 	return append(deep, value), leaf
 }
 
@@ -362,9 +354,9 @@ func (n *node) empty() bool {
 
 func (n *node) child(b uint8) *node {
 	switch b {
-	case zero:
+	case tree.Zero:
 		return n.left
-	case one:
+	case tree.One:
 		return n.right
 	default:
 		log.Fatalf("invalid bit %v", b)
@@ -374,25 +366,12 @@ func (n *node) child(b uint8) *node {
 
 func (n *node) setChild(b uint8, child *node) {
 	switch b {
-	case zero:
+	case tree.Zero:
 		n.left = child
-	case one:
+	case tree.One:
 		n.right = child
 	default:
 		log.Fatalf("invalid bit %v", b)
-	}
-}
-
-// neighbor converts Zero into One and visa versa.
-func neighbor(b uint8) uint8 {
-	switch b {
-	case zero:
-		return one
-	case one:
-		return zero
-	default:
-		log.Fatalf("invalid bit %v", b)
-		return 0
 	}
 }
 
@@ -408,7 +387,7 @@ func (n *node) hashIntermediateNode() error {
 	if n.left != nil {
 		left = n.left.value
 	} else {
-		left = cm.EmptyLeafValue(n.bindex + string(zero))
+		left = sparse.EmptyLeafValue(n.bindex + string(tree.Zero))
 	}
 
 	// Compute right values.
@@ -416,9 +395,9 @@ func (n *node) hashIntermediateNode() error {
 	if n.right != nil {
 		right = n.right.value
 	} else {
-		right = cm.EmptyLeafValue(n.bindex + string(one))
+		right = sparse.EmptyLeafValue(n.bindex + string(tree.One))
 	}
-	n.value = cm.HashIntermediateNode(left, right)
+	n.value = sparse.HashIntermediateNode(left, right)
 	return nil
 }
 
@@ -426,7 +405,7 @@ func (n *node) hashIntermediateNode() error {
 // H(LeafIdentifier || depth || bindex || data), where LeafIdentifier,
 // depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
-	n.value = cm.HashLeaf(cm.LeafIdentifier, n.depth, []byte(n.bindex), n.data)
+	n.value = sparse.HashLeaf(sparse.LeafIdentifier, n.depth, []byte(n.bindex), n.data)
 }
 
 // setNode sets the comittment of the leaf node and updates its hash.
@@ -442,13 +421,4 @@ func (n *node) setNode(data []byte, bindex string, commitmentTS int64, depth int
 	} else {
 		n.value = data
 	}
-}
-
-// bitString converts a byte slice index into a string of Depth '0' or '1'
-// characters.
-func bitString(index []byte) string {
-	i := new(big.Int)
-	i.SetString(hex.EncodeToString(index), 16)
-	// A 256 character string of bits with leading zeros.
-	return fmt.Sprintf("%0256b", i)
 }

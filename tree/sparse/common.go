@@ -12,23 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package contains merkle tree common type definitions and functions used
-// by other packages. Types that can cause circular import should be added here.
-package common_merkle
+// Package merkle implements a time series prefix tree. Each epoch has its own
+// prefix tree. By default, each new epoch is equal to the contents of the
+// previous epoch.
+// The prefix tree is a binary tree where the path through the tree expresses
+// the location of each node.  Each branch expresses the longest shared prefix
+// between child nodes. The depth of the tree is the longest shared prefix between
+// all nodes.
+package sparse
 
 import (
-	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/binary"
 )
 
 const (
 	// HashSize contains the blocksize of the used hash function in bytes.
-	HashSize = sha256.Size
+	HashSize = sha512.Size256
 	// IndexLen is the maximum number of levels in this Merkle Tree.
 	IndexLen = HashSize * 8
-	// commitmentKeyLen is the number of bytes required to be in the
-	// profile commitment.
-	commitmentKeyLen = 16
 )
 
 var (
@@ -36,6 +38,8 @@ var (
 	LeafIdentifier = []byte("L")
 	// EmptyIdentifier is used while calculating the data of nil sub branches.
 	EmptyIdentifier = []byte("E")
+
+	NewHash = sha512.New512_256
 )
 
 // HashLeaf calculate the merkle tree leaf node value. This is computed as
@@ -45,7 +49,7 @@ func HashLeaf(identifier []byte, depth int, index []byte, dataHash []byte) []byt
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
 
-	h := sha256.New()
+	h := NewHash()
 	h.Write(identifier)
 	h.Write(bdepth)
 	h.Write(index)
@@ -55,7 +59,7 @@ func HashLeaf(identifier []byte, depth int, index []byte, dataHash []byte) []byt
 
 // HashIntermediateNode calculates an interior node's value by H(left || right)
 func HashIntermediateNode(left []byte, right []byte) []byte {
-	h := sha256.New()
+	h := NewHash()
 	h.Write(left)
 	h.Write(right)
 	return h.Sum(nil)

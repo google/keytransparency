@@ -17,55 +17,65 @@
 package tree
 
 import (
-	"crypto/sha512"
-	"encoding/binary"
-)
-
-const (
-	// HashSize contains the blocksize of the used hash function in bytes.
-	HashSize = sha512.Size256
-	// IndexLen is the maximum number of levels in this Merkle Tree.
-	IndexLen = HashSize * 8
-	// commitmentKeyLen is the number of bytes required to be in the
-	// profile commitment.
-	commitmentKeyLen = 16
+	"encoding/hex"
+	"fmt"
+	"log"
+	"math/big"
 )
 
 var (
-	// LeafIdentifier is the data used to indicate a leaf node.
-	LeafIdentifier = []byte("L")
-	// EmptyIdentifier is used while calculating the data of nil sub branches.
-	EmptyIdentifier = []byte("E")
-
-	NewHash = sha512.New512_256
+	// Zero is the value used to represent 0 in the index bit string.
+	Zero = byte('0')
+	// One is the data used to represent 1 in the index bit string.
+	One = byte('1')
 )
 
-// HashLeaf calculate the merkle tree leaf node value. This is computed as
-// H(Identifier || depth || index || dataHash), where Identifier, depth, and
-// index are fixed-length.
-func HashLeaf(identifier []byte, depth int, index []byte, dataHash []byte) []byte {
-	bdepth := make([]byte, 4)
-	binary.BigEndian.PutUint32(bdepth, uint32(depth))
-
-	h := NewHash()
-	h.Write(identifier)
-	h.Write(bdepth)
-	h.Write(index)
-	h.Write(dataHash)
-	return h.Sum(nil)
+// bitString converts a byte slice index into a string of Depth '0' or '1'
+// characters.
+func BitString(index []byte) string {
+	i := new(big.Int)
+	i.SetString(hex.EncodeToString(index), 16)
+	// A 256 character string of bits with leading Zeros.
+	return fmt.Sprintf("%0256b", i)
 }
 
-// HashIntermediateNode calculates an interior node's value by H(left || right)
-func HashIntermediateNode(left []byte, right []byte) []byte {
-	h := NewHash()
-	h.Write(left)
-	h.Write(right)
-	return h.Sum(nil)
+// Neighbor converts Zero into One and visa versa.
+func Neighbor(b uint8) uint8 {
+	switch b {
+	case Zero:
+		return One
+	case One:
+		return Zero
+	default:
+		log.Fatalf("invalid bit %v", b)
+		return 0
+	}
 }
 
-// EmptyLeafValue computes the value of an empty leaf as
-// H(EmptyIdentifier || depth || index), where EmptyIdentifier, depth, and
-// index are fixed-length.
-func EmptyLeafValue(prefix string) []byte {
-	return HashLeaf(EmptyIdentifier, len(prefix), []byte(prefix), nil)
+// path returns all the intermediate nodes between a leaf node and the root, ending with the root.
+func Path(bindex string) []string {
+	steps := len(bindex) // levels - 1
+	n := make([]string, steps)
+	for i := 0; i < steps; i++ {
+		n[i] = bindex[:steps-i]
+	}
+	n = append(n, "") // Append a root node.
+	return n
+}
+
+// Neighbors returns a list of all Neighbors from the leaf level up to the root-1.
+func Neighbors(bindex string) []string {
+	steps := len(bindex) // levels - 1
+	n := make([]string, steps)
+	for i := 0; i < steps; i++ {
+		n[i] = NeighborString(bindex[:steps-i])
+	}
+	return n
+}
+
+// Neighbor inverts the last Zero into a One and visa versa.
+// ps. the root node does not have a Neighbor
+func NeighborString(bindex string) string {
+	last := len(bindex) - 1
+	return fmt.Sprintf("%v%v", bindex[:last], string(Neighbor(bindex[last])))
 }

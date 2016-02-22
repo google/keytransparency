@@ -26,19 +26,19 @@ import (
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
+	"github.com/google/e2e-key-server/tree/sparse/memhist"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	cm "github.com/google/e2e-key-server/common/common_merkle"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	cm "github.com/google/e2e-key-server/tree/sparse"
 )
 
 const (
@@ -119,7 +119,7 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	db := memdb.New()
-	tree := merkle.New()
+	tree := memhist.New()
 	appender := chain.New()
 	v2srv := keyserver.New(db, db, tree, appender)
 	v1srv := New(v2srv)
