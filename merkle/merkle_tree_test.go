@@ -69,10 +69,8 @@ func NewEnv(t *testing.T) *Env {
 func addValidLeaves(t *testing.T, m *Tree) {
 	for i, leaf := range validTreeLeaves {
 		index := hexToBytes(t, leaf.hindex)
-		err := m.AddLeaf([]byte{}, leaf.epoch, index, leaf.commitmentTS)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Fatalf("Leaf[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
-				i, leaf.epoch, leaf.hindex, got, want, err)
+		if err := m.AddLeaf([]byte{}, leaf.epoch, index, leaf.commitmentTS); err != nil {
+			t.Fatalf("%v: AddLeaf(-, %v, %v)=%v", i, leaf.epoch, leaf.hindex, err)
 		}
 	}
 }
@@ -398,55 +396,33 @@ func TestRoot(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		_, err := env.m.Root(test.epoch)
-		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("Test[%v]: Root(%v)=%v, want %v", i, test.epoch, got, want)
+		r := env.m.Root(test.epoch)
+		if got, want := len(r) == 0, test.code == codes.NotFound; got != want {
+			t.Errorf("%v: Root(%v)=%v, want %v", i, test.epoch, r, test.code)
 		}
 	}
 }
 
 func TestFromNeighbors(t *testing.T) {
 	t.Parallel()
+	m := New()
 
-	env := NewEnv(t)
-
-	tests := []struct {
-		leaf Leaf
-	}{
-		{validTreeLeaves[0]},
-		{validTreeLeaves[1]},
-		{validTreeLeaves[2]},
-		{validTreeLeaves[3]},
-		{validTreeLeaves[4]},
-	}
-
-	// Get current epoch of the test tree.
-	epoch := validTreeLeaves[4].epoch
-	// Get expected root value.
-	expectedRoot, err := env.m.Root(epoch)
-	if err != nil {
-		t.Fatalf("Error while getting tree root value in epoch %v: %v", epoch, err)
-	}
-
-	for i, test := range tests {
-		index := hexToBytes(t, test.leaf.hindex)
-		if err != nil {
-			t.Fatalf("Hex decoding of '%v' failed: %v", test.leaf.hindex, err)
+	for i, test := range validTreeLeaves {
+		index := hexToBytes(t, test.hindex)
+		data := []byte("")
+		if err := m.AddLeaf(data, test.epoch, index, test.commitmentTS); err != nil {
+			t.Fatalf("%v: AddLeaf(-, %v, %v)=%v", i, test.epoch, test.hindex, err)
 		}
-		neighbors, _, err := env.m.AuditPath(test.leaf.epoch, index)
+		neighbors, _, err := m.AuditPath(test.epoch, index)
 
-		tmp, err := FromNeighbors(neighbors, index, []byte{})
+		tmp, err := FromNeighbors(neighbors, index, data)
 		if err != nil {
-			t.Fatalf("Error while building the expected tree: %v", err)
+			t.Fatalf("FromNeighbors()= %v", err)
 		}
 
-		calculatedRoot, err := tmp.Root(0)
-		if err != nil {
-			t.Fatalf("Test[%v]: Error while getting tree root value in epoch %v: %v", i, epoch, err)
-		}
-
-		if got, want := hmac.Equal(expectedRoot, calculatedRoot), true; got != want {
-			t.Error("Test[%v]: FromNeighbors(_, %v, _)=%v, wamt %v", i, test.leaf.hindex, got, want)
+		got, want := tmp.Root(0), m.Root(test.epoch)
+		if ok := hmac.Equal(got, want); !ok {
+			t.Error("%v: FromNeighbors().Root=%v, want %v", i, got, want)
 		}
 	}
 }

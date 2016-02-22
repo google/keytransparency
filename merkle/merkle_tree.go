@@ -102,38 +102,18 @@ func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error)
 
 	// Create a partial tree.
 	m := New()
-	r, err := m.addRoot(0)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add the leaf node to the partial tree.
-	var leafData []byte
-	var isLeaf bool
-	if data == nil {
-		// In this case, an empty branch is the leaf node.
-		leafData = cm.EmptyLeafValue(bindex[:len(neighbors)])
-		isLeaf = false
-	} else {
-		leafData = data
-		isLeaf = true
-	}
-	if err := r.addLeaf(leafData, 0, bindex, 0, 0, isLeaf); err != nil {
+	if err := m.AddLeaf(data, 0, index, 0); err != nil {
 		return nil, err
 	}
 
 	// Add all neighbors to the partial tree.
 	for i, v := range neighbors {
-		if got, want := len(v), cm.HashSize; got != want {
-			return nil, grpc.Errorf(codes.InvalidArgument, "len(v) = %v, want %v", got, want)
-		}
-
 		// index is processed starting from len(neighbors)-1 down to 0.
 		indexBit := len(neighbors) - 1 - i
 		b := uint8(bindex[indexBit])
 		bindexNeighbor := fmt.Sprintf("%v%v", bindex[:indexBit], string(neighbor(b)))
 		// Add a neighbor. In this case, index is not of a full length.
-		if err := r.addLeaf(v, 0, bindexNeighbor, 0, 0, false); err != nil {
+		if err := m.current.addLeaf(v, 0, bindexNeighbor, 0, 0, false); err != nil {
 			return nil, err
 		}
 	}
@@ -161,7 +141,9 @@ func (t *Tree) AddLeaf(data []byte, epoch int64, index []byte, commitmentTS int6
 	if err != nil {
 		return err
 	}
-	return r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
+	err = r.addLeaf(data, epoch, bitString(index), commitmentTS, 0, true)
+	log.Printf("AddLeaf(-, %v, %v, %v): %v", epoch, index, commitmentTS, t.Root(epoch))
+	return err
 }
 
 // Write leaf saves data at the "next" epoch?
@@ -175,6 +157,14 @@ func (t *Tree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
 	defer t.mu.Unlock()
 	_, leaf := t.current.auditPath(bitString(index), 0)
 	return leaf.data, nil
+}
+
+func (t *Tree) Neighbors(ctx context.Context, index []byte) ([][]byte, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	bindex := bitString(index)
+	neighbors, _ := t.current.auditPath(bindex, 0)
+	return neighbors, nil
 }
 
 // AuditPath returns a slice containing each node's neighbor from the bottom to
@@ -202,16 +192,16 @@ func (t *Tree) AuditPath(epoch int64, index []byte) ([][]byte, int64, error) {
 func (t *Tree) ReadRoot(ctx context.Context) ([]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return t.Root(t.current.epoch)
+	return t.Root(t.current.epoch), nil
 }
 
-// GetRootValue returns the value of the root node in a specific epoch.
-func (t *Tree) Root(epoch int64) ([]byte, error) {
+// Root returns the value of the root node in a specific epoch.
+func (t *Tree) Root(epoch int64) []byte {
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Epoch %v does not exist", epoch)
+		return make([]byte, 0)
 	}
-	return r.value, nil
+	return r.value
 }
 
 // addRoot will advance the current epoch by copying the previous root.
