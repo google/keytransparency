@@ -19,6 +19,7 @@
 // the location of each node.  Each branch expresses the longest shared prefix
 // between child nodes. The depth of the tree is the longest shared prefix between
 // all nodes.
+
 package sparse
 
 import (

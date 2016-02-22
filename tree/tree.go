@@ -12,13 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package merkle implements a time series prefix tree. Each epoch has its own
-// prefix tree. By default, each new epoch is equal to the contents of the
-// previous epoch.
-// The prefix tree is a binary tree where the path through the tree expresses
-// the location of each node.  Each branch expresses the longest shared prefix
-// between child nodes. The depth of the tree is the longest shared prefix between
-// all nodes.
+// package tree contains functions for manipulating generic tree representations.
 package tree
 
 import (
