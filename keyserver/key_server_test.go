@@ -17,19 +17,23 @@
 package keyserver
 
 import (
+	"bytes"
 	"encoding/hex"
+	"log"
 	"math"
 	"net"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/builder"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/memstore"
 	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/signer"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -136,6 +140,7 @@ type Env struct {
 	ctx       context.Context
 	builder   *builder.Builder
 	fakeStore *Fake_Local
+	signer    *signer.Signer
 }
 
 // NewEnv sets up common resources for tests.
@@ -154,12 +159,14 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	db := memstore.New(ctx)
-	queue := memdb.New()
-	store := &Fake_Local{}
-	b := builder.New(db, store)
+	store := memstore.New(ctx)
+	db := memdb.New()
+	local := &Fake_Local{}
+	b := builder.New(store, local)
 	b.ListenForEpochUpdates()
-	server := New(queue, queue, db, b.Tree(), b)
+	appender := chain.New()
+	server := New(db, db, store, b.Tree(), b, appender)
+	// Fake an initial empty tree head.
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
@@ -169,15 +176,15 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
-
-	return &Env{s, server, cc, client, ctx, b, store}
+	signer, _ := signer.New(db, b.Tree(), entry.New(), appender, store)
+	signer.CreateEpoch()
+	return &Env{s, server, cc, client, ctx, b, local, signer}
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
 	env.conn.Close()
 	env.s.Stop()
-	env.builder.Close()
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {
@@ -194,36 +201,11 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		return
 	}
 
-	env.mockSigner(t)
-}
-
-// Mock signer: create new epoch and store the signed epoch head in the fake
-// local storage.
-func (env *Env) mockSigner(t *testing.T) {
-	lastCommitmentTS := int64(1)
-	epochHead, err := env.builder.CreateEpoch(lastCommitmentTS, true)
-	if err != nil {
-		t.Fatalf("Cannot create epoch: %v", err)
-	}
-	epochHeadData, err := proto.Marshal(epochHead)
-	if err != nil {
-		t.Fatalf("Unexpected epoch head marshaling error: %v", err)
-	}
-	signedEpochHead := &ctmap.SignedEpochHead{
-		EpochHead: epochHeadData,
-		// TODO: fill signatures.
-	}
-	info := &corepb.EpochInfo{
-		SignedEpochHead:         signedEpochHead,
-		LastCommitmentTimestamp: lastCommitmentTS,
-	}
-	// Store in fake local storage.
-	env.fakeStore.WriteEpochInfo(nil, 0, info)
+	env.signer.Sequence()
+	env.signer.CreateEpoch()
 }
 
 func TestCreateKey(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -231,8 +213,6 @@ func TestCreateKey(t *testing.T) {
 }
 
 func TestProofOfAbsence(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -270,12 +250,15 @@ func getNonExistantUser(t *testing.T, env *Env) {
 	if err != nil {
 		t.Fatalf("Unexpected getting epoch head error: %v", err)
 	}
-	expectedRoot := epochHead.Root
 
 	// Verify merkle tree neighbors.
 	var entryData []byte
 	var index []byte
 	if res.Entry != nil {
+		// Entry should contain a value other than the one requested.
+		if got, want := res.Index, res.Entry.Index; bytes.Equal(got, want) {
+			t.Errorf("index: %v, don't want %v", got, want)
+		}
 		entryData, err = proto.Marshal(res.Entry)
 		if err != nil {
 			t.Fatalf("Unexpected entry marshalling error: %v.", err)
@@ -286,16 +269,14 @@ func getNonExistantUser(t *testing.T, env *Env) {
 		index = res.Index
 	}
 
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, index, entryData); err != nil {
-		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
+	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index, entryData); err != nil {
+		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, entryData, err)
 	}
 
 	// TODO(cesarghali): verify IndexProof.
 }
 
 func TestGetValidUser(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -303,10 +284,20 @@ func TestGetValidUser(t *testing.T) {
 
 	ctx := context.Background() // Unauthenticated request.
 	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: primaryUserEmail})
+	if err != nil {
+		t.Fatalf("GetEntry(%v).Entry=%v", primaryUserEmail, err)
+	}
+	if res.Entry == nil {
+		t.Fatalf("GetEntry(%v).Entry=nil", primaryUserEmail)
+	}
+	if got, want, equal := res.Entry.Index, res.Index, bytes.Equal(res.Entry.Index, res.Index); !equal {
+		t.Fatalf("GetEntry.Index = %v, want %v", got, want)
+	}
 
 	if err != nil {
 		t.Fatalf("GetEntry failed: %v", err)
 	}
+	log.Printf("response: %v", proto.MarshalTextString(res))
 
 	// Unmarshaling the resulted profile.
 	p := new(v2pb.Profile)
@@ -315,7 +306,7 @@ func TestGetValidUser(t *testing.T) {
 	}
 
 	// Verify profile commitment.
-	if err := common.VerifyCommitment(primaryUserEmail, res.CommitmentKey, res.Profile, res.Entry.ProfileCommitment); err != nil {
+	if err := common.VerifyCommitment(primaryUserEmail, res.CommitmentKey, res.Profile, res.GetEntry().ProfileCommitment); err != nil {
 		t.Errorf("GetEntry profile commitment verification failed: %v", err)
 	}
 
@@ -360,8 +351,6 @@ func getErr(ret interface{}, err error) error {
 }
 
 func TestUnimplemented(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -383,8 +372,6 @@ func TestUnimplemented(t *testing.T) {
 
 // Verify that users cannot alter keys for other users.
 func TestUnauthenticated(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
 	defer env.Close()
 
@@ -434,6 +421,8 @@ func (s *Fake_Local) WriteUpdate(ctx context.Context, entry *corepb.EntryStorage
 }
 
 func (s *Fake_Local) WriteEpochInfo(ctx context.Context, primaryKey int64, epochInfo *corepb.EpochInfo) error {
+	head, _ := common.EpochHead(epochInfo.SignedEpochHead)
+	log.Printf("local.WriteEpochInfo(%v, %v): %v", primaryKey, epochInfo, head.Root)
 	s.info = epochInfo
 	return nil
 }

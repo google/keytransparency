@@ -36,31 +36,44 @@ type Signer struct {
 	sequencer db.Sequencer
 	mutator   mutator.Mutator
 	tree      tree.Sparse
-	sth       appender.Appender
-
-	// ticker ticks everytime a new epoch should be created.
-	ticker *time.Ticker
+	appender  appender.Appender
+	// Legacy
+	store db.Writer
 }
 
 // New creates a new instance of the signer.
-func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appender appender.Appender, seconds uint) (*Signer, error) {
+func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appender appender.Appender, store db.Writer) (*Signer, error) {
 	// Create a signer instance.
 	s := &Signer{
 		sequencer: sequencer,
 		mutator:   mutator,
 		tree:      tree,
-		sth:       appender,
-		ticker:    time.NewTicker(time.Second * time.Duration(seconds)),
+		appender:  appender,
+		store:     store,
 	}
-	go s.createEpoch()
-	go s.sequence()
+
 	return s, nil
 }
 
-func (s *Signer) sequence() {
-	for m := range s.sequencer.Queue() {
-		s.sequenceOne(m.Index, m.Mutation)
-	}
+func (s *Signer) StartSequencing() {
+	go func() {
+		for m := range s.sequencer.Queue() {
+			s.sequenceOne(m.Index, m.Mutation)
+		}
+	}()
+}
+
+func (s *Signer) Sequence() {
+	m := <-s.sequencer.Queue()
+	s.sequenceOne(m.Index, m.Mutation)
+}
+
+func (s *Signer) StartSigning(interval time.Duration) {
+	go func() {
+		for _ = range time.NewTicker(interval).C {
+			s.CreateEpoch()
+		}
+	}()
 }
 
 func (s *Signer) sequenceOne(index, mutation []byte) {
@@ -68,59 +81,66 @@ func (s *Signer) sequenceOne(index, mutation []byte) {
 	ctx := context.Background()
 	v, err := s.tree.ReadLeaf(ctx, index)
 	if err != nil {
+		log.Printf("ReadLeaf(%v)=%v", index, err)
 		return
 	}
 
 	newV, err := s.mutator.Mutate(v, mutation)
 	if err != nil {
+		log.Printf("Mutate(%v, %v)=%v", v, mutation, err)
 		return
 	}
 
 	// Save new value and update tree.
+	log.Printf("WriteLeaf(%v, %v)", index, newV)
 	if err := s.tree.WriteLeaf(ctx, index, newV); err != nil {
+		log.Printf("WriteLeaf(%v, %v)=%v", index, newV, err)
 		return
 	}
+
+	// TODO: Remove when advancer is done
+
+	log.Printf("Sequenced %v:%v", index, mutation)
 }
 
-// createEpoch watches the ticker channel and triggers epoch creation once the
-// ticker ticks.
-func (s *Signer) createEpoch() {
-	for _ = range s.ticker.C {
-		ctx := context.Background()
-		timestamp := time.Now().Unix()
-		root, err := s.tree.ReadRoot(ctx)
-		if err != nil {
-			log.Fatalf("Failed to create epoch: %v", err)
-		}
-
-		prevHash, err := s.sth.GetHLast(ctx)
-		if err != nil {
-			log.Fatalf("Failed to get previous epoch: %v", err)
-		}
-		headData, err := proto.Marshal(&ctmap.EpochHead{
-			// TODO: set Realm
-			IssueTime:    &tspb.Timestamp{timestamp, 0},
-			PreviousHash: prevHash,
-			Epoch:        timestamp,
-			Root:         root,
-		})
-		if err != nil {
-			log.Fatalf("Failed to marshal epoch: %v", err)
-		}
-		signedEpochHead, err := proto.Marshal(&ctmap.SignedEpochHead{
-			EpochHead: headData,
-			// TODO: set Signatures
-		})
-		if err != nil {
-			log.Fatalf("Failed to marshal signed epoch: %v", err)
-		}
-		if err := s.sth.Append(ctx, signedEpochHead); err != nil {
-			log.Fatalf("Failed to write SignedHead: %v", err)
-		}
+// CreateEpoch signs the current tree head.
+func (s *Signer) CreateEpoch() {
+	ctx := context.Background()
+	timestamp := time.Now().Unix()
+	root, err := s.tree.ReadRoot(ctx)
+	if err != nil {
+		log.Fatalf("Failed to create epoch: %v", err)
 	}
+
+	prevHash, err := s.appender.GetHLast(ctx)
+	if err != nil {
+		log.Fatalf("Failed to get previous epoch: %v", err)
+	}
+	head := &ctmap.EpochHead{
+		// TODO: set Realm
+		IssueTime:    &tspb.Timestamp{timestamp, 0},
+		PreviousHash: prevHash,
+		Epoch:        timestamp,
+		Root:         root,
+	}
+	headData, err := proto.Marshal(head)
+	if err != nil {
+		log.Fatalf("Failed to marshal epoch: %v", err)
+	}
+	seh := &ctmap.SignedEpochHead{
+		EpochHead: headData,
+		// TODO: set Signatures
+	}
+	signedEpochHead, err := proto.Marshal(seh)
+	if err != nil {
+		log.Fatalf("Failed to marshal signed epoch: %v", err)
+	}
+	if err := s.appender.Append(ctx, timestamp, signedEpochHead); err != nil {
+		log.Fatalf("Failed to write SignedHead: %v", err)
+	}
+	log.Printf("Created Epoch. Root(%v)=%v", timestamp, root)
 }
 
 // Stop stops the signer and release all associated resource.
 func (s *Signer) Stop() {
-	s.ticker.Stop()
 }

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/builder"
@@ -144,7 +145,9 @@ func main() {
 	b := builder.New(store, localStore)
 	b.ListenForEpochUpdates()
 	// Create a signer.
-	signer, err := signer.New(db, b.Tree(), mutator, appender, *epochDuration)
+	signer, err := signer.New(db, b.Tree(), mutator, appender, store)
+	signer.StartSequencing()
+	signer.StartSigning(time.Duration(*epochDuration) * time.Second)
 	if err != nil {
 		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
 		return
@@ -152,7 +155,7 @@ func main() {
 	defer signer.Stop()
 	defer b.Close()
 	// Create the servers.
-	v2 := keyserver.New(db, db, store, b.Tree(), b)
+	v2 := keyserver.New(db, db, store, b.Tree(), b, appender)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 
