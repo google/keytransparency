@@ -20,7 +20,7 @@ import (
 	"crypto/hmac"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/e2e-key-server/common"
+	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/merkle"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -65,7 +65,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 	index := previous.Index
 
 	// Construct Entry.
-	commitmentKey, commitment, err := common.Commitment(userID, profileData)
+	key, commitment, err := commitments.CommitName(userID, profileData)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error generating profile commitment: %v", err)
 	}
@@ -91,7 +91,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 		UserId:            userID,
 		SignedEntryUpdate: signedEntryUpdate,
 		Profile:           profileData,
-		CommitmentKey:     commitmentKey,
+		CommitmentKey:     key,
 	}, nil
 }
 

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/e2e-key-server/common"
+	"github.com/google/e2e-key-server/db/commitments"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -106,7 +106,7 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 	}
 
 	// Verify profile nonce.
-	if err := common.VerifyCommitment(in.UserId, in.CommitmentKey, in.Profile, entry.ProfileCommitment); err != nil {
+	if err := commitments.VerifyName(in.UserId, in.CommitmentKey, in.Profile, entry.ProfileCommitment); err != nil {
 		return err
 	}
 

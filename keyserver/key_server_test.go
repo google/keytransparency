@@ -29,6 +29,7 @@ import (
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
+	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/merkle"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -296,7 +297,7 @@ func TestGetValidUser(t *testing.T) {
 	}
 
 	// Verify profile commitment.
-	if err := common.VerifyCommitment(primaryUserEmail, res.CommitmentKey, res.Profile, res.GetEntry().ProfileCommitment); err != nil {
+	if err := commitments.VerifyName(primaryUserEmail, res.CommitmentKey, res.Profile, res.GetEntry().ProfileCommitment); err != nil {
 		t.Errorf("GetEntry profile commitment verification failed: %v", err)
 	}
 

@@ -24,16 +24,18 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"golang.org/x/net/context"
+
+	cm "github.com/google/e2e-key-server/db/commitments"
 )
 
 const IndexSize = sha512.Size256
-const CommitmentSize = sha512.Size256
+const CommitmentSize = cm.Size
 
 type MemDB struct {
 	queue       chan db.Mutation
 	leaves      map[[IndexSize]byte][]byte
 	nodes       map[[IndexSize]byte][]byte
-	commitments map[[CommitmentSize]byte]db.Commitment
+	commitments map[[CommitmentSize]byte]cm.Commitment
 }
 
 // Create creates a storage object from an existing db connection.
@@ -41,7 +43,7 @@ func New() *MemDB {
 	return &MemDB{
 		queue:       make(chan db.Mutation, 100),
 		leaves:      make(map[[IndexSize]byte][]byte),
-		commitments: make(map[[CommitmentSize]byte]db.Commitment),
+		commitments: make(map[[CommitmentSize]byte]cm.Commitment),
 	}
 }
 
@@ -57,11 +59,11 @@ func (d *MemDB) Queue() <-chan db.Mutation {
 func (d *MemDB) WriteCommitment(ctx context.Context, commitment, key, value []byte) error {
 	var k [CommitmentSize]byte
 	copy(k[:], commitment[:CommitmentSize])
-	d.commitments[k] = db.Commitment{key, value}
+	d.commitments[k] = cm.Commitment{key, value}
 	return nil
 }
 
-func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (*db.Commitment, error) {
+func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (*cm.Commitment, error) {
 	var k [CommitmentSize]byte
 	copy(k[:], commitment[:CommitmentSize])
 	c, ok := d.commitments[k]

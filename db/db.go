@@ -50,18 +50,6 @@ type Sequencer interface {
 	Queue() <-chan Mutation
 }
 
-type Commitment struct {
-	// Commitment key
-	Key []byte
-	// Commitment value
-	Data []byte
-}
-
-type Committer interface {
-	WriteCommitment(ctx context.Context, commitment, key, value []byte) error
-	ReadCommitment(ctx context.Context, commitment []byte) (*Commitment, error)
-}
-
 // Reader reads values from the sparse tree.
 type MapReader interface {
 	//ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error)

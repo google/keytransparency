@@ -24,6 +24,7 @@ import (
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/db"
+	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/tree"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -35,7 +36,7 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	committer db.Committer
+	committer commitments.Committer
 	queue     db.Queuer
 	auth      auth.Authenticator
 	tree      tree.Sparse
@@ -43,7 +44,7 @@ type Server struct {
 }
 
 // Create creates a new instance of the key server.
-func New(committer db.Committer, queue db.Queuer, tree tree.Sparse, appender appender.Appender) *Server {
+func New(committer commitments.Committer, queue db.Queuer, tree tree.Sparse, appender appender.Appender) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
