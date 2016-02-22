@@ -54,10 +54,12 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close()
 
-	// Use a fake previous entry.
+	// Use a fake previous entry. Need a real previous entry.
+	index, _ := env.server.Vuf(primaryUserEmail)
 	previous := &v2pb.GetEntryResponse{
-		Index: []byte("Foo"),
+		Index: index,
 	}
+
 	updateEntryRequest, err := client.CreateUpdate(primaryUserProfile, primaryUserEmail, previous)
 	if err != nil {
 		t.Fatalf("Failed creating update: %v", err)
