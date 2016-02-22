@@ -75,7 +75,7 @@ type Commitment struct {
 
 type Committer interface {
 	WriteCommitment(ctx context.Context, commitment, key, value []byte) error
-	ReadCommitment(ctx context.Context, commitment []byte) (Commitment, error)
+	ReadCommitment(ctx context.Context, commitment []byte) (*Commitment, error)
 }
 
 // Reader reads values from the sparse tree.
