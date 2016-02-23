@@ -78,26 +78,18 @@ func (s *Signer) sequenceOne(index, mutation []byte) {
 	ctx := context.Background()
 	v, err := s.tree.ReadLeaf(ctx, index)
 	if err != nil {
-		log.Printf("ReadLeaf(%v)=%v", index, err)
 		return
 	}
 
 	newV, err := s.mutator.Mutate(v, mutation)
 	if err != nil {
-		log.Printf("Mutate(%v, %v)=%v", v, mutation, err)
 		return
 	}
 
 	// Save new value and update tree.
-	log.Printf("WriteLeaf(%v, %v)", index, newV)
 	if err := s.tree.WriteLeaf(ctx, index, newV); err != nil {
-		log.Printf("WriteLeaf(%v, %v)=%v", index, newV, err)
 		return
 	}
-
-	// TODO: Remove when advancer is done
-
-	log.Printf("Sequenced %v:%v", index, mutation)
 }
 
 // CreateEpoch signs the current tree head.
@@ -135,7 +127,6 @@ func (s *Signer) CreateEpoch() {
 	if err := s.appender.Append(ctx, timestamp, signedEpochHead); err != nil {
 		log.Fatalf("Failed to write SignedHead: %v", err)
 	}
-	log.Printf("Created Epoch. Root(%v)=%v", timestamp, root)
 }
 
 // Stop stops the signer and release all associated resource.
