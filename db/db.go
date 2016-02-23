@@ -41,13 +41,14 @@ type Queuer interface {
 type Mutation struct {
 	Index    []byte
 	Mutation []byte
+	Done     chan error // Returns nil on success. Close on sucess.
 }
 
 // Sequencer applies mutations to the persistant map.
 type Sequencer interface {
 	// The Sequencer object will want to subscribe to the mutation queue.
 	// This may be internal to the sequencer implementation?
-	Queue() <-chan Mutation
+	Queue() <-chan *Mutation
 }
 
 // Reader reads values from the sparse tree.

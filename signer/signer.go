@@ -55,7 +55,8 @@ func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appe
 func (s *Signer) StartSequencing() {
 	go func() {
 		for m := range s.sequencer.Queue() {
-			s.sequenceOne(m.Index, m.Mutation)
+			err := s.sequenceOne(m.Index, m.Mutation)
+			m.Done <- err
 		}
 	}()
 }
@@ -73,23 +74,24 @@ func (s *Signer) StartSigning(interval time.Duration) {
 	}()
 }
 
-func (s *Signer) sequenceOne(index, mutation []byte) {
+func (s *Signer) sequenceOne(index, mutation []byte) error {
 	// Get current value.
 	ctx := context.Background()
 	v, err := s.tree.ReadLeaf(ctx, index)
 	if err != nil {
-		return
+		return err
 	}
 
 	newV, err := s.mutator.Mutate(v, mutation)
 	if err != nil {
-		return
+		return err
 	}
 
 	// Save new value and update tree.
 	if err := s.tree.WriteLeaf(ctx, index, newV); err != nil {
-		return
+		return err
 	}
+	return nil
 }
 
 // CreateEpoch signs the current tree head.

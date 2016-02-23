@@ -32,7 +32,7 @@ const IndexSize = sha512.Size256
 const CommitmentSize = cm.Size
 
 type MemDB struct {
-	queue       chan db.Mutation
+	queue       chan *db.Mutation
 	leaves      map[[IndexSize]byte][]byte
 	nodes       map[[IndexSize]byte][]byte
 	commitments map[[CommitmentSize]byte]cm.Commitment
@@ -41,18 +41,18 @@ type MemDB struct {
 // Create creates a storage object from an existing db connection.
 func New() *MemDB {
 	return &MemDB{
-		queue:       make(chan db.Mutation, 100),
+		queue:       make(chan *db.Mutation, 100),
 		leaves:      make(map[[IndexSize]byte][]byte),
 		commitments: make(map[[CommitmentSize]byte]cm.Commitment),
 	}
 }
 
 func (d *MemDB) QueueMutation(ctx context.Context, index, mutation []byte) error {
-	d.queue <- db.Mutation{index, mutation}
+	d.queue <- &db.Mutation{index, mutation, make(chan error)}
 	return nil
 }
 
-func (d *MemDB) Queue() <-chan db.Mutation {
+func (d *MemDB) Queue() <-chan *db.Mutation {
 	return d.queue
 }
 
