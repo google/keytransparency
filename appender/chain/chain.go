@@ -48,7 +48,8 @@ func (c *Chain) GetHLast(ctx context.Context) ([]byte, error) {
 	if len(c.items) == 0 {
 		return []byte(""), nil
 	}
-	return h.Sum(c.items[len(c.items)-1]), nil
+	h.Write(c.items[len(c.items)-1])
+	return h.Sum(nil), nil
 }
 
 func (c *Chain) GetByIndex(ctx context.Context, index int64) ([]byte, error) {
