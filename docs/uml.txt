@@ -1,11 +1,13 @@
 @startuml
-[Web] -> [FE]
-[Signer]
+title Submit mutation to key server
 
-() "Reader"
+() "User"
+() "Tree"
 () "Queuer"
 () "Sequencer"
 () "Appender"
+[Signer]
+[FE]
 
 database "Spanner" {
 folder "Map" {
@@ -20,25 +22,49 @@ folder "Privacy" {
 }
 }
 
-FE --> Queuer
-FE <-- Reader
-FE <--> Committer
-Signer --> Sequencer
-Signer --> Appender
+User -> FE 		: 1. UpdateEntry(email, mutation)
+FE --> Committer	: 2. Save Commitment
+Committer -> Commitments
+FE --> Queuer 		: 3. Queue Mutation
+Queuer --> Queue
+Queuer -> Mutations
+Queue --> Sequencer	: 4. DB Callback
 
-Appender <--> SignedTreeHeads
+Sequencer --> Signer	: 5. Go Channel
+Signer <--> Tree	: 6. WriteLeaf
+Tree --> Leafs
+Tree --> Nodes
+Signer --> Appender 	: 7. CreateEpoch
+Appender --> SignedTreeHeads
+@enduml
 
-Queuer -> [Queue]
-Queuer -> [Mutations]
+@startuml
+title Retrieve Merkle Tree Proof
 
-Sequencer <- [Queue]
-Sequencer -> [Leafs]
-Sequencer -> [Nodes]
+() "User"
+() "Tree"
+() "Appender"
+[FE]
 
-Reader <- [Leafs]
-Reader <- [Nodes]
-Reader <- Appender
+database "Spanner" {
+folder "Map" {
+	[Leafs]
+	[Nodes]
+	[SignedTreeHeads]
+	}
+folder "Privacy" {
+	[Commitments]
+}
+}
 
-Committer <- [Commitments]
-Committer -> [Commitments]
+User -> FE		: 1. GetEntry(email, timestamp)
+FE --> Tree		: 2. GetLeaf
+Tree <- Leafs
+FE --> Tree		: 2. GetNeighbors
+Tree <- Nodes
+FE --> Committer		: 3. GetCommitment
+Committer <- Commitments
+FE --> Appender
+Appender <- SignedTreeHeads
+
 @enduml

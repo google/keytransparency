@@ -1,64 +1,46 @@
 @startuml
-interface Committer 
+interface Committer
 interface Queuer
-interface Authenticator 
-interface Mapper 
-interface SparseTree 
-interface SparseTreeHist
-interface Reader 
-interface Writer
-interface Appender 
-interface RW 
 interface Sequencer
-
-RW o-- Reader
-RW o-- Writer
+interface Mapper
+interface SparseTree
+interface Appender
 
 KeyServer o-- Committer
 KeyServer o-- Queuer
-KeyServer o-- Authenticator
-KeyServer o-- Mapper
+KeyServer o-- Mapper : Verify
 KeyServer o-- SparseTree
-KeyServer o-- Reader
-KeyServer o-- Appender : Reads STHs
+KeyServer o-- Appender
 
 Signer o-- Sequencer
 Signer o-- Appender
-Signer o-- Mapper
+Signer o-- Mapper : Mutate
 Signer o-- SparseTree
+Signer : Sequence(index, mutation)
+Signer : CreateEpoch()
 
-SparseTreeHist <|-- SparseTree
-OAuth <|-- Authenticator
-HashChain <|-- Appender
-CTLog <|-- Appender
-Replacer <|-- Mapper
-MemTree <|-- SparseTree
-SpannerTree <|-- SparseTree
+'SparseTreeHist <|-- SparseTree
+'HashChain <|-- Appender
+'CTLog <|-- Appender
 
-SparseTree : WriteLeaf
-SparseTree : ReadLeaf
-SparseTree : ReadRoot
+SparseTree : ReadRoot() []byte
+SparseTree : ReadLeaf(index []byte) []byte
+SparseTree : WriteLeaf(index, leaf []byte)
+SparseTree : Neighbors(index []byte) [][]byte
 
-SparseTreeHist : ReadLeafAt
+'MemDB <|-- Queuer
+'MemDB <|-- Sequencer
+'MemDB <|-- Committer
+'MemDB : QueueMutation(index, mutation)
+'MemDB : Queue() <- {Index, Mutation, Done}
+'MemDB : WriteCommitment(commitment, key, value)
+'MemDB : ReadCommitment(commitment) {key, value}
 
-MemDB <|-- Queuer
-MemDB <|-- Sequencer
-MemDB <|-- RW
-MemDB <|-- Committer
-MemDB : QueueMutation()
-MemDB : Queue()
-MemDB : WriteCommitment()
-MemDB : ReadCommitment()
-MemDB : WriteLeaf
-MemDB : ReadLeaf
-MemDB : WriteNodes
-MemDB : ReadNodes
+KeyServer : GetEntry(email)
+KeyServer : UpdateEntry(email, mutation)
 
-KeyServer : GetEntry()
-KeyServer : UpdateEntry()
-
-Committer : WriteCommitment(commitment, key, data)
-Committer : ReadCommitment(commitment)
+Committer : WriteCommitment(commitment, key, value)
+Committer : ReadCommitment(commitment) {key, value}
 
 Queuer : QueueMutation(index, mutation)
 
@@ -67,12 +49,9 @@ Mapper : Mutate(value, mutation)
 
 Sequencer : Queue() <-chan Mutation
 
-Reader : ReadPath
-Reader : ReadLeaf
-
-Appender : Append(timestamp int64, data []byte) error
-Appender : GetHLast() ([]byte, error)
-Appender : GetItem(index int64) ([]byte, error)
-Appender : GetByTimeStamp(timestamp int64) ([]byte, error)
+Appender : Append(timestamp int64, data []byte)
+Appender : GetByIndex(index int64) []byte
+Appender : GetByTimeStamp(timestamp int64) []byte
+Appender : Latest() int64
 
 @enduml
