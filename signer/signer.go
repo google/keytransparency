@@ -25,7 +25,7 @@ import (
 	"golang.org/x/net/context"
 
 	proto "github.com/golang/protobuf/proto"
-	tspb "github.com/google/e2e-key-server/proto/google_protobuf"
+	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
