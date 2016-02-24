@@ -25,11 +25,6 @@ const (
 	ChannelSize = 100
 )
 
-type Mapper interface {
-	MapReader
-	MapWriter
-}
-
 // Queuer submits new mutations to be processed.
 type Queuer interface {
 	// QueueMutation submits a mutation request for inclusion in the next
@@ -49,20 +44,4 @@ type Sequencer interface {
 	// The Sequencer object will want to subscribe to the mutation queue.
 	// This may be internal to the sequencer implementation?
 	Queue() <-chan *Mutation
-}
-
-// Reader reads values from the sparse tree.
-type MapReader interface {
-	//ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error)
-	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
-}
-
-type Node struct {
-	Index []byte
-	Value []byte
-}
-
-type MapWriter interface {
-	//WriteNodes(ctx context.Context, nodes []Node) error
-	WriteLeaf(ctx context.Context, index, leaf []byte) error
 }

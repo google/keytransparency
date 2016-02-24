@@ -28,13 +28,10 @@ import (
 	cm "github.com/google/e2e-key-server/db/commitments"
 )
 
-const IndexSize = sha512.Size256
 const CommitmentSize = cm.Size
 
 type MemDB struct {
 	queue       chan *db.Mutation
-	leaves      map[[IndexSize]byte][]byte
-	nodes       map[[IndexSize]byte][]byte
 	commitments map[[CommitmentSize]byte]cm.Commitment
 }
 
@@ -42,7 +39,6 @@ type MemDB struct {
 func New() *MemDB {
 	return &MemDB{
 		queue:       make(chan *db.Mutation, 100),
-		leaves:      make(map[[IndexSize]byte][]byte),
 		commitments: make(map[[CommitmentSize]byte]cm.Commitment),
 	}
 }
@@ -71,33 +67,4 @@ func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (*cm.Comm
 		return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", commitment)
 	}
 	return &c, nil
-}
-
-func (d *MemDB) WriteLeaf(ctx context.Context, index, leaf []byte) error {
-	var k [IndexSize]byte
-	copy(k[:], index[:IndexSize])
-	d.leaves[k] = leaf
-	return nil
-}
-func (d *MemDB) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
-	var k [IndexSize]byte
-	copy(k[:], index[:IndexSize])
-	return d.leaves[k], nil
-}
-func (d *MemDB) WriteNodes(ctx context.Context, nodes []db.Node) error {
-	for _, n := range nodes {
-		var k [IndexSize]byte
-		copy(k[:], n.Index[:IndexSize])
-		d.nodes[k] = n.Value
-	}
-	return nil
-}
-func (d *MemDB) ReadNodes(ctx context.Context, indexes [][]byte) ([][]byte, error) {
-	values := make([][]byte, len(indexes))
-	for i, index := range indexes {
-		var k [IndexSize]byte
-		copy(k[:], index[:IndexSize])
-		values[i] = d.nodes[k]
-	}
-	return values, nil
 }
