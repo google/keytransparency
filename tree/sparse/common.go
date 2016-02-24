@@ -25,6 +25,8 @@ package sparse
 import (
 	"crypto/sha512"
 	"encoding/binary"
+
+	"github.com/google/e2e-key-server/tree"
 )
 
 const (
@@ -71,4 +73,26 @@ func HashIntermediateNode(left []byte, right []byte) []byte {
 // index are fixed-length.
 func EmptyLeafValue(prefix string) []byte {
 	return HashLeaf(EmptyIdentifier, len(prefix), []byte(prefix), nil)
+}
+
+// NodeValues computes the new values for nodes up the tree.
+func NodeValues(bindex string, leafHash []byte, nbrValues [][]byte) [][]byte {
+	levels := len(bindex) + 1
+	steps := len(bindex)
+	nodeValues := make([][]byte, levels)
+	nodeValues[0] = leafHash
+	// assert len(nbrValues) == levels - 1
+	for i := 0; i < steps; i++ {
+		// Is the last node 0 or 1?
+		var left, right []byte
+		if bindex[steps-i-1] == tree.Zero {
+			left = nodeValues[i]
+			right = nbrValues[i]
+		} else {
+			left = nbrValues[i]
+			right = nodeValues[i]
+		}
+		nodeValues[i+1] = HashIntermediateNode(left, right)
+	}
+	return nodeValues
 }
