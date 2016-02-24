@@ -1,24 +1,35 @@
 package memtree
 
 import (
-	"github.com/google/e2e-key-server/db"
+	"crypto/sha512"
 
 	"golang.org/x/net/context"
 )
 
+const IndexSize = sha512.Size256
+
 type MemTree struct {
-	db db.Mapper
+	leaves map[[IndexSize]byte][]byte
+	nodes  map[[IndexSize]byte][]byte
 }
 
-func New(db db.Mapper) *MemTree {
-	return &MemTree{db}
+func New() *MemTree {
+	return &MemTree{
+		leaves: make(map[[IndexSize]byte][]byte),
+		nodes:  make(map[[IndexSize]byte][]byte),
+	}
 }
 
 func (m *MemTree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
-	return m.db.ReadLeaf(ctx, index)
+	var k [IndexSize]byte
+	copy(k[:], index[:IndexSize])
+	return m.leaves[k], nil
 }
 func (m *MemTree) WriteLeaf(ctx context.Context, index, leaf []byte) error {
-	return m.db.WriteLeaf(ctx, index, leaf)
+	var k [IndexSize]byte
+	copy(k[:], index[:IndexSize])
+	m.leaves[k] = leaf
+	return nil
 }
 func (m *MemTree) ReadRoot(ctx context.Context) ([]byte, error) {
 	return []byte(""), nil
