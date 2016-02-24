@@ -17,8 +17,6 @@
 package memdb
 
 import (
-	"crypto/sha512"
-
 	"github.com/google/e2e-key-server/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
