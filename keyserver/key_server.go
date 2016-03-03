@@ -31,7 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 // Server holds internal state for the key server.
@@ -57,7 +57,7 @@ func New(committer commitments.Committer, queue db.Queuer, tree tree.Sparse, app
 // GetEntry returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
-func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.GetEntryResponse, error) {
+func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
 	index, err := s.Vuf(in.UserId)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
@@ -79,7 +79,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 	}
 
 	// result contains the returned GetEntryResponse.
-	result := &v2pb.GetEntryResponse{
+	result := &pb.GetEntryResponse{
 		Index:            index,
 		SignedEpochHeads: []*ctmap.SignedEpochHead{&seh},
 		// TODO(cesarghali): Fill IndexProof.
@@ -119,13 +119,13 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
-func (s *Server) ListEntryHistory(ctx context.Context, in *v2pb.ListEntryHistoryRequest) (*v2pb.ListEntryHistoryResponse, error) {
+func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
-func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (*v2pb.UpdateEntryResponse, error) {
+func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
 	if err := s.validateUpdateEntryRequest(ctx, in); err != nil {
 		return nil, err
 	}
@@ -154,21 +154,21 @@ func (s *Server) UpdateEntry(ctx context.Context, in *v2pb.UpdateEntryRequest) (
 		return nil, err
 	}
 
-	return &v2pb.UpdateEntryResponse{}, nil
+	return &pb.UpdateEntryResponse{}, nil
 	// TODO: return proof if the entry has been added in an epoch alredy.
 }
 
 // List the Signed Epoch Heads, from epoch to epoch.
-func (s *Server) ListSEH(ctx context.Context, in *v2pb.ListSEHRequest) (*v2pb.ListSEHResponse, error) {
+func (s *Server) ListSEH(ctx context.Context, in *pb.ListSEHRequest) (*pb.ListSEHResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
 // List the SignedEntryUpdates by update number.
-func (s *Server) ListUpdate(ctx context.Context, in *v2pb.ListUpdateRequest) (*v2pb.ListUpdateResponse, error) {
+func (s *Server) ListUpdate(ctx context.Context, in *pb.ListUpdateRequest) (*pb.ListUpdateResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
 // ListSteps combines SEH and SignedEntryUpdates into single list.
-func (s *Server) ListSteps(ctx context.Context, in *v2pb.ListStepsRequest) (*v2pb.ListStepsResponse, error) {
+func (s *Server) ListSteps(ctx context.Context, in *pb.ListStepsRequest) (*pb.ListStepsResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }

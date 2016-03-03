@@ -33,9 +33,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	typespb "github.com/google/e2e-key-server/proto/security_protobuf"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	typespb "github.com/google/e2e-key-server/proto/security_protobuf"
 )
 
 const (
@@ -219,10 +220,10 @@ func GetEntryV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 	// Set the API handler to call the proxy GetEntry.
 	info.H = rInfo.Handler
 	// Create a new GetEntryRequest to be passed to the API handler.
-	info.Arg = new(v2pb.GetEntryRequest)
+	info.Arg = new(pb.GetEntryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.GetEntryRequest)
+		in := (*arg).(*pb.GetEntryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -260,7 +261,7 @@ func GetEntryV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 // will be returned if proxy.GetEntry returns an error.
 func GetEntryV1_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v1pb.E2EKeyProxyServer).GetEntry(ctx, arg.(*v2pb.GetEntryRequest))
+	resp, err := srv.(v1pb.E2EKeyProxyServer).GetEntry(ctx, arg.(*pb.GetEntryRequest))
 	return &resp, err
 }
 
@@ -318,10 +319,10 @@ func GetEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 	// Set the API handler to call the keyserver GetEntry.
 	info.H = rInfo.Handler
 	// Create a new GetEntryRequest to be passed to the API handler.
-	info.Arg = new(v2pb.GetEntryRequest)
+	info.Arg = new(pb.GetEntryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.GetEntryRequest)
+		in := (*arg).(*pb.GetEntryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -359,7 +360,7 @@ func GetEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 // will be returned if keyserver.GetEntry returns an error.
 func GetEntryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).GetEntry(ctx, arg.(*v2pb.GetEntryRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).GetEntry(ctx, arg.(*pb.GetEntryRequest))
 	return &resp, err
 }
 
@@ -370,10 +371,10 @@ func ListEntryHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handler
 	// Set the API handler to call the keyserver ListEntryHistory.
 	info.H = rInfo.Handler
 	// Create a new ListEntryHistoryRequest to be passed to the API handler.
-	info.Arg = new(v2pb.ListEntryHistoryRequest)
+	info.Arg = new(pb.ListEntryHistoryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.ListEntryHistoryRequest)
+		in := (*arg).(*pb.ListEntryHistoryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -415,7 +416,7 @@ func ListEntryHistoryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handler
 // will be returned if keyserver.ListEntryHistory returns an error.
 func ListEntryHistoryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListEntryHistory(ctx, arg.(*v2pb.ListEntryHistoryRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListEntryHistory(ctx, arg.(*pb.ListEntryHistoryRequest))
 	return &resp, err
 }
 
@@ -426,10 +427,10 @@ func UpdateEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Han
 	// Set the API handler to call the keyserver UpdateEntry.
 	info.H = rInfo.Handler
 	// Create a new UpdateEntryRequest to be passed to the API handler.
-	info.Arg = new(v2pb.UpdateEntryRequest)
+	info.Arg = new(pb.UpdateEntryRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.UpdateEntryRequest)
+		in := (*arg).(*pb.UpdateEntryRequest)
 		// Parse User ID.
 		userId, err := parseURLVariable(r, handlers.UserIdKeyword)
 		if err != nil {
@@ -447,7 +448,7 @@ func UpdateEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Han
 // will be returned if keyserver.UpdateEntry returns an error.
 func UpdateEntryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).UpdateEntry(ctx, arg.(*v2pb.UpdateEntryRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).UpdateEntry(ctx, arg.(*pb.UpdateEntryRequest))
 	return &resp, err
 }
 
@@ -458,10 +459,10 @@ func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 	// Set the API handler to call the keyserver ListSEH.
 	info.H = rInfo.Handler
 	// Create a new ListSEHRequest to be passed to the API handler.
-	info.Arg = new(v2pb.ListSEHRequest)
+	info.Arg = new(pb.ListSEHRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.ListSEHRequest)
+		in := (*arg).(*pb.ListSEHRequest)
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
@@ -497,7 +498,7 @@ func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handler
 // will be returned if keyserver.ListSEH returns an error.
 func ListSEHV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSEH(ctx, arg.(*v2pb.ListSEHRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSEH(ctx, arg.(*pb.ListSEHRequest))
 	return &resp, err
 }
 
@@ -508,10 +509,10 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 	// Set the API handler to call the keyserver ListUpdate.
 	info.H = rInfo.Handler
 	// Create a new ListUpdateRequest to be passed to the API handler.
-	info.Arg = new(v2pb.ListUpdateRequest)
+	info.Arg = new(pb.ListUpdateRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.ListUpdateRequest)
+		in := (*arg).(*pb.ListUpdateRequest)
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
@@ -547,7 +548,7 @@ func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Hand
 // will be returned if keyserver.ListUpdate returns an error.
 func ListUpdateV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListUpdate(ctx, arg.(*v2pb.ListUpdateRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListUpdate(ctx, arg.(*pb.ListUpdateRequest))
 	return &resp, err
 }
 
@@ -558,10 +559,10 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 	// Set the API handler to call the keyserver ListSteps.
 	info.H = rInfo.Handler
 	// Create a new ListStepsRequest to be passed to the API handler.
-	info.Arg = new(v2pb.ListStepsRequest)
+	info.Arg = new(pb.ListStepsRequest)
 	// Create a new function that parses URL parameters.
 	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*v2pb.ListStepsRequest)
+		in := (*arg).(*pb.ListStepsRequest)
 
 		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
 		if err != nil {
@@ -597,7 +598,7 @@ func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handl
 // will be returned if keyserver.ListSteps returns an error.
 func ListStepsV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSteps(ctx, arg.(*v2pb.ListStepsRequest))
+	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSteps(ctx, arg.(*pb.ListStepsRequest))
 	return &resp, err
 }
 

@@ -19,7 +19,7 @@ import (
 
 	"github.com/google/e2e-key-server/client"
 
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 func TestValidateEmail(t *testing.T) {
@@ -56,7 +56,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 
 	// Use a fake previous entry. Need a real previous entry.
 	index, _ := env.server.Vuf(primaryUserEmail)
-	previous := &v2pb.GetEntryResponse{
+	previous := &pb.GetEntryResponse{
 		Index: index,
 	}
 

@@ -27,8 +27,8 @@ import (
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/gorilla/mux"
 
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 	context "golang.org/x/net/context"
 )
 
@@ -137,8 +137,8 @@ func TestGetEntryV1_InitiateHandlerInfo(t *testing.T) {
 
 		info := GetEntryV1_InitializeHandlerInfo(rInfo)
 
-		if _, ok := info.Arg.(*v2pb.GetEntryRequest); !ok {
-			t.Errorf("Test[%v]: info.Arg is not of type v2pb.GetEntryRequest", i)
+		if _, ok := info.Arg.(*pb.GetEntryRequest); !ok {
+			t.Errorf("Test[%v]: info.Arg is not of type pb.GetEntryRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
@@ -159,13 +159,13 @@ func TestGetEntryV1_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.GetEntryRequest).UserId, test.userId; got != want {
+		if got, want := info.Arg.(*pb.GetEntryRequest).UserId, test.userId; got != want {
 			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.GetEntryRequest).AppId, test.appId; got != want {
+		if got, want := info.Arg.(*pb.GetEntryRequest).AppId, test.appId; got != want {
 			t.Errorf("Test[%v]: AppId = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.GetEntryRequest).Epoch, test.epoch; got != want {
+		if got, want := info.Arg.(*pb.GetEntryRequest).Epoch, test.epoch; got != want {
 			t.Errorf("Test[%v]: Epoch = %v, want %v", i, got, want)
 		}
 
@@ -312,8 +312,8 @@ func TestGetEntryV2_InitiateHandlerInfo(t *testing.T) {
 
 		info := GetEntryV2_InitializeHandlerInfo(rInfo)
 
-		if _, ok := info.Arg.(*v2pb.GetEntryRequest); !ok {
-			t.Errorf("Test[%v]: info.Arg is not of type v2pb.GetEntryRequest", i)
+		if _, ok := info.Arg.(*pb.GetEntryRequest); !ok {
+			t.Errorf("Test[%v]: info.Arg is not of type pb.GetEntryRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
@@ -334,13 +334,13 @@ func TestGetEntryV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.GetEntryRequest).UserId, test.userId; got != want {
+		if got, want := info.Arg.(*pb.GetEntryRequest).UserId, test.userId; got != want {
 			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.GetEntryRequest).AppId, test.appId; got != want {
+		if got, want := info.Arg.(*pb.GetEntryRequest).AppId, test.appId; got != want {
 			t.Errorf("Test[%v]: AppId = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.GetEntryRequest).Epoch, test.epoch; got != want {
+		if got, want := info.Arg.(*pb.GetEntryRequest).Epoch, test.epoch; got != want {
 			t.Errorf("Test[%v]: Epoch = %v, want %v", i, got, want)
 		}
 
@@ -402,8 +402,8 @@ func TestListEntryHistoryV2_InitiateHandlerInfo(t *testing.T) {
 
 		info := ListEntryHistoryV2_InitializeHandlerInfo(rInfo)
 
-		if _, ok := info.Arg.(*v2pb.ListEntryHistoryRequest); !ok {
-			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListEntryHistoryRequest", i)
+		if _, ok := info.Arg.(*pb.ListEntryHistoryRequest); !ok {
+			t.Errorf("Test[%v]: info.Arg is not of type pb.ListEntryHistoryRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
@@ -424,13 +424,13 @@ func TestListEntryHistoryV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListEntryHistoryRequest).UserId, test.userId; got != want {
+		if got, want := info.Arg.(*pb.ListEntryHistoryRequest).UserId, test.userId; got != want {
 			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.ListEntryHistoryRequest).StartEpoch, test.startEpoch; got != want {
+		if got, want := info.Arg.(*pb.ListEntryHistoryRequest).StartEpoch, test.startEpoch; got != want {
 			t.Errorf("Test[%v]: StartEpoch = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.ListEntryHistoryRequest).PageSize, test.pageSize; got != want {
+		if got, want := info.Arg.(*pb.ListEntryHistoryRequest).PageSize, test.pageSize; got != want {
 			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 
@@ -473,8 +473,8 @@ func TestUpdateEntryV2_InitiateHandlerInfo(t *testing.T) {
 
 		info := UpdateEntryV2_InitializeHandlerInfo(rInfo)
 
-		if _, ok := info.Arg.(*v2pb.UpdateEntryRequest); !ok {
-			t.Errorf("Test[%v]: info.Arg is not of type v2pb.UpdateEntryRequest", i)
+		if _, ok := info.Arg.(*pb.UpdateEntryRequest); !ok {
+			t.Errorf("Test[%v]: info.Arg is not of type pb.UpdateEntryRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
@@ -495,7 +495,7 @@ func TestUpdateEntryV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.UpdateEntryRequest).UserId, test.userId; got != want {
+		if got, want := info.Arg.(*pb.UpdateEntryRequest).UserId, test.userId; got != want {
 			t.Errorf("Test[%v]: UserId = %v, want %v", i, got, want)
 		}
 
@@ -551,8 +551,8 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 
 		info := ListSEHV2_InitializeHandlerInfo(rInfo)
 
-		if _, ok := info.Arg.(*v2pb.ListSEHRequest); !ok {
-			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListSEHRequest", i)
+		if _, ok := info.Arg.(*pb.ListSEHRequest); !ok {
+			t.Errorf("Test[%v]: info.Arg is not of type pb.ListSEHRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
@@ -572,10 +572,10 @@ func TestListSEHV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListSEHRequest).StartEpoch, test.startEpoch; got != want {
+		if got, want := info.Arg.(*pb.ListSEHRequest).StartEpoch, test.startEpoch; got != want {
 			t.Errorf("Test[%v]: StartEpoch = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.ListSEHRequest).PageSize, test.pageSize; got != want {
+		if got, want := info.Arg.(*pb.ListSEHRequest).PageSize, test.pageSize; got != want {
 			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 
@@ -631,8 +631,8 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 
 		info := ListUpdateV2_InitializeHandlerInfo(rInfo)
 
-		if _, ok := info.Arg.(*v2pb.ListUpdateRequest); !ok {
-			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListUpdateRequest", i)
+		if _, ok := info.Arg.(*pb.ListUpdateRequest); !ok {
+			t.Errorf("Test[%v]: info.Arg is not of type pb.ListUpdateRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
@@ -652,10 +652,10 @@ func TestListUpdateV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListUpdateRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
+		if got, want := info.Arg.(*pb.ListUpdateRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
 			t.Errorf("Test[%v]: StartCommitmentTimestamp = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.ListUpdateRequest).PageSize, test.pageSize; got != want {
+		if got, want := info.Arg.(*pb.ListUpdateRequest).PageSize, test.pageSize; got != want {
 			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 
@@ -711,8 +711,8 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 
 		info := ListStepsV2_InitializeHandlerInfo(rInfo)
 
-		if _, ok := info.Arg.(*v2pb.ListStepsRequest); !ok {
-			t.Errorf("Test[%v]: info.Arg is not of type v2pb.ListStepsRequest", i)
+		if _, ok := info.Arg.(*pb.ListStepsRequest); !ok {
+			t.Errorf("Test[%v]: info.Arg is not of type pb.ListStepsRequest", i)
 		}
 
 		r, _ := http.NewRequest(rInfo.Method, rInfo.Path, fakeJSONParserReader{bytes.NewBufferString(jsonBody)})
@@ -732,10 +732,10 @@ func TestListStepsV2_InitiateHandlerInfo(t *testing.T) {
 			t.Errorf("Test[%v]: Error while calling JSONDecoder, this should not happen. err: %v", i, err)
 		}
 
-		if got, want := info.Arg.(*v2pb.ListStepsRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
+		if got, want := info.Arg.(*pb.ListStepsRequest).StartCommitmentTimestamp, test.startCommitmentTS; got != want {
 			t.Errorf("Test[%v]: StartCommitmentTimestamp = %v, want %v", i, got, want)
 		}
-		if got, want := info.Arg.(*v2pb.ListStepsRequest).PageSize, test.pageSize; got != want {
+		if got, want := info.Arg.(*pb.ListStepsRequest).PageSize, test.pageSize; got != want {
 			t.Errorf("Test[%v]: PageSize = %v, want %v", i, got, want)
 		}
 

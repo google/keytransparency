@@ -39,6 +39,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
@@ -123,7 +124,7 @@ a5d613`, "\n", "", -1))
 	primaryKeys = map[string][]byte{
 		primaryAppId: primaryUserKeyRing,
 	}
-	primaryUserProfile = &v2pb.Profile{
+	primaryUserProfile = &pb.Profile{
 		// TODO(cesarghali): fill nonce.
 		Keys: primaryKeys,
 	}
@@ -218,7 +219,7 @@ func TestProofOfAbsence(t *testing.T) {
 
 func getNonExistantUser(t *testing.T, env *Env) {
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: "nobody"})
+	res, err := env.Client.GetEntry(ctx, &pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: "nobody"})
 	if err != nil {
 		t.Fatalf("Query for nonexistant failed %v", err)
 	}
@@ -274,7 +275,7 @@ func TestGetValidUser(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.Client.GetEntry(ctx, &v2pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: primaryUserEmail})
+	res, err := env.Client.GetEntry(ctx, &pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: primaryUserEmail})
 	if err != nil {
 		t.Fatalf("GetEntry(%v).Entry=%v", primaryUserEmail, err)
 	}
@@ -291,7 +292,7 @@ func TestGetValidUser(t *testing.T) {
 	log.Printf("response: %v", proto.MarshalTextString(res))
 
 	// Unmarshaling the resulted profile.
-	p := new(v2pb.Profile)
+	p := new(pb.Profile)
 	if err := proto.Unmarshal(res.Profile, p); err != nil {
 		t.Fatalf("Unexpected profile unmarshalling error: %v.", err)
 	}
@@ -349,10 +350,10 @@ func TestUnimplemented(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"ListEntryHistory", getErr(env.Client.ListEntryHistory(env.ctx, &v2pb.ListEntryHistoryRequest{}))},
-		{"ListSEH", getErr(env.Client.ListSEH(env.ctx, &v2pb.ListSEHRequest{}))},
-		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &v2pb.ListUpdateRequest{}))},
-		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &v2pb.ListStepsRequest{}))},
+		{"ListEntryHistory", getErr(env.Client.ListEntryHistory(env.ctx, &pb.ListEntryHistoryRequest{}))},
+		{"ListSEH", getErr(env.Client.ListSEH(env.ctx, &pb.ListSEHRequest{}))},
+		{"ListUpdate", getErr(env.Client.ListUpdate(env.ctx, &pb.ListUpdateRequest{}))},
+		{"ListSteps", getErr(env.Client.ListSteps(env.ctx, &pb.ListStepsRequest{}))},
 	}
 	for i, test := range tests {
 		if got, want := grpc.Code(test.err), codes.Unimplemented; got != want {
@@ -370,7 +371,7 @@ func TestUnauthenticated(t *testing.T) {
 		desc string
 		err  error
 	}{
-		{"UpdateEntry", getErr(env.Client.UpdateEntry(env.ctx, &v2pb.UpdateEntryRequest{UserId: "someoneelse"}))},
+		{"UpdateEntry", getErr(env.Client.UpdateEntry(env.ctx, &pb.UpdateEntryRequest{UserId: "someoneelse"}))},
 	}
 	for i, test := range tests {
 		if got, want := grpc.Code(test.err), codes.PermissionDenied; got != want {

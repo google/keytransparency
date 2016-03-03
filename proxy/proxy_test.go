@@ -35,6 +35,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
@@ -83,7 +84,7 @@ a5d613`, "\n", "", -1))
 	primaryKeys = map[string][]byte{
 		primaryAppId: primaryUserKeyRing,
 	}
-	primaryUserProfile = &v2pb.Profile{
+	primaryUserProfile = &pb.Profile{
 		// TODO(cesarghali): fill nonce.
 		Keys: primaryKeys,
 	}
@@ -177,7 +178,7 @@ func TestGetValidUser(t *testing.T) {
 	env.createPrimaryUser(t)
 
 	ctx := context.Background() // Unauthenticated request.
-	res, err := env.ClientV1.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: primaryUserEmail})
+	res, err := env.ClientV1.GetEntry(ctx, &pb.GetEntryRequest{UserId: primaryUserEmail})
 
 	if err != nil {
 		t.Errorf("GetEntry failed: %v", err)
@@ -213,7 +214,7 @@ func TestAppIDFiltering(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		res, err := env.ClientV1.GetEntry(ctx, &v2pb.GetEntryRequest{UserId: primaryUserEmail, AppId: test.appID})
+		res, err := env.ClientV1.GetEntry(ctx, &pb.GetEntryRequest{UserId: primaryUserEmail, AppId: test.appID})
 
 		if got, want := grpc.Code(err), test.code; got != want {
 			t.Errorf("Test[%v]: GetUser(%v)=%v, want %v", i, primaryUserEmail, got, want)

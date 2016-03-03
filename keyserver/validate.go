@@ -28,7 +28,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 // Maximum period of time to allow between CreationTime and server time.
@@ -75,7 +75,7 @@ func (s *Server) validateKey(userID, appID string, key []byte) error {
 // validateUpdateEntryRequest verifies
 // - Commitment in SignedEntryUpdate maches the serialized profile.
 // - Profile is a valid.
-func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.UpdateEntryRequest) error {
+func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *pb.UpdateEntryRequest) error {
 	// Validate proper authentication.
 	if err := s.validateEmail(ctx, in.UserId); err != nil {
 		return err
@@ -96,7 +96,7 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 	}
 
 	// Unmarshal and validte user's profile.
-	p := new(v2pb.Profile)
+	p := new(pb.Profile)
 	if err := proto.Unmarshal(in.Profile, p); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
@@ -117,7 +117,7 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *v2pb.Update
 	return nil
 }
 
-func (s *Server) validateProfile(p *v2pb.Profile, userID string) error {
+func (s *Server) validateProfile(p *pb.Profile, userID string) error {
 	for appID, key := range p.GetKeys() {
 		if err := s.validateKey(userID, appID, key); err != nil {
 			return err

@@ -27,8 +27,8 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 	context "golang.org/x/net/context"
 )
 
@@ -47,7 +47,7 @@ func New(srv *keyserver.Server) *Server {
 }
 
 // GetEntry returns a user's profile.
-func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.Profile, error) {
+func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.Profile, error) {
 	in.Epoch = math.MaxInt64
 	result, err := s.s.GetEntry(ctx, in)
 	if err != nil {
@@ -61,7 +61,7 @@ func (s *Server) GetEntry(ctx context.Context, in *v2pb.GetEntryRequest) (*v2pb.
 
 	// Extract and returned the user profile from the resulted
 	// GetEntryResponse.
-	profile := new(v2pb.Profile)
+	profile := new(pb.Profile)
 	if err := proto.Unmarshal(result.Profile, profile); err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
 	}
@@ -96,7 +96,7 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 		return nil, grpc.Errorf(codes.Unimplemented, "Searching by key index are not supported")
 	}
 
-	getEntryRequest := v2pb.GetEntryRequest{UserId: in.Search, AppId: pgpAppID}
+	getEntryRequest := pb.GetEntryRequest{UserId: in.Search, AppId: pgpAppID}
 	profile, err := s.GetEntry(ctx, &getEntryRequest)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,163 @@
+// Copyright 2015 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package security.e2ekeys;
+
+import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
+
+//
+// Data types.
+//
+
+message GetEntryResponse {
+  // UserId supports sending this as a complete proof to a third party.
+  string user_id = 1; // Optional.
+  // IndexProof is the proof for VUF(user_id).
+  bytes index_proof = 2;
+  // Index is the output of VUF on (user_id).
+  // If index != entry.index,  but they share a common prefix of
+  // len(merkle_tree_neighbors), this is a proof of absence for user_id.
+  bytes index = 3;
+  // The signed epoch head.  A server may choose to return multiple signatures
+  // of the same head for the same epoch. A client MUST NOT consider the
+  // presence of surplus or invalid epoch heads in this field an error.
+  repeated security_ctmap.SignedEpochHead signed_epoch_heads = 4; // Optional.
+  // MerkleTreeNeighbors is a list of all the adjacent nodes along the path
+  // from the bottommost node to the head.
+  repeated bytes merkle_tree_neighbors = 5;
+  // Entry contains the public portion of the user's data, and a comitment to
+  // profile.
+  security_ctmap.Entry entry = 6;
+  // Profile contains the user's keys.
+  bytes profile = 7;
+  // CommitmentKey is 16 random bytes.
+  bytes commitment_key = 8;
+}
+
+
+// Profile contains data hidden behind the crypto comitment.
+message Profile {
+  // Keys is a map of appIds to keys.
+  map<string, bytes> keys = 1;
+}
+
+// PublicKey defines a key this domain uses to sign EpochHeads with.
+message PublicKey {
+  // KeyFormats from Keyczar.
+  oneof key_type {
+    bytes ed25519 = 1; // 32 bytes (<http://ed25519.cr.yp.to/>)
+    bytes rsa_verifying_sha256_2048 = 2;
+    bytes ecdsa_verifying_p256 = 3;
+  }
+}
+
+//
+// RPC request/response messages.
+//
+
+// Get request for a user object.
+message GetEntryRequest {
+  // Absence of the time field indicates a request for the current value.
+  int64 epoch = 1;
+  // User identifier. Most commonly an email address.
+  string user_id = 2;
+  // TODO(cesarghali): implement app_id filtering.
+  // Only return the keys belonging to this app.
+  string app_id = 3;
+  // TODO: implement key_hash filtering.
+  // Only return SEH's that are signed by these keys.
+  repeated fixed64 trusted_keys = 4;
+}
+
+// Get a list of historical values for a user.
+message ListEntryHistoryRequest {
+  // The user identifier.
+  string user_id = 1;
+  // from_epoch is the starting epcoh.
+  int64 start_epoch = 2;
+  // The maximum number of entries to return.
+  int32 page_size = 3;
+  // compression_mode allows a user to verify thier own entries.
+  // TODO: optional compression mode?
+}
+
+// A paginated history of values for a user.
+message ListEntryHistoryResponse {
+  // The list of values this user_id has contained over time.
+  repeated GetEntryResponse values = 1;
+  // The next time to query for pagination.
+  int64 next_epoch = 2;
+}
+
+// Update a user's profile.
+message UpdateEntryRequest {
+  // UserID specifies the id for the new account to be registered.
+  string user_id = 1; // Optional.
+  // SignedEntryUpdate authorizes the change to profile.
+  security_ctmap.SignedEntryUpdate signed_entry_update = 2;
+  // Profile is the serialized protobuf Profile.
+  // Profile is private and must not be released to verifiers.
+  bytes profile = 3;
+  // CommitmentKey is 16 random bytes.
+  bytes commitment_key = 4;
+  // TODO: Provide a way for clients to specify a quorum of signatures to wait
+  // on before returning.
+  repeated fixed64 not_used = 5;
+
+  // DkimProof is used to vouch for the validity of a new registration.
+  // Used when OAuth is not used.
+  bytes dkim_proof = 1001; // Optional.
+}
+
+// UpdateEntryResponse contains a proof once the update has been included in
+// the Merkel Tree.
+message UpdateEntryResponse {
+  GetEntryResponse proof = 1;
+}
+
+message ListSEHRequest {
+  // from_epoch is the starting epcoh.
+  int64 start_epoch = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListSEHResponse {
+  repeated security_ctmap.SignedEpochHead heads = 1;
+}
+
+message ListUpdateRequest {
+  // start_commitment_timestamp is the starting commitment timestamp.
+  int64 start_commitment_timestamp = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListUpdateResponse {
+  // updates contains a serialized SignedEntryUpdate.
+  repeated bytes updates = 1;
+}
+
+message ListStepsRequest {
+  // start_commitment_timestamp is the starting commitment timestamp.
+  int64 start_commitment_timestamp = 1;
+  // The maximum number of entries to return.
+  int32 page_size = 2;
+}
+
+message ListStepsResponse {
+  repeated security_ctmap.Step steps = 1;
+}

@@ -9,27 +9,13 @@ It is generated from these files:
 	proto/security_e2ekeys_v2/e2ekeys.proto
 
 It has these top-level messages:
-	GetEntryResponse
-	Profile
-	PublicKey
-	GetEntryRequest
-	ListEntryHistoryRequest
-	ListEntryHistoryResponse
-	UpdateEntryRequest
-	UpdateEntryResponse
-	ListSEHRequest
-	ListSEHResponse
-	ListUpdateRequest
-	ListUpdateResponse
-	ListStepsRequest
-	ListStepsResponse
 */
 package security_e2ekeys_v2
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import security_ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+import security_e2ekeys "github.com/google/e2e-key-server/proto/security_e2ekeys"
 
 import (
 	context "golang.org/x/net/context"
@@ -41,413 +27,6 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
-
-type GetEntryResponse struct {
-	// UserId supports sending this as a complete proof to a third party.
-	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId" json:"user_id,omitempty"`
-	// IndexProof is the proof for VUF(user_id).
-	IndexProof []byte `protobuf:"bytes,2,opt,name=index_proof,json=indexProof,proto3" json:"index_proof,omitempty"`
-	// Index is the output of VUF on (user_id).
-	// If index != entry.index,  but they share a common prefix of
-	// len(merkle_tree_neighbors), this is a proof of absence for user_id.
-	Index []byte `protobuf:"bytes,3,opt,name=index,proto3" json:"index,omitempty"`
-	// The signed epoch head.  A server may choose to return multiple signatures
-	// of the same head for the same epoch. A client MUST NOT consider the
-	// presence of surplus or invalid epoch heads in this field an error.
-	SignedEpochHeads []*security_ctmap.SignedEpochHead `protobuf:"bytes,4,rep,name=signed_epoch_heads,json=signedEpochHeads" json:"signed_epoch_heads,omitempty"`
-	// MerkleTreeNeighbors is a list of all the adjacent nodes along the path
-	// from the bottommost node to the head.
-	MerkleTreeNeighbors [][]byte `protobuf:"bytes,5,rep,name=merkle_tree_neighbors,json=merkleTreeNeighbors,proto3" json:"merkle_tree_neighbors,omitempty"`
-	// Entry contains the public portion of the user's data, and a comitment to
-	// profile.
-	Entry *security_ctmap.Entry `protobuf:"bytes,6,opt,name=entry" json:"entry,omitempty"`
-	// Profile contains the user's keys.
-	Profile []byte `protobuf:"bytes,7,opt,name=profile,proto3" json:"profile,omitempty"`
-	// CommitmentKey is 16 random bytes.
-	CommitmentKey []byte `protobuf:"bytes,8,opt,name=commitment_key,json=commitmentKey,proto3" json:"commitment_key,omitempty"`
-}
-
-func (m *GetEntryResponse) Reset()                    { *m = GetEntryResponse{} }
-func (m *GetEntryResponse) String() string            { return proto.CompactTextString(m) }
-func (*GetEntryResponse) ProtoMessage()               {}
-func (*GetEntryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
-
-func (m *GetEntryResponse) GetSignedEpochHeads() []*security_ctmap.SignedEpochHead {
-	if m != nil {
-		return m.SignedEpochHeads
-	}
-	return nil
-}
-
-func (m *GetEntryResponse) GetEntry() *security_ctmap.Entry {
-	if m != nil {
-		return m.Entry
-	}
-	return nil
-}
-
-// Profile contains data hidden behind the crypto comitment.
-type Profile struct {
-	// Keys is a map of appIds to keys.
-	Keys map[string][]byte `protobuf:"bytes,1,rep,name=keys" json:"keys,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
-}
-
-func (m *Profile) Reset()                    { *m = Profile{} }
-func (m *Profile) String() string            { return proto.CompactTextString(m) }
-func (*Profile) ProtoMessage()               {}
-func (*Profile) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
-
-func (m *Profile) GetKeys() map[string][]byte {
-	if m != nil {
-		return m.Keys
-	}
-	return nil
-}
-
-// PublicKey defines a key this domain uses to sign EpochHeads with.
-type PublicKey struct {
-	// KeyFormats from Keyczar.
-	//
-	// Types that are valid to be assigned to KeyType:
-	//	*PublicKey_Ed25519
-	//	*PublicKey_RsaVerifyingSha256_2048
-	//	*PublicKey_EcdsaVerifyingP256
-	KeyType isPublicKey_KeyType `protobuf_oneof:"key_type"`
-}
-
-func (m *PublicKey) Reset()                    { *m = PublicKey{} }
-func (m *PublicKey) String() string            { return proto.CompactTextString(m) }
-func (*PublicKey) ProtoMessage()               {}
-func (*PublicKey) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-type isPublicKey_KeyType interface {
-	isPublicKey_KeyType()
-}
-
-type PublicKey_Ed25519 struct {
-	Ed25519 []byte `protobuf:"bytes,1,opt,name=ed25519,proto3,oneof"`
-}
-type PublicKey_RsaVerifyingSha256_2048 struct {
-	RsaVerifyingSha256_2048 []byte `protobuf:"bytes,2,opt,name=rsa_verifying_sha256_2048,json=rsaVerifyingSha2562048,proto3,oneof"`
-}
-type PublicKey_EcdsaVerifyingP256 struct {
-	EcdsaVerifyingP256 []byte `protobuf:"bytes,3,opt,name=ecdsa_verifying_p256,json=ecdsaVerifyingP256,proto3,oneof"`
-}
-
-func (*PublicKey_Ed25519) isPublicKey_KeyType()                 {}
-func (*PublicKey_RsaVerifyingSha256_2048) isPublicKey_KeyType() {}
-func (*PublicKey_EcdsaVerifyingP256) isPublicKey_KeyType()      {}
-
-func (m *PublicKey) GetKeyType() isPublicKey_KeyType {
-	if m != nil {
-		return m.KeyType
-	}
-	return nil
-}
-
-func (m *PublicKey) GetEd25519() []byte {
-	if x, ok := m.GetKeyType().(*PublicKey_Ed25519); ok {
-		return x.Ed25519
-	}
-	return nil
-}
-
-func (m *PublicKey) GetRsaVerifyingSha256_2048() []byte {
-	if x, ok := m.GetKeyType().(*PublicKey_RsaVerifyingSha256_2048); ok {
-		return x.RsaVerifyingSha256_2048
-	}
-	return nil
-}
-
-func (m *PublicKey) GetEcdsaVerifyingP256() []byte {
-	if x, ok := m.GetKeyType().(*PublicKey_EcdsaVerifyingP256); ok {
-		return x.EcdsaVerifyingP256
-	}
-	return nil
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*PublicKey) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _PublicKey_OneofMarshaler, _PublicKey_OneofUnmarshaler, _PublicKey_OneofSizer, []interface{}{
-		(*PublicKey_Ed25519)(nil),
-		(*PublicKey_RsaVerifyingSha256_2048)(nil),
-		(*PublicKey_EcdsaVerifyingP256)(nil),
-	}
-}
-
-func _PublicKey_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*PublicKey)
-	// key_type
-	switch x := m.KeyType.(type) {
-	case *PublicKey_Ed25519:
-		b.EncodeVarint(1<<3 | proto.WireBytes)
-		b.EncodeRawBytes(x.Ed25519)
-	case *PublicKey_RsaVerifyingSha256_2048:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		b.EncodeRawBytes(x.RsaVerifyingSha256_2048)
-	case *PublicKey_EcdsaVerifyingP256:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
-		b.EncodeRawBytes(x.EcdsaVerifyingP256)
-	case nil:
-	default:
-		return fmt.Errorf("PublicKey.KeyType has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _PublicKey_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*PublicKey)
-	switch tag {
-	case 1: // key_type.ed25519
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeRawBytes(true)
-		m.KeyType = &PublicKey_Ed25519{x}
-		return true, err
-	case 2: // key_type.rsa_verifying_sha256_2048
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeRawBytes(true)
-		m.KeyType = &PublicKey_RsaVerifyingSha256_2048{x}
-		return true, err
-	case 3: // key_type.ecdsa_verifying_p256
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeRawBytes(true)
-		m.KeyType = &PublicKey_EcdsaVerifyingP256{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _PublicKey_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*PublicKey)
-	// key_type
-	switch x := m.KeyType.(type) {
-	case *PublicKey_Ed25519:
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.Ed25519)))
-		n += len(x.Ed25519)
-	case *PublicKey_RsaVerifyingSha256_2048:
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.RsaVerifyingSha256_2048)))
-		n += len(x.RsaVerifyingSha256_2048)
-	case *PublicKey_EcdsaVerifyingP256:
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.EcdsaVerifyingP256)))
-		n += len(x.EcdsaVerifyingP256)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
-// Get request for a user object.
-type GetEntryRequest struct {
-	// Absence of the time field indicates a request for the current value.
-	Epoch int64 `protobuf:"varint,1,opt,name=epoch" json:"epoch,omitempty"`
-	// User identifier. Most commonly an email address.
-	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId" json:"user_id,omitempty"`
-	// TODO(cesarghali): implement app_id filtering.
-	// Only return the keys belonging to this app.
-	AppId string `protobuf:"bytes,3,opt,name=app_id,json=appId" json:"app_id,omitempty"`
-	// TODO: implement key_hash filtering.
-	// Only return SEH's that are signed by these keys.
-	TrustedKeys []uint64 `protobuf:"fixed64,4,rep,name=trusted_keys,json=trustedKeys" json:"trusted_keys,omitempty"`
-}
-
-func (m *GetEntryRequest) Reset()                    { *m = GetEntryRequest{} }
-func (m *GetEntryRequest) String() string            { return proto.CompactTextString(m) }
-func (*GetEntryRequest) ProtoMessage()               {}
-func (*GetEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
-
-// Get a list of historical values for a user.
-type ListEntryHistoryRequest struct {
-	// The user identifier.
-	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId" json:"user_id,omitempty"`
-	// from_epoch is the starting epcoh.
-	StartEpoch int64 `protobuf:"varint,2,opt,name=start_epoch,json=startEpoch" json:"start_epoch,omitempty"`
-	// The maximum number of entries to return.
-	PageSize int32 `protobuf:"varint,3,opt,name=page_size,json=pageSize" json:"page_size,omitempty"`
-}
-
-func (m *ListEntryHistoryRequest) Reset()                    { *m = ListEntryHistoryRequest{} }
-func (m *ListEntryHistoryRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListEntryHistoryRequest) ProtoMessage()               {}
-func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
-
-// A paginated history of values for a user.
-type ListEntryHistoryResponse struct {
-	// The list of values this user_id has contained over time.
-	Values []*GetEntryResponse `protobuf:"bytes,1,rep,name=values" json:"values,omitempty"`
-	// The next time to query for pagination.
-	NextEpoch int64 `protobuf:"varint,2,opt,name=next_epoch,json=nextEpoch" json:"next_epoch,omitempty"`
-}
-
-func (m *ListEntryHistoryResponse) Reset()                    { *m = ListEntryHistoryResponse{} }
-func (m *ListEntryHistoryResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListEntryHistoryResponse) ProtoMessage()               {}
-func (*ListEntryHistoryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
-
-func (m *ListEntryHistoryResponse) GetValues() []*GetEntryResponse {
-	if m != nil {
-		return m.Values
-	}
-	return nil
-}
-
-// Update a user's profile.
-type UpdateEntryRequest struct {
-	// UserID specifies the id for the new account to be registered.
-	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId" json:"user_id,omitempty"`
-	// SignedEntryUpdate authorizes the change to profile.
-	SignedEntryUpdate *security_ctmap.SignedEntryUpdate `protobuf:"bytes,2,opt,name=signed_entry_update,json=signedEntryUpdate" json:"signed_entry_update,omitempty"`
-	// Profile is the serialized protobuf Profile.
-	// Profile is private and must not be released to verifiers.
-	Profile []byte `protobuf:"bytes,3,opt,name=profile,proto3" json:"profile,omitempty"`
-	// CommitmentKey is 16 random bytes.
-	CommitmentKey []byte `protobuf:"bytes,4,opt,name=commitment_key,json=commitmentKey,proto3" json:"commitment_key,omitempty"`
-	// TODO: Provide a way for clients to specify a quorum of signatures to wait
-	// on before returning.
-	NotUsed []uint64 `protobuf:"fixed64,5,rep,name=not_used,json=notUsed" json:"not_used,omitempty"`
-	// DkimProof is used to vouch for the validity of a new registration.
-	// Used when OAuth is not used.
-	DkimProof []byte `protobuf:"bytes,1001,opt,name=dkim_proof,json=dkimProof,proto3" json:"dkim_proof,omitempty"`
-}
-
-func (m *UpdateEntryRequest) Reset()                    { *m = UpdateEntryRequest{} }
-func (m *UpdateEntryRequest) String() string            { return proto.CompactTextString(m) }
-func (*UpdateEntryRequest) ProtoMessage()               {}
-func (*UpdateEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
-
-func (m *UpdateEntryRequest) GetSignedEntryUpdate() *security_ctmap.SignedEntryUpdate {
-	if m != nil {
-		return m.SignedEntryUpdate
-	}
-	return nil
-}
-
-// UpdateEntryResponse contains a proof once the update has been included in
-// the Merkel Tree.
-type UpdateEntryResponse struct {
-	Proof *GetEntryResponse `protobuf:"bytes,1,opt,name=proof" json:"proof,omitempty"`
-}
-
-func (m *UpdateEntryResponse) Reset()                    { *m = UpdateEntryResponse{} }
-func (m *UpdateEntryResponse) String() string            { return proto.CompactTextString(m) }
-func (*UpdateEntryResponse) ProtoMessage()               {}
-func (*UpdateEntryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
-
-func (m *UpdateEntryResponse) GetProof() *GetEntryResponse {
-	if m != nil {
-		return m.Proof
-	}
-	return nil
-}
-
-type ListSEHRequest struct {
-	// from_epoch is the starting epcoh.
-	StartEpoch int64 `protobuf:"varint,1,opt,name=start_epoch,json=startEpoch" json:"start_epoch,omitempty"`
-	// The maximum number of entries to return.
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize" json:"page_size,omitempty"`
-}
-
-func (m *ListSEHRequest) Reset()                    { *m = ListSEHRequest{} }
-func (m *ListSEHRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListSEHRequest) ProtoMessage()               {}
-func (*ListSEHRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
-
-type ListSEHResponse struct {
-	Heads []*security_ctmap.SignedEpochHead `protobuf:"bytes,1,rep,name=heads" json:"heads,omitempty"`
-}
-
-func (m *ListSEHResponse) Reset()                    { *m = ListSEHResponse{} }
-func (m *ListSEHResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListSEHResponse) ProtoMessage()               {}
-func (*ListSEHResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
-
-func (m *ListSEHResponse) GetHeads() []*security_ctmap.SignedEpochHead {
-	if m != nil {
-		return m.Heads
-	}
-	return nil
-}
-
-type ListUpdateRequest struct {
-	// start_commitment_timestamp is the starting commitment timestamp.
-	StartCommitmentTimestamp int64 `protobuf:"varint,1,opt,name=start_commitment_timestamp,json=startCommitmentTimestamp" json:"start_commitment_timestamp,omitempty"`
-	// The maximum number of entries to return.
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize" json:"page_size,omitempty"`
-}
-
-func (m *ListUpdateRequest) Reset()                    { *m = ListUpdateRequest{} }
-func (m *ListUpdateRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListUpdateRequest) ProtoMessage()               {}
-func (*ListUpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
-
-type ListUpdateResponse struct {
-	// updates contains a serialized SignedEntryUpdate.
-	Updates [][]byte `protobuf:"bytes,1,rep,name=updates,proto3" json:"updates,omitempty"`
-}
-
-func (m *ListUpdateResponse) Reset()                    { *m = ListUpdateResponse{} }
-func (m *ListUpdateResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListUpdateResponse) ProtoMessage()               {}
-func (*ListUpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
-
-type ListStepsRequest struct {
-	// start_commitment_timestamp is the starting commitment timestamp.
-	StartCommitmentTimestamp int64 `protobuf:"varint,1,opt,name=start_commitment_timestamp,json=startCommitmentTimestamp" json:"start_commitment_timestamp,omitempty"`
-	// The maximum number of entries to return.
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize" json:"page_size,omitempty"`
-}
-
-func (m *ListStepsRequest) Reset()                    { *m = ListStepsRequest{} }
-func (m *ListStepsRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListStepsRequest) ProtoMessage()               {}
-func (*ListStepsRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
-
-type ListStepsResponse struct {
-	Steps []*security_ctmap.Step `protobuf:"bytes,1,rep,name=steps" json:"steps,omitempty"`
-}
-
-func (m *ListStepsResponse) Reset()                    { *m = ListStepsResponse{} }
-func (m *ListStepsResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListStepsResponse) ProtoMessage()               {}
-func (*ListStepsResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
-
-func (m *ListStepsResponse) GetSteps() []*security_ctmap.Step {
-	if m != nil {
-		return m.Steps
-	}
-	return nil
-}
-
-func init() {
-	proto.RegisterType((*GetEntryResponse)(nil), "security.e2ekeys.v2.GetEntryResponse")
-	proto.RegisterType((*Profile)(nil), "security.e2ekeys.v2.Profile")
-	proto.RegisterType((*PublicKey)(nil), "security.e2ekeys.v2.PublicKey")
-	proto.RegisterType((*GetEntryRequest)(nil), "security.e2ekeys.v2.GetEntryRequest")
-	proto.RegisterType((*ListEntryHistoryRequest)(nil), "security.e2ekeys.v2.ListEntryHistoryRequest")
-	proto.RegisterType((*ListEntryHistoryResponse)(nil), "security.e2ekeys.v2.ListEntryHistoryResponse")
-	proto.RegisterType((*UpdateEntryRequest)(nil), "security.e2ekeys.v2.UpdateEntryRequest")
-	proto.RegisterType((*UpdateEntryResponse)(nil), "security.e2ekeys.v2.UpdateEntryResponse")
-	proto.RegisterType((*ListSEHRequest)(nil), "security.e2ekeys.v2.ListSEHRequest")
-	proto.RegisterType((*ListSEHResponse)(nil), "security.e2ekeys.v2.ListSEHResponse")
-	proto.RegisterType((*ListUpdateRequest)(nil), "security.e2ekeys.v2.ListUpdateRequest")
-	proto.RegisterType((*ListUpdateResponse)(nil), "security.e2ekeys.v2.ListUpdateResponse")
-	proto.RegisterType((*ListStepsRequest)(nil), "security.e2ekeys.v2.ListStepsRequest")
-	proto.RegisterType((*ListStepsResponse)(nil), "security.e2ekeys.v2.ListStepsResponse")
-}
-
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
@@ -457,20 +36,20 @@ var _ grpc.ClientConn
 type E2EKeyServiceClient interface {
 	// GetEntry returns a user's entry in the Merkle Tree. Entries contain
 	// signed commitments to a profile, which is also returned.
-	GetEntry(ctx context.Context, in *GetEntryRequest, opts ...grpc.CallOption) (*GetEntryResponse, error)
+	GetEntry(ctx context.Context, in *security_e2ekeys.GetEntryRequest, opts ...grpc.CallOption) (*security_e2ekeys.GetEntryResponse, error)
 	// ListEntryHistory returns a list of GetEntryRespons covering several epochs.
-	ListEntryHistory(ctx context.Context, in *ListEntryHistoryRequest, opts ...grpc.CallOption) (*ListEntryHistoryResponse, error)
+	ListEntryHistory(ctx context.Context, in *security_e2ekeys.ListEntryHistoryRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListEntryHistoryResponse, error)
 	// blocking or polling?
 	// UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
 	// has been included in an epoch.  Clients must retry until this function
 	// returns a proof.
-	UpdateEntry(ctx context.Context, in *UpdateEntryRequest, opts ...grpc.CallOption) (*UpdateEntryResponse, error)
+	UpdateEntry(ctx context.Context, in *security_e2ekeys.UpdateEntryRequest, opts ...grpc.CallOption) (*security_e2ekeys.UpdateEntryResponse, error)
 	// List the Signed Epoch Heads, from epoch to epoch.
-	ListSEH(ctx context.Context, in *ListSEHRequest, opts ...grpc.CallOption) (*ListSEHResponse, error)
+	ListSEH(ctx context.Context, in *security_e2ekeys.ListSEHRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListSEHResponse, error)
 	// List the EntryUpdates by update number.
-	ListUpdate(ctx context.Context, in *ListUpdateRequest, opts ...grpc.CallOption) (*ListUpdateResponse, error)
+	ListUpdate(ctx context.Context, in *security_e2ekeys.ListUpdateRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListUpdateResponse, error)
 	// ListSteps combines SEH and EntryUpdates into single list.
-	ListSteps(ctx context.Context, in *ListStepsRequest, opts ...grpc.CallOption) (*ListStepsResponse, error)
+	ListSteps(ctx context.Context, in *security_e2ekeys.ListStepsRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListStepsResponse, error)
 }
 
 type e2EKeyServiceClient struct {
@@ -481,8 +60,8 @@ func NewE2EKeyServiceClient(cc *grpc.ClientConn) E2EKeyServiceClient {
 	return &e2EKeyServiceClient{cc}
 }
 
-func (c *e2EKeyServiceClient) GetEntry(ctx context.Context, in *GetEntryRequest, opts ...grpc.CallOption) (*GetEntryResponse, error) {
-	out := new(GetEntryResponse)
+func (c *e2EKeyServiceClient) GetEntry(ctx context.Context, in *security_e2ekeys.GetEntryRequest, opts ...grpc.CallOption) (*security_e2ekeys.GetEntryResponse, error) {
+	out := new(security_e2ekeys.GetEntryResponse)
 	err := grpc.Invoke(ctx, "/security.e2ekeys.v2.E2EKeyService/GetEntry", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -490,8 +69,8 @@ func (c *e2EKeyServiceClient) GetEntry(ctx context.Context, in *GetEntryRequest,
 	return out, nil
 }
 
-func (c *e2EKeyServiceClient) ListEntryHistory(ctx context.Context, in *ListEntryHistoryRequest, opts ...grpc.CallOption) (*ListEntryHistoryResponse, error) {
-	out := new(ListEntryHistoryResponse)
+func (c *e2EKeyServiceClient) ListEntryHistory(ctx context.Context, in *security_e2ekeys.ListEntryHistoryRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListEntryHistoryResponse, error) {
+	out := new(security_e2ekeys.ListEntryHistoryResponse)
 	err := grpc.Invoke(ctx, "/security.e2ekeys.v2.E2EKeyService/ListEntryHistory", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -499,8 +78,8 @@ func (c *e2EKeyServiceClient) ListEntryHistory(ctx context.Context, in *ListEntr
 	return out, nil
 }
 
-func (c *e2EKeyServiceClient) UpdateEntry(ctx context.Context, in *UpdateEntryRequest, opts ...grpc.CallOption) (*UpdateEntryResponse, error) {
-	out := new(UpdateEntryResponse)
+func (c *e2EKeyServiceClient) UpdateEntry(ctx context.Context, in *security_e2ekeys.UpdateEntryRequest, opts ...grpc.CallOption) (*security_e2ekeys.UpdateEntryResponse, error) {
+	out := new(security_e2ekeys.UpdateEntryResponse)
 	err := grpc.Invoke(ctx, "/security.e2ekeys.v2.E2EKeyService/UpdateEntry", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -508,8 +87,8 @@ func (c *e2EKeyServiceClient) UpdateEntry(ctx context.Context, in *UpdateEntryRe
 	return out, nil
 }
 
-func (c *e2EKeyServiceClient) ListSEH(ctx context.Context, in *ListSEHRequest, opts ...grpc.CallOption) (*ListSEHResponse, error) {
-	out := new(ListSEHResponse)
+func (c *e2EKeyServiceClient) ListSEH(ctx context.Context, in *security_e2ekeys.ListSEHRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListSEHResponse, error) {
+	out := new(security_e2ekeys.ListSEHResponse)
 	err := grpc.Invoke(ctx, "/security.e2ekeys.v2.E2EKeyService/ListSEH", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -517,8 +96,8 @@ func (c *e2EKeyServiceClient) ListSEH(ctx context.Context, in *ListSEHRequest, o
 	return out, nil
 }
 
-func (c *e2EKeyServiceClient) ListUpdate(ctx context.Context, in *ListUpdateRequest, opts ...grpc.CallOption) (*ListUpdateResponse, error) {
-	out := new(ListUpdateResponse)
+func (c *e2EKeyServiceClient) ListUpdate(ctx context.Context, in *security_e2ekeys.ListUpdateRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListUpdateResponse, error) {
+	out := new(security_e2ekeys.ListUpdateResponse)
 	err := grpc.Invoke(ctx, "/security.e2ekeys.v2.E2EKeyService/ListUpdate", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -526,8 +105,8 @@ func (c *e2EKeyServiceClient) ListUpdate(ctx context.Context, in *ListUpdateRequ
 	return out, nil
 }
 
-func (c *e2EKeyServiceClient) ListSteps(ctx context.Context, in *ListStepsRequest, opts ...grpc.CallOption) (*ListStepsResponse, error) {
-	out := new(ListStepsResponse)
+func (c *e2EKeyServiceClient) ListSteps(ctx context.Context, in *security_e2ekeys.ListStepsRequest, opts ...grpc.CallOption) (*security_e2ekeys.ListStepsResponse, error) {
+	out := new(security_e2ekeys.ListStepsResponse)
 	err := grpc.Invoke(ctx, "/security.e2ekeys.v2.E2EKeyService/ListSteps", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -540,20 +119,20 @@ func (c *e2EKeyServiceClient) ListSteps(ctx context.Context, in *ListStepsReques
 type E2EKeyServiceServer interface {
 	// GetEntry returns a user's entry in the Merkle Tree. Entries contain
 	// signed commitments to a profile, which is also returned.
-	GetEntry(context.Context, *GetEntryRequest) (*GetEntryResponse, error)
+	GetEntry(context.Context, *security_e2ekeys.GetEntryRequest) (*security_e2ekeys.GetEntryResponse, error)
 	// ListEntryHistory returns a list of GetEntryRespons covering several epochs.
-	ListEntryHistory(context.Context, *ListEntryHistoryRequest) (*ListEntryHistoryResponse, error)
+	ListEntryHistory(context.Context, *security_e2ekeys.ListEntryHistoryRequest) (*security_e2ekeys.ListEntryHistoryResponse, error)
 	// blocking or polling?
 	// UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
 	// has been included in an epoch.  Clients must retry until this function
 	// returns a proof.
-	UpdateEntry(context.Context, *UpdateEntryRequest) (*UpdateEntryResponse, error)
+	UpdateEntry(context.Context, *security_e2ekeys.UpdateEntryRequest) (*security_e2ekeys.UpdateEntryResponse, error)
 	// List the Signed Epoch Heads, from epoch to epoch.
-	ListSEH(context.Context, *ListSEHRequest) (*ListSEHResponse, error)
+	ListSEH(context.Context, *security_e2ekeys.ListSEHRequest) (*security_e2ekeys.ListSEHResponse, error)
 	// List the EntryUpdates by update number.
-	ListUpdate(context.Context, *ListUpdateRequest) (*ListUpdateResponse, error)
+	ListUpdate(context.Context, *security_e2ekeys.ListUpdateRequest) (*security_e2ekeys.ListUpdateResponse, error)
 	// ListSteps combines SEH and EntryUpdates into single list.
-	ListSteps(context.Context, *ListStepsRequest) (*ListStepsResponse, error)
+	ListSteps(context.Context, *security_e2ekeys.ListStepsRequest) (*security_e2ekeys.ListStepsResponse, error)
 }
 
 func RegisterE2EKeyServiceServer(s *grpc.Server, srv E2EKeyServiceServer) {
@@ -561,7 +140,7 @@ func RegisterE2EKeyServiceServer(s *grpc.Server, srv E2EKeyServiceServer) {
 }
 
 func _E2EKeyService_GetEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(GetEntryRequest)
+	in := new(security_e2ekeys.GetEntryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -573,7 +152,7 @@ func _E2EKeyService_GetEntry_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _E2EKeyService_ListEntryHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ListEntryHistoryRequest)
+	in := new(security_e2ekeys.ListEntryHistoryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -585,7 +164,7 @@ func _E2EKeyService_ListEntryHistory_Handler(srv interface{}, ctx context.Contex
 }
 
 func _E2EKeyService_UpdateEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(UpdateEntryRequest)
+	in := new(security_e2ekeys.UpdateEntryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -597,7 +176,7 @@ func _E2EKeyService_UpdateEntry_Handler(srv interface{}, ctx context.Context, de
 }
 
 func _E2EKeyService_ListSEH_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ListSEHRequest)
+	in := new(security_e2ekeys.ListSEHRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -609,7 +188,7 @@ func _E2EKeyService_ListSEH_Handler(srv interface{}, ctx context.Context, dec fu
 }
 
 func _E2EKeyService_ListUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ListUpdateRequest)
+	in := new(security_e2ekeys.ListUpdateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -621,7 +200,7 @@ func _E2EKeyService_ListUpdate_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _E2EKeyService_ListSteps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ListStepsRequest)
+	in := new(security_e2ekeys.ListStepsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -665,66 +244,23 @@ var _E2EKeyService_serviceDesc = grpc.ServiceDesc{
 }
 
 var fileDescriptor0 = []byte{
-	// 975 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xbc, 0x56, 0x5b, 0x6f, 0x1b, 0x55,
-	0x10, 0xc6, 0x76, 0x7c, 0x1b, 0xa7, 0x6d, 0x7a, 0x92, 0xd0, 0xed, 0x22, 0x68, 0xbb, 0x34, 0x17,
-	0x01, 0x59, 0xc3, 0x42, 0xa0, 0xb4, 0xa0, 0x4a, 0x20, 0x0b, 0x23, 0xa0, 0x0a, 0xeb, 0x14, 0x24,
-	0x24, 0xb4, 0x6c, 0xbc, 0x27, 0xf6, 0x2a, 0xde, 0x0b, 0x7b, 0x8e, 0xa3, 0x38, 0x0f, 0xfc, 0x1a,
-	0x7e, 0x0e, 0x6f, 0xfc, 0x0a, 0xfe, 0x03, 0x0f, 0xcc, 0xb9, 0xac, 0x6f, 0xb1, 0x63, 0x3f, 0xf1,
-	0x10, 0x69, 0x67, 0xe6, 0x9b, 0x73, 0xbe, 0x99, 0xf9, 0xe6, 0xc4, 0x70, 0x90, 0x66, 0x09, 0x4f,
-	0x9a, 0x8c, 0x76, 0x87, 0x59, 0xc8, 0x47, 0x1e, 0x75, 0xe8, 0x05, 0x1d, 0x31, 0xef, 0xd2, 0x69,
-	0xea, 0x4f, 0x5b, 0x22, 0xc8, 0x76, 0x0e, 0xb1, 0x73, 0xff, 0xa5, 0x63, 0xbe, 0xec, 0x85, 0xbc,
-	0x3f, 0x3c, 0xb3, 0xbb, 0x49, 0xd4, 0xec, 0x25, 0x49, 0x6f, 0x40, 0x45, 0xd6, 0x11, 0x86, 0x8f,
-	0x18, 0xcd, 0x2e, 0x69, 0xd6, 0x9c, 0x3b, 0xbe, 0xcb, 0x23, 0x3f, 0x6d, 0xe2, 0x9f, 0x3a, 0xd5,
-	0xfa, 0xbb, 0x08, 0x5b, 0xdf, 0x50, 0xde, 0x8a, 0x79, 0x36, 0x72, 0x29, 0x4b, 0x93, 0x98, 0x51,
-	0xf2, 0x00, 0xaa, 0x43, 0x4c, 0xf7, 0xc2, 0xc0, 0x28, 0x3c, 0x2e, 0x1c, 0xd6, 0xdd, 0x8a, 0x30,
-	0xbf, 0x0d, 0xc8, 0x23, 0x68, 0x84, 0x71, 0x40, 0xaf, 0x3c, 0x4c, 0x4e, 0xce, 0x8d, 0x22, 0x06,
-	0x37, 0x5d, 0x90, 0xae, 0x13, 0xe1, 0x21, 0x3b, 0x50, 0x96, 0x96, 0x51, 0x92, 0x21, 0x65, 0x90,
-	0x1f, 0x80, 0xb0, 0xb0, 0x17, 0xd3, 0xc0, 0xa3, 0x69, 0xd2, 0xed, 0x7b, 0x7d, 0xea, 0x07, 0xcc,
-	0xd8, 0x78, 0x5c, 0x3a, 0x6c, 0x38, 0x8f, 0xec, 0x59, 0x6e, 0x76, 0x47, 0x22, 0x5b, 0x02, 0xd8,
-	0x46, 0x9c, 0xbb, 0xc5, 0x66, 0x1d, 0x8c, 0x38, 0xb0, 0x1b, 0xd1, 0xec, 0x62, 0x40, 0x3d, 0x9e,
-	0x51, 0xea, 0xc5, 0x34, 0xec, 0xf5, 0xcf, 0x92, 0x8c, 0x19, 0x65, 0x3c, 0x71, 0xd3, 0xdd, 0x56,
-	0xc1, 0x53, 0x8c, 0xbd, 0xca, 0x43, 0xe4, 0x7d, 0x28, 0x53, 0x51, 0xa3, 0x51, 0x41, 0x62, 0x0d,
-	0x67, 0x77, 0xfe, 0x56, 0xd5, 0x00, 0x85, 0x21, 0x06, 0x54, 0xb1, 0xc0, 0xf3, 0x70, 0x40, 0x8d,
-	0xaa, 0xac, 0x23, 0x37, 0xc9, 0x1e, 0xdc, 0xc5, 0x56, 0x47, 0x21, 0x8f, 0x10, 0xe9, 0x61, 0x9b,
-	0x8d, 0x9a, 0x04, 0xdc, 0x99, 0x78, 0xbf, 0xa3, 0x23, 0xeb, 0x0f, 0xa8, 0x9e, 0xe8, 0x8c, 0xe7,
-	0xb0, 0x21, 0x86, 0x85, 0x8d, 0x14, 0xd5, 0xee, 0xdb, 0x0b, 0xa6, 0x68, 0x6b, 0xac, 0x8d, 0xa9,
-	0x4c, 0x11, 0x91, 0x39, 0xe6, 0x67, 0x50, 0x1f, 0xbb, 0xc8, 0x16, 0x94, 0xc4, 0x7d, 0x6a, 0x20,
-	0xe2, 0x53, 0x34, 0xfb, 0xd2, 0x1f, 0x0c, 0xa9, 0x9e, 0x83, 0x32, 0x9e, 0x17, 0x9f, 0x15, 0xac,
-	0x3f, 0x0b, 0x50, 0x3f, 0x19, 0x9e, 0x0d, 0xc2, 0x2e, 0xe6, 0x13, 0x13, 0xaa, 0x34, 0x70, 0x8e,
-	0x8f, 0x3f, 0xfa, 0x5c, 0x66, 0x6f, 0xb6, 0xdf, 0x70, 0x73, 0x07, 0x79, 0x01, 0x0f, 0x33, 0xe6,
-	0x7b, 0xa8, 0x94, 0xf0, 0x7c, 0x14, 0xc6, 0x3d, 0x8f, 0xf5, 0x7d, 0xe7, 0xf8, 0x53, 0xcf, 0xf9,
-	0xf0, 0x93, 0x67, 0xea, 0x5c, 0x44, 0xbf, 0x89, 0x90, 0x9f, 0x72, 0x44, 0x47, 0x02, 0x44, 0x1c,
-	0x07, 0xb1, 0x43, 0xbb, 0xc1, 0x4c, 0x7a, 0x8a, 0x31, 0x35, 0x7c, 0xcc, 0x23, 0x32, 0x3a, 0xce,
-	0x3c, 0xc1, 0xd8, 0x57, 0x00, 0x35, 0xe4, 0xee, 0xf1, 0x51, 0x4a, 0xad, 0x6b, 0xb8, 0x37, 0xd1,
-	0xde, 0xef, 0x43, 0xca, 0xb8, 0xa8, 0x49, 0x6a, 0x44, 0x32, 0x2d, 0xb9, 0xca, 0x98, 0x16, 0x64,
-	0x71, 0x46, 0x90, 0xbb, 0x50, 0xf1, 0xd3, 0x54, 0xf8, 0x4b, 0xd2, 0x5f, 0x46, 0x0b, 0xdd, 0x4f,
-	0x60, 0x93, 0x67, 0x43, 0xc6, 0x51, 0x71, 0xb2, 0xf9, 0x42, 0x6a, 0x15, 0xb7, 0xa1, 0x7d, 0xa2,
-	0xa7, 0x56, 0x0a, 0x0f, 0xbe, 0x0f, 0x99, 0xba, 0xbc, 0x8d, 0x1f, 0xc9, 0x84, 0xc3, 0x6d, 0xf2,
-	0x67, 0xdc, 0xcf, 0xb8, 0x92, 0xb1, 0xa4, 0x52, 0x72, 0x41, 0xba, 0xa4, 0x3c, 0xc9, 0x5b, 0x50,
-	0x4f, 0xfd, 0x1e, 0xf5, 0x58, 0x78, 0x4d, 0x25, 0xa3, 0xb2, 0x5b, 0x13, 0x8e, 0x0e, 0xda, 0xd6,
-	0x15, 0x18, 0x37, 0x6f, 0xd4, 0x1b, 0xf7, 0x25, 0x54, 0xe4, 0xf4, 0x72, 0x9d, 0xec, 0x2d, 0xd4,
-	0xc9, 0xfc, 0xa2, 0xba, 0x3a, 0x89, 0xbc, 0x0d, 0x10, 0xd3, 0xab, 0x59, 0x5e, 0x75, 0xe1, 0x91,
-	0xb4, 0xac, 0x7f, 0x0b, 0x40, 0x5e, 0xa7, 0x81, 0xcf, 0xe9, 0x4c, 0xaf, 0x97, 0xd6, 0xf9, 0x23,
-	0x6c, 0xe7, 0xfb, 0x2a, 0xf0, 0xde, 0x50, 0xe6, 0xca, 0x73, 0x1b, 0xce, 0x93, 0x25, 0x0b, 0x2b,
-	0x90, 0xea, 0x12, 0xf7, 0x3e, 0x9b, 0x77, 0x4d, 0xaf, 0x54, 0x69, 0xd5, 0x4a, 0x6d, 0x2c, 0x58,
-	0x29, 0xf2, 0x10, 0x6a, 0x71, 0xc2, 0x3d, 0x64, 0x18, 0xc8, 0x3d, 0xaf, 0xb8, 0x55, 0xb4, 0x5f,
-	0xa3, 0x49, 0xde, 0x01, 0x08, 0x2e, 0xc2, 0x48, 0x3f, 0x4a, 0xff, 0xa8, 0x95, 0xad, 0x0b, 0x97,
-	0x7c, 0x94, 0x2c, 0x17, 0xb6, 0x67, 0xaa, 0xd7, 0x3d, 0x7f, 0x01, 0x65, 0x95, 0x51, 0x90, 0x75,
-	0xad, 0xd9, 0x72, 0x95, 0x63, 0xbd, 0x82, 0xbb, 0x62, 0x98, 0x9d, 0x56, 0x3b, 0xef, 0xe6, 0x9c,
-	0x38, 0x0a, 0xb7, 0x8b, 0xa3, 0x38, 0x27, 0x8e, 0x36, 0xdc, 0x1b, 0x9f, 0xa7, 0xf9, 0x1d, 0x43,
-	0x59, 0x3d, 0x94, 0x85, 0xf5, 0x1e, 0x4a, 0x85, 0xb6, 0x62, 0xb8, 0x2f, 0x4e, 0xd2, 0xa3, 0xd0,
-	0xe4, 0xbe, 0x00, 0x53, 0x91, 0x9b, 0x6a, 0x35, 0x0f, 0x23, 0x0c, 0xf9, 0x51, 0xaa, 0xb9, 0x1a,
-	0x12, 0xf1, 0xf5, 0x18, 0x70, 0x9a, 0xc7, 0x6f, 0x67, 0x6e, 0x03, 0x99, 0xbe, 0x4f, 0x93, 0xc7,
-	0x79, 0x2b, 0xd5, 0x28, 0xfa, 0x38, 0x6f, 0x6d, 0x5a, 0x11, 0x6c, 0xc9, 0x4a, 0x39, 0x4d, 0xd9,
-	0xff, 0x40, 0xef, 0xa5, 0x6a, 0x87, 0xbe, 0x4e, 0xb3, 0x7b, 0x0f, 0xca, 0x4c, 0x38, 0x74, 0x6b,
-	0x77, 0x6e, 0xb4, 0x16, 0x83, 0xae, 0x82, 0x38, 0x7f, 0x6d, 0xc0, 0x9d, 0x96, 0xd3, 0x42, 0x0d,
-	0x76, 0xf0, 0x3f, 0x6a, 0xd8, 0xa5, 0xe4, 0x67, 0xa8, 0xe5, 0xb2, 0x20, 0x4f, 0x57, 0xa8, 0x46,
-	0xd6, 0x67, 0xae, 0xa7, 0x2d, 0x92, 0xa8, 0xd6, 0x4c, 0xbf, 0x10, 0xe4, 0x83, 0x85, 0xa9, 0x4b,
-	0x9e, 0x2e, 0xf3, 0x68, 0x4d, 0xb4, 0xbe, 0xf0, 0x37, 0x68, 0x4c, 0x6d, 0x06, 0x39, 0x58, 0x98,
-	0x7d, 0xf3, 0xe5, 0x30, 0x0f, 0x57, 0x03, 0xf5, 0x0d, 0xa7, 0x50, 0xd5, 0xba, 0x26, 0xef, 0x2e,
-	0xe5, 0x36, 0xd9, 0x22, 0xf3, 0xe9, 0xed, 0x20, 0x7d, 0xea, 0xaf, 0x00, 0x13, 0xcd, 0x91, 0xfd,
-	0xa5, 0x39, 0x33, 0x4b, 0x60, 0x1e, 0xac, 0xc4, 0xe9, 0xe3, 0x7f, 0x81, 0xfa, 0x58, 0x33, 0x64,
-	0x6f, 0x39, 0xa3, 0x29, 0x09, 0x9b, 0xfb, 0xab, 0x60, 0xea, 0xec, 0xb3, 0x8a, 0xfc, 0xdd, 0xf5,
-	0xf1, 0x7f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x99, 0x3e, 0x25, 0x3f, 0xf8, 0x09, 0x00, 0x00,
+	// 277 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x92, 0xcd, 0x4a, 0xc4, 0x30,
+	0x14, 0x85, 0x37, 0xe2, 0xcf, 0x15, 0x41, 0xe2, 0x6e, 0x56, 0xce, 0x8f, 0x88, 0xc2, 0xb4, 0x10,
+	0x9f, 0xa1, 0x38, 0xa2, 0x08, 0x3a, 0x8a, 0xe0, 0x66, 0x70, 0xea, 0xa5, 0x06, 0xb5, 0x89, 0xc9,
+	0x6d, 0x21, 0x6f, 0xe4, 0x63, 0x9a, 0x36, 0x09, 0x88, 0xad, 0xd5, 0x5d, 0xc8, 0xf9, 0xce, 0x77,
+	0x52, 0x28, 0x1c, 0x2b, 0x2d, 0x49, 0xa6, 0x06, 0xf3, 0x4a, 0x0b, 0xb2, 0x2b, 0xe4, 0xf8, 0x8a,
+	0xd6, 0xac, 0x6a, 0x9e, 0x86, 0x63, 0xd2, 0x12, 0xec, 0x20, 0x22, 0x49, 0xbc, 0xaf, 0xf9, 0xe8,
+	0xa2, 0x10, 0xf4, 0x52, 0xad, 0x93, 0x5c, 0xbe, 0xa7, 0x85, 0x94, 0xc5, 0x1b, 0x36, 0xad, 0xb9,
+	0x8b, 0xe7, 0x06, 0x75, 0x8d, 0x3a, 0xed, 0xd7, 0x07, 0x37, 0x59, 0x85, 0xc1, 0xcf, 0x3f, 0x37,
+	0x60, 0x2f, 0xe3, 0xd9, 0x25, 0xda, 0xa5, 0x6b, 0x8a, 0x1c, 0xd9, 0x0d, 0x6c, 0x9f, 0x23, 0x65,
+	0x25, 0x69, 0xcb, 0xc6, 0x49, 0x67, 0x3e, 0x66, 0xb7, 0xf8, 0x51, 0xa1, 0xa1, 0xd1, 0x64, 0x08,
+	0x31, 0x4a, 0x96, 0x06, 0x99, 0x80, 0xfd, 0x2b, 0x61, 0xfc, 0xe5, 0xc2, 0x1d, 0xa4, 0x53, 0x9f,
+	0x74, 0x7b, 0x3f, 0x99, 0x38, 0x71, 0xfa, 0x1f, 0x34, 0x4c, 0x3d, 0xc2, 0xee, 0xbd, 0x7a, 0x7e,
+	0x22, 0xf4, 0x1f, 0x30, 0xeb, 0x56, 0xbf, 0xc5, 0x71, 0xe0, 0xe8, 0x0f, 0x2a, 0xb8, 0xaf, 0x61,
+	0xab, 0xd9, 0x5d, 0x66, 0x0b, 0x76, 0xd8, 0xff, 0x24, 0x17, 0x45, 0xe7, 0x78, 0x80, 0x08, 0xbe,
+	0x07, 0x80, 0xe6, 0xca, 0x4f, 0xb1, 0x69, 0x7f, 0xc1, 0xa7, 0xd1, 0x3a, 0x1b, 0x86, 0x82, 0xf8,
+	0x0e, 0x76, 0xda, 0x2d, 0x42, 0x65, 0xd8, 0xe4, 0x97, 0x87, 0x34, 0x61, 0xd4, 0x4e, 0x07, 0x19,
+	0x6f, 0x5d, 0x6f, 0xb6, 0x7f, 0xcc, 0xd9, 0x57, 0x00, 0x00, 0x00, 0xff, 0xff, 0x8b, 0xea, 0xf3,
+	0xa1, 0xbc, 0x02, 0x00, 0x00,
 }

@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
@@ -41,9 +42,9 @@ func New(client v2pb.E2EKeyServiceClient) *Client {
 }
 
 // Update creates an UpdateEntryRequest for a user.
-func (c *Client) Update(profile *v2pb.Profile, userID string) (*v2pb.UpdateEntryRequest, error) {
+func (c *Client) Update(profile *pb.Profile, userID string) (*pb.UpdateEntryRequest, error) {
 	ctx := context.Background()
-	req := &v2pb.GetEntryRequest{UserId: userID}
+	req := &pb.GetEntryRequest{UserId: userID}
 	resp, err := c.GetEntry(ctx, req)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Unavailable, "Unable to query server %v", err)
@@ -52,7 +53,7 @@ func (c *Client) Update(profile *v2pb.Profile, userID string) (*v2pb.UpdateEntry
 	return CreateUpdate(profile, userID, resp)
 }
 
-func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryResponse) (*v2pb.UpdateEntryRequest, error) {
+func CreateUpdate(profile *pb.Profile, userID string, previous *pb.GetEntryResponse) (*pb.UpdateEntryRequest, error) {
 
 	// Construct Profile.
 	profileData, err := proto.Marshal(profile)
@@ -87,7 +88,7 @@ func CreateUpdate(profile *v2pb.Profile, userID string, previous *v2pb.GetEntryR
 		NewEntry: entryData,
 	}
 
-	return &v2pb.UpdateEntryRequest{
+	return &pb.UpdateEntryRequest{
 		UserId:            userID,
 		SignedEntryUpdate: signedEntryUpdate,
 		Profile:           profileData,
