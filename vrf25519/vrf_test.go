@@ -46,3 +46,42 @@ func TestVRF(t *testing.T) {
 		t.Errorf("Verify() failed")
 	}
 }
+
+/*
+func TessTSK(t *testing.T) {
+	// t = r - sk mod q
+	// t+sk == r?
+
+}
+*/
+
+/*
+func TestGR(t *testing.T) {
+	m := []byte("data")
+	k := KeyGen()
+	vrf := k.VRF(m)
+	proof := k.ZKProof(m)
+	var s, t [32]byte
+	copy(s[:], proof[0:32])
+	copy(t[:], proof[32:64])
+
+	// g^t * G^s
+	var gT, GS [32]byte
+	curve25519.ScalarBaseMult(&gT, &t)
+	curve25519.ScalarMult(&GS, &G, &s)
+	var gTi, GSi, gTGSi big.Int
+	gTi.SetBytes(bigEndian(gT))
+	GSi.SetBytes(bigEndian(GS))
+	gTGSi.Mul(&gTi, &GSi)
+	log.Printf("Sign(ti)=%v", gTGSi.Sign())
+	log.Printf("Bytes(ti)=%v", gTGSi.Bytes())
+	gTGS := littleEndian(gTGSi.Bytes())
+
+	// g^r == g^t * G^s
+	// g^(t+sk) == g^t * g^k*s
+
+	if !Verify(m, c, k.PublicKey, vrf) {
+		t.Errorf("Verify() failed")
+	}
+}
+*/
