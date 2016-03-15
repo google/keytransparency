@@ -46,7 +46,7 @@ main: proto
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicate.
-test: proto
+test: main
 	go test `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
 	python tests/api_proxy_test.py
 
