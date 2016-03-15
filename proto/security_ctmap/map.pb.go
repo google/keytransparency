@@ -28,10 +28,6 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
-
 // EpochHead is the head node of the Merkle Tree as well as additional metadata
 // for the tree.
 type EpochHead struct {
@@ -114,8 +110,8 @@ func (m *Step) GetSignedEpochHead() *SignedEpochHead {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*Step) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Step_OneofMarshaler, _Step_OneofUnmarshaler, _Step_OneofSizer, []interface{}{
+func (*Step) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _Step_OneofMarshaler, _Step_OneofUnmarshaler, []interface{}{
 		(*Step_EntryChanged)(nil),
 		(*Step_SignedEpochHead)(nil),
 	}
@@ -161,26 +157,6 @@ func _Step_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (
 	default:
 		return false, nil
 	}
-}
-
-func _Step_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Step)
-	// type
-	switch x := m.Type.(type) {
-	case *Step_EntryChanged:
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.EntryChanged)))
-		n += len(x.EntryChanged)
-	case *Step_SignedEpochHead:
-		s := proto.Size(x.SignedEpochHead)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 // Entry is the leaf node object for the Merkle Tree. Its unique index in the
@@ -276,8 +252,8 @@ func (m *PublicKey) GetEcdsaVerifyingP256() []byte {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*PublicKey) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _PublicKey_OneofMarshaler, _PublicKey_OneofUnmarshaler, _PublicKey_OneofSizer, []interface{}{
+func (*PublicKey) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _PublicKey_OneofMarshaler, _PublicKey_OneofUnmarshaler, []interface{}{
 		(*PublicKey_Ed25519)(nil),
 		(*PublicKey_RsaVerifyingSha256_2048)(nil),
 		(*PublicKey_EcdsaVerifyingP256)(nil),
@@ -331,29 +307,6 @@ func _PublicKey_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buff
 	default:
 		return false, nil
 	}
-}
-
-func _PublicKey_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*PublicKey)
-	// key_type
-	switch x := m.KeyType.(type) {
-	case *PublicKey_Ed25519:
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.Ed25519)))
-		n += len(x.Ed25519)
-	case *PublicKey_RsaVerifyingSha256_2048:
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.RsaVerifyingSha256_2048)))
-		n += len(x.RsaVerifyingSha256_2048)
-	case *PublicKey_EcdsaVerifyingP256:
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.EcdsaVerifyingP256)))
-		n += len(x.EcdsaVerifyingP256)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 // SignedEpochHead represents a signed state of the Merkel tree.
