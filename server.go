@@ -21,11 +21,12 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/proxy"
+	"github.com/google/e2e-key-server/vrf/pkcsvrf"
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/signer"
@@ -130,6 +131,7 @@ func main() {
 	mutator := entry.New()
 	appender := chain.New()
 	tree := memhist.New()
+	vrf, _ := pkcsvrf.KeyGen() // TODO: Replace with a read from key storage.
 	// Create a signer.
 	signer, err := signer.New(db, tree, mutator, appender)
 	signer.StartSequencing()
@@ -140,7 +142,7 @@ func main() {
 	}
 	defer signer.Stop()
 	// Create the servers.
-	v2 := keyserver.New(db, db, tree, appender)
+	v2 := keyserver.New(db, db, tree, appender, vrf)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

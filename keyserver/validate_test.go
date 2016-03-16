@@ -55,9 +55,9 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	defer env.Close()
 
 	// Use a fake previous entry. Need a real previous entry.
-	index, _ := env.server.Vuf(primaryUserEmail)
+	index, _ := env.server.vrf.Evaluate([]byte(primaryUserEmail))
 	previous := &pb.GetEntryResponse{
-		Index: index,
+		Index: index[:],
 	}
 
 	updateEntryRequest, err := client.CreateUpdate(primaryUserProfile, primaryUserEmail, previous)

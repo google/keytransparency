@@ -22,10 +22,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/vrf/fakevrf"
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/memhist"
@@ -122,7 +123,8 @@ func NewEnv(t *testing.T) *Env {
 	db := memdb.New()
 	tree := memhist.New()
 	appender := chain.New()
-	v2srv := keyserver.New(db, db, tree, appender)
+	vrf, _ := fakevrf.KeyGen()
+	v2srv := keyserver.New(db, db, tree, appender, vrf)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)

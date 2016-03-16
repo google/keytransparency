@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/e2e-key-server/vrf/fakevrf"
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
@@ -158,7 +159,8 @@ func NewEnv(t *testing.T) *Env {
 	db := memdb.New()
 	tree := memhist.New()
 	appender := chain.New()
-	server := New(db, db, tree, appender)
+	vrf, _ := fakevrf.KeyGen()
+	server := New(db, db, tree, appender, vrf)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 

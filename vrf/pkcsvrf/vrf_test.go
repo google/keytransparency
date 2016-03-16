@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package proxy converts v1 API requests into v2 API calls.
-
-package keyserver
+package pkcsvrf
 
 import (
-	"crypto/sha256"
+	"github.com/google/e2e-key-server/vrf"
+	"testing"
 )
 
-// Vuf is a mock verifiable unpredictable function.
-func (s *Server) Vuf(userID string) ([]byte, error) {
-	hUserID := sha256.Sum256([]byte(userID))
-	return hUserID[:], nil
+func TestVRF(t *testing.T) {
+	m := []byte("data")
+	var k vrf.PrivateKey
+	var pk vrf.PublicKey
+	k, pk = KeyGen()
+	vrf, proof := k.Evaluate(m)
+	if !pk.Verify(m, vrf[:], proof) {
+		t.Errorf("Verify() failed")
+	}
+}
+
+func TestVrfIsDeterministc(t *testing.T) {
+	m := []byte("data")
+	var k vrf.PrivateKey
+	k, _ = KeyGen()
+	vrf1, _ := k.Evaluate(m)
+	vrf2, _ := k.Evaluate(m)
+	if vrf1 != vrf2 {
+		t.Errorf("VRF(%v) = %v != %v", m, vrf1, vrf2)
+	}
 }

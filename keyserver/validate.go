@@ -87,11 +87,8 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *pb.UpdateEn
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 	// Verify Entry
-	index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return err
-	}
-	if got, want, equal := entry.Index, index, bytes.Equal(entry.Index, index); !equal {
+	index, _ := s.vrf.Evaluate([]byte(in.UserId))
+	if got, want := entry.Index, index[:]; !bytes.Equal(got, want) {
 		return grpc.Errorf(codes.InvalidArgument, "entry.Index=%v, want %v", got, want)
 	}
 
