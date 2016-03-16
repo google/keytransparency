@@ -24,15 +24,8 @@ func TestVRF(t *testing.T) {
 	var k vrf.PrivateKey
 	var pk vrf.PublicKey
 	k, pk = KeyGen()
-	vrf, err := k.Vrf(m)
-	if err != nil {
-		t.Errorf("VRF(%v)=%v", m, err)
-	}
-	c, err := k.Proof(m)
-	if err != nil {
-		t.Errorf("Proof(%v)=%v", m, err)
-	}
-	if err := pk.Verify(m, c, vrf); err != nil {
+	vrf, proof := k.Evaluate(m)
+	if !pk.Verify(m, proof, vrf) {
 		t.Errorf("Verify() failed")
 	}
 }
@@ -41,8 +34,8 @@ func TestVrfIsDeterministc(t *testing.T) {
 	m := []byte("data")
 	var k vrf.PrivateKey
 	k, _ = KeyGen()
-	vrf1, _ := k.Vrf(m)
-	vrf2, _ := k.Vrf(m)
+	vrf1, _ := k.Evaluate(m)
+	vrf2, _ := k.Evaluate(m)
 	if vrf1 != vrf2 {
 		t.Errorf("VRF(%v) = %v != %v", m, vrf1, vrf2)
 	}
