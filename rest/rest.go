@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -642,7 +642,7 @@ func parseURLVariable(r *http.Request, keyword string) (string, error) {
 // into a format compatible with google.protobuf.Timestamo, i.e., {"seconds":
 // <seconds>, "nanos": <nanos>}. This will allow the JSON decoder to decode the
 // timestamp. The string timestamp is identified using its key specified in
-// keyword. For example: {"creation_time": "2015-05-18T23:58:36.000Z"} will be
+// keyword. For example: {"creation_time": "2016-05-18T23:58:36.000Z"} will be
 // replaced with {"creation_time": {"seconds": 1431993516, "nanos": 0}}.
 // TODO(cesarghali): this function is not the best in terms of efficienty.
 //                   Optimally use UnmarshalJSON to assist the JSON decoder.

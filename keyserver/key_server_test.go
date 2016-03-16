@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ var (
 	// 	Pub alg - Reserved for ECDSA(pub 19)
 	// 	Hash alg - SHA256(hash 8)
 	// 	Hashed Sub: signature creation time(sub 2)(critical)(4 bytes)
-	// 		Time - Tue May  5 17:13:00 PDT 2015
+	// 		Time - Tue May  5 17:13:00 PDT 2016
 	// 	Hashed Sub: preferred symmetric algorithms(sub 11)(critical)(1 bytes)
 	// 		Sym alg - AES with 256-bit key(sym 9)
 	// 	Hashed Sub: issuer key ID(sub 16)(critical)(8 bytes)
@@ -96,7 +96,7 @@ var (
 	// 	Pub alg - Reserved for ECDSA(pub 19)
 	// 	Hash alg - SHA256(hash 8)
 	// 	Hashed Sub: signature creation time(sub 2)(critical)(4 bytes)
-	// 		Time - Tue May  5 17:13:00 PDT 2015
+	// 		Time - Tue May  5 17:13:00 PDT 2016
 	// 	Hashed Sub: issuer key ID(sub 16)(critical)(8 bytes)
 	// 		Key ID - 0x51BCF536CDE77EAD
 	// 	Hashed Sub: key flags(sub 27)(critical)(1 bytes)
