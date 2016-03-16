@@ -35,6 +35,8 @@ func (k *Key) Evaluate(m []byte) (vrf [32]byte, proof []byte) {
 }
 
 // Verify asserts that vrf is the hash of m
-func (pk *PubKey) Verify(m, proof []byte, vrf [32]byte) bool {
-	return vrf == hashSum(m)
+func (pk *PubKey) Verify(m, vrf, proof []byte) bool {
+	var v [32]byte
+	copy(v[:], vrf)
+	return len(vrf) == 32 && v == hashSum(m)
 }

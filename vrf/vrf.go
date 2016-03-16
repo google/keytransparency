@@ -29,5 +29,5 @@ type PrivateKey interface {
 
 type PublicKey interface {
 	// Verify verifies the NP-proof supplied by Proof.
-	Verify(m, proof []byte, vrf [32]byte) bool
+	Verify(m, vrf, proof []byte) bool
 }
