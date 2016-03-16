@@ -19,6 +19,7 @@ import (
 	"golang.org/x/net/context"
 )
 
+// SparseFactory creates a Sparse Tree from a set of neighbor nodes for testing.
 type SparseFactory interface {
 	// FromNeighbors builds a sparse merkle tree with the path from the given leaf
 	// node at the given index, up to the root including all path neighbors.
@@ -43,7 +44,7 @@ type SparseHist interface {
 	QueueLeaf(ctx context.Context, index, leaf []byte) error
 	// Commit takes all the Queued values since the last Commmit() and writes them.
 	// Commit is NOT multi-process safe. It should only be called from the sequencer.
-	Commit() (epoch int64)
+	Commit() (epoch int64, err error)
 	// ReadRootAt returns the root value at epoch.
 	ReadRootAt(ctx context.Context, epoch int64) ([]byte, error)
 	// ReadLeafAt returns the leaf value at epoch.

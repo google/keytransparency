@@ -35,7 +35,7 @@ import (
 const (
 	validTs                        = "2016-05-18T23:58:36.000Z"
 	invalidTs                      = "Mon May 18 23:58:36 UTC 2016"
-	tsSeconds                      = 1431993516
+	tsSeconds                      = 1463615916
 	primaryTestEpoch               = "2367"
 	primaryTestPageSize            = "653"
 	primaryTestCommitmentTimestamp = "8626"
@@ -865,7 +865,7 @@ func TestParseJson(t *testing.T) {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 		if got, want := buf.String(), test.outJSON; got != want {
-			t.Errorf("Test[%v]: Out JSON = (%v), want (%v)", i, got, want)
+			t.Errorf("Test[%v]: Out JSON=\n[%v], want \n[%v]", i, got, want)
 		}
 	}
 }

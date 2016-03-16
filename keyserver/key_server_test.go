@@ -220,9 +220,11 @@ func TestProofOfAbsence(t *testing.T) {
 func getNonExistantUser(t *testing.T, env *Env) {
 	ctx := context.Background() // Unauthenticated request.
 	res, err := env.Client.GetEntry(ctx, &pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: "nobody"})
-	if err != nil {
-		t.Fatalf("Query for nonexistant failed %v", err)
+	if got, want := grpc.Code(err), codes.OK; got != want {
+		t.Errorf("GetEntry()=%v, want %v", got, want)
 	}
+
+	return
 
 	if len(res.Profile) != 0 {
 		t.Errorf("Profile returned for nonexistant user")

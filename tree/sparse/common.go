@@ -38,9 +38,9 @@ const (
 
 var (
 	// LeafIdentifier is the data used to indicate a leaf node.
-	LeafIdentifier = []byte("L")
+	leafIdentifier = []byte("L")
 	// EmptyIdentifier is used while calculating the data of nil sub branches.
-	EmptyIdentifier = []byte("E")
+	emptyIdentifier = []byte("E")
 
 	NewHash = sha512.New512_256
 )
@@ -48,9 +48,15 @@ var (
 // HashLeaf calculate the merkle tree leaf node value. This is computed as
 // H(Identifier || depth || index || dataHash), where Identifier, depth, and
 // index are fixed-length.
-func HashLeaf(identifier []byte, depth int, index []byte, dataHash []byte) []byte {
+func HashLeaf(leaf bool, depth int, index []byte, dataHash []byte) []byte {
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
+	var identifier []byte
+	if leaf {
+		identifier = leafIdentifier
+	} else {
+		identifier = emptyIdentifier
+	}
 
 	h := NewHash()
 	h.Write(identifier)
@@ -72,7 +78,7 @@ func HashIntermediateNode(left []byte, right []byte) []byte {
 // H(EmptyIdentifier || depth || index), where EmptyIdentifier, depth, and
 // index are fixed-length.
 func EmptyLeafValue(prefix string) []byte {
-	return HashLeaf(EmptyIdentifier, len(prefix), []byte(prefix), nil)
+	return HashLeaf(false, len(prefix), []byte(prefix), nil)
 }
 
 // NodeValues computes the new values for nodes up the tree.
