@@ -18,7 +18,6 @@ package fakevrf
 
 import (
 	"crypto/sha256"
-	"errors"
 )
 
 var hashSum = sha256.Sum256
@@ -30,21 +29,12 @@ func KeyGen() (*Key, *PubKey) {
 	return &Key{}, &PubKey{}
 }
 
-// VRF computes a mock verifiable unpredictable function.
-func (k *Key) Vrf(m []byte) ([32]byte, error) {
+// Evaluate computes a mock verifiable unpredictable function.
+func (k *Key) Evaluate(m []byte) (vrf [32]byte, proof []byte) {
 	return hashSum(m), nil
 }
 
-// Proof returns nothing for this mock unpredictable function.
-func (k *Key) Proof(m []byte) ([]byte, error) {
-	return nil, nil
-}
-
 // Verify asserts that vrf is the hash of m
-func (pk *PubKey) Verify(m, proof []byte, vrf [32]byte) error {
-	h := hashSum(m)
-	if h != vrf {
-		return errors.New("Verification Error")
-	}
-	return nil
+func (pk *PubKey) Verify(m, proof []byte, vrf [32]byte) bool {
+	return vrf == hashSum(m)
 }
