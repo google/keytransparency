@@ -23,13 +23,11 @@ package vrf
 // http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=814584
 
 type PrivateKey interface {
-	// VRF returns the output of f_k(m).
-	Vrf(m []byte) ([32]byte, error)
-	// Proof returns an NP-proof that f_k(m) is correct.
-	Proof(m []byte) ([]byte, error)
+	// Evaluate returns the output of f_k(m) and it's proof.
+	Evaluate(m []byte) (vrf [32]byte, proof []byte)
 }
 
 type PublicKey interface {
 	// Verify verifies the NP-proof supplied by Proof.
-	Verify(m, proof []byte, vrf [32]byte) error
+	Verify(m, proof []byte, vrf [32]byte) bool
 }
