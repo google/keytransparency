@@ -20,6 +20,7 @@ import (
 	"log"
 	"math"
 
+	"github.com/gdbelvin/e2e-key-server/vrf"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
@@ -41,16 +42,18 @@ type Server struct {
 	auth      auth.Authenticator
 	tree      tree.Sparse
 	appender  appender.Appender
+	vrf       vrf.PrivateKey
 }
 
 // Create creates a new instance of the key server.
-func New(committer commitments.Committer, queue db.Queuer, tree tree.Sparse, appender appender.Appender) *Server {
+func New(committer commitments.Committer, queue db.Queuer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
 		auth:      auth.New(),
 		tree:      tree,
 		appender:  appender,
+		vrf:       vrf,
 	}
 }
 
@@ -58,10 +61,7 @@ func New(committer commitments.Committer, queue db.Queuer, tree tree.Sparse, app
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
-	index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
-	}
+	index, proof := s.vrf.Evaluate([]byte(in.UserId))
 
 	// Get an append-only proof for the signed tree head.
 	e := in.Epoch
@@ -80,13 +80,13 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 
 	// result contains the returned GetEntryResponse.
 	result := &pb.GetEntryResponse{
-		Index:            index,
+		Index:            index[:],
+		IndexProof:       proof,
 		SignedEpochHeads: []*ctmap.SignedEpochHead{&seh},
-		// TODO(cesarghali): Fill IndexProof.
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeaf(ctx, index)
+	leaf, err := s.tree.ReadLeaf(ctx, index[:])
 	if err == nil {
 		result.Entry = new(ctmap.Entry)
 		if err := proto.Unmarshal(leaf, result.Entry); err != nil {
@@ -96,7 +96,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		// If entryStorage.SignedEntryUpdate.NewEntry have an
 		// exact index as the requested one, fill out the
 		// corresponding profile and its commitment.
-		if bytes.Equal(result.Entry.Index, index) {
+		if bytes.Equal(result.Entry.Index, index[:]) {
 			commitment, err := s.committer.ReadCommitment(ctx, result.Entry.ProfileCommitment)
 			if err != nil {
 				return nil, err
@@ -107,7 +107,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		}
 	}
 
-	neighbors, err := s.tree.Neighbors(ctx, index)
+	neighbors, err := s.tree.Neighbors(ctx, index[:])
 	log.Printf("Neighbors(%v)=%v,%v", index, neighbors, err)
 	// TODO: return historical values for epoch.
 	result.MerkleTreeNeighbors = neighbors
@@ -130,10 +130,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return nil, err
-	}
+	index, _ := s.vrf.Evaluate([]byte(in.UserId))
 	// The mutation is an update to the commitment.
 	m, err := proto.Marshal(in.GetSignedEntryUpdate())
 	if err != nil {
@@ -150,7 +147,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	if err := s.queue.QueueMutation(ctx, index, m); err != nil {
+	if err := s.queue.QueueMutation(ctx, index[:], m); err != nil {
 		return nil, err
 	}
 
