@@ -39,30 +39,27 @@ func KeyGen() (*Key, *PubKey) {
 	return (*Key)(priv), (*PubKey)(&priv.PublicKey)
 }
 
-// Vrf returns the verifiable unpredictable function evaluated at m.
-func (k *Key) Vrf(m []byte) ([32]byte, error) {
-	sig, err := k.Proof(m)
-	return hashSum(sig), err
-}
-
-// Proof returns a pkcs signature prooving that Vrf(m) is correct.
-func (k *Key) Proof(m []byte) ([]byte, error) {
+// Evaluate returns the verifiable unpredictable function evaluated at m.
+func (k *Key) Evaluate(m []byte) (vrf [32]byte, proof []byte) {
 	h := hashSum(m)
 	sig, err := rsa.SignPKCS1v15(nil, (*rsa.PrivateKey)(k), hashAlgo, h[:])
 	if err != nil {
-		return make([]byte, 0), err
+		log.Fatalf("Failed SignPKCS1v15: %v", err)
 	}
-	return sig, nil
+
+	vrf = hashSum(sig)
+	proof = sig
+	return
 }
 
 // Verify asserts that vrf is the hash of proof and the proof is correct.
-func (pk *PubKey) Verify(m, proof []byte, vrf [32]byte) error {
+func (pk *PubKey) Verify(m, proof []byte, vrf [32]byte) bool {
 	// Assert vrf == h(proof).
 	h := hashSum(proof)
 	if h != vrf {
-		return rsa.ErrVerification
+		return false
 	}
 	// Assert sig(h(m)) is correct.
 	h = hashSum(m)
-	return rsa.VerifyPKCS1v15((*rsa.PublicKey)(pk), hashAlgo, h[:], proof)
+	return nil == rsa.VerifyPKCS1v15((*rsa.PublicKey)(pk), hashAlgo, h[:], proof)
 }
