@@ -20,7 +20,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/gdbelvin/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/keyserver"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"google.golang.org/grpc"

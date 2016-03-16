@@ -20,7 +20,7 @@ import (
 	"log"
 	"math"
 
-	"github.com/gdbelvin/e2e-key-server/vrf"
+	"github.com/google/e2e-key-server/vrf"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"

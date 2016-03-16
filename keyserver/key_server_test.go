@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gdbelvin/e2e-key-server/vrf/fakevrf"
+	"github.com/google/e2e-key-server/vrf/fakevrf"
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
