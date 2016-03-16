@@ -25,7 +25,7 @@ func TestVRF(t *testing.T) {
 	var pk vrf.PublicKey
 	k, pk = KeyGen()
 	vrf, proof := k.Evaluate(m)
-	if !pk.Verify(m, proof, vrf) {
+	if !pk.Verify(m, vrf[:], proof) {
 		t.Errorf("Verify() failed")
 	}
 }
