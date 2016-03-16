@@ -15,6 +15,8 @@
 package tree
 
 import (
+	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -59,6 +61,31 @@ func TestBitString(t *testing.T) {
 	for _, tt := range locationTests {
 		if got, want := BitString(tt.location), tt.bstring; got != want {
 			t.Errorf("BitString(%v) = %v, want %v", tt.location, got, want)
+		}
+	}
+}
+
+func TestNeighborIndex(t *testing.T) {
+	tests := []struct {
+		index    string
+		depth    int
+		neighbor string
+	}{
+		{"00000000", 7, "00000001"},
+		{"00000000", 6, "00000010"},
+		{"00000000", 1, "01000000"},
+		{"00000000", 0, "10000000"},
+		{"00001000", 4, "00000000"},
+		{"00001000", 0, "10001000"},
+	}
+	for _, tt := range tests {
+		i, _ := strconv.ParseInt(tt.index, 2, 9)
+		b, _ := strconv.ParseInt(tt.neighbor, 2, 9)
+		index := []byte{byte(i)}
+		expected := []byte{byte(b)}
+		if got, want := NeighborIndex(index, tt.depth), expected; !bytes.Equal(got, want) {
+			//if got, want := BitString(NeighborIndex(index, tt.depth)), tt.neighbor; got != want {
+			t.Errorf("NeighborIndex(%v, %v) = %v, want %v", index, tt.depth, got, want)
 		}
 	}
 }

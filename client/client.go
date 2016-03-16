@@ -21,7 +21,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -34,11 +35,12 @@ import (
 // Client is a helper library for issuing updates to the key server.
 type Client struct {
 	v2pb.E2EKeyServiceClient
+	factory tree.SparseFactory
 }
 
 // New creates a new client.
 func New(client v2pb.E2EKeyServiceClient) *Client {
-	return &Client{client}
+	return &Client{client, memtree.NewFactory()}
 }
 
 // Update creates an UpdateEntryRequest for a user.
@@ -100,13 +102,10 @@ func CreateUpdate(profile *pb.Profile, userID string, previous *pb.GetEntryRespo
 // and the provided signed epoch head has a valid signature.
 func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedRoot []byte, index []byte, entry []byte) error {
 	// TODO: replace with static merkle tree
-	m, err := memhist.FromNeighbors(neighbors, index, entry)
-	if err != nil {
-		return grpc.Errorf(codes.Internal, "Failed to build verification tree: %v", err)
-	}
+	m := c.factory.FromNeighbors(neighbors, index, entry)
 
 	// Get calculated root value.
-	calculatedRoot := m.Root(0)
+	calculatedRoot, _ := m.ReadRoot(nil)
 
 	// Verify the built tree root is as expected.
 	if ok := hmac.Equal(expectedRoot, calculatedRoot); !ok {
