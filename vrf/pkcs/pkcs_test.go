@@ -12,31 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pkcsvrf
+package pkcs
 
 import (
-	"github.com/google/e2e-key-server/vrf"
 	"testing"
 )
 
 func TestVRF(t *testing.T) {
-	m := []byte("data")
-	var k vrf.PrivateKey
-	var pk vrf.PublicKey
-	k, pk = KeyGen()
-	vrf, proof := k.Evaluate(m)
-	if !pk.Verify(m, vrf[:], proof) {
-		t.Errorf("Verify() failed")
-	}
-}
+	k, pk := KeyGen()
 
-func TestVrfIsDeterministc(t *testing.T) {
-	m := []byte("data")
-	var k vrf.PrivateKey
-	k, _ = KeyGen()
-	vrf1, _ := k.Evaluate(m)
-	vrf2, _ := k.Evaluate(m)
-	if vrf1 != vrf2 {
-		t.Errorf("VRF(%v) = %v != %v", m, vrf1, vrf2)
+	m1 := []byte("data1")
+	m2 := []byte("data2")
+	m3 := []byte("data2")
+	vrf1, proof1 := k.Evaluate(m1)
+	vrf2, proof2 := k.Evaluate(m2)
+	vrf3, proof3 := k.Evaluate(m3)
+	tests := []struct {
+		m     []byte
+		vrf   [32]byte
+		proof []byte
+		want  bool
+	}{
+		{m1, vrf1, proof1, true},
+		{m2, vrf2, proof2, true},
+		{m3, vrf3, proof3, true},
+		{m3, vrf3, proof2, true},
+		{m3, vrf3, proof1, false},
+	}
+
+	for _, tc := range tests {
+		got := pk.Verify(tc.m, tc.vrf[:], tc.proof)
+		if got != tc.want {
+			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, tc.want)
+		}
 	}
 }
