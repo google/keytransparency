@@ -13,7 +13,7 @@ database "Spanner" {
 folder "Map" {
 	[Mutations]
 	[Queue]
-	[Leafs]
+	[Leaves]
 	[Nodes]
 	[SignedTreeHeads]
 	}
@@ -32,7 +32,7 @@ Queue --> Sequencer	: 4. DB Callback
 
 Sequencer --> Signer	: 5. Go Channel
 Signer <--> Tree	: 6. WriteLeaf
-Tree --> Leafs
+Tree --> Leaves
 Tree --> Nodes
 Signer --> Appender 	: 7. CreateEpoch
 Appender --> SignedTreeHeads
@@ -48,7 +48,7 @@ title Retrieve Merkle Tree Proof
 
 database "Spanner" {
 folder "Map" {
-	[Leafs]
+	[Leaves]
 	[Nodes]
 	[SignedTreeHeads]
 	}
@@ -59,7 +59,7 @@ folder "Privacy" {
 
 User -> FE		: 1. GetEntry(email, timestamp)
 FE --> Tree		: 2. GetLeaf
-Tree <- Leafs
+Tree <- Leaves
 FE --> Tree		: 2. GetNeighbors
 Tree <- Nodes
 FE --> Committer		: 3. GetCommitment

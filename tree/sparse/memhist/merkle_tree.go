@@ -232,7 +232,7 @@ func (t *Tree) addRoot(epoch int64) (*node, error) {
 }
 
 // Parent node is responsible for creating children.
-// Inserts leafs in the nearest empty sub branch it finds.
+// Inserts leaves in the nearest empty sub branch it finds.
 func (n *node) addLeaf(data []byte, epoch int64, bindex string, commitmentTS int64, depth int, isLeaf bool) error {
 	if n.epoch != epoch {
 		return grpc.Errorf(codes.Internal, "epoch = %d want %d", epoch, n.epoch)
