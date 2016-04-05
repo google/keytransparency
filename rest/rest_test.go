@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	validTs                        = "2015-05-18T23:58:36.000Z"
-	invalidTs                      = "Mon May 18 23:58:36 UTC 2015"
+	validTs                        = "2016-05-18T23:58:36.000Z"
+	invalidTs                      = "Mon May 18 23:58:36 UTC 2016"
 	tsSeconds                      = 1431993516
 	primaryTestEpoch               = "2367"
 	primaryTestPageSize            = "653"
