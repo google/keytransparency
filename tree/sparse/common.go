@@ -82,11 +82,11 @@ func EmptyLeafValue(prefix string) []byte {
 }
 
 // NodeValues computes the new values for nodes up the tree.
-func NodeValues(bindex string, leafHash []byte, nbrValues [][]byte) [][]byte {
+func NodeValues(bindex string, value []byte, nbrValues [][]byte) [][]byte {
 	levels := len(bindex) + 1
 	steps := len(bindex)
 	nodeValues := make([][]byte, levels)
-	nodeValues[0] = leafHash
+	nodeValues[0] = value
 	// assert len(nbrValues) == levels - 1
 	for i := 0; i < steps; i++ {
 		// Is the last node 0 or 1?

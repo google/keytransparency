@@ -40,6 +40,6 @@ go get -u github.com/gorilla/mux
 go get -u golang.org/x/net/context
 go get -u golang.org/x/crypto/openpgp
 go get -u google.golang.org/grpc
-go get -u github.com/golang/leveldb
+go get -u github.com/mattn/go-sqlite3
 
 #Shell PATH must include $GOPATH/bin
