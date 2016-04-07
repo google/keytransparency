@@ -12,14 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pkcs
+package p256
 
 import (
 	"testing"
 )
 
+func TestH1(t *testing.T) {
+	tests := []struct {
+		m string
+	}{
+		{""},
+		{"a"},
+		{"bbbbbbbbbbbbbbbbbbbbbbb"},
+	}
+	for _, tc := range tests {
+		x, y := H1([]byte(tc.m))
+		if x == nil {
+			t.Errorf("H1(%v)=%v, want curve point", tc.m, x)
+		}
+		if got := curve.Params().IsOnCurve(x, y); got != true {
+			t.Errorf("H1(%v)=%v, is not on curve", tc.m)
+		}
+	}
+}
+
+func TestH2(t *testing.T) {
+	tests := []struct {
+		m string
+		l int
+	}{
+		{"", 32},
+		{"a", 32},
+		{"bbbbbbbbbbbbbbbbbbbbbbb", 32},
+	}
+	for _, tc := range tests {
+		x := H2([]byte(tc.m))
+		if got := len(x.Bytes()); got != tc.l {
+			t.Errorf("len(h2(%v)) = %v, want %v", tc.m, got, tc.l)
+		}
+	}
+}
+
 func TestVRF(t *testing.T) {
-	k, pk := KeyGen()
+	k, pk := GenerateKey()
 
 	m1 := []byte("data1")
 	m2 := []byte("data2")
@@ -29,7 +65,7 @@ func TestVRF(t *testing.T) {
 	vrf3, proof3 := k.Evaluate(m3)
 	tests := []struct {
 		m     []byte
-		vrf   [32]byte
+		vrf   []byte
 		proof []byte
 		want  bool
 	}{
