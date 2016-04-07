@@ -17,9 +17,9 @@ package keyserver
 import (
 	"testing"
 
-	"github.com/gdbelvin/e2e-key-server/client"
+	"github.com/google/e2e-key-server/client"
 
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 func TestValidateEmail(t *testing.T) {

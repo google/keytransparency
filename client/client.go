@@ -19,17 +19,17 @@ package client
 import (
 	"crypto/hmac"
 
-	"github.com/gdbelvin/e2e-key-server/db/commitments"
-	"github.com/gdbelvin/e2e-key-server/tree"
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/memtree"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
-	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 // Client is a helper library for issuing updates to the key server.

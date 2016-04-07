@@ -18,15 +18,15 @@ import (
 	"log"
 	"time"
 
-	"github.com/gdbelvin/e2e-key-server/appender"
-	"github.com/gdbelvin/e2e-key-server/db"
-	"github.com/gdbelvin/e2e-key-server/mutator"
-	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/db"
+	"github.com/google/e2e-key-server/mutator"
+	"github.com/google/e2e-key-server/tree"
 	"golang.org/x/net/context"
 
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
-	tspb "github.com/gdbelvin/e2e-key-server/proto/security_protobuf"
 	proto "github.com/golang/protobuf/proto"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 )
 
 // Signer is the object responsible for triggering epoch creation and signing

@@ -22,7 +22,7 @@ package memtree
 import (
 	"golang.org/x/net/context"
 
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/memhist"
+	"github.com/google/e2e-key-server/tree/sparse/memhist"
 )
 
 // Tree holds internal state for the sparse merkle tree. Not thread-safe.

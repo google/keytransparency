@@ -15,7 +15,7 @@ syntax = "proto3";
 
 package security_ctmap;
 
-import "github.com/gdbelvin/e2e-key-server/proto/security_protobuf/timestamp.proto";
+import "github.com/google/e2e-key-server/proto/security_protobuf/timestamp.proto";
 
 // EpochHead is the head node of the Merkle Tree as well as additional metadata
 // for the tree.

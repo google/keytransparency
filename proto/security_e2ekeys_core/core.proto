@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package security.e2ekeys.core;
 
-import "github.com/gdbelvin/e2e-key-server/proto/security_ctmap/map.proto";
+import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
 
 // Internal types for the End to End Key Server.
 

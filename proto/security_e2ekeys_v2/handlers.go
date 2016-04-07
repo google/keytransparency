@@ -19,7 +19,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gdbelvin/e2e-key-server/rest/handlers"
+	"github.com/google/e2e-key-server/rest/handlers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 

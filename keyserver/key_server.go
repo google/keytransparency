@@ -20,17 +20,17 @@ import (
 	"math"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/gdbelvin/e2e-key-server/appender"
-	"github.com/gdbelvin/e2e-key-server/auth"
-	"github.com/gdbelvin/e2e-key-server/db"
-	"github.com/gdbelvin/e2e-key-server/db/commitments"
-	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/db"
+	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/tree"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 // Server holds internal state for the key server.

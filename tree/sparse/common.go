@@ -26,7 +26,7 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 
-	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree"
 )
 
 const (
