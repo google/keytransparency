@@ -33,6 +33,9 @@ func NewFactory() *TreeFactory {
 
 // FromNeighbors builds a merkle tree from the leaf node and a list of neighbors
 // from the root to the leaf
+
+// FromNeighbors builds a merkle tree from the leaf node and a list of neighbors
+// from the leaf to just below the root.
 func (f *TreeFactory) FromNeighbors(neighbors [][]byte, index, leaf []byte) tree.Sparse {
 	ctx := context.Background()
 	t := New()
@@ -42,8 +45,12 @@ func (f *TreeFactory) FromNeighbors(neighbors [][]byte, index, leaf []byte) tree
 	}
 
 	for i, v := range neighbors {
-		neighbor := tree.NeighborIndex(index, i)
-		if err := t.SetNode(ctx, neighbor, i+1, v); err != nil {
+		if v == nil {
+			continue
+		}
+		depth := len(neighbors) - i // [256, 1]
+		neighbor := tree.NeighborIndex(index, depth-1)
+		if err := t.SetNode(ctx, neighbor, depth, v); err != nil {
 			log.Fatalf("In memory SetNode failed: %v", err)
 			return nil
 		}

@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/hex"
-	"log"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -202,6 +202,45 @@ func TestReadPreviousEpochs(t *testing.T) {
 	}
 }
 
+// Verify that arbitrary insertion and commit order produces same tree root.
+func TestAribtrayInsertOrder(t *testing.T) {
+	db := newDB(t)
+	defer db.Close()
+	leafs := map[string]string{
+		"0000000000000000000000000000000000000000000000000000000000000000": "0",
+		"F000000000000000000000000000000000000000000000000000000000000000": "1",
+		"2000000000000000000000000000000000000000000000000000000000000000": "2",
+		"C000000000000000000000000000000000000000000000000000000000000000": "3",
+		"D000000000000000000000000000000000000000000000000000000000000000": "4",
+		"E000000000000000000000000000000000000000000000000000000000000000": "5",
+	}
+	roots := make([][]byte, len(leafs))
+	for i, _ := range roots {
+		m := New(db, fmt.Sprintf("test%v", i))
+		// Iterating over a map in Go is randomized.
+		// TODO: I guess not??
+		for hindex, data := range leafs {
+			if err := m.QueueLeaf(ctx, H2B(hindex), []byte(data)); err != nil {
+				t.Errorf("WriteLeaf(%v, %v)=%v", hindex, data, err)
+			}
+			if _, err := m.Commit(); err != nil {
+				t.Errorf("Commit()= %v, want nil", err)
+			}
+		}
+		r, err := m.ReadRootAt(nil, 10)
+		roots[i] = r
+		if err != nil {
+			t.Errorf("%v: ReadRootAt() = %v", i, err)
+		}
+	}
+	// Verify that all the roots are the same.
+	for i, r := range roots {
+		if got, want := r, roots[0]; !bytes.Equal(got, want) {
+			t.Errorf("root[%v] != root[0]: \ngot  %v\nwant %v", i, got, want)
+		}
+	}
+}
+
 func TestNeighborDepth(t *testing.T) {
 	db := newDB(t)
 	defer db.Close()
@@ -243,24 +282,14 @@ func TestNeighborDepth(t *testing.T) {
 	}
 	for _, tc := range tests {
 		nbrs, _ := tc.m.NeighborsAt(ctx, H2B(tc.hindex), 0)
+		if got, want := len(nbrs), maxDepth; got != want {
+			t.Errorf("len(nbrs): %v, want %v", got, want)
+		}
 		if got := PrefixLen(nbrs); got != tc.depth {
 			t.Errorf("PrefixLen(NeighborsAt(%v))=%v, want %v", tc.hindex, got, tc.depth)
-			log.Printf("nbrs: %v", nbrs)
 
 		}
 	}
-}
-
-// PrefixLen returns the index of the last non-zero item in the list
-func PrefixLen(nodes [][]byte) int {
-	// Iterate over the nodes from leaf to root.
-	for i, v := range nodes {
-		if v != nil {
-			// return the first non-empty node.
-			return len(nodes) - i
-		}
-	}
-	return 0
 }
 
 // Hex to Bytes

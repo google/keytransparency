@@ -37,6 +37,17 @@ const (
 	SELECT Value FROM Nodes
 	WHERE MapId = $1 AND NodeId = $2 and Version <= $3
 	ORDER BY Version DESC LIMIT 1;`
+	queueExpr = `
+	INSERT INTO Leaves (MapId, LeafId, Version, Data)
+	VALUES ($1, $2, $3, $4);`
+	pendingLeafsExpr = `
+	SELECT LeafId, Version, Data FROM Leaves 
+	WHERE MapId = $1 AND Version > $2;`
+	setNodeExpr = `
+	INSERT OR REPLACE INTO Nodes (MapId, NodeId, Version, Value)
+	VALUES ($1, $2, $3, $4);`
+	mapRowExpr    = `INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
+	readEpochExpr = `SELECT MAX(Version) FROM Leaves WHERE MapId = $1;`
 )
 
 type Map struct {
@@ -68,9 +79,7 @@ func (m *Map) QueueLeaf(ctx context.Context, index, leaf []byte) error {
 	}
 
 	// Write leaf nodes
-	stmt, err := m.db.Prepare(`
-	INSERT INTO Leaves (MapId, LeafId, Version, Data)
-	VALUES ($1, $2, $3, $4);`)
+	stmt, err := m.db.Prepare(queueExpr)
 	if err != nil {
 		return err
 	}
@@ -89,9 +98,7 @@ type leafRow struct {
 // Commit is NOT multi-process safe. It should only be called from the sequencer.
 func (m *Map) Commit() (int64, error) {
 	// Get the list of pending leafs
-	stmt, err := m.db.Prepare(`
-	SELECT LeafId, Version, Data FROM Leaves 
-	WHERE MapId = $1 AND Version > $2;`)
+	stmt, err := m.db.Prepare(pendingLeafsExpr)
 	if err != nil {
 		return m.epoch, err
 	}
@@ -230,10 +237,7 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	if err != nil {
 		return err
 	}
-	writeStmt, err := tx.Prepare(`
-	INSERT OR REPLACE INTO Nodes (MapId, NodeId, Version, Value)
-	VALUES ($1, $2, $3, $4);
-	`)
+	writeStmt, err := tx.Prepare(setNodeExpr)
 	if err != nil {
 		return err
 	}
@@ -301,8 +305,7 @@ func (m *Map) create() {
 }
 
 func (m *Map) insertMapRow() {
-	stmt, err := m.db.Prepare(`
-	INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`)
+	stmt, err := m.db.Prepare(mapRowExpr)
 	if err != nil {
 		log.Fatalf("insertMapRow(): %v", err)
 	}
@@ -327,13 +330,13 @@ func (m *Map) insertFirstRoot() {
 }
 
 func (m *Map) readEpoch() int64 {
-	stmt, err := m.db.Prepare(`SELECT MAX(Version) FROM Leaves;`)
+	stmt, err := m.db.Prepare(readEpochExpr)
 	if err != nil {
 		log.Fatalf("readEpoch(): %v", err)
 	}
 	defer stmt.Close()
 	var epoch sql.NullInt64
-	if err := stmt.QueryRow().Scan(&epoch); err != nil {
+	if err := stmt.QueryRow(m.mapID).Scan(&epoch); err != nil {
 		log.Fatalf("Error reading epoch: %v", err)
 	}
 	if !epoch.Valid {
@@ -358,4 +361,16 @@ func (m *Map) nodeID(bindex string) []byte {
 	h.Write([]byte{0})
 	h.Write([]byte(bindex))
 	return h.Sum(nil)
+}
+
+// PrefixLen returns the index of the last non-zero item in the list
+func PrefixLen(nodes [][]byte) int {
+	// Iterate over the nodes from leaf to root.
+	for i, v := range nodes {
+		if v != nil {
+			// return the first non-empty node.
+			return len(nodes) - i
+		}
+	}
+	return 0
 }

@@ -20,20 +20,29 @@
 package memtree
 
 import (
-	"golang.org/x/net/context"
+	"database/sql"
+	"log"
 
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/memhist"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
+	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/net/context"
 )
 
 // Tree holds internal state for the sparse merkle tree. Not thread-safe.
 type Tree struct {
-	tree  *memhist.Tree
+	db    *sql.DB
+	tree  *sqlhist.Map
 	epoch int64
 }
 
 // New creates and returns a new instance of Tree.
 func New() *Tree {
-	return &Tree{memhist.New(), 0}
+	// TODO: reimplement without sql.
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		log.Fatal("Failed creating in-memory sqlite3 db: %v", err)
+	}
+	return &Tree{db, sqlhist.New(db, "verify"), 0}
 }
 
 func (t *Tree) ReadRoot(ctx context.Context) ([]byte, error) {
@@ -66,4 +75,9 @@ func (t *Tree) Neighbors(ctx context.Context, index []byte) ([][]byte, error) {
 // SetNodeAt sets intermediate and leaf node values directly.
 func (t *Tree) SetNode(ctx context.Context, index []byte, depth int, value []byte) error {
 	return t.tree.SetNodeAt(ctx, index, depth, value, t.epoch)
+}
+
+// TODO: Remove when using an in-memory data structure.
+func (t *Tree) Close() {
+	t.db.Close()
 }
