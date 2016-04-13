@@ -16,6 +16,7 @@ package proxy
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"net"
 	"reflect"
@@ -29,11 +30,13 @@ import (
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/memhist"
+
+	"github.com/golang/protobuf/proto"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	proto "github.com/golang/protobuf/proto"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
@@ -101,6 +104,15 @@ type Env struct {
 	ClientV2 *client.Client
 	ctx      context.Context
 	signer   *signer.Signer
+	db       *sql.DB
+}
+
+func newDB(t testing.TB) *sql.DB {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
+	return db
 }
 
 // NewEnv sets up common resources for tests.
@@ -119,8 +131,9 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
+	sqldb := newDB(t)
 	db := memdb.New()
-	tree := memhist.New()
+	tree := sqlhist.New(sqldb, "test")
 	appender := chain.New()
 	v2srv := keyserver.New(db, db, tree, appender)
 	v1srv := New(v2srv)
@@ -138,13 +151,14 @@ func NewEnv(t *testing.T) *Env {
 
 	signer, _ := signer.New(db, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer, sqldb}
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
 	env.cc.Close()
 	env.rpcServer.Stop()
+	env.db.Close()
 }
 
 // createPrimaryUser creates a user using the v2 client. This function is copied

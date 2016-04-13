@@ -18,6 +18,7 @@ package keyserver
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"log"
 	"math"
@@ -36,6 +37,7 @@ import (
 	"github.com/google/e2e-key-server/tree/sparse/memhist"
 
 	"github.com/golang/protobuf/proto"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -138,6 +140,15 @@ type Env struct {
 	Client *client.Client
 	ctx    context.Context
 	signer *signer.Signer
+	db     *sql.DB
+}
+
+func newDB(t testing.TB) *sql.DB {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
+	return db
 }
 
 // NewEnv sets up common resources for tests.
@@ -157,7 +168,8 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	db := memdb.New()
-	tree := memhist.New()
+	sqldb := newDB(t)
+	tree := sqlhist.New(sqldb, "test")
 	appender := chain.New()
 	server := New(db, db, tree, appender)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
@@ -171,13 +183,14 @@ func NewEnv(t *testing.T) *Env {
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
 	signer, _ := signer.New(db, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{s, server, cc, client, ctx, signer}
+	return &Env{s, server, cc, client, ctx, signer, sqldb}
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
 	env.conn.Close()
 	env.s.Stop()
+	env.db.Close()
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {
@@ -194,7 +207,9 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		return
 	}
 
-	env.signer.Sequence()
+	if err := env.signer.Sequence(); err != nil {
+		t.Fatalf("Failed to sequence: %v", err)
+	}
 	env.signer.CreateEpoch()
 }
 

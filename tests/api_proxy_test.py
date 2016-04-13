@@ -94,8 +94,7 @@ def main():
   # Start the server.
   null_output = open(os.devnull, "w")
   subprocess.Popen(
-      ["./srv", "-server-db-path", test_server_db_path],
-      stdout=null_output,
+      ["./srv", "-server-db-path", test_server_db_path+"/db"],
       stderr=subprocess.STDOUT)
   # Wait until the server starts.
   time.sleep(1)

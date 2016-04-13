@@ -15,6 +15,7 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -31,6 +32,8 @@ import (
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/memhist"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
@@ -41,9 +44,10 @@ var (
 	// Read AuthenticationRealm flag.
 	realm = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	// Read server DB path flag.
-	serverDBPath = flag.String("server-db-path", "db/server", "path/to/server/db where the local database will be created/opened.")
+	serverDBPath = flag.String("server-db-path", "db", "path/to/server/db where the local database will be created/opened.")
 	// Read epoch advancement duration flag.
 	epochDuration = flag.Uint("epoch-duration", 60, "Epoch advancement duration")
+	mapID         = flag.String("mapID", "domain", "Domain for user identifiers.")
 )
 
 // v1Routes contains all routes information for v1 APIs.
@@ -117,6 +121,14 @@ var v2Routes = []handlers.RouteInfo{
 	},
 }
 
+func openDB() *sql.DB {
+	db, err := sql.Open("sqlite3", *serverDBPath)
+	if err != nil {
+		log.Fatalf("sql.Open(): %v", err)
+	}
+	return db
+}
+
 func main() {
 	flag.Parse()
 
@@ -129,7 +141,10 @@ func main() {
 	db := memdb.New()
 	mutator := entry.New()
 	appender := chain.New()
-	tree := memhist.New()
+
+	sqldb := openDB()
+	defer sqldb.Close()
+	tree := sqlhist.New(sqldb, *mapID)
 	// Create a signer.
 	signer, err := signer.New(db, tree, mutator, appender)
 	signer.StartSequencing()
