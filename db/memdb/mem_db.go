@@ -17,13 +17,13 @@
 package memdb
 
 import (
-	"github.com/google/e2e-key-server/db"
+	"github.com/gdbelvin/e2e-key-server/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"golang.org/x/net/context"
 
-	cm "github.com/google/e2e-key-server/db/commitments"
+	cm "github.com/gdbelvin/e2e-key-server/db/commitments"
 )
 
 const CommitmentSize = cm.Size

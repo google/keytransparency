@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
 )
 
 // Replace defines mutations to simply replace the current map value with the

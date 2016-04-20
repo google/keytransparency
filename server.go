@@ -21,18 +21,18 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/proxy"
-	"github.com/google/e2e-key-server/rest"
-	"github.com/google/e2e-key-server/rest/handlers"
-	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/gdbelvin/e2e-key-server/appender/chain"
+	"github.com/gdbelvin/e2e-key-server/db/memdb"
+	"github.com/gdbelvin/e2e-key-server/keyserver"
+	"github.com/gdbelvin/e2e-key-server/mutator/entry"
+	"github.com/gdbelvin/e2e-key-server/proxy"
+	"github.com/gdbelvin/e2e-key-server/rest"
+	"github.com/gdbelvin/e2e-key-server/rest/handlers"
+	"github.com/gdbelvin/e2e-key-server/signer"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse/memhist"
 
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
+	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 var (

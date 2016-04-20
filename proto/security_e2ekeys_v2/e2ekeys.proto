@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package security.e2ekeys.v2;
 
-import "github.com/google/e2e-key-server/proto/security_e2ekeys/e2ekeytypes.proto";
+import "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys/e2ekeytypes.proto";
 
 // The E2EKeyService API represents a directory of public keys.
 // The API defines the following resource model:

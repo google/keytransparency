@@ -26,21 +26,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/common"
-	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/gdbelvin/e2e-key-server/appender/chain"
+	"github.com/gdbelvin/e2e-key-server/client"
+	"github.com/gdbelvin/e2e-key-server/common"
+	"github.com/gdbelvin/e2e-key-server/db/commitments"
+	"github.com/gdbelvin/e2e-key-server/db/memdb"
+	"github.com/gdbelvin/e2e-key-server/mutator/entry"
+	"github.com/gdbelvin/e2e-key-server/signer"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse/memhist"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 const (

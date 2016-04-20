@@ -24,11 +24,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/google/e2e-key-server/rest/handlers"
+	"github.com/gdbelvin/e2e-key-server/rest/handlers"
 	"github.com/gorilla/mux"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
 	context "golang.org/x/net/context"
 )
 

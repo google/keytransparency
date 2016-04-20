@@ -20,15 +20,15 @@ import (
 	"math"
 	"strings"
 
-	"github.com/google/e2e-key-server/keyserver"
+	"github.com/gdbelvin/e2e-key-server/keyserver"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
 	context "golang.org/x/net/context"
 )
 

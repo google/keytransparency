@@ -30,8 +30,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse"
+	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse"
 )
 
 const (
