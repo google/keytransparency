@@ -77,3 +77,11 @@ func NeighborString(bindex string) string {
 	last := len(bindex) - 1
 	return fmt.Sprintf("%v%v", bindex[:last], string(Neighbor(bindex[last])))
 }
+
+// NeighborIndex flips the bit at depth
+func NeighborIndex(index []byte, depth int) []byte {
+	neighbor := make([]byte, len(index))
+	copy(neighbor, index)
+	neighbor[depth/8] ^= byte(1 << (7 - uint(depth)%8))
+	return neighbor
+}

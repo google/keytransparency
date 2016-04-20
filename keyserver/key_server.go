@@ -17,7 +17,6 @@ package keyserver
 
 import (
 	"bytes"
-	"log"
 	"math"
 
 	"github.com/golang/protobuf/proto"
@@ -39,12 +38,12 @@ type Server struct {
 	committer commitments.Committer
 	queue     db.Queuer
 	auth      auth.Authenticator
-	tree      tree.Sparse
+	tree      tree.SparseHist
 	appender  appender.Appender
 }
 
 // Create creates a new instance of the key server.
-func New(committer commitments.Committer, queue db.Queuer, tree tree.Sparse, appender appender.Appender) *Server {
+func New(committer commitments.Committer, queue db.Queuer, tree tree.SparseHist, appender appender.Appender) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
@@ -78,15 +77,21 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		return nil, err
 	}
 
+	neighbors, err := s.tree.NeighborsAt(ctx, index, e)
+	if err != nil {
+		return nil, err
+	}
+
 	// result contains the returned GetEntryResponse.
 	result := &pb.GetEntryResponse{
 		Index:            index,
 		SignedEpochHeads: []*ctmap.SignedEpochHead{&seh},
 		// TODO(cesarghali): Fill IndexProof.
+		MerkleTreeNeighbors: neighbors,
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeaf(ctx, index)
+	leaf, err := s.tree.ReadLeafAt(ctx, index, e)
 	if err == nil {
 		result.Entry = new(ctmap.Entry)
 		if err := proto.Unmarshal(leaf, result.Entry); err != nil {
@@ -105,14 +110,6 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 			result.CommitmentKey = commitment.Key
 
 		}
-	}
-
-	neighbors, err := s.tree.Neighbors(ctx, index)
-	log.Printf("Neighbors(%v)=%v,%v", index, neighbors, err)
-	// TODO: return historical values for epoch.
-	result.MerkleTreeNeighbors = neighbors
-	if err != nil {
-		return nil, err
 	}
 
 	return result, nil
