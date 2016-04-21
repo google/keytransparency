@@ -126,6 +126,9 @@ func openDB() *sql.DB {
 	if err != nil {
 		log.Fatalf("sql.Open(): %v", err)
 	}
+	if err := db.Ping(); err != nil {
+		log.Fatalf("db.Ping(): %v", err)
+	}
 	return db
 }
 

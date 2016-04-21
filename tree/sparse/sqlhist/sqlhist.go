@@ -44,7 +44,7 @@ const (
 	VALUES ($1, $2, $3, $4);`
 	pendingLeafsExpr = `
 	SELECT LeafId, Version, Data FROM Leaves 
-	WHERE MapId = $1 AND Version > $2;`
+	WHERE MapId = $1 AND Version >= $2;`
 	setNodeExpr = `
 	INSERT OR REPLACE INTO Nodes (MapId, NodeId, Version, Value)
 	VALUES ($1, $2, $3, $4);`
@@ -104,18 +104,19 @@ func (m *Map) Commit() (int64, error) {
 	if err != nil {
 		return m.epoch, err
 	}
-	rows, err := stmt.Query(m.mapID, m.epoch)
+	defer stmt.Close()
+	rows, err := stmt.Query(m.mapID, m.epoch+1)
 	if err != nil {
 		return m.epoch, err
 	}
 	leafRows := make([]leafRow, 0, 10)
 	for rows.Next() {
-		var row leafRow
-		err = rows.Scan(&row.index, &row.version, &row.data)
+		var r leafRow
+		err = rows.Scan(&r.index, &r.version, &r.data)
 		if err != nil {
 			return m.epoch, err
 		}
-		leafRows = append(leafRows, row)
+		leafRows = append(leafRows, r)
 	}
 
 	for _, r := range leafRows {
@@ -127,7 +128,6 @@ func (m *Map) Commit() (int64, error) {
 		}
 	}
 	// TODO: Always update the root node.
-
 	// TODO: Delete Map heads from this file.
 
 	m.epoch++
@@ -140,6 +140,7 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer stmt.Close()
 
 	var value []byte
 	rootID := m.nodeID("")
@@ -158,6 +159,7 @@ func (m *Map) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte
 	if err != nil {
 		return nil, err
 	}
+	defer readStmt.Close()
 
 	nodeID := m.nodeID(bindex)
 
@@ -192,6 +194,7 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 
 	readStmt, err := tx.Prepare(readExpr)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	defer readStmt.Close()
@@ -202,6 +205,7 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 		if err := readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&nbrValues[i]); err == sql.ErrNoRows {
 			nbrValues[i] = hashEmpty(neighborBIndexes[i])
 		} else if err != nil {
+			tx.Rollback()
 			return nil, err
 		}
 	}
@@ -241,6 +245,7 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	}
 	writeStmt, err := tx.Prepare(setNodeExpr)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	defer writeStmt.Close()
@@ -325,6 +330,7 @@ func (m *Map) insertFirstRoot() {
 	if err != nil {
 		log.Fatalf("insertFirstRoot(): %v", err)
 	}
+	defer writeStmt.Close()
 	_, err = writeStmt.Exec(m.mapID, rootID, -1, nodeValue)
 	if err != nil {
 		log.Fatalf("insertFirstRoot(): %v", err)
@@ -356,7 +362,7 @@ func (m *Map) nodeIDs(bindexes []string) [][]byte {
 	return nodes
 }
 
-// nodeID computes the spanner location of a node, given it's bit string index.
+// nodeID computes the location of a node, given its bit string index.
 func (m *Map) nodeID(bindex string) []byte {
 	h := sha256.New()
 	h.Write(m.mapID)
