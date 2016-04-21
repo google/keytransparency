@@ -66,7 +66,7 @@ type Tree struct {
 }
 
 type node struct {
-	epoch  int64  // Etoch for this node.
+	epoch  int64  // Epoch for this node.
 	bindex string // Location in the tree.
 	depth  int    // Depth of this node. 0 to 256.
 	data   []byte // Data stored in the node.
