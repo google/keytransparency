@@ -30,7 +30,7 @@ import (
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
 	_ "github.com/mattn/go-sqlite3"
 

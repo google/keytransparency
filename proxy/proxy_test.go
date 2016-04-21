@@ -23,13 +23,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/db/memdb"
-	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/gdbelvin/e2e-key-server/appender/chain"
+	"github.com/gdbelvin/e2e-key-server/client"
+	"github.com/gdbelvin/e2e-key-server/db/memdb"
+	"github.com/gdbelvin/e2e-key-server/keyserver"
+	"github.com/gdbelvin/e2e-key-server/mutator/entry"
+	"github.com/gdbelvin/e2e-key-server/signer"
+	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
 
 	"github.com/golang/protobuf/proto"
 	_ "github.com/mattn/go-sqlite3"
@@ -37,12 +39,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
-	cm "github.com/google/e2e-key-server/tree/sparse"
+	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	corepb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_core"
+	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
+	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 const (
@@ -317,7 +318,7 @@ func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch int64) (*corepb.Ep
 	if s.info == nil {
 		epochHead := &ctmap.EpochHead{
 			Epoch: epoch,
-			Root:  cm.EmptyLeafValue(""),
+			Root:  sparse.Coniks.HashEmpty(tree.InvertBitString("")),
 		}
 		epochHeadData, err := proto.Marshal(epochHead)
 		if err != nil {

@@ -16,9 +16,40 @@ package tree
 
 import (
 	"bytes"
+	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 )
+
+func TestIndex(t *testing.T) {
+	tests := []struct {
+		depth int
+		index []byte
+		want  []byte
+	}{
+		{0, []byte{0x00, 0x01}, []byte{}},
+		{1, []byte{0x00, 0x01}, []byte{0x00}},
+		{1, []byte{0x80, 0x01}, []byte{0x80}},
+		{2, []byte{0xFF, 0x00}, []byte{0xC0}},
+		{2, []byte{0x00, 0xFF}, []byte{0x00}},
+		{7, []byte{0x11}, []byte{0x10}},
+		{8, []byte{0x80}, []byte{0x80}},
+		{16, []byte{0x80, 0x04}, []byte{0x80, 0x04}},
+		{15, []byte{0xFF, 0xFF}, []byte{0xFF, 0xFE}},
+		{24, []byte{0x00, 0x80, 0x00}, []byte{0x00, 0x80, 0x00}},
+		{22, []byte{0x00, 0x80, 0x00}, []byte{0x00, 0x80, 0x00}},
+	}
+	for _, tc := range tests {
+		i := new(big.Int).SetBytes(tc.index)
+		fmtstring := fmt.Sprintf("%%0%vb", len(tc.index)*8)
+		bindex := fmt.Sprintf(fmtstring, i)[:tc.depth]
+		if goti, gotd := InvertBitString(bindex); !bytes.Equal(goti, tc.want) || gotd != tc.depth {
+			t.Errorf("Index(%v): %v, %v, want: %v, %v",
+				bindex, goti, gotd, tc.want, tc.depth)
+		}
+	}
+}
 
 func TestNeighbors(t *testing.T) {
 	bindex := "0100"

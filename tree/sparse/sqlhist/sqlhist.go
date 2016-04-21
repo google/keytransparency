@@ -30,6 +30,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+var hasher = sparse.Coniks
+
 const (
 	maxDepth = sparse.IndexLen
 	size     = sparse.HashSize
@@ -198,7 +200,7 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 	nbrValues := make([][]byte, len(neighborIDs))
 	for i, nodeID := range neighborIDs {
 		if err := readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&nbrValues[i]); err == sql.ErrNoRows {
-			nbrValues[i] = sparse.EmptyLeafValue(neighborBIndexes[i])
+			nbrValues[i] = hashEmpty(neighborBIndexes[i])
 		} else if err != nil {
 			return nil, err
 		}
@@ -212,7 +214,7 @@ func compressNeighbors(neighbors [][]byte, index []byte, depth int) [][]byte {
 	compressed := make([][]byte, len(neighbors))
 	for i, v := range neighbors {
 		// TODO: convert values to arrays rather than slices for comparison.
-		if !bytes.Equal(v, sparse.EmptyLeafValue(neighborBIndexes[i])) {
+		if !bytes.Equal(v, hashEmpty(neighborBIndexes[i])) {
 			compressed[i] = v
 		}
 	}
@@ -250,7 +252,7 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 		return err
 	}
 
-	nodeValues := sparse.NodeValues(bindex, value, nbrValues)
+	nodeValues := sparse.NodeValues(hasher, bindex, value, nbrValues)
 
 	// Save new nodes.
 	for i, nodeValue := range nodeValues {
@@ -318,7 +320,7 @@ func (m *Map) insertMapRow() {
 
 func (m *Map) insertFirstRoot() {
 	rootID := m.nodeID("")
-	nodeValue := sparse.EmptyLeafValue("")
+	nodeValue := hashEmpty("")
 	writeStmt, err := m.db.Prepare(setNodeExpr)
 	if err != nil {
 		log.Fatalf("insertFirstRoot(): %v", err)
@@ -373,4 +375,8 @@ func PrefixLen(nodes [][]byte) int {
 		}
 	}
 	return 0
+}
+
+func hashEmpty(bindex string) []byte {
+	return hasher.HashEmpty(tree.InvertBitString(bindex))
 }

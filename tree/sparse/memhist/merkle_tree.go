@@ -33,10 +33,11 @@ import (
 )
 
 const (
-	// maxDepth is the maximum allowable value of depth.
 	maxDepth = sparse.IndexLen
 	size     = sparse.HashSize
 )
+
+var hasher = sparse.Coniks
 
 // Note: index has two representation:
 //  (1) string which is a bit string representation (a string of '0' and '1'
@@ -85,7 +86,7 @@ func New() *Tree {
 	// Create the first epoch with a single empty leaf to distinguish between
 	// empty tree and empty branch.
 	t.roots[0] = &node{
-		value: sparse.EmptyLeafValue(""),
+		value: hashEmpty(""),
 	}
 	return t
 }
@@ -164,7 +165,7 @@ func (t *Tree) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]
 		if nbr := cnt.child(tree.Neighbor(b)); nbr != nil {
 			neighbors = append(neighbors, nbr.value)
 		} else {
-			neighbors = append(neighbors, sparse.EmptyLeafValue(tree.NeighborString(bindex[:i+1])))
+			neighbors = append(neighbors, hashEmpty(tree.NeighborString(bindex[:i+1])))
 		}
 		cnt = cnt.child(b)
 	}
@@ -189,7 +190,7 @@ func (t *Tree) readNodeAt(ctx context.Context, index []byte, depth int, epoch in
 		cnt = cnt.child(bindex[i])
 	}
 	if cnt == nil {
-		return sparse.EmptyLeafValue(bindex[:i]), nil
+		return hashEmpty(bindex[:i]), nil
 	}
 	return cnt.value, nil
 }
@@ -330,7 +331,7 @@ func (n *node) hashIntermediateNode() {
 	if n.left != nil {
 		left = n.left.value
 	} else {
-		left = sparse.EmptyLeafValue(n.bindex + string(tree.Zero))
+		left = hashEmpty(n.bindex + string(tree.Zero))
 	}
 
 	// Compute right values.
@@ -338,16 +339,16 @@ func (n *node) hashIntermediateNode() {
 	if n.right != nil {
 		right = n.right.value
 	} else {
-		right = sparse.EmptyLeafValue(n.bindex + string(tree.One))
+		right = hashEmpty(n.bindex + string(tree.One))
 	}
-	n.value = sparse.HashIntermediateNode(left, right)
+	n.value = hasher.HashChildren(left, right)
 }
 
 // updateLeafValue updates a leaf node's value by
 // H(LeafIdentifier || depth || bindex || data), where LeafIdentifier,
 // depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
-	n.value = sparse.HashLeaf(true, n.depth, []byte(n.bindex), n.data)
+	n.value = hasher.HashLeaf([]byte(n.bindex), n.depth, n.data)
 }
 
 // setNode sets the comittment of the leaf node and updates its hash.
@@ -365,4 +366,8 @@ func (n *node) setNode(data []byte, bindex string, depth int, isLeaf bool) {
 	} else {
 		n.value = data
 	}
+}
+
+func hashEmpty(bindex string) []byte {
+	return hasher.HashEmpty(tree.InvertBitString(bindex))
 }

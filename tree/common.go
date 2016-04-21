@@ -31,10 +31,23 @@ var (
 // bitString converts a byte slice index into a string of Depth '0' or '1'
 // characters.
 func BitString(index []byte) string {
-	i := new(big.Int)
-	i.SetString(hex.EncodeToString(index), 16)
+	i, _ := new(big.Int).SetString(hex.EncodeToString(index), 16)
 	// A 256 character string of bits with leading Zeros.
 	return fmt.Sprintf("%0256b", i)
+}
+
+// Index converts BitString outputs back into []byte.
+func InvertBitString(bindex string) (index []byte, depth int) {
+	depth = len(bindex)
+	byteLen := (depth + 7) >> 3
+	i := new(big.Int)
+	i.SetString(bindex, 2)
+	// Left shift bits to be left alignd on a byte boundary
+	i.Lsh(i, uint(byteLen*8-depth))
+	index = make([]byte, byteLen)
+	b := i.Bytes()
+	copy(index[byteLen-len(b):], b) // Fill from the right for leading 0's
+	return
 }
 
 // Neighbor converts Zero into One and visa versa.
@@ -78,7 +91,7 @@ func NeighborString(bindex string) string {
 	return fmt.Sprintf("%v%v", bindex[:last], string(Neighbor(bindex[last])))
 }
 
-// NeighborIndex flips the bit at depth
+// NeighborIndex flips the bit at depth. Does not modify index.
 func NeighborIndex(index []byte, depth int) []byte {
 	neighbor := make([]byte, len(index))
 	copy(neighbor, index)
