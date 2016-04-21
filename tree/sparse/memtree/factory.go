@@ -20,7 +20,7 @@
 package memtree
 
 import (
-	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree"
 	"golang.org/x/net/context"
 	"log"
 )
