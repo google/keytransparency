@@ -19,17 +19,36 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Sparse is a sparse merkle tree
+// SparseFactory creates a Sparse Tree from a set of neighbor nodes for testing.
+type SparseFactory interface {
+	// FromNeighbors builds a sparse merkle tree with the path from the given leaf
+	// node at the given index, up to the root including all path neighbors.
+	FromNeighbors(neighbors [][]byte, index, leaf []byte) Sparse
+}
+
+// Sparse is a sparse merkle tree.
 type Sparse interface {
+	// ReadRoot returns the current value of the root hash.
 	ReadRoot(ctx context.Context) ([]byte, error)
+	// ReadLeaf returns the current value of the leaf node.
 	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
+	// WriteLeaf writes a leaf node and updates the root.
 	WriteLeaf(ctx context.Context, index, leaf []byte) error
+	// Neighbors returns the current list of neighbors from the neighbor leaf to just below the root.
 	Neighbors(ctx context.Context, index []byte) ([][]byte, error)
 }
 
-// SparseHist is a temporal sparse merkle tree
+// SparseHist is a temporal sparse merkle tree.
 type SparseHist interface {
-	Sparse
-	WriteLeafAt(ctx context.Context, index, leaf []byte, epoch int64) error
-	NeighborsAt(ctx context.Context, epoch int64, index []byte) ([][]byte, error)
+	// QueueLeaf queues a leaf to be written on the next Commit().
+	QueueLeaf(ctx context.Context, index, leaf []byte) error
+	// Commit takes all the Queued values since the last Commmit() and writes them.
+	// Commit is NOT multi-process safe. It should only be called from the sequencer.
+	Commit() (epoch int64, err error)
+	// ReadRootAt returns the root value at epoch.
+	ReadRootAt(ctx context.Context, epoch int64) ([]byte, error)
+	// ReadLeafAt returns the leaf value at epoch.
+	ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error)
+	// Neighbors returns the list of neighbors from the neighbor leaf to just below the root at epoch.
+	NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]byte, error)
 }

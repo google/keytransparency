@@ -25,8 +25,8 @@ import (
 	"golang.org/x/net/context"
 
 	proto "github.com/golang/protobuf/proto"
-	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 )
 
 // Signer is the object responsible for triggering epoch creation and signing
@@ -35,18 +35,20 @@ type Signer struct {
 	// Sequencer listens to new items on the queue and saves them.
 	sequencer db.Sequencer
 	mutator   mutator.Mutator
-	tree      tree.Sparse
+	tree      tree.SparseHist
 	appender  appender.Appender
+	epoch     int64
 }
 
 // New creates a new instance of the signer.
-func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appender appender.Appender) (*Signer, error) {
+func New(sequencer db.Sequencer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender) (*Signer, error) {
 	// Create a signer instance.
 	s := &Signer{
 		sequencer: sequencer,
 		mutator:   mutator,
 		tree:      tree,
 		appender:  appender,
+		// TODO: Read current epoch out of database.
 	}
 
 	return s, nil
@@ -77,7 +79,7 @@ func (s *Signer) StartSigning(interval time.Duration) {
 func (s *Signer) sequenceOne(index, mutation []byte) error {
 	// Get current value.
 	ctx := context.Background()
-	v, err := s.tree.ReadLeaf(ctx, index)
+	v, err := s.tree.ReadLeafAt(ctx, index, s.epoch)
 	if err != nil {
 		return err
 	}
@@ -88,7 +90,7 @@ func (s *Signer) sequenceOne(index, mutation []byte) error {
 	}
 
 	// Save new value and update tree.
-	if err := s.tree.WriteLeaf(ctx, index, newV); err != nil {
+	if err := s.tree.QueueLeaf(ctx, index, newV); err != nil {
 		return err
 	}
 	return nil
@@ -98,7 +100,12 @@ func (s *Signer) sequenceOne(index, mutation []byte) error {
 func (s *Signer) CreateEpoch() {
 	ctx := context.Background()
 	timestamp := time.Now().Unix()
-	root, err := s.tree.ReadRoot(ctx)
+	epoch, err := s.tree.Commit()
+	if err != nil {
+		log.Fatalf("Failed to create epoch: %v", err)
+	}
+	s.epoch = epoch
+	root, err := s.tree.ReadRootAt(ctx, s.epoch)
 	if err != nil {
 		log.Fatalf("Failed to create epoch: %v", err)
 	}

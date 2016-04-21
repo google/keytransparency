@@ -16,16 +16,12 @@ package memhist
 
 import (
 	"bytes"
-	"crypto/hmac"
 	"encoding/hex"
-	"fmt"
-	"math/rand"
+	"reflect"
 	"strings"
 	"testing"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/tree/sparse"
@@ -36,190 +32,293 @@ const (
 )
 
 var (
-	AllZeros = strings.Repeat("0", 256)
-	// validTreeLeaves contains valid leaves that will be added to the test
-	// valid tree. All these leaves will be added to the test tree using the
-	// addValidLeaves function.
-	validTreeLeaves = []Leaf{
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", 1},
-		{0, "0000000000000000000000000000000000000000000000000000000000000001", 2},
-		{0, "8000000000000000000000000000000000000000000000000000000000000001", 3},
-		{1, "8000000000000000000000000000000000000000000000000000000000000001", 4},
-		{1, "0000000000000000000000000000000000000000000000000000000000000001", 5},
+	AllZeros     = strings.Repeat("0", 256/4)
+	ctx          = context.Background()
+	defaultIndex = []string{
+		"8000000000000000000000000000000000000000000000000000000000000001",
+		"C000000000000000000000000000000000000000000000000000000000000001",
 	}
 )
 
-type Leaf struct {
-	epoch        int64
-	hindex       string
-	commitmentTS int64
-}
-
-type Env struct {
-	m *Tree
-}
-
-func NewEnv(t *testing.T) *Env {
+func DefaultTree(t *testing.T) *Tree {
+	// Construct a tree of the following form:
+	//     r
+	//    e  a
+	//      3  4
 	m := New()
-	// Adding few leaves with commitment timestamps to the tree.
-	addValidLeaves(t, m)
-
-	return &Env{m}
+	leafs := []struct {
+		hindex string
+		value  string
+	}{
+		{defaultIndex[0], "3"},
+		{defaultIndex[1], "4"},
+	}
+	for _, l := range leafs {
+		value := []byte(l.value)
+		if err := m.QueueLeaf(ctx, H2B(l.hindex), value); err != nil {
+			t.Fatalf("QueueLeaf(%v)=%v", l.hindex, err)
+		}
+	}
+	if epoch, err := m.Commit(); err != nil || epoch != 0 {
+		t.Fatalf("Commit()=%v, %v, want %v, <nil>", epoch, err, 0)
+	}
+	return m
 }
 
-func addValidLeaves(t *testing.T, m *Tree) {
-	for i, leaf := range validTreeLeaves {
-		index := hexToBytes(t, leaf.hindex)
-		if err := m.AddLeaf([]byte{}, leaf.epoch, index, leaf.commitmentTS); err != nil {
-			t.Fatalf("%v: AddLeaf(-, %v, %v)=%v", i, leaf.epoch, leaf.hindex, err)
+// TestQueueCommitRead ensures that saved data is returned.
+func TestQueueCommitRead(t *testing.T) {
+	m := New()
+	leafs := []struct {
+		hindex string
+	}{
+		{"0000000000000000000000000000000000000000000000000000000000000000"},
+		{"F000000000000000000000000000000000000000000000000000000000000000"},
+		{"2000000000000000000000000000000000000000000000000000000000000000"},
+		{"C000000000000000000000000000000000000000000000000000000000000000"},
+	}
+	for i, test := range leafs {
+		data := []byte{byte(i)}
+		index := H2B(test.hindex)
+		if err := m.QueueLeaf(ctx, index, data); err != nil {
+			t.Errorf("WriteLeaf(%v, %v)=%v)", test.hindex, data, err)
+		}
+		epoch, err := m.Commit()
+		if err != nil {
+			t.Errorf("Commit()=%v, %v, want %v, nil", epoch, err)
+		}
+		readData, err := m.ReadLeafAt(ctx, index, epoch)
+		if err != nil {
+			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, index, err)
+		}
+		if got, want := readData, data; !bytes.Equal(got, want) {
+			t.Errorf("ReadLeafAt(%v, %v)=%v, want %v", epoch, index, got, want)
 		}
 	}
 }
 
-func hexToBytes(t testing.TB, h string) []byte {
-	result, err := hex.DecodeString(h)
+// TestCommit verifies that the epoch advancement preserves tree shape.
+func TestCommit(t *testing.T) {
+	m := DefaultTree(t)
+	m.Commit()
+	epoch, err := m.Commit()
 	if err != nil {
-		t.Fatalf("DecodeString(%v)= %v", h, err)
+		t.Errorf("Commit failed: %v", err)
 	}
-	return result
-}
-
-func TestWriteRead(t *testing.T) {
-	t.Parallel()
-	m := New()
-	ctx := context.Background()
 	tests := []struct {
 		hindex string
-		data   []byte
+		depth  int
 	}{
-		{"0000000000000000000000000000000000000000000000000000000000000000", []byte("test data")},
-		{"F000000000000000000000000000000000000000000000000000000000000000", []byte("test foo")},
-		{"2000000000000000000000000000000000000000000000000000000000000000", []byte("test bar")},
-		{"C000000000000000000000000000000000000000000000000000000000000000", []byte("test zed")},
+		{AllZeros, 1},
+		{defaultIndex[0], 2},
+		{defaultIndex[1], 2},
 	}
 	for _, test := range tests {
-		index := hexToBytes(t, test.hindex)
-		if err := m.WriteLeaf(ctx, index, test.data); err != nil {
-			t.Errorf("WriteLeaf(%v, %v)=%v)", index, test.data, err)
-		}
-		data, err := m.ReadLeaf(ctx, index)
-		if err != nil {
-			t.Errorf("ReadLeaf(%v)=%v)", index, err)
-		}
-		if got, want, equal := data, test.data, bytes.Equal(data, test.data); !equal {
-			t.Errorf("ReadLeaf(%v)=%v, want %v", index, got, want)
+		nbrs, _ := m.NeighborsAt(ctx, H2B(test.hindex), epoch)
+		if got, want := len(nbrs), test.depth; got != want {
+			t.Errorf("len(NeighborsAt(%v))=%v, want %v", test.hindex, got, want)
 		}
 	}
 }
 
-func TestAddRoot(t *testing.T) {
-	t.Parallel()
+func TestReadLeafNodesAt(t *testing.T) {
+	m := DefaultTree(t)
+	leafs := []struct {
+		hindex string
+		depth  int
+		value  string
+		hash   []byte
+	}{
+		{AllZeros, 1, "", nil},
+		{defaultIndex[0], 2, "3", nil},
+		{defaultIndex[1], 2, "4", nil},
+	}
+	for _, l := range leafs {
+		bindex := tree.BitString(H2B(l.hindex))
+		if l.value != "" {
+			data := []byte(l.value)
+			l.hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+		} else {
+			l.hash = sparse.EmptyLeafValue(bindex[:l.depth])
+		}
 
-	m := New()
+		got, err := m.readNodeAt(nil, H2B(l.hindex), l.depth, 0)
+		if err != nil {
+			t.Errorf("readNodeAt(%v)=%v", l.hindex, err)
+		}
+		if want := l.hash; !bytes.Equal(got, want) {
+			t.Errorf("readNodeAt(%v)=%v, want %v", l.hindex, got, want)
+		}
+	}
+}
+
+func TestReadIntermediateNodesAt(t *testing.T) {
+	m := DefaultTree(t)
+	leafs := []struct {
+		hindex string
+		depth  int
+		value  string
+		hash   []byte
+	}{
+		{AllZeros, 1, "", nil},
+		{defaultIndex[0], 2, "3", nil},
+		{defaultIndex[1], 2, "4", nil},
+	}
+	for i, l := range leafs {
+		bindex := tree.BitString(H2B(l.hindex))
+		if l.value != "" {
+			data := []byte(l.value)
+			leafs[i].hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+		} else {
+			leafs[i].hash = sparse.EmptyLeafValue(bindex[:l.depth])
+		}
+	}
+	interior := []struct {
+		hindex string
+		depth  int
+		hash   []byte
+	}{
+		{defaultIndex[0], 1, sparse.HashIntermediateNode(leafs[1].hash, leafs[2].hash)},
+	}
+	for _, l := range interior {
+		got, err := m.readNodeAt(nil, H2B(l.hindex), l.depth, 0)
+		if err != nil {
+			t.Errorf("readNodeAt(%v, %v)=%v", l.hindex, l.depth, err)
+		}
+		if want := l.hash; !bytes.Equal(got, want) {
+			t.Errorf("readNodeAt(%v, %v)=%v, want %v", l.hindex, l.depth, got, want)
+		}
+	}
+}
+
+func TestReadRootAt(t *testing.T) {
+	m := DefaultTree(t)
+	// Compute expected root:
+	// r := h(empty, h(1, 2)
+
+	leafs := []struct {
+		hindex string
+		depth  int
+		value  string
+		hash   []byte
+	}{
+		{AllZeros, 1, "", nil},
+		{defaultIndex[0], 2, "3", nil},
+		{defaultIndex[1], 2, "4", nil},
+	}
+	for i, l := range leafs {
+		bindex := tree.BitString(H2B(l.hindex))
+		if l.value != "" {
+			data := []byte(l.value)
+			leafs[i].hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+		} else {
+			leafs[i].hash = sparse.EmptyLeafValue(bindex[:l.depth])
+		}
+	}
+	interior := []struct {
+		depth  int
+		hindex string
+		hash   []byte
+	}{
+		{1, defaultIndex[0], sparse.HashIntermediateNode(leafs[1].hash, leafs[2].hash)},
+	}
+	root := []struct {
+		value []byte
+	}{
+		{sparse.HashIntermediateNode(leafs[0].hash, interior[0].hash)},
+	}
+	for _, l := range root {
+		got, err := m.ReadRootAt(ctx, 0)
+		if err != nil {
+			t.Errorf("readRootAt()=%v", err)
+		}
+		if want := l.value; !bytes.Equal(got, want) {
+			t.Errorf("readRootAt()=%v, want %v", got, want)
+		}
+	}
+}
+
+func TestReadRootNotFound(t *testing.T) {
+	m := DefaultTree(t)
 	tests := []struct {
 		epoch int64
-		code  codes.Code
+		err   bool
 	}{
-		{0, codes.OK},
-		{1, codes.OK},
-		{2, codes.OK},
-		{3, codes.OK},
-		{3, codes.OK},
-		{1, codes.FailedPrecondition},
-		{10, codes.FailedPrecondition},
+		{0, false},
+		{1, false},
+		{5, true},
 	}
-	for i, test := range tests {
-		err := m.AddRoot(test.epoch)
-		if got, want := grpc.Code(err), test.code; got != want {
-			t.Errorf("Test[%v]: addRoot(%v)=%v, want %v", i, test.epoch, got, want)
+
+	for _, test := range tests {
+		_, err := m.ReadRootAt(ctx, test.epoch)
+		if got, want := err != nil, test.err; got != want {
+			t.Errorf("ReadRootAt(%v)=%v, want %v", test.epoch, got, want)
 		}
 	}
 }
 
-func TestAddExistingLeaf(t *testing.T) {
-	t.Parallel()
-
-	env := NewEnv(t)
+func TestNeighborDepth(t *testing.T) {
+	m := DefaultTree(t)
+	m2 := New()
+	m2.QueueLeaf(nil, H2B(defaultIndex[0]), []byte("0"))
+	m2.Commit()
 	tests := []struct {
-		leaf Leaf
-		code codes.Code
+		t      *Tree
+		hindex string
+		depth  int
 	}{
-		{validTreeLeaves[4], codes.OK},
+		{m, AllZeros, 1},        // Proof of absence.
+		{m, defaultIndex[0], 2}, // Proof of presence.
+		{m, defaultIndex[1], 2},
+		{m2, defaultIndex[0], 0},
 	}
-	for i, test := range tests {
-		index := hexToBytes(t, test.leaf.hindex)
-		err := env.m.AddLeaf([]byte{}, test.leaf.epoch, index, test.leaf.commitmentTS)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v, %v",
-				i, test.leaf.epoch, test.leaf.hindex, got, want, err)
+	for _, test := range tests {
+		nbrs, _ := test.t.NeighborsAt(ctx, H2B(test.hindex), 0)
+		if got, want := len(nbrs), test.depth; got != want {
+			t.Errorf("len(NeighborsAt(%v))=%v, want %v", test.hindex, got, want)
 		}
 	}
 }
 
-var letters = []rune("01234567890abcdef")
-
-func randSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+func TestNeighborsAt(t *testing.T) {
+	m := DefaultTree(t)
+	leafs := []struct {
+		hindex string
+		depth  int
+		value  string
+		hash   []byte
+	}{
+		{AllZeros, 1, "", nil},
+		{defaultIndex[0], 2, "3", nil},
+		{defaultIndex[1], 2, "4", nil},
 	}
-	return string(b)
-}
-
-func BenchmarkAddLeaf(b *testing.B) {
-	m := New()
-	var epoch int64
-	for i := 0; i < b.N; i++ {
-		hindex := randSeq(64)
-		index := hexToBytes(b, hindex)
-		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
-				i, epoch, hindex, got, want)
+	for i, l := range leafs {
+		bindex := tree.BitString(H2B(l.hindex))
+		if l.value != "" {
+			data := []byte(l.value)
+			leafs[i].hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+		} else {
+			leafs[i].hash = sparse.EmptyLeafValue(bindex[:l.depth])
 		}
 	}
-}
-
-func BenchmarkAddLeafAdvanceEpoch(b *testing.B) {
-	m := New()
-	var epoch int64
-	for i := 0; i < b.N; i++ {
-		hindex := randSeq(64)
-		index := hexToBytes(b, hindex)
-		epoch++
-		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
-				i, epoch, hindex, got, want)
+	tests := []struct {
+		hindex    string
+		neighbors [][]byte
+	}{
+		{defaultIndex[0], [][]byte{leafs[0].hash, leafs[2].hash}}, // 3
+		{defaultIndex[1], [][]byte{leafs[0].hash, leafs[1].hash}}, // 4
+	}
+	for _, tt := range tests {
+		index := H2B(tt.hindex)
+		nbrs, _ := m.NeighborsAt(ctx, index, 0)
+		if got, want := nbrs, tt.neighbors; !reflect.DeepEqual(got, want) {
+			t.Errorf("NeighborsAt(%v)=\n%v, want \n%v", tt.hindex, got, want)
 		}
 	}
-}
 
-func BenchmarkAudit(b *testing.B) {
-	m := New()
-	var epoch int64
-	items := make([]string, b.N)
-	for i := 0; i < b.N; i++ {
-		hindex := randSeq(64)
-		index := hexToBytes(b, hindex)
-		items[i] = hindex
-		err := m.AddLeaf([]byte{}, epoch, index, testCommitmentTimestamp)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			b.Errorf("%v: AddLeaf(_, %v, %v)=%v, want %v",
-				i, epoch, hindex, got, want)
-		}
-	}
-	for _, v := range items {
-		index := hexToBytes(b, v)
-		m.AuditPath(epoch, index)
-	}
 }
 
 func TestPushDown(t *testing.T) {
-	t.Parallel()
-
-	index := hexToBytes(t, AllZeros)
-	n := &node{bindex: tree.BitString(index)}
+	n := &node{bindex: tree.BitString(H2B(AllZeros))}
 	if !n.leaf() {
 		t.Errorf("node without children was a leaf")
 	}
@@ -233,19 +332,15 @@ func TestPushDown(t *testing.T) {
 }
 
 func TestCreateBranch(t *testing.T) {
-	t.Parallel()
-
-	index := hexToBytes(t, AllZeros)
-	n := &node{bindex: tree.BitString(index)}
+	n := &node{bindex: tree.BitString(H2B(AllZeros))}
 	n.createBranch("0")
 	if n.left == nil {
 		t.Errorf("nil branch after create")
 	}
 }
 
+// Test Copy on Write
 func TestCreateBranchCOW(t *testing.T) {
-	t.Parallel()
-
 	la := &node{epoch: 0, bindex: "0", depth: 1}
 	lb := &node{epoch: 0, bindex: "1", depth: 1}
 	r0 := &node{epoch: 0, bindex: "", left: la, right: lb}
@@ -263,163 +358,10 @@ func TestCreateBranchCOW(t *testing.T) {
 	}
 }
 
-func TestAuditDepth(t *testing.T) {
-	t.Parallel()
-
-	env := NewEnv(t)
-
-	tests := []struct {
-		leaf  Leaf
-		depth int
-	}{
-		{validTreeLeaves[0], 256},
-		{validTreeLeaves[1], 256},
-		{validTreeLeaves[2], 1},
-		{validTreeLeaves[3], 1},
-		{validTreeLeaves[4], 256},
+func H2B(h string) []byte {
+	result, err := hex.DecodeString(h)
+	if err != nil {
+		panic("DecodeString failed")
 	}
-
-	for i, test := range tests {
-		index := hexToBytes(t, test.leaf.hindex)
-		audit, _, err := env.m.AuditPath(test.leaf.epoch, index)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
-				i, test.leaf.epoch, test.leaf.hindex, got, want)
-		}
-		if got, want := len(audit), test.depth; got != want {
-			for j, a := range audit {
-				fmt.Println(j, ": ", a)
-			}
-			t.Errorf("Test[%v]: len(audit(%v, %v))=%v, want %v", i, test.leaf.epoch, test.leaf.hindex, got, want)
-		}
-	}
-}
-
-func TestAuditNeighors(t *testing.T) {
-	t.Parallel()
-
-	m := New()
-	tests := []struct {
-		epoch         int64
-		hindex        string
-		emptyNeighors []bool
-	}{
-		{0, "0000000000000000000000000000000000000000000000000000000000000000", []bool{}},
-		{0, "F000000000000000000000000000000000000000000000000000000000000000", []bool{false}},
-		{0, "2000000000000000000000000000000000000000000000000000000000000000", []bool{false, true, false}},
-		{0, "C000000000000000000000000000000000000000000000000000000000000000", []bool{false, true, false}},
-	}
-	for i, test := range tests {
-		index := hexToBytes(t, test.hindex)
-		// Insert.
-		err := m.AddLeaf([]byte{}, test.epoch, index, testCommitmentTimestamp)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("Test[%v]: AddLeaf(_, %v, %v)=%v, want %v",
-				i, test.epoch, test.hindex, got, want)
-		}
-		// Verify audit path.
-		audit, _, err := m.AuditPath(test.epoch, index)
-		if got, want := grpc.Code(err), codes.OK; got != want {
-			t.Errorf("Test[%v]: AuditPath(_, %v, %v)=%v, want %v",
-				i, test.epoch, test.hindex, got, want)
-		}
-		if got, want := len(audit), len(test.emptyNeighors); got != want {
-			for j, a := range audit {
-				fmt.Println(j, ": ", a)
-			}
-			t.Errorf("Test[%v]: len(audit(%v, %v))=%v, want %v", i, test.epoch, test.hindex, got, want)
-		}
-		for j, v := range test.emptyNeighors {
-			// Starting from the leaf's neighbor, going to the root.
-			depth := len(audit) - j
-			nstr := tree.NeighborString(tree.BitString(index)[:depth])
-			value := sparse.EmptyLeafValue(nstr)
-			if got, want := bytes.Equal(audit[j], value), v; got != want {
-				t.Errorf("Test[%v]: AuditPath(%v)[%v]=%v, want %v", i, test.hindex, j, got, want)
-			}
-		}
-	}
-}
-
-func TestLongestPrefixMatch(t *testing.T) {
-	t.Parallel()
-
-	env := NewEnv(t)
-
-	// Get commitment timestamps.
-	tests := []struct {
-		leaf            Leaf
-		outCommitmentTS int64
-		code            codes.Code
-	}{
-		// Get commitment timestamps of all added leaves. Ordering doesn't matter
-		{validTreeLeaves[3], validTreeLeaves[3].commitmentTS, codes.OK},
-		{validTreeLeaves[0], validTreeLeaves[0].commitmentTS, codes.OK},
-		{validTreeLeaves[4], validTreeLeaves[4].commitmentTS, codes.OK},
-		{validTreeLeaves[1], validTreeLeaves[1].commitmentTS, codes.OK},
-		{validTreeLeaves[2], validTreeLeaves[2].commitmentTS, codes.OK},
-		// Add custom testing leaves.
-		// Invalid index lengh.
-		{Leaf{1, "8000", 0}, 0, codes.InvalidArgument},
-		// Not found due to missing epoch.
-		{Leaf{3, "8000000000000000000000000000000000000000000000000000000000000001", 0}, 0, codes.InvalidArgument},
-		// Found another leaf.
-		{Leaf{1, "8000000000000000000000000000000000000000000000000000000000000002", 0}, 4, codes.OK},
-		// Found empty branch.
-		{Leaf{0, "0000000000000000000000000000000000000000000000000000000000000002", 0}, 0, codes.OK},
-	}
-	for i, test := range tests {
-		index := hexToBytes(t, test.leaf.hindex)
-		_, commitmentTS, err := env.m.AuditPath(test.leaf.epoch, index)
-		if gotc, wantc, gote, wante := commitmentTS, test.outCommitmentTS, grpc.Code(err), test.code; gotc != wantc || gote != wante {
-			t.Errorf("Test[%v]: LongestPrefixMatch(%v, %v)=(%v, %v), want (%v, %v), err = %v",
-				i, test.leaf.epoch, test.leaf.hindex, gotc, gote, wantc, wante, err)
-		}
-	}
-}
-
-func TestRoot(t *testing.T) {
-	t.Parallel()
-
-	env := NewEnv(t)
-
-	tests := []struct {
-		epoch int64
-		code  codes.Code
-	}{
-		{0, codes.OK},
-		{1, codes.OK},
-		{5, codes.NotFound},
-	}
-
-	for i, test := range tests {
-		r := env.m.Root(test.epoch)
-		if got, want := len(r) == 0, test.code == codes.NotFound; got != want {
-			t.Errorf("%v: Root(%v)=%v, want %v", i, test.epoch, r, test.code)
-		}
-	}
-}
-
-func TestFromNeighbors(t *testing.T) {
-	t.Parallel()
-	m := New()
-
-	for i, test := range validTreeLeaves {
-		index := hexToBytes(t, test.hindex)
-		data := []byte("hi")
-		if err := m.AddLeaf(data, test.epoch, index, test.commitmentTS); err != nil {
-			t.Fatalf("%v: AddLeaf(-, %v, %v)=%v", i, test.epoch, test.hindex, err)
-		}
-		neighbors, _, err := m.AuditPath(test.epoch, index)
-
-		tmp, err := FromNeighbors(neighbors, index, data)
-		if err != nil {
-			t.Fatalf("FromNeighbors()= %v", err)
-		}
-
-		got, want := tmp.Root(0), m.Root(test.epoch)
-		if ok := hmac.Equal(got, want); !ok {
-			t.Errorf("%v: FromNeighbors().Root=%v, want %v", i, got, want)
-		}
-	}
+	return result
 }

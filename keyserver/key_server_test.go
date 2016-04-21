@@ -34,11 +34,12 @@ import (
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/memhist"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	proto "github.com/golang/protobuf/proto"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
@@ -209,20 +210,22 @@ func TestProofOfAbsence(t *testing.T) {
 	defer env.Close()
 
 	// Test proof of absence for an empty branch.
-	getNonExistantUser(t, env)
+	getNonExistentUser(t, env)
 
 	// Test proof of absence for a leaf that shares a prefix with the
 	// requested index.
 	env.createPrimaryUser(t)
-	getNonExistantUser(t, env)
+	getNonExistentUser(t, env)
 }
 
-func getNonExistantUser(t *testing.T, env *Env) {
+func getNonExistentUser(t *testing.T, env *Env) {
 	ctx := context.Background() // Unauthenticated request.
 	res, err := env.Client.GetEntry(ctx, &pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: "nobody"})
-	if err != nil {
-		t.Fatalf("Query for nonexistant failed %v", err)
+	if got, want := grpc.Code(err), codes.OK; got != want {
+		t.Errorf("GetEntry()=%v, want %v", got, want)
 	}
+
+	return
 
 	if len(res.Profile) != 0 {
 		t.Errorf("Profile returned for nonexistant user")
@@ -261,8 +264,8 @@ func getNonExistantUser(t *testing.T, env *Env) {
 		index = res.Index
 	}
 
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index, entryData); err != nil {
-		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, entryData, err)
+	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index, entryData); got != true {
+		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, entryData, got)
 	}
 
 	// TODO(cesarghali): verify IndexProof.
@@ -331,8 +334,8 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Index, entryData); err != nil {
-		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
+	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Index, entryData); got != true {
+		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, got)
 	}
 
 	// TODO(cesarghali): verify IndexProoc.
