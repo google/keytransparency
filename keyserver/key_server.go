@@ -19,12 +19,13 @@ import (
 	"bytes"
 	"math"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/tree"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

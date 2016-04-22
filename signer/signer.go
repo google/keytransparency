@@ -22,9 +22,10 @@ import (
 	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/mutator"
 	"github.com/google/e2e-key-server/tree"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	proto "github.com/golang/protobuf/proto"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 )
@@ -63,9 +64,9 @@ func (s *Signer) StartSequencing() {
 	}()
 }
 
-func (s *Signer) Sequence() {
+func (s *Signer) Sequence() error {
 	m := <-s.sequencer.Queue()
-	s.sequenceOne(m.Index, m.Mutation)
+	return s.sequenceOne(m.Index, m.Mutation)
 }
 
 func (s *Signer) StartSigning(interval time.Duration) {

@@ -17,10 +17,10 @@ package memtree
 import (
 	"bytes"
 	"encoding/hex"
-	"log"
 	"strings"
 	"testing"
 
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 	"golang.org/x/net/context"
 )
 
@@ -30,11 +30,11 @@ var (
 	defaultIndex = []string{
 		"8000000000000000000000000000000000000000000000000000000000000001",
 		"C000000000000000000000000000000000000000000000000000000000000001",
+		"4000000000000000000000000000000000000000000000000000000000000001",
 	}
 )
 
 func TestWriteRead(t *testing.T) {
-	t.Parallel()
 	m := New()
 	leafs := []struct {
 		hindex string
@@ -93,7 +93,7 @@ func TestNeighborDepth(t *testing.T) {
 	}
 	for _, test := range tests {
 		nbrs, _ := m.Neighbors(ctx, H2B(test.hindex))
-		if got, want := len(nbrs), test.depth; got != want {
+		if got, want := sqlhist.PrefixLen(nbrs), test.depth; got != want {
 			t.Errorf("len(Neighbors(%v))=%v, want %v", test.hindex, got, want)
 		}
 	}
@@ -101,35 +101,43 @@ func TestNeighborDepth(t *testing.T) {
 
 func TestFromNeighbors(t *testing.T) {
 	f := NewFactory()
-	m := New()
-	leafs := []struct {
+	trees := [][]struct {
 		hindex string
 		value  string
 	}{
-		{defaultIndex[0], "3"},
-		{defaultIndex[1], "4"},
+		{
+			{defaultIndex[2], "0"},
+			{defaultIndex[0], "3"},
+		},
+		{
+			{defaultIndex[0], "3"},
+			{defaultIndex[1], "4"},
+		},
 	}
-	for _, l := range leafs {
-		m.WriteLeaf(ctx, H2B(l.hindex), []byte(l.value))
-	}
-	for i, test := range leafs {
-		index := H2B(test.hindex)
-		data := []byte(test.value)
 
-		// Recreate the tree from the neighbors and verify that the roots are equal.
-		nbrs, _ := m.Neighbors(ctx, index)
-		log.Printf("nbrs: %v", nbrs)
-		m2 := f.FromNeighbors(nbrs, index, data)
+	for _, leaves := range trees {
+		m := New()
+		for _, l := range leaves {
+			m.WriteLeaf(ctx, H2B(l.hindex), []byte(l.value))
+		}
+		for i, tc := range leaves {
+			index := H2B(tc.hindex)
+			data := []byte(tc.value)
 
-		r, _ := m.ReadRoot(ctx)
-		r2, _ := m2.ReadRoot(ctx)
+			// Recreate the tree from the neighbors and verify that the roots are equal.
 
-		if got, want := r2, r; !bytes.Equal(got, want) {
-			t.Errorf("%v: FromNeighbors().Root=%v, want %v", i, got, want)
+			nbrs, _ := m.Neighbors(ctx, index)
+			m2 := f.FromNeighbors(nbrs, index, data)
 
+			r, _ := m.ReadRoot(ctx)
+			r2, _ := m2.ReadRoot(ctx)
+
+			if got, want := r2, r; !bytes.Equal(got, want) {
+				t.Errorf("%v: FromNeighbors().Root=%v, want %v", i, got, want)
+
+			}
 		}
 	}
-
 }
 
 // Hex to Bytes

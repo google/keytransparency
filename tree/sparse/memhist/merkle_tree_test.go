@@ -24,7 +24,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse"
 )
 
 const (
@@ -136,9 +135,9 @@ func TestReadLeafNodesAt(t *testing.T) {
 		bindex := tree.BitString(H2B(l.hindex))
 		if l.value != "" {
 			data := []byte(l.value)
-			l.hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+			l.hash = hasher.HashLeaf([]byte(bindex), l.depth, data)
 		} else {
-			l.hash = sparse.EmptyLeafValue(bindex[:l.depth])
+			l.hash = hashEmpty(bindex[:l.depth])
 		}
 
 		got, err := m.readNodeAt(nil, H2B(l.hindex), l.depth, 0)
@@ -167,9 +166,9 @@ func TestReadIntermediateNodesAt(t *testing.T) {
 		bindex := tree.BitString(H2B(l.hindex))
 		if l.value != "" {
 			data := []byte(l.value)
-			leafs[i].hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+			leafs[i].hash = hasher.HashLeaf([]byte(bindex), l.depth, data)
 		} else {
-			leafs[i].hash = sparse.EmptyLeafValue(bindex[:l.depth])
+			leafs[i].hash = hashEmpty(bindex[:l.depth])
 		}
 	}
 	interior := []struct {
@@ -177,7 +176,7 @@ func TestReadIntermediateNodesAt(t *testing.T) {
 		depth  int
 		hash   []byte
 	}{
-		{defaultIndex[0], 1, sparse.HashIntermediateNode(leafs[1].hash, leafs[2].hash)},
+		{defaultIndex[0], 1, hasher.HashChildren(leafs[1].hash, leafs[2].hash)},
 	}
 	for _, l := range interior {
 		got, err := m.readNodeAt(nil, H2B(l.hindex), l.depth, 0)
@@ -209,9 +208,9 @@ func TestReadRootAt(t *testing.T) {
 		bindex := tree.BitString(H2B(l.hindex))
 		if l.value != "" {
 			data := []byte(l.value)
-			leafs[i].hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+			leafs[i].hash = hasher.HashLeaf([]byte(bindex), l.depth, data)
 		} else {
-			leafs[i].hash = sparse.EmptyLeafValue(bindex[:l.depth])
+			leafs[i].hash = hashEmpty(bindex[:l.depth])
 		}
 	}
 	interior := []struct {
@@ -219,12 +218,12 @@ func TestReadRootAt(t *testing.T) {
 		hindex string
 		hash   []byte
 	}{
-		{1, defaultIndex[0], sparse.HashIntermediateNode(leafs[1].hash, leafs[2].hash)},
+		{1, defaultIndex[0], hasher.HashChildren(leafs[1].hash, leafs[2].hash)},
 	}
 	root := []struct {
 		value []byte
 	}{
-		{sparse.HashIntermediateNode(leafs[0].hash, interior[0].hash)},
+		{hasher.HashChildren(leafs[0].hash, interior[0].hash)},
 	}
 	for _, l := range root {
 		got, err := m.ReadRootAt(ctx, 0)
@@ -295,9 +294,9 @@ func TestNeighborsAt(t *testing.T) {
 		bindex := tree.BitString(H2B(l.hindex))
 		if l.value != "" {
 			data := []byte(l.value)
-			leafs[i].hash = sparse.HashLeaf(true, l.depth, []byte(bindex), data)
+			leafs[i].hash = hasher.HashLeaf([]byte(bindex), l.depth, data)
 		} else {
-			leafs[i].hash = sparse.EmptyLeafValue(bindex[:l.depth])
+			leafs[i].hash = hashEmpty(bindex[:l.depth])
 		}
 	}
 	tests := []struct {

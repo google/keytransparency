@@ -19,23 +19,18 @@ import (
 )
 
 func TestComputeNodeValues(t *testing.T) {
-	bindex := "0100"
-	leafHash := []byte("")
-	neighbors := make([][]byte, 4)
-	expected := []string{"0100", "010", "01", "0", ""}
-	actual := NodeValues(bindex, leafHash, neighbors)
-	if got, want := len(actual), len(expected); got != want {
-		t.Errorf("len(%v)=%v, want %v", actual, got, want)
+	tests := []struct {
+		bindex    string
+		leafHash  []byte
+		neighbors [][]byte
+		expected  []string
+	}{
+		{"0100", []byte(""), make([][]byte, 4), []string{"0100", "010", "01", "0", ""}},
 	}
-}
-
-func TestComputeEmptyNodeValues(t *testing.T) {
-	bindex := "0100"
-	leafHash := []byte("")
-	neighbors := make([][]byte, 4)
-	expected := []string{"0100", "010", "01", "0", ""}
-	actual := NodeValues(bindex, leafHash, neighbors)
-	if got, want := len(actual), len(expected); got != want {
-		t.Errorf("len(%v)=%v, want %v", actual, got, want)
+	for _, tc := range tests {
+		actual := NodeValues(Coniks, tc.bindex, tc.leafHash, tc.neighbors)
+		if got, want := len(actual), len(tc.expected); got != want {
+			t.Errorf("len(%v)=%v, want %v", actual, got, want)
+		}
 	}
 }
