@@ -16,6 +16,9 @@
 package queue
 
 import (
+	"log"
+
+	"github.com/coreos/etcd/raft/raftpb"
 	"golang.org/x/net/context"
 )
 
@@ -27,21 +30,22 @@ const (
 
 // Queuer submits new mutations to be processed.
 type Queuer interface {
-	// QueueMutation submits a mutation request for inclusion in the next
+	// Queue submits a mutation request for inclusion in the next
 	// epoch. The request may fail if this submition is a duplicate or if
 	// the mutation fails a correctness check by the mapper.
-	QueueMutation(ctx context.Context, index, mutation []byte) error
-}
+	Queue(ctx context.Context, index, mutation []byte) error
 
-// Sequencer applies mutations to the persistant map.
-type Sequencer interface {
-	// The Sequencer object will want to subscribe to the mutation queue.
+	// The DeQueuer object will want to subscribe to the mutation queue.
 	// This may be internal to the sequencer implementation?
-	Queue() <-chan *Mutation
+	Dequeue() <-chan *Mutation
 }
 
 type Mutation struct {
-	Index    []byte
-	Mutation []byte
-	Done     chan error // Returns nil on success. Close on sucess.
+	kv
+	Done chan error // Returns nil on success. Close on sucess.
+}
+
+type kv struct {
+	Key []byte
+	Val []byte
 }
