@@ -42,7 +42,7 @@ INCLUDES+= -I=$(PROTOINCLUDE)
 
 
 main: proto
-	go build -o srv server.go
+	go build -o key-transparency server.go
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicate.

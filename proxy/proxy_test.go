@@ -27,6 +27,7 @@ import (
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/db/memdb"
+	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
@@ -34,6 +35,7 @@ import (
 	"github.com/google/e2e-key-server/tree/sparse"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
+	"github.com/coreos/etcd/integration"
 	"github.com/golang/protobuf/proto"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
@@ -48,6 +50,7 @@ import (
 )
 
 const (
+	clusterSize       = 1
 	primaryUserID     = 12345678
 	primaryUserEmail  = "e2eshare.test@gmail.com"
 	primaryAppId      = "pgp"
@@ -107,6 +110,7 @@ type Env struct {
 	ctx      context.Context
 	signer   *signer.Signer
 	db       *sql.DB
+	clus     *integration.ClusterV3
 }
 
 func newDB(t testing.TB) *sql.DB {
@@ -135,10 +139,12 @@ func NewEnv(t *testing.T) *Env {
 
 	sqldb := newDB(t)
 	db := memdb.New()
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	queue := queue.New(clus.RandClient(), "testID")
 	tree := sqlhist.New(sqldb, "test")
 	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	v2srv := keyserver.New(commitments, db, tree, appender)
+	v2srv := keyserver.New(commitments, queue, tree, appender)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -152,16 +158,17 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	signer, _ := signer.New(db, tree, entry.New(), appender)
+	signer, _ := signer.New(queue, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer, sqldb}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer, sqldb, clus}
 }
 
 // Close releases resources allocated by NewEnv.
-func (env *Env) Close() {
+func (env *Env) Close(t *testing.T) {
 	env.cc.Close()
 	env.rpcServer.Stop()
 	env.db.Close()
+	env.clus.Terminate(t)
 }
 
 // createPrimaryUser creates a user using the v2 client. This function is copied
@@ -185,10 +192,8 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 }
 
 func TestGetValidUser(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	expectedPrimaryKeys := primaryKeys
 
@@ -210,10 +215,8 @@ func TestGetValidUser(t *testing.T) {
 }
 
 func TestAppIDFiltering(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 
@@ -251,10 +254,9 @@ func TestAppIDFiltering(t *testing.T) {
 }
 
 func TestHkpLookup(t *testing.T) {
-	t.Parallel()
 
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 	ctx := context.Background() // Unauthenticated request.

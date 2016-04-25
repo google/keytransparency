@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/db/memdb"
+	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/proxy"
@@ -33,6 +35,7 @@ import (
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
+	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
 
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
@@ -45,10 +48,11 @@ var (
 	// Read AuthenticationRealm flag.
 	realm = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	// Read server DB path flag.
-	serverDBPath = flag.String("server-db-path", "db", "path/to/server/db where the local database will be created/opened.")
+	serverDBPath = flag.String("db-path", "db", "path/to/server/db where the local database will be created/opened.")
 	// Read epoch advancement duration flag.
 	epochDuration = flag.Uint("epoch-duration", 60, "Epoch advancement duration")
-	mapID         = flag.String("mapID", "domain", "Domain for user identifiers.")
+	mapID         = flag.String("map-id", "domain", "Domain for user identifiers.")
+	etcdEndpoints = flag.String("etcd-endpoints", "localhost:2379, localhost:22379, localhost:32379", "Comma delimited list of etcd endpoints")
 )
 
 // v1Routes contains all routes information for v1 APIs.
@@ -143,6 +147,18 @@ func main() {
 	}
 	// Create a memory storage.
 	db := memdb.New()
+
+	etcdCli, err := clientv3.New(clientv3.Config{
+		Endpoints:   strings.Split(*etcdEndpoints, ","),
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to etcd: %v", err)
+	}
+	log.Printf("Connected to etcd")
+	defer etcdCli.Close()
+
+	queue := queue.New(etcdCli, *mapID)
 	mutator := entry.New()
 	appender := chain.New()
 
@@ -151,7 +167,7 @@ func main() {
 	tree := sqlhist.New(sqldb, *mapID)
 	commitments := commitments.New(sqldb, *mapID)
 	// Create a signer.
-	signer, err := signer.New(db, tree, mutator, appender)
+	signer, err := signer.New(queue, tree, mutator, appender)
 	signer.StartSequencing()
 	signer.StartSigning(time.Duration(*epochDuration) * time.Second)
 	if err != nil {
@@ -160,7 +176,7 @@ func main() {
 	}
 	defer signer.Stop()
 	// Create the servers.
-	v2 := keyserver.New(commitments, db, tree, appender)
+	v2 := keyserver.New(commitments, queue, tree, appender)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 
@@ -180,5 +196,6 @@ func main() {
 		s.AddHandler(v, v2pb.HandlerV2, v2)
 	}
 
+	log.Printf("Listening on port %v", *port)
 	s.Serve(lis)
 }

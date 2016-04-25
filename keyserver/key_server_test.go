@@ -32,10 +32,12 @@ import (
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/db/memdb"
+	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
+	"github.com/coreos/etcd/integration"
 	"github.com/golang/protobuf/proto"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
@@ -51,6 +53,7 @@ const (
 	primaryUserEmail  = "e2eshare.test@gmail.com"
 	primaryAppId      = "pgp"
 	testEpochDuration = 1
+	clusterSize       = 1
 )
 
 var (
@@ -141,6 +144,7 @@ type Env struct {
 	ctx    context.Context
 	signer *signer.Signer
 	db     *sql.DB
+	clus   *integration.ClusterV3
 }
 
 func newDB(t testing.TB) *sql.DB {
@@ -168,11 +172,13 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	db := memdb.New()
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	queue := queue.New(clus.RandClient(), "testID")
 	sqldb := newDB(t)
 	tree := sqlhist.New(sqldb, "test")
 	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	server := New(commitments, db, tree, appender)
+	server := New(commitments, queue, tree, appender)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
@@ -182,16 +188,17 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
-	signer, _ := signer.New(db, tree, entry.New(), appender)
+	signer, _ := signer.New(queue, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{s, server, cc, client, ctx, signer, sqldb}
+	return &Env{s, server, cc, client, ctx, signer, sqldb, clus}
 }
 
 // Close releases resources allocated by NewEnv.
-func (env *Env) Close() {
+func (env *Env) Close(t *testing.T) {
 	env.conn.Close()
 	env.s.Stop()
 	env.db.Close()
+	env.clus.Terminate(t)
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {
@@ -216,14 +223,14 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 
 func TestCreateKey(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 }
 
 func TestProofOfAbsence(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	// Test proof of absence for an empty branch.
 	getNonExistentUser(t, env)
@@ -289,7 +296,7 @@ func getNonExistentUser(t *testing.T, env *Env) {
 
 func TestGetValidUser(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 
@@ -363,7 +370,7 @@ func getErr(ret interface{}, err error) error {
 
 func TestUnimplemented(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	tests := []struct {
 		desc string
@@ -384,7 +391,7 @@ func TestUnimplemented(t *testing.T) {
 // Verify that users cannot alter keys for other users.
 func TestUnauthenticated(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	tests := []struct {
 		desc string

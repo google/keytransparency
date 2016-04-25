@@ -2,5 +2,8 @@
 *.swo
 *~
 srv
-# Old binary
 svr
+key-transparency
+infra*.etcd
+tree-db.sqlite3
+
