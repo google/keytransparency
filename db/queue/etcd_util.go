@@ -33,7 +33,7 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	recipe "github.com/coreos/etcd/contrib/recipes"
-	spb "github.com/coreos/etcd/storage/storagepb"
+	spb "github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 // dequeue returns Enqueue()'d elements in FIFO order. If the

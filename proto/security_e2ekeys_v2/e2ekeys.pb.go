@@ -27,9 +27,17 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.ProtoPackageIsVersion1
+
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
 
 // Client API for E2EKeyService service
 
@@ -139,76 +147,112 @@ func RegisterE2EKeyServiceServer(s *grpc.Server, srv E2EKeyServiceServer) {
 	s.RegisterService(&_E2EKeyService_serviceDesc, srv)
 }
 
-func _E2EKeyService_GetEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyService_GetEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(security_e2ekeys.GetEntryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyServiceServer).GetEntry(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyServiceServer).GetEntry(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v2.E2EKeyService/GetEntry",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyServiceServer).GetEntry(ctx, req.(*security_e2ekeys.GetEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _E2EKeyService_ListEntryHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyService_ListEntryHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(security_e2ekeys.ListEntryHistoryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyServiceServer).ListEntryHistory(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyServiceServer).ListEntryHistory(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v2.E2EKeyService/ListEntryHistory",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyServiceServer).ListEntryHistory(ctx, req.(*security_e2ekeys.ListEntryHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _E2EKeyService_UpdateEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyService_UpdateEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(security_e2ekeys.UpdateEntryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyServiceServer).UpdateEntry(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyServiceServer).UpdateEntry(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v2.E2EKeyService/UpdateEntry",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyServiceServer).UpdateEntry(ctx, req.(*security_e2ekeys.UpdateEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _E2EKeyService_ListSEH_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyService_ListSEH_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(security_e2ekeys.ListSEHRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyServiceServer).ListSEH(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyServiceServer).ListSEH(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v2.E2EKeyService/ListSEH",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyServiceServer).ListSEH(ctx, req.(*security_e2ekeys.ListSEHRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _E2EKeyService_ListUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyService_ListUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(security_e2ekeys.ListUpdateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyServiceServer).ListUpdate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyServiceServer).ListUpdate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v2.E2EKeyService/ListUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyServiceServer).ListUpdate(ctx, req.(*security_e2ekeys.ListUpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _E2EKeyService_ListSteps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyService_ListSteps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(security_e2ekeys.ListStepsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyServiceServer).ListSteps(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyServiceServer).ListSteps(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v2.E2EKeyService/ListSteps",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyServiceServer).ListSteps(ctx, req.(*security_e2ekeys.ListStepsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _E2EKeyService_serviceDesc = grpc.ServiceDesc{
