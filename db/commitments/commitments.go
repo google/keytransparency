@@ -29,7 +29,9 @@ import (
 )
 
 const (
-	commitmentKeyLen = 16
+	// commitmentKeyLen should be robust against the birthday attack. One
+	// commitment is given for each leaf node throughout time.
+	commitmentKeyLen = 16 //128 bits of security, supports 2^64 nodes
 	Size             = sha512.Size256
 )
 
@@ -43,6 +45,8 @@ type Commitment struct {
 }
 
 type Committer interface {
+	// TODO: remove ctx
+	// TODO: rename WriteCommitment to Commit
 	WriteCommitment(ctx context.Context, commitment, key, value []byte) error
 	ReadCommitment(ctx context.Context, commitment []byte) (*Commitment, error)
 }

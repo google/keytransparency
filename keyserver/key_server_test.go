@@ -170,8 +170,9 @@ func NewEnv(t *testing.T) *Env {
 	db := memdb.New()
 	sqldb := newDB(t)
 	tree := sqlhist.New(sqldb, "test")
+	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	server := New(db, db, tree, appender)
+	server := New(commitments, db, tree, appender)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 

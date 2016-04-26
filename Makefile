@@ -60,5 +60,7 @@ proto: $(DEPS)
 
 clean:
 	rm -f $(DEPS)
-	rm -f srv
+	rm -f srv key-transparency
+	rm -rf infra*
+	rm -f tree-db.sqlite3
 
