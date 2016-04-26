@@ -21,8 +21,8 @@ import (
 
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
-	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/tree"
 
 	"github.com/golang/protobuf/proto"
@@ -37,14 +37,14 @@ import (
 // Server holds internal state for the key server.
 type Server struct {
 	committer commitments.Committer
-	queue     db.Queuer
+	queue     queue.Queuer
 	auth      auth.Authenticator
 	tree      tree.SparseHist
 	appender  appender.Appender
 }
 
 // Create creates a new instance of the key server.
-func New(committer commitments.Committer, queue db.Queuer, tree tree.SparseHist, appender appender.Appender) *Server {
+func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
@@ -148,7 +148,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	if err := s.queue.QueueMutation(ctx, index, m); err != nil {
+	if err := s.queue.Enqueue(index, m); err != nil {
 		return nil, err
 	}
 

@@ -12,32 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package memdb implements an in-memory fake database for proof-of-concept
-// purposes.
-package memdb
-
-import (
-	"github.com/google/e2e-key-server/db"
-
-	"golang.org/x/net/context"
-)
-
-type MemDB struct {
-	queue chan *db.Mutation
-}
-
-// Create creates a storage object from an existing db connection.
-func New() *MemDB {
-	return &MemDB{
-		queue: make(chan *db.Mutation, 100),
-	}
-}
-
-func (d *MemDB) QueueMutation(ctx context.Context, index, mutation []byte) error {
-	d.queue <- &db.Mutation{index, mutation, make(chan error)}
-	return nil
-}
-
-func (d *MemDB) Queue() <-chan *db.Mutation {
-	return d.queue
-}
+// Package db describes interfaces into database implementations.
+package db

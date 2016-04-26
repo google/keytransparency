@@ -23,10 +23,8 @@ import (
 )
 
 func TestValidateEmail(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	if err := env.server.validateEmail(env.ctx, primaryUserEmail); err != nil {
 		t.Errorf("ValidateEmail failed: %v.", err)
@@ -38,10 +36,8 @@ func TestValidateEmail(t *testing.T) {
 }
 
 func TestValidateKey(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	if err := env.server.validateKey(primaryUserEmail, primaryAppId, primaryKeys[primaryAppId]); err != nil {
 		t.Errorf("validateKey() = %v, wanted nil", err)
@@ -49,10 +45,8 @@ func TestValidateKey(t *testing.T) {
 }
 
 func TestValidateUpdateEntryRequest(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	// Use a fake previous entry. Need a real previous entry.
 	index, _ := env.server.Vuf(primaryUserEmail)
