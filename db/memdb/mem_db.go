@@ -18,26 +18,18 @@ package memdb
 
 import (
 	"github.com/google/e2e-key-server/db"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 
 	"golang.org/x/net/context"
-
-	cm "github.com/google/e2e-key-server/db/commitments"
 )
 
-const CommitmentSize = cm.Size
-
 type MemDB struct {
-	queue       chan *db.Mutation
-	commitments map[[CommitmentSize]byte]cm.Commitment
+	queue chan *db.Mutation
 }
 
 // Create creates a storage object from an existing db connection.
 func New() *MemDB {
 	return &MemDB{
-		queue:       make(chan *db.Mutation, 100),
-		commitments: make(map[[CommitmentSize]byte]cm.Commitment),
+		queue: make(chan *db.Mutation, 100),
 	}
 }
 
@@ -48,21 +40,4 @@ func (d *MemDB) QueueMutation(ctx context.Context, index, mutation []byte) error
 
 func (d *MemDB) Queue() <-chan *db.Mutation {
 	return d.queue
-}
-
-func (d *MemDB) WriteCommitment(ctx context.Context, commitment, key, value []byte) error {
-	var k [CommitmentSize]byte
-	copy(k[:], commitment[:CommitmentSize])
-	d.commitments[k] = cm.Commitment{key, value}
-	return nil
-}
-
-func (d *MemDB) ReadCommitment(ctx context.Context, commitment []byte) (*cm.Commitment, error) {
-	var k [CommitmentSize]byte
-	copy(k[:], commitment[:CommitmentSize])
-	c, ok := d.commitments[k]
-	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", commitment)
-	}
-	return &c, nil
 }

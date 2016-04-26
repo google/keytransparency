@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
+	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -135,8 +136,9 @@ func NewEnv(t *testing.T) *Env {
 	sqldb := newDB(t)
 	db := memdb.New()
 	tree := sqlhist.New(sqldb, "test")
+	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	v2srv := keyserver.New(db, db, tree, appender)
+	v2srv := keyserver.New(commitments, db, tree, appender)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
