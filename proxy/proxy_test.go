@@ -26,7 +26,6 @@ import (
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -138,7 +137,6 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 
 	sqldb := newDB(t)
-	db := memdb.New()
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	queue := queue.New(clus.RandClient(), "testID")
 	tree := sqlhist.New(sqldb, "test")

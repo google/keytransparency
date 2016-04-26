@@ -25,7 +25,6 @@ import (
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -146,7 +145,6 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	// Create a memory storage.
-	db := memdb.New()
 
 	etcdCli, err := clientv3.New(clientv3.Config{
 		Endpoints:   strings.Split(*etcdEndpoints, ","),

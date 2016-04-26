@@ -31,7 +31,6 @@ import (
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/memdb"
 	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
@@ -171,7 +170,6 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	db := memdb.New()
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	queue := queue.New(clus.RandClient(), "testID")
 	sqldb := newDB(t)
