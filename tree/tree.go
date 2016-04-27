@@ -51,4 +51,7 @@ type SparseHist interface {
 	ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error)
 	// Neighbors returns the list of neighbors from the neighbor leaf to just below the root at epoch.
 	NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]byte, error)
+
+	// Epoch returns the current epoch of the merkle tree.
+	Epoch() int64
 }
