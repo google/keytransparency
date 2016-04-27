@@ -87,6 +87,7 @@ message SignedEpochHead {
   map<fixed64, bytes> signatures = 2;
 }
 
+
 // SignedEntryUpdate is what users provide to update their profiles.
 // A serialized SignedEntryUpdate is used as the leaf value in the MerkleTree.
 message SignedEntryUpdate {
@@ -97,4 +98,31 @@ message SignedEntryUpdate {
   // second proves the the correct owner is making this change.
   map<fixed64, bytes> signatures = 2;
 }
+
+// The VerifiableMap API represents a transparent index, value datastore.
+service VerifiableMapService {
+   // Get retrieves a value and its inclusion proof.
+   rpc Get(index, epoch) (value, inclusion proof, signed tree head)
+   // Put submits a change to a value.  
+   // Only the last change per epoch is comitted. Changes should explicity 
+   // refernce the epoch they expect to be comitted in.
+   rpc Put(index, mutation) (SCT?, inclusion proof)
+   // Proove that the signed sparse tree head in end can be chained from start.
+   // Want a way to ask for the lastest tree head.
+   rpc Consistency(start, end) (consistency proof)
+   rpc SCTProof(SCT) (mutation log proof, sparse tree proof)
+}
+
+// API for monitoring the log of mutations and the log of signed tree heads.
+service MonitorService {
+   rpc GetMutations(start, end) ([]mutations)
+   rpc GetSignedSparseTreeHead(epoch) (sth)
+}
+
+/*
+// public API that monitors would implement
+service MonitoringService {
+   rpc VerifySTH(STH, STH) (signed bool)
+}
+*/
 
