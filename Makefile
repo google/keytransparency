@@ -42,7 +42,8 @@ INCLUDES+= -I=$(PROTOINCLUDE)
 
 
 main: proto
-	go build -o key-transparency server.go
+	go build ./
+	go build -o e2e-key-signer ./backend
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicate.
@@ -60,7 +61,7 @@ proto: $(DEPS)
 
 clean:
 	rm -f $(DEPS)
-	rm -f srv key-transparency
+	rm -f srv e2e-key-server e2e-key-signer
 	rm -rf infra*
 	rm -f tree-db.sqlite3
 

@@ -41,8 +41,7 @@ type Signer struct {
 }
 
 // New creates a new instance of the signer.
-func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender) (*Signer, error) {
-	// Create a signer instance.
+func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender) *Signer {
 	s := &Signer{
 		queue:    queue,
 		mutator:  mutator,
@@ -50,19 +49,17 @@ func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appe
 		appender: appender,
 	}
 
-	return s, nil
+	// TODO: Read current epoch out of database.
+	return s
 }
 
 func (s *Signer) StartSequencing() {
-	go func() {
-		for {
-			err := s.queue.Dequeue(s.sequenceOne, s.CreateEpoch)
-			if err != nil {
-				log.Fatalf("Dequeue failed: %v", err)
-			}
+	for {
+		err := s.queue.Dequeue(s.sequenceOne, s.CreateEpoch)
+		if err != nil {
+			log.Fatalf("Dequeue failed: %v", err)
 		}
-
-	}()
+	}
 }
 
 func (s *Signer) Sequence() error {
@@ -70,11 +67,9 @@ func (s *Signer) Sequence() error {
 }
 
 func (s *Signer) StartSigning(interval time.Duration) {
-	go func() {
-		for _ = range time.NewTicker(interval).C {
-			s.queue.AdvanceEpoch()
-		}
-	}()
+	for _ = range time.NewTicker(interval).C {
+		s.queue.AdvanceEpoch()
+	}
 }
 
 func (s *Signer) sequenceOne(index, mutation []byte) error {
@@ -94,6 +89,7 @@ func (s *Signer) sequenceOne(index, mutation []byte) error {
 	if err := s.tree.QueueLeaf(ctx, index, newV); err != nil {
 		return err
 	}
+	log.Printf("Sequenced %v", index)
 	return nil
 }
 
@@ -136,9 +132,6 @@ func (s *Signer) CreateEpoch() error {
 	if err := s.appender.Append(ctx, timestamp, signedEpochHead); err != nil {
 		return err
 	}
+	log.Printf("Created epoch %v. STH: %#x", epoch, root)
 	return nil
-}
-
-// Stop stops the signer and release all associated resource.
-func (s *Signer) Stop() {
 }

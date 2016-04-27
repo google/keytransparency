@@ -156,7 +156,7 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	signer, _ := signer.New(queue, tree, entry.New(), appender)
+	signer := signer.New(queue, tree, entry.New(), appender)
 	signer.CreateEpoch()
 	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer, sqldb, clus}
 }

@@ -4,6 +4,8 @@
 srv
 svr
 key-transparency
+e2e-key-server
+e2e-key-signer
 infra*.etcd
 tree-db.sqlite3
 

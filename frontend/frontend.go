@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package frontend
 
 import (
 	"database/sql"
@@ -27,11 +27,9 @@ import (
 	"github.com/google/e2e-key-server/db/commitments"
 	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
-	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
 	"github.com/coreos/etcd/clientv3"
@@ -42,14 +40,9 @@ import (
 )
 
 var (
-	// Read port flag.
-	port = flag.Int("port", 8080, "TCP port to listen on")
-	// Read AuthenticationRealm flag.
-	realm = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
-	// Read server DB path flag.
-	serverDBPath = flag.String("db-path", "db", "path/to/server/db where the local database will be created/opened.")
-	// Read epoch advancement duration flag.
-	epochDuration = flag.Uint("epoch-duration", 60, "Epoch advancement duration")
+	port          = flag.Int("port", 8080, "TCP port to listen on")
+	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
+	serverDBPath  = flag.String("db-path", "db", "path/to/server/db where the local database will be created/opened.")
 	mapID         = flag.String("map-id", "domain", "Domain for user identifiers.")
 	etcdEndpoints = flag.String("etcd-endpoints", "localhost:2379, localhost:22379, localhost:32379", "Comma delimited list of etcd endpoints")
 )
@@ -136,7 +129,18 @@ func openDB() *sql.DB {
 	return db
 }
 
-func main() {
+func openEtcd() *clientv3.Client {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   strings.Split(*etcdEndpoints, ","),
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to etcd: %v", err)
+	}
+	return cli
+}
+
+func Main() {
 	flag.Parse()
 
 	// TODO: fetch private TLS key from repository.
@@ -144,36 +148,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	// Create a memory storage.
-
-	etcdCli, err := clientv3.New(clientv3.Config{
-		Endpoints:   strings.Split(*etcdEndpoints, ","),
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		log.Fatalf("Failed to connect to etcd: %v", err)
-	}
-	log.Printf("Connected to etcd")
-	defer etcdCli.Close()
-
-	queue := queue.New(etcdCli, *mapID)
-	mutator := entry.New()
-	appender := chain.New()
 
 	sqldb := openDB()
 	defer sqldb.Close()
-	tree := sqlhist.New(sqldb, *mapID)
+	etcdCli := openEtcd()
+	defer etcdCli.Close()
+
 	commitments := commitments.New(sqldb, *mapID)
-	// Create a signer.
-	signer, err := signer.New(queue, tree, mutator, appender)
-	signer.StartSequencing()
-	signer.StartSigning(time.Duration(*epochDuration) * time.Second)
-	if err != nil {
-		log.Fatalf("Cannot create a signer instance: (%v)\nExisting the server.\n", err)
-		return
-	}
-	defer signer.Stop()
-	// Create the servers.
+	queue := queue.New(etcdCli, *mapID)
+	tree := sqlhist.New(sqldb, *mapID)
+	appender := chain.New()
+
 	v2 := keyserver.New(commitments, queue, tree, appender)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
