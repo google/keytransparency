@@ -38,7 +38,6 @@ type Signer struct {
 	mutator  mutator.Mutator
 	tree     tree.SparseHist
 	appender appender.Appender
-	epoch    int64
 }
 
 // New creates a new instance of the signer.
@@ -49,7 +48,6 @@ func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appe
 		mutator:  mutator,
 		tree:     tree,
 		appender: appender,
-		// TODO: Read current epoch out of database.
 	}
 
 	return s, nil
@@ -82,7 +80,7 @@ func (s *Signer) StartSigning(interval time.Duration) {
 func (s *Signer) sequenceOne(index, mutation []byte) error {
 	// Get current value.
 	ctx := context.Background()
-	v, err := s.tree.ReadLeafAt(ctx, index, s.epoch)
+	v, err := s.tree.ReadLeafAt(ctx, index, s.tree.Epoch())
 	if err != nil {
 		return err
 	}
@@ -107,8 +105,7 @@ func (s *Signer) CreateEpoch() error {
 	if err != nil {
 		return err
 	}
-	s.epoch = epoch
-	root, err := s.tree.ReadRootAt(ctx, s.epoch)
+	root, err := s.tree.ReadRootAt(ctx, epoch)
 	if err != nil {
 		return err
 	}

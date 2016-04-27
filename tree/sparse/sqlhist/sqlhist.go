@@ -74,6 +74,11 @@ func New(db *sql.DB, mapID string) *Map {
 	return m
 }
 
+// Epoch returns the current epoch of the merkle tree.
+func (m *Map) Epoch() int64 {
+	return m.epoch
+}
+
 // QueueLeaf should only be called by the sequencer.
 func (m *Map) QueueLeaf(ctx context.Context, index, leaf []byte) error {
 	if got, want := len(index), size; got != want {
