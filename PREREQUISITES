@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Preconditions:
-
 # protoc compiler > 2.6.1 from https://github.com/google/protobuf
 version=`protoc --version | awk '{printf("%d.%d", $2, $3);};'`
 if [[ "$version" < "3.0" ]]; then
@@ -34,15 +32,8 @@ if [[ "$version" < "3.0" ]]; then
 fi
 
 # go code gen plugin at https://github.com/golang/protobuf
-go get -u github.com/golang/protobuf/proto
-go get -u github.com/golang/protobuf/protoc-gen-go
-go get -u github.com/gorilla/mux
-go get -u golang.org/x/net/context
-go get -u golang.org/x/crypto/openpgp
-go get -u google.golang.org/grpc
-go get -u github.com/mattn/go-sqlite3
-
+go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
+go get -u github.com/mattn/goreman
+go get -u ./...
 #Shell PATH must include $GOPATH/bin
-
-go get github.com/mattn/goreman
 

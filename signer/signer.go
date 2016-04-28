@@ -30,10 +30,9 @@ import (
 	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 )
 
-// Signer is the object responsible for triggering epoch creation and signing
-// the epoch head once created.
+// Signer processes mutations, applies them to the sparse merkle tree, and
+// signes the sparse tree head.
 type Signer struct {
-	// Sequencer listens to new items on the queue and saves them.
 	queue    queue.Queuer
 	mutator  mutator.Mutator
 	tree     tree.SparseHist
@@ -41,43 +40,38 @@ type Signer struct {
 }
 
 // New creates a new instance of the signer.
-func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender) (*Signer, error) {
-	// Create a signer instance.
-	s := &Signer{
+func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender) *Signer {
+	return &Signer{
 		queue:    queue,
 		mutator:  mutator,
 		tree:     tree,
 		appender: appender,
 	}
-
-	return s, nil
 }
 
-func (s *Signer) StartSequencing() {
-	go func() {
-		for {
-			err := s.queue.Dequeue(s.sequenceOne, s.CreateEpoch)
-			if err != nil {
-				log.Fatalf("Dequeue failed: %v", err)
-			}
-		}
-
-	}()
-}
-
-func (s *Signer) Sequence() error {
-	return s.queue.Dequeue(s.sequenceOne, s.CreateEpoch)
-}
-
+// Start signing inserts epoch advancement signals into the queue.
 func (s *Signer) StartSigning(interval time.Duration) {
-	go func() {
-		for _ = range time.NewTicker(interval).C {
-			s.queue.AdvanceEpoch()
-		}
-	}()
+	for _ = range time.NewTicker(interval).C {
+		s.queue.AdvanceEpoch()
+	}
 }
 
-func (s *Signer) sequenceOne(index, mutation []byte) error {
+// Sequence proceses one item out of the queue. Sequence blocks if the queue
+// is empty.
+func (s *Signer) Sequence() error {
+	return s.queue.Dequeue(s.processMutation, s.CreateEpoch)
+}
+
+// StartSequencing loops over Sequence infinitely.
+func (s *Signer) StartSequencing() {
+	for {
+		if err := s.Sequence(); err != nil {
+			log.Fatalf("Dequeue failed: %v", err)
+		}
+	}
+}
+
+func (s *Signer) processMutation(index, mutation []byte) error {
 	// Get current value.
 	ctx := context.Background()
 	v, err := s.tree.ReadLeafAt(ctx, index, s.tree.Epoch())
@@ -94,6 +88,7 @@ func (s *Signer) sequenceOne(index, mutation []byte) error {
 	if err := s.tree.QueueLeaf(ctx, index, newV); err != nil {
 		return err
 	}
+	log.Printf("Sequenced %v", index)
 	return nil
 }
 
@@ -136,9 +131,6 @@ func (s *Signer) CreateEpoch() error {
 	if err := s.appender.Append(ctx, timestamp, signedEpochHead); err != nil {
 		return err
 	}
+	log.Printf("Created epoch %v. STH: %#x", epoch, root)
 	return nil
-}
-
-// Stop stops the signer and release all associated resource.
-func (s *Signer) Stop() {
 }
