@@ -41,10 +41,10 @@ import (
 
 var (
 	port          = flag.Int("port", 8080, "TCP port to listen on")
+	serverDBPath  = flag.String("db", "db", "Database connection string")
+	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
+	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
-	serverDBPath  = flag.String("db-path", "db", "path/to/server/db where the local database will be created/opened.")
-	mapID         = flag.String("map-id", "domain", "Domain for user identifiers.")
-	etcdEndpoints = flag.String("etcd-endpoints", "localhost:2379, localhost:22379, localhost:32379", "Comma delimited list of etcd endpoints")
 )
 
 // v1Routes contains all routes information for v1 APIs.

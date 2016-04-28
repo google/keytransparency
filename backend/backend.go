@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
 	"github.com/coreos/etcd/clientv3"
@@ -33,10 +33,10 @@ import (
 )
 
 var (
-	serverDBPath  = flag.String("db-path", "db", "path/to/server/db where the local database will be created/opened.")
-	epochDuration = flag.Uint("epoch-duration", 60, "Epoch advancement duration")
-	mapID         = flag.String("map-id", "domain", "Domain for user identifiers.")
-	etcdEndpoints = flag.String("etcd-endpoints", "localhost:2379, localhost:22379, localhost:32379", "Comma delimited list of etcd endpoints")
+	serverDBPath  = flag.String("db", "db", "Database connection string")
+	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
+	epochDuration = flag.Uint("period", 60, "Seconds between epoch creation")
+	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 )
 
 func openDB() *sql.DB {
