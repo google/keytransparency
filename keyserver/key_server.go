@@ -15,15 +15,14 @@
 // Package keyserver implements a transparent key server for End to End.
 package keyserver
 
+// This iteration of the key server, stores keys directly in the verifiable map
+
 import (
 	"bytes"
 	"math"
 
-	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/queue"
-	"github.com/google/e2e-key-server/tree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -37,20 +36,17 @@ import (
 // Server holds internal state for the key server.
 type Server struct {
 	committer commitments.Committer
-	queue     queue.Queuer
 	auth      auth.Authenticator
-	tree      tree.SparseHist
-	appender  appender.Appender
+
+	cli *ctmap.VerifiableMapClient
 }
 
 // Create creates a new instance of the key server.
-func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender) *Server {
+func New(cli *ctmap.Client, committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender) *Server {
 	return &Server{
 		committer: committer,
-		queue:     queue,
 		auth:      auth.New(),
-		tree:      tree,
-		appender:  appender,
+		cli:       cli,
 	}
 }
 
@@ -60,70 +56,50 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
 	index, err := s.Vuf(in.UserId)
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Error while calculating VUF of user's ID")
+		return err
 	}
 
-	// Get an append-only proof for the signed tree head.
-	e := in.Epoch
-	if in.Epoch == math.MaxInt64 {
-		e = s.appender.Latest(ctx)
-	}
-	data, err := s.appender.GetByIndex(ctx, e)
-	if err != nil {
-		return nil, err
-	}
-	seh := ctmap.SignedEpochHead{}
-	err = proto.Unmarshal(data, &seh)
-	if err != nil {
-		return nil, err
+	// Get the proof of inclusion and the leaf data.
+	resp, err := s.cli.Get(index, in.epoch)
+
+	// Use the leaf data to lookup the commitment.
+	if resp != nil {
+		commitment, err := s.committer.ReadCommitment(ctx, resp.Entry.ProfileCommitment)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	neighbors, err := s.tree.NeighborsAt(ctx, index, e)
-	if err != nil {
-		return nil, err
-	}
-
-	// result contains the returned GetEntryResponse.
-	result := &pb.GetEntryResponse{
-		Index:            index,
-		SignedEpochHeads: []*ctmap.SignedEpochHead{&seh},
-		// TODO(cesarghali): Fill IndexProof.
+	return &pb.GetEntryResponse{
+		Index:               index,
+		IndexProof:          nil, // TODO(cesarghali): Fill IndexProof.
 		MerkleTreeNeighbors: neighbors,
-	}
 
-	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeafAt(ctx, index, e)
-	if err == nil {
-		result.Entry = new(ctmap.Entry)
-		if err := proto.Unmarshal(leaf, result.Entry); err != nil {
-			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
-		}
-
-		// If entryStorage.SignedEntryUpdate.NewEntry have an
-		// exact index as the requested one, fill out the
-		// corresponding profile and its commitment.
-		if bytes.Equal(result.Entry.Index, index) {
-			commitment, err := s.committer.ReadCommitment(ctx, result.Entry.ProfileCommitment)
-			if err != nil {
-				return nil, err
-			}
-			result.Profile = commitment.Data
-			result.CommitmentKey = commitment.Key
-
-		}
-	}
-
-	return result, nil
+		Profile:       commitment.Data,
+		CommitmentKey: commitment.Key,
+	}, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
+	// a future version of this function would return a merkle tree full of
+	// history.
+	items := min(in.end-in.start, paging)
+	end := in.start + items
+	resp := make([]resp, items)
+	// query the database iterativly
+	for i, _ := range resp {
+		epoch := in.start + i
+		resp[i] = s.cli.Get(index, epoch)
+	}
+	return resp, nil
 }
 
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+	// TODO: verify that the data the mutation references is current.
+	// Do this in the mutation validator.
 	if err := s.validateUpdateEntryRequest(ctx, in); err != nil {
 		return nil, err
 	}
@@ -154,19 +130,4 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 
 	return &pb.UpdateEntryResponse{}, nil
 	// TODO: return proof if the entry has been added in an epoch alredy.
-}
-
-// List the Signed Epoch Heads, from epoch to epoch.
-func (s *Server) ListSEH(ctx context.Context, in *pb.ListSEHRequest) (*pb.ListSEHResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
-}
-
-// List the SignedEntryUpdates by update number.
-func (s *Server) ListUpdate(ctx context.Context, in *pb.ListUpdateRequest) (*pb.ListUpdateResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
-}
-
-// ListSteps combines SEH and SignedEntryUpdates into single list.
-func (s *Server) ListSteps(ctx context.Context, in *pb.ListStepsRequest) (*pb.ListStepsResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }

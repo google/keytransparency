@@ -28,7 +28,7 @@ import "github.com/google/e2e-key-server/proto/security_e2ekeys/e2ekeytypes.prot
 //   [Entry][security.e2ekeys.Entry] resources named
 //   `/entries/*/history`.
 //
-service E2EKeyService {
+service TransparentKeyService {
   // GetEntry returns a user's entry in the Merkle Tree. Entries contain
   // signed commitments to a profile, which is also returned.
   rpc GetEntry(GetEntryRequest) returns (GetEntryResponse);
@@ -36,19 +36,18 @@ service E2EKeyService {
   // ListEntryHistory returns a list of GetEntryRespons covering several epochs.
   rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse);
 
-  // blocking or polling?
   // UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
   // has been included in an epoch.  Clients must retry until this function
   // returns a proof.
   rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse);
 
+}
+
+service TransparentKeyMonitorService {
   // List the Signed Epoch Heads, from epoch to epoch.
   rpc ListSEH(ListSEHRequest) returns (ListSEHResponse);
 
-  // List the EntryUpdates by update number.
-  rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse);
-
   // ListSteps combines SEH and EntryUpdates into single list.
-  rpc ListSteps(ListStepsRequest) returns (ListStepsResponse);
+  rpc ListMutations(ListStepsRequest) returns (ListStepsResponse);
 }
 
