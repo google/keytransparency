@@ -16,7 +16,7 @@
 package keyserver
 
 import (
-	"bytes"
+	"crypto/sha256"
 	"math"
 
 	"github.com/gdbelvin/e2e-key-server/appender"
@@ -61,7 +61,8 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
-	index, proof := s.vrf.Evaluate([]byte(in.UserId))
+	vrf, proof := s.vrf.Evaluate([]byte(in.UserId))
+	index := sha256.Sum256(vrf)
 
 	// Get an append-only proof for the signed tree head.
 	e := in.Epoch
@@ -78,39 +79,36 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		return nil, err
 	}
 
-	neighbors, err := s.tree.NeighborsAt(ctx, index, e)
+	neighbors, err := s.tree.NeighborsAt(ctx, index[:], e)
 	if err != nil {
 		return nil, err
 	}
 
 	// result contains the returned GetEntryResponse.
 	result := &pb.GetEntryResponse{
-		Index:               index[:],
-		IndexProof:          proof,
+		Vrf:                 vrf,
+		VrfProof:            proof,
 		SignedEpochHeads:    []*ctmap.SignedEpochHead{&seh},
 		MerkleTreeNeighbors: neighbors,
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeafAt(ctx, index, e)
-	if err == nil {
+	leaf, err := s.tree.ReadLeafAt(ctx, index[:], e)
+	if err == nil && leaf != nil {
 		result.Entry = new(ctmap.Entry)
 		if err := proto.Unmarshal(leaf, result.Entry); err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
 
-		// If entryStorage.SignedEntryUpdate.NewEntry have an
-		// exact index as the requested one, fill out the
-		// corresponding profile and its commitment.
-		if bytes.Equal(result.Entry.Index, index[:]) {
-			commitment, err := s.committer.ReadCommitment(ctx, result.Entry.ProfileCommitment)
-			if err != nil {
-				return nil, err
-			}
-			result.Profile = commitment.Data
-			result.CommitmentKey = commitment.Key
-
+		commitment, err := s.committer.ReadCommitment(ctx, result.Entry.ProfileCommitment)
+		if err != nil {
+			return nil, err
 		}
+		if commitment == nil {
+			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", result.Entry.ProfileCommitment)
+		}
+		result.Profile = commitment.Data
+		result.CommitmentKey = commitment.Key
 	}
 
 	return result, nil
@@ -128,7 +126,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	index, _ := s.vrf.Evaluate([]byte(in.UserId))
+	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
+	index := sha256.Sum256(vrf)
 	// The mutation is an update to the commitment.
 	m, err := proto.Marshal(in.GetSignedEntryUpdate())
 	if err != nil {
@@ -145,7 +144,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	if err := s.queue.Enqueue(index, m); err != nil {
+	if err := s.queue.Enqueue(index[:], m); err != nil {
 		return nil, err
 	}
 

@@ -70,8 +70,7 @@ func CommitName(userID string, data []byte) ([]byte, []byte, error) {
 	return Commit(d.Bytes())
 }
 
-// VerifyCommitment returns nil if the data commitment using the
-// key matches the provided commitment, and error otherwise.
+// Verify returns nil if the commitment is valid.
 func Verify(key, data, commitment []byte) error {
 	mac := hmac.New(hashAlgo, key)
 	mac.Write(data)
@@ -81,6 +80,7 @@ func Verify(key, data, commitment []byte) error {
 	return nil
 }
 
+// VerifyName customizes a commitment with a userID.
 func VerifyName(userID string, key, data, commitment []byte) error {
 	d := bytes.NewBufferString(userID)
 	d.Write(data)

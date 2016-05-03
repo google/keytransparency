@@ -33,7 +33,7 @@ import (
 	"github.com/gdbelvin/e2e-key-server/tree"
 	"github.com/gdbelvin/e2e-key-server/tree/sparse"
 	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
-	"github.com/gdbelvin/e2e-key-server/vrf/fakevrf"
+	"github.com/gdbelvin/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/integration"
 	"github.com/golang/protobuf/proto"
@@ -143,7 +143,7 @@ func NewEnv(t *testing.T) *Env {
 	tree := sqlhist.New(sqldb, "test")
 	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	vrf, _ := fakevrf.KeyGen()
+	vrf, _ := p256.GenerateKey()
 
 	v2srv := keyserver.New(commitments, queue, tree, appender, vrf)
 	v1srv := New(v2srv)

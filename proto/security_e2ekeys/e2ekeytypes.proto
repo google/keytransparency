@@ -25,12 +25,10 @@ import "github.com/gdbelvin/e2e-key-server/proto/security_ctmap/map.proto";
 message GetEntryResponse {
   // UserId supports sending this as a complete proof to a third party.
   string user_id = 1; // Optional.
-  // IndexProof is the proof for VUF(user_id).
-  bytes index_proof = 2;
-  // Index is the output of VUF on (user_id).
-  // If index != entry.index,  but they share a common prefix of
-  // len(merkle_tree_neighbors), this is a proof of absence for user_id.
-  bytes index = 3;
+  // VrfProof is the proof for VRF on user_id.
+  bytes vrf_proof = 2;
+  // Vrf is the output of VRF on user_id.
+  bytes vrf = 3;
   // The signed epoch head.  A server may choose to return multiple signatures
   // of the same head for the same epoch. A client MUST NOT consider the
   // presence of surplus or invalid epoch heads in this field an error.

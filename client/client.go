@@ -19,6 +19,7 @@ package client
 
 import (
 	"crypto/hmac"
+	"crypto/sha256"
 
 	"github.com/gdbelvin/e2e-key-server/db/commitments"
 	"github.com/gdbelvin/e2e-key-server/tree"
@@ -66,8 +67,8 @@ func CreateUpdate(profile *pb.Profile, userID string, previous *pb.GetEntryRespo
 	}
 
 	// Get Index
-	// TODO: formally define and fix.
-	index := previous.Index
+	vrf := previous.Vrf
+	index := sha256.Sum256(vrf)
 
 	// Construct Entry.
 	key, commitment, err := commitments.CommitName(userID, profileData)
@@ -78,7 +79,7 @@ func CreateUpdate(profile *pb.Profile, userID string, previous *pb.GetEntryRespo
 		// TODO: Pull entry key from previous entry.
 		// TODO: Increment update count from previous entry.
 		ProfileCommitment: commitment,
-		Index:             index,
+		Index:             index[:],
 	}
 
 	entryData, err := proto.Marshal(entry)

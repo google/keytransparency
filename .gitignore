@@ -9,4 +9,5 @@ e2e-key-signer
 infra*.etcd
 *.dat
 tree-db.sqlite3
+./vrfkeygen
 
