@@ -33,6 +33,7 @@ import (
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/tree/sparse"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/integration"
 	"github.com/golang/protobuf/proto"
@@ -142,7 +143,9 @@ func NewEnv(t *testing.T) *Env {
 	tree := sqlhist.New(sqldb, "test")
 	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	v2srv := keyserver.New(commitments, queue, tree, appender)
+	vrf, _ := p256.GenerateKey()
+
+	v2srv := keyserver.New(commitments, queue, tree, appender, vrf)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)

@@ -27,6 +27,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/binary"
+	"encoding/gob"
 	"math/big"
 )
 
@@ -36,8 +37,8 @@ var (
 )
 
 type PublicKey struct {
-	x *big.Int
-	y *big.Int
+	X *big.Int
+	Y *big.Int
 }
 type PrivateKey []byte
 
@@ -46,7 +47,7 @@ func GenerateKey() (*PrivateKey, *PublicKey) {
 	var pub PublicKey
 	var priv PrivateKey
 	var err error
-	priv, pub.x, pub.y, err = elliptic.GenerateKey(curve, rand.Reader)
+	priv, pub.X, pub.Y, err = elliptic.GenerateKey(curve, rand.Reader)
 	if err != nil {
 		return nil, nil
 	}
@@ -147,7 +148,7 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) bool {
 
 	// [t]G + [s]([k]G) = [t+ks]G
 	gTx, gTy := params.ScalarBaseMult(t)
-	pkSx, pkSy := params.ScalarMult(pk.x, pk.y, s)
+	pkSx, pkSy := params.ScalarMult(pk.X, pk.Y, s)
 	gTKSx, gTKSy := params.Add(gTx, gTy, pkSx, pkSy)
 
 	// H = H1(m)
@@ -167,4 +168,33 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) bool {
 	h2 := H2(b.Bytes())
 
 	return hmac.Equal(s, h2.Bytes())
+}
+
+// Bytes returns the serialized private key.
+func (priv *PrivateKey) Bytes() []byte {
+	return ([]byte)(*priv)
+}
+
+// ParsePrivateKey reverses Bytes() into a PrivateKey object.
+func ParsePrivateKey(buf []byte) (*PrivateKey, error) {
+	return (*PrivateKey)(&buf), nil
+}
+
+// Bytes returns the serialized public key.
+func (pk *PublicKey) Bytes() []byte {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(pk); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+// ParsePublicKey reverse Bytes() into a PublicKey object.
+func ParsePublicKey(buf []byte) (*PublicKey, error) {
+	var data_pk PublicKey
+	dec := gob.NewDecoder(bytes.NewBuffer(buf))
+	if err := dec.Decode(&data_pk); err != nil {
+		return nil, err
+	}
+	return &data_pk, nil
 }

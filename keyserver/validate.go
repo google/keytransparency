@@ -18,15 +18,16 @@ package keyserver
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/db/commitments"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	proto "github.com/golang/protobuf/proto"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
@@ -87,11 +88,10 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *pb.UpdateEn
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
 	}
 	// Verify Entry
-	index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return err
-	}
-	if got, want, equal := entry.Index, index, bytes.Equal(entry.Index, index); !equal {
+	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
+	index := sha256.Sum256(vrf)
+
+	if got, want := entry.Index, index[:]; !bytes.Equal(got, want) {
 		return grpc.Errorf(codes.InvalidArgument, "entry.Index=%v, want %v", got, want)
 	}
 

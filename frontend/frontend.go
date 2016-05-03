@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"strings"
@@ -31,6 +32,8 @@ import (
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
@@ -45,6 +48,7 @@ var (
 	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
+	vrfPath       = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
 )
 
 // v1Routes contains all routes information for v1 APIs.
@@ -140,6 +144,18 @@ func openEtcd() *clientv3.Client {
 	return cli
 }
 
+func openVRFKey() vrf.PrivateKey {
+	vrfBytes, err := ioutil.ReadFile(*vrfPath)
+	if err != nil {
+		log.Fatalf("Failed opening VRF private key: %v", err)
+	}
+	vrfPriv, err := p256.ParsePrivateKey(vrfBytes)
+	if err != nil {
+		log.Fatalf("Failed parsing VRF private key: %v", err)
+	}
+	return vrfPriv
+}
+
 func Main() {
 	flag.Parse()
 
@@ -158,8 +174,9 @@ func Main() {
 	queue := queue.New(etcdCli, *mapID)
 	tree := sqlhist.New(sqldb, *mapID)
 	appender := chain.New()
+	vrfPriv := openVRFKey()
 
-	v2 := keyserver.New(commitments, queue, tree, appender)
+	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 
