@@ -24,22 +24,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gdbelvin/e2e-key-server/appender/chain"
-	"github.com/gdbelvin/e2e-key-server/db/commitments"
-	"github.com/gdbelvin/e2e-key-server/db/queue"
-	"github.com/gdbelvin/e2e-key-server/keyserver"
-	"github.com/gdbelvin/e2e-key-server/proxy"
-	"github.com/gdbelvin/e2e-key-server/rest"
-	"github.com/gdbelvin/e2e-key-server/rest/handlers"
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
-	"github.com/gdbelvin/e2e-key-server/vrf"
-	"github.com/gdbelvin/e2e-key-server/vrf/p256"
+	"github.com/google/e2e-key-server/appender/chain"
+	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/db/queue"
+	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/proxy"
+	"github.com/google/e2e-key-server/rest"
+	"github.com/google/e2e-key-server/rest/handlers"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
 
-	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
-	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
+	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 var (

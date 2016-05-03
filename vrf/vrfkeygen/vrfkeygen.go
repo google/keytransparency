@@ -20,7 +20,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/gdbelvin/e2e-key-server/vrf/p256"
+	"github.com/google/e2e-key-server/vrf/p256"
 )
 
 var (

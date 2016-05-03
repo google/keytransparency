@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	corepb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_core"
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
+	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 var (
