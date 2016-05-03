@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,41 @@
 package tree
 
 import (
+	"bytes"
+	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 )
+
+func TestIndex(t *testing.T) {
+	tests := []struct {
+		depth int
+		index []byte
+		want  []byte
+	}{
+		{0, []byte{0x00, 0x01}, []byte{}},
+		{1, []byte{0x00, 0x01}, []byte{0x00}},
+		{1, []byte{0x80, 0x01}, []byte{0x80}},
+		{2, []byte{0xFF, 0x00}, []byte{0xC0}},
+		{2, []byte{0x00, 0xFF}, []byte{0x00}},
+		{7, []byte{0x11}, []byte{0x10}},
+		{8, []byte{0x80}, []byte{0x80}},
+		{16, []byte{0x80, 0x04}, []byte{0x80, 0x04}},
+		{15, []byte{0xFF, 0xFF}, []byte{0xFF, 0xFE}},
+		{24, []byte{0x00, 0x80, 0x00}, []byte{0x00, 0x80, 0x00}},
+		{22, []byte{0x00, 0x80, 0x00}, []byte{0x00, 0x80, 0x00}},
+	}
+	for _, tc := range tests {
+		i := new(big.Int).SetBytes(tc.index)
+		fmtstring := fmt.Sprintf("%%0%vb", len(tc.index)*8)
+		bindex := fmt.Sprintf(fmtstring, i)[:tc.depth]
+		if goti, gotd := InvertBitString(bindex); !bytes.Equal(goti, tc.want) || gotd != tc.depth {
+			t.Errorf("Index(%v): %v, %v, want: %v, %v",
+				bindex, goti, gotd, tc.want, tc.depth)
+		}
+	}
+}
 
 func TestNeighbors(t *testing.T) {
 	bindex := "0100"
@@ -56,9 +88,31 @@ func TestBitString(t *testing.T) {
 		{[]byte("\x01"), strings.Repeat("0", 255) + "1"},
 		{[]byte("\x80"), strings.Repeat("0", 248) + "10000000"},
 	}
-	for _, tt := range locationTests {
-		if got, want := BitString(tt.location), tt.bstring; got != want {
-			t.Errorf("BitString(%v) = %v, want %v", tt.location, got, want)
+	for _, tc := range locationTests {
+		if got, want := BitString(tc.location), tc.bstring; got != want {
+			t.Errorf("BitString(%v) = %v, want %v", tc.location, got, want)
+		}
+	}
+}
+
+func TestNeighborIndex(t *testing.T) {
+	tests := []struct {
+		index    []byte
+		depth    int
+		neighbor []byte
+	}{
+		{[]byte{0x00}, 0, []byte{0x80}},
+		{[]byte{0x00}, 1, []byte{0x40}},
+		{[]byte{0x00}, 7, []byte{0x01}},
+		{[]byte{0x00}, 6, []byte{0x02}},
+		{[]byte{0x08}, 4, []byte{0x00}},
+		{[]byte{0x08}, 0, []byte{0x88}},
+		{[]byte{0x00, 0x00}, 0, []byte{0x80, 0x00}},
+		{[]byte{0x00, 0x00, 0x00}, 0, []byte{0x80, 0x00, 0x00}},
+	}
+	for _, tc := range tests {
+		if got := NeighborIndex(tc.index, tc.depth); !bytes.Equal(got, tc.neighbor) {
+			t.Errorf("NeighborIndex(%v, %v) = %v, want %v", tc.index, tc.depth, got, tc.neighbor)
 		}
 	}
 }

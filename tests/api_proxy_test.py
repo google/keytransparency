@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2016 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -94,8 +94,7 @@ def main():
   # Start the server.
   null_output = open(os.devnull, "w")
   subprocess.Popen(
-      ["./srv", "-server-db-path", test_server_db_path],
-      stdout=null_output,
+      ["./srv", "-server-db-path", test_server_db_path+"/db"],
       stderr=subprocess.STDOUT)
   # Wait until the server starts.
   time.sleep(1)

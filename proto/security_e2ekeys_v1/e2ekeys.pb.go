@@ -29,6 +29,10 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.ProtoPackageIsVersion1
+
 // HkpLookupRequest contains query parameters for retrieving PGP keys.
 type HkpLookupRequest struct {
 	// Op specifies the operation to be performed on the keyserver.
@@ -76,6 +80,10 @@ func init() {
 var _ context.Context
 var _ grpc.ClientConn
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
 // Client API for E2EKeyProxy service
 
 type E2EKeyProxyClient interface {
@@ -122,28 +130,40 @@ func RegisterE2EKeyProxyServer(s *grpc.Server, srv E2EKeyProxyServer) {
 	s.RegisterService(&_E2EKeyProxy_serviceDesc, srv)
 }
 
-func _E2EKeyProxy_GetEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyProxy_GetEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(security_e2ekeys.GetEntryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyProxyServer).GetEntry(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyProxyServer).GetEntry(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v1.E2EKeyProxy/GetEntry",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyProxyServer).GetEntry(ctx, req.(*security_e2ekeys.GetEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _E2EKeyProxy_HkpLookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKeyProxy_HkpLookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HkpLookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKeyProxyServer).HkpLookup(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKeyProxyServer).HkpLookup(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/security.e2ekeys.v1.E2EKeyProxy/HkpLookup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKeyProxyServer).HkpLookup(ctx, req.(*HkpLookupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _E2EKeyProxy_serviceDesc = grpc.ServiceDesc{

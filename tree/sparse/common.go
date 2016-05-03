@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ package sparse
 
 import (
 	"crypto/sha512"
-	"encoding/binary"
 
 	"github.com/google/e2e-key-server/tree"
 )
@@ -36,51 +35,12 @@ const (
 	IndexLen = HashSize * 8
 )
 
-var (
-	// LeafIdentifier is the data used to indicate a leaf node.
-	LeafIdentifier = []byte("L")
-	// EmptyIdentifier is used while calculating the data of nil sub branches.
-	EmptyIdentifier = []byte("E")
-
-	NewHash = sha512.New512_256
-)
-
-// HashLeaf calculate the merkle tree leaf node value. This is computed as
-// H(Identifier || depth || index || dataHash), where Identifier, depth, and
-// index are fixed-length.
-func HashLeaf(identifier []byte, depth int, index []byte, dataHash []byte) []byte {
-	bdepth := make([]byte, 4)
-	binary.BigEndian.PutUint32(bdepth, uint32(depth))
-
-	h := NewHash()
-	h.Write(identifier)
-	h.Write(bdepth)
-	h.Write(index)
-	h.Write(dataHash)
-	return h.Sum(nil)
-}
-
-// HashIntermediateNode calculates an interior node's value by H(left || right)
-func HashIntermediateNode(left []byte, right []byte) []byte {
-	h := NewHash()
-	h.Write(left)
-	h.Write(right)
-	return h.Sum(nil)
-}
-
-// EmptyLeafValue computes the value of an empty leaf as
-// H(EmptyIdentifier || depth || index), where EmptyIdentifier, depth, and
-// index are fixed-length.
-func EmptyLeafValue(prefix string) []byte {
-	return HashLeaf(EmptyIdentifier, len(prefix), []byte(prefix), nil)
-}
-
 // NodeValues computes the new values for nodes up the tree.
-func NodeValues(bindex string, leafHash []byte, nbrValues [][]byte) [][]byte {
+func NodeValues(hasher TreeHasher, bindex string, value []byte, nbrValues [][]byte) [][]byte {
 	levels := len(bindex) + 1
 	steps := len(bindex)
 	nodeValues := make([][]byte, levels)
-	nodeValues[0] = leafHash
+	nodeValues[0] = value
 	// assert len(nbrValues) == levels - 1
 	for i := 0; i < steps; i++ {
 		// Is the last node 0 or 1?
@@ -92,7 +52,7 @@ func NodeValues(bindex string, leafHash []byte, nbrValues [][]byte) [][]byte {
 			left = nbrValues[i]
 			right = nodeValues[i]
 		}
-		nodeValues[i+1] = HashIntermediateNode(left, right)
+		nodeValues[i+1] = hasher.HashChildren(left, right)
 	}
 	return nodeValues
 }

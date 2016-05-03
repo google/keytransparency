@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,15 +21,16 @@ import (
 	"strings"
 
 	"github.com/google/e2e-key-server/keyserver"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	proto "github.com/golang/protobuf/proto"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
-	context "golang.org/x/net/context"
 )
 
 const (

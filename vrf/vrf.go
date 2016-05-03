@@ -16,15 +16,14 @@
 package vrf
 
 // A VRF is a pseudorandom function f_k from a secret key k, such that that
-// knowledge of k not only enables one to evaluate f_k at any point x, but also
-// to provide an NP-proof that the value f_k(x) is indeed correct without
-// compromising the unpredictability of f_k at any other point for which no
-// such a proof was provided.
+// knowledge of k not only enables one to evaluate f_k at for any message m,
+// but also to provide an NP-proof that the value f_k(m) is indeed correct
+// without compromising the unpredictability of f_k for any m' != m.
 // http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=814584
 
 type PrivateKey interface {
-	// Evaluate returns the output of f_k(m) and it's proof.
-	Evaluate(m []byte) (vrf [32]byte, proof []byte)
+	// Evaluate returns the output of f_k(m) and its proof.
+	Evaluate(m []byte) (vrf []byte, proof []byte)
 }
 
 type PublicKey interface {

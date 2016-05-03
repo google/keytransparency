@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@ package keyserver
 
 import (
 	"bytes"
-	"log"
 	"math"
 
-	"github.com/google/e2e-key-server/vrf"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/auth"
-	"github.com/google/e2e-key-server/db"
 	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/vrf"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,15 +38,15 @@ import (
 // Server holds internal state for the key server.
 type Server struct {
 	committer commitments.Committer
-	queue     db.Queuer
+	queue     queue.Queuer
 	auth      auth.Authenticator
-	tree      tree.Sparse
+	tree      tree.SparseHist
 	appender  appender.Appender
 	vrf       vrf.PrivateKey
 }
 
 // Create creates a new instance of the key server.
-func New(committer commitments.Committer, queue db.Queuer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey) *Server {
+func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender, vrf vrf.PrivateKey) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
@@ -78,15 +78,21 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		return nil, err
 	}
 
+	neighbors, err := s.tree.NeighborsAt(ctx, index, e)
+	if err != nil {
+		return nil, err
+	}
+
 	// result contains the returned GetEntryResponse.
 	result := &pb.GetEntryResponse{
-		Index:            index[:],
-		IndexProof:       proof,
-		SignedEpochHeads: []*ctmap.SignedEpochHead{&seh},
+		Index:               index[:],
+		IndexProof:          proof,
+		SignedEpochHeads:    []*ctmap.SignedEpochHead{&seh},
+		MerkleTreeNeighbors: neighbors,
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeaf(ctx, index[:])
+	leaf, err := s.tree.ReadLeafAt(ctx, index, e)
 	if err == nil {
 		result.Entry = new(ctmap.Entry)
 		if err := proto.Unmarshal(leaf, result.Entry); err != nil {
@@ -105,14 +111,6 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 			result.CommitmentKey = commitment.Key
 
 		}
-	}
-
-	neighbors, err := s.tree.Neighbors(ctx, index[:])
-	log.Printf("Neighbors(%v)=%v,%v", index, neighbors, err)
-	// TODO: return historical values for epoch.
-	result.MerkleTreeNeighbors = neighbors
-	if err != nil {
-		return nil, err
 	}
 
 	return result, nil
@@ -147,7 +145,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	if err := s.queue.QueueMutation(ctx, index[:], m); err != nil {
+	if err := s.queue.Enqueue(index, m); err != nil {
 		return nil, err
 	}
 

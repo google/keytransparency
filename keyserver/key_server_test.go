@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package keyserver
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"log"
 	"math"
@@ -26,20 +27,23 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/e2e-key-server/vrf/fakevrf"
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/memdb"
+	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf/fakevrf"
+
+	"github.com/coreos/etcd/integration"
+	"github.com/golang/protobuf/proto"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	proto "github.com/golang/protobuf/proto"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
@@ -49,6 +53,7 @@ const (
 	primaryUserEmail  = "e2eshare.test@gmail.com"
 	primaryAppId      = "pgp"
 	testEpochDuration = 1
+	clusterSize       = 1
 )
 
 var (
@@ -66,7 +71,7 @@ var (
 	// 	Pub alg - Reserved for ECDSA(pub 19)
 	// 	Hash alg - SHA256(hash 8)
 	// 	Hashed Sub: signature creation time(sub 2)(critical)(4 bytes)
-	// 		Time - Tue May  5 17:13:00 PDT 2015
+	// 		Time - Tue May  5 17:13:00 PDT 2016
 	// 	Hashed Sub: preferred symmetric algorithms(sub 11)(critical)(1 bytes)
 	// 		Sym alg - AES with 256-bit key(sym 9)
 	// 	Hashed Sub: issuer key ID(sub 16)(critical)(8 bytes)
@@ -97,7 +102,7 @@ var (
 	// 	Pub alg - Reserved for ECDSA(pub 19)
 	// 	Hash alg - SHA256(hash 8)
 	// 	Hashed Sub: signature creation time(sub 2)(critical)(4 bytes)
-	// 		Time - Tue May  5 17:13:00 PDT 2015
+	// 		Time - Tue May  5 17:13:00 PDT 2016
 	// 	Hashed Sub: issuer key ID(sub 16)(critical)(8 bytes)
 	// 		Key ID - 0x51BCF536CDE77EAD
 	// 	Hashed Sub: key flags(sub 27)(critical)(1 bytes)
@@ -138,6 +143,16 @@ type Env struct {
 	Client *client.Client
 	ctx    context.Context
 	signer *signer.Signer
+	db     *sql.DB
+	clus   *integration.ClusterV3
+}
+
+func newDB(t testing.TB) *sql.DB {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
+	return db
 }
 
 // NewEnv sets up common resources for tests.
@@ -156,11 +171,15 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	db := memdb.New()
-	tree := memhist.New()
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	queue := queue.New(clus.RandClient(), "testID")
+	sqldb := newDB(t)
+	tree := sqlhist.New(sqldb, "test")
+	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
 	vrf, _ := fakevrf.KeyGen()
-	server := New(db, db, tree, appender, vrf)
+
+	server := New(commitments, queue, tree, appender, vrf)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
@@ -170,15 +189,17 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
-	signer, _ := signer.New(db, tree, entry.New(), appender)
+	signer := signer.New(queue, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{s, server, cc, client, ctx, signer}
+	return &Env{s, server, cc, client, ctx, signer, sqldb, clus}
 }
 
 // Close releases resources allocated by NewEnv.
-func (env *Env) Close() {
+func (env *Env) Close(t *testing.T) {
 	env.conn.Close()
 	env.s.Stop()
+	env.db.Close()
+	env.clus.Terminate(t)
 }
 
 func (env *Env) createPrimaryUser(t *testing.T) {
@@ -195,36 +216,40 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 		return
 	}
 
-	env.signer.Sequence()
+	if err := env.signer.Sequence(); err != nil {
+		t.Fatalf("Failed to sequence: %v", err)
+	}
 	env.signer.CreateEpoch()
 }
 
 func TestCreateKey(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 }
 
 func TestProofOfAbsence(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	// Test proof of absence for an empty branch.
-	getNonExistantUser(t, env)
+	getNonExistentUser(t, env)
 
 	// Test proof of absence for a leaf that shares a prefix with the
 	// requested index.
 	env.createPrimaryUser(t)
-	getNonExistantUser(t, env)
+	getNonExistentUser(t, env)
 }
 
-func getNonExistantUser(t *testing.T, env *Env) {
+func getNonExistentUser(t *testing.T, env *Env) {
 	ctx := context.Background() // Unauthenticated request.
 	res, err := env.Client.GetEntry(ctx, &pb.GetEntryRequest{Epoch: math.MaxInt64, UserId: "nobody"})
-	if err != nil {
-		t.Fatalf("Query for nonexistant failed %v", err)
+	if got, want := grpc.Code(err), codes.OK; got != want {
+		t.Errorf("GetEntry()=%v, want %v", got, want)
 	}
+
+	return
 
 	if len(res.Profile) != 0 {
 		t.Errorf("Profile returned for nonexistant user")
@@ -263,8 +288,8 @@ func getNonExistantUser(t *testing.T, env *Env) {
 		index = res.Index
 	}
 
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index, entryData); err != nil {
-		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, entryData, err)
+	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index, entryData); got != true {
+		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, entryData, got)
 	}
 
 	// TODO(cesarghali): verify IndexProof.
@@ -272,7 +297,7 @@ func getNonExistantUser(t *testing.T, env *Env) {
 
 func TestGetValidUser(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 
@@ -333,8 +358,8 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	if err := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Index, entryData); err != nil {
-		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, err)
+	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Index, entryData); got != true {
+		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, got)
 	}
 
 	// TODO(cesarghali): verify IndexProoc.
@@ -346,7 +371,7 @@ func getErr(ret interface{}, err error) error {
 
 func TestUnimplemented(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	tests := []struct {
 		desc string
@@ -367,7 +392,7 @@ func TestUnimplemented(t *testing.T) {
 // Verify that users cannot alter keys for other users.
 func TestUnauthenticated(t *testing.T) {
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	tests := []struct {
 		desc string

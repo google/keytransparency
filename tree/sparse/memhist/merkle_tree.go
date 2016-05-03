@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package merkle implements a time series prefix tree. Each epoch has its own
+// Package memhist implements a time series prefix tree. Each epoch has its own
 // prefix tree. By default, each new epoch is equal to the contents of the
 // previous epoch.
 // The prefix tree is a binary tree where the path through the tree expresses
@@ -22,9 +22,7 @@
 package memhist
 
 import (
-	"fmt"
 	"log"
-	"sync"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -35,9 +33,11 @@ import (
 )
 
 const (
-	// maxDepth is the maximum allowable value of depth.
 	maxDepth = sparse.IndexLen
+	size     = sparse.HashSize
 )
+
+var hasher = sparse.Coniks
 
 // Note: index has two representation:
 //  (1) string which is a bit string representation (a string of '0' and '1'
@@ -59,215 +59,178 @@ const (
 //     - Empty leaves: H(EmptyIdentifier || depth || index || nil)
 //     - Intermediate nodes: H(left.value || right.value)
 
-// Tree holds internal state for the Merkle Tree.
+// Tree holds internal state for the SparseMerkle Tree. Not thread safe.
 type Tree struct {
 	roots   map[int64]*node
-	current *node      // Current epoch.
-	mu      sync.Mutex // Syncronize access to current.
+	pending map[[size]byte][]byte
+	current int64
 }
 
 type node struct {
-	epoch        int64  // Etoch for this node.
-	bindex       string // Location in the tree.
-	commitmentTS int64  // Commitment timestamp for this node.
-	depth        int    // Depth of this node. 0 to 256.
-	data         []byte // Data stored in the node.
-	value        []byte // Empty for empty subtrees.
-	left         *node  // Left node.
-	right        *node  // Right node.
+	epoch  int64  // Epoch for this node.
+	bindex string // Location in the tree.
+	depth  int    // Depth of this node. 0 to 256.
+	data   []byte // Data stored in the node.
+	value  []byte // Empty for empty subtrees.
+	left   *node  // Left node.
+	right  *node  // Right node.
 }
 
 // New creates and returns a new instance of Tree.
 func New() *Tree {
-	tree := &Tree{roots: make(map[int64]*node)}
-	// Initialize the tree with epoch 0 root. This is important because v2
-	// GetEntry now queries the tree to read the commitment timestamp of the
-	// user profile in order to read from the database.
-	tree.addRoot(0)
-	return tree
+	t := &Tree{
+		roots:   make(map[int64]*node),
+		pending: make(map[[size]byte][]byte),
+	}
+
+	// Create the first epoch with a single empty leaf to distinguish between
+	// empty tree and empty branch.
+	t.roots[0] = &node{
+		value: hashEmpty(""),
+	}
+	return t
 }
 
-// FromNeighbors builds a partial merkle tree with the path from the given leaf
-// node at the given index, up to the root including all path neighbors.
-func FromNeighbors(neighbors [][]byte, index []byte, data []byte) (*Tree, error) {
-	bindex := tree.BitString(index)
+// QueueLeaf queues a leaf to be written on the next Commit().
+func (t *Tree) QueueLeaf(ctx context.Context, index, leaf []byte) error {
+	log.Printf("QueueLeaf(%v, %v)", index, leaf)
+	if got, want := len(index), size; got != want {
+		return grpc.Errorf(codes.InvalidArgument, "len(%v)=%v, want %v", index, got, want)
+	}
+	var v [size]byte
+	copy(v[:], index)
+	t.pending[v] = leaf
+	return nil
+}
 
-	// Create a partial tree.
-	m := New()
-	// We may want to examine an empty sub branch of the tree.
-	if len(index) == maxDepth/8 {
-		if err := m.AddLeaf(data, 0, index, 0); err != nil {
-			return nil, err
+// Commit takes all the Queued values since the last Commmit() and writes them.
+// Commit is NOT multi-process safe. It should only be called from the sequencer.
+func (t *Tree) Commit() (int64, error) {
+	for k, v := range t.pending {
+		if err := t.SetNodeAt(nil, k[:], maxDepth, v, t.current); err != nil {
+			log.Fatalf("Failed to set node: %v", err)
 		}
 	}
+	t.pending = make(map[[size]byte][]byte) // Clear pending leafs.
 
-	// Add all neighbors to the partial tree.
-	for i, v := range neighbors {
-		// index is processed starting from len(neighbors)-1 down to 0.
-		indexBit := len(neighbors) - 1 - i
-		b := uint8(bindex[indexBit])
-		bindexNeighbor := fmt.Sprintf("%v%v", bindex[:indexBit], string(tree.Neighbor(b)))
-		// Add a neighbor. In this case, index is not of a full length.
-		if err := m.current.addLeaf(v, 0, bindexNeighbor, 0, 0, false); err != nil {
-			return nil, err
-		}
+	// Create the next epoch.
+	t.roots[t.current+1] = t.roots[t.current]
+	this := t.current
+	t.current++
+	log.Printf("Commit()=%v", this)
+	return this, nil
+}
+
+// ReadRootAt returns the value of the root node in a specific epoch.
+func (t *Tree) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
+	r, ok := t.roots[epoch]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
 	}
-	return m, nil
+	return r.value, nil
 }
 
-// AddRoot adds a new root in the specified epoch. If the epoch is greater than
-// t.current.epoch + 1, an error is returned.
-func (t *Tree) AddRoot(epoch int64) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	_, err := t.addRoot(epoch)
-	return err
-}
-
-// AddLeaf adds a leaf node to the tree at a given index and epoch. Leaf nodes
-// must be added in chronological order by epoch.
-func (t *Tree) AddLeaf(data []byte, epoch int64, index []byte, commitmentTS int64) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if got, want := len(index), maxDepth/8; got != want {
-		return grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
-	}
-	r, err := t.addRoot(epoch)
-	if err != nil {
-		return err
-	}
-	err = r.addLeaf(data, epoch, tree.BitString(index), commitmentTS, 0, true)
-	log.Printf("AddLeaf(-, %v, %v, %v): %v", epoch, index, commitmentTS, t.Root(epoch))
-	return err
-}
-
-// Write leaf saves data at the "next" epoch?
-func (t *Tree) WriteLeaf(ctx context.Context, index, leaf []byte) error {
-	// Get the epoch that we're currently building at.
-	return t.AddLeaf(leaf, t.current.epoch, index, 0)
-}
-
-func (t *Tree) ReadLeaf(ctx context.Context, index []byte) ([]byte, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	_, leaf := t.current.auditPath(tree.BitString(index), 0)
-	return leaf.data, nil
-}
-
-func (t *Tree) Neighbors(ctx context.Context, index []byte) ([][]byte, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+// ReadLeafAt returns the leaf value at epoch.
+func (t *Tree) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
 	bindex := tree.BitString(index)
-	neighbors, _ := t.current.auditPath(bindex, 0)
+	r, ok := t.roots[epoch]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
+	}
+
+	// Walk the tree to the leaf node.
+	cnt := r
+	for i := 0; i < maxDepth; i++ {
+		if cnt.leaf() {
+			break
+		}
+		cnt = cnt.child(bindex[i])
+	}
+	return cnt.data, nil
+}
+
+// Neighbors returns the list of neighbors from the neighbor leaf to just below the root at epoch.
+func (t *Tree) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]byte, error) {
+	bindex := tree.BitString(index)
+	r, ok := t.roots[epoch]
+	if !ok {
+		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
+	}
+
+	// Walk the tree to the leaf node.
+	neighbors := make([][]byte, 0, maxDepth)
+	cnt := r
+	for i := 0; i < maxDepth && cnt != nil && !cnt.leaf(); i++ {
+		b := bindex[i]
+		if nbr := cnt.child(tree.Neighbor(b)); nbr != nil {
+			neighbors = append(neighbors, nbr.value)
+		} else {
+			neighbors = append(neighbors, hashEmpty(tree.NeighborString(bindex[:i+1])))
+		}
+		cnt = cnt.child(b)
+	}
 	return neighbors, nil
 }
 
-// AuditPath returns a slice containing each node's neighbor from the bottom to
-// the top, and the commitment timestamp if a leaf with either matching index or
-// share a prefix with the provided index.
-func (t *Tree) AuditPath(epoch int64, index []byte) ([][]byte, int64, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if got, want := len(index), maxDepth/8; got != want {
-		return nil, 0, grpc.Errorf(codes.InvalidArgument, "len(index) = %v, want %v", got, want)
-	}
-	r, ok := t.roots[epoch]
-	if !ok {
-		return nil, 0, grpc.Errorf(codes.InvalidArgument, "epoch %v does not exist", epoch)
-	}
+// ReadLeafAt returns the leaf value at epoch.
+func (t *Tree) readNodeAt(ctx context.Context, index []byte, depth int, epoch int64) ([]byte, error) {
 	bindex := tree.BitString(index)
-	neighbors, leaf := r.auditPath(bindex, 0)
-	commitmentTS := int64(0)
-	if leaf != nil {
-		commitmentTS = leaf.commitmentTS
-	}
-	return neighbors, commitmentTS, nil
-}
-
-func (t *Tree) ReadRoot(ctx context.Context) ([]byte, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.Root(t.current.epoch), nil
-}
-
-// Root returns the value of the root node in a specific epoch.
-func (t *Tree) Root(epoch int64) []byte {
 	r, ok := t.roots[epoch]
 	if !ok {
-		return make([]byte, 0)
+		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
 	}
-	return r.value
+
+	// Walk the tree to the leaf node.
+	cnt := r
+	i := 0
+	for ; i < depth; i++ {
+		if cnt.leaf() {
+			break
+		}
+		cnt = cnt.child(bindex[i])
+	}
+	if cnt == nil {
+		return hashEmpty(bindex[:i]), nil
+	}
+	return cnt.value, nil
 }
 
-// addRoot will advance the current epoch by copying the previous root.
-// addRoot will prevent attempts to create epochs other than the current and
-// current + 1 epoch
-func (t *Tree) addRoot(epoch int64) (*node, error) {
-	if t.current == nil {
-		// Create the first epoch.
-		t.roots[epoch] = &node{epoch, "", 0, 0, nil, nil, nil, nil}
-		// When adding an empty root, its value should be initialized
-		// with an empty leaf value. This is important to make the
-		// two cases of empty branch and empty tree similar when calling
-		// FromNeighbors.
-		t.roots[epoch].value = sparse.EmptyLeafValue("")
-		t.current = t.roots[epoch]
-		return t.current, nil
+// SetNodeAt sets intermediate and leaf node values directly at epoch.
+func (t *Tree) SetNodeAt(ctx context.Context, index []byte, depth int, value []byte, epoch int64) error {
+	bindex := tree.BitString(index)[:depth]
+
+	isLeaf := depth == maxDepth
+	if depth > maxDepth {
+		return grpc.Errorf(codes.InvalidArgument, "depth %v > %v", depth, maxDepth)
+	}
+	root, ok := t.roots[epoch]
+	if !ok {
+		return grpc.Errorf(codes.NotFound, "")
 	}
 
-	// If root already exists and is in current epoch return it.
-	if epoch == t.current.epoch {
-		return t.roots[epoch], nil
-	}
-
-	if epoch != t.current.epoch+1 {
-		return nil, grpc.Errorf(codes.FailedPrecondition, "epoch = %d, want = %d", epoch, t.current.epoch+1)
-	}
-
-	// Copy the root node from the previous epoch.
-	nextEpoch := t.current.epoch + 1
-	t.roots[nextEpoch] = &node{epoch, "", 0, 0, nil, nil, t.current.left, t.current.right}
-	t.current = t.roots[nextEpoch]
-	return t.current, nil
-}
-
-// Parent node is responsible for creating children.
-// Inserts leafs in the nearest empty sub branch it finds.
-func (n *node) addLeaf(data []byte, epoch int64, bindex string, commitmentTS int64, depth int, isLeaf bool) error {
-	if n.epoch != epoch {
-		return grpc.Errorf(codes.Internal, "epoch = %d want %d", epoch, n.epoch)
-	}
-
-	// Base case: we found the first empty sub branch.  Park our data here.
-	if n.empty() {
-		n.setNode(data, bindex, commitmentTS, depth, isLeaf)
-		return nil
-	}
-	// We reached the bottom of the tree and it wasn't empty.
-	// Or we found the same node.
-	if depth == maxDepth || n.bindex == bindex {
-		if n.epoch != epoch {
-			// This should never happen, createBranch guarantees it.
-			log.Fatalf("n.epoch = %d want %d", n.epoch, epoch)
+	dirty := make([]*node, maxDepth) // Breadth first.
+	cnt := root
+	i := 0
+	// Create the path to the node.
+	for ; i < depth && !cnt.empty() && cnt.bindex != bindex; i++ {
+		dirty[i] = cnt
+		if cnt.leaf() {
+			cnt.pushDown()
 		}
-		n.setNode(data, bindex, commitmentTS, depth, isLeaf)
-		return nil
+		cnt.createBranch(bindex[:i+1])
+		cnt = cnt.child(bindex[i])
 	}
-	if n.leaf() {
-		// Push leaf down and convert n into an interior node.
-		if err := n.pushDown(); err != nil {
-			return err
-		}
+	cnt.setNode(value, bindex, i, isLeaf)
+	// Recalculate intermediate hashes.
+	for i--; i >= 0; i-- {
+		dirty[i].hashIntermediateNode()
 	}
-	// Make sure the interior node is in the current epoch.
-	n.createBranch(bindex[:depth+1])
-	err := n.child(bindex[depth]).addLeaf(data, epoch, bindex, commitmentTS, depth+1, isLeaf)
-	if err != nil {
-		return err
-	}
-	n.hashIntermediateNode() // Recalculate value on the way back up.
 	return nil
 }
+
+//
+// Private methods
+//
 
 // pushDown takes a leaf node and pushes it one level down in the prefix tree,
 // converting this node into an interior node.  This function does NOT update
@@ -307,37 +270,18 @@ func (n *node) createBranch(bindex string) *node {
 	switch {
 	case n.child(b) == nil:
 		// New empty branch.
-		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, nil, nil, nil})
+		n.setChild(b, &node{n.epoch, bindex, n.depth + 1, nil, nil, nil, nil})
 	case n.child(b).epoch != n.epoch && n.child(b).leaf():
 		// Found leaf in previous epoch. Create empty node.
-		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, nil, nil, nil})
+		n.setChild(b, &node{n.epoch, bindex, n.depth + 1, nil, nil, nil, nil})
 	case n.child(b).epoch != n.epoch && !n.child(b).leaf():
 		// Found intermediate in previous epoch.
 		// Create an intermediate node in current epoch with children
 		// pointing to the previous epoch.
 		tmp := n.child(b)
-		n.setChild(b, &node{n.epoch, bindex, n.commitmentTS, n.depth + 1, nil, tmp.value, tmp.left, tmp.right})
+		n.setChild(b, &node{n.epoch, bindex, n.depth + 1, nil, tmp.value, tmp.left, tmp.right})
 	}
 	return n.child(b)
-}
-
-func (n *node) auditPath(bindex string, depth int) ([][]byte, *node) {
-	if n == nil {
-		// Proof of absence.
-		return [][]byte{}, nil
-	}
-
-	if depth == maxDepth || n.leaf() {
-		return [][]byte{}, n
-	}
-
-	deep, leaf := n.child(bindex[depth]).auditPath(bindex, depth+1)
-	b := bindex[depth]
-	if nbr := n.child(tree.Neighbor(b)); nbr != nil {
-		return append(deep, nbr.value), leaf
-	}
-	value := sparse.EmptyLeafValue(n.bindex + string(tree.Neighbor(b)))
-	return append(deep, value), leaf
 }
 
 func (n *node) leaf() bool {
@@ -377,9 +321,9 @@ func (n *node) setChild(b uint8, child *node) {
 
 // hashIntermediateNode updates an interior node's value by
 // H(left.value || right.value)
-func (n *node) hashIntermediateNode() error {
+func (n *node) hashIntermediateNode() {
 	if n.leaf() {
-		return grpc.Errorf(codes.Internal, "Cannot calcluate the intermediate hash of a leaf node")
+		log.Fatalf("Cannot calcluate the intermediate hash of a leaf node")
 	}
 
 	// Compute left values.
@@ -387,7 +331,7 @@ func (n *node) hashIntermediateNode() error {
 	if n.left != nil {
 		left = n.left.value
 	} else {
-		left = sparse.EmptyLeafValue(n.bindex + string(tree.Zero))
+		left = hashEmpty(n.bindex + string(tree.Zero))
 	}
 
 	// Compute right values.
@@ -395,23 +339,24 @@ func (n *node) hashIntermediateNode() error {
 	if n.right != nil {
 		right = n.right.value
 	} else {
-		right = sparse.EmptyLeafValue(n.bindex + string(tree.One))
+		right = hashEmpty(n.bindex + string(tree.One))
 	}
-	n.value = sparse.HashIntermediateNode(left, right)
-	return nil
+	n.value = hasher.HashChildren(left, right)
 }
 
 // updateLeafValue updates a leaf node's value by
 // H(LeafIdentifier || depth || bindex || data), where LeafIdentifier,
 // depth, and bindex are fixed-length.
 func (n *node) updateLeafValue() {
-	n.value = sparse.HashLeaf(sparse.LeafIdentifier, n.depth, []byte(n.bindex), n.data)
+	n.value = hasher.HashLeaf([]byte(n.bindex), n.depth, n.data)
 }
 
 // setNode sets the comittment of the leaf node and updates its hash.
-func (n *node) setNode(data []byte, bindex string, commitmentTS int64, depth int, isLeaf bool) {
+func (n *node) setNode(data []byte, bindex string, depth int, isLeaf bool) {
+	if depth < 0 {
+		panic("setNode with negative index")
+	}
 	n.bindex = bindex
-	n.commitmentTS = commitmentTS
 	n.depth = depth
 	n.left = nil
 	n.right = nil
@@ -421,4 +366,8 @@ func (n *node) setNode(data []byte, bindex string, commitmentTS int64, depth int
 	} else {
 		n.value = data
 	}
+}
+
+func hashEmpty(bindex string) []byte {
+	return hasher.HashEmpty(tree.InvertBitString(bindex))
 }

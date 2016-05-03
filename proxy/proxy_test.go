@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,34 +16,41 @@ package proxy
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"net"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/vrf/fakevrf"
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/db/memdb"
+	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/db/queue"
+	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf/fakevrf"
+
+	"github.com/coreos/etcd/integration"
+	"github.com/golang/protobuf/proto"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	proto "github.com/golang/protobuf/proto"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 	corepb "github.com/google/e2e-key-server/proto/security_e2ekeys_core"
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
-	cm "github.com/google/e2e-key-server/tree/sparse"
 )
 
 const (
+	clusterSize       = 1
 	primaryUserID     = 12345678
 	primaryUserEmail  = "e2eshare.test@gmail.com"
 	primaryAppId      = "pgp"
@@ -102,6 +109,16 @@ type Env struct {
 	ClientV2 *client.Client
 	ctx      context.Context
 	signer   *signer.Signer
+	db       *sql.DB
+	clus     *integration.ClusterV3
+}
+
+func newDB(t testing.TB) *sql.DB {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
+	return db
 }
 
 // NewEnv sets up common resources for tests.
@@ -120,11 +137,15 @@ func NewEnv(t *testing.T) *Env {
 	// TODO: replace with test credentials for an authenticated user.
 	ctx := context.Background()
 
-	db := memdb.New()
-	tree := memhist.New()
+	sqldb := newDB(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	queue := queue.New(clus.RandClient(), "testID")
+	tree := sqlhist.New(sqldb, "test")
+	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
 	vrf, _ := fakevrf.KeyGen()
-	v2srv := keyserver.New(db, db, tree, appender, vrf)
+
+	v2srv := keyserver.New(commitments, queue, tree, appender, vrf)
 	v1srv := New(v2srv)
 	v2pb.RegisterE2EKeyServiceServer(s, v2srv)
 	v1pb.RegisterE2EKeyProxyServer(s, v1srv)
@@ -138,15 +159,17 @@ func NewEnv(t *testing.T) *Env {
 	clientv1 := v1pb.NewE2EKeyProxyClient(cc)
 	clientv2 := client.New(v2pb.NewE2EKeyServiceClient(cc))
 
-	signer, _ := signer.New(db, tree, entry.New(), appender)
+	signer := signer.New(queue, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer}
+	return &Env{v1srv, v2srv, s, cc, clientv1, clientv2, ctx, signer, sqldb, clus}
 }
 
 // Close releases resources allocated by NewEnv.
-func (env *Env) Close() {
+func (env *Env) Close(t *testing.T) {
 	env.cc.Close()
 	env.rpcServer.Stop()
+	env.db.Close()
+	env.clus.Terminate(t)
 }
 
 // createPrimaryUser creates a user using the v2 client. This function is copied
@@ -170,10 +193,8 @@ func (env *Env) createPrimaryUser(t *testing.T) {
 }
 
 func TestGetValidUser(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	expectedPrimaryKeys := primaryKeys
 
@@ -195,10 +216,8 @@ func TestGetValidUser(t *testing.T) {
 }
 
 func TestAppIDFiltering(t *testing.T) {
-	t.Parallel()
-
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 
@@ -236,10 +255,9 @@ func TestAppIDFiltering(t *testing.T) {
 }
 
 func TestHkpLookup(t *testing.T) {
-	t.Parallel()
 
 	env := NewEnv(t)
-	defer env.Close()
+	defer env.Close(t)
 
 	env.createPrimaryUser(t)
 	ctx := context.Background() // Unauthenticated request.
@@ -305,7 +323,7 @@ func (s *Fake_Local) ReadEpochInfo(ctx context.Context, epoch int64) (*corepb.Ep
 	if s.info == nil {
 		epochHead := &ctmap.EpochHead{
 			Epoch: epoch,
-			Root:  cm.EmptyLeafValue(""),
+			Root:  sparse.Coniks.HashEmpty(tree.InvertBitString("")),
 		}
 		epochHeadData, err := proto.Marshal(epochHead)
 		if err != nil {

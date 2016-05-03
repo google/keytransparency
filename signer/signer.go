@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,65 +19,62 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/db"
+	"github.com/google/e2e-key-server/db/queue"
 	"github.com/google/e2e-key-server/mutator"
 	"github.com/google/e2e-key-server/tree"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	proto "github.com/golang/protobuf/proto"
-	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 )
 
-// Signer is the object responsible for triggering epoch creation and signing
-// the epoch head once created.
+// Signer processes mutations, applies them to the sparse merkle tree, and
+// signes the sparse tree head.
 type Signer struct {
-	// Sequencer listens to new items on the queue and saves them.
-	sequencer db.Sequencer
-	mutator   mutator.Mutator
-	tree      tree.Sparse
-	appender  appender.Appender
+	queue    queue.Queuer
+	mutator  mutator.Mutator
+	tree     tree.SparseHist
+	appender appender.Appender
 }
 
 // New creates a new instance of the signer.
-func New(sequencer db.Sequencer, tree tree.Sparse, mutator mutator.Mutator, appender appender.Appender) (*Signer, error) {
-	// Create a signer instance.
-	s := &Signer{
-		sequencer: sequencer,
-		mutator:   mutator,
-		tree:      tree,
-		appender:  appender,
+func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender) *Signer {
+	return &Signer{
+		queue:    queue,
+		mutator:  mutator,
+		tree:     tree,
+		appender: appender,
 	}
-
-	return s, nil
 }
 
-func (s *Signer) StartSequencing() {
-	go func() {
-		for m := range s.sequencer.Queue() {
-			err := s.sequenceOne(m.Index, m.Mutation)
-			m.Done <- err
-		}
-	}()
-}
-
-func (s *Signer) Sequence() {
-	m := <-s.sequencer.Queue()
-	s.sequenceOne(m.Index, m.Mutation)
-}
-
+// Start signing inserts epoch advancement signals into the queue.
 func (s *Signer) StartSigning(interval time.Duration) {
-	go func() {
-		for _ = range time.NewTicker(interval).C {
-			s.CreateEpoch()
-		}
-	}()
+	for _ = range time.NewTicker(interval).C {
+		s.queue.AdvanceEpoch()
+	}
 }
 
-func (s *Signer) sequenceOne(index, mutation []byte) error {
+// Sequence proceses one item out of the queue. Sequence blocks if the queue
+// is empty.
+func (s *Signer) Sequence() error {
+	return s.queue.Dequeue(s.processMutation, s.CreateEpoch)
+}
+
+// StartSequencing loops over Sequence infinitely.
+func (s *Signer) StartSequencing() {
+	for {
+		if err := s.Sequence(); err != nil {
+			log.Fatalf("Dequeue failed: %v", err)
+		}
+	}
+}
+
+func (s *Signer) processMutation(index, mutation []byte) error {
 	// Get current value.
 	ctx := context.Background()
-	v, err := s.tree.ReadLeaf(ctx, index)
+	v, err := s.tree.ReadLeafAt(ctx, index, s.tree.Epoch())
 	if err != nil {
 		return err
 	}
@@ -88,24 +85,29 @@ func (s *Signer) sequenceOne(index, mutation []byte) error {
 	}
 
 	// Save new value and update tree.
-	if err := s.tree.WriteLeaf(ctx, index, newV); err != nil {
+	if err := s.tree.QueueLeaf(ctx, index, newV); err != nil {
 		return err
 	}
+	log.Printf("Sequenced %v", index)
 	return nil
 }
 
 // CreateEpoch signs the current tree head.
-func (s *Signer) CreateEpoch() {
+func (s *Signer) CreateEpoch() error {
 	ctx := context.Background()
 	timestamp := time.Now().Unix()
-	root, err := s.tree.ReadRoot(ctx)
+	epoch, err := s.tree.Commit()
 	if err != nil {
-		log.Fatalf("Failed to create epoch: %v", err)
+		return err
+	}
+	root, err := s.tree.ReadRootAt(ctx, epoch)
+	if err != nil {
+		return err
 	}
 
 	prevHash, err := s.appender.GetHLast(ctx)
 	if err != nil {
-		log.Fatalf("Failed to get previous epoch: %v", err)
+		return err
 	}
 	head := &ctmap.EpochHead{
 		// TODO: set Realm
@@ -116,7 +118,7 @@ func (s *Signer) CreateEpoch() {
 	}
 	headData, err := proto.Marshal(head)
 	if err != nil {
-		log.Fatalf("Failed to marshal epoch: %v", err)
+		return err
 	}
 	seh := &ctmap.SignedEpochHead{
 		EpochHead: headData,
@@ -124,13 +126,11 @@ func (s *Signer) CreateEpoch() {
 	}
 	signedEpochHead, err := proto.Marshal(seh)
 	if err != nil {
-		log.Fatalf("Failed to marshal signed epoch: %v", err)
+		return err
 	}
 	if err := s.appender.Append(ctx, timestamp, signedEpochHead); err != nil {
-		log.Fatalf("Failed to write SignedHead: %v", err)
+		return err
 	}
-}
-
-// Stop stops the signer and release all associated resource.
-func (s *Signer) Stop() {
+	log.Printf("Created epoch %v. STH: %#x", epoch, root)
+	return nil
 }

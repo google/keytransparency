@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Client for communicating with the Key server.
+// Client for communicating with the Key Server.
+// Implements verification and convenience functions.
 
 package client
 
 import (
 	"crypto/hmac"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/tree/sparse/memhist"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse/memtree"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -31,14 +34,15 @@ import (
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
-// Client is a helper library for issuing updates to the key server.
+// Client forms and validates requests and responses to the Key Server.
 type Client struct {
 	v2pb.E2EKeyServiceClient
+	factory tree.SparseFactory
 }
 
-// New creates a new client.
+// New wraps a raw GRPC E2EKeyServiceClient with verification logic.
 func New(client v2pb.E2EKeyServiceClient) *Client {
-	return &Client{client}
+	return &Client{client, memtree.NewFactory()}
 }
 
 // Update creates an UpdateEntryRequest for a user.
@@ -96,22 +100,10 @@ func CreateUpdate(profile *pb.Profile, userID string, previous *pb.GetEntryRespo
 	}, nil
 }
 
-// VerifyMerkleTreeProof returns nil if the merkle tree neighbors list is valid
-// and the provided signed epoch head has a valid signature.
-func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedRoot []byte, index []byte, entry []byte) error {
+// VerifyMerkleTreeProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
+func (c *Client) VerifyMerkleTreeProof(neighbors [][]byte, expectedRoot []byte, index []byte, entry []byte) bool {
 	// TODO: replace with static merkle tree
-	m, err := memhist.FromNeighbors(neighbors, index, entry)
-	if err != nil {
-		return grpc.Errorf(codes.Internal, "Failed to build verification tree: %v", err)
-	}
-
-	// Get calculated root value.
-	calculatedRoot := m.Root(0)
-
-	// Verify the built tree root is as expected.
-	if ok := hmac.Equal(expectedRoot, calculatedRoot); !ok {
-		return grpc.Errorf(codes.InvalidArgument, "Merkle Verification Failed. Root=%v, want %v", calculatedRoot, expectedRoot)
-	}
-
-	return nil
+	m := c.factory.FromNeighbors(neighbors, index, entry)
+	calculatedRoot, _ := m.ReadRoot(nil)
+	return hmac.Equal(expectedRoot, calculatedRoot)
 }

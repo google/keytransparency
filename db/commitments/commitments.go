@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,9 @@ import (
 )
 
 const (
-	commitmentKeyLen = 16
+	// commitmentKeyLen should be robust against the birthday attack. One
+	// commitment is given for each leaf node throughout time.
+	commitmentKeyLen = 16 //128 bits of security, supports 2^64 nodes
 	Size             = sha512.Size256
 )
 
@@ -43,6 +45,8 @@ type Commitment struct {
 }
 
 type Committer interface {
+	// TODO: remove ctx
+	// TODO: rename WriteCommitment to Commit
 	WriteCommitment(ctx context.Context, commitment, key, value []byte) error
 	ReadCommitment(ctx context.Context, commitment []byte) (*Commitment, error)
 }
