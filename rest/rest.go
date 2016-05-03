@@ -27,16 +27,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/e2e-key-server/rest/handlers"
+	"github.com/gdbelvin/e2e-key-server/rest/handlers"
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
-	typespb "github.com/google/e2e-key-server/proto/security_protobuf"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
+	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
+	typespb "github.com/gdbelvin/e2e-key-server/proto/security_protobuf"
 )
 
 const (

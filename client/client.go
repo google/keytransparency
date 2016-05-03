@@ -20,18 +20,18 @@ package client
 import (
 	"crypto/hmac"
 
-	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse/memtree"
+	"github.com/gdbelvin/e2e-key-server/db/commitments"
+	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse/memtree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 // Client forms and validates requests and responses to the Key Server.

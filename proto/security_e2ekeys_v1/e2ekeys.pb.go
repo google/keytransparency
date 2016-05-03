@@ -17,7 +17,7 @@ package security_e2ekeys_v1
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import security_e2ekeys "github.com/google/e2e-key-server/proto/security_e2ekeys"
+import security_e2ekeys "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
 
 import (
 	context "golang.org/x/net/context"

@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
 )
 
 // Hash calculates the hash of the given data.

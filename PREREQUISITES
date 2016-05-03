@@ -14,15 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# protoc compiler > 2.6.1 from https://github.com/google/protobuf
+# protoc compiler > 2.6.1 from https://github.com/gdbelvin/protobuf
 version=`protoc --version | awk '{printf("%d.%d", $2, $3);};'`
 if [[ "$version" < "3.0" ]]; then
 	echo "protoc --version $version < 3.0."
 	echo "Installing protoc"
 	apt-get install build-essential
 	apt-get install autoconf automake libtool
-	git clone git@github.com:google/protobuf.git $GOPATH/src/github.com/google/protobuf
-	cd $GOPATH/src/github.com/google/protobuf
+	git clone git@github.com:google/protobuf.git $GOPATH/src/github.com/gdbelvin/protobuf
+	cd $GOPATH/src/github.com/gdbelvin/protobuf
 	./autogen.sh
 	./configure
 	make

@@ -29,7 +29,7 @@ package security_e2ekeys
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import security_ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+import security_ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal

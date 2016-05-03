@@ -21,14 +21,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/gdbelvin/e2e-key-server/db/commitments"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	proto "github.com/golang/protobuf/proto"
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
 )
 
 // Maximum period of time to allow between CreationTime and server time.

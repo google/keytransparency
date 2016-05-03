@@ -30,5 +30,5 @@ goreman start
 
 Projects Using Key Transparency
 ==================================
-* [Google End-To-End](https://github.com/google/end-to-end).
+* [Google End-To-End](https://github.com/gdbelvin/end-to-end).
 
