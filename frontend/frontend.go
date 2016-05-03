@@ -31,7 +31,7 @@ import (
 	"github.com/gdbelvin/e2e-key-server/rest"
 	"github.com/gdbelvin/e2e-key-server/rest/handlers"
 	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
-	"github.com/gdbelvin/e2e-key-server/vrf/pkcsvrf"
+	"github.com/gdbelvin/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
@@ -159,8 +159,10 @@ func Main() {
 	queue := queue.New(etcdCli, *mapID)
 	tree := sqlhist.New(sqldb, *mapID)
 	appender := chain.New()
+	// Read private key from file.
+	vrfPriv, _ := p256.GenerateKey()
 
-	v2 := keyserver.New(commitments, queue, tree, appender)
+	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

@@ -43,6 +43,7 @@ INCLUDES+= -I=$(PROTOINCLUDE)
 
 main: proto
 	go build ./
+	go build ./vrf/vrfkeygen
 	go build -o e2e-key-signer ./backend
 
 # The list of returned packages might not be unique. Fortunately go test gets

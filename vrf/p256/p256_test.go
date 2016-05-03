@@ -15,6 +15,7 @@
 package p256
 
 import (
+	"log"
 	"testing"
 )
 
@@ -80,6 +81,36 @@ func TestVRF(t *testing.T) {
 		got := pk.Verify(tc.m, tc.vrf[:], tc.proof)
 		if got != tc.want {
 			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, tc.want)
+		}
+	}
+}
+
+func TestSerization(t *testing.T) {
+	prvA, pubA := GenerateKey()
+	m := []byte("M")
+	vrf, proof := prvA.Evaluate(m)
+	tests := []struct {
+		prv   []byte
+		pub   []byte
+		want  bool
+		m     []byte
+		vrf   []byte
+		proof []byte
+	}{
+		{prvA.Bytes(), pubA.Bytes(), true, m, vrf, proof},
+	}
+	for _, tc := range tests {
+		_, err := ParsePrivateKey(tc.prv)
+		if err != nil {
+			t.Errorf("Failed parseing private key: %v", err)
+		}
+		log.Printf("AA:%v", tc.pub)
+		pub, err := ParsePublicKey(tc.pub)
+		if err != nil {
+			t.Errorf("Failed parseing public key: %v", err)
+		}
+		if got := pub.Verify(tc.m, tc.vrf, tc.proof); got != true {
+			t.Errorf("Failed verifying VRF proof")
 		}
 	}
 }
