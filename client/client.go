@@ -21,9 +21,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse/memtree"
+	"github.com/gdbelvin/e2e-key-server/commitments"
+	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/gdbelvin/e2e-key-server/tree/sparse/memtree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"

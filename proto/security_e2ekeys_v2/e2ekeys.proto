@@ -42,6 +42,7 @@ service E2EKeyService {
   // returns a proof.
   rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse);
 
+/*
   // List the Signed Epoch Heads, from epoch to epoch.
   rpc ListSEH(ListSEHRequest) returns (ListSEHResponse);
 
@@ -50,5 +51,6 @@ service E2EKeyService {
 
   // ListSteps combines SEH and EntryUpdates into single list.
   rpc ListSteps(ListStepsRequest) returns (ListStepsResponse);
+*/
 }
 

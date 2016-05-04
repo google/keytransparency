@@ -18,12 +18,12 @@ package keyserver
 import (
 	"math"
 
-	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/authentication"
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/queue"
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/vrf"
+	"github.com/gdbelvin/e2e-key-server/appender"
+	"github.com/gdbelvin/e2e-key-server/auth"
+	"github.com/gdbelvin/e2e-key-server/commitments"
+	"github.com/gdbelvin/e2e-key-server/queue"
+	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/gdbelvin/e2e-key-server/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
