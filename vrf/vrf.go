@@ -24,9 +24,21 @@ package vrf
 type PrivateKey interface {
 	// Evaluate returns the output of f_k(m) and its proof.
 	Evaluate(m []byte) (vrf []byte, proof []byte)
+
+	// Index returns the index indicated by a given VRF evaluation.
+	Index(vrf []byte) [32]byte
+
+	// Bytes serializes a PrivateKey
+	Bytes() []byte
 }
 
 type PublicKey interface {
 	// Verify verifies the NP-proof supplied by Proof.
 	Verify(m, vrf, proof []byte) bool
+
+	// Index returns the index indicated by a given VRF evaluation.
+	Index(vrf []byte) [32]byte
+
+	// Bytes serializes a PublicKey
+	Bytes() []byte
 }

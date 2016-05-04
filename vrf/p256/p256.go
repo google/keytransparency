@@ -25,6 +25,7 @@ import (
 	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/binary"
 	"encoding/gob"
@@ -168,6 +169,14 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) bool {
 	h2 := H2(b.Bytes())
 
 	return hmac.Equal(s, h2.Bytes())
+}
+
+func (priv *PrivateKey) Index(vrf []byte) [32]byte {
+	return sha256.Sum256(vrf)
+}
+
+func (pk *PublicKey) Index(vrf []byte) [32]byte {
+	return sha256.Sum256(vrf)
 }
 
 // Bytes returns the serialized private key.

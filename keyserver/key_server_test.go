@@ -18,7 +18,6 @@ package keyserver
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"log"
@@ -30,12 +29,13 @@ import (
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/common"
 	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf"
 	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/integration"
@@ -146,6 +146,7 @@ type Env struct {
 	signer *signer.Signer
 	db     *sql.DB
 	clus   *integration.ClusterV3
+	vrfPub vrf.PublicKey
 }
 
 func newDB(t testing.TB) *sql.DB {
@@ -178,9 +179,9 @@ func NewEnv(t *testing.T) *Env {
 	tree := sqlhist.New(sqldb, "test")
 	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	vrf, _ := p256.GenerateKey()
+	vrfPriv, vrfPub := p256.GenerateKey()
 
-	server := New(commitments, queue, tree, appender, vrf)
+	server := New(commitments, queue, tree, appender, vrfPriv)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
@@ -192,7 +193,7 @@ func NewEnv(t *testing.T) *Env {
 	client := client.New(v2pb.NewE2EKeyServiceClient(cc))
 	signer := signer.New(queue, tree, entry.New(), appender)
 	signer.CreateEpoch()
-	return &Env{s, server, cc, client, ctx, signer, sqldb, clus}
+	return &Env{s, server, cc, client, ctx, signer, sqldb, clus, vrfPub}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -275,7 +276,8 @@ func getNonExistentUser(t *testing.T, env *Env) {
 		t.Errorf("GetEntry(%v): %v, want nil", "nobody", res.Entry)
 	}
 
-	index := sha256.Sum256(res.Vrf)
+	// TODO: replace with vrf from public key
+	index := env.vrfPub.Index(res.Vrf)
 	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index[:], nil); got != true {
 		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, nil, got)
 	}
@@ -297,7 +299,7 @@ func TestGetValidUser(t *testing.T) {
 	if res.Entry == nil {
 		t.Fatalf("GetEntry(%v).Entry=nil", primaryUserEmail)
 	}
-	if got, want := res.Entry.Index, sha256.Sum256(res.Vrf); !bytes.Equal(got, want[:]) {
+	if got, want := res.Entry.Index, env.vrfPub.Index(res.Vrf); !bytes.Equal(got, want[:]) {
 		t.Fatalf("GetEntry.Index = %v, want %v", got, want)
 	}
 
@@ -346,7 +348,7 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	index := sha256.Sum256(res.Vrf)
+	index := env.vrfPub.Index(res.Vrf)
 	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, index[:], entryData); got != true {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, got)
 	}
