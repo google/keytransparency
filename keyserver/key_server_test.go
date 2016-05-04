@@ -18,6 +18,7 @@ package keyserver
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"log"
@@ -30,11 +31,12 @@ import (
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/common"
-	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/queue"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/integration"
 	"github.com/golang/protobuf/proto"
@@ -176,7 +178,9 @@ func NewEnv(t *testing.T) *Env {
 	tree := sqlhist.New(sqldb, "test")
 	commitments := commitments.New(sqldb, "test")
 	appender := chain.New()
-	server := New(commitments, queue, tree, appender)
+	vrf, _ := p256.GenerateKey()
+
+	server := New(commitments, queue, tree, appender, vrf)
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 	go s.Serve(lis)
 
@@ -267,26 +271,13 @@ func getNonExistentUser(t *testing.T, env *Env) {
 		t.Fatalf("Unexpected getting epoch head error: %v", err)
 	}
 
-	// Verify merkle tree neighbors.
-	var entryData []byte
-	var index []byte
 	if res.Entry != nil {
-		// Entry should contain a value other than the one requested.
-		if got, want := res.Index, res.Entry.Index; bytes.Equal(got, want) {
-			t.Errorf("index: %v, don't want %v", got, want)
-		}
-		entryData, err = proto.Marshal(res.Entry)
-		if err != nil {
-			t.Fatalf("Unexpected entry marshalling error: %v.", err)
-		}
-		index = res.Entry.Index
-	} else {
-		entryData = nil
-		index = res.Index
+		t.Errorf("GetEntry(%v): %v, want nil", "nobody", res.Entry)
 	}
 
-	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index, entryData); got != true {
-		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, entryData, got)
+	index := sha256.Sum256(res.Vrf)
+	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, epochHead.Root, index[:], nil); got != true {
+		t.Errorf("VerifyMerkleTreeProof(%v, %v, %v, %v)=%v", res.MerkleTreeNeighbors, epochHead.Root, index, nil, got)
 	}
 
 	// TODO(cesarghali): verify IndexProof.
@@ -306,7 +297,7 @@ func TestGetValidUser(t *testing.T) {
 	if res.Entry == nil {
 		t.Fatalf("GetEntry(%v).Entry=nil", primaryUserEmail)
 	}
-	if got, want, equal := res.Entry.Index, res.Index, bytes.Equal(res.Entry.Index, res.Index); !equal {
+	if got, want := res.Entry.Index, sha256.Sum256(res.Vrf); !bytes.Equal(got, want[:]) {
 		t.Fatalf("GetEntry.Index = %v, want %v", got, want)
 	}
 
@@ -355,11 +346,12 @@ func TestGetValidUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected entry marshalling error: %v.", err)
 	}
-	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, res.Index, entryData); got != true {
+	index := sha256.Sum256(res.Vrf)
+	if got := env.Client.VerifyMerkleTreeProof(res.MerkleTreeNeighbors, expectedRoot, index[:], entryData); got != true {
 		t.Errorf("GetUser(%v) merkle tree neighbors verification failed: %v", primaryUserEmail, got)
 	}
 
-	// TODO(cesarghali): verify IndexProoc.
+	// TODO(cesarghali): verify IndexProof.
 }
 
 func getErr(ret interface{}, err error) error {

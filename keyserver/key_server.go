@@ -18,11 +18,14 @@ package keyserver
 // This iteration of the key server, stores keys directly in the verifiable map
 
 import (
-	"bytes"
+	"crypto/sha256"
 	"math"
 
 	"github.com/google/e2e-key-server/auth"
-	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -37,16 +40,18 @@ import (
 type Server struct {
 	committer commitments.Committer
 	auth      auth.Authenticator
+	vrf       vrf.PrivateKey
 
 	cli *ctmap.VerifiableMapClient
 }
 
 // Create creates a new instance of the key server.
-func New(cli *ctmap.Client, committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender) *Server {
+func New(cli *ctmap.Client, committer commitments.Committer, queue queue.Queuer, vrf vrf.PrivateKey) *Server {
 	return &Server{
 		committer: committer,
 		auth:      auth.New(),
 		cli:       cli,
+		vrf:       vrf,
 	}
 }
 
@@ -54,30 +59,44 @@ func New(cli *ctmap.Client, committer commitments.Committer, queue queue.Queuer,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
-	index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return err
-	}
+	vrf, proof := s.vrf.Evaluate([]byte(in.UserId))
+	index := sha256.Sum256(vrf)
 
 	// Get the proof of inclusion and the leaf data.
 	resp, err := s.cli.Get(index, in.epoch)
 
-	// Use the leaf data to lookup the commitment.
-	if resp != nil {
-		commitment, err := s.committer.ReadCommitment(ctx, resp.Entry.ProfileCommitment)
+	neighbors, err := s.tree.NeighborsAt(ctx, index[:], e)
+	if err != nil {
+		return nil, err
+	}
+
+	// result contains the returned GetEntryResponse.
+	result := &pb.GetEntryResponse{
+		Vrf:              vrf,
+		VrfProof:         proof,
+		SignedEpochHeads: []*ctmap.SignedEpochHead{&seh},
+	}
+
+	// Retrieve the leaf if this is not a proof of absence.
+	leaf, err := s.tree.ReadLeafAt(ctx, index[:], e)
+	if err == nil && leaf != nil {
+		result.Entry = new(ctmap.Entry)
+		if err := proto.Unmarshal(leaf, result.Entry); err != nil {
+			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
+		}
+
+		commitment, err := s.committer.ReadCommitment(ctx, result.Entry.ProfileCommitment)
 		if err != nil {
 			return nil, err
 		}
+		if commitment == nil {
+			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", result.Entry.ProfileCommitment)
+		}
+		result.Profile = commitment.Data
+		result.CommitmentKey = commitment.Key
 	}
 
-	return &pb.GetEntryResponse{
-		Index:               index,
-		IndexProof:          nil, // TODO(cesarghali): Fill IndexProof.
-		MerkleTreeNeighbors: neighbors,
-
-		Profile:       commitment.Data,
-		CommitmentKey: commitment.Key,
-	}, nil
+	return result, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
@@ -104,10 +123,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	index, err := s.Vuf(in.UserId)
-	if err != nil {
-		return nil, err
-	}
+	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
+	index := sha256.Sum256(vrf)
 	// The mutation is an update to the commitment.
 	m, err := proto.Marshal(in.GetSignedEntryUpdate())
 	if err != nil {
@@ -124,7 +141,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	if err := s.queue.Enqueue(index, m); err != nil {
+	if err := s.queue.Enqueue(index[:], m); err != nil {
 		return nil, err
 	}
 
