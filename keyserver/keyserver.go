@@ -19,7 +19,7 @@ import (
 	"math"
 
 	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/authentication"
+	"github.com/google/e2e-key-server/auth"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/tree"
