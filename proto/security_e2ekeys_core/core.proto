@@ -18,33 +18,6 @@ package security.e2ekeys.core;
 
 import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
 
-// Internal types for the End to End Key Server.
-
-// EntryStorage is what gets serialized to disk / log.
-message EntryStorage {
-  // commitment_timestamp is a sequential update number of the SignedEntryUpdate.
-  int64 commitment_timestamp = 1;
-  // entry_update contains a SignedEntryUpdate proto with the actual update
-  // contents.
-  security_ctmap.SignedEntryUpdate signed_entry_update = 2;
-  // profile is the serialized protobuf Profile.
-  // profile is private and must not be released to verifiers.
-  bytes profile = 3;
-  // commitment_key is at least 16 random bytes.
-  bytes commitment_key = 4;
-  // domain allows servers to keep track of multiple trees at once.
-  string domain = 5;
-}
-
-// EpochInfo is what gets serialized to disk / log.
-message EpochInfo {
-  // signed_epoch_head is the signed epoch head of the created epoch.
-  security_ctmap.SignedEpochHead signed_epoch_head = 1;
-  // last_commitment_timestamp is the timestamp of the last update included in
-  // created epoch.
-  int64 last_commitment_timestamp = 2;
-}
-
 // DomainInfo is the information that need to be baked into an application
 // in order to verify information for a domain.
 message DomainInfo {
