@@ -25,8 +25,8 @@ import (
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/db/commitments"
-	"github.com/google/e2e-key-server/db/queue"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/signer"

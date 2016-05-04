@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/e2e-key-server/db/commitments"
+	"github.com/google/e2e-key-server/commitments"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
