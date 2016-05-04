@@ -18,7 +18,6 @@ package keyserver
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -89,7 +88,7 @@ func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *pb.UpdateEn
 	}
 	// Verify Entry
 	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
-	index := sha256.Sum256(vrf)
+	index := s.vrf.Index(vrf)
 
 	if got, want := entry.Index, index[:]; !bytes.Equal(got, want) {
 		return grpc.Errorf(codes.InvalidArgument, "entry.Index=%v, want %v", got, want)

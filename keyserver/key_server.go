@@ -16,7 +16,6 @@
 package keyserver
 
 import (
-	"crypto/sha256"
 	"math"
 
 	"github.com/google/e2e-key-server/appender"
@@ -62,7 +61,7 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
 	vrf, proof := s.vrf.Evaluate([]byte(in.UserId))
-	index := sha256.Sum256(vrf)
+	index := s.vrf.Index(vrf)
 
 	// Get an append-only proof for the signed tree head.
 	e := in.Epoch
@@ -127,7 +126,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
-	index := sha256.Sum256(vrf)
+	index := s.vrf.Index(vrf)
 	// The mutation is an update to the commitment.
 	m, err := proto.Marshal(in.GetSignedEntryUpdate())
 	if err != nil {

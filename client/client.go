@@ -67,6 +67,7 @@ func CreateUpdate(profile *pb.Profile, userID string, previous *pb.GetEntryRespo
 	}
 
 	// Get Index
+	// TODO: replace with vrf from public key.
 	vrf := previous.Vrf
 	index := sha256.Sum256(vrf)
 
