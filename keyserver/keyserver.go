@@ -19,7 +19,7 @@ import (
 	"math"
 
 	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/tree"
@@ -38,7 +38,7 @@ import (
 type Server struct {
 	committer commitments.Committer
 	queue     queue.Queuer
-	auth      auth.Authenticator
+	auth      authentication.Authenticator
 	tree      tree.SparseHist
 	appender  appender.Appender
 	vrf       vrf.PrivateKey
@@ -49,7 +49,7 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 	return &Server{
 		committer: committer,
 		queue:     queue,
-		auth:      auth.New(),
+		auth:      authentication.New(),
 		tree:      tree,
 		appender:  appender,
 		vrf:       vrf,
