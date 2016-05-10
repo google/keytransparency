@@ -22,19 +22,6 @@ import (
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
-func TestValidateEmail(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close(t)
-
-	if err := env.server.validateEmail(env.ctx, primaryUserEmail); err != nil {
-		t.Errorf("ValidateEmail failed: %v.", err)
-	}
-
-	if err := env.server.validateEmail(env.ctx, "invalid@gmail.com"); err == nil {
-		t.Errorf("ValidateEmail did not fail for invalid user.")
-	}
-}
-
 func TestValidateKey(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
