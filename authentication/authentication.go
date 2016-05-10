@@ -12,31 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package implements authenitcation mechanisms.
-package auth
+// Package authentication implements authentication mechanisms.
+package authentication
 
 import (
 	"golang.org/x/net/context"
 )
 
-const (
-	testPrimaryUserEmail = "e2eshare.test@gmail.com"
-)
+// Authenticator provides services to authenticate users.
+type Authenticator interface {
+	// Context returns an authenticated context for userID.
+	// TODO: Replace with OAuth.
+	NewContext(userID string, scopes []string) context.Context
 
-//TODO: Implement OAuth authenticator
-type NullAuth struct{}
-
-// New returns a new authenticator.
-func New() Authenticator {
-	return &NullAuth{}
-}
-
-func (a *NullAuth) GetAuthenticatedEmail(ctx context.Context, scopes ...string) (string, error) {
-	// TODO: implement real auth.
-	return testPrimaryUserEmail, nil
-}
-
-func (a *NullAuth) CheckScopes(ctx context.Context, scopes ...string) error {
-	// TODO: implement real auth.
-	return nil
+	ValidateCreds(ctx context.Context, requiredUserID string, requiredScopes []string) bool
 }

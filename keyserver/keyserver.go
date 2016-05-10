@@ -19,7 +19,7 @@ import (
 	"math"
 
 	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/auth"
+	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/tree"
@@ -38,7 +38,7 @@ import (
 type Server struct {
 	committer commitments.Committer
 	queue     queue.Queuer
-	auth      auth.Authenticator
+	auth      authentication.Authenticator
 	tree      tree.SparseHist
 	appender  appender.Appender
 	vrf       vrf.PrivateKey
@@ -49,7 +49,7 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 	return &Server{
 		committer: committer,
 		queue:     queue,
-		auth:      auth.New(),
+		auth:      authentication.New(),
 		tree:      tree,
 		appender:  appender,
 		vrf:       vrf,
@@ -121,6 +121,9 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+	if !s.auth.ValidateCreds(ctx, in.UserId, requiredScopes) {
+		return nil, grpc.Errorf(codes.PermissionDenied, "")
+	}
 	if err := s.validateUpdateEntryRequest(ctx, in); err != nil {
 		return nil, err
 	}

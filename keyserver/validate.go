@@ -40,22 +40,6 @@ const (
 
 var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
 
-// validateEmail compares the given email against the one provided by GAIA.
-func (s *Server) validateEmail(ctx context.Context, email string) error {
-	if err := s.auth.CheckScopes(ctx, requiredScopes...); err != nil {
-		return err
-	}
-	verifiedEmail, err := s.auth.GetAuthenticatedEmail(ctx, requiredScopes...)
-	if err != nil {
-		return err
-	}
-
-	if verifiedEmail != email {
-		return grpc.Errorf(codes.PermissionDenied, "wrong user")
-	}
-	return nil
-}
-
 // validateKey verifies:
 // - appID is present.
 // - Key is valid for its format.
@@ -76,10 +60,6 @@ func (s *Server) validateKey(userID, appID string, key []byte) error {
 // - Commitment in SignedEntryUpdate maches the serialized profile.
 // - Profile is a valid.
 func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *pb.UpdateEntryRequest) error {
-	// Validate proper authentication.
-	if err := s.validateEmail(ctx, in.UserId); err != nil {
-		return err
-	}
 
 	// Verify that the signed_update is a commitment to the profile.
 	entry := new(ctmap.Entry)
