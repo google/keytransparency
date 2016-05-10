@@ -121,6 +121,9 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+	if !s.auth.ValidateCreds(ctx, in.UserId, requiredScopes) {
+		return nil, grpc.Errorf(codes.PermissionDenied, "")
+	}
 	if err := s.validateUpdateEntryRequest(ctx, in); err != nil {
 		return nil, err
 	}

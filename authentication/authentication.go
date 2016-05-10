@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package authentication iimplements authenitcation mechanisms.
+// Package authentication implements authentication mechanisms.
 package authentication
 
 import (
@@ -21,9 +21,9 @@ import (
 
 // Authenticator provides services to authenticate users.
 type Authenticator interface {
-	// CheckScopes checks if the context contains valid end user credentials with all required scopes.
-	CheckScopes(ctx context.Context, scopes ...string) error
+	// Context returns an authenticated context for userID.
+	// TODO: Replace with OAuth.
+	NewContext(userID string, scopes []string) context.Context
 
-	// GetAuthenticatedEmail returns an authenticated email address from context.
-	GetAuthenticatedEmail(ctx context.Context, scopes ...string) (string, error)
+	ValidateCreds(ctx context.Context, requiredUserID string, requiredScopes []string) bool
 }
