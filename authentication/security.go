@@ -15,19 +15,11 @@
 package authentication
 
 import (
+	"log"
+
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
-
-// key is an unexported type to prevent collisions with keys in other packages.
-type key int
-
-// authKey is the key for security values in Contexts. Unexported.
-var authKey = 0
-
-type security struct {
-	userID string
-	scopes map[string]bool
-}
 
 type BasicAuth struct{}
 
@@ -37,24 +29,34 @@ func New() Authenticator {
 }
 
 func (a *BasicAuth) NewContext(userID string, scopes []string) context.Context {
-	ctx := context.Background()
-	set := make(map[string]bool)
-	for _, scope := range scopes {
-		set[scope] = true
-	}
-	return context.WithValue(ctx, authKey, security{userID, set})
+	md := make(map[string][]string)
+	md["userid"] = []string{userID}
+	md["scopes"] = scopes
+	return metadata.NewContext(context.Background(), md)
 }
 
 func (a *BasicAuth) ValidateCreds(ctx context.Context, requiredUserID string, requiredScopes []string) bool {
-	s, ok := ctx.Value(authKey).(security)
+	md, ok := metadata.FromContext(ctx)
 	if !ok {
+		log.Printf("Failed auth: Context is missing authentication information.")
 		return false
 	}
-	if s.userID != requiredUserID {
+	userIDs, ok := md["userid"]
+	if !ok || len(userIDs) != 1 {
+		log.Printf("Failed auth: Context is missing authentication information.")
 		return false
+	}
+	if got, want := md["userid"][0], requiredUserID; got != want {
+		log.Printf("Failed auth: userID: %v, want %v", got, want)
+		return false
+	}
+	set := make(map[string]bool)
+	for _, scope := range md["scopes"] {
+		set[scope] = true
 	}
 	for _, scope := range requiredScopes {
-		if _, ok := s.scopes[scope]; !ok {
+		if _, ok := set[scope]; !ok {
+			log.Printf("Failed auth: userID: %v missing scope %v", requiredUserID, scope)
 			return false
 		}
 	}
