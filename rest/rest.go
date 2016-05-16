@@ -50,98 +50,27 @@ const (
 	AuthenticationMethod = "Bearer"
 )
 
-// httpErrorInfo contains the HTTP error code and message.
-type httpErrorInfo struct {
-	// code contains the HTTP error code.
-	code int
-	// message contains the Error message.
+// grpcToHttpError contains a mapping between gRPC errors and HTTP responses.
+var grpcToHttpError = map[codes.Code]struct {
+	code    int
 	message string
-}
-
-// grpcToHttpError contains the mapping between gRPC error and the appropriate
-// httpErrorInfo. All error messages are title capitalized similar to known HTTP
-// error messages.
-var grpcToHttpError = map[codes.Code]httpErrorInfo{
-	// Canceled
-	codes.Canceled: httpErrorInfo{
-		code:    http.StatusInternalServerError,
-		message: "Request Canceled by Caller",
-	},
-	// Unknown
-	codes.Unknown: httpErrorInfo{
-		code:    http.StatusInternalServerError,
-		message: "Unknown Internal Error",
-	},
-	// InvalidArgument
-	codes.InvalidArgument: httpErrorInfo{
-		code:    http.StatusBadRequest,
-		message: "Bad Request Parameters or Arguments",
-	},
-	// DeadlineExceeded
-	codes.DeadlineExceeded: httpErrorInfo{
-		code:    http.StatusRequestTimeout,
-		message: "Request Timeout",
-	},
-	// NotFound
-	codes.NotFound: httpErrorInfo{
-		code:    http.StatusNotFound,
-		message: "Requested Resource Not Found",
-	},
-	// AlreadyExists
-	codes.AlreadyExists: httpErrorInfo{
-		code:    http.StatusInternalServerError,
-		message: "Created or Updated Resource Already Exists",
-	},
-	// PermissionDenied
-	codes.PermissionDenied: httpErrorInfo{
-		code:    http.StatusForbidden,
-		message: "Permission Denied",
-	},
-	// Unauthenticated
-	codes.Unauthenticated: httpErrorInfo{
-		code:    http.StatusUnauthorized,
-		message: "Authentication Missing",
-	},
-	// ResourceExhausted
-	codes.ResourceExhausted: httpErrorInfo{
-		code:    http.StatusServiceUnavailable,
-		message: "Resource Exhausted",
-	},
-	// FailedPrecondition
-	codes.FailedPrecondition: httpErrorInfo{
-		code:    http.StatusPreconditionFailed,
-		message: "System Is Not in State Required for the Requested Operation",
-	},
-	// Aborted
-	codes.Aborted: httpErrorInfo{
-		code:    http.StatusInternalServerError,
-		message: "Request Aborted",
-	},
-	// OutOfRange
-	codes.OutOfRange: httpErrorInfo{
-		code:    http.StatusBadRequest,
-		message: "Bad Request Parameters or Arguments",
-	},
-	// Unimplemented
-	codes.Unimplemented: httpErrorInfo{
-		code:    http.StatusNotImplemented,
-		message: "Method Is Not Implemented",
-	},
-	// Internal
-	codes.Internal: httpErrorInfo{
-		code:    http.StatusInternalServerError,
-		message: "Internal Server Error",
-	},
-	// Unavailable
-	codes.Unavailable: httpErrorInfo{
-		code:    http.StatusServiceUnavailable,
-		message: "Service Is Not Available",
-	},
-	// DataLoss
-	codes.DataLoss: httpErrorInfo{
-		code:    http.StatusInternalServerError,
-		message: "Unrecoverable Data Loss",
-	},
+}{
+	codes.Canceled:           {http.StatusInternalServerError, "Request Canceled by Caller"},
+	codes.Unknown:            {http.StatusInternalServerError, "Unknown Internal Error"},
+	codes.InvalidArgument:    {http.StatusBadRequest, "Bad Request Parameters or Arguments"},
+	codes.DeadlineExceeded:   {http.StatusRequestTimeout, "Request Timeout"},
+	codes.NotFound:           {http.StatusNotFound, "Requested Resource Not Found"},
+	codes.AlreadyExists:      {http.StatusInternalServerError, "Created or Updated Resource Already Exists"},
+	codes.PermissionDenied:   {http.StatusForbidden, "Permission Denied"},
+	codes.Unauthenticated:    {http.StatusUnauthorized, "Authentication Missing"},
+	codes.ResourceExhausted:  {http.StatusServiceUnavailable, "Resource Exhausted"},
+	codes.FailedPrecondition: {http.StatusPreconditionFailed, "System Is Not in State Required for the Requested Operation"},
+	codes.Aborted:            {http.StatusInternalServerError, "Request Aborted"},
+	codes.OutOfRange:         {http.StatusBadRequest, "Bad Request Parameters or Arguments"},
+	codes.Unimplemented:      {http.StatusNotImplemented, "Method Is Not Implemented"},
+	codes.Internal:           {http.StatusInternalServerError, "Internal Server Error"},
+	codes.Unavailable:        {http.StatusServiceUnavailable, "Service Is Not Available"},
+	codes.DataLoss:           {http.StatusInternalServerError, "Unrecoverable Data Loss"},
 }
 
 // Server holds internal state for the http rest server.
