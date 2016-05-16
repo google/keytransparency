@@ -26,9 +26,9 @@ import (
 
 	"github.com/google/e2e-key-server/appender/chain"
 	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/proxy"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/rest"
 	"github.com/google/e2e-key-server/rest/handlers"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
