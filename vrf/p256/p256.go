@@ -142,6 +142,9 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) bool {
 	if vrfx == nil {
 		return false
 	}
+	if len(proof) != 64 {
+		return false
+	}
 
 	// Parse proof into s and t
 	s := proof[0:32]
