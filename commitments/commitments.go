@@ -21,11 +21,9 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha512"
+	"errors"
 
 	"golang.org/x/net/context"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -35,7 +33,10 @@ const (
 	Size             = sha512.Size256
 )
 
-var hashAlgo = sha512.New512_256
+var (
+	hashAlgo             = sha512.New512_256
+	errInvalidCommitment = errors.New("Invalid commitment")
+)
 
 type Commitment struct {
 	// Commitment key
@@ -56,7 +57,7 @@ func Commit(data []byte) ([]byte, []byte, error) {
 	// Generate commitment key.
 	key := make([]byte, commitmentKeyLen)
 	if _, err := rand.Read(key); err != nil {
-		return nil, nil, grpc.Errorf(codes.Internal, "Error generating key: %v", err)
+		return nil, nil, err
 	}
 
 	mac := hmac.New(hashAlgo, key)
@@ -75,7 +76,7 @@ func Verify(key, data, commitment []byte) error {
 	mac := hmac.New(hashAlgo, key)
 	mac.Write(data)
 	if !hmac.Equal(mac.Sum(nil), commitment) {
-		return grpc.Errorf(codes.InvalidArgument, "Invalid data commitment")
+		return errInvalidCommitment
 	}
 	return nil
 }
