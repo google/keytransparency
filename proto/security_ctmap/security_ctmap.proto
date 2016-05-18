@@ -40,14 +40,13 @@ service VerifiableMapService {
 // EpochHead is the head node of the Merkle Tree as well as additional metadata
 // for the tree.
 message EpochHead {
-  // Realm is the domain identifier for the transparent map.
+  // realm is the domain identifier for the transparent map.
   string realm = 1;
-  // Epoch number
+  // epoch number
   int64 epoch = 2;
-  // Root is the value of the root node of the merkle tree.
+  // root is the value of the root node of the merkle tree.
   bytes root = 3;
-  // IssueTime is the time when this epoch was released. All epochs for the
-  // same keyserver MUST have non-decreasing IssueTimes.
+  // issue_time is the time when this epoch was released. Monotonically increasing.
   security.protobuf.Timestamp issue_time = 4;
 }
 
