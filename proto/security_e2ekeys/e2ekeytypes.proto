@@ -16,40 +16,60 @@ syntax = "proto3";
 
 package security.e2ekeys;
 
-import "github.com/google/e2e-key-server/proto/security_ctmap/map.proto";
+import "github.com/google/e2e-key-server/proto/security_ctmap/security_ctmap.proto";
 
 //
 // Data types.
 //
 
+// GetEntryResponse 
 message GetEntryResponse {
-  // UserId supports sending this as a complete proof to a third party.
-  string user_id = 1; // Optional.
-  // VrfProof is the proof for VRF on user_id.
-  bytes vrf_proof = 2;
-  // Vrf is the output of VRF on user_id.
-  bytes vrf = 3;
-  // The signed epoch head.  A server may choose to return multiple signatures
-  // of the same head for the same epoch. A client MUST NOT consider the
-  // presence of surplus or invalid epoch heads in this field an error.
-  repeated security_ctmap.SignedEpochHead signed_epoch_heads = 4; // Optional.
-  // MerkleTreeNeighbors is a list of all the adjacent nodes along the path
-  // from the bottommost node to the head.
-  repeated bytes merkle_tree_neighbors = 5;
-  // Entry contains the public portion of the user's data, and a comitment to
-  // profile.
-  security_ctmap.Entry entry = 6;
-  // Profile contains the user's keys.
-  bytes profile = 7;
-  // CommitmentKey is 16 random bytes.
-  bytes commitment_key = 8;
-}
+  //
+  // Privacy layer hides user_id and profile data until requested.
+  //
 
+  // vrf is the output of VRF on user_id.
+  bytes vrf = 1;
+  // vrf_proof is the proof for VRF on user_id.
+  bytes vrf_proof = 2;
+
+  // commitment_key connects the profile data to the commitment in leaf_proof.
+  bytes commitment_key = 3;
+  // profile contains the public key data for this account.
+  bytes profile = 4;
+
+  //
+  // Verifiable map layer proves that the response is consistent.
+  //
+
+  // leaf_proof contains an Entry and a verifiable map inclusion proof 
+  security_ctmap.GetLeafResponse leaf_proof = 5;
+  // consistency_proof ties the sth to the sth in start.
+  security_ctmap.GetConsistencyProofResponse consistency_proof = 6;
+  // sth is the latest STH.
+  security_ctmap.GetSTHResponse sth = 7;
+}
 
 // Profile contains data hidden behind the crypto comitment.
 message Profile {
   // Keys is a map of appIds to keys.
   map<string, bytes> keys = 1;
+}
+
+
+//
+// Verifiable Map Leaf Data and Mutation Data.
+//
+
+// Entry contains a commitment to profile and a set of authorized update keys.
+// Entry is placed in the verifiable map as leaf data.
+message Entry {
+  // commitment is a cryptographic commitment to arbitrary data.
+  bytes commitment = 1;
+  // authorized_keys is the set of keys allowed to sign updates for this entry.
+  repeated PublicKey authorized_keys = 2;
+  // update_count prevents replay attacks. Monotonically increasing.
+  uint64 update_count = 3;
 }
 
 // PublicKey defines a key this domain uses to sign EpochHeads with.
@@ -62,22 +82,35 @@ message PublicKey {
   }
 }
 
+// KeyValue is a map entry.
+message KeyValue {
+   bytes key = 1;
+   bytes value = 2;
+}
+
+// SignedKV is a signed change to a map entry.
+message SignedKV {
+  // keyvalue is a serialized KeyValue.
+  bytes key_value = 1;
+  // signatures on keyvalue. Must be signed by keys from both previous and 
+  // current epochs. The first proves ownership of new epoch key, and the
+  // second proves the the correct owner is making this change.
+  map<fixed64, bytes> signatures = 2;
+  // TODO: Add hash of previous value to make mutations reliable.
+}
+
 //
 // RPC request/response messages.
 //
 
 // Get request for a user object.
 message GetEntryRequest {
-  // Absence of the time field indicates a request for the current value.
-  int64 epoch = 1;
+  // Last trusted epoch by the client.
+  int64 epoch_start = 5; 
+  // Absence of the epoch_end field indicates a request for the current value.
+  int64 epoch_end = 1;
   // User identifier. Most commonly an email address.
   string user_id = 2;
-  // TODO(cesarghali): implement app_id filtering.
-  // Only return the keys belonging to this app.
-  string app_id = 3;
-  // TODO: implement key_hash filtering.
-  // Only return SEH's that are signed by these keys.
-  repeated fixed64 trusted_keys = 4;
 }
 
 // Get a list of historical values for a user.
@@ -88,8 +121,6 @@ message ListEntryHistoryRequest {
   int64 start_epoch = 2;
   // The maximum number of entries to return.
   int32 page_size = 3;
-  // compression_mode allows a user to verify thier own entries.
-  // TODO: optional compression mode?
 }
 
 // A paginated history of values for a user.
@@ -102,60 +133,20 @@ message ListEntryHistoryResponse {
 
 // Update a user's profile.
 message UpdateEntryRequest {
-  // UserID specifies the id for the new account to be registered.
-  string user_id = 1; // Optional.
-  // SignedEntryUpdate authorizes the change to profile.
-  security_ctmap.SignedEntryUpdate signed_entry_update = 2;
-  // Profile is the serialized protobuf Profile.
-  // Profile is private and must not be released to verifiers.
+  // user_id specifies the id for the new account to be registered.
+  string user_id = 1; 
+  // update authorizes the change to profile.
+  SignedKV update = 2; // TODO: make this bytes
+  // profile is the serialized protobuf Profile.
   bytes profile = 3;
-  // CommitmentKey is 16 random bytes.
+  // commitment_key is 16 random bytes.
   bytes commitment_key = 4;
-  // TODO: Provide a way for clients to specify a quorum of signatures to wait
-  // on before returning.
-  repeated fixed64 not_used = 5;
-
-  // DkimProof is used to vouch for the validity of a new registration.
-  // Used when OAuth is not used.
-  bytes dkim_proof = 1001; // Optional.
+  // Last trusted epoch by the client.
+  int64 epoch_start = 6; 
 }
 
 // UpdateEntryResponse contains a proof once the update has been included in
 // the Merkel Tree.
 message UpdateEntryResponse {
   GetEntryResponse proof = 1;
-}
-
-message ListSEHRequest {
-  // from_epoch is the starting epcoh.
-  int64 start_epoch = 1;
-  // The maximum number of entries to return.
-  int32 page_size = 2;
-}
-
-message ListSEHResponse {
-  repeated security_ctmap.SignedEpochHead heads = 1;
-}
-
-message ListUpdateRequest {
-  // start_commitment_timestamp is the starting commitment timestamp.
-  int64 start_commitment_timestamp = 1;
-  // The maximum number of entries to return.
-  int32 page_size = 2;
-}
-
-message ListUpdateResponse {
-  // updates contains a serialized SignedEntryUpdate.
-  repeated bytes updates = 1;
-}
-
-message ListStepsRequest {
-  // start_commitment_timestamp is the starting commitment timestamp.
-  int64 start_commitment_timestamp = 1;
-  // The maximum number of entries to return.
-  int32 page_size = 2;
-}
-
-message ListStepsResponse {
-  repeated security_ctmap.Step steps = 1;
 }

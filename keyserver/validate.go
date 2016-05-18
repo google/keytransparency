@@ -21,6 +21,11 @@ import (
 	"fmt"
 	"time"
 
+<<<<<<< HEAD
+=======
+	"github.com/google/e2e-key-server/commitments"
+
+>>>>>>> 9e17d89... local paths
 	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/commitments"
 	"golang.org/x/net/context"
