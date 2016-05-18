@@ -15,7 +15,9 @@
 package commitments
 
 import (
+	"bytes"
 	"database/sql"
+	"errors"
 	"log"
 
 	"golang.org/x/net/context"
@@ -46,6 +48,8 @@ const (
 	WHERE MapId = $1 AND Commitment = $2;`
 )
 
+var errDoubleCommitment = errors.New("Commitment to different value")
+
 type Commitments struct {
 	mapID []byte
 	db    *sql.DB
@@ -69,14 +73,43 @@ func New(db *sql.DB, mapID string) *Commitments {
 }
 
 // WriteCommitment saves a commitment to the database.
+// Writes of the same commitment value succeed.
 func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, value []byte) error {
-	stmt, err := c.db.Prepare(insertExpr)
+	tx, err := c.db.Begin()
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
-	_, err = stmt.Exec(c.mapID, commitment, key, value)
-	return err
+	readStmt, err := tx.Prepare(readExpr)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer readStmt.Close()
+	writeStmt, err := tx.Prepare(insertExpr)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer writeStmt.Close()
+
+	// Read existing commitment.
+	read := &Commitment{}
+	if err := readStmt.QueryRow(c.mapID, commitment).Scan(&read.Key, &read.Data); err == sql.ErrNoRows {
+		_, err = writeStmt.Exec(c.mapID, commitment, key, value)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		return tx.Commit()
+	} else if err != nil {
+		tx.Rollback()
+		return err
+	} else if bytes.Equal(key, read.Key) && bytes.Equal(value, read.Data) {
+		// Write of existing value.
+		return tx.Commit()
+	}
+	tx.Rollback()
+	return errDoubleCommitment
 }
 
 // ReadCommitment retrieves a commitment from the database.
@@ -94,7 +127,6 @@ func (c *Commitments) ReadCommitment(ctx context.Context, commitment []byte) (*C
 		return nil, err
 	}
 	return value, nil
-
 }
 
 func (c *Commitments) insertMapRow() {
