@@ -27,3 +27,9 @@ type Authenticator interface {
 
 	ValidateCreds(ctx context.Context, requiredUserID string, requiredScopes []string) bool
 }
+
+func Context(userID string) context.Context {
+	// TODO: fill ctx with authentication information.
+	ctx := context.Background()
+	return ctx
+}

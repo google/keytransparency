@@ -18,16 +18,16 @@ import (
 	"log"
 	"time"
 
-	"github.com/gdbelvin/e2e-key-server/appender"
-	"github.com/gdbelvin/e2e-key-server/mutator"
-	"github.com/gdbelvin/e2e-key-server/queue"
-	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/mutator"
+	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/tree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
-	tspb "github.com/gdbelvin/e2e-key-server/proto/security_protobuf"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
 )
 
 // Signer processes mutations, applies them to the sparse merkle tree, and
@@ -105,16 +105,14 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 
-	prevHash, err := s.appender.GetHLast(ctx)
-	if err != nil {
+	if _, err := s.appender.GetHLast(ctx); err != nil {
 		return err
 	}
 	head := &ctmap.EpochHead{
 		// TODO: set Realm
-		IssueTime:    &tspb.Timestamp{timestamp, 0},
-		PreviousHash: prevHash,
-		Epoch:        timestamp,
-		Root:         root,
+		IssueTime: &tspb.Timestamp{timestamp, 0},
+		Epoch:     timestamp,
+		Root:      root,
 	}
 	headData, err := proto.Marshal(head)
 	if err != nil {

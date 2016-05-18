@@ -20,7 +20,7 @@
 package memtree
 
 import (
-	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree"
 	"golang.org/x/net/context"
 	"log"
 )
@@ -39,9 +39,11 @@ func NewFactory() *TreeFactory {
 func (f *TreeFactory) FromNeighbors(neighbors [][]byte, index, leaf []byte) tree.Sparse {
 	ctx := context.Background()
 	t := New()
-	if err := t.WriteLeaf(nil, index, leaf); err != nil {
-		log.Fatalf("In memory WriteLeaf failed: %v", err)
-		return nil
+	if leaf != nil {
+		if err := t.WriteLeaf(nil, index, leaf); err != nil {
+			log.Fatalf("In memory WriteLeaf failed: %v", err)
+			return nil
+		}
 	}
 
 	for i, v := range neighbors {

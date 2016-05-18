@@ -17,10 +17,9 @@ package proxy
 
 import (
 	"bytes"
-	"math"
 	"strings"
 
-	"github.com/gdbelvin/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/keyserver"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/openpgp"
@@ -29,8 +28,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
-	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 const (
@@ -38,6 +37,7 @@ const (
 )
 
 // Server holds internal state for the proxy server.
+// TODO: replace proxy logic with a server side client instance.
 type Server struct {
 	s *keyserver.Server
 }
@@ -48,8 +48,8 @@ func New(srv *keyserver.Server) *Server {
 }
 
 // GetEntry returns a user's profile.
+// TODO: remove insecure GetEntry?
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.Profile, error) {
-	in.Epoch = math.MaxInt64
 	result, err := s.s.GetEntry(ctx, in)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.Prof
 
 	// If result.Profile is empty, then the profile does not exist.
 	if len(result.Profile) == 0 {
-		return nil, grpc.Errorf(codes.NotFound, "")
+		return nil, grpc.Errorf(codes.NotFound, "Not found")
 	}
 
 	// Extract and returned the user profile from the resulted
@@ -65,16 +65,6 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.Prof
 	profile := new(pb.Profile)
 	if err := proto.Unmarshal(result.Profile, profile); err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
-	}
-
-	// Application-specific keys filtering only if app ID is provided.
-	if in.AppId != "" {
-		// Key filtering.
-		key, ok := profile.GetKeys()[in.AppId]
-		profile.Keys = make(map[string][]byte)
-		if ok {
-			profile.Keys[in.AppId] = key
-		}
 	}
 
 	return profile, nil
@@ -97,7 +87,7 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 		return nil, grpc.Errorf(codes.Unimplemented, "Searching by key index are not supported")
 	}
 
-	getEntryRequest := pb.GetEntryRequest{UserId: in.Search, AppId: pgpAppID}
+	getEntryRequest := pb.GetEntryRequest{UserId: in.Search}
 	profile, err := s.GetEntry(ctx, &getEntryRequest)
 	if err != nil {
 		return nil, err

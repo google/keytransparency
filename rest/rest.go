@@ -171,13 +171,8 @@ func GetEntryV1_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 			if epoch, err := strconv.ParseInt(val[0], 10, 64); err != nil || epoch < 0 {
 				return grpc.Errorf(codes.InvalidArgument, "Epoch must be int64")
 			} else {
-				in.Epoch = int64(epoch)
+				in.EpochEnd = int64(epoch)
 			}
-		}
-
-		// Parse App ID.
-		if val, ok := m["app_id"]; ok {
-			in.AppId = val[0]
 		}
 
 		return nil
@@ -270,13 +265,8 @@ func GetEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Handle
 			if epoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
 				return grpc.Errorf(codes.InvalidArgument, "Epoch must be int64")
 			} else {
-				in.Epoch = int64(epoch)
+				in.EpochEnd = int64(epoch)
 			}
-		}
-
-		// Parse App ID.
-		if val, ok := m["app_id"]; ok {
-			in.AppId = val[0]
 		}
 
 		return nil
@@ -378,156 +368,6 @@ func UpdateEntryV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.Han
 func UpdateEntryV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
 	var resp interface{}
 	resp, err := srv.(v2pb.E2EKeyServiceServer).UpdateEntry(ctx, arg.(*pb.UpdateEntryRequest))
-	return &resp, err
-}
-
-// ListSEHV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
-// to call keyserver.ListSEH API.
-func ListSEHV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
-	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the keyserver ListSEH.
-	info.H = rInfo.Handler
-	// Create a new ListSEHRequest to be passed to the API handler.
-	info.Arg = new(pb.ListSEHRequest)
-	// Create a new function that parses URL parameters.
-	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*pb.ListSEHRequest)
-
-		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
-		if err != nil {
-			return grpc.Errorf(codes.InvalidArgument, err.Error())
-		}
-
-		m, _ := url.ParseQuery(unescaped)
-		// Parse StartEpoch. StartEpoch must be of type int64.
-		if val, ok := m["start_epoch"]; ok {
-			if startEpoch, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start Epoch must be int64")
-			} else {
-				in.StartEpoch = int64(startEpoch)
-			}
-		}
-
-		// Parse PageSize. PageSize must be of type int32.
-		if val, ok := m["page_size"]; ok {
-			if pageSize, err := strconv.ParseInt(val[0], 10, 32); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
-			} else {
-				in.PageSize = int32(pageSize)
-			}
-		}
-
-		return nil
-	}
-
-	return info
-}
-
-// ListSEHV2_RequestHandler calls keyserver.ListSEH and returns its results. An error
-// will be returned if keyserver.ListSEH returns an error.
-func ListSEHV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
-	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSEH(ctx, arg.(*pb.ListSEHRequest))
-	return &resp, err
-}
-
-// ListUpdateV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
-// to call keyserver.ListUpdate API.
-func ListUpdateV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
-	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the keyserver ListUpdate.
-	info.H = rInfo.Handler
-	// Create a new ListUpdateRequest to be passed to the API handler.
-	info.Arg = new(pb.ListUpdateRequest)
-	// Create a new function that parses URL parameters.
-	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*pb.ListUpdateRequest)
-
-		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
-		if err != nil {
-			return grpc.Errorf(codes.InvalidArgument, err.Error())
-		}
-
-		m, _ := url.ParseQuery(unescaped)
-		// Parse StartCommitmentTimestamp which must be of type int64.
-		if val, ok := m["start_commitment_timestamp"]; ok {
-			if startCommitmentTimestamp, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be int64")
-			} else {
-				in.StartCommitmentTimestamp = int64(startCommitmentTimestamp)
-			}
-		}
-
-		// Parse PageSize. PageSize must be of type int32.
-		if val, ok := m["page_size"]; ok {
-			if pageSize, err := strconv.ParseInt(val[0], 10, 32); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
-			} else {
-				in.PageSize = int32(pageSize)
-			}
-		}
-
-		return nil
-	}
-
-	return info
-}
-
-// ListUpdateV2_RequestHandler calls keyserver.ListUpdate and returns its results. An error
-// will be returned if keyserver.ListUpdate returns an error.
-func ListUpdateV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
-	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListUpdate(ctx, arg.(*pb.ListUpdateRequest))
-	return &resp, err
-}
-
-// ListStepsV2_InitializeHandlerInfo initializes and returns HandlerInfo preparing
-// to call keyserver.ListSteps API.
-func ListStepsV2_InitializeHandlerInfo(rInfo handlers.RouteInfo) *handlers.HandlerInfo {
-	info := new(handlers.HandlerInfo)
-	// Set the API handler to call the keyserver ListSteps.
-	info.H = rInfo.Handler
-	// Create a new ListStepsRequest to be passed to the API handler.
-	info.Arg = new(pb.ListStepsRequest)
-	// Create a new function that parses URL parameters.
-	info.Parser = func(r *http.Request, arg *interface{}) error {
-		in := (*arg).(*pb.ListStepsRequest)
-
-		unescaped, err := url.QueryUnescape(r.URL.RawQuery)
-		if err != nil {
-			return grpc.Errorf(codes.InvalidArgument, err.Error())
-		}
-
-		m, _ := url.ParseQuery(unescaped)
-		// Parse StartCommitmentTimestamp which must be of type int64.
-		if val, ok := m["start_commitment_timestamp"]; ok {
-			if startCommitmentTimestamp, err := strconv.ParseUint(val[0], 10, 64); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Start commitment timestamp must be int64")
-			} else {
-				in.StartCommitmentTimestamp = int64(startCommitmentTimestamp)
-			}
-		}
-
-		// Parse PageSize. PageSize must be of type int32.
-		if val, ok := m["page_size"]; ok {
-			if pageSize, err := strconv.ParseInt(val[0], 10, 32); err != nil {
-				return grpc.Errorf(codes.InvalidArgument, "Page size must be int32")
-			} else {
-				in.PageSize = int32(pageSize)
-			}
-		}
-
-		return nil
-	}
-
-	return info
-}
-
-// ListStepsV2_RequestHandler calls keyserver.ListSteps and returns its results. An error
-// will be returned if keyserver.ListSteps returns an error.
-func ListStepsV2_RequestHandler(srv interface{}, ctx context.Context, arg interface{}) (*interface{}, error) {
-	var resp interface{}
-	resp, err := srv.(v2pb.E2EKeyServiceServer).ListSteps(ctx, arg.(*pb.ListStepsRequest))
 	return &resp, err
 }
 

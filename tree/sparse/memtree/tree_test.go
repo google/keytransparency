@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 	"golang.org/x/net/context"
 )
 
@@ -103,31 +103,36 @@ func TestFromNeighbors(t *testing.T) {
 	f := NewFactory()
 	trees := [][]struct {
 		hindex string
-		value  string
+		value  []byte
+		insert bool // Proof of absence.
 	}{
 		{
-			{defaultIndex[2], "0"},
-			{defaultIndex[0], "3"},
+			{defaultIndex[2], []byte("0"), true},
+			{defaultIndex[0], []byte("3"), true},
+			{AllZeros, nil, false},
 		},
 		{
-			{defaultIndex[0], "3"},
-			{defaultIndex[1], "4"},
+			{defaultIndex[0], []byte("3"), true},
+			{defaultIndex[1], []byte("4"), true},
+			{defaultIndex[2], nil, false},
+			{AllZeros, nil, false},
 		},
 	}
 
 	for _, leaves := range trees {
 		m := New()
 		for _, l := range leaves {
-			m.WriteLeaf(ctx, H2B(l.hindex), []byte(l.value))
+			if l.insert {
+				m.WriteLeaf(ctx, H2B(l.hindex), l.value)
+			}
 		}
 		for i, tc := range leaves {
 			index := H2B(tc.hindex)
-			data := []byte(tc.value)
 
 			// Recreate the tree from the neighbors and verify that the roots are equal.
 
 			nbrs, _ := m.Neighbors(ctx, index)
-			m2 := f.FromNeighbors(nbrs, index, data)
+			m2 := f.FromNeighbors(nbrs, index, tc.value)
 
 			r, _ := m.ReadRoot(ctx)
 			r2, _ := m2.ReadRoot(ctx)

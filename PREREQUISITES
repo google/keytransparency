@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# protoc compiler > 2.6.1 from https://github.com/gdbelvin/protobuf
+# protoc compiler > 2.6.1 from https://github.com/google/protobuf
 version=`protoc --version | awk '{printf("%d.%d", $2, $3);};'`
 if [[ "$version" < "3.0" ]]; then
 	echo "protoc --version $version < 3.0."

@@ -24,16 +24,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gdbelvin/e2e-key-server/appender/chain"
-	"github.com/gdbelvin/e2e-key-server/commitments"
-	"github.com/gdbelvin/e2e-key-server/keyserver"
-	"github.com/gdbelvin/e2e-key-server/proxy"
-	"github.com/gdbelvin/e2e-key-server/queue"
-	"github.com/gdbelvin/e2e-key-server/rest"
-	"github.com/gdbelvin/e2e-key-server/rest/handlers"
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
-	"github.com/gdbelvin/e2e-key-server/vrf"
-	"github.com/gdbelvin/e2e-key-server/vrf/p256"
+	"github.com/google/e2e-key-server/appender/chain"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/proxy"
+	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/rest"
+	"github.com/google/e2e-key-server/rest/handlers"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
@@ -99,27 +100,6 @@ var v2Routes = []handlers.RouteInfo{
 		rest.UpdateEntryV2_InitializeHandlerInfo,
 		rest.UpdateEntryV2_RequestHandler,
 	},
-	// ListSEH API
-	handlers.RouteInfo{
-		"/v2/seh",
-		"GET",
-		rest.ListSEHV2_InitializeHandlerInfo,
-		rest.ListSEHV2_RequestHandler,
-	},
-	// ListUpdate API
-	handlers.RouteInfo{
-		"/v2/update",
-		"GET",
-		rest.ListUpdateV2_InitializeHandlerInfo,
-		rest.ListUpdateV2_RequestHandler,
-	},
-	// ListSteps API
-	handlers.RouteInfo{
-		"/v2/step",
-		"GET",
-		rest.ListStepsV2_InitializeHandlerInfo,
-		rest.ListStepsV2_RequestHandler,
-	},
 }
 
 func openDB() *sql.DB {
@@ -175,8 +155,9 @@ func Main() {
 	tree := sqlhist.New(sqldb, *mapID)
 	appender := chain.New()
 	vrfPriv := openVRFKey()
+	mutator := entry.New()
 
-	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv)
+	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator)
 	v1 := proxy.New(v2)
 	s := rest.New(v1, *realm)
 

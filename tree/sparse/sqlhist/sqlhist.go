@@ -21,16 +21,19 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"log"
 
-	"github.com/gdbelvin/e2e-key-server/tree"
-	"github.com/gdbelvin/e2e-key-server/tree/sparse"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
-var hasher = sparse.Coniks
+var (
+	hasher      = sparse.Coniks
+	errNilLeaf  = errors.New("Nil leaf")
+	errIndexLen = errors.New("Index len != 32")
+)
 
 const (
 	maxDepth = sparse.IndexLen
@@ -82,7 +85,10 @@ func (m *Map) Epoch() int64 {
 // QueueLeaf should only be called by the sequencer.
 func (m *Map) QueueLeaf(ctx context.Context, index, leaf []byte) error {
 	if got, want := len(index), size; got != want {
-		return grpc.Errorf(codes.InvalidArgument, "len(%v)=%v, want %v", index, got, want)
+		return errIndexLen
+	}
+	if leaf == nil {
+		return errNilLeaf
 	}
 
 	// Write leaf nodes
@@ -150,7 +156,7 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 	var value []byte
 	rootID := m.nodeID("")
 	if err := stmt.QueryRow(m.mapID, rootID, epoch).Scan(&value); err == sql.ErrNoRows {
-		return nil, grpc.Errorf(codes.NotFound, "ReadRootAt(%v) not found", epoch)
+		return nil, sql.ErrNoRows
 	} else if err != nil {
 		return nil, err
 	}
