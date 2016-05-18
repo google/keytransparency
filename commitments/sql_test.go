@@ -42,14 +42,16 @@ func TestWriteRead(t *testing.T) {
 		want       bool
 	}{
 		{"A", "key 1", "value1", true},
-		{"A", "key 1", "value1", false},
+		{"A", "key 1", "value1", true},
+		{"A", "key 1", "value2", false},
+		{"A", "key 2", "value2", false},
 		{"B", "key 2", "value2", true},
 		{string(commitment), string(key), "C", true},
 	}
 	for _, tc := range tests {
 		err := c.WriteCommitment(nil, []byte(tc.commitment), []byte(tc.key), []byte(tc.value))
 		if got := err == nil; got != tc.want {
-			t.Errorf("WriteCommitment(%v, %v, %v): %v, want %v", tc.commitment, tc.key, tc.value, got, tc.want)
+			t.Fatalf("WriteCommitment(%v, %v, %v): %v, want %v", tc.commitment, tc.key, tc.value, err, tc.want)
 		}
 		if tc.want {
 			value, err := c.ReadCommitment(nil, []byte(tc.commitment))

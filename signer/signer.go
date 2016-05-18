@@ -105,16 +105,14 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 
-	prevHash, err := s.appender.GetHLast(ctx)
-	if err != nil {
+	if _, err := s.appender.GetHLast(ctx); err != nil {
 		return err
 	}
 	head := &ctmap.EpochHead{
 		// TODO: set Realm
-		IssueTime:    &tspb.Timestamp{timestamp, 0},
-		PreviousHash: prevHash,
-		Epoch:        timestamp,
-		Root:         root,
+		IssueTime: &tspb.Timestamp{timestamp, 0},
+		Epoch:     timestamp,
+		Root:      root,
 	}
 	headData, err := proto.Marshal(head)
 	if err != nil {

@@ -16,7 +16,9 @@
 // the map.
 package mutator
 
-import ()
+import "errors"
+
+var ErrReplay = errors.New("Mutation replay")
 
 // Mutator verifies mutations and transforms values in the map.
 type Mutator interface {
