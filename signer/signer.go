@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/mutator"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/tree"
 
 	"github.com/golang/protobuf/proto"

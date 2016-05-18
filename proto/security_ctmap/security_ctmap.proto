@@ -1,0 +1,124 @@
+// Copyright 2016 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package security_ctmap;
+
+import "github.com/google/e2e-key-server/proto/security_protobuf/timestamp.proto";
+
+
+// The VerifiableMapService API 
+service VerifiableMapService {
+  // GetLeaf retrieves the value stored at a particular index.
+  rpc GetLeaf(GetLeafRequest) returns (GetLeafResponse);
+  // GetConsistencyProof returns consistency proof between two epochs. 
+  rpc GetConsistencyProof(GetConsistencyProofRequest) returns (GetConsistencyProofResponse);
+  // GetSTH returns the current signed tree head.
+  rpc GetSTH(GetSTHRequest) returns (GetSTHResponse);
+  // UpdateLeaf submits a change to the value at index. Clients retry until
+  // change is visble in GetLeafResponse.
+  rpc UpdateLeaf(UpdateLeafRequest) returns (GetLeafResponse);
+  //  Mutation list returns the list of mutations and epoch advancements.
+  rpc GetMutations(GetMutationsRequest) returns (GetMutationsResponse);
+}
+
+//
+// Data types
+//
+
+// EpochHead is the head node of the Merkle Tree as well as additional metadata
+// for the tree.
+message EpochHead {
+  // realm is the domain identifier for the transparent map.
+  string realm = 1;
+  // epoch number
+  int64 epoch = 2;
+  // root is the value of the root node of the merkle tree.
+  bytes root = 3;
+  // issue_time is the time when this epoch was released. Monotonically increasing.
+  security.protobuf.Timestamp issue_time = 4;
+}
+
+// SignedEpochHead represents a signed state of the Merkel tree.
+message SignedEpochHead {
+  // Serialized EpochHead.
+  bytes epoch_head = 1;
+  // Signature of head, using the signature type of the key.
+  // keyed by the first 64 bits bytes of the hash of the key.
+  map<fixed64, bytes> signatures = 2;
+}
+
+//
+// Request / Response types
+//
+
+// GetLeafRequest for a verifiable map leaf.
+message GetLeafRequest {
+  bytes index = 1;
+  uint64 epoch = 2;
+}
+
+// GetLeafResponse for a verifiable map leaf.
+message GetLeafResponse {
+  bytes leaf_data = 1; 
+  // neighbors is a list of all the adjacent nodes along the path
+  // from the bottommost node to the head.
+  repeated bytes neighbors = 2;
+}
+
+// GetConsistencyProofRequest for a consistency proof between two epochs.
+message GetConsistencyProofRequest{
+   uint64 first = 1;
+   uint64 second = 2;
+}
+
+// GetConsistencyProofResponse includes enough information to move trust from 
+// epoch first to second.
+message GetConsistencyProofResponse {
+   repeated bytes nodes = 1;
+}
+
+// GetSTHRequest for the current STH.
+message GetSTHRequest {}
+
+// GetSTHResponse returns the current STH.
+message GetSTHResponse {
+   SignedEpochHead sth = 1; 
+}
+
+// UpdateLeafRequest submits a change for the value at index.
+message UpdateLeafRequest {
+  bytes index = 1; 
+  bytes mutation = 2;
+}
+
+// UpdateLeafResponse returns the current value of index.
+message UpdateLeafResponse {
+  GetLeafResponse proof = 1;
+}
+
+// GetMutationsRequest requests the numbered mutations within a range.
+message GetMutationsRequest {
+  int64 start = 1;
+  int64 page_size = 2;
+}
+
+// GetMutationsResponse contains a list of mutations and epoch advancements.
+message GetMutationsResponse {
+  oneof type {
+    UpdateLeafRequest update = 1;
+    bool advance_epoch = 2;
+  }
+  int64 next = 3;
+}
