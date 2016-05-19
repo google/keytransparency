@@ -131,10 +131,7 @@ message ListEntryHistoryResponse {
   int64 next_epoch = 2;
 }
 
-// Update a user's profile.
-message UpdateEntryRequest {
-  // user_id specifies the id for the new account to be registered.
-  string user_id = 1; 
+message EntryUpdate {
   // update authorizes the change to profile.
   SignedKV update = 2; // TODO: make this bytes
   // profile is the serialized protobuf Profile.
@@ -143,6 +140,13 @@ message UpdateEntryRequest {
   bytes commitment_key = 4;
   // Last trusted epoch by the client.
   int64 epoch_start = 6; 
+}
+
+// Update a user's profile.
+message UpdateEntryRequest {
+  // user_id specifies the id for the new account to be registered.
+  string user_id = 1; 
+  EntryUpdate entry_update = 2;
 }
 
 // UpdateEntryResponse contains a proof once the update has been included in

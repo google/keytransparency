@@ -147,7 +147,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 
 	// Unmarshal entry.
 	kv := new(pb.KeyValue)
-	if err := proto.Unmarshal(in.GetUpdate().KeyValue, kv); err != nil {
+	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
 		return nil, err
 	}
@@ -158,14 +158,14 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Save the commitment.
-	if err := s.committer.WriteCommitment(ctx, entry.Commitment, in.CommitmentKey, in.Profile); err != nil {
+	if err := s.committer.WriteCommitment(ctx, entry.Commitment, in.GetEntryUpdate().CommitmentKey, in.GetEntryUpdate().Profile); err != nil {
 		return nil, err
 	}
 
 	// Query for the current epoch.
 	req := &pb.GetEntryRequest{
 		UserId:     in.UserId,
-		EpochStart: in.EpochStart,
+		EpochStart: in.GetEntryUpdate().EpochStart,
 	}
 	resp, err := s.GetEntry(ctx, req)
 	if err != nil {
@@ -179,7 +179,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	// - TODO: Hash of current data matches the expectation in the mutation.
 	// - Advanced update count.
 
-	m, err := proto.Marshal(in.GetUpdate())
+	m, err := proto.Marshal(in.GetEntryUpdate().GetUpdate())
 	if err != nil {
 		return nil, err
 	}

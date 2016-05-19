@@ -66,7 +66,7 @@ func validateKey(userID, appID string, key []byte) error {
 func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
 	// Unmarshal entry.
 	kv := new(pb.KeyValue)
-	if err := proto.Unmarshal(in.GetUpdate().KeyValue, kv); err != nil {
+	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
 		return err
 	}
@@ -85,13 +85,13 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 
 	// Verify correct commitment to profile.
 	p := new(pb.Profile)
-	if err := proto.Unmarshal(in.Profile, p); err != nil {
+	if err := proto.Unmarshal(in.GetEntryUpdate().Profile, p); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
-	if got, want := len(in.CommitmentKey), MinNonceLen; got < want {
+	if got, want := len(in.GetEntryUpdate().CommitmentKey), MinNonceLen; got < want {
 		return grpc.Errorf(codes.InvalidArgument, "len(CommitmentKey) = %v, want >= %v", got, want)
 	}
-	if err := commitments.VerifyName(in.UserId, in.CommitmentKey, in.Profile, entry.Commitment); err != nil {
+	if err := commitments.VerifyName(in.UserId, in.GetEntryUpdate().CommitmentKey, in.GetEntryUpdate().Profile, entry.Commitment); err != nil {
 		return err
 	}
 

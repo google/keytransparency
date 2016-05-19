@@ -8,14 +8,31 @@ Key Transparency is a distributed implementation of
 Getting Started
 ===============
 
-Getting Key Transparency
+Installation
 ------------------------
-This project uses [Google protocol buffers](https://github.com/golang/protobuf). 
-The [instalation directions](https://github.com/golang/protobuf#installation) will get it setup. Alternativly, run the [prerequisites](./PREREQUISITES) script.
+First you need to install [ProtocolBuffers](https://github.com/golang/protobuf#installation) 3.0 or later.
+```sh
+mkdir tmp
+cd tmp
+git clone https://github.com/google/protobuf
+cd protobuf
+./autogen.sh
+./configure
+make
+make check
+sudo make install
+```
+
+Then, ```go get -u``` as usual
 
 ```sh
-./prerequisites
+go get -u github.com/google/e2e-key-server/...
+go get -u github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway
+go get -u github.com/golang/protobuf/protoc-gen-go
+go get -u github.com/mattn/goreman
 ```
+
+And the shell $PATH must include $GOPATH/bin
 
 Running a Key Transparency Cluster
 ----------------------------------
