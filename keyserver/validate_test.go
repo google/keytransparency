@@ -113,10 +113,12 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 			KeyValue: kvData,
 		}
 		req := &pb.UpdateEntryRequest{
-			UserId:        tc.userID,
-			Update:        signedkv,
-			Profile:       profileData,
-			CommitmentKey: tc.key,
+			UserId: tc.userID,
+			EntryUpdate: &pb.EntryUpdate{
+				Update:        signedkv,
+				Profile:       profileData,
+				CommitmentKey: tc.key,
+			},
 		}
 		err := validateUpdateEntryRequest(req, vrfPriv)
 		if got := err == nil; got != tc.want {

@@ -17,6 +17,7 @@ syntax = "proto3";
 package security.e2ekeys.v1;
 
 import "github.com/google/e2e-key-server/proto/security_e2ekeys/e2ekeytypes.proto";
+import "google/api/annotations.proto";
 
 // The E2EKeyProxy API specifies a simplified way to query the
 // [E2EKeyService][security.e2ekeys.v2.E2EKeyService], without
@@ -30,9 +31,14 @@ import "github.com/google/e2e-key-server/proto/security_e2ekeys/e2ekeytypes.prot
 //
 service E2EKeyProxy {
   // GetEntry returns a user's current profile.
-  rpc GetEntry(GetEntryRequest) returns (Profile);
+  rpc GetEntry(GetEntryRequest) returns (Profile) {
+    option (google.api.http) = { get: "/v1/users/{user_id}" };
+  }
 
-  rpc HkpLookup(HkpLookupRequest) returns (HttpResponse);
+  rpc HkpLookup(HkpLookupRequest) returns (HttpResponse){
+    option (google.api.http) = { get: "/v1/hkp/lookup" };
+  }
+
 }
 
 // HkpLookupRequest contains query parameters for retrieving PGP keys.

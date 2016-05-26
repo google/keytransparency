@@ -162,11 +162,13 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 
 	// Send request.
 	req := &pb.UpdateEntryRequest{
-		UserId:        userID,
-		Update:        signedkv,
-		Profile:       profileData,
-		CommitmentKey: key,
-		EpochStart:    c.mapc.TrustedEpoch(),
+		UserId: userID,
+		EntryUpdate: &pb.EntryUpdate{
+			Update:        signedkv,
+			Profile:       profileData,
+			CommitmentKey: key,
+			EpochStart:    c.mapc.TrustedEpoch(),
+		},
 	}
 
 	err = c.Retry(ctx, req)
@@ -189,7 +191,7 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 	}
 
 	keyvalue := new(pb.KeyValue)
-	if err := proto.Unmarshal(req.Update.KeyValue, keyvalue); err != nil {
+	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, keyvalue); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
 		return err
 	}
@@ -198,8 +200,8 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 		log.Printf("Retry(%v) Matched", req.UserId)
 		return nil
 	} else {
-		log.Printf("Retry(%v) returned: %v, want %v", req.UserId, got, req.Profile)
-		req.EpochStart = c.mapc.TrustedEpoch()
+		log.Printf("Retry(%v) returned: %v, want %v", req.UserId, got, req.GetEntryUpdate().Profile)
+		req.GetEntryUpdate().EpochStart = c.mapc.TrustedEpoch()
 		return ErrRetry
 	}
 	// TODO: Update previous entry pointer

@@ -46,14 +46,13 @@ const _ = proto.ProtoPackageIsVersion1
 // EpochHead is the head node of the Merkle Tree as well as additional metadata
 // for the tree.
 type EpochHead struct {
-	// Realm is the domain identifier for the transparent map.
+	// realm is the domain identifier for the transparent map.
 	Realm string `protobuf:"bytes,1,opt,name=realm" json:"realm,omitempty"`
-	// Epoch number
+	// epoch number
 	Epoch int64 `protobuf:"varint,2,opt,name=epoch" json:"epoch,omitempty"`
-	// Root is the value of the root node of the merkle tree.
+	// root is the value of the root node of the merkle tree.
 	Root []byte `protobuf:"bytes,3,opt,name=root,proto3" json:"root,omitempty"`
-	// IssueTime is the time when this epoch was released. All epochs for the
-	// same keyserver MUST have non-decreasing IssueTimes.
+	// issue_time is the time when this epoch was released. Monotonically increasing.
 	IssueTime *security_protobuf.Timestamp `protobuf:"bytes,4,opt,name=issue_time" json:"issue_time,omitempty"`
 }
 
