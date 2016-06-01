@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/e2e-key-server/appender/chain"
+	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -53,6 +53,7 @@ var (
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath       = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
+	mapLogURL     = flag.String("maplog", "http://107.178.246.112", "URL of CT server for Signed Map Heads")
 )
 
 func openDB() *sql.DB {
@@ -120,7 +121,7 @@ func Main() {
 	commitments := commitments.New(sqldb, *mapID)
 	queue := queue.New(etcdCli, *mapID)
 	tree := sqlhist.New(sqldb, *mapID)
-	appender := chain.New()
+	appender := appender.New(sqldb, *mapID, *mapLogURL)
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 

@@ -61,6 +61,25 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 	}
 }
 
+func (s *Server) GetSEH(ctx context.Context, epoch int64) (int64, *ctmap.SignedEpochHead, error) {
+	var data []byte
+	thisEpoch := epoch
+	var err error
+	if epoch == 0 {
+		thisEpoch, data, err = s.appender.Latest(ctx)
+	} else {
+		data, err = s.appender.Epoch(ctx, epoch)
+	}
+	if err != nil {
+		return 0, nil, err
+	}
+	seh := new(ctmap.SignedEpochHead)
+	if err := proto.Unmarshal(data, seh); err != nil {
+		return 0, nil, err
+	}
+	return thisEpoch, seh, nil
+}
+
 // GetEntry returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
@@ -68,26 +87,18 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 	vrf, proof := s.vrf.Evaluate([]byte(in.UserId))
 	index := s.vrf.Index(vrf)
 
-	if in.EpochEnd == 0 {
-		in.EpochEnd = s.appender.Latest(ctx)
-	}
-	data, err := s.appender.GetByIndex(ctx, in.EpochEnd)
-	if err != nil {
-		return nil, err
-	}
-	seh := new(ctmap.SignedEpochHead)
-	err = proto.Unmarshal(data, seh)
+	epoch, seh, err := s.GetSEH(ctx, in.EpochEnd)
 	if err != nil {
 		return nil, err
 	}
 
-	neighbors, err := s.tree.NeighborsAt(ctx, index[:], in.EpochEnd)
+	neighbors, err := s.tree.NeighborsAt(ctx, index[:], epoch)
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeafAt(ctx, index[:], in.EpochEnd)
+	leaf, err := s.tree.ReadLeafAt(ctx, index[:], epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +127,8 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 			LeafData:  leaf,
 			Neighbors: neighbors,
 		},
-		// TODO Append only proof from EpochStart
-		ConsistencyProof: nil,
-		Sth:              &ctmap.GetSTHResponse{seh},
+		Sth: &ctmap.GetSTHResponse{seh},
+		Seh: seh,
 	}, nil
 }
 

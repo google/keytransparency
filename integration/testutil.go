@@ -17,9 +17,11 @@ package integration
 import (
 	"database/sql"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"github.com/google/e2e-key-server/appender/chain"
+	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/keyserver"
@@ -73,17 +75,24 @@ type Env struct {
 	clus       *integration.ClusterV3
 	VrfPriv    vrf.PrivateKey
 	Cli        v2pb.E2EKeyServiceClient
+	mapLog     *httptest.Server
 }
 
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
+	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{"sct_version":0,"id":"KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=","timestamp":1337,"extensions":"","signature":"BAMARjBEAiAIc21J5ZbdKZHw5wLxCP+MhBEsV5+nfvGyakOIv6FOvAIgWYMZb6Pw///uiNM7QTg2Of1OqmK1GbeGuEl9VJN8v8c="}`))
+		if err != nil {
+			return
+		}
+	}))
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
 
 	// Common data structures.
 	queue := queue.New(clus.RandClient(), mapID)
 	tree := sqlhist.New(sqldb, mapID)
-	appender := chain.New()
+	appender := appender.New(sqldb, mapID, hs.URL)
 	vrfPriv, vrfPub := p256.GenerateKey()
 	mutator := entry.New()
 
@@ -107,7 +116,7 @@ func NewEnv(t *testing.T) *Env {
 	client := client.New(cli, vrfPub)
 	client.RetryCount = 0
 
-	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli}
+	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -116,4 +125,5 @@ func (env *Env) Close(t *testing.T) {
 	env.GRPCServer.Stop()
 	env.db.Close()
 	env.clus.Terminate(t)
+	env.mapLog.Close()
 }

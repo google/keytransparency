@@ -18,7 +18,7 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/gdbelvin/certificate-transparency/go/client"
+	"github.com/google/certificate-transparency/go/client"
 	"golang.org/x/net/context"
 )
 
