@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
