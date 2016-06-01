@@ -105,13 +105,10 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 
-	if _, err := s.appender.GetHLast(ctx); err != nil {
-		return err
-	}
 	head := &ctmap.EpochHead{
 		// TODO: set Realm
 		IssueTime: &tspb.Timestamp{timestamp, 0},
-		Epoch:     timestamp,
+		Epoch:     epoch,
 		Root:      root,
 	}
 	headData, err := proto.Marshal(head)
@@ -126,7 +123,7 @@ func (s *Signer) CreateEpoch() error {
 	if err != nil {
 		return err
 	}
-	if err := s.appender.Append(ctx, timestamp, signedEpochHead); err != nil {
+	if err := s.appender.Append(ctx, epoch, signedEpochHead); err != nil {
 		return err
 	}
 	log.Printf("Created epoch %v. STH: %#x", epoch, root)
