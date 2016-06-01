@@ -44,10 +44,14 @@ message GetEntryResponse {
 
   // leaf_proof contains an Entry and a verifiable map inclusion proof 
   security_ctmap.GetLeafResponse leaf_proof = 5;
+  // seh contains the signed epoch head for the sparse merkle tree. 
+  // seh is also stored in the append only log.
+  security_ctmap.SignedEpochHead seh = 6;
+
   // consistency_proof ties the sth to the sth in start.
-  security_ctmap.GetConsistencyProofResponse consistency_proof = 6;
+  security_ctmap.GetConsistencyProofResponse consistency_proof = 7;
   // sth is the latest STH.
-  security_ctmap.GetSTHResponse sth = 7;
+  security_ctmap.GetSTHResponse sth = 8;
 }
 
 // Profile contains data hidden behind the crypto comitment.

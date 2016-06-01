@@ -19,14 +19,13 @@ import (
 )
 
 // Appender is an append only interface into a data structure.
-// TODO: Make generic for CT.
 type Appender interface {
-	// Adds an objec to the append-only data structure.
-	Append(ctx context.Context, timestamp int64, data []byte) error
-	GetByIndex(ctx context.Context, index int64) ([]byte, error)
-	GetByTimeStamp(ctx context.Context, timestamp int64) ([]byte, error)
-	// GetHLast returns the hash of the previous item. Used for forming hash chains.
-	GetHLast(ctx context.Context) ([]byte, error)
-	// Latest returns the index of the current epoch.
-	Latest(ctx context.Context) int64
+	// Adds an object to the append-only data structure.
+	Append(ctx context.Context, epoch int64, data []byte) error
+
+	// Epoch retrieves a specific object.
+	Epoch(ctx context.Context, epoch int64) ([]byte, error)
+
+	// Latest returns the latest object.
+	Latest(ctx context.Context) (int64, []byte, error)
 }
