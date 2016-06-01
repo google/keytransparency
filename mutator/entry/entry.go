@@ -18,8 +18,8 @@ package entry
 import (
 	"log"
 
-	"github.com/google/e2e-key-server/mutator"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/mutator"
 
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
