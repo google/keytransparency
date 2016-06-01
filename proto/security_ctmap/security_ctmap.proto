@@ -22,15 +22,9 @@ import "github.com/google/e2e-key-server/proto/security_protobuf/timestamp.proto
 service VerifiableMapService {
   // GetLeaf retrieves the value stored at a particular index.
   rpc GetLeaf(GetLeafRequest) returns (GetLeafResponse);
-  // GetConsistencyProof returns consistency proof between two epochs. 
-  rpc GetConsistencyProof(GetConsistencyProofRequest) returns (GetConsistencyProofResponse);
-  // GetSTH returns the current signed tree head.
-  rpc GetSTH(GetSTHRequest) returns (GetSTHResponse);
   // UpdateLeaf submits a change to the value at index. Clients retry until
   // change is visble in GetLeafResponse.
   rpc UpdateLeaf(UpdateLeafRequest) returns (GetLeafResponse);
-  //  Mutation list returns the list of mutations and epoch advancements.
-  rpc GetMutations(GetMutationsRequest) returns (GetMutationsResponse);
 }
 
 //
@@ -77,26 +71,6 @@ message GetLeafResponse {
   repeated bytes neighbors = 2;
 }
 
-// GetConsistencyProofRequest for a consistency proof between two epochs.
-message GetConsistencyProofRequest{
-   uint64 first = 1;
-   uint64 second = 2;
-}
-
-// GetConsistencyProofResponse includes enough information to move trust from 
-// epoch first to second.
-message GetConsistencyProofResponse {
-   repeated bytes nodes = 1;
-}
-
-// GetSTHRequest for the current STH.
-message GetSTHRequest {}
-
-// GetSTHResponse returns the current STH.
-message GetSTHResponse {
-   SignedEpochHead sth = 1; 
-}
-
 // UpdateLeafRequest submits a change for the value at index.
 message UpdateLeafRequest {
   bytes index = 1; 
@@ -108,17 +82,10 @@ message UpdateLeafResponse {
   GetLeafResponse proof = 1;
 }
 
-// GetMutationsRequest requests the numbered mutations within a range.
-message GetMutationsRequest {
-  int64 start = 1;
-  int64 page_size = 2;
-}
-
-// GetMutationsResponse contains a list of mutations and epoch advancements.
-message GetMutationsResponse {
+// MutationEntry is either a mutation or an epoch advancement.
+message MutationEntry {
   oneof type {
     UpdateLeafRequest update = 1;
     bool advance_epoch = 2;
   }
-  int64 next = 3;
 }

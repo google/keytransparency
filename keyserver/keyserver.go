@@ -123,11 +123,11 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		VrfProof:      proof,
 		CommitmentKey: commitment.Key,
 		Profile:       commitment.Data,
+		// Leaf proof in sparse merkle tree.
 		LeafProof: &ctmap.GetLeafResponse{
 			LeafData:  leaf,
 			Neighbors: neighbors,
 		},
-		Sth: &ctmap.GetSTHResponse{seh},
 		Seh: seh,
 	}, nil
 }
@@ -174,8 +174,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 
 	// Query for the current epoch.
 	req := &pb.GetEntryRequest{
-		UserId:     in.UserId,
-		EpochStart: in.GetEntryUpdate().EpochStart,
+		UserId: in.UserId,
+		//EpochStart: in.GetEntryUpdate().EpochStart,
 	}
 	resp, err := s.GetEntry(ctx, req)
 	if err != nil {

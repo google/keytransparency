@@ -24,8 +24,11 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"github.com/google/e2e-key-server/vrf"
 
+	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -62,17 +65,19 @@ var (
 type Client struct {
 	cli        v2pb.E2EKeyServiceClient
 	vrf        vrf.PublicKey
-	mapc       *MapClient
 	RetryCount int
+	factory    tree.SparseFactory
+	ctlog      *logclient.LogClient
 }
 
 // New creates a new client.
-func New(client v2pb.E2EKeyServiceClient, vrf vrf.PublicKey) *Client {
+func New(client v2pb.E2EKeyServiceClient, vrf vrf.PublicKey, mapLogURL string) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		mapc:       NewMapClient(),
 		RetryCount: 1,
+		factory:    memtree.NewFactory(),
+		ctlog:      logclient.New(mapLogURL),
 	}
 }
 
@@ -80,14 +85,17 @@ func New(client v2pb.E2EKeyServiceClient, vrf vrf.PublicKey) *Client {
 func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*pb.Profile, error) {
 	// Error, ctx is not being passed
 	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
-		EpochStart: c.mapc.TrustedEpoch(),
-		UserId:     userID,
+		UserId: userID,
 	}, opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	if !c.verifyGetEntryResponse(userID, e) {
+		return nil, errFailedVerification
+	}
+
+	if !c.verifyLog(e.GetSeh()) {
 		return nil, errFailedVerification
 	}
 
@@ -167,7 +175,6 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 			Update:        signedkv,
 			Profile:       profileData,
 			CommitmentKey: key,
-			EpochStart:    c.mapc.TrustedEpoch(),
 		},
 	}
 
@@ -201,7 +208,6 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 		return nil
 	} else {
 		log.Printf("Retry(%v) returned: %v, want %v", req.UserId, got, req.GetEntryUpdate().Profile)
-		req.GetEntryUpdate().EpochStart = c.mapc.TrustedEpoch()
 		return ErrRetry
 	}
 	// TODO: Update previous entry pointer

@@ -33,6 +33,7 @@ message GetEntryResponse {
   // vrf_proof is the proof for VRF on user_id.
   bytes vrf_proof = 2;
 
+  // TODO: Combine into Commitment datatype.
   // commitment_key connects the profile data to the commitment in leaf_proof.
   bytes commitment_key = 3;
   // profile contains the public key data for this account.
@@ -42,16 +43,23 @@ message GetEntryResponse {
   // Verifiable map layer proves that the response is consistent.
   //
 
-  // leaf_proof contains an Entry and a verifiable map inclusion proof 
+  // leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.
   security_ctmap.GetLeafResponse leaf_proof = 5;
   // seh contains the signed epoch head for the sparse merkle tree. 
   // seh is also stored in the append only log.
   security_ctmap.SignedEpochHead seh = 6;
 
-  // consistency_proof ties the sth to the sth in start.
-  security_ctmap.GetConsistencyProofResponse consistency_proof = 7;
-  // sth is the latest STH.
-  security_ctmap.GetSTHResponse sth = 8;
+  //
+  // Append only log layer proves that all account histories are consistent.
+  //
+
+  // Inclusion proof for the signed epoch head at end_epoch in the log of signed epoch heads.
+  //ct.GetEntryAndProofResponse audit_proof = 7;
+  // TODO: Supply GetEntryAndProofRequest data
+  // Latest signed tree head of the log of signed epoch heads.
+  //ct.GetSTHResponse sth = 8;
+  // Consistency proof between epoch_start and the current sth.
+  //ct.GetConsistencyProofResponse consistency_proof = 9;
 }
 
 // Profile contains data hidden behind the crypto comitment.
@@ -110,7 +118,7 @@ message SignedKV {
 // Get request for a user object.
 message GetEntryRequest {
   // Last trusted epoch by the client.
-  int64 epoch_start = 5; 
+  //int64 epoch_start = 3; 
   // Absence of the epoch_end field indicates a request for the current value.
   int64 epoch_end = 1;
   // User identifier. Most commonly an email address.
@@ -143,7 +151,7 @@ message EntryUpdate {
   // commitment_key is 16 random bytes.
   bytes commitment_key = 4;
   // Last trusted epoch by the client.
-  int64 epoch_start = 6; 
+  // int64 epoch_start = 6; 
 }
 
 // Update a user's profile.
