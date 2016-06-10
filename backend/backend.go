@@ -33,12 +33,11 @@ import (
 )
 
 var (
-	serverDBPath   = flag.String("db", "db", "Database connection string")
-	etcdEndpoints  = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
-	epochDuration  = flag.Uint("period", 60, "Seconds between epoch creation")
-	mapID          = flag.String("domain", "example.com", "Distinguished name for this key server")
-	mapLogURL      = flag.String("maplog", "http://107.178.246.112", "URL of CT server for Signed Map Heads")
-	mutationLogURL = flag.String("mutationlog", "http://107.178.246.112", "URL of CT server for mutations")
+	serverDBPath  = flag.String("db", "db", "Database connection string")
+	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
+	epochDuration = flag.Uint("period", 60, "Seconds between epoch creation")
+	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
+	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 )
 
 func openDB() *sql.DB {
