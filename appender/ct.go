@@ -75,6 +75,11 @@ func New(db *sql.DB, mapID, logURL string) *CTAppender {
 		log.Fatalf("Failed to create appender tables: %v", err)
 	}
 	a.insertMapRow()
+
+	// Verify logURL
+	if _, err := a.ctlog.GetSTH(); err != nil {
+		log.Fatalf("Failed to ping CT server with GetSTH: %v", err)
+	}
 	return a
 }
 
