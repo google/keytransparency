@@ -16,6 +16,7 @@ package integration
 
 import (
 	"database/sql"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -40,8 +41,15 @@ import (
 )
 
 const (
-	clusterSize = 1
-	mapID       = "testID"
+	clusterSize      = 1
+	mapID            = "testID"
+	ValidSTHResponse = `{"tree_size":3721782,"timestamp":1396609800587,
+        "sha256_root_hash":"SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo=",
+        "tree_head_signature":"BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="}`
+	ValidSTHResponseTreeSize          = 3721782
+	ValidSTHResponseTimestamp         = 1396609800587
+	ValidSTHResponseSHA256RootHash    = "SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo="
+	ValidSTHResponseTreeHeadSignature = "BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="
 )
 
 func NewDB(t testing.TB) *sql.DB {
@@ -81,11 +89,18 @@ type Env struct {
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`{"sct_version":0,"id":"KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=","timestamp":1337,"extensions":"","signature":"BAMARjBEAiAIc21J5ZbdKZHw5wLxCP+MhBEsV5+nfvGyakOIv6FOvAIgWYMZb6Pw///uiNM7QTg2Of1OqmK1GbeGuEl9VJN8v8c="}`))
-		if err != nil {
+		if r.URL.Path == "/ct/v1/get-sth" {
+			fmt.Fprintf(w, `{"tree_size": %d, "timestamp": %d, "sha256_root_hash": "%s", "tree_head_signature": "%s"}`,
+				ValidSTHResponseTreeSize, int64(ValidSTHResponseTimestamp), ValidSTHResponseSHA256RootHash,
+				ValidSTHResponseTreeHeadSignature)
+			return
+		} else if r.URL.Path == "/ct/v1/add-json" {
+			w.Write([]byte(`{"sct_version":0,"id":"KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=","timestamp":1337,"extensions":"","signature":"BAMARjBEAiAIc21J5ZbdKZHw5wLxCP+MhBEsV5+nfvGyakOIv6FOvAIgWYMZb6Pw///uiNM7QTg2Of1OqmK1GbeGuEl9VJN8v8c="}`))
 			return
 		}
+		t.Fatalf("Incorrect URL path: %s", r.URL.Path)
 	}))
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
 
@@ -113,7 +128,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}
 	cli := v2pb.NewE2EKeyServiceClient(cc)
-	client := client.New(cli, vrfPub)
+	client := client.New(cli, vrfPub, hs.URL)
 	client.RetryCount = 0
 
 	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}

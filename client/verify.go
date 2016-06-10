@@ -15,36 +15,20 @@
 package client
 
 import (
+	"bytes"
 	"log"
 
 	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/vrf"
 
 	"github.com/golang/protobuf/proto"
 
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
-func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) bool {
-	// Verify VRF proof.
-	if !c.vrf.Verify([]byte(userID), in.Vrf, in.VrfProof) {
-		log.Printf("Vrf verification failed.")
-		return false
-	}
-	index := c.vrf.Index(in.Vrf)
-
-	// TODO: Verify STH signatures
-	// TODO: Verify Consistency Proof
-	if !c.mapc.AdvanceSEH(in.GetSth(), in.GetConsistencyProof()) {
-		return false
-	}
-
-	// Verify leaf proof.
-	if !c.mapc.VerifyLeafProof(index[:], in.GetLeafProof()) {
-		log.Printf("Failed verifable map inclusion proof")
-		return false
-	}
-
-	// Verify profile commitment.
+func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
 	if in.Profile != nil {
 		entry := new(pb.Entry)
 		if err := proto.Unmarshal(in.GetLeafProof().LeafData, entry); err != nil {
@@ -57,6 +41,69 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 			return false
 		}
 	}
+	return true
+}
+
+func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]byte, bool) {
+	if !vrf.Verify([]byte(userID), in.Vrf, in.VrfProof) {
+		log.Printf("Vrf verification failed.")
+		return [32]byte{}, false
+	}
+	return vrf.Index(in.Vrf), true
+}
+
+// VerifyLeafProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
+func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse, seh *ctmap.SignedEpochHead, factory tree.SparseFactory) bool {
+	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
+	calculatedRoot, _ := m.ReadRoot(nil)
+	eh, err := EpochHead(seh)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(eh.Root, calculatedRoot)
+}
+
+func VerifySEH(seh *ctmap.SignedEpochHead) bool {
+	// TODO: Verify STH signatures
+	return true
+}
+
+func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) bool {
+	if !VerifyCommitment(userID, in) {
+		return false
+	}
+
+	index, ok := VerifyVRF(userID, in, c.vrf)
+	if !ok {
+		return false
+	}
+
+	if !VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSeh(), c.factory) {
+		return false
+	}
+
+	if !VerifySEH(in.GetSeh()) {
+		return false
+	}
+	return true
+}
+
+// verifyEpoch checks the expected root against the log of signed epoch heads.
+func (c *Client) verifyLog(seh *ctmap.SignedEpochHead) bool {
+	// 1) GetSTH.
+	_, err := c.ctlog.GetSTH()
+	if err != nil {
+		log.Printf("GetSTH(): %v", err)
+		return false
+	}
+	// TODO: Verify STH signatures.
+
+	// 2) TODO: Consistency proof
+	// TODO: Advance trusted STH
+
+	// 3) Inclusion Proof.
+	// TODO: Compute hash from seh
+	// TODO: Lookup by hash
 
 	return true
 }
