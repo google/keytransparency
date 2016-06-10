@@ -101,9 +101,6 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Incorrect URL path: %s", r.URL.Path)
 	}))
 
-	/*
-		hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	*/
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
 
