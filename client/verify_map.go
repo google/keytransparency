@@ -69,12 +69,14 @@ func (mc *MapClient) AdvanceSEH(sehResp *ctmap.GetSTHResponse, proof *ctmap.GetC
 	// TODO: Verify that seh is an append-only update from mc.epochHead
 	// TODO: Verify against monitors
 
-	epochHead := new(ctmap.EpochHead)
-	if err := proto.Unmarshal(sehResp.Sth.EpochHead, epochHead); err != nil {
-		log.Printf("Error unmarshaling EpochHead: %v", err)
-		return false
+	if sehResp != nil {
+		epochHead := new(ctmap.EpochHead)
+		if err := proto.Unmarshal(sehResp.Sth.EpochHead, epochHead); err != nil {
+			log.Printf("Error unmarshaling EpochHead: %v", err)
+			return false
+		}
+		mc.epochHead = epochHead
 	}
-	mc.epochHead = epochHead
 	return true
 }
 
