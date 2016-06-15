@@ -120,6 +120,7 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error
 }
 
 // Epoch retrieves a specific object.
+// Returns data and a serialized ct.SignedCertificateTimestamp
 func (a *CTAppender) Epoch(ctx context.Context, epoch int64) ([]byte, []byte, error) {
 	readStmt, err := a.db.Prepare(readExpr)
 	if err != nil {
@@ -135,6 +136,7 @@ func (a *CTAppender) Epoch(ctx context.Context, epoch int64) ([]byte, []byte, er
 }
 
 // Latest returns the latest object.
+// Returns epoch, data, and a serialized ct.SignedCertificateTimestamp
 func (a *CTAppender) Latest(ctx context.Context) (int64, []byte, []byte, error) {
 	readStmt, err := a.db.Prepare(latestExpr)
 	if err != nil {

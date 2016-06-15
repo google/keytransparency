@@ -28,8 +28,8 @@ import (
 	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"github.com/google/e2e-key-server/vrf"
 
-	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/golang/protobuf/proto"
+	logclient "github.com/google/certificate-transparency/go/client"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -95,8 +95,8 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, errFailedVerification
 	}
 
-	if !c.verifyLog(e.GetSeh(), e.SehSct) {
-		return nil, errFailedVerification
+	if err := c.verifyLog(e.GetSeh(), e.SehSct); err != nil {
+		return nil, err
 	}
 
 	// Empty case.
