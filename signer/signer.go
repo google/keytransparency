@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/mutator"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/tree"
 
 	"github.com/golang/protobuf/proto"
@@ -105,16 +105,11 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 
-	prevHash, err := s.appender.GetHLast(ctx)
-	if err != nil {
-		return err
-	}
 	head := &ctmap.EpochHead{
 		// TODO: set Realm
-		IssueTime:    &tspb.Timestamp{timestamp, 0},
-		PreviousHash: prevHash,
-		Epoch:        timestamp,
-		Root:         root,
+		IssueTime: &tspb.Timestamp{timestamp, 0},
+		Epoch:     epoch,
+		Root:      root,
 	}
 	headData, err := proto.Marshal(head)
 	if err != nil {
@@ -128,7 +123,7 @@ func (s *Signer) CreateEpoch() error {
 	if err != nil {
 		return err
 	}
-	if err := s.appender.Append(ctx, timestamp, signedEpochHead); err != nil {
+	if err := s.appender.Append(ctx, epoch, signedEpochHead); err != nil {
 		return err
 	}
 	log.Printf("Created epoch %v. STH: %#x", epoch, root)

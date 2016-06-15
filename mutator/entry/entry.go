@@ -16,13 +16,12 @@
 package entry
 
 import (
-	"bytes"
+	"log"
 
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	"github.com/google/e2e-key-server/mutator"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 // Replace defines mutations to simply replace the current map value with the
@@ -34,34 +33,53 @@ func New() *Entry {
 }
 
 // CheckMutation verifies that this is a valid mutation for this item.
-func (e *Entry) CheckMutation(value, mutation []byte) error {
-	signedEntryUpdate := &ctmap.SignedEntryUpdate{}
-	if err := proto.Unmarshal(mutation, signedEntryUpdate); err != nil {
-		return grpc.Errorf(codes.Internal, "Cannot unmarshal signedEntryUpdate")
+func (*Entry) CheckMutation(oldValue, mutation []byte) error {
+	update := new(pb.SignedKV)
+	if err := proto.Unmarshal(mutation, update); err != nil {
+		log.Printf("Error unmarshaling update: %v", err)
+		return err
 	}
-	newEntry := &ctmap.Entry{}
-	if err := proto.Unmarshal(signedEntryUpdate.NewEntry, newEntry); err != nil {
-		return grpc.Errorf(codes.Internal, "Cannot unmarshal signedEntryUpdate.Entry")
+
+	kv := new(pb.KeyValue)
+	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
+		log.Printf("Error unmarshaling keyvalue: %v", err)
+		return err
 	}
-	if value != nil {
-		oldEntry := &ctmap.Entry{}
-		if err := proto.Unmarshal(value, oldEntry); err != nil {
-			return grpc.Errorf(codes.Internal, "Cannot unmarshal Entry")
+	entry := new(pb.Entry)
+	if err := proto.Unmarshal(kv.Value, entry); err != nil {
+		log.Printf("Error unmarshaling entry: %v", err)
+		return err
+	}
+	// TODO: Verify pointer to previous data.
+	// TODO: Verify signature from key in entry.
+
+	if oldValue != nil {
+		oldEntry := new(pb.Entry)
+		if err := proto.Unmarshal(oldValue, oldEntry); err != nil {
+			log.Printf("Error unmarshaling old entry: %v", err)
+			return err
 		}
-		if !bytes.Equal(oldEntry.Index, newEntry.Index) {
-			return grpc.Errorf(codes.Internal, "New index=%v, want %v", newEntry.Index, oldEntry.Index)
+		if got, want := entry.UpdateCount, oldEntry.UpdateCount; got <= want {
+			log.Printf("UpdateCount: %v, want > %v", got, want)
+			return mutator.ErrReplay
 		}
-		// TODO: Verify signatures in mutation with the keys in value.
+		// TODO: Verify signature from key in oldEntry.
 	}
 	return nil
 }
 
 // Mutate applies mutation to value
-func (e *Entry) Mutate(value, mutation []byte) ([]byte, error) {
-	signedEntryUpdate := &ctmap.SignedEntryUpdate{}
-	if err := proto.Unmarshal(mutation, signedEntryUpdate); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal signedEntryUpdate")
+func (*Entry) Mutate(value, mutation []byte) ([]byte, error) {
+	update := new(pb.SignedKV)
+	if err := proto.Unmarshal(mutation, update); err != nil {
+		log.Printf("Error unmarshaling update: %v", err)
+		return nil, err
+	}
+	kv := new(pb.KeyValue)
+	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
+		log.Printf("Error unmarshaling keyvalue: %v", err)
+		return nil, err
 	}
 
-	return signedEntryUpdate.NewEntry, nil
+	return kv.Value, nil
 }

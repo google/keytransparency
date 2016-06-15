@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package appender
+package client
 
 import (
-	"golang.org/x/net/context"
+	"log"
+
+	"github.com/golang/protobuf/proto"
+
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
-// Appender is an append only interface into a data structure.
-type Appender interface {
-	// Adds an object to the append-only data structure.
-	Append(ctx context.Context, epoch int64, data []byte) error
-
-	// Epoch retrieves a specific object.
-	Epoch(ctx context.Context, epoch int64) ([]byte, error)
-
-	// Latest returns the latest object.
-	Latest(ctx context.Context) (int64, []byte, error)
+func EpochHead(seh *ctmap.SignedEpochHead) (*ctmap.EpochHead, error) {
+	eh := new(ctmap.EpochHead)
+	if err := proto.Unmarshal(seh.EpochHead, eh); err != nil {
+		log.Printf("Error unmarshaling epoch_head: %v", err)
+		return nil, err
+	}
+	return eh, nil
 }

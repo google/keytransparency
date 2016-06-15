@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/e2e-key-server/appender/chain"
-	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
@@ -37,6 +37,7 @@ var (
 	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
 	epochDuration = flag.Uint("period", 60, "Seconds between epoch creation")
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
+	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 )
 
 func openDB() *sql.DB {
@@ -72,7 +73,7 @@ func main() {
 	queue := queue.New(etcdCli, *mapID)
 	tree := sqlhist.New(sqldb, *mapID)
 	mutator := entry.New()
-	appender := chain.New()
+	appender := appender.New(sqldb, *mapID, *mapLogURL)
 
 	signer := signer.New(queue, tree, mutator, appender)
 	go signer.StartSequencing()

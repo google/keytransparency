@@ -17,6 +17,8 @@ syntax = "proto3";
 package security.e2ekeys.v2;
 
 import "github.com/google/e2e-key-server/proto/security_e2ekeys/e2ekeytypes.proto";
+import "google/api/annotations.proto";
+
 
 // The E2EKeyService API represents a directory of public keys.
 // The API defines the following resource model:
@@ -31,17 +33,27 @@ import "github.com/google/e2e-key-server/proto/security_e2ekeys/e2ekeytypes.prot
 service E2EKeyService {
   // GetEntry returns a user's entry in the Merkle Tree. Entries contain
   // signed commitments to a profile, which is also returned.
-  rpc GetEntry(GetEntryRequest) returns (GetEntryResponse);
+  rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
+    option (google.api.http) = { get: "/v2/users/{user_id}" };
+  }
 
   // ListEntryHistory returns a list of GetEntryRespons covering several epochs.
-  rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse);
+  rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
+    option (google.api.http) = { get: "/v2/users/{user_id}/history" };
+  }
 
   // blocking or polling?
   // UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
   // has been included in an epoch.  Clients must retry until this function
   // returns a proof.
-  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse);
+  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {
+    option (google.api.http) = {
+      put: "/v2/users/{user_id}"
+      body: "entry_update"
+    };
+  }
 
+/*
   // List the Signed Epoch Heads, from epoch to epoch.
   rpc ListSEH(ListSEHRequest) returns (ListSEHResponse);
 
@@ -50,5 +62,5 @@ service E2EKeyService {
 
   // ListSteps combines SEH and EntryUpdates into single list.
   rpc ListSteps(ListStepsRequest) returns (ListStepsResponse);
+*/
 }
-

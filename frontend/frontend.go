@@ -21,106 +21,40 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/google/e2e-key-server/appender/chain"
+	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/proxy"
-	"github.com/google/e2e-key-server/rest"
-	"github.com/google/e2e-key-server/rest/handlers"
+	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 	"github.com/google/e2e-key-server/vrf"
 	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/gengo/grpc-gateway/runtime"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 var (
-	port          = flag.Int("port", 8080, "TCP port to listen on")
+	grpcPort      = flag.Int("port", 8080, "TCP port to listen on")
+	httpPort      = flag.Int("http_port", 8081, "TCP port to listen on")
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath       = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
+	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 )
-
-// v1Routes contains all routes information for v1 APIs.
-// TODO(cesarghali): find a better way to populate this map.
-var v1Routes = []handlers.RouteInfo{
-	// GetEntry API
-	handlers.RouteInfo{
-		fmt.Sprintf("/v1/users/{%v}", handlers.UserIdKeyword),
-		"GET",
-		rest.GetEntryV1_InitializeHandlerInfo,
-		rest.GetEntryV1_RequestHandler,
-	},
-}
-
-// hkpRoutes contains all routes information for HKP APIs.
-// TODO(cesarghali): find a better way to populate this map.
-var hkpRoutes = []handlers.RouteInfo{
-	// HkpLookup API
-	handlers.RouteInfo{
-		"/v1/hkp/lookup",
-		"GET",
-		rest.HkpLookup_InitializeHandlerInfo,
-		rest.HkpLookup_RequestHandler,
-	},
-}
-
-// v2Routes contains all routes information for v2 APIs.
-// TODO(cesarghali): find a better way to populate this map.
-var v2Routes = []handlers.RouteInfo{
-	// GetEntry API
-	handlers.RouteInfo{
-		fmt.Sprintf("/v2/users/{%v}", handlers.UserIdKeyword),
-		"GET",
-		rest.GetEntryV2_InitializeHandlerInfo,
-		rest.GetEntryV2_RequestHandler,
-	},
-	// ListEntryHistory API
-	handlers.RouteInfo{
-		fmt.Sprintf("/v2/users/{%v}/history", handlers.UserIdKeyword),
-		"GET",
-		rest.ListEntryHistoryV2_InitializeHandlerInfo,
-		rest.ListEntryHistoryV2_RequestHandler,
-	},
-	// UpdateEntry API
-	handlers.RouteInfo{
-		fmt.Sprintf("/v2/users/{%v}", handlers.UserIdKeyword),
-		"PUT",
-		rest.UpdateEntryV2_InitializeHandlerInfo,
-		rest.UpdateEntryV2_RequestHandler,
-	},
-	// ListSEH API
-	handlers.RouteInfo{
-		"/v2/seh",
-		"GET",
-		rest.ListSEHV2_InitializeHandlerInfo,
-		rest.ListSEHV2_RequestHandler,
-	},
-	// ListUpdate API
-	handlers.RouteInfo{
-		"/v2/update",
-		"GET",
-		rest.ListUpdateV2_InitializeHandlerInfo,
-		rest.ListUpdateV2_RequestHandler,
-	},
-	// ListSteps API
-	handlers.RouteInfo{
-		"/v2/step",
-		"GET",
-		rest.ListStepsV2_InitializeHandlerInfo,
-		rest.ListStepsV2_RequestHandler,
-	},
-}
 
 func openDB() *sql.DB {
 	db, err := sql.Open("sqlite3", *serverDBPath)
@@ -156,14 +90,28 @@ func openVRFKey() vrf.PrivateKey {
 	return vrfPriv
 }
 
+func runRestProxy(grpcPort, httpPort int) error {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	grpcEndpoint := fmt.Sprintf("localhost:%d", grpcPort)
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+	if err := v1pb.RegisterE2EKeyProxyHandlerFromEndpoint(ctx, mux, grpcEndpoint, opts); err != nil {
+		return err
+	}
+	if err := v2pb.RegisterE2EKeyServiceHandlerFromEndpoint(ctx, mux, grpcEndpoint, opts); err != nil {
+		return err
+	}
+
+	log.Printf("http proxy server listening on port %v", httpPort)
+	http.ListenAndServe(fmt.Sprintf(":%d", httpPort), mux)
+	return nil
+}
+
 func Main() {
 	flag.Parse()
-
-	// TODO: fetch private TLS key from repository.
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
 
 	sqldb := openDB()
 	defer sqldb.Close()
@@ -173,29 +121,24 @@ func Main() {
 	commitments := commitments.New(sqldb, *mapID)
 	queue := queue.New(etcdCli, *mapID)
 	tree := sqlhist.New(sqldb, *mapID)
-	appender := chain.New()
+	appender := appender.New(sqldb, *mapID, *mapLogURL)
 	vrfPriv := openVRFKey()
+	mutator := entry.New()
 
-	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv)
+	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator)
 	v1 := proxy.New(v2)
-	s := rest.New(v1, *realm)
 
-	// Manually add routing paths for v1 APIs.
-	// TODO: Auto derive from proto.
-	for _, v := range v1Routes {
-		s.AddHandler(v, v1pb.HandlerV1, v1)
-	}
-	// Manually add routing paths for HKP APIs.
-	// TODO: Auto derive from proto.
-	for _, v := range hkpRoutes {
-		s.AddHandler(v, v1pb.HandlerHkp, v1)
-	}
-	// Manually add routing paths for v2 APIs.
-	// TODO: Auto derive from proto.
-	for _, v := range v2Routes {
-		s.AddHandler(v, v2pb.HandlerV2, v2)
-	}
+	grpcServer := grpc.NewServer()
+	v2pb.RegisterE2EKeyServiceServer(grpcServer, v2)
+	v1pb.RegisterE2EKeyProxyServer(grpcServer, v1)
 
-	log.Printf("Listening on port %v", *port)
-	s.Serve(lis)
+	// TODO: fetch private TLS key from repository.
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpcPort))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	log.Printf("gRPC server listening on port %v", *grpcPort)
+	go grpcServer.Serve(lis)
+
+	log.Fatal("Server exiting with: %v", runRestProxy(*grpcPort, *httpPort))
 }

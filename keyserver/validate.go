@@ -18,16 +18,18 @@ package keyserver
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"log"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/commitments"
-	"golang.org/x/net/context"
+	"github.com/google/e2e-key-server/vrf"
+
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
@@ -38,14 +40,16 @@ const (
 	MinNonceLen   = 16
 )
 
-var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
+var (
+	errNoAppID = errors.New("Missing AppID")
+)
 
 // validateKey verifies:
 // - appID is present.
 // - Key is valid for its format.
-func (s *Server) validateKey(userID, appID string, key []byte) error {
+func validateKey(userID, appID string, key []byte) error {
 	if appID == "" {
-		return grpc.Errorf(codes.InvalidArgument, "Missing AppId")
+		return errNoAppID
 	}
 	if appID == PGPAppID {
 		pgpUserID := fmt.Sprintf("<%v>", userID)
@@ -59,46 +63,48 @@ func (s *Server) validateKey(userID, appID string, key []byte) error {
 // validateUpdateEntryRequest verifies
 // - Commitment in SignedEntryUpdate maches the serialized profile.
 // - Profile is a valid.
-func (s *Server) validateUpdateEntryRequest(ctx context.Context, in *pb.UpdateEntryRequest) error {
-
-	// Verify that the signed_update is a commitment to the profile.
-	entry := new(ctmap.Entry)
-	if err := proto.Unmarshal(in.GetSignedEntryUpdate().NewEntry, entry); err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal entry")
+func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
+	// Unmarshal entry.
+	kv := new(pb.KeyValue)
+	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
+		log.Printf("Error unmarshaling keyvalue: %v", err)
+		return err
 	}
-	// Verify Entry
-	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
-	index := s.vrf.Index(vrf)
+	entry := new(pb.Entry)
+	if err := proto.Unmarshal(kv.Value, entry); err != nil {
+		log.Printf("Error unmarshaling entry: %v", err)
+		return err
+	}
 
-	if got, want := entry.Index, index[:]; !bytes.Equal(got, want) {
+	// Verify Index / VRF
+	v, _ := vrfPriv.Evaluate([]byte(in.UserId))
+	index := vrfPriv.Index(v)
+	if got, want := kv.Key, index[:]; !bytes.Equal(got, want) {
 		return grpc.Errorf(codes.InvalidArgument, "entry.Index=%v, want %v", got, want)
 	}
 
-	// Unmarshal and validte user's profile.
+	// Verify correct commitment to profile.
 	p := new(pb.Profile)
-	if err := proto.Unmarshal(in.Profile, p); err != nil {
+	if err := proto.Unmarshal(in.GetEntryUpdate().Profile, p); err != nil {
 		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
 	}
-	// Verify nonce length.
-	if got, want := len(in.CommitmentKey), MinNonceLen; got < want {
-		return grpc.Errorf(codes.InvalidArgument, "len(Nonce) = %v, want >= %v", got, want)
+	if got, want := len(in.GetEntryUpdate().CommitmentKey), MinNonceLen; got < want {
+		return grpc.Errorf(codes.InvalidArgument, "len(CommitmentKey) = %v, want >= %v", got, want)
 	}
-
-	// Verify profile nonce.
-	if err := commitments.VerifyName(in.UserId, in.CommitmentKey, in.Profile, entry.ProfileCommitment); err != nil {
+	if err := commitments.VerifyName(in.UserId, in.GetEntryUpdate().CommitmentKey, in.GetEntryUpdate().Profile, entry.Commitment); err != nil {
 		return err
 	}
 
 	// Validate the profile.
-	if err := s.validateProfile(p, in.UserId); err != nil {
+	if err := validateProfile(p, in.UserId); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Server) validateProfile(p *pb.Profile, userID string) error {
+func validateProfile(p *pb.Profile, userID string) error {
 	for appID, key := range p.GetKeys() {
-		if err := s.validateKey(userID, appID, key); err != nil {
+		if err := validateKey(userID, appID, key); err != nil {
 			return err
 		}
 	}

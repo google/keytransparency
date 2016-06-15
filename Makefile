@@ -35,10 +35,12 @@ PROTOINCLUDE ?= /usr/local/include
 #include $(GOHOME)/src/pkg/github.com/golang/protobuf/Make.protobuf
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 OUTPUT:= $(GOPATH)/src
-FLAGS+= --go_out=plugins=grpc
+GRPC_FLAGS+= --go_out=Mgoogle/api/annotations.proto=github.com/gengo/grpc-gateway/third_party/googleapis/google/api,plugins=grpc
+GATEWAY_FLAGS+= --grpc-gateway_out=logtostderr=true
 INCLUDES+= -I=.
 INCLUDES+= -I=$(GOPATH)/src/
 INCLUDES+= -I=$(PROTOINCLUDE)
+INCLUDES+= -I=$(GOPATH)/src/github.com/gengo/grpc-gateway/third_party/googleapis 
 
 
 main: proto
@@ -58,11 +60,13 @@ fmt:
 proto: $(DEPS)
 
 ./%.pb.go:  %.proto
-	protoc $(INCLUDES) $(FLAGS),:. $(dir $<)*.proto
+	protoc $(INCLUDES) $(GRPC_FLAGS):. $(dir $<)*.proto
+	protoc $(INCLUDES) $(GATEWAY_FLAGS):. $(dir $<)*.proto
 
 clean:
 	rm -f $(DEPS)
-	rm -f srv e2e-key-server e2e-key-signer
+	rm -f srv e2e-key-server e2e-key-signer vrfkeygen 
 	rm -rf infra*
 	rm -f tree-db.sqlite3
+	rm -f public_vrf_key.dat private_vrf_key.dat 
 

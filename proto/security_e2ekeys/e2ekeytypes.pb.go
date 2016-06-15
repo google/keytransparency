@@ -11,18 +11,16 @@ It is generated from these files:
 It has these top-level messages:
 	GetEntryResponse
 	Profile
+	Entry
 	PublicKey
+	KeyValue
+	SignedKV
 	GetEntryRequest
 	ListEntryHistoryRequest
 	ListEntryHistoryResponse
+	EntryUpdate
 	UpdateEntryRequest
 	UpdateEntryResponse
-	ListSEHRequest
-	ListSEHResponse
-	ListUpdateRequest
-	ListUpdateResponse
-	ListStepsRequest
-	ListStepsResponse
 */
 package security_e2ekeys
 
@@ -40,27 +38,22 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 const _ = proto.ProtoPackageIsVersion1
 
+// GetEntryResponse
 type GetEntryResponse struct {
-	// UserId supports sending this as a complete proof to a third party.
-	UserId string `protobuf:"bytes,1,opt,name=user_id" json:"user_id,omitempty"`
-	// VrfProof is the proof for VRF on user_id.
+	// vrf is the output of VRF on user_id.
+	Vrf []byte `protobuf:"bytes,1,opt,name=vrf,proto3" json:"vrf,omitempty"`
+	// vrf_proof is the proof for VRF on user_id.
 	VrfProof []byte `protobuf:"bytes,2,opt,name=vrf_proof,proto3" json:"vrf_proof,omitempty"`
-	// Vrf is the output of VRF on user_id.
-	Vrf []byte `protobuf:"bytes,3,opt,name=vrf,proto3" json:"vrf,omitempty"`
-	// The signed epoch head.  A server may choose to return multiple signatures
-	// of the same head for the same epoch. A client MUST NOT consider the
-	// presence of surplus or invalid epoch heads in this field an error.
-	SignedEpochHeads []*security_ctmap.SignedEpochHead `protobuf:"bytes,4,rep,name=signed_epoch_heads" json:"signed_epoch_heads,omitempty"`
-	// MerkleTreeNeighbors is a list of all the adjacent nodes along the path
-	// from the bottommost node to the head.
-	MerkleTreeNeighbors [][]byte `protobuf:"bytes,5,rep,name=merkle_tree_neighbors,proto3" json:"merkle_tree_neighbors,omitempty"`
-	// Entry contains the public portion of the user's data, and a comitment to
-	// profile.
-	Entry *security_ctmap.Entry `protobuf:"bytes,6,opt,name=entry" json:"entry,omitempty"`
-	// Profile contains the user's keys.
-	Profile []byte `protobuf:"bytes,7,opt,name=profile,proto3" json:"profile,omitempty"`
-	// CommitmentKey is 16 random bytes.
-	CommitmentKey []byte `protobuf:"bytes,8,opt,name=commitment_key,proto3" json:"commitment_key,omitempty"`
+	// TODO: Combine into Commitment datatype.
+	// commitment_key connects the profile data to the commitment in leaf_proof.
+	CommitmentKey []byte `protobuf:"bytes,3,opt,name=commitment_key,proto3" json:"commitment_key,omitempty"`
+	// profile contains the public key data for this account.
+	Profile []byte `protobuf:"bytes,4,opt,name=profile,proto3" json:"profile,omitempty"`
+	// leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.
+	LeafProof *security_ctmap.GetLeafResponse `protobuf:"bytes,5,opt,name=leaf_proof" json:"leaf_proof,omitempty"`
+	// seh contains the signed epoch head for the sparse merkle tree.
+	// seh is also stored in the append only log.
+	Seh *security_ctmap.SignedEpochHead `protobuf:"bytes,6,opt,name=seh" json:"seh,omitempty"`
 }
 
 func (m *GetEntryResponse) Reset()                    { *m = GetEntryResponse{} }
@@ -68,16 +61,16 @@ func (m *GetEntryResponse) String() string            { return proto.CompactText
 func (*GetEntryResponse) ProtoMessage()               {}
 func (*GetEntryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-func (m *GetEntryResponse) GetSignedEpochHeads() []*security_ctmap.SignedEpochHead {
+func (m *GetEntryResponse) GetLeafProof() *security_ctmap.GetLeafResponse {
 	if m != nil {
-		return m.SignedEpochHeads
+		return m.LeafProof
 	}
 	return nil
 }
 
-func (m *GetEntryResponse) GetEntry() *security_ctmap.Entry {
+func (m *GetEntryResponse) GetSeh() *security_ctmap.SignedEpochHead {
 	if m != nil {
-		return m.Entry
+		return m.Seh
 	}
 	return nil
 }
@@ -100,6 +93,29 @@ func (m *Profile) GetKeys() map[string][]byte {
 	return nil
 }
 
+// Entry contains a commitment to profile and a set of authorized update keys.
+// Entry is placed in the verifiable map as leaf data.
+type Entry struct {
+	// commitment is a cryptographic commitment to arbitrary data.
+	Commitment []byte `protobuf:"bytes,1,opt,name=commitment,proto3" json:"commitment,omitempty"`
+	// authorized_keys is the set of keys allowed to sign updates for this entry.
+	AuthorizedKeys []*PublicKey `protobuf:"bytes,2,rep,name=authorized_keys" json:"authorized_keys,omitempty"`
+	// update_count prevents replay attacks. Monotonically increasing.
+	UpdateCount uint64 `protobuf:"varint,3,opt,name=update_count" json:"update_count,omitempty"`
+}
+
+func (m *Entry) Reset()                    { *m = Entry{} }
+func (m *Entry) String() string            { return proto.CompactTextString(m) }
+func (*Entry) ProtoMessage()               {}
+func (*Entry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *Entry) GetAuthorizedKeys() []*PublicKey {
+	if m != nil {
+		return m.AuthorizedKeys
+	}
+	return nil
+}
+
 // PublicKey defines a key this domain uses to sign EpochHeads with.
 type PublicKey struct {
 	// KeyFormats from Keyczar.
@@ -114,7 +130,7 @@ type PublicKey struct {
 func (m *PublicKey) Reset()                    { *m = PublicKey{} }
 func (m *PublicKey) String() string            { return proto.CompactTextString(m) }
 func (*PublicKey) ProtoMessage()               {}
-func (*PublicKey) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*PublicKey) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 type isPublicKey_KeyType interface {
 	isPublicKey_KeyType()
@@ -243,24 +259,53 @@ func _PublicKey_OneofSizer(msg proto.Message) (n int) {
 	return n
 }
 
+// KeyValue is a map entry.
+type KeyValue struct {
+	Key   []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *KeyValue) Reset()                    { *m = KeyValue{} }
+func (m *KeyValue) String() string            { return proto.CompactTextString(m) }
+func (*KeyValue) ProtoMessage()               {}
+func (*KeyValue) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+
+// SignedKV is a signed change to a map entry.
+type SignedKV struct {
+	// keyvalue is a serialized KeyValue.
+	KeyValue []byte `protobuf:"bytes,1,opt,name=key_value,proto3" json:"key_value,omitempty"`
+	// signatures on keyvalue. Must be signed by keys from both previous and
+	// current epochs. The first proves ownership of new epoch key, and the
+	// second proves the the correct owner is making this change.
+	Signatures map[uint64][]byte `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *SignedKV) Reset()                    { *m = SignedKV{} }
+func (m *SignedKV) String() string            { return proto.CompactTextString(m) }
+func (*SignedKV) ProtoMessage()               {}
+func (*SignedKV) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *SignedKV) GetSignatures() map[uint64][]byte {
+	if m != nil {
+		return m.Signatures
+	}
+	return nil
+}
+
 // Get request for a user object.
 type GetEntryRequest struct {
-	// Absence of the time field indicates a request for the current value.
-	Epoch int64 `protobuf:"varint,1,opt,name=epoch" json:"epoch,omitempty"`
+	// Last trusted epoch by the client.
+	// int64 epoch_start = 3;
+	// Absence of the epoch_end field indicates a request for the current value.
+	EpochEnd int64 `protobuf:"varint,1,opt,name=epoch_end" json:"epoch_end,omitempty"`
 	// User identifier. Most commonly an email address.
 	UserId string `protobuf:"bytes,2,opt,name=user_id" json:"user_id,omitempty"`
-	// TODO(cesarghali): implement app_id filtering.
-	// Only return the keys belonging to this app.
-	AppId string `protobuf:"bytes,3,opt,name=app_id" json:"app_id,omitempty"`
-	// TODO: implement key_hash filtering.
-	// Only return SEH's that are signed by these keys.
-	TrustedKeys []uint64 `protobuf:"fixed64,4,rep,name=trusted_keys" json:"trusted_keys,omitempty"`
 }
 
 func (m *GetEntryRequest) Reset()                    { *m = GetEntryRequest{} }
 func (m *GetEntryRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetEntryRequest) ProtoMessage()               {}
-func (*GetEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*GetEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 // Get a list of historical values for a user.
 type ListEntryHistoryRequest struct {
@@ -275,7 +320,7 @@ type ListEntryHistoryRequest struct {
 func (m *ListEntryHistoryRequest) Reset()                    { *m = ListEntryHistoryRequest{} }
 func (m *ListEntryHistoryRequest) String() string            { return proto.CompactTextString(m) }
 func (*ListEntryHistoryRequest) ProtoMessage()               {}
-func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 // A paginated history of values for a user.
 type ListEntryHistoryResponse struct {
@@ -288,7 +333,7 @@ type ListEntryHistoryResponse struct {
 func (m *ListEntryHistoryResponse) Reset()                    { *m = ListEntryHistoryResponse{} }
 func (m *ListEntryHistoryResponse) String() string            { return proto.CompactTextString(m) }
 func (*ListEntryHistoryResponse) ProtoMessage()               {}
-func (*ListEntryHistoryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*ListEntryHistoryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *ListEntryHistoryResponse) GetValues() []*GetEntryResponse {
 	if m != nil {
@@ -297,33 +342,42 @@ func (m *ListEntryHistoryResponse) GetValues() []*GetEntryResponse {
 	return nil
 }
 
+type EntryUpdate struct {
+	// update authorizes the change to profile.
+	Update *SignedKV `protobuf:"bytes,2,opt,name=update" json:"update,omitempty"`
+	// profile is the serialized protobuf Profile.
+	Profile []byte `protobuf:"bytes,3,opt,name=profile,proto3" json:"profile,omitempty"`
+	// commitment_key is 16 random bytes.
+	CommitmentKey []byte `protobuf:"bytes,4,opt,name=commitment_key,proto3" json:"commitment_key,omitempty"`
+}
+
+func (m *EntryUpdate) Reset()                    { *m = EntryUpdate{} }
+func (m *EntryUpdate) String() string            { return proto.CompactTextString(m) }
+func (*EntryUpdate) ProtoMessage()               {}
+func (*EntryUpdate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+
+func (m *EntryUpdate) GetUpdate() *SignedKV {
+	if m != nil {
+		return m.Update
+	}
+	return nil
+}
+
 // Update a user's profile.
 type UpdateEntryRequest struct {
-	// UserID specifies the id for the new account to be registered.
-	UserId string `protobuf:"bytes,1,opt,name=user_id" json:"user_id,omitempty"`
-	// SignedEntryUpdate authorizes the change to profile.
-	SignedEntryUpdate *security_ctmap.SignedEntryUpdate `protobuf:"bytes,2,opt,name=signed_entry_update" json:"signed_entry_update,omitempty"`
-	// Profile is the serialized protobuf Profile.
-	// Profile is private and must not be released to verifiers.
-	Profile []byte `protobuf:"bytes,3,opt,name=profile,proto3" json:"profile,omitempty"`
-	// CommitmentKey is 16 random bytes.
-	CommitmentKey []byte `protobuf:"bytes,4,opt,name=commitment_key,proto3" json:"commitment_key,omitempty"`
-	// TODO: Provide a way for clients to specify a quorum of signatures to wait
-	// on before returning.
-	NotUsed []uint64 `protobuf:"fixed64,5,rep,name=not_used" json:"not_used,omitempty"`
-	// DkimProof is used to vouch for the validity of a new registration.
-	// Used when OAuth is not used.
-	DkimProof []byte `protobuf:"bytes,1001,opt,name=dkim_proof,proto3" json:"dkim_proof,omitempty"`
+	// user_id specifies the id for the new account to be registered.
+	UserId      string       `protobuf:"bytes,1,opt,name=user_id" json:"user_id,omitempty"`
+	EntryUpdate *EntryUpdate `protobuf:"bytes,2,opt,name=entry_update" json:"entry_update,omitempty"`
 }
 
 func (m *UpdateEntryRequest) Reset()                    { *m = UpdateEntryRequest{} }
 func (m *UpdateEntryRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateEntryRequest) ProtoMessage()               {}
-func (*UpdateEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*UpdateEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
-func (m *UpdateEntryRequest) GetSignedEntryUpdate() *security_ctmap.SignedEntryUpdate {
+func (m *UpdateEntryRequest) GetEntryUpdate() *EntryUpdate {
 	if m != nil {
-		return m.SignedEntryUpdate
+		return m.EntryUpdate
 	}
 	return nil
 }
@@ -337,7 +391,7 @@ type UpdateEntryResponse struct {
 func (m *UpdateEntryResponse) Reset()                    { *m = UpdateEntryResponse{} }
 func (m *UpdateEntryResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateEntryResponse) ProtoMessage()               {}
-func (*UpdateEntryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*UpdateEntryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 func (m *UpdateEntryResponse) GetProof() *GetEntryResponse {
 	if m != nil {
@@ -346,146 +400,62 @@ func (m *UpdateEntryResponse) GetProof() *GetEntryResponse {
 	return nil
 }
 
-type ListSEHRequest struct {
-	// from_epoch is the starting epcoh.
-	StartEpoch int64 `protobuf:"varint,1,opt,name=start_epoch" json:"start_epoch,omitempty"`
-	// The maximum number of entries to return.
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size" json:"page_size,omitempty"`
-}
-
-func (m *ListSEHRequest) Reset()                    { *m = ListSEHRequest{} }
-func (m *ListSEHRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListSEHRequest) ProtoMessage()               {}
-func (*ListSEHRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
-
-type ListSEHResponse struct {
-	Heads []*security_ctmap.SignedEpochHead `protobuf:"bytes,1,rep,name=heads" json:"heads,omitempty"`
-}
-
-func (m *ListSEHResponse) Reset()                    { *m = ListSEHResponse{} }
-func (m *ListSEHResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListSEHResponse) ProtoMessage()               {}
-func (*ListSEHResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
-
-func (m *ListSEHResponse) GetHeads() []*security_ctmap.SignedEpochHead {
-	if m != nil {
-		return m.Heads
-	}
-	return nil
-}
-
-type ListUpdateRequest struct {
-	// start_commitment_timestamp is the starting commitment timestamp.
-	StartCommitmentTimestamp int64 `protobuf:"varint,1,opt,name=start_commitment_timestamp" json:"start_commitment_timestamp,omitempty"`
-	// The maximum number of entries to return.
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size" json:"page_size,omitempty"`
-}
-
-func (m *ListUpdateRequest) Reset()                    { *m = ListUpdateRequest{} }
-func (m *ListUpdateRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListUpdateRequest) ProtoMessage()               {}
-func (*ListUpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
-
-type ListUpdateResponse struct {
-	// updates contains a serialized SignedEntryUpdate.
-	Updates [][]byte `protobuf:"bytes,1,rep,name=updates,proto3" json:"updates,omitempty"`
-}
-
-func (m *ListUpdateResponse) Reset()                    { *m = ListUpdateResponse{} }
-func (m *ListUpdateResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListUpdateResponse) ProtoMessage()               {}
-func (*ListUpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
-
-type ListStepsRequest struct {
-	// start_commitment_timestamp is the starting commitment timestamp.
-	StartCommitmentTimestamp int64 `protobuf:"varint,1,opt,name=start_commitment_timestamp" json:"start_commitment_timestamp,omitempty"`
-	// The maximum number of entries to return.
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size" json:"page_size,omitempty"`
-}
-
-func (m *ListStepsRequest) Reset()                    { *m = ListStepsRequest{} }
-func (m *ListStepsRequest) String() string            { return proto.CompactTextString(m) }
-func (*ListStepsRequest) ProtoMessage()               {}
-func (*ListStepsRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
-
-type ListStepsResponse struct {
-	Steps []*security_ctmap.Step `protobuf:"bytes,1,rep,name=steps" json:"steps,omitempty"`
-}
-
-func (m *ListStepsResponse) Reset()                    { *m = ListStepsResponse{} }
-func (m *ListStepsResponse) String() string            { return proto.CompactTextString(m) }
-func (*ListStepsResponse) ProtoMessage()               {}
-func (*ListStepsResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
-
-func (m *ListStepsResponse) GetSteps() []*security_ctmap.Step {
-	if m != nil {
-		return m.Steps
-	}
-	return nil
-}
-
 func init() {
 	proto.RegisterType((*GetEntryResponse)(nil), "security.e2ekeys.GetEntryResponse")
 	proto.RegisterType((*Profile)(nil), "security.e2ekeys.Profile")
+	proto.RegisterType((*Entry)(nil), "security.e2ekeys.Entry")
 	proto.RegisterType((*PublicKey)(nil), "security.e2ekeys.PublicKey")
+	proto.RegisterType((*KeyValue)(nil), "security.e2ekeys.KeyValue")
+	proto.RegisterType((*SignedKV)(nil), "security.e2ekeys.SignedKV")
 	proto.RegisterType((*GetEntryRequest)(nil), "security.e2ekeys.GetEntryRequest")
 	proto.RegisterType((*ListEntryHistoryRequest)(nil), "security.e2ekeys.ListEntryHistoryRequest")
 	proto.RegisterType((*ListEntryHistoryResponse)(nil), "security.e2ekeys.ListEntryHistoryResponse")
+	proto.RegisterType((*EntryUpdate)(nil), "security.e2ekeys.EntryUpdate")
 	proto.RegisterType((*UpdateEntryRequest)(nil), "security.e2ekeys.UpdateEntryRequest")
 	proto.RegisterType((*UpdateEntryResponse)(nil), "security.e2ekeys.UpdateEntryResponse")
-	proto.RegisterType((*ListSEHRequest)(nil), "security.e2ekeys.ListSEHRequest")
-	proto.RegisterType((*ListSEHResponse)(nil), "security.e2ekeys.ListSEHResponse")
-	proto.RegisterType((*ListUpdateRequest)(nil), "security.e2ekeys.ListUpdateRequest")
-	proto.RegisterType((*ListUpdateResponse)(nil), "security.e2ekeys.ListUpdateResponse")
-	proto.RegisterType((*ListStepsRequest)(nil), "security.e2ekeys.ListStepsRequest")
-	proto.RegisterType((*ListStepsResponse)(nil), "security.e2ekeys.ListStepsResponse")
 }
 
 var fileDescriptor0 = []byte{
-	// 706 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xa4, 0x54, 0xdd, 0x6e, 0xd3, 0x4c,
-	0x10, 0xad, 0xe3, 0x3a, 0x69, 0x26, 0xf9, 0xda, 0xd4, 0x6d, 0x3f, 0x4c, 0x25, 0xa0, 0xb8, 0x20,
-	0x55, 0x42, 0x75, 0xa8, 0xa1, 0x28, 0x80, 0x04, 0x02, 0xa9, 0x22, 0xfc, 0x5c, 0x54, 0xad, 0x10,
-	0x97, 0x2b, 0x27, 0x9e, 0x38, 0xab, 0xc6, 0x3f, 0x78, 0xd7, 0x15, 0xe1, 0xbd, 0x78, 0x28, 0x6e,
-	0x78, 0x06, 0xf6, 0xc7, 0x69, 0x93, 0x58, 0x95, 0x2a, 0x71, 0x51, 0x35, 0x3b, 0x3e, 0x33, 0xe7,
-	0xec, 0x99, 0x63, 0xc3, 0x41, 0x96, 0xa7, 0x3c, 0xed, 0x32, 0x1c, 0x16, 0x39, 0xe5, 0x53, 0x82,
-	0x3e, 0x5e, 0xe0, 0x94, 0x75, 0xf5, 0x7f, 0x3e, 0xcd, 0x90, 0x79, 0x0a, 0x62, 0x77, 0x66, 0x18,
-	0xaf, 0xc4, 0xec, 0xbe, 0x8d, 0x28, 0x1f, 0x17, 0x03, 0x6f, 0x98, 0xc6, 0xdd, 0x28, 0x4d, 0xa3,
-	0x09, 0xca, 0xb6, 0x43, 0xf1, 0xec, 0x90, 0x61, 0x7e, 0x89, 0x79, 0x77, 0x69, 0xf8, 0x90, 0xc7,
-	0x41, 0xd6, 0x15, 0x7f, 0x7a, 0xa4, 0xfb, 0xc7, 0x80, 0xce, 0x07, 0xe4, 0x27, 0x09, 0xcf, 0xa7,
-	0x67, 0xc8, 0xb2, 0x34, 0x61, 0x68, 0x6f, 0x40, 0xa3, 0x10, 0xed, 0x84, 0x86, 0x8e, 0xb1, 0x67,
-	0x1c, 0x34, 0xed, 0x4d, 0x68, 0x5e, 0xe6, 0x23, 0x22, 0x5a, 0xd2, 0x91, 0x53, 0x13, 0xa5, 0xb6,
-	0xdd, 0x02, 0x53, 0x94, 0x1c, 0x53, 0x1d, 0x5e, 0x83, 0xcd, 0x68, 0x94, 0x60, 0x48, 0x30, 0x4b,
-	0x87, 0x63, 0x32, 0xc6, 0x20, 0x64, 0xce, 0xea, 0x9e, 0x79, 0xd0, 0xf2, 0x1f, 0x78, 0x8b, 0xe4,
-	0xde, 0xb9, 0x42, 0x9e, 0x48, 0x60, 0x5f, 0xe0, 0xec, 0x7b, 0xb0, 0x13, 0x63, 0x7e, 0x31, 0x41,
-	0xc2, 0x73, 0x44, 0x92, 0x20, 0x8d, 0xc6, 0x83, 0x34, 0x67, 0x8e, 0x25, 0xfa, 0xdb, 0xf6, 0x23,
-	0xb0, 0x50, 0xaa, 0x73, 0xea, 0x82, 0xaa, 0xe5, 0xef, 0x2c, 0x8f, 0x53, 0xd2, 0xa5, 0x64, 0xa1,
-	0x6e, 0x44, 0x27, 0xe8, 0x34, 0x94, 0xa4, 0xff, 0x61, 0x5d, 0x98, 0x12, 0x53, 0x1e, 0x8b, 0x6e,
-	0x22, 0x0c, 0x71, 0xd6, 0x64, 0xdd, 0xa5, 0xd0, 0x38, 0xd5, 0x40, 0xfb, 0x08, 0x56, 0xa5, 0x89,
-	0xe2, 0x8e, 0x52, 0xe7, 0xbe, 0xb7, 0xec, 0xae, 0x57, 0x02, 0xbd, 0xcf, 0xe2, 0xa0, 0x68, 0x76,
-	0x9f, 0x40, 0xf3, 0xea, 0x20, 0x2d, 0x90, 0x73, 0xb5, 0x45, 0xff, 0x81, 0x75, 0x19, 0x4c, 0x0a,
-	0xd4, 0xf6, 0xbc, 0xaa, 0xf5, 0x0c, 0x37, 0x85, 0xe6, 0x69, 0x31, 0x98, 0xd0, 0xa1, 0x68, 0x11,
-	0x16, 0x36, 0x30, 0xf4, 0x8f, 0x8f, 0x8f, 0x5e, 0xaa, 0x86, 0x76, 0x7f, 0xc5, 0xde, 0x87, 0xbb,
-	0x39, 0x0b, 0x88, 0xd8, 0x12, 0x1d, 0x4d, 0x69, 0x12, 0x11, 0x36, 0x0e, 0xfc, 0xe3, 0x17, 0xc4,
-	0x7f, 0xfa, 0xbc, 0xa7, 0xc7, 0x08, 0xd0, 0x7d, 0xd8, 0xc6, 0x61, 0xb8, 0x00, 0xcb, 0x04, 0x48,
-	0x1b, 0xdf, 0x5f, 0x79, 0x0f, 0xb0, 0x26, 0x44, 0x10, 0x19, 0x13, 0xf7, 0x1b, 0x6c, 0x5c, 0xef,
-	0xf2, 0x7b, 0x81, 0x8c, 0x4b, 0x59, 0x6a, 0x25, 0x8a, 0xd4, 0x9c, 0xdf, 0x6c, 0x4d, 0xc9, 0x5e,
-	0x87, 0x7a, 0x90, 0x65, 0xf2, 0x6c, 0xaa, 0xf3, 0x36, 0xb4, 0x79, 0x5e, 0x30, 0x2e, 0x56, 0xa9,
-	0xbc, 0x91, 0x3b, 0xac, 0xbb, 0x67, 0x70, 0xe7, 0x0b, 0x65, 0x7a, 0x72, 0x5f, 0xfc, 0x48, 0xaf,
-	0x09, 0x2a, 0x59, 0xd9, 0x82, 0x16, 0xe3, 0x41, 0xce, 0x75, 0x14, 0x14, 0x8d, 0x29, 0x03, 0x94,
-	0x05, 0x11, 0x12, 0x46, 0x7f, 0xa2, 0x62, 0xb2, 0xdc, 0x01, 0x38, 0xd5, 0x99, 0x65, 0x00, 0x7d,
-	0xa8, 0x2b, 0x33, 0x67, 0xbb, 0x71, 0xab, 0xbb, 0xa9, 0x84, 0xd6, 0x06, 0x48, 0xf0, 0xc7, 0x02,
-	0xad, 0xfb, 0xcb, 0x00, 0xfb, 0x6b, 0x16, 0x06, 0x1c, 0x17, 0x4c, 0xa9, 0x68, 0x7e, 0x03, 0x5b,
-	0xb3, 0xfc, 0x4a, 0x1c, 0x29, 0x54, 0x8f, 0x1a, 0xd2, 0xf2, 0x1f, 0xde, 0x10, 0x60, 0x89, 0xd4,
-	0xc3, 0xe7, 0xd3, 0x67, 0xde, 0x90, 0xbe, 0x55, 0x55, 0xef, 0xc0, 0x5a, 0x92, 0x72, 0x22, 0xd8,
-	0x43, 0x15, 0xef, 0xba, 0xb0, 0x0b, 0xc2, 0x0b, 0x1a, 0x97, 0xef, 0xd6, 0x6f, 0x15, 0x5e, 0xb7,
-	0x0f, 0x5b, 0x0b, 0xb2, 0xcb, 0x2b, 0x1e, 0x81, 0xa5, 0x61, 0x86, 0x12, 0x76, 0x0b, 0x57, 0xdc,
-	0x1e, 0xac, 0x4b, 0x97, 0xcf, 0x4f, 0xfa, 0xb3, 0xcb, 0x2f, 0xed, 0xc7, 0xa8, 0xee, 0xa7, 0xa6,
-	0xf6, 0xf3, 0x0e, 0x36, 0xae, 0x3a, 0x4b, 0x7e, 0x0f, 0x2c, 0xfd, 0x66, 0x1b, 0xb7, 0x7a, 0xb3,
-	0xdd, 0x4f, 0xb0, 0x29, 0x47, 0xe8, 0xab, 0xcc, 0xf8, 0x5d, 0xd8, 0xd5, 0xfc, 0x73, 0x06, 0x71,
-	0x1a, 0x8b, 0x47, 0x41, 0x9c, 0xdd, 0x2c, 0xe7, 0x31, 0xd8, 0xf3, 0xb3, 0xe6, 0xbe, 0x54, 0xaa,
-	0xa2, 0x35, 0xb5, 0xdd, 0x8f, 0xd0, 0x51, 0xaa, 0x39, 0x66, 0xec, 0x1f, 0x19, 0x7b, 0x5a, 0x7d,
-	0x39, 0xaa, 0x24, 0xdc, 0x07, 0x8b, 0xc9, 0x42, 0x69, 0xc1, 0x76, 0xc5, 0x02, 0xf1, 0x70, 0x50,
-	0x57, 0xdf, 0xd6, 0x67, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x7e, 0x7f, 0x38, 0xd9, 0xda, 0x05,
-	0x00, 0x00,
+	// 645 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x54, 0x5f, 0x6f, 0xd3, 0x3e,
+	0x14, 0x5d, 0x97, 0xb5, 0x5b, 0x6f, 0xfb, 0xfb, 0x75, 0xcb, 0x26, 0x28, 0x43, 0xfc, 0x51, 0x26,
+	0xa1, 0x69, 0xb0, 0x94, 0x66, 0x2b, 0x1a, 0x3c, 0xf0, 0x80, 0x34, 0x51, 0xb1, 0x3d, 0xa0, 0x21,
+	0xf6, 0xc0, 0x8b, 0x95, 0x26, 0xb7, 0xa9, 0x45, 0x1b, 0x87, 0xd8, 0x99, 0x28, 0x9f, 0x82, 0x4f,
+	0xc4, 0x67, 0xe3, 0xda, 0x6e, 0xd7, 0x7f, 0x9b, 0xc4, 0x53, 0x6b, 0xfb, 0xdc, 0x7b, 0xce, 0x3d,
+	0x3e, 0x0e, 0x1c, 0x66, 0xb9, 0x50, 0xa2, 0x25, 0x31, 0x2a, 0x72, 0xae, 0xc6, 0x0c, 0x03, 0xfc,
+	0x8e, 0x63, 0xd9, 0xb2, 0xbf, 0x6a, 0x9c, 0xa1, 0xf4, 0x0d, 0xc4, 0xdd, 0x9e, 0x62, 0xfc, 0x09,
+	0x66, 0xff, 0x53, 0xc2, 0xd5, 0xa0, 0xe8, 0xf9, 0x91, 0x18, 0xb5, 0x12, 0x21, 0x92, 0x21, 0xea,
+	0xb2, 0x63, 0x3a, 0x3b, 0x96, 0x98, 0xdf, 0x60, 0xde, 0x5a, 0x6a, 0x1e, 0xa9, 0x51, 0x98, 0x2d,
+	0x2d, 0x6d, 0x77, 0xef, 0x4f, 0x09, 0xb6, 0x3f, 0xa2, 0x3a, 0x4f, 0x55, 0x3e, 0xbe, 0x42, 0x99,
+	0x89, 0x54, 0xa2, 0x5b, 0x03, 0xe7, 0x26, 0xef, 0x37, 0x4b, 0xcf, 0x4b, 0x87, 0x75, 0x77, 0x07,
+	0xaa, 0xb4, 0x60, 0x04, 0x17, 0xfd, 0xe6, 0xba, 0xd9, 0x7a, 0x00, 0xff, 0x13, 0xf7, 0x88, 0xab,
+	0x11, 0xa6, 0x8a, 0x11, 0x6f, 0xd3, 0x31, 0xfb, 0x0d, 0xd8, 0x24, 0x58, 0x9f, 0x0f, 0xb1, 0xb9,
+	0x61, 0x36, 0x4e, 0x00, 0x86, 0x18, 0x4e, 0x8b, 0xcb, 0xb4, 0x57, 0x0b, 0x9e, 0xf9, 0x4b, 0x42,
+	0x88, 0xfe, 0x92, 0x40, 0xb7, 0xec, 0xaf, 0xc0, 0x91, 0x38, 0x68, 0x56, 0xee, 0x46, 0x7f, 0xe1,
+	0x49, 0x8a, 0xf1, 0x79, 0x26, 0xa2, 0x41, 0x17, 0xc3, 0xd8, 0xe3, 0xb0, 0xf9, 0xd9, 0x72, 0xba,
+	0x6d, 0xd8, 0xd0, 0xfe, 0x90, 0x6e, 0x87, 0x2a, 0x0f, 0xfc, 0x65, 0xe3, 0xfc, 0x09, 0xd0, 0xbf,
+	0xa0, 0x85, 0x99, 0x78, 0xff, 0x25, 0x54, 0x6f, 0x17, 0x7a, 0x6c, 0x3d, 0x8b, 0x1e, 0xbb, 0xea,
+	0xfe, 0x07, 0xe5, 0x9b, 0x70, 0x58, 0xa0, 0x1d, 0xf9, 0xdd, 0xfa, 0x59, 0xc9, 0x4b, 0xa0, 0x6c,
+	0x81, 0x2e, 0xc0, 0x6c, 0xfe, 0x89, 0x4d, 0xa7, 0xd0, 0x08, 0x0b, 0x35, 0x10, 0x39, 0xff, 0x85,
+	0x31, 0x33, 0x3a, 0xd6, 0x8d, 0x8e, 0xc7, 0x77, 0xe8, 0x28, 0x7a, 0x43, 0x1e, 0x11, 0xb1, 0xbb,
+	0x07, 0xf5, 0x22, 0x8b, 0x43, 0x85, 0x2c, 0x12, 0x05, 0xf5, 0xd2, 0x3e, 0x6e, 0x78, 0x02, 0xaa,
+	0x33, 0xc8, 0x0e, 0x6c, 0x62, 0x1c, 0x74, 0x3a, 0xed, 0xb7, 0x96, 0xa9, 0xbb, 0xe6, 0x1e, 0xc0,
+	0xa3, 0x5c, 0x86, 0x8c, 0x6e, 0x9a, 0xf7, 0xc7, 0x3c, 0x4d, 0x98, 0x1c, 0x84, 0x41, 0xe7, 0x0d,
+	0x0b, 0x5e, 0x9f, 0x9e, 0x59, 0xbd, 0x04, 0x7a, 0x0a, 0x7b, 0x18, 0xc5, 0x0b, 0xb0, 0x8c, 0x40,
+	0xf6, 0xaa, 0xba, 0x6b, 0x1f, 0x00, 0xb6, 0x48, 0x0c, 0xd3, 0x51, 0xf3, 0x5e, 0xc0, 0x16, 0x51,
+	0x5d, 0xeb, 0x79, 0xe7, 0x5d, 0xa8, 0x2f, 0xb9, 0xe0, 0xfd, 0x2e, 0xc1, 0x96, 0xbd, 0x80, 0x8b,
+	0x6b, 0x1d, 0x0c, 0xdd, 0xc0, 0x9e, 0x5b, 0xf8, 0x7b, 0x00, 0x49, 0xc7, 0xa1, 0x2a, 0x72, 0x9c,
+	0xce, 0x7f, 0xb4, 0x3a, 0xff, 0xb4, 0x85, 0xf9, 0x63, 0xc1, 0xf6, 0x3a, 0xda, 0xd0, 0x58, 0xda,
+	0x9a, 0x97, 0x53, 0xb9, 0xeb, 0x52, 0x3a, 0xd0, 0x98, 0xe5, 0xf7, 0x47, 0x81, 0x52, 0x69, 0x61,
+	0xa8, 0xf3, 0xc1, 0x30, 0x8d, 0x4d, 0xa1, 0xa3, 0x93, 0x59, 0xd0, 0xdb, 0x60, 0x3c, 0x36, 0xa5,
+	0x55, 0xef, 0x0a, 0x1e, 0x5e, 0x72, 0x69, 0xeb, 0xba, 0xf4, 0x47, 0xcc, 0xca, 0xe7, 0xb0, 0x36,
+	0x0a, 0xbb, 0x50, 0x93, 0x2a, 0xcc, 0x15, 0x33, 0x5d, 0x4d, 0x03, 0x47, 0x93, 0x64, 0x61, 0x82,
+	0x4c, 0xd2, 0x7d, 0x1b, 0x4f, 0xcb, 0x5e, 0x0f, 0x9a, 0xab, 0x3d, 0x27, 0xa1, 0x0e, 0xa0, 0x62,
+	0x94, 0x4f, 0xd3, 0xe9, 0xad, 0xba, 0xb2, 0xf2, 0x0c, 0x29, 0x66, 0x29, 0xfe, 0x5c, 0xa0, 0x25,
+	0x8e, 0x9a, 0x01, 0x7d, 0x35, 0xa9, 0x71, 0x8f, 0xa0, 0x62, 0xf3, 0x63, 0x8e, 0x6b, 0xc1, 0xfe,
+	0xfd, 0x66, 0xcf, 0xbf, 0x4e, 0xe7, 0x9e, 0x67, 0x6c, 0x5e, 0xad, 0xf7, 0x0d, 0x5c, 0xdb, 0x7e,
+	0xc1, 0xd5, 0x15, 0x5b, 0x4e, 0xa0, 0x8e, 0x1a, 0xc0, 0x16, 0x14, 0x3c, 0x59, 0x55, 0x30, 0x27,
+	0xd8, 0xeb, 0xc2, 0xee, 0x42, 0xef, 0xc9, 0xa8, 0x6d, 0x28, 0xdb, 0x6f, 0x44, 0xc9, 0x34, 0xf9,
+	0x07, 0x77, 0x7a, 0x15, 0xf3, 0x01, 0x3b, 0xf9, 0x1b, 0x00, 0x00, 0xff, 0xff, 0xf4, 0x2b, 0x0e,
+	0xe9, 0x4a, 0x05, 0x00, 0x00,
 }
