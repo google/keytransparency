@@ -95,7 +95,7 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, errFailedVerification
 	}
 
-	if !c.verifyLog(e.GetSeh()) {
+	if !c.verifyLog(e.GetSeh(), e.SehSct) {
 		return nil, errFailedVerification
 	}
 

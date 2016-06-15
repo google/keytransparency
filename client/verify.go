@@ -22,6 +22,7 @@ import (
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/vrf"
 
+	ct "github.com/google/certificate-transparency/go"
 	"github.com/golang/protobuf/proto"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
@@ -89,9 +90,9 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 }
 
 // verifyEpoch checks the expected root against the log of signed epoch heads.
-func (c *Client) verifyLog(seh *ctmap.SignedEpochHead) bool {
+func (c *Client) verifyLog(seh *ctmap.SignedEpochHead, sctBytes []byte) bool {
 	// 1) GetSTH.
-	_, err := c.ctlog.GetSTH()
+	sth, err := c.ctlog.GetSTH()
 	if err != nil {
 		log.Printf("GetSTH(): %v", err)
 		return false
@@ -102,8 +103,20 @@ func (c *Client) verifyLog(seh *ctmap.SignedEpochHead) bool {
 	// TODO: Advance trusted STH
 
 	// 3) Inclusion Proof.
-	// TODO: Compute hash from seh
-	// TODO: Lookup by hash
+
+	// GetByHash
+	sct, err := ct.DeserializeSCT(bytes.NewReader(sctBytes))
+	if err != nil {
+		log.Printf("Failed to deserialize SCT: %v", err)
+		return false
+	}
+	hash := ct.JSONV1LeafHash(sct, seh)
+	_, err = c.ctlog.GetProofByHash(hash, sth.TreeSize)
+	if err != nil {
+		log.Printf("Failed to GetProofByHash: %v", err)
+		return false
+	}
+	// TODO: Verify inclusion proof.
 
 	return true
 }

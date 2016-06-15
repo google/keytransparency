@@ -48,6 +48,9 @@ message GetEntryResponse {
   // seh contains the signed epoch head for the sparse merkle tree. 
   // seh is also stored in the append only log.
   security_ctmap.SignedEpochHead seh = 6;
+  // seh_sct is the SCT showing that seh was submitted to CT logs.
+  // TODO: Support storing seh in multiple logs.
+  bytes seh_sct = 7;
 
   //
   // Append only log layer proves that all account histories are consistent.
