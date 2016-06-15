@@ -48,7 +48,7 @@ const (
 	WHERE MapId = $1 AND Commitment = $2;`
 )
 
-var errDoubleCommitment = errors.New("Commitment to different value")
+var errDoubleCommitment = errors.New("Commitment to different key-value")
 
 type Commitments struct {
 	mapID []byte
@@ -85,31 +85,36 @@ func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, valu
 		return err
 	}
 	defer readStmt.Close()
-	writeStmt, err := tx.Prepare(insertExpr)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer writeStmt.Close()
 
 	// Read existing commitment.
 	read := &Commitment{}
-	if err := readStmt.QueryRow(c.mapID, commitment).Scan(&read.Key, &read.Data); err == sql.ErrNoRows {
-		_, err = writeStmt.Exec(c.mapID, commitment, key, value)
+
+	err = readStmt.QueryRow(c.mapID, commitment).Scan(&read.Key, &read.Data)
+	switch {
+	case err == sql.ErrNoRows:
+		writeStmt, err := tx.Prepare(insertExpr)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
+		defer writeStmt.Close()
+		if _, err := writeStmt.Exec(c.mapID, commitment, key, value); err != nil {
+			tx.Rollback()
+			return err
+		}
 		return tx.Commit()
-	} else if err != nil {
+	case err != nil:
 		tx.Rollback()
 		return err
-	} else if bytes.Equal(key, read.Key) && bytes.Equal(value, read.Data) {
-		// Write of existing value.
-		return tx.Commit()
+	default: // err == nil
+		if bytes.Equal(key, read.Key) && bytes.Equal(value, read.Data) {
+			// Write of existing value.
+			return tx.Commit()
+		} else {
+			tx.Rollback()
+			return errDoubleCommitment
+		}
 	}
-	tx.Rollback()
-	return errDoubleCommitment
 }
 
 // ReadCommitment retrieves a commitment from the database.
