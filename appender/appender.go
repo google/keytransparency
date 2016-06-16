@@ -24,8 +24,10 @@ type Appender interface {
 	Append(ctx context.Context, epoch int64, data []byte) error
 
 	// Epoch retrieves a specific object.
-	Epoch(ctx context.Context, epoch int64) ([]byte, error)
+	// Returns data and a serialized ct.SignedCertificateTimestamp
+	Epoch(ctx context.Context, epoch int64) ([]byte, []byte, error)
 
 	// Latest returns the latest object.
-	Latest(ctx context.Context) (int64, []byte, error)
+	// Returns epoch, data, and a serialized ct.SignedCertificateTimestamp
+	Latest(ctx context.Context) (int64, []byte, []byte, error)
 }
