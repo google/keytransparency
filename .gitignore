@@ -6,8 +6,9 @@ svr
 key-transparency
 e2e-key-server
 e2e-key-signer
+vrfkeygen
 infra*.etcd
 *.dat
 tree-db.sqlite3
-vrfkeygen
+*.pem
 
