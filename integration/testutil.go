@@ -18,13 +18,13 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
-	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/integration/ctutil"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/queue"
@@ -88,22 +88,7 @@ type Env struct {
 
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
-	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/ct/v1/get-sth" {
-			fmt.Fprintf(w, `{"tree_size": %d, "timestamp": %d, "sha256_root_hash": "%s", "tree_head_signature": "%s"}`,
-				ValidSTHResponseTreeSize, int64(ValidSTHResponseTimestamp), ValidSTHResponseSHA256RootHash,
-				ValidSTHResponseTreeHeadSignature)
-			return
-		} else if r.URL.Path == "/ct/v1/add-json" {
-			w.Write([]byte(`{"sct_version":0,"id":"KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=","timestamp":1337,"extensions":"","signature":"BAMARjBEAiAIc21J5ZbdKZHw5wLxCP+MhBEsV5+nfvGyakOIv6FOvAIgWYMZb6Pw///uiNM7QTg2Of1OqmK1GbeGuEl9VJN8v8c="}`))
-			return
-		}
-		t.Fatalf("Incorrect URL path: %s", r.URL.Path)
-	}))
-
-	/*
-		hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	*/
+	hs := ctutil.CtServer(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
 

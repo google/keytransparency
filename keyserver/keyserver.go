@@ -61,23 +61,23 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 	}
 }
 
-func (s *Server) GetSEH(ctx context.Context, epoch int64) (int64, *ctmap.SignedEpochHead, error) {
-	var data []byte
+func (s *Server) GetSEH(ctx context.Context, epoch int64) (int64, *ctmap.SignedEpochHead, []byte, error) {
+	var data, sct []byte
 	thisEpoch := epoch
 	var err error
 	if epoch == 0 {
-		thisEpoch, data, err = s.appender.Latest(ctx)
+		thisEpoch, data, sct, err = s.appender.Latest(ctx)
 	} else {
-		data, err = s.appender.Epoch(ctx, epoch)
+		data, sct, err = s.appender.Epoch(ctx, epoch)
 	}
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 	seh := new(ctmap.SignedEpochHead)
 	if err := proto.Unmarshal(data, seh); err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
-	return thisEpoch, seh, nil
+	return thisEpoch, seh, sct, nil
 }
 
 // GetEntry returns a user's profile and proof that there is only one object for
@@ -87,7 +87,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 	vrf, proof := s.vrf.Evaluate([]byte(in.UserId))
 	index := s.vrf.Index(vrf)
 
-	epoch, seh, err := s.GetSEH(ctx, in.EpochEnd)
+	epoch, seh, sct, err := s.GetSEH(ctx, in.EpochEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,8 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 			LeafData:  leaf,
 			Neighbors: neighbors,
 		},
-		Seh: seh,
+		Seh:    seh,
+		SehSct: sct,
 	}, nil
 }
 

@@ -53,7 +53,7 @@ var (
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath       = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
-	mapLogURL     = flag.String("maplog", "http://107.178.246.112", "URL of CT server for Signed Map Heads")
+	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 )
 
 func openDB() *sql.DB {

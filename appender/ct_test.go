@@ -15,11 +15,21 @@
 package appender
 
 import (
+<<<<<<< HEAD
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+=======
+	"bytes"
+	"database/sql"
+	"testing"
+
+	"github.com/google/e2e-key-server/integration/ctutil"
+
+	ct "github.com/google/certificate-transparency/go"
+>>>>>>> master
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 )
@@ -37,12 +47,16 @@ func NewDB(t testing.TB) *sql.DB {
 }
 
 func TestGetLatest(t *testing.T) {
+<<<<<<< HEAD
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{"sct_version":0,"id":"KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=","timestamp":1337,"extensions":"","signature":"BAMARjBEAiAIc21J5ZbdKZHw5wLxCP+MhBEsV5+nfvGyakOIv6FOvAIgWYMZb6Pw///uiNM7QTg2Of1OqmK1GbeGuEl9VJN8v8c="}`))
 		if err != nil {
 			return
 		}
 	}))
+=======
+	hs := ctutil.CtServer(t)
+>>>>>>> master
 	defer hs.Close()
 
 	a := New(NewDB(t), mapID, hs.URL)
@@ -62,13 +76,18 @@ func TestGetLatest(t *testing.T) {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
 
+<<<<<<< HEAD
 		epoch, _, err := a.Latest(context.Background())
+=======
+		epoch, _, b, err := a.Latest(context.Background())
+>>>>>>> master
 		if err != nil {
 			t.Errorf("Latest(): %v, want nil", err)
 		}
 		if got := epoch; got != tc.want {
 			t.Errorf("Latest(): %v, want %v", got, tc.want)
 		}
+<<<<<<< HEAD
 	}
 }
 func TestAppend(t *testing.T) {
@@ -78,6 +97,16 @@ func TestAppend(t *testing.T) {
 			return
 		}
 	}))
+=======
+		_, err = ct.DeserializeSCT(bytes.NewReader(b))
+		if err != nil {
+			t.Errorf("Failed to deserialize SCT: %v", err)
+		}
+	}
+}
+func TestAppend(t *testing.T) {
+	hs := ctutil.CtServer(t)
+>>>>>>> master
 	defer hs.Close()
 
 	a := New(NewDB(t), mapID, hs.URL)

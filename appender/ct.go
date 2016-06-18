@@ -18,6 +18,10 @@ import (
 	"database/sql"
 	"log"
 
+<<<<<<< HEAD
+=======
+	ct "github.com/google/certificate-transparency/go"
+>>>>>>> master
 	"github.com/google/certificate-transparency/go/client"
 	"golang.org/x/net/context"
 )
@@ -33,12 +37,17 @@ const (
 		MapId	BLOB(32) NOT NULL,
 		Epoch 	INTEGER NOT NULL,
 		Data	BLOB(1024) NOT NULL,
+<<<<<<< HEAD
+=======
+		SCT	BLOB(1024) NOT NULL,
+>>>>>>> master
 		PRIMARY KEY(MapID, Epoch),
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
 	);`
 	mapRowExpr = `
 	INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
 	insertExpr = `
+<<<<<<< HEAD
 	INSERT INTO SEH (MapId, Epoch, Data)
 	VALUES ($1, $2, $3);`
 	readExpr = `
@@ -46,6 +55,15 @@ const (
 	WHERE MapId = $1 AND Epoch = $2;`
 	latestExpr = `
 	SELECT Epoch, Data FROM SEH
+=======
+	INSERT INTO SEH (MapId, Epoch, Data, SCT)
+	VALUES ($1, $2, $3, $4);`
+	readExpr = `
+	SELECT Data, SCT FROM SEH
+	WHERE MapId = $1 AND Epoch = $2;`
+	latestExpr = `
+	SELECT Epoch, Data, SCT FROM SEH
+>>>>>>> master
 	WHERE MapId = $1 
 	ORDER BY Epoch DESC LIMIT 1;`
 )
@@ -75,6 +93,14 @@ func New(db *sql.DB, mapID, logURL string) *CTAppender {
 		log.Fatalf("Failed to create appender tables: %v", err)
 	}
 	a.insertMapRow()
+<<<<<<< HEAD
+=======
+
+	// Verify logURL
+	if _, err := a.ctlog.GetSTH(); err != nil {
+		log.Fatalf("Failed to ping CT server with GetSTH: %v", err)
+	}
+>>>>>>> master
 	return a
 }
 
@@ -92,16 +118,31 @@ func (a *CTAppender) insertMapRow() {
 
 // Adds an object to the append-only data structure.
 func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error {
+<<<<<<< HEAD
 	if _, err := a.ctlog.AddJSON(data); err != nil {
 		return err
 	}
 
+=======
+	sct, err := a.ctlog.AddJSON(data)
+	if err != nil {
+		return err
+	}
+	b, err := ct.SerializeSCT(*sct)
+	if err != nil {
+		return err
+	}
+>>>>>>> master
 	writeStmt, err := a.db.Prepare(insertExpr)
 	if err != nil {
 		return err
 	}
 	defer writeStmt.Close()
+<<<<<<< HEAD
 	_, err = writeStmt.Exec(a.mapID, epoch, data)
+=======
+	_, err = writeStmt.Exec(a.mapID, epoch, data, b)
+>>>>>>> master
 	if err != nil {
 		return err
 	}
@@ -109,6 +150,7 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error
 }
 
 // Epoch retrieves a specific object.
+<<<<<<< HEAD
 func (a *CTAppender) Epoch(ctx context.Context, epoch int64) ([]byte, error) {
 	readStmt, err := a.db.Prepare(readExpr)
 	if err != nil {
@@ -128,13 +170,44 @@ func (a *CTAppender) Latest(ctx context.Context) (int64, []byte, error) {
 	readStmt, err := a.db.Prepare(latestExpr)
 	if err != nil {
 		return 0, nil, err
+=======
+// Returns data and a serialized ct.SignedCertificateTimestamp
+func (a *CTAppender) Epoch(ctx context.Context, epoch int64) ([]byte, []byte, error) {
+	readStmt, err := a.db.Prepare(readExpr)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer readStmt.Close()
+
+	var data, sct []byte
+	if err := readStmt.QueryRow(a.mapID, epoch).Scan(&data, &sct); err != nil {
+		return nil, nil, err
+	}
+	return data, sct, nil
+}
+
+// Latest returns the latest object.
+// Returns epoch, data, and a serialized ct.SignedCertificateTimestamp
+func (a *CTAppender) Latest(ctx context.Context) (int64, []byte, []byte, error) {
+	readStmt, err := a.db.Prepare(latestExpr)
+	if err != nil {
+		return 0, nil, nil, err
+>>>>>>> master
 	}
 	defer readStmt.Close()
 
 	var epoch int64
+<<<<<<< HEAD
 	var data []byte
 	if err := readStmt.QueryRow(a.mapID).Scan(&epoch, &data); err != nil {
 		return 0, nil, err
 	}
 	return epoch, data, nil
+=======
+	var data, sct []byte
+	if err := readStmt.QueryRow(a.mapID).Scan(&epoch, &data, &sct); err != nil {
+		return 0, nil, nil, err
+	}
+	return epoch, data, sct, nil
+>>>>>>> master
 }

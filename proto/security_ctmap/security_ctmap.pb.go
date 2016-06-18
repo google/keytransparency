@@ -69,6 +69,8 @@ type SignedEpochHead struct {
 	EpochHead []byte `protobuf:"bytes,1,opt,name=epoch_head,proto3" json:"epoch_head,omitempty"`
 	// Signature of head, using the signature type of the key.
 	// keyed by the first 64 bits bytes of the hash of the key.
+	// TODO: Limit 1. Servers should only sign with one key at a time.
+	// TODO: Create separate data structure for aggregating signatures from monitors.
 	Signatures map[uint64][]byte `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
