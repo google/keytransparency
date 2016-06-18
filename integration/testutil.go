@@ -16,7 +16,6 @@ package integration
 
 import (
 	"database/sql"
-	"fmt"
 	"net"
 	"net/http/httptest"
 	"testing"
@@ -41,15 +40,8 @@ import (
 )
 
 const (
-	clusterSize      = 1
-	mapID            = "testID"
-	ValidSTHResponse = `{"tree_size":3721782,"timestamp":1396609800587,
-        "sha256_root_hash":"SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo=",
-        "tree_head_signature":"BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="}`
-	ValidSTHResponseTreeSize          = 3721782
-	ValidSTHResponseTimestamp         = 1396609800587
-	ValidSTHResponseSHA256RootHash    = "SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo="
-	ValidSTHResponseTreeHeadSignature = "BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="
+	clusterSize = 1
+	mapID       = "testID"
 )
 
 func NewDB(t testing.TB) *sql.DB {
