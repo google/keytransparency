@@ -20,16 +20,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/e2e-key-server/authentication"
-	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/integration"
+	"github.com/gdbelvin/e2e-key-server/authentication"
+	"github.com/gdbelvin/e2e-key-server/client"
+	"github.com/gdbelvin/e2e-key-server/integration"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	v1pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 var (

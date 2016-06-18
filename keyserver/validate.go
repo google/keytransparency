@@ -23,14 +23,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/vrf"
+	"github.com/gdbelvin/e2e-key-server/commitments"
+	"github.com/gdbelvin/e2e-key-server/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
 )
 
 // Maximum period of time to allow between CreationTime and server time.

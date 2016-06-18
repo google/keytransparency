@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package security.e2ekeys;
 
-import "github.com/google/e2e-key-server/proto/security_ctmap/security_ctmap.proto";
+import "github.com/gdbelvin/e2e-key-server/proto/security_ctmap/security_ctmap.proto";
 
 //
 // Data types.

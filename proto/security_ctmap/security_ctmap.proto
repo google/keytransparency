@@ -15,7 +15,7 @@ syntax = "proto3";
 
 package security_ctmap;
 
-import "github.com/google/e2e-key-server/proto/security_protobuf/timestamp.proto";
+import "github.com/gdbelvin/e2e-key-server/proto/security_protobuf/timestamp.proto";
 
 
 // The VerifiableMapService API 

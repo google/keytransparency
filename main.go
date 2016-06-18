@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/google/e2e-key-server/frontend"
+import "github.com/gdbelvin/e2e-key-server/frontend"
 
 func main() {
 	frontend.Main()

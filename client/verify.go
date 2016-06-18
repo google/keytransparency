@@ -18,15 +18,15 @@ import (
 	"bytes"
 	"log"
 
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/vrf"
+	"github.com/gdbelvin/e2e-key-server/commitments"
+	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/gdbelvin/e2e-key-server/vrf"
 
 	"github.com/golang/protobuf/proto"
-	ct "github.com/google/certificate-transparency/go"
+	ct "github.com/gdbelvin/certificate-transparency/go"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
+	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
 )
 
 func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {

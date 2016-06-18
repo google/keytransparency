@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
 )
 
 func EpochHead(seh *ctmap.SignedEpochHead) (*ctmap.EpochHead, error) {

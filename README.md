@@ -14,7 +14,7 @@ First you need to install [ProtocolBuffers](https://github.com/golang/protobuf#i
 ```sh
 mkdir tmp
 cd tmp
-git clone https://github.com/google/protobuf
+git clone https://github.com/gdbelvin/protobuf
 cd protobuf
 ./autogen.sh
 ./configure
@@ -26,7 +26,7 @@ sudo make install
 Then, ```go get -u``` as usual
 
 ```sh
-go get -u github.com/google/e2e-key-server/...
+go get -u github.com/gdbelvin/e2e-key-server/...
 go get -u github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway
 go get -u github.com/golang/protobuf/protoc-gen-go
 go get -u github.com/mattn/goreman
@@ -47,5 +47,5 @@ goreman start
 
 Projects Using Key Transparency
 ==================================
-* [Google End-To-End](https://github.com/google/end-to-end).
+* [Google End-To-End](https://github.com/gdbelvin/end-to-end).
 
