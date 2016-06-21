@@ -18,21 +18,21 @@ package keyserver
 import (
 	"log"
 
-	"github.com/gdbelvin/e2e-key-server/appender"
-	"github.com/gdbelvin/e2e-key-server/authentication"
-	"github.com/gdbelvin/e2e-key-server/commitments"
-	"github.com/gdbelvin/e2e-key-server/mutator"
-	"github.com/gdbelvin/e2e-key-server/queue"
-	"github.com/gdbelvin/e2e-key-server/tree"
-	"github.com/gdbelvin/e2e-key-server/vrf"
+	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/authentication"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/mutator"
+	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}

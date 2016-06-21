@@ -23,7 +23,7 @@ package security_ctmap
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import security_protobuf "github.com/gdbelvin/e2e-key-server/proto/security_protobuf"
+import security_protobuf "github.com/google/e2e-key-server/proto/security_protobuf"
 
 import (
 	context "golang.org/x/net/context"

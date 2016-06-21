@@ -19,15 +19,15 @@ import (
 	"errors"
 	"log"
 
-	"github.com/gdbelvin/e2e-key-server/commitments"
-	"github.com/gdbelvin/e2e-key-server/tree"
-	"github.com/gdbelvin/e2e-key-server/vrf"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/vrf"
 
-	ct "github.com/gdbelvin/certificate-transparency/go"
+	ct "github.com/google/certificate-transparency/go"
 	"github.com/golang/protobuf/proto"
 
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 var (

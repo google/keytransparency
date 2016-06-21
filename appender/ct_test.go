@@ -19,9 +19,9 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/gdbelvin/e2e-key-server/integration/ctutil"
+	"github.com/google/e2e-key-server/integration/ctutil"
 
-	ct "github.com/gdbelvin/certificate-transparency/go"
+	ct "github.com/google/certificate-transparency/go"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 )

@@ -13,7 +13,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	"github.com/google/e2e-key-server/proto/security_e2ekeys"
 	"github.com/gengo/grpc-gateway/runtime"
 	"github.com/gengo/grpc-gateway/utilities"
 	"github.com/golang/protobuf/proto"

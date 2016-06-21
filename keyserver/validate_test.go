@@ -19,14 +19,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gdbelvin/e2e-key-server/authentication"
-	"github.com/gdbelvin/e2e-key-server/commitments"
-	"github.com/gdbelvin/e2e-key-server/vrf/p256"
+	"github.com/google/e2e-key-server/authentication"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 var (

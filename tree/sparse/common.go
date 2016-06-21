@@ -25,7 +25,7 @@ package sparse
 import (
 	"crypto/sha512"
 
-	"github.com/gdbelvin/e2e-key-server/tree"
+	"github.com/google/e2e-key-server/tree"
 )
 
 const (

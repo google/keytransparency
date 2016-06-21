@@ -32,7 +32,7 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 
-	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
+	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
 type SignatureSigner struct {

@@ -16,7 +16,7 @@ a fix.
 ### Submitting a Pull Request
 Before you submit your pull request consider the following guidelines:
 
-* Search [GitHub](https://github.com/gdbelvin/e2e-key-server/pulls)
+* Search [GitHub](https://github.com/google/e2e-key-server/pulls)
   for an open or closed Pull Request that relates to your submission. You don't
   want to duplicate effort.
 * **Please sign our [Contributor License Agreement (CLA)](#cla)** before sending pull
@@ -98,6 +98,6 @@ changes to be accepted, the CLA must be signed. It's a quick process, we promise
   [print, sign and one of scan+email, fax or mail the form][corporate-cla].
 
 [corporate-cla]: http://code.google.com/legal/corporate-cla-v1.0.html
-[github]: https://github.com/gdbelvin/e2e-key-server
+[github]: https://github.com/google/e2e-key-server
 [individual-cla]: http://code.google.com/legal/individual-cla-v1.0.html
-[issues]: https://github.com/gdbelvin/e2e-key-server/issues
+[issues]: https://github.com/google/e2e-key-server/issues

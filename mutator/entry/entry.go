@@ -19,9 +19,9 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/gdbelvin/e2e-key-server/mutator"
+	"github.com/google/e2e-key-server/mutator"
 
-	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
 // Replace defines mutations to simply replace the current map value with the

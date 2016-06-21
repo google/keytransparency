@@ -23,12 +23,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gdbelvin/e2e-key-server/appender"
-	"github.com/gdbelvin/e2e-key-server/mutator/entry"
-	"github.com/gdbelvin/e2e-key-server/queue"
-	"github.com/gdbelvin/e2e-key-server/signatures"
-	"github.com/gdbelvin/e2e-key-server/signer"
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/signatures"
+	"github.com/google/e2e-key-server/signer"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"

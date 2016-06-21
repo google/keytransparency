@@ -21,24 +21,24 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gdbelvin/e2e-key-server/appender"
-	"github.com/gdbelvin/e2e-key-server/client"
-	"github.com/gdbelvin/e2e-key-server/commitments"
-	"github.com/gdbelvin/e2e-key-server/integration/ctutil"
-	"github.com/gdbelvin/e2e-key-server/keyserver"
-	"github.com/gdbelvin/e2e-key-server/mutator/entry"
-	"github.com/gdbelvin/e2e-key-server/queue"
-	"github.com/gdbelvin/e2e-key-server/signatures"
-	"github.com/gdbelvin/e2e-key-server/signer"
-	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
-	"github.com/gdbelvin/e2e-key-server/vrf"
-	"github.com/gdbelvin/e2e-key-server/vrf/p256"
+	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/client"
+	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/integration/ctutil"
+	"github.com/google/e2e-key-server/keyserver"
+	"github.com/google/e2e-key-server/mutator/entry"
+	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/signatures"
+	"github.com/google/e2e-key-server/signer"
+	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc"
 
-	v2pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys_v2"
+	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 const (
