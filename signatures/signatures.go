@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -36,19 +37,30 @@ import (
 
 type SignatureSigner struct {
 	privKey crypto.PrivateKey
+	Name    string
 }
 
 // PrivateKeyFromPEM parses a PEM formatted block and returns the private key contained within and any remaining unread bytes, or an error.
-func PrivateKeyFromPEM(b []byte) (crypto.PrivateKey, [sha256.Size]byte, []byte, error) {
+func PrivateKeyFromPEM(b []byte) (crypto.Signer, []byte, error) {
 	p, rest := pem.Decode(b)
 	if p == nil {
-		return nil, [sha256.Size]byte{}, rest, fmt.Errorf("no PEM block found in %s", string(b))
+		return nil, rest, fmt.Errorf("no PEM block found in %s", string(b))
 	}
 	k, err := x509.ParseECPrivateKey(p.Bytes)
-	return k, sha256.Sum256(p.Bytes), rest, err
+	return k, rest, err
 }
 
-func NewSignatureSigner(pk crypto.PrivateKey) (*SignatureSigner, error) {
+// Name is the first 8 hex digits of the SHA256 of the public pem.
+func Name(k crypto.PublicKey) (string, error) {
+	pubBytes, err := x509.MarshalPKIXPublicKey(k)
+	if err != nil {
+		return "", err
+	}
+	id := sha256.Sum256(pubBytes)
+	return hex.EncodeToString(id[:])[:8], nil
+}
+
+func NewSignatureSigner(pk crypto.Signer) (*SignatureSigner, error) {
 	switch pkType := pk.(type) {
 	case *ecdsa.PrivateKey:
 		params := *(pkType.Params())
@@ -60,8 +72,14 @@ func NewSignatureSigner(pk crypto.PrivateKey) (*SignatureSigner, error) {
 		return nil, fmt.Errorf("Unsupported public key type %v", pkType)
 	}
 
+	id, err := Name(pk.Public())
+	if err != nil {
+		return nil, err
+	}
+
 	return &SignatureSigner{
 		privKey: pk,
+		Name:    id,
 	}, nil
 }
 
@@ -97,16 +115,17 @@ func (s SignatureSigner) Sign(data interface{}) (*ctmap.DigitallySigned, error) 
 // SignatureVerifier can verify signatures on SCTs and STHs
 type SignatureVerifier struct {
 	pubKey crypto.PublicKey
+	Name   string
 }
 
 // PublicKeyFromPEM parses a PEM formatted block and returns the public key contained within and any remaining unread bytes, or an error.
-func PublicKeyFromPEM(b []byte) (crypto.PublicKey, [sha256.Size]byte, []byte, error) {
+func PublicKeyFromPEM(b []byte) (crypto.PublicKey, []byte, error) {
 	p, rest := pem.Decode(b)
 	if p == nil {
-		return nil, [sha256.Size]byte{}, rest, fmt.Errorf("no PEM block found in %s", string(b))
+		return nil, rest, fmt.Errorf("no PEM block found in %s", string(b))
 	}
 	k, err := x509.ParsePKIXPublicKey(p.Bytes)
-	return k, sha256.Sum256(p.Bytes), rest, err
+	return k, rest, err
 }
 
 func NewSignatureVerifier(pk crypto.PublicKey) (*SignatureVerifier, error) {
@@ -121,8 +140,14 @@ func NewSignatureVerifier(pk crypto.PublicKey) (*SignatureVerifier, error) {
 		return nil, fmt.Errorf("Unsupported public key type %v", pkType)
 	}
 
+	id, err := Name(pk)
+	if err != nil {
+		return nil, err
+	}
+
 	return &SignatureVerifier{
 		pubKey: pk,
+		Name:   id,
 	}, nil
 }
 

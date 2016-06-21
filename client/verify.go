@@ -16,17 +16,24 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"log"
 
 	"github.com/gdbelvin/e2e-key-server/commitments"
 	"github.com/gdbelvin/e2e-key-server/tree"
 	"github.com/gdbelvin/e2e-key-server/vrf"
 
-	"github.com/golang/protobuf/proto"
 	ct "github.com/gdbelvin/certificate-transparency/go"
+	"github.com/golang/protobuf/proto"
 
 	ctmap "github.com/gdbelvin/e2e-key-server/proto/security_ctmap"
 	pb "github.com/gdbelvin/e2e-key-server/proto/security_e2ekeys"
+)
+
+var (
+	ErrInvalidCommitment  = errors.New("Invalid Commitment")
+	ErrInvalidVRF         = errors.New("Invalid VRF")
+	ErrInvalidSparseProof = errors.New("Invalid Sparse Proof")
 )
 
 func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
@@ -56,36 +63,31 @@ func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]b
 func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse, seh *ctmap.SignedEpochHead, factory tree.SparseFactory) bool {
 	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
 	calculatedRoot, _ := m.ReadRoot(nil)
-	eh, err := EpochHead(seh)
-	if err != nil {
-		return false
-	}
-	return bytes.Equal(eh.Root, calculatedRoot)
+	return bytes.Equal(seh.EpochHead.Root, calculatedRoot)
 }
 
-func VerifySEH(seh *ctmap.SignedEpochHead) bool {
-	// TODO: Verify STH signatures
-	return true
+func (c *Client) VerifySEH(seh *ctmap.SignedEpochHead) error {
+	return c.verifier.Verify(seh.GetEpochHead(), seh.Signatures[c.verifier.Name])
 }
 
-func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) bool {
+func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) error {
 	if !VerifyCommitment(userID, in) {
-		return false
+		return ErrInvalidCommitment
 	}
 
 	index, ok := VerifyVRF(userID, in, c.vrf)
 	if !ok {
-		return false
+		return ErrInvalidVRF
 	}
 
 	if !VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSeh(), c.factory) {
-		return false
+		return ErrInvalidSparseProof
 	}
 
-	if !VerifySEH(in.GetSeh()) {
-		return false
+	if err := c.VerifySEH(in.GetSeh()); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 // verifyEpoch checks the expected root against the log of signed epoch heads.

@@ -46,14 +46,12 @@ message EpochHead {
 
 // SignedEpochHead represents a signed state of the Merkel tree.
 message SignedEpochHead {
-  // Serialized EpochHead.
-  // TODO: Replace with object.
-  bytes epoch_head = 1;
+  EpochHead epoch_head = 1;
   // Signature of head, using the signature type of the key.
   // keyed by the first 64 bits bytes of the hash of the key.
   // TODO: Limit 1. Servers should only sign with one key at a time.
   // TODO: Create separate data structure for aggregating signatures from monitors.
-  map<fixed64, DigitallySigned> signatures = 2;
+  map<string, DigitallySigned> signatures = 2;
 }
 
 message DigitallySigned {

@@ -31,7 +31,7 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 		},
 	}
 	for _, tc := range tests {
-		k, _, rest, err := PrivateKeyFromPEM([]byte(tc.pem))
+		k, rest, err := PrivateKeyFromPEM([]byte(tc.pem))
 		if err != nil {
 			t.Errorf("PrivateKeyFromPEM(): %v", err)
 		}
@@ -57,7 +57,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 		},
 	}
 	for _, tc := range tests {
-		k, _, rest, err := PublicKeyFromPEM([]byte(tc.pem))
+		k, rest, err := PublicKeyFromPEM([]byte(tc.pem))
 		if err != nil {
 			t.Errorf("PublicKeyFromPEM(): %v", err)
 		}
@@ -83,13 +83,13 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 -----END PUBLIC KEY-----`
 
-	k, _, _, _ := PrivateKeyFromPEM([]byte(priv))
-	signer, err := NewSignatureSigner(k)
+	ka, _, _ := PrivateKeyFromPEM([]byte(priv))
+	signer, err := NewSignatureSigner(ka)
 	if err != nil {
 		t.Fatalf("NewSigantureSigner(): %v", err)
 	}
-	k, _, _, _ = PublicKeyFromPEM([]byte(pub))
-	verifier, err := NewSignatureVerifier(k)
+	kb, _, _ := PublicKeyFromPEM([]byte(pub))
+	verifier, err := NewSignatureVerifier(kb)
 	if err != nil {
 		t.Fatalf("NewSigantureVerifier(): %v", err)
 	}
@@ -106,6 +106,45 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 		}
 		if err := verifier.Verify(tc.data, sig); err != nil {
 			t.Errorf("Verify(%v, %v): %v", tc.data, sig, err)
+		}
+	}
+}
+
+func TestConsistentName(t *testing.T) {
+	// Verify that the ID generated from from pub and from priv are the same.
+
+	tests := []struct {
+		priv string
+		pub  string
+	}{
+		{
+			// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+			`-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
+AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
+csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END EC PRIVATE KEY-----`,
+			// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+			`-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
+1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END PUBLIC KEY-----`},
+	}
+	for _, tc := range tests {
+		ka, _, _ := PrivateKeyFromPEM([]byte(tc.priv))
+		kb, _, _ := PublicKeyFromPEM([]byte(tc.pub))
+
+		signer, err := NewSignatureSigner(ka)
+		if err != nil {
+			t.Fatalf("NewSigantureSigner(): %v", err)
+		}
+		verifier, err := NewSignatureVerifier(kb)
+		if err != nil {
+			t.Fatalf("NewSigantureVerifier(): %v", err)
+		}
+
+		if got, want := signer.Name, verifier.Name; got != want {
+			t.Errorf("Signer.Name: %v, want %v", got, want)
 		}
 	}
 }

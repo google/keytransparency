@@ -16,6 +16,7 @@ package integration
 
 import (
 	"database/sql"
+	"io/ioutil"
 	"net"
 	"net/http/httptest"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	"github.com/gdbelvin/e2e-key-server/keyserver"
 	"github.com/gdbelvin/e2e-key-server/mutator/entry"
 	"github.com/gdbelvin/e2e-key-server/queue"
+	"github.com/gdbelvin/e2e-key-server/signatures"
 	"github.com/gdbelvin/e2e-key-server/signer"
 	"github.com/gdbelvin/e2e-key-server/tree/sparse/sqlhist"
 	"github.com/gdbelvin/e2e-key-server/vrf"
@@ -65,6 +67,34 @@ func Listen(t testing.TB) (string, net.Listener) {
 	return addr, lis
 }
 
+func openPrivateKey(t testing.TB) *signatures.SignatureSigner {
+	file := "../testdata/p256-key.pem"
+	pem, err := ioutil.ReadFile(file)
+	if err != nil {
+		t.Fatalf("Failed to read file %v: %v", file, err)
+	}
+	key, _, err := signatures.PrivateKeyFromPEM(pem)
+	sig, err := signatures.NewSignatureSigner(key)
+	if err != nil {
+		t.Fatal("Failed to create signer: %v", err)
+	}
+	return sig
+}
+
+func openPublicKey(t testing.TB) *signatures.SignatureVerifier {
+	file := "../testdata/p256-pubkey.pem"
+	pem, err := ioutil.ReadFile(file)
+	if err != nil {
+		t.Fatalf("Failed to read file %v: %v", file, err)
+	}
+	key, _, err := signatures.PublicKeyFromPEM(pem)
+	verify, err := signatures.NewSignatureVerifier(key)
+	if err != nil {
+		t.Fatal("Failed to create signer: %v", err)
+	}
+	return verify
+}
+
 type Env struct {
 	GRPCServer *grpc.Server
 	V2Server   *keyserver.Server
@@ -96,7 +126,7 @@ func NewEnv(t *testing.T) *Env {
 	s := grpc.NewServer()
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 
-	signer := signer.New(queue, tree, mutator, appender)
+	signer := signer.New(queue, tree, mutator, appender, openPrivateKey(t))
 	signer.CreateEpoch()
 
 	addr, lis := Listen(t)
@@ -108,7 +138,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%q) = %v", addr, err)
 	}
 	cli := v2pb.NewE2EKeyServiceClient(cc)
-	client := client.New(cli, vrfPub, hs.URL)
+	client := client.New(cli, vrfPub, hs.URL, openPublicKey(t))
 	client.RetryCount = 0
 
 	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}
