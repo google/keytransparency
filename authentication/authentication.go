@@ -13,23 +13,26 @@
 // limitations under the License.
 
 // Package authentication implements authentication mechanisms.
+//
+// This package is designed to be used by identity providers.
+// OAuth2 Access tokens may be provided as authentication information, which can
+// be resolved to userinformation and associated scopes on the backend.
+//
+// For demo purposes, we support OpenId Connect in implicit mode.
 package authentication
 
 import (
+	"errors"
+
 	"golang.org/x/net/context"
+)
+
+var (
+	ErrMissingAuth = errors.New("auth: missing authentication header")
+	ErrWrongUser   = errors.New("auth: email missmatch")
 )
 
 // Authenticator provides services to authenticate users.
 type Authenticator interface {
-	// Context returns an authenticated context for userID.
-	// TODO: Replace with OAuth.
-	NewContext(userID string, scopes []string) context.Context
-
-	ValidateCreds(ctx context.Context, requiredUserID string, requiredScopes []string) bool
-}
-
-func Context(userID string) context.Context {
-	// TODO: fill ctx with authentication information.
-	ctx := context.Background()
-	return ctx
+	ValidateCreds(ctx context.Context, requiredUserID string) error
 }

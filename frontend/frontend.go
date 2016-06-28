@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -38,6 +39,8 @@ import (
 	"github.com/gengo/grpc-gateway/runtime"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	_ "google.golang.org/grpc/grpclog/glogger"
@@ -56,6 +59,7 @@ var (
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 	keyFile       = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile      = flag.String("cert", "testdata/server.pem", "TLS cert file")
+	clientSecrets = flag.String("oauth", "", "OAuth client secrets file from Google developer console")
 )
 
 func openDB() *sql.DB {
@@ -92,6 +96,18 @@ func openVRFKey() vrf.PrivateKey {
 	return vrfPriv
 }
 
+func openOAuthConfig() *oauth2.Config {
+	b, err := ioutil.ReadFile(*clientSecrets)
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+	config, err := google.ConfigFromJSON(b)
+	if err != nil {
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+	return config
+}
+
 func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	ctx := context.Background()
 
@@ -119,6 +135,8 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 		// This is a partial recreation of gRPC's internal checks.
 		// https://github.com/grpc/grpc-go/blob/master/transport/handler_server.go#L62
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+			// TODO: Authentication layer is needed here.
+			// Challenge of adding here: how to pass user info to handlers?
 			grpcServer.ServeHTTP(w, r)
 		} else {
 			otherHandler.ServeHTTP(w, r)
@@ -127,8 +145,8 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 }
 
 func Main() {
-	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	flag.Parse()
 
 	// Open Resources.
 	sqldb := openDB()
@@ -148,9 +166,10 @@ func Main() {
 	appender := appender.New(sqldb, *mapID, *mapLogURL)
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
+	auth := authentication.NewGoogleAuth(openOAuthConfig())
 
 	// Create gRPC server.
-	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator)
+	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
 	v1 := proxy.New(v2)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	v2pb.RegisterE2EKeyServiceServer(grpcServer, v2)

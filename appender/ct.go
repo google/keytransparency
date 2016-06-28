@@ -101,19 +101,23 @@ func (a *CTAppender) insertMapRow() {
 func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error {
 	sct, err := a.ctlog.AddJSON(data)
 	if err != nil {
+		log.Printf("CT: Sumbition failure: %v", err)
 		return err
 	}
 	b, err := ct.SerializeSCT(*sct)
 	if err != nil {
+		log.Printf("CT: Serializtion failure: %v", err)
 		return err
 	}
 	writeStmt, err := a.db.Prepare(insertExpr)
 	if err != nil {
+		log.Printf("CT: DB save failure: %v", err)
 		return err
 	}
 	defer writeStmt.Close()
 	_, err = writeStmt.Exec(a.mapID, epoch, data, b)
 	if err != nil {
+		log.Printf("CT: DB commit failure: %v", err)
 		return err
 	}
 	return nil

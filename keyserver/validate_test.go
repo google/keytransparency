@@ -86,7 +86,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	index := vrfPriv.Index(vrf)
 	profileData := []byte("")
 	key, commitment, _ := commitments.CommitName(userID, profileData)
-	authCtx := authentication.New().NewContext("joe", requiredScopes)
+	authCtx := authentication.NewFake().NewContext("joe")
 
 	tests := []struct {
 		want       bool

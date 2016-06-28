@@ -33,8 +33,7 @@ import (
 )
 
 var (
-	requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
-	defaultUserID  = "e2eshare.test@gmail.com"
+	defaultUserID = "e2eshare.test@gmail.com"
 	// Generated test key in End to End app and exported it.
 	defaultKeyring = `
 9852040000000013082a8648ce3d0301070203044d0c9630a2ffe1d3f5d4
@@ -90,7 +89,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 	ctx := context.Background()
 	env := NewEnv(t)
 	defer env.Close(t)
-	auth := authentication.New()
+	auth := authentication.NewFake()
 	testKeySet := map[string][]byte{
 		"foo": []byte("bar"),
 	}
@@ -102,10 +101,10 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		userID string
 	}{
 		{codes.NotFound, false, ctx, "nobody"},
-		{codes.NotFound, true, auth.NewContext("alice", requiredScopes), "alice"},
+		{codes.NotFound, true, auth.NewContext("alice"), "alice"},
 		{codes.NotFound, false, ctx, "nobody"},
 		{codes.OK, false, ctx, "alice"},
-		{codes.OK, true, auth.NewContext("alice", requiredScopes), "alice"},
+		{codes.OK, true, auth.NewContext("alice"), "alice"},
 	}
 	for _, tc := range tests {
 		profile, err := env.ClientV1.GetEntry(ctx, &pb.GetEntryRequest{UserId: tc.userID})
@@ -143,7 +142,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 }
 
 func CreateDefaultUser(env *Env, t testing.TB) {
-	authCtx := authentication.New().NewContext(defaultUserID, requiredScopes)
+	authCtx := authentication.NewFake().NewContext(defaultUserID)
 	keyring, _ := hex.DecodeString(strings.Replace(defaultKeyring, "\n", "", -1))
 	profile := &pb.Profile{map[string][]byte{"pgp": keyring}}
 	req, err := env.Client.Update(authCtx, defaultUserID, profile)
