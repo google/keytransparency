@@ -41,6 +41,7 @@ First install [goreman](https://github.com/mattn/goreman), which manages Procfil
 The [Procfile script](./Procfile) will set up a local cluster. Start it with:
 
 ```sh
+make -C testdata
 goreman start
 ```
 
