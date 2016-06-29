@@ -1,13 +1,11 @@
 *.swp
 *.swo
 *~
-srv
-svr
-key-transparency
 e2e-key-server
 e2e-key-signer
-infra*.etcd
-*.dat
-tree-db.sqlite3
 vrfkeygen
+infra*.etcd
+tree-db.sqlite3
+testdata/server*
+testdata/*.dat
 
