@@ -22,8 +22,8 @@ import (
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/vrf"
 
-	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
+	"github.com/golang/protobuf/proto"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"

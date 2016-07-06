@@ -21,44 +21,33 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type BasicAuth struct{}
+type FakeAuth struct{}
 
-// New returns a new authenticator.
-func New() Authenticator {
-	return &BasicAuth{}
+// NewFake returns a new authenticator.
+func NewFake() *FakeAuth {
+	return &FakeAuth{}
 }
 
-func (a *BasicAuth) NewContext(userID string, scopes []string) context.Context {
+// NewContext adds authentication details to a new background context.
+func (a *FakeAuth) NewContext(userID string) context.Context {
 	md := make(map[string][]string)
 	md["userid"] = []string{userID}
-	md["scopes"] = scopes
-	return metadata.NewContext(context.Background(), md)
+	return metadata.NewContext(context.TODO(), md)
 }
 
-func (a *BasicAuth) ValidateCreds(ctx context.Context, requiredUserID string, requiredScopes []string) bool {
+// ValidateCreds verifies that the requiredUserID is present in ctx.
+func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) error {
 	md, ok := metadata.FromContext(ctx)
 	if !ok {
-		log.Printf("Failed auth: Context is missing authentication information.")
-		return false
+		return ErrMissingAuth
 	}
 	userIDs, ok := md["userid"]
 	if !ok || len(userIDs) != 1 {
-		log.Printf("Failed auth: Context is missing authentication information.")
-		return false
+		return ErrMissingAuth
 	}
 	if got, want := md["userid"][0], requiredUserID; got != want {
-		log.Printf("Failed auth: userID: %v, want %v", got, want)
-		return false
+		log.Printf("auth: wrong user. got: %v, want %v", got, want)
+		return ErrWrongUser
 	}
-	set := make(map[string]bool)
-	for _, scope := range md["scopes"] {
-		set[scope] = true
-	}
-	for _, scope := range requiredScopes {
-		if _, ok := set[scope]; !ok {
-			log.Printf("Failed auth: userID: %v missing scope %v", requiredUserID, scope)
-			return false
-		}
-	}
-	return true
+	return nil
 }

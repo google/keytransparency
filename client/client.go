@@ -28,8 +28,8 @@ import (
 	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"github.com/google/e2e-key-server/vrf"
 
-	"github.com/golang/protobuf/proto"
 	logclient "github.com/google/certificate-transparency/go/client"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 

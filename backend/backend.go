@@ -63,6 +63,7 @@ func openEtcd() *clientv3.Client {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 
 	sqldb := openDB()

@@ -8,4 +8,5 @@ infra*.etcd
 tree-db.sqlite3
 testdata/server*
 testdata/*.dat
+testdata/client_secrets.json
 

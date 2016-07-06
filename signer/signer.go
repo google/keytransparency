@@ -124,6 +124,7 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 	if err := s.appender.Append(ctx, epoch, signedEpochHead); err != nil {
+		log.Printf("Append failure %v", err)
 		return err
 	}
 	log.Printf("Created epoch %v. STH: %#x", epoch, root)

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -127,8 +128,8 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 }
 
 func Main() {
-	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	flag.Parse()
 
 	// Open Resources.
 	sqldb := openDB()
@@ -140,6 +141,10 @@ func Main() {
 	if err != nil {
 		log.Fatalf("Failed to load server credentials %v", err)
 	}
+	auth, err := authentication.NewGoogleAuth()
+	if err != nil {
+		log.Fatalf("Failed to load authentication library: %v", err)
+	}
 
 	// Create database and helper objects.
 	commitments := commitments.New(sqldb, *mapID)
@@ -150,7 +155,7 @@ func Main() {
 	mutator := entry.New()
 
 	// Create gRPC server.
-	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator)
+	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
 	v1 := proxy.New(v2)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	v2pb.RegisterE2EKeyServiceServer(grpcServer, v2)
