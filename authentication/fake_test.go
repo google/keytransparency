@@ -20,24 +20,19 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestValidateCreds(t *testing.T) {
-	auth := New()
+func TestBasicValidateCreds(t *testing.T) {
+	auth := NewFake()
 	tests := []struct {
 		ctx            context.Context
 		requiredUserID string
-		requiredScopes []string
 		want           bool
 	}{
-		{context.Background(), "foo", nil, false},
-		{auth.NewContext("foo", nil), "foo", nil, true},
-		{auth.NewContext("foo", nil), "foo", []string{"scope"}, false},
-		{auth.NewContext("foo", []string{"scope"}), "foo", []string{"scope"}, true},
-		{auth.NewContext("foo", []string{"other"}), "foo", []string{"scope"}, false},
-		{auth.NewContext("foo", []string{"other", "scope"}), "foo", []string{"scope"}, true},
+		{context.Background(), "foo", false},
+		{auth.NewContext("foo"), "foo", true},
 	}
 	for _, tc := range tests {
-		if got := auth.ValidateCreds(tc.ctx, tc.requiredUserID, tc.requiredScopes); got != tc.want {
-			t.Errorf("ValidateCreds(%v, %v, %v): %v, want %v", tc.ctx, tc.requiredUserID, tc.requiredScopes, got, tc.want)
+		if got := auth.ValidateCreds(tc.ctx, tc.requiredUserID) == nil; got != tc.want {
+			t.Errorf("ValidateCreds(%v, %v): %v, want %v", tc.ctx, tc.requiredUserID, got, tc.want)
 		}
 	}
 }

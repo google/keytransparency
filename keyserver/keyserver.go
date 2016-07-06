@@ -35,8 +35,6 @@ import (
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
-var requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
-
 // Server holds internal state for the key server.
 type Server struct {
 	committer commitments.Committer
@@ -49,11 +47,11 @@ type Server struct {
 }
 
 // Create creates a new instance of the key server.
-func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator) *Server {
+func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
-		auth:      authentication.New(),
+		auth:      auth,
 		tree:      tree,
 		appender:  appender,
 		vrf:       vrf,
@@ -142,7 +140,8 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
 	// Validate proper authentication.
-	if !s.auth.ValidateCreds(ctx, in.UserId, requiredScopes) {
+	if err := s.auth.ValidateCreds(ctx, in.UserId); err != nil {
+		log.Printf("Auth failed: %v", err)
 		return nil, grpc.Errorf(codes.PermissionDenied, "Permission Denied")
 	}
 	// Verify:

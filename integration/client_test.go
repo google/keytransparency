@@ -26,14 +26,13 @@ import (
 )
 
 var (
-	requiredScopes = []string{"https://www.googleapis.com/auth/userinfo.email"}
-	primaryKeys    = map[string][]byte{
+	primaryKeys = map[string][]byte{
 		"foo": []byte("bar"),
 	}
 )
 
 func TestEmptyGetAndUpdate(t *testing.T) {
-	auth := authentication.New()
+	auth := authentication.NewFake()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
@@ -44,11 +43,11 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		ctx    context.Context
 		userID string
 	}{
-		{false, false, context.Background(), "noalice"},
-		{false, true, auth.NewContext("bob", requiredScopes), "bob"},
-		{false, false, context.Background(), "nocarol"},
-		{true, false, context.Background(), "bob"},
-		{true, true, auth.NewContext("bob", requiredScopes), "bob"},
+		{false, false, context.Background(), "noalice"}, // Empty
+		{false, true, auth.NewContext("bob"), "bob"},    // Insert
+		{false, false, context.Background(), "nocarol"}, // Empty
+		{true, false, context.Background(), "bob"},      // Not Empty
+		{true, true, auth.NewContext("bob"), "bob"},     // Update
 	}
 	for _, tc := range tests {
 		profile, err := env.Client.GetEntry(context.Background(), tc.userID)
@@ -90,7 +89,7 @@ func TestUpdateValidation(t *testing.T) {
 	defer env.Close(t)
 	env.Client.RetryCount = 0
 
-	auth := authentication.New()
+	auth := authentication.NewFake()
 	profile := &pb.Profile{
 		Keys: map[string][]byte{
 			"foo": []byte("bar"),
@@ -104,15 +103,16 @@ func TestUpdateValidation(t *testing.T) {
 		profile *pb.Profile
 	}{
 		{false, context.Background(), "alice", profile},
-		{false, auth.NewContext("carol", nil), "bob", profile},
-		{false, auth.NewContext("carol", nil), "carol", profile},
-		{true, auth.NewContext("dave", requiredScopes), "dave", profile},
-		{true, auth.NewContext("eve", requiredScopes), "eve", profile},
+		{false, auth.NewContext("carol"), "bob", profile},
+		{true, auth.NewContext("dave"), "dave", profile},
+		{true, auth.NewContext("eve"), "eve", profile},
 	}
 	for _, tc := range tests {
 		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile)
-		if got := err == client.ErrRetry; got != tc.want {
-			t.Fatalf("Update(%v): %v, want nil", tc.userID, err)
+
+		// The first update response is always a retry.
+		if got, want := err, client.ErrRetry; (got == want) != tc.want {
+			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
 			if err := env.Signer.Sequence(); err != nil {

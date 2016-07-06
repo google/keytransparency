@@ -34,8 +34,10 @@ PROTOINCLUDE ?= /usr/local/include
 
 #include $(GOHOME)/src/pkg/github.com/golang/protobuf/Make.protobuf
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
+GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
 OUTPUT:= $(GOPATH)/src
-GRPC_FLAGS+= --go_out=Mgoogle/api/annotations.proto=github.com/gengo/grpc-gateway/third_party/googleapis/google/api,plugins=grpc
+REPLACE+=Mgoogle/api/annotations.proto=github.com/gengo/grpc-gateway/third_party/googleapis/google/api
+GRPC_FLAGS+= --go_out=$(REPLACE),plugins=grpc
 GATEWAY_FLAGS+= --grpc-gateway_out=logtostderr=true
 INCLUDES+= -I=.
 INCLUDES+= -I=$(GOPATH)/src/
@@ -45,7 +47,6 @@ INCLUDES+= -I=$(GOPATH)/src/github.com/gengo/grpc-gateway/third_party/googleapis
 
 main: proto
 	go build ./
-	go build ./vrf/vrfkeygen
 	go build -o e2e-key-signer ./backend
 
 # The list of returned packages might not be unique. Fortunately go test gets
@@ -57,14 +58,17 @@ test: main
 fmt:
 	gofmt -w `find . | grep -e '\.go$$'`
 
-proto: $(DEPS)
+proto: $(DEPS) $(GATEWAY_DEPS)
 
 ./%.pb.go:  %.proto
 	protoc $(INCLUDES) $(GRPC_FLAGS):. $(dir $<)*.proto
+
+./%.pb.gw.go: %.proto	
 	protoc $(INCLUDES) $(GATEWAY_FLAGS):. $(dir $<)*.proto
 
 clean:
 	rm -f $(DEPS)
+	rm -f $(GATEWAY_DEPS)
 	rm -f srv e2e-key-server e2e-key-signer vrfkeygen 
 	rm -rf infra*
 	rm -f tree-db.sqlite3

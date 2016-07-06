@@ -13,23 +13,27 @@
 // limitations under the License.
 
 // Package authentication implements authentication mechanisms.
+//
+// The Transparent Key Server is designed to be used by identity providers -
+// IdP in OAuth parlance.  OAuth2 Access Tokens may be provided as
+// authentication information, which can be resolved to user information and
+// associated scopes on the backend.
 package authentication
 
 import (
+	"errors"
+
 	"golang.org/x/net/context"
+)
+
+var (
+	ErrMissingAuth = errors.New("auth: missing authentication header")
+	ErrWrongUser   = errors.New("auth: email missmatch")
 )
 
 // Authenticator provides services to authenticate users.
 type Authenticator interface {
-	// Context returns an authenticated context for userID.
-	// TODO: Replace with OAuth.
-	NewContext(userID string, scopes []string) context.Context
-
-	ValidateCreds(ctx context.Context, requiredUserID string, requiredScopes []string) bool
-}
-
-func Context(userID string) context.Context {
-	// TODO: fill ctx with authentication information.
-	ctx := context.Background()
-	return ctx
+	// ValidateCreds verifies that the requiredUserID, and any other
+	// required authentication information is present in ctx.
+	ValidateCreds(ctx context.Context, requiredUserID string) error
 }

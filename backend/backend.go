@@ -79,6 +79,7 @@ func openPrivateKey() *signatures.SignatureSigner {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 
 	sqldb := openDB()

@@ -36,14 +36,25 @@ And the shell $PATH must include $GOPATH/bin
 
 Running a Key Transparency Cluster
 ----------------------------------
-First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
+1. Install [goreman](https://github.com/mattn/goreman), which manages 
+Procfile-based applications.
 
+2. Generate test VRF and signing keys.
+```sh
+make -C testdata
+```
+
+3. Get [Application Default Credentials](https://developers.google.com/identity/protocols/application-default-credentials) 
+and set ```GOOGLE_APPLICATION_CREDENTIALS``` environment variable in 
+[.env](.env) to point to the credentials file.
+
+4. Run 
 The [Procfile script](./Procfile) will set up a local cluster. Start it with:
 
 ```sh
+make -C testdata
 goreman start
 ```
-
 
 Projects Using Key Transparency
 ==================================

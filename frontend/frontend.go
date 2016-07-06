@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
@@ -40,20 +40,23 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	_ "google.golang.org/grpc/grpclog/glogger"
 
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
 )
 
 var (
-	grpcPort      = flag.Int("port", 8080, "TCP port to listen on")
-	httpPort      = flag.Int("http_port", 8081, "TCP port to listen on")
+	port          = flag.Int("port", 8080, "TCP port to listen on")
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath       = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
+	keyFile       = flag.String("key", "testdata/server.key", "TLS private key file")
+	certFile      = flag.String("cert", "testdata/server.pem", "TLS cert file")
 )
 
 func openDB() *sql.DB {
@@ -90,34 +93,60 @@ func openVRFKey() vrf.PrivateKey {
 	return vrfPriv
 }
 
-func runRestProxy(grpcPort, httpPort int) error {
+func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	grpcEndpoint := fmt.Sprintf("localhost:%d", grpcPort)
-	mux := runtime.NewServeMux()
-	opts := []grpc.DialOption{grpc.WithInsecure()}
-	if err := v1pb.RegisterE2EKeyProxyHandlerFromEndpoint(ctx, mux, grpcEndpoint, opts); err != nil {
-		return err
+	creds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	if err != nil {
+		return nil, err
 	}
-	if err := v2pb.RegisterE2EKeyServiceHandlerFromEndpoint(ctx, mux, grpcEndpoint, opts); err != nil {
-		return err
+	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
+
+	gwmux := runtime.NewServeMux()
+	if err := v1pb.RegisterE2EKeyProxyHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+		return nil, err
+	}
+	if err := v2pb.RegisterE2EKeyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+		return nil, err
 	}
 
-	log.Printf("http proxy server listening on port %v", httpPort)
-	http.ListenAndServe(fmt.Sprintf(":%d", httpPort), mux)
-	return nil
+	return gwmux, nil
+}
+
+// grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
+// connections or otherHandler otherwise. Copied from cockroachdb.
+func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This is a partial recreation of gRPC's internal checks.
+		// https://github.com/grpc/grpc-go/blob/master/transport/handler_server.go#L62
+		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+		} else {
+			otherHandler.ServeHTTP(w, r)
+		}
+	})
 }
 
 func Main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 
+	// Open Resources.
 	sqldb := openDB()
 	defer sqldb.Close()
 	etcdCli := openEtcd()
 	defer etcdCli.Close()
 
+	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
+	if err != nil {
+		log.Fatalf("Failed to load server credentials %v", err)
+	}
+	auth, err := authentication.NewGoogleAuth()
+	if err != nil {
+		log.Fatalf("Failed to load authentication library: %v", err)
+	}
+
+	// Create database and helper objects.
 	commitments := commitments.New(sqldb, *mapID)
 	queue := queue.New(etcdCli, *mapID)
 	tree := sqlhist.New(sqldb, *mapID)
@@ -125,20 +154,28 @@ func Main() {
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
-	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator)
+	// Create gRPC server.
+	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
 	v1 := proxy.New(v2)
-
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	v2pb.RegisterE2EKeyServiceServer(grpcServer, v2)
 	v1pb.RegisterE2EKeyProxyServer(grpcServer, v1)
 
-	// TODO: fetch private TLS key from repository.
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpcPort))
+	// Create HTTP handlers and gRPC gateway.
+	addr := fmt.Sprintf("localhost:%d", *port)
+	gwmux, err := grpcGatewayMux(addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed setting up REST proxy: %v", err)
 	}
-	log.Printf("gRPC server listening on port %v", *grpcPort)
-	go grpcServer.Serve(lis)
 
-	log.Fatal("Server exiting with: %v", runRestProxy(*grpcPort, *httpPort))
+	mux := http.NewServeMux()
+	// Insert handlers for other http paths here.
+	mux.Handle("/", gwmux)
+
+	// Serve HTTP2 server over TLS.
+	log.Printf("Listening on %v", addr)
+	if err := http.ListenAndServeTLS(addr, *certFile, *keyFile,
+		grpcHandlerFunc(grpcServer, mux)); err != nil {
+		log.Fatal("ListenAndServeTLS: ", err)
+	}
 }

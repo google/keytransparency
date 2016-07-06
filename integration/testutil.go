@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/e2e-key-server/appender"
+	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/integration/ctutil"
@@ -120,9 +121,10 @@ func NewEnv(t *testing.T) *Env {
 	appender := appender.New(sqldb, mapID, hs.URL)
 	vrfPriv, vrfPub := p256.GenerateKey()
 	mutator := entry.New()
+	auth := authentication.NewFake()
 
 	commitments := commitments.New(sqldb, mapID)
-	server := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator)
+	server := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
 	s := grpc.NewServer()
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 
@@ -135,7 +137,7 @@ func NewEnv(t *testing.T) *Env {
 	// Client
 	cc, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
-		t.Fatalf("Dial(%q) = %v", addr, err)
+		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
 	cli := v2pb.NewE2EKeyServiceClient(cc)
 	client := client.New(cli, vrfPub, hs.URL, openPublicKey(t))

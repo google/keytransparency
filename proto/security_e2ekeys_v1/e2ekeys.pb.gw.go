@@ -13,10 +13,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/google/e2e-key-server/proto/security_e2ekeys"
 	"github.com/gengo/grpc-gateway/runtime"
 	"github.com/gengo/grpc-gateway/utilities"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/e2e-key-server/proto/security_e2ekeys"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -123,7 +123,11 @@ func RegisterE2EKeyProxyHandler(ctx context.Context, mux *runtime.ServeMux, conn
 			}(ctx.Done(), cn.CloseNotify())
 		}
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		resp, md, err := request_E2EKeyProxy_GetEntry_0(runtime.AnnotateContext(ctx, req), inboundMarshaler, client, req, pathParams)
+		rctx, err := runtime.AnnotateContext(ctx, req)
+		if err != nil {
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
+		}
+		resp, md, err := request_E2EKeyProxy_GetEntry_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
@@ -147,7 +151,11 @@ func RegisterE2EKeyProxyHandler(ctx context.Context, mux *runtime.ServeMux, conn
 			}(ctx.Done(), cn.CloseNotify())
 		}
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		resp, md, err := request_E2EKeyProxy_HkpLookup_0(runtime.AnnotateContext(ctx, req), inboundMarshaler, client, req, pathParams)
+		rctx, err := runtime.AnnotateContext(ctx, req)
+		if err != nil {
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
+		}
+		resp, md, err := request_E2EKeyProxy_HkpLookup_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
