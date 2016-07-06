@@ -17,7 +17,6 @@ package authentication
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"testing"
@@ -25,13 +24,12 @@ import (
 	"github.com/gengo/grpc-gateway/runtime"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 var (
-	// 1) Create OAuth2 Credentials: https://console.developers.google.com/apis/credentials
-	// download the client secrets file, and supply the path as a test argument.
-	clientSecretFile = flag.String("oauth", "", "path to client secrets")
+	// 1) Get application default credentials:
+	// https://developers.google.com/accounts/docs/application-default-credentials
+
 	// 2) Get an Access Token from
 	// https://developers.google.com/oauthplayground with scopes:
 	// https://www.googleapis.com/auth/userinfo.email,
@@ -41,23 +39,17 @@ var (
 	email = flag.String("email", "", "Email address")
 )
 
-func getConfig(t testing.TB) *oauth2.Config {
-	b, err := ioutil.ReadFile(*clientSecretFile)
-	if err != nil {
-		t.Fatalf("Unable to read client secret file: %v", err)
-	}
-	config, err := google.ConfigFromJSON(b)
-	if err != nil {
-		t.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-	return config
-}
-
+// Example test invocation:
+// GOOGLE_APPLICATION_CREDENTIALS=/path/to/server_account.json \
+// go test ./authentication/ -token=authentication_token -email=youremail@example.com
 func TestGoogleValidateCreds(t *testing.T) {
-	if *clientSecretFile == "" {
+	if *accessToken == "" {
 		t.Skip()
 	}
-	a := NewGoogleAuth(getConfig(t))
+	a, err := NewGoogleAuth()
+	if err != nil {
+		t.Fatalf("Failed to create GoogleAuth: %v", err)
+	}
 
 	// Insert token into http request
 	r, err := http.NewRequest("", "", bytes.NewBufferString(""))

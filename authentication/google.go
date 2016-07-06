@@ -21,7 +21,8 @@ import (
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
-	google "google.golang.org/api/oauth2/v2"
+	"golang.org/x/oauth2/google"
+	gAPI "google.golang.org/api/oauth2/v2"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -29,7 +30,7 @@ import (
 
 var (
 	E2EScope       = "https://www.googleapis.com/auth/e2ekeys"
-	RequiredScopes = []string{google.UserinfoEmailScope, E2EScope}
+	RequiredScopes = []string{gAPI.UserinfoEmailScope, E2EScope}
 
 	ErrBadFormat                = errors.New("auth: bad authorization header format")
 	ErrNoBearer                 = errors.New("auth: no bearer token found")
@@ -41,11 +42,21 @@ var (
 )
 
 type OAuth struct {
-	config *oauth2.Config
+	service *gAPI.Service
 }
 
-func NewGoogleAuth(config *oauth2.Config) Authenticator {
-	return &OAuth{config}
+func NewGoogleAuth() (*OAuth, error) {
+	//httpClient := a.config.Client(ctx, token)
+	ctx := context.TODO()
+	httpClient, err := google.DefaultClient(ctx, gAPI.UserinfoEmailScope)
+	if err != nil {
+		return nil, err
+	}
+	googleService, err := gAPI.New(httpClient)
+	if err != nil {
+		return nil, err
+	}
+	return &OAuth{googleService}, nil
 }
 
 // ValidateCreds verifies that email is equal to the validated email address
@@ -94,7 +105,7 @@ func setDifference(a, b []string) []string {
 
 // validateToken makes an https request to the tokeninfo API using the access
 // token provided in the header.
-func (a *OAuth) validateToken(ctx context.Context) (*google.Tokeninfo, error) {
+func (a *OAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 	token, err := getIDTokenAuthorizationHeader(ctx)
 	if err != nil {
 		return nil, err
@@ -103,13 +114,7 @@ func (a *OAuth) validateToken(ctx context.Context) (*google.Tokeninfo, error) {
 		return nil, ErrInvalidToken
 	}
 
-	httpClient := a.config.Client(ctx, token)
-	googleService, err := google.New(httpClient)
-	if err != nil {
-		return nil, err
-	}
-
-	info_call := googleService.Tokeninfo()
+	info_call := a.service.Tokeninfo()
 	info_call.AccessToken(token.AccessToken)
 	return info_call.Do()
 }

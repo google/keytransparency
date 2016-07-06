@@ -36,33 +36,25 @@ And the shell $PATH must include $GOPATH/bin
 
 Running a Key Transparency Cluster
 ----------------------------------
-First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
+1. Install [goreman](https://github.com/mattn/goreman), which manages 
+Procfile-based applications.
 
+2. Generate test VRF and signing keys.
+```sh
+make -C testdata
+```
+
+3. Get [Application Default Credentials](https://developers.google.com/identity/protocols/application-default-credentials) 
+and set ```GOOGLE_APPLICATION_CREDENTIALS``` environment variable in 
+[.env](.env) to point to the credentials file.
+
+4. Run 
 The [Procfile script](./Procfile) will set up a local cluster. Start it with:
 
 ```sh
 make -C testdata
 goreman start
 ```
-
-Getting OAuth Credentials For The Server
------------------
-1. Use this [wizard](https://console.developers.google.com/start/api?id=identitytoolkit)
-   to create or select a project in the Google Developers Console and
-   automatically turn on the API. Click **Continue**, then **Go to credentials**.
-2. At the top of the page, select the **OAuth consent screen tab**. Select an 
-   **Email address**, enter a **Product name** if not already set, and click the 
-   **Save** button.
-3. Select the **Credentials** tab, click the **Create credentials** button and 
-   select **OAuth client ID**.
-4. Select the application type **Other**, enter the name "Key Transparency 
-   Server", and click the Create button.
-5. Click OK to dismiss the resulting dialog.
-6. Click the file_download (Download JSON) button to the right of the client ID.
-7. Move this file to your working directory and rename it client_secret.json.
-8. Set the ```CLIENT_SECRETS``` variable in [.env](.env) with the path to client_secrets.json.
-9. Keep the client_secrets safe: ```chmod 600 client_secrets.json``` 
-
 
 Projects Using Key Transparency
 ==================================
