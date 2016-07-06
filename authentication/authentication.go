@@ -14,11 +14,10 @@
 
 // Package authentication implements authentication mechanisms.
 //
-// This package is designed to be used by identity providers.
-// OAuth2 Access tokens may be provided as authentication information, which can
-// be resolved to userinformation and associated scopes on the backend.
-//
-// For demo purposes, we support OpenId Connect in implicit mode.
+// The Transparent Key Server is designed to be used by identity providers -
+// IdP in OAuth parlance.  OAuth2 Access Tokens may be provided as
+// authentication information, which can be resolved to user information and
+// associated scopes on the backend.
 package authentication
 
 import (
@@ -34,5 +33,7 @@ var (
 
 // Authenticator provides services to authenticate users.
 type Authenticator interface {
+	// ValidateCreds verifies that the requiredUserID, and any other
+	// required authentication information is present in ctx.
 	ValidateCreds(ctx context.Context, requiredUserID string) error
 }

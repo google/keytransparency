@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// gRPC stores authenitcation info in the "authorization" header.
+// GRPC stores authentication information in the "authorization" header.
 
 var (
 	E2EScope       = "https://www.googleapis.com/auth/e2ekeys"

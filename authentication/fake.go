@@ -23,17 +23,19 @@ import (
 
 type FakeAuth struct{}
 
-// New returns a new authenticator.
+// NewFake returns a new authenticator.
 func NewFake() *FakeAuth {
 	return &FakeAuth{}
 }
 
+// NewContext adds authentication details to a new background context.
 func (a *FakeAuth) NewContext(userID string) context.Context {
 	md := make(map[string][]string)
 	md["userid"] = []string{userID}
-	return metadata.NewContext(context.Background(), md)
+	return metadata.NewContext(context.TODO(), md)
 }
 
+// ValidateCreds verifies that the requiredUserID is present in ctx.
 func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) error {
 	md, ok := metadata.FromContext(ctx)
 	if !ok {

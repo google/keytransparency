@@ -45,9 +45,9 @@ make -C testdata
 goreman start
 ```
 
-Getting OAuth Credentials 
+Getting OAuth Credentials For The Server
 -----------------
-1. Use this [wizard](https://console.developers.google.com/start/api?id=drive)
+1. Use this [wizard](https://console.developers.google.com/start/api?id=identitytoolkit)
    to create or select a project in the Google Developers Console and
    automatically turn on the API. Click **Continue**, then **Go to credentials**.
 2. At the top of the page, select the **OAuth consent screen tab**. Select an 
@@ -61,6 +61,7 @@ Getting OAuth Credentials
 6. Click the file_download (Download JSON) button to the right of the client ID.
 7. Move this file to your working directory and rename it client_secret.json.
 8. Set the ```CLIENT_SECRETS``` variable in [.env](.env) with the path to client_secrets.json.
+9. Keep the client_secrets safe: ```chmod 600 client_secrets.json``` 
 
 
 Projects Using Key Transparency
