@@ -120,7 +120,7 @@ func (s *Signer) CreateEpoch() error {
 	}
 	seh := &ctmap.SignedEpochHead{
 		EpochHead:  eh,
-		Signatures: map[string]*ctmap.DigitallySigned{s.signer.Name: sig},
+		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
 	signedEpochHead, err := proto.Marshal(seh)
 	if err != nil {

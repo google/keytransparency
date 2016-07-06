@@ -29,8 +29,8 @@ import (
 	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"github.com/google/e2e-key-server/vrf"
 
-	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/golang/protobuf/proto"
+	logclient "github.com/google/certificate-transparency/go/client"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -46,8 +46,7 @@ const (
 )
 
 var (
-	errFailedSubmit = errors.New("Failed submission")
-	ErrRetry        = errors.New("Update not present on server yet")
+	ErrRetry = errors.New("Update not present on server yet")
 )
 
 // Client is a helper library for issuing updates to the key server.

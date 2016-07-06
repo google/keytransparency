@@ -16,7 +16,6 @@ package integration
 
 import (
 	"database/sql"
-	"io/ioutil"
 	"net"
 	"net/http/httptest"
 	"testing"
@@ -62,36 +61,41 @@ func Listen(t testing.TB) (string, net.Listener) {
 	}
 	_, port, err := net.SplitHostPort(lis.Addr().String())
 	if err != nil {
-		t.Fatal("Failed to parse listener address: %v", err)
+		t.Fatalf("Failed to parse listener address: %v", err)
 	}
 	addr := "localhost:" + port
 	return addr, lis
 }
 
 func openPrivateKey(t testing.TB) *signatures.SignatureSigner {
-	file := "../testdata/p256-key.pem"
-	pem, err := ioutil.ReadFile(file)
+	pem := `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIBhrTW3oMMyqbYF/eO/rEXrveVvwIDj/wWn6fXHDEDqLoAoGCCqGSM49
+AwEHoUQDQgAEfnOE6eBAZgDRADmZTEzyOJnx2YilE3bF0ZKmEbSvv/tnFUEGK2SH
++Ohwj7j6wIz3iWzr5ePvKmjnkkmxpgGoSg==
+-----END EC PRIVATE KEY-----`
+	key, _, err := signatures.PrivateKeyFromPEM([]byte(pem))
 	if err != nil {
-		t.Fatalf("Failed to read file %v: %v", file, err)
+		t.Fatalf("Failed to create signer: %v", err)
 	}
-	key, _, err := signatures.PrivateKeyFromPEM(pem)
 	sig, err := signatures.NewSignatureSigner(key)
 	if err != nil {
-		t.Fatal("Failed to create signer: %v", err)
+		t.Fatalf("Failed to create signer: %v", err)
 	}
 	return sig
 }
 
 func openPublicKey(t testing.TB) *signatures.SignatureVerifier {
-	file := "../testdata/p256-pubkey.pem"
-	pem, err := ioutil.ReadFile(file)
+	pem := `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfnOE6eBAZgDRADmZTEzyOJnx2Yil
+E3bF0ZKmEbSvv/tnFUEGK2SH+Ohwj7j6wIz3iWzr5ePvKmjnkkmxpgGoSg==
+-----END PUBLIC KEY-----`
+	key, _, err := signatures.PublicKeyFromPEM([]byte(pem))
 	if err != nil {
-		t.Fatalf("Failed to read file %v: %v", file, err)
+		t.Fatalf("Failed to create verifier: %v", err)
 	}
-	key, _, err := signatures.PublicKeyFromPEM(pem)
 	verify, err := signatures.NewSignatureVerifier(key)
 	if err != nil {
-		t.Fatal("Failed to create signer: %v", err)
+		t.Fatalf("Failed to create verifier: %v", err)
 	}
 	return verify
 }

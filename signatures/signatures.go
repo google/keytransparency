@@ -35,9 +35,18 @@ import (
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 )
 
+var (
+	ErrWrongKeyType       = errors.New("Not an ECDSA key")
+	ErrPointNotOnCurve    = errors.New("Point is not on the P256 curve")
+	ErrWrongHashAlgo      = errors.New("Not the SHA256 hash algorithm")
+	ErrWrongSignatureAlgo = errors.New("Not the ECDSA signature algorithm")
+	ErrExtraDataAfterSig  = errors.New("Extra data found after signature")
+	ErrVerificaionFailed  = errors.New("Failed to verify ECDSA signature")
+)
+
 type SignatureSigner struct {
 	privKey crypto.PrivateKey
-	Name    string
+	KeyName string
 }
 
 // PrivateKeyFromPEM parses a PEM formatted block and returns the private key contained within and any remaining unread bytes, or an error.
@@ -50,8 +59,8 @@ func PrivateKeyFromPEM(b []byte) (crypto.Signer, []byte, error) {
 	return k, rest, err
 }
 
-// Name is the first 8 hex digits of the SHA256 of the public pem.
-func Name(k crypto.PublicKey) (string, error) {
+// KeyName is the first 8 hex digits of the SHA256 of the public pem.
+func KeyName(k crypto.PublicKey) (string, error) {
 	pubBytes, err := x509.MarshalPKIXPublicKey(k)
 	if err != nil {
 		return "", err
@@ -72,14 +81,14 @@ func NewSignatureSigner(pk crypto.Signer) (*SignatureSigner, error) {
 		return nil, fmt.Errorf("Unsupported public key type %v", pkType)
 	}
 
-	id, err := Name(pk.Public())
+	id, err := KeyName(pk.Public())
 	if err != nil {
 		return nil, err
 	}
 
 	return &SignatureSigner{
 		privKey: pk,
-		Name:    id,
+		KeyName: id,
 	}, nil
 }
 
@@ -92,7 +101,7 @@ func (s SignatureSigner) Sign(data interface{}) (*ctmap.DigitallySigned, error) 
 
 	ecdsaKey, ok := s.privKey.(*ecdsa.PrivateKey)
 	if !ok {
-		return nil, fmt.Errorf("cannot verify ECDSA signature with key")
+		return nil, ErrWrongKeyType
 	}
 	var ecSig struct {
 		R, S *big.Int
@@ -114,11 +123,12 @@ func (s SignatureSigner) Sign(data interface{}) (*ctmap.DigitallySigned, error) 
 
 // SignatureVerifier can verify signatures on SCTs and STHs
 type SignatureVerifier struct {
-	pubKey crypto.PublicKey
-	Name   string
+	pubKey  crypto.PublicKey
+	KeyName string
 }
 
-// PublicKeyFromPEM parses a PEM formatted block and returns the public key contained within and any remaining unread bytes, or an error.
+// PublicKeyFromPEM parses a PEM formatted block and returns the public key
+// contained within and any remaining unread bytes, or an error.
 func PublicKeyFromPEM(b []byte) (crypto.PublicKey, []byte, error) {
 	p, rest := pem.Decode(b)
 	if p == nil {
@@ -133,30 +143,29 @@ func NewSignatureVerifier(pk crypto.PublicKey) (*SignatureVerifier, error) {
 	case *ecdsa.PublicKey:
 		params := *(pkType.Params())
 		if params != *elliptic.P256().Params() {
-			e := fmt.Errorf("public is ECDSA, but not on the P256 curve")
-			return nil, e
+			return nil, ErrPointNotOnCurve
 		}
 	default:
-		return nil, fmt.Errorf("Unsupported public key type %v", pkType)
+		return nil, ErrWrongKeyType
 	}
 
-	id, err := Name(pk)
+	id, err := KeyName(pk)
 	if err != nil {
 		return nil, err
 	}
 
 	return &SignatureVerifier{
-		pubKey: pk,
-		Name:   id,
+		pubKey:  pk,
+		KeyName: id,
 	}, nil
 }
 
 func (s SignatureVerifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
-		return fmt.Errorf("unsupported HashAlgorithm in signature: %v", sig.HashAlgorithm)
+		return ErrWrongHashAlgo
 	}
 	if sig.SigAlgorithm != ctmap.DigitallySigned_ECDSA {
-		return fmt.Errorf("unsupported signature type %v", sig.SigAlgorithm)
+		return ErrWrongSignatureAlgo
 	}
 
 	j, err := json.Marshal(data)
@@ -167,7 +176,7 @@ func (s SignatureVerifier) Verify(data interface{}, sig *ctmap.DigitallySigned) 
 
 	ecdsaKey, ok := s.pubKey.(*ecdsa.PublicKey)
 	if !ok {
-		return fmt.Errorf("cannot verify ECDSA signature with %T key", s.pubKey)
+		return ErrWrongKeyType
 	}
 	var ecdsaSig struct {
 		R, S *big.Int
@@ -177,11 +186,11 @@ func (s SignatureVerifier) Verify(data interface{}, sig *ctmap.DigitallySigned) 
 		return fmt.Errorf("failed to unmarshal ECDSA signature: %v", err)
 	}
 	if len(rest) != 0 {
-		log.Printf("Garbage following signature %v", rest)
+		log.Printf("Garbage following signature")
 	}
 
 	if !ecdsa.Verify(ecdsaKey, hash[:], ecdsaSig.R, ecdsaSig.S) {
-		return errors.New("failed to verify ecdsa signature")
+		return ErrVerificaionFailed
 	}
 	return nil
 }

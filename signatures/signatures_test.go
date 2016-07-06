@@ -143,7 +143,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 			t.Fatalf("NewSigantureVerifier(): %v", err)
 		}
 
-		if got, want := signer.Name, verifier.Name; got != want {
+		if got, want := signer.KeyName, verifier.KeyName; got != want {
 			t.Errorf("Signer.Name: %v, want %v", got, want)
 		}
 	}

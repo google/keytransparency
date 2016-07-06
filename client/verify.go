@@ -62,12 +62,16 @@ func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]b
 // VerifyLeafProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
 func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse, seh *ctmap.SignedEpochHead, factory tree.SparseFactory) bool {
 	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
-	calculatedRoot, _ := m.ReadRoot(nil)
+	calculatedRoot, err := m.ReadRoot(nil)
+	if err != nil {
+		log.Printf("VerifyLeafProof failed to read root: %v", err)
+		return false
+	}
 	return bytes.Equal(seh.EpochHead.Root, calculatedRoot)
 }
 
 func (c *Client) VerifySEH(seh *ctmap.SignedEpochHead) error {
-	return c.verifier.Verify(seh.GetEpochHead(), seh.Signatures[c.verifier.Name])
+	return c.verifier.Verify(seh.GetEpochHead(), seh.Signatures[c.verifier.KeyName])
 }
 
 func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) error {
