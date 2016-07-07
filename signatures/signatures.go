@@ -49,6 +49,25 @@ type SignatureSigner struct {
 	KeyName string
 }
 
+// GenerateKeyPair creates a new random keypair and returns the wrapped signer and verifier.
+func GenerateKeyPair() (*SignatureSigner, *SignatureVerifier, error) {
+	pubkeyCurve := elliptic.P256()
+	privatekey := new(ecdsa.PrivateKey)
+	privatekey, err := ecdsa.GenerateKey(pubkeyCurve, rand.Reader)
+	if err != nil {
+		return nil, nil, err
+	}
+	sig, err := NewSignatureSigner(privatekey)
+	if err != nil {
+		return nil, nil, err
+	}
+	ver, err := NewSignatureVerifier(privatekey.Public())
+	if err != nil {
+		return nil, nil, err
+	}
+	return sig, ver, nil
+}
+
 // PrivateKeyFromPEM parses a PEM formatted block and returns the private key contained within and any remaining unread bytes, or an error.
 func PrivateKeyFromPEM(b []byte) (crypto.Signer, []byte, error) {
 	p, rest := pem.Decode(b)

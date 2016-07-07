@@ -67,39 +67,6 @@ func Listen(t testing.TB) (string, net.Listener) {
 	return addr, lis
 }
 
-func openPrivateKey(t testing.TB) *signatures.SignatureSigner {
-	pem := `-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIBhrTW3oMMyqbYF/eO/rEXrveVvwIDj/wWn6fXHDEDqLoAoGCCqGSM49
-AwEHoUQDQgAEfnOE6eBAZgDRADmZTEzyOJnx2YilE3bF0ZKmEbSvv/tnFUEGK2SH
-+Ohwj7j6wIz3iWzr5ePvKmjnkkmxpgGoSg==
------END EC PRIVATE KEY-----`
-	key, _, err := signatures.PrivateKeyFromPEM([]byte(pem))
-	if err != nil {
-		t.Fatalf("Failed to create signer: %v", err)
-	}
-	sig, err := signatures.NewSignatureSigner(key)
-	if err != nil {
-		t.Fatalf("Failed to create signer: %v", err)
-	}
-	return sig
-}
-
-func openPublicKey(t testing.TB) *signatures.SignatureVerifier {
-	pem := `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfnOE6eBAZgDRADmZTEzyOJnx2Yil
-E3bF0ZKmEbSvv/tnFUEGK2SH+Ohwj7j6wIz3iWzr5ePvKmjnkkmxpgGoSg==
------END PUBLIC KEY-----`
-	key, _, err := signatures.PublicKeyFromPEM([]byte(pem))
-	if err != nil {
-		t.Fatalf("Failed to create verifier: %v", err)
-	}
-	verify, err := signatures.NewSignatureVerifier(key)
-	if err != nil {
-		t.Fatalf("Failed to create verifier: %v", err)
-	}
-	return verify
-}
-
 type Env struct {
 	GRPCServer *grpc.Server
 	V2Server   *keyserver.Server
@@ -118,6 +85,10 @@ func NewEnv(t *testing.T) *Env {
 	hs := ctutil.CtServer(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
+	sig, verifier, err := signatures.GenerateKeyPair()
+	if err != nil {
+		t.Fatalf("Failed to generate signing keypair: %v", err)
+	}
 
 	// Common data structures.
 	queue := queue.New(clus.RandClient(), mapID)
@@ -132,7 +103,7 @@ func NewEnv(t *testing.T) *Env {
 	s := grpc.NewServer()
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 
-	signer := signer.New(queue, tree, mutator, appender, openPrivateKey(t))
+	signer := signer.New(queue, tree, mutator, appender, sig)
 	signer.CreateEpoch()
 
 	addr, lis := Listen(t)
@@ -144,7 +115,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
 	cli := v2pb.NewE2EKeyServiceClient(cc)
-	client := client.New(cli, vrfPub, hs.URL, openPublicKey(t))
+	client := client.New(cli, vrfPub, hs.URL, verifier)
 	client.RetryCount = 0
 
 	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}

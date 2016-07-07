@@ -11,4 +11,5 @@ testdata/*.pem
 testdata/*.dat
 testdata/*.json
 testdata/*.sqlite3
+testdata/server.*
 
