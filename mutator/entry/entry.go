@@ -68,7 +68,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 	return nil
 }
 
-// Mutate applies mutation to value
+// Mutate applies mutation to value.
 func (*Entry) Mutate(value, mutation []byte) ([]byte, error) {
 	update := new(pb.SignedKV)
 	if err := proto.Unmarshal(mutation, update); err != nil {
