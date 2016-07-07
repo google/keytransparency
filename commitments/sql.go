@@ -73,7 +73,7 @@ func New(db *sql.DB, mapID string) *Commitments {
 }
 
 // WriteCommitment saves a commitment to the database.
-// Writes of the same commitment value succeed.
+// Writes if the same commitment value succeeds.
 func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, value []byte) error {
 	tx, err := c.db.Begin()
 	if err != nil {
