@@ -21,6 +21,7 @@ import (
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/mutator"
 	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/signatures"
 	"github.com/google/e2e-key-server/tree"
 
 	"github.com/golang/protobuf/proto"
@@ -37,15 +38,17 @@ type Signer struct {
 	mutator  mutator.Mutator
 	tree     tree.SparseHist
 	appender appender.Appender
+	signer   *signatures.SignatureSigner
 }
 
 // New creates a new instance of the signer.
-func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender) *Signer {
+func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appender appender.Appender, signer *signatures.SignatureSigner) *Signer {
 	return &Signer{
 		queue:    queue,
 		mutator:  mutator,
 		tree:     tree,
 		appender: appender,
+		signer:   signer,
 	}
 }
 
@@ -105,19 +108,19 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 
-	head := &ctmap.EpochHead{
+	eh := &ctmap.EpochHead{
 		// TODO: set Realm
 		IssueTime: &tspb.Timestamp{timestamp, 0},
 		Epoch:     epoch,
 		Root:      root,
 	}
-	headData, err := proto.Marshal(head)
+	sig, err := s.signer.Sign(eh)
 	if err != nil {
 		return err
 	}
 	seh := &ctmap.SignedEpochHead{
-		EpochHead: headData,
-		// TODO: set Signatures
+		EpochHead:  eh,
+		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
 	signedEpochHead, err := proto.Marshal(seh)
 	if err != nil {

@@ -1,12 +1,15 @@
 *.swp
 *.swo
 *~
+
 e2e-key-server
 e2e-key-signer
 vrfkeygen
+
 infra*.etcd
-tree-db.sqlite3
-testdata/server*
+testdata/*.pem
 testdata/*.dat
-testdata/client_secrets.json
+testdata/*.json
+testdata/*.sqlite3
+testdata/server.*
 

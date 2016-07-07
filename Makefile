@@ -69,8 +69,7 @@ proto: $(DEPS) $(GATEWAY_DEPS)
 clean:
 	rm -f $(DEPS)
 	rm -f $(GATEWAY_DEPS)
+	$(MAKE) -C testdata clean
 	rm -f srv e2e-key-server e2e-key-signer vrfkeygen 
 	rm -rf infra*
-	rm -f tree-db.sqlite3
-	rm -f public_vrf_key.dat private_vrf_key.dat 
 

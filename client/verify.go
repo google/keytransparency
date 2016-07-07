@@ -16,6 +16,7 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"log"
 
 	"github.com/google/e2e-key-server/commitments"
@@ -29,6 +30,12 @@ import (
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
 )
 
+var (
+	ErrInvalidCommitment  = errors.New("Invalid Commitment")
+	ErrInvalidVRF         = errors.New("Invalid VRF")
+	ErrInvalidSparseProof = errors.New("Invalid Sparse Proof")
+)
+
 func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
 	if in.Profile != nil {
 		entry := new(pb.Entry)
@@ -36,7 +43,6 @@ func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
 			log.Printf("Error unmarshaling entry: %v", err)
 			return false
 		}
-
 		if err := commitments.VerifyName(userID, in.CommitmentKey, in.Profile, entry.Commitment); err != nil {
 			log.Printf("Invalid profile commitment.")
 			return false
@@ -56,37 +62,36 @@ func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]b
 // VerifyLeafProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
 func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse, seh *ctmap.SignedEpochHead, factory tree.SparseFactory) bool {
 	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
-	calculatedRoot, _ := m.ReadRoot(nil)
-	eh, err := EpochHead(seh)
+	calculatedRoot, err := m.ReadRoot(nil)
 	if err != nil {
+		log.Printf("VerifyLeafProof failed to read root: %v", err)
 		return false
 	}
-	return bytes.Equal(eh.Root, calculatedRoot)
+	return bytes.Equal(seh.EpochHead.Root, calculatedRoot)
 }
 
-func VerifySEH(seh *ctmap.SignedEpochHead) bool {
-	// TODO: Verify STH signatures
-	return true
+func (c *Client) VerifySEH(seh *ctmap.SignedEpochHead) error {
+	return c.verifier.Verify(seh.GetEpochHead(), seh.Signatures[c.verifier.KeyName])
 }
 
-func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) bool {
+func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) error {
 	if !VerifyCommitment(userID, in) {
-		return false
+		return ErrInvalidCommitment
 	}
 
 	index, ok := VerifyVRF(userID, in, c.vrf)
 	if !ok {
-		return false
+		return ErrInvalidVRF
 	}
 
 	if !VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSeh(), c.factory) {
-		return false
+		return ErrInvalidSparseProof
 	}
 
-	if !VerifySEH(in.GetSeh()) {
-		return false
+	if err := c.VerifySEH(in.GetSeh()); err != nil {
+		return err
 	}
-	return true
+	return nil
 }
 
 // verifyEpoch checks the expected root against the log of signed epoch heads.

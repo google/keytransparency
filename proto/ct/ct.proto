@@ -11,18 +11,13 @@ package ct;
 message DigitallySigned {
   enum HashAlgorithm {
     NONE = 0;
-    MD5 = 1;
-    SHA1 = 2;
-    SHA224 = 3;
     SHA256 = 4;
-    SHA384 = 5;
     SHA512 = 6;
   }
 
   enum SignatureAlgorithm {
     ANONYMOUS = 0;
     RSA = 1;
-    DSA = 2;
     ECDSA = 3;
   }
 

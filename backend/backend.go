@@ -17,6 +17,7 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"io/ioutil"
 	"log"
 	"strings"
 	"sync"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/e2e-key-server/appender"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/signatures"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 
@@ -38,6 +40,7 @@ var (
 	epochDuration = flag.Uint("period", 60, "Seconds between epoch creation")
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
+	signingKey    = flag.String("key", "", "Path to private key PEM for STH signing")
 )
 
 func openDB() *sql.DB {
@@ -62,6 +65,22 @@ func openEtcd() *clientv3.Client {
 	return cli
 }
 
+func openPrivateKey() *signatures.SignatureSigner {
+	pem, err := ioutil.ReadFile(*signingKey)
+	if err != nil {
+		log.Fatalf("Failed to read file %v: %v", *signingKey, err)
+	}
+	key, _, err := signatures.PrivateKeyFromPEM(pem)
+	if err != nil {
+		log.Fatalf("Read to read private key: %v", err)
+	}
+	sig, err := signatures.NewSignatureSigner(key)
+	if err != nil {
+		log.Fatalf("Failed to create signer: %v", err)
+	}
+	return sig
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
@@ -76,7 +95,7 @@ func main() {
 	mutator := entry.New()
 	appender := appender.New(sqldb, *mapID, *mapLogURL)
 
-	signer := signer.New(queue, tree, mutator, appender)
+	signer := signer.New(queue, tree, mutator, appender, openPrivateKey())
 	go signer.StartSequencing()
 	go signer.StartSigning(time.Duration(*epochDuration) * time.Second)
 

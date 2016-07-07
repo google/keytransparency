@@ -176,6 +176,6 @@ func Main() {
 	log.Printf("Listening on %v", addr)
 	if err := http.ListenAndServeTLS(addr, *certFile, *keyFile,
 		grpcHandlerFunc(grpcServer, mux)); err != nil {
-		log.Fatal("ListenAndServeTLS: ", err)
+		log.Fatalf("ListenAndServeTLS: ", err)
 	}
 }

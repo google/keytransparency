@@ -40,7 +40,7 @@ func New() *Tree {
 	// TODO: reimplement without sql.
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
-		log.Fatal("Failed creating in-memory sqlite3 db: %v", err)
+		log.Fatalf("Failed creating in-memory sqlite3 db: %v", err)
 	}
 	return &Tree{db, sqlhist.New(db, "verify"), 0}
 }

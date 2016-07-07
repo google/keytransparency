@@ -28,6 +28,7 @@ import (
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/queue"
+	"github.com/google/e2e-key-server/signatures"
 	"github.com/google/e2e-key-server/signer"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 	"github.com/google/e2e-key-server/vrf"
@@ -60,7 +61,7 @@ func Listen(t testing.TB) (string, net.Listener) {
 	}
 	_, port, err := net.SplitHostPort(lis.Addr().String())
 	if err != nil {
-		t.Fatal("Failed to parse listener address: %v", err)
+		t.Fatalf("Failed to parse listener address: %v", err)
 	}
 	addr := "localhost:" + port
 	return addr, lis
@@ -84,6 +85,10 @@ func NewEnv(t *testing.T) *Env {
 	hs := ctutil.CtServer(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
+	sig, verifier, err := signatures.GenerateKeyPair()
+	if err != nil {
+		t.Fatalf("Failed to generate signing keypair: %v", err)
+	}
 
 	// Common data structures.
 	queue := queue.New(clus.RandClient(), mapID)
@@ -98,7 +103,7 @@ func NewEnv(t *testing.T) *Env {
 	s := grpc.NewServer()
 	v2pb.RegisterE2EKeyServiceServer(s, server)
 
-	signer := signer.New(queue, tree, mutator, appender)
+	signer := signer.New(queue, tree, mutator, appender, sig)
 	signer.CreateEpoch()
 
 	addr, lis := Listen(t)
@@ -110,7 +115,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
 	cli := v2pb.NewE2EKeyServiceClient(cc)
-	client := client.New(cli, vrfPub, hs.URL)
+	client := client.New(cli, vrfPub, hs.URL, verifier)
 	client.RetryCount = 0
 
 	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}

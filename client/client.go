@@ -24,12 +24,13 @@ import (
 	"time"
 
 	"github.com/google/e2e-key-server/commitments"
+	"github.com/google/e2e-key-server/signatures"
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"github.com/google/e2e-key-server/vrf"
 
-	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/golang/protobuf/proto"
+	logclient "github.com/google/certificate-transparency/go/client"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -45,9 +46,7 @@ const (
 )
 
 var (
-	errFailedVerification = errors.New("Server response failed verification")
-	errFailedSubmit       = errors.New("Failed submission")
-	ErrRetry              = errors.New("Update not present on server yet")
+	ErrRetry = errors.New("Update not present on server yet")
 )
 
 // Client is a helper library for issuing updates to the key server.
@@ -68,16 +67,18 @@ type Client struct {
 	RetryCount int
 	factory    tree.SparseFactory
 	ctlog      *logclient.LogClient
+	verifier   *signatures.SignatureVerifier
 }
 
 // New creates a new client.
-func New(client v2pb.E2EKeyServiceClient, vrf vrf.PublicKey, mapLogURL string) *Client {
+func New(client v2pb.E2EKeyServiceClient, vrf vrf.PublicKey, mapLogURL string, verifier *signatures.SignatureVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
 		RetryCount: 1,
 		factory:    memtree.NewFactory(),
 		ctlog:      logclient.New(mapLogURL),
+		verifier:   verifier,
 	}
 }
 
@@ -91,8 +92,8 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, err
 	}
 
-	if !c.verifyGetEntryResponse(userID, e) {
-		return nil, errFailedVerification
+	if err := c.verifyGetEntryResponse(userID, e); err != nil {
+		return nil, err
 	}
 
 	if err := c.verifyLog(e.GetSeh(), e.SehSct); err != nil {
@@ -119,8 +120,8 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 		return nil, err
 	}
 
-	if !c.verifyGetEntryResponse(userID, getResp) {
-		return nil, errFailedVerification
+	if err := c.verifyGetEntryResponse(userID, getResp); err != nil {
+		return nil, err
 	}
 
 	// Extract index from a prior GetEntry call.
@@ -193,8 +194,8 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 		return err
 	}
 	// Validate response.
-	if !c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()) {
-		return errFailedVerification
+	if err := c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
+		return err
 	}
 
 	keyvalue := new(pb.KeyValue)
