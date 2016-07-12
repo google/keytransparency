@@ -68,7 +68,10 @@ func New(db *sql.DB, mapID, logURL string) *CTAppender {
 	a := &CTAppender{
 		mapID: []byte(mapID),
 		db:    db,
-		ctlog: client.New(logURL),
+		// TODO(cesarghali): we might actually want to pass an
+		// http.client instead of nil. If nil is passed client.New will
+		// automatically initialize it.
+		ctlog: client.New(logURL, nil),
 	}
 
 	// Create tables.
