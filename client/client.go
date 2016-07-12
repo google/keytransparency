@@ -77,7 +77,10 @@ func New(client v2pb.E2EKeyServiceClient, vrf vrf.PublicKey, mapLogURL string, v
 		vrf:        vrf,
 		RetryCount: 1,
 		factory:    memtree.NewFactory(),
-		ctlog:      logclient.New(mapLogURL),
+		// TODO(cesarghali): we might actually want to pass an
+		// http.client instead of nil. If nil is passed client.New will
+		// automatically initialize it.
+		ctlog:      logclient.New(mapLogURL, nil),
 		verifier:   verifier,
 	}
 }
