@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package sqlhist implements a temporal sparse merkle tree using SQL.
+// Package sqlhist implements a temporal sparse merkle tree using SQL.
 // Each epoch has its own sparse tree. By default, each new epoch is equal to
 // the contents of the previous epoch.
 package sqlhist

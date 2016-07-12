@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package p256 implements a verifiable random function using curve p256.
+// Package p256 implements a verifiable random function using curve p256.
 package p256
 
 // Discrete Log based VRF from Appendix A of CONIKS:

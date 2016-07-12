@@ -36,14 +36,21 @@ import (
 )
 
 var (
-	ErrWrongKeyType       = errors.New("Not an ECDSA key")
-	ErrPointNotOnCurve    = errors.New("Point is not on the P256 curve")
-	ErrWrongHashAlgo      = errors.New("Not the SHA256 hash algorithm")
+	// ErrWrongKeyType occurs when a key is not an ECDSA key.
+	ErrWrongKeyType = errors.New("Not an ECDSA key")
+	// ErrPointNotOnCurve occurs when a public key is not on the curve.
+	ErrPointNotOnCurve = errors.New("Point is not on the P256 curve")
+	// ErrWrongHashAlgo occurs when a hash algorithm other than SHA256 was specified.
+	ErrWrongHashAlgo = errors.New("Not the SHA256 hash algorithm")
+	// ErrWrongSignatureAlgo occurs when a signature algorithm other than ECDSA was specified.
 	ErrWrongSignatureAlgo = errors.New("Not the ECDSA signature algorithm")
-	ErrExtraDataAfterSig  = errors.New("Extra data found after signature")
-	ErrVerificaionFailed  = errors.New("Failed to verify ECDSA signature")
+	// ErrExtraDataAfterSig occurs when extra data was found after the signature.
+	ErrExtraDataAfterSig = errors.New("Extra data found after signature")
+	// ErrVerificaionFailed occurs when the signature verification failed.
+	ErrVerificaionFailed = errors.New("Failed to verify ECDSA signature")
 )
 
+// SignatureSigner generates signatures with a single key.
 type SignatureSigner struct {
 	privKey crypto.PrivateKey
 	KeyName string
@@ -68,7 +75,8 @@ func GenerateKeyPair() (*SignatureSigner, *SignatureVerifier, error) {
 	return sig, ver, nil
 }
 
-// PrivateKeyFromPEM parses a PEM formatted block and returns the private key contained within and any remaining unread bytes, or an error.
+// PrivateKeyFromPEM parses a PEM formatted block and returns the private key
+// contained within and any remaining unread bytes, or an error.
 func PrivateKeyFromPEM(b []byte) (crypto.Signer, []byte, error) {
 	p, rest := pem.Decode(b)
 	if p == nil {
@@ -88,16 +96,16 @@ func KeyName(k crypto.PublicKey) (string, error) {
 	return hex.EncodeToString(id[:])[:8], nil
 }
 
+// NewSignatureSigner creates a signer object from a private key.
 func NewSignatureSigner(pk crypto.Signer) (*SignatureSigner, error) {
 	switch pkType := pk.(type) {
 	case *ecdsa.PrivateKey:
 		params := *(pkType.Params())
 		if params != *elliptic.P256().Params() {
-			e := fmt.Errorf("public is ECDSA, but not on the P256 curve")
-			return nil, e
+			return nil, ErrPointNotOnCurve
 		}
 	default:
-		return nil, fmt.Errorf("Unsupported public key type %v", pkType)
+		return nil, ErrWrongKeyType
 	}
 
 	id, err := KeyName(pk.Public())
@@ -111,6 +119,7 @@ func NewSignatureSigner(pk crypto.Signer) (*SignatureSigner, error) {
 	}, nil
 }
 
+// Sign generates a digital signature object.
 func (s SignatureSigner) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 	j, err := json.Marshal(data)
 	if err != nil {
@@ -157,6 +166,7 @@ func PublicKeyFromPEM(b []byte) (crypto.PublicKey, []byte, error) {
 	return k, rest, err
 }
 
+// NewSignatureVerifier creates a verifier from a ECDSA public key.
 func NewSignatureVerifier(pk crypto.PublicKey) (*SignatureVerifier, error) {
 	switch pkType := pk.(type) {
 	case *ecdsa.PublicKey:
@@ -179,6 +189,7 @@ func NewSignatureVerifier(pk crypto.PublicKey) (*SignatureVerifier, error) {
 	}, nil
 }
 
+// Verify checks the digital signature associated applied to data.
 func (s SignatureVerifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
 		return ErrWrongHashAlgo

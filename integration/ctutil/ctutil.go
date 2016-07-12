@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package ctutil implements helper functions for testing against Certificate Transparency.
+// Package ctutil implements helper functions for testing against Certificate Transparency.
 package ctutil
 
 import (
