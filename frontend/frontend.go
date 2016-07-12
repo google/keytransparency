@@ -37,11 +37,11 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/gengo/grpc-gateway/runtime"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // Set database engine.
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	_ "google.golang.org/grpc/grpclog/glogger"
+	_ "google.golang.org/grpc/grpclog/glogger" // Set logging engine.
 
 	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
@@ -127,6 +127,7 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
+// Main runs a key transparency front end for gRPC and REST APIS.
 func Main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()

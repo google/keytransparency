@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package replace implements a simple replacement stragey as a mapper
+// Package replace implements a simple replacement stragey as a mapper
 package replace
 
 import ()

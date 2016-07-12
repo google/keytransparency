@@ -57,6 +57,7 @@ test: main
 
 fmt:
 	gofmt -w `find . | grep -e '\.go$$'`
+	golint ./...
 
 proto: $(DEPS) $(GATEWAY_DEPS)
 
