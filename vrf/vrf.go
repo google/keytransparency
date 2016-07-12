@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package vrf defines the interface to a verifiable random function.
+// Package vrf defines the interface to a verifiable random function.
 package vrf
 
 // A VRF is a pseudorandom function f_k from a secret key k, such that that
