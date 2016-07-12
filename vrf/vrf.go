@@ -21,24 +21,20 @@ package vrf
 // without compromising the unpredictability of f_k for any m' != m.
 // http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=814584
 
+// PrivateKey supports evaluating the VRF function.
 type PrivateKey interface {
 	// Evaluate returns the output of f_k(m) and its proof.
 	Evaluate(m []byte) (vrf []byte, proof []byte)
 
 	// Index returns the index indicated by a given VRF evaluation.
 	Index(vrf []byte) [32]byte
-
-	// Bytes serializes a PrivateKey
-	Bytes() []byte
 }
 
+// PublicKey supports verifying output from the VRF function.
 type PublicKey interface {
 	// Verify verifies the NP-proof supplied by Proof.
 	Verify(m, vrf, proof []byte) bool
 
 	// Index returns the index indicated by a given VRF evaluation.
 	Index(vrf []byte) [32]byte
-
-	// Bytes serializes a PublicKey
-	Bytes() []byte
 }

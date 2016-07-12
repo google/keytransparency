@@ -1,8 +1,5 @@
 all: vrf tls sig
 
-vrf:
-	go run ../vrf/vrfkeygen/vrfkeygen.go
-
 tls:
 	openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
 	openssl rsa -passin pass:x -in server.pass.key -out server.key
@@ -14,6 +11,10 @@ tls:
 sig:
 	openssl ecparam -name prime256v1 -genkey -noout -out p256-key.pem
 	openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+
+vrf:
+	openssl ecparam -name prime256v1 -genkey -noout -out vrf-key.pem
+	openssl ec -in vrf-key.pem -pubout -out vrf-pubkey.pem
 
 clean:
 	ls | grep -v Makefile | xargs rm

@@ -86,7 +86,7 @@ func openVRFKey() vrf.PrivateKey {
 	if err != nil {
 		log.Fatalf("Failed opening VRF private key: %v", err)
 	}
-	vrfPriv, err := p256.ParsePrivateKey(vrfBytes)
+	vrfPriv, err := p256.NewVRFSignerFromPEM(vrfBytes)
 	if err != nil {
 		log.Fatalf("Failed parsing VRF private key: %v", err)
 	}
