@@ -27,15 +27,19 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 var (
-	ErrInvalidCommitment  = errors.New("Invalid Commitment")
-	ErrInvalidVRF         = errors.New("Invalid VRF")
+	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
+	ErrInvalidCommitment = errors.New("Invalid Commitment")
+	// ErrInvalidVRF occurs when the VRF doesn't validate.
+	ErrInvalidVRF = errors.New("Invalid VRF")
+	// ErrInvalidSparseProof occurs when the sparse merkle proof for the map doesn't validate.
 	ErrInvalidSparseProof = errors.New("Invalid Sparse Proof")
 )
 
+// VerifyCommitment verifies that the commitment in `in` is correct for userID.
 func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
 	if in.Profile != nil {
 		entry := new(pb.Entry)
@@ -51,6 +55,7 @@ func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
 	return true
 }
 
+// VerifyVRF verifies that the VRF and proof in `in` is correct for userID.
 func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]byte, bool) {
 	if !vrf.Verify([]byte(userID), in.Vrf, in.VrfProof) {
 		log.Printf("Vrf verification failed.")
@@ -70,6 +75,7 @@ func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse, seh *ctmap.
 	return bytes.Equal(seh.EpochHead.Root, calculatedRoot)
 }
 
+// VerifySEH verifies that the Signed Epoch Head is correctly signed.
 func (c *Client) VerifySEH(seh *ctmap.SignedEpochHead) error {
 	return c.verifier.Verify(seh.GetEpochHead(), seh.Signatures[c.verifier.KeyName])
 }

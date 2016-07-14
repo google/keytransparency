@@ -12,24 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package proxy
+package integration
 
 import (
 	"encoding/hex"
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/integration"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 var (
@@ -67,79 +62,6 @@ B+8k+PXDpFKMZHZYo/E6qtVrpdYT
 =+kV0
 -----END PGP PUBLIC KEY BLOCK-----`
 )
-
-type Env struct {
-	*integration.Env
-	v1srv    *Server
-	ClientV1 v1pb.E2EKeyProxyClient
-}
-
-func NewEnv(t *testing.T) *Env {
-	env := integration.NewEnv(t)
-
-	v1srv := New(env.V2Server)
-	v1pb.RegisterE2EKeyProxyServer(env.GRPCServer, v1srv)
-
-	clientv1 := v1pb.NewE2EKeyProxyClient(env.Conn)
-
-	return &Env{env, v1srv, clientv1}
-}
-
-func TestEmptyGetAndUpdate(t *testing.T) {
-	ctx := context.Background()
-	env := NewEnv(t)
-	defer env.Close(t)
-	auth := authentication.NewFake()
-	testKeySet := map[string][]byte{
-		"foo": []byte("bar"),
-	}
-
-	tests := []struct {
-		want   codes.Code
-		insert bool
-		ctx    context.Context
-		userID string
-	}{
-		{codes.NotFound, false, ctx, "nobody"},
-		{codes.NotFound, true, auth.NewContext("alice"), "alice"},
-		{codes.NotFound, false, ctx, "nobody"},
-		{codes.OK, false, ctx, "alice"},
-		{codes.OK, true, auth.NewContext("alice"), "alice"},
-	}
-	for _, tc := range tests {
-		profile, err := env.ClientV1.GetEntry(ctx, &pb.GetEntryRequest{UserId: tc.userID})
-		if got := grpc.Code(err); got != tc.want {
-			t.Errorf("GetEntry(%v): %v, want nil", tc.userID, err)
-		}
-		if got, want := profile != nil, tc.want == codes.OK; got != want {
-			t.Errorf("GetEntry(%v): %v, want %v", tc.userID, profile, tc.want)
-		}
-		if tc.want == codes.OK {
-			if got, want := len(profile.GetKeys()), 1; got != want {
-				t.Errorf("len(GetKeys()) = %v, want; %v", got, want)
-				return
-			}
-			if got, want := profile.GetKeys(), testKeySet; !reflect.DeepEqual(got, want) {
-				t.Errorf("GetKeys() = %v, want: %v", got, want)
-			}
-		}
-		if tc.insert {
-			req, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{testKeySet})
-			if got, want := err, client.ErrRetry; got != want {
-				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
-			}
-			if err := env.Signer.Sequence(); err != nil {
-				t.Fatalf("Failed to sequence: %v", err)
-			}
-			if err := env.Signer.CreateEpoch(); err != nil {
-				t.Fatalf("Failed to CreateEpoch: %v", err)
-			}
-			if err := env.Client.Retry(tc.ctx, req); err != nil {
-				t.Errorf("Retry(%v): %v, want nil", req, err)
-			}
-		}
-	}
-}
 
 func CreateDefaultUser(env *Env, t testing.TB) {
 	authCtx := authentication.NewFake().NewContext(defaultUserID)
@@ -187,12 +109,12 @@ func TestHkpLookup(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		req := &v1pb.HkpLookupRequest{
+		req := &pb.HkpLookupRequest{
 			Op:      tc.op,
 			Search:  tc.userID,
 			Options: tc.options,
 		}
-		resp, err := env.ClientV1.HkpLookup(context.Background(), req)
+		resp, err := env.Cli.HkpLookup(context.Background(), req)
 		if got := err == nil; got != tc.want {
 			t.Errorf("HkpLookup(%v): %v, want %v", req, err, tc.want)
 		}

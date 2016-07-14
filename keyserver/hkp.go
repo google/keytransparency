@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package proxy converts v1 API requests into v2 API calls.
-package proxy
+package keyserver
 
 import (
 	"bytes"
 	"strings"
-
-	"github.com/google/e2e-key-server/keyserver"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/openpgp"
@@ -28,50 +25,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 const (
 	pgpAppID = "pgp"
 )
 
-// Server holds internal state for the proxy server.
-// TODO: replace proxy logic with a server side client instance.
-type Server struct {
-	s *keyserver.Server
-}
-
-// New creates a new instance of the proxy server.
-func New(srv *keyserver.Server) *Server {
-	return &Server{srv}
-}
-
-// GetEntry returns a user's profile.
-// TODO: remove insecure GetEntry?
-func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.Profile, error) {
-	result, err := s.s.GetEntry(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-
-	// If result.Profile is empty, then the profile does not exist.
-	if len(result.Profile) == 0 {
-		return nil, grpc.Errorf(codes.NotFound, "Not found")
-	}
-
-	// Extract and returned the user profile from the resulted
-	// GetEntryResponse.
-	profile := new(pb.Profile)
-	if err := proto.Unmarshal(result.Profile, profile); err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
-	}
-
-	return profile, nil
-}
-
 // HkpLookup implements HKP pgp keys lookup.
-func (s *Server) HkpLookup(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.HttpResponse, error) {
+func (s *Server) HkpLookup(ctx context.Context, in *pb.HkpLookupRequest) (*pb.HttpResponse, error) {
 	switch in.Op {
 	case "get":
 		return s.hkpGet(ctx, in)
@@ -81,16 +43,21 @@ func (s *Server) HkpLookup(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1p
 }
 
 // HkpGet implements HKP pgp keys lookup for op=get.
-func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.HttpResponse, error) {
+func (s *Server) hkpGet(ctx context.Context, in *pb.HkpLookupRequest) (*pb.HttpResponse, error) {
 	// Search by key index is not supported
 	if strings.HasPrefix(in.Search, "0x") {
 		return nil, grpc.Errorf(codes.Unimplemented, "Searching by key index are not supported")
 	}
 
 	getEntryRequest := pb.GetEntryRequest{UserId: in.Search}
-	profile, err := s.GetEntry(ctx, &getEntryRequest)
+	result, err := s.GetEntry(ctx, &getEntryRequest)
 	if err != nil {
 		return nil, err
+	}
+	// Extract and returned the user profile from the resulted
+	profile := new(pb.Profile)
+	if err := proto.Unmarshal(result.Profile, profile); err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
 	}
 
 	// hkpGet only supports returning one key.
@@ -104,7 +71,7 @@ func (s *Server) hkpGet(ctx context.Context, in *v1pb.HkpLookupRequest) (*v1pb.H
 		return nil, err
 	}
 
-	out := v1pb.HttpResponse{Body: armoredKey}
+	out := pb.HttpResponse{Body: armoredKey}
 	// Format output based on the provided options.
 	out.ContentType = "text/plain"
 	for _, option := range strings.Split(in.Options, ",") {

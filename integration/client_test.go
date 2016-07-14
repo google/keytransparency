@@ -22,7 +22,7 @@ import (
 	"github.com/google/e2e-key-server/client"
 	"golang.org/x/net/context"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 var (
