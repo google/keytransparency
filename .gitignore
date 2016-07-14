@@ -4,11 +4,9 @@
 
 e2e-key-server
 e2e-key-signer
-vrfkeygen
 
 infra*.etcd
 testdata/*.pem
-testdata/*.dat
 testdata/*.json
 testdata/*.sqlite3
 testdata/server.*

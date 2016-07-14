@@ -22,37 +22,49 @@ package p256
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
 	"encoding/binary"
-	"encoding/gob"
+	"encoding/pem"
+	"errors"
 	"math/big"
 )
 
 var (
 	curve  = elliptic.P256()
 	params = curve.Params()
+
+	// ErrPointNotOnCurve occurs when a public key is not on the curve.
+	ErrPointNotOnCurve = errors.New("Point is not on the P256 curve")
+	// ErrWrongKeyType occurs when a key is not an ECDSA key.
+	ErrWrongKeyType = errors.New("Not an ECDSA key")
+	// ErrNoPEMFound occurs when attempting to parse a non PEM data structure.
+	ErrNoPEMFound = errors.New("No PEM block found")
 )
 
+// PublicKey holds a public VRF key.
 type PublicKey struct {
-	X *big.Int
-	Y *big.Int
+	*ecdsa.PublicKey
 }
-type PrivateKey []byte
+
+// PrivateKey holds a private VRF key.
+type PrivateKey struct {
+	*ecdsa.PrivateKey
+}
 
 // GenerateKey generates a fresh keypair for this VRF
 func GenerateKey() (*PrivateKey, *PublicKey) {
-	var pub PublicKey
-	var priv PrivateKey
-	var err error
-	priv, pub.X, pub.Y, err = elliptic.GenerateKey(curve, rand.Reader)
+	key, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
 		return nil, nil
 	}
-	return (*PrivateKey)(&priv), (*PublicKey)(&pub)
+
+	return &PrivateKey{key}, &PublicKey{&key.PublicKey}
 }
 
 // H1 hashes m to a curve point
@@ -121,8 +133,7 @@ func (k PrivateKey) Evaluate(m []byte) (vrf, proof []byte) {
 	s := H2(b.Bytes())
 
 	// t = r−s*k mod N
-	ki := new(big.Int).SetBytes(k)
-	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, ki))
+	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, k.D))
 	t.Mod(t, params.N)
 
 	//Write s,t as proof blob.
@@ -131,7 +142,7 @@ func (k PrivateKey) Evaluate(m []byte) (vrf, proof []byte) {
 	buf.Write(t.Bytes())
 
 	// VRF_k(m) = [k]H
-	vrfx, vrfy := params.ScalarMult(hx, hy, k)
+	vrfx, vrfy := params.ScalarMult(hx, hy, k.D.Bytes())
 	return elliptic.Marshal(curve, vrfx, vrfy), buf.Bytes()
 }
 
@@ -174,39 +185,45 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) bool {
 	return hmac.Equal(s, h2.Bytes())
 }
 
-func (priv *PrivateKey) Index(vrf []byte) [32]byte {
+// Index computes the index for a given vrf output.
+func (k *PrivateKey) Index(vrf []byte) [32]byte {
 	return sha256.Sum256(vrf)
 }
 
+// Index computes the index for a given vrf output.
 func (pk *PublicKey) Index(vrf []byte) [32]byte {
 	return sha256.Sum256(vrf)
 }
 
-// Bytes returns the serialized private key.
-func (priv *PrivateKey) Bytes() []byte {
-	return ([]byte)(*priv)
-}
-
-// ParsePrivateKey reverses Bytes() into a PrivateKey object.
-func ParsePrivateKey(buf []byte) (*PrivateKey, error) {
-	return (*PrivateKey)(&buf), nil
-}
-
-// Bytes returns the serialized public key.
-func (pk *PublicKey) Bytes() []byte {
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(pk); err != nil {
-		panic(err)
+// NewVRFSigner creates a signer object from a private key.
+func NewVRFSigner(key *ecdsa.PrivateKey) (*PrivateKey, error) {
+	if *(key.Params()) != *curve.Params() {
+		return nil, ErrPointNotOnCurve
 	}
-	return buf.Bytes()
+	return &PrivateKey{key}, nil
 }
 
-// ParsePublicKey reverse Bytes() into a PublicKey object.
-func ParsePublicKey(buf []byte) (*PublicKey, error) {
-	var data_pk PublicKey
-	dec := gob.NewDecoder(bytes.NewBuffer(buf))
-	if err := dec.Decode(&data_pk); err != nil {
+// NewVRFVerifier creates a verifier object from a public key.
+func NewVRFVerifier(pubkey *ecdsa.PublicKey) (*PublicKey, error) {
+	if *(pubkey.Params()) != *curve.Params() {
+		return nil, ErrPointNotOnCurve
+	}
+	return &PublicKey{pubkey}, nil
+}
+
+// NewVRFSignerFromPEM creates a vrf private key from a PEM data structure.
+func NewVRFSignerFromPEM(b []byte) (*PrivateKey, error) {
+	p, _ := pem.Decode(b)
+	if p == nil {
+		return nil, ErrNoPEMFound
+	}
+	k, err := x509.ParseECPrivateKey(p.Bytes)
+	if err != nil {
 		return nil, err
 	}
-	return &data_pk, nil
+	vrfPriv, err := NewVRFSigner(k)
+	if err != nil {
+		return nil, err
+	}
+	return vrfPriv, nil
 }

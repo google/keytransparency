@@ -15,7 +15,9 @@
 package p256
 
 import (
-	"log"
+	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/pem"
 	"testing"
 )
 
@@ -85,31 +87,55 @@ func TestVRF(t *testing.T) {
 	}
 }
 
-func TestSerization(t *testing.T) {
-	prvA, pubA := GenerateKey()
-	m := []byte("M")
-	vrf, proof := prvA.Evaluate(m)
+func TestReadFromOpenSSL(t *testing.T) {
 	tests := []struct {
-		prv   []byte
-		pub   []byte
-		want  bool
-		m     []byte
-		vrf   []byte
-		proof []byte
+		priv string
+		pub  string
 	}{
-		{prvA.Bytes(), pubA.Bytes(), true, m, vrf, proof},
+		{
+			// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+			`-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
+AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
+csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END EC PRIVATE KEY-----`,
+			// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+			`-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
+1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END PUBLIC KEY-----`},
 	}
 	for _, tc := range tests {
-		_, err := ParsePrivateKey(tc.prv)
-		if err != nil {
-			t.Errorf("Failed parseing private key: %v", err)
+		// Private VRF Key
+		p, _ := pem.Decode([]byte(tc.priv))
+		if p == nil {
+			t.Errorf("No PEM block found")
 		}
-		log.Printf("AA:%v", tc.pub)
-		pub, err := ParsePublicKey(tc.pub)
+		k, err := x509.ParseECPrivateKey(p.Bytes)
+		signer, err := NewVRFSigner(k)
 		if err != nil {
-			t.Errorf("Failed parseing public key: %v", err)
+			t.Errorf("NewVRFSigner failure: %v", err)
 		}
-		if got := pub.Verify(tc.m, tc.vrf, tc.proof); got != true {
+
+		// Public VRF key
+		p, _ = pem.Decode([]byte(tc.pub))
+		if p == nil {
+			t.Errorf("No PEM block found")
+		}
+		pk, err := x509.ParsePKIXPublicKey(p.Bytes)
+		ecdsaPubKey, ok := pk.(*ecdsa.PublicKey)
+		if !ok {
+			t.Errorf("Not an ecdsa public key")
+		}
+		verifier, err := NewVRFVerifier(ecdsaPubKey)
+		if err != nil {
+			t.Errorf("NewVRFSigner failure: %v", err)
+		}
+
+		// Evaluate and verify.
+		m := []byte("M")
+		vrf, proof := signer.Evaluate(m)
+		if got := verifier.Verify(m, vrf, proof); got != true {
 			t.Errorf("Failed verifying VRF proof")
 		}
 	}

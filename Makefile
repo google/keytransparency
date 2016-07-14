@@ -71,6 +71,6 @@ clean:
 	rm -f $(DEPS)
 	rm -f $(GATEWAY_DEPS)
 	$(MAKE) -C testdata clean
-	rm -f srv e2e-key-server e2e-key-signer vrfkeygen 
+	rm -f srv e2e-key-server e2e-key-signer 
 	rm -rf infra*
 
