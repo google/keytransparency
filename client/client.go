@@ -29,13 +29,12 @@ import (
 	"github.com/google/e2e-key-server/tree/sparse/memtree"
 	"github.com/google/e2e-key-server/vrf"
 
-	"github.com/golang/protobuf/proto"
 	logclient "github.com/google/certificate-transparency/go/client"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 const (
@@ -46,6 +45,9 @@ const (
 )
 
 var (
+	// ErrRetry occurs when an update request has been submitted, but the
+	// results of the udpate are not visible on the server yet. The client
+	// must retry until the request is visible.
 	ErrRetry = errors.New("Update not present on server yet")
 )
 
@@ -62,7 +64,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli        v2pb.E2EKeyServiceClient
+	cli        pb.E2EKeyServiceClient
 	vrf        vrf.PublicKey
 	RetryCount int
 	factory    tree.SparseFactory
@@ -71,7 +73,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(client v2pb.E2EKeyServiceClient, vrf vrf.PublicKey, mapLogURL string, verifier *signatures.SignatureVerifier) *Client {
+func New(client pb.E2EKeyServiceClient, vrf vrf.PublicKey, mapLogURL string, verifier *signatures.SignatureVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
@@ -191,6 +193,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	return req, err
 }
 
+// Retry will take a pre-fabricated reqeust and send it again.
 func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
@@ -207,12 +210,12 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 		return err
 	}
 
-	if got := updateResp.GetProof().GetLeafProof().LeafData; bytes.Equal(got, keyvalue.Value) {
+	got := updateResp.GetProof().GetLeafProof().LeafData
+	if bytes.Equal(got, keyvalue.Value) {
 		log.Printf("Retry(%v) Matched", req.UserId)
 		return nil
-	} else {
-		log.Printf("Retry(%v) returned: %v, want %v", req.UserId, got, req.GetEntryUpdate().Profile)
-		return ErrRetry
 	}
+	log.Printf("Retry(%v) returned: %v, want %v", req.UserId, got, req.GetEntryUpdate().Profile)
+	return ErrRetry
 	// TODO: Update previous entry pointer
 }

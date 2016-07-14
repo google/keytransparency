@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package replace implements a simple replacement stragey as a mapper
+// Package entry implements a simple replacement stragey as a mapper
 package entry
 
 import (
 	"log"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/e2e-key-server/mutator"
+	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
-// Replace defines mutations to simply replace the current map value with the
+// Entry defines mutations to simply replace the current map value with the
 // contents of the mutation.
 type Entry struct{}
 
+// New creates a new entry mutator.
 func New() *Entry {
 	return &Entry{}
 }

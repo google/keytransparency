@@ -32,7 +32,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 // Server holds internal state for the key server.
@@ -46,7 +46,7 @@ type Server struct {
 	mutator   mutator.Mutator
 }
 
-// Create creates a new instance of the key server.
+// New creates a new instance of the key server.
 func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator) *Server {
 	return &Server{
 		committer: committer,
@@ -59,6 +59,7 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 	}
 }
 
+// GetSEH returns the current Signed Epoch Head (SEH).
 func (s *Server) GetSEH(ctx context.Context, epoch int64) (int64, *ctmap.SignedEpochHead, []byte, error) {
 	var data, sct []byte
 	thisEpoch := epoch

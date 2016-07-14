@@ -29,7 +29,6 @@ import (
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/proxy"
 	"github.com/google/e2e-key-server/queue"
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 	"github.com/google/e2e-key-server/vrf"
@@ -43,8 +42,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	_ "google.golang.org/grpc/grpclog/glogger" // Set logging engine.
 
-	v1pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 var (
@@ -103,10 +101,7 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	gwmux := runtime.NewServeMux()
-	if err := v1pb.RegisterE2EKeyProxyHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
-		return nil, err
-	}
-	if err := v2pb.RegisterE2EKeyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+	if err := pb.RegisterE2EKeyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
 
@@ -156,11 +151,9 @@ func Main() {
 	mutator := entry.New()
 
 	// Create gRPC server.
-	v2 := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
-	v1 := proxy.New(v2)
+	svr := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
-	v2pb.RegisterE2EKeyServiceServer(grpcServer, v2)
-	v1pb.RegisterE2EKeyProxyServer(grpcServer, v1)
+	pb.RegisterE2EKeyServiceServer(grpcServer, svr)
 
 	// Create HTTP handlers and gRPC gateway.
 	addr := fmt.Sprintf("localhost:%d", *port)

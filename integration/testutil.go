@@ -35,10 +35,10 @@ import (
 	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/integration"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"google.golang.org/grpc"
 
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 const (
@@ -46,6 +46,7 @@ const (
 	mapID       = "testID"
 )
 
+// NewDB creates a new in-memory database for testing.
 func NewDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
@@ -54,6 +55,7 @@ func NewDB(t testing.TB) *sql.DB {
 	return db
 }
 
+// Listen opens a random local port and listens on it.
 func Listen(t testing.TB) (string, net.Listener) {
 	lis, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -67,6 +69,7 @@ func Listen(t testing.TB) (string, net.Listener) {
 	return addr, lis
 }
 
+// Env holds a complete testing environment for end-to-end tests.
 type Env struct {
 	GRPCServer *grpc.Server
 	V2Server   *keyserver.Server
@@ -76,7 +79,7 @@ type Env struct {
 	db         *sql.DB
 	clus       *integration.ClusterV3
 	VrfPriv    vrf.PrivateKey
-	Cli        v2pb.E2EKeyServiceClient
+	Cli        pb.E2EKeyServiceClient
 	mapLog     *httptest.Server
 }
 
@@ -101,7 +104,7 @@ func NewEnv(t *testing.T) *Env {
 	commitments := commitments.New(sqldb, mapID)
 	server := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
 	s := grpc.NewServer()
-	v2pb.RegisterE2EKeyServiceServer(s, server)
+	pb.RegisterE2EKeyServiceServer(s, server)
 
 	signer := signer.New(queue, tree, mutator, appender, sig)
 	signer.CreateEpoch()
@@ -114,7 +117,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	cli := v2pb.NewE2EKeyServiceClient(cc)
+	cli := pb.NewE2EKeyServiceClient(cc)
 	client := client.New(cli, vrfPub, hs.URL, verifier)
 	client.RetryCount = 0
 

@@ -16,7 +16,6 @@ import (
 	"github.com/gengo/grpc-gateway/runtime"
 	"github.com/gengo/grpc-gateway/utilities"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/e2e-key-server/proto/security_e2ekeys"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -29,11 +28,11 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_E2EKeyProxy_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"user_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_E2EKeyService_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"user_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_E2EKeyProxy_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client E2EKeyProxyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq security_e2ekeys.GetEntryRequest
+func request_E2EKeyService_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client E2EKeyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetEntryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -54,7 +53,7 @@ func request_E2EKeyProxy_GetEntry_0(ctx context.Context, marshaler runtime.Marsh
 		return nil, metadata, err
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_E2EKeyProxy_GetEntry_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_E2EKeyService_GetEntry_0); err != nil {
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -64,14 +63,80 @@ func request_E2EKeyProxy_GetEntry_0(ctx context.Context, marshaler runtime.Marsh
 }
 
 var (
-	filter_E2EKeyProxy_HkpLookup_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_E2EKeyService_ListEntryHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{"user_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_E2EKeyProxy_HkpLookup_0(ctx context.Context, marshaler runtime.Marshaler, client E2EKeyProxyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_E2EKeyService_ListEntryHistory_0(ctx context.Context, marshaler runtime.Marshaler, client E2EKeyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ListEntryHistoryRequest
+	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["user_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
+	}
+
+	protoReq.UserId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
+
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_E2EKeyService_ListEntryHistory_0); err != nil {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := client.ListEntryHistory(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func request_E2EKeyService_UpdateEntry_0(ctx context.Context, marshaler runtime.Marshaler, client E2EKeyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UpdateEntryRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.EntryUpdate); err != nil {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["user_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
+	}
+
+	protoReq.UserId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
+
+	msg, err := client.UpdateEntry(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+var (
+	filter_E2EKeyService_HkpLookup_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
+func request_E2EKeyService_HkpLookup_0(ctx context.Context, marshaler runtime.Marshaler, client E2EKeyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq HkpLookupRequest
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_E2EKeyProxy_HkpLookup_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_E2EKeyService_HkpLookup_0); err != nil {
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -80,9 +145,9 @@ func request_E2EKeyProxy_HkpLookup_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-// RegisterE2EKeyProxyHandlerFromEndpoint is same as RegisterE2EKeyProxyHandler but
+// RegisterE2EKeyServiceHandlerFromEndpoint is same as RegisterE2EKeyServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterE2EKeyProxyHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterE2EKeyServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -102,15 +167,15 @@ func RegisterE2EKeyProxyHandlerFromEndpoint(ctx context.Context, mux *runtime.Se
 		}()
 	}()
 
-	return RegisterE2EKeyProxyHandler(ctx, mux, conn)
+	return RegisterE2EKeyServiceHandler(ctx, mux, conn)
 }
 
-// RegisterE2EKeyProxyHandler registers the http handlers for service E2EKeyProxy to "mux".
+// RegisterE2EKeyServiceHandler registers the http handlers for service E2EKeyService to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterE2EKeyProxyHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	client := NewE2EKeyProxyClient(conn)
+func RegisterE2EKeyServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	client := NewE2EKeyServiceClient(conn)
 
-	mux.Handle("GET", pattern_E2EKeyProxy_GetEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_E2EKeyService_GetEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -127,18 +192,18 @@ func RegisterE2EKeyProxyHandler(ctx context.Context, mux *runtime.ServeMux, conn
 		if err != nil {
 			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 		}
-		resp, md, err := request_E2EKeyProxy_GetEntry_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_E2EKeyService_GetEntry_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_E2EKeyProxy_GetEntry_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_E2EKeyService_GetEntry_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_E2EKeyProxy_HkpLookup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_E2EKeyService_ListEntryHistory_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -155,14 +220,70 @@ func RegisterE2EKeyProxyHandler(ctx context.Context, mux *runtime.ServeMux, conn
 		if err != nil {
 			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 		}
-		resp, md, err := request_E2EKeyProxy_HkpLookup_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_E2EKeyService_ListEntryHistory_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_E2EKeyProxy_HkpLookup_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_E2EKeyService_ListEntryHistory_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("PUT", pattern_E2EKeyService_UpdateEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		if cn, ok := w.(http.CloseNotifier); ok {
+			go func(done <-chan struct{}, closed <-chan bool) {
+				select {
+				case <-done:
+				case <-closed:
+					cancel()
+				}
+			}(ctx.Done(), cn.CloseNotify())
+		}
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, req)
+		if err != nil {
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
+		}
+		resp, md, err := request_E2EKeyService_UpdateEntry_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_E2EKeyService_UpdateEntry_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_E2EKeyService_HkpLookup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		if cn, ok := w.(http.CloseNotifier); ok {
+			go func(done <-chan struct{}, closed <-chan bool) {
+				select {
+				case <-done:
+				case <-closed:
+					cancel()
+				}
+			}(ctx.Done(), cn.CloseNotify())
+		}
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, req)
+		if err != nil {
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
+		}
+		resp, md, err := request_E2EKeyService_HkpLookup_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_E2EKeyService_HkpLookup_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -170,13 +291,21 @@ func RegisterE2EKeyProxyHandler(ctx context.Context, mux *runtime.ServeMux, conn
 }
 
 var (
-	pattern_E2EKeyProxy_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "users", "user_id"}, ""))
+	pattern_E2EKeyService_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "users", "user_id"}, ""))
 
-	pattern_E2EKeyProxy_HkpLookup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "hkp", "lookup"}, ""))
+	pattern_E2EKeyService_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "users", "user_id", "history"}, ""))
+
+	pattern_E2EKeyService_UpdateEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "users", "user_id"}, ""))
+
+	pattern_E2EKeyService_HkpLookup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "hkp", "lookup"}, ""))
 )
 
 var (
-	forward_E2EKeyProxy_GetEntry_0 = runtime.ForwardResponseMessage
+	forward_E2EKeyService_GetEntry_0 = runtime.ForwardResponseMessage
 
-	forward_E2EKeyProxy_HkpLookup_0 = runtime.ForwardResponseMessage
+	forward_E2EKeyService_ListEntryHistory_0 = runtime.ForwardResponseMessage
+
+	forward_E2EKeyService_UpdateEntry_0 = runtime.ForwardResponseMessage
+
+	forward_E2EKeyService_HkpLookup_0 = runtime.ForwardResponseMessage
 )
