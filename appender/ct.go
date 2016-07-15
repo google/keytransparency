@@ -81,7 +81,7 @@ func New(db *sql.DB, mapID, logURL string) *CTAppender {
 	}
 	a.insertMapRow()
 
-	// Verify logURL
+	// Verify logURL.
 	if _, err := a.ctlog.GetSTH(); err != nil {
 		log.Fatalf("Failed to ping CT server with GetSTH: %v", err)
 	}

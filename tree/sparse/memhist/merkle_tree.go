@@ -303,7 +303,7 @@ func (n *node) child(b uint8) *node {
 	case tree.One:
 		return n.right
 	default:
-		log.Fatalf("invalid bit %v", b)
+		log.Fatalf("Invalid bit %v", b)
 		return nil
 	}
 }
@@ -315,7 +315,7 @@ func (n *node) setChild(b uint8, child *node) {
 	case tree.One:
 		n.right = child
 	default:
-		log.Fatalf("invalid bit %v", b)
+		log.Fatalf("Invalid bit %v", b)
 	}
 }
 

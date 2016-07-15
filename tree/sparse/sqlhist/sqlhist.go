@@ -52,7 +52,10 @@ const (
 	INSERT OR REPLACE INTO Nodes (MapId, NodeId, Version, Value)
 	VALUES ($1, $2, $3, $4);`
 	mapRowExpr    = `INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
-	readEpochExpr = `SELECT MAX(Version) FROM Leaves WHERE MapId = $1;`
+	readEpochExpr = `
+	SELECT Version FROM Nodes
+	WHERE MapId = $1 AND NodeId = $2
+	ORDER BY Version DESC LIMIT 1;`
 )
 
 // Map stores a temporal sparse merkle tree, backed by an SQL database.
@@ -140,7 +143,16 @@ func (m *Map) Commit() (int64, error) {
 			log.Fatalf("Failed to set node: %v", err)
 		}
 	}
-	// TODO: Always update the root node.
+	// Always update the root node.
+	if len(leafRows) == 0 {
+		root, err := m.ReadRootAt(nil, m.epoch)
+		if err != nil {
+			log.Fatal("No root for epoch %d: %v", m.epoch, err)
+		}
+		if err := m.SetNodeAt(nil, []byte{}, 0, root, m.epoch+1); err != nil {
+			log.Fatalf("Failed to set root: %v", err)
+		}
+	}
 	// TODO: Delete Map heads from this file.
 
 	m.epoch++
@@ -157,11 +169,10 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 
 	var value []byte
 	rootID := m.nodeID("")
-	if err := stmt.QueryRow(m.mapID, rootID, epoch).Scan(&value); err == sql.ErrNoRows {
-		return nil, sql.ErrNoRows
-	} else if err != nil {
+	if err := stmt.QueryRow(m.mapID, rootID, epoch).Scan(&value); err != nil {
 		return nil, err
 	}
+	log.Printf("rootid: %v, value: %v", rootID, value)
 	return value, nil
 }
 
@@ -225,6 +236,7 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 
 	return nbrValues, nil
 }
+
 func compressNeighbors(neighbors [][]byte, index []byte, depth int) [][]byte {
 	bindex := tree.BitString(index)[:depth]
 	neighborBIndexes := tree.Neighbors(bindex)
@@ -274,6 +286,7 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 
 	// Save new nodes.
 	for i, nodeValue := range nodeValues {
+		log.Printf("Writing node %v, value %v, epoch %v", nodeIDs[i], nodeValue, epoch)
 		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue)
 		if err != nil {
 			tx.Rollback()
@@ -356,8 +369,9 @@ func (m *Map) readEpoch() int64 {
 		log.Fatalf("readEpoch(): %v", err)
 	}
 	defer stmt.Close()
+	rootID := m.nodeID("")
 	var epoch sql.NullInt64
-	if err := stmt.QueryRow(m.mapID).Scan(&epoch); err != nil {
+	if err := stmt.QueryRow(m.mapID, rootID).Scan(&epoch); err != nil {
 		log.Fatalf("Error reading epoch: %v", err)
 	}
 	if !epoch.Valid {
