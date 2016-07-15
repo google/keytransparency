@@ -37,17 +37,17 @@ import (
 
 var (
 	// ErrWrongKeyType occurs when a key is not an ECDSA key.
-	ErrWrongKeyType = errors.New("Not an ECDSA key")
+	ErrWrongKeyType = errors.New("not an ECDSA key")
 	// ErrPointNotOnCurve occurs when a public key is not on the curve.
-	ErrPointNotOnCurve = errors.New("Point is not on the P256 curve")
+	ErrPointNotOnCurve = errors.New("point is not on the P256 curve")
 	// ErrWrongHashAlgo occurs when a hash algorithm other than SHA256 was specified.
-	ErrWrongHashAlgo = errors.New("Not the SHA256 hash algorithm")
+	ErrWrongHashAlgo = errors.New("not the SHA256 hash algorithm")
 	// ErrWrongSignatureAlgo occurs when a signature algorithm other than ECDSA was specified.
-	ErrWrongSignatureAlgo = errors.New("Not the ECDSA signature algorithm")
+	ErrWrongSignatureAlgo = errors.New("not the ECDSA signature algorithm")
 	// ErrExtraDataAfterSig occurs when extra data was found after the signature.
-	ErrExtraDataAfterSig = errors.New("Extra data found after signature")
+	ErrExtraDataAfterSig = errors.New("extra data found after signature")
 	// ErrVerificaionFailed occurs when the signature verification failed.
-	ErrVerificaionFailed = errors.New("Failed to verify ECDSA signature")
+	ErrVerificaionFailed = errors.New("failed to verify ECDSA signature")
 )
 
 // SignatureSigner generates signatures with a single key.

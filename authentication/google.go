@@ -29,23 +29,28 @@ import (
 // GRPC stores authentication information in the "authorization" header.
 
 var (
-	E2EScope       = "https://www.googleapis.com/auth/e2ekeys"
+	// E2EScope authorizes a user to change their keys in the keyserver.
+	E2EScope = "https://www.googleapis.com/auth/e2ekeys"
+	// RequiredScopes is the set of scopes the server requires for a user to change keys.
 	RequiredScopes = []string{gAPI.UserinfoEmailScope, E2EScope}
 
-	ErrBadFormat                = errors.New("auth: bad authorization header format")
-	ErrNoBearer                 = errors.New("auth: no bearer token found")
-	ErrUnableToGetGoogleUser    = errors.New("auth: unable to get google user")
-	ErrCannotValidateGoogleUser = errors.New("auth: could not validate google user")
-	ErrInvalidToken             = errors.New("auth: invalid token")
-	ErrEmailNotVerified         = errors.New("auth: unverified email address")
-	ErrMissingScope             = errors.New("auth: missing scope")
+	// ErrBadFormat occurs when the authentication header is malformed.
+	ErrBadFormat = errors.New("auth: bad authorization header format")
+	// ErrInvalidToken occurs when the authenitcation header is not valid.
+	ErrInvalidToken = errors.New("auth: invalid token")
+	// ErrEmailNotVerified occurs when token info indicates that email has not been verified.
+	ErrEmailNotVerified = errors.New("auth: unverified email address")
+	// ErrMissingScope occurs when a required scope is missing.
+	ErrMissingScope = errors.New("auth: missing scope")
 )
 
-type OAuth struct {
+// GAuth authenticates Google users through the Google TokenInfo API endpoint.
+type GAuth struct {
 	service *gAPI.Service
 }
 
-func NewGoogleAuth() (*OAuth, error) {
+// NewGoogleAuth creates a new authenticator for Google users.
+func NewGoogleAuth() (*GAuth, error) {
 	//httpClient := a.config.Client(ctx, token)
 	ctx := context.TODO()
 	httpClient, err := google.DefaultClient(ctx, gAPI.UserinfoEmailScope)
@@ -56,12 +61,12 @@ func NewGoogleAuth() (*OAuth, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &OAuth{googleService}, nil
+	return &GAuth{googleService}, nil
 }
 
 // ValidateCreds verifies that email is equal to the validated email address
 // associated with the access token in the authorization header in ctx.
-func (a *OAuth) ValidateCreds(ctx context.Context, email string) error {
+func (a *GAuth) ValidateCreds(ctx context.Context, email string) error {
 	// Get Tokeninfo from credentials.
 	tokenInfo, err := a.validateToken(ctx)
 	if err != nil {
@@ -94,7 +99,7 @@ func setDifference(a, b []string) []string {
 		setB[e] = true
 	}
 	// Iterate through A, adding elements that are not in B.
-	diff := make([]string, 0)
+	var diff []string
 	for _, e := range a {
 		if _, ok := setB[e]; !ok {
 			diff = append(diff, e)
@@ -105,7 +110,7 @@ func setDifference(a, b []string) []string {
 
 // validateToken makes an https request to the tokeninfo API using the access
 // token provided in the header.
-func (a *OAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
+func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 	token, err := getIDTokenAuthorizationHeader(ctx)
 	if err != nil {
 		return nil, err
@@ -114,9 +119,9 @@ func (a *OAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 		return nil, ErrInvalidToken
 	}
 
-	info_call := a.service.Tokeninfo()
-	info_call.AccessToken(token.AccessToken)
-	return info_call.Do()
+	infoCall := a.service.Tokeninfo()
+	infoCall.AccessToken(token.AccessToken)
+	return infoCall.Do()
 }
 
 // getIDTokenAuthorizationHeader pulls the bearer token from the "authorization"

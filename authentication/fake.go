@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+// FakeAuth provides a fake authenticator for testing.
 type FakeAuth struct{}
 
 // NewFake returns a new authenticator.

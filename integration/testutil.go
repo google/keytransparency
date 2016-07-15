@@ -85,7 +85,7 @@ type Env struct {
 
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
-	hs := ctutil.CtServer(t)
+	hs := ctutil.NewCTServer(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
 	sig, verifier, err := signatures.GenerateKeyPair()

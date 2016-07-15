@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	errNoAppID = errors.New("Missing AppID")
+	errNoAppID = errors.New("missing AppID")
 )
 
 // validateKey verifies:

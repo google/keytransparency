@@ -215,7 +215,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 		"E000000000000000000000000000000000000000000000000000000000000000": "5",
 	}
 	roots := make([][]byte, len(leafs))
-	for i, _ := range roots {
+	for i := range roots {
 		m := New(db, fmt.Sprintf("test%v", i))
 		// Iterating over a map in Go is randomized.
 		// TODO: I guess not??

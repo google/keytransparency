@@ -24,7 +24,7 @@ import (
 	"log"
 
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // Use SQLite.
 	"golang.org/x/net/context"
 )
 
@@ -45,6 +45,7 @@ func New() *Tree {
 	return &Tree{db, sqlhist.New(db, "verify"), 0}
 }
 
+// ReadRoot returns the current root.
 func (t *Tree) ReadRoot(ctx context.Context) ([]byte, error) {
 	return t.tree.ReadRootAt(ctx, t.epoch)
 }
@@ -72,11 +73,12 @@ func (t *Tree) Neighbors(ctx context.Context, index []byte) ([][]byte, error) {
 	return t.tree.NeighborsAt(ctx, index, t.epoch)
 }
 
-// SetNodeAt sets intermediate and leaf node values directly.
+// SetNode sets intermediate and leaf node values directly.
 func (t *Tree) SetNode(ctx context.Context, index []byte, depth int, value []byte) error {
 	return t.tree.SetNodeAt(ctx, index, depth, value, t.epoch)
 }
 
+// Close releases resources used by tree.
 // TODO: Remove when using an in-memory data structure.
 func (t *Tree) Close() {
 	t.db.Close()

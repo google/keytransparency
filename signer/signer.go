@@ -52,7 +52,7 @@ func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator, appe
 	}
 }
 
-// Start signing inserts epoch advancement signals into the queue.
+// StartSigning inserts epoch advancement signals into the queue.
 func (s *Signer) StartSigning(interval time.Duration) {
 	for _ = range time.NewTicker(interval).C {
 		s.queue.AdvanceEpoch()

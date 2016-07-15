@@ -78,12 +78,12 @@ func TestSetDifference(t *testing.T) {
 		diff []string
 	}{
 		{[]string{"a", "b"}, []string{"b", "c"}, []string{"a"}},
-		{[]string{"a", "b"}, []string{"b", "a"}, []string{}},
+		{[]string{"a", "b"}, []string{"b", "a"}, []string(nil)},
 		{[]string{"a", "b"}, []string{}, []string{"a", "b"}},
 	}
 	for _, tc := range tests {
 		if got := setDifference(tc.a, tc.b); !reflect.DeepEqual(got, tc.diff) {
-			t.Errorf("setDiff(%v, %v): %v, want %v", tc.a, tc.b, got, tc.diff)
+			t.Errorf("setDiff(%v, %v): %#v, want %#v", tc.a, tc.b, got, tc.diff)
 		}
 	}
 }

@@ -41,6 +41,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+// HashAlgorithm defines the approved ways to hash the object.
 type DigitallySigned_HashAlgorithm int32
 
 const (
@@ -67,6 +68,7 @@ func (DigitallySigned_HashAlgorithm) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor0, []int{2, 0}
 }
 
+// SignatureAlgorithm defines the way to sign the object.
 type DigitallySigned_SignatureAlgorithm int32
 
 const (
@@ -144,6 +146,7 @@ func (m *SignedEpochHead) GetSignatures() map[string]*DigitallySigned {
 	return nil
 }
 
+// DigitallySigned defines a way to sign digital objects.
 type DigitallySigned struct {
 	HashAlgorithm DigitallySigned_HashAlgorithm      `protobuf:"varint,1,opt,name=hash_algorithm,json=hashAlgorithm,enum=security_ctmap.DigitallySigned_HashAlgorithm" json:"hash_algorithm,omitempty"`
 	SigAlgorithm  DigitallySigned_SignatureAlgorithm `protobuf:"varint,2,opt,name=sig_algorithm,json=sigAlgorithm,enum=security_ctmap.DigitallySigned_SignatureAlgorithm" json:"sig_algorithm,omitempty"`
