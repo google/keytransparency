@@ -149,7 +149,7 @@ func (t *Tree) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byt
 	return cnt.data, nil
 }
 
-// Neighbors returns the list of neighbors from the neighbor leaf to just below the root at epoch.
+// NeighborsAt returns the list of neighbors from the neighbor leaf to just below the root at epoch.
 func (t *Tree) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]byte, error) {
 	bindex := tree.BitString(index)
 	r, ok := t.roots[epoch]

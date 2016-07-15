@@ -32,8 +32,11 @@ type Queuer interface {
 	// If Dequeue is called concurrently, multiple processes will dequeue
 	// the same data. Correlary: if a crash occurs during processing, the
 	// next process will dequeue the same item to continue.
-	Dequeue(processFunc ProcessKeyValue, advanceFunc AdvanceEpoch) error
+	Dequeue(processFunc ProcessKeyValueFunc, advanceFunc AdvanceEpochFunc) error
 }
 
-type ProcessKeyValue func(key, value []byte) error
-type AdvanceEpoch func() error
+// ProcessKeyValueFunc is a function that processes a mutation.
+type ProcessKeyValueFunc func(key, value []byte) error
+
+// AdvanceEpochFunc is a function that advances the epoch.
+type AdvanceEpochFunc func() error

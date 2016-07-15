@@ -28,15 +28,14 @@ var (
 	One = byte('1')
 )
 
-// bitString converts a byte slice index into a string of Depth '0' or '1'
-// characters.
+// BitString converts a byte slice index into a string of Depth '0' or '1' characters.
 func BitString(index []byte) string {
 	i, _ := new(big.Int).SetString(hex.EncodeToString(index), 16)
 	// A 256 character string of bits with leading Zeros.
 	return fmt.Sprintf("%0256b", i)
 }
 
-// Index converts BitString outputs back into []byte.
+// InvertBitString converts BitString outputs back into []byte.
 func InvertBitString(bindex string) (index []byte, depth int) {
 	depth = len(bindex)
 	byteLen := (depth + 7) >> 3
@@ -63,7 +62,7 @@ func Neighbor(b uint8) uint8 {
 	}
 }
 
-// path returns all the intermediate nodes between a leaf node and the root, ending with the root.
+// Path returns all the intermediate nodes between a leaf node and the root, ending with the root.
 func Path(bindex string) []string {
 	steps := len(bindex) // levels - 1
 	n := make([]string, steps)
@@ -84,8 +83,8 @@ func Neighbors(bindex string) []string {
 	return n
 }
 
-// Neighbor inverts the last Zero into a One and visa versa.
-// ps. the root node does not have a Neighbor
+// NeighborString inverts the last Zero into a One and visa versa.
+// Note that the root node does not have a Neighbor.
 func NeighborString(bindex string) string {
 	last := len(bindex) - 1
 	return fmt.Sprintf("%v%v", bindex[:last], string(Neighbor(bindex[last])))

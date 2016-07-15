@@ -52,14 +52,14 @@ const (
 	ORDER BY Epoch DESC LIMIT 1;`
 )
 
-// CTAppender both stores objects in a local table and submits them to an
-// append-only log.
+// CTAppender stores objects in a local table and submits them to an append-only log.
 type CTAppender struct {
 	mapID []byte
 	db    *sql.DB
 	ctlog *client.LogClient
 }
 
+// New creates a new client to an append-only data structure: Certificate Transparency.
 func New(db *sql.DB, mapID, logURL string) *CTAppender {
 	if err := db.Ping(); err != nil {
 		log.Fatalf("No DB connection: %v", err)
@@ -100,7 +100,7 @@ func (a *CTAppender) insertMapRow() {
 	}
 }
 
-// Adds an object to the append-only data structure.
+// Append adds an object to the append-only data structure.
 func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error {
 	sct, err := a.ctlog.AddJSON(data)
 	if err != nil {

@@ -23,21 +23,21 @@ import (
 )
 
 const (
-	ValidSTHResponse = `{"tree_size":3721782,"timestamp":1396609800587,
+	validSTHResponse = `{"tree_size":3721782,"timestamp":1396609800587,
         "sha256_root_hash":"SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo=",
         "tree_head_signature":"BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="}`
-	ValidSTHResponseTreeSize          = 3721782
-	ValidSTHResponseTimestamp         = 1396609800587
-	ValidSTHResponseSHA256RootHash    = "SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo="
-	ValidSTHResponseTreeHeadSignature = "BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="
-	AddJSONResp                       = `{  
+	validSTHResponseTreeSize          = 3721782
+	validSTHResponseTimestamp         = 1396609800587
+	validSTHResponseSHA256RootHash    = "SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo="
+	validSTHResponseTreeHeadSignature = "BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="
+	addJSONResp                       = `{  
 	   "sct_version":0,
 	   "id":"KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=",
 	   "timestamp":1337,
 	   "extensions":"",
 	   "signature":"BAMARjBEAiAIc21J5ZbdKZHw5wLxCP+MhBEsV5+nfvGyakOIv6FOvAIgWYMZb6Pw///uiNM7QTg2Of1OqmK1GbeGuEl9VJN8v8c="
 	}`
-	ProofByHashResp = `
+	proofByHashResp = `
 	{
 		"leaf_index": 3,
 		"audit_path": [
@@ -48,21 +48,21 @@ const (
 	}`
 )
 
-// Create a test CT server.
-func CtServer(t *testing.T) *httptest.Server {
+// NewCTServer creates a test CT server.
+func NewCTServer(t testing.TB) *httptest.Server {
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/ct/v1/get-sth":
 			fmt.Fprintf(w, `{"tree_size": %d, "timestamp": %d, "sha256_root_hash": "%s", "tree_head_signature": "%s"}`,
-				ValidSTHResponseTreeSize,
-				int64(ValidSTHResponseTimestamp),
-				ValidSTHResponseSHA256RootHash,
-				ValidSTHResponseTreeHeadSignature)
+				validSTHResponseTreeSize,
+				int64(validSTHResponseTimestamp),
+				validSTHResponseSHA256RootHash,
+				validSTHResponseTreeHeadSignature)
 
 		case r.URL.Path == "/ct/v1/add-json":
-			w.Write([]byte(AddJSONResp))
+			w.Write([]byte(addJSONResp))
 		case r.URL.Path == "/ct/v1/get-proof-by-hash":
-			w.Write([]byte(ProofByHashResp))
+			w.Write([]byte(proofByHashResp))
 		default:
 			t.Fatalf("Incorrect URL path: %s", r.URL.Path)
 		}

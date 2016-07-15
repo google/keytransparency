@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package contains common type definitions and functions used by other
+// Package commitments contains common type definitions and functions used by other
 // packages. Types that can cause circular import should be added here.
 package commitments
 
@@ -27,10 +27,9 @@ import (
 )
 
 const (
-	// commitmentKeyLen should be robust against the birthday attack. One
-	// commitment is given for each leaf node throughout time.
-	commitmentKeyLen = 16 //128 bits of security, supports 2^64 nodes
-	Size             = sha512.Size256
+	// commitmentKeyLen should be robust against the birthday attack.
+	// One commitment is given for each leaf node throughout time.
+	commitmentKeyLen = 16 // 128 bits of security, supports 2^64 nodes.
 )
 
 var (
@@ -38,6 +37,7 @@ var (
 	errInvalidCommitment = errors.New("Invalid commitment")
 )
 
+// Commitment holds cryptographic commitment.
 type Commitment struct {
 	// Commitment key
 	Key []byte
@@ -45,6 +45,7 @@ type Commitment struct {
 	Data []byte
 }
 
+// Committer saves cryptographic commitments.
 type Committer interface {
 	// TODO: remove ctx
 	// TODO: rename WriteCommitment to Commit
@@ -65,6 +66,7 @@ func Commit(data []byte) ([]byte, []byte, error) {
 	return key, mac.Sum(nil), nil
 }
 
+// CommitName makes a cryptographic commitment under a specific userID to data.
 func CommitName(userID string, data []byte) ([]byte, []byte, error) {
 	d := bytes.NewBufferString(userID)
 	d.Write(data)

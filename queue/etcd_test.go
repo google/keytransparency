@@ -59,7 +59,7 @@ func TestRetryOnFailure(t *testing.T) {
 				t.Errorf("%v: Dequeue(): %v, %v, want %v, %v", i, gotk, gotv, tc.key, tc.value)
 			}
 			if !tc.success {
-				return errors.New("fake commitment failure.")
+				return errors.New("fake commitment failure")
 			}
 			return nil
 		}, nil); got != tc.success {

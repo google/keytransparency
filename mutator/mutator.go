@@ -19,7 +19,7 @@ package mutator
 import "errors"
 
 // ErrReplay occurs when two mutations acting on the same entry & epoch occur.
-var ErrReplay = errors.New("Mutation replay")
+var ErrReplay = errors.New("mutation replay")
 
 // Mutator verifies mutations and transforms values in the map.
 type Mutator interface {

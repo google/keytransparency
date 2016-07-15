@@ -54,13 +54,16 @@ message SignedEpochHead {
   map<string, DigitallySigned> signatures = 2;
 }
 
+// DigitallySigned defines a way to sign digital objects.
 message DigitallySigned {
+  // HashAlgorithm defines the approved ways to hash the object.
   enum HashAlgorithm {
     NONE = 0;
     SHA256 = 4;
     SHA512 = 6;
   }
 
+  // SignatureAlgorithm defines the way to sign the object.
   enum SignatureAlgorithm {
     ANONYMOUS = 0;
     ECDSA = 3;

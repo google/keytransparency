@@ -50,13 +50,14 @@ const (
 
 var errDoubleCommitment = errors.New("Commitment to different key-value")
 
+// Commitments stores cryptographic commitments.
 type Commitments struct {
 	mapID []byte
 	db    *sql.DB
 	epoch int64 // The currently valid epoch. Insert at epoch+1.
 }
 
-// NewSQL returns a new SQL backed commitment db.
+// New returns a new SQL backed commitment db.
 func New(db *sql.DB, mapID string) *Commitments {
 	c := &Commitments{
 		mapID: []byte(mapID),
@@ -110,10 +111,9 @@ func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, valu
 		if bytes.Equal(key, read.Key) && bytes.Equal(value, read.Data) {
 			// Write of existing value.
 			return tx.Commit()
-		} else {
-			tx.Rollback()
-			return errDoubleCommitment
 		}
+		tx.Rollback()
+		return errDoubleCommitment
 	}
 }
 

@@ -39,7 +39,7 @@ func NewDB(t testing.TB) *sql.DB {
 }
 
 func TestGetLatest(t *testing.T) {
-	hs := ctutil.CtServer(t)
+	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 
 	a := New(NewDB(t), mapID, hs.URL)
@@ -73,7 +73,7 @@ func TestGetLatest(t *testing.T) {
 	}
 }
 func TestAppend(t *testing.T) {
-	hs := ctutil.CtServer(t)
+	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 
 	a := New(NewDB(t), mapID, hs.URL)

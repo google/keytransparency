@@ -31,8 +31,8 @@ import (
 
 var (
 	hasher      = sparse.Coniks
-	errNilLeaf  = errors.New("Nil leaf")
-	errIndexLen = errors.New("Index len != 32")
+	errNilLeaf  = errors.New("nil leaf")
+	errIndexLen = errors.New("index len != 32")
 )
 
 const (
@@ -55,12 +55,14 @@ const (
 	readEpochExpr = `SELECT MAX(Version) FROM Leaves WHERE MapId = $1;`
 )
 
+// Map stores a temporal sparse merkle tree, backed by an SQL database.
 type Map struct {
 	mapID []byte
 	db    *sql.DB
 	epoch int64 // The currently valid epoch. Insert at epoch+1.
 }
 
+// New creates a new map.
 func New(db *sql.DB, mapID string) *Map {
 	if err := db.Ping(); err != nil {
 		log.Fatalf("No DB connection: %v", err)
@@ -183,7 +185,7 @@ func (m *Map) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte
 	return value, nil
 }
 
-// Neighbors returns the list of neighbors from the neighbor leaf to just below the root at epoch.
+// NeighborsAt returns the list of neighbors from the neighbor leaf to just below the root at epoch.
 func (m *Map) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]byte, error) {
 	tx, err := m.db.Begin()
 	if err != nil {

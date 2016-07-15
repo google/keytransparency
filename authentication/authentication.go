@@ -27,8 +27,10 @@ import (
 )
 
 var (
+	// ErrMissingAuth occurs when authentication information is missing.
 	ErrMissingAuth = errors.New("auth: missing authentication header")
-	ErrWrongUser   = errors.New("auth: email missmatch")
+	// ErrWrongUser occurs when the authenticated user does not match the owner of the requested resource.
+	ErrWrongUser = errors.New("auth: email missmatch")
 )
 
 // Authenticator provides services to authenticate users.

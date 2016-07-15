@@ -50,14 +50,15 @@ main: proto
 	go build -o e2e-key-signer ./backend
 
 # The list of returned packages might not be unique. Fortunately go test gets
-# rid of duplicate.
+# rid of duplicates.
 test: main
 	go test `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
 	python tests/api_proxy_test.py
 
 fmt:
-	gofmt -w `find . | grep -e '\.go$$'`
-	golint ./...
+	find . -iregex '.*.go' -exec gofmt -w {} \;
+	find . -iregex '.[^.]*.go' -exec golint {} \;
+
 
 proto: $(DEPS) $(GATEWAY_DEPS)
 

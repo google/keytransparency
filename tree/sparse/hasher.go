@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 )
 
+// TreeHasher provides hash functions for tree implementations.
 type TreeHasher interface {
 	HashLeaf(index []byte, depth int, dataHash []byte) []byte
 	HashChildren(left []byte, right []byte) []byte

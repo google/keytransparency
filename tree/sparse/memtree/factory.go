@@ -25,8 +25,10 @@ import (
 	"log"
 )
 
+// TreeFactory creates trees.
 type TreeFactory struct{}
 
+// NewFactory creates a new tree creation factory.
 func NewFactory() *TreeFactory {
 	return &TreeFactory{}
 }

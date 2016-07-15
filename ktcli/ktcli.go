@@ -47,7 +47,7 @@ var (
 )
 
 const (
-	DefaultTimeout = 0 * time.Second
+	defaultTimeout = 0 * time.Second
 )
 
 func readVrfKey() vrf.PublicKey {

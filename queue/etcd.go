@@ -38,10 +38,12 @@ type kv struct {
 	AdvanceEpoch bool
 }
 
+// New creates a new consistent, distributed queue.
 func New(client *v3.Client, mapID string) *Queue {
 	return &Queue{client, context.TODO(), mapID}
 }
 
+// AdvanceEpoch submits an advance epoch request into the queue.
 func (q *Queue) AdvanceEpoch() error {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(kv{nil, nil, true}); err != nil {
@@ -50,6 +52,7 @@ func (q *Queue) AdvanceEpoch() error {
 	return q.enqueue(buf.Bytes())
 }
 
+// Enqueue submits a key, value pair into the queue.
 func (q *Queue) Enqueue(key, value []byte) error {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(kv{key, value, false}); err != nil {
@@ -65,18 +68,17 @@ func (q *Queue) enqueue(val []byte) error {
 
 // Dequeue returns Enqueue()'d elements in FIFO order. If the
 // queue is empty, Dequeue blocks until elements are available.
-func (q *Queue) Dequeue(processFunc ProcessKeyValue, advanceFunc AdvanceEpoch) error {
+func (q *Queue) Dequeue(processFunc ProcessKeyValueFunc, advanceFunc AdvanceEpochFunc) error {
 	return q.dequeue(func(data []byte) error {
-		var data_kv kv
+		var dataKV kv
 		dec := gob.NewDecoder(bytes.NewBuffer(data))
-		if err := dec.Decode(&data_kv); err != nil {
+		if err := dec.Decode(&dataKV); err != nil {
 			return err
 		}
 
-		if data_kv.AdvanceEpoch {
+		if dataKV.AdvanceEpoch {
 			return advanceFunc()
-		} else {
-			return processFunc(data_kv.Key, data_kv.Val)
 		}
+		return processFunc(dataKV.Key, dataKV.Val)
 	})
 }
