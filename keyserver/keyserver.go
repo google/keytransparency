@@ -101,27 +101,26 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 	if err != nil {
 		return nil, err
 	}
-	commitment := &commitments.Commitment{}
+	var committed *pb.Committed
 	if leaf != nil {
 		entry := pb.Entry{}
 		if err := proto.Unmarshal(leaf, &entry); err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
 
-		commitment, err = s.committer.ReadCommitment(ctx, entry.Commitment)
+		committed, err = s.committer.Read(ctx, entry.Commitment)
 		if err != nil {
 			return nil, err
 		}
-		if commitment == nil {
+		if committed == nil {
 			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", entry.Commitment)
 		}
 	}
 
 	return &pb.GetEntryResponse{
-		Vrf:           vrf,
-		VrfProof:      proof,
-		CommitmentKey: commitment.Key,
-		Profile:       commitment.Data,
+		Vrf:       vrf,
+		VrfProof:  proof,
+		Committed: committed,
 		// Leaf proof in sparse merkle tree.
 		LeafProof: &ctmap.GetLeafResponse{
 			LeafData:  leaf,
@@ -169,7 +168,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Save the commitment.
-	if err := s.committer.WriteCommitment(ctx, entry.Commitment, in.GetEntryUpdate().CommitmentKey, in.GetEntryUpdate().Profile); err != nil {
+	if err := s.committer.Write(ctx, entry.Commitment, in.GetEntryUpdate().Committed); err != nil {
 		return nil, err
 	}
 

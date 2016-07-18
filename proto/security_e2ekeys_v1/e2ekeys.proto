@@ -111,11 +111,9 @@ message GetEntryResponse {
   // vrf_proof is the proof for VRF on user_id.
   bytes vrf_proof = 2;
 
-  // TODO: Combine into Commitment datatype.
-  // commitment_key connects the profile data to the commitment in leaf_proof.
-  bytes commitment_key = 3;
-  // profile contains the public key data for this account.
-  bytes profile = 4;
+  // committed contains the profile for this account and connects the data
+  // in profile to the commitment in leaf_proof.
+  Committed committed = 3;
 
   //
   // Verifiable map layer proves that the response is consistent.
@@ -141,6 +139,15 @@ message GetEntryResponse {
   //ct.GetSTHResponse sth = 8;
   // Consistency proof between epoch_start and the current sth.
   //ct.GetConsistencyProofResponse consistency_proof = 9;
+}
+
+// Committed represents the data comitted to in a cryptographic commitment.
+// commitment = HMAC_SHA512_256(key, data)
+message Committed {
+  // key is the 16 byte random commitment key.
+  bytes key = 1;
+  // data is the data being comitted to. 
+  bytes data = 2;
 }
 
 // Profile contains data hidden behind the crypto comitment.
@@ -227,10 +234,8 @@ message ListEntryHistoryResponse {
 message EntryUpdate {
   // update authorizes the change to profile.
   SignedKV update = 2; // TODO: make this bytes
-  // profile is the serialized protobuf Profile.
-  bytes profile = 3;
-  // commitment_key is 16 random bytes.
-  bytes commitment_key = 4;
+  // commitment contains the serialized Profile protobuf.
+  Committed committed = 3;
   // Last trusted epoch by the client.
   // int64 epoch_start = 6; 
 }

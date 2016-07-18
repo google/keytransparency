@@ -84,8 +84,9 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	vrfPriv, _ := p256.GenerateKey()
 	vrf, _ := vrfPriv.Evaluate([]byte("joe"))
 	index := vrfPriv.Index(vrf)
-	profileData := []byte("")
-	key, commitment, _ := commitments.CommitName(userID, profileData)
+	profile := &pb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}
+	profileData, _ := proto.Marshal(profile)
+	commitment, committed, _ := commitments.CommitName(userID, profileData)
 	authCtx := authentication.NewFake().NewContext("joe")
 
 	tests := []struct {
@@ -94,13 +95,13 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		userID     string
 		index      [32]byte
 		commitment []byte
-		key        []byte
+		committed  *pb.Committed
 	}{
 		{false, context.Background(), "joe", [32]byte{}, nil, nil}, // Incorrect auth
 		{false, authCtx, "joe", [32]byte{}, nil, nil},              // Incorrect index
 		{false, authCtx, "joe", index, nil, nil},                   // Incorrect commitment
 		{false, authCtx, "joe", index, commitment, nil},            // Incorrect key
-		{true, authCtx, "joe", index, commitment, key},
+		{true, authCtx, "joe", index, commitment, committed},
 	}
 	for _, tc := range tests {
 		entry := &pb.Entry{
@@ -115,14 +116,13 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		req := &pb.UpdateEntryRequest{
 			UserId: tc.userID,
 			EntryUpdate: &pb.EntryUpdate{
-				Update:        signedkv,
-				Profile:       profileData,
-				CommitmentKey: tc.key,
+				Update:    signedkv,
+				Committed: tc.committed,
 			},
 		}
 		err := validateUpdateEntryRequest(req, vrfPriv)
 		if got := err == nil; got != tc.want {
-			t.Errorf("UpdateEntry(%v): %v, want %v", req, err, tc.want)
+			t.Errorf("validateUpdateEntryRequest(%v): %v, want %v", req, err, tc.want)
 		}
 	}
 }

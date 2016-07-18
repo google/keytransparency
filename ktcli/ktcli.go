@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	v2pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v2"
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 var (
@@ -109,7 +109,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error Dialing %v: %v", *mapURL, err)
 	}
-	cli := v2pb.NewE2EKeyServiceClient(cc)
+	cli := pb.NewE2EKeyServiceClient(cc)
 	c := client.New(cli, readVrfKey(), *ctURL)
 
 	switch {

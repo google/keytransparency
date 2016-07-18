@@ -24,6 +24,8 @@ import (
 	"errors"
 
 	"golang.org/x/net/context"
+
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 const (
@@ -33,28 +35,21 @@ const (
 )
 
 var (
-	hashAlgo             = sha512.New512_256
-	errInvalidCommitment = errors.New("Invalid commitment")
+	hashAlgo = sha512.New512_256
+	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
+	ErrInvalidCommitment = errors.New("invalid commitment")
 )
-
-// Commitment holds cryptographic commitment.
-type Commitment struct {
-	// Commitment key
-	Key []byte
-	// Commitment value
-	Data []byte
-}
 
 // Committer saves cryptographic commitments.
 type Committer interface {
-	// TODO: remove ctx
-	// TODO: rename WriteCommitment to Commit
-	WriteCommitment(ctx context.Context, commitment, key, value []byte) error
-	ReadCommitment(ctx context.Context, commitment []byte) (*Commitment, error)
+	// Write saves a cryptographic commitment and associated data.
+	Write(ctx context.Context, commitment []byte, committed *pb.Committed) error
+	// Read looks up a cryptograpic commitment and returns associated data.
+	Read(ctx context.Context, commitment []byte) (*pb.Committed, error)
 }
 
 // Commit returns the commitment key and the commitment
-func Commit(data []byte) ([]byte, []byte, error) {
+func Commit(data []byte) ([]byte, *pb.Committed, error) {
 	// Generate commitment key.
 	key := make([]byte, commitmentKeyLen)
 	if _, err := rand.Read(key); err != nil {
@@ -63,29 +58,30 @@ func Commit(data []byte) ([]byte, []byte, error) {
 
 	mac := hmac.New(hashAlgo, key)
 	mac.Write(data)
-	return key, mac.Sum(nil), nil
+	return mac.Sum(nil), &pb.Committed{key, data}, nil
 }
 
 // CommitName makes a cryptographic commitment under a specific userID to data.
-func CommitName(userID string, data []byte) ([]byte, []byte, error) {
+func CommitName(userID string, data []byte) ([]byte, *pb.Committed, error) {
 	d := bytes.NewBufferString(userID)
 	d.Write(data)
-	return Commit(d.Bytes())
+	commitment, committed, err := Commit(d.Bytes())
+	return commitment, &pb.Committed{committed.Key, data}, err
 }
 
 // Verify returns nil if the commitment is valid.
-func Verify(key, data, commitment []byte) error {
-	mac := hmac.New(hashAlgo, key)
-	mac.Write(data)
+func Verify(commitment []byte, committed *pb.Committed) error {
+	mac := hmac.New(hashAlgo, committed.Key)
+	mac.Write(committed.Data)
 	if !hmac.Equal(mac.Sum(nil), commitment) {
-		return errInvalidCommitment
+		return ErrInvalidCommitment
 	}
 	return nil
 }
 
 // VerifyName customizes a commitment with a userID.
-func VerifyName(userID string, key, data, commitment []byte) error {
+func VerifyName(userID string, commitment []byte, committed *pb.Committed) error {
 	d := bytes.NewBufferString(userID)
-	d.Write(data)
-	return Verify(key, d.Bytes(), commitment)
+	d.Write(committed.Data)
+	return Verify(commitment, &pb.Committed{committed.Key, d.Bytes()})
 }

@@ -54,9 +54,12 @@ func (s *Server) hkpGet(ctx context.Context, in *pb.HkpLookupRequest) (*pb.HttpR
 	if err != nil {
 		return nil, err
 	}
+	if result.GetCommitted() == nil {
+		return nil, grpc.Errorf(codes.NotFound, "Not found")
+	}
 	// Extract and returned the user profile from the resulted
 	profile := new(pb.Profile)
-	if err := proto.Unmarshal(result.Profile, profile); err != nil {
+	if err := proto.Unmarshal(result.GetCommitted().Data, profile); err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
 	}
 

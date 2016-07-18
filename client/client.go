@@ -106,12 +106,12 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 	}
 
 	// Empty case.
-	if e.Profile == nil {
+	if e.GetCommitted() == nil {
 		return nil, nil
 	}
 
 	profile := new(pb.Profile)
-	if err := proto.Unmarshal(e.Profile, profile); err != nil {
+	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
 		log.Printf("Error unmarshaling profile: %v", err)
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 		log.Printf("Unexpected profile marshalling error: %v", err)
 		return nil, err
 	}
-	key, commitment, err := commitments.CommitName(userID, profileData)
+	commitment, committed, err := commitments.CommitName(userID, profileData)
 	if err != nil {
 		return nil, err
 	}
@@ -178,9 +178,8 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	req := &pb.UpdateEntryRequest{
 		UserId: userID,
 		EntryUpdate: &pb.EntryUpdate{
-			Update:        signedkv,
-			Profile:       profileData,
-			CommitmentKey: key,
+			Update:    signedkv,
+			Committed: committed,
 		},
 	}
 
@@ -215,7 +214,6 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 		log.Printf("Retry(%v) Matched", req.UserId)
 		return nil
 	}
-	log.Printf("Retry(%v) returned: %v, want %v", req.UserId, got, req.GetEntryUpdate().Profile)
 	return ErrRetry
 	// TODO: Update previous entry pointer
 }

@@ -31,8 +31,6 @@ import (
 )
 
 var (
-	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
-	ErrInvalidCommitment = errors.New("Invalid Commitment")
 	// ErrInvalidVRF occurs when the VRF doesn't validate.
 	ErrInvalidVRF = errors.New("Invalid VRF")
 	// ErrInvalidSparseProof occurs when the sparse merkle proof for the map doesn't validate.
@@ -40,19 +38,19 @@ var (
 )
 
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
-func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
-	if in.Profile != nil {
+func VerifyCommitment(userID string, in *pb.GetEntryResponse) error {
+	if in.Committed != nil {
 		entry := new(pb.Entry)
 		if err := proto.Unmarshal(in.GetLeafProof().LeafData, entry); err != nil {
 			log.Printf("Error unmarshaling entry: %v", err)
-			return false
+			return err
 		}
-		if err := commitments.VerifyName(userID, in.CommitmentKey, in.Profile, entry.Commitment); err != nil {
+		if err := commitments.VerifyName(userID, entry.Commitment, in.Committed); err != nil {
 			log.Printf("Invalid profile commitment.")
-			return false
+			return err
 		}
 	}
-	return true
+	return nil
 }
 
 // VerifyVRF verifies that the VRF and proof in `in` is correct for userID.
@@ -81,8 +79,8 @@ func (c *Client) VerifySEH(seh *ctmap.SignedEpochHead) error {
 }
 
 func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) error {
-	if !VerifyCommitment(userID, in) {
-		return ErrInvalidCommitment
+	if err := VerifyCommitment(userID, in); err != nil {
+		return err
 	}
 
 	index, ok := VerifyVRF(userID, in, c.vrf)
