@@ -35,7 +35,7 @@ import (
 	"github.com/google/e2e-key-server/vrf/p256"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/gengo/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	_ "github.com/mattn/go-sqlite3" // Set database engine.
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

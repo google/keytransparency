@@ -27,7 +27,7 @@ Then, ```go get -u``` as usual
 
 ```sh
 go get -u github.com/google/e2e-key-server/...
-go get -u github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 go get -u github.com/golang/protobuf/protoc-gen-go
 go get -u github.com/mattn/goreman
 ```

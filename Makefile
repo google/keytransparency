@@ -36,13 +36,13 @@ PROTOINCLUDE ?= /usr/local/include
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
 OUTPUT:= $(GOPATH)/src
-REPLACE+=Mgoogle/api/annotations.proto=github.com/gengo/grpc-gateway/third_party/googleapis/google/api
+REPLACE+=Mgoogle/api/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis/google/api
 GRPC_FLAGS+= --go_out=$(REPLACE),plugins=grpc
 GATEWAY_FLAGS+= --grpc-gateway_out=logtostderr=true
 INCLUDES+= -I=.
 INCLUDES+= -I=$(GOPATH)/src/
 INCLUDES+= -I=$(PROTOINCLUDE)
-INCLUDES+= -I=$(GOPATH)/src/github.com/gengo/grpc-gateway/third_party/googleapis 
+INCLUDES+= -I=$(GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis 
 
 
 main: proto
