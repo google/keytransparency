@@ -35,21 +35,23 @@ var (
 	}
 )
 
-func newDB(t testing.TB) *sql.DB {
-	db, err := sql.Open("sqlite3", ":memory:")
+func newDB() (*sql.DB, error) {
+	return sql.Open("sqlite3", ":memory:")
+}
+
+func TestNewDB(t *testing.T) {
+	db, err := newDB()
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
 	}
-	return db
-}
-
-func TestNew(t *testing.T) {
-	db := newDB(t)
 	defer db.Close()
 }
 
 func TestQueueLeaf(t *testing.T) {
-	db := newDB(t)
+	db, err := newDB()
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
 	defer db.Close()
 
 	tree := New(db, "test")
@@ -73,48 +75,47 @@ func TestQueueLeaf(t *testing.T) {
 }
 
 func TestEpochNumAdvance(t *testing.T) {
-	db := newDB(t)
+	db, err := newDB()
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
 	defer db.Close()
 
 	tests := []struct {
-		index string
-		leaf  string
-		epoch int64
-		want  bool
+		index  string
+		leaf   string
+		epoch  int64
+		insert bool
 	}{
-		{strings.Repeat("A", 32), "leafa", 0, true},
-		{strings.Repeat("B", 32), "leafb", 1, true},
-		{strings.Repeat("C", 32), "leafc", 2, true},
+		{"", "", 0, false}, // Test commit without queue.
+		{strings.Repeat("A", 32), "leafa", 1, true},
+		{strings.Repeat("B", 32), "leafb", 2, true},
+		{strings.Repeat("C", 32), "leafc", 3, true},
+		{"", "", 4, false},
+		{"", "", 5, false},
 	}
 	for _, tc := range tests {
 		tree := New(db, "test")
-		// Verify that the epoch does not exist before Commit()
-		_, err := tree.ReadRootAt(nil, tc.epoch)
-		if got := err == nil; got != tc.want {
-			t.Errorf("before: ReadRootAt(%v) succeeded, want %v", tc.epoch, tc.want)
+		if tc.insert {
+			if err := tree.QueueLeaf(nil, []byte(tc.index), []byte(tc.leaf)); err != nil {
+				t.Errorf("QueueLeaf(%v, %v): %v", tc.index, tc.leaf, err)
+			}
 		}
-		err = tree.QueueLeaf(nil, []byte(tc.index), []byte(tc.leaf))
-		if got := err == nil; got != true {
-			t.Errorf("QueueLeaf(%v, %v): %v", tc.index, tc.leaf, err)
+		if got, err := tree.Commit(); err != nil || got != tc.epoch {
+			t.Errorf("Commit(): %v, %v, want %v", got, err, tc.epoch)
 		}
-		e, err := tree.Commit()
-		if got := err == nil; got != true {
-			t.Errorf("Commit(): %v", err)
-		}
-		if got := e; got != tc.epoch {
-			t.Errorf("Commit(): %v, want %v", got, tc.epoch)
-		}
-		// Verify that it does exist after Commit()
-		_, err = tree.ReadRootAt(nil, tc.epoch)
-		if got := err == nil; got != true {
-			t.Errorf("after: ReadRootAt(%v): %v, want nil", tc.epoch, err)
+		if got := tree.readEpoch(); got != tc.epoch {
+			t.Errorf("readEpoch(): %v, want %v", got, tc.epoch)
 		}
 	}
 }
 
 // TestQueueCommitRead ensures that saved data is returned.
 func TestQueueCommitRead(t *testing.T) {
-	db := newDB(t)
+	db, err := newDB()
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
 	defer db.Close()
 	m := New(db, "test")
 	leafs := []struct {
@@ -127,14 +128,14 @@ func TestQueueCommitRead(t *testing.T) {
 	}
 	for i, tc := range leafs {
 		data := []byte{byte(i)}
-		if err := m.QueueLeaf(ctx, H2B(tc.hindex), data); err != nil {
+		if err := m.QueueLeaf(ctx, h2b(tc.hindex), data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", tc.hindex, data, err)
 		}
 		epoch, err := m.Commit()
 		if err != nil {
 			t.Errorf("Commit()=%v, %v, want %v, nil", epoch, err)
 		}
-		readData, err := m.ReadLeafAt(ctx, H2B(tc.hindex), epoch)
+		readData, err := m.ReadLeafAt(ctx, h2b(tc.hindex), epoch)
 		if err != nil {
 			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, tc.hindex, err)
 		}
@@ -145,7 +146,10 @@ func TestQueueCommitRead(t *testing.T) {
 }
 
 func TestReadNotFound(t *testing.T) {
-	db := newDB(t)
+	db, err := newDB()
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
 	defer db.Close()
 	m := New(db, "test")
 	leafs := []struct {
@@ -158,7 +162,7 @@ func TestReadNotFound(t *testing.T) {
 	}
 	for _, tc := range leafs {
 		var epoch int64 = 10
-		readData, err := m.ReadLeafAt(ctx, H2B(tc.hindex), epoch)
+		readData, err := m.ReadLeafAt(ctx, h2b(tc.hindex), epoch)
 		if err != nil {
 			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, tc.hindex, err)
 		}
@@ -170,7 +174,10 @@ func TestReadNotFound(t *testing.T) {
 
 // Verify that leaves written in previous epochs can still be read.
 func TestReadPreviousEpochs(t *testing.T) {
-	db := newDB(t)
+	db, err := newDB()
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
 	defer db.Close()
 	m := New(db, "test")
 	leafs := []struct {
@@ -184,7 +191,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 	}
 	for i, tc := range leafs {
 		data := []byte{byte(i)}
-		if err := m.QueueLeaf(ctx, H2B(tc.hindex), data); err != nil {
+		if err := m.QueueLeaf(ctx, h2b(tc.hindex), data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", tc.hindex, data, err)
 		}
 		if got, err := m.Commit(); err != nil || got != tc.epoch {
@@ -194,7 +201,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 		for _, l := range leafs {
 			// Want success for leaves in previous epochs.
 			want := l.epoch <= tc.epoch
-			val, _ := m.ReadLeafAt(ctx, H2B(l.hindex), tc.epoch)
+			val, _ := m.ReadLeafAt(ctx, h2b(l.hindex), tc.epoch)
 			if got := val != nil; got != want {
 				t.Errorf("ReadLeafAt(%v, %v)=%v, want %v)", l.hindex, tc.epoch, got, want)
 			}
@@ -204,7 +211,10 @@ func TestReadPreviousEpochs(t *testing.T) {
 
 // Verify that arbitrary insertion and commit order produces same tree root.
 func TestAribtrayInsertOrder(t *testing.T) {
-	db := newDB(t)
+	db, err := newDB()
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
 	defer db.Close()
 	leafs := map[string]string{
 		"0000000000000000000000000000000000000000000000000000000000000000": "0",
@@ -218,9 +228,8 @@ func TestAribtrayInsertOrder(t *testing.T) {
 	for i := range roots {
 		m := New(db, fmt.Sprintf("test%v", i))
 		// Iterating over a map in Go is randomized.
-		// TODO: I guess not??
 		for hindex, data := range leafs {
-			if err := m.QueueLeaf(ctx, H2B(hindex), []byte(data)); err != nil {
+			if err := m.QueueLeaf(ctx, h2b(hindex), []byte(data)); err != nil {
 				t.Errorf("WriteLeaf(%v, %v)=%v", hindex, data, err)
 			}
 			if _, err := m.Commit(); err != nil {
@@ -242,7 +251,10 @@ func TestAribtrayInsertOrder(t *testing.T) {
 }
 
 func TestNeighborDepth(t *testing.T) {
-	db := newDB(t)
+	db, err := newDB()
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
 	defer db.Close()
 	m1 := New(db, "test1")
 	// Construct a tree of the following form:
@@ -258,7 +270,7 @@ func TestNeighborDepth(t *testing.T) {
 	}
 	for _, l := range leafs {
 		value := []byte(l.value)
-		if err := m1.QueueLeaf(ctx, H2B(l.hindex), value); err != nil {
+		if err := m1.QueueLeaf(ctx, h2b(l.hindex), value); err != nil {
 			t.Fatalf("QueueLeaf(%v)=%v", l.hindex, err)
 		}
 	}
@@ -268,7 +280,7 @@ func TestNeighborDepth(t *testing.T) {
 
 	// Construct a tree with only one item in it.
 	m2 := New(db, "test2")
-	m2.QueueLeaf(nil, H2B(defaultIndex[0]), []byte("0"))
+	m2.QueueLeaf(nil, h2b(defaultIndex[0]), []byte("0"))
 	m2.Commit()
 	tests := []struct {
 		m      *Map
@@ -281,7 +293,7 @@ func TestNeighborDepth(t *testing.T) {
 		{m2, defaultIndex[0], 0},
 	}
 	for _, tc := range tests {
-		nbrs, _ := tc.m.NeighborsAt(ctx, H2B(tc.hindex), 0)
+		nbrs, _ := tc.m.NeighborsAt(ctx, h2b(tc.hindex), 0)
 		if got, want := len(nbrs), maxDepth; got != want {
 			t.Errorf("len(nbrs): %v, want %v", got, want)
 		}
@@ -292,8 +304,8 @@ func TestNeighborDepth(t *testing.T) {
 	}
 }
 
-// Hex to Bytes
-func H2B(h string) []byte {
+// h2b implements Hex to Bytes.
+func h2b(h string) []byte {
 	result, err := hex.DecodeString(h)
 	if err != nil {
 		panic("DecodeString failed")
