@@ -15,7 +15,7 @@ folder "Map" {
 	[Queue]
 	[Leaves]
 	[Nodes]
-	[SignedTreeHeads]
+	[SignedMapHeads]
 	}
 folder "Privacy" {
 	[Commitments]
@@ -35,7 +35,7 @@ Signer <--> Tree	: 6. WriteLeaf
 Tree --> Leaves
 Tree --> Nodes
 Signer --> Appender 	: 7. CreateEpoch
-Appender --> SignedTreeHeads
+Appender --> SignedMapHeads
 @enduml
 
 @startuml
@@ -50,7 +50,7 @@ database "Spanner" {
 folder "Map" {
 	[Leaves]
 	[Nodes]
-	[SignedTreeHeads]
+	[SignedMapHeads]
 	}
 folder "Privacy" {
 	[Commitments]
@@ -65,6 +65,6 @@ Tree <- Nodes
 FE --> Committer		: 3. GetCommitment
 Committer <- Commitments
 FE --> Appender
-Appender <- SignedTreeHeads
+Appender <- SignedMapHeads
 
 @enduml
