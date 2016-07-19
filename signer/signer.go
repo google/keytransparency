@@ -34,22 +34,26 @@ import (
 // Signer processes mutations, applies them to the sparse merkle tree, and
 // signes the sparse map head.
 type Signer struct {
-	queue    queue.Queuer
-	mutator  mutator.Mutator
-	tree     tree.SparseHist
-	appender appender.Appender
-	signer   *signatures.SignatureSigner
+	realm     string
+	queue     queue.Queuer
+	mutator   mutator.Mutator
+	tree      tree.SparseHist
+	mutations appender.Appender
+	sths      appender.Appender
+	signer    *signatures.SignatureSigner
 }
 
 // New creates a new instance of the signer.
-func New(queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator,
-	appender appender.Appender, signer *signatures.SignatureSigner) *Signer {
+func New(realm string, queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator,
+	sths, mutations appender.Appender, signer *signatures.SignatureSigner) *Signer {
 	return &Signer{
-		queue:    queue,
-		mutator:  mutator,
-		tree:     tree,
-		appender: appender,
-		signer:   signer,
+		realm:     realm,
+		queue:     queue,
+		mutator:   mutator,
+		tree:      tree,
+		sths:      sths,
+		mutations: mutations,
+		signer:    signer,
 	}
 }
 
@@ -76,8 +80,11 @@ func (s *Signer) StartSequencing() {
 }
 
 func (s *Signer) processMutation(index, mutation []byte) error {
-	// Get current value.
+	// Send mutation to append-only log.
 	ctx := context.Background()
+	s.mutations.Append(ctx, 0, mutation)
+
+	// Get current value.
 	v, err := s.tree.ReadLeafAt(ctx, index, s.tree.Epoch())
 	if err != nil {
 		return err
@@ -109,25 +116,25 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 
-	eh := &ctmap.MapHead{
-		// TODO: set Realm
+	mh := &ctmap.MapHead{
+		Realm:     s.realm,
 		IssueTime: &tspb.Timestamp{timestamp, 0},
 		Epoch:     epoch,
 		Root:      root,
 	}
-	sig, err := s.signer.Sign(eh)
+	sig, err := s.signer.Sign(mh)
 	if err != nil {
 		return err
 	}
 	smh := &ctmap.SignedMapHead{
-		MapHead:  eh,
+		MapHead:    mh,
 		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
 	signedMapHead, err := proto.Marshal(smh)
 	if err != nil {
 		return err
 	}
-	if err := s.appender.Append(ctx, epoch, signedMapHead); err != nil {
+	if err := s.sths.Append(ctx, epoch, signedMapHead); err != nil {
 		log.Printf("Append failure %v", err)
 		return err
 	}

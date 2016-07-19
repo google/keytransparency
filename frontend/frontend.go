@@ -40,7 +40,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	_ "google.golang.org/grpc/grpclog/glogger" // Set logging engine.
 
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
@@ -146,12 +145,12 @@ func Main() {
 	commitments := commitments.New(sqldb, *mapID)
 	queue := queue.New(etcdCli, *mapID)
 	tree := sqlhist.New(sqldb, *mapID)
-	appender := appender.New(sqldb, *mapID, *mapLogURL)
+	sths := appender.New(sqldb, *mapID, *mapLogURL)
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
 	// Create gRPC server.
-	svr := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
+	svr := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	pb.RegisterE2EKeyServiceServer(grpcServer, svr)
 
