@@ -30,7 +30,7 @@ package security_e2ekeys_v1
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import security_ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
+import security_ctmap "github.com/google/key-transparency/proto/security_ctmap"
 import _ "github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis/google/api"
 
 import (

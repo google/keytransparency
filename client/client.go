@@ -23,18 +23,18 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/signatures"
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse/memtree"
-	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/key-transparency/commitments"
+	"github.com/google/key-transparency/signatures"
+	"github.com/google/key-transparency/tree"
+	"github.com/google/key-transparency/tree/sparse/memtree"
+	"github.com/google/key-transparency/vrf"
 
 	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
 )
 
 const (

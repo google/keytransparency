@@ -24,15 +24,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/authentication"
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/queue"
-	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
-	"github.com/google/e2e-key-server/vrf"
-	"github.com/google/e2e-key-server/vrf/p256"
+	"github.com/google/key-transparency/appender"
+	"github.com/google/key-transparency/authentication"
+	"github.com/google/key-transparency/commitments"
+	"github.com/google/key-transparency/keyserver"
+	"github.com/google/key-transparency/mutator/entry"
+	"github.com/google/key-transparency/queue"
+	"github.com/google/key-transparency/tree/sparse/sqlhist"
+	"github.com/google/key-transparency/vrf"
+	"github.com/google/key-transparency/vrf/p256"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -41,7 +41,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
 )
 
 var (

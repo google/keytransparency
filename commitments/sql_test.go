@@ -20,7 +20,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
 )
 
 func TestWriteRead(t *testing.T) {

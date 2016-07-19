@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/key-transparency/tree/sparse/sqlhist"
 	"golang.org/x/net/context"
 )
 

@@ -24,8 +24,8 @@ import (
 	"errors"
 	"log"
 
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse"
+	"github.com/google/key-transparency/tree"
+	"github.com/google/key-transparency/tree/sparse"
 	"golang.org/x/net/context"
 )
 

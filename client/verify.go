@@ -18,15 +18,15 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/key-transparency/commitments"
+	"github.com/google/key-transparency/tree"
+	"github.com/google/key-transparency/vrf"
 
 	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	ctmap "github.com/google/key-transparency/proto/security_ctmap"
+	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
 )
 
 var (

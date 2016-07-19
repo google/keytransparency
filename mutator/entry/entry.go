@@ -18,10 +18,10 @@ package entry
 import (
 	"log"
 
-	"github.com/google/e2e-key-server/mutator"
+	"github.com/google/key-transparency/mutator"
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
 )
 
 // Entry defines mutations to simply replace the current map value with the

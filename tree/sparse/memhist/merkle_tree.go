@@ -27,8 +27,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/tree/sparse"
+	"github.com/google/key-transparency/tree"
+	"github.com/google/key-transparency/tree/sparse"
 )
 
 const (

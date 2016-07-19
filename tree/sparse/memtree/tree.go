@@ -23,7 +23,7 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/key-transparency/tree/sparse/sqlhist"
 	_ "github.com/mattn/go-sqlite3" // Use SQLite.
 	"golang.org/x/net/context"
 )

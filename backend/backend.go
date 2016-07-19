@@ -23,12 +23,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/queue"
-	"github.com/google/e2e-key-server/signatures"
-	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
+	"github.com/google/key-transparency/appender"
+	"github.com/google/key-transparency/mutator/entry"
+	"github.com/google/key-transparency/queue"
+	"github.com/google/key-transparency/signatures"
+	"github.com/google/key-transparency/signer"
+	"github.com/google/key-transparency/tree/sparse/sqlhist"
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
