@@ -16,6 +16,7 @@ package appender
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -52,38 +53,47 @@ const (
 	ORDER BY Epoch DESC LIMIT 1;`
 )
 
+var (
+	// ErrNotSupported occurs when performing an operaion that has been disabled.
+	ErrNotSupported = errors.New("operation not supported")
+)
+
 // CTAppender stores objects in a local table and submits them to an append-only log.
 type CTAppender struct {
 	mapID []byte
 	db    *sql.DB
 	ctlog *client.LogClient
+	send  bool
+	save  bool
 }
 
 // New creates a new client to an append-only data structure: Certificate Transparency.
 func New(db *sql.DB, mapID, logURL string) *CTAppender {
-	if err := db.Ping(); err != nil {
-		log.Fatalf("No DB connection: %v", err)
-	}
-
 	a := &CTAppender{
 		mapID: []byte(mapID),
 		db:    db,
-		// TODO(cesarghali): we might actually want to pass an
-		// http.client instead of nil. If nil is passed client.New will
-		// automatically initialize it.
-		ctlog: client.New(logURL, nil),
+		save:  db != nil,
+		send:  logURL != "",
 	}
 
-	// Create tables.
-	_, err := db.Exec(createExpr)
-	if err != nil {
-		log.Fatalf("Failed to create appender tables: %v", err)
-	}
-	a.insertMapRow()
+	if a.save {
+		if err := db.Ping(); err != nil {
+			log.Fatalf("No DB connection: %v", err)
+		}
 
-	// Verify logURL.
-	if _, err := a.ctlog.GetSTH(); err != nil {
-		log.Fatalf("Failed to ping CT server with GetSTH: %v", err)
+		// Create tables.
+		_, err := db.Exec(createExpr)
+		if err != nil {
+			log.Fatalf("Failed to create appender tables: %v", err)
+		}
+		a.insertMapRow()
+	}
+	if a.send {
+		a.ctlog = client.New(logURL, nil)
+		// Verify logURL.
+		if _, err := a.ctlog.GetSTH(); err != nil {
+			log.Fatalf("Failed to ping CT server with GetSTH: %v", err)
+		}
 	}
 	return a
 }
@@ -102,26 +112,30 @@ func (a *CTAppender) insertMapRow() {
 
 // Append adds an object to the append-only data structure.
 func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error {
-	sct, err := a.ctlog.AddJSON(data)
-	if err != nil {
-		log.Printf("CT: Submission failure: %v", err)
-		return err
-	}
-	b, err := ct.SerializeSCT(*sct)
-	if err != nil {
-		log.Printf("CT: Serialization failure: %v", err)
-		return err
-	}
-	writeStmt, err := a.db.Prepare(insertExpr)
-	if err != nil {
-		log.Printf("CT: DB save failure: %v", err)
-		return err
-	}
-	defer writeStmt.Close()
-	_, err = writeStmt.Exec(a.mapID, epoch, data, b)
-	if err != nil {
-		log.Printf("CT: DB commit failure: %v", err)
-		return err
+	if a.send {
+		sct, err := a.ctlog.AddJSON(data)
+		if err != nil {
+			log.Printf("CT: Submission failure: %v", err)
+			return err
+		}
+		if a.save {
+			b, err := ct.SerializeSCT(*sct)
+			if err != nil {
+				log.Printf("CT: Serialization failure: %v", err)
+				return err
+			}
+			writeStmt, err := a.db.Prepare(insertExpr)
+			if err != nil {
+				log.Printf("CT: DB save failure: %v", err)
+				return err
+			}
+			defer writeStmt.Close()
+			_, err = writeStmt.Exec(a.mapID, epoch, data, b)
+			if err != nil {
+				log.Printf("CT: DB commit failure: %v", err)
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -129,6 +143,9 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error
 // Epoch retrieves a specific object.
 // Returns data and a serialized ct.SignedCertificateTimestamp
 func (a *CTAppender) Epoch(ctx context.Context, epoch int64) ([]byte, []byte, error) {
+	if !a.save {
+		return nil, nil, ErrNotSupported
+	}
 	readStmt, err := a.db.Prepare(readExpr)
 	if err != nil {
 		return nil, nil, err
@@ -145,6 +162,9 @@ func (a *CTAppender) Epoch(ctx context.Context, epoch int64) ([]byte, []byte, er
 // Latest returns the latest object.
 // Returns epoch, data, and a serialized ct.SignedCertificateTimestamp
 func (a *CTAppender) Latest(ctx context.Context) (int64, []byte, []byte, error) {
+	if !a.save {
+		return 0, nil, nil, ErrNotSupported
+	}
 	readStmt, err := a.db.Prepare(latestExpr)
 	if err != nil {
 		return 0, nil, nil, err
