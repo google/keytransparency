@@ -31,9 +31,9 @@ service VerifiableMapService {
 // Data types
 //
 
-// EpochHead is the head node of the Merkle Tree as well as additional metadata
+// MapHead is the head node of the Merkle Tree as well as additional metadata
 // for the tree.
-message EpochHead {
+message MapHead {
   // realm is the domain identifier for the transparent map.
   string realm = 1;
   // epoch number
@@ -44,9 +44,9 @@ message EpochHead {
   security.protobuf.Timestamp issue_time = 4;
 }
 
-// SignedEpochHead represents a signed state of the Merkel tree.
-message SignedEpochHead {
-  EpochHead epoch_head = 1;
+// SignedMapHead represents a signed state of the Merkel tree.
+message SignedMapHead {
+  MapHead map_head = 1;
   // Signature of head, using the signature type of the key.
   // keyed by the first 64 bits bytes of the hash of the key.
   // TODO: Limit 1. Servers should only sign with one key at a time.

@@ -30,7 +30,7 @@ const (
 		PRIMARY KEY(MapID)
 	);
 
-	CREATE TABLE IF NOT EXISTS SEH (
+	CREATE TABLE IF NOT EXISTS SMH (
 		MapId	BLOB(32) NOT NULL,
 		Epoch 	INTEGER NOT NULL,
 		Data	BLOB(1024) NOT NULL,
@@ -41,13 +41,13 @@ const (
 	mapRowExpr = `
 	INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
 	insertExpr = `
-	INSERT INTO SEH (MapId, Epoch, Data, SCT)
+	INSERT INTO SMH (MapId, Epoch, Data, SCT)
 	VALUES ($1, $2, $3, $4);`
 	readExpr = `
-	SELECT Data, SCT FROM SEH
+	SELECT Data, SCT FROM SMH
 	WHERE MapId = $1 AND Epoch = $2;`
 	latestExpr = `
-	SELECT Epoch, Data, SCT FROM SEH
+	SELECT Epoch, Data, SCT FROM SMH
 	WHERE MapId = $1 
 	ORDER BY Epoch DESC LIMIT 1;`
 )
