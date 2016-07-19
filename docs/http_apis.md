@@ -91,17 +91,17 @@ This document describes the End-to-End Key Server HTTP APIs, their signature, th
     * index cannot be processed,
     * or unmarshalling results in any error.
 
-### ListSEH
+### ListSMH
 
 * Method: `GET`.
-* URL: `/v1/seh`.
+* URL: `/v1/smh`.
 * Query String:
-  * `start_epoch`: specifies the start epoch of the SEH list.
+  * `start_epoch`: specifies the start epoch of the SMH list.
   * `page_size`: specifies the maximum number of entries to return.
 * Body: empty.
-* Response: JSON body containing `ListSEHResponse` proto.
+* Response: JSON body containing `ListSMHResponse` proto.
 * Requirements: input parameters are not required, anything missing is handled by the key server. The following behavior is currently implemented by the server:
-  * missing `start_epoch`: use the first epoch assuming that the whole SEH list is being requested.
+  * missing `start_epoch`: use the first epoch assuming that the whole SMH list is being requested.
   * missing `page_size`: do not upper bound the number of returned entries.
 * Errors: TBD.
 

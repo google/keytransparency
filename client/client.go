@@ -101,7 +101,7 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, err
 	}
 
-	if err := c.verifyLog(e.GetSeh(), e.SehSct); err != nil {
+	if err := c.verifyLog(e.GetSmh(), e.SmhSct); err != nil {
 		return nil, err
 	}
 

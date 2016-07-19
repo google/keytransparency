@@ -23,8 +23,8 @@ import (
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/vrf"
 
-	ct "github.com/google/certificate-transparency/go"
 	"github.com/golang/protobuf/proto"
+	ct "github.com/google/certificate-transparency/go"
 
 	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
@@ -63,19 +63,20 @@ func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]b
 }
 
 // VerifyLeafProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
-func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse, seh *ctmap.SignedEpochHead, factory tree.SparseFactory) bool {
+func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse,
+	smh *ctmap.SignedMapHead, factory tree.SparseFactory) bool {
 	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
 	calculatedRoot, err := m.ReadRoot(nil)
 	if err != nil {
 		log.Printf("VerifyLeafProof failed to read root: %v", err)
 		return false
 	}
-	return bytes.Equal(seh.EpochHead.Root, calculatedRoot)
+	return bytes.Equal(smh.MapHead.Root, calculatedRoot)
 }
 
-// VerifySEH verifies that the Signed Epoch Head is correctly signed.
-func (c *Client) VerifySEH(seh *ctmap.SignedEpochHead) error {
-	return c.verifier.Verify(seh.GetEpochHead(), seh.Signatures[c.verifier.KeyName])
+// VerifySMH verifies that the Signed Map Head is correctly signed.
+func (c *Client) VerifySMH(smh *ctmap.SignedMapHead) error {
+	return c.verifier.Verify(smh.GetMapHead(), smh.Signatures[c.verifier.KeyName])
 }
 
 func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) error {
@@ -88,18 +89,18 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 		return ErrInvalidVRF
 	}
 
-	if !VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSeh(), c.factory) {
+	if !VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSmh(), c.factory) {
 		return ErrInvalidSparseProof
 	}
 
-	if err := c.VerifySEH(in.GetSeh()); err != nil {
+	if err := c.VerifySMH(in.GetSmh()); err != nil {
 		return err
 	}
 	return nil
 }
 
-// verifyEpoch checks the expected root against the log of signed epoch heads.
-func (c *Client) verifyLog(seh *ctmap.SignedEpochHead, sctBytes []byte) error {
+// verifyLog checks the expected root against the log of signed map heads.
+func (c *Client) verifyLog(smh *ctmap.SignedMapHead, sctBytes []byte) error {
 	// 1) GetSTH.
 	sth, err := c.ctlog.GetSTH()
 	if err != nil {
@@ -117,7 +118,7 @@ func (c *Client) verifyLog(seh *ctmap.SignedEpochHead, sctBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	hash := ct.JSONV1LeafHash(sct, seh)
+	hash := ct.JSONV1LeafHash(sct, smh)
 	_, err = c.ctlog.GetProofByHash(hash, sth.TreeSize)
 	if err != nil {
 		return err

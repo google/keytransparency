@@ -24,7 +24,6 @@ import (
 	"github.com/google/e2e-key-server/authentication"
 	"github.com/google/e2e-key-server/client"
 	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/integration/ctutil"
 	"github.com/google/e2e-key-server/keyserver"
 	"github.com/google/e2e-key-server/mutator/entry"
 	"github.com/google/e2e-key-server/queue"
@@ -33,6 +32,7 @@ import (
 	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
 	"github.com/google/e2e-key-server/vrf"
 	"github.com/google/e2e-key-server/vrf/p256"
+	"github.com/google/e2e-key-server/integration/ctutil"
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
@@ -96,17 +96,18 @@ func NewEnv(t *testing.T) *Env {
 	// Common data structures.
 	queue := queue.New(clus.RandClient(), mapID)
 	tree := sqlhist.New(sqldb, mapID)
-	appender := appender.New(sqldb, mapID, hs.URL)
+	sths := appender.New(sqldb, mapID, hs.URL)
+	mutations := appender.New(nil, mapID, "")
 	vrfPriv, vrfPub := p256.GenerateKey()
 	mutator := entry.New()
 	auth := authentication.NewFake()
 
 	commitments := commitments.New(sqldb, mapID)
-	server := keyserver.New(commitments, queue, tree, appender, vrfPriv, mutator, auth)
+	server := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
 	s := grpc.NewServer()
 	pb.RegisterE2EKeyServiceServer(s, server)
 
-	signer := signer.New(queue, tree, mutator, appender, sig)
+	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
 	signer.CreateEpoch()
 
 	addr, lis := Listen(t)
