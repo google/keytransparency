@@ -142,14 +142,15 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	// Validate proper authentication.
 	if err := s.auth.ValidateCreds(ctx, in.UserId); err != nil {
 		log.Printf("Auth failed: %v", err)
-		return nil, grpc.Errorf(codes.PermissionDenied, "Permission Denied")
+		return nil, grpc.Errorf(codes.PermissionDenied, "Permission denied")
 	}
 	// Verify:
 	// - Index to Key equality in SignedKV.
 	// - Correct profile commitment.
 	// - Correct key formats.
 	if err := validateUpdateEntryRequest(in, s.vrf); err != nil {
-		return nil, err
+		log.Printf("Invalid UpdateEntryRequest: %v", err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
 	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
@@ -159,17 +160,18 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	kv := new(pb.KeyValue)
 	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
-		return nil, err
+		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 	entry := new(pb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
 		log.Printf("Error unmarshaling entry: %v", err)
-		return nil, err
+		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
 	// Save the commitment.
 	if err := s.committer.Write(ctx, entry.Commitment, in.GetEntryUpdate().Committed); err != nil {
-		return nil, err
+		log.Printf("committer.Write failed: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Write failed")
 	}
 
 	// Query for the current epoch.
@@ -179,19 +181,21 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 	resp, err := s.GetEntry(ctx, req)
 	if err != nil {
-		return nil, err
+		log.Printf("GetEntry failed: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Read failed")
 	}
 
 	// Catch errors early. Perform mutation verification.
 	// Read at the current value.  Assert the following:
 	// - TODO: Correct signatures from previous epoch.
-	// - TODO: Corerct signatures internal to the update.
+	// - TODO: Correct signatures internal to the update.
 	// - TODO: Hash of current data matches the expectation in the mutation.
 	// - Advanced update count.
 
 	m, err := proto.Marshal(in.GetEntryUpdate().GetUpdate())
 	if err != nil {
-		return nil, err
+		log.Printf("Marshal error of Update: %v", err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "Marshaling error")
 	}
 
 	oldEntry := new(pb.Entry)
@@ -204,11 +208,13 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		log.Printf("Discarding request due to replay")
 		return &pb.UpdateEntryResponse{resp}, nil
 	} else if err != nil {
-		return nil, err
+		log.Printf("Invalid mutation: %v", err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
 	}
 
 	if err := s.queue.Enqueue(index[:], m); err != nil {
-		return nil, err
+		log.Printf("Enqueue error: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Write error")
 	}
 	return &pb.UpdateEntryResponse{resp}, err
 }

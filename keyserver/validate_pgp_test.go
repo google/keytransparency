@@ -19,8 +19,7 @@ import (
 	"testing"
 
 	"golang.org/x/crypto/openpgp/armor"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	"golang.org/x/crypto/openpgp/errors"
 )
 
 const (
@@ -263,54 +262,51 @@ aCOr+QE=
 )
 
 func TestGoodKey(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		label  string
 		key    string
 		userID string
-		want   codes.Code
+		want   error
 	}{
-		{"eccGood", eccGood, "<ecc@good.com>", codes.OK},
+		{"eccGood", eccGood, "<ecc@good.com>", nil},
 	}
-	for i, test := range tests {
+	for _, test := range tests {
 		block, err := armor.Decode(strings.NewReader(test.key))
 		if err != nil {
-			t.Errorf("Test[%v]: test %v: invalid armor", i, test.label)
+			t.Errorf("%v: invalid armor", test.label)
 		} else if _, err := validatePGP(test.userID, block.Body); err != nil {
-			t.Errorf("Test[%v]: test %s: validatePGP(%q, _)) = _, %v; want nil", i, test.label, test.userID, err)
+			t.Errorf("%v: validatePGP(%q, _)) = _, %v; want nil", test.label, test.userID, err)
 		}
 	}
 }
 
 func TestInvalidKeys(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		label  string
 		key    string
 		userID string
-		want   codes.Code
+		want   error
 	}{
-		{"eccBadSignSubkey", eccBadSignSubkey, "<ecc@bad.sign.com>", codes.Unknown},
-		{"eccBadSig", eccBadSig, "<ecc@bad.signature.com>", codes.InvalidArgument},
-		{"eccMulti", eccMulti, "", codes.InvalidArgument},
-		{"eccMutliSubKey", eccMultiSubkey, "<ecc@multi.subkey.com>", codes.InvalidArgument},
-		{"expiredUID", expiredUID, "", codes.InvalidArgument},
-		{"revokedUID", revokedUID, "", codes.InvalidArgument},
-		{"expiredSubkey", expiredSubkey, "expired-subkey", codes.InvalidArgument},
-		{"missingCrossSignature", missingCrossSignature, "invalid-signing-subkeys", codes.Unknown},
-		{"invalidCrossSignature", invalidCrossSignature, "invalid-signing-subkeys", codes.Unknown},
-		{"invalidSubpacketLen", invalidSubpacketLength, "", codes.Unknown},
+		{"eccBadSignSubkey", eccBadSignSubkey, "<ecc@bad.sign.com>",
+			errors.StructuralError("subkey signature invalid: openpgp: invalid data: signing subkey is missing cross-signature")},
+		{"eccBadSig", eccBadSig, "<ecc@bad.signature.com>", ErrAlgo},
+		{"eccMulti", eccMulti, "", ErrEntityCount},
+		{"eccMutliSubKey", eccMultiSubkey, "<ecc@multi.subkey.com>", ErrSubkeyCount},
+		{"expiredUID", expiredUID, "", ErrEntityCount},
+		{"revokedUID", revokedUID, "", ErrEntityCount},
+		{"expiredSubkey", expiredSubkey, "expired-subkey", ErrAlgo},
+		{"missingCrossSignature", missingCrossSignature, "invalid-signing-subkeys",
+			errors.StructuralError("subkey signature invalid: openpgp: invalid data: signing subkey is missing cross-signature")},
+		{"invalidCrossSignature", invalidCrossSignature, "invalid-signing-subkeys",
+			errors.StructuralError("subkey signature invalid: openpgp: invalid data: error while verifying cross-signature: openpgp: invalid signature: hash tag doesn't match")},
+		{"invalidSubpacketLen", invalidSubpacketLength, "", errors.StructuralError("signature subpacket truncated")},
 	}
-	for i, test := range tests {
+	for _, test := range tests {
 		block, err := armor.Decode(strings.NewReader(test.key))
 		if err != nil {
-			t.Errorf("Test[%v]: test %v: invalid armor", i, test.label)
-		} else if _, err := validatePGP(test.userID, block.Body); err == nil {
-			t.Errorf("Test[%v]: test %v: validatePGP(%q, _) = _, nil, want %v", i, test.label, test.userID, test.want)
-		} else if got := grpc.Code(err); got != test.want {
-			t.Errorf("Test[%v]: test %s: validatePGP(%q, _)) = _, %v; want %v", i, test.label, test.userID, got, test.want)
+			t.Errorf("%v: invalid armor", test.label)
+		} else if _, err := validatePGP(test.userID, block.Body); err != test.want {
+			t.Errorf("%v: validatePGP(%q, _)) = _, %v; want %v", test.label, test.userID, err, test.want)
 		}
 	}
 }

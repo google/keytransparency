@@ -22,11 +22,10 @@
 package memhist
 
 import (
+	"errors"
 	"log"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 
 	"github.com/google/e2e-key-server/tree"
 	"github.com/google/e2e-key-server/tree/sparse"
@@ -37,7 +36,16 @@ const (
 	size     = sparse.HashSize
 )
 
-var hasher = sparse.Coniks
+var (
+	// ErrIndexLen occurs when an index of the wrong length is supplied.
+	ErrIndexLen = errors.New("tree: wrong index length")
+	// ErrEpochNotFound occurs when the requsted epoch is not found.
+	ErrEpochNotFound = errors.New("tree: epoch not found")
+	// ErrInternal occurs when a structural error is encountered.
+	ErrInternal = errors.New("tree: internal error")
+
+	hasher = sparse.Coniks
+)
 
 // Note: index has two representation:
 //  (1) string which is a bit string representation (a string of '0' and '1'
@@ -93,9 +101,8 @@ func New() *Tree {
 
 // QueueLeaf queues a leaf to be written on the next Commit().
 func (t *Tree) QueueLeaf(ctx context.Context, index, leaf []byte) error {
-	log.Printf("QueueLeaf(%v, %v)", index, leaf)
 	if got, want := len(index), size; got != want {
-		return grpc.Errorf(codes.InvalidArgument, "len(%v)=%v, want %v", index, got, want)
+		return ErrIndexLen
 	}
 	var v [size]byte
 	copy(v[:], index)
@@ -125,7 +132,7 @@ func (t *Tree) Commit() (int64, error) {
 func (t *Tree) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
+		return nil, ErrEpochNotFound
 	}
 	return r.value, nil
 }
@@ -135,7 +142,7 @@ func (t *Tree) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byt
 	bindex := tree.BitString(index)
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
+		return nil, ErrEpochNotFound
 	}
 
 	// Walk the tree to the leaf node.
@@ -154,7 +161,7 @@ func (t *Tree) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]
 	bindex := tree.BitString(index)
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
+		return nil, ErrEpochNotFound
 	}
 
 	// Walk the tree to the leaf node.
@@ -177,7 +184,7 @@ func (t *Tree) readNodeAt(ctx context.Context, index []byte, depth int, epoch in
 	bindex := tree.BitString(index)
 	r, ok := t.roots[epoch]
 	if !ok {
-		return nil, grpc.Errorf(codes.NotFound, "Epoch %v not found", epoch)
+		return nil, ErrEpochNotFound
 	}
 
 	// Walk the tree to the leaf node.
@@ -201,11 +208,11 @@ func (t *Tree) SetNodeAt(ctx context.Context, index []byte, depth int, value []b
 
 	isLeaf := depth == maxDepth
 	if depth > maxDepth {
-		return grpc.Errorf(codes.InvalidArgument, "depth %v > %v", depth, maxDepth)
+		return ErrIndexLen
 	}
 	root, ok := t.roots[epoch]
 	if !ok {
-		return grpc.Errorf(codes.NotFound, "")
+		return ErrEpochNotFound
 	}
 
 	dirty := make([]*node, maxDepth) // Breadth first.
@@ -237,10 +244,10 @@ func (t *Tree) SetNodeAt(ctx context.Context, index []byte, depth int, value []b
 // n.value.
 func (n *node) pushDown() error {
 	if !n.leaf() {
-		return grpc.Errorf(codes.Internal, "Cannot push down interor node")
+		return ErrInternal
 	}
 	if n.depth == maxDepth {
-		return grpc.Errorf(codes.Internal, "Leaf is already at max depth")
+		return ErrIndexLen
 	}
 
 	// Create a sub branch and copy this node.
