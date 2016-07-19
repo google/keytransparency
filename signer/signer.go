@@ -32,7 +32,7 @@ import (
 )
 
 // Signer processes mutations, applies them to the sparse merkle tree, and
-// signes the sparse tree head.
+// signes the sparse map head.
 type Signer struct {
 	realm     string
 	queue     queue.Queuer
@@ -103,7 +103,7 @@ func (s *Signer) processMutation(index, mutation []byte) error {
 	return nil
 }
 
-// CreateEpoch signs the current tree head.
+// CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch() error {
 	ctx := context.Background()
 	timestamp := time.Now().Unix()
@@ -116,25 +116,25 @@ func (s *Signer) CreateEpoch() error {
 		return err
 	}
 
-	eh := &ctmap.EpochHead{
+	mh := &ctmap.MapHead{
 		Realm:     s.realm,
 		IssueTime: &tspb.Timestamp{timestamp, 0},
 		Epoch:     epoch,
 		Root:      root,
 	}
-	sig, err := s.signer.Sign(eh)
+	sig, err := s.signer.Sign(mh)
 	if err != nil {
 		return err
 	}
-	seh := &ctmap.SignedEpochHead{
-		EpochHead:  eh,
+	smh := &ctmap.SignedMapHead{
+		MapHead:    mh,
 		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
-	signedEpochHead, err := proto.Marshal(seh)
+	signedMapHead, err := proto.Marshal(smh)
 	if err != nil {
 		return err
 	}
-	if err := s.sths.Append(ctx, epoch, signedEpochHead); err != nil {
+	if err := s.sths.Append(ctx, epoch, signedMapHead); err != nil {
 		log.Printf("Append failure %v", err)
 		return err
 	}

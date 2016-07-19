@@ -54,13 +54,13 @@ service E2EKeyService {
 
 
 /*
-  // List the Signed Epoch Heads, from epoch to epoch.
-  rpc ListSEH(ListSEHRequest) returns (ListSEHResponse);
+  // List the SignedMapHeads, from epoch to epoch.
+  rpc ListSMH(ListSMHRequest) returns (ListSMHResponse);
 
   // List the EntryUpdates by update number.
   rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse);
 
-  // ListSteps combines SEH and EntryUpdates into single list.
+  // ListSteps combines SMH and EntryUpdates into single list.
   rpc ListSteps(ListStepsRequest) returns (ListStepsResponse);
 */
   rpc HkpLookup(HkpLookupRequest) returns (HttpResponse){
@@ -123,21 +123,21 @@ message GetEntryResponse {
 
   // leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.
   security_ctmap.GetLeafResponse leaf_proof = 5;
-  // seh contains the signed epoch head for the sparse merkle tree. 
-  // seh is also stored in the append only log.
-  security_ctmap.SignedEpochHead seh = 6;
-  // seh_sct is the SCT showing that seh was submitted to CT logs.
-  // TODO: Support storing seh in multiple logs.
-  bytes seh_sct = 7;
+  // smh contains the signed map head for the sparse merkle tree. 
+  // smh is also stored in the append only log.
+  security_ctmap.SignedMapHead smh = 6;
+  // smh_sct is the SCT showing that smh was submitted to CT logs.
+  // TODO: Support storing smh in multiple logs.
+  bytes smh_sct = 7;
 
   //
   // Append only log layer proves that all account histories are consistent.
   //
 
-  // Inclusion proof for the signed epoch head at end_epoch in the log of signed epoch heads.
+  // Inclusion proof for the signed map head at end_epoch in the log of signed map heads.
   //ct.GetEntryAndProofResponse audit_proof = 7;
   // TODO: Supply GetEntryAndProofRequest data
-  // Latest signed tree head of the log of signed epoch heads.
+  // Latest signed tree head of the log of signed map heads.
   //ct.GetSTHResponse sth = 8;
   // Consistency proof between epoch_start and the current sth.
   //ct.GetConsistencyProofResponse consistency_proof = 9;
@@ -165,7 +165,7 @@ message Entry {
   uint64 update_count = 3;
 }
 
-// PublicKey defines a key this domain uses to sign EpochHeads with.
+// PublicKey defines a key this domain uses to sign MapHeads with.
 message PublicKey {
   // KeyFormats from Keyczar.
   oneof key_type {
@@ -226,7 +226,7 @@ message ListEntryHistoryResponse {
 
 message EntryUpdate {
   // update authorizes the change to profile.
-  SignedKV update = 2; // TODO: make this bytes
+  SignedKV update = 2; 
   // profile is the serialized protobuf Profile.
   bytes profile = 3;
   // commitment_key is 16 random bytes.

@@ -54,7 +54,7 @@ mutation should be explicit about the previoius version of data it is modifying)
 To advance to the next epoch, the signer inserts an epoch advancement marker 
 into the queue and waits to recieve it back on the queue before comitting all 
 the changes recieved between epoch markers into a version of the sparse merkle
-tree and signing the tree head. 
+tree and signing the root node. 
 
 The Signer also takes each item recieved in the queue and sends it to the 
 Log of Mutations, so that Monitors can recreate the tree by just reading the 
@@ -74,7 +74,7 @@ Log of Mutations
 Stores a signed list of mutations and epoch advancement markers that come out of 
 the queue.
 
-Log of Signed Sparse Tree Heads
+Log of Signed Map Heads
 ===============================
-Stores a signed list of Signed Sparse Tree Heads (SSTHs), one for each epoch.
+Stores a signed list of Signed Map Heads (SMHs), one for each epoch.
 
