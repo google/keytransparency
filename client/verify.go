@@ -17,7 +17,6 @@ package client
 import (
 	"bytes"
 	"errors"
-	"log"
 
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/tree"
@@ -31,49 +30,46 @@ import (
 )
 
 var (
-	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
-	ErrInvalidCommitment = errors.New("Invalid Commitment")
 	// ErrInvalidVRF occurs when the VRF doesn't validate.
-	ErrInvalidVRF = errors.New("Invalid VRF")
+	ErrInvalidVRF = errors.New("invalid VRF")
 	// ErrInvalidSparseProof occurs when the sparse merkle proof for the map doesn't validate.
-	ErrInvalidSparseProof = errors.New("Invalid Sparse Proof")
+	ErrInvalidSparseProof = errors.New("invalid sparse proof")
 )
 
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
-func VerifyCommitment(userID string, in *pb.GetEntryResponse) bool {
-	if in.Profile != nil {
+func VerifyCommitment(userID string, in *pb.GetEntryResponse) error {
+	if in.Committed != nil {
 		entry := new(pb.Entry)
 		if err := proto.Unmarshal(in.GetLeafProof().LeafData, entry); err != nil {
-			log.Printf("Error unmarshaling entry: %v", err)
-			return false
+			return err
 		}
-		if err := commitments.VerifyName(userID, in.CommitmentKey, in.Profile, entry.Commitment); err != nil {
-			log.Printf("Invalid profile commitment.")
-			return false
+		if err := commitments.VerifyName(userID, entry.Commitment, in.Committed); err != nil {
+			return err
 		}
 	}
-	return true
+	return nil
 }
 
 // VerifyVRF verifies that the VRF and proof in `in` is correct for userID.
-func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]byte, bool) {
+func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]byte, error) {
 	if !vrf.Verify([]byte(userID), in.Vrf, in.VrfProof) {
-		log.Printf("Vrf verification failed.")
-		return [32]byte{}, false
+		return [32]byte{}, ErrInvalidVRF
 	}
-	return vrf.Index(in.Vrf), true
+	return vrf.Index(in.Vrf), nil
 }
 
 // VerifyLeafProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
 func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse,
-	smh *ctmap.SignedMapHead, factory tree.SparseFactory) bool {
+	smh *ctmap.SignedMapHead, factory tree.SparseFactory) error {
 	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
 	calculatedRoot, err := m.ReadRoot(nil)
 	if err != nil {
-		log.Printf("VerifyLeafProof failed to read root: %v", err)
-		return false
+		return ErrInvalidSparseProof
 	}
-	return bytes.Equal(smh.MapHead.Root, calculatedRoot)
+	if !bytes.Equal(smh.MapHead.Root, calculatedRoot) {
+		return ErrInvalidSparseProof
+	}
+	return nil
 }
 
 // VerifySMH verifies that the Signed Map Head is correctly signed.
@@ -82,17 +78,17 @@ func (c *Client) VerifySMH(smh *ctmap.SignedMapHead) error {
 }
 
 func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) error {
-	if !VerifyCommitment(userID, in) {
-		return ErrInvalidCommitment
+	if err := VerifyCommitment(userID, in); err != nil {
+		return err
 	}
 
-	index, ok := VerifyVRF(userID, in, c.vrf)
-	if !ok {
-		return ErrInvalidVRF
+	index, err := VerifyVRF(userID, in, c.vrf)
+	if err != nil {
+		return err
 	}
 
-	if !VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSmh(), c.factory) {
-		return ErrInvalidSparseProof
+	if err := VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSmh(), c.factory); err != nil {
+		return err
 	}
 
 	if err := c.VerifySMH(in.GetSmh()); err != nil {

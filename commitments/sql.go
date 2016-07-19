@@ -21,6 +21,8 @@ import (
 	"log"
 
 	"golang.org/x/net/context"
+
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
 const (
@@ -75,7 +77,7 @@ func New(db *sql.DB, mapID string) *Commitments {
 
 // WriteCommitment saves a commitment to the database.
 // Writes if the same commitment value succeeds.
-func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, value []byte) error {
+func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *pb.Committed) error {
 	tx, err := c.db.Begin()
 	if err != nil {
 		return err
@@ -88,7 +90,7 @@ func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, valu
 	defer readStmt.Close()
 
 	// Read existing commitment.
-	read := &Commitment{}
+	read := &pb.Committed{}
 
 	err = readStmt.QueryRow(c.mapID, commitment).Scan(&read.Key, &read.Data)
 	switch {
@@ -99,7 +101,7 @@ func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, valu
 			return err
 		}
 		defer writeStmt.Close()
-		if _, err := writeStmt.Exec(c.mapID, commitment, key, value); err != nil {
+		if _, err := writeStmt.Exec(c.mapID, commitment, committed.Key, committed.Data); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -108,7 +110,7 @@ func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, valu
 		tx.Rollback()
 		return err
 	default: // err == nil
-		if bytes.Equal(key, read.Key) && bytes.Equal(value, read.Data) {
+		if bytes.Equal(committed.Key, read.Key) && bytes.Equal(committed.Data, read.Data) {
 			// Write of existing value.
 			return tx.Commit()
 		}
@@ -117,15 +119,15 @@ func (c *Commitments) WriteCommitment(ctx context.Context, commitment, key, valu
 	}
 }
 
-// ReadCommitment retrieves a commitment from the database.
-func (c *Commitments) ReadCommitment(ctx context.Context, commitment []byte) (*Commitment, error) {
+// Read retrieves a commitment from the database.
+func (c *Commitments) Read(ctx context.Context, commitment []byte) (*pb.Committed, error) {
 	stmt, err := c.db.Prepare(readExpr)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	value := &Commitment{}
+	value := &pb.Committed{}
 	if err := stmt.QueryRow(c.mapID, commitment).Scan(&value.Key, &value.Data); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {

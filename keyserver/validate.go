@@ -20,15 +20,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/e2e-key-server/commitments"
 	"github.com/google/e2e-key-server/vrf"
 
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 
 	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
@@ -41,7 +38,14 @@ const (
 )
 
 var (
-	errNoAppID = errors.New("missing AppID")
+	// ErrNoAppID occurs when the app id is missing.
+	ErrNoAppID = errors.New("missing AppID")
+	// ErrNoCommitted occurs when the committed field is missing.
+	ErrNoCommitted = errors.New("missing commitment")
+	// ErrCommittedKeyLen occurs when the commited key is too small.
+	ErrCommittedKeyLen = errors.New("committed.key is too small")
+	// ErrWrongIndex occurs when the index in key value does not match the output of VRF.
+	ErrWrongIndex = errors.New("index does not match vrf")
 )
 
 // validateKey verifies:
@@ -49,7 +53,7 @@ var (
 // - Key is valid for its format.
 func validateKey(userID, appID string, key []byte) error {
 	if appID == "" {
-		return errNoAppID
+		return ErrNoAppID
 	}
 	if appID == PGPAppID {
 		pgpUserID := fmt.Sprintf("<%v>", userID)
@@ -67,12 +71,10 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	// Unmarshal entry.
 	kv := new(pb.KeyValue)
 	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
-		log.Printf("Error unmarshaling keyvalue: %v", err)
 		return err
 	}
 	entry := new(pb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
-		log.Printf("Error unmarshaling entry: %v", err)
 		return err
 	}
 
@@ -80,18 +82,21 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	v, _ := vrfPriv.Evaluate([]byte(in.UserId))
 	index := vrfPriv.Index(v)
 	if got, want := kv.Key, index[:]; !bytes.Equal(got, want) {
-		return grpc.Errorf(codes.InvalidArgument, "entry.Index=%v, want %v", got, want)
+		return ErrWrongIndex
 	}
 
 	// Verify correct commitment to profile.
+	if in.GetEntryUpdate().GetCommitted() == nil {
+		return ErrNoCommitted
+	}
 	p := new(pb.Profile)
-	if err := proto.Unmarshal(in.GetEntryUpdate().Profile, p); err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "Cannot unmarshal profile")
+	if err := proto.Unmarshal(in.GetEntryUpdate().GetCommitted().Data, p); err != nil {
+		return err
 	}
-	if got, want := len(in.GetEntryUpdate().CommitmentKey), MinNonceLen; got < want {
-		return grpc.Errorf(codes.InvalidArgument, "len(CommitmentKey) = %v, want >= %v", got, want)
+	if got, want := len(in.GetEntryUpdate().GetCommitted().Key), MinNonceLen; got < want {
+		return ErrCommittedKeyLen
 	}
-	if err := commitments.VerifyName(in.UserId, in.GetEntryUpdate().CommitmentKey, in.GetEntryUpdate().Profile, entry.Commitment); err != nil {
+	if err := commitments.VerifyName(in.UserId, entry.Commitment, in.GetEntryUpdate().Committed); err != nil {
 		return err
 	}
 

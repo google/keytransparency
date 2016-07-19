@@ -19,21 +19,18 @@ import (
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
 )
 
-func newDB(t testing.TB) *sql.DB {
+func TestWriteRead(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
 	}
-	return db
-}
-
-func TestWriteRead(t *testing.T) {
-	db := newDB(t)
 	defer db.Close()
 
-	key, commitment, _ := Commit([]byte("C"))
+	commitmentC, committedC, _ := Commit([]byte("C"))
 	c := New(db, "test")
 	tests := []struct {
 		commitment string
@@ -46,15 +43,16 @@ func TestWriteRead(t *testing.T) {
 		{"A", "key 1", "value2", false},
 		{"A", "key 2", "value2", false},
 		{"B", "key 2", "value2", true},
-		{string(commitment), string(key), "C", true},
+		{string(commitmentC), string(committedC.Data), "C", true},
 	}
 	for _, tc := range tests {
-		err := c.WriteCommitment(nil, []byte(tc.commitment), []byte(tc.key), []byte(tc.value))
+		committed := &pb.Committed{[]byte(tc.key), []byte(tc.value)}
+		err := c.Write(nil, []byte(tc.commitment), committed)
 		if got := err == nil; got != tc.want {
 			t.Fatalf("WriteCommitment(%v, %v, %v): %v, want %v", tc.commitment, tc.key, tc.value, err, tc.want)
 		}
 		if tc.want {
-			value, err := c.ReadCommitment(nil, []byte(tc.commitment))
+			value, err := c.Read(nil, []byte(tc.commitment))
 			if err != nil {
 				t.Errorf("ReadCommitment(%v): %v", err)
 			}
