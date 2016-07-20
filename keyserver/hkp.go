@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 const (

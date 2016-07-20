@@ -23,7 +23,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/google/e2e-key-server/tree"
+	"github.com/google/key-transparency/tree"
 )
 
 const (

@@ -13,9 +13,9 @@
 // limitations under the License.
 syntax = "proto3";
 
-package security_ctmap;
+package ctmap;
 
-import "github.com/google/e2e-key-server/proto/security_protobuf/timestamp.proto";
+import "github.com/google/key-transparency/proto/protobuf/timestamp.proto";
 
 
 // The VerifiableMapService API 
@@ -41,7 +41,7 @@ message MapHead {
   // root is the value of the root node of the merkle tree.
   bytes root = 3;
   // issue_time is the time when this epoch was released. Monotonically increasing.
-  security.protobuf.Timestamp issue_time = 4;
+  protobuf.Timestamp issue_time = 4;
 }
 
 // SignedMapHead represents a signed state of the Merkel tree.

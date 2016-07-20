@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/key-transparency/commitments"
+	"github.com/google/key-transparency/vrf"
 
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 // Maximum period of time to allow between CreationTime and server time.

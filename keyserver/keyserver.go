@@ -18,21 +18,21 @@ package keyserver
 import (
 	"log"
 
-	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/authentication"
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/mutator"
-	"github.com/google/e2e-key-server/queue"
-	"github.com/google/e2e-key-server/tree"
-	"github.com/google/e2e-key-server/vrf"
+	"github.com/google/key-transparency/appender"
+	"github.com/google/key-transparency/authentication"
+	"github.com/google/key-transparency/commitments"
+	"github.com/google/key-transparency/mutator"
+	"github.com/google/key-transparency/queue"
+	"github.com/google/key-transparency/tree"
+	"github.com/google/key-transparency/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	ctmap "github.com/google/key-transparency/proto/ctmap"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 // Server holds internal state for the key server.

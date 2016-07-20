@@ -14,22 +14,21 @@
 
 syntax = "proto3";
 
-package security.e2ekeys.v1;
+package keytransparency.v1;
 
-import "github.com/google/e2e-key-server/proto/security_ctmap/security_ctmap.proto";
+import "github.com/google/key-transparency/proto/ctmap/ctmap.proto";
 import "google/api/annotations.proto";
 
-// The E2EKeyService API represents a directory of public keys.
+// The KeyTransparencyService API represents a directory of public keys.
 // The API defines the following resource model:
 //
-// - The API has a collection of  [Entry][security.e2ekeys.Entry]
-//   resources named `/entries/*`.
+// - The API has a collection of [Entry][keytransparency.Entry]
+//   resources named `/user/*`.
 //
 // - Entries have a collection of historical
-//   [Entry][security.e2ekeys.Entry] resources named
-//   `/entries/*/history`.
+//   [Entry][keytransparency.Entry] resources named `/users/*/history`.
 //
-service E2EKeyService {
+service KeyTransparencyService {
   // GetEntry returns a user's entry in the Merkle Tree. Entries contain
   // signed commitments to a profile, which is also returned.
   rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
@@ -41,7 +40,6 @@ service E2EKeyService {
     option (google.api.http) = { get: "/v1/users/{user_id}/history" };
   }
 
-  // blocking or polling?
   // UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
   // has been included in an epoch.  Clients must retry until this function
   // returns a proof.
@@ -120,10 +118,10 @@ message GetEntryResponse {
   //
 
   // leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.
-  security_ctmap.GetLeafResponse leaf_proof = 5;
+  ctmap.GetLeafResponse leaf_proof = 5;
   // smh contains the signed map head for the sparse merkle tree. 
   // smh is also stored in the append only log.
-  security_ctmap.SignedMapHead smh = 6;
+  ctmap.SignedMapHead smh = 6;
   // smh_sct is the SCT showing that smh was submitted to CT logs.
   // TODO: Support storing smh in multiple logs.
   bytes smh_sct = 7;

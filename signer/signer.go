@@ -18,17 +18,17 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/mutator"
-	"github.com/google/e2e-key-server/queue"
-	"github.com/google/e2e-key-server/signatures"
-	"github.com/google/e2e-key-server/tree"
+	"github.com/google/key-transparency/appender"
+	"github.com/google/key-transparency/mutator"
+	"github.com/google/key-transparency/queue"
+	"github.com/google/key-transparency/signatures"
+	"github.com/google/key-transparency/tree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	ctmap "github.com/google/e2e-key-server/proto/security_ctmap"
-	tspb "github.com/google/e2e-key-server/proto/security_protobuf"
+	ctmap "github.com/google/key-transparency/proto/ctmap"
+	tspb "github.com/google/key-transparency/proto/protobuf"
 )
 
 // Signer processes mutations, applies them to the sparse merkle tree, and

@@ -20,7 +20,7 @@
 package memtree
 
 import (
-	"github.com/google/e2e-key-server/tree"
+	"github.com/google/key-transparency/tree"
 	"golang.org/x/net/context"
 	"log"
 )

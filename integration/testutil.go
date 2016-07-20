@@ -20,25 +20,25 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/e2e-key-server/appender"
-	"github.com/google/e2e-key-server/authentication"
-	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/commitments"
-	"github.com/google/e2e-key-server/keyserver"
-	"github.com/google/e2e-key-server/mutator/entry"
-	"github.com/google/e2e-key-server/queue"
-	"github.com/google/e2e-key-server/signatures"
-	"github.com/google/e2e-key-server/signer"
-	"github.com/google/e2e-key-server/tree/sparse/sqlhist"
-	"github.com/google/e2e-key-server/vrf"
-	"github.com/google/e2e-key-server/vrf/p256"
-	"github.com/google/e2e-key-server/integration/ctutil"
+	"github.com/google/key-transparency/appender"
+	"github.com/google/key-transparency/authentication"
+	"github.com/google/key-transparency/client"
+	"github.com/google/key-transparency/commitments"
+	"github.com/google/key-transparency/integration/ctutil"
+	"github.com/google/key-transparency/keyserver"
+	"github.com/google/key-transparency/mutator/entry"
+	"github.com/google/key-transparency/queue"
+	"github.com/google/key-transparency/signatures"
+	"github.com/google/key-transparency/signer"
+	"github.com/google/key-transparency/tree/sparse/sqlhist"
+	"github.com/google/key-transparency/vrf"
+	"github.com/google/key-transparency/vrf/p256"
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"google.golang.org/grpc"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 const (
@@ -79,7 +79,7 @@ type Env struct {
 	db         *sql.DB
 	clus       *integration.ClusterV3
 	VrfPriv    vrf.PrivateKey
-	Cli        pb.E2EKeyServiceClient
+	Cli        pb.KeyTransparencyServiceClient
 	mapLog     *httptest.Server
 }
 
@@ -105,7 +105,7 @@ func NewEnv(t *testing.T) *Env {
 	commitments := commitments.New(sqldb, mapID)
 	server := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
 	s := grpc.NewServer()
-	pb.RegisterE2EKeyServiceServer(s, server)
+	pb.RegisterKeyTransparencyServiceServer(s, server)
 
 	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
 	signer.CreateEpoch()
@@ -118,7 +118,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	cli := pb.NewE2EKeyServiceClient(cc)
+	cli := pb.NewKeyTransparencyServiceClient(cc)
 	client := client.New(cli, vrfPub, hs.URL, verifier)
 	client.RetryCount = 0
 

@@ -23,10 +23,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/e2e-key-server/authentication"
-	"github.com/google/e2e-key-server/client"
-	"github.com/google/e2e-key-server/vrf"
-	"github.com/google/e2e-key-server/vrf/p256"
+	"github.com/google/key-transparency/authentication"
+	"github.com/google/key-transparency/client"
+	"github.com/google/key-transparency/vrf"
+	"github.com/google/key-transparency/vrf/p256"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	pb "github.com/google/e2e-key-server/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 var (
@@ -109,7 +109,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error Dialing %v: %v", *mapURL, err)
 	}
-	cli := pb.NewE2EKeyServiceClient(cc)
+	cli := pb.NewKeyTransparencyServiceClient(cc)
 	c := client.New(cli, readVrfKey(), *ctURL)
 
 	switch {

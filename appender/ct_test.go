@@ -19,7 +19,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/google/e2e-key-server/integration/ctutil"
+	"github.com/google/key-transparency/integration/ctutil"
 
 	ct "github.com/google/certificate-transparency/go"
 	_ "github.com/mattn/go-sqlite3"

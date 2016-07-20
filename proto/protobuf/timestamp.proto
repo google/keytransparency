@@ -30,7 +30,7 @@
 
 syntax = "proto3";
 
-package security.protobuf;
+package protobuf;
 
 option csharp_namespace = "Google.Protobuf.WellKnownTypes";
 option cc_enable_arenas = true;
