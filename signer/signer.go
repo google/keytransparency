@@ -138,6 +138,6 @@ func (s *Signer) CreateEpoch() error {
 		log.Printf("Append failure %v", err)
 		return err
 	}
-	log.Printf("Created epoch %v. STH: %#x", epoch, root)
+	log.Printf("Created epoch %v. SMH: %#x", epoch, root)
 	return nil
 }
