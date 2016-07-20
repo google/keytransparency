@@ -172,7 +172,6 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 	if err := stmt.QueryRow(m.mapID, rootID, epoch).Scan(&value); err != nil {
 		return nil, err
 	}
-	log.Printf("rootid: %v, value: %v", rootID, value)
 	return value, nil
 }
 
@@ -286,7 +285,6 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 
 	// Save new nodes.
 	for i, nodeValue := range nodeValues {
-		log.Printf("Writing node %v, value %v, epoch %v", nodeIDs[i], nodeValue, epoch)
 		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue)
 		if err != nil {
 			tx.Rollback()

@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 var (

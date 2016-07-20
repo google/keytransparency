@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 var (
@@ -109,7 +109,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error Dialing %v: %v", *mapURL, err)
 	}
-	cli := pb.NewE2EKeyServiceClient(cc)
+	cli := pb.NewKeyTransparencyServiceClient(cc)
 	c := client.New(cli, readVrfKey(), *ctURL)
 
 	switch {

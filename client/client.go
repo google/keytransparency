@@ -29,12 +29,12 @@ import (
 	"github.com/google/key-transparency/tree/sparse/memtree"
 	"github.com/google/key-transparency/vrf"
 
-	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/golang/protobuf/proto"
+	logclient "github.com/google/certificate-transparency/go/client"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "github.com/google/key-transparency/proto/security_e2ekeys_v1"
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 const (
@@ -64,7 +64,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli        pb.E2EKeyServiceClient
+	cli        pb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	RetryCount int
 	factory    tree.SparseFactory
@@ -73,7 +73,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(client pb.E2EKeyServiceClient, vrf vrf.PublicKey, mapLogURL string, verifier *signatures.SignatureVerifier) *Client {
+func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, mapLogURL string, verifier *signatures.SignatureVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,

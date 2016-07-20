@@ -27,8 +27,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	ctmap "github.com/google/key-transparency/proto/security_ctmap"
-	tspb "github.com/google/key-transparency/proto/security_protobuf"
+	ctmap "github.com/google/key-transparency/proto/ctmap"
+	tspb "github.com/google/key-transparency/proto/protobuf"
 )
 
 // Signer processes mutations, applies them to the sparse merkle tree, and

@@ -47,7 +47,7 @@ INCLUDES+= -I=$(GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/g
 
 main: proto
 	go build ./
-	go build -o e2e-key-signer ./backend
+	go build -o key-transparency-signer ./backend
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.
@@ -72,6 +72,6 @@ clean:
 	rm -f $(DEPS)
 	rm -f $(GATEWAY_DEPS)
 	$(MAKE) -C testdata clean
-	rm -f srv key-transparency e2e-key-signer 
+	rm -f srv key-transparency key-transparency-signer 
 	rm -rf infra*
 
