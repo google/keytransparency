@@ -32,7 +32,7 @@ go get -u github.com/golang/protobuf/protoc-gen-go
 go get -u github.com/mattn/goreman
 ```
 
-And the shell $PATH must include $GOPATH/bin
+And the shell `$PATH` must include `$GOPATH/bin`
 
 Running a Key Transparency Cluster
 ----------------------------------
@@ -52,7 +52,6 @@ and set ```GOOGLE_APPLICATION_CREDENTIALS``` environment variable in
 The [Procfile script](./Procfile) will set up a local cluster. Start it with:
 
 ```sh
-make -C testdata
 goreman start
 ```
 

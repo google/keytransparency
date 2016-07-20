@@ -2,8 +2,8 @@
 *.swo
 *~
 
-e2e-key-server
-e2e-key-signer
+key-transparency
+key-transparency-signer
 
 infra*.etcd
 testdata/*.pem

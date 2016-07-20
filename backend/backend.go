@@ -41,7 +41,6 @@ var (
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 	signingKey    = flag.String("key", "", "Path to private key PEM for STH signing")
-	realm         = flag.String("domain", "", "Domain of key server authority")
 )
 
 func openDB() *sql.DB {
@@ -97,7 +96,7 @@ func main() {
 	sths := appender.New(sqldb, *mapID, *mapLogURL)
 	mutations := appender.New(sqldb, *mapID, *mapLogURL)
 
-	signer := signer.New(*realm, queue, tree, mutator, sths, mutations, openPrivateKey())
+	signer := signer.New(*mapID, queue, tree, mutator, sths, mutations, openPrivateKey())
 	go signer.StartSequencing()
 	go signer.StartSigning(time.Duration(*epochDuration) * time.Second)
 
