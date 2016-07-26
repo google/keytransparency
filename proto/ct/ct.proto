@@ -91,7 +91,7 @@ message XJSONEntry {
    string json = 1;
 }
 
-// TODO(alcutter): Consider using extensions here instead.
+// TODO: Consider using extensions here instead.
 message LogEntry {
    LogEntryType type = 1;
 
@@ -104,7 +104,7 @@ message LogEntry {
 
 enum SignatureType {
   CERTIFICATE_TIMESTAMP = 0;
-  // TODO(ekasper): called tree_hash in I-D.
+  // TODO: called tree_hash in I-D.
   TREE_HEAD = 1;
 }
 
@@ -127,7 +127,7 @@ message SctExtension {
    bytes sct_extension_data = 2;
 }
 
-// TODO(ekasper): implement support for id.
+// TODO: implement support for id.
 message SignedCertificateTimestamp {
    Version version = 1;
    LogID id = 2;
@@ -178,7 +178,7 @@ message MerkleTreeLeaf {
    TimestampedEntry timestamped_entry = 3;
 }
 
-// TODO(benl): No longer needed?
+// TODO: No longer needed?
 //
 // Used by cpp/client/ct: it assembles the one from the I-D JSON
 // protocol.
@@ -205,7 +205,7 @@ message ShortMerkleAuditProof {
 // for logging entries and tree head state.                                   //
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO(alcutter): Come up with a better name :/
+// TODO: Come up with a better name :/
 message LoggedEntryPB {
    int64 sequence_number = 1;
    bytes merkle_leaf_hash = 2;
