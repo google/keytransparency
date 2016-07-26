@@ -79,9 +79,9 @@ func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, mapLogURL st
 		vrf:        vrf,
 		RetryCount: 1,
 		factory:    memtree.NewFactory(),
-		// TODO(cesarghali): we might actually want to pass an
-		// http.client instead of nil. If nil is passed client.New will
-		// automatically initialize it.
+		// TODO: we might actually want to pass an http.client instead of
+		// nil. If nil is passed client.New will automatically initialize
+		// it.
 		ctlog:    logclient.New(mapLogURL, nil),
 		verifier: verifier,
 	}
