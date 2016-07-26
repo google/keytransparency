@@ -24,7 +24,6 @@ import (
 	"github.com/google/key-transparency/signatures"
 	"github.com/google/key-transparency/tree"
 
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
 	ctmap "github.com/google/key-transparency/proto/ctmap"
@@ -130,11 +129,7 @@ func (s *Signer) CreateEpoch() error {
 		MapHead:    mh,
 		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
-	signedMapHead, err := proto.Marshal(smh)
-	if err != nil {
-		return err
-	}
-	if err := s.sths.Append(ctx, epoch, signedMapHead); err != nil {
+	if err := s.sths.Append(ctx, epoch, smh); err != nil {
 		log.Printf("Append failure %v", err)
 		return err
 	}

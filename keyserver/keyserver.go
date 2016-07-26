@@ -61,19 +61,16 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 
 // GetSMH returns the current Signed Map Head (SMH).
 func (s *Server) GetSMH(ctx context.Context, epoch int64) (int64, *ctmap.SignedMapHead, []byte, error) {
-	var data, sct []byte
+	var sct []byte
+	smh := new(ctmap.SignedMapHead)
 	thisEpoch := epoch
 	var err error
 	if epoch == 0 {
-		thisEpoch, data, sct, err = s.appender.Latest(ctx)
+		thisEpoch, sct, err = s.appender.Latest(ctx, smh)
 	} else {
-		data, sct, err = s.appender.Epoch(ctx, epoch)
+		sct, err = s.appender.Epoch(ctx, epoch, smh)
 	}
 	if err != nil {
-		return 0, nil, nil, err
-	}
-	smh := new(ctmap.SignedMapHead)
-	if err := proto.Unmarshal(data, smh); err != nil {
 		return 0, nil, nil, err
 	}
 	return thisEpoch, smh, sct, nil

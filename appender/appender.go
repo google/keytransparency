@@ -21,13 +21,13 @@ import (
 // Appender is an append only interface into a data structure.
 type Appender interface {
 	// Adds an object to the append-only data structure.
-	Append(ctx context.Context, epoch int64, data []byte) error
+	Append(ctx context.Context, epoch int64, obj interface{}) error
 
 	// Epoch retrieves a specific object.
-	// Returns data and a serialized ct.SignedCertificateTimestamp
-	Epoch(ctx context.Context, epoch int64) ([]byte, []byte, error)
+	// Returns obj and a serialized ct.SignedCertificateTimestamp
+	Epoch(ctx context.Context, epoch int64, obj interface{}) ([]byte, error)
 
 	// Latest returns the latest object.
-	// Returns epoch, data, and a serialized ct.SignedCertificateTimestamp
-	Latest(ctx context.Context) (int64, []byte, []byte, error)
+	// Returns epoch, obj, and a serialized ct.SignedCertificateTimestamp
+	Latest(ctx context.Context, obj interface{}) (int64, []byte, error)
 }

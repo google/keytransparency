@@ -59,7 +59,8 @@ func TestGetLatest(t *testing.T) {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
 
-		epoch, _, b, err := a.Latest(context.Background())
+		var obj []byte
+		epoch, b, err := a.Latest(context.Background(), &obj)
 		if err != nil {
 			t.Errorf("Latest(): %v, want nil", err)
 		}
