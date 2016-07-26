@@ -17,5 +17,4 @@ vrf:
 	openssl ec -in vrf-key.pem -pubout -out vrf-pubkey.pem
 
 clean:
-	ls | grep -v Makefile | xargs rm
-
+	find . -type f ! -name 'Makefile' -exec rm -f '{}' \;
