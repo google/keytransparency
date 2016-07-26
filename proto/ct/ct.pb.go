@@ -48,7 +48,7 @@ type SignatureType int32
 
 const (
 	SignatureType_CERTIFICATE_TIMESTAMP SignatureType = 0
-	// TODO(ekasper): called tree_hash in I-D.
+	// TODO: called tree_hash in I-D.
 	SignatureType_TREE_HEAD SignatureType = 1
 )
 
@@ -277,7 +277,7 @@ func (m *XJSONEntry) String() string            { return proto.CompactTextString
 func (*XJSONEntry) ProtoMessage()               {}
 func (*XJSONEntry) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
 
-// TODO(alcutter): Consider using extensions here instead.
+// TODO: Consider using extensions here instead.
 type LogEntry struct {
 	Type         LogEntryType       `protobuf:"varint,1,opt,name=type,enum=ct.LogEntryType" json:"type,omitempty"`
 	X509Entry    *X509ChainEntry    `protobuf:"bytes,2,opt,name=x509_entry,json=x509Entry" json:"x509_entry,omitempty"`
@@ -333,7 +333,7 @@ func (m *SctExtension) String() string            { return proto.CompactTextStri
 func (*SctExtension) ProtoMessage()               {}
 func (*SctExtension) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
 
-// TODO(ekasper): implement support for id.
+// TODO: implement support for id.
 type SignedCertificateTimestamp struct {
 	Version Version `protobuf:"varint,1,opt,name=version,enum=ct.Version" json:"version,omitempty"`
 	Id      *LogID  `protobuf:"bytes,2,opt,name=id" json:"id,omitempty"`
@@ -460,7 +460,7 @@ func (m *MerkleTreeLeaf) GetTimestampedEntry() *TimestampedEntry {
 	return nil
 }
 
-// TODO(benl): No longer needed?
+// TODO: No longer needed?
 //
 // Used by cpp/client/ct: it assembles the one from the I-D JSON
 // protocol.
@@ -506,7 +506,7 @@ func (m *ShortMerkleAuditProof) String() string            { return proto.Compac
 func (*ShortMerkleAuditProof) ProtoMessage()               {}
 func (*ShortMerkleAuditProof) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{15} }
 
-// TODO(alcutter): Come up with a better name :/
+// TODO: Come up with a better name :/
 type LoggedEntryPB struct {
 	SequenceNumber int64                   `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber" json:"sequence_number,omitempty"`
 	MerkleLeafHash []byte                  `protobuf:"bytes,2,opt,name=merkle_leaf_hash,json=merkleLeafHash,proto3" json:"merkle_leaf_hash,omitempty"`

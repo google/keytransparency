@@ -54,7 +54,7 @@ type Fingerprint [20]byte
 // - One userID packet that matches the userID arg exactly.
 // - One signature with the expected algorithm choices.
 // - Signatures are within their valididty periods.
-// - TODO(gbelvin) parameter checks for public key.
+// - TODO: parameter checks for public key.
 // returns fingerprint, error
 //
 func validatePGP(userID string, key io.Reader) (*Fingerprint, error) {
