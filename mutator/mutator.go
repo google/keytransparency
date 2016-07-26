@@ -18,8 +18,16 @@ package mutator
 
 import "errors"
 
-// ErrReplay occurs when two mutations acting on the same entry & epoch occur.
-var ErrReplay = errors.New("mutation replay")
+var (
+	// MaxMutationSize represent the maximum allowed mutation size in bytes.
+	MaxMutationSize = 16 * 1024
+	// ErrReplay occurs when two mutations acting on the same entry & epoch
+	// occur.
+	ErrReplay = errors.New("mutation replay")
+	// ErrSize occurs when the mutation size is larger than the allowed upper
+	// bound.
+	ErrSize = errors.New("mutation is too large")
+)
 
 // Mutator verifies mutations and transforms values in the map.
 type Mutator interface {
