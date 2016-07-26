@@ -19,7 +19,7 @@ import (
 	"errors"
 
 	"github.com/google/key-transparency/commitments"
-	"github.com/google/key-transparency/tree"
+	tv "github.com/google/key-transparency/tree/sparse/verifier"
 	"github.com/google/key-transparency/vrf"
 
 	"github.com/golang/protobuf/proto"
@@ -58,15 +58,11 @@ func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]b
 	return vrf.Index(in.Vrf), nil
 }
 
-// VerifyLeafProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
+// VerifyLeafProof returns true if the neighbor hashes and entry chain up to the
+// expectedRoot.
 func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse,
-	smh *ctmap.SignedMapHead, factory tree.SparseFactory) error {
-	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
-	calculatedRoot, err := m.ReadRoot(nil)
-	if err != nil {
-		return ErrInvalidSparseProof
-	}
-	if !bytes.Equal(smh.MapHead.Root, calculatedRoot) {
+	smh *ctmap.SignedMapHead, treeVrf *tv.Verifier) error {
+	if err := treeVrf.VerifyProof(leafproof.Neighbors, index, leafproof.LeafData, smh.MapHead.Root); err != nil {
 		return ErrInvalidSparseProof
 	}
 	return nil
@@ -87,7 +83,7 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 		return err
 	}
 
-	if err := VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSmh(), c.factory); err != nil {
+	if err := VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSmh(), c.treeVrf); err != nil {
 		return err
 	}
 
