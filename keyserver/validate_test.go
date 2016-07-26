@@ -30,7 +30,6 @@ import (
 )
 
 var (
-	primaryUserID    = 12345678
 	primaryUserEmail = "e2eshare.test@gmail.com"
 	primaryAppID     = "pgp"
 	// Generated test key in End to End app and exported it.
@@ -54,9 +53,6 @@ a5d613`, "\n", "", -1))
 	primaryKeys = map[string][]byte{
 		primaryAppID: primaryUserKeyRing,
 	}
-	primaryUserProfile = &pb.Profile{
-		Keys: primaryKeys,
-	}
 )
 
 func TestValidateKey(t *testing.T) {
@@ -79,15 +75,22 @@ func TestValidateKey(t *testing.T) {
 }
 
 func TestValidateUpdateEntryRequest(t *testing.T) {
+	// Create and marshal a profile.
+	profile := &pb.Profile{
+		Keys: map[string][]byte{"foo": []byte("bar")},
+	}
+	profileData, err := proto.Marshal(profile)
+	if err != nil {
+		t.Fatalf("Marshal(%v)=%v", profile, err)
+	}
+
 	// Test verification for new entries.
 	userID := "joe"
 	vrfPriv, _ := p256.GenerateKey()
-	vrf, _ := vrfPriv.Evaluate([]byte("joe"))
+	vrf, _ := vrfPriv.Evaluate([]byte(userID))
 	index := vrfPriv.Index(vrf)
-	profile := &pb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}
-	profileData, _ := proto.Marshal(profile)
 	commitment, committed, _ := commitments.CommitName(userID, profileData)
-	authCtx := authentication.NewFake().NewContext("joe")
+	authCtx := authentication.NewFake().NewContext(userID)
 
 	tests := []struct {
 		want       bool
@@ -97,11 +100,11 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		commitment []byte
 		committed  *pb.Committed
 	}{
-		{false, context.Background(), "joe", [32]byte{}, nil, nil}, // Incorrect auth
-		{false, authCtx, "joe", [32]byte{}, nil, nil},              // Incorrect index
-		{false, authCtx, "joe", index, nil, nil},                   // Incorrect commitment
-		{false, authCtx, "joe", index, commitment, nil},            // Incorrect key
-		{true, authCtx, "joe", index, commitment, committed},
+		{false, context.Background(), userID, [32]byte{}, nil, nil}, // Incorrect auth
+		{false, authCtx, userID, [32]byte{}, nil, nil},              // Incorrect index
+		{false, authCtx, userID, index, nil, nil},                   // Incorrect commitment
+		{false, authCtx, userID, index, commitment, nil},            // Incorrect key
+		{true, authCtx, userID, index, commitment, committed},
 	}
 	for _, tc := range tests {
 		entry := &pb.Entry{
