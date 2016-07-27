@@ -26,9 +26,9 @@ type TreeHasher interface {
 	HashEmpty(index []byte, depth int) []byte
 }
 
-// Coniks implements the tree hashes described in CONIKS
+// CONIKSHasher implements the tree hashes described in CONIKS
 // http://www.jbonneau.com/doc/MBBFF15-coniks.pdf
-var Coniks TreeHasher = &coniks{}
+var CONIKSHasher TreeHasher = &coniks{}
 
 type coniks struct{}
 

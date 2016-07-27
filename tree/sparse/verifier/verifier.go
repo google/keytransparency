@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package verifier allows client to verify a tree proof. This package does not
-// depend on the actual tree implementation.
+// Package verifier allows client to verify a tree proof.
 package verifier
 
 import (
@@ -26,12 +25,18 @@ import (
 )
 
 var (
-	errNeighborsLen = fmt.Errorf("neighbors len > %d", sparse.IndexLen)
-	errIndexBit     = errors.New("invalid index bit")
-	errInvalidProof = errors.New("invalid proof")
+	// ErrNeighborsLen occurs when the neighbor list length is longer than
+	// the maximum allowed value.
+	ErrNeighborsLen = fmt.Errorf("Neighbors len > %d", sparse.IndexLen)
+	// ErrIndexBit occurs when the string-formatted index contains an invalid
+	// bit (character), i.e., other than '0' or '1'.
+	ErrIndexBit = errors.New("Invalid index bit")
+	// ErrInvalidProof occurs when the provided tree proof cannot be
+	// verified. This can be caused by an invalid neighbor tree or root.
+	ErrInvalidProof = errors.New("Invalid proof")
 )
 
-// Verifier represents the tree proofs verifier object.
+// Verifier represents a sparse tree proof verifier object.
 type Verifier struct {
 	hasher sparse.TreeHasher
 }
@@ -41,11 +46,11 @@ func New(hasher sparse.TreeHasher) *Verifier {
 	return &Verifier{hasher}
 }
 
-// VerifyProof verifies a tree proof of a given leaf in a given index based on
+// VerifyProof verifies a tree proof of a given leaf at a given index based on
 // the provided root and neighbor list
 func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf, root []byte) error {
 	if len(neighbors) > sparse.IndexLen {
-		return errNeighborsLen
+		return ErrNeighborsLen
 	}
 
 	// Calculate the tree root based on neighbors and leaf.
@@ -56,7 +61,7 @@ func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf, root []byte) err
 
 	// Verify that calculated and provided roots match.
 	if !bytes.Equal(calculatedRoot, root) {
-		return errInvalidProof
+		return ErrInvalidProof
 	}
 
 	return nil
@@ -68,15 +73,15 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 	// If the leaf is empty, it is a proof of absence.
 	if len(leaf) == 0 {
 		// Trim the neighbors list.
-		neighbors = proofOfAbsenceNeighbors(neighbors)
+		neighbors = trimNeighbors(neighbors)
 
 		// Set the value of the empty leaf
 		missingBranchBIndex := bindex[:len(neighbors)]
 		leaf = v.hasher.HashEmpty(tree.InvertBitString(missingBranchBIndex))
 	}
 
-	// value contains the calculated root so far. It starts from the leaf.
-	value := leaf
+	// calculatedRoot contains the calculated root so far. It starts from the leaf.
+	calculatedRoot := leaf
 	for i, neighbor := range neighbors {
 		// Get the neighbor bit string index.
 		neighborBIndex := tree.NeighborString(bindex[:len(neighbors)-i])
@@ -85,40 +90,28 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 			neighbor = v.hasher.HashEmpty(tree.InvertBitString(neighborBIndex))
 		}
 
-		// index is processed starting from len(neighbors)-1 down to 0.
-		// If the index bit is 0, then neighbor is on the right,
-		// otherwise, neighbor is on the left.
-		b := uint8(bindex[len(neighbors)-1-i])
-		var left, right []byte
-		switch b {
+		// The leaf index is processed starting from len(neighbors)-1
+		// down to 0. If the index bit is 0, then neighbor is on the
+		// right, otherwise, neighbor is on the left.
+		switch bindex[len(neighbors)-1-i] {
 		case tree.Zero:
-			left = value
-			right = neighbor
+			calculatedRoot = v.hasher.HashChildren(calculatedRoot, neighbor)
 		case tree.One:
-			left = neighbor
-			right = value
+			calculatedRoot = v.hasher.HashChildren(neighbor, calculatedRoot)
 		default:
-			return nil, errIndexBit
+			return nil, ErrIndexBit
 		}
-		value = v.hasher.HashChildren(left, right)
 	}
-	return value, nil
+	return calculatedRoot, nil
 }
 
-// proofOfAbsenceNeighbors trims all the empty values  at the beginning of the
-// neighbors list. The returned list is the one used in the proof of absence.
-func proofOfAbsenceNeighbors(neighbors [][]byte) [][]byte {
-	var i int
-	var v []byte
-	for i, v = range neighbors {
+// trimNeighbors trims all the empty values at the beginning of the neighbors
+// list. The returned list is the one used in the proof of absence.
+func trimNeighbors(neighbors [][]byte) [][]byte {
+	for i, v := range neighbors {
 		if len(v) != 0 {
-			break
+			return neighbors[i:]
 		}
 	}
-
-	// The last value is a special case.
-	if i == len(neighbors)-1 && len(neighbors[i]) == 0 {
-		return [][]byte{}
-	}
-	return neighbors[i:]
+	return [][]byte{}
 }

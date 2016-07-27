@@ -49,7 +49,7 @@ var (
 	// results of the udpate are not visible on the server yet. The client
 	// must retry until the request is visible.
 	ErrRetry = errors.New("Update not present on server yet")
-	hasher   = sparse.Coniks
+	hasher   = sparse.CONIKSHasher
 )
 
 // Client is a helper library for issuing updates to the key server.
@@ -65,21 +65,21 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli        pb.KeyTransparencyServiceClient
-	vrf        vrf.PublicKey
-	RetryCount int
-	treeVrf    *tv.Verifier
-	ctlog      *logclient.LogClient
-	verifier   *signatures.SignatureVerifier
+	cli          pb.KeyTransparencyServiceClient
+	vrf          vrf.PublicKey
+	RetryCount   int
+	treeVerifier *tv.Verifier
+	ctlog        *logclient.LogClient
+	verifier     *signatures.SignatureVerifier
 }
 
 // New creates a new client.
 func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, mapLogURL string, verifier *signatures.SignatureVerifier) *Client {
 	return &Client{
-		cli:        client,
-		vrf:        vrf,
-		RetryCount: 1,
-		treeVrf:    tv.New(hasher),
+		cli:          client,
+		vrf:          vrf,
+		RetryCount:   1,
+		treeVerifier: tv.New(hasher),
 		// TODO: we might actually want to pass an http.client instead of
 		// nil. If nil is passed client.New will automatically initialize
 		// it.

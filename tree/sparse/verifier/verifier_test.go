@@ -35,8 +35,9 @@ var (
 		"C000000000000000000000000000000000000000000000000000000000000001",
 		"4000000000000000000000000000000000000000000000000000000000000001",
 	}
-	hasher       = sparse.Coniks
-	defaultEpoch = 0
+	hasher = sparse.CONIKSHasher
+	// We insert all leaves and then commit once, so the epoch is 1.
+	testEpoch = int64(1)
 )
 
 type Leaf struct {
@@ -48,13 +49,10 @@ type Leaf struct {
 type Env struct {
 	db *sql.DB
 	m  *sqlhist.Map
-	// latest epoch
-	epoch int64
 }
 
 func NewEnv(leaves []Leaf) (*Env, error) {
 	db, err := sql.Open("sqlite3", ":memory:")
-	latestEpoch := int64(0)
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating in-memory sqlite3 db: %v", err)
 	}
@@ -66,28 +64,15 @@ func NewEnv(leaves []Leaf) (*Env, error) {
 				db.Close()
 				return nil, fmt.Errorf("QueueLeaf(_, %v, %v)=%v", leaf.hindex, leaf.value, err)
 			}
-			epoch, err := m.Commit()
-			if err != nil {
-				db.Close()
-				return nil, fmt.Errorf("Commit()=%v", err)
-			}
-			latestEpoch = epoch
 		}
 	}
-
-	return &Env{db, m, latestEpoch}, nil
-}
-
-func (e *Env) Neighbors(hindex string) ([][]byte, error) {
-	nbrs, err := e.m.NeighborsAt(ctx, h2b(hindex), e.epoch)
+	_, err = m.Commit()
 	if err != nil {
-		return nil, fmt.Errorf("NeighborsAt(_, %v, %v)=%v", hindex, e.epoch, err)
+		db.Close()
+		return nil, fmt.Errorf("Commit()=%v", err)
 	}
-	return nbrs, nil
-}
 
-func (e *Env) ReadRoot() ([]byte, error) {
-	return e.m.ReadRootAt(ctx, e.epoch)
+	return &Env{db, m}, nil
 }
 
 func (e *Env) Close() {
@@ -122,16 +107,16 @@ func TestVerifyProof(t *testing.T) {
 		}
 		defer env.Close()
 
-		root, err := env.ReadRoot()
+		root, err := env.m.ReadRootAt(ctx, testEpoch)
 		if err != nil {
-			t.Fatalf("%v: ReadRoot()=%v", i, err)
+			t.Fatalf("%v: ReadRootAt()=%v", i, err)
 		}
 
 		// VerifyProof of each leaf in the tree.
 		for j, leaf := range leaves {
-			nbrs, err := env.Neighbors(leaf.hindex)
+			nbrs, err := env.m.NeighborsAt(ctx, h2b(leaf.hindex), testEpoch)
 			if err != nil {
-				t.Fatalf("[%v, %v]: Neighbors(%v)=%v", i, j, leaf.hindex, err)
+				t.Fatalf("[%v, %v]: NeighborsAt(%v)=%v", i, j, leaf.hindex, err)
 			}
 
 			err = verifier.VerifyProof(nbrs, h2b(leaf.hindex), leaf.value, root)
