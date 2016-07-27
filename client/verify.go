@@ -31,6 +31,9 @@ import (
 var (
 	// ErrInvalidVRF occurs when the VRF doesn't validate.
 	ErrInvalidVRF = errors.New("invalid VRF")
+	// ErrNilProof occurs when the provided GetEntryResponse contains a nil
+	// proof.
+	ErrNilProof = errors.New("nil proof")
 )
 
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
@@ -70,7 +73,12 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 		return err
 	}
 
-	if err := c.treeVerifier.VerifyProof(in.GetLeafProof().Neighbors, index[:], in.GetLeafProof().LeafData, in.GetSmh().MapHead.Root); err != nil {
+	leafProof := in.GetLeafProof()
+	if leafProof == nil {
+		return ErrNilProof
+	}
+
+	if err := c.treeVerifier.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, in.GetSmh().MapHead.Root); err != nil {
 		return err
 	}
 
