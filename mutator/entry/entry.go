@@ -41,6 +41,11 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		return err
 	}
 
+	// Ensure that the mutaiton size is within bounds.
+	if proto.Size(update) > mutator.MaxMutationSize {
+		return mutator.ErrSize
+	}
+
 	kv := new(pb.KeyValue)
 	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
