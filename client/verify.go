@@ -19,7 +19,6 @@ import (
 	"errors"
 
 	"github.com/google/key-transparency/commitments"
-	"github.com/google/key-transparency/tree"
 	"github.com/google/key-transparency/vrf"
 
 	"github.com/golang/protobuf/proto"
@@ -32,8 +31,9 @@ import (
 var (
 	// ErrInvalidVRF occurs when the VRF doesn't validate.
 	ErrInvalidVRF = errors.New("invalid VRF")
-	// ErrInvalidSparseProof occurs when the sparse merkle proof for the map doesn't validate.
-	ErrInvalidSparseProof = errors.New("invalid sparse proof")
+	// ErrNilProof occurs when the provided GetEntryResponse contains a nil
+	// proof.
+	ErrNilProof = errors.New("nil proof")
 )
 
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
@@ -58,20 +58,6 @@ func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]b
 	return vrf.Index(in.Vrf), nil
 }
 
-// VerifyLeafProof returns true if the neighbor hashes and entry chain up to the expectedRoot.
-func VerifyLeafProof(index []byte, leafproof *ctmap.GetLeafResponse,
-	smh *ctmap.SignedMapHead, factory tree.SparseFactory) error {
-	m := factory.FromNeighbors(leafproof.Neighbors, index, leafproof.LeafData)
-	calculatedRoot, err := m.ReadRoot(nil)
-	if err != nil {
-		return ErrInvalidSparseProof
-	}
-	if !bytes.Equal(smh.MapHead.Root, calculatedRoot) {
-		return ErrInvalidSparseProof
-	}
-	return nil
-}
-
 // VerifySMH verifies that the Signed Map Head is correctly signed.
 func (c *Client) VerifySMH(smh *ctmap.SignedMapHead) error {
 	return c.verifier.Verify(smh.GetMapHead(), smh.Signatures[c.verifier.KeyName])
@@ -87,7 +73,12 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 		return err
 	}
 
-	if err := VerifyLeafProof(index[:], in.GetLeafProof(), in.GetSmh(), c.factory); err != nil {
+	leafProof := in.GetLeafProof()
+	if leafProof == nil {
+		return ErrNilProof
+	}
+
+	if err := c.treeVerifier.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, in.GetSmh().MapHead.Root); err != nil {
 		return err
 	}
 

@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	hasher      = sparse.Coniks
+	hasher      = sparse.CONIKSHasher
 	errNilLeaf  = errors.New("nil leaf")
 	errIndexLen = errors.New("index len != 32")
 )

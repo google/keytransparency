@@ -44,7 +44,7 @@ var (
 	// ErrInternal occurs when a structural error is encountered.
 	ErrInternal = errors.New("tree: internal error")
 
-	hasher = sparse.Coniks
+	hasher = sparse.CONIKSHasher
 )
 
 // Note: index has two representation:
