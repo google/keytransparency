@@ -32,10 +32,10 @@ var (
 	// ErrSize occurs when the mutation size is larger than the allowed upper
 	// bound.
 	ErrSize = errors.New("mutation is too large")
-	// ErrWrongPrevious occurs when the mutation the hash of the previous
+	// ErrPreviousHash occurs when the mutation the hash of the previous
 	// entry provided in the mutation does not match the previous entry
 	// itself.
-	ErrWrongPrevious = errors.New("previous entry is wrong")
+	ErrPreviousHash = errors.New("previous entry hash does not match the hash provided in the mutation")
 )
 
 // Mutator verifies mutations and transforms values in the map.
@@ -47,6 +47,7 @@ type Mutator interface {
 }
 
 // ObjectHash returns the hash of a given object.
+// TODO: migrate this function to github.com/benlaurie/objecthash/go/objecthash.
 func ObjectHash(obj interface{}) (hash []byte, err error) {
 	jsonObj, err := json.Marshal(obj)
 	if err != nil {

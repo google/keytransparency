@@ -53,7 +53,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		return err
 	}
 	if !bytes.Equal(prevEntryHash[:], update.Previous) {
-		return mutator.ErrWrongPrevious
+		return mutator.ErrPreviousHash
 	}
 
 	kv := new(pb.KeyValue)
