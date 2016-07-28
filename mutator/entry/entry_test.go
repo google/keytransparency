@@ -25,7 +25,7 @@ import (
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
-func prepareTest(key []byte, entry *pb.Entry) (mutation []byte, entryData []byte, err error) {
+func prepareTest(key []byte, entry *pb.Entry) (skv *pb.SignedKV, entryData []byte, err error) {
 	entryData, err = proto.Marshal(entry)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Marshal(%v)=%v", entry, err)
@@ -38,12 +38,13 @@ func prepareTest(key []byte, entry *pb.Entry) (mutation []byte, entryData []byte
 	if err != nil {
 		return nil, nil, fmt.Errorf("Marshal(%v)=%v", kv, err)
 	}
-	skv := &pb.SignedKV{KeyValue: kvData}
-	mutation, err = proto.Marshal(skv)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Marshal(%v)=%v", skv, err)
-	}
-	return mutation, entryData, nil
+	skv = &pb.SignedKV{KeyValue: kvData}
+	return skv, entryData, nil
+}
+
+func prepareMutation(skv *pb.SignedKV, previous []byte) (mutation []byte, err error) {
+	skv.Previous = previous
+	return proto.Marshal(skv)
 }
 
 func TestCheckMutation(t *testing.T) {
@@ -57,13 +58,45 @@ func TestCheckMutation(t *testing.T) {
 	}
 	key := []byte{0}
 
-	mutation1, entryData1, err := prepareTest(key, entry1)
+	skv1, entryData1, err := prepareTest(key, entry1)
 	if err != nil {
 		t.Fatalf("prepareTest(%v, %v)=%v", key, entry1, err)
 	}
-	largeMutation, _, err := prepareTest(bytes.Repeat(key, mutator.MaxMutationSize), entry2)
+	skv2, _, err := prepareTest(key, entry2)
 	if err != nil {
 		t.Fatalf("prepareTest(%v, %v)=%v", key, entry2, err)
+	}
+	largeSKV, _, err := prepareTest(bytes.Repeat(key, mutator.MaxMutationSize), entry2)
+	if err != nil {
+		t.Fatalf("prepareTest(%v, %v)=%v", key, entry2, err)
+	}
+	selfSKV, _, err := prepareTest(key, entry1)
+	if err != nil {
+		t.Fatalf("prepareTest(%v, %v)=%v", key, entry1, err)
+	}
+
+	// Calculate hashes.
+	hashEntry1, err := mutator.ObjectHash(entryData1)
+	if err != nil {
+		t.Fatalf("ObjectHash(%v)=%v", entryData1, err)
+	}
+
+	// Prepare mutations.
+	mutation1, err := prepareMutation(skv1, nil)
+	if err != nil {
+		t.Fatalf("prepareMutation(%v, %v)=%v", skv1, nil, err)
+	}
+	mutation2, err := prepareMutation(skv2, hashEntry1)
+	if err != nil {
+		t.Fatalf("prepareMutation(%v, %v)=%v", skv2, hashEntry1, err)
+	}
+	largeMutation, err := prepareMutation(largeSKV, hashEntry1)
+	if err != nil {
+		t.Fatalf("prepareMutation(%v, %v)=%v", largeSKV, hashEntry1, err)
+	}
+	selfMutation, err := prepareMutation(selfSKV, hashEntry1)
+	if err != nil {
+		t.Fatalf("prepareMutation(%v, %v)=%v", selfSKV, hashEntry1, err)
 	}
 
 	tests := []struct {
@@ -71,9 +104,10 @@ func TestCheckMutation(t *testing.T) {
 		mutation []byte
 		err      error
 	}{
-		{entryData1, mutation1, mutator.ErrReplay},   // Replayed mutation
-		{entryData1, largeMutation, mutator.ErrSize}, // Large mutation
-		// TODO: test case for verifying pointer to previous data.
+		{entryData1, mutation2, nil},                      // Normal case.
+		{entryData1, selfMutation, mutator.ErrReplay},     // Replayed mutation
+		{entryData1, largeMutation, mutator.ErrSize},      // Large mutation
+		{entryData1, mutation1, mutator.ErrWrongPrevious}, // Wrong previous entry
 		// TODO: test case for verifying signature from key in entry.
 	}
 

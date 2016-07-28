@@ -189,7 +189,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	// Read at the current value.  Assert the following:
 	// - TODO: Correct signatures from previous epoch.
 	// - TODO: Correct signatures internal to the update.
-	// - TODO: Hash of current data matches the expectation in the mutation.
+	// - Hash of current data matches the expectation in the mutation.
 	// - Advanced update count.
 
 	m, err := proto.Marshal(in.GetEntryUpdate().GetUpdate())

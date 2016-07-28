@@ -16,6 +16,7 @@
 package entry
 
 import (
+	"bytes"
 	"log"
 
 	"github.com/golang/protobuf/proto"
@@ -46,6 +47,15 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		return mutator.ErrSize
 	}
 
+	// Verify pointer to previous data.
+	prevEntryHash, err := mutator.ObjectHash(oldValue)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(prevEntryHash[:], update.Previous) {
+		return mutator.ErrWrongPrevious
+	}
+
 	kv := new(pb.KeyValue)
 	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
@@ -56,7 +66,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		log.Printf("Error unmarshaling entry: %v", err)
 		return err
 	}
-	// TODO: Verify pointer to previous data.
+
 	// TODO: Verify signature from key in entry.
 
 	if oldValue != nil {
