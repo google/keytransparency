@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/key-transparency/commitments"
+	"github.com/google/key-transparency/mutator"
 	"github.com/google/key-transparency/signatures"
 	"github.com/google/key-transparency/tree/sparse"
 	tv "github.com/google/key-transparency/tree/sparse/verifier"
@@ -169,10 +170,14 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	if err != nil {
 		return nil, err
 	}
+	previous, err := mutator.ObjectHash(getResp.GetLeafProof().LeafData)
+	if err != nil {
+		return nil, err
+	}
 	signedkv := &pb.SignedKV{
 		KeyValue:   kvData,
 		Signatures: nil, // TODO: Apply Signatures.
-		// TODO: include hash of previous entry.
+		Previous:   previous,
 	}
 
 	// Send request.

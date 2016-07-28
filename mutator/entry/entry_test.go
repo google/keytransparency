@@ -25,62 +25,80 @@ import (
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
-func prepareTest(key []byte, entry *pb.Entry) (mutation []byte, entryData []byte, err error) {
-	entryData, err = proto.Marshal(entry)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Marshal(%v)=%v", entry, err)
+func createEntry(updateCount uint64) ([]byte, error) {
+	entry := &pb.Entry{
+		// TODO: fill Commitment and AuthorizedKeys.
+		UpdateCount: updateCount,
 	}
+	entryData, err := proto.Marshal(entry)
+	if err != nil {
+		return nil, fmt.Errorf("Marshal(%v)=%v", entry, err)
+	}
+	return entryData, nil
+}
+
+func prepareMutation(key []byte, entryData []byte, previous []byte) ([]byte, error) {
 	kv := &pb.KeyValue{
 		Key:   key,
 		Value: entryData,
 	}
 	kvData, err := proto.Marshal(kv)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Marshal(%v)=%v", kv, err)
+		return nil, fmt.Errorf("Marshal(%v)=%v", kv, err)
 	}
-	skv := &pb.SignedKV{KeyValue: kvData}
-	mutation, err = proto.Marshal(skv)
+	skv := &pb.SignedKV{
+		KeyValue: kvData,
+		Previous: previous,
+	}
+	mutation, err := proto.Marshal(skv)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Marshal(%v)=%v", skv, err)
+		return nil, fmt.Errorf("Marshal(%v)=%v", skv, err)
 	}
-	return mutation, entryData, nil
+	return mutation, nil
 }
 
 func TestCheckMutation(t *testing.T) {
-	entry1 := &pb.Entry{
-		// TODO: fill Commitment and AuthorizedKeys.
-		UpdateCount: 1,
+	count := uint64(1)
+	entryData1, err := createEntry(count)
+	if err != nil {
+		t.Fatalf("createEntry(%v)=%v", count, err)
 	}
-	entry2 := &pb.Entry{
-		// TODO: fill Commitment and AuthorizedKeys.
-		UpdateCount: 2,
+	entryData2, err := createEntry(count + 1)
+	if err != nil {
+		t.Fatalf("createEntry(%v)=%v", count+1, err)
 	}
 	key := []byte{0}
+	largeKey := bytes.Repeat(key, mutator.MaxMutationSize)
 
-	mutation1, entryData1, err := prepareTest(key, entry1)
+	// Calculate hashes.
+	hashEntry1, err := mutator.ObjectHash(entryData1)
 	if err != nil {
-		t.Fatalf("prepareTest(%v, %v)=%v", key, entry1, err)
-	}
-	largeMutation, _, err := prepareTest(bytes.Repeat(key, mutator.MaxMutationSize), entry2)
-	if err != nil {
-		t.Fatalf("prepareTest(%v, %v)=%v", key, entry2, err)
+		t.Fatalf("ObjectHash(%v)=%v", entryData1, err)
 	}
 
 	tests := []struct {
-		oldValue []byte
-		mutation []byte
-		err      error
+		key       []byte
+		oldValue  []byte
+		entryData []byte
+		previous  []byte
+		err       error
 	}{
-		{entryData1, mutation1, mutator.ErrReplay},   // Replayed mutation
-		{entryData1, largeMutation, mutator.ErrSize}, // Large mutation
-		// TODO: test case for verifying pointer to previous data.
+		{key, entryData1, entryData2, hashEntry1, nil},                  // Normal case.
+		{key, entryData1, entryData1, hashEntry1, mutator.ErrReplay},    // Replayed mutation
+		{largeKey, entryData1, entryData2, hashEntry1, mutator.ErrSize}, // Large mutation
+		{key, entryData1, entryData1, nil, mutator.ErrPreviousHash},     // Invalid previous entry hash
 		// TODO: test case for verifying signature from key in entry.
 	}
 
-	entry := New()
 	for i, tc := range tests {
-		if got := entry.CheckMutation(tc.oldValue, tc.mutation); got != tc.err {
-			t.Errorf("%v: CheckMutation(%v, %v)=%v, want %v", i, tc.oldValue, tc.mutation, got, tc.err)
+		// Prepare mutations.
+		mutation, err := prepareMutation(tc.key, tc.entryData, tc.previous)
+		if err != nil {
+			t.Fatalf("prepareMutation(%v, %v, %v)=%v", tc.key, tc.entryData, tc.previous, err)
+		}
+
+		if got := New().CheckMutation(tc.oldValue, mutation); got != tc.err {
+			t.Errorf("%v: CheckMutation(%v, %v)=%v, want %v", i, tc.oldValue, mutation, got, tc.err)
 		}
 	}
 }
