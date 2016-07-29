@@ -120,8 +120,9 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 	return profile, nil
 }
 
-// Update creates an UpdateEntryRequest for a user.
-func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile, opts ...grpc.CallOption) (*pb.UpdateEntryRequest, error) {
+// Update creates an UpdateEntryRequest for a user, submits it, and returns the
+// resulting UpdateEntryResponse.
+func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile, opts ...grpc.CallOption) (*pb.UpdateEntryResponse, error) {
 	getResp, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
 		return nil, err
@@ -189,37 +190,37 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 		},
 	}
 
-	err = c.Retry(ctx, req)
+	updateResp, err := c.retry(ctx, req)
 	// Retry submitting until an incluion proof is returned.
 	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
 		time.Sleep(retryDelay)
-		err = c.Retry(ctx, req)
+		updateResp, err = c.retry(ctx, req)
 	}
-	return req, err
+	return updateResp, err
 }
 
-// Retry will take a pre-fabricated reqeust and send it again.
-func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
+// retry will take a pre-fabricated request and send it again.
+func (c *Client) retry(ctx context.Context, req *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Validate response.
 	if err := c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
-		return err
+		return nil, err
 	}
 
 	keyvalue := new(pb.KeyValue)
 	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, keyvalue); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
-		return err
+		return nil, err
 	}
 
 	got := updateResp.GetProof().GetLeafProof().LeafData
 	if bytes.Equal(got, keyvalue.Value) {
 		log.Printf("Retry(%v) Matched", req.UserId)
-		return nil
+		return updateResp, nil
 	}
-	return ErrRetry
+	return nil, ErrRetry
 	// TODO: Update previous entry pointer
 }

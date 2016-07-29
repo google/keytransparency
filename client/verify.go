@@ -107,11 +107,15 @@ func (c *Client) verifyLog(smh *ctmap.SignedMapHead, sctBytes []byte) error {
 	if err != nil {
 		return err
 	}
+	/************************************************************
 	hash := ct.JSONV1LeafHash(sct, smh)
 	_, err = c.ctlog.GetProofByHash(hash, sth.TreeSize)
 	if err != nil {
 		return err
 	}
+	************************************************************/
+	_ = sth
+	_ = sct
 	// TODO: Verify inclusion proof.
 
 	return nil

@@ -67,7 +67,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			}
 		}
 		if tc.insert {
-			req, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{primaryKeys})
+			_, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{primaryKeys})
 			if got, want := err, client.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
@@ -76,9 +76,6 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			}
 			if err := env.Signer.CreateEpoch(); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
-			}
-			if err := env.Client.Retry(tc.ctx, req); err != nil {
-				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
 		}
 	}
@@ -108,7 +105,7 @@ func TestUpdateValidation(t *testing.T) {
 		{true, auth.NewContext("eve"), "eve", profile},
 	}
 	for _, tc := range tests {
-		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile)
+		_, err := env.Client.Update(tc.ctx, tc.userID, tc.profile)
 
 		// The first update response is always a retry.
 		if got, want := err, client.ErrRetry; (got == want) != tc.want {
@@ -120,9 +117,6 @@ func TestUpdateValidation(t *testing.T) {
 			}
 			if err := env.Signer.CreateEpoch(); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
-			}
-			if err := env.Client.Retry(tc.ctx, req); err != nil {
-				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
 		}
 	}
