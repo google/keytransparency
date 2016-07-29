@@ -53,7 +53,6 @@ main: proto
 # rid of duplicates.
 test: main
 	go test `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
-	python tests/api_proxy_test.py
 
 fmt:
 	find . -iregex '.*.go' -exec gofmt -w {} \;
