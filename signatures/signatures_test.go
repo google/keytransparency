@@ -15,6 +15,7 @@
 package signatures
 
 import (
+	"crypto/rand"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 		if len(rest) > 0 {
 			t.Errorf("Data left after parsing: %v", rest)
 		}
-		if _, err := NewSignatureSigner(k); err != nil {
+		if _, err := NewSignatureSigner(rand.Reader, k); err != nil {
 			t.Errorf("NewSigantureSigner(): %v", err)
 		}
 	}
@@ -84,7 +85,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 -----END PUBLIC KEY-----`
 
 	ka, _, _ := PrivateKeyFromPEM([]byte(priv))
-	signer, err := NewSignatureSigner(ka)
+	signer, err := NewSignatureSigner(rand.Reader, ka)
 	if err != nil {
 		t.Fatalf("NewSigantureSigner(): %v", err)
 	}
@@ -134,7 +135,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 		ka, _, _ := PrivateKeyFromPEM([]byte(tc.priv))
 		kb, _, _ := PublicKeyFromPEM([]byte(tc.pub))
 
-		signer, err := NewSignatureSigner(ka)
+		signer, err := NewSignatureSigner(rand.Reader, ka)
 		if err != nil {
 			t.Fatalf("NewSigantureSigner(): %v", err)
 		}

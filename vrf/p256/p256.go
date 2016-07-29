@@ -228,9 +228,22 @@ func NewVRFSignerFromPEM(b []byte) (*PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	vrfPriv, err := NewVRFSigner(k)
+	return NewVRFSigner(k)
+}
+
+// NewVRFVerifierFromPEM creates a vrf public key from a PEM data structure.
+func NewVRFVerifierFromPEM(b []byte) (*PublicKey, error) {
+	p, _ := pem.Decode(b)
+	if p == nil {
+		return nil, ErrNoPEMFound
+	}
+	k, err := x509.ParsePKIXPublicKey(p.Bytes)
 	if err != nil {
 		return nil, err
 	}
-	return vrfPriv, nil
+	pk, ok := k.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, ErrWrongKeyType
+	}
+	return NewVRFVerifier(pk)
 }

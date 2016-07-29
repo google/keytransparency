@@ -30,6 +30,21 @@ import (
 	tspb "github.com/google/key-transparency/proto/protobuf"
 )
 
+// Clock defines an interface for the advancement of time.
+type Clock interface {
+	Now() time.Time
+}
+
+// realClock returns the real time.
+type realClock struct{}
+
+func (realClock) Now() time.Time { return time.Now() }
+
+// fakeClock returns the same sequence of time each time.
+type fakeClock struct{ i int64 }
+
+func (c *fakeClock) Now() time.Time { c.i++; return time.Unix(c.i, 0) }
+
 // Signer processes mutations, applies them to the sparse merkle tree, and
 // signes the sparse map head.
 type Signer struct {
@@ -40,11 +55,13 @@ type Signer struct {
 	mutations appender.Appender
 	sths      appender.Appender
 	signer    *signatures.SignatureSigner
+	clock     Clock
 }
 
 // New creates a new instance of the signer.
-func New(realm string, queue queue.Queuer, tree tree.SparseHist, mutator mutator.Mutator,
-	sths, mutations appender.Appender, signer *signatures.SignatureSigner) *Signer {
+func New(realm string, queue queue.Queuer, tree tree.SparseHist,
+	mutator mutator.Mutator, sths, mutations appender.Appender,
+	signer *signatures.SignatureSigner) *Signer {
 	return &Signer{
 		realm:     realm,
 		queue:     queue,
@@ -53,7 +70,13 @@ func New(realm string, queue queue.Queuer, tree tree.SparseHist, mutator mutator
 		sths:      sths,
 		mutations: mutations,
 		signer:    signer,
+		clock:     realClock{},
 	}
+}
+
+// FakeTime uses a clock that advances one second each time it is called for testing.
+func (s *Signer) FakeTime() {
+	s.clock = new(fakeClock)
 }
 
 // StartSigning inserts epoch advancement signals into the queue.
@@ -98,14 +121,14 @@ func (s *Signer) processMutation(index, mutation []byte) error {
 	if err := s.tree.QueueLeaf(ctx, index, newV); err != nil {
 		return err
 	}
-	log.Printf("Sequenced %v", index)
+	log.Printf("Sequenced %x", index)
 	return nil
 }
 
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch() error {
 	ctx := context.Background()
-	timestamp := time.Now().Unix()
+	timestamp := s.clock.Now().Unix()
 	epoch, err := s.tree.Commit()
 	if err != nil {
 		return err
