@@ -39,7 +39,6 @@ func New() *Entry {
 func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 	update := new(pb.SignedKV)
 	if err := proto.Unmarshal(mutation, update); err != nil {
-		log.Printf("Error unmarshaling update: %v", err)
 		return err
 	}
 
@@ -48,37 +47,31 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		return mutator.ErrSize
 	}
 
+	kv := new(pb.KeyValue)
+	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
+		return err
+	}
+
 	// Verify pointer to previous data.
+	// The very first entry will have oldValue=nil, so its hash is the
+	// ObjectHash value of nil.
 	prevEntryHash := objecthash.ObjectHash(oldValue)
 	if !bytes.Equal(prevEntryHash[:], update.Previous) {
+		// Check if this mutation is a replay.
+		if bytes.Equal(oldValue, kv.Value) {
+			return mutator.ErrReplay
+		}
+
 		return mutator.ErrPreviousHash
 	}
 
-	kv := new(pb.KeyValue)
-	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
-		log.Printf("Error unmarshaling keyvalue: %v", err)
-		return err
-	}
 	entry := new(pb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
-		log.Printf("Error unmarshaling entry: %v", err)
 		return err
 	}
 
 	// TODO: Verify signature from key in entry.
 
-	if oldValue != nil {
-		oldEntry := new(pb.Entry)
-		if err := proto.Unmarshal(oldValue, oldEntry); err != nil {
-			log.Printf("Error unmarshaling old entry: %v", err)
-			return err
-		}
-		if got, want := entry.UpdateCount, oldEntry.UpdateCount; got <= want {
-			log.Printf("UpdateCount: %v, want > %v", got, want)
-			return mutator.ErrReplay
-		}
-		// TODO: Verify signature from key in oldEntry.
-	}
 	return nil
 }
 

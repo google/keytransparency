@@ -154,7 +154,6 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	entry := &pb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: prevEntry.AuthorizedKeys,
-		UpdateCount:    prevEntry.UpdateCount + 1,
 	}
 
 	// Sign Entry.
