@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"log"
 
+	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/key-transparency/mutator"
 
@@ -48,10 +49,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 	}
 
 	// Verify pointer to previous data.
-	prevEntryHash, err := mutator.ObjectHash(oldValue)
-	if err != nil {
-		return err
-	}
+	prevEntryHash := objecthash.ObjectHash(oldValue)
 	if !bytes.Equal(prevEntryHash[:], update.Previous) {
 		return mutator.ErrPreviousHash
 	}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/key-transparency/mutator"
 
@@ -71,10 +72,7 @@ func TestCheckMutation(t *testing.T) {
 	largeKey := bytes.Repeat(key, mutator.MaxMutationSize)
 
 	// Calculate hashes.
-	hashEntry1, err := mutator.ObjectHash(entryData1)
-	if err != nil {
-		t.Fatalf("ObjectHash(%v)=%v", entryData1, err)
-	}
+	hashEntry1 := objecthash.ObjectHash(entryData1)
 
 	tests := []struct {
 		key       []byte
@@ -83,10 +81,10 @@ func TestCheckMutation(t *testing.T) {
 		previous  []byte
 		err       error
 	}{
-		{key, entryData1, entryData2, hashEntry1, nil},                  // Normal case.
-		{key, entryData1, entryData1, hashEntry1, mutator.ErrReplay},    // Replayed mutation
-		{largeKey, entryData1, entryData2, hashEntry1, mutator.ErrSize}, // Large mutation
-		{key, entryData1, entryData1, nil, mutator.ErrPreviousHash},     // Invalid previous entry hash
+		{key, entryData1, entryData2, hashEntry1[:], nil},                  // Normal case.
+		{key, entryData1, entryData1, hashEntry1[:], mutator.ErrReplay},    // Replayed mutation
+		{largeKey, entryData1, entryData2, hashEntry1[:], mutator.ErrSize}, // Large mutation
+		{key, entryData1, entryData1, nil, mutator.ErrPreviousHash},        // Invalid previous entry hash
 		// TODO: test case for verifying signature from key in entry.
 	}
 
