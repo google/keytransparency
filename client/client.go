@@ -120,7 +120,8 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 	return profile, nil
 }
 
-// Update creates an UpdateEntryRequest for a user.
+// Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
+// times depending on RetryCount.
 func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile, opts ...grpc.CallOption) (*pb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
@@ -194,28 +195,30 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	return req, err
 }
 
-// Retry will take a pre-fabricated reqeust and send it again.
+// Retry will take a pre-fabricated request and send it again.
 func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
 		return err
 	}
+
 	// Validate response.
 	if err := c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
 		return err
 	}
 
-	keyvalue := new(pb.KeyValue)
-	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, keyvalue); err != nil {
-		log.Printf("Error unmarshaling keyvalue: %v", err)
+	// Check if the response is a replay.
+	kv := new(pb.KeyValue)
+	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
+		log.Printf("Error unmarshaling KeyValue: %v", err)
 		return err
 	}
-
 	got := updateResp.GetProof().GetLeafProof().LeafData
-	if bytes.Equal(got, keyvalue.Value) {
+	if bytes.Equal(got, kv.Value) {
 		log.Printf("Retry(%v) Matched", req.UserId)
 		return nil
 	}
+
 	return ErrRetry
 	// TODO: Update previous entry pointer
 }
