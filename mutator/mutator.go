@@ -16,12 +16,7 @@
 // the map.
 package mutator
 
-import (
-	"encoding/json"
-	"errors"
-
-	"github.com/benlaurie/objecthash/go/objecthash"
-)
+import "errors"
 
 var (
 	// MaxMutationSize represent the maximum allowed mutation size in bytes.
@@ -44,15 +39,4 @@ type Mutator interface {
 	CheckMutation(value, mutation []byte) error
 	// Mutate applies mutation to value
 	Mutate(value, mutation []byte) ([]byte, error)
-}
-
-// ObjectHash returns the hash of a given object.
-// TODO: migrate this function to github.com/benlaurie/objecthash/go/objecthash.
-func ObjectHash(obj interface{}) (hash []byte, err error) {
-	jsonObj, err := json.Marshal(obj)
-	if err != nil {
-		return nil, err
-	}
-	objHash := objecthash.CommonJSONHash(string(jsonObj))
-	return objHash[:], nil
 }
