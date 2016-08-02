@@ -91,7 +91,7 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 // verifyLog checks the expected root against the log of signed map heads.
 func (c *Client) verifyLog(smh *ctmap.SignedMapHead, sctBytes []byte) error {
 	// 1) GetSTH.
-	sth, err := c.ctlog.GetSTH()
+	_, err := c.ctlog.GetSTH()
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (c *Client) verifyLog(smh *ctmap.SignedMapHead, sctBytes []byte) error {
 	// 3) Inclusion Proof.
 
 	// GetByHash
-	sct, err := ct.DeserializeSCT(bytes.NewReader(sctBytes))
+	_, err = ct.DeserializeSCT(bytes.NewReader(sctBytes))
 	if err != nil {
 		return err
 	}
@@ -114,8 +114,6 @@ func (c *Client) verifyLog(smh *ctmap.SignedMapHead, sctBytes []byte) error {
 		return err
 	}
 	************************************************************/
-	_ = sth
-	_ = sct
 	// TODO: Verify inclusion proof.
 
 	return nil

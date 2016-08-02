@@ -206,7 +206,10 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	// The very first mutation will have resp.LeafProof.LeafData=nil.
 	if err := s.mutator.CheckMutation(resp.LeafProof.LeafData, m); err == mutator.ErrReplay {
 		log.Printf("Discarding request due to replay")
-		return &pb.UpdateEntryResponse{resp}, grpc.Errorf(codes.AlreadyExists, "Replayed mutation")
+		// Return the response. The client should handle the replay case
+		// by comparing the returned response with the request. Check
+		// Retry() in client/client.go.
+		return &pb.UpdateEntryResponse{resp}, nil
 	} else if err != nil {
 		log.Printf("Invalid mutation: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")

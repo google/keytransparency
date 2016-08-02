@@ -67,7 +67,7 @@ func CreateDefaultUser(env *Env, t testing.TB) {
 	authCtx := authentication.NewFake().NewContext(defaultUserID)
 	keyring, _ := hex.DecodeString(strings.Replace(defaultKeyring, "\n", "", -1))
 	profile := &pb.Profile{map[string][]byte{"pgp": keyring}}
-	_, err := env.Client.Update(authCtx, defaultUserID, profile)
+	req, err := env.Client.Update(authCtx, defaultUserID, profile)
 	if got, want := err, client.ErrRetry; got != want {
 		t.Fatalf("Update(%v): %v, want %v", defaultUserID, got, want)
 	}
@@ -76,6 +76,9 @@ func CreateDefaultUser(env *Env, t testing.TB) {
 	}
 	if err := env.Signer.CreateEpoch(); err != nil {
 		t.Fatalf("Failed to CreateEpoch: %v", err)
+	}
+	if err := env.Client.Retry(authCtx, req); err != nil {
+		t.Errorf("Retry(%v): %v, want nil", req, err)
 	}
 }
 

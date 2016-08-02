@@ -120,9 +120,9 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 	return profile, nil
 }
 
-// Update creates an UpdateEntryRequest for a user, submits it, and returns the
-// resulting UpdateEntryResponse.
-func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile, opts ...grpc.CallOption) (*pb.UpdateEntryResponse, error) {
+// Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
+// times depending on RetryCount.
+func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile, opts ...grpc.CallOption) (*pb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
 		return nil, err
@@ -186,37 +186,39 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 		},
 	}
 
-	updateResp, err := c.retry(ctx, req)
+	err = c.Retry(ctx, req)
 	// Retry submitting until an incluion proof is returned.
 	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
 		time.Sleep(retryDelay)
-		updateResp, err = c.retry(ctx, req)
+		err = c.Retry(ctx, req)
 	}
-	return updateResp, err
+	return req, err
 }
 
-// retry will take a pre-fabricated request and send it again.
-func (c *Client) retry(ctx context.Context, req *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+// Retry will take a pre-fabricated request and send it again.
+func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	// Validate response.
 	if err := c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
-		return nil, err
+		return err
 	}
 
-	keyvalue := new(pb.KeyValue)
-	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, keyvalue); err != nil {
-		log.Printf("Error unmarshaling keyvalue: %v", err)
-		return nil, err
+	// Check if the response is a replay.
+	kv := new(pb.KeyValue)
+	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
+		log.Printf("Error unmarshaling KeyValue: %v", err)
+		return err
 	}
-
 	got := updateResp.GetProof().GetLeafProof().LeafData
-	if bytes.Equal(got, keyvalue.Value) {
+	if bytes.Equal(got, kv.Value) {
 		log.Printf("Retry(%v) Matched", req.UserId)
-		return updateResp, nil
+		return nil
 	}
-	return nil, ErrRetry
+
+	return ErrRetry
 	// TODO: Update previous entry pointer
 }
