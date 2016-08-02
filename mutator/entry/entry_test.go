@@ -19,16 +19,17 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/key-transparency/mutator"
 
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
-func createEntry(updateCount uint64) ([]byte, error) {
+func createEntry(commitment []byte) ([]byte, error) {
+	// TODO: fill Commitment and AuthorizedKeys.
 	entry := &pb.Entry{
-		// TODO: fill Commitment and AuthorizedKeys.
-		UpdateCount: updateCount,
+		Commitment: commitment,
 	}
 	entryData, err := proto.Marshal(entry)
 	if err != nil {
@@ -58,23 +59,25 @@ func prepareMutation(key []byte, entryData []byte, previous []byte) ([]byte, err
 }
 
 func TestCheckMutation(t *testing.T) {
-	count := uint64(1)
-	entryData1, err := createEntry(count)
+	// The passed commitment to createEntry is a dummy value. It is needed to
+	// make the two entries (entryData1 and entryData2) different, otherwise
+	// it is not possible to test all cases.
+	entryData1, err := createEntry([]byte{1})
 	if err != nil {
-		t.Fatalf("createEntry(%v)=%v", count, err)
+		t.Fatalf("createEntry()=%v", err)
 	}
-	entryData2, err := createEntry(count + 1)
+	entryData2, err := createEntry([]byte{2})
 	if err != nil {
-		t.Fatalf("createEntry(%v)=%v", count+1, err)
+		t.Fatalf("createEntry()=%v", err)
 	}
 	key := []byte{0}
 	largeKey := bytes.Repeat(key, mutator.MaxMutationSize)
 
 	// Calculate hashes.
-	hashEntry1, err := mutator.ObjectHash(entryData1)
-	if err != nil {
-		t.Fatalf("ObjectHash(%v)=%v", entryData1, err)
-	}
+	hashEntry1 := objecthash.ObjectHash(entryData1)
+	// nilHash is used as the previous hash value when submitting the very
+	// first mutation.
+	nilHash := objecthash.ObjectHash(nil)
 
 	tests := []struct {
 		key       []byte
@@ -83,11 +86,14 @@ func TestCheckMutation(t *testing.T) {
 		previous  []byte
 		err       error
 	}{
-		{key, entryData1, entryData2, hashEntry1, nil},                  // Normal case.
-		{key, entryData1, entryData1, hashEntry1, mutator.ErrReplay},    // Replayed mutation
-		{largeKey, entryData1, entryData2, hashEntry1, mutator.ErrSize}, // Large mutation
-		{key, entryData1, entryData1, nil, mutator.ErrPreviousHash},     // Invalid previous entry hash
 		// TODO: test case for verifying signature from key in entry.
+		{key, entryData2, entryData2, hashEntry1[:], mutator.ErrReplay},    // Replayed mutation
+		{largeKey, entryData1, entryData2, hashEntry1[:], mutator.ErrSize}, // Large mutation
+		{key, entryData1, entryData2, nil, mutator.ErrPreviousHash},        // Invalid previous entry hash
+		{key, nil, entryData1, nil, mutator.ErrPreviousHash},               // Very first mutation, invalid previous entry hash
+		{key, nil, nil, nil, mutator.ErrReplay},                            // Very first mutation, replayed mutation
+		{key, nil, entryData1, nilHash[:], nil},                            // Very first mutation, working case
+		{key, entryData1, entryData2, hashEntry1[:], nil},                  // Working case
 	}
 
 	for i, tc := range tests {
