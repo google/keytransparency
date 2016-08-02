@@ -166,8 +166,6 @@ message Entry {
   bytes commitment = 1;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
   repeated PublicKey authorized_keys = 2;
-  // update_count prevents replay attacks. Monotonically increasing.
-  uint64 update_count = 3;
 }
 
 // PublicKey defines a key this domain uses to sign MapHeads with.

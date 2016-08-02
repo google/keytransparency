@@ -203,10 +203,10 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		log.Printf("Error unmarshaling oldEntry: %v", err)
 		return nil, err
 	}
+	// The very first mutation will have resp.LeafProof.LeafData=nil.
 	if err := s.mutator.CheckMutation(resp.LeafProof.LeafData, m); err == mutator.ErrReplay {
-		// This request has already been recieved and processed.
 		log.Printf("Discarding request due to replay")
-		return &pb.UpdateEntryResponse{resp}, nil
+		return &pb.UpdateEntryResponse{resp}, grpc.Errorf(codes.AlreadyExists, "Replayed mutation")
 	} else if err != nil {
 		log.Printf("Invalid mutation: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
