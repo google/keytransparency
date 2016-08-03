@@ -70,19 +70,18 @@ func TestVRF(t *testing.T) {
 		m     []byte
 		vrf   []byte
 		proof []byte
-		want  bool
+		err   error
 	}{
-		{m1, vrf1, proof1, true},
-		{m2, vrf2, proof2, true},
-		{m3, vrf3, proof3, true},
-		{m3, vrf3, proof2, true},
-		{m3, vrf3, proof1, false},
+		{m1, vrf1, proof1, nil},
+		{m2, vrf2, proof2, nil},
+		{m3, vrf3, proof3, nil},
+		{m3, vrf3, proof2, nil},
+		{m3, vrf3, proof1, ErrInvalidVRF},
 	}
 
 	for _, tc := range tests {
-		got := pk.Verify(tc.m, tc.vrf[:], tc.proof)
-		if got != tc.want {
-			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, tc.want)
+		if got, want := pk.Verify(tc.m, tc.vrf[:], tc.proof), tc.err; got != want {
+			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, want)
 		}
 	}
 }
@@ -135,7 +134,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 		// Evaluate and verify.
 		m := []byte("M")
 		vrf, proof := signer.Evaluate(m)
-		if got := verifier.Verify(m, vrf, proof); got != true {
+		if verifier.Verify(m, vrf, proof) != nil {
 			t.Errorf("Failed verifying VRF proof")
 		}
 	}

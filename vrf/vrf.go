@@ -33,7 +33,7 @@ type PrivateKey interface {
 // PublicKey supports verifying output from the VRF function.
 type PublicKey interface {
 	// Verify verifies the NP-proof supplied by Proof.
-	Verify(m, vrf, proof []byte) bool
+	Verify(m, vrf, proof []byte) error
 
 	// Index returns the index indicated by a given VRF evaluation.
 	Index(vrf []byte) [32]byte

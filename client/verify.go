@@ -18,23 +18,16 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/google/key-transparency/commitments"
-	"github.com/google/key-transparency/vrf"
-
 	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
+	"github.com/google/key-transparency/commitments"
 
 	ctmap "github.com/google/key-transparency/proto/ctmap"
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
-var (
-	// ErrInvalidVRF occurs when the VRF doesn't validate.
-	ErrInvalidVRF = errors.New("invalid VRF")
-	// ErrNilProof occurs when the provided GetEntryResponse contains a nil
-	// proof.
-	ErrNilProof = errors.New("nil proof")
-)
+// ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
+var ErrNilProof = errors.New("nil proof")
 
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
 func VerifyCommitment(userID string, in *pb.GetEntryResponse) error {
@@ -50,14 +43,6 @@ func VerifyCommitment(userID string, in *pb.GetEntryResponse) error {
 	return nil
 }
 
-// VerifyVRF verifies that the VRF and proof in `in` is correct for userID.
-func VerifyVRF(userID string, in *pb.GetEntryResponse, vrf vrf.PublicKey) ([32]byte, error) {
-	if !vrf.Verify([]byte(userID), in.Vrf, in.VrfProof) {
-		return [32]byte{}, ErrInvalidVRF
-	}
-	return vrf.Index(in.Vrf), nil
-}
-
 // VerifySMH verifies that the Signed Map Head is correctly signed.
 func (c *Client) VerifySMH(smh *ctmap.SignedMapHead) error {
 	return c.verifier.Verify(smh.GetMapHead(), smh.Signatures[c.verifier.KeyName])
@@ -68,10 +53,10 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 		return err
 	}
 
-	index, err := VerifyVRF(userID, in, c.vrf)
-	if err != nil {
+	if err := c.vrf.Verify([]byte(userID), in.Vrf, in.VrfProof); err != nil {
 		return err
 	}
+	index := c.vrf.Index(in.Vrf)
 
 	leafProof := in.GetLeafProof()
 	if leafProof == nil {
