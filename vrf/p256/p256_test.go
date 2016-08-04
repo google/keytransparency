@@ -16,43 +16,34 @@ package p256
 
 import (
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"testing"
 )
 
 func TestH1(t *testing.T) {
-	tests := []struct {
-		m string
-	}{
-		{""},
-		{"a"},
-		{"bbbbbbbbbbbbbbbbbbbbbbb"},
-	}
-	for _, tc := range tests {
-		x, y := H1([]byte(tc.m))
+	for i := 0; i < 10000; i++ {
+		m := make([]byte, 100)
+		rand.Read(m)
+		x, y := H1([]byte(m))
 		if x == nil {
-			t.Errorf("H1(%v)=%v, want curve point", tc.m, x)
+			t.Errorf("H1(%v)=%v, want curve point", m, x)
 		}
 		if got := curve.Params().IsOnCurve(x, y); got != true {
-			t.Errorf("H1(%v)=%v, is not on curve", tc.m)
+			t.Errorf("H1(%v)=%v, is not on curve", m)
 		}
 	}
 }
 
 func TestH2(t *testing.T) {
-	tests := []struct {
-		m string
-		l int
-	}{
-		{"", 32},
-		{"a", 32},
-		{"bbbbbbbbbbbbbbbbbbbbbbb", 32},
-	}
-	for _, tc := range tests {
-		x := H2([]byte(tc.m))
-		if got := len(x.Bytes()); got != tc.l {
-			t.Errorf("len(h2(%v)) = %v, want %v", tc.m, got, tc.l)
+	l := 32
+	for i := 0; i < 10000; i++ {
+		m := make([]byte, 100)
+		rand.Read(m)
+		x := H2([]byte(m))
+		if got := len(x.Bytes()); got < 1 && got > l {
+			t.Errorf("len(h2(%v)) = %v, want %v", m, got, l)
 		}
 	}
 }
@@ -79,9 +70,9 @@ func TestVRF(t *testing.T) {
 		{m3, vrf3, proof1, ErrInvalidVRF},
 	}
 
-	for _, tc := range tests {
+	for i, tc := range tests {
 		if got, want := pk.Verify(tc.m, tc.vrf[:], tc.proof), tc.err; got != want {
-			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, want)
+			t.Errorf("%v: Verify(%v, %v, %v): got %v, want %v", i, tc.m, tc.vrf, tc.proof, got, want)
 		}
 	}
 }
