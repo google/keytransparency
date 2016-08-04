@@ -97,8 +97,7 @@ func H2(m []byte) *big.Int {
 	byteLen := (params.BitSize + 7) >> 3
 	h := sha512.New()
 	buf := make([]byte, 4)
-	var i uint32
-	for {
+	for i := uint32(0); ; i++ {
 		// TODO: Use a NIST specified DRBG.
 		binary.BigEndian.PutUint32(buf[:], i)
 		h.Reset()
@@ -138,9 +137,12 @@ func (k PrivateKey) Evaluate(m []byte) (vrf, proof []byte) {
 	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, k.D))
 	t.Mod(t, params.N)
 
-	//Write s,t as proof blob.
+	// Write s and t to a proof blob. Also write leading zeros before s and t
+	// if needed.
 	var buf bytes.Buffer
+	buf.Write(make([]byte, 32-len(s.Bytes())))
 	buf.Write(s.Bytes())
+	buf.Write(make([]byte, 32-len(t.Bytes())))
 	buf.Write(t.Bytes())
 
 	// VRF_k(m) = [k]H
