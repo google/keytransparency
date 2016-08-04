@@ -45,6 +45,8 @@ var (
 	ErrWrongKeyType = errors.New("not an ECDSA key")
 	// ErrNoPEMFound occurs when attempting to parse a non PEM data structure.
 	ErrNoPEMFound = errors.New("no PEM block found")
+	// ErrInvalidVRF occurs when the VRF does not validate.
+	ErrInvalidVRF = errors.New("invalid VRF proof")
 )
 
 // PublicKey holds a public VRF key.
@@ -147,14 +149,14 @@ func (k PrivateKey) Evaluate(m []byte) (vrf, proof []byte) {
 }
 
 // Verify asserts that vrf is the hash of proof and the proof is correct
-func (pk *PublicKey) Verify(m, vrf, proof []byte) bool {
+func (pk *PublicKey) Verify(m, vrf, proof []byte) error {
 	// verifier checks that s == H2(m, [t]G + [s]([k]G), [t]H1(m) + [s]VRF_k(m))
 	vrfx, vrfy := elliptic.Unmarshal(curve, vrf)
 	if vrfx == nil {
-		return false
+		return ErrInvalidVRF
 	}
 	if len(proof) != 64 {
-		return false
+		return ErrInvalidVRF
 	}
 
 	// Parse proof into s and t
@@ -182,7 +184,10 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) bool {
 	b.Write(elliptic.Marshal(curve, h1TKSx, h1TKSy))
 	h2 := H2(b.Bytes())
 
-	return hmac.Equal(s, h2.Bytes())
+	if !hmac.Equal(s, h2.Bytes()) {
+		return ErrInvalidVRF
+	}
+	return nil
 }
 
 // Index computes the index for a given vrf output.
