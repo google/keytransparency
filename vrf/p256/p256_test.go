@@ -15,10 +15,7 @@
 package p256
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"testing"
 )
 
@@ -97,27 +94,13 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 	}
 	for _, tc := range tests {
 		// Private VRF Key
-		p, _ := pem.Decode([]byte(tc.priv))
-		if p == nil {
-			t.Errorf("No PEM block found")
-		}
-		k, err := x509.ParseECPrivateKey(p.Bytes)
-		signer, err := NewVRFSigner(k)
+		signer, err := NewVRFSignerFromPEM([]byte(tc.priv))
 		if err != nil {
 			t.Errorf("NewVRFSigner failure: %v", err)
 		}
 
 		// Public VRF key
-		p, _ = pem.Decode([]byte(tc.pub))
-		if p == nil {
-			t.Errorf("No PEM block found")
-		}
-		pk, err := x509.ParsePKIXPublicKey(p.Bytes)
-		ecdsaPubKey, ok := pk.(*ecdsa.PublicKey)
-		if !ok {
-			t.Errorf("Not an ecdsa public key")
-		}
-		verifier, err := NewVRFVerifier(ecdsaPubKey)
+		verifier, err := NewVRFVerifierFromPEM([]byte(tc.pub))
 		if err != nil {
 			t.Errorf("NewVRFSigner failure: %v", err)
 		}
