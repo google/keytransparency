@@ -15,7 +15,9 @@
 package appender
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/gob"
 	"errors"
 	"log"
 
@@ -111,9 +113,9 @@ func (a *CTAppender) insertMapRow() {
 }
 
 // Append adds an object to the append-only data structure.
-func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error {
+func (a *CTAppender) Append(ctx context.Context, epoch int64, obj interface{}) error {
 	if a.send {
-		sct, err := a.ctlog.AddJSON(data)
+		sct, err := a.ctlog.AddJSON(obj)
 		if err != nil {
 			log.Printf("CT: Submission failure: %v", err)
 			return err
@@ -124,13 +126,17 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error
 				log.Printf("CT: Serialization failure: %v", err)
 				return err
 			}
+			var data bytes.Buffer
+			if err := gob.NewEncoder(&data).Encode(obj); err != nil {
+				return err
+			}
 			writeStmt, err := a.db.Prepare(insertExpr)
 			if err != nil {
 				log.Printf("CT: DB save failure: %v", err)
 				return err
 			}
 			defer writeStmt.Close()
-			_, err = writeStmt.Exec(a.mapID, epoch, data, b)
+			_, err = writeStmt.Exec(a.mapID, epoch, data.Bytes(), b)
 			if err != nil {
 				log.Printf("CT: DB commit failure: %v", err)
 				return err
@@ -142,39 +148,42 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, data []byte) error
 
 // Epoch retrieves a specific object.
 // Returns data and a serialized ct.SignedCertificateTimestamp
-func (a *CTAppender) Epoch(ctx context.Context, epoch int64) ([]byte, []byte, error) {
+func (a *CTAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([]byte, error) {
 	if !a.save {
-		return nil, nil, ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	readStmt, err := a.db.Prepare(readExpr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer readStmt.Close()
 
 	var data, sct []byte
 	if err := readStmt.QueryRow(a.mapID, epoch).Scan(&data, &sct); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return data, sct, nil
+
+	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
+	return sct, nil
 }
 
 // Latest returns the latest object.
 // Returns epoch, data, and a serialized ct.SignedCertificateTimestamp
-func (a *CTAppender) Latest(ctx context.Context) (int64, []byte, []byte, error) {
+func (a *CTAppender) Latest(ctx context.Context, obj interface{}) (int64, []byte, error) {
 	if !a.save {
-		return 0, nil, nil, ErrNotSupported
+		return 0, nil, ErrNotSupported
 	}
 	readStmt, err := a.db.Prepare(latestExpr)
 	if err != nil {
-		return 0, nil, nil, err
+		return 0, nil, err
 	}
 	defer readStmt.Close()
 
 	var epoch int64
 	var data, sct []byte
 	if err := readStmt.QueryRow(a.mapID).Scan(&epoch, &data, &sct); err != nil {
-		return 0, nil, nil, err
+		return 0, nil, err
 	}
-	return epoch, data, sct, nil
+	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
+	return epoch, sct, err
 }
