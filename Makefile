@@ -35,7 +35,7 @@ PROTOINCLUDE ?= /usr/local/include
 #include $(GOHOME)/src/pkg/github.com/golang/protobuf/Make.protobuf
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
-OUTPUT:= $(GOPATH)/src
+OUTPUT:= bin
 REPLACE+=Mgoogle/api/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis/google/api
 GRPC_FLAGS+= --go_out=$(REPLACE),plugins=grpc
 GATEWAY_FLAGS+= --grpc-gateway_out=logtostderr=true
@@ -46,8 +46,8 @@ INCLUDES+= -I=$(GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/g
 
 
 main: proto
-	go build ./
-	go build -o key-transparency-signer ./backend
+	go build -o $(OUTPUT)/key-transparency ./
+	go build -o $(OUTPUT)/key-transparency-signer ./backend
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.
@@ -71,6 +71,6 @@ clean:
 	rm -f $(DEPS)
 	rm -f $(GATEWAY_DEPS)
 	$(MAKE) -C testdata clean
-	rm -f srv key-transparency key-transparency-signer 
+	rm -rf $(OUTPUT)
 	rm -rf infra*
 

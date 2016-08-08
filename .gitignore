@@ -2,9 +2,7 @@
 *.swo
 *~
 
-key-transparency
-key-transparency-signer
-
+bin/
 infra*.etcd
 testdata/*.pem
 testdata/*.json
