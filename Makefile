@@ -58,6 +58,12 @@ fmt:
 	find . -iregex '.*.go' -exec gofmt -w {} \;
 	find . -iregex '.[^.]*.go' -exec golint {} \;
 
+presubmit: fmt
+	go vet ./...
+	errcheck ./...
+	gocyclo -over 10 .
+	ineffassign ./...
+	find . -type f -name '*.md' -o -name '*.go' -o -name '*.proto' | sort | xargs misspell -locale US
 
 proto: $(DEPS) $(GATEWAY_DEPS)
 
