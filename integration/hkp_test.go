@@ -66,7 +66,7 @@ B+8k+PXDpFKMZHZYo/E6qtVrpdYT
 func CreateDefaultUser(env *Env, t testing.TB) {
 	authCtx := authentication.NewFake().NewContext(defaultUserID)
 	keyring, _ := hex.DecodeString(strings.Replace(defaultKeyring, "\n", "", -1))
-	profile := &pb.Profile{map[string][]byte{"pgp": keyring}}
+	profile := &pb.Profile{Keys: map[string][]byte{"pgp": keyring}}
 	req, err := env.Client.Update(authCtx, defaultUserID, profile)
 	if got, want := err, client.ErrRetry; got != want {
 		t.Fatalf("Update(%v): %v, want %v", defaultUserID, got, want)

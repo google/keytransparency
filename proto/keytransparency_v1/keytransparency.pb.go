@@ -132,12 +132,12 @@ func (m *GetEntryResponse) GetSmh() *ctmap.SignedMapHead {
 	return nil
 }
 
-// Committed represents the data comitted to in a cryptographic commitment.
+// Committed represents the data committed to in a cryptographic commitment.
 // commitment = HMAC_SHA512_256(key, data)
 type Committed struct {
 	// key is the 16 byte random commitment key.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// data is the data being comitted to.
+	// data is the data being committed to.
 	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 }
 
@@ -146,7 +146,7 @@ func (m *Committed) String() string            { return proto.CompactTextString(
 func (*Committed) ProtoMessage()               {}
 func (*Committed) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-// Profile contains data hidden behind the crypto comitment.
+// Profile contains data hidden behind the crypto commitement.
 type Profile struct {
 	// Keys is a map of appIds to keys.
 	Keys map[string][]byte `protobuf:"bytes,1,rep,name=keys" json:"keys,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`

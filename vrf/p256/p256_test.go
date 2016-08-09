@@ -23,12 +23,12 @@ func TestH1(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		m := make([]byte, 100)
 		rand.Read(m)
-		x, y := H1([]byte(m))
+		x, y := H1(m)
 		if x == nil {
 			t.Errorf("H1(%v)=%v, want curve point", m, x)
 		}
 		if got := curve.Params().IsOnCurve(x, y); got != true {
-			t.Errorf("H1(%v)=%v, is not on curve", m)
+			t.Errorf("H1(%v)=[%v, %v], is not on curve", m, x, y)
 		}
 	}
 }
@@ -38,7 +38,7 @@ func TestH2(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		m := make([]byte, 100)
 		rand.Read(m)
-		x := H2([]byte(m))
+		x := H2(m)
 		if got := len(x.Bytes()); got < 1 && got > l {
 			t.Errorf("len(h2(%v)) = %v, want %v", m, got, l)
 		}

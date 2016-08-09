@@ -140,7 +140,7 @@ func (s *Signer) CreateEpoch() error {
 
 	mh := &ctmap.MapHead{
 		Realm:     s.realm,
-		IssueTime: &tspb.Timestamp{timestamp, 0},
+		IssueTime: &tspb.Timestamp{Seconds: timestamp, Nanos: 0},
 		Epoch:     epoch,
 		Root:      root,
 	}

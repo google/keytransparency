@@ -164,6 +164,9 @@ func (a *CTAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([
 	}
 
 	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
+	if err != nil {
+		return nil, err
+	}
 	return sct, nil
 }
 
@@ -185,5 +188,8 @@ func (a *CTAppender) Latest(ctx context.Context, obj interface{}) (int64, []byte
 		return 0, nil, err
 	}
 	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
-	return epoch, sct, err
+	if err != nil {
+		return 0, nil, err
+	}
+	return epoch, sct, nil
 }

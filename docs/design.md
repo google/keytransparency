@@ -9,7 +9,7 @@ key server data structure.
 
 The Queue is a Multi-Writer, Single Reader data object.
 Previous iterations had the Queue as a Multi-Writer, Multi-Reader object, where 
-each node would recieve the same data, much like the Raft Consesnsus Algorithm. 
+each node would receive the same data, much like the Raft Consesnsus Algorithm. 
 In the Single Reader scheme, the queue is keeping track of global state: how 
 many items have been processed and added to the database.
 
@@ -19,7 +19,7 @@ written to the merkle tree data structures.
 Queue Atomicity Notes
 ---------------
 Mutations in the queue may be deleted from the queue once they have been 
-successfully processed by the signer and comitted to the leaf database.  We do 
+successfully processed by the signer and committed to the leaf database.  We do 
 not require that an epoch advancement occur before queue entries may be deleted.
 
 Cross-Domain Transactions:
@@ -31,7 +31,7 @@ permitted in the queue, this behavior is safe.
 Queue Epoch Advancement Notes
 -----------
 When advancing epochs, we can't include the expected epoch number because 
-multiple epoch advancement requests could be recieved by the queue out-of-order.
+multiple epoch advancement requests could be received by the queue out-of-order.
 
 If we assume a single writer case, we could add fancy logic to the Signer such 
 that no more than one epoch advancement request is ever simultaniously in the 
@@ -52,11 +52,11 @@ succeed. Duplicate mutations processed across epochs SHOULD fail.  (Each
 mutation should be explicit about the previoius version of data it is modifying)
 
 To advance to the next epoch, the signer inserts an epoch advancement marker 
-into the queue and waits to recieve it back on the queue before comitting all 
-the changes recieved between epoch markers into a version of the sparse merkle
+into the queue and waits to receive it back on the queue before committing all 
+the changes received between epoch markers into a version of the sparse merkle
 tree and signing the root node. 
 
-The Signer also takes each item recieved in the queue and sends it to the 
+The Signer also takes each item received in the queue and sends it to the 
 Log of Mutations, so that Monitors can recreate the tree by just reading the 
 Log of Mutations.
 
@@ -64,7 +64,7 @@ Front End Nodes
 ===============
 Front end nodes submit mutations into the queue. 
 
-In previous iterations, the nodes would also recieve all mutations and apply 
+In previous iterations, the nodes would also receive all mutations and apply 
 them to their local copies of the tree. In this revision, we decided the tree
 could be too big to fit on any particular node, so the tree has been moved to 
 a distributed database that the Signer updates.

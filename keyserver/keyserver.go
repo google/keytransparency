@@ -206,7 +206,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
 		// Retry() in client/client.go.
-		return &pb.UpdateEntryResponse{resp}, nil
+		return &pb.UpdateEntryResponse{Proof: resp}, nil
 	} else if err != nil {
 		log.Printf("Invalid mutation: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
@@ -216,5 +216,5 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		log.Printf("Enqueue error: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Write error")
 	}
-	return &pb.UpdateEntryResponse{resp}, err
+	return &pb.UpdateEntryResponse{Proof: resp}, err
 }
