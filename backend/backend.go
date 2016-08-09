@@ -15,6 +15,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"flag"
 	"io/ioutil"
@@ -74,7 +75,7 @@ func openPrivateKey() *signatures.SignatureSigner {
 	if err != nil {
 		log.Fatalf("Read to read private key: %v", err)
 	}
-	sig, err := signatures.NewSignatureSigner(key)
+	sig, err := signatures.NewSignatureSigner(rand.Reader, key)
 	if err != nil {
 		log.Fatalf("Failed to create signer: %v", err)
 	}

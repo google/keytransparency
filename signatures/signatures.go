@@ -27,6 +27,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 
@@ -54,6 +55,7 @@ var (
 type SignatureSigner struct {
 	privKey crypto.PrivateKey
 	KeyName string
+	rand    io.Reader
 }
 
 // GenerateKeyPair creates a new random keypair and returns the wrapped signer and verifier.
@@ -64,7 +66,7 @@ func GenerateKeyPair() (*SignatureSigner, *SignatureVerifier, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	sig, err := NewSignatureSigner(privatekey)
+	sig, err := NewSignatureSigner(rand.Reader, privatekey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,7 +99,7 @@ func KeyName(k crypto.PublicKey) (string, error) {
 }
 
 // NewSignatureSigner creates a signer object from a private key.
-func NewSignatureSigner(pk crypto.Signer) (*SignatureSigner, error) {
+func NewSignatureSigner(rand io.Reader, pk crypto.Signer) (*SignatureSigner, error) {
 	switch pkType := pk.(type) {
 	case *ecdsa.PrivateKey:
 		params := *(pkType.Params())
@@ -116,6 +118,7 @@ func NewSignatureSigner(pk crypto.Signer) (*SignatureSigner, error) {
 	return &SignatureSigner{
 		privKey: pk,
 		KeyName: id,
+		rand:    rand,
 	}, nil
 }
 
@@ -134,7 +137,7 @@ func (s SignatureSigner) Sign(data interface{}) (*ctmap.DigitallySigned, error) 
 	var ecSig struct {
 		R, S *big.Int
 	}
-	ecSig.R, ecSig.S, err = ecdsa.Sign(rand.Reader, ecdsaKey, hash[:])
+	ecSig.R, ecSig.S, err = ecdsa.Sign(s.rand, ecdsaKey, hash[:])
 	if err != nil {
 		return nil, err
 	}
