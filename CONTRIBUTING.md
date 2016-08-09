@@ -2,9 +2,9 @@
 
 We'd love for you to contribute to our source code! Here are the guidelines we'd like you to follow:
 
- - [Issues and Bugs](#issue)
- - [Feature Requests](#feature)
- - [Submission Guidelines](#submit)
+ - [Found an Issue?](#issue)
+   - [Submission Prerequisites](#prereq)
+   - [Submission Guidelines](#submit)
  - [Coding Rules](#rules)
  - [Signing the CLA](#cla)
 
@@ -13,7 +13,19 @@ If you find a bug in the source code, you can help us by submitting an issue to
 our [GitHub Repository][github]. Even better you can submit a Pull Request with
 a fix.
 
-### Submitting a Pull Request
+### <a name="prereq"></a> Submission Prerequisites
+Run the following commands to install the prerequisites needed to complete your
+pull request submission:
+
+```
+go get -u github.com/golang/lint/golint
+go get -u github.com/kisielk/errcheck
+go get -u github.com/fzipp/gocyclo
+go get -u github.com/gordonklaus/ineffassign
+go get -u github.com/client9/misspell/cmd/misspell
+```
+
+### <a name="submit"></a> Submission Guidelines
 Before you submit your pull request consider the following guidelines:
 
 * Search [GitHub](https://github.com/google/key-transparency/pulls)
@@ -30,9 +42,10 @@ Before you submit your pull request consider the following guidelines:
 
 * Create your patch, **including appropriate test cases**.
 * Follow our [Coding Rules](#rules).
-* Run ```go fmt``` to correct any styling errors in the code
-* Run ```go test``` full test suite. Start the test server:
-* Run ```make``` to build your changes and ensure the build is not broken.
+* Run `make` to build your changes and ensure the build is not broken.
+* Run `go fmt` to correct any styling errors in the code
+* Run `go test` to run the full test suite.
+* Run `go presubmit` to ensure the patch includes healthy go code.
 
 * Push your branch to GitHub:
 
