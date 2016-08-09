@@ -97,7 +97,7 @@ f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 	if err != nil {
 		return nil, nil, err
 	}
-	sig, err := signatures.NewSignatureSigner(DevZero(0), signer)
+	sig, err := signatures.NewSignatureSigner(DevZero{}, signer)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -135,10 +135,10 @@ f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 }
 
 // DevZero is an io.Reader that returns 0's
-type DevZero int
+type DevZero struct{}
 
 // Read returns 0's
-func (z DevZero) Read(b []byte) (n int, err error) {
+func (DevZero) Read(b []byte) (n int, err error) {
 	for i := range b {
 		b[i] = 0
 	}

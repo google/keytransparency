@@ -41,9 +41,9 @@ type realClock struct{}
 func (realClock) Now() time.Time { return time.Now() }
 
 // fakeClock returns the same sequence of time each time.
-type fakeClock struct{ i int64 }
+type fakeClock int64
 
-func (c *fakeClock) Now() time.Time { c.i++; return time.Unix(c.i, 0) }
+func (i fakeClock) Now() time.Time { i++; return time.Unix(int64(i), 0) }
 
 // Signer processes mutations, applies them to the sparse merkle tree, and
 // signes the sparse map head.
