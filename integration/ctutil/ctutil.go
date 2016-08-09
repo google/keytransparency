@@ -16,36 +16,20 @@
 package ctutil
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 const (
-	validSTHResponse = `{"tree_size":3721782,"timestamp":1396609800587,
-        "sha256_root_hash":"SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo=",
-        "tree_head_signature":"BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="}`
-	validSTHResponseTreeSize          = 3721782
-	validSTHResponseTimestamp         = 1396609800587
-	validSTHResponseSHA256RootHash    = "SxKOxksguvHPyUaKYKXoZHzXl91Q257+JQ0AUMlFfeo="
-	validSTHResponseTreeHeadSignature = "BAMARjBEAiBUYO2tODlUUw4oWGiVPUHqZadRRyXs9T2rSXchA79VsQIgLASkQv3cu4XdPFCZbgFkIUefniNPCpO3LzzHX53l+wg="
-	addJSONResp                       = `{  
-	   "sct_version":0,
-	   "id":"KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=",
-	   "timestamp":1337,
-	   "extensions":"",
-	   "signature":"BAMARjBEAiAIc21J5ZbdKZHw5wLxCP+MhBEsV5+nfvGyakOIv6FOvAIgWYMZb6Pw///uiNM7QTg2Of1OqmK1GbeGuEl9VJN8v8c="
-	}`
-	proofByHashResp = `
-	{
-		"leaf_index": 3,
-		"audit_path": [
-		"pMumx96PIUB3TX543ljlpQ/RgZRqitRfykupIZrXq0Q=",
-		"5s2NQWkjmesu+Kqgp70TCwVLwq8obpHw/JyMGwN56pQ=",
-		"7VelXijfmGFSl62BWIsG8LRmxJGBq9XP8FxmszuT2Cg="
-		]
-	}`
+	// AddJSONReq is the request that is being modeled here.
+	AddJSONReq  = `{"map_head":{"epoch":1,"root":"EWyr9DFDwaIjVA2Y4BddJ16WndzzwGn4JTQQ87lnkh0=","issue_time":{"seconds":2}},"signatures":{"6efc5bec":{"hash_algorithm":4,"sig_algorithm":3,"signature":"MEUCIAK5nqVdru/7xXUohD1R23wGX07pvh9eCVKgzVBXzpw0AiEA0G91bHKxGm5TaPQgR5sReVyYAOYaS9WhQCV4rXMQc3M="}}}`
+	addJSONResp = `{ "sct_version": 0, "id": "3xwuwRUAlFJHqWFoMl3cXHlZ6PfG04j8AC4LvT9012Q=", "timestamp": 1469661431992, "extensions": "", "signature": "BAMARjBEAiBRH\/bZrc4Fl6B6pTWsj0vo9elzbWzgpDKpczEod4pRDwIga03DUchNDRWwtv2xHi7v9kzestFGkEpyMn1jYTsk9nc=" }`
+	getSTHResp  = `{ "tree_size": 13, "timestamp": 1469662018234, "sha256_root_hash": "R9WC7p\/bRdY\/66oy3quY\/0Mt6cjQFyoBZsetEx0IX+M=", "tree_head_signature": "BAMARzBFAiEA7KhfIJPzLC0TW8+GqICSXEvjDFja4UvuB95qJwlrhC0CIEAi1T5ZM5hz\/OWWWsekPk9UxOpvVy63fEzbocE4rIjD" }`
+	// LeafHash should be the leafhash of AddJSONReq
+	LeafHash = `KVp7ZE6jlFOHhYJassBbPzlw0aehUxNpC%2FiY57%2B1ZbU%3D`
+	// curl 'http://localhost:8088/ct/v1/get-proof-by-hash?tree_size=13&hash=KVp7ZE6jlFOHhYJassBbPzlw0aehUxNpC%2FiY57%2B1ZbU%3D'
+	proofByHashResp = `{ "leaf_index": 9, "audit_path": [ "AWYmKRB\/QfVeQC\/rNwxJgHa4EuqtjhxtcXDcUdzevl8=", "yTCGf34J03ex7inF4sOBVh39vLo\/VYbaQUbmm8Z4Z2c=", "BRBvXBkQgjHjTgcmuysrDr4S\/fHQGAOnElm+i1DE9eY=", "0UUQNaadR+axKIFU064lMXi00aMsKFwTZjvinNskmy8=" ] }`
 )
 
 // NewCTServer creates a test CT server.
@@ -53,12 +37,7 @@ func NewCTServer(t testing.TB) *httptest.Server {
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/ct/v1/get-sth":
-			fmt.Fprintf(w, `{"tree_size": %d, "timestamp": %d, "sha256_root_hash": "%s", "tree_head_signature": "%s"}`,
-				validSTHResponseTreeSize,
-				int64(validSTHResponseTimestamp),
-				validSTHResponseSHA256RootHash,
-				validSTHResponseTreeHeadSignature)
-
+			w.Write([]byte(getSTHResp))
 		case r.URL.Path == "/ct/v1/add-json":
 			w.Write([]byte(addJSONResp))
 		case r.URL.Path == "/ct/v1/get-proof-by-hash":
