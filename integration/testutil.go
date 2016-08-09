@@ -83,14 +83,78 @@ type Env struct {
 	mapLog     *httptest.Server
 }
 
+func staticKeyPair() (*signatures.SignatureSigner, *signatures.SignatureVerifier, error) {
+	sigPriv := `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
+AwEHoUQDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhWf5JqSoyp0uiL8LeNYyj5vgkl
+K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
+-----END EC PRIVATE KEY-----`
+	sigPub := `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
+f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
+-----END PUBLIC KEY-----`
+	signer, _, err := signatures.PrivateKeyFromPEM([]byte(sigPriv))
+	if err != nil {
+		return nil, nil, err
+	}
+	sig, err := signatures.NewSignatureSigner(DevZero{}, signer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	verifier, _, err := signatures.PublicKeyFromPEM([]byte(sigPub))
+	if err != nil {
+		return nil, nil, err
+	}
+	ver, err := signatures.NewSignatureVerifier(verifier)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sig, ver, nil
+}
+
+func staticVRF() (vrf.PrivateKey, vrf.PublicKey, error) {
+	priv := `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
+AwEHoUQDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhWf5JqSoyp0uiL8LeNYyj5vgkl
+K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
+-----END EC PRIVATE KEY-----`
+	pub := `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
+f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
+-----END PUBLIC KEY-----`
+	vrf, err := p256.NewVRFSignerFromPEM([]byte(priv))
+	if err != nil {
+		return nil, nil, err
+	}
+	verfier, err := p256.NewVRFVerifierFromPEM([]byte(pub))
+	if err != nil {
+		return nil, nil, err
+	}
+	return vrf, verfier, nil
+}
+
+// DevZero is an io.Reader that returns 0's
+type DevZero struct{}
+
+// Read returns 0's
+func (DevZero) Read(b []byte) (n int, err error) {
+	for i := range b {
+		b[i] = 0
+	}
+
+	return len(b), nil
+}
+
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
 	hs := ctutil.NewCTServer(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	sqldb := NewDB(t)
-	sig, verifier, err := signatures.GenerateKeyPair()
+
+	sig, verifier, err := staticKeyPair()
 	if err != nil {
-		t.Fatalf("Failed to generate signing keypair: %v", err)
+		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
 
 	// Common data structures.
@@ -98,7 +162,10 @@ func NewEnv(t *testing.T) *Env {
 	tree := sqlhist.New(sqldb, mapID)
 	sths := appender.New(sqldb, mapID, hs.URL)
 	mutations := appender.New(nil, mapID, "")
-	vrfPriv, vrfPub := p256.GenerateKey()
+	vrfPriv, vrfPub, err := staticVRF()
+	if err != nil {
+		t.Fatalf("Failed to load vrf keypair: %v", err)
+	}
 	mutator := entry.New()
 	auth := authentication.NewFake()
 
@@ -108,6 +175,7 @@ func NewEnv(t *testing.T) *Env {
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
 	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
+	signer.FakeTime()
 	signer.CreateEpoch()
 
 	addr, lis := Listen(t)
