@@ -58,7 +58,7 @@ func Commit(data []byte) ([]byte, *pb.Committed, error) {
 
 	mac := hmac.New(hashAlgo, key)
 	mac.Write(data)
-	return mac.Sum(nil), &pb.Committed{key, data}, nil
+	return mac.Sum(nil), &pb.Committed{Key: key, Data: data}, nil
 }
 
 // CommitName makes a cryptographic commitment under a specific userID to data.
@@ -66,7 +66,7 @@ func CommitName(userID string, data []byte) ([]byte, *pb.Committed, error) {
 	d := bytes.NewBufferString(userID)
 	d.Write(data)
 	commitment, committed, err := Commit(d.Bytes())
-	return commitment, &pb.Committed{committed.Key, data}, err
+	return commitment, &pb.Committed{Key: committed.Key, Data: data}, err
 }
 
 // Verify returns nil if the commitment is valid.
@@ -83,5 +83,5 @@ func Verify(commitment []byte, committed *pb.Committed) error {
 func VerifyName(userID string, commitment []byte, committed *pb.Committed) error {
 	d := bytes.NewBufferString(userID)
 	d.Write(committed.Data)
-	return Verify(commitment, &pb.Committed{committed.Key, d.Bytes()})
+	return Verify(commitment, &pb.Committed{Key: committed.Key, Data: d.Bytes()})
 }

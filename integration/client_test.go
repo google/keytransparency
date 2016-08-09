@@ -67,7 +67,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			}
 		}
 		if tc.insert {
-			req, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{primaryKeys})
+			req, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{Keys: primaryKeys})
 			if got, want := err, client.ErrRetry; got != want {
 				t.Fatalf("%v: Update(%v): %v, want %v", i, tc.userID, got, want)
 			}

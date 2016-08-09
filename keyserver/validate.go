@@ -42,7 +42,7 @@ var (
 	ErrNoAppID = errors.New("missing AppID")
 	// ErrNoCommitted occurs when the committed field is missing.
 	ErrNoCommitted = errors.New("missing commitment")
-	// ErrCommittedKeyLen occurs when the commited key is too small.
+	// ErrCommittedKeyLen occurs when the committed key is too small.
 	ErrCommittedKeyLen = errors.New("committed.key is too small")
 	// ErrWrongIndex occurs when the index in key value does not match the output of VRF.
 	ErrWrongIndex = errors.New("index does not match vrf")

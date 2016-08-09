@@ -164,7 +164,7 @@ func (a *CTAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([
 	}
 
 	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
-	return sct, nil
+	return sct, err
 }
 
 // Latest returns the latest object.

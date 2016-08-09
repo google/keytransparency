@@ -133,7 +133,7 @@ func TestQueueCommitRead(t *testing.T) {
 		}
 		epoch, err := m.Commit()
 		if err != nil {
-			t.Errorf("Commit()=%v, %v, want %v, nil", epoch, err)
+			t.Errorf("Commit()=[_, %v], want [_, nil]", err)
 		}
 		readData, err := m.ReadLeafAt(ctx, h2b(tc.hindex), epoch)
 		if err != nil {

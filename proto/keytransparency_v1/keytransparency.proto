@@ -139,16 +139,16 @@ message GetEntryResponse {
   //ct.GetConsistencyProofResponse consistency_proof = 9;
 }
 
-// Committed represents the data comitted to in a cryptographic commitment.
+// Committed represents the data committed to in a cryptographic commitment.
 // commitment = HMAC_SHA512_256(key, data)
 message Committed {
   // key is the 16 byte random commitment key.
   bytes key = 1;
-  // data is the data being comitted to. 
+  // data is the data being committed to. 
   bytes data = 2;
 }
 
-// Profile contains data hidden behind the crypto comitment.
+// Profile contains data hidden behind the crypto commitement.
 message Profile {
   // Keys is a map of appIds to keys.
   map<string, bytes> keys = 1;

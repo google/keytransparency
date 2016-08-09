@@ -143,7 +143,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	// Commit to profile.
 	profileData, err := proto.Marshal(profile)
 	if err != nil {
-		log.Printf("Unexpected profile marshalling error: %v", err)
+		log.Printf("Unexpected profile marshaling error: %v", err)
 		return nil, err
 	}
 	commitment, committed, err := commitments.CommitName(userID, profileData)

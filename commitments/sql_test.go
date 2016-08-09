@@ -46,7 +46,7 @@ func TestWriteRead(t *testing.T) {
 		{string(commitmentC), string(committedC.Data), "C", true},
 	}
 	for _, tc := range tests {
-		committed := &pb.Committed{[]byte(tc.key), []byte(tc.value)}
+		committed := &pb.Committed{Key: []byte(tc.key), Data: []byte(tc.value)}
 		err := c.Write(nil, []byte(tc.commitment), committed)
 		if got := err == nil; got != tc.want {
 			t.Fatalf("WriteCommitment(%v, %v, %v): %v, want %v", tc.commitment, tc.key, tc.value, err, tc.want)
@@ -54,13 +54,13 @@ func TestWriteRead(t *testing.T) {
 		if tc.want {
 			value, err := c.Read(nil, []byte(tc.commitment))
 			if err != nil {
-				t.Errorf("ReadCommitment(%v): %v", err)
+				t.Errorf("Read(_, %v): %v", []byte(tc.commitment), err)
 			}
 			if got := string(value.Data); got != tc.value {
-				t.Errorf("ReadCommitment(%v): %v want %v", tc.commitment, got, tc.value)
+				t.Errorf("Read(%v): %v want %v", tc.commitment, got, tc.value)
 			}
 			if got := string(value.Key); got != tc.key {
-				t.Errorf("ReadCommitment(%v): %v want %v", tc.commitment, got, tc.key)
+				t.Errorf("Read(%v): %v want %v", tc.commitment, got, tc.key)
 			}
 		}
 	}

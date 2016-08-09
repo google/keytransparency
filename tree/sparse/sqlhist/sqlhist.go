@@ -147,7 +147,7 @@ func (m *Map) Commit() (int64, error) {
 	if len(leafRows) == 0 {
 		root, err := m.ReadRootAt(nil, m.epoch)
 		if err != nil {
-			log.Fatal("No root for epoch %d: %v", m.epoch, err)
+			log.Fatalf("No root for epoch %d: %v", m.epoch, err)
 		}
 		if err := m.SetNodeAt(nil, []byte{}, 0, root, m.epoch+1); err != nil {
 			log.Fatalf("Failed to set root: %v", err)
