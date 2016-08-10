@@ -54,14 +54,17 @@ main: proto
 test: main
 	go test `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
 
+coverage: main
+	go test -cover `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
+
 fmt:
 	find . -iregex '.*.go' -exec gofmt -w {} \;
 	find . -iregex '.[^.]*.go' -exec golint {} \;
 
-presubmit: fmt
+presubmit: coverage fmt
 	go vet ./...
 	errcheck ./...
-	gocyclo -over 10 .
+	find . -type f -name "*.go" ! -name "*.pb*go" -exec gocyclo -over 10 {} \;
 	ineffassign .
 	find . -type f -name '*.md' -o -name '*.go' -o -name '*.proto' | sort | xargs misspell -locale US
 
