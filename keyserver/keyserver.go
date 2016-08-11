@@ -153,22 +153,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
 	index := s.vrf.Index(vrf)
 
-	// Unmarshal entry.
-	kv := new(pb.KeyValue)
-	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
-		log.Printf("Error unmarshaling keyvalue: %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
-	}
-	entry := new(pb.Entry)
-	if err := proto.Unmarshal(kv.Value, entry); err != nil {
-		log.Printf("Error unmarshaling entry: %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
-	}
-
-	// Save the commitment.
-	if err := s.committer.Write(ctx, entry.Commitment, in.GetEntryUpdate().Committed); err != nil {
-		log.Printf("committer.Write failed: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Write failed")
+	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetUpdate().KeyValue, in.GetEntryUpdate().Committed); err != nil {
+		return nil, err
 	}
 
 	// Query for the current epoch.
@@ -187,7 +173,6 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	// - TODO: Correct signatures from previous epoch.
 	// - TODO: Correct signatures internal to the update.
 	// - Hash of current data matches the expectation in the mutation.
-	// - Advanced update count.
 
 	m, err := proto.Marshal(in.GetEntryUpdate().GetUpdate())
 	if err != nil {
@@ -217,4 +202,25 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, grpc.Errorf(codes.Internal, "Write error")
 	}
 	return &pb.UpdateEntryResponse{Proof: resp}, err
+}
+
+func (s *Server) saveCommitment(ctx context.Context, kvData []byte, committed *pb.Committed) error {
+	// Unmarshal entry.
+	kv := new(pb.KeyValue)
+	if err := proto.Unmarshal(kvData, kv); err != nil {
+		log.Printf("Error unmarshaling keyvalue: %v", err)
+		return grpc.Errorf(codes.InvalidArgument, "Invalid request")
+	}
+	entry := new(pb.Entry)
+	if err := proto.Unmarshal(kv.Value, entry); err != nil {
+		log.Printf("Error unmarshaling entry: %v", err)
+		return grpc.Errorf(codes.InvalidArgument, "Invalid request")
+	}
+
+	// Write the commitment.
+	if err := s.committer.Write(ctx, entry.Commitment, committed); err != nil {
+		log.Printf("committer.Write failed: %v", err)
+		return grpc.Errorf(codes.Internal, "Write failed")
+	}
+	return nil
 }

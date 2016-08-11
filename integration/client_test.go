@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -50,22 +51,11 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		{true, true, auth.NewContext("bob"), "bob"},     // Update
 	}
 	for i, tc := range tests {
-		profile, err := env.Client.GetEntry(context.Background(), tc.userID)
-		if err != nil {
-			t.Errorf("%v: GetEntry(%v): %v, want nil", i, tc.userID, err)
+		// Check profile.
+		if err := env.checkProfile(tc.userID, tc.want); err != nil {
+			t.Errorf("%v: checkProfile(%v, %v) failed: %v", i, tc.userID, tc.want, err)
 		}
-		if got := profile != nil; got != tc.want {
-			t.Errorf("%v: GetEntry(%v): %v, want %v", i, tc.userID, profile, tc.want)
-		}
-		if tc.want {
-			if got, want := len(profile.GetKeys()), 1; got != want {
-				t.Errorf("%v: len(GetKeys()) = %v, want; %v", i, got, want)
-				return
-			}
-			if got, want := profile.GetKeys(), primaryKeys; !reflect.DeepEqual(got, want) {
-				t.Errorf("%v: GetKeys() = %v, want: %v", i, got, want)
-			}
-		}
+		// Update profile.
 		if tc.insert {
 			req, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{Keys: primaryKeys})
 			if got, want := err, client.ErrRetry; got != want {
@@ -82,6 +72,27 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			}
 		}
 	}
+}
+
+// checkProfile ensures that the returned profile is as expected along with the
+// keys it carries.
+func (e *Env) checkProfile(userID string, want bool) error {
+	profile, err := e.Client.GetEntry(context.Background(), userID)
+	if err != nil {
+		return fmt.Errorf("GetEntry(%v): %v, want nil", userID, err)
+	}
+	if got := profile != nil; got != want {
+		return fmt.Errorf("GetEntry(%v): %v, want %v", userID, profile, want)
+	}
+	if want {
+		if got, want := len(profile.GetKeys()), 1; got != want {
+			return fmt.Errorf("len(GetKeys()) = %v, want; %v", got, want)
+		}
+		if got, want := profile.GetKeys(), primaryKeys; !reflect.DeepEqual(got, want) {
+			return fmt.Errorf("GetKeys() = %v, want: %v", got, want)
+		}
+	}
+	return nil
 }
 
 func TestUpdateValidation(t *testing.T) {

@@ -44,6 +44,14 @@ var (
 	ErrExpiredSig = errors.New("pgp: expired signature")
 	// ErrAlgo occurs when unsupported algorithms are used in a signature packet.
 	ErrAlgo = errors.New("pgp: unsupported algorithm")
+	// requiredSymmetric represents the required symmetric algorithm. 9 is
+	// AES with 256-bit key.
+	// More details here: https://tools.ietf.org/html/rfc4880#section-9.2.
+	requiredSymmetric = map[uint8]bool{9: true}
+	// requiredHash represents the required hash functions. 8 is SHA256, 9
+	// is SHA384, 10 is SHA512, and 11 is SHA224.
+	// More details here: https://tools.ietf.org/html/rfc4880#section-9.4.
+	requiredHash = map[uint8]bool{8: true, 9: true, 10: true, 11: true}
 )
 
 // Fingerprint is the type used to identify keys.
@@ -58,10 +66,6 @@ type Fingerprint [20]byte
 // returns fingerprint, error
 //
 func validatePGP(userID string, key io.Reader) (*Fingerprint, error) {
-	// Sets for required options.
-	requiredSymmetric := map[uint8]bool{9: true}
-	requiredHash := map[uint8]bool{8: true, 9: true, 10: true, 11: true}
-
 	// Verify signatures, check revocation.
 	entityList, err := openpgp.ReadKeyRing(key)
 	if err != nil {
@@ -82,74 +86,13 @@ func validatePGP(userID string, key io.Reader) (*Fingerprint, error) {
 		return nil, ErrRevocationCount
 	}
 	// Verify the UserId.
-	for _, id := range entity.Identities {
-		if got, want := id.UserId.Id, userID; got != want {
-			return nil, ErrUserID
-		}
-		if id.SelfSignature == nil {
-			return nil, ErrMissingSelfSig
-		}
-		// Verify timestamps.
-		if id.SelfSignature.KeyExpired(time.Now()) {
-			return nil, ErrExpiredSig
-		}
-		// Verify encryption types. AES-256
-		if got, want := id.SelfSignature.PreferredSymmetric, requiredSymmetric; !setEquals(want, got) {
-			return nil, ErrAlgo
-		}
-		// Verify preferred hash types.
-		if got, want := id.SelfSignature.PreferredHash, requiredHash; !setEquals(want, got) {
-			return nil, ErrAlgo
-		}
-		// Verify that hash is one of the preferred hash types.
-		hashID, ok := s2k.HashToHashId(id.SelfSignature.Hash)
-		if !ok {
-			return nil, ErrAlgo
-		}
-		if _, ok := requiredHash[hashID]; !ok {
-			return nil, ErrAlgo
-		}
-		// Verify flags.
-		if !id.SelfSignature.FlagCertify || !id.SelfSignature.FlagSign {
-			return nil, ErrMissingSelfSig
-		}
-		if id.SelfSignature.FlagEncryptCommunications || id.SelfSignature.FlagEncryptStorage {
-			return nil, ErrMissingSelfSig
-		}
-		// No extra signatures allowed.
-		if got, want := len(id.Signatures), 0; want != got {
-			return nil, ErrSigCount
-		}
+	if err := verifyIdentities(entity.Identities, userID); err != nil {
+		return nil, err
+	}
 
-	}
-	// Only allow one subkey.
-	if got, want := len(entity.Subkeys), 1; want != got {
-		return nil, ErrSubkeyCount
-	}
-	for _, subkey := range entity.Subkeys {
-		// Verify expiration.
-		if subkey.Sig.KeyExpired(time.Now()) {
-			return nil, ErrExpiredSig
-		}
-		// Only accept ECC keys.
-		if got, want := subkey.PublicKey.PubKeyAlgo, packet.PubKeyAlgoECDH; got != want {
-			return nil, ErrAlgo
-		}
-		// Verify flags.
-		if subkey.Sig.FlagCertify || subkey.Sig.FlagSign {
-			return nil, ErrMissingSubkey
-		}
-		if !subkey.Sig.FlagEncryptCommunications || !subkey.Sig.FlagEncryptStorage {
-			return nil, ErrMissingSubkey
-		}
-		// Verify that hash is one of the preferred hash types.
-		hashID, ok := s2k.HashToHashId(subkey.Sig.Hash)
-		if !ok {
-			return nil, ErrAlgo
-		}
-		if _, ok := requiredHash[hashID]; !ok {
-			return nil, ErrAlgo
-		}
+	// Verify subkeys.
+	if err := verifySubkeys(entity.Subkeys); err != nil {
+		return nil, err
 	}
 	// Only accept ECC keys.
 	if got, want := entity.PrimaryKey.PubKeyAlgo, packet.PubKeyAlgoECDSA; got != want {
@@ -157,6 +100,110 @@ func validatePGP(userID string, key io.Reader) (*Fingerprint, error) {
 	}
 	fingerprint := Fingerprint(entity.PrimaryKey.Fingerprint)
 	return &fingerprint, nil
+}
+
+func verifyIdentities(identities map[string]*openpgp.Identity, userID string) error {
+	for _, id := range identities {
+		if got, want := id.UserId.Id, userID; got != want {
+			return ErrUserID
+		}
+		if id.SelfSignature == nil {
+			return ErrMissingSelfSig
+		}
+		if err := verifyIdentityMetadata(id); err != nil {
+			return err
+		}
+		if err := verifyIdentityAlgo(id); err != nil {
+			return err
+		}
+		// No extra signatures allowed.
+		if got, want := len(id.Signatures), 0; want != got {
+			return ErrSigCount
+		}
+	}
+	return nil
+}
+
+func verifyIdentityMetadata(id *openpgp.Identity) error {
+	// Verify timestamps.
+	if id.SelfSignature.KeyExpired(time.Now()) {
+		return ErrExpiredSig
+	}
+	// Verify flags.
+	if !id.SelfSignature.FlagCertify || !id.SelfSignature.FlagSign {
+		return ErrMissingSelfSig
+	}
+	if id.SelfSignature.FlagEncryptCommunications || id.SelfSignature.FlagEncryptStorage {
+		return ErrMissingSelfSig
+	}
+	return nil
+}
+
+func verifyIdentityAlgo(id *openpgp.Identity) error {
+	// Verify encryption types. AES-256
+	if got, want := id.SelfSignature.PreferredSymmetric, requiredSymmetric; !setEquals(want, got) {
+		return ErrAlgo
+	}
+	// Verify preferred hash types.
+	if got, want := id.SelfSignature.PreferredHash, requiredHash; !setEquals(want, got) {
+		return ErrAlgo
+	}
+	// Verify that hash is one of the preferred hash types.
+	hashID, ok := s2k.HashToHashId(id.SelfSignature.Hash)
+	if !ok {
+		return ErrAlgo
+	}
+	if _, ok := requiredHash[hashID]; !ok {
+		return ErrAlgo
+	}
+	return nil
+}
+
+func verifySubkeys(subkeys []openpgp.Subkey) error {
+	// Only allow one subkey.
+	if got, want := len(subkeys), 1; want != got {
+		return ErrSubkeyCount
+	}
+	for _, subkey := range subkeys {
+		if err := verifySubkeyMetadata(subkey); err != nil {
+			return err
+		}
+		if err := verifySubkeyAlgo(subkey); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func verifySubkeyMetadata(subkey openpgp.Subkey) error {
+	// Verify expiration.
+	if subkey.Sig.KeyExpired(time.Now()) {
+		return ErrExpiredSig
+	}
+	// Verify flags.
+	if subkey.Sig.FlagCertify || subkey.Sig.FlagSign {
+		return ErrMissingSubkey
+	}
+	if !subkey.Sig.FlagEncryptCommunications || !subkey.Sig.FlagEncryptStorage {
+		return ErrMissingSubkey
+	}
+	return nil
+}
+
+func verifySubkeyAlgo(subkey openpgp.Subkey) error {
+	// Only accept ECC keys.
+	if got, want := subkey.PublicKey.PubKeyAlgo, packet.PubKeyAlgoECDH; got != want {
+		return ErrAlgo
+	}
+	// Verify that hash is one of the preferred hash types.
+	hashID, ok := s2k.HashToHashId(subkey.Sig.Hash)
+	if !ok {
+		return ErrAlgo
+	}
+	if _, ok := requiredHash[hashID]; !ok {
+		return ErrAlgo
+	}
+	return nil
 }
 
 // setEquals performs a set equality test between a and b.
