@@ -16,6 +16,8 @@ package keyserver
 
 import (
 	"bytes"
+	"errors"
+	"log"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -30,6 +32,12 @@ import (
 
 const (
 	pgpAppID = "pgp"
+)
+
+var (
+	errMissingKey = errors.New("Missing pgp key")
+	errEncoder    = errors.New("Cannot create HKP key armor encoder")
+	errArmor      = errors.New("Cannot armor HKP key")
 )
 
 // HkpLookup implements HKP pgp keys lookup.
@@ -52,7 +60,8 @@ func (s *Server) hkpGet(ctx context.Context, in *pb.HkpLookupRequest) (*pb.HttpR
 	getEntryRequest := pb.GetEntryRequest{UserId: in.Search}
 	result, err := s.GetEntry(ctx, &getEntryRequest)
 	if err != nil {
-		return nil, err
+		log.Printf("Failed to retrieve entry: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot retrieve entry")
 	}
 	if result.GetCommitted() == nil {
 		return nil, grpc.Errorf(codes.NotFound, "Not found")
@@ -60,6 +69,7 @@ func (s *Server) hkpGet(ctx context.Context, in *pb.HkpLookupRequest) (*pb.HttpR
 	// Extract and returned the user profile from the resulted
 	profile := new(pb.Profile)
 	if err := proto.Unmarshal(result.GetCommitted().Data, profile); err != nil {
+		log.Printf("Cannot unmarshal profile: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
 	}
 
@@ -71,7 +81,8 @@ func (s *Server) hkpGet(ctx context.Context, in *pb.HkpLookupRequest) (*pb.HttpR
 	// From here on, there is only one key in the key list.
 	armoredKey, err := armorKey(profile.GetKeys()[pgpAppID])
 	if err != nil {
-		return nil, err
+		log.Printf("Cannot armor key: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Armor key failed")
 	}
 
 	out := pb.HttpResponse{Body: armoredKey}
@@ -89,16 +100,16 @@ func (s *Server) hkpGet(ctx context.Context, in *pb.HkpLookupRequest) (*pb.HttpR
 // armorKey converts a Key of pgp type into an armored PGP key.
 func armorKey(key []byte) ([]byte, error) {
 	if len(key) == 0 {
-		return nil, grpc.Errorf(codes.NotFound, "Missing pgp key")
+		return nil, errMissingKey
 	}
 	armoredKey := bytes.NewBuffer(nil)
 	w, err := armor.Encode(armoredKey, openpgp.PublicKeyType, nil)
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot create HKP key armor encoder")
+		return nil, errEncoder
 	}
 	_, err = w.Write(key)
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot armor HKP key")
+		return nil, errArmor
 	}
 	w.Close()
 	return armoredKey.Bytes(), nil
