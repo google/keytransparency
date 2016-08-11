@@ -85,29 +85,34 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 
 	epoch, smh, sct, err := s.GetSMH(ctx, in.EpochEnd)
 	if err != nil {
-		return nil, err
+		log.Printf("Cannot get SMH: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
 	}
 
 	neighbors, err := s.tree.NeighborsAt(ctx, index[:], epoch)
 	if err != nil {
-		return nil, err
+		log.Printf("Cannot get neighbors list: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot get neighbors list")
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
 	leaf, err := s.tree.ReadLeafAt(ctx, index[:], epoch)
 	if err != nil {
-		return nil, err
+		log.Printf("Cannot read leaf entry: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
 	}
 	var committed *pb.Committed
 	if leaf != nil {
 		entry := pb.Entry{}
 		if err := proto.Unmarshal(leaf, &entry); err != nil {
+			log.Printf("Error unmarshaling entry: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
 
 		committed, err = s.committer.Read(ctx, entry.Commitment)
 		if err != nil {
-			return nil, err
+			log.Printf("Cannot read committed value: %v", err)
+			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
 		}
 		if committed == nil {
 			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", entry.Commitment)
@@ -183,7 +188,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	oldEntry := new(pb.Entry)
 	if err := proto.Unmarshal(resp.LeafProof.LeafData, oldEntry); err != nil {
 		log.Printf("Error unmarshaling oldEntry: %v", err)
-		return nil, err
+		return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 	}
 	// The very first mutation will have resp.LeafProof.LeafData=nil.
 	if err := s.mutator.CheckMutation(resp.LeafProof.LeafData, m); err == mutator.ErrReplay {
