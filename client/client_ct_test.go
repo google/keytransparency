@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	ct "github.com/google/certificate-transparency/go"
+	logclient "github.com/google/certificate-transparency/go/client"
 
 	"github.com/google/key-transparency/proto/ctmap"
 )
@@ -98,11 +99,14 @@ func TestInclusionProof(t *testing.T) {
 }
 
 func TestUpdateSTH(t *testing.T) {
-	type Test struct {
+	l, err := NewLog([]byte(pem), "")
+	if err != nil {
+		t.Fatalf("NewLog(): %v", err)
+	}
+	for i, tc := range []struct {
 		start, end uint64
 		sth, proof string
-	}
-	tests := []Test{
+	}{
 		{0, 27,
 			`{ "tree_size": 27, "timestamp": 1470345452317, "sha256_root_hash": "i8FlAhMYMBQqbGjsoTd5ETyzZB88r86PPweCYAWz1go=", "tree_head_signature": "BAMASDBGAiEAg\/Ew+UzZuVMPmaTgq3l9rv0aXqGa1yNqk04gBVc3ArwCIQDyJiKfH6i8qZGWVcCJrm4ZZoEY0FoGKJCRwmj4AlTpew==" }`,
 			"",
@@ -111,33 +115,27 @@ func TestUpdateSTH(t *testing.T) {
 			`{ "tree_size": 28, "timestamp": 1470350032568, "sha256_root_hash": "bM81peaPCkdbGrVfS55V4tGYKnYvjyDkqNCOfTUWfIM=", "tree_head_signature": "BAMASDBGAiEA9VpA5s2XNI9FeO9i\/q7WN5ehDw1IeNJwA\/1aL2s00o8CIQDnJGZuaCVyRRvQ\/e3Bn\/\/RekMbo3iFq+P2ecCsqiclCQ==" }`,
 			`{ "consistency": [ "t0A8H7hDbMSFIYZSaez\/JxZhhuCySpUvz4iw6RpECO0=", "z6OXtl3FHCwSIDfNAwj\/5HY\/vXMgN5u3Y2LlfWmrHgY=", "grgSU6rjELf4Dff+LJ\/AjdgFt2SW85KW+Qfx3i9LSRk=", "BYB0BDK4jX6UPmSboGtIUMe9SwqLaJe6X0BkSWXCGOc=", "t9rD1TCqf2B1s8z15+fPmkRe1JVvjf2VNPhRzt\/m8nM=" ] }`,
 		},
-	}
-	var tc Test
-	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/ct/v1/get-sth":
-			w.Write([]byte(tc.sth))
-		case "/ct/v1/get-sth-consistency":
-			w.Write([]byte(tc.proof))
-		default:
-			t.Fatalf("Incorrect URL path: %s", r.URL.Path)
-		}
-	}))
-	defer hs.Close()
-	l, err := NewLog([]byte(pem), hs.URL)
-	if err != nil {
-		t.Fatalf("NewLog(): %v", err)
-	}
-	for i := range tests {
-		tc = tests[i]
+	} {
+		hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/ct/v1/get-sth":
+				w.Write([]byte(tc.sth))
+			case "/ct/v1/get-sth-consistency":
+				w.Write([]byte(tc.proof))
+			default:
+				t.Fatalf("Incorrect URL path: %s", r.URL.Path)
+			}
+		}))
+		defer hs.Close()
+		l.ctlog = logclient.New(hs.URL, nil)
 		if got := l.STH.TreeSize; got != tc.start {
 			t.Fatalf("%v: Start TreeSize: %v, want %v", i, got, tc.start)
 		}
 		if err := l.UpdateSTH(); err != nil {
-			t.Fatalf("%v: UpdateSTH(): %v", i, err)
+			t.Fatalf("UpdateSTH(): %v", err)
 		}
 		if got := l.STH.TreeSize; got != tc.end {
-			t.Fatalf("%v: End TreeSize: %v, want %v", i, got, tc.end)
+			t.Fatalf("End TreeSize: %v, want %v", got, tc.end)
 		}
 	}
 }
@@ -145,11 +143,14 @@ func TestUpdateSTH(t *testing.T) {
 // TestVerifySCT exercises an immediate verification via an inclusion proof as
 // well as a delayed SCT verification where the SCT is stored for later verification.
 func TestVerifySCT(t *testing.T) {
-	type Test struct {
+	l, err := NewLog([]byte(pem), "")
+	if err != nil {
+		t.Fatalf("NewLog(): %v", err)
+	}
+	for _, tc := range []struct {
 		smh, sct, sth, inclusion, hash, consistency string
 		cachedSCTs                                  int
-	}
-	tests := []Test{
+	}{
 		// STH 0, UpdateSTH, Verify SCT + MMD < new STH.
 		{
 			`{ "map_head": { "epoch": 1, "root": "vCRFZf+KdYcOBuD4bFtDMnqKfWO1io5d8bI1Gh6dSWs=", "issue_time": { "seconds": 2 } }, "signatures": { "6efc5bec": { "hash_algorithm": 4, "sig_algorithm": 3, "signature": "MEQCIHgCT+BF3DFZkBXNZDL4wBOhuBkFybJEifdszVYvMMZQAiBEZRLKrj6g9+6TN32OJfECjkc4CZITQLUYlkdRm+0wmw==" } } }`,
@@ -169,34 +170,27 @@ func TestVerifySCT(t *testing.T) {
 			`{ "consistency": [ "MxibgM+03nha\/k4sbUrUgvgQ50lCYHDH6f8IzTCNYgE=", "96glM98fKO+i8PMDB9a7BLUVOq0lLUhLuSkENOmZEaw=", "DKW8LAKFwYHwvAloKsIi8ag12d9Hd5k+sSZZytE97gM=", "YM1Cfw914h1lj7MR\/JMS+Hm\/Eqn4N79JsfMUnFrhaEo=", "BYB0BDK4jX6UPmSboGtIUMe9SwqLaJe6X0BkSWXCGOc=", "t9rD1TCqf2B1s8z15+fPmkRe1JVvjf2VNPhRzt\/m8nM=" ] }`,
 			1,
 		},
-	}
-	var tc Test
-	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/ct/v1/get-sth":
-			w.Write([]byte(tc.sth))
-		case "/ct/v1/get-sth-consistency":
-			w.Write([]byte(tc.consistency))
-		case "/ct/v1/add-json":
-			w.Write([]byte(tc.sct))
-		case "/ct/v1/get-proof-by-hash":
-			r.ParseForm()
-			if got, want := r.Form["hash"][0], tc.hash; got != want {
-				t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
+	} {
+		hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/ct/v1/get-sth":
+				w.Write([]byte(tc.sth))
+			case "/ct/v1/get-sth-consistency":
+				w.Write([]byte(tc.consistency))
+			case "/ct/v1/add-json":
+				w.Write([]byte(tc.sct))
+			case "/ct/v1/get-proof-by-hash":
+				r.ParseForm()
+				if got, want := r.Form["hash"][0], tc.hash; got != want {
+					t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
+				}
+				w.Write([]byte(tc.inclusion))
+			default:
+				t.Fatalf("Incorrect URL path: %s", r.URL.Path)
 			}
-			w.Write([]byte(tc.inclusion))
-		default:
-			t.Fatalf("Incorrect URL path: %s", r.URL.Path)
-		}
-	}))
-	defer hs.Close()
-	l, err := NewLog([]byte(pem), hs.URL)
-	if err != nil {
-		t.Fatalf("NewLog(): %v", err)
-	}
-
-	for i := range tests {
-		tc = tests[i]
+		}))
+		defer hs.Close()
+		l.ctlog = logclient.New(hs.URL, nil)
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
 			t.Fatalf("Error decoding SMH: %v", err)
@@ -206,7 +200,7 @@ func TestVerifySCT(t *testing.T) {
 			t.Fatalf("Failed to get SCT from AddJSON: %v", err)
 		}
 		if err := l.VerifySCT(&smh, sct); err != nil {
-			t.Errorf("%v: VerifySCT(): %v", i, err)
+			t.Errorf("VerifySCT(): %v", err)
 		}
 		if got := len(l.scts); got != tc.cachedSCTs {
 			t.Errorf("len(scts): %v, want %v", got, tc.cachedSCTs)
@@ -238,10 +232,13 @@ func TestVerifySCTSig(t *testing.T) {
 
 // TestVerifySavedSCTs ensures that cached SCTs are verified.
 func TestVerifySavedSCTs(t *testing.T) {
-	type Test struct {
-		smh, sct, sth, inclusion, hash string
+	l, err := NewLog([]byte(pem), "")
+	if err != nil {
+		t.Fatalf("NewLog(): %v", err)
 	}
-	tests := []Test{
+	for i, tc := range []struct {
+		smh, sct, sth, inclusion, hash string
+	}{
 		// STH 0, UpdateSTH, Verify SCT + MMD < new STH.
 		{
 			`{ "map_head": { "epoch": 1, "root": "vCRFZf+KdYcOBuD4bFtDMnqKfWO1io5d8bI1Gh6dSWs=", "issue_time": { "seconds": 2 } }, "signatures": { "6efc5bec": { "hash_algorithm": 4, "sig_algorithm": 3, "signature": "MEQCIHgCT+BF3DFZkBXNZDL4wBOhuBkFybJEifdszVYvMMZQAiBEZRLKrj6g9+6TN32OJfECjkc4CZITQLUYlkdRm+0wmw==" } } }`,
@@ -250,32 +247,25 @@ func TestVerifySavedSCTs(t *testing.T) {
 			`{ "leaf_index": 26, "audit_path": [ "z6OXtl3FHCwSIDfNAwj\/5HY\/vXMgN5u3Y2LlfWmrHgY=", "grgSU6rjELf4Dff+LJ\/AjdgFt2SW85KW+Qfx3i9LSRk=", "MxibgM+03nha\/k4sbUrUgvgQ50lCYHDH6f8IzTCNYgE=", "BYB0BDK4jX6UPmSboGtIUMe9SwqLaJe6X0BkSWXCGOc=", "t9rD1TCqf2B1s8z15+fPmkRe1JVvjf2VNPhRzt\/m8nM=" ] }`,
 			"t0A8H7hDbMSFIYZSaez/JxZhhuCySpUvz4iw6RpECO0=",
 		},
-	}
-	var tc Test
-	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/ct/v1/get-sth":
-			w.Write([]byte(tc.sth))
-		case "/ct/v1/add-json":
-			w.Write([]byte(tc.sct))
-		case "/ct/v1/get-proof-by-hash":
-			r.ParseForm()
-			if got, want := r.Form["hash"][0], tc.hash; got != want {
-				t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
+	} {
+		hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/ct/v1/get-sth":
+				w.Write([]byte(tc.sth))
+			case "/ct/v1/add-json":
+				w.Write([]byte(tc.sct))
+			case "/ct/v1/get-proof-by-hash":
+				r.ParseForm()
+				if got, want := r.Form["hash"][0], tc.hash; got != want {
+					t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
+				}
+				w.Write([]byte(tc.inclusion))
+			default:
+				t.Fatalf("Incorrect URL path: %s", r.URL.Path)
 			}
-			w.Write([]byte(tc.inclusion))
-		default:
-			t.Fatalf("Incorrect URL path: %s", r.URL.Path)
-		}
-	}))
-	defer hs.Close()
-	l, err := NewLog([]byte(pem), hs.URL)
-	if err != nil {
-		t.Fatalf("NewLog(): %v", err)
-	}
-
-	for i := range tests {
-		tc = tests[i]
+		}))
+		defer hs.Close()
+		l.ctlog = logclient.New(hs.URL, nil)
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
 			t.Fatalf("Error decoding SMH: %v", err)
