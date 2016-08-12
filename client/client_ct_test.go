@@ -80,7 +80,7 @@ func TestInclusionProof(t *testing.T) {
 		t.Fatalf("Failed to get SCT from AddJSON: %v", err)
 	}
 
-	tests := []struct {
+	for _, tc := range []struct {
 		l    *Log
 		smh  ctmap.SignedMapHead
 		want bool
@@ -88,9 +88,7 @@ func TestInclusionProof(t *testing.T) {
 		{l, smh, true},
 		{lnoconn, smh, false},             // Network error
 		{l, ctmap.SignedMapHead{}, false}, // Incorrect proof
-	}
-
-	for _, tc := range tests {
+	} {
 		err := tc.l.inclusionProof(sth, &tc.smh, sct.Timestamp)
 		if got := err == nil; got != tc.want {
 			t.Errorf("inclusionProof: %v, want %v", err, tc.want)
@@ -123,20 +121,20 @@ func TestUpdateSTH(t *testing.T) {
 			case "/ct/v1/get-sth-consistency":
 				w.Write([]byte(tc.proof))
 			default:
-				t.Fatalf("Incorrect URL path: %s", r.URL.Path)
+				t.Errorf("Incorrect URL path: %s", r.URL.Path)
 			}
 		}))
-		defer hs.Close()
 		l.ctlog = logclient.New(hs.URL, nil)
 		if got := l.STH.TreeSize; got != tc.start {
-			t.Fatalf("%v: Start TreeSize: %v, want %v", i, got, tc.start)
+			t.Errorf("%v: Start TreeSize: %v, want %v", i, got, tc.start)
 		}
 		if err := l.UpdateSTH(); err != nil {
-			t.Fatalf("UpdateSTH(): %v", err)
+			t.Errorf("UpdateSTH(): %v", err)
 		}
 		if got := l.STH.TreeSize; got != tc.end {
-			t.Fatalf("End TreeSize: %v, want %v", got, tc.end)
+			t.Errorf("End TreeSize: %v, want %v", got, tc.end)
 		}
+		hs.Close()
 	}
 }
 
@@ -186,18 +184,17 @@ func TestVerifySCT(t *testing.T) {
 				}
 				w.Write([]byte(tc.inclusion))
 			default:
-				t.Fatalf("Incorrect URL path: %s", r.URL.Path)
+				t.Errorf("Incorrect URL path: %s", r.URL.Path)
 			}
 		}))
-		defer hs.Close()
 		l.ctlog = logclient.New(hs.URL, nil)
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
-			t.Fatalf("Error decoding SMH: %v", err)
+			t.Errorf("Error decoding SMH: %v", err)
 		}
 		sct, err := l.ctlog.AddJSON(&smh)
 		if err != nil {
-			t.Fatalf("Failed to get SCT from AddJSON: %v", err)
+			t.Errorf("Failed to get SCT from AddJSON: %v", err)
 		}
 		if err := l.VerifySCT(&smh, sct); err != nil {
 			t.Errorf("VerifySCT(): %v", err)
@@ -205,6 +202,7 @@ func TestVerifySCT(t *testing.T) {
 		if got := len(l.scts); got != tc.cachedSCTs {
 			t.Errorf("len(scts): %v, want %v", got, tc.cachedSCTs)
 		}
+		hs.Close()
 	}
 }
 
@@ -218,7 +216,7 @@ func TestVerifySCTSig(t *testing.T) {
 
 	var smh ctmap.SignedMapHead
 	if err := json.Unmarshal([]byte(addJSONReq), &smh); err != nil {
-		t.Errorf("Error decoding SMH: %v", err)
+		t.Fatalf("Error decoding SMH: %v", err)
 	}
 	sct, err := l.ctlog.AddJSON(&smh)
 	if err != nil {
@@ -226,7 +224,7 @@ func TestVerifySCTSig(t *testing.T) {
 	}
 	e := ct.LogEntry{Leaf: *ct.CreateJSONMerkleTreeLeaf(smh, sct.Timestamp)}
 	if err := l.ver.VerifySCTSignature(*sct, e); err != nil {
-		t.Errorf("verifySCTSig(): %v", err)
+		t.Fatalf("verifySCTSig(): %v", err)
 	}
 }
 
@@ -261,24 +259,23 @@ func TestVerifySavedSCTs(t *testing.T) {
 				}
 				w.Write([]byte(tc.inclusion))
 			default:
-				t.Fatalf("Incorrect URL path: %s", r.URL.Path)
+				t.Errorf("Incorrect URL path: %s", r.URL.Path)
 			}
 		}))
-		defer hs.Close()
 		l.ctlog = logclient.New(hs.URL, nil)
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
-			t.Fatalf("Error decoding SMH: %v", err)
+			t.Errorf("Error decoding SMH: %v", err)
 		}
 		sct, err := l.ctlog.AddJSON(&smh)
 		if err != nil {
-			t.Fatalf("Failed to get SCT from AddJSON: %v", err)
+			t.Errorf("Failed to get SCT from AddJSON: %v", err)
 		}
 		// Manually set Cache entry.
 		l.scts[sct] = SCTEntry{sct, &smh}
-
 		if entries := l.VerifySavedSCTs(); len(entries) != 0 {
 			t.Errorf("%v: VerifySavedSCTs(): %v", i, entries)
 		}
+		hs.Close()
 	}
 }
