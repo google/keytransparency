@@ -96,7 +96,7 @@ func TestCheckMutation(t *testing.T) {
 		{key, entryData1, entryData2, hashEntry1[:], nil},                  // Working case
 	}
 
-	for i, tc := range tests {
+	for _, tc := range tests {
 		// Prepare mutations.
 		mutation, err := prepareMutation(tc.key, tc.entryData, tc.previous)
 		if err != nil {
@@ -104,7 +104,7 @@ func TestCheckMutation(t *testing.T) {
 		}
 
 		if got := New().CheckMutation(tc.oldValue, mutation); got != tc.err {
-			t.Errorf("%v: CheckMutation(%v, %v)=%v, want %v", i, tc.oldValue, mutation, got, tc.err)
+			t.Errorf("CheckMutation(%v, %v)=%v, want %v", tc.oldValue, mutation, got, tc.err)
 		}
 	}
 }

@@ -99,29 +99,29 @@ func TestVerifyProof(t *testing.T) {
 	}
 
 	verifier := New(hasher)
-	for i, leaves := range trees {
+	for _, leaves := range trees {
 		// NewEnv will create a tree and fill it with all the leaves.
 		env, err := NewEnv(leaves)
 		if err != nil {
-			t.Fatalf("%v: NewEnv()=%v", i, err)
+			t.Fatalf("NewEnv()=%v", err)
 		}
 		defer env.Close()
 
 		root, err := env.m.ReadRootAt(ctx, testEpoch)
 		if err != nil {
-			t.Fatalf("%v: ReadRootAt()=%v", i, err)
+			t.Fatalf("ReadRootAt()=%v", err)
 		}
 
 		// VerifyProof of each leaf in the tree.
-		for j, leaf := range leaves {
+		for _, leaf := range leaves {
 			nbrs, err := env.m.NeighborsAt(ctx, h2b(leaf.hindex), testEpoch)
 			if err != nil {
-				t.Fatalf("[%v, %v]: NeighborsAt(%v)=%v", i, j, leaf.hindex, err)
+				t.Fatalf("NeighborsAt(%v)=%v", leaf.hindex, err)
 			}
 
 			err = verifier.VerifyProof(nbrs, h2b(leaf.hindex), leaf.value, root)
 			if err != nil {
-				t.Fatalf("[%v, %v]: VerifyProof(_, %v, _, _)=%v", i, j, leaf.hindex, err)
+				t.Fatalf("VerifyProof(_, %v, _, _)=%v", leaf.hindex, err)
 			}
 		}
 	}

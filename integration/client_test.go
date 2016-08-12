@@ -50,25 +50,25 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		{true, false, context.Background(), "bob"},      // Not Empty
 		{true, true, auth.NewContext("bob"), "bob"},     // Update
 	}
-	for i, tc := range tests {
+	for _, tc := range tests {
 		// Check profile.
 		if err := env.checkProfile(tc.userID, tc.want); err != nil {
-			t.Errorf("%v: checkProfile(%v, %v) failed: %v", i, tc.userID, tc.want, err)
+			t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
 		}
 		// Update profile.
 		if tc.insert {
 			req, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{Keys: primaryKeys})
 			if got, want := err, client.ErrRetry; got != want {
-				t.Fatalf("%v: Update(%v): %v, want %v", i, tc.userID, got, want)
+				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
 			if err := env.Signer.Sequence(); err != nil {
-				t.Fatalf("%v: Failed to sequence: %v", i, err)
+				t.Fatalf("Failed to sequence: %v", err)
 			}
 			if err := env.Signer.CreateEpoch(); err != nil {
-				t.Fatalf("%v: Failed to CreateEpoch: %v", i, err)
+				t.Fatalf("Failed to CreateEpoch: %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
-				t.Errorf("%v: Retry(%v): %v, want nil", i, req, err)
+				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
 		}
 	}
@@ -118,22 +118,22 @@ func TestUpdateValidation(t *testing.T) {
 		{true, auth.NewContext("dave"), "dave", profile},
 		{true, auth.NewContext("eve"), "eve", profile},
 	}
-	for i, tc := range tests {
+	for _, tc := range tests {
 		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile)
 
 		// The first update response is always a retry.
 		if got, want := err, client.ErrRetry; (got == want) != tc.want {
-			t.Fatalf("%v: Update(%v): %v != %v, want %v", i, tc.userID, err, want, tc.want)
+			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
 			if err := env.Signer.Sequence(); err != nil {
-				t.Fatalf("%v: Failed to sequence: %v", i, err)
+				t.Fatalf("Failed to sequence: %v", err)
 			}
 			if err := env.Signer.CreateEpoch(); err != nil {
-				t.Fatalf("%v: Failed to CreateEpoch: %v", i, err)
+				t.Fatalf("Failed to CreateEpoch: %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
-				t.Errorf("%v: Retry(%v): %v, want nil", i, req, err)
+				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
 		}
 	}

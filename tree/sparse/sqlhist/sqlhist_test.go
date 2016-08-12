@@ -239,7 +239,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 		r, err := m.ReadRootAt(nil, 10)
 		roots[i] = r
 		if err != nil {
-			t.Errorf("%v: ReadRootAt() = %v", i, err)
+			t.Errorf("ReadRootAt() = %v", err)
 		}
 	}
 	// Verify that all the roots are the same.

@@ -60,7 +60,7 @@ func TestNeighbors(t *testing.T) {
 	}
 	for i := 0; i < len(actual); i++ {
 		if got, want := actual[i], expected[i]; got != want {
-			t.Errorf("%v: %v, want %v", i, got, want)
+			t.Errorf("%v, want %v", got, want)
 		}
 	}
 }
@@ -74,7 +74,7 @@ func TestPath(t *testing.T) {
 	}
 	for i := 0; i < len(actual); i++ {
 		if got, want := actual[i], expected[i]; got != want {
-			t.Errorf("%v: %v, want %v", i, got, want)
+			t.Errorf("%v, want %v", got, want)
 		}
 	}
 }
