@@ -15,12 +15,10 @@
 package client
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/key-transparency/commitments"
-	"github.com/google/key-transparency/tree"
 
 	"github.com/google/key-transparency/proto/ctmap"
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"

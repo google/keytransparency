@@ -12,28 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package integration
 
 import (
+	"github.com/google/key-transparency/client"
+
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/key-transparency/proto/ctmap"
 )
 
-// FakeLog implmements no-op functions for testing.
-type FakeLog int
-
-// NewFakeLog creates a new fake log.
-func NewFakeLog() *FakeLog {
-	return new(FakeLog)
-}
+type fakeLog struct{}
 
 // VerifySCT ensures that SMH has been properly included in the append only log.
-func (FakeLog) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error {
+func (fakeLog) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error {
 	return nil
 }
 
-// VerifySCTs returns a list of SCTs that failed validation against the current STH.
-func (FakeLog) VerifySCTs() []SCTEntry { return nil }
+// VerifySavedSCTs returns a list of SCTs that failed validation against the current STH.
+func (fakeLog) VerifySavedSCTs() []client.SCTEntry { return nil }
 
 // UpdateSTH ensures that STH is at least 1 MMD from Now().
-func (FakeLog) UpdateSTH() error { return nil }
+func (fakeLog) UpdateSTH() error { return nil }

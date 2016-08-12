@@ -187,7 +187,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	client := client.New(cli, vrfPub, verifier, client.NewFakeLog())
+	client := client.New(cli, vrfPub, verifier, fakeLog{})
 	client.RetryCount = 0
 
 	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}

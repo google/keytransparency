@@ -19,19 +19,35 @@ import (
 	"crypto/sha256"
 	"time"
 
-	"golang.org/x/net/context"
-
 	ct "github.com/google/certificate-transparency/go"
 	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/google/certificate-transparency/go/merkletree"
+	"golang.org/x/net/context"
+
 	"github.com/google/key-transparency/proto/ctmap"
 )
 
-// Logger represents an append-only log.
-type Logger interface {
+var hasher = func(b []byte) []byte {
+	h := sha256.Sum256(b)
+	return h[:]
+}
+
+// LogVerifier represents an append-only log.
+type LogVerifier interface {
+	// VerifySCT ensures that a SignedMapHead has been properly included in
+	// a Certificate Transparency append-only log. If the inclusion proof
+	// cannot be immediately verified, it is added to a list that
+	// VerifySavedSCTs can check at a later point.
 	VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error
-	VerifySCTs() []SCTEntry
+	// VerifySavedSCTs attempts to complete any unverified proofs against
+	// the current, hopefully fresher, SignedTreeHead. Completed proofs are
+	// removed.  Proofs that cannot be completed yet remain saved. Failed
+	// proofs are returned.
+	VerifySavedSCTs() []SCTEntry
+	// UpdateSTH advances the current SignedTreeHead and verifies a
+	// consistency proof between the current and the new STH.
 	UpdateSTH() error
+	// TODO: Persist and restore saved SCTs from disk.
 }
 
 // Log represents a Certificate Transparency append-only log.
@@ -52,10 +68,6 @@ type SCTEntry struct {
 
 // NewLog produces a new CT log verification client.
 func NewLog(pem []byte, logURL string) (*Log, error) {
-	hasher := func(b []byte) []byte {
-		h := sha256.Sum256(b)
-		return h[:]
-	}
 	pk, _, _, err := ct.PublicKeyFromPEM(pem)
 	if err != nil {
 		return nil, err
@@ -74,9 +86,13 @@ func NewLog(pem []byte, logURL string) (*Log, error) {
 }
 
 // timestamp returns the time indicated by timestamp, which is the time measured
-// since the epoch (January 1, 1970, 00:00), ignoring leap seconds, in milliseconds.
+// since the epoch (January 1, 1970, 00:00 UTC), ignoring leap seconds, in
+// milliseconds.
 func timestamp(timestamp uint64) time.Time {
-	return time.Unix(int64(timestamp)/1000, 0)
+	return time.Unix(
+		int64(timestamp)/1000,               // Millisecond to seconds.
+		(int64(timestamp)%1000)*(1000*1000), // Millisecond to nsecs.
+	)
 }
 
 // VerifySCT ensures that SMH has been properly included in the append only log.
@@ -103,7 +119,7 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 		return l.inclusionProof(&l.STH, smh, sct.Timestamp)
 	}
 
-	// 2b) Save the SCT signature and verify later.
+	// Save the SCT signature and verify later.
 	e := ct.LogEntry{Leaf: *ct.CreateJSONMerkleTreeLeaf(smh, sct.Timestamp)}
 	if err := l.ver.VerifySCTSignature(*sct, e); err != nil {
 		return err
@@ -112,11 +128,11 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 	return nil
 }
 
-// VerifySCTs returns a list of SCTs that failed validation against the current
+// VerifySavedSCTs returns a list of SCTs that failed validation against the current
 // STH. If this list is non-nil, the security guarantees of the append-only log
 // have been compromised.  TODO: have the client call this on some schedule
 // after updating the STH.
-func (l *Log) VerifySCTs() []SCTEntry {
+func (l *Log) VerifySavedSCTs() []SCTEntry {
 	var invalidSCTs []SCTEntry
 	STHTime := timestamp(l.STH.Timestamp)
 	// Iterate through saved SCTs. Verify all the ones that are required to
@@ -167,10 +183,6 @@ func (l *Log) UpdateSTH() error {
 
 // inclusionProof fetches and verifies an inclusion proof from the CT server.
 func (l *Log) inclusionProof(sth *ct.SignedTreeHead, smh *ctmap.SignedMapHead, timestamp uint64) error {
-	hasher := func(b []byte) []byte {
-		h := sha256.Sum256(b)
-		return h[:]
-	}
 	// Get inclusion proof by hash
 	leaf := ct.CreateJSONMerkleTreeLeaf(smh, timestamp)
 	leafBuff := new(bytes.Buffer)
@@ -184,7 +196,7 @@ func (l *Log) inclusionProof(sth *ct.SignedTreeHead, smh *ctmap.SignedMapHead, t
 	if err != nil {
 		return err
 	}
-	// 2a) Verify inclusion proof.
+	// Verify inclusion proof.
 	v := merkletree.NewMerkleVerifier(hasher)
 	return v.VerifyInclusionProof(proof.LeafIndex, int64(sth.TreeSize),
 		proof.AuditPath, sth.SHA256RootHash[:], leafBuff.Bytes())

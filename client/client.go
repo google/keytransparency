@@ -30,8 +30,8 @@ import (
 	"github.com/google/key-transparency/vrf"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
-	ct "github.com/google/certificate-transparency/go"
 	"github.com/golang/protobuf/proto"
+	ct "github.com/google/certificate-transparency/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -70,11 +70,11 @@ type Client struct {
 	RetryCount   int
 	treeVerifier *tv.Verifier
 	verifier     *signatures.SignatureVerifier
-	log          Logger
+	log          LogVerifier
 }
 
 // New creates a new client.
-func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.SignatureVerifier, log Logger) *Client {
+func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.SignatureVerifier, log LogVerifier) *Client {
 	return &Client{
 		cli:          client,
 		vrf:          vrf,
