@@ -171,6 +171,7 @@ func (*GetLeafRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []
 
 // GetLeafResponse for a verifiable map leaf.
 type GetLeafResponse struct {
+	// leaf_data contains an entry stored in the leaf node.
 	LeafData []byte `protobuf:"bytes,1,opt,name=leaf_data,json=leafData,proto3" json:"leaf_data,omitempty"`
 	// neighbors is a list of all the adjacent nodes along the path
 	// from the bottommost node to the head.

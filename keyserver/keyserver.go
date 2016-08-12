@@ -185,11 +185,6 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, grpc.Errorf(codes.InvalidArgument, "Marshaling error")
 	}
 
-	oldEntry := new(pb.Entry)
-	if err := proto.Unmarshal(resp.LeafProof.LeafData, oldEntry); err != nil {
-		log.Printf("Error unmarshaling oldEntry: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
-	}
 	// The very first mutation will have resp.LeafProof.LeafData=nil.
 	if err := s.mutator.CheckMutation(resp.LeafProof.LeafData, m); err == mutator.ErrReplay {
 		log.Printf("Discarding request due to replay")

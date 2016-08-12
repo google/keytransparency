@@ -86,6 +86,7 @@ message GetLeafRequest {
 
 // GetLeafResponse for a verifiable map leaf.
 message GetLeafResponse {
+  // leaf_data contains an entry stored in the leaf node.
   bytes leaf_data = 1; 
   // neighbors is a list of all the adjacent nodes along the path
   // from the bottommost node to the head.
