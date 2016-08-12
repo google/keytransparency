@@ -15,14 +15,11 @@
 package verifier
 
 import (
-	"database/sql"
 	"encoding/hex"
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/google/key-transparency/tree/sparse"
-	"github.com/google/key-transparency/tree/sparse/sqlhist"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 )
@@ -41,94 +38,82 @@ var (
 )
 
 type Leaf struct {
-	hindex string
-	value  []byte
-	insert bool // Proof of absence.
-}
-
-type Env struct {
-	db *sql.DB
-	m  *sqlhist.Map
-}
-
-func NewEnv(leaves []Leaf) (*Env, error) {
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
-		return nil, fmt.Errorf("Failed creating in-memory sqlite3 db: %v", err)
-	}
-	m := sqlhist.New(db, "verify")
-
-	for _, leaf := range leaves {
-		if leaf.insert {
-			if err := m.QueueLeaf(ctx, h2b(leaf.hindex), leaf.value); err != nil {
-				db.Close()
-				return nil, fmt.Errorf("QueueLeaf(_, %v, %v)=%v", leaf.hindex, leaf.value, err)
-			}
-		}
-	}
-	_, err = m.Commit()
-	if err != nil {
-		db.Close()
-		return nil, fmt.Errorf("Commit()=%v", err)
-	}
-
-	return &Env{db, m}, nil
-}
-
-func (e *Env) Close() {
-	e.db.Close()
+	index []byte
+	value []byte
+	nbrs  [][]byte
 }
 
 func TestVerifyProof(t *testing.T) {
-	trees := [][]Leaf{
-		{
-			// Verify proof of absence in an empty tree.
-			Leaf{AllZeros, nil, false},
-		},
-		{
-			Leaf{defaultIndex[2], []byte("0"), true},
-			Leaf{defaultIndex[0], []byte("3"), true},
-			Leaf{AllZeros, nil, false},
-		},
-		{
-			Leaf{defaultIndex[0], []byte("3"), true},
-			Leaf{defaultIndex[1], []byte("4"), true},
-			Leaf{defaultIndex[2], nil, false},
-			Leaf{AllZeros, nil, false},
-		},
-	}
-
 	verifier := New(hasher)
-	for i, leaves := range trees {
-		// NewEnv will create a tree and fill it with all the leaves.
-		env, err := NewEnv(leaves)
-		if err != nil {
-			t.Fatalf("%v: NewEnv()=%v", i, err)
-		}
-		defer env.Close()
-
-		root, err := env.m.ReadRootAt(ctx, testEpoch)
-		if err != nil {
-			t.Fatalf("%v: ReadRootAt()=%v", i, err)
-		}
-
+	for _, tc := range []struct {
+		root   []byte
+		leaves []Leaf
+	}{
+		// Verify proof of absence in an empty tree.
+		{
+			dh("d576e4657c5f86ba33a435d1abd22cff4f61de4df0cc16c50bd653b1360b367c"),
+			[]Leaf{
+				{dh(AllZeros), nil, [][]byte{}},
+			},
+		},
+		// Tree with multiple leaves, each has a single existing neighbor
+		// on the way to the root.
+		{
+			dh("376bcc69fda95cea8455224faf8e5a05eaff9ad943e3ef96aaef910649b52806"),
+			[]Leaf{
+				{dh(defaultIndex[0]), []byte("3"), [][]byte{
+					dh("fe9992d1c917b1362bd4aad7c1dbaa10dcaa2649844aed2e3d3407b6f28ea6c0"),
+					[]byte{},
+				}},
+				{dh(defaultIndex[1]), []byte("4"), [][]byte{
+					dh("f9369f6c112ff583212b7ff07342a84e3f41cfda101923db76cc5517b23d9a38"),
+					[]byte{},
+				}},
+				{dh(defaultIndex[2]), nil, [][]byte{
+					dh("7987058861eb3fd513c2d00b91f42fc9bb6b2d878b5b298f4d6ef0c38f1c5395"),
+				}},
+				{dh(AllZeros), nil, [][]byte{
+					dh("7987058861eb3fd513c2d00b91f42fc9bb6b2d878b5b298f4d6ef0c38f1c5395"),
+				}},
+			},
+		},
+		// Tree with multiple leaves, some have multiple existing
+		// neighbors on the way to the root.
+		{
+			dh("528044b5a83335c074eb8631fdaeddd96d65e420ad3031d88cfe03b1ed6f33eb"),
+			[]Leaf{
+				{dh(defaultIndex[2]), []byte("0"), [][]byte{
+					dh("b2283f973324190e2992523432604a3ce6732aef09d267fbf951840d9a854043"),
+				}},
+				{dh(defaultIndex[0]), []byte("3"), [][]byte{
+					dh("5ff0f6495d23d0be76e524710814c76b55213afe9514d473066f920b5c655ec9"),
+				}},
+				{dh(AllZeros), nil, [][]byte{
+					dh("5ad9ddb4579867b9914df56703bd64502397cf02c1f1178393dfee26548d1259"),
+					dh("b2283f973324190e2992523432604a3ce6732aef09d267fbf951840d9a854043"),
+				}},
+			},
+		},
+	} {
 		// VerifyProof of each leaf in the tree.
-		for j, leaf := range leaves {
-			nbrs, err := env.m.NeighborsAt(ctx, h2b(leaf.hindex), testEpoch)
-			if err != nil {
-				t.Fatalf("[%v, %v]: NeighborsAt(%v)=%v", i, j, leaf.hindex, err)
+		for _, leaf := range tc.leaves {
+			// The neighbor list must consists of 256 byte arrays,
+			// all are empty except the last len(leaf.nbrs) ones.
+			// Those are filled from leaf.nbrs.
+			nbrs := make([][]byte, 256)
+			for k, nbr := range leaf.nbrs {
+				nbrs[256-len(leaf.nbrs)+k] = nbr
 			}
 
-			err = verifier.VerifyProof(nbrs, h2b(leaf.hindex), leaf.value, root)
-			if err != nil {
-				t.Fatalf("[%v, %v]: VerifyProof(_, %v, _, _)=%v", i, j, leaf.hindex, err)
+			if err := verifier.VerifyProof(nbrs, leaf.index, leaf.value, tc.root); err != nil {
+				t.Errorf("VerifyProof(_, %v, _, _)=%v", leaf.index, err)
 			}
 		}
 	}
 }
 
 // Hex to Bytes
-func h2b(h string) []byte {
+func dh(h string) []byte {
 	result, err := hex.DecodeString(h)
 	if err != nil {
 		panic("DecodeString failed")
