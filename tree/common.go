@@ -28,7 +28,8 @@ var (
 	One = byte('1')
 )
 
-// BitString converts a byte slice index into a string of Depth '0' or '1' characters.
+// BitString converts a byte slice index into a string of Depth '0' or '1'
+// characters.
 func BitString(index []byte) string {
 	i, _ := new(big.Int).SetString(hex.EncodeToString(index), 16)
 	// A 256 character string of bits with leading Zeros.
@@ -62,7 +63,8 @@ func Neighbor(b uint8) uint8 {
 	}
 }
 
-// Path returns all the intermediate nodes between a leaf node and the root, ending with the root.
+// Path returns all the intermediate node indexes between a leaf node and the
+// root, ending with the root.
 func Path(bindex string) []string {
 	steps := len(bindex) // levels - 1
 	n := make([]string, steps)
@@ -73,7 +75,8 @@ func Path(bindex string) []string {
 	return n
 }
 
-// Neighbors returns a list of all Neighbors from the leaf level up to the root-1.
+// Neighbors returns a list of all Neighbor indexes from the leaf level up to the
+// root-1.
 func Neighbors(bindex string) []string {
 	steps := len(bindex) // levels - 1
 	n := make([]string, steps)

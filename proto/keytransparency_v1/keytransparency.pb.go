@@ -345,7 +345,7 @@ type SignedKV struct {
 	KeyValue []byte `protobuf:"bytes,1,opt,name=key_value,json=keyValue,proto3" json:"key_value,omitempty"`
 	// signatures on keyvalue. Must be signed by keys from both previous and
 	// current epochs. The first proves ownership of new epoch key, and the
-	// second proves the the correct owner is making this change.
+	// second proves that the correct owner is making this change.
 	Signatures map[uint64][]byte `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// previous contains the hash of the previous entry that this mutation is
 	// modifying creating a hash chain of all mutations. The hash used is

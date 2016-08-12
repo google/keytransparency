@@ -190,7 +190,7 @@ message SignedKV {
   bytes key_value = 1;
   // signatures on keyvalue. Must be signed by keys from both previous and 
   // current epochs. The first proves ownership of new epoch key, and the
-  // second proves the the correct owner is making this change.
+  // second proves that the correct owner is making this change.
   map<fixed64, bytes> signatures = 2;
   // previous contains the hash of the previous entry that this mutation is
   // modifying creating a hash chain of all mutations. The hash used is
