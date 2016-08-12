@@ -24,15 +24,15 @@ import (
 	"log"
 	"time"
 
-	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/google/key-transparency/commitments"
 	"github.com/google/key-transparency/signatures"
 	"github.com/google/key-transparency/tree/sparse"
 	tv "github.com/google/key-transparency/tree/sparse/verifier"
 	"github.com/google/key-transparency/vrf"
 
+	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
-	logclient "github.com/google/certificate-transparency/go/client"
+	ct "github.com/google/certificate-transparency/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -51,7 +51,6 @@ var (
 	// results of the udpate are not visible on the server yet. The client
 	// must retry until the request is visible.
 	ErrRetry = errors.New("update not present on server yet")
-	hasher   = sparse.CONIKSHasher
 )
 
 // Client is a helper library for issuing updates to the key server.
@@ -71,22 +70,19 @@ type Client struct {
 	vrf          vrf.PublicKey
 	RetryCount   int
 	treeVerifier *tv.Verifier
-	ctlog        *logclient.LogClient
 	verifier     *signatures.SignatureVerifier
+	log          LogVerifier
 }
 
 // New creates a new client.
-func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, mapLogURL string, verifier *signatures.SignatureVerifier) *Client {
+func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.SignatureVerifier, log LogVerifier) *Client {
 	return &Client{
 		cli:          client,
 		vrf:          vrf,
 		RetryCount:   1,
-		treeVerifier: tv.New(hasher),
-		// TODO: we might actually want to pass an http.client instead of
-		// nil. If nil is passed client.New will automatically initialize
-		// it.
-		ctlog:    logclient.New(mapLogURL, nil),
-		verifier: verifier,
+		treeVerifier: tv.New(sparse.CONIKSHasher),
+		verifier:     verifier,
+		log:          log,
 	}
 }
 
@@ -104,7 +100,11 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, err
 	}
 
-	if err := c.verifyLog(e.GetSmh(), e.SmhSct); err != nil {
+	sct, err := ct.DeserializeSCT(bytes.NewReader(e.SmhSct))
+	if err != nil {
+		return nil, err
+	}
+	if err := c.log.VerifySCT(e.GetSmh(), sct); err != nil {
 		return nil, err
 	}
 
