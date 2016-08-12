@@ -15,7 +15,7 @@
 package integration
 
 import (
-	"github.com/google/key-transparency/client"
+	"github.com/google/key-transparency/core/client"
 
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/key-transparency/proto/ctmap"

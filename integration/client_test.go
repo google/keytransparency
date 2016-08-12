@@ -19,8 +19,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/key-transparency/authentication"
-	"github.com/google/key-transparency/client"
+	"github.com/google/key-transparency/core/authentication"
+	"github.com/google/key-transparency/core/client"
+
 	"golang.org/x/net/context"
 
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
