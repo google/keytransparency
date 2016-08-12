@@ -159,9 +159,18 @@ func NewEnv(t *testing.T) *Env {
 
 	// Common data structures.
 	queue := queue.New(clus.RandClient(), mapID)
-	tree := sqlhist.New(sqldb, mapID)
-	sths := appender.New(sqldb, mapID, hs.URL)
-	mutations := appender.New(nil, mapID, "")
+	tree, err := sqlhist.New(sqldb, mapID)
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
+	}
+	sths, err := appender.New(sqldb, mapID, hs.URL)
+	if err != nil {
+		t.Fatalf("Failed to create STH appender: %v", err)
+	}
+	mutations, err := appender.New(nil, mapID, "")
+	if err != nil {
+		t.Fatalf("Failed to create mutation appender: %v", err)
+	}
 	vrfPriv, vrfPub, err := staticVRF()
 	if err != nil {
 		t.Fatalf("Failed to load vrf keypair: %v", err)
@@ -169,7 +178,10 @@ func NewEnv(t *testing.T) *Env {
 	mutator := entry.New()
 	auth := authentication.NewFake()
 
-	commitments := commitments.New(sqldb, mapID)
+	commitments, err := commitments.New(sqldb, mapID)
+	if err != nil {
+		t.Fatalf("Failed to create committer: %v", err)
+	}
 	server := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)

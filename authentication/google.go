@@ -78,6 +78,7 @@ func (a *GAuth) ValidateCreds(ctx context.Context, email string) error {
 
 	// Validate email address. TODO: is email canonicalized?
 	if got, want := tokenInfo.Email, email; got != want {
+		log.Printf("auth: wrong user. got: %v, want %v", got, want)
 		return ErrWrongUser
 	}
 
@@ -121,7 +122,11 @@ func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 
 	infoCall := a.service.Tokeninfo()
 	infoCall.AccessToken(token.AccessToken)
-	return infoCall.Do()
+	info, err := infoCall.Do()
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
 }
 
 // getIDTokenAuthorizationHeader pulls the bearer token from the "authorization"

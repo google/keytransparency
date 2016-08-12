@@ -15,6 +15,7 @@
 package signer
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -82,7 +83,9 @@ func (s *Signer) FakeTime() {
 // StartSigning inserts epoch advancement signals into the queue.
 func (s *Signer) StartSigning(interval time.Duration) {
 	for _ = range time.NewTicker(interval).C {
-		s.queue.AdvanceEpoch()
+		if err := s.queue.AdvanceEpoch(); err != nil {
+			log.Fatalf("Advance epoch failed: %v", err)
+		}
 	}
 }
 
@@ -153,8 +156,7 @@ func (s *Signer) CreateEpoch() error {
 		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
 	if err := s.sths.Append(ctx, epoch, smh); err != nil {
-		log.Printf("Append failure %v", err)
-		return err
+		return fmt.Errorf("Append failure %v", err)
 	}
 	log.Printf("Created epoch %v. SMH: %#x", epoch, root)
 	return nil

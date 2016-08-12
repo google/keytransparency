@@ -19,7 +19,7 @@ import (
 	"database/sql"
 	"encoding/gob"
 	"errors"
-	"log"
+	"fmt"
 
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/client"
@@ -70,7 +70,7 @@ type CTAppender struct {
 }
 
 // New creates a new client to an append-only data structure: Certificate Transparency.
-func New(db *sql.DB, mapID, logURL string) *CTAppender {
+func New(db *sql.DB, mapID, logURL string) (*CTAppender, error) {
 	a := &CTAppender{
 		mapID: []byte(mapID),
 		db:    db,
@@ -80,36 +80,39 @@ func New(db *sql.DB, mapID, logURL string) *CTAppender {
 
 	if a.save {
 		if err := db.Ping(); err != nil {
-			log.Fatalf("No DB connection: %v", err)
+			return nil, fmt.Errorf("No DB connection: %v", err)
 		}
 
 		// Create tables.
 		_, err := db.Exec(createExpr)
 		if err != nil {
-			log.Fatalf("Failed to create appender tables: %v", err)
+			return nil, fmt.Errorf("Failed to create appender tables: %v", err)
 		}
-		a.insertMapRow()
+		if err := a.insertMapRow(); err != nil {
+			return nil, err
+		}
 	}
 	if a.send {
 		a.ctlog = client.New(logURL, nil)
 		// Verify logURL.
 		if _, err := a.ctlog.GetSTH(); err != nil {
-			log.Fatalf("Failed to ping CT server with GetSTH: %v", err)
+			return nil, fmt.Errorf("Failed to ping CT server with GetSTH: %v", err)
 		}
 	}
-	return a
+	return a, nil
 }
 
-func (a *CTAppender) insertMapRow() {
+func (a *CTAppender) insertMapRow() error {
 	stmt, err := a.db.Prepare(mapRowExpr)
 	if err != nil {
-		log.Fatalf("Failed preparing mapID insert statement: %v", err)
+		return fmt.Errorf("Failed preparing mapID insert statement: %v", err)
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(a.mapID)
 	if err != nil {
-		log.Fatalf("Failed executing mapID insert: %v", err)
+		return fmt.Errorf("Failed executing mapID insert: %v", err)
 	}
+	return nil
 }
 
 // Append adds an object to the append-only data structure.
@@ -117,14 +120,12 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, obj interface{}) e
 	if a.send {
 		sct, err := a.ctlog.AddJSON(obj)
 		if err != nil {
-			log.Printf("CT: Submission failure: %v", err)
-			return err
+			return fmt.Errorf("CT: Submission failure: %v", err)
 		}
 		if a.save {
 			b, err := ct.SerializeSCT(*sct)
 			if err != nil {
-				log.Printf("CT: Serialization failure: %v", err)
-				return err
+				return fmt.Errorf("CT: Serialization failure: %v", err)
 			}
 			var data bytes.Buffer
 			if err := gob.NewEncoder(&data).Encode(obj); err != nil {
@@ -132,14 +133,12 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, obj interface{}) e
 			}
 			writeStmt, err := a.db.Prepare(insertExpr)
 			if err != nil {
-				log.Printf("CT: DB save failure: %v", err)
-				return err
+				return fmt.Errorf("CT: DB save failure: %v", err)
 			}
 			defer writeStmt.Close()
 			_, err = writeStmt.Exec(a.mapID, epoch, data.Bytes(), b)
 			if err != nil {
-				log.Printf("CT: DB commit failure: %v", err)
-				return err
+				return fmt.Errorf("CT: DB commit failure: %v", err)
 			}
 		}
 	}

@@ -20,6 +20,7 @@ package client
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -114,8 +115,7 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 
 	profile := new(pb.Profile)
 	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
-		log.Printf("Error unmarshaling profile: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("Error unmarshaling profile: %v", err)
 	}
 	return profile, nil
 }
@@ -136,15 +136,13 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	index := c.vrf.Index(getResp.Vrf)
 	prevEntry := new(pb.Entry)
 	if err := proto.Unmarshal(getResp.GetLeafProof().LeafData, prevEntry); err != nil {
-		log.Printf("Error unmarshaling Entry from leaf proof: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
 	}
 
 	// Commit to profile.
 	profileData, err := proto.Marshal(profile)
 	if err != nil {
-		log.Printf("Unexpected profile marshaling error: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("Unexpected profile marshaling error: %v", err)
 	}
 	commitment, committed, err := commitments.CommitName(userID, profileData)
 	if err != nil {
@@ -210,8 +208,7 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 	// Check if the response is a replay.
 	kv := new(pb.KeyValue)
 	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
-		log.Printf("Error unmarshaling KeyValue: %v", err)
-		return err
+		return fmt.Errorf("Error unmarshaling KeyValue: %v", err)
 	}
 	got := updateResp.GetProof().GetLeafProof().LeafData
 	if bytes.Equal(got, kv.Value) {

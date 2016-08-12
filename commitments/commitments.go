@@ -66,7 +66,10 @@ func CommitName(userID string, data []byte) ([]byte, *pb.Committed, error) {
 	d := bytes.NewBufferString(userID)
 	d.Write(data)
 	commitment, committed, err := Commit(d.Bytes())
-	return commitment, &pb.Committed{Key: committed.Key, Data: data}, err
+	if err != nil {
+		return nil, nil, err
+	}
+	return commitment, &pb.Committed{Key: committed.Key, Data: data}, nil
 }
 
 // Verify returns nil if the commitment is valid.

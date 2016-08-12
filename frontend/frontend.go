@@ -138,14 +138,23 @@ func Main() {
 	}
 	auth, err := authentication.NewGoogleAuth()
 	if err != nil {
-		log.Fatalf("Failed to load authentication library: %v", err)
+		log.Fatalf("Failed to create authentication library instance: %v", err)
 	}
 
 	// Create database and helper objects.
-	commitments := commitments.New(sqldb, *mapID)
+	commitments, err := commitments.New(sqldb, *mapID)
+	if err != nil {
+		log.Fatalf("Failed to create committer: %v", err)
+	}
 	queue := queue.New(etcdCli, *mapID)
-	tree := sqlhist.New(sqldb, *mapID)
-	sths := appender.New(sqldb, *mapID, *mapLogURL)
+	tree, err := sqlhist.New(sqldb, *mapID)
+	if err != nil {
+		log.Fatalf("Failed to create SQL history: %v", err)
+	}
+	sths, err := appender.New(sqldb, *mapID, *mapLogURL)
+	if err != nil {
+		log.Fatalf("Failed to create appender: %v", err)
+	}
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
