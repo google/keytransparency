@@ -74,5 +74,3 @@ func TestVerifyCommitment(t *testing.T) {
 		}
 	}
 }
-
-// TODO: write tests for verifyLog.

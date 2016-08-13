@@ -15,14 +15,12 @@
 package client
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/key-transparency/commitments"
 
-	ctmap "github.com/google/key-transparency/proto/ctmap"
+	"github.com/google/key-transparency/proto/ctmap"
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
@@ -70,36 +68,5 @@ func (c *Client) verifyGetEntryResponse(userID string, in *pb.GetEntryResponse) 
 	if err := c.VerifySMH(in.GetSmh()); err != nil {
 		return err
 	}
-	return nil
-}
-
-// verifyLog checks the expected root against the log of signed map heads.
-func (c *Client) verifyLog(smh *ctmap.SignedMapHead, sctBytes []byte) error {
-	// 1) GetSTH.
-	_, err := c.ctlog.GetSTH()
-	if err != nil {
-		return err
-	}
-	// TODO: Verify STH signatures.
-
-	// 2) TODO: Consistency proof
-	// TODO: Advance trusted STH
-
-	// 3) Inclusion Proof.
-
-	// GetByHash
-	_, err = ct.DeserializeSCT(bytes.NewReader(sctBytes))
-	if err != nil {
-		return err
-	}
-	/************************************************************
-	hash := ct.JSONV1LeafHash(sct, smh)
-	_, err = c.ctlog.GetProofByHash(hash, sth.TreeSize)
-	if err != nil {
-		return err
-	}
-	************************************************************/
-	// TODO: Verify inclusion proof.
-
 	return nil
 }
