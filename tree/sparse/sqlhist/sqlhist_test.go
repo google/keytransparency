@@ -54,7 +54,10 @@ func TestQueueLeaf(t *testing.T) {
 	}
 	defer db.Close()
 
-	tree := New(db, "test")
+	tree, err := New(db, "test")
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
+	}
 
 	tests := []struct {
 		index string
@@ -95,7 +98,10 @@ func TestEpochNumAdvance(t *testing.T) {
 		{"", "", 5, false},
 	}
 	for _, tc := range tests {
-		tree := New(db, "test")
+		tree, err := New(db, "test")
+		if err != nil {
+			t.Fatalf("Failed to create SQL history: %v", err)
+		}
 		if tc.insert {
 			if err := tree.QueueLeaf(nil, []byte(tc.index), []byte(tc.leaf)); err != nil {
 				t.Errorf("QueueLeaf(%v, %v): %v", tc.index, tc.leaf, err)
@@ -104,7 +110,7 @@ func TestEpochNumAdvance(t *testing.T) {
 		if got, err := tree.Commit(); err != nil || got != tc.epoch {
 			t.Errorf("Commit(): %v, %v, want %v", got, err, tc.epoch)
 		}
-		if got := tree.readEpoch(); got != tc.epoch {
+		if got, _ := tree.readEpoch(); got != tc.epoch {
 			t.Errorf("readEpoch(): %v, want %v", got, tc.epoch)
 		}
 	}
@@ -117,30 +123,30 @@ func TestQueueCommitRead(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	m := New(db, "test")
-	leafs := []struct {
-		hindex string
-	}{
-		{"0000000000000000000000000000000000000000000000000000000000000000"},
-		{"F000000000000000000000000000000000000000000000000000000000000000"},
-		{"2000000000000000000000000000000000000000000000000000000000000000"},
-		{"C000000000000000000000000000000000000000000000000000000000000000"},
+	m, err := New(db, "test")
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
 	}
-	for i, tc := range leafs {
+	for i, index := range [][]byte{
+		dh("0000000000000000000000000000000000000000000000000000000000000000"),
+		dh("F000000000000000000000000000000000000000000000000000000000000000"),
+		dh("2000000000000000000000000000000000000000000000000000000000000000"),
+		dh("C000000000000000000000000000000000000000000000000000000000000000"),
+	} {
 		data := []byte{byte(i)}
-		if err := m.QueueLeaf(ctx, h2b(tc.hindex), data); err != nil {
-			t.Errorf("WriteLeaf(%v, %v)=%v", tc.hindex, data, err)
+		if err := m.QueueLeaf(ctx, index, data); err != nil {
+			t.Errorf("WriteLeaf(%v, %v)=%v", index, data, err)
 		}
 		epoch, err := m.Commit()
 		if err != nil {
 			t.Errorf("Commit()=[_, %v], want [_, nil]", err)
 		}
-		readData, err := m.ReadLeafAt(ctx, h2b(tc.hindex), epoch)
+		readData, err := m.ReadLeafAt(ctx, index, epoch)
 		if err != nil {
-			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, tc.hindex, err)
+			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, index, err)
 		}
 		if got, want := readData, data; !bytes.Equal(got, want) {
-			t.Errorf("ReadLeafAt(%v, %v)=%v, want %v", epoch, tc.hindex, got, want)
+			t.Errorf("ReadLeafAt(%v, %v)=%v, want %v", epoch, index, got, want)
 		}
 	}
 }
@@ -151,23 +157,26 @@ func TestReadNotFound(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	m := New(db, "test")
+	m, err := New(db, "test")
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
+	}
 	leafs := []struct {
-		hindex string
+		index []byte
 	}{
-		{"0000000000000000000000000000000000000000000000000000000000000000"},
-		{"F000000000000000000000000000000000000000000000000000000000000000"},
-		{"2000000000000000000000000000000000000000000000000000000000000000"},
-		{"C000000000000000000000000000000000000000000000000000000000000000"},
+		{dh("0000000000000000000000000000000000000000000000000000000000000000")},
+		{dh("F000000000000000000000000000000000000000000000000000000000000000")},
+		{dh("2000000000000000000000000000000000000000000000000000000000000000")},
+		{dh("C000000000000000000000000000000000000000000000000000000000000000")},
 	}
 	for _, tc := range leafs {
 		var epoch int64 = 10
-		readData, err := m.ReadLeafAt(ctx, h2b(tc.hindex), epoch)
+		readData, err := m.ReadLeafAt(ctx, tc.index, epoch)
 		if err != nil {
-			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, tc.hindex, err)
+			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, tc.index, err)
 		}
 		if got := readData; got != nil {
-			t.Errorf("ReadLeafAt(%v, %v)=%v, want %v", epoch, tc.hindex, got, nil)
+			t.Errorf("ReadLeafAt(%v, %v)=%v, want %v", epoch, tc.index, got, nil)
 		}
 	}
 }
@@ -179,20 +188,23 @@ func TestReadPreviousEpochs(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	m := New(db, "test")
+	m, err := New(db, "test")
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
+	}
 	leafs := []struct {
-		hindex string
-		epoch  int64
+		index []byte
+		epoch int64
 	}{
-		{"0000000000000000000000000000000000000000000000000000000000000000", 0},
-		{"F000000000000000000000000000000000000000000000000000000000000000", 1},
-		{"2000000000000000000000000000000000000000000000000000000000000000", 2},
-		{"C000000000000000000000000000000000000000000000000000000000000000", 3},
+		{dh("0000000000000000000000000000000000000000000000000000000000000000"), 0},
+		{dh("F000000000000000000000000000000000000000000000000000000000000000"), 1},
+		{dh("2000000000000000000000000000000000000000000000000000000000000000"), 2},
+		{dh("C000000000000000000000000000000000000000000000000000000000000000"), 3},
 	}
 	for i, tc := range leafs {
 		data := []byte{byte(i)}
-		if err := m.QueueLeaf(ctx, h2b(tc.hindex), data); err != nil {
-			t.Errorf("WriteLeaf(%v, %v)=%v", tc.hindex, data, err)
+		if err := m.QueueLeaf(ctx, tc.index, data); err != nil {
+			t.Errorf("WriteLeaf(%v, %v)=%v", tc.index, data, err)
 		}
 		if got, err := m.Commit(); err != nil || got != tc.epoch {
 			t.Errorf("Commit()=%v, %v, want %v, nil", got, err, tc.epoch)
@@ -201,9 +213,9 @@ func TestReadPreviousEpochs(t *testing.T) {
 		for _, l := range leafs {
 			// Want success for leaves in previous epochs.
 			want := l.epoch <= tc.epoch
-			val, _ := m.ReadLeafAt(ctx, h2b(l.hindex), tc.epoch)
+			val, _ := m.ReadLeafAt(ctx, l.index, tc.epoch)
 			if got := val != nil; got != want {
-				t.Errorf("ReadLeafAt(%v, %v)=%v, want %v)", l.hindex, tc.epoch, got, want)
+				t.Errorf("ReadLeafAt(%v, %v)=%v, want %v)", l.index, tc.epoch, got, want)
 			}
 		}
 	}
@@ -216,21 +228,27 @@ func TestAribtrayInsertOrder(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	leafs := map[string]string{
-		"0000000000000000000000000000000000000000000000000000000000000000": "0",
-		"F000000000000000000000000000000000000000000000000000000000000000": "1",
-		"2000000000000000000000000000000000000000000000000000000000000000": "2",
-		"C000000000000000000000000000000000000000000000000000000000000000": "3",
-		"D000000000000000000000000000000000000000000000000000000000000000": "4",
-		"E000000000000000000000000000000000000000000000000000000000000000": "5",
+	leafs := []struct {
+		index []byte
+		data  string
+	}{
+		{dh("0000000000000000000000000000000000000000000000000000000000000000"), "0"},
+		{dh("F000000000000000000000000000000000000000000000000000000000000000"), "1"},
+		{dh("2000000000000000000000000000000000000000000000000000000000000000"), "2"},
+		{dh("C000000000000000000000000000000000000000000000000000000000000000"), "3"},
+		{dh("D000000000000000000000000000000000000000000000000000000000000000"), "4"},
+		{dh("E000000000000000000000000000000000000000000000000000000000000000"), "5"},
 	}
 	roots := make([][]byte, len(leafs))
 	for i := range roots {
-		m := New(db, fmt.Sprintf("test%v", i))
+		m, err := New(db, fmt.Sprintf("test%v", i))
+		if err != nil {
+			t.Fatalf("Failed to create SQL history: %v", err)
+		}
 		// Iterating over a map in Go is randomized.
-		for hindex, data := range leafs {
-			if err := m.QueueLeaf(ctx, h2b(hindex), []byte(data)); err != nil {
-				t.Errorf("WriteLeaf(%v, %v)=%v", hindex, data, err)
+		for _, leaf := range leafs {
+			if err := m.QueueLeaf(ctx, leaf.index, []byte(leaf.data)); err != nil {
+				t.Errorf("WriteLeaf(%v, %v)=%v", leaf.index, leaf.data, err)
 			}
 			if _, err := m.Commit(); err != nil {
 				t.Errorf("Commit()= %v, want nil", err)
@@ -256,22 +274,25 @@ func TestNeighborDepth(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	m1 := New(db, "test1")
+	m1, err := New(db, "test1")
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
+	}
 	// Construct a tree of the following form:
 	//     r
 	//       a
 	//      3  4
 	leafs := []struct {
-		hindex string
-		value  string
+		index []byte
+		value string
 	}{
-		{defaultIndex[0], "3"},
-		{defaultIndex[1], "4"},
+		{dh(defaultIndex[0]), "3"},
+		{dh(defaultIndex[1]), "4"},
 	}
 	for _, l := range leafs {
 		value := []byte(l.value)
-		if err := m1.QueueLeaf(ctx, h2b(l.hindex), value); err != nil {
-			t.Fatalf("QueueLeaf(%v)=%v", l.hindex, err)
+		if err := m1.QueueLeaf(ctx, l.index, value); err != nil {
+			t.Fatalf("QueueLeaf(%v)=%v", l.index, err)
 		}
 	}
 	if epoch, err := m1.Commit(); err != nil || epoch != 0 {
@@ -279,33 +300,40 @@ func TestNeighborDepth(t *testing.T) {
 	}
 
 	// Construct a tree with only one item in it.
-	m2 := New(db, "test2")
-	m2.QueueLeaf(nil, h2b(defaultIndex[0]), []byte("0"))
+	m2, err := New(db, "test2")
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
+	}
+	dindex, err := hex.DecodeString(defaultIndex[0])
+	if err != nil {
+		t.Fatalf("DecodeString(%v)=(_, %v)", defaultIndex[0], err)
+	}
+	m2.QueueLeaf(nil, dindex, []byte("0"))
 	m2.Commit()
 	tests := []struct {
-		m      *Map
-		hindex string
-		depth  int
+		m     *Map
+		index []byte
+		depth int
 	}{
-		{m1, AllZeros, 1},        // Proof of absence.
-		{m1, defaultIndex[0], 2}, // Proof of presence.
-		{m1, defaultIndex[1], 2},
-		{m2, defaultIndex[0], 0},
+		{m1, dh(AllZeros), 1},        // Proof of absence.
+		{m1, dh(defaultIndex[0]), 2}, // Proof of presence.
+		{m1, dh(defaultIndex[1]), 2},
+		{m2, dh(defaultIndex[0]), 0},
 	}
 	for _, tc := range tests {
-		nbrs, _ := tc.m.NeighborsAt(ctx, h2b(tc.hindex), 0)
+		nbrs, _ := tc.m.NeighborsAt(ctx, tc.index, 0)
 		if got, want := len(nbrs), maxDepth; got != want {
 			t.Errorf("len(nbrs): %v, want %v", got, want)
 		}
 		if got := PrefixLen(nbrs); got != tc.depth {
-			t.Errorf("PrefixLen(NeighborsAt(%v))=%v, want %v", tc.hindex, got, tc.depth)
+			t.Errorf("PrefixLen(NeighborsAt(%v))=%v, want %v", tc.index, got, tc.depth)
 
 		}
 	}
 }
 
-// h2b implements Hex to Bytes.
-func h2b(h string) []byte {
+// Hex to Bytes
+func dh(h string) []byte {
 	result, err := hex.DecodeString(h)
 	if err != nil {
 		panic("DecodeString failed")

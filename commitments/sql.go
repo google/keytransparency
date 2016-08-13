@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"database/sql"
 	"errors"
-	"log"
+	"fmt"
 
 	"golang.org/x/net/context"
 
@@ -60,7 +60,7 @@ type Commitments struct {
 }
 
 // New returns a new SQL backed commitment db.
-func New(db *sql.DB, mapID string) *Commitments {
+func New(db *sql.DB, mapID string) (*Commitments, error) {
 	c := &Commitments{
 		mapID: []byte(mapID),
 		db:    db,
@@ -69,10 +69,12 @@ func New(db *sql.DB, mapID string) *Commitments {
 	// Create tables.
 	_, err := db.Exec(createExpr)
 	if err != nil {
-		log.Fatalf("Failed to create commitment tables: %v", err)
+		return nil, fmt.Errorf("Failed to create commitment tables: %v", err)
 	}
-	c.insertMapRow()
-	return c
+	if err := c.insertMapRow(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // WriteCommitment saves a commitment to the database.
@@ -136,14 +138,15 @@ func (c *Commitments) Read(ctx context.Context, commitment []byte) (*pb.Committe
 	return value, nil
 }
 
-func (c *Commitments) insertMapRow() {
+func (c *Commitments) insertMapRow() error {
 	stmt, err := c.db.Prepare(mapRowExpr)
 	if err != nil {
-		log.Fatalf("Failed preparing mapID insert statement: %v", err)
+		return fmt.Errorf("Failed preparing mapID insert statement: %v", err)
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(c.mapID)
 	if err != nil {
-		log.Fatalf("Failed executing mapID insert: %v", err)
+		return fmt.Errorf("Failed executing mapID insert: %v", err)
 	}
+	return nil
 }

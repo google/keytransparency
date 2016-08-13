@@ -85,7 +85,10 @@ func PrivateKeyFromPEM(b []byte) (crypto.Signer, []byte, error) {
 		return nil, rest, fmt.Errorf("no PEM block found in %s", string(b))
 	}
 	k, err := x509.ParseECPrivateKey(p.Bytes)
-	return k, rest, err
+	if err != nil {
+		return nil, nil, err
+	}
+	return k, rest, nil
 }
 
 // KeyName is the first 8 hex digits of the SHA256 of the public pem.
@@ -166,7 +169,10 @@ func PublicKeyFromPEM(b []byte) (crypto.PublicKey, []byte, error) {
 		return nil, rest, fmt.Errorf("no PEM block found in %s", string(b))
 	}
 	k, err := x509.ParsePKIXPublicKey(p.Bytes)
-	return k, rest, err
+	if err != nil {
+		return nil, nil, err
+	}
+	return k, rest, nil
 }
 
 // NewSignatureVerifier creates a verifier from a ECDSA public key.

@@ -41,7 +41,7 @@ var (
 )
 
 type Leaf struct {
-	hindex string
+	index  []byte
 	value  []byte
 	insert bool // Proof of absence.
 }
@@ -56,13 +56,16 @@ func NewEnv(leaves []Leaf) (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating in-memory sqlite3 db: %v", err)
 	}
-	m := sqlhist.New(db, "verify")
+	m, err := sqlhist.New(db, "verify")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create SQL history: %v", err)
+	}
 
 	for _, leaf := range leaves {
 		if leaf.insert {
-			if err := m.QueueLeaf(ctx, h2b(leaf.hindex), leaf.value); err != nil {
+			if err := m.QueueLeaf(ctx, leaf.index, leaf.value); err != nil {
 				db.Close()
-				return nil, fmt.Errorf("QueueLeaf(_, %v, %v)=%v", leaf.hindex, leaf.value, err)
+				return nil, fmt.Errorf("QueueLeaf(_, %v, %v)=%v", leaf.index, leaf.value, err)
 			}
 		}
 	}
@@ -83,18 +86,18 @@ func TestVerifyProof(t *testing.T) {
 	trees := [][]Leaf{
 		{
 			// Verify proof of absence in an empty tree.
-			Leaf{AllZeros, nil, false},
+			Leaf{dh(AllZeros), nil, false},
 		},
 		{
-			Leaf{defaultIndex[2], []byte("0"), true},
-			Leaf{defaultIndex[0], []byte("3"), true},
-			Leaf{AllZeros, nil, false},
+			Leaf{dh(defaultIndex[2]), []byte("0"), true},
+			Leaf{dh(defaultIndex[0]), []byte("3"), true},
+			Leaf{dh(AllZeros), nil, false},
 		},
 		{
-			Leaf{defaultIndex[0], []byte("3"), true},
-			Leaf{defaultIndex[1], []byte("4"), true},
-			Leaf{defaultIndex[2], nil, false},
-			Leaf{AllZeros, nil, false},
+			Leaf{dh(defaultIndex[0]), []byte("3"), true},
+			Leaf{dh(defaultIndex[1]), []byte("4"), true},
+			Leaf{dh(defaultIndex[2]), nil, false},
+			Leaf{dh(AllZeros), nil, false},
 		},
 	}
 
@@ -114,21 +117,21 @@ func TestVerifyProof(t *testing.T) {
 
 		// VerifyProof of each leaf in the tree.
 		for _, leaf := range leaves {
-			nbrs, err := env.m.NeighborsAt(ctx, h2b(leaf.hindex), testEpoch)
+			nbrs, err := env.m.NeighborsAt(ctx, leaf.index, testEpoch)
 			if err != nil {
-				t.Fatalf("NeighborsAt(%v)=%v", leaf.hindex, err)
+				t.Fatalf("NeighborsAt(%v)=%v", leaf.index, err)
 			}
 
-			err = verifier.VerifyProof(nbrs, h2b(leaf.hindex), leaf.value, root)
+			err = verifier.VerifyProof(nbrs, leaf.index, leaf.value, root)
 			if err != nil {
-				t.Fatalf("VerifyProof(_, %v, _, _)=%v", leaf.hindex, err)
+				t.Fatalf("VerifyProof(_, %v, _, _)=%v", leaf.index, err)
 			}
 		}
 	}
 }
 
 // Hex to Bytes
-func h2b(h string) []byte {
+func dh(h string) []byte {
 	result, err := hex.DecodeString(h)
 	if err != nil {
 		panic("DecodeString failed")

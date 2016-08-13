@@ -50,16 +50,16 @@ const (
 	defaultTimeout = 0 * time.Second
 )
 
-func readVrfKey() vrf.PublicKey {
+func readVrfKey() (vrf.PublicKey, error) {
 	b, err := ioutil.ReadFile(*vrfPubFile)
 	if err != nil {
-		log.Fatalf("Error reading vrf public key: %v, %v", *vrfPubFile, err)
+		return nil, fmt.Errorf("Error reading vrf public key: %v, %v", *vrfPubFile, err)
 	}
 	v, err := p256.ParsePublicKey(b)
 	if err != nil {
-		log.Fatalf("Error parsing vrf public key: %v", err)
+		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
 	}
-	return v
+	return v, nil
 }
 
 // getTokenFromWeb uses config to request a Token.  Returns the retrieved Token.
@@ -110,7 +110,11 @@ func main() {
 		log.Fatalf("Error Dialing %v: %v", *mapURL, err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	c := client.New(cli, readVrfKey(), *ctURL)
+	vrfKey, err := readVrfKey()
+	if err != nil {
+		log.Fatalf("Error reading VRF key: %v", err)
+	}
+	c := client.New(cli, vrfKey, *ctURL)
 
 	switch {
 	case *get:
