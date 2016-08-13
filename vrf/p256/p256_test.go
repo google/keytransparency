@@ -67,9 +67,9 @@ func TestVRF(t *testing.T) {
 		{m3, vrf3, proof1, ErrInvalidVRF},
 	}
 
-	for i, tc := range tests {
+	for _, tc := range tests {
 		if got, want := pk.Verify(tc.m, tc.vrf[:], tc.proof), tc.err; got != want {
-			t.Errorf("%v: Verify(%v, %v, %v): got %v, want %v", i, tc.m, tc.vrf, tc.proof, got, want)
+			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, want)
 		}
 	}
 }

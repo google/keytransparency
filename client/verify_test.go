@@ -61,7 +61,7 @@ func TestVerifyCommitment(t *testing.T) {
 		{primaryUserID, fakeEntryData, committed, true},   // Unmarshable entry
 	}
 
-	for i, tc := range tests {
+	for _, tc := range tests {
 		resp := &pb.GetEntryResponse{
 			Committed: tc.committed,
 			LeafProof: &ctmap.GetLeafResponse{
@@ -70,7 +70,7 @@ func TestVerifyCommitment(t *testing.T) {
 		}
 		err = VerifyCommitment(tc.userID, resp)
 		if got := err != nil; got != tc.want {
-			t.Errorf("%v: VerifyCommitment(%v, %v)=%v, want %v", i, tc.userID, resp, got, tc.want)
+			t.Errorf("VerifyCommitment(%v, %v)=%v, want %v", tc.userID, resp, got, tc.want)
 		}
 	}
 }
