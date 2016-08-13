@@ -17,7 +17,7 @@ package entry
 
 import (
 	"bytes"
-	"log"
+	"fmt"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
@@ -79,13 +79,11 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 func (*Entry) Mutate(value, mutation []byte) ([]byte, error) {
 	update := new(pb.SignedKV)
 	if err := proto.Unmarshal(mutation, update); err != nil {
-		log.Printf("Error unmarshaling update: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("Error unmarshaling update: %v", err)
 	}
 	kv := new(pb.KeyValue)
 	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
-		log.Printf("Error unmarshaling keyvalue: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("Error unmarshaling keyvalue: %v", err)
 	}
 
 	return kv.Value, nil

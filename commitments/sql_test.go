@@ -31,7 +31,11 @@ func TestWriteRead(t *testing.T) {
 	defer db.Close()
 
 	commitmentC, committedC, _ := Commit([]byte("C"))
-	c := New(db, "test")
+	c, err := New(db, "test")
+	if err != nil {
+		t.Fatalf("Failed to create committer: %v", err)
+	}
+
 	tests := []struct {
 		commitment string
 		key        string

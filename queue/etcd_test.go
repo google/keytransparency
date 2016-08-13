@@ -53,10 +53,10 @@ func TestRetryOnFailure(t *testing.T) {
 			t.Errorf("Enqueue(%v, %v): %v", tc.key, tc.value, err)
 		}
 	}
-	for i, tc := range retrieve {
+	for _, tc := range retrieve {
 		if got := nil == q.Dequeue(func(key, value []byte) error {
 			if gotk, gotv := string(key), string(value); gotk != tc.key || gotv != tc.value {
-				t.Errorf("%v: Dequeue(): %v, %v, want %v, %v", i, gotk, gotv, tc.key, tc.value)
+				t.Errorf("Dequeue(): %v, %v, want %v, %v", gotk, gotv, tc.key, tc.value)
 			}
 			if !tc.success {
 				return errors.New("fake commitment failure")

@@ -42,7 +42,10 @@ func TestGetLatest(t *testing.T) {
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 
-	a := New(NewDB(t), mapID, hs.URL)
+	a, err := New(NewDB(t), mapID, hs.URL)
+	if err != nil {
+		t.Fatalf("Failed to create appender: %v", err)
+	}
 
 	tests := []struct {
 		epoch int64
@@ -77,7 +80,10 @@ func TestAppend(t *testing.T) {
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 
-	a := New(NewDB(t), mapID, hs.URL)
+	a, err := New(NewDB(t), mapID, hs.URL)
+	if err != nil {
+		t.Fatalf("Failed to create appender: %v", err)
+	}
 
 	tests := []struct {
 		epoch int64
