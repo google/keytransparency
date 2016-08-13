@@ -92,10 +92,19 @@ func main() {
 	defer etcdCli.Close()
 
 	queue := queue.New(etcdCli, *mapID)
-	tree := sqlhist.New(sqldb, *mapID)
+	tree, err := sqlhist.New(sqldb, *mapID)
+	if err != nil {
+		log.Fatalf("Failed to create SQL history: %v", err)
+	}
 	mutator := entry.New()
-	sths := appender.New(sqldb, *mapID, *mapLogURL)
-	mutations := appender.New(sqldb, *mapID, *mapLogURL)
+	sths, err := appender.New(sqldb, *mapID, *mapLogURL)
+	if err != nil {
+		log.Fatalf("Failed to create STH appender: %v", err)
+	}
+	mutations, err := appender.New(sqldb, *mapID, *mapLogURL)
+	if err != nil {
+		log.Fatalf("Failed to create mutation appender: %v", err)
+	}
 
 	signer := signer.New(*mapID, queue, tree, mutator, sths, mutations, openPrivateKey())
 	go signer.StartSequencing()

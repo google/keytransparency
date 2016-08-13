@@ -22,7 +22,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
-	"log"
+	"fmt"
 
 	"github.com/google/key-transparency/tree"
 	"github.com/google/key-transparency/tree/sparse"
@@ -30,9 +30,10 @@ import (
 )
 
 var (
-	hasher      = sparse.CONIKSHasher
-	errNilLeaf  = errors.New("nil leaf")
-	errIndexLen = errors.New("index len != 32")
+	hasher          = sparse.CONIKSHasher
+	errNilLeaf      = errors.New("nil leaf")
+	errIndexLen     = errors.New("index len != 32")
+	errInvalidEpoch = errors.New("invalid epoch")
 )
 
 const (
@@ -66,20 +67,30 @@ type Map struct {
 }
 
 // New creates a new map.
-func New(db *sql.DB, mapID string) *Map {
+func New(db *sql.DB, mapID string) (*Map, error) {
 	if err := db.Ping(); err != nil {
-		log.Fatalf("No DB connection: %v", err)
+		return nil, fmt.Errorf("No DB connection: %v", err)
 	}
 
 	m := &Map{
 		mapID: []byte(mapID),
 		db:    db,
 	}
-	m.create()
-	m.insertMapRow()
-	m.insertFirstRoot()
-	m.epoch = m.readEpoch()
-	return m
+	if err := m.create(); err != nil {
+		return nil, err
+	}
+	if err := m.insertMapRow(); err != nil {
+		return nil, err
+	}
+	if err := m.insertFirstRoot(); err != nil {
+		return nil, err
+	}
+	epoch, err := m.readEpoch()
+	if err != nil {
+		return nil, err
+	}
+	m.epoch = epoch
+	return m, nil
 }
 
 // Epoch returns the current epoch of the merkle tree.
@@ -118,19 +129,19 @@ func (m *Map) Commit() (int64, error) {
 	// Get the list of pending leafs
 	stmt, err := m.db.Prepare(pendingLeafsExpr)
 	if err != nil {
-		return m.epoch, err
+		return -1, err
 	}
 	defer stmt.Close()
 	rows, err := stmt.Query(m.mapID, m.epoch+1)
 	if err != nil {
-		return m.epoch, err
+		return -1, err
 	}
 	leafRows := make([]leafRow, 0, 10)
 	for rows.Next() {
 		var r leafRow
 		err = rows.Scan(&r.index, &r.version, &r.data)
 		if err != nil {
-			return m.epoch, err
+			return -1, err
 		}
 		leafRows = append(leafRows, r)
 	}
@@ -140,17 +151,17 @@ func (m *Map) Commit() (int64, error) {
 			// Recovery from here would mean updating nodes that
 			// didn't get included so that they would be included
 			// in the next epoch.
-			log.Fatalf("Failed to set node: %v", err)
+			return -1, fmt.Errorf("Failed to set node: %v", err)
 		}
 	}
 	// Always update the root node.
 	if len(leafRows) == 0 {
 		root, err := m.ReadRootAt(nil, m.epoch)
 		if err != nil {
-			log.Fatalf("No root for epoch %d: %v", m.epoch, err)
+			return -1, fmt.Errorf("No root for epoch %d: %v", m.epoch, err)
 		}
 		if err := m.SetNodeAt(nil, []byte{}, 0, root, m.epoch+1); err != nil {
-			log.Fatalf("Failed to set root: %v", err)
+			return -1, fmt.Errorf("Failed to set root: %v", err)
 		}
 	}
 	// TODO: Delete Map heads from this file.
@@ -295,7 +306,7 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 }
 
 // Create creates a new database.
-func (m *Map) create() {
+func (m *Map) create() error {
 	createStmt := `
 	CREATE TABLE IF NOT EXISTS Maps (
 		MapId	BLOB(32),
@@ -331,51 +342,54 @@ func (m *Map) create() {
 	`
 	_, err := m.db.Exec(createStmt)
 	if err != nil {
-		log.Fatalf("Failed to create tables: %v", err)
+		return fmt.Errorf("Failed to create tables: %v", err)
 	}
+	return nil
 }
 
-func (m *Map) insertMapRow() {
+func (m *Map) insertMapRow() error {
 	stmt, err := m.db.Prepare(mapRowExpr)
 	if err != nil {
-		log.Fatalf("insertMapRow(): %v", err)
+		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(m.mapID)
 	if err != nil {
-		log.Fatalf("insertMapRow(): %v", err)
+		return fmt.Errorf("insertMapRow(): %v", err)
 	}
+	return nil
 }
 
-func (m *Map) insertFirstRoot() {
+func (m *Map) insertFirstRoot() error {
 	rootID := m.nodeID("")
 	nodeValue := hashEmpty("")
 	writeStmt, err := m.db.Prepare(setNodeExpr)
 	if err != nil {
-		log.Fatalf("insertFirstRoot(): %v", err)
+		return fmt.Errorf("insertFirstRoot(): %v", err)
 	}
 	defer writeStmt.Close()
 	_, err = writeStmt.Exec(m.mapID, rootID, -1, nodeValue)
 	if err != nil {
-		log.Fatalf("insertFirstRoot(): %v", err)
+		return fmt.Errorf("insertFirstRoot(): %v", err)
 	}
+	return nil
 }
 
-func (m *Map) readEpoch() int64 {
+func (m *Map) readEpoch() (int64, error) {
 	stmt, err := m.db.Prepare(readEpochExpr)
 	if err != nil {
-		log.Fatalf("readEpoch(): %v", err)
+		return -1, fmt.Errorf("readEpoch(): %v", err)
 	}
 	defer stmt.Close()
 	rootID := m.nodeID("")
 	var epoch sql.NullInt64
 	if err := stmt.QueryRow(m.mapID, rootID).Scan(&epoch); err != nil {
-		log.Fatalf("Error reading epoch: %v", err)
+		return -1, fmt.Errorf("Error reading epoch: %v", err)
 	}
 	if !epoch.Valid {
-		return -1
+		return -1, errInvalidEpoch
 	}
-	return epoch.Int64
+	return epoch.Int64, nil
 }
 
 // Converts a list of bit strings into their node IDs.
