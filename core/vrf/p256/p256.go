@@ -161,7 +161,7 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) error {
 		return ErrInvalidVRF
 	}
 
-	// Parse proof into s and t
+	// Parse proof into s and t.
 	s := proof[0:32]
 	t := proof[32:64]
 
@@ -186,7 +186,13 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) error {
 	b.Write(elliptic.Marshal(curve, h1TKSx, h1TKSy))
 	h2 := H2(b.Bytes())
 
-	if !hmac.Equal(s, h2.Bytes()) {
+	// Left pad h2 with zeros if needed. This will ensure that h2 is padded
+	// the same way s is.
+	var buf bytes.Buffer
+	buf.Write(make([]byte, 32-len(h2.Bytes())))
+	buf.Write(h2.Bytes())
+
+	if !hmac.Equal(s, buf.Bytes()) {
 		return ErrInvalidVRF
 	}
 	return nil
