@@ -25,10 +25,10 @@ import (
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/tree"
 
+	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 
 	ctmap "github.com/google/key-transparency/proto/ctmap"
-	tspb "github.com/google/key-transparency/proto/protobuf"
 )
 
 // Clock defines an interface for the advancement of time.
@@ -131,7 +131,6 @@ func (s *Signer) processMutation(index, mutation []byte) error {
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch() error {
 	ctx := context.Background()
-	timestamp := s.clock.Now().Unix()
 	epoch, err := s.tree.Commit()
 	if err != nil {
 		return err
@@ -140,10 +139,14 @@ func (s *Signer) CreateEpoch() error {
 	if err != nil {
 		return err
 	}
+	timestamp, err := ptypes.TimestampProto(s.clock.Now())
+	if err != nil {
+		return err
+	}
 
 	mh := &ctmap.MapHead{
 		Realm:     s.realm,
-		IssueTime: &tspb.Timestamp{Seconds: timestamp, Nanos: 0},
+		IssueTime: timestamp,
 		Epoch:     epoch,
 		Root:      root,
 	}
