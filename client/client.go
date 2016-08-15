@@ -70,12 +70,12 @@ type Client struct {
 	vrf          vrf.PublicKey
 	RetryCount   int
 	treeVerifier *tv.Verifier
-	verifier     *signatures.SignatureVerifier
+	verifier     *signatures.Verifier
 	log          LogVerifier
 }
 
 // New creates a new client.
-func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.SignatureVerifier, log LogVerifier) *Client {
+func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log LogVerifier) *Client {
 	return &Client{
 		cli:          client,
 		vrf:          vrf,

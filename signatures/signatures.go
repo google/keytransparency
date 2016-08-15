@@ -51,26 +51,26 @@ var (
 	ErrVerificaionFailed = errors.New("failed to verify ECDSA signature")
 )
 
-// SignatureSigner generates signatures with a single key.
-type SignatureSigner struct {
+// Signer generates signatures with a single key.
+type Signer struct {
 	privKey crypto.PrivateKey
 	KeyName string
 	rand    io.Reader
 }
 
 // GenerateKeyPair creates a new random keypair and returns the wrapped signer and verifier.
-func GenerateKeyPair() (*SignatureSigner, *SignatureVerifier, error) {
+func GenerateKeyPair() (*Signer, *Verifier, error) {
 	pubkeyCurve := elliptic.P256()
 	privatekey := new(ecdsa.PrivateKey)
 	privatekey, err := ecdsa.GenerateKey(pubkeyCurve, rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
-	sig, err := NewSignatureSigner(rand.Reader, privatekey)
+	sig, err := NewSigner(rand.Reader, privatekey)
 	if err != nil {
 		return nil, nil, err
 	}
-	ver, err := NewSignatureVerifier(privatekey.Public())
+	ver, err := NewVerifier(privatekey.Public())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,8 +101,8 @@ func KeyName(k crypto.PublicKey) (string, error) {
 	return hex.EncodeToString(id[:])[:8], nil
 }
 
-// NewSignatureSigner creates a signer object from a private key.
-func NewSignatureSigner(rand io.Reader, pk crypto.Signer) (*SignatureSigner, error) {
+// NewSigner creates a signer object from a private key.
+func NewSigner(rand io.Reader, pk crypto.Signer) (*Signer, error) {
 	switch pkType := pk.(type) {
 	case *ecdsa.PrivateKey:
 		params := *(pkType.Params())
@@ -118,7 +118,7 @@ func NewSignatureSigner(rand io.Reader, pk crypto.Signer) (*SignatureSigner, err
 		return nil, err
 	}
 
-	return &SignatureSigner{
+	return &Signer{
 		privKey: pk,
 		KeyName: id,
 		rand:    rand,
@@ -126,7 +126,7 @@ func NewSignatureSigner(rand io.Reader, pk crypto.Signer) (*SignatureSigner, err
 }
 
 // Sign generates a digital signature object.
-func (s SignatureSigner) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
+func (s Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 	j, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -155,8 +155,8 @@ func (s SignatureSigner) Sign(data interface{}) (*ctmap.DigitallySigned, error) 
 	}, nil
 }
 
-// SignatureVerifier can verify signatures on SCTs and STHs
-type SignatureVerifier struct {
+// Verifier can verify signatures on SCTs and STHs
+type Verifier struct {
 	pubKey  crypto.PublicKey
 	KeyName string
 }
@@ -175,8 +175,8 @@ func PublicKeyFromPEM(b []byte) (crypto.PublicKey, []byte, error) {
 	return k, rest, nil
 }
 
-// NewSignatureVerifier creates a verifier from a ECDSA public key.
-func NewSignatureVerifier(pk crypto.PublicKey) (*SignatureVerifier, error) {
+// NewVerifier creates a verifier from a ECDSA public key.
+func NewVerifier(pk crypto.PublicKey) (*Verifier, error) {
 	switch pkType := pk.(type) {
 	case *ecdsa.PublicKey:
 		params := *(pkType.Params())
@@ -192,14 +192,14 @@ func NewSignatureVerifier(pk crypto.PublicKey) (*SignatureVerifier, error) {
 		return nil, err
 	}
 
-	return &SignatureVerifier{
+	return &Verifier{
 		pubKey:  pk,
 		KeyName: id,
 	}, nil
 }
 
 // Verify checks the digital signature associated applied to data.
-func (s SignatureVerifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
+func (s Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
 		return ErrWrongHashAlgo
 	}

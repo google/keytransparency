@@ -55,14 +55,14 @@ type Signer struct {
 	tree      tree.SparseHist
 	mutations appender.Appender
 	sths      appender.Appender
-	signer    *signatures.SignatureSigner
+	signer    *signatures.Signer
 	clock     Clock
 }
 
 // New creates a new instance of the signer.
 func New(realm string, queue queue.Queuer, tree tree.SparseHist,
 	mutator mutator.Mutator, sths, mutations appender.Appender,
-	signer *signatures.SignatureSigner) *Signer {
+	signer *signatures.Signer) *Signer {
 	return &Signer{
 		realm:     realm,
 		queue:     queue,

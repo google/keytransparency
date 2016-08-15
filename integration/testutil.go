@@ -83,7 +83,7 @@ type Env struct {
 	mapLog     *httptest.Server
 }
 
-func staticKeyPair() (*signatures.SignatureSigner, *signatures.SignatureVerifier, error) {
+func staticKeyPair() (*signatures.Signer, *signatures.Verifier, error) {
 	sigPriv := `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
 AwEHoUQDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhWf5JqSoyp0uiL8LeNYyj5vgkl
@@ -97,7 +97,7 @@ f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 	if err != nil {
 		return nil, nil, err
 	}
-	sig, err := signatures.NewSignatureSigner(DevZero{}, signer)
+	sig, err := signatures.NewSigner(DevZero{}, signer)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -106,7 +106,7 @@ f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 	if err != nil {
 		return nil, nil, err
 	}
-	ver, err := signatures.NewSignatureVerifier(verifier)
+	ver, err := signatures.NewVerifier(verifier)
 	if err != nil {
 		return nil, nil, err
 	}

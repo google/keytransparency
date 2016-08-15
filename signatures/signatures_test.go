@@ -39,7 +39,7 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 		if len(rest) > 0 {
 			t.Errorf("Data left after parsing: %v", rest)
 		}
-		if _, err := NewSignatureSigner(rand.Reader, k); err != nil {
+		if _, err := NewSigner(rand.Reader, k); err != nil {
 			t.Errorf("NewSigantureSigner(): %v", err)
 		}
 	}
@@ -65,7 +65,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 		if len(rest) > 0 {
 			t.Errorf("Data left after parsing: %v", rest)
 		}
-		if _, err := NewSignatureVerifier(k); err != nil {
+		if _, err := NewVerifier(k); err != nil {
 			t.Errorf("NewSigantureVerifier(): %v", err)
 		}
 	}
@@ -85,12 +85,12 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 -----END PUBLIC KEY-----`
 
 	ka, _, _ := PrivateKeyFromPEM([]byte(priv))
-	signer, err := NewSignatureSigner(rand.Reader, ka)
+	signer, err := NewSigner(rand.Reader, ka)
 	if err != nil {
 		t.Fatalf("NewSigantureSigner(): %v", err)
 	}
 	kb, _, _ := PublicKeyFromPEM([]byte(pub))
-	verifier, err := NewSignatureVerifier(kb)
+	verifier, err := NewVerifier(kb)
 	if err != nil {
 		t.Fatalf("NewSigantureVerifier(): %v", err)
 	}
@@ -135,11 +135,11 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 		ka, _, _ := PrivateKeyFromPEM([]byte(tc.priv))
 		kb, _, _ := PublicKeyFromPEM([]byte(tc.pub))
 
-		signer, err := NewSignatureSigner(rand.Reader, ka)
+		signer, err := NewSigner(rand.Reader, ka)
 		if err != nil {
 			t.Fatalf("NewSigantureSigner(): %v", err)
 		}
-		verifier, err := NewSignatureVerifier(kb)
+		verifier, err := NewVerifier(kb)
 		if err != nil {
 			t.Fatalf("NewSigantureVerifier(): %v", err)
 		}
