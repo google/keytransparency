@@ -31,8 +31,8 @@ import (
 	"github.com/google/key-transparency/core/vrf"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
-	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -42,9 +42,7 @@ import (
 
 const (
 	retryDelay = 3 * time.Second
-	// TODO: Public key of signer.
 	// TODO: Public keys of trusted monitors.
-	// TODO: Domain to API URL resolution.
 )
 
 var (
@@ -89,7 +87,6 @@ func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *s
 
 // GetEntry returns an entry if it exists, and nil if it does not.
 func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, error) {
-	// Error, ctx is not being passed
 	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
 		UserId: userID,
 	}, opts...)

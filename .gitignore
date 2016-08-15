@@ -4,6 +4,7 @@
 
 key-transparency
 key-transparency-signer
+key-transparency-client
 
 infra*.etcd
 testdata/*.pem
