@@ -17,7 +17,6 @@
 package commitments
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha512"
@@ -48,8 +47,8 @@ type Committer interface {
 	Read(ctx context.Context, commitment []byte) (*pb.Committed, error)
 }
 
-// Commit returns the commitment key and the commitment
-func Commit(data []byte) ([]byte, *pb.Committed, error) {
+// Commit makes a cryptographic commitment under a specific userID to data.
+func Commit(userID string, data []byte) ([]byte, *pb.Committed, error) {
 	// Generate commitment key.
 	key := make([]byte, commitmentKeyLen)
 	if _, err := rand.Read(key); err != nil {
@@ -57,34 +56,20 @@ func Commit(data []byte) ([]byte, *pb.Committed, error) {
 	}
 
 	mac := hmac.New(hashAlgo, key)
+	mac.Write([]byte(userID))
+	mac.Write([]byte{0}) // Separate userID from data.
 	mac.Write(data)
 	return mac.Sum(nil), &pb.Committed{Key: key, Data: data}, nil
 }
 
-// CommitName makes a cryptographic commitment under a specific userID to data.
-func CommitName(userID string, data []byte) ([]byte, *pb.Committed, error) {
-	d := bytes.NewBufferString(userID)
-	d.Write(data)
-	commitment, committed, err := Commit(d.Bytes())
-	if err != nil {
-		return nil, nil, err
-	}
-	return commitment, &pb.Committed{Key: committed.Key, Data: data}, nil
-}
-
-// Verify returns nil if the commitment is valid.
-func Verify(commitment []byte, committed *pb.Committed) error {
+// Verify customizes a commitment with a userID.
+func Verify(userID string, commitment []byte, committed *pb.Committed) error {
 	mac := hmac.New(hashAlgo, committed.Key)
+	mac.Write([]byte(userID))
+	mac.Write([]byte{0})
 	mac.Write(committed.Data)
 	if !hmac.Equal(mac.Sum(nil), commitment) {
 		return ErrInvalidCommitment
 	}
 	return nil
-}
-
-// VerifyName customizes a commitment with a userID.
-func VerifyName(userID string, commitment []byte, committed *pb.Committed) error {
-	d := bytes.NewBufferString(userID)
-	d.Write(committed.Data)
-	return Verify(commitment, &pb.Committed{Key: committed.Key, Data: d.Bytes()})
 }

@@ -35,7 +35,7 @@ func VerifyCommitment(userID string, in *pb.GetEntryResponse) error {
 		if err := proto.Unmarshal(in.GetLeafProof().LeafData, entry); err != nil {
 			return err
 		}
-		if err := commitments.VerifyName(userID, entry.Commitment, in.Committed); err != nil {
+		if err := commitments.Verify(userID, entry.Commitment, in.Committed); err != nil {
 			return err
 		}
 	}
