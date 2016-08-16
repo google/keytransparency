@@ -31,8 +31,8 @@ import (
 	"github.com/google/key-transparency/core/vrf"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
-	ct "github.com/google/certificate-transparency/go"
 	"github.com/golang/protobuf/proto"
+	ct "github.com/google/certificate-transparency/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 

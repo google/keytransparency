@@ -28,11 +28,11 @@ import (
 	"github.com/google/key-transparency/core/signer"
 	"github.com/google/key-transparency/core/vrf"
 	"github.com/google/key-transparency/core/vrf/p256"
-	"github.com/google/key-transparency/integration/ctutil"
 	"github.com/google/key-transparency/impl/etcd/queue"
 	"github.com/google/key-transparency/impl/sql/appender"
 	"github.com/google/key-transparency/impl/sql/commitments"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
+	"github.com/google/key-transparency/integration/ctutil"
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
