@@ -145,9 +145,10 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
 	// Get current epoch.
-	var ignore []byte
-	currentEpoch, _, err := s.appender.Latest(ctx, ignore)
+	ignore := new(ctmap.SignedMapHead)
+	currentEpoch, _, err := s.appender.Latest(ctx, &ignore)
 	if err != nil {
+		log.Printf("Cannot get latest epoch: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot get latest epoch")
 	}
 

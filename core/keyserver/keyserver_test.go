@@ -40,19 +40,19 @@ func TestListEntryHistory(t *testing.T) {
 	for i, tc := range []struct {
 		start       int64
 		page        int32
-		wantHistory []int
 		wantNext    int64
+		wantHistory []int
 		err         codes.Code
 	}{
-		{1, 1, []int{0}, 2, codes.OK},                                                           // one entry per page.
-		{1, 10, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 11, codes.OK},                              // 10 entries per page.
-		{4, 10, []int{3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, 14, codes.OK},                           // start epoch is not 1.
-		{1, 0, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, 17, codes.OK},       // zero page size.
-		{20, 10, []int{19, 20, 21, 22, 23}, 25, codes.OK},                                       // adjusted page size.
-		{24, 10, []int{23}, 25, codes.OK},                                                       // requesting the very last entry.
-		{1, 1000000, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, 17, codes.OK}, // DOS prevention.
-		{40, 10, []int{}, 0, codes.InvalidArgument},                                             // start epoch is beyond current epoch.
-		{0, 10, []int{}, 0, codes.InvalidArgument},                                              // start epoch is less than 1.
+		{1, 1, 2, []int{0}, codes.OK},                                                           // one entry per page.
+		{1, 10, 11, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, codes.OK},                              // 10 entries per page.
+		{4, 10, 14, []int{3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, codes.OK},                           // start epoch is not 1.
+		{1, 0, 17, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, codes.OK},       // zero page size.
+		{20, 10, 25, []int{19, 20, 21, 22, 23}, codes.OK},                                       // adjusted page size.
+		{24, 10, 25, []int{23}, codes.OK},                                                       // requesting the very last entry.
+		{1, 1000000, 17, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, codes.OK}, // DOS prevention.
+		{40, 10, 0, []int{}, codes.InvalidArgument},                                             // start epoch is beyond current epoch.
+		{0, 10, 0, []int{}, codes.InvalidArgument},                                              // start epoch is less than 1.
 	} {
 		// Test case setup.
 		c := &FakeCommitter{make(map[string]*pb.Committed)}
