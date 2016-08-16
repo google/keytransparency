@@ -39,9 +39,9 @@ func TestVerifyCommitment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal(%v)=%v", profile, err)
 	}
-	commitment, committed, err := commitments.CommitName(primaryUserID, profileData)
+	commitment, committed, err := commitments.Commit(primaryUserID, profileData)
 	if err != nil {
-		t.Fatalf("CommitName(%v, %v)=%v", primaryUserID, profileData, err)
+		t.Fatalf("Commit(%v, %v)=%v", primaryUserID, profileData, err)
 	}
 
 	entry := &pb.Entry{Commitment: commitment}

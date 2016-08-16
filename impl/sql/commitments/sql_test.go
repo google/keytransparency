@@ -32,7 +32,7 @@ func TestWriteRead(t *testing.T) {
 	}
 	defer db.Close()
 
-	commitmentC, committedC, _ := commitments.Commit([]byte("C"))
+	commitmentC, committedC, _ := commitments.Commit("foo", []byte("C"))
 	c, err := New(db, "test")
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)

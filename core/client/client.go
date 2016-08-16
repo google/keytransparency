@@ -144,7 +144,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	if err != nil {
 		return nil, fmt.Errorf("Unexpected profile marshaling error: %v", err)
 	}
-	commitment, committed, err := commitments.CommitName(userID, profileData)
+	commitment, committed, err := commitments.Commit(userID, profileData)
 	if err != nil {
 		return nil, err
 	}

@@ -96,7 +96,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	if got, want := len(in.GetEntryUpdate().GetCommitted().Key), MinNonceLen; got < want {
 		return ErrCommittedKeyLen
 	}
-	if err := commitments.VerifyName(in.UserId, entry.Commitment, in.GetEntryUpdate().Committed); err != nil {
+	if err := commitments.Verify(in.UserId, entry.Commitment, in.GetEntryUpdate().Committed); err != nil {
 		return err
 	}
 

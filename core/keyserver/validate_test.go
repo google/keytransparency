@@ -89,7 +89,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	vrfPriv, _ := p256.GenerateKey()
 	vrf, _ := vrfPriv.Evaluate([]byte(userID))
 	index := vrfPriv.Index(vrf)
-	commitment, committed, _ := commitments.CommitName(userID, profileData)
+	commitment, committed, _ := commitments.Commit(userID, profileData)
 	authCtx := authentication.NewFake().NewContext(userID)
 
 	tests := []struct {
