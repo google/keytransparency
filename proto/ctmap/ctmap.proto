@@ -17,7 +17,6 @@ package ctmap;
 
 import "google/protobuf/timestamp.proto";
 
-
 // The VerifiableMapService API 
 service VerifiableMapService {
   // GetLeaf retrieves the value stored at a particular index.
@@ -38,7 +37,7 @@ message MapHead {
   string realm = 1;
   // epoch number
   int64 epoch = 2;
-  // root is the value of the root node of the merkle tree.
+  // root is the value of the root node of the Merkle tree.
   bytes root = 3;
   // issue_time is the time when this epoch was released. Monotonically increasing.
   google.protobuf.Timestamp issue_time = 4;
@@ -46,6 +45,8 @@ message MapHead {
 
 // SignedMapHead represents a signed state of the Merkel tree.
 message SignedMapHead {
+  // map_head contains the head node of the merkle tree along with other
+  // metadata.
   MapHead map_head = 1;
   // Signature of head, using the signature type of the key.
   // keyed by the first 64 bits bytes of the hash of the key.
@@ -58,20 +59,28 @@ message SignedMapHead {
 message DigitallySigned {
   // HashAlgorithm defines the approved ways to hash the object.
   enum HashAlgorithm {
+    // No hash algorithm is used.
     NONE = 0;
+    // SHA256 is used.
     SHA256 = 4;
+    // SHA512 is used.
     SHA512 = 6;
   }
 
   // SignatureAlgorithm defines the way to sign the object.
   enum SignatureAlgorithm {
+    // Anonymous signature scheme.
     ANONYMOUS = 0;
-    ECDSA = 3;
+    // ECDSA signature scheme.
+    ECDSA = 1;
   }
 
-   HashAlgorithm hash_algorithm = 1;
-   SignatureAlgorithm sig_algorithm = 2;
-   bytes signature = 3;
+  // hash_algorithm contains the hash algorithm used.
+  HashAlgorithm hash_algorithm = 1;
+  // sig_algorithm contains the signing algorithm used.
+  SignatureAlgorithm sig_algorithm = 2;
+  // signature contains the object signature.
+  bytes signature = 3;
 }
 
 //
@@ -80,7 +89,9 @@ message DigitallySigned {
 
 // GetLeafRequest for a verifiable map leaf.
 message GetLeafRequest {
+  // index includes the requested leaf index.
   bytes index = 1;
+  // epoch contains the epoch at which the leaf is requested.
   uint64 epoch = 2;
 }
 
@@ -95,19 +106,25 @@ message GetLeafResponse {
 
 // UpdateLeafRequest submits a change for the value at index.
 message UpdateLeafRequest {
-  bytes index = 1; 
+  // index includes the updated leaf index.
+  bytes index = 1;
+  // mutation contains the actual update.
   bytes mutation = 2;
 }
 
 // UpdateLeafResponse returns the current value of index.
 message UpdateLeafResponse {
+  // proof contains a proof that the update is accepted and processed.
   GetLeafResponse proof = 1;
 }
 
 // MutationEntry is either a mutation or an epoch advancement.
 message MutationEntry {
+  // type specifies the entry mutation type.
   oneof type {
+    // update contains the leaf update request.
     UpdateLeafRequest update = 1;
+    // advance_epoch indicates whether the mutation should advance the epoch.
     bool advance_epoch = 2;
   }
 }
