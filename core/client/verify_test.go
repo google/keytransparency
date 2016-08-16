@@ -20,6 +20,7 @@ import (
 	"github.com/google/key-transparency/core/commitments"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 
 	ctmap "github.com/google/key-transparency/proto/ctmap"
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
@@ -35,7 +36,7 @@ var (
 )
 
 func TestVerifyCommitment(t *testing.T) {
-	profileData, err := proto.Marshal(profile)
+	profileData, err := ptypes.MarshalAny(profile)
 	if err != nil {
 		t.Fatalf("Marshal(%v)=%v", profile, err)
 	}
