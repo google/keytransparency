@@ -20,8 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/key-transparency/core/tree/sparse"
-
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 )
 
