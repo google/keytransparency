@@ -40,9 +40,9 @@ service KeyTransparencyService {
     option (google.api.http) = { get: "/v1/users/{user_id}/history" };
   }
 
-  // UpdateEntry submits a SignedEntryUpdate.  Returns empty until this update
-  // has been included in an epoch.  Clients must retry until this function
-  // returns a proof.
+  // UpdateEntry submits a EntryUpdate.  Returns empty until this update has been
+  // included in an epoch.  Clients must retry until this function returns a
+  // proof.
   rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {
     option (google.api.http) = {
       put: "/v1/users/{user_id}"
@@ -50,17 +50,8 @@ service KeyTransparencyService {
     };
   }
 
-
-/*
-  // List the SignedMapHeads, from epoch to epoch.
-  rpc ListSMH(ListSMHRequest) returns (ListSMHResponse);
-
-  // List the EntryUpdates by update number.
-  rpc ListUpdate(ListUpdateRequest) returns (ListUpdateResponse);
-
-  // ListSteps combines SMH and EntryUpdates into single list.
-  rpc ListSteps(ListStepsRequest) returns (ListStepsResponse);
-*/
+  // HkpLookup implements an HKP lookup for users to fetch their (or other's)
+  // profiles.
   rpc HkpLookup(HkpLookupRequest) returns (HttpResponse){
     option (google.api.http) = { get: "/v1/hkp/lookup" };
   }
@@ -69,6 +60,153 @@ service KeyTransparencyService {
 //
 // Data types.
 //
+
+// Committed represents the data committed to in a cryptographic commitment.
+// commitment = HMAC_SHA512_256(key, data)
+message Committed {
+  // key is the 16 byte random commitment key.
+  bytes key = 1;
+  // data is the data being committed to.
+  bytes data = 2;
+}
+
+// Profile contains data hidden behind the cryptographic commitment.
+message Profile {
+  // Keys is a map of application IDs to keys.
+  map<string, bytes> keys = 1;
+}
+
+// EntryUpdate contains the user entry update(s).
+message EntryUpdate {
+  // update authorizes the change to profile.
+  SignedKV update = 2;
+  // commitment contains the serialized Profile protobuf.
+  Committed committed = 3;
+}
+
+//
+// Verifiable Map Leaf Data and Mutation Data.
+//
+
+// Entry contains a commitment to profile and a set of authorized update keys.
+// Entry is placed in the verifiable map as leaf data.
+message Entry {
+  // commitment is a cryptographic commitment to arbitrary data.
+  bytes commitment = 1;
+  // authorized_keys is the set of keys allowed to sign updates for this entry.
+  repeated PublicKey authorized_keys = 2;
+}
+
+// PublicKey defines a key this domain uses to sign MapHeads with.
+message PublicKey {
+  // Key formats from Keyczar.
+  oneof key_type {
+    // ed25519 contains an ed25519 32 bytes key (<http://ed25519.cr.yp.to/>).
+    bytes ed25519 = 1;
+    // rsa_verifying_sha256_2048 contains a SHA256 RSA 2048-bit key.
+    bytes rsa_verifying_sha256_2048 = 2;
+    // ecdsa_verifying_p256 contains ECC P256 key.
+    bytes ecdsa_verifying_p256 = 3;
+  }
+}
+
+// KeyValue is a map entry.
+message KeyValue {
+  // key contains the map entry key.
+  bytes key = 1;
+  // value contains the map entry value.
+  bytes value = 2;
+}
+
+// SignedKV is a signed change to a map entry.
+message SignedKV {
+  // key_value is a serialized KeyValue.
+  bytes key_value = 1;
+  // signatures on keyvalue. Must be signed by keys from both previous and
+  // current epochs. The first proves ownership of new epoch key, and the
+  // second proves that the correct owner is making this change.
+  map<fixed64, bytes> signatures = 2;
+  // previous contains the hash of the previous entry that this mutation is
+  // modifying creating a hash chain of all mutations. The hash used is
+  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
+  bytes previous = 3;
+}
+
+//
+// RPC request/response messages.
+//
+
+// GetEntryReqyest for a user object.
+message GetEntryRequest {
+  // Last trusted epoch by the client.
+  //int64 epoch_start = 3;
+  // Absence of the epoch_end field indicates a request for the current value.
+  int64 epoch_end = 1;
+  // User identifier. Most commonly an email address.
+  string user_id = 2;
+}
+
+// GetEntryResponse returns a requested user entry.
+message GetEntryResponse {
+  //
+  // Privacy layer hides user_id and profile data until requested.
+  //
+
+  // vrf is the output of VRF on user_id.
+  bytes vrf = 1;
+  // vrf_proof is the proof for VRF on user_id.
+  bytes vrf_proof = 2;
+
+  // committed contains the profile for this account and connects the data
+  // in profile to the commitment in leaf_proof.
+  Committed committed = 3;
+
+  //
+  // Verifiable map layer proves that the response is consistent.
+  //
+
+  // leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.
+  ctmap.GetLeafResponse leaf_proof = 5;
+  // smh contains the signed map head for the sparse merkle tree.
+  // smh is also stored in the append only log.
+  ctmap.SignedMapHead smh = 6;
+  // smh_sct is the SCT showing that smh was submitted to CT logs.
+  // TODO: Support storing smh in multiple logs.
+  bytes smh_sct = 7;
+}
+
+// Get a list of historical values for a user.
+message ListEntryHistoryRequest {
+  // The user identifier.
+  string user_id = 1;
+  // from_epoch is the starting epcoh.
+  int64 start_epoch = 2;
+  // The maximum number of entries to return.
+  int32 page_size = 3;
+}
+
+// A paginated history of values for a user.
+message ListEntryHistoryResponse {
+  // The list of values this user_id has contained over time.
+  repeated GetEntryResponse values = 1;
+  // The next time to query for pagination.
+  int64 next_epoch = 2;
+}
+
+// Update a user's profile.
+message UpdateEntryRequest {
+  // user_id specifies the id for the new account to be registered.
+  string user_id = 1;
+  // entry_update contains the user submitted update(s).
+  EntryUpdate entry_update = 2;
+}
+
+// UpdateEntryResponse contains a proof once the update has been included in
+// the Merkel Tree.
+message UpdateEntryResponse {
+  // proof contains a proof that the update has been included in the tree.
+  GetEntryResponse proof = 1;
+}
 
 // HkpLookupRequest contains query parameters for retrieving PGP keys.
 message HkpLookupRequest {
@@ -96,158 +234,4 @@ message HttpResponse {
   string content_type = 1;
   // The http body itself.
   bytes body = 2;
-}
-
-// GetEntryResponse 
-message GetEntryResponse {
-  //
-  // Privacy layer hides user_id and profile data until requested.
-  //
-
-  // vrf is the output of VRF on user_id.
-  bytes vrf = 1;
-  // vrf_proof is the proof for VRF on user_id.
-  bytes vrf_proof = 2;
-
-  // committed contains the profile for this account and connects the data
-  // in profile to the commitment in leaf_proof.
-  Committed committed = 3;
-
-  //
-  // Verifiable map layer proves that the response is consistent.
-  //
-
-  // leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.
-  ctmap.GetLeafResponse leaf_proof = 5;
-  // smh contains the signed map head for the sparse merkle tree. 
-  // smh is also stored in the append only log.
-  ctmap.SignedMapHead smh = 6;
-  // smh_sct is the SCT showing that smh was submitted to CT logs.
-  // TODO: Support storing smh in multiple logs.
-  bytes smh_sct = 7;
-
-  //
-  // Append only log layer proves that all account histories are consistent.
-  //
-
-  // Inclusion proof for the signed map head at end_epoch in the log of signed map heads.
-  //ct.GetEntryAndProofResponse audit_proof = 7;
-  // TODO: Supply GetEntryAndProofRequest data
-  // Latest signed tree head of the log of signed map heads.
-  //ct.GetSTHResponse sth = 8;
-  // Consistency proof between epoch_start and the current sth.
-  //ct.GetConsistencyProofResponse consistency_proof = 9;
-}
-
-// Committed represents the data committed to in a cryptographic commitment.
-// commitment = HMAC_SHA512_256(key, data)
-message Committed {
-  // key is the 16 byte random commitment key.
-  bytes key = 1;
-  // data is the data being committed to. 
-  bytes data = 2;
-}
-
-// Profile contains data hidden behind the crypto commitement.
-message Profile {
-  // Keys is a map of appIds to keys.
-  map<string, bytes> keys = 1;
-}
-
-
-//
-// Verifiable Map Leaf Data and Mutation Data.
-//
-
-// Entry contains a commitment to profile and a set of authorized update keys.
-// Entry is placed in the verifiable map as leaf data.
-message Entry {
-  // commitment is a cryptographic commitment to arbitrary data.
-  bytes commitment = 1;
-  // authorized_keys is the set of keys allowed to sign updates for this entry.
-  repeated PublicKey authorized_keys = 2;
-}
-
-// PublicKey defines a key this domain uses to sign MapHeads with.
-message PublicKey {
-  // KeyFormats from Keyczar.
-  oneof key_type {
-    bytes ed25519 = 1; // 32 bytes (<http://ed25519.cr.yp.to/>)
-    bytes rsa_verifying_sha256_2048 = 2;
-    bytes ecdsa_verifying_p256 = 3;
-  }
-}
-
-// KeyValue is a map entry.
-message KeyValue {
-   bytes key = 1;
-   bytes value = 2;
-}
-
-// SignedKV is a signed change to a map entry.
-message SignedKV {
-  // key_value is a serialized KeyValue.
-  bytes key_value = 1;
-  // signatures on keyvalue. Must be signed by keys from both previous and 
-  // current epochs. The first proves ownership of new epoch key, and the
-  // second proves that the correct owner is making this change.
-  map<fixed64, bytes> signatures = 2;
-  // previous contains the hash of the previous entry that this mutation is
-  // modifying creating a hash chain of all mutations. The hash used is
-  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
-  bytes previous = 3;
-}
-
-//
-// RPC request/response messages.
-//
-
-// Get request for a user object.
-message GetEntryRequest {
-  // Last trusted epoch by the client.
-  //int64 epoch_start = 3; 
-  // Absence of the epoch_end field indicates a request for the current value.
-  int64 epoch_end = 1;
-  // User identifier. Most commonly an email address.
-  string user_id = 2;
-}
-
-// Get a list of historical values for a user.
-message ListEntryHistoryRequest {
-  // The user identifier.
-  string user_id = 1;
-  // from_epoch is the starting epcoh.
-  int64 start_epoch = 2;
-  // The maximum number of entries to return.
-  int32 page_size = 3;
-}
-
-// A paginated history of values for a user.
-message ListEntryHistoryResponse {
-  // The list of values this user_id has contained over time.
-  repeated GetEntryResponse values = 1;
-  // The next time to query for pagination.
-  int64 next_epoch = 2;
-}
-
-message EntryUpdate {
-  // update authorizes the change to profile.
-  SignedKV update = 2; 
-  // commitment contains the serialized Profile protobuf.
-  Committed committed = 3;
-  // Last trusted epoch by the client.
-  // int64 epoch_start = 6; 
-}
-
-// Update a user's profile.
-message UpdateEntryRequest {
-  // user_id specifies the id for the new account to be registered.
-  string user_id = 1; 
-  EntryUpdate entry_update = 2;
-}
-
-// UpdateEntryResponse contains a proof once the update has been included in
-// the Merkel Tree.
-message UpdateEntryResponse {
-  GetEntryResponse proof = 1;
 }
