@@ -23,15 +23,21 @@ import (
 func TestCommit(t *testing.T) {
 	for _, tc := range []struct {
 		userID, data string
+		mutate       bool
+		want         error
 	}{
-		{"foo", "bar"},
+		{"foo", "bar", false, nil},
+		{"foo", "bar", true, ErrInvalidCommitment},
 	} {
 		k, c, err := Commit(tc.userID, []byte(tc.data))
 		if err != nil {
 			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.data, err)
 		}
-		if err := Verify(tc.userID, k, c); err != nil {
-			t.Errorf("Verify(%v, %x, %v): %v", tc.userID, k, c, err)
+		if tc.mutate {
+			k[0] ^= 1
+		}
+		if got := Verify(tc.userID, k, c); got != tc.want {
+			t.Errorf("Verify(%v, %x, %v): %v, want %v", tc.userID, k, c, err, tc.want)
 		}
 	}
 }
