@@ -15,11 +15,11 @@
 package commitments
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
 	pb "github.com/google/key-transparency/proto/keytransparency_v1"
@@ -35,7 +35,6 @@ const (
 	CREATE TABLE IF NOT EXISTS Commitments (
 		MapId	BLOB(32) NOT NULL,
 		Commitment BLOB(32) NOT NULL,
-		Key	BLOB(16) NOT NULL,
 		Value	BLOB(1024) NOT NULL,
 		PRIMARY KEY(MapID, Commitment),
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
@@ -43,10 +42,10 @@ const (
 	mapRowExpr = `
 	INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
 	insertExpr = `
-	INSERT INTO Commitments (MapId, Commitment, Key, Value)
-	VALUES ($1, $2, $3, $4);`
+	INSERT INTO Commitments (MapId, Commitment, Value)
+	VALUES ($1, $2, $3);`
 	readExpr = `
-	SELECT Key, Value FROM Commitments
+	SELECT Value FROM Commitments
 	WHERE MapId = $1 AND Commitment = $2;`
 )
 
@@ -92,9 +91,8 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *p
 	defer readStmt.Close()
 
 	// Read existing commitment.
-	read := &pb.Committed{}
-
-	err = readStmt.QueryRow(c.mapID, commitment).Scan(&read.Key, &read.Data)
+	var value []byte
+	err = readStmt.QueryRow(c.mapID, commitment).Scan(&value)
 	switch {
 	case err == sql.ErrNoRows:
 		writeStmt, err := tx.Prepare(insertExpr)
@@ -103,7 +101,12 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *p
 			return err
 		}
 		defer writeStmt.Close()
-		if _, err := writeStmt.Exec(c.mapID, commitment, committed.Key, committed.Data); err != nil {
+		b, err := proto.Marshal(committed)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		if _, err := writeStmt.Exec(c.mapID, commitment, b); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -112,12 +115,17 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *p
 		tx.Rollback()
 		return err
 	default: // err == nil
-		if bytes.Equal(committed.Key, read.Key) && bytes.Equal(committed.Data, read.Data) {
-			// Write of existing value.
-			return tx.Commit()
+		var c pb.Committed
+		if err := proto.Unmarshal(value, &c); err != nil {
+			tx.Rollback()
+			return err
 		}
-		tx.Rollback()
-		return errDoubleCommitment
+		if !proto.Equal(committed, &c) {
+			tx.Rollback()
+			return errDoubleCommitment
+		}
+		// Write of existing value.
+		return tx.Commit()
 	}
 }
 
@@ -129,13 +137,18 @@ func (c *Commitments) Read(ctx context.Context, commitment []byte) (*pb.Committe
 	}
 	defer stmt.Close()
 
-	value := &pb.Committed{}
-	if err := stmt.QueryRow(c.mapID, commitment).Scan(&value.Key, &value.Data); err == sql.ErrNoRows {
+	var value []byte
+	if err := stmt.QueryRow(c.mapID, commitment).Scan(&value); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
-	return value, nil
+
+	var committed pb.Committed
+	if err := proto.Unmarshal(value, &committed); err != nil {
+		return nil, err
+	}
+	return &committed, nil
 }
 
 func (c *Commitments) insertMapRow() error {
