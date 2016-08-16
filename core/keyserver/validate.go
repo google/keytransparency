@@ -44,8 +44,12 @@ var (
 	ErrNoCommitted = errors.New("missing commitment")
 	// ErrCommittedKeyLen occurs when the committed key is too small.
 	ErrCommittedKeyLen = errors.New("committed.key is too small")
-	// ErrWrongIndex occurs when the index in key value does not match the output of VRF.
-	ErrWrongIndex = errors.New("index does not match vrf")
+	// ErrWrongIndex occurs when the index in key value does not match the
+	// output of VRF.
+	ErrWrongIndex = errors.New("index does not match VRF")
+	// ErrInvalidStart occurs when the start epoch of ListEntryHistoryRequest
+	// is not valid (not in [1, currentEpoch].
+	ErrInvalidStart = errors.New("invalid start epoch")
 )
 
 // validateKey verifies:
@@ -103,6 +107,29 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	// Validate the profile.
 	if err := validateProfile(p, in.UserId); err != nil {
 		return err
+	}
+	return nil
+}
+
+// validateListEntryHistoryRequest ensures that start epoch is in range [1,
+// currentEpoch] and sets the page size if it is 0 or larger than what the server
+// can return (due to reaching currentEpoch).
+func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentEpoch int64) error {
+	if in.Start < 1 || in.Start > currentEpoch {
+		return ErrInvalidStart
+	}
+
+	// If in.PageSize is zero, use the default page size.
+	if in.PageSize == 0 {
+		in.PageSize = defaultPageSize
+	}
+	// Ensure in.PageSize is not more than the allowed max.
+	if in.PageSize > maxPageSize {
+		in.PageSize = maxPageSize
+	}
+	// Ensure in.PageSize does not exceed currentEpoch.
+	if in.Start+int64(in.PageSize) > currentEpoch {
+		in.PageSize = int32(currentEpoch - in.Start + 1)
 	}
 	return nil
 }
