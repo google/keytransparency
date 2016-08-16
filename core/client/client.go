@@ -32,6 +32,7 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	ct "github.com/google/certificate-transparency/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -114,11 +115,11 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, nil
 	}
 
-	profile := new(tpb.Profile)
-	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
+	var profile pb.Profile
+	if err := ptypes.UnmarshalAny(e.GetCommitted().Data, &profile); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling profile: %v", err)
 	}
-	return profile, nil
+	return &profile, nil
 }
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
@@ -141,7 +142,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 	}
 
 	// Commit to profile.
-	profileData, err := proto.Marshal(profile)
+	profileData, err := ptypes.MarshalAny(profile)
 	if err != nil {
 		return nil, fmt.Errorf("Unexpected profile marshaling error: %v", err)
 	}

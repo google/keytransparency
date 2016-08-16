@@ -22,6 +22,8 @@ import (
 	"crypto/sha512"
 	"errors"
 
+	"github.com/benlaurie/objecthash/go/objecthash"
+	"github.com/golang/protobuf/ptypes/any"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
@@ -30,13 +32,15 @@ import (
 const (
 	// commitmentKeyLen should be robust against the birthday attack.
 	// One commitment is given for each leaf node throughout time.
-	commitmentKeyLen = 16 // 128 bits of security, supports 2^64 nodes.
+	commitmentKeyLen = 16 // 128 bits of security, supports 2⁶⁴ nodes.
 )
 
 var (
 	hashAlgo = sha512.New512_256
 	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
 	ErrInvalidCommitment = errors.New("invalid commitment")
+	// randReader supports testing with static keys
+	randReader = rand.Read
 )
 
 // Committer saves cryptographic commitments.
@@ -47,27 +51,30 @@ type Committer interface {
 	Read(ctx context.Context, commitment []byte) (*tpb.Committed, error)
 }
 
-// Commit makes a cryptographic commitment under a specific userID to data.
-func Commit(userID string, data []byte) ([]byte, *tpb.Committed, error) {
+// Commit creates a cryptographic commitment to a protobuf message and a userID.
+func Commit(userID string, a *any.Any) ([]byte, *tpb.Committed, error) {
 	// Generate commitment key.
 	key := make([]byte, commitmentKeyLen)
-	if _, err := rand.Read(key); err != nil {
+	if _, err := randReader(key); err != nil {
 		return nil, nil, err
 	}
 
 	mac := hmac.New(hashAlgo, key)
 	mac.Write([]byte(userID))
 	mac.Write([]byte{0}) // Separate userID from data.
-	mac.Write(data)
-	return mac.Sum(nil), &tpb.Committed{Key: key, Data: data}, nil
+	h := objecthash.ObjectHash(a)
+	mac.Write(h[:])
+	return mac.Sum(nil), &tpb.Committed{Key: key, Data: a}, nil
 }
 
-// Verify customizes a commitment with a userID.
+// Verify verifies that the cryptographic commitment to the message and userID is correct.
 func Verify(userID string, commitment []byte, committed *tpb.Committed) error {
 	mac := hmac.New(hashAlgo, committed.Key)
 	mac.Write([]byte(userID))
-	mac.Write([]byte{0})
-	mac.Write(committed.Data)
+	mac.Write([]byte{0}) // Separate userID from data.
+	h := objecthash.ObjectHash(committed.Data)
+	mac.Write(h[:])
+
 	if !hmac.Equal(mac.Sum(nil), commitment) {
 		return ErrInvalidCommitment
 	}

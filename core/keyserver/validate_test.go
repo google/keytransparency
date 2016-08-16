@@ -24,6 +24,7 @@ import (
 	"github.com/google/key-transparency/core/vrf/p256"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
@@ -79,9 +80,9 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	profile := &tpb.Profile{
 		Keys: map[string][]byte{"foo": []byte("bar")},
 	}
-	profileData, err := proto.Marshal(profile)
+	profileData, err := ptypes.MarshalAny(profile)
 	if err != nil {
-		t.Fatalf("Marshal(%v)=%v", profile, err)
+		t.Fatalf("MarshalAny(%v)=%v", profile, err)
 	}
 
 	// Test verification for new entries.

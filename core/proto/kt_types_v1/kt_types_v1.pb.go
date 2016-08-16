@@ -49,13 +49,20 @@ type Committed struct {
 	// key is the 16 byte random commitment key.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// data is the data being committed to.
-	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Data *google_protobuf2.Any `protobuf:"bytes,2,opt,name=data" json:"data,omitempty"`
 }
 
 func (m *Committed) Reset()                    { *m = Committed{} }
 func (m *Committed) String() string            { return proto.CompactTextString(m) }
 func (*Committed) ProtoMessage()               {}
 func (*Committed) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+func (m *Committed) GetData() *google_protobuf2.Any {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
 
 // Profile contains data hidden behind the cryptographic commitment.
 type Profile struct {

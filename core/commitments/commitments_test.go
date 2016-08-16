@@ -18,26 +18,64 @@ package commitments
 
 import (
 	"testing"
+
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
+
+	pb "github.com/google/key-transparency/proto/keytransparency_v1"
 )
 
 func TestCommit(t *testing.T) {
 	for _, tc := range []struct {
-		userID, data string
-		mutate       bool
-		want         error
+		userID  string
+		profile *pb.Profile
+		mutate  bool
+		want    error
 	}{
-		{"foo", "bar", false, nil},
-		{"foo", "bar", true, ErrInvalidCommitment},
+		{"foo", &pb.Profile{}, false, nil},
+		{"foo", &pb.Profile{}, true, ErrInvalidCommitment},
 	} {
-		k, c, err := Commit(tc.userID, []byte(tc.data))
+		a, err := ptypes.MarshalAny(tc.profile)
 		if err != nil {
-			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.data, err)
+			t.Errorf("Failed to marshal profile: %v", err)
+		}
+		k, c, err := Commit(tc.userID, a)
+		if err != nil {
+			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.profile, err)
 		}
 		if tc.mutate {
 			k[0] ^= 1
 		}
+
 		if got := Verify(tc.userID, k, c); got != tc.want {
 			t.Errorf("Verify(%v, %x, %v): %v, want %v", tc.userID, k, c, err, tc.want)
 		}
+	}
+}
+
+func TestObjectHash(t *testing.T) {
+	// Verify that object hash produces unique results for various any.Any objects.
+	hashes := make(map[[32]byte]bool)
+	randReader = func(b []byte) (n int, err error) {
+		for i := range b {
+			b[i] = 0
+		}
+		return len(b), nil
+	}
+	for _, tc := range []any.Any{
+		ptypes.MarshalAny(pb.Profile{}),
+	} {
+		userID := ""
+		k, _, err := Commit(userID, tc)
+		if err != nil {
+			t.Errorf("Commit(%v, %v): %v", userID, tc, err)
+		}
+		// Verify that the hash doesn't conflict with any previous hashes.
+		var h [32]byte
+		copy(h[:], k[0:32])
+		if ok := hashes[h]; ok {
+			t.Errorf("Commit(%v, %v): %v, conflicts with preivous commitment", userID, tc, h)
+		}
+		hashes[h] = true
 	}
 }

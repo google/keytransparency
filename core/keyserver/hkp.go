@@ -20,7 +20,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/net/context"
@@ -67,8 +67,8 @@ func (s *Server) hkpGet(ctx context.Context, in *tpb.HkpLookupRequest) (*tpb.Htt
 		return nil, grpc.Errorf(codes.NotFound, "Not found")
 	}
 	// Extract and returned the user profile from the resulted
-	profile := new(tpb.Profile)
-	if err := proto.Unmarshal(result.GetCommitted().Data, profile); err != nil {
+	var profile pb.Profile
+	if err := ptypes.UnmarshalAny(result.GetCommitted().Data, &profile); err != nil {
 		log.Printf("Cannot unmarshal profile: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
 	}

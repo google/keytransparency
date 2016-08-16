@@ -28,7 +28,7 @@ message Committed {
   // key is the 16 byte random commitment key.
   bytes key = 1;
   // data is the data being committed to.
-  bytes data = 2;
+  google.protobuf.Any data = 2;
 }
 
 // Profile contains data hidden behind the cryptographic commitment.
