@@ -22,7 +22,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 func TestWriteRead(t *testing.T) {
@@ -52,7 +52,7 @@ func TestWriteRead(t *testing.T) {
 		{string(commitmentC), string(committedC.Data), "C", true},
 	}
 	for _, tc := range tests {
-		committed := &pb.Committed{Key: []byte(tc.key), Data: []byte(tc.value)}
+		committed := &tpb.Committed{Key: []byte(tc.key), Data: []byte(tc.value)}
 		err := c.Write(nil, []byte(tc.commitment), committed)
 		if got := err == nil; got != tc.want {
 			t.Fatalf("WriteCommitment(%v, %v, %v): %v, want %v", tc.commitment, tc.key, tc.value, err, tc.want)

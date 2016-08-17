@@ -22,13 +22,13 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	ctmap "github.com/google/key-transparency/core/proto/ctmap"
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 var (
 	primaryUserID = "bob"
 	fakeUserID    = "eve"
-	profile       = &pb.Profile{Keys: primaryKeys}
+	profile       = &tpb.Profile{Keys: primaryKeys}
 	primaryKeys   = map[string][]byte{
 		"foo": []byte("bar"),
 	}
@@ -44,7 +44,7 @@ func TestVerifyCommitment(t *testing.T) {
 		t.Fatalf("Commit(%v, %v)=%v", primaryUserID, profileData, err)
 	}
 
-	entry := &pb.Entry{Commitment: commitment}
+	entry := &tpb.Entry{Commitment: commitment}
 	validEntryData, err := proto.Marshal(entry)
 	if err != nil {
 		t.Fatalf("Marshal(%v)=%v", entry, err)
@@ -54,7 +54,7 @@ func TestVerifyCommitment(t *testing.T) {
 	tests := []struct {
 		userID    string
 		entryData []byte
-		committed *pb.Committed
+		committed *tpb.Committed
 		want      bool
 	}{
 		{primaryUserID, validEntryData, committed, false}, // Working case
@@ -63,7 +63,7 @@ func TestVerifyCommitment(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		resp := &pb.GetEntryResponse{
+		resp := &tpb.GetEntryResponse{
 			Committed: tc.committed,
 			LeafProof: &ctmap.GetLeafResponse{
 				LeafData: tc.entryData,

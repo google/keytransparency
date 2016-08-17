@@ -41,7 +41,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	pb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
 
 var (

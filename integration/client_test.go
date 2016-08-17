@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 var (
@@ -58,7 +58,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		}
 		// Update profile.
 		if tc.insert {
-			req, err := env.Client.Update(tc.ctx, tc.userID, &pb.Profile{Keys: primaryKeys})
+			req, err := env.Client.Update(tc.ctx, tc.userID, &tpb.Profile{Keys: primaryKeys})
 			if got, want := err, client.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
@@ -102,7 +102,7 @@ func TestUpdateValidation(t *testing.T) {
 	env.Client.RetryCount = 0
 
 	auth := authentication.NewFake()
-	profile := &pb.Profile{
+	profile := &tpb.Profile{
 		Keys: map[string][]byte{
 			"foo": []byte("bar"),
 		},
@@ -112,7 +112,7 @@ func TestUpdateValidation(t *testing.T) {
 		want    bool
 		ctx     context.Context
 		userID  string
-		profile *pb.Profile
+		profile *tpb.Profile
 	}{
 		{false, context.Background(), "alice", profile},
 		{false, auth.NewContext("carol"), "bob", profile},

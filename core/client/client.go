@@ -36,7 +36,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
+	spb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
 
 const (
@@ -66,7 +67,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli          pb.KeyTransparencyServiceClient
+	cli          spb.KeyTransparencyServiceClient
 	vrf          vrf.PublicKey
 	RetryCount   int
 	treeVerifier *tv.Verifier
@@ -75,7 +76,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log LogVerifier) *Client {
+func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log LogVerifier) *Client {
 	return &Client{
 		cli:          client,
 		vrf:          vrf,
@@ -87,9 +88,9 @@ func New(client pb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *si
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*pb.Profile, error) {
+func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, error) {
 	// Error, ctx is not being passed
-	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
+	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
 		UserId: userID,
 	}, opts...)
 	if err != nil {
@@ -113,7 +114,7 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, nil
 	}
 
-	profile := new(pb.Profile)
+	profile := new(tpb.Profile)
 	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling profile: %v", err)
 	}
@@ -122,8 +123,8 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
-func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile, opts ...grpc.CallOption) (*pb.UpdateEntryRequest, error) {
-	getResp, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{UserId: userID}, opts...)
+func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
+	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 
 	// Extract index from a prior GetEntry call.
 	index := c.vrf.Index(getResp.Vrf)
-	prevEntry := new(pb.Entry)
+	prevEntry := new(tpb.Entry)
 	if err := proto.Unmarshal(getResp.GetLeafProof().LeafData, prevEntry); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
 	}
@@ -150,7 +151,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	}
 
 	// Create new Entry.
-	entry := &pb.Entry{
+	entry := &tpb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: prevEntry.AuthorizedKeys,
 	}
@@ -160,7 +161,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 	if err != nil {
 		return nil, err
 	}
-	kv := &pb.KeyValue{
+	kv := &tpb.KeyValue{
 		Key:   index[:],
 		Value: entryData,
 	}
@@ -169,16 +170,16 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 		return nil, err
 	}
 	previous := objecthash.ObjectHash(getResp.GetLeafProof().LeafData)
-	signedkv := &pb.SignedKV{
+	signedkv := &tpb.SignedKV{
 		KeyValue:   kvData,
 		Signatures: nil, // TODO: Apply Signatures.
 		Previous:   previous[:],
 	}
 
 	// Send request.
-	req := &pb.UpdateEntryRequest{
+	req := &tpb.UpdateEntryRequest{
 		UserId: userID,
-		EntryUpdate: &pb.EntryUpdate{
+		EntryUpdate: &tpb.EntryUpdate{
 			Update:    signedkv,
 			Committed: committed,
 		},
@@ -194,7 +195,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *pb.Profile,
 }
 
 // Retry will take a pre-fabricated request and send it again.
-func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
+func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
 		return err
@@ -206,7 +207,7 @@ func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest) error {
 	}
 
 	// Check if the response is a replay.
-	kv := new(pb.KeyValue)
+	kv := new(tpb.KeyValue)
 	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
 		return fmt.Errorf("Error unmarshaling KeyValue: %v", err)
 	}

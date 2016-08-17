@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 var (
@@ -66,7 +66,7 @@ B+8k+PXDpFKMZHZYo/E6qtVrpdYT
 func CreateDefaultUser(env *Env, t testing.TB) {
 	authCtx := authentication.NewFake().NewContext(defaultUserID)
 	keyring, _ := hex.DecodeString(strings.Replace(defaultKeyring, "\n", "", -1))
-	profile := &pb.Profile{Keys: map[string][]byte{"pgp": keyring}}
+	profile := &tpb.Profile{Keys: map[string][]byte{"pgp": keyring}}
 	req, err := env.Client.Update(authCtx, defaultUserID, profile)
 	if got, want := err, client.ErrRetry; got != want {
 		t.Fatalf("Update(%v): %v, want %v", defaultUserID, got, want)
@@ -109,7 +109,7 @@ func TestHkpLookup(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		req := &pb.HkpLookupRequest{
+		req := &tpb.HkpLookupRequest{
 			Op:      tc.op,
 			Search:  tc.userID,
 			Options: tc.options,

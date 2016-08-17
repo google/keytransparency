@@ -17,45 +17,6 @@ syntax = "proto3";
 package keytransparency.v1;
 
 import "github.com/google/key-transparency/core/proto/ctmap/ctmap.proto";
-import "google/api/annotations.proto";
-
-// The KeyTransparencyService API represents a directory of public keys.
-// The API defines the following resource model:
-//
-// - The API has a collection of [Entry][keytransparency.Entry]
-//   resources named `/user/*`.
-//
-// - Entries have a collection of historical
-//   [Entry][keytransparency.Entry] resources named `/users/*/history`.
-//
-service KeyTransparencyService {
-  // GetEntry returns a user's entry in the Merkle Tree. Entries contain
-  // signed commitments to a profile, which is also returned.
-  rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
-    option (google.api.http) = { get: "/v1/users/{user_id}" };
-  }
-
-  // ListEntryHistory returns a list of GetEntryRespons covering several epochs.
-  rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
-    option (google.api.http) = { get: "/v1/users/{user_id}/history" };
-  }
-
-  // UpdateEntry submits a EntryUpdate.  Returns empty until this update has been
-  // included in an epoch.  Clients must retry until this function returns a
-  // proof.
-  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {
-    option (google.api.http) = {
-      put: "/v1/users/{user_id}"
-      body: "entry_update"
-    };
-  }
-
-  // HkpLookup implements an HKP lookup for users to fetch their (or other's)
-  // profiles.
-  rpc HkpLookup(HkpLookupRequest) returns (HttpResponse){
-    option (google.api.http) = { get: "/v1/hkp/lookup" };
-  }
-}
 
 //
 // Data types.
