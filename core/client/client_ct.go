@@ -66,8 +66,8 @@ type SCTEntry struct {
 	smh *ctmap.SignedMapHead
 }
 
-// NewLog produces a new CT log verification client.
-func NewLog(pem []byte, logURL string) (*Log, error) {
+// NewLogVerifier produces a new CT log verification client.
+func NewLogVerifier(pem []byte, logURL string) (*Log, error) {
 	pk, _, _, err := ct.PublicKeyFromPEM(pem)
 	if err != nil {
 		return nil, err
