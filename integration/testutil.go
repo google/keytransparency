@@ -38,7 +38,7 @@ import (
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"google.golang.org/grpc"
 
-	servicev1 "github.com/google/key-transparency/impl/proto/kt_v1_service"
+	pb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
 
 const (
@@ -79,7 +79,7 @@ type Env struct {
 	db         *sql.DB
 	clus       *integration.ClusterV3
 	VrfPriv    vrf.PrivateKey
-	Cli        servicev1.KeyTransparencyServiceClient
+	Cli        pb.KeyTransparencyServiceClient
 	mapLog     *httptest.Server
 }
 
@@ -184,7 +184,7 @@ func NewEnv(t *testing.T) *Env {
 	}
 	server := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
 	s := grpc.NewServer()
-	servicev1.RegisterKeyTransparencyServiceServer(s, server)
+	pb.RegisterKeyTransparencyServiceServer(s, server)
 
 	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
 	signer.FakeTime()
@@ -198,7 +198,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	cli := servicev1.NewKeyTransparencyServiceClient(cc)
+	cli := pb.NewKeyTransparencyServiceClient(cc)
 	client := client.New(cli, vrfPub, verifier, fakeLog{})
 	client.RetryCount = 0
 

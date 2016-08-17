@@ -22,16 +22,16 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	ctmap "github.com/google/key-transparency/core/proto/ctmap"
-	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 // ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
 var ErrNilProof = errors.New("nil proof")
 
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
-func VerifyCommitment(userID string, in *pbtypes.GetEntryResponse) error {
+func VerifyCommitment(userID string, in *tpb.GetEntryResponse) error {
 	if in.Committed != nil {
-		entry := new(pbtypes.Entry)
+		entry := new(tpb.Entry)
 		if err := proto.Unmarshal(in.GetLeafProof().LeafData, entry); err != nil {
 			return err
 		}
@@ -47,7 +47,7 @@ func (c *Client) VerifySMH(smh *ctmap.SignedMapHead) error {
 	return c.verifier.Verify(smh.GetMapHead(), smh.Signatures[c.verifier.KeyName])
 }
 
-func (c *Client) verifyGetEntryResponse(userID string, in *pbtypes.GetEntryResponse) error {
+func (c *Client) verifyGetEntryResponse(userID string, in *tpb.GetEntryResponse) error {
 	if err := VerifyCommitment(userID, in); err != nil {
 		return err
 	}

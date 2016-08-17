@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package keytransparency.v1;
 
-import "github.com/google/key-transparency/core/proto/kt_v1_types/kt_v1_types.proto";
+import "github.com/google/key-transparency/core/proto/kt_types_v1/kt_types_v1.proto";
 import "google/api/annotations.proto";
 
 // The KeyTransparencyService API represents a directory of public keys.

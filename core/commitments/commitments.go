@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 const (
@@ -42,13 +42,13 @@ var (
 // Committer saves cryptographic commitments.
 type Committer interface {
 	// Write saves a cryptographic commitment and associated data.
-	Write(ctx context.Context, commitment []byte, committed *pbtypes.Committed) error
+	Write(ctx context.Context, commitment []byte, committed *tpb.Committed) error
 	// Read looks up a cryptograpic commitment and returns associated data.
-	Read(ctx context.Context, commitment []byte) (*pbtypes.Committed, error)
+	Read(ctx context.Context, commitment []byte) (*tpb.Committed, error)
 }
 
 // Commit makes a cryptographic commitment under a specific userID to data.
-func Commit(userID string, data []byte) ([]byte, *pbtypes.Committed, error) {
+func Commit(userID string, data []byte) ([]byte, *tpb.Committed, error) {
 	// Generate commitment key.
 	key := make([]byte, commitmentKeyLen)
 	if _, err := rand.Read(key); err != nil {
@@ -59,11 +59,11 @@ func Commit(userID string, data []byte) ([]byte, *pbtypes.Committed, error) {
 	mac.Write([]byte(userID))
 	mac.Write([]byte{0}) // Separate userID from data.
 	mac.Write(data)
-	return mac.Sum(nil), &pbtypes.Committed{Key: key, Data: data}, nil
+	return mac.Sum(nil), &tpb.Committed{Key: key, Data: data}, nil
 }
 
 // Verify customizes a commitment with a userID.
-func Verify(userID string, commitment []byte, committed *pbtypes.Committed) error {
+func Verify(userID string, commitment []byte, committed *tpb.Committed) error {
 	mac := hmac.New(hashAlgo, committed.Key)
 	mac.Write([]byte(userID))
 	mac.Write([]byte{0})

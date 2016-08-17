@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 const (
@@ -41,7 +41,7 @@ var (
 )
 
 // HkpLookup implements HKP pgp keys lookup.
-func (s *Server) HkpLookup(ctx context.Context, in *pbtypes.HkpLookupRequest) (*pbtypes.HttpResponse, error) {
+func (s *Server) HkpLookup(ctx context.Context, in *tpb.HkpLookupRequest) (*tpb.HttpResponse, error) {
 	switch in.Op {
 	case "get":
 		return s.hkpGet(ctx, in)
@@ -51,13 +51,13 @@ func (s *Server) HkpLookup(ctx context.Context, in *pbtypes.HkpLookupRequest) (*
 }
 
 // HkpGet implements HKP pgp keys lookup for op=get.
-func (s *Server) hkpGet(ctx context.Context, in *pbtypes.HkpLookupRequest) (*pbtypes.HttpResponse, error) {
+func (s *Server) hkpGet(ctx context.Context, in *tpb.HkpLookupRequest) (*tpb.HttpResponse, error) {
 	// Search by key index is not supported
 	if strings.HasPrefix(in.Search, "0x") {
 		return nil, grpc.Errorf(codes.Unimplemented, "Searching by key index are not supported")
 	}
 
-	getEntryRequest := pbtypes.GetEntryRequest{UserId: in.Search}
+	getEntryRequest := tpb.GetEntryRequest{UserId: in.Search}
 	result, err := s.GetEntry(ctx, &getEntryRequest)
 	if err != nil {
 		log.Printf("Failed to retrieve entry: %v", err)
@@ -67,7 +67,7 @@ func (s *Server) hkpGet(ctx context.Context, in *pbtypes.HkpLookupRequest) (*pbt
 		return nil, grpc.Errorf(codes.NotFound, "Not found")
 	}
 	// Extract and returned the user profile from the resulted
-	profile := new(pbtypes.Profile)
+	profile := new(tpb.Profile)
 	if err := proto.Unmarshal(result.GetCommitted().Data, profile); err != nil {
 		log.Printf("Cannot unmarshal profile: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Provided profile cannot be parsed")
@@ -85,7 +85,7 @@ func (s *Server) hkpGet(ctx context.Context, in *pbtypes.HkpLookupRequest) (*pbt
 		return nil, grpc.Errorf(codes.Internal, "Armor key failed")
 	}
 
-	out := pbtypes.HttpResponse{Body: armoredKey}
+	out := tpb.HttpResponse{Body: armoredKey}
 	// Format output based on the provided options.
 	out.ContentType = "text/plain"
 	for _, option := range strings.Split(in.Options, ",") {

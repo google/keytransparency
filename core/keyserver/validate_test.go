@@ -26,7 +26,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
+	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 var (
@@ -76,7 +76,7 @@ func TestValidateKey(t *testing.T) {
 
 func TestValidateUpdateEntryRequest(t *testing.T) {
 	// Create and marshal a profile.
-	profile := &pbtypes.Profile{
+	profile := &tpb.Profile{
 		Keys: map[string][]byte{"foo": []byte("bar")},
 	}
 	profileData, err := proto.Marshal(profile)
@@ -98,7 +98,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		userID     string
 		index      [32]byte
 		commitment []byte
-		committed  *pbtypes.Committed
+		committed  *tpb.Committed
 	}{
 		{false, context.Background(), userID, [32]byte{}, nil, nil}, // Incorrect auth
 		{false, authCtx, userID, [32]byte{}, nil, nil},              // Incorrect index
@@ -107,18 +107,18 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		{true, authCtx, userID, index, commitment, committed},
 	}
 	for _, tc := range tests {
-		entry := &pbtypes.Entry{
+		entry := &tpb.Entry{
 			Commitment: tc.commitment,
 		}
 		entryData, _ := proto.Marshal(entry)
-		kv := &pbtypes.KeyValue{Key: tc.index[:], Value: entryData}
+		kv := &tpb.KeyValue{Key: tc.index[:], Value: entryData}
 		kvData, _ := proto.Marshal(kv)
-		signedkv := &pbtypes.SignedKV{
+		signedkv := &tpb.SignedKV{
 			KeyValue: kvData,
 		}
-		req := &pbtypes.UpdateEntryRequest{
+		req := &tpb.UpdateEntryRequest{
 			UserId: tc.userID,
-			EntryUpdate: &pbtypes.EntryUpdate{
+			EntryUpdate: &tpb.EntryUpdate{
 				Update:    signedkv,
 				Committed: tc.committed,
 			},

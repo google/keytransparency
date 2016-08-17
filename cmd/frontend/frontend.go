@@ -41,7 +41,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	servicev1 "github.com/google/key-transparency/impl/proto/kt_v1_service"
+	pb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
 
 var (
@@ -100,7 +100,7 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	gwmux := runtime.NewServeMux()
-	if err := servicev1.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+	if err := pb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
 
@@ -160,7 +160,7 @@ func main() {
 	// Create gRPC server.
 	svr := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
-	servicev1.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
 
 	// Create HTTP handlers and gRPC gateway.
 	addr := fmt.Sprintf("localhost:%d", *port)
