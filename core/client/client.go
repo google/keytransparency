@@ -32,7 +32,6 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
-	ct "github.com/google/certificate-transparency/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -41,6 +40,12 @@ import (
 )
 
 const (
+	// Each page contains pageSize profiles. Each profile contains multiple
+	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
+	// size 16 will contain about 8KB of data.
+	defaultPageSize = int32(16)
+	// The delay before the client retry updating the profile if ErrRetry is
+	// received.
 	retryDelay = 3 * time.Second
 	// TODO: Public key of signer.
 	// TODO: Public keys of trusted monitors.
@@ -101,14 +106,6 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, err
 	}
 
-	sct, err := ct.DeserializeSCT(bytes.NewReader(e.SmhSct))
-	if err != nil {
-		return nil, err
-	}
-	if err := c.log.VerifySCT(e.GetSmh(), sct); err != nil {
-		return nil, err
-	}
-
 	// Empty case.
 	if e.GetCommitted() == nil {
 		return nil, nil
@@ -116,9 +113,67 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 
 	profile := new(tpb.Profile)
 	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling profile: %v", err)
+		log.Printf("Error unmarshaling profile: %v", err)
+		return nil, err
 	}
 	return profile, nil
+}
+
+// ListHistory returns a list of profiles starting and ending at given epochs.
+// It also filters out all identical consecutive profiles.
+func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, endEpoch int64, opts ...grpc.CallOption) ([]*pb.Profile, error) {
+	currentProfile := []byte(nil)
+	profiles := make([]*pb.Profile, 0, endEpoch-startEpoch+1)
+
+	// Setup loop-related variables.
+	pageSize := defaultPageSize
+	epoch := startEpoch
+	for epoch <= endEpoch {
+		resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
+			UserId:   userID,
+			Start:    epoch,
+			PageSize: pageSize,
+		}, opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		// Iterate of the responses in reverse order.
+		for i := 0; i < len(resp.GetValues()); i++ {
+			// If empty profile, skip.
+			if resp.GetValues()[i].GetCommitted() == nil {
+				continue
+			}
+
+			pData := resp.GetValues()[i].GetCommitted().Data
+			profile := new(pb.Profile)
+			if err := proto.Unmarshal(pData, profile); err != nil {
+				log.Printf("Error unmarshaling profile: %v", err)
+				return nil, err
+			}
+			// Ignore the extracted profile if it is nil or similar
+			// to the current one. Nil profiles can occur in epochs
+			// before the user updates his profile for the first
+			// time.
+			if bytes.Equal(currentProfile, pData) {
+				continue
+			}
+
+			// Verify the response.
+			err = c.verifyGetEntryResponse(userID, resp.GetValues()[i])
+			if err != nil {
+				return nil, err
+			}
+
+			// Append the slice and update currentProfile.
+			profiles = append(profiles, profile)
+			currentProfile = pData
+		}
+
+		epoch = resp.NextStart
+	}
+
+	return profiles, nil
 }
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
@@ -126,10 +181,6 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := c.verifyGetEntryResponse(userID, getResp); err != nil {
 		return nil, err
 	}
 
@@ -198,11 +249,6 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
-		return err
-	}
-
-	// Validate response.
-	if err := c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
 		return err
 	}
 

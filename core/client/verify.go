@@ -69,5 +69,7 @@ func (c *Client) verifyGetEntryResponse(userID string, in *tpb.GetEntryResponse)
 	if err := c.VerifySMH(in.GetSmh()); err != nil {
 		return err
 	}
+
+	// TODO: Verify SCT.
 	return nil
 }
