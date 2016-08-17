@@ -80,7 +80,7 @@ func TestCheckMutation(t *testing.T) {
 	// first mutation.
 	nilHash := objecthash.ObjectHash(nil)
 
-	tests := []struct {
+	for _, tc := range []struct {
 		key       []byte
 		oldValue  []byte
 		entryData []byte
@@ -95,9 +95,7 @@ func TestCheckMutation(t *testing.T) {
 		{key, nil, nil, nil, mutator.ErrReplay},                            // Very first mutation, replayed mutation
 		{key, nil, entryData1, nilHash[:], nil},                            // Very first mutation, working case
 		{key, entryData1, entryData2, hashEntry1[:], nil},                  // Working case
-	}
-
-	for _, tc := range tests {
+	} {
 		// Prepare mutations.
 		mutation, err := prepareMutation(tc.key, tc.entryData, tc.previous)
 		if err != nil {

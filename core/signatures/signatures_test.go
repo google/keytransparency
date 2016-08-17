@@ -20,19 +20,15 @@ import (
 )
 
 func TestNewSigner(t *testing.T) {
-	tests := []struct {
-		pem string
-	}{
-		{ // openssl ecparam -name prime256v1 -genkey -out p256-key.pem
-			`-----BEGIN EC PRIVATE KEY-----
+	for _, pem := range []string{
+		// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+		`-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
 AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
 csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 -----END EC PRIVATE KEY-----`,
-		},
-	}
-	for _, tc := range tests {
-		k, rest, err := PrivateKeyFromPEM([]byte(tc.pem))
+	} {
+		k, rest, err := PrivateKeyFromPEM([]byte(pem))
 		if err != nil {
 			t.Errorf("PrivateKeyFromPEM(): %v", err)
 		}
@@ -46,19 +42,15 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 }
 
 func TestNewVerifier(t *testing.T) {
-	tests := []struct {
-		pem string
-	}{
+	for _, pem := range []string{
 		// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
 		// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
-		{`-----BEGIN PUBLIC KEY-----
+		`-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 -----END PUBLIC KEY-----`,
-		},
-	}
-	for _, tc := range tests {
-		k, rest, err := PublicKeyFromPEM([]byte(tc.pem))
+	} {
+		k, rest, err := PublicKeyFromPEM([]byte(pem))
 		if err != nil {
 			t.Errorf("PublicKeyFromPEM(): %v", err)
 		}
@@ -95,12 +87,11 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 		t.Fatalf("NewSigantureVerifier(): %v", err)
 	}
 
-	tests := []struct {
+	for _, tc := range []struct {
 		data interface{}
 	}{
 		{struct{ Foo string }{"bar"}},
-	}
-	for _, tc := range tests {
+	} {
 		sig, err := signer.Sign(tc.data)
 		if err != nil {
 			t.Errorf("Sign(%v): %v", tc.data, err)
@@ -113,8 +104,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 
 func TestConsistentName(t *testing.T) {
 	// Verify that the ID generated from from pub and from priv are the same.
-
-	tests := []struct {
+	for _, tc := range []struct {
 		priv string
 		pub  string
 	}{
@@ -130,8 +120,7 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 -----END PUBLIC KEY-----`},
-	}
-	for _, tc := range tests {
+	} {
 		ka, _, _ := PrivateKeyFromPEM([]byte(tc.priv))
 		kb, _, _ := PublicKeyFromPEM([]byte(tc.pub))
 

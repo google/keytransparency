@@ -47,7 +47,7 @@ func TestGetLatest(t *testing.T) {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
 
-	tests := []struct {
+	for _, tc := range []struct {
 		epoch int64
 		data  []byte
 		want  int64
@@ -55,9 +55,7 @@ func TestGetLatest(t *testing.T) {
 		{0, []byte("foo"), 0},
 		{10, []byte("foo"), 10},
 		{5, []byte("foo"), 10},
-	}
-
-	for _, tc := range tests {
+	} {
 		if err := a.Append(context.Background(), tc.epoch, tc.data); err != nil {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
@@ -85,7 +83,7 @@ func TestAppend(t *testing.T) {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
 
-	tests := []struct {
+	for _, tc := range []struct {
 		epoch int64
 		data  []byte
 		want  bool
@@ -93,9 +91,7 @@ func TestAppend(t *testing.T) {
 		{0, []byte("foo"), true},
 		{0, []byte("foo"), false},
 		{1, []byte("foo"), true},
-	}
-
-	for _, tc := range tests {
+	} {
 		err := a.Append(context.Background(), tc.epoch, tc.data)
 		if got := err == nil; got != tc.want {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)

@@ -51,7 +51,7 @@ func TestVerifyCommitment(t *testing.T) {
 	}
 	fakeEntryData := validEntryData[:len(validEntryData)-1]
 
-	tests := []struct {
+	for _, tc := range []struct {
 		userID    string
 		entryData []byte
 		committed *tpb.Committed
@@ -60,9 +60,7 @@ func TestVerifyCommitment(t *testing.T) {
 		{primaryUserID, validEntryData, committed, false}, // Working case
 		{primaryUserID, validEntryData, nil, false},       // nil committed
 		{primaryUserID, fakeEntryData, committed, true},   // Unmarshable entry
-	}
-
-	for _, tc := range tests {
+	} {
 		resp := &tpb.GetEntryResponse{
 			Committed: tc.committed,
 			LeafProof: &ctmap.GetLeafResponse{
