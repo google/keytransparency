@@ -35,6 +35,15 @@ import (
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
+const (
+	// Each page contains pageSize profiles. Each profile contains multiple
+	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
+	// size 16 will contain about 8KB of data.
+	defaultPageSize = 16
+	// Maximum allowed requested page size to prevent DOS.
+	maxPageSize = 16
+)
+
 // Server holds internal state for the key server.
 type Server struct {
 	committer commitments.Committer
@@ -135,7 +144,38 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
+	// Get current epoch.
+	ignore := new(ctmap.SignedMapHead)
+	currentEpoch, _, err := s.appender.Latest(ctx, &ignore)
+	if err != nil {
+		log.Printf("Cannot get latest epoch: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot get latest epoch")
+	}
+
+	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
+		log.Printf("Invalid ListEntryHistoryRequest: %v", err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
+	}
+
+	// Get all GetEntryResponse for all epochs in the range [start, start +
+	// in.PageSize].
+	responses := make([]*tpb.GetEntryResponse, in.PageSize)
+	for i := range responses {
+		// Set correct epoch before calling GetEntry.
+		resp, err := s.GetEntry(ctx, &tpb.GetEntryRequest{
+			UserId:   in.UserId,
+			EpochEnd: in.Start + int64(i),
+		})
+		if err != nil {
+			return nil, err
+		}
+		responses[i] = resp
+	}
+
+	return &tpb.ListEntryHistoryResponse{
+		Values:    responses,
+		NextStart: in.Start + int64(in.PageSize),
+	}, nil
 }
 
 // UpdateEntry updates a user's profile. If the user does not exist, a new
