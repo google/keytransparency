@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	servicev1 "github.com/google/key-transparency/impl/proto/kt_v1_service"
 )
 
 var (
@@ -109,7 +109,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error Dialing %v: %v", *mapURL, err)
 	}
-	cli := pb.NewKeyTransparencyServiceClient(cc)
+	cli := servicev1.NewKeyTransparencyServiceClient(cc)
 	vrfKey, err := readVrfKey()
 	if err != nil {
 		log.Fatalf("Error reading VRF key: %v", err)

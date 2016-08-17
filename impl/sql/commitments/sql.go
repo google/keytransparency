@@ -22,7 +22,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
 )
 
 const (
@@ -79,7 +79,7 @@ func New(db *sql.DB, mapID string) (*Commitments, error) {
 
 // WriteCommitment saves a commitment to the database.
 // Writes if the same commitment value succeeds.
-func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *pb.Committed) error {
+func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *pbtypes.Committed) error {
 	tx, err := c.db.Begin()
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *p
 	defer readStmt.Close()
 
 	// Read existing commitment.
-	read := &pb.Committed{}
+	read := &pbtypes.Committed{}
 
 	err = readStmt.QueryRow(c.mapID, commitment).Scan(&read.Key, &read.Data)
 	switch {
@@ -122,14 +122,14 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *p
 }
 
 // Read retrieves a commitment from the database.
-func (c *Commitments) Read(ctx context.Context, commitment []byte) (*pb.Committed, error) {
+func (c *Commitments) Read(ctx context.Context, commitment []byte) (*pbtypes.Committed, error) {
 	stmt, err := c.db.Prepare(readExpr)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	value := &pb.Committed{}
+	value := &pbtypes.Committed{}
 	if err := stmt.QueryRow(c.mapID, commitment).Scan(&value.Key, &value.Data); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {

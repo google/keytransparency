@@ -24,7 +24,7 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
 )
 
 // Entry defines mutations to simply replace the current map value with the
@@ -38,7 +38,7 @@ func New() *Entry {
 
 // CheckMutation verifies that this is a valid mutation for this item.
 func (*Entry) CheckMutation(oldValue, mutation []byte) error {
-	update := new(pb.SignedKV)
+	update := new(pbtypes.SignedKV)
 	if err := proto.Unmarshal(mutation, update); err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		return mutator.ErrSize
 	}
 
-	kv := new(pb.KeyValue)
+	kv := new(pbtypes.KeyValue)
 	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		return mutator.ErrPreviousHash
 	}
 
-	entry := new(pb.Entry)
+	entry := new(pbtypes.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
 		return err
 	}
@@ -78,11 +78,11 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 
 // Mutate applies mutation to value.
 func (*Entry) Mutate(value, mutation []byte) ([]byte, error) {
-	update := new(pb.SignedKV)
+	update := new(pbtypes.SignedKV)
 	if err := proto.Unmarshal(mutation, update); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling update: %v", err)
 	}
-	kv := new(pb.KeyValue)
+	kv := new(pbtypes.KeyValue)
 	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling keyvalue: %v", err)
 	}

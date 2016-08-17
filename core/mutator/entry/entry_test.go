@@ -24,12 +24,12 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
 )
 
 func createEntry(commitment []byte) ([]byte, error) {
 	// TODO: fill Commitment and AuthorizedKeys.
-	entry := &pb.Entry{
+	entry := &pbtypes.Entry{
 		Commitment: commitment,
 	}
 	entryData, err := proto.Marshal(entry)
@@ -40,7 +40,7 @@ func createEntry(commitment []byte) ([]byte, error) {
 }
 
 func prepareMutation(key []byte, entryData []byte, previous []byte) ([]byte, error) {
-	kv := &pb.KeyValue{
+	kv := &pbtypes.KeyValue{
 		Key:   key,
 		Value: entryData,
 	}
@@ -48,7 +48,7 @@ func prepareMutation(key []byte, entryData []byte, previous []byte) ([]byte, err
 	if err != nil {
 		return nil, fmt.Errorf("Marshal(%v)=%v", kv, err)
 	}
-	skv := &pb.SignedKV{
+	skv := &pbtypes.SignedKV{
 		KeyValue: kvData,
 		Previous: previous,
 	}

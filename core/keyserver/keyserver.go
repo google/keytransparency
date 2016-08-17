@@ -32,7 +32,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	ctmap "github.com/google/key-transparency/core/proto/ctmap"
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
 )
 
 // Server holds internal state for the key server.
@@ -79,7 +79,7 @@ func (s *Server) GetSMH(ctx context.Context, epoch int64) (int64, *ctmap.SignedM
 // GetEntry returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
-func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
+func (s *Server) GetEntry(ctx context.Context, in *pbtypes.GetEntryRequest) (*pbtypes.GetEntryResponse, error) {
 	vrf, proof := s.vrf.Evaluate([]byte(in.UserId))
 	index := s.vrf.Index(vrf)
 
@@ -101,9 +101,9 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		log.Printf("Cannot read leaf entry: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
 	}
-	var committed *pb.Committed
+	var committed *pbtypes.Committed
 	if leaf != nil {
-		entry := pb.Entry{}
+		entry := pbtypes.Entry{}
 		if err := proto.Unmarshal(leaf, &entry); err != nil {
 			log.Printf("Error unmarshaling entry: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
@@ -119,7 +119,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		}
 	}
 
-	return &pb.GetEntryResponse{
+	return &pbtypes.GetEntryResponse{
 		Vrf:       vrf,
 		VrfProof:  proof,
 		Committed: committed,
@@ -134,13 +134,13 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
-func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
+func (s *Server) ListEntryHistory(ctx context.Context, in *pbtypes.ListEntryHistoryRequest) (*pbtypes.ListEntryHistoryResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Unimplemented")
 }
 
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
-func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+func (s *Server) UpdateEntry(ctx context.Context, in *pbtypes.UpdateEntryRequest) (*pbtypes.UpdateEntryResponse, error) {
 	// Validate proper authentication.
 	if err := s.auth.ValidateCreds(ctx, in.UserId); err != nil {
 		log.Printf("Auth failed: %v", err)
@@ -163,7 +163,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Query for the current epoch.
-	req := &pb.GetEntryRequest{
+	req := &pbtypes.GetEntryRequest{
 		UserId: in.UserId,
 		//EpochStart: in.GetEntryUpdate().EpochStart,
 	}
@@ -191,7 +191,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
 		// Retry() in client/client.go.
-		return &pb.UpdateEntryResponse{Proof: resp}, nil
+		return &pbtypes.UpdateEntryResponse{Proof: resp}, nil
 	} else if err != nil {
 		log.Printf("Invalid mutation: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
@@ -201,17 +201,17 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		log.Printf("Enqueue error: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Write error")
 	}
-	return &pb.UpdateEntryResponse{Proof: resp}, err
+	return &pbtypes.UpdateEntryResponse{Proof: resp}, err
 }
 
-func (s *Server) saveCommitment(ctx context.Context, kvData []byte, committed *pb.Committed) error {
+func (s *Server) saveCommitment(ctx context.Context, kvData []byte, committed *pbtypes.Committed) error {
 	// Unmarshal entry.
-	kv := new(pb.KeyValue)
+	kv := new(pbtypes.KeyValue)
 	if err := proto.Unmarshal(kvData, kv); err != nil {
 		log.Printf("Error unmarshaling keyvalue: %v", err)
 		return grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
-	entry := new(pb.Entry)
+	entry := new(pbtypes.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
 		log.Printf("Error unmarshaling entry: %v", err)
 		return grpc.Errorf(codes.InvalidArgument, "Invalid request")

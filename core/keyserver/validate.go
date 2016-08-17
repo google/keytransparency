@@ -27,7 +27,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
+	pbtypes "github.com/google/key-transparency/core/proto/kt_v1_types"
 )
 
 // Maximum period of time to allow between CreationTime and server time.
@@ -67,13 +67,13 @@ func validateKey(userID, appID string, key []byte) error {
 // validateUpdateEntryRequest verifies
 // - Commitment in SignedEntryUpdate maches the serialized profile.
 // - Profile is a valid.
-func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
+func validateUpdateEntryRequest(in *pbtypes.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
 	// Unmarshal entry.
-	kv := new(pb.KeyValue)
+	kv := new(pbtypes.KeyValue)
 	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
 		return err
 	}
-	entry := new(pb.Entry)
+	entry := new(pbtypes.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	if in.GetEntryUpdate().GetCommitted() == nil {
 		return ErrNoCommitted
 	}
-	p := new(pb.Profile)
+	p := new(pbtypes.Profile)
 	if err := proto.Unmarshal(in.GetEntryUpdate().GetCommitted().Data, p); err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	return nil
 }
 
-func validateProfile(p *pb.Profile, userID string) error {
+func validateProfile(p *pbtypes.Profile, userID string) error {
 	for appID, key := range p.GetKeys() {
 		if err := validateKey(userID, appID, key); err != nil {
 			return err
