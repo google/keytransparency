@@ -36,7 +36,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "github.com/google/key-transparency/proto/keytransparency_v1"
+	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
 )
 
 const (

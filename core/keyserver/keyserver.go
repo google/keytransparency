@@ -31,8 +31,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/google/key-transparency/proto/ctmap"
-	pb "github.com/google/key-transparency/proto/keytransparency_v1"
+	ctmap "github.com/google/key-transparency/core/proto/ctmap"
+	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
 )
 
 // Server holds internal state for the key server.

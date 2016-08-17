@@ -18,7 +18,7 @@ import (
 	"github.com/google/key-transparency/core/client"
 
 	ct "github.com/google/certificate-transparency/go"
-	"github.com/google/key-transparency/proto/ctmap"
+	"github.com/google/key-transparency/core/proto/ctmap"
 )
 
 type fakeLog struct{}

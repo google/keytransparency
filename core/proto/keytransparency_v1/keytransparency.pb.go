@@ -30,7 +30,7 @@ package keytransparency_v1
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import ctmap "github.com/google/key-transparency/proto/ctmap"
+import ctmap "github.com/google/key-transparency/core/proto/ctmap"
 import _ "github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis/google/api"
 
 import (
