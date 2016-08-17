@@ -27,7 +27,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/key-transparency/proto/keytransparency_v1"
+	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
 )
 
 // Maximum period of time to allow between CreationTime and server time.

@@ -28,7 +28,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 
-	ctmap "github.com/google/key-transparency/proto/ctmap"
+	ctmap "github.com/google/key-transparency/core/proto/ctmap"
 )
 
 // Clock defines an interface for the advancement of time.

@@ -24,7 +24,7 @@ import (
 	ct "github.com/google/certificate-transparency/go"
 	logclient "github.com/google/certificate-transparency/go/client"
 
-	"github.com/google/key-transparency/proto/ctmap"
+	"github.com/google/key-transparency/core/proto/ctmap"
 )
 
 const (

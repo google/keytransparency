@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package keytransparency.v1;
 
-import "github.com/google/key-transparency/proto/ctmap/ctmap.proto";
+import "github.com/google/key-transparency/core/proto/ctmap/ctmap.proto";
 import "google/api/annotations.proto";
 
 // The KeyTransparencyService API represents a directory of public keys.

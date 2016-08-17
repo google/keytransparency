@@ -24,7 +24,7 @@ import (
 	"github.com/google/certificate-transparency/go/merkletree"
 	"golang.org/x/net/context"
 
-	"github.com/google/key-transparency/proto/ctmap"
+	"github.com/google/key-transparency/core/proto/ctmap"
 )
 
 var hasher = func(b []byte) []byte {

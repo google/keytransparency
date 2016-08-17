@@ -33,7 +33,7 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 
-	ctmap "github.com/google/key-transparency/proto/ctmap"
+	ctmap "github.com/google/key-transparency/core/proto/ctmap"
 )
 
 var (

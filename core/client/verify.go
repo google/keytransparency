@@ -21,8 +21,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/google/key-transparency/proto/ctmap"
-	pb "github.com/google/key-transparency/proto/keytransparency_v1"
+	"github.com/google/key-transparency/core/proto/ctmap"
+	pb "github.com/google/key-transparency/core/proto/keytransparency_v1"
 )
 
 // ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
