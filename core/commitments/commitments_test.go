@@ -19,10 +19,10 @@ package commitments
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/any"
 
-	pb "github.com/google/key-transparency/proto/keytransparency_v1"
+	pb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 func TestCommit(t *testing.T) {
@@ -56,25 +56,34 @@ func TestCommit(t *testing.T) {
 func TestObjectHash(t *testing.T) {
 	// Verify that object hash produces unique results for various any.Any objects.
 	hashes := make(map[[32]byte]bool)
+	// Use zero keys to test object hash differentiation.
 	randReader = func(b []byte) (n int, err error) {
 		for i := range b {
 			b[i] = 0
 		}
 		return len(b), nil
 	}
-	for _, tc := range []any.Any{
-		ptypes.MarshalAny(pb.Profile{}),
+	for _, tc := range []proto.Message{
+		&pb.Profile{},
+		&pb.Profile{Keys: map[string][]byte{"": []byte{}}},
+		&pb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}},
+		&pb.Committed{},
 	} {
-		userID := ""
-		k, _, err := Commit(userID, tc)
+		a, err := ptypes.MarshalAny(tc)
 		if err != nil {
-			t.Errorf("Commit(%v, %v): %v", userID, tc, err)
+			t.Errorf("MashalAny(%v): %v", tc, err)
 		}
+		userID := ""
+		k, _, err := Commit(userID, a)
+		if err != nil {
+			t.Errorf("Commit(%v, %v): %v", userID, a, err)
+		}
+
 		// Verify that the hash doesn't conflict with any previous hashes.
 		var h [32]byte
 		copy(h[:], k[0:32])
 		if ok := hashes[h]; ok {
-			t.Errorf("Commit(%v, %v): %v, conflicts with preivous commitment", userID, tc, h)
+			t.Errorf("Commit(%v, %+v): %x, conflicts with preivous commitment", userID, a, h)
 		}
 		hashes[h] = true
 	}
