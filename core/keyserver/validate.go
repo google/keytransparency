@@ -26,6 +26,7 @@ import (
 	"github.com/google/key-transparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
@@ -89,8 +90,8 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 	if in.GetEntryUpdate().GetCommitted() == nil {
 		return ErrNoCommitted
 	}
-	p := new(tpb.Profile)
-	if err := proto.Unmarshal(in.GetEntryUpdate().GetCommitted().Data, p); err != nil {
+	var p pb.Profile
+	if err := ptypes.UnmarshalAny(in.GetEntryUpdate().GetCommitted().Data, &p); err != nil {
 		return err
 	}
 	if got, want := len(in.GetEntryUpdate().GetCommitted().Key), MinNonceLen; got < want {
@@ -101,7 +102,7 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 	}
 
 	// Validate the profile.
-	if err := validateProfile(p, in.UserId); err != nil {
+	if err := validateProfile(&p, in.UserId); err != nil {
 		return err
 	}
 	return nil

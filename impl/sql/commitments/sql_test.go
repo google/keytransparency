@@ -20,6 +20,8 @@ import (
 
 	"github.com/google/key-transparency/core/commitments"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	_ "github.com/mattn/go-sqlite3"
 
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
@@ -31,43 +33,66 @@ func TestWriteRead(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-
-	commitmentC, committedC, _ := commitments.Commit("foo", []byte("C"))
 	c, err := New(db, "test")
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
 
-	tests := []struct {
-		commitment string
-		key        string
-		value      string
-		want       bool
+	// Create test data.
+	p := &pb.Profile{Keys: map[string][]byte{"foo": []byte("cat")}}
+	a, err := ptypes.MarshalAny(p)
+	if err != nil {
+		t.Fatalf("Failed to marshal profile: %v", err)
+	}
+	commitmentC, committedC, err := commitments.Commit("foo", a)
+	if err != nil {
+		t.Fatalf("Failed to create commitment: %v", err)
+	}
+
+	for _, tc := range []struct {
+		commitment, key []byte
+		value           *tpb.Profile
+		wantNoErr       bool
 	}{
-		{"A", "key 1", "value1", true},
-		{"A", "key 1", "value1", true},
-		{"A", "key 1", "value2", false},
-		{"A", "key 2", "value2", false},
-		{"B", "key 2", "value2", true},
-		{string(commitmentC), string(committedC.Data), "C", true},
-	}
-	for _, tc := range tests {
-		committed := &tpb.Committed{Key: []byte(tc.key), Data: []byte(tc.value)}
-		err := c.Write(nil, []byte(tc.commitment), committed)
-		if got := err == nil; got != tc.want {
-			t.Fatalf("WriteCommitment(%v, %v, %v): %v, want %v", tc.commitment, tc.key, tc.value, err, tc.want)
+		{[]byte("committmentA"), []byte("key 1"), &tpb.Profile{}, true},
+		{[]byte("committmentA"), []byte("key 1"), &tpb.Profile{}, true},
+		{[]byte("committmentA"), []byte("key 1"), &tpb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}, false},
+		{[]byte("committmentA"), []byte("key 2"), &tpb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}, false},
+		{[]byte("committmentB"), []byte("key 2"), &tpb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}, true},
+		{commitmentC, committedC.Key, p, true},
+	} {
+		a, err := ptypes.MarshalAny(tc.value)
+		if err != nil {
+			t.Errorf("Failed to marshal profile: %v", err)
 		}
-		if tc.want {
-			value, err := c.Read(nil, []byte(tc.commitment))
+		committed := &pb.Committed{Key: tc.key, Data: a}
+		err = c.Write(nil, tc.commitment, committed)
+		if got := err == nil; got != tc.wantNoErr {
+			t.Fatalf("WriteCommitment(%s, %s, %v): %v, want %v", tc.commitment, tc.key, tc.value, err, tc.wantNoErr)
+		}
+		if tc.wantNoErr {
+			value, err := c.Read(nil, tc.commitment)
 			if err != nil {
-				t.Errorf("Read(_, %v): %v", []byte(tc.commitment), err)
+				t.Errorf("Read(_, %v): %v", tc.commitment, err)
 			}
-			if got := string(value.Data); got != tc.value {
-				t.Errorf("Read(%v): %v want %v", tc.commitment, got, tc.value)
-			}
-			if got := string(value.Key); got != tc.key {
-				t.Errorf("Read(%v): %v want %v", tc.commitment, got, tc.key)
+			if !proto.Equal(value, committed) {
+				t.Errorf("Read(%v): %v want %v", tc.commitment, value, committed)
 			}
 		}
 	}
+}
+
+func TestDeferBehavior(t *testing.T) {
+	if got, want := a(), 2; got != want {
+		t.Errorf("a(): %v, want %v", got, want)
+	}
+}
+
+func a() (i int) {
+	defer func() {
+		if i == 1 {
+			i = 2
+		}
+	}()
+	return 1
 }
