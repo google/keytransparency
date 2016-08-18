@@ -22,15 +22,14 @@ import (
 
 func TestBasicValidateCreds(t *testing.T) {
 	auth := NewFake()
-	tests := []struct {
+	for _, tc := range []struct {
 		ctx            context.Context
 		requiredUserID string
 		want           bool
 	}{
 		{context.Background(), "foo", false},
 		{auth.NewContext("foo"), "foo", true},
-	}
-	for _, tc := range tests {
+	} {
 		if got := auth.ValidateCreds(tc.ctx, tc.requiredUserID) == nil; got != tc.want {
 			t.Errorf("ValidateCreds(%v, %v): %v, want %v", tc.ctx, tc.requiredUserID, got, tc.want)
 		}

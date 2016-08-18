@@ -39,7 +39,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 	defer env.Close(t)
 	env.Client.RetryCount = 0
 
-	tests := []struct {
+	for _, tc := range []struct {
 		want   bool
 		insert bool
 		ctx    context.Context
@@ -50,8 +50,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		{false, false, context.Background(), "nocarol"}, // Empty
 		{true, false, context.Background(), "bob"},      // Not Empty
 		{true, true, auth.NewContext("bob"), "bob"},     // Update
-	}
-	for _, tc := range tests {
+	} {
 		// Check profile.
 		if err := env.checkProfile(tc.userID, tc.want); err != nil {
 			t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
@@ -108,7 +107,7 @@ func TestUpdateValidation(t *testing.T) {
 		},
 	}
 
-	tests := []struct {
+	for _, tc := range []struct {
 		want    bool
 		ctx     context.Context
 		userID  string
@@ -118,8 +117,7 @@ func TestUpdateValidation(t *testing.T) {
 		{false, auth.NewContext("carol"), "bob", profile},
 		{true, auth.NewContext("dave"), "dave", profile},
 		{true, auth.NewContext("eve"), "eve", profile},
-	}
-	for _, tc := range tests {
+	} {
 		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile)
 
 		// The first update response is always a retry.

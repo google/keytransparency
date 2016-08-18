@@ -30,15 +30,19 @@ func TestRetryOnFailure(t *testing.T) {
 	cli := c.RandClient()
 	q := New(cli, "testID")
 
-	insert := []struct {
+	for _, tc := range []struct {
 		key   string
 		value string
 	}{
 		{"1", "one"},
 		{"2", "two"},
 		{"3", "three"},
+	} {
+		if err := q.Enqueue([]byte(tc.key), []byte(tc.value)); err != nil {
+			t.Errorf("Enqueue(%v, %v): %v", tc.key, tc.value, err)
+		}
 	}
-	retrieve := []struct {
+	for _, tc := range []struct {
 		key     string
 		value   string
 		success bool
@@ -47,13 +51,7 @@ func TestRetryOnFailure(t *testing.T) {
 		{"2", "two", false},
 		{"2", "two", true},
 		{"3", "three", true},
-	}
-	for _, tc := range insert {
-		if err := q.Enqueue([]byte(tc.key), []byte(tc.value)); err != nil {
-			t.Errorf("Enqueue(%v, %v): %v", tc.key, tc.value, err)
-		}
-	}
-	for _, tc := range retrieve {
+	} {
 		if got := nil == q.Dequeue(func(key, value []byte) error {
 			if gotk, gotv := string(key), string(value); gotk != tc.key || gotv != tc.value {
 				t.Errorf("Dequeue(): %v, %v, want %v, %v", gotk, gotv, tc.key, tc.value)

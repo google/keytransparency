@@ -88,7 +88,7 @@ func TestHkpLookup(t *testing.T) {
 
 	CreateDefaultUser(env, t)
 
-	var tests = []struct {
+	for _, tc := range []struct {
 		op              string
 		userID          string
 		options         string
@@ -106,9 +106,7 @@ func TestHkpLookup(t *testing.T) {
 		{"vindex", defaultUserID, "", "", "", false},
 		{"index", "", "", "", "", false},
 		{"vindex", "", "", "", "", false},
-	}
-
-	for _, tc := range tests {
+	} {
 		req := &tpb.HkpLookupRequest{
 			Op:      tc.op,
 			Search:  tc.userID,

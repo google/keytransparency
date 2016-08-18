@@ -262,15 +262,14 @@ aCOr+QE=
 )
 
 func TestGoodKey(t *testing.T) {
-	tests := []struct {
+	for _, test := range []struct {
 		label  string
 		key    string
 		userID string
 		want   error
 	}{
 		{"eccGood", eccGood, "<ecc@good.com>", nil},
-	}
-	for _, test := range tests {
+	} {
 		block, err := armor.Decode(strings.NewReader(test.key))
 		if err != nil {
 			t.Errorf("%v: invalid armor", test.label)
@@ -281,7 +280,7 @@ func TestGoodKey(t *testing.T) {
 }
 
 func TestInvalidKeys(t *testing.T) {
-	tests := []struct {
+	for _, test := range []struct {
 		label  string
 		key    string
 		userID string
@@ -300,8 +299,7 @@ func TestInvalidKeys(t *testing.T) {
 		{"invalidCrossSignature", invalidCrossSignature, "invalid-signing-subkeys",
 			errors.StructuralError("subkey signature invalid: openpgp: invalid data: error while verifying cross-signature: openpgp: invalid signature: hash tag doesn't match")},
 		{"invalidSubpacketLen", invalidSubpacketLength, "", errors.StructuralError("signature subpacket truncated")},
-	}
-	for _, test := range tests {
+	} {
 		block, err := armor.Decode(strings.NewReader(test.key))
 		if err != nil {
 			t.Errorf("%v: invalid armor", test.label)

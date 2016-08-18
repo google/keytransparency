@@ -56,7 +56,7 @@ a5d613`, "\n", "", -1))
 )
 
 func TestValidateKey(t *testing.T) {
-	tests := []struct {
+	for _, tc := range []struct {
 		userID string
 		appID  string
 		key    []byte
@@ -65,8 +65,7 @@ func TestValidateKey(t *testing.T) {
 		{primaryUserEmail, primaryAppID, primaryKeys[primaryAppID], true},
 		{primaryUserEmail, "foo", []byte("junk"), true},
 		{primaryUserEmail, primaryAppID, []byte("junk"), false},
-	}
-	for _, tc := range tests {
+	} {
 		err := validateKey(tc.userID, tc.appID, tc.key)
 		if got := err == nil; got != tc.want {
 			t.Errorf("validateKey(%v, %v, %v) = %v, wanted %v", tc.userID, tc.appID, tc.key, err, tc.want)
@@ -92,7 +91,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	commitment, committed, _ := commitments.Commit(userID, profileData)
 	authCtx := authentication.NewFake().NewContext(userID)
 
-	tests := []struct {
+	for _, tc := range []struct {
 		want       bool
 		ctx        context.Context
 		userID     string
@@ -105,8 +104,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		{false, authCtx, userID, index, nil, nil},                   // Incorrect commitment
 		{false, authCtx, userID, index, commitment, nil},            // Incorrect key
 		{true, authCtx, userID, index, commitment, committed},
-	}
-	for _, tc := range tests {
+	} {
 		entry := &tpb.Entry{
 			Commitment: tc.commitment,
 		}

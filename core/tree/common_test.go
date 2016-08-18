@@ -23,7 +23,7 @@ import (
 )
 
 func TestIndex(t *testing.T) {
-	tests := []struct {
+	for _, tc := range []struct {
 		depth int
 		index []byte
 		want  []byte
@@ -39,8 +39,7 @@ func TestIndex(t *testing.T) {
 		{15, []byte{0xFF, 0xFF}, []byte{0xFF, 0xFE}},
 		{24, []byte{0x00, 0x80, 0x00}, []byte{0x00, 0x80, 0x00}},
 		{22, []byte{0x00, 0x80, 0x00}, []byte{0x00, 0x80, 0x00}},
-	}
-	for _, tc := range tests {
+	} {
 		i := new(big.Int).SetBytes(tc.index)
 		fmtstring := fmt.Sprintf("%%0%vb", len(tc.index)*8)
 		bindex := fmt.Sprintf(fmtstring, i)[:tc.depth]

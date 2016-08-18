@@ -54,7 +54,7 @@ func TestVRF(t *testing.T) {
 	vrf1, proof1 := k.Evaluate(m1)
 	vrf2, proof2 := k.Evaluate(m2)
 	vrf3, proof3 := k.Evaluate(m3)
-	tests := []struct {
+	for _, tc := range []struct {
 		m     []byte
 		vrf   []byte
 		proof []byte
@@ -65,9 +65,7 @@ func TestVRF(t *testing.T) {
 		{m3, vrf3, proof3, nil},
 		{m3, vrf3, proof2, nil},
 		{m3, vrf3, proof1, ErrInvalidVRF},
-	}
-
-	for _, tc := range tests {
+	} {
 		if got, want := pk.Verify(tc.m, tc.vrf[:], tc.proof), tc.err; got != want {
 			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, want)
 		}
@@ -75,7 +73,7 @@ func TestVRF(t *testing.T) {
 }
 
 func TestReadFromOpenSSL(t *testing.T) {
-	tests := []struct {
+	for _, tc := range []struct {
 		priv string
 		pub  string
 	}{
@@ -91,8 +89,7 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 -----END PUBLIC KEY-----`},
-	}
-	for _, tc := range tests {
+	} {
 		// Private VRF Key
 		signer, err := NewVRFSignerFromPEM([]byte(tc.priv))
 		if err != nil {

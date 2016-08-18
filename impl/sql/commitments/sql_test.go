@@ -38,7 +38,7 @@ func TestWriteRead(t *testing.T) {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
 
-	tests := []struct {
+	for _, tc := range []struct {
 		commitment string
 		key        string
 		value      string
@@ -50,8 +50,7 @@ func TestWriteRead(t *testing.T) {
 		{"A", "key 2", "value2", false},
 		{"B", "key 2", "value2", true},
 		{string(commitmentC), string(committedC.Data), "C", true},
-	}
-	for _, tc := range tests {
+	} {
 		committed := &tpb.Committed{Key: []byte(tc.key), Data: []byte(tc.value)}
 		err := c.Write(nil, []byte(tc.commitment), committed)
 		if got := err == nil; got != tc.want {

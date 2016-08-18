@@ -59,7 +59,7 @@ func TestQueueLeaf(t *testing.T) {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
 
-	tests := []struct {
+	for _, tc := range []struct {
 		index string
 		leaf  string
 		want  bool
@@ -68,8 +68,7 @@ func TestQueueLeaf(t *testing.T) {
 		{strings.Repeat("A", 32), "leaf2", false},
 		{strings.Repeat("A", 32), "leaf3", false},
 		{strings.Repeat("B", 32), "leaf", true},
-	}
-	for _, tc := range tests {
+	} {
 		err := tree.QueueLeaf(nil, []byte(tc.index), []byte(tc.leaf))
 		if got := err == nil; got != tc.want {
 			t.Errorf("QueueLeaf(%v, %v): %v, want %v", tc.index, tc.leaf, got, tc.want)
@@ -84,7 +83,7 @@ func TestEpochNumAdvance(t *testing.T) {
 	}
 	defer db.Close()
 
-	tests := []struct {
+	for _, tc := range []struct {
 		index  string
 		leaf   string
 		epoch  int64
@@ -96,8 +95,7 @@ func TestEpochNumAdvance(t *testing.T) {
 		{strings.Repeat("C", 32), "leafc", 3, true},
 		{"", "", 4, false},
 		{"", "", 5, false},
-	}
-	for _, tc := range tests {
+	} {
 		tree, err := New(db, "test")
 		if err != nil {
 			t.Fatalf("Failed to create SQL history: %v", err)
@@ -161,15 +159,14 @@ func TestReadNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
-	leafs := []struct {
+	for _, tc := range []struct {
 		index []byte
 	}{
 		{dh("0000000000000000000000000000000000000000000000000000000000000000")},
 		{dh("F000000000000000000000000000000000000000000000000000000000000000")},
 		{dh("2000000000000000000000000000000000000000000000000000000000000000")},
 		{dh("C000000000000000000000000000000000000000000000000000000000000000")},
-	}
-	for _, tc := range leafs {
+	} {
 		var epoch int64 = 10
 		readData, err := m.ReadLeafAt(ctx, tc.index, epoch)
 		if err != nil {
@@ -282,14 +279,13 @@ func TestNeighborDepth(t *testing.T) {
 	//     r
 	//       a
 	//      3  4
-	leafs := []struct {
+	for _, l := range []struct {
 		index []byte
 		value string
 	}{
 		{dh(defaultIndex[0]), "3"},
 		{dh(defaultIndex[1]), "4"},
-	}
-	for _, l := range leafs {
+	} {
 		value := []byte(l.value)
 		if err := m1.QueueLeaf(ctx, l.index, value); err != nil {
 			t.Fatalf("QueueLeaf(%v)=%v", l.index, err)
@@ -310,7 +306,7 @@ func TestNeighborDepth(t *testing.T) {
 	}
 	m2.QueueLeaf(nil, dindex, []byte("0"))
 	m2.Commit()
-	tests := []struct {
+	for _, tc := range []struct {
 		m     *Map
 		index []byte
 		depth int
@@ -319,8 +315,7 @@ func TestNeighborDepth(t *testing.T) {
 		{m1, dh(defaultIndex[0]), 2}, // Proof of presence.
 		{m1, dh(defaultIndex[1]), 2},
 		{m2, dh(defaultIndex[0]), 0},
-	}
-	for _, tc := range tests {
+	} {
 		nbrs, _ := tc.m.NeighborsAt(ctx, tc.index, 0)
 		if got, want := len(nbrs), maxDepth; got != want {
 			t.Errorf("len(nbrs): %v, want %v", got, want)
