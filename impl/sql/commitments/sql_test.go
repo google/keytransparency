@@ -80,18 +80,3 @@ func TestWriteRead(t *testing.T) {
 		}
 	}
 }
-
-func TestDeferBehavior(t *testing.T) {
-	if got, want := a(), 2; got != want {
-		t.Errorf("a(): %v, want %v", got, want)
-	}
-}
-
-func a() (i int) {
-	defer func() {
-		if i == 1 {
-			i = 2
-		}
-	}()
-	return 1
-}
