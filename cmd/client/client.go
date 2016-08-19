@@ -40,8 +40,24 @@ import (
 	pb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
 
-const (
-	defaultTimeout = 500 * time.Millisecond
+var (
+	// Required parameters.
+	vrfPubFile = flag.String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
+	ctURL      = flag.String("ct-url", "", "URL of Certificate Transparency server")
+	ctPEM      = flag.String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
+	ktURL      = flag.String("kt-url", "", "URL of Key Transparency server")
+	ktPEM      = flag.String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
+	ktSig      = flag.String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
+	user       = flag.String("user", "", "Email of the user to query")
+
+	// Optional parameters with sane defaults.
+	timeout = flag.String("timeout", 500, "Milliseconds to wait before operations timeout")
+
+	// Get parameters.
+	get = flag.Bool("get", true, "Get the current key")
+
+	// Update parameters.
+	clientSecretFile = flag.String("secret", "", "path to client secrets")
 )
 
 func readVrfKey(vrfPubFile string) (vrf.PublicKey, error) {
@@ -169,22 +185,6 @@ func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
 }
 
 func main() {
-	var (
-		// Required parameters.
-		vrfPubFile = flag.String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
-		ctURL      = flag.String("ct-url", "", "URL of Certificate Transparency server")
-		ctPEM      = flag.String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
-		ktURL      = flag.String("kt-url", "", "URL of Key Transparency server")
-		ktPEM      = flag.String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
-		ktSig      = flag.String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
-		user       = flag.String("user", "", "Email of the user to query")
-
-		// Get parameters.
-		get = flag.Bool("get", true, "Get the current key")
-
-		// Update parameters.
-		clientSecretFile = flag.String("secret", "", "path to client secrets")
-	)
 	flag.Parse()
 
 	cc, err := dial(*ktURL, *ktPEM, *clientSecretFile)
@@ -196,7 +196,7 @@ func main() {
 		log.Fatalf("Error creating client: %v", err)
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), defaultTimeout)
+	ctx, _ := context.WithTimeout(context.Background(), *timeout*time.Milliseconds)
 	switch {
 	case *get:
 		profile, err := c.GetEntry(ctx, *user)

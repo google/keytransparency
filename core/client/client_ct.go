@@ -71,7 +71,7 @@ type SCTEntry struct {
 func NewLogVerifier(pem []byte, logURL string) (*Log, error) {
 	pk, _, _, err := ct.PublicKeyFromPEM(pem)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading public key from pem: %v", err)
+		return nil, fmt.Errorf("error reading public key from pem: %v", err)
 	}
 	ver, err := ct.NewSignatureVerifier(pk)
 	if err != nil {
