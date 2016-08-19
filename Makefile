@@ -48,6 +48,7 @@ INCLUDES+= -I=$(GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/g
 main: proto
 	go build -o key-transparency ./cmd/frontend
 	go build -o key-transparency-signer ./cmd/backend
+	go build -o key-transparency-client ./cmd/client
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.

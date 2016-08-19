@@ -17,6 +17,7 @@ package client
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"time"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -70,7 +71,7 @@ type SCTEntry struct {
 func NewLogVerifier(pem []byte, logURL string) (*Log, error) {
 	pk, _, _, err := ct.PublicKeyFromPEM(pem)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading public key from pem: %v", err)
 	}
 	ver, err := ct.NewSignatureVerifier(pk)
 	if err != nil {
