@@ -51,7 +51,7 @@ var (
 	user       = flag.String("user", "", "Email of the user to query")
 
 	// Optional parameters with sane defaults.
-	timeout = flag.String("timeout", 500, "Milliseconds to wait before operations timeout")
+	timeout = flag.Duration("timeout", 500, "Milliseconds to wait before operations timeout")
 
 	// Get parameters.
 	get = flag.Bool("get", true, "Get the current key")
@@ -196,7 +196,7 @@ func main() {
 		log.Fatalf("Error creating client: %v", err)
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), *timeout*time.Milliseconds)
+	ctx, _ := context.WithTimeout(context.Background(), *timeout*time.Millisecond)
 	switch {
 	case *get:
 		profile, err := c.GetEntry(ctx, *user)
