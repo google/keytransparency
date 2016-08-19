@@ -99,8 +99,6 @@ message SignedKV {
 
 // GetEntryReqyest for a user object.
 message GetEntryRequest {
-  // Last trusted epoch by the client.
-  //int64 epoch_start = 3;
   // Absence of the epoch_end field indicates a request for the current value.
   int64 epoch_end = 1;
   // User identifier. Most commonly an email address.
@@ -138,20 +136,21 @@ message GetEntryResponse {
 
 // Get a list of historical values for a user.
 message ListEntryHistoryRequest {
-  // The user identifier.
+  // user_id is the user identifier.
   string user_id = 1;
-  // from_epoch is the starting epcoh.
-  int64 start_epoch = 2;
-  // The maximum number of entries to return.
+  // start is the starting epcoh.
+  int64 start = 2;
+  // page_size is the maximum number of entries to return. The server can change
+  // this value.
   int32 page_size = 3;
 }
 
 // A paginated history of values for a user.
 message ListEntryHistoryResponse {
-  // The list of values this user_id has contained over time.
+  // values represents the list of values this user_id has contained over time.
   repeated GetEntryResponse values = 1;
-  // The next time to query for pagination.
-  int64 next_epoch = 2;
+  // next_start is the next page token to query for pagination.
+  int64 next_start = 2;
 }
 
 // Update a user's profile.
