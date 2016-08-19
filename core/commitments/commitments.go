@@ -20,6 +20,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha512"
+	"encoding/binary"
 	"errors"
 
 	"golang.org/x/net/context"
@@ -56,8 +57,10 @@ func Commit(userID string, data []byte) ([]byte, *tpb.Committed, error) {
 	}
 
 	mac := hmac.New(hashAlgo, key)
+	strlen := make([]byte, 4)
+	binary.BigEndian.PutUint32(strlen, uint32(len(userID)))
+	mac.Write(strlen)
 	mac.Write([]byte(userID))
-	mac.Write([]byte{0}) // Separate userID from data.
 	mac.Write(data)
 	return mac.Sum(nil), &tpb.Committed{Key: key, Data: data}, nil
 }
@@ -65,8 +68,10 @@ func Commit(userID string, data []byte) ([]byte, *tpb.Committed, error) {
 // Verify customizes a commitment with a userID.
 func Verify(userID string, commitment []byte, committed *tpb.Committed) error {
 	mac := hmac.New(hashAlgo, committed.Key)
+	strlen := make([]byte, 4)
+	binary.BigEndian.PutUint32(strlen, uint32(len(userID)))
+	mac.Write(strlen)
 	mac.Write([]byte(userID))
-	mac.Write([]byte{0})
 	mac.Write(committed.Data)
 	if !hmac.Equal(mac.Sum(nil), commitment) {
 		return ErrInvalidCommitment
