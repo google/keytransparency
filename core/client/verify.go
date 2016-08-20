@@ -15,11 +15,13 @@
 package client
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/google/key-transparency/core/commitments"
 
 	"github.com/golang/protobuf/proto"
+	ct "github.com/google/certificate-transparency/go"
 
 	ctmap "github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
@@ -67,6 +69,15 @@ func (c *Client) verifyGetEntryResponse(userID string, in *tpb.GetEntryResponse)
 	}
 
 	if err := c.VerifySMH(in.GetSmh()); err != nil {
+		return err
+	}
+
+	// Verify SCT.
+	sct, err := ct.DeserializeSCT(bytes.NewReader(in.SmhSct))
+	if err != nil {
+		return err
+	}
+	if err := c.log.VerifySCT(in.GetSmh(), sct); err != nil {
 		return err
 	}
 	return nil
