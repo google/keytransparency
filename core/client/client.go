@@ -32,7 +32,6 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
-	ct "github.com/google/certificate-transparency/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -98,14 +97,6 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, err
 	}
 
-	sct, err := ct.DeserializeSCT(bytes.NewReader(e.SmhSct))
-	if err != nil {
-		return nil, err
-	}
-	if err := c.log.VerifySCT(e.GetSmh(), sct); err != nil {
-		return nil, err
-	}
-
 	// Empty case.
 	if e.GetCommitted() == nil {
 		return nil, nil
@@ -123,10 +114,6 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := c.verifyGetEntryResponse(userID, getResp); err != nil {
 		return nil, err
 	}
 
@@ -195,11 +182,6 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
-		return err
-	}
-
-	// Validate response.
-	if err := c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
 		return err
 	}
 
