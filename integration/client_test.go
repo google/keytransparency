@@ -23,8 +23,6 @@ import (
 	"github.com/google/key-transparency/core/client"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
@@ -34,11 +32,6 @@ var (
 		"foo": []byte("bar"),
 	}
 )
-
-type UserInfo struct {
-	userID string
-	ctx    context.Context
-}
 
 func TestEmptyGetAndUpdate(t *testing.T) {
 	auth := authentication.NewFake()
@@ -146,146 +139,120 @@ func TestUpdateValidation(t *testing.T) {
 }
 
 func TestListHistory(t *testing.T) {
-	auth := authentication.NewFake()
-	userInfo := []UserInfo{
-		{"alice", auth.NewContext("alice")},
-		{"bob", auth.NewContext("bob")},
-		{"dave", auth.NewContext("dave")},
+	userID := "bob"
+	ctx := authentication.NewFake().NewContext("bob")
+
+	env := NewEnv(t)
+	defer env.Close(t)
+	env.Client.RetryCount = 0
+	if err := env.setupHistory(ctx, userID); err != nil {
+		t.Fatalf("setupHistory failed: %v", err)
 	}
 
 	for _, tc := range []struct {
-		// The length of users and profiles *must* match.
-		users    []int
-		profiles []int
-		listUser int
-		end      int64
-		// History profiles are in reversed order.
-		wantHistory []int
-		err         codes.Code
+		start, end  int64
+		wantHistory []*tpb.Profile
+		wantErr     bool
 	}{
 		{
-			[]int{0},
-			[]int{0},
-			0,
-			1,
-			[]int{0},
-			codes.OK,
-		}, // Single user, single profile
+			3,
+			3,
+			[]*tpb.Profile{cp(1)},
+			false,
+		}, // single profile
 		{
-			[]int{0, 0},
-			[]int{0, 1},
-			0,
-			1,
-			[]int{0, 1},
-			codes.OK,
-		}, // Single user, multiple profiles, no filtering
+			3,
+			4,
+			[]*tpb.Profile{cp(1), cp(2)},
+			false,
+		}, // multiple profiles
 		{
-			[]int{0, 0, 1, 0, 1, 0, 0, 1, 1},
-			[]int{1, 2, 3, 4, 5, 6, 7, 8, 9},
-			0,
+			1,
+			4,
+			[]*tpb.Profile{cp(1), cp(2)},
+			false,
+		}, // test 'nil' first profile(s)
+		{
+			3,
+			10,
+			[]*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5)},
+			false,
+		}, // filtering
+		{
 			9,
-			[]int{1, 2, 4, 6, 7},
-			codes.OK,
-		}, // Two users, multiple profiles
-		{
-			[]int{0, 0, 1, 0, 1},
-			[]int{1, 2, 3, 4, 5},
-			1,
-			5,
-			[]int{3, 5},
-			codes.OK,
-		}, // Two users, multiple profiles, test 'nil' first profile(s)
-		{
-			[]int{1, 2, 0, 0, 1, 1, 2, 0, 0, 0, 1, 1, 2, 0, 1},
-			[]int{1, 2, 3, 2, 4, 6, 4, 5, 4, 3, 3, 7, 5, 1, 4},
-			2,
-			15,
-			[]int{2, 4, 5},
-			codes.OK,
-		}, // Three users, multiple profiles (filtering should work)
-		{
-			[]int{1, 2, 0, 0, 1, 1, 2, 0, 2, 0, 0, 1, 1, 2, 0, 1},
-			[]int{1, 2, 3, 2, 4, 6, 4, 5, 4, 4, 3, 3, 7, 5, 1, 4},
-			2,
 			16,
-			[]int{2, 4, 5},
-			codes.OK,
-		}, // Three users, multiple (consecutive resubmission) profiles
+			[]*tpb.Profile{cp(4), cp(5), cp(6)},
+			false,
+		}, // filtering consecutive resubmitted profiles
 		{
-			[]int{1, 2, 0, 0, 2, 0, 1, 2, 2, 1, 1, 1, 0, 0, 2, 1},
-			[]int{9, 3, 5, 3, 6, 1, 3, 5, 6, 7, 2, 6, 9, 8, 5, 9},
-			1,
-			16,
-			[]int{9, 3, 7, 2, 6, 9},
-			codes.OK,
-		}, // Three users, multiple (resubmitted) profiles
+			9,
+			20,
+			[]*tpb.Profile{cp(4), cp(5), cp(6), cp(5), cp(7)},
+			false,
+		}, // no filtering of resubmitted profiles
 		{
-			[]int{0, 1, 2, 0, 2, 2, 1, 0, 0, 2, 1, 0, 2, 1, 2, 0, 0, 2, 1, 2, 0},
-			[]int{4, 5, 8, 3, 2, 8, 9, 1, 0, 3, 4, 7, 6, 3, 1, 7, 0, 3, 6, 7, 2},
 			1,
-			21,
-			[]int{5, 9, 4, 3, 6},
-			codes.OK,
-		}, // Multiple pages
+			20,
+			[]*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)},
+			false,
+		}, // multiple pages
 		{
-			[]int{0, 1, 2, 0, 2},
-			[]int{4, 5, 8, 3, 2},
+			0,
+			20,
+			[]*tpb.Profile{},
+			true,
+		}, // Invalid start epoch
+		{
 			1,
-			100,
-			[]int{},
-			codes.InvalidArgument,
-		}, // Request beyond current epoch.
+			1000,
+			[]*tpb.Profile{},
+			true,
+		}, // Invalid end epoch, beyond current epoch
 	} {
-		if len(tc.users) != len(tc.profiles) {
-			t.Fatalf("len(tc.users) == %v != len(tc.profiles) == %v", len(tc.users), len(tc.profiles))
+		gotHistory, err := env.Client.ListHistory(ctx, userID, tc.start, tc.end)
+		if got, want := err != nil, tc.wantErr; got != want {
+			t.Fatalf("ListHistory(_, %v, %v, %v) failed: %v, want err %v", userID, tc.start, tc.end, err, want)
 		}
-
-		env := NewEnv(t)
-		defer env.Close(t)
-		env.Client.RetryCount = 0
-
-		// Update profiles.
-		if err := env.prepareHistory(userInfo, tc.users, tc.profiles); err != nil {
-			t.Fatalf("Failed prepareHistory: %v", err)
-		}
-
-		startEpoch := int64(1) // beginning of time.
-		listCtx := userInfo[tc.listUser].ctx
-		listUserID := userInfo[tc.listUser].userID
-
-		// Test history.
-		gotHistory, err := env.Client.ListHistory(listCtx, listUserID, startEpoch, tc.end)
-		if got, want := grpc.Code(err), tc.err; got != want {
-			t.Fatalf("ListHistory(_, %v, %v, %v) failed: %v, want %v", listUserID, startEpoch, tc.end, got, want)
+		// If there's a ListHistory error, skip the rest of the test.
+		if err != nil {
+			continue
 		}
 
 		// Ensure that history has the correct number of profiles.
 		if got, want := len(gotHistory), len(tc.wantHistory); got != want {
-			t.Fatalf("len(gotHistory)=%v, want %v", got, want)
+			t.Errorf("len(gotHistory)=%v, want %v", got, want)
+			continue
 		}
-
 		// Ensure that history has the correct profiles in the correct
 		// order.
-		for j := 0; j < len(gotHistory); j++ {
-			if got, want := gotHistory[j], createProfile(tc.wantHistory[j]); !reflect.DeepEqual(got, want) {
-				t.Errorf("Invalid profile: %v, want %v", got, want)
-			}
+		if !reflect.DeepEqual(gotHistory, tc.wantHistory) {
+			t.Errorf("Invalid history: %v, want %v", gotHistory, tc.wantHistory)
 		}
 	}
 }
 
-func (e *Env) prepareHistory(userInfo []UserInfo, users []int, profiles []int) error {
-	for j := 0; j < len(users); j++ {
-		ctx := userInfo[users[j]].ctx
-		userID := userInfo[users[j]].userID
-		profile := createProfile(profiles[j])
-		_, err := e.Client.Update(ctx, userID, profile)
-		// The first update response is always a retry.
-		if got, want := err, client.ErrRetry; got != want {
-			return fmt.Errorf("Update(%v)=(_, %v), want (_, %v)", userID, got, want)
-		}
-		if err := e.Signer.Sequence(); err != nil {
-			return fmt.Errorf("Failed to sequence: %v", err)
+func (e *Env) setupHistory(ctx context.Context, userID string) error {
+	// Setup. Each profile entry is either nil, to indicate that the user
+	// did not submit a new profile in that epoch, or contains the profile
+	// that the user is submitting. The user profile history contains the
+	// following profiles:
+	// [nil, nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
+	// Note that profile 5 is submitted twice by the user to test that
+	// filtering case.
+	for _, p := range []*tpb.Profile{
+		nil, nil, cp(1), cp(2), nil, nil, cp(3), nil,
+		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
+		nil, cp(5), cp(7), nil,
+	} {
+		if p != nil {
+			_, err := e.Client.Update(ctx, userID, p)
+			// The first update response is always a retry.
+			if got, want := err, client.ErrRetry; got != want {
+				return fmt.Errorf("Update(%v)=(_, %v), want (_, %v)", userID, got, want)
+			}
+			if err := e.Signer.Sequence(); err != nil {
+				return fmt.Errorf("Failed to sequence: %v", err)
+			}
 		}
 		if err := e.Signer.CreateEpoch(); err != nil {
 			return fmt.Errorf("Failed to CreateEpoch: %v", err)
@@ -294,8 +261,8 @@ func (e *Env) prepareHistory(userInfo []UserInfo, users []int, profiles []int) e
 	return nil
 }
 
-// createProfile creates a dummy profile using the passed tag.
-func createProfile(tag int) *tpb.Profile {
+// cp creates a dummy profile using the passed tag.
+func cp(tag int) *tpb.Profile {
 	return &tpb.Profile{
 		Keys: map[string][]byte{
 			fmt.Sprintf("foo%v", tag): []byte(fmt.Sprintf("bar%v", tag)),

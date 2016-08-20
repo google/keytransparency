@@ -148,15 +148,20 @@ func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, end
 				continue
 			}
 
+			// If the processed profile is already beyond endEpoch,
+			// stop.
+			if v.GetSmh().GetMapHead().Epoch > endEpoch {
+				break
+			}
+
 			// Verify the response.
 			err = c.verifyGetEntryResponse(userID, v)
 			if err != nil {
 				return nil, err
 			}
 
-			pData := v.GetCommitted().Data
 			profile := new(tpb.Profile)
-			if err := proto.Unmarshal(pData, profile); err != nil {
+			if err := proto.Unmarshal(v.GetCommitted().Data, profile); err != nil {
 				log.Printf("Error unmarshaling profile: %v", err)
 				return nil, err
 			}
@@ -164,13 +169,13 @@ func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, end
 			// to the current one. Nil profiles can occur in epochs
 			// before the user updates his profile for the first
 			// time.
-			if bytes.Equal(currentProfile, pData) {
+			if bytes.Equal(currentProfile, v.GetCommitted().Data) {
 				continue
 			}
 
 			// Append the slice and update currentProfile.
 			profiles = append(profiles, profile)
-			currentProfile = pData
+			currentProfile = v.GetCommitted().Data
 		}
 
 		startEpoch = resp.NextStart
