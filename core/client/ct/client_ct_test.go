@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package ctutil implements helper functions for testing against Certificate Transparency.
-package client
+package ct
 
 import (
 	"encoding/json"
