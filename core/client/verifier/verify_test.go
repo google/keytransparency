@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package verifier
 
 import (
 	"testing"
@@ -51,6 +51,8 @@ func TestVerifyCommitment(t *testing.T) {
 	}
 	fakeEntryData := validEntryData[:len(validEntryData)-1]
 
+	// Create a dummy client verifier.
+	verifier := New(nil, nil, nil, nil)
 	for _, tc := range []struct {
 		userID    string
 		entryData []byte
@@ -67,7 +69,7 @@ func TestVerifyCommitment(t *testing.T) {
 				LeafData: tc.entryData,
 			},
 		}
-		err = VerifyCommitment(tc.userID, resp)
+		err = verifier.VerifyCommitment(tc.userID, resp)
 		if got := err != nil; got != tc.want {
 			t.Errorf("VerifyCommitment(%v, %v)=%v, want %v", tc.userID, resp, got, tc.want)
 		}

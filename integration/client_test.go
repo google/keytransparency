@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/client"
+	"github.com/google/key-transparency/impl/client"
 
 	"golang.org/x/net/context"
 
