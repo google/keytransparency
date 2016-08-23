@@ -32,7 +32,6 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
-	ct "github.com/google/certificate-transparency/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -95,14 +94,6 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 	}
 
 	if err := c.verifyGetEntryResponse(userID, e); err != nil {
-		return nil, err
-	}
-
-	sct, err := ct.DeserializeSCT(bytes.NewReader(e.SmhSct))
-	if err != nil {
-		return nil, err
-	}
-	if err := c.log.VerifySCT(e.GetSmh(), sct); err != nil {
 		return nil, err
 	}
 
