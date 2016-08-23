@@ -15,7 +15,7 @@
 package integration
 
 import (
-	"github.com/google/key-transparency/core/client"
+	lv "github.com/google/key-transparency/core/client/ct"
 
 	ct "github.com/google/certificate-transparency/go"
 
@@ -30,7 +30,7 @@ func (fakeLog) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTime
 }
 
 // VerifySavedSCTs returns a list of SCTs that failed validation against the current STH.
-func (fakeLog) VerifySavedSCTs() []client.SCTEntry { return nil }
+func (fakeLog) VerifySavedSCTs() []lv.SCTEntry { return nil }
 
 // UpdateSTH ensures that STH is at least 1 MMD from Now().
 func (fakeLog) UpdateSTH() error { return nil }
