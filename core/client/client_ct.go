@@ -108,7 +108,7 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 
 	// Optional: Is an inclusion proof required to be available?
 	// Most of the time this will not be the case.
-	// Disabled to faciliate testing without referring to time.Now()
+	// Disabled to facilitate testing without referring to time.Now()
 	// if time.Now().After(requireSCT) {
 
 	// Update the current STH and try again.
