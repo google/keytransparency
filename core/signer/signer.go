@@ -107,7 +107,9 @@ func (s *Signer) StartSequencing() {
 func (s *Signer) processMutation(index, mutation []byte) error {
 	// Send mutation to append-only log.
 	ctx := context.Background()
-	s.mutations.Append(ctx, 0, mutation)
+	if err := s.mutations.Append(ctx, 0, mutation); err != nil {
+		return nil
+	}
 
 	// Get current value.
 	v, err := s.tree.ReadLeafAt(ctx, index, s.tree.Epoch())

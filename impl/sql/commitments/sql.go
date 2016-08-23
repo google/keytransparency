@@ -84,7 +84,7 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *t
 	}
 	defer func() {
 		if returnErr != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return
 		}
 		returnErr = tx.Commit()
