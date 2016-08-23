@@ -47,7 +47,7 @@ func TestVerifyProof(t *testing.T) {
 	}{
 		// Verify proof of absence in an empty tree.
 		{
-			dh("d576e4657c5f86ba33a435d1abd22cff4f61de4df0cc16c50bd653b1360b367c"),
+			dh("71250841561ccdc8b7825cb9a07d67a59ec5627e92ac1f1e700d7ce7b188cb08"),
 			[]Leaf{
 				{dh(AllZeros), nil, [][]byte{}},
 			},
@@ -55,38 +55,38 @@ func TestVerifyProof(t *testing.T) {
 		// Tree with multiple leaves, each has a single existing neighbor
 		// on the way to the root.
 		{
-			dh("376bcc69fda95cea8455224faf8e5a05eaff9ad943e3ef96aaef910649b52806"),
+			dh("c1aa306d40112068b221384127489a05b5bec5f4d693656cccb68ed1e6b1cc5c"),
 			[]Leaf{
 				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("fe9992d1c917b1362bd4aad7c1dbaa10dcaa2649844aed2e3d3407b6f28ea6c0"),
+					dh("e9b626486fc3f3b68a60150ebd96ddff851a16d5dfd37d39acbff68bbab7e05d"),
 					[]byte{},
 				}},
 				{dh(defaultIndex[1]), []byte("4"), [][]byte{
-					dh("f9369f6c112ff583212b7ff07342a84e3f41cfda101923db76cc5517b23d9a38"),
+					dh("858b8d3a44b0bcb43f5a528b2e2256b64c7dfcc625322a07f3b6acb2643bfa36"),
 					[]byte{},
 				}},
 				{dh(defaultIndex[2]), nil, [][]byte{
-					dh("7987058861eb3fd513c2d00b91f42fc9bb6b2d878b5b298f4d6ef0c38f1c5395"),
+					dh("a996ec98672d9c219013ef8d31a1f6997e38b6a6b76f6d8ffa142ad210576831"),
 				}},
 				{dh(AllZeros), nil, [][]byte{
-					dh("7987058861eb3fd513c2d00b91f42fc9bb6b2d878b5b298f4d6ef0c38f1c5395"),
+					dh("a996ec98672d9c219013ef8d31a1f6997e38b6a6b76f6d8ffa142ad210576831"),
 				}},
 			},
 		},
 		// Tree with multiple leaves, some have multiple existing
 		// neighbors on the way to the root.
 		{
-			dh("528044b5a83335c074eb8631fdaeddd96d65e420ad3031d88cfe03b1ed6f33eb"),
+			dh("191dc58ab135ea3f21dc882e2a05cb6518342af5b246400dcaa6fae55ebc7a5a"),
 			[]Leaf{
 				{dh(defaultIndex[2]), []byte("0"), [][]byte{
-					dh("b2283f973324190e2992523432604a3ce6732aef09d267fbf951840d9a854043"),
+					dh("a19b5a4e9defe0511a116e4db409dfc37ef5fec1834e9d1528da070ef1bf6dc5"),
 				}},
 				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("5ff0f6495d23d0be76e524710814c76b55213afe9514d473066f920b5c655ec9"),
+					dh("63ee0022d85d60c72e1d92aa76e79f7059b4b962a7238a14f5f6ca8e8d8998c5"),
 				}},
 				{dh(AllZeros), nil, [][]byte{
-					dh("5ad9ddb4579867b9914df56703bd64502397cf02c1f1178393dfee26548d1259"),
-					dh("b2283f973324190e2992523432604a3ce6732aef09d267fbf951840d9a854043"),
+					dh("13b5e760f40079499eed79b125ceb75c415eda044f96b7aeb091649668782f00"),
+					dh("a19b5a4e9defe0511a116e4db409dfc37ef5fec1834e9d1528da070ef1bf6dc5"),
 				}},
 			},
 		},

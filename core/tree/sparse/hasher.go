@@ -46,8 +46,14 @@ func (c coniks) HashLeaf(index []byte, depth int, dataHash []byte) []byte {
 
 // HashChildren calculates an interior node's value: H(left || right)
 func (coniks) HashChildren(left []byte, right []byte) []byte {
+	leftLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(leftLen, uint32(len(left)))
+	rightLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(rightLen, uint32(len(right)))
 	h := newHash()
+	h.Write(leftLen)
 	h.Write(left)
+	h.Write(rightLen)
 	h.Write(right)
 	return h.Sum(nil)
 }
@@ -61,9 +67,12 @@ func (c coniks) HashEmpty(index []byte, depth int) []byte {
 func (coniks) hashLeaf(identifier []byte, index []byte, depth int, dataHash []byte) []byte {
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
+	indexLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(indexLen, uint32(len(index)))
 	h := newHash()
 	h.Write(identifier)
 	h.Write(bdepth)
+	h.Write(indexLen)
 	h.Write(index)
 	h.Write(dataHash)
 	return h.Sum(nil)
