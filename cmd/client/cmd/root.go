@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A command line client for Key Transparency.
-// Provides authenticated requests for Google accounts.
-package main
+package cmd
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -31,7 +28,8 @@ import (
 	"github.com/google/key-transparency/core/vrf/p256"
 	"github.com/google/key-transparency/impl/google/authentication"
 
-	"golang.org/x/net/context"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
@@ -41,25 +39,63 @@ import (
 	pb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
 
+var cfgFile string
+
+// RootCmd represents the base command when called without any subcommands
+var RootCmd = &cobra.Command{
+	Use:   "key-transparency-client",
+	Short: "A client for interacting with the key transparency server",
+	Long: `The key transparency client retrieves and sets keys in the 
+key transparency server.  The client verifies all cryptographic proofs the
+server provides to ensure that account data is accurate.`,
+}
+
+// Execute adds all child commands to the root command sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	if err := RootCmd.Execute(); err != nil {
+		log.Fatalf("%v", err)
+	}
+}
+
+// Global flags for use by subcommands.
 var (
-	// Required parameters.
-	vrfPubFile = flag.String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
-	ctURL      = flag.String("ct-url", "", "URL of Certificate Transparency server")
-	ctPEM      = flag.String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
-	ktURL      = flag.String("kt-url", "", "URL of Key Transparency server")
-	ktPEM      = flag.String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
-	ktSig      = flag.String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
-	user       = flag.String("user", "", "Email of the user to query")
-
-	// Optional parameters with sane defaults.
-	timeout = flag.Duration("timeout", 500, "Milliseconds to wait before operations timeout")
-
-	// Get parameters.
-	get = flag.Bool("get", true, "Get the current key")
-
-	// Update parameters.
-	clientSecretFile = flag.String("secret", "", "path to client secrets")
+	verboase bool
 )
+
+func init() {
+	cobra.OnInitialize(initConfig)
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.key-transparency.yaml)")
+	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
+	RootCmd.PersistentFlags().String("ct-url", "", "URL of Certificate Transparency server")
+	RootCmd.PersistentFlags().String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
+	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
+	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
+
+	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
+
+	// Global flags for use by subcommands.
+	RootCmd.PersistentFlags().DurationP("timeout", "t", 500*time.Millisecond, "Milliseconds to wait before operations timeout")
+	RootCmd.PersistentFlags().BoolVarP(&verboase, "verbose", "v", false, "Print in/out and verification steps")
+	viper.BindPFlags(RootCmd.PersistentFlags())
+}
+
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	viper.SetConfigName("config") // name of config file (without extension)
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("$HOME")
+	viper.AutomaticEnv() // read in environment variables that match
+
+	if cfgFile != "" { // enable ability to specify config file via flag
+		viper.SetConfigFile(cfgFile)
+	}
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+}
 
 func readVrfKey(vrfPubFile string) (vrf.PublicKey, error) {
 	b, err := ioutil.ReadFile(vrfPubFile)
@@ -185,28 +221,22 @@ func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
 	return cc, nil
 }
 
-func main() {
-	flag.Parse()
-
-	cc, err := dial(*ktURL, *ktPEM, *clientSecretFile)
+// GetClient connects to the server and returns a key transpency verification
+// client.
+func GetClient(clientSecretFile string) (*client.Client, error) {
+	ktURL := viper.GetString("kt-url")
+	ktPEM := viper.GetString("kt-key")
+	ktSig := viper.GetString("kt-sig")
+	ctURL := viper.GetString("ct-url")
+	ctPEM := viper.GetString("ct-key")
+	vrfFile := viper.GetString("vrf")
+	cc, err := dial(ktURL, ktPEM, clientSecretFile)
 	if err != nil {
-		log.Fatalf("Error Dialing %v: %v", *ktURL, err)
+		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
-	c, err := getClient(cc, *vrfPubFile, *ktSig, *ctURL, *ctPEM)
+	c, err := getClient(cc, vrfFile, ktSig, ctURL, ctPEM)
 	if err != nil {
-		log.Fatalf("Error creating client: %v", err)
+		return nil, fmt.Errorf("Error creating client: %v", err)
 	}
-
-	ctx, _ := context.WithTimeout(context.Background(), *timeout*time.Millisecond)
-	switch {
-	case *get:
-		profile, err := c.GetEntry(ctx, *user)
-		if err != nil {
-			log.Fatalf("GetEntry failed: %v", err)
-		}
-		log.Printf("Profile for %v:\n%+v", *user, profile)
-		// TODO: Print verification
-	default:
-		log.Printf("Nothing to do. Exiting.")
-	}
+	return c, nil
 }
