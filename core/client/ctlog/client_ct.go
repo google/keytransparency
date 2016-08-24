@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"time"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -32,6 +34,9 @@ var hasher = func(b []byte) []byte {
 	h := sha256.Sum256(b)
 	return h[:]
 }
+
+// Vlog is the verbose logger. By default it outputs to /dev/null.
+var Vlog = log.New(ioutil.Discard, "", 0)
 
 // Verifier represents an append-only log.
 type Verifier interface {
@@ -123,8 +128,10 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 	// Save the SCT signature and verify later.
 	e := ct.LogEntry{Leaf: *ct.CreateJSONMerkleTreeLeaf(smh, sct.Timestamp)}
 	if err := l.ver.VerifySCTSignature(*sct, e); err != nil {
+		Vlog.Printf("CT ✗ SCT signature verification failed.")
 		return err
 	}
+	Vlog.Printf("CT ✓ SCT signature verified. Saving SCT for future inclusion proof verification.")
 	l.scts[sct] = SCTEntry{sct, smh} // Add to SCT waitlist.
 	return nil
 }
@@ -160,25 +167,32 @@ func (l *Log) UpdateSTH() error {
 	}
 	// Verify signature.
 	if err := l.ver.VerifySTHSignature(*sth); err != nil {
+		Vlog.Printf("CT ✗ STH signature verification failed.")
 		return err
 	}
+	Vlog.Printf("CT ✓ STH signature verified.")
+
 	// Implicity trust the first STH we get.
 	if l.STH.TreeSize != 0 {
 		// Get consistency proof.
 		ctx := context.Background()
 		proof, err := l.ctlog.GetSTHConsistency(ctx, l.STH.TreeSize, sth.TreeSize)
 		if err != nil {
+			Vlog.Printf("CT ✗ Consistency proof fetch failed.")
 			return err
 		}
 		// Verify consistency proof.
 		if err := l.mtv.VerifyConsistencyProof(int64(l.STH.TreeSize),
 			int64(sth.TreeSize), l.STH.SHA256RootHash[:],
 			sth.SHA256RootHash[:], proof); err != nil {
+			Vlog.Printf("CT ✗ Consistency proof verification failed.")
 			return err
 		}
+		Vlog.Printf("CT ✓ Consistency proof verified.")
 	}
 	// Update trusted sth.
 	l.STH = *sth
+	Vlog.Printf("CT   New trusted STH: %v", timestamp(l.STH.Timestamp).Local())
 	return nil
 }
 
@@ -199,6 +213,11 @@ func (l *Log) inclusionProof(sth *ct.SignedTreeHead, smh *ctmap.SignedMapHead, t
 	}
 	// Verify inclusion proof.
 	v := merkletree.NewMerkleVerifier(hasher)
-	return v.VerifyInclusionProof(proof.LeafIndex, int64(sth.TreeSize),
-		proof.AuditPath, sth.SHA256RootHash[:], leafBuff.Bytes())
+	if err := v.VerifyInclusionProof(proof.LeafIndex, int64(sth.TreeSize),
+		proof.AuditPath, sth.SHA256RootHash[:], leafBuff.Bytes()); err != nil {
+		Vlog.Printf("CT ✗ inclusion proof verification failed.")
+		return err
+	}
+	Vlog.Printf("CT ✓ inclusion proof verified.")
+	return nil
 }

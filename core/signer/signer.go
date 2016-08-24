@@ -108,23 +108,23 @@ func (s *Signer) processMutation(index, mutation []byte) error {
 	// Send mutation to append-only log.
 	ctx := context.Background()
 	if err := s.mutations.Append(ctx, 0, mutation); err != nil {
-		return err
+		return fmt.Errorf("Append mutation failure %v", err)
 	}
 
 	// Get current value.
 	v, err := s.tree.ReadLeafAt(ctx, index, s.tree.Epoch())
 	if err != nil {
-		return err
+		return fmt.Errorf("ReadLeafAt err: %v", err)
 	}
 
 	newV, err := s.mutator.Mutate(v, mutation)
 	if err != nil {
-		return err
+		return fmt.Errorf("Mutate err: %v", err)
 	}
 
 	// Save new value and update tree.
 	if err := s.tree.QueueLeaf(ctx, index, newV); err != nil {
-		return err
+		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
 	log.Printf("Sequenced %x", index)
 	return nil
@@ -135,11 +135,11 @@ func (s *Signer) CreateEpoch() error {
 	ctx := context.Background()
 	epoch, err := s.tree.Commit()
 	if err != nil {
-		return err
+		return fmt.Errorf("Commit err: %v", err)
 	}
 	root, err := s.tree.ReadRootAt(ctx, epoch)
 	if err != nil {
-		return err
+		return fmt.Errorf("ReadRootAt err: %v", err)
 	}
 	timestamp, err := ptypes.TimestampProto(s.clock.Now())
 	if err != nil {
@@ -161,7 +161,7 @@ func (s *Signer) CreateEpoch() error {
 		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
 	if err := s.sths.Append(ctx, epoch, smh); err != nil {
-		return fmt.Errorf("Append failure %v", err)
+		return fmt.Errorf("Append SMH failure %v", err)
 	}
 	log.Printf("Created epoch %v. SMH: %#x", epoch, root)
 	return nil

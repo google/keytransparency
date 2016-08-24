@@ -19,10 +19,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"github.com/google/key-transparency/cmd/client/grpcc"
 	"github.com/google/key-transparency/core/client/ctlog"
+	"github.com/google/key-transparency/core/client/kt"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/vrf"
 	"github.com/google/key-transparency/core/vrf/p256"
@@ -40,6 +42,7 @@ import (
 )
 
 var cfgFile string
+var verbose bool
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -48,6 +51,13 @@ var RootCmd = &cobra.Command{
 	Long: `The key transparency client retrieves and sets keys in the 
 key transparency server.  The client verifies all cryptographic proofs the
 server provides to ensure that account data is accurate.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if verbose {
+			client.Vlog = log.New(os.Stdout, "", log.LstdFlags)
+			kt.Vlog = log.New(os.Stdout, "", log.LstdFlags)
+			ctlog.Vlog = log.New(os.Stdout, "", log.LstdFlags)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
@@ -57,11 +67,6 @@ func Execute() {
 		log.Fatalf("%v", err)
 	}
 }
-
-// Global flags for use by subcommands.
-var (
-	verbose bool
-)
 
 func init() {
 	cobra.OnInitialize(initConfig)
