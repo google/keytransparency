@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package ctutil implements helper functions for testing against Certificate Transparency.
-package ct
+package ctlog
 
 import (
 	"encoding/json"
@@ -59,11 +59,11 @@ func NewCTServer(t testing.TB) *httptest.Server {
 func TestInclusionProof(t *testing.T) {
 	hs := NewCTServer(t)
 	defer hs.Close()
-	l, err := NewLogVerifier([]byte(pem), hs.URL)
+	l, err := New([]byte(pem), hs.URL)
 	if err != nil {
 		t.Fatalf("Failed to create log client: %v", err)
 	}
-	lnoconn, err := NewLogVerifier([]byte(pem), "")
+	lnoconn, err := New([]byte(pem), "")
 	if err != nil {
 		t.Fatalf("Failed to create log client: %v", err)
 	}
@@ -97,9 +97,9 @@ func TestInclusionProof(t *testing.T) {
 }
 
 func TestUpdateSTH(t *testing.T) {
-	l, err := NewLogVerifier([]byte(pem), "")
+	l, err := New([]byte(pem), "")
 	if err != nil {
-		t.Fatalf("NewLogVerifier(): %v", err)
+		t.Fatalf("New(): %v", err)
 	}
 	for i, tc := range []struct {
 		start, end uint64
@@ -141,9 +141,9 @@ func TestUpdateSTH(t *testing.T) {
 // TestVerifySCT exercises an immediate verification via an inclusion proof as
 // well as a delayed SCT verification where the SCT is stored for later verification.
 func TestVerifySCT(t *testing.T) {
-	l, err := NewLogVerifier([]byte(pem), "")
+	l, err := New([]byte(pem), "")
 	if err != nil {
-		t.Fatalf("NewLogVerifier(): %v", err)
+		t.Fatalf("New(): %v", err)
 	}
 	for _, tc := range []struct {
 		smh, sct, sth, inclusion, hash, consistency string
@@ -211,9 +211,9 @@ func TestVerifySCT(t *testing.T) {
 func TestVerifySCTSig(t *testing.T) {
 	hs := NewCTServer(t)
 	defer hs.Close()
-	l, err := NewLogVerifier([]byte(pem), hs.URL)
+	l, err := New([]byte(pem), hs.URL)
 	if err != nil {
-		t.Fatalf("NewLogVerifier(): %v", err)
+		t.Fatalf("New(): %v", err)
 	}
 
 	var smh ctmap.SignedMapHead
@@ -232,9 +232,9 @@ func TestVerifySCTSig(t *testing.T) {
 
 // TestVerifySavedSCTs ensures that cached SCTs are verified.
 func TestVerifySavedSCTs(t *testing.T) {
-	l, err := NewLogVerifier([]byte(pem), "")
+	l, err := New([]byte(pem), "")
 	if err != nil {
-		t.Fatalf("NewLogVerifier(): %v", err)
+		t.Fatalf("New(): %v", err)
 	}
 	for i, tc := range []struct {
 		smh, sct, sth, inclusion, hash string
