@@ -42,6 +42,15 @@ import (
 )
 
 const (
+	// Each page contains pageSize profiles. Each profile contains multiple
+	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
+	// size 16 will contain about 8KB of data.
+	defaultPageSize = 16
+	// The default capacity used when creating a profiles list in
+	// ListHistory.
+	defaultListCap = 10
+	// The delay before the client retry updating the profile if ErrRetry is
+	// received.
 	retryDelay = 3 * time.Second
 	// TODO: Public keys of trusted monitors.
 )
@@ -105,6 +114,71 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, fmt.Errorf("Error unmarshaling profile: %v", err)
 	}
 	return profile, nil
+}
+
+// ListHistory returns a list of profiles starting and ending at given epochs.
+// It also filters out all identical consecutive profiles.
+func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, endEpoch int64, opts ...grpc.CallOption) ([]*tpb.Profile, error) {
+	var currentProfile *tpb.Profile
+	// make here allocate 0 length slice with defaultListCap capacity. This
+	// is used to avoid underlying reallocation in append (used below).
+	// However, if ListHistory is returning more than defaultListCap
+	// profiles, append will increase the size of the list appropriately.
+	profiles := make([]*tpb.Profile, 0, defaultListCap)
+
+	// Setup loop-related variables.
+	pageSize := defaultPageSize
+	for startEpoch <= endEpoch {
+		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
+			UserId:   userID,
+			Start:    startEpoch,
+			PageSize: int32(pageSize),
+		}, opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		// Iterate over the responses in order.
+		for _, v := range resp.GetValues() {
+			// If empty profile, skip.
+			if v.GetCommitted() == nil {
+				continue
+			}
+
+			// If the processed profile is already beyond endEpoch,
+			// stop.
+			if v.GetSmh().GetMapHead().Epoch > endEpoch {
+				break
+			}
+
+			// Verify the response.
+			err = c.kt.VerifyGetEntryResponse(userID, v)
+			if err != nil {
+				return nil, err
+			}
+
+			profile := new(tpb.Profile)
+			if err := proto.Unmarshal(v.GetCommitted().Data, profile); err != nil {
+				log.Printf("Error unmarshaling profile: %v", err)
+				return nil, err
+			}
+			// Ignore the extracted profile if it is similar to the
+			// current one. Since currentProfile's initial value is
+			// nil, all nil profiles before the user submits his/her
+			// first profile are also ignored.
+			if proto.Equal(currentProfile, profile) {
+				continue
+			}
+
+			// Append the slice and update currentProfile.
+			profiles = append(profiles, profile)
+			currentProfile = profile
+		}
+
+		startEpoch = resp.NextStart
+	}
+
+	return profiles, nil
 }
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
