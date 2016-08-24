@@ -32,15 +32,15 @@ results are consistent.`,
 		if len(args) < 1 {
 			return fmt.Errorf("user email needs to be provided")
 		}
-		user := args[0]
+		userID := args[0]
 		timeout := viper.GetDuration("timeout")
 
 		c, err := GetClient("")
 		if err != nil {
-			return fmt.Errorf("Error connecting: %v", err)
+			return fmt.Errorf("error connecting: %v", err)
 		}
 		ctx, _ := context.WithTimeout(context.Background(), timeout)
-		profile, err := c.GetEntry(ctx, user)
+		profile, err := c.GetEntry(ctx, userID)
 		if err != nil {
 			return fmt.Errorf("GetEntry failed: %v", err)
 		}
