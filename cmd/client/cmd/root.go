@@ -60,12 +60,12 @@ func Execute() {
 
 // Global flags for use by subcommands.
 var (
-	verboase bool
+	verbose bool
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "config file (default is ./config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", ".key-transparency.yaml", "config file (default is .key-transparency.yaml)")
 	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
 	RootCmd.PersistentFlags().String("ct-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
@@ -76,7 +76,7 @@ func init() {
 
 	// Global flags for use by subcommands.
 	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Second, "Time to wait before operations timeout")
-	RootCmd.PersistentFlags().BoolVarP(&verboase, "verbose", "v", false, "Print in/out and verification steps")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print in/out and verification steps")
 	viper.BindPFlags(RootCmd.PersistentFlags())
 }
 

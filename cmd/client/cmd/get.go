@@ -44,7 +44,7 @@ results are consistent.`,
 		if err != nil {
 			return fmt.Errorf("GetEntry failed: %v", err)
 		}
-		fmt.Printf("Profile for %v: %+v", user, profile)
+		fmt.Printf("Profile for %v: %+v\n", user, profile)
 		return nil
 	},
 }
