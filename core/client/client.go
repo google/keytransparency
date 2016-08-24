@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/key-transparency/core/client/ctlog"
+	"github.com/google/key-transparency/core/client/kt"
 	"github.com/google/key-transparency/core/commitments"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/tree/sparse"
@@ -65,23 +66,19 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli          spb.KeyTransparencyServiceClient
-	vrf          vrf.PublicKey
-	RetryCount   int
-	treeVerifier *tv.Verifier
-	verifier     *signatures.Verifier
-	log          ctlog.Verifier
+	cli        spb.KeyTransparencyServiceClient
+	vrf        vrf.PublicKey
+	RetryCount int
+	kt         *kt.Verifier
 }
 
 // New creates a new client.
 func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log ctlog.Verifier) *Client {
 	return &Client{
-		cli:          client,
-		vrf:          vrf,
-		RetryCount:   1,
-		treeVerifier: tv.New(sparse.CONIKSHasher),
-		verifier:     verifier,
-		log:          log,
+		cli:        client,
+		vrf:        vrf,
+		RetryCount: 1,
+		kt:         kt.New(vrf, tv.New(sparse.CONIKSHasher), verifier, log),
 	}
 }
 
@@ -94,7 +91,7 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, err
 	}
 
-	if err := c.verifyGetEntryResponse(userID, e); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(userID, e); err != nil {
 		return nil, err
 	}
 
@@ -118,7 +115,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 		return nil, err
 	}
 
-	if err := c.verifyGetEntryResponse(userID, getResp); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(userID, getResp); err != nil {
 		return nil, err
 	}
 
@@ -191,7 +188,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	}
 
 	// Validate response.
-	if err := c.verifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
 		return err
 	}
 
