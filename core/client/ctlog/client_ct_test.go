@@ -258,7 +258,9 @@ func createServer(t *testing.T, sth, consistency, sct, hash, inclusion string) *
 		case "/ct/v1/add-json":
 			w.Write([]byte(sct))
 		case "/ct/v1/get-proof-by-hash":
-			r.ParseForm()
+			if err := r.ParseForm(); err != nil {
+				t.Errorf("Failed to parse form: %v", err)
+			}
 			if got, want := r.Form["hash"][0], hash; got != want {
 				t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
 			}
