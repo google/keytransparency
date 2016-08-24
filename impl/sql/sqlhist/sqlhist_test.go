@@ -265,51 +265,38 @@ func TestAribtrayInsertOrder(t *testing.T) {
 	}
 }
 
+type leaf struct {
+	index []byte
+	value string
+}
+
 func TestNeighborDepth(t *testing.T) {
+	// Create testing environment.
 	db, err := newDB()
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	m1, err := New(db, "test1")
-	if err != nil {
-		t.Fatalf("Failed to create SQL history: %v", err)
-	}
 	// Construct a tree of the following form:
 	//     r
 	//       a
 	//      3  4
-	for _, l := range []struct {
-		index []byte
-		value string
-	}{
+	m1, err := createTree(db, "test1", []leaf{
 		{dh(defaultIndex[0]), "3"},
 		{dh(defaultIndex[1]), "4"},
-	} {
-		value := []byte(l.value)
-		if err := m1.QueueLeaf(ctx, l.index, value); err != nil {
-			t.Fatalf("QueueLeaf(%v)=%v", l.index, err)
-		}
+	})
+	if err != nil {
+		t.Fatalf("Failed to create tree: %v", err)
 	}
-	if epoch, err := m1.Commit(); err != nil || epoch != 0 {
-		t.Fatalf("Commit()=%v, %v, want %v, <nil>", epoch, err, 0)
+	// Construct a tree with only one item in it.
+	m2, err := createTree(db, "test2", []leaf{
+		{dh(defaultIndex[0]), "0"},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create tree: %v", err)
 	}
 
-	// Construct a tree with only one item in it.
-	m2, err := New(db, "test2")
-	if err != nil {
-		t.Fatalf("Failed to create SQL history: %v", err)
-	}
-	dindex, err := hex.DecodeString(defaultIndex[0])
-	if err != nil {
-		t.Fatalf("DecodeString(%v)=(_, %v)", defaultIndex[0], err)
-	}
-	if err := m2.QueueLeaf(nil, dindex, []byte("0")); err != nil {
-		t.Fatalf("QueueLeaf failed: %v", err)
-	}
-	if _, err := m2.Commit(); err != nil {
-		t.Fatalf("Commit failed: %v", err)
-	}
+	// Run test cases.
 	for _, tc := range []struct {
 		m     *Map
 		index []byte
@@ -329,6 +316,23 @@ func TestNeighborDepth(t *testing.T) {
 
 		}
 	}
+}
+
+func createTree(db *sql.DB, mapID string, leafs []leaf) (*Map, error) {
+	m, err := New(db, mapID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create map: %v", err)
+	}
+	for _, l := range leafs {
+		value := []byte(l.value)
+		if err := m.QueueLeaf(ctx, l.index, value); err != nil {
+			return nil, fmt.Errorf("QueueLeaf(%v)=%v", l.index, err)
+		}
+	}
+	if epoch, err := m.Commit(); err != nil || epoch != 0 {
+		return nil, fmt.Errorf("Commit()=%v, %v, want %v, <nil>", epoch, err, 0)
+	}
+	return m, nil
 }
 
 // Hex to Bytes

@@ -169,26 +169,7 @@ func TestVerifySCT(t *testing.T) {
 			1,
 		},
 	} {
-		hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.URL.Path {
-			case "/ct/v1/get-sth":
-				w.Write([]byte(tc.sth))
-			case "/ct/v1/get-sth-consistency":
-				w.Write([]byte(tc.consistency))
-			case "/ct/v1/add-json":
-				w.Write([]byte(tc.sct))
-			case "/ct/v1/get-proof-by-hash":
-				if err := r.ParseForm(); err != nil {
-					t.Fatalf("Failed to parse form: %v", err)
-				}
-				if got, want := r.Form["hash"][0], tc.hash; got != want {
-					t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
-				}
-				w.Write([]byte(tc.inclusion))
-			default:
-				t.Errorf("Incorrect URL path: %s", r.URL.Path)
-			}
-		}))
+		hs := createServer(t, tc.sth, tc.consistency, tc.sct, tc.hash, tc.inclusion)
 		l.ctlog = logclient.New(hs.URL, nil)
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
@@ -248,24 +229,7 @@ func TestVerifySavedSCTs(t *testing.T) {
 			"t0A8H7hDbMSFIYZSaez/JxZhhuCySpUvz4iw6RpECO0=",
 		},
 	} {
-		hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.URL.Path {
-			case "/ct/v1/get-sth":
-				w.Write([]byte(tc.sth))
-			case "/ct/v1/add-json":
-				w.Write([]byte(tc.sct))
-			case "/ct/v1/get-proof-by-hash":
-				if err := r.ParseForm(); err != nil {
-					t.Fatalf("Failed to parse form: %v", err)
-				}
-				if got, want := r.Form["hash"][0], tc.hash; got != want {
-					t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
-				}
-				w.Write([]byte(tc.inclusion))
-			default:
-				t.Errorf("Incorrect URL path: %s", r.URL.Path)
-			}
-		}))
+		hs := createServer(t, tc.sth, "", tc.sct, tc.hash, tc.inclusion)
 		l.ctlog = logclient.New(hs.URL, nil)
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
@@ -282,4 +246,25 @@ func TestVerifySavedSCTs(t *testing.T) {
 		}
 		hs.Close()
 	}
+}
+
+func createServer(t *testing.T, sth, consistency, sct, hash, inclusion string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ct/v1/get-sth":
+			w.Write([]byte(sth))
+		case "/ct/v1/get-sth-consistency":
+			w.Write([]byte(consistency))
+		case "/ct/v1/add-json":
+			w.Write([]byte(sct))
+		case "/ct/v1/get-proof-by-hash":
+			r.ParseForm()
+			if got, want := r.Form["hash"][0], hash; got != want {
+				t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
+			}
+			w.Write([]byte(inclusion))
+		default:
+			t.Errorf("Incorrect URL path: %s", r.URL.Path)
+		}
+	}))
 }
