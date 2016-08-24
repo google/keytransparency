@@ -12,26 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package kt
 
 import (
 	"bytes"
 	"errors"
 
+	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/commitments"
+	"github.com/google/key-transparency/core/signatures"
+	tv "github.com/google/key-transparency/core/tree/sparse/verifier"
+	"github.com/google/key-transparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
 
-	ctmap "github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
 // ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
 var ErrNilProof = errors.New("nil proof")
 
+// Verifier is a client helper library for verifying request and responses.
+type Verifier struct {
+	vrf  vrf.PublicKey
+	tree *tv.Verifier
+	sig  *signatures.Verifier
+	log  ctlog.Verifier
+}
+
+// New creates a new instance of the client verifier.
+func New(vrf vrf.PublicKey, tree *tv.Verifier, sig *signatures.Verifier, log ctlog.Verifier) *Verifier {
+	return &Verifier{
+		vrf:  vrf,
+		tree: tree,
+		sig:  sig,
+		log:  log,
+	}
+}
+
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
-func VerifyCommitment(userID string, in *tpb.GetEntryResponse) error {
+func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error {
 	if in.Committed != nil {
 		entry := new(tpb.Entry)
 		if err := proto.Unmarshal(in.GetLeafProof().LeafData, entry); err != nil {
@@ -44,31 +65,32 @@ func VerifyCommitment(userID string, in *tpb.GetEntryResponse) error {
 	return nil
 }
 
-// VerifySMH verifies that the Signed Map Head is correctly signed.
-func (c *Client) VerifySMH(smh *ctmap.SignedMapHead) error {
-	return c.verifier.Verify(smh.GetMapHead(), smh.Signatures[c.verifier.KeyName])
-}
-
-func (c *Client) verifyGetEntryResponse(userID string, in *tpb.GetEntryResponse) error {
-	if err := VerifyCommitment(userID, in); err != nil {
+// VerifyGetEntryResponse verifies GetEntryResponse:
+//  - Verify commitment.
+//  - Verify VRF.
+//  - Verify tree proof.
+//  - Verify signature.
+//  - Verify SCT.
+func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryResponse) error {
+	if err := v.VerifyCommitment(userID, in); err != nil {
 		return err
 	}
 
-	if err := c.vrf.Verify([]byte(userID), in.Vrf, in.VrfProof); err != nil {
+	if err := v.vrf.Verify([]byte(userID), in.Vrf, in.VrfProof); err != nil {
 		return err
 	}
-	index := c.vrf.Index(in.Vrf)
+	index := v.vrf.Index(in.Vrf)
 
 	leafProof := in.GetLeafProof()
 	if leafProof == nil {
 		return ErrNilProof
 	}
 
-	if err := c.treeVerifier.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, in.GetSmh().MapHead.Root); err != nil {
+	if err := v.tree.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, in.GetSmh().MapHead.Root); err != nil {
 		return err
 	}
 
-	if err := c.VerifySMH(in.GetSmh()); err != nil {
+	if err := v.sig.Verify(in.GetSmh().GetMapHead(), in.GetSmh().Signatures[v.sig.KeyName]); err != nil {
 		return err
 	}
 
@@ -77,7 +99,7 @@ func (c *Client) verifyGetEntryResponse(userID string, in *tpb.GetEntryResponse)
 	if err != nil {
 		return err
 	}
-	if err := c.log.VerifySCT(in.GetSmh(), sct); err != nil {
+	if err := v.log.VerifySCT(in.GetSmh(), sct); err != nil {
 		return err
 	}
 	return nil
