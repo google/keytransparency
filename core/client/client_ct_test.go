@@ -178,7 +178,9 @@ func TestVerifySCT(t *testing.T) {
 			case "/ct/v1/add-json":
 				w.Write([]byte(tc.sct))
 			case "/ct/v1/get-proof-by-hash":
-				r.ParseForm()
+				if err := r.ParseForm(); err != nil {
+					t.Fatalf("Failed to parse form: %v", err)
+				}
 				if got, want := r.Form["hash"][0], tc.hash; got != want {
 					t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
 				}
@@ -253,7 +255,9 @@ func TestVerifySavedSCTs(t *testing.T) {
 			case "/ct/v1/add-json":
 				w.Write([]byte(tc.sct))
 			case "/ct/v1/get-proof-by-hash":
-				r.ParseForm()
+				if err := r.ParseForm(); err != nil {
+					t.Fatalf("Failed to parse form: %v", err)
+				}
 				if got, want := r.Form["hash"][0], tc.hash; got != want {
 					t.Errorf("Incorrect request hash:\n%v, wanted\n%v", got, want)
 				}

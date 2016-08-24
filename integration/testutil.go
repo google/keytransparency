@@ -188,7 +188,9 @@ func NewEnv(t *testing.T) *Env {
 
 	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
 	signer.FakeTime()
-	signer.CreateEpoch()
+	if err := signer.CreateEpoch(); err != nil {
+		t.Fatalf("Failed to create epoch: %v", err)
+	}
 
 	addr, lis := Listen(t)
 	go s.Serve(lis)

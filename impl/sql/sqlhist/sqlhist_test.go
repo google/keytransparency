@@ -304,8 +304,12 @@ func TestNeighborDepth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodeString(%v)=(_, %v)", defaultIndex[0], err)
 	}
-	m2.QueueLeaf(nil, dindex, []byte("0"))
-	m2.Commit()
+	if err := m2.QueueLeaf(nil, dindex, []byte("0")); err != nil {
+		t.Fatalf("QueueLeaf failed: %v", err)
+	}
+	if _, err := m2.Commit(); err != nil {
+		t.Fatalf("Commit failed: %v", err)
+	}
 	for _, tc := range []struct {
 		m     *Map
 		index []byte
