@@ -214,8 +214,8 @@ func (m *Map) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]b
 	}
 	nbrs, err := m.neighborsAt(tx, index, maxDepth, epoch)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			return nil, err
+		if rbErr := tx.Rollback(); rbErr != nil {
+			err = fmt.Errorf("neighborsAt failed: %v, and Rollback failed: %v", err, rbErr)
 		}
 		return nil, err
 	}
@@ -230,8 +230,8 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 
 	readStmt, err := tx.Prepare(readExpr)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			return nil, err
+		if rbErr := tx.Rollback(); rbErr != nil {
+			err = fmt.Errorf("Prepare failed: %v, and Rollback failed: %v", err, rbErr)
 		}
 		return nil, err
 	}
@@ -243,8 +243,8 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 		if err := readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&nbrValues[i]); err == sql.ErrNoRows {
 			nbrValues[i] = hashEmpty(neighborBIndexes[i])
 		} else if err != nil {
-			if err := tx.Rollback(); err != nil {
-				return nil, err
+			if rbErr := tx.Rollback(); rbErr != nil {
+				err = fmt.Errorf("QueryRow failed: %v, and Rollback failed: %v", err, rbErr)
 			}
 			return nil, err
 		}
@@ -286,8 +286,8 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	}
 	writeStmt, err := tx.Prepare(setNodeExpr)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			return err
+		if rbErr := tx.Rollback(); rbErr != nil {
+			err = fmt.Errorf("Prepare failed: %v, and Rollback failed: %v", err, rbErr)
 		}
 		return err
 	}
@@ -296,8 +296,8 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	// Get neighbors.
 	nbrValues, err := m.neighborsAt(tx, index, depth, epoch)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			return err
+		if rbErr := tx.Rollback(); rbErr != nil {
+			err = fmt.Errorf("neighborsAt failed: %v, and Rollback failed: %v", err, rbErr)
 		}
 		return err
 	}
@@ -308,8 +308,8 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	for i, nodeValue := range nodeValues {
 		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue)
 		if err != nil {
-			if err := tx.Rollback(); err != nil {
-				return err
+			if rbErr := tx.Rollback(); rbErr != nil {
+				err = fmt.Errorf("Exec failed: %v, and Rollback failed: %v", err, rbErr)
 			}
 			return err
 		}

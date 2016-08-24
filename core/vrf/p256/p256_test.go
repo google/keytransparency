@@ -22,7 +22,9 @@ import (
 func TestH1(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		m := make([]byte, 100)
-		rand.Read(m)
+		if _, err := rand.Read(m); err != nil {
+			t.Fatalf("Failed generating random message: %v", err)
+		}
 		x, y := H1(m)
 		if x == nil {
 			t.Errorf("H1(%v)=%v, want curve point", m, x)
@@ -37,7 +39,9 @@ func TestH2(t *testing.T) {
 	l := 32
 	for i := 0; i < 10000; i++ {
 		m := make([]byte, 100)
-		rand.Read(m)
+		if _, err := rand.Read(m); err != nil {
+			t.Fatalf("Failed generating random message: %v", err)
+		}
 		x := H2(m)
 		if got := len(x.Bytes()); got < 1 && got > l {
 			t.Errorf("len(h2(%v)) = %v, want %v", m, got, l)

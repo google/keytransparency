@@ -108,7 +108,7 @@ func (s *Signer) processMutation(index, mutation []byte) error {
 	// Send mutation to append-only log.
 	ctx := context.Background()
 	if err := s.mutations.Append(ctx, 0, mutation); err != nil {
-		return nil
+		return err
 	}
 
 	// Get current value.

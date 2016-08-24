@@ -84,7 +84,9 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *t
 	}
 	defer func() {
 		if returnErr != nil {
-			_ = tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				returnErr = fmt.Errorf("neighborsAt failed: %v, and Rollback failed: %v", err, rbErr)
+			}
 			return
 		}
 		returnErr = tx.Commit()
