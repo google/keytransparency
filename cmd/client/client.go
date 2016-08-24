@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/key-transparency/core/client"
+	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/vrf"
 	"github.com/google/key-transparency/core/vrf/p256"
@@ -131,7 +132,7 @@ func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig, ctURL, ctPEM string) (*cl
 	if err != nil {
 		return nil, fmt.Errorf("error reading ctPEM: %v", err)
 	}
-	ctClient, err := client.NewLogVerifier(pem, ctURL)
+	ctClient, err := ctlog.New(pem, ctURL)
 	if err != nil {
 		return nil, fmt.Errorf("error creating CT client: %v", err)
 	}

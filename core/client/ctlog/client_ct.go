@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package ctlog
 
 import (
 	"bytes"
@@ -33,8 +33,8 @@ var hasher = func(b []byte) []byte {
 	return h[:]
 }
 
-// LogVerifier represents an append-only log.
-type LogVerifier interface {
+// Verifier represents an append-only log.
+type Verifier interface {
 	// VerifySCT ensures that a SignedMapHead has been properly included in
 	// a Certificate Transparency append-only log. If the inclusion proof
 	// cannot be immediately verified, it is added to a list that
@@ -67,8 +67,8 @@ type SCTEntry struct {
 	smh *ctmap.SignedMapHead
 }
 
-// NewLogVerifier produces a new CT log verification client.
-func NewLogVerifier(pem []byte, logURL string) (*Log, error) {
+// New produces a new CT log verification client.
+func New(pem []byte, logURL string) (*Log, error) {
 	pk, _, _, err := ct.PublicKeyFromPEM(pem)
 	if err != nil {
 		return nil, fmt.Errorf("error reading public key from pem: %v", err)

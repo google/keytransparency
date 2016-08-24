@@ -24,6 +24,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/commitments"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/tree/sparse"
@@ -69,11 +70,11 @@ type Client struct {
 	RetryCount   int
 	treeVerifier *tv.Verifier
 	verifier     *signatures.Verifier
-	log          LogVerifier
+	log          ctlog.Verifier
 }
 
 // New creates a new client.
-func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log LogVerifier) *Client {
+func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log ctlog.Verifier) *Client {
 	return &Client{
 		cli:          client,
 		vrf:          vrf,
