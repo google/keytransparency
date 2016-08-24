@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,14 +37,14 @@ results are consistent.`,
 
 		c, err := GetClient("")
 		if err != nil {
-			log.Fatalf("Error connecting: %v", err)
+			return fmt.Errorf("Error connecting: %v", err)
 		}
 		ctx, _ := context.WithTimeout(context.Background(), timeout)
 		profile, err := c.GetEntry(ctx, user)
 		if err != nil {
-			log.Fatalf("GetEntry failed: %v", err)
+			return fmt.Errorf("GetEntry failed: %v", err)
 		}
-		log.Printf("Profile for %v: %+v", user, profile)
+		fmt.Printf("Profile for %v: %+v", user, profile)
 		return nil
 	},
 }
