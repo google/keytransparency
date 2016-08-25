@@ -77,7 +77,9 @@ func init() {
 	// Global flags for use by subcommands.
 	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Second, "Time to wait before operations timeout")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print in/out and verification steps")
-	viper.BindPFlags(RootCmd.PersistentFlags())
+	if err := viper.BindPFlags(RootCmd.PersistentFlags()); err != nil {
+		log.Fatalf("%v", err)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.
