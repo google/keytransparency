@@ -44,7 +44,7 @@ const (
 	WHERE MapId = $1 AND NodeId = $2 and Version <= $3
 	ORDER BY Version DESC LIMIT 1;`
 	queueExpr = `
-	INSERT INTO Leaves (MapId, LeafId, Version, Data)
+	INSERT OR REPLACE INTO Leaves (MapId, LeafId, Version, Data)
 	VALUES ($1, $2, $3, $4);`
 	pendingLeafsExpr = `
 	SELECT LeafId, Version, Data FROM Leaves 
