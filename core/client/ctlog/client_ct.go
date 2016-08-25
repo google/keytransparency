@@ -30,13 +30,15 @@ import (
 	"github.com/google/key-transparency/core/proto/ctmap"
 )
 
-var hasher = func(b []byte) []byte {
-	h := sha256.Sum256(b)
-	return h[:]
-}
+var (
+	// Vlog is the verbose logger. By default it outputs to /dev/null.
+	Vlog = log.New(ioutil.Discard, "", 0)
 
-// Vlog is the verbose logger. By default it outputs to /dev/null.
-var Vlog = log.New(ioutil.Discard, "", 0)
+	hasher = func(b []byte) []byte {
+		h := sha256.Sum256(b)
+		return h[:]
+	}
+)
 
 // Verifier represents an append-only log.
 type Verifier interface {

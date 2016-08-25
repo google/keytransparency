@@ -41,8 +41,10 @@ import (
 	pb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
 
-var cfgFile string
-var verbose bool
+var (
+	cfgFile string
+	verbose bool
+)
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{

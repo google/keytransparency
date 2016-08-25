@@ -26,17 +26,19 @@ import (
 	tv "github.com/google/key-transparency/core/tree/sparse/verifier"
 	"github.com/google/key-transparency/core/vrf"
 
-	ct "github.com/google/certificate-transparency/go"
 	"github.com/golang/protobuf/proto"
+	ct "github.com/google/certificate-transparency/go"
 
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
-// ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
-var ErrNilProof = errors.New("nil proof")
+var (
+	// ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
+	ErrNilProof = errors.New("nil proof")
 
-// Vlog is the verbose logger. By default it outputs to /dev/null.
-var Vlog = log.New(ioutil.Discard, "", 0)
+	// Vlog is the verbose logger. By default it outputs to /dev/null.
+	Vlog = log.New(ioutil.Discard, "", 0)
+)
 
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
