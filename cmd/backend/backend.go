@@ -101,7 +101,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create STH appender: %v", err)
 	}
-	mutations, err := appender.New(sqldb, *mapID, *mapLogURL)
+	mutations, err := appender.New(nil, *mapID, *mapLogURL)
 	if err != nil {
 		log.Fatalf("Failed to create mutation appender: %v", err)
 	}
