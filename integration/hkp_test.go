@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/key-transparency/cmd/client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/client"
 
 	"golang.org/x/net/context"
 
@@ -68,7 +68,7 @@ func CreateDefaultUser(env *Env, t testing.TB) {
 	keyring, _ := hex.DecodeString(strings.Replace(defaultKeyring, "\n", "", -1))
 	profile := &tpb.Profile{Keys: map[string][]byte{"pgp": keyring}}
 	req, err := env.Client.Update(authCtx, defaultUserID, profile)
-	if got, want := err, client.ErrRetry; got != want {
+	if got, want := err, grpcc.ErrRetry; got != want {
 		t.Fatalf("Update(%v): %v, want %v", defaultUserID, got, want)
 	}
 	if err := env.Signer.Sequence(); err != nil {

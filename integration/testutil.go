@@ -20,8 +20,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/key-transparency/cmd/client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/client"
 	"github.com/google/key-transparency/core/keyserver"
 	"github.com/google/key-transparency/core/mutator/entry"
 	"github.com/google/key-transparency/core/signatures"
@@ -74,7 +74,7 @@ type Env struct {
 	GRPCServer *grpc.Server
 	V2Server   *keyserver.Server
 	Conn       *grpc.ClientConn
-	Client     *client.Client
+	Client     *grpcc.Client
 	Signer     *signer.Signer
 	db         *sql.DB
 	clus       *integration.ClusterV3
@@ -201,7 +201,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	client := client.New(cli, vrfPub, verifier, fakeLog{})
+	client := grpcc.New(cli, vrfPub, verifier, fakeLog{})
 	client.RetryCount = 0
 
 	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}

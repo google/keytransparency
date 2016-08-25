@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/key-transparency/cmd/client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/client"
 
 	"golang.org/x/net/context"
 
@@ -58,7 +58,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		// Update profile.
 		if tc.insert {
 			req, err := env.Client.Update(tc.ctx, tc.userID, &tpb.Profile{Keys: primaryKeys})
-			if got, want := err, client.ErrRetry; got != want {
+			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
 			if err := env.Signer.Sequence(); err != nil {
@@ -121,7 +121,7 @@ func TestUpdateValidation(t *testing.T) {
 		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile)
 
 		// The first update response is always a retry.
-		if got, want := err, client.ErrRetry; (got == want) != tc.want {
+		if got, want := err, grpcc.ErrRetry; (got == want) != tc.want {
 			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
@@ -202,7 +202,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string) error {
 		if p != nil {
 			_, err := e.Client.Update(ctx, userID, p)
 			// The first update response is always a retry.
-			if got, want := err, client.ErrRetry; got != want {
+			if got, want := err, grpcc.ErrRetry; got != want {
 				return fmt.Errorf("Update(%v)=(_, %v), want (_, %v)", userID, got, want)
 			}
 			if err := e.Signer.Sequence(); err != nil {

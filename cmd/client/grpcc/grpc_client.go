@@ -15,7 +15,7 @@
 // Client for communicating with the Key Server.
 // Implements verification and convenience functions.
 
-package client
+package grpcc
 
 import (
 	"bytes"
