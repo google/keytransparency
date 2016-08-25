@@ -21,7 +21,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/key-transparency/core/client"
+	"github.com/google/key-transparency/cmd/client/grpcc"
 	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/vrf"
@@ -165,7 +165,7 @@ func readSignatureVerifier(ktPEM string) (*signatures.Verifier, error) {
 	return ver, nil
 }
 
-func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig, ctURL, ctPEM string) (*client.Client, error) {
+func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig, ctURL, ctPEM string) (*grpcc.Client, error) {
 	// Create CT client.
 	pem, err := ioutil.ReadFile(ctPEM)
 	if err != nil {
@@ -186,7 +186,7 @@ func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig, ctURL, ctPEM string) (*cl
 		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return client.New(cli, vrfKey, verifier, ctClient), nil
+	return grpcc.New(cli, vrfKey, verifier, ctClient), nil
 }
 
 func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
@@ -226,7 +226,7 @@ func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
 
 // GetClient connects to the server and returns a key transpency verification
 // client.
-func GetClient(clientSecretFile string) (*client.Client, error) {
+func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ktURL := viper.GetString("kt-url")
 	ktPEM := viper.GetString("kt-key")
 	ktSig := viper.GetString("kt-sig")
