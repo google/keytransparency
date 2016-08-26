@@ -57,7 +57,7 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 		var profile tpb.Profile
 		if err := json.Unmarshal([]byte(data), &profile.Keys); err != nil {
-			return err
+			return fmt.Errorf("could not unmarshal profile: %v", err)
 		}
 		userID := args[0]
 		timeout := viper.GetDuration("timeout")
