@@ -55,7 +55,7 @@ key transparency server.  The client verifies all cryptographic proofs the
 server provides to ensure that account data is accurate.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if verbose {
-			client.Vlog = log.New(os.Stdout, "", log.LstdFlags)
+			grpcc.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 			kt.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 			ctlog.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 		}
