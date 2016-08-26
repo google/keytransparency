@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"time"
 
@@ -60,6 +61,8 @@ var (
 	// results of the udpate are not visible on the server yet. The client
 	// must retry until the request is visible.
 	ErrRetry = errors.New("update not present on server yet")
+	// Vlog is the verbose logger. By default it outputs to /dev/null.
+	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
 // Client is a helper library for issuing updates to the key server.
@@ -188,6 +191,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 	if err != nil {
 		return nil, err
 	}
+	Vlog.Printf("Got current entry...")
 
 	if err := c.kt.VerifyGetEntryResponse(userID, getResp); err != nil {
 		return nil, err
@@ -256,10 +260,12 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 
 // Retry will take a pre-fabricated request and send it again.
 func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
+	Vlog.Printf("Sending Update request...")
 	updateResp, err := c.cli.UpdateEntry(ctx, req)
 	if err != nil {
 		return err
 	}
+	Vlog.Printf("Got current entry...")
 
 	// Validate response.
 	if err := c.kt.VerifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
@@ -272,11 +278,9 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 		return fmt.Errorf("Error unmarshaling KeyValue: %v", err)
 	}
 	got := updateResp.GetProof().GetLeafProof().LeafData
-	if bytes.Equal(got, kv.Value) {
-		log.Printf("Retry(%v) Matched", req.UserId)
-		return nil
+	if !bytes.Equal(got, kv.Value) {
+		return ErrRetry
 	}
-
-	return ErrRetry
+	return nil
 	// TODO: Update previous entry pointer
 }

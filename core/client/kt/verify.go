@@ -17,6 +17,8 @@ package kt
 import (
 	"bytes"
 	"errors"
+	"io/ioutil"
+	"log"
 
 	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/commitments"
@@ -30,8 +32,13 @@ import (
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
-// ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
-var ErrNilProof = errors.New("nil proof")
+var (
+	// ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
+	ErrNilProof = errors.New("nil proof")
+
+	// Vlog is the verbose logger. By default it outputs to /dev/null.
+	Vlog = log.New(ioutil.Discard, "", 0)
+)
 
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
@@ -73,12 +80,16 @@ func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error 
 //  - Verify SCT.
 func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryResponse) error {
 	if err := v.VerifyCommitment(userID, in); err != nil {
+		Vlog.Printf("✗ Commitment verification failed.")
 		return err
 	}
+	Vlog.Printf("✓ Commitment verified.")
 
 	if err := v.vrf.Verify([]byte(userID), in.Vrf, in.VrfProof); err != nil {
+		Vlog.Printf("✗ VRF verification failed.")
 		return err
 	}
+	Vlog.Printf("✓ VRF verified.")
 	index := v.vrf.Index(in.Vrf)
 
 	leafProof := in.GetLeafProof()
@@ -87,12 +98,16 @@ func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryRespons
 	}
 
 	if err := v.tree.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, in.GetSmh().MapHead.Root); err != nil {
+		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return err
 	}
+	Vlog.Printf("✓ Sparse tree proof verified.")
 
 	if err := v.sig.Verify(in.GetSmh().GetMapHead(), in.GetSmh().Signatures[v.sig.KeyName]); err != nil {
+		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return err
 	}
+	Vlog.Printf("✓ Signed Map Head signature verified.")
 
 	// Verify SCT.
 	sct, err := ct.DeserializeSCT(bytes.NewReader(in.SmhSct))
@@ -100,7 +115,9 @@ func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryRespons
 		return err
 	}
 	if err := v.log.VerifySCT(in.GetSmh(), sct); err != nil {
+		Vlog.Printf("✗ Signed Map Head CT inclusion proof verification failed.")
 		return err
 	}
+	Vlog.Printf("✓ Signed Map Head CT inclusion proof verified.")
 	return nil
 }
