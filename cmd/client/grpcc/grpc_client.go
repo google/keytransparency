@@ -50,9 +50,6 @@ const (
 	// The default capacity used when creating a profiles list in
 	// ListHistory.
 	defaultListCap = 10
-	// The delay before the client retry updating the profile if ErrRetry is
-	// received.
-	retryDelay = 3 * time.Second
 	// TODO: Public keys of trusted monitors.
 )
 
@@ -80,8 +77,9 @@ var (
 type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
-	RetryCount int
 	kt         *kt.Verifier
+	RetryCount int
+	RetryDelay time.Duration
 }
 
 // New creates a new client.
@@ -89,8 +87,9 @@ func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *s
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		RetryCount: 1,
 		kt:         kt.New(vrf, tv.New(sparse.CONIKSHasher), verifier, log),
+		RetryCount: 1,
+		RetryDelay: 3 * time.Second,
 	}
 }
 
@@ -252,7 +251,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 	err = c.Retry(ctx, req)
 	// Retry submitting until an incluion proof is returned.
 	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
-		time.Sleep(retryDelay)
+		time.Sleep(c.RetryDelay)
 		err = c.Retry(ctx, req)
 	}
 	return req, err
