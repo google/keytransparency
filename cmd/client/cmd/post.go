@@ -17,6 +17,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -84,7 +85,9 @@ func init() {
 	RootCmd.AddCommand(postCmd)
 
 	postCmd.PersistentFlags().StringP("secret", "s", "", "Path to client secret json")
-	viper.BindPFlag("client-secret", postCmd.PersistentFlags().Lookup("secret"))
+	if err := viper.BindPFlag("client-secret", postCmd.PersistentFlags().Lookup("secret")); err != nil {
+		log.Fatalf("%v", err)
+	}
 
 	postCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "JSON profile")
 	postCmd.PersistentFlags().IntVar(&retryCount, "retries", 3, "Number of times to retry the update before failing")

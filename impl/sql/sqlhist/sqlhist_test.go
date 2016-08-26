@@ -61,15 +61,18 @@ func TestQueueLeaf(t *testing.T) {
 
 	for _, tc := range []struct {
 		index string
-		leaf  string
+		leaf  []byte
 		want  bool
 	}{
-		{strings.Repeat("A", 32), "leaf", true},
-		{strings.Repeat("A", 32), "leaf2", false},
-		{strings.Repeat("A", 32), "leaf3", false},
-		{strings.Repeat("B", 32), "leaf", true},
+		{strings.Repeat("A", 32), []byte("leaf"), true},
+		{strings.Repeat("A", 32), []byte("leaf2"), true},
+		{strings.Repeat("A", 32), []byte("leaf3"), true},
+		{strings.Repeat("B", 32), []byte("leaf"), true},
+		{strings.Repeat("C", 30), []byte("leaf"), false}, // errIndexLen
+		{strings.Repeat("C", 30), nil, false},            // errNilLeaf
+
 	} {
-		err := tree.QueueLeaf(nil, []byte(tc.index), []byte(tc.leaf))
+		err := tree.QueueLeaf(nil, []byte(tc.index), tc.leaf)
 		if got := err == nil; got != tc.want {
 			t.Errorf("QueueLeaf(%v, %v): %v, want %v", tc.index, tc.leaf, got, tc.want)
 		}
