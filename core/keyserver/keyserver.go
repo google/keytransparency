@@ -162,7 +162,8 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 	for i := range responses {
 		resp, err := s.getEntry(ctx, in.UserId, in.Start+int64(i))
 		if err != nil {
-			return nil, err
+			log.Printf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
+			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
 		}
 		responses[i] = resp
 	}
