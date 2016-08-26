@@ -17,6 +17,7 @@ package integration
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/google/key-transparency/cmd/client/grpcc"
@@ -24,6 +25,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	ctmap "github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
@@ -164,7 +166,7 @@ func TestListHistory(t *testing.T) {
 		{0, 20, []*tpb.Profile{}, true},                                                        // Invalid start epoch
 		{1, 1000, []*tpb.Profile{}, true},                                                      // Invalid end epoch, beyond current epoch
 	} {
-		gotHistory, err := env.Client.ListHistory(ctx, userID, tc.start, tc.end)
+		resp, err := env.Client.ListHistory(ctx, userID, tc.start, tc.end)
 		if got, want := err != nil, tc.wantErr; got != want {
 			t.Fatalf("ListHistory(_, %v, %v, %v) failed: %v, want err %v", userID, tc.start, tc.end, err, want)
 		}
@@ -172,6 +174,9 @@ func TestListHistory(t *testing.T) {
 		if err != nil {
 			continue
 		}
+
+		// Sort received history by Epoch.
+		gotHistory := sortHistory(resp)
 
 		// Ensure that history has the correct number of profiles.
 		if got, want := len(gotHistory), len(tc.wantHistory); got != want {
@@ -215,6 +220,28 @@ func (e *Env) setupHistory(ctx context.Context, userID string) error {
 	}
 	return nil
 }
+
+func sortHistory(history map[*ctmap.MapHead]*tpb.Profile) []*tpb.Profile {
+	// keys is created with 0 length and the appropriate capacity to avoid
+	// underlying reallocation in append.
+	keys := make([]*ctmap.MapHead, 0, len(history))
+	for k := range history {
+		keys = append(keys, k)
+	}
+	sort.Sort(mapHeads(keys))
+	profiles := make([]*tpb.Profile, len(keys))
+	for i, k := range keys {
+		profiles[i] = history[k]
+	}
+	return profiles
+}
+
+// MapHead sorter.
+type mapHeads []*ctmap.MapHead
+
+func (m mapHeads) Len() int           { return len(m) }
+func (m mapHeads) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m mapHeads) Less(i, j int) bool { return m[i].Epoch < m[j].Epoch }
 
 // cp creates a dummy profile using the passed tag.
 func cp(tag int) *tpb.Profile {

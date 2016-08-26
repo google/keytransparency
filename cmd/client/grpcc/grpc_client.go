@@ -38,6 +38,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	ctmap "github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 	spb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
@@ -120,13 +121,9 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, endEpoch int64, opts ...grpc.CallOption) ([]*tpb.Profile, error) {
+func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, endEpoch int64, opts ...grpc.CallOption) (map[*ctmap.MapHead]*tpb.Profile, error) {
 	var currentProfile *tpb.Profile
-	// make here allocate 0 length slice with defaultListCap capacity. This
-	// is used to avoid underlying reallocation in append (used below).
-	// However, if ListHistory is returning more than defaultListCap
-	// profiles, append will increase the size of the list appropriately.
-	profiles := make([]*tpb.Profile, 0, defaultListCap)
+	profiles := make(map[*ctmap.MapHead]*tpb.Profile)
 
 	// Setup loop-related variables.
 	pageSize := defaultPageSize
@@ -173,7 +170,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, end
 			}
 
 			// Append the slice and update currentProfile.
-			profiles = append(profiles, profile)
+			profiles[v.GetSmh().GetMapHead()] = profile
 			currentProfile = profile
 		}
 
