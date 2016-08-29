@@ -20,11 +20,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/key-transparency/core/appender"
 	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/commitments"
 	"github.com/google/key-transparency/core/queue"
-	"github.com/google/key-transparency/core/tree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -35,7 +32,7 @@ import (
 )
 
 func TestListEntryHistory(t *testing.T) {
-	profileCount := 24
+	profileCount := 25
 	ctx := context.Background()
 	for i, tc := range []struct {
 		start       int64
@@ -44,22 +41,21 @@ func TestListEntryHistory(t *testing.T) {
 		wantHistory []int
 		err         codes.Code
 	}{
-		{1, 1, 2, []int{0}, codes.OK},                                                           // one entry per page.
-		{1, 10, 11, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, codes.OK},                              // 10 entries per page.
-		{4, 10, 14, []int{3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, codes.OK},                           // start epoch is not 1.
-		{1, 0, 17, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, codes.OK},       // zero page size.
-		{20, 10, 25, []int{19, 20, 21, 22, 23}, codes.OK},                                       // adjusted page size.
-		{24, 10, 25, []int{23}, codes.OK},                                                       // requesting the very last entry.
-		{1, 1000000, 17, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, codes.OK}, // DOS prevention.
-		{40, 10, 0, []int{}, codes.InvalidArgument},                                             // start epoch is beyond current epoch.
-		{0, 10, 0, []int{}, codes.InvalidArgument},                                              // start epoch is less than 1.
+		{1, 1, 2, []int{1}, codes.OK},                                                            // one entry per page.
+		{1, 10, 11, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, codes.OK},                              // 10 entries per page.
+		{4, 10, 14, []int{4, 5, 6, 7, 8, 9, 10, 11, 12, 13}, codes.OK},                           // start epoch is not 1.
+		{1, 0, 17, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, codes.OK},       // zero page size.
+		{20, 10, 0, []int{20, 21, 22, 23, 24}, codes.OK},                                         // end of list.
+		{24, 10, 0, []int{24}, codes.OK},                                                         // requesting the very last entry.
+		{1, 1000000, 17, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, codes.OK}, // DOS prevention.
+		{40, 10, 0, []int{}, codes.InvalidArgument},                                              // start epoch is beyond current epoch.
+		{0, 1, 1, []int{0}, codes.OK},                                                            // start epoch is less than 1.
 	} {
 		// Test case setup.
 		c := &fakeCommitter{make(map[string]*tpb.Committed)}
 		st := &fakeSparseHist{make(map[int64][]byte)}
 		a := &fakeAppender{0, 0}
 		srv := New(c, fakeQueue{}, st, a, fakePrivateKey{}, fakeMutator{}, authentication.NewFake())
-
 		if err := addProfiles(profileCount, c, st, a); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
@@ -104,24 +100,21 @@ func TestListEntryHistory(t *testing.T) {
 	}
 }
 
-func addProfiles(profileCount int, c commitments.Committer, st tree.SparseHist, a appender.Appender) error {
-	for i := 0; i < profileCount; i++ {
+func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, a *fakeAppender) error {
+	profiles := make([]*tpb.Profile, count)
+	for i := range profiles {
+		profiles[i] = createProfile(i)
 		commitment := []byte{uint8(i)}
 
 		// Fill the committer map.
-		p := createProfile(i)
-		pData, err := proto.Marshal(p)
+		pData, err := proto.Marshal(profiles[i])
 		if err != nil {
 			return fmt.Errorf("%v: Failed to Marshal: %v", i, err)
 		}
 		committed := &tpb.Committed{Data: pData}
-		c.(*fakeCommitter).M[string(commitment)] = committed
-
-		// Increase epoch
-		a.(*fakeAppender).CurrentEpoch++
-
-		// Fill the tree map.
-		st.(*fakeSparseHist).M[a.(*fakeAppender).CurrentEpoch] = commitment
+		c.M[string(commitment)] = committed
+		st.M[int64(i)] = commitment
+		a.CurrentEpoch = int64(i)
 	}
 	return nil
 }

@@ -174,6 +174,9 @@ func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, end
 			currentProfile = profile
 		}
 
+		if resp.NextStart == 0 {
+			break
+		}
 		startEpoch = resp.NextStart
 	}
 
