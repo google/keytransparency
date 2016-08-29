@@ -99,10 +99,8 @@ message SignedKV {
 
 // GetEntryReqyest for a user object.
 message GetEntryRequest {
-  // Absence of the epoch_end field indicates a request for the current value.
-  int64 epoch_end = 1;
   // User identifier. Most commonly an email address.
-  string user_id = 2;
+  string user_id = 1;
 }
 
 // GetEntryResponse returns a requested user entry.
