@@ -154,21 +154,20 @@ func TestListHistory(t *testing.T) {
 	for _, tc := range []struct {
 		start, end  int64
 		wantHistory []*tpb.Profile
-		wantErr     bool
 	}{
-		{0, 3, []*tpb.Profile{cp(1)}, false},                                                     // zero start epoch
-		{3, 3, []*tpb.Profile{cp(1)}, false},                                                     // single profile
-		{3, 4, []*tpb.Profile{cp(1), cp(2)}, false},                                              // multiple profiles
-		{1, 4, []*tpb.Profile{cp(1), cp(2)}, false},                                              // test 'nil' first profile(s)
-		{3, 10, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                        // filtering
-		{9, 16, []*tpb.Profile{cp(4), cp(5), cp(6)}, false},                                      // filtering consecutive resubmitted profiles
-		{9, 20, []*tpb.Profile{cp(4), cp(5), cp(6), cp(5), cp(7)}, false},                        // no filtering of resubmitted profiles
-		{1, 20, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false},   // multiple pages
-		{1, 1000, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // Invalid end epoch, beyond current epoch
+		{0, 3, []*tpb.Profile{cp(1)}},                                                     // zero start epoch
+		{3, 3, []*tpb.Profile{cp(1)}},                                                     // single profile
+		{3, 4, []*tpb.Profile{cp(1), cp(2)}},                                              // multiple profiles
+		{1, 4, []*tpb.Profile{cp(1), cp(2)}},                                              // test 'nil' first profile(s)
+		{3, 10, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5)}},                        // filtering
+		{9, 16, []*tpb.Profile{cp(4), cp(5), cp(6)}},                                      // filtering consecutive resubmitted profiles
+		{9, 20, []*tpb.Profile{cp(4), cp(5), cp(6), cp(5), cp(7)}},                        // no filtering of resubmitted profiles
+		{1, 20, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}},   // multiple pages
+		{1, 1000, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}}, // Invalid end epoch, beyond current epoch
 	} {
 		resp, err := env.Client.ListHistory(ctx, userID, tc.start, tc.end)
-		if got, want := err != nil, tc.wantErr; got != want {
-			t.Fatalf("ListHistory(_, %v, %v, %v) failed: %v, want err %v", userID, tc.start, tc.end, err, want)
+		if err != nil {
+			t.Fatalf("ListHistory(_, %v, %v, %v) failed: %v,", userID, tc.start, tc.end, err)
 		}
 		// If there's a ListHistory error, skip the rest of the test.
 		if err != nil {
