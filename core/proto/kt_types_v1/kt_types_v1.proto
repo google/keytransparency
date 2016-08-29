@@ -97,7 +97,7 @@ message SignedKV {
 // RPC request/response messages.
 //
 
-// GetEntryReqyest for a user object.
+// GetEntryRequest for a user object.
 message GetEntryRequest {
   // User identifier. Most commonly an email address.
   string user_id = 1;
@@ -138,8 +138,7 @@ message ListEntryHistoryRequest {
   string user_id = 1;
   // start is the starting epcoh.
   int64 start = 2;
-  // page_size is the maximum number of entries to return. The server can change
-  // this value.
+  // page_size is the maximum number of entries to return. 
   int32 page_size = 3;
 }
 
@@ -148,6 +147,7 @@ message ListEntryHistoryResponse {
   // values represents the list of values this user_id has contained over time.
   repeated GetEntryResponse values = 1;
   // next_start is the next page token to query for pagination.
+  // next_start is 0 when there are no more results to fetch.
   int64 next_start = 2;
 }
 

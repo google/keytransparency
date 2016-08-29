@@ -172,8 +172,12 @@ func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, end
 			// Append the slice and update currentProfile.
 			profiles[v.GetSmh().GetMapHead()] = profile
 			currentProfile = profile
+
 		}
 
+		if resp.NextStart == 0 {
+			break
+		}
 		startEpoch = resp.NextStart
 	}
 

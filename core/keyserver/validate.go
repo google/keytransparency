@@ -115,16 +115,16 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 // currentEpoch] and sets the page size if it is 0 or larger than what the server
 // can return (due to reaching currentEpoch).
 func validateListEntryHistoryRequest(in *tpb.ListEntryHistoryRequest, currentEpoch int64) error {
-	if in.Start < 1 || in.Start > currentEpoch {
+	if in.Start < 0 || in.Start > currentEpoch {
 		return ErrInvalidStart
 	}
 
-	// If in.PageSize is zero, use the default page size.
-	if in.PageSize == 0 {
+	switch {
+	case in.PageSize < 0:
+		return fmt.Errorf("Invalid page size")
+	case in.PageSize == 0:
 		in.PageSize = defaultPageSize
-	}
-	// Ensure in.PageSize is not more than the allowed max.
-	if in.PageSize > maxPageSize {
+	case in.PageSize > maxPageSize:
 		in.PageSize = maxPageSize
 	}
 	// Ensure in.PageSize does not exceed currentEpoch.

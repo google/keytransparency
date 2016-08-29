@@ -31,7 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	ctmap "github.com/google/key-transparency/core/proto/ctmap"
+	"github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 )
 
@@ -167,9 +167,14 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 		responses[i] = resp
 	}
 
+	nextStart := in.Start + int64(in.PageSize)
+	if nextStart > currentEpoch {
+		nextStart = 0
+	}
+
 	return &tpb.ListEntryHistoryResponse{
 		Values:    responses,
-		NextStart: in.Start + int64(in.PageSize),
+		NextStart: nextStart,
 	}, nil
 }
 
