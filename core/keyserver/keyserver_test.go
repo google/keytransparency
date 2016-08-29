@@ -41,7 +41,6 @@ func TestListEntryHistory(t *testing.T) {
 		wantHistory []int
 		err         codes.Code
 	}{
-		{0, 1, 1, []int{0}, codes.OK},                                                            // start epoch is less than 1.
 		{1, 1, 2, []int{1}, codes.OK},                                                            // one entry per page.
 		{1, 10, 11, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, codes.OK},                              // 10 entries per page.
 		{4, 10, 14, []int{4, 5, 6, 7, 8, 9, 10, 11, 12, 13}, codes.OK},                           // start epoch is not 1.
@@ -50,6 +49,7 @@ func TestListEntryHistory(t *testing.T) {
 		{24, 10, 0, []int{24}, codes.OK},                                                         // requesting the very last entry.
 		{1, 1000000, 17, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, codes.OK}, // DOS prevention.
 		{40, 10, 0, []int{}, codes.InvalidArgument},                                              // start epoch is beyond current epoch.
+		{0, 1, 1, []int{0}, codes.OK},                                                            // start epoch is less than 1.
 	} {
 		// Test case setup.
 		c := &fakeCommitter{make(map[string]*tpb.Committed)}
