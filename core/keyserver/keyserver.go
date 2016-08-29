@@ -68,34 +68,33 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHi
 	}
 }
 
-// GetSMH returns the current Signed Map Head (SMH).
-func (s *Server) GetSMH(ctx context.Context, epoch int64) (int64, *ctmap.SignedMapHead, []byte, error) {
-	var sct []byte
-	smh := new(ctmap.SignedMapHead)
-	thisEpoch := epoch
-	var err error
-	if epoch == 0 {
-		thisEpoch, sct, err = s.appender.Latest(ctx, smh)
-	} else {
-		sct, err = s.appender.Epoch(ctx, epoch, smh)
-	}
-	if err != nil {
-		return 0, nil, nil, err
-	}
-	return thisEpoch, smh, sct, nil
-}
-
 // GetEntry returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-	vrf, proof := s.vrf.Evaluate([]byte(in.UserId))
-	index := s.vrf.Index(vrf)
 
-	epoch, smh, sct, err := s.GetSMH(ctx, in.EpochEnd)
+	var smh ctmap.SignedMapHead
+	epoch, _, err := s.appender.Latest(ctx, &smh)
 	if err != nil {
 		log.Printf("Cannot get SMH: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
+	}
+	resp, err := s.getEntry(ctx, in.UserId, epoch)
+	if err != nil {
+		log.Printf("getEntry failed: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
+	}
+	return resp, nil
+}
+
+func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb.GetEntryResponse, error) {
+	vrf, proof := s.vrf.Evaluate([]byte(userID))
+	index := s.vrf.Index(vrf)
+
+	var smh ctmap.SignedMapHead
+	sct, err := s.appender.Epoch(ctx, epoch, &smh)
+	if err != nil {
+		return nil, err
 	}
 
 	neighbors, err := s.tree.NeighborsAt(ctx, index[:], epoch)
@@ -137,7 +136,7 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 			LeafData:  leaf,
 			Neighbors: neighbors,
 		},
-		Smh:    smh,
+		Smh:    &smh,
 		SmhSct: sct,
 	}, nil
 }
@@ -161,11 +160,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 	// in.PageSize].
 	responses := make([]*tpb.GetEntryResponse, in.PageSize)
 	for i := range responses {
-		// Set correct epoch before calling GetEntry.
-		resp, err := s.GetEntry(ctx, &tpb.GetEntryRequest{
-			UserId:   in.UserId,
-			EpochEnd: in.Start + int64(i),
-		})
+		resp, err := s.getEntry(ctx, in.UserId, in.Start+int64(i))
 		if err != nil {
 			return nil, err
 		}
