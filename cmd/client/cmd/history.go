@@ -33,7 +33,7 @@ var (
 	start, end int64
 )
 
-// histCmd represents the get command
+// histCmd fetches the account history for a user
 var histCmd = &cobra.Command{
 	Use:   "history [user email]",
 	Short: "Retrieve and verify all keys used for this account",
@@ -52,7 +52,8 @@ and verify that the results are consistent.`,
 		}
 		if end == 0 {
 			// Get the current epoch.
-			ctx, _ := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
 			_, smh, err := c.GetEntry(ctx, userID)
 			if err != nil {
 				return fmt.Errorf("GetEntry failed: %v", err)
@@ -90,6 +91,7 @@ and verify that the results are consistent.`,
 	},
 }
 
+// mapHeads satisfies sort.Interface to allow sorting []MapHead by epoch.
 type mapHeads []*ctmap.MapHead
 
 func (m mapHeads) Len() int           { return len(m) }
