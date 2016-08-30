@@ -147,6 +147,7 @@ func (l *Log) VerifySavedSCTs() []SCTEntry {
 	STHTime := timestamp(l.STH.Timestamp)
 	// Iterate through saved SCTs. Verify all the ones that are required to
 	// be included in the new STH.
+	before := len(l.scts)
 	for k, v := range l.scts {
 		requireSCT := timestamp(k.Timestamp).Add(l.MMD)
 		if STHTime.After(requireSCT) {
@@ -157,6 +158,8 @@ func (l *Log) VerifySavedSCTs() []SCTEntry {
 			}
 		}
 	}
+	after := len(l.scts)
+	Vlog.Printf("CT Verified %v/%v SCTs. %v Remaining.", before-after, before, after)
 	return invalidSCTs
 }
 
