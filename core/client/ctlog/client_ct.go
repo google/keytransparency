@@ -17,9 +17,11 @@ package ctlog
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -55,7 +57,10 @@ type Verifier interface {
 	// UpdateSTH advances the current SignedTreeHead and verifies a
 	// consistency proof between the current and the new STH.
 	UpdateSTH() error
-	// TODO: Persist and restore saved SCTs from disk.
+	// Save unverified SCTs to disk.
+	Save(file string) error
+	// Load unverified SCTs from disk.
+	Restore(file string) error
 }
 
 // Log represents a Certificate Transparency append-only log.
@@ -70,8 +75,8 @@ type Log struct {
 
 // SCTEntry contains enough data to verify an SCT after the fact.
 type SCTEntry struct {
-	sct *ct.SignedCertificateTimestamp
-	smh *ctmap.SignedMapHead
+	Sct *ct.SignedCertificateTimestamp
+	Smh *ctmap.SignedMapHead
 }
 
 // New produces a new CT log verification client.
@@ -151,7 +156,7 @@ func (l *Log) VerifySavedSCTs() []SCTEntry {
 	for k, v := range l.scts {
 		requireSCT := timestamp(k.Timestamp).Add(l.MMD)
 		if STHTime.After(requireSCT) {
-			if err := l.inclusionProof(&l.STH, v.smh, k.Timestamp); err != nil {
+			if err := l.inclusionProof(&l.STH, v.Smh, k.Timestamp); err != nil {
 				invalidSCTs = append(invalidSCTs, v)
 			} else {
 				delete(l.scts, k) // Remove from waitlist.
@@ -224,5 +229,32 @@ func (l *Log) inclusionProof(sth *ct.SignedTreeHead, smh *ctmap.SignedMapHead, t
 		return err
 	}
 	Vlog.Printf("CT ✓ inclusion proof verified.")
+	return nil
+}
+
+// Save persists unverified SCTs to disk
+func (l *Log) Save(file string) error {
+	var d bytes.Buffer
+	enc := gob.NewEncoder(&d)
+	err := enc.Encode(l.scts)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(file, d.Bytes(), 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Restore restores a verifier's state from disk.
+func (l *Log) Restore(file string) error {
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	dec := gob.NewDecoder(f)
+	if err := dec.Decode(&l.scts); err != nil {
+		return err
+	}
 	return nil
 }

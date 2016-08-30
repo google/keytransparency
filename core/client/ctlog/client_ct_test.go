@@ -17,8 +17,10 @@ package ctlog
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -269,4 +271,40 @@ func createServer(t *testing.T, sth, consistency, sct, hash, inclusion string) *
 			t.Errorf("Incorrect URL path: %s", r.URL.Path)
 		}
 	}))
+}
+
+func TestSaveRestore(t *testing.T) {
+	l, err := New([]byte(pem), "")
+	if err != nil {
+		t.Fatalf("New(): %v", err)
+	}
+	var sct ct.SignedCertificateTimestamp
+	var smh ctmap.SignedMapHead
+	entry := SCTEntry{Sct: &sct, Smh: &smh}
+
+	l.scts[&sct] = entry
+
+	f, err := ioutil.TempFile("", "client_ct_state")
+	if err != nil {
+		t.Fatalf("TempFile(): %v", err)
+	}
+	defer os.Remove(f.Name())
+
+	if err := l.Save(f.Name()); err != nil {
+		t.Fatalf("Save(): %v", err)
+	}
+
+	l2, err := New([]byte(pem), "")
+	if err != nil {
+		t.Fatalf("New(): %v", err)
+	}
+
+	if err := l2.Restore(f.Name()); err != nil {
+		t.Fatalf("Restore(): %v", err)
+	}
+
+	if got, want := len(l2.scts), 1; got != want {
+		t.Errorf("len(l2.scts): %v, want %v", got, want)
+	}
+
 }

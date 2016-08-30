@@ -42,8 +42,9 @@ import (
 )
 
 var (
-	cfgFile string
-	verbose bool
+	cfgFile  string
+	verbose  bool
+	ctClient ctlog.Verifier
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -59,6 +60,12 @@ server provides to ensure that account data is accurate.`,
 			kt.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 			ctlog.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 		}
+	},
+	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		if err := ctClient.Save(viper.GetString("ct-scts")); err != nil {
+			return err
+		}
+		return nil
 	},
 }
 
@@ -76,6 +83,7 @@ func init() {
 	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
 	RootCmd.PersistentFlags().String("ct-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
+	RootCmd.PersistentFlags().String("ct-scts", "/tmp/key-transparency-scts.dat", "Path to load/save unverified sct state from")
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
 
@@ -182,6 +190,10 @@ func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig, ctURL, ctPEM string) (*gr
 	if err != nil {
 		return nil, fmt.Errorf("error creating CT client: %v", err)
 	}
+	ctStateFile := viper.GetString("ct-scts")
+	if _, err := os.Stat(ctStateFile); err == nil {
+		ctClient.Restore(ctStateFile)
+	}
 
 	// Create Key Transparency client.
 	vrfKey, err := readVrfKey(vrfPubFile)
@@ -248,5 +260,6 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v", err)
 	}
+	ctClient = c.CT
 	return c, nil
 }
