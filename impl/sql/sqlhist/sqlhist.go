@@ -82,7 +82,8 @@ func New(db *sql.DB, mapID string) (*Map, error) {
 	if err := m.insertMapRow(); err != nil {
 		return nil, err
 	}
-	if err := m.insertFirstRoot(); err != nil {
+	nodeValue := hashEmpty("")
+	if err := m.setRootAt(nil, nodeValue[:], -1); err != nil {
 		return nil, err
 	}
 	epoch, err := m.readEpoch()
@@ -147,7 +148,7 @@ func (m *Map) Commit() (int64, error) {
 	}
 
 	for _, r := range leafRows {
-		if err := m.SetNodeAt(nil, r.index, maxDepth, r.data, m.epoch+1); err != nil {
+		if err := m.setLeafAt(nil, r.index, maxDepth, r.data, m.epoch+1); err != nil {
 			// Recovery from here would mean updating nodes that
 			// didn't get included so that they would be included
 			// in the next epoch.
@@ -160,7 +161,7 @@ func (m *Map) Commit() (int64, error) {
 		if err != nil {
 			return -1, fmt.Errorf("No root for epoch %d: %v", m.epoch, err)
 		}
-		if err := m.SetNodeAt(nil, []byte{}, 0, root, m.epoch+1); err != nil {
+		if err := m.setRootAt(nil, root, m.epoch+1); err != nil {
 			return -1, fmt.Errorf("Failed to set root: %v", err)
 		}
 	}
@@ -179,8 +180,7 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 	defer stmt.Close()
 
 	var value []byte
-	rootID := m.nodeID("")
-	if err := stmt.QueryRow(m.mapID, rootID, epoch).Scan(&value); err != nil {
+	if err := stmt.QueryRow(m.mapID, m.nodeID(""), epoch).Scan(&value); err != nil {
 		return nil, err
 	}
 	return value, nil
@@ -266,9 +266,9 @@ func compressNeighbors(neighbors [][]byte, index []byte, depth int) [][]byte {
 	return compressed
 }
 
-// SetNodeAt sets intermediate and leaf node values directly at epoch.
-func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []byte, epoch int64) error {
-	if value == nil || len(value) == 0 {
+// setLeafAt sets leaf node values directly at epoch.
+func (m *Map) setLeafAt(ctx context.Context, index []byte, depth int, value []byte, epoch int64) (returnErr error) {
+	if len(value) == 0 {
 		return nil
 	}
 	bindex := tree.BitString(index)[:depth]
@@ -284,11 +284,16 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if returnErr != nil {
+			if rbErr := tx.Rollback(); rbErr != nil {
+				err = fmt.Errorf("setLeafAt failed: %v, and Rollback failed: %v", err, rbErr)
+			}
+		}
+	}()
+
 	writeStmt, err := tx.Prepare(setNodeExpr)
 	if err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil {
-			err = fmt.Errorf("Prepare failed: %v, and Rollback failed: %v", err, rbErr)
-		}
 		return err
 	}
 	defer writeStmt.Close()
@@ -296,9 +301,6 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	// Get neighbors.
 	nbrValues, err := m.neighborsAt(tx, index, depth, epoch)
 	if err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil {
-			err = fmt.Errorf("neighborsAt failed: %v, and Rollback failed: %v", err, rbErr)
-		}
 		return err
 	}
 
@@ -308,13 +310,24 @@ func (m *Map) SetNodeAt(ctx context.Context, index []byte, depth int, value []by
 	for i, nodeValue := range nodeValues {
 		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue)
 		if err != nil {
-			if rbErr := tx.Rollback(); rbErr != nil {
-				err = fmt.Errorf("Exec failed: %v, and Rollback failed: %v", err, rbErr)
-			}
 			return err
 		}
 	}
 	return tx.Commit()
+}
+
+// setRootAt sets root node values directly at epoch.
+func (m *Map) setRootAt(ctx context.Context, value []byte, epoch int64) error {
+	writeStmt, err := m.db.Prepare(setNodeExpr)
+	if err != nil {
+		return fmt.Errorf("setRootAt(): %v", err)
+	}
+	defer writeStmt.Close()
+	_, err = writeStmt.Exec(m.mapID, m.nodeID(""), epoch, value[:])
+	if err != nil {
+		return fmt.Errorf("setRootAt(): %v", err)
+	}
+	return nil
 }
 
 // Create creates a new database.
@@ -372,30 +385,14 @@ func (m *Map) insertMapRow() error {
 	return nil
 }
 
-func (m *Map) insertFirstRoot() error {
-	rootID := m.nodeID("")
-	nodeValue := hashEmpty("")
-	writeStmt, err := m.db.Prepare(setNodeExpr)
-	if err != nil {
-		return fmt.Errorf("insertFirstRoot(): %v", err)
-	}
-	defer writeStmt.Close()
-	_, err = writeStmt.Exec(m.mapID, rootID, -1, nodeValue)
-	if err != nil {
-		return fmt.Errorf("insertFirstRoot(): %v", err)
-	}
-	return nil
-}
-
 func (m *Map) readEpoch() (int64, error) {
 	stmt, err := m.db.Prepare(readEpochExpr)
 	if err != nil {
 		return -1, fmt.Errorf("readEpoch(): %v", err)
 	}
 	defer stmt.Close()
-	rootID := m.nodeID("")
 	var epoch sql.NullInt64
-	if err := stmt.QueryRow(m.mapID, rootID).Scan(&epoch); err != nil {
+	if err := stmt.QueryRow(m.mapID, m.nodeID("")).Scan(&epoch); err != nil {
 		return -1, fmt.Errorf("Error reading epoch: %v", err)
 	}
 	if !epoch.Valid {
