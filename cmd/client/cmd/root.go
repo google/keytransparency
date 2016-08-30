@@ -82,7 +82,7 @@ func init() {
 	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
 
 	// Global flags for use by subcommands.
-	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Second, "Time to wait before operations timeout")
+	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Minute, "Time to wait before operations timeout")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print in/out and verification steps")
 	if err := viper.BindPFlags(RootCmd.PersistentFlags()); err != nil {
 		log.Fatalf("%v", err)

@@ -133,12 +133,11 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, timeout time.Duration, userID string, start, end int64, opts ...grpc.CallOption) (map[*ctmap.MapHead]*tpb.Profile, error) {
+func (c *Client) ListHistory(ctx context.Context, userID string, start, end int64, opts ...grpc.CallOption) (map[*ctmap.MapHead]*tpb.Profile, error) {
 	currentProfile := new(tpb.Profile)
 	profiles := make(map[*ctmap.MapHead]*tpb.Profile)
 	for start <= end {
-		ctx2, _ := context.WithTimeout(ctx, timeout)
-		resp, err := c.cli.ListEntryHistory(ctx2, &tpb.ListEntryHistoryRequest{
+		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
 			Start:    start,
 			PageSize: min(int32((end-start)+1), pageSize),

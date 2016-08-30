@@ -50,10 +50,10 @@ and verify that the results are consistent.`,
 		if err != nil {
 			return fmt.Errorf("Error connecting: %v", err)
 		}
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
 		if end == 0 {
 			// Get the current epoch.
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
-			defer cancel()
 			_, smh, err := c.GetEntry(ctx, userID)
 			if err != nil {
 				return fmt.Errorf("GetEntry failed: %v", err)
@@ -64,9 +64,7 @@ and verify that the results are consistent.`,
 			end = smh.Epoch
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		profiles, err := c.ListHistory(ctx, timeout, userID, start, end)
+		profiles, err := c.ListHistory(ctx, userID, start, end)
 		if err != nil {
 			return fmt.Errorf("ListHistory failed: %v", err)
 		}
