@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/key-transparency/cmd/client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
@@ -142,7 +143,7 @@ func TestUpdateValidation(t *testing.T) {
 
 func TestListHistory(t *testing.T) {
 	userID := "bob"
-	ctx := authentication.NewFake().NewContext("bob")
+	ctx := authentication.NewFake().NewContext(userID)
 
 	env := NewEnv(t)
 	defer env.Close(t)
@@ -154,38 +155,28 @@ func TestListHistory(t *testing.T) {
 	for _, tc := range []struct {
 		start, end  int64
 		wantHistory []*tpb.Profile
+		wantErr     bool
 	}{
-		{0, 3, []*tpb.Profile{cp(1)}},                                                     // zero start epoch
-		{3, 3, []*tpb.Profile{cp(1)}},                                                     // single profile
-		{3, 4, []*tpb.Profile{cp(1), cp(2)}},                                              // multiple profiles
-		{1, 4, []*tpb.Profile{cp(1), cp(2)}},                                              // test 'nil' first profile(s)
-		{3, 10, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5)}},                        // filtering
-		{9, 16, []*tpb.Profile{cp(4), cp(5), cp(6)}},                                      // filtering consecutive resubmitted profiles
-		{9, 20, []*tpb.Profile{cp(4), cp(5), cp(6), cp(5), cp(7)}},                        // no filtering of resubmitted profiles
-		{1, 20, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}},   // multiple pages
-		{1, 1000, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}}, // Invalid end epoch, beyond current epoch
+		{0, 3, []*tpb.Profile{cp(1)}, false},                                                   // zero start epoch
+		{3, 3, []*tpb.Profile{cp(1)}, false},                                                   // single profile
+		{3, 4, []*tpb.Profile{cp(1), cp(2)}, false},                                            // multiple profiles
+		{1, 4, []*tpb.Profile{cp(1), cp(2)}, false},                                            // test 'nil' first profile(s)
+		{3, 10, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                      // filtering
+		{9, 16, []*tpb.Profile{cp(4), cp(5), cp(6)}, false},                                    // filtering consecutive resubmitted profiles
+		{9, 19, []*tpb.Profile{cp(4), cp(5), cp(6), cp(5), cp(7)}, false},                      // no filtering of resubmitted profiles
+		{1, 19, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
+		{1, 1000, []*tpb.Profile{}, true},                                                      // Invalid end epoch, beyond current epoch
 	} {
-		resp, err := env.Client.ListHistory(ctx, userID, tc.start, tc.end)
-		if err != nil {
-			t.Fatalf("ListHistory(_, %v, %v, %v) failed: %v,", userID, tc.start, tc.end, err)
+		resp, err := env.Client.ListHistory(ctx, 1*time.Second, userID, tc.start, tc.end)
+		if got := err != nil; got != tc.wantErr {
+			t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
 		}
-		// If there's a ListHistory error, skip the rest of the test.
 		if err != nil {
 			continue
 		}
 
-		// Sort received history by Epoch.
-		gotHistory := sortHistory(resp)
-
-		// Ensure that history has the correct number of profiles.
-		if got, want := len(gotHistory), len(tc.wantHistory); got != want {
-			t.Errorf("len(gotHistory)=%v, want %v", got, want)
-			continue
-		}
-		// Ensure that history has the correct profiles in the correct
-		// order.
-		if !reflect.DeepEqual(gotHistory, tc.wantHistory) {
-			t.Errorf("Invalid history: %v, want %v", gotHistory, tc.wantHistory)
+		if got := sortHistory(resp); !reflect.DeepEqual(got, tc.wantHistory) {
+			t.Errorf("ListHistory(%v, %v): \n%v, want \n%v", tc.start, tc.end, got, tc.wantHistory)
 		}
 	}
 }
@@ -221,8 +212,6 @@ func (e *Env) setupHistory(ctx context.Context, userID string) error {
 }
 
 func sortHistory(history map[*ctmap.MapHead]*tpb.Profile) []*tpb.Profile {
-	// keys is created with 0 length and the appropriate capacity to avoid
-	// underlying reallocation in append.
 	keys := make([]*ctmap.MapHead, 0, len(history))
 	for k := range history {
 		keys = append(keys, k)

@@ -38,7 +38,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	ctmap "github.com/google/key-transparency/core/proto/ctmap"
+	"github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
 	spb "github.com/google/key-transparency/impl/proto/kt_service_v1"
 )
@@ -47,7 +47,7 @@ const (
 	// Each page contains pageSize profiles. Each profile contains multiple
 	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
 	// size 16 will contain about 8KB of data.
-	defaultPageSize = 16
+	pageSize = 16
 	// The default capacity used when creating a profiles list in
 	// ListHistory.
 	defaultListCap = 10
@@ -59,6 +59,9 @@ var (
 	// results of the udpate are not visible on the server yet. The client
 	// must retry until the request is visible.
 	ErrRetry = errors.New("update not present on server yet")
+	// ErrIncomplete occurs when the server indicates that requested epochs
+	// are not available.
+	ErrIncomplete = errors.New("incomplete account history")
 	// Vlog is the verbose logger. By default it outputs to /dev/null.
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
@@ -97,89 +100,79 @@ func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *s
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, error) {
+func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, *ctmap.MapHead, error) {
 	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
 		UserId: userID,
 	}, opts...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := c.kt.VerifyGetEntryResponse(userID, e); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Empty case.
 	if e.GetCommitted() == nil {
-		return nil, nil
+		return nil, e.GetSmh().GetMapHead(), nil
 	}
 
 	profile := new(tpb.Profile)
 	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling profile: %v", err)
+		return nil, nil, fmt.Errorf("Error unmarshaling profile: %v", err)
 	}
-	return profile, nil
+	return profile, e.GetSmh().GetMapHead(), nil
+}
+
+func min(x, y int32) int32 {
+	if x < y {
+		return x
+	}
+	return y
 }
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID string, startEpoch, endEpoch int64, opts ...grpc.CallOption) (map[*ctmap.MapHead]*tpb.Profile, error) {
-	var currentProfile *tpb.Profile
+func (c *Client) ListHistory(ctx context.Context, userID string, start, end int64, opts ...grpc.CallOption) (map[*ctmap.MapHead]*tpb.Profile, error) {
+	currentProfile := new(tpb.Profile)
 	profiles := make(map[*ctmap.MapHead]*tpb.Profile)
-
-	// Setup loop-related variables.
-	pageSize := defaultPageSize
-	for startEpoch <= endEpoch {
+	for start <= end {
 		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
-			Start:    startEpoch,
-			PageSize: int32(pageSize),
+			Start:    start,
+			PageSize: min(int32((end-start)+1), pageSize),
 		}, opts...)
 		if err != nil {
 			return nil, err
 		}
 
-		// Iterate over the responses in order.
-		for _, v := range resp.GetValues() {
-			// If empty profile, skip.
-			if v.GetCommitted() == nil {
-				continue
-			}
-
-			// If the processed profile is already beyond endEpoch,
-			// stop.
-			if v.GetSmh().GetMapHead().Epoch > endEpoch {
-				break
-			}
-
-			// Verify the response.
+		for i, v := range resp.GetValues() {
+			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
 			err = c.kt.VerifyGetEntryResponse(userID, v)
 			if err != nil {
 				return nil, err
 			}
 
-			profile := new(tpb.Profile)
-			if err := proto.Unmarshal(v.GetCommitted().Data, profile); err != nil {
-				log.Printf("Error unmarshaling profile: %v", err)
-				return nil, err
+			var profile tpb.Profile
+			if v.GetCommitted() != nil {
+				if err := proto.Unmarshal(v.GetCommitted().Data, &profile); err != nil {
+					return nil, err
+				}
 			}
-			// Ignore the extracted profile if it is similar to the
-			// current one. Since currentProfile's initial value is
-			// nil, all nil profiles before the user submits his/her
-			// first profile are also ignored.
-			if proto.Equal(currentProfile, profile) {
+			// Compress profiles that are equal through time.  All
+			// nil profiles before the first profile are ignored.
+			if proto.Equal(currentProfile, &profile) {
 				continue
 			}
 
 			// Append the slice and update currentProfile.
-			profiles[v.GetSmh().GetMapHead()] = profile
-			currentProfile = profile
+			profiles[v.GetSmh().GetMapHead()] = &profile
+			currentProfile = &profile
 		}
-
 		if resp.NextStart == 0 {
-			break
+			return nil, ErrIncomplete // No more data.
 		}
-		startEpoch = resp.NextStart
+		start = resp.NextStart // Fetch the next block of results.
 	}
 
 	return profiles, nil

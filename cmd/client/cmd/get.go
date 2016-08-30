@@ -40,7 +40,7 @@ results are consistent.`,
 			return fmt.Errorf("error connecting: %v", err)
 		}
 		ctx, _ := context.WithTimeout(context.Background(), timeout)
-		profile, err := c.GetEntry(ctx, userID)
+		profile, _, err := c.GetEntry(ctx, userID)
 		if err != nil {
 			return fmt.Errorf("GetEntry failed: %v", err)
 		}
