@@ -79,6 +79,7 @@ type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
+	CT         ctlog.Verifier
 	RetryCount int
 	RetryDelay time.Duration
 }
@@ -89,6 +90,7 @@ func New(client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *s
 		cli:        client,
 		vrf:        vrf,
 		kt:         kt.New(vrf, tv.New(sparse.CONIKSHasher), verifier, log),
+		CT:         log,
 		RetryCount: 1,
 		RetryDelay: 3 * time.Second,
 	}
