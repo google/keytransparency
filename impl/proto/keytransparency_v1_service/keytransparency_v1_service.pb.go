@@ -5,6 +5,12 @@
 /*
 Package keytransparency_v1_service is a generated protocol buffer package.
 
+Key Transparency Service
+
+The Key Transparency Service API consists of a map of user names to public
+keys. Each user name also has a history of public keys that have been
+associated with it.
+
 It is generated from these files:
 	impl/proto/keytransparency_v1_service/keytransparency_v1_service.proto
 
@@ -45,17 +51,21 @@ const _ = grpc.SupportPackageIsVersion3
 // Client API for KeyTransparencyService service
 
 type KeyTransparencyServiceClient interface {
-	// GetEntry returns a user's entry in the Merkle Tree. Entries contain
-	// signed commitments to a profile, which is also returned.
+	// GetEntry returns a user's entry in the Merkle Tree.
+	//
+	// Entries contain signed commitments to a profile, which is also returned.
 	GetEntry(ctx context.Context, in *keytransparency_v1_types.GetEntryRequest, opts ...grpc.CallOption) (*keytransparency_v1_types.GetEntryResponse, error)
-	// ListEntryHistory returns a list of GetEntryRespons covering several epochs.
+	// ListEntryHistory returns a list of historic GetEntry values.
+	//
+	// Clients verify their account history by observing correct values for their
+	// account over time.
 	ListEntryHistory(ctx context.Context, in *keytransparency_v1_types.ListEntryHistoryRequest, opts ...grpc.CallOption) (*keytransparency_v1_types.ListEntryHistoryResponse, error)
-	// UpdateEntry submits a EntryUpdate.  Returns empty until this update has been
-	// included in an epoch.  Clients must retry until this function returns a
-	// proof.
+	// UpdateEntry submits a SignedEntryUpdate.
+	//
+	// Returns empty until this update has been included in an epoch.
+	// Clients must retry until this function returns a proof.
 	UpdateEntry(ctx context.Context, in *keytransparency_v1_types.UpdateEntryRequest, opts ...grpc.CallOption) (*keytransparency_v1_types.UpdateEntryResponse, error)
-	// HkpLookup implements an HKP lookup for users to fetch their (or other's)
-	// profiles.
+	// HkpLookup implements a SKS server lookup functions.
 	HkpLookup(ctx context.Context, in *keytransparency_v1_types.HkpLookupRequest, opts ...grpc.CallOption) (*keytransparency_v1_types.HttpResponse, error)
 }
 
@@ -106,17 +116,21 @@ func (c *keyTransparencyServiceClient) HkpLookup(ctx context.Context, in *keytra
 // Server API for KeyTransparencyService service
 
 type KeyTransparencyServiceServer interface {
-	// GetEntry returns a user's entry in the Merkle Tree. Entries contain
-	// signed commitments to a profile, which is also returned.
+	// GetEntry returns a user's entry in the Merkle Tree.
+	//
+	// Entries contain signed commitments to a profile, which is also returned.
 	GetEntry(context.Context, *keytransparency_v1_types.GetEntryRequest) (*keytransparency_v1_types.GetEntryResponse, error)
-	// ListEntryHistory returns a list of GetEntryRespons covering several epochs.
+	// ListEntryHistory returns a list of historic GetEntry values.
+	//
+	// Clients verify their account history by observing correct values for their
+	// account over time.
 	ListEntryHistory(context.Context, *keytransparency_v1_types.ListEntryHistoryRequest) (*keytransparency_v1_types.ListEntryHistoryResponse, error)
-	// UpdateEntry submits a EntryUpdate.  Returns empty until this update has been
-	// included in an epoch.  Clients must retry until this function returns a
-	// proof.
+	// UpdateEntry submits a SignedEntryUpdate.
+	//
+	// Returns empty until this update has been included in an epoch.
+	// Clients must retry until this function returns a proof.
 	UpdateEntry(context.Context, *keytransparency_v1_types.UpdateEntryRequest) (*keytransparency_v1_types.UpdateEntryResponse, error)
-	// HkpLookup implements an HKP lookup for users to fetch their (or other's)
-	// profiles.
+	// HkpLookup implements a SKS server lookup functions.
 	HkpLookup(context.Context, *keytransparency_v1_types.HkpLookupRequest) (*keytransparency_v1_types.HttpResponse, error)
 }
 

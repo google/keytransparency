@@ -14,10 +14,16 @@
 
 syntax = "proto3";
 
+// Key Transparency Service
+//
+// The Key Transparency Service API consists of a map of user names to public
+// keys. Each user name also has a history of public keys that have been
+// associated with it.
 package keytransparency.v1.service;
 
 import "github.com/google/key-transparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
 import "google/api/annotations.proto";
+
 
 // The KeyTransparencyService API represents a directory of public keys.
 // The API defines the following resource model:
@@ -29,20 +35,25 @@ import "google/api/annotations.proto";
 //   [Entry][keytransparency.Entry] resources named `/users/*/history`.
 //
 service KeyTransparencyService {
-  // GetEntry returns a user's entry in the Merkle Tree. Entries contain
-  // signed commitments to a profile, which is also returned.
+  // GetEntry returns a user's entry in the Merkle Tree.
+  //
+  // Entries contain signed commitments to a profile, which is also returned.
   rpc GetEntry(keytransparency.v1.types.GetEntryRequest) returns (keytransparency.v1.types.GetEntryResponse) {
     option (google.api.http) = { get: "/v1/users/{user_id}" };
   }
 
-  // ListEntryHistory returns a list of GetEntryRespons covering several epochs.
+  // ListEntryHistory returns a list of historic GetEntry values.
+  //
+  // Clients verify their account history by observing correct values for their
+  // account over time.
   rpc ListEntryHistory(keytransparency.v1.types.ListEntryHistoryRequest) returns (keytransparency.v1.types.ListEntryHistoryResponse) {
     option (google.api.http) = { get: "/v1/users/{user_id}/history" };
   }
 
-  // UpdateEntry submits a EntryUpdate.  Returns empty until this update has been
-  // included in an epoch.  Clients must retry until this function returns a
-  // proof.
+  // UpdateEntry submits a SignedEntryUpdate.
+  //
+  // Returns empty until this update has been included in an epoch.
+  // Clients must retry until this function returns a proof.
   rpc UpdateEntry(keytransparency.v1.types.UpdateEntryRequest) returns (keytransparency.v1.types.UpdateEntryResponse) {
     option (google.api.http) = {
       put: "/v1/users/{user_id}"
@@ -50,8 +61,7 @@ service KeyTransparencyService {
     };
   }
 
-  // HkpLookup implements an HKP lookup for users to fetch their (or other's)
-  // profiles.
+  // HkpLookup implements a SKS server lookup functions.
   rpc HkpLookup(keytransparency.v1.types.HkpLookupRequest) returns (keytransparency.v1.types.HttpResponse){
     option (google.api.http) = { get: "/v1/hkp/lookup" };
   }
