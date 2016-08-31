@@ -306,7 +306,13 @@ func (m *Map) setLeafAt(ctx context.Context, index []byte, depth int, value []by
 
 	nodeValues := sparse.NodeValues(hasher, bindex, value, nbrValues)
 
-	// Save new nodes.
+	// Save the leaf node.
+	_, err = writeStmt.Exec(m.mapID, nodeIDs[0], epoch, value)
+	if err != nil {
+		return err
+	}
+	// Save the rest of the new nodes.
+	nodeIDs = nodeIDs[1:]
 	for i, nodeValue := range nodeValues {
 		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue)
 		if err != nil {
