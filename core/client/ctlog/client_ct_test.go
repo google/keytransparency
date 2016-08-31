@@ -17,8 +17,11 @@ package ctlog
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"reflect"
 	"testing"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -240,7 +243,7 @@ func TestVerifySavedSCTs(t *testing.T) {
 			t.Errorf("Failed to get SCT from AddJSON: %v", err)
 		}
 		// Manually set Cache entry.
-		l.scts[sct] = SCTEntry{sct, &smh}
+		l.scts = append(l.scts, SCTEntry{sct, &smh})
 		if entries := l.VerifySavedSCTs(); len(entries) != 0 {
 			t.Errorf("%v: VerifySavedSCTs(): %v", i, entries)
 		}
@@ -269,4 +272,39 @@ func createServer(t *testing.T, sth, consistency, sct, hash, inclusion string) *
 			t.Errorf("Incorrect URL path: %s", r.URL.Path)
 		}
 	}))
+}
+
+func TestSaveRestore(t *testing.T) {
+	l, err := New([]byte(pem), "")
+	if err != nil {
+		t.Fatalf("New(): %v", err)
+	}
+	var sct ct.SignedCertificateTimestamp
+	var smh ctmap.SignedMapHead
+	entry := SCTEntry{Sct: &sct, Smh: &smh}
+
+	l.scts = []SCTEntry{entry}
+
+	f, err := ioutil.TempFile("", "client_ct_state")
+	if err != nil {
+		t.Fatalf("TempFile(): %v", err)
+	}
+	defer os.Remove(f.Name())
+
+	if err := l.Save(f.Name()); err != nil {
+		t.Fatalf("Save(): %v", err)
+	}
+
+	l2, err := New([]byte(pem), "")
+	if err != nil {
+		t.Fatalf("New(): %v", err)
+	}
+
+	if err := l2.Restore(f.Name()); err != nil {
+		t.Fatalf("Restore(): %v", err)
+	}
+
+	if got, want := l2.scts, l.scts; !reflect.DeepEqual(got, want) {
+		t.Errorf("l2.scts: \n%#v, want \n%#v", got, want)
+	}
 }

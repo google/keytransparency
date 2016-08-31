@@ -34,3 +34,9 @@ func (fakeLog) VerifySavedSCTs() []ctlog.SCTEntry { return nil }
 
 // UpdateSTH ensures that STH is at least 1 MMD from Now().
 func (fakeLog) UpdateSTH() error { return nil }
+
+// Save persists unverified SCTs to disk
+func (fakeLog) Save(file string) error { return nil }
+
+// Restore restores a verifier's state from disk.
+func (fakeLog) Restore(file string) error { return nil }

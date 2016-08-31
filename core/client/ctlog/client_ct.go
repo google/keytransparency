@@ -17,9 +17,11 @@ package ctlog
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -55,14 +57,17 @@ type Verifier interface {
 	// UpdateSTH advances the current SignedTreeHead and verifies a
 	// consistency proof between the current and the new STH.
 	UpdateSTH() error
-	// TODO: Persist and restore saved SCTs from disk.
+	// Save unverified SCTs to disk.
+	Save(file string) error
+	// Load unverified SCTs from disk.
+	Restore(file string) error
 }
 
 // Log represents a Certificate Transparency append-only log.
 type Log struct {
-	MMD   time.Duration                               // Maximum merge delay.
-	STH   ct.SignedTreeHead                           // Current trusted STH.
-	scts  map[*ct.SignedCertificateTimestamp]SCTEntry // Unverified SCTs.
+	MMD   time.Duration     // Maximum merge delay.
+	STH   ct.SignedTreeHead // Current trusted STH.
+	scts  []SCTEntry        // Unverified SCTs.
 	ver   *ct.SignatureVerifier
 	mtv   merkletree.MerkleVerifier
 	ctlog *logclient.LogClient
@@ -70,8 +75,8 @@ type Log struct {
 
 // SCTEntry contains enough data to verify an SCT after the fact.
 type SCTEntry struct {
-	sct *ct.SignedCertificateTimestamp
-	smh *ctmap.SignedMapHead
+	Sct *ct.SignedCertificateTimestamp
+	Smh *ctmap.SignedMapHead
 }
 
 // New produces a new CT log verification client.
@@ -89,7 +94,7 @@ func New(pem []byte, logURL string) (*Log, error) {
 		mtv:   merkletree.NewMerkleVerifier(hasher),
 		ver:   ver,
 		ctlog: logclient.New(logURL, nil),
-		scts:  make(map[*ct.SignedCertificateTimestamp]SCTEntry),
+		scts:  make([]SCTEntry, 0),
 	}, nil
 }
 
@@ -134,7 +139,7 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 		return err
 	}
 	Vlog.Printf("CT ✓ SCT signature verified. Saving SCT for future inclusion proof verification.")
-	l.scts[sct] = SCTEntry{sct, smh} // Add to SCT waitlist.
+	l.scts = append(l.scts, SCTEntry{sct, smh}) // Add to SCT waitlist.
 	return nil
 }
 
@@ -143,21 +148,24 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 // have been compromised.  TODO: have the client call this on some schedule
 // after updating the STH.
 func (l *Log) VerifySavedSCTs() []SCTEntry {
-	var invalidSCTs []SCTEntry
+	invalidSCTs := l.scts[:0]
+	unvalidatedSCTs := l.scts[:0]
+
 	STHTime := timestamp(l.STH.Timestamp)
 	// Iterate through saved SCTs. Verify all the ones that are required to
 	// be included in the new STH.
 	before := len(l.scts)
-	for k, v := range l.scts {
-		requireSCT := timestamp(k.Timestamp).Add(l.MMD)
+	for _, v := range l.scts {
+		requireSCT := timestamp(v.Sct.Timestamp).Add(l.MMD)
 		if STHTime.After(requireSCT) {
-			if err := l.inclusionProof(&l.STH, v.smh, k.Timestamp); err != nil {
+			if err := l.inclusionProof(&l.STH, v.Smh, v.Sct.Timestamp); err != nil {
 				invalidSCTs = append(invalidSCTs, v)
-			} else {
-				delete(l.scts, k) // Remove from waitlist.
 			}
+		} else {
+			unvalidatedSCTs = append(unvalidatedSCTs, v)
 		}
 	}
+	l.scts = unvalidatedSCTs
 	after := len(l.scts)
 	Vlog.Printf("CT Verified %v/%v SCTs. %v Remaining.", before-after, before, after)
 	return invalidSCTs
@@ -224,5 +232,33 @@ func (l *Log) inclusionProof(sth *ct.SignedTreeHead, smh *ctmap.SignedMapHead, t
 		return err
 	}
 	Vlog.Printf("CT ✓ inclusion proof verified.")
+	return nil
+}
+
+// Save persists unverified SCTs to disk
+func (l *Log) Save(file string) error {
+	var d bytes.Buffer
+	enc := gob.NewEncoder(&d)
+	err := enc.Encode(l.scts)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(file, d.Bytes(), 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Restore restores a verifier's state from disk.
+func (l *Log) Restore(file string) error {
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	dec := gob.NewDecoder(f)
+	if err := dec.Decode(&l.scts); err != nil {
+		return err
+	}
 	return nil
 }
