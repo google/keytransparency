@@ -241,7 +241,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 	}
 	roots := make([][]byte, len(leafs))
 	for i := range roots {
-		m, err := New(db, fmt.Sprintf("test%v", i))
+		m, err := New(db, "testMap")
 		if err != nil {
 			t.Fatalf("Failed to create SQL history: %v", err)
 		}

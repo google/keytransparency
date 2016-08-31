@@ -38,12 +38,13 @@ var (
 
 // Verifier represents a sparse tree proof verifier object.
 type Verifier struct {
+	mapID  []byte
 	hasher sparse.TreeHasher
 }
 
 // New returns a new tree proofs verifier object.
-func New(hasher sparse.TreeHasher) *Verifier {
-	return &Verifier{hasher}
+func New(mapID []byte, hasher sparse.TreeHasher) *Verifier {
+	return &Verifier{mapID, hasher}
 }
 
 // VerifyProof verifies a tree proof of a given leaf at a given index based on
@@ -77,7 +78,8 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 
 		// Set the value of the empty leaf
 		missingBranchBIndex := bindex[:len(neighbors)]
-		leaf = v.hasher.HashEmpty(tree.InvertBitString(missingBranchBIndex))
+		index, depth := tree.InvertBitString(missingBranchBIndex)
+		leaf = v.hasher.HashEmpty(v.mapID, index, depth)
 	}
 
 	// calculatedRoot contains the calculated root so far. It starts from the leaf.
@@ -87,7 +89,8 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 		neighborBIndex := tree.NeighborString(bindex[:len(neighbors)-i])
 		// If the neighbor is empty, set it to HashEmpty output.
 		if len(neighbor) == 0 {
-			neighbor = v.hasher.HashEmpty(tree.InvertBitString(neighborBIndex))
+			nIndex, nDepth := tree.InvertBitString(neighborBIndex)
+			neighbor = v.hasher.HashEmpty(v.mapID, nIndex, nDepth)
 		}
 
 		// The leaf index is processed starting from len(neighbors)-1
