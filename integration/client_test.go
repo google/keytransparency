@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/google/key-transparency/cmd/client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
@@ -80,7 +79,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 // checkProfile ensures that the returned profile is as expected along with the
 // keys it carries.
 func (e *Env) checkProfile(userID string, want bool) error {
-	profile, err := e.Client.GetEntry(context.Background(), userID)
+	profile, _, err := e.Client.GetEntry(context.Background(), userID)
 	if err != nil {
 		return fmt.Errorf("GetEntry(%v): %v, want nil", userID, err)
 	}
@@ -167,7 +166,7 @@ func TestListHistory(t *testing.T) {
 		{1, 19, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
 		{1, 1000, []*tpb.Profile{}, true},                                                      // Invalid end epoch, beyond current epoch
 	} {
-		resp, err := env.Client.ListHistory(ctx, 1*time.Second, userID, tc.start, tc.end)
+		resp, err := env.Client.ListHistory(ctx, userID, tc.start, tc.end)
 		if got := err != nil; got != tc.wantErr {
 			t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
 		}

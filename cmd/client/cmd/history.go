@@ -84,7 +84,9 @@ and verify that the results are consistent.`,
 			}
 			fmt.Fprintf(w, "%v\t%v\t%v\n", m.Epoch, t.Format(time.UnixDate), profiles[m])
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			return nil
+		}
 		return nil
 	},
 }
