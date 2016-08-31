@@ -64,7 +64,7 @@ fmt:
 
 presubmit: coverage fmt
 	-go vet ./...
-	find . ! -path "*/proto/*" -not -iwholename "*.git*" -not -iwholename "." -type d ! -name "proto" -exec errcheck -ignore 'Close|Write,google.golang.org/grpc:Serve' {} \;
+	find . ! -path "*/proto/*" -not -iwholename "*.git*" -not -iwholename "." -type d ! -name "proto" -exec errcheck -ignore 'Close|Write,os:Remove,google.golang.org/grpc:Serve' {} \;
 	-find . -type f -name "*.go" ! -name "*.pb*go" -exec gocyclo -over 12 {} \;
 	-ineffassign .
 	-find . -type f -name '*.md' -o -name '*.go' -o -name '*.proto' | sort | xargs misspell -locale US
