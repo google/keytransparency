@@ -83,7 +83,7 @@ func init() {
 	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
 	RootCmd.PersistentFlags().String("ct-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
-	RootCmd.PersistentFlags().String("ct-scts", "/tmp/key-transparency-scts.dat", "Path to load/save unverified sct state from")
+	RootCmd.PersistentFlags().String("ct-scts", ".key-transparency-scts.dat", "Path to load/save unverified sct state from")
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
 
