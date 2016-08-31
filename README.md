@@ -3,11 +3,42 @@ Key Transparency is a distributed implementation of
 [CONIKS](https://eprint.iacr.org/2014/1004.pdf), written in Go.
 
 
+# Running a Key Transparency Cluster
+1. Install prerequisites
+```sh
+go get -u github.com/google/key-transparency/cmd/...
+go get -u github.com/mattn/goreman
+go get -u github.com/coreos/etcd
+```
+Ensure `$GOBIN` is in your `$PATH`
 
-# Getting Started
+2. Generate test keys
+```sh
+make -C testdata
+```
+3. Get [Application Default Credentials](https://developers.google.com/identity/protocols/application-default-credentials)
+with this [wizard](https://console.developers.google.com/start/api?id=e2ekeys)
+and set ```GOOGLE_APPLICATION_CREDENTIALS``` environment variable in
+[.env](.env) to point to the credentials file.
+4. Download and run an XJSON [Certificate Transparency](https://github.com/google/certificate-transparency) Server.
+Set the `CTLOG` variable to the URL of the CT server URL in the [.env](.env) file.
+5. Run
+```sh
+goreman start
+```
 
-## Installation
-First you need to install [ProtocolBuffers](https://github.com/golang/protobuf#installation) 3.0 or later.
+# Using the Key Transparency Client
+1. Get a client secret with this
+[wizard](https://console.developers.google.com/start/api?id=e2ekeys)
+and set the `client_secret` path in `.key-transparency.yaml`
+1. Fetch and verify a user's keys with:
+```sh
+./key-transparency-client post <email> -d '{"app1": "dGVzdA=="}' --config=./.key-transparency.yaml
+./key-transparency-client get <email> --config=.key-transparency.yaml
+```
+
+# Building from scratch
+Install [ProtocolBuffers](https://github.com/golang/protobuf#installation) 3.0 or later.
 ```sh
 mkdir tmp
 cd tmp
@@ -23,48 +54,12 @@ sudo make install
 Then, ```go get -u``` as usual
 
 ```sh
-go get -u github.com/google/key-transparency/...
+go get -u github.com/google/key-transparency/cmd/...
 go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 go get -u github.com/golang/protobuf/protoc-gen-go
 ```
-
-The shell `$PATH` must include `$GOPATH/bin`
-
-# Running a Key Transparency Cluster
-1. Install [goreman](https://github.com/mattn/goreman), which manages 
-Procfile-based applications.
-```sh
-go get -u github.com/mattn/goreman
-```
-
-2. Generate test VRF and signing keys.
-```sh
-make -C testdata
-```
-
-3. Get [Application Default Credentials](https://developers.google.com/identity/protocols/application-default-credentials) 
-and set ```GOOGLE_APPLICATION_CREDENTIALS``` environment variable in 
-[.env](.env) to point to the credentials file.
-
-4. Download and run an XJSON [Certificate Transparency](https://github.com/google/certificate-transparency) Server. 
-Set the `CTLOG` variable to the URL of the CT server URL in the [.env](.env) file.
-
-5. Run 
-The [Procfile script](./Procfile) will set up a local cluster. Start it with:
-
-```sh
-goreman start
-```
-
-# Using the Key Transparency Client
-1. Fetch and verify a user's keys with:
-```sh
-./key-transparency-client -ct-url=<url of XJSON CT server> -kt-url=<url of server> -user=email@address.com
-``` 
-
 
 
 
 # Projects Using Key Transparency
 * [Google End-To-End](https://github.com/google/end-to-end).
-
