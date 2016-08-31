@@ -190,9 +190,14 @@ func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig, ctURL, ctPEM string) (*gr
 	if err != nil {
 		return nil, fmt.Errorf("error creating CT client: %v", err)
 	}
-	ctStateFile := viper.GetString("ct-scts")
-	if _, err := os.Stat(ctStateFile); err == nil {
-		ctClient.Restore(ctStateFile)
+	_, err := os.Stat(viper.GetString("ct-scts"))
+	switch {
+	case err == nil: // File is available.
+		ctClient.Restore(viper.GetString("ct-scts"))
+	case os.IsNotExist(err): // File does not exist. Create it later.
+	default:
+		return err
+
 	}
 
 	// Create Key Transparency client.

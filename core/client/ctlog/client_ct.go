@@ -65,9 +65,9 @@ type Verifier interface {
 
 // Log represents a Certificate Transparency append-only log.
 type Log struct {
-	MMD   time.Duration                               // Maximum merge delay.
-	STH   ct.SignedTreeHead                           // Current trusted STH.
-	scts  map[*ct.SignedCertificateTimestamp]SCTEntry // Unverified SCTs.
+	MMD   time.Duration     // Maximum merge delay.
+	STH   ct.SignedTreeHead // Current trusted STH.
+	scts  []SCTEntry        // Unverified SCTs.
 	ver   *ct.SignatureVerifier
 	mtv   merkletree.MerkleVerifier
 	ctlog *logclient.LogClient
@@ -94,7 +94,7 @@ func New(pem []byte, logURL string) (*Log, error) {
 		mtv:   merkletree.NewMerkleVerifier(hasher),
 		ver:   ver,
 		ctlog: logclient.New(logURL, nil),
-		scts:  make(map[*ct.SignedCertificateTimestamp]SCTEntry),
+		scts:  make([]SCTEntry, 0),
 	}, nil
 }
 
@@ -139,7 +139,7 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 		return err
 	}
 	Vlog.Printf("CT ✓ SCT signature verified. Saving SCT for future inclusion proof verification.")
-	l.scts[sct] = SCTEntry{sct, smh} // Add to SCT waitlist.
+	l.scts = append(l.scts, SCTEntry{sct, smh}) // Add to SCT waitlist.
 	return nil
 }
 
@@ -148,21 +148,24 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 // have been compromised.  TODO: have the client call this on some schedule
 // after updating the STH.
 func (l *Log) VerifySavedSCTs() []SCTEntry {
-	var invalidSCTs []SCTEntry
+	invalidSCTs := l.scts[:0]
+	unvalidatedSCTs := l.scts[:0]
+
 	STHTime := timestamp(l.STH.Timestamp)
 	// Iterate through saved SCTs. Verify all the ones that are required to
 	// be included in the new STH.
 	before := len(l.scts)
-	for k, v := range l.scts {
-		requireSCT := timestamp(k.Timestamp).Add(l.MMD)
+	for _, v := range l.scts {
+		requireSCT := timestamp(v.Sct.Timestamp).Add(l.MMD)
 		if STHTime.After(requireSCT) {
-			if err := l.inclusionProof(&l.STH, v.Smh, k.Timestamp); err != nil {
+			if err := l.inclusionProof(&l.STH, v.Smh, v.Sct.Timestamp); err != nil {
 				invalidSCTs = append(invalidSCTs, v)
-			} else {
-				delete(l.scts, k) // Remove from waitlist.
 			}
+		} else {
+			unvalidatedSCTs = append(unvalidatedSCTs, v)
 		}
 	}
+	l.scts = unvalidatedSCTs
 	after := len(l.scts)
 	Vlog.Printf("CT Verified %v/%v SCTs. %v Remaining.", before-after, before, after)
 	return invalidSCTs
@@ -252,6 +255,7 @@ func (l *Log) Restore(file string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	dec := gob.NewDecoder(f)
 	if err := dec.Decode(&l.scts); err != nil {
 		return err

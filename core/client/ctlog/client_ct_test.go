@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"testing"
 
 	ct "github.com/google/certificate-transparency/go"
@@ -242,7 +243,7 @@ func TestVerifySavedSCTs(t *testing.T) {
 			t.Errorf("Failed to get SCT from AddJSON: %v", err)
 		}
 		// Manually set Cache entry.
-		l.scts[sct] = SCTEntry{sct, &smh}
+		l.scts = append(l.scts, SCTEntry{sct, &smh})
 		if entries := l.VerifySavedSCTs(); len(entries) != 0 {
 			t.Errorf("%v: VerifySavedSCTs(): %v", i, entries)
 		}
@@ -282,7 +283,7 @@ func TestSaveRestore(t *testing.T) {
 	var smh ctmap.SignedMapHead
 	entry := SCTEntry{Sct: &sct, Smh: &smh}
 
-	l.scts[&sct] = entry
+	l.scts = []SCTEntry{entry}
 
 	f, err := ioutil.TempFile("", "client_ct_state")
 	if err != nil {
@@ -305,6 +306,11 @@ func TestSaveRestore(t *testing.T) {
 
 	if got, want := len(l2.scts), 1; got != want {
 		t.Errorf("len(l2.scts): %v, want %v", got, want)
+	}
+	for i, v := range l2.scts {
+		if got, want := v, l.scts[i]; !reflect.DeepEqual(got, want) {
+			t.Errorf("l2.scts: \n%#v, want \n%#v", got, want)
+		}
 	}
 
 }
