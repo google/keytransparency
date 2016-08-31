@@ -304,13 +304,7 @@ func TestSaveRestore(t *testing.T) {
 		t.Fatalf("Restore(): %v", err)
 	}
 
-	if got, want := len(l2.scts), 1; got != want {
-		t.Errorf("len(l2.scts): %v, want %v", got, want)
+	if got, want := l2.scts, l.scts; !reflect.DeepEqual(got, want) {
+		t.Errorf("l2.scts: \n%#v, want \n%#v", got, want)
 	}
-	for i, v := range l2.scts {
-		if got, want := v, l.scts[i]; !reflect.DeepEqual(got, want) {
-			t.Errorf("l2.scts: \n%#v, want \n%#v", got, want)
-		}
-	}
-
 }

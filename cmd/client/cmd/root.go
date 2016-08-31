@@ -193,7 +193,9 @@ func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig, ctURL, ctPEM string) (*gr
 	_, err := os.Stat(viper.GetString("ct-scts"))
 	switch {
 	case err == nil: // File is available.
-		ctClient.Restore(viper.GetString("ct-scts"))
+		if err := ctClient.Restore(viper.GetString("ct-scts")); err != nil {
+			return nil, err
+		}
 	case os.IsNotExist(err): // File does not exist. Create it later.
 	default:
 		return err
