@@ -23,6 +23,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+const mapID = "verifyMap"
+
 var (
 	ctx          = context.Background()
 	AllZeros     = strings.Repeat("0", 256/4)
@@ -40,14 +42,14 @@ type Leaf struct {
 }
 
 func TestVerifyProof(t *testing.T) {
-	verifier := New(sparse.CONIKSHasher)
+	verifier := New([]byte(mapID), sparse.CONIKSHasher)
 	for _, tc := range []struct {
 		root   []byte
 		leaves []Leaf
 	}{
 		// Verify proof of absence in an empty tree.
 		{
-			dh("d576e4657c5f86ba33a435d1abd22cff4f61de4df0cc16c50bd653b1360b367c"),
+			dh("36d699dd75f74edb84789d1bf301a9c2ff8dc815b70f5afc8ec156f5ae102c65"),
 			[]Leaf{
 				{dh(AllZeros), nil, [][]byte{}},
 			},
@@ -55,38 +57,38 @@ func TestVerifyProof(t *testing.T) {
 		// Tree with multiple leaves, each has a single existing neighbor
 		// on the way to the root.
 		{
-			dh("376bcc69fda95cea8455224faf8e5a05eaff9ad943e3ef96aaef910649b52806"),
+			dh("5bb1d793893ec70dd21a83f4faa94232e0ff9d8c74bc928d3479beb9b82608bc"),
 			[]Leaf{
 				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("fe9992d1c917b1362bd4aad7c1dbaa10dcaa2649844aed2e3d3407b6f28ea6c0"),
+					dh("d16cfa61bd103aa958da52eccae55715c8a2f2a33663a8397b13d3c2fa31090a"),
 					[]byte{},
 				}},
 				{dh(defaultIndex[1]), []byte("4"), [][]byte{
-					dh("f9369f6c112ff583212b7ff07342a84e3f41cfda101923db76cc5517b23d9a38"),
+					dh("30eec702b035570b82889d71db8325b05576a80f327cefeac17c743a7cae88b3"),
 					[]byte{},
 				}},
 				{dh(defaultIndex[2]), nil, [][]byte{
-					dh("7987058861eb3fd513c2d00b91f42fc9bb6b2d878b5b298f4d6ef0c38f1c5395"),
+					dh("7184164d16837c61b15e347d20fb6338c5c437edf7e919e0865a59906557ff98"),
 				}},
 				{dh(AllZeros), nil, [][]byte{
-					dh("7987058861eb3fd513c2d00b91f42fc9bb6b2d878b5b298f4d6ef0c38f1c5395"),
+					dh("7184164d16837c61b15e347d20fb6338c5c437edf7e919e0865a59906557ff98"),
 				}},
 			},
 		},
 		// Tree with multiple leaves, some have multiple existing
 		// neighbors on the way to the root.
 		{
-			dh("528044b5a83335c074eb8631fdaeddd96d65e420ad3031d88cfe03b1ed6f33eb"),
+			dh("84b5275ffa8ac9e9fc7afc3bcfb8e69fff186fb675dd6ee25bf1b46d199daea0"),
 			[]Leaf{
 				{dh(defaultIndex[2]), []byte("0"), [][]byte{
-					dh("b2283f973324190e2992523432604a3ce6732aef09d267fbf951840d9a854043"),
+					dh("39d08ffc594fab8829d228e6771f85b63d1a4607606739ccf65e89daebe4deb2"),
 				}},
 				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("5ff0f6495d23d0be76e524710814c76b55213afe9514d473066f920b5c655ec9"),
+					dh("e8d949ff3705218835274fe8a04695d1800e72ecb327f2e266821f0b5c21b904"),
 				}},
 				{dh(AllZeros), nil, [][]byte{
-					dh("5ad9ddb4579867b9914df56703bd64502397cf02c1f1178393dfee26548d1259"),
-					dh("b2283f973324190e2992523432604a3ce6732aef09d267fbf951840d9a854043"),
+					dh("68572f8d1ecbd5fa055ec6eed6d2587ee8f7a661c20ef20e5f74465d116c4f8d"),
+					dh("39d08ffc594fab8829d228e6771f85b63d1a4607606739ccf65e89daebe4deb2"),
 				}},
 			},
 		},

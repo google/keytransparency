@@ -82,7 +82,8 @@ func New(db *sql.DB, mapID string) (*Map, error) {
 	if err := m.insertMapRow(); err != nil {
 		return nil, err
 	}
-	nodeValue := hashEmpty("")
+	index, depth := tree.InvertBitString("")
+	nodeValue := hasher.HashEmpty(m.mapID, index, depth)
 	if err := m.setRootAt(nil, nodeValue[:], -1); err != nil {
 		return nil, err
 	}
@@ -219,7 +220,7 @@ func (m *Map) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]b
 		}
 		return nil, err
 	}
-	nbrs = compressNeighbors(nbrs, index, maxDepth)
+	nbrs = compressNeighbors(m.mapID, nbrs, index, maxDepth)
 	return nbrs, tx.Commit()
 }
 
@@ -241,7 +242,8 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 	nbrValues := make([][]byte, len(neighborIDs))
 	for i, nodeID := range neighborIDs {
 		if err := readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&nbrValues[i]); err == sql.ErrNoRows {
-			nbrValues[i] = hashEmpty(neighborBIndexes[i])
+			nIndex, nDepth := tree.InvertBitString(neighborBIndexes[i])
+			nbrValues[i] = hasher.HashEmpty(m.mapID, nIndex, nDepth)
 		} else if err != nil {
 			if rbErr := tx.Rollback(); rbErr != nil {
 				err = fmt.Errorf("QueryRow failed: %v, and Rollback failed: %v", err, rbErr)
@@ -253,13 +255,14 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 	return nbrValues, nil
 }
 
-func compressNeighbors(neighbors [][]byte, index []byte, depth int) [][]byte {
+func compressNeighbors(mapID []byte, neighbors [][]byte, index []byte, depth int) [][]byte {
 	bindex := tree.BitString(index)[:depth]
 	neighborBIndexes := tree.Neighbors(bindex)
 	compressed := make([][]byte, len(neighbors))
 	for i, v := range neighbors {
 		// TODO: convert values to arrays rather than slices for comparison.
-		if !bytes.Equal(v, hashEmpty(neighborBIndexes[i])) {
+		nIndex, nDepth := tree.InvertBitString(neighborBIndexes[i])
+		if !bytes.Equal(v, hasher.HashEmpty(mapID, nIndex, nDepth)) {
 			compressed[i] = v
 		}
 	}
@@ -429,8 +432,4 @@ func PrefixLen(nodes [][]byte) int {
 		}
 	}
 	return 0
-}
-
-func hashEmpty(bindex string) []byte {
-	return hasher.HashEmpty(tree.InvertBitString(bindex))
 }
