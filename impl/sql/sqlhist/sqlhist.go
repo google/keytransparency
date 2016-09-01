@@ -43,6 +43,10 @@ const (
 	SELECT Value FROM Nodes
 	WHERE MapId = $1 AND NodeId = $2 and Version <= $3
 	ORDER BY Version DESC LIMIT 1;`
+	leafExpr = `
+	SELECT Data FROM Leaves
+	WHERE MapId = $1 AND LeafId = $2 and Version <= $3
+	ORDER BY Version DESC LIMIT 1;`
 	queueExpr = `
 	INSERT OR REPLACE INTO Leaves (MapId, LeafId, Version, Data)
 	VALUES ($1, $2, $3, $4);`
@@ -189,17 +193,14 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 
 // ReadLeafAt returns the leaf value at epoch.
 func (m *Map) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
-	bindex := tree.BitString(index)
-	readStmt, err := m.db.Prepare(readExpr)
+	readStmt, err := m.db.Prepare(leafExpr)
 	if err != nil {
 		return nil, err
 	}
 	defer readStmt.Close()
 
-	nodeID := m.nodeID(bindex)
-
 	var value []byte
-	if err = readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&value); err == sql.ErrNoRows {
+	if err = readStmt.QueryRow(m.mapID, index, epoch).Scan(&value); err == sql.ErrNoRows {
 		return nil, nil // Not found is not an error.
 	} else if err != nil {
 		return nil, err
