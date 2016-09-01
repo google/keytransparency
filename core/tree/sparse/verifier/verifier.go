@@ -71,19 +71,24 @@ func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf, root []byte) err
 // calculateRoot calculates the root of the tree branch defined by leaf and
 // neighbors.
 func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte) ([]byte, error) {
+	var leafHash []byte
+
 	// If the leaf is empty, it is a proof of absence.
 	if len(leaf) == 0 {
 		// Trim the neighbors list.
 		neighbors = trimNeighbors(neighbors)
 
-		// Set the value of the empty leaf
+		// Calculate the value of the empty leaf
 		missingBranchBIndex := bindex[:len(neighbors)]
 		index, depth := tree.InvertBitString(missingBranchBIndex)
-		leaf = v.hasher.HashEmpty(v.mapID, index, depth)
+		leafHash = v.hasher.HashEmpty(v.mapID, index, depth)
+	} else {
+		index, depth := tree.InvertBitString(bindex)
+		leafHash = v.hasher.HashLeaf(v.mapID, index, depth, leaf)
 	}
 
-	// calculatedRoot contains the calculated root so far. It starts from the leaf.
-	calculatedRoot := leaf
+	// calculatedRoot holds the calculated root so far, starting from leaf.
+	calculatedRoot := leafHash
 	for i, neighbor := range neighbors {
 		// Get the neighbor bit string index.
 		neighborBIndex := tree.NeighborString(bindex[:len(neighbors)-i])

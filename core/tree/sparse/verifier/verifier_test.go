@@ -57,38 +57,38 @@ func TestVerifyProof(t *testing.T) {
 		// Tree with multiple leaves, each has a single existing neighbor
 		// on the way to the root.
 		{
-			dh("c84c416481ee9610ac80cbcafc000caf0ef9210a3494fe60610339cceb94ca51"),
+			dh("4a1d580869a6ed8949b0035be5bfbd52085749f52b83d7eb7fab2340fdeb6070"),
 			[]Leaf{
 				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("90a89a487fe9ce56f0d09e10521f49dc359352e6df2e651fd9dfda5576ef301d"),
+					dh("87bf45e808101bfd5e564dd2eed054c0879da7b0407ef895be2c1a99645da454"),
 					[]byte{},
 				}},
 				{dh(defaultIndex[1]), []byte("4"), [][]byte{
-					dh("56bb3dea5b1917f78ceada1e30aa6ef3eb10c92e853a184920bc77ebba880c97"),
+					dh("dfecc3e854af9140e5224942719b5ad23d637612dc146fcd600a1679d6956797"),
 					[]byte{},
 				}},
 				{dh(defaultIndex[2]), nil, [][]byte{
-					dh("a54055bcae7a5b30437a8019d06cc4d3e9bc7ed4ebd61b7788ae6b37c519376e"),
+					dh("cedff4217d4b07261f009ef2331fd286fa1a7a2edbc1b5f4783735aeee02d692"),
 				}},
 				{dh(AllZeros), nil, [][]byte{
-					dh("a54055bcae7a5b30437a8019d06cc4d3e9bc7ed4ebd61b7788ae6b37c519376e"),
+					dh("cedff4217d4b07261f009ef2331fd286fa1a7a2edbc1b5f4783735aeee02d692"),
 				}},
 			},
 		},
 		// Tree with multiple leaves, some have multiple existing
 		// neighbors on the way to the root.
 		{
-			dh("6a4fc1a01ccd5bf4a04d10024caf32f64a6b31ac3abc33ed226f2477c2e1538a"),
+			dh("0930a343db7e987c9635351fb8c03f9cf51cbec8e4bfd2faf5acd3c29eb9a945"),
 			[]Leaf{
 				{dh(defaultIndex[2]), []byte("0"), [][]byte{
-					dh("70d6b51a07afec6df56009534ea66b3d582882b682b2984379e1a1f521d2226f"),
+					dh("a5535c120ea1a8aa2918119d1b8123d447c1e0a95b994671f20e563ac472a7b6"),
 				}},
 				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("ac94e5c10744333c8fd6cdf4eb7064d10e269ced005659b4c92380eed0606fad"),
+					dh("34b5001fe4bbe7d1454f7d216c51ccb5016f980d94220015124c2d28396205a4"),
 				}},
 				{dh(AllZeros), nil, [][]byte{
-					dh("568fa9c30d8fe3dbe8d7f4dc112d41581e4583a9dc77e61030f36fd22c83247b"),
-					dh("70d6b51a07afec6df56009534ea66b3d582882b682b2984379e1a1f521d2226f"),
+					dh("f98aa36ec5551cd216db932d2ac1d6069690c6d1189aa4dc9185bf2336410ffa"),
+					dh("a5535c120ea1a8aa2918119d1b8123d447c1e0a95b994671f20e563ac472a7b6"),
 				}},
 			},
 		},

@@ -36,11 +36,12 @@ const (
 )
 
 // NodeValues computes the new values for nodes up the tree.
-func NodeValues(hasher TreeHasher, bindex string, value []byte, nbrValues [][]byte) [][]byte {
+func NodeValues(mapID []byte, hasher TreeHasher, bindex string, value []byte, nbrValues [][]byte) [][]byte {
 	levels := len(bindex) + 1
 	steps := len(bindex)
 	nodeValues := make([][]byte, levels)
-	nodeValues[0] = value
+	index, depth := tree.InvertBitString(bindex)
+	nodeValues[0] = hasher.HashLeaf(mapID, index, depth, value)
 	// assert len(nbrValues) == levels - 1
 	for i := 0; i < steps; i++ {
 		// Is the last node 0 or 1?

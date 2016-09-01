@@ -27,7 +27,7 @@ func TestComputeNodeValues(t *testing.T) {
 	}{
 		{"0100", []byte(""), make([][]byte, 4), []string{"0100", "010", "01", "0", ""}},
 	} {
-		actual := NodeValues(CONIKSHasher, tc.bindex, tc.leafHash, tc.neighbors)
+		actual := NodeValues([]byte("mapID"), CONIKSHasher, tc.bindex, tc.leafHash, tc.neighbors)
 		if got, want := len(actual), len(tc.expected); got != want {
 			t.Errorf("len(%v)=%v, want %v", actual, got, want)
 		}
