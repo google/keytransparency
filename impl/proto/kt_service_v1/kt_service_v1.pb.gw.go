@@ -28,10 +28,6 @@ var _ io.Reader
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
-var (
-	filter_KeyTransparencyService_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"user_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
 func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1.GetEntryRequest
 	var metadata runtime.ServerMetadata
@@ -52,10 +48,6 @@ func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler ru
 
 	if err != nil {
 		return nil, metadata, err
-	}
-
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_GetEntry_0); err != nil {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetEntry(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
