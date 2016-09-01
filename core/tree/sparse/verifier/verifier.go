@@ -98,9 +98,9 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 		// right, otherwise, neighbor is on the left.
 		switch bindex[len(neighbors)-1-i] {
 		case tree.Zero:
-			calculatedRoot = v.hasher.HashChildren(calculatedRoot, neighbor)
+			calculatedRoot = v.hasher.HashInterior(calculatedRoot, neighbor)
 		case tree.One:
-			calculatedRoot = v.hasher.HashChildren(neighbor, calculatedRoot)
+			calculatedRoot = v.hasher.HashInterior(neighbor, calculatedRoot)
 		default:
 			return nil, ErrIndexBit
 		}
