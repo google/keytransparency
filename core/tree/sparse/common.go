@@ -35,7 +35,8 @@ const (
 	IndexLen = HashSize * 8
 )
 
-// NodeValues computes the new values for nodes up the tree.
+// NodeValues computes the new values for leafs up the tree. It does not include
+// the passed node value in the returned list. nbrValues must not be compressed.
 func NodeValues(hasher TreeHasher, bindex string, value []byte, nbrValues [][]byte) [][]byte {
 	levels := len(bindex) + 1
 	steps := len(bindex)
@@ -54,5 +55,5 @@ func NodeValues(hasher TreeHasher, bindex string, value []byte, nbrValues [][]by
 		}
 		nodeValues[i+1] = hasher.HashInterior(left, right)
 	}
-	return nodeValues
+	return nodeValues[1:]
 }
