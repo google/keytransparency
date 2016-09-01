@@ -52,7 +52,7 @@ func NodeValues(hasher TreeHasher, bindex string, value []byte, nbrValues [][]by
 			left = nbrValues[i]
 			right = nodeValues[i]
 		}
-		nodeValues[i+1] = hasher.HashChildren(left, right)
+		nodeValues[i+1] = hasher.HashInterior(left, right)
 	}
 	return nodeValues
 }
