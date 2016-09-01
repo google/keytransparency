@@ -22,6 +22,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/key-transparency/core/keyserver"
@@ -125,9 +126,11 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 }
 
 var marshaler = jsonpb.Marshaler{Indent: "  ", OrigName: true}
+var requestCounter uint64
 
 // jsonLogger logs the request and response protobufs as json objects.
 func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	atomic.AddUint64(&requestCounter, 1)
 	// Print request.
 	pb, ok := req.(proto.Message)
 	if !ok {
@@ -139,7 +142,7 @@ func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 		log.Printf("Failed to marshal %v", pb)
 		return handler(ctx, req)
 	}
-	log.Printf("%v", s)
+	log.Printf("%v>%v", requestCounter, s)
 
 	resp, err = handler(ctx, req)
 
@@ -154,7 +157,7 @@ func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 		log.Printf("Failed to marshal %v", pb)
 		return resp, err
 	}
-	log.Printf("%v", s)
+	log.Printf("%v<%v", requestCounter, s)
 
 	return resp, err
 }
