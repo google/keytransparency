@@ -35,6 +35,8 @@ import (
 	"github.com/google/key-transparency/impl/sql/sqlhist"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	_ "github.com/mattn/go-sqlite3" // Set database engine.
 	"golang.org/x/net/context"
@@ -54,6 +56,7 @@ var (
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 	keyFile       = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile      = flag.String("cert", "testdata/server.pem", "TLS cert file")
+	verbose       = flag.Bool("verbose", false, "Log requests and responses")
 )
 
 func openDB() *sql.DB {
@@ -121,6 +124,41 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
+var marshaler = jsonpb.Marshaler{Indent: "  ", OrigName: true}
+
+// jsonLogger logs the request and response protobufs as json objects.
+func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	// Print request.
+	pb, ok := req.(proto.Message)
+	if !ok {
+		log.Printf("req %t, %v, not a proto.Message", req, req)
+		return handler(ctx, req)
+	}
+	s, err := marshaler.MarshalToString(pb)
+	if err != nil {
+		log.Printf("Failed to marshal %v", pb)
+		return handler(ctx, req)
+	}
+	log.Printf("%v", s)
+
+	resp, err = handler(ctx, req)
+
+	// Print response.
+	pb, ok = resp.(proto.Message)
+	if !ok {
+		log.Printf("req %t, %v, not a proto.Message", req, req)
+		return resp, err
+	}
+	s, err = marshaler.MarshalToString(pb)
+	if err != nil {
+		log.Printf("Failed to marshal %v", pb)
+		return resp, err
+	}
+	log.Printf("%v", s)
+
+	return resp, err
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
@@ -159,7 +197,11 @@ func main() {
 
 	// Create gRPC server.
 	svr := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
+	opts := []grpc.ServerOption{grpc.Creds(creds)}
+	if *verbose {
+		opts = append(opts, grpc.UnaryInterceptor(jsonLogger))
+	}
+	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
 
 	// Create HTTP handlers and gRPC gateway.
