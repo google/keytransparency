@@ -11,4 +11,4 @@ testdata/*.pem
 testdata/*.json
 testdata/*.sqlite3
 testdata/server.*
-
+.key-transparency-scts.dat
