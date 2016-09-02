@@ -22,10 +22,10 @@ func TestComputeNodeValues(t *testing.T) {
 	for _, tc := range []struct {
 		bindex    string
 		leafHash  []byte
-		neighbors [][]byte
+		neighbors []Hash
 		expected  []string
 	}{
-		{"0100", []byte(""), make([][]byte, 4), []string{"0100", "010", "01", "0", ""}},
+		{"0100", []byte(""), make([]Hash, 4), []string{"0100", "010", "01", "0", ""}},
 	} {
 		actual := NodeValues([]byte("mapID"), CONIKSHasher, tc.bindex, tc.leafHash, tc.neighbors)
 		if got, want := len(actual), len(tc.expected); got != want {

@@ -103,7 +103,7 @@ func TestVerifyProof(t *testing.T) {
 				nbrs[256-len(leaf.nbrs)+k] = nbr
 			}
 
-			if err := verifier.VerifyProof(nbrs, leaf.index, leaf.value, tc.root); err != nil {
+			if err := verifier.VerifyProof(nbrs, leaf.index, leaf.value, sparse.FromBytes(tc.root)); err != nil {
 				t.Errorf("VerifyProof(_, %v, _, _)=%v", leaf.index, err)
 			}
 		}
