@@ -24,6 +24,7 @@ package sparse
 
 import (
 	"crypto/sha512"
+	"fmt"
 
 	"github.com/google/key-transparency/core/tree"
 )
@@ -35,17 +36,22 @@ const (
 	IndexLen = HashSize * 8
 )
 
-// NodeValues computes the new values for nodes up the tree.
-func NodeValues(mapID []byte, hasher TreeHasher, bindex string, value []byte, nbrValues [][]byte) [][]byte {
+// Hash represents the output of the hash function used in the sparse tree.
+type Hash [HashSize]byte
+
+// NodeValues computes the new values for leafs up the tree. nbrValues must not
+// be compressed. value is the actual value of the leaf. NodeValues returns the
+// leaf hash as part of the returned list.
+func NodeValues(mapID []byte, hasher TreeHasher, bindex string, value []byte, nbrValues []Hash) []Hash {
 	levels := len(bindex) + 1
 	steps := len(bindex)
-	nodeValues := make([][]byte, levels)
+	nodeValues := make([]Hash, levels)
 	index, depth := tree.InvertBitString(bindex)
 	nodeValues[0] = hasher.HashLeaf(mapID, index, depth, value)
 	// assert len(nbrValues) == levels - 1
 	for i := 0; i < steps; i++ {
 		// Is the last node 0 or 1?
-		var left, right []byte
+		var left, right Hash
 		if bindex[steps-i-1] == tree.Zero {
 			left = nodeValues[i]
 			right = nbrValues[i]
@@ -56,4 +62,19 @@ func NodeValues(mapID []byte, hasher TreeHasher, bindex string, value []byte, nb
 		nodeValues[i+1] = hasher.HashInterior(left, right)
 	}
 	return nodeValues
+}
+
+// FromBytes initializes a Hash object from a byte slice.
+func FromBytes(b []byte) Hash {
+	if len(b) != HashSize {
+		panic(fmt.Sprintf("hash len != %v", HashSize))
+	}
+	var h Hash
+	copy(h[:], b)
+	return h
+}
+
+// Bytes returns a byte slice from a Hash object.
+func (h Hash) Bytes() []byte {
+	return h[:]
 }

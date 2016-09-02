@@ -15,15 +15,16 @@
 package sparse
 
 import (
+	"bytes"
 	"crypto/sha512"
 	"encoding/binary"
 )
 
 // TreeHasher provides hash functions for tree implementations.
 type TreeHasher interface {
-	HashLeaf(mapID, index []byte, depth int, dataHash []byte) []byte
-	HashInterior(left, right []byte) []byte
-	HashEmpty(mapID, index []byte, depth int) []byte
+	HashLeaf(mapID, index []byte, depth int, dataHash []byte) Hash
+	HashInterior(left, right Hash) Hash
+	HashEmpty(mapID, index []byte, depth int) Hash
 }
 
 // CONIKSHasher implements the tree hashes described in CONIKS
@@ -35,48 +36,48 @@ type coniks struct{}
 var (
 	leafIdentifier  = []byte("L")
 	emptyIdentifier = []byte("E")
-	newHash         = sha512.New512_256
+	hash            = sha512.Sum512_256
 )
 
 // HashLeaf calculate the merkle tree node value:
 // H(Identifier || mapID || depth || index || dataHash)
-func (coniks) HashLeaf(mapID, index []byte, depth int, dataHash []byte) []byte {
+func (coniks) HashLeaf(mapID, index []byte, depth int, dataHash []byte) Hash {
 	bmapIDLen := make([]byte, 4)
 	binary.BigEndian.PutUint32(bmapIDLen, uint32(len(mapID)))
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
 
-	h := newHash()
-	h.Write(leafIdentifier)
-	h.Write(bmapIDLen)
-	h.Write(mapID)
-	h.Write(index)
-	h.Write(bdepth)
-	h.Write(dataHash)
-	return h.Sum(nil)
+	var b bytes.Buffer
+	b.Write(leafIdentifier)
+	b.Write(bmapIDLen)
+	b.Write(mapID)
+	b.Write(index)
+	b.Write(bdepth)
+	b.Write(dataHash)
+	return Hash(hash(b.Bytes()))
 }
 
 // HashInterior calculates an interior node's value: H(left || right)
-func (coniks) HashInterior(left, right []byte) []byte {
-	h := newHash()
-	h.Write(left)
-	h.Write(right)
-	return h.Sum(nil)
+func (coniks) HashInterior(left, right Hash) Hash {
+	var b bytes.Buffer
+	b.Write(left.Bytes())
+	b.Write(right.Bytes())
+	return Hash(hash(b.Bytes()))
 }
 
 // HashEmpty computes the value of an empty leaf:
 // H(EmptyIdentifier || mapID || depth || index)
-func (coniks) HashEmpty(mapID, index []byte, depth int) []byte {
+func (coniks) HashEmpty(mapID, index []byte, depth int) Hash {
 	bmapIDLen := make([]byte, 4)
 	binary.BigEndian.PutUint32(bmapIDLen, uint32(len(mapID)))
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
 
-	h := newHash()
-	h.Write(emptyIdentifier)
-	h.Write(bmapIDLen)
-	h.Write(mapID)
-	h.Write(index)
-	h.Write(bdepth)
-	return h.Sum(nil)
+	var b bytes.Buffer
+	b.Write(emptyIdentifier)
+	b.Write(bmapIDLen)
+	b.Write(mapID)
+	b.Write(index)
+	b.Write(bdepth)
+	return Hash(hash(b.Bytes()))
 }

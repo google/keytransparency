@@ -49,7 +49,7 @@ func New(mapID []byte, hasher sparse.TreeHasher) *Verifier {
 
 // VerifyProof verifies a tree proof of a given leaf at a given index based on
 // the provided root and neighbor list
-func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf, root []byte) error {
+func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf []byte, root sparse.Hash) error {
 	if len(neighbors) > sparse.IndexLen {
 		return ErrNeighborsLen
 	}
@@ -61,7 +61,7 @@ func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf, root []byte) err
 	}
 
 	// Verify that calculated and provided roots match.
-	if !bytes.Equal(calculatedRoot, root) {
+	if !bytes.Equal(calculatedRoot.Bytes(), root.Bytes()) {
 		return ErrInvalidProof
 	}
 
@@ -70,8 +70,8 @@ func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf, root []byte) err
 
 // calculateRoot calculates the root of the tree branch defined by leaf and
 // neighbors.
-func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte) ([]byte, error) {
-	var leafHash []byte
+func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte) (sparse.Hash, error) {
+	var leafHash sparse.Hash
 
 	// If the leaf is empty, it is a proof of absence.
 	if len(leaf) == 0 {
@@ -90,12 +90,16 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 	// calculatedRoot holds the calculated root so far, starting from leaf.
 	calculatedRoot := leafHash
 	for i, neighbor := range neighbors {
+		// TODO convert trimNeighbors to return Hash values.
+		var neighborHash sparse.Hash
 		// Get the neighbor bit string index.
 		neighborBIndex := tree.NeighborString(bindex[:len(neighbors)-i])
 		// If the neighbor is empty, set it to HashEmpty output.
 		if len(neighbor) == 0 {
 			nIndex, nDepth := tree.InvertBitString(neighborBIndex)
-			neighbor = v.hasher.HashEmpty(v.mapID, nIndex, nDepth)
+			neighborHash = v.hasher.HashEmpty(v.mapID, nIndex, nDepth)
+		} else {
+			neighborHash = sparse.FromBytes(neighbor)
 		}
 
 		// The leaf index is processed starting from len(neighbors)-1
@@ -103,11 +107,11 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 		// right, otherwise, neighbor is on the left.
 		switch bindex[len(neighbors)-1-i] {
 		case tree.Zero:
-			calculatedRoot = v.hasher.HashInterior(calculatedRoot, neighbor)
+			calculatedRoot = v.hasher.HashInterior(calculatedRoot, neighborHash)
 		case tree.One:
-			calculatedRoot = v.hasher.HashInterior(neighbor, calculatedRoot)
+			calculatedRoot = v.hasher.HashInterior(neighborHash, calculatedRoot)
 		default:
-			return nil, ErrIndexBit
+			return sparse.Hash{}, ErrIndexBit
 		}
 	}
 	return calculatedRoot, nil

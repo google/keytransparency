@@ -23,6 +23,7 @@ import (
 	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/commitments"
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/tree/sparse"
 	tv "github.com/google/key-transparency/core/tree/sparse/verifier"
 	"github.com/google/key-transparency/core/vrf"
 
@@ -97,7 +98,7 @@ func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryRespons
 		return ErrNilProof
 	}
 
-	if err := v.tree.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, in.GetSmh().MapHead.Root); err != nil {
+	if err := v.tree.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, sparse.FromBytes(in.GetSmh().MapHead.Root)); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return err
 	}

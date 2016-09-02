@@ -18,7 +18,6 @@
 package sqlhist
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"database/sql"
 	"errors"
@@ -88,7 +87,7 @@ func New(db *sql.DB, mapID string) (*Map, error) {
 	}
 	index, depth := tree.InvertBitString("")
 	nodeValue := hasher.HashEmpty(m.mapID, index, depth)
-	if err := m.setRootAt(nil, nodeValue[:], -1); err != nil {
+	if err := m.setRootAt(nil, nodeValue, -1); err != nil {
 		return nil, err
 	}
 	epoch, err := m.readEpoch()
@@ -166,7 +165,7 @@ func (m *Map) Commit() (int64, error) {
 		if err != nil {
 			return -1, fmt.Errorf("No root for epoch %d: %v", m.epoch, err)
 		}
-		if err := m.setRootAt(nil, root, m.epoch+1); err != nil {
+		if err := m.setRootAt(nil, sparse.FromBytes(root), m.epoch+1); err != nil {
 			return -1, fmt.Errorf("Failed to set root: %v", err)
 		}
 	}
@@ -221,11 +220,11 @@ func (m *Map) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]b
 		}
 		return nil, err
 	}
-	nbrs = compressNeighbors(m.mapID, nbrs, index, maxDepth)
-	return nbrs, tx.Commit()
+	cNbrs := compressNeighbors(m.mapID, nbrs, index, maxDepth)
+	return cNbrs, tx.Commit()
 }
 
-func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][]byte, error) {
+func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([]sparse.Hash, error) {
 	bindex := tree.BitString(index)[:depth]
 	neighborBIndexes := tree.Neighbors(bindex)
 	neighborIDs := m.nodeIDs(neighborBIndexes)
@@ -240,9 +239,10 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 	defer readStmt.Close()
 
 	// Get neighbors.
-	nbrValues := make([][]byte, len(neighborIDs))
+	nbrValues := make([]sparse.Hash, len(neighborIDs))
 	for i, nodeID := range neighborIDs {
-		if err := readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&nbrValues[i]); err == sql.ErrNoRows {
+		var tmp []byte
+		if err := readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&tmp); err == sql.ErrNoRows {
 			nIndex, nDepth := tree.InvertBitString(neighborBIndexes[i])
 			nbrValues[i] = hasher.HashEmpty(m.mapID, nIndex, nDepth)
 		} else if err != nil {
@@ -250,21 +250,23 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([][
 				err = fmt.Errorf("QueryRow failed: %v, and Rollback failed: %v", err, rbErr)
 			}
 			return nil, err
+		} else {
+			nbrValues[i] = sparse.FromBytes(tmp)
 		}
 	}
 
 	return nbrValues, nil
 }
 
-func compressNeighbors(mapID []byte, neighbors [][]byte, index []byte, depth int) [][]byte {
+func compressNeighbors(mapID []byte, neighbors []sparse.Hash, index []byte, depth int) [][]byte {
 	bindex := tree.BitString(index)[:depth]
 	neighborBIndexes := tree.Neighbors(bindex)
 	compressed := make([][]byte, len(neighbors))
 	for i, v := range neighbors {
 		// TODO: convert values to arrays rather than slices for comparison.
 		nIndex, nDepth := tree.InvertBitString(neighborBIndexes[i])
-		if !bytes.Equal(v, hasher.HashEmpty(mapID, nIndex, nDepth)) {
-			compressed[i] = v
+		if v != hasher.HashEmpty(mapID, nIndex, nDepth) {
+			compressed[i] = v.Bytes()
 		}
 	}
 	return compressed
@@ -312,7 +314,7 @@ func (m *Map) setLeafAt(ctx context.Context, index []byte, depth int, value []by
 
 	// Save new nodes.
 	for i, nodeValue := range nodeValues {
-		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue)
+		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue.Bytes())
 		if err != nil {
 			return err
 		}
@@ -321,13 +323,13 @@ func (m *Map) setLeafAt(ctx context.Context, index []byte, depth int, value []by
 }
 
 // setRootAt sets root node values directly at epoch.
-func (m *Map) setRootAt(ctx context.Context, value []byte, epoch int64) error {
+func (m *Map) setRootAt(ctx context.Context, value sparse.Hash, epoch int64) error {
 	writeStmt, err := m.db.Prepare(setNodeExpr)
 	if err != nil {
 		return fmt.Errorf("setRootAt(): %v", err)
 	}
 	defer writeStmt.Close()
-	_, err = writeStmt.Exec(m.mapID, m.nodeID(""), epoch, value[:])
+	_, err = writeStmt.Exec(m.mapID, m.nodeID(""), epoch, value.Bytes())
 	if err != nil {
 		return fmt.Errorf("setRootAt(): %v", err)
 	}
