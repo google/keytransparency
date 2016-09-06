@@ -2,246 +2,37 @@
 
 A transparency key server API for End to End projects.
 
-## Service: keytransparency.v1
+## KeyTransparencyService
 
-## [KeyTransparencyService](#KeyTransparencyService)
+The KeyTransparencyService API represents a directory of public keys. The API
+defines the following resource model:
+-   The API has a collection of Entry resources named `/users/*`.
+-   Entries have a collection of historical Entry resources named `/users/*/history`.
 
-[GetEntry](#KeyTransparencyService.GetEntry) GetEntry
-returns a user's entry in the Merkle Tree. [HkpLookup]
-(#KeyTransparencyService.HkpLookup) HkpLookup implements a
-SKS server lookup functions. [ListEntryHistory]
-(#KeyTransparencyService.ListEntryHistory) ListEntryHistory
-returns a list of historic GetEntry values. [UpdateEntry]
-(#KeyTransparencyService.UpdateEntry) UpdateEntry submits a
-SignedEntryUpdate.
+The API has the following methods:
+* [GetEntry](#KeyTransparencyService.GetEntry) returns a user's entry in the Merkle Tree.
+* [UpdateEntry](#KeyTransparencyService.UpdateEntry) submits a SignedEntryUpdate.
+* [ListEntryHistory](#KeyTransparencyService.ListEntryHistory) returns a list of historic GetEntry values.
+* [HkpLookup](#KeyTransparencyService.HkpLookup) implements a SKS server lookup functions.
 
 # Reference
 
-<a name="rpc_ctmap"/>
-
-## Package ctmap
-
-<a name="rpc_ctmap_index"/>
+## Package keytransparency.v1
 
 ### Index
 
-*   [DigitallySigned](#ctmap.DigitallySigned) (message)
-*   [DigitallySigned.HashAlgorith](#ctmap.DigitallySigned.HashAlgorithm) (enum)
-*   [DigitallySigned.SignatureAlgorithm]
-    (#ctmap.DigitallySigned.SignatureAlgorithm) (enum)
-*   [GetLeafResponse](#ctmap.GetLeafResponse) (message)
-*   [MapHead](#ctmap.MapHead) (message)
-*   [SignedMapHead](#ctmap.SignedMapHead) (message)
-
-<a name="ctmap.DigitallySigned"/>
-
-### DigitallySigned
-
-DigitallySigned defines a way to sign digital objects.
-
-<table>
- <tr>
-  <th>Field</th>
-  <th>Type</th>
-  <th>Description</th>
- </tr>
-<a name="ctmap.DigitallySigned.hash_algorithm"/>
- <tr>
-  <td><code>hash_algorithm</code></td>
-  <td><a href="#ctmap.DigitallySigned.HashAlgorithm">HashAlgorithm</a></td>
-  <td></td>
- </tr>
-<a name="ctmap.DigitallySigned.sig_algorithm"/>
- <tr>
-  <td><code>sig_algorithm</code></td>
-  <td><a href="#ctmap.DigitallySigned.SignatureAlgorithm">SignatureAlgorithm</a></td>
-  <td></td>
- </tr>
-<a name="ctmap.DigitallySigned.signature"/>
- <tr>
-  <td><code>signature</code></td>
-  <td>bytes</td>
-  <td></td>
- </tr>
-</table>
-
-<a name="ctmap.DigitallySigned.HashAlgorithm"/>
-
-### HashAlgorithm
-
-HashAlgorithm defines the approved ways to hash the object.
-
-<table>
- <tr>
-  <th>Value</th>
-  <th>Description</th>
- </tr>
-<a name="ctmap.DigitallySigned.HashAlgorithm.NONE"/>
- <tr>
-  <td>NONE</td>
-  <td></td>
- </tr>
-<a name="ctmap.DigitallySigned.HashAlgorithm.SHA256"/>
- <tr>
-  <td>SHA256</td>
-  <td></td>
- </tr>
-<a name="ctmap.DigitallySigned.HashAlgorithm.SHA512"/>
- <tr>
-  <td>SHA512</td>
-  <td></td>
- </tr>
-</table>
-
-<a name="ctmap.DigitallySigned.SignatureAlgorithm"/>
-
-### SignatureAlgorithm
-
-SignatureAlgorithm defines the way to sign the object.
-
-<table>
- <tr>
-  <th>Value</th>
-  <th>Description</th>
- </tr>
-<a name="ctmap.DigitallySigned.SignatureAlgorithm.ANONYMOUS"/>
- <tr>
-  <td>ANONYMOUS</td>
-  <td></td>
- </tr>
-<a name="ctmap.DigitallySigned.SignatureAlgorithm.ECDSA"/>
- <tr>
-  <td>ECDSA</td>
-  <td></td>
- </tr>
-</table>
-
-<a name="ctmap.GetLeafResponse"/>
-
-### GetLeafResponse
-
-GetLeafResponse for a verifiable map leaf.
-
-<table>
- <tr>
-  <th>Field</th>
-  <th>Type</th>
-  <th>Description</th>
- </tr>
-<a name="ctmap.GetLeafResponse.leaf_data"/>
- <tr>
-  <td><code>leaf_data</code></td>
-  <td>bytes</td>
-  <td></td>
- </tr>
-<a name="ctmap.GetLeafResponse.neighbors"/>
- <tr>
-  <td><code>neighbors[]</code></td>
-  <td>repeated bytes</td>
-  <td>neighbors is a list of all the adjacent nodes along the path from the bottommost node to the head.</td>
- </tr>
-</table>
-
-<a name="ctmap.MapHead"/>
-
-### MapHead
-
-MapHead is the head node of the Merkle Tree as well as additional metadata for
-the tree.
-
-<table>
- <tr>
-  <th>Field</th>
-  <th>Type</th>
-  <th>Description</th>
- </tr>
-<a name="ctmap.MapHead.realm"/>
- <tr>
-  <td><code>realm</code></td>
-  <td>string</td>
-  <td>realm is the domain identifier for the transparent map.</td>
- </tr>
-<a name="ctmap.MapHead.epoch"/>
- <tr>
-  <td><code>epoch</code></td>
-  <td>int64</td>
-  <td>epoch number</td>
- </tr>
-<a name="ctmap.MapHead.root"/>
- <tr>
-  <td><code>root</code></td>
-  <td>bytes</td>
-  <td>root is the value of the root node of the merkle tree.</td>
- </tr>
-<a name="ctmap.MapHead.issue_time"/>
- <tr>
-  <td><code>issue_time</code></td>
-  <td><a href="#google.protobuf.Timestamp">Timestamp</a></td>
-  <td>issue_time is the time when this epoch was released. Monotonically increasing.</td>
- </tr>
-</table>
-
-<a name="ctmap.SignedMapHead"/>
-
-### SignedMapHead
-
-SignedMapHead represents a signed state of the Merkel tree.
-
-<table>
- <tr>
-  <th>Field</th>
-  <th>Type</th>
-  <th>Description</th>
- </tr>
-<a name="ctmap.SignedMapHead.map_head"/>
- <tr>
-  <td><code>map_head</code></td>
-  <td><a href="#ctmap.MapHead">MapHead</a></td>
-  <td></td>
- </tr>
-<a name="ctmap.SignedMapHead.signatures"/>
- <tr>
-  <td><code>signatures</code></td>
-  <td>repeated map&lt;string, <a href="#ctmap.DigitallySigned">DigitallySigned</a>&gt;</td>
-  <td>Signature of head, using the signature type of the key. keyed by the first 64 bits bytes of the hash of the key.</td>
- </tr>
-</table>
-
-<a name="rpc_/>
-
-## Package key_transparency.v1
-
-<a name="rpc_index"/>
-
-### Index
-
-*   [KeyTransparencyService](#KeyTransparencyService)
-    (interface)
+*   [KeyTransparencyService](#KeyTransparencyService) (interface)
 *   [Committed](#Committed) (message)
 *   [EntryUpdate](#EntryUpdate) (message)
 *   [GetEntryRequest](#GetEntryRequest) (message)
 *   [GetEntryResponse](#GetEntryResponse) (message)
 *   [HkpLookupRequest](#HkpLookupRequest) (message)
 *   [HttpResponse](#HttpResponse) (message)
-*   [ListEntryHistoryRequest](#ListEntryHistoryRequest)
-    (message)
-*   [ListEntryHistoryResponse](#ListEntryHistoryResponse)
-    (message)
+*   [ListEntryHistoryRequest](#ListEntryHistoryRequest) (message)
+*   [ListEntryHistoryResponse](#ListEntryHistoryResponse) (message)
 *   [SignedKV](#SignedKV) (message)
 *   [UpdateEntryRequest](#UpdateEntryRequest) (message)
 *   [UpdateEntryResponse](#UpdateEntryResponse) (message)
-
-<a name="KeyTransparencyService"/>
-
-### KeyTransparencyService
-
-The KeyTransparencyService API represents a directory of public keys. The API
-defines the following resource model:
-
--   The API has a collection of Entry resources named `/user/*`.
-
--   Entries have a collection of historical Entry resources named
-    `/users/*/history`.
 
 <a name="KeyTransparencyService.GetEntry"/>
 
@@ -265,8 +56,7 @@ implements a SKS server lookup functions.
 
 #### ListEntryHistory
 
-<code> rpc ListEntryHistory([ListEntryHistoryRequest]
-(#ListEntryHistoryRequest)) returns
+<code> rpc ListEntryHistory([ListEntryHistoryRequest](#ListEntryHistoryRequest)) returns
 ([ListEntryHistoryResponse](#ListEntryHistoryResponse))
 </code> ListEntryHistory returns a list of historic GetEntry values.
 
@@ -277,8 +67,7 @@ account over time.
 
 #### UpdateEntry
 
-<code> rpc UpdateEntry([UpdateEntryRequest]
-(#UpdateEntryRequest)) returns ([UpdateEntryResponse]
+<code> rpc UpdateEntry([UpdateEntryRequest](#UpdateEntryRequest)) returns ([UpdateEntryResponse]
 (#UpdateEntryResponse)) </code> UpdateEntry submits a
 SignedEntryUpdate.
 
@@ -289,8 +78,8 @@ retry until this function returns a proof.
 
 ### Committed
 
-Committed represents the data comitted to in a cryptographic commitment.
-commitment = HMAC_SHA512_256(key, data)
+Committed represents the data committed to in a cryptographic commitment.
+`commitment = HMAC_SHA512_256(key, data)`
 
 <table>
  <tr>
@@ -367,8 +156,6 @@ Get request for a user object.
 ### GetEntryResponse
 
 GetEntryResponse
-
-Privacy layer hides user_id and profile data until requested.
 
 <table>
  <tr>
@@ -621,4 +408,178 @@ Merkel Tree.
  </tr>
 </table>
 
-<!-- mdlint on -->
+## Package ctmap
+
+CT Map represents a certificate transparency style [verifiable map](https://github.com/google/trillian/blob/master/docs/VerifiableDataStructures.pdf).
+
+### Index
+
+*   [DigitallySigned](#ctmap.DigitallySigned) (message)
+*   [DigitallySigned.HashAlgorith](#ctmap.DigitallySigned.HashAlgorithm) (enum)
+*   [DigitallySigned.SignatureAlgorithm](#ctmap.DigitallySigned.SignatureAlgorithm) (enum)
+*   [GetLeafResponse](#ctmap.GetLeafResponse) (message)
+*   [MapHead](#ctmap.MapHead) (message)
+*   [SignedMapHead](#ctmap.SignedMapHead) (message)
+
+<a name="ctmap.DigitallySigned"/>
+
+### DigitallySigned
+
+DigitallySigned defines a way to sign digital objects.
+
+<table>
+ <tr>
+  <th>Field</th>
+  <th>Type</th>
+ </tr>
+<a name="ctmap.DigitallySigned.hash_algorithm"/>
+ <tr>
+  <td><code>hash_algorithm</code></td>
+  <td><a href="#ctmap.DigitallySigned.HashAlgorithm">HashAlgorithm</a></td>
+ </tr>
+<a name="ctmap.DigitallySigned.sig_algorithm"/>
+ <tr>
+  <td><code>sig_algorithm</code></td>
+  <td><a href="#ctmap.DigitallySigned.SignatureAlgorithm">SignatureAlgorithm</a></td>
+ </tr>
+<a name="ctmap.DigitallySigned.signature"/>
+ <tr>
+  <td><code>signature</code></td>
+  <td>bytes</td>
+ </tr>
+</table>
+
+<a name="ctmap.DigitallySigned.HashAlgorithm"/>
+
+### HashAlgorithm
+
+HashAlgorithm defines the approved ways to hash the object.
+
+<table>
+ <tr>
+  <th>Value</th>
+ </tr>
+<a name="ctmap.DigitallySigned.HashAlgorithm.NONE"/>
+ <tr>
+  <td>NONE</td>
+ </tr>
+<a name="ctmap.DigitallySigned.HashAlgorithm.SHA256"/>
+ <tr>
+  <td>SHA256</td>
+ </tr>
+<a name="ctmap.DigitallySigned.HashAlgorithm.SHA512"/>
+ <tr>
+  <td>SHA512</td>
+ </tr>
+</table>
+
+<a name="ctmap.DigitallySigned.SignatureAlgorithm"/>
+
+### SignatureAlgorithm
+
+SignatureAlgorithm defines the way to sign the object.
+
+<table>
+ <tr>
+  <th>Value</th>
+ </tr>
+<a name="ctmap.DigitallySigned.SignatureAlgorithm.ANONYMOUS"/>
+ <tr>
+  <td>ANONYMOUS</td>
+ </tr>
+<a name="ctmap.DigitallySigned.SignatureAlgorithm.ECDSA"/>
+ <tr>
+  <td>ECDSA</td>
+ </tr>
+</table>
+
+<a name="ctmap.GetLeafResponse"/>
+
+### GetLeafResponse
+
+GetLeafResponse for a verifiable map leaf.
+
+<table>
+ <tr>
+  <th>Field</th>
+  <th>Type</th>
+  <th>Description</th>
+ </tr>
+<a name="ctmap.GetLeafResponse.leaf_data"/>
+ <tr>
+  <td><code>leaf_data</code></td>
+  <td>bytes</td>
+  <td></td>
+ </tr>
+<a name="ctmap.GetLeafResponse.neighbors"/>
+ <tr>
+  <td><code>neighbors[]</code></td>
+  <td>repeated bytes</td>
+  <td>neighbors is a list of all the adjacent nodes along the path from the bottommost node to the head.</td>
+ </tr>
+</table>
+
+<a name="ctmap.MapHead"/>
+
+### MapHead
+
+MapHead is the head node of the Merkle Tree as well as additional metadata for
+the tree.
+
+<table>
+ <tr>
+  <th>Field</th>
+  <th>Type</th>
+  <th>Description</th>
+ </tr>
+<a name="ctmap.MapHead.realm"/>
+ <tr>
+  <td><code>realm</code></td>
+  <td>string</td>
+  <td>realm is the domain identifier for the transparent map.</td>
+ </tr>
+<a name="ctmap.MapHead.epoch"/>
+ <tr>
+  <td><code>epoch</code></td>
+  <td>int64</td>
+  <td>epoch number</td>
+ </tr>
+<a name="ctmap.MapHead.root"/>
+ <tr>
+  <td><code>root</code></td>
+  <td>bytes</td>
+  <td>root is the value of the root node of the merkle tree.</td>
+ </tr>
+<a name="ctmap.MapHead.issue_time"/>
+ <tr>
+  <td><code>issue_time</code></td>
+  <td><a href="#google.protobuf.Timestamp">Timestamp</a></td>
+  <td>issue_time is the time when this epoch was released. Monotonically increasing.</td>
+ </tr>
+</table>
+
+<a name="ctmap.SignedMapHead"/>
+
+### SignedMapHead
+
+SignedMapHead represents a signed state of the Merkel tree.
+
+<table>
+ <tr>
+  <th>Field</th>
+  <th>Type</th>
+  <th>Description</th>
+ </tr>
+<a name="ctmap.SignedMapHead.map_head"/>
+ <tr>
+  <td><code>map_head</code></td>
+  <td><a href="#ctmap.MapHead">MapHead</a></td>
+  <td></td>
+ </tr>
+<a name="ctmap.SignedMapHead.signatures"/>
+ <tr>
+  <td><code>signatures</code></td>
+  <td>repeated map&lt;string, <a href="#ctmap.DigitallySigned">DigitallySigned</a>&gt;</td>
+  <td>Signature of head, using the signature type of the key. keyed by the first 64 bits bytes of the hash of the key.</td>
+ </tr>
+</table>
