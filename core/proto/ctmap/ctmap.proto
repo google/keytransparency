@@ -17,15 +17,6 @@ package ctmap;
 
 import "google/protobuf/timestamp.proto";
 
-// The VerifiableMapService API 
-service VerifiableMapService {
-  // GetLeaf retrieves the value stored at a particular index.
-  rpc GetLeaf(GetLeafRequest) returns (GetLeafResponse);
-  // UpdateLeaf submits a change to the value at index. Clients retry until
-  // change is visble in GetLeafResponse.
-  rpc UpdateLeaf(UpdateLeafRequest) returns (GetLeafResponse);
-}
-
 //
 // Data types
 //
