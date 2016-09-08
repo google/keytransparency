@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package keytransparency.v1;
+package keytransparency.v1.types;
 
 import "github.com/google/key-transparency/core/proto/ctmap/ctmap.proto";
 

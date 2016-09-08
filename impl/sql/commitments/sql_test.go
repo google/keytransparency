@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	_ "github.com/mattn/go-sqlite3"
 
-	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 func TestWriteRead(t *testing.T) {

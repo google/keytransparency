@@ -14,9 +14,9 @@
 
 syntax = "proto3";
 
-package keytransparency.v1;
+package keytransparency.v1.service;
 
-import "github.com/google/key-transparency/core/proto/kt_types_v1/kt_types_v1.proto";
+import "github.com/google/key-transparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
 import "google/api/annotations.proto";
 
 // The KeyTransparencyService API represents a directory of public keys.
@@ -31,19 +31,19 @@ import "google/api/annotations.proto";
 service KeyTransparencyService {
   // GetEntry returns a user's entry in the Merkle Tree. Entries contain
   // signed commitments to a profile, which is also returned.
-  rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
+  rpc GetEntry(keytransparency.v1.types.GetEntryRequest) returns (keytransparency.v1.types.GetEntryResponse) {
     option (google.api.http) = { get: "/v1/users/{user_id}" };
   }
 
   // ListEntryHistory returns a list of GetEntryRespons covering several epochs.
-  rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
+  rpc ListEntryHistory(keytransparency.v1.types.ListEntryHistoryRequest) returns (keytransparency.v1.types.ListEntryHistoryResponse) {
     option (google.api.http) = { get: "/v1/users/{user_id}/history" };
   }
 
   // UpdateEntry submits a EntryUpdate.  Returns empty until this update has been
   // included in an epoch.  Clients must retry until this function returns a
   // proof.
-  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {
+  rpc UpdateEntry(keytransparency.v1.types.UpdateEntryRequest) returns (keytransparency.v1.types.UpdateEntryResponse) {
     option (google.api.http) = {
       put: "/v1/users/{user_id}"
       body: "entry_update"
@@ -52,7 +52,7 @@ service KeyTransparencyService {
 
   // HkpLookup implements an HKP lookup for users to fetch their (or other's)
   // profiles.
-  rpc HkpLookup(HkpLookupRequest) returns (HttpResponse){
+  rpc HkpLookup(keytransparency.v1.types.HkpLookupRequest) returns (keytransparency.v1.types.HttpResponse){
     option (google.api.http) = { get: "/v1/hkp/lookup" };
   }
 }

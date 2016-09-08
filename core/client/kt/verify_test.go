@@ -22,7 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	ctmap "github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 var (

@@ -38,7 +38,7 @@ import (
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"google.golang.org/grpc"
 
-	pb "github.com/google/key-transparency/impl/proto/kt_service_v1"
+	pb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
 )
 
 const (

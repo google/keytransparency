@@ -39,8 +39,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
-	spb "github.com/google/key-transparency/impl/proto/kt_service_v1"
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
 )
 
 const (

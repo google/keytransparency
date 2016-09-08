@@ -26,7 +26,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 var (
