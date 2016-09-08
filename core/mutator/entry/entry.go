@@ -24,7 +24,7 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/key-transparency/core/proto/kt_types_v1"
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 // Entry defines mutations to simply replace the current map value with the
