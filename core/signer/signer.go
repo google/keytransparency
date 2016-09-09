@@ -133,7 +133,7 @@ func (s *Signer) processMutation(index, mutation []byte) error {
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch() error {
 	ctx := context.Background()
-	epoch, err := s.tree.Commit()
+	epoch, err := s.tree.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("Commit err: %v", err)
 	}

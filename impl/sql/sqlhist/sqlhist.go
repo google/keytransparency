@@ -130,7 +130,7 @@ type leafRow struct {
 
 // Commit takes all the Queued values since the last Commmit() and writes them.
 // Commit is NOT multi-process safe. It should only be called from the sequencer.
-func (m *Map) Commit() (int64, error) {
+func (m *Map) Commit(ctx context.Context) (int64, error) {
 	// Get the list of pending leafs
 	stmt, err := m.db.Prepare(pendingLeafsExpr)
 	if err != nil {

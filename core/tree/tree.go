@@ -25,7 +25,7 @@ type SparseHist interface {
 	QueueLeaf(ctx context.Context, index, leaf []byte) error
 	// Commit takes all the Queued values since the last Commmit() and writes them.
 	// Commit is NOT multi-process safe. It should only be called from the sequencer.
-	Commit() (epoch int64, err error)
+	Commit(ctx context.Context) (epoch int64, err error)
 	// ReadRootAt returns the root value at epoch.
 	ReadRootAt(ctx context.Context, epoch int64) ([]byte, error)
 	// ReadLeafAt returns the leaf value at epoch.

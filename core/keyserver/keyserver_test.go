@@ -189,7 +189,7 @@ func (*fakeSparseHist) QueueLeaf(ctx context.Context, index, leaf []byte) error 
 	return nil
 }
 
-func (*fakeSparseHist) Commit() (epoch int64, err error) {
+func (*fakeSparseHist) Commit(ctx context.Context) (epoch int64, err error) {
 	return 0, nil
 }
 
