@@ -52,7 +52,7 @@ type Signer struct {
 	realm     string
 	queue     queue.Queuer
 	mutator   mutator.Mutator
-	tree      tree.SparseHist
+	tree      tree.Sparse
 	mutations appender.Appender
 	sths      appender.Appender
 	signer    *signatures.Signer
@@ -60,7 +60,7 @@ type Signer struct {
 }
 
 // New creates a new instance of the signer.
-func New(realm string, queue queue.Queuer, tree tree.SparseHist,
+func New(realm string, queue queue.Queuer, tree tree.Sparse,
 	mutator mutator.Mutator, sths, mutations appender.Appender,
 	signer *signatures.Signer) *Signer {
 	return &Signer{

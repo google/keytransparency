@@ -19,8 +19,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// SparseHist is a temporal sparse merkle tree.
-type SparseHist interface {
+// Sparse is a temporal sparse merkle tree.
+type Sparse interface {
 	// QueueLeaf queues a leaf to be written on the next Commit().
 	QueueLeaf(ctx context.Context, index, leaf []byte) error
 	// Commit takes all the Queued values since the last Commmit() and writes them.
