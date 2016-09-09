@@ -108,7 +108,7 @@ func TestEpochNumAdvance(t *testing.T) {
 				t.Errorf("QueueLeaf(%v, %v): %v", tc.index, tc.leaf, err)
 			}
 		}
-		if got, err := tree.Commit(); err != nil || got != tc.epoch {
+		if got, err := tree.Commit(ctx); err != nil || got != tc.epoch {
 			t.Errorf("Commit(): %v, %v, want %v", got, err, tc.epoch)
 		}
 		if got, _ := tree.readEpoch(); got != tc.epoch {
@@ -138,7 +138,7 @@ func TestQueueCommitRead(t *testing.T) {
 		if err := m.QueueLeaf(ctx, index, data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", index, data, err)
 		}
-		epoch, err := m.Commit()
+		epoch, err := m.Commit(ctx)
 		if err != nil {
 			t.Errorf("Commit()=[_, %v], want [_, nil]", err)
 		}
@@ -206,7 +206,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 		if err := m.QueueLeaf(ctx, tc.index, data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", tc.index, data, err)
 		}
-		if got, err := m.Commit(); err != nil || got != tc.epoch {
+		if got, err := m.Commit(ctx); err != nil || got != tc.epoch {
 			t.Errorf("Commit()=%v, %v, want %v, nil", got, err, tc.epoch)
 		}
 
@@ -250,7 +250,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 			if err := m.QueueLeaf(ctx, leaf.index, []byte(leaf.data)); err != nil {
 				t.Errorf("WriteLeaf(%v, %v)=%v", leaf.index, leaf.data, err)
 			}
-			if _, err := m.Commit(); err != nil {
+			if _, err := m.Commit(ctx); err != nil {
 				t.Errorf("Commit()= %v, want nil", err)
 			}
 		}
@@ -332,7 +332,7 @@ func createTree(db *sql.DB, mapID string, leafs []leaf) (*Map, error) {
 			return nil, fmt.Errorf("QueueLeaf(%v)=%v", l.index, err)
 		}
 	}
-	if epoch, err := m.Commit(); err != nil || epoch != 0 {
+	if epoch, err := m.Commit(ctx); err != nil || epoch != 0 {
 		return nil, fmt.Errorf("Commit()=%v, %v, want %v, <nil>", epoch, err, 0)
 	}
 	return m, nil
