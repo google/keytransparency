@@ -49,14 +49,14 @@ type Server struct {
 	committer commitments.Committer
 	queue     queue.Queuer
 	auth      authentication.Authenticator
-	tree      tree.SparseHist
+	tree      tree.Sparse
 	appender  appender.Appender
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
 }
 
 // New creates a new instance of the key server.
-func New(committer commitments.Committer, queue queue.Queuer, tree tree.SparseHist, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator) *Server {
+func New(committer commitments.Committer, queue queue.Queuer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
