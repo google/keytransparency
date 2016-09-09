@@ -19,25 +19,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// SparseFactory creates a Sparse Tree from a set of neighbor nodes for testing.
-type SparseFactory interface {
-	// FromNeighbors builds a sparse merkle tree with the path from the given leaf
-	// node at the given index, up to the root including all path neighbors.
-	FromNeighbors(neighbors [][]byte, index, leaf []byte) Sparse
-}
-
-// Sparse is a sparse merkle tree.
-type Sparse interface {
-	// ReadRoot returns the current value of the root hash.
-	ReadRoot(ctx context.Context) ([]byte, error)
-	// ReadLeaf returns the current value of the leaf node.
-	ReadLeaf(ctx context.Context, index []byte) ([]byte, error)
-	// WriteLeaf writes a leaf node and updates the root.
-	WriteLeaf(ctx context.Context, index, leaf []byte) error
-	// Neighbors returns the current list of neighbors from the neighbor leaf to just below the root.
-	Neighbors(ctx context.Context, index []byte) ([][]byte, error)
-}
-
 // SparseHist is a temporal sparse merkle tree.
 type SparseHist interface {
 	// QueueLeaf queues a leaf to be written on the next Commit().
