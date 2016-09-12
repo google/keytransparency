@@ -26,29 +26,27 @@ import "google/protobuf/timestamp.proto";
 message MapHead {
   // realm is the domain identifier for the transparent map.
   string realm = 1;
-  // epoch number
+  // epoch is the epoch number of this map head.
   int64 epoch = 2;
   // root is the value of the root node of the Merkle tree.
   bytes root = 3;
-  // issue_time is the time when this epoch was released. Monotonically increasing.
+  // issue_time is the time when this epoch was created. Monotonically increasing.
   google.protobuf.Timestamp issue_time = 4;
 }
 
-// SignedMapHead represents a signed state of the Merkel tree.
+// SignedMapHead represents a signed state of the Merkel Tree.
 message SignedMapHead {
-  // map_head contains the head node of the merkle tree along with other
+  // map_head contains the head node of the Merkle Tree along with other
   // metadata.
   MapHead map_head = 1;
-  // Signature of head, using the signature type of the key.
-  // keyed by the first 64 bits bytes of the hash of the key.
-  // TODO: Limit 1. Servers should only sign with one key at a time.
-  // TODO: Create separate data structure for aggregating signatures from monitors.
+  // signatures is a set of map_head signatures. Each signature is identified by
+  // the first 64 bits of the public key that verifies it.
   map<string, DigitallySigned> signatures = 2;
 }
 
-// DigitallySigned defines a way to sign digital objects.
+// DigitallySigned defines a way to digitally sign objects.
 message DigitallySigned {
-  // HashAlgorithm defines the approved ways to hash the object.
+  // HashAlgorithm defines the approved methods for object hashing.
   enum HashAlgorithm {
     // No hash algorithm is used.
     NONE = 0;
@@ -58,7 +56,7 @@ message DigitallySigned {
     SHA512 = 6;
   }
 
-  // SignatureAlgorithm defines the way to sign the object.
+  // SignatureAlgorithm defines the algorithm used to sign the object.
   enum SignatureAlgorithm {
     // Anonymous signature scheme.
     ANONYMOUS = 0;
@@ -91,7 +89,7 @@ message GetLeafResponse {
   // leaf_data contains an entry stored in the leaf node.
   bytes leaf_data = 1; 
   // neighbors is a list of all the adjacent nodes along the path
-  // from the bottommost node to the head.
+  // from the deepest node to the head.
   repeated bytes neighbors = 2;
 }
 

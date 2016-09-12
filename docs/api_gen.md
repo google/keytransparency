@@ -11,70 +11,53 @@ defines the following resource model:
 
 The API has the following methods:
 * [GetEntry](#KeyTransparencyService.GetEntry) returns a user's entry in the Merkle Tree.
-* [UpdateEntry](#KeyTransparencyService.UpdateEntry) submits a SignedEntryUpdate.
+* [UpdateEntry](#KeyTransparencyService.UpdateEntry) updates a users profile.
 * [ListEntryHistory](#KeyTransparencyService.ListEntryHistory) returns a list of historic GetEntry values.
-* [HkpLookup](#KeyTransparencyService.HkpLookup) implements a SKS server lookup functions.
 
 # Reference
 
-## Package keytransparency.v1
-
-### Index
+## Package keytransparency.v1.service
 
 *   [KeyTransparencyService](#KeyTransparencyService) (interface)
-*   [Committed](#Committed) (message)
-*   [EntryUpdate](#EntryUpdate) (message)
-*   [GetEntryRequest](#GetEntryRequest) (message)
-*   [GetEntryResponse](#GetEntryResponse) (message)
-*   [HkpLookupRequest](#HkpLookupRequest) (message)
-*   [HttpResponse](#HttpResponse) (message)
-*   [ListEntryHistoryRequest](#ListEntryHistoryRequest) (message)
-*   [ListEntryHistoryResponse](#ListEntryHistoryResponse) (message)
-*   [SignedKV](#SignedKV) (message)
-*   [UpdateEntryRequest](#UpdateEntryRequest) (message)
-*   [UpdateEntryResponse](#UpdateEntryResponse) (message)
-
-<a name="KeyTransparencyService.GetEntry"/>
 
 #### GetEntry
 
 <code> rpc GetEntry([GetEntryRequest](#GetEntryRequest))
 returns ([GetEntryResponse](#GetEntryResponse)) </code>
-GetEntry returns a user's entry in the Merkle Tree.
 
+GetEntry returns a user's entry in the Merkle Tree.  
 Entries contain signed commitments to a profile, which is also returned.
-
-<a name="KeyTransparencyService.HkpLookup"/>
-
-#### HkpLookup
-
-<code> rpc HkpLookup([HkpLookupRequest](#HkpLookupRequest))
-returns ([HttpResponse](#HttpResponse)) </code> HkpLookup
-implements a SKS server lookup functions.
-
-<a name="KeyTransparencyService.ListEntryHistory"/>
 
 #### ListEntryHistory
 
 <code> rpc ListEntryHistory([ListEntryHistoryRequest](#ListEntryHistoryRequest)) returns
 ([ListEntryHistoryResponse](#ListEntryHistoryResponse))
-</code> ListEntryHistory returns a list of historic GetEntry values.
+</code>
 
+ListEntryHistory returns a list of historic GetEntry values.  
 Clients verify their account history by observing correct values for their
 account over time.
-
-<a name="KeyTransparencyService.UpdateEntry"/>
 
 #### UpdateEntry
 
 <code> rpc UpdateEntry([UpdateEntryRequest](#UpdateEntryRequest)) returns ([UpdateEntryResponse]
-(#UpdateEntryResponse)) </code> UpdateEntry submits a
-SignedEntryUpdate.
+(#UpdateEntryResponse)) </code>   
 
-Returns empty until this update has been included in an epoch. Clients must
-retry until this function returns a proof.
+UpdateEntry updates a user's profile.  
+Returns the current user profile.
+Clients must retry until this function returns a proof containing the desired value.
 
-<a name="Committed"/>
+## Package keytransparency.v1.types
+
+*   [Committed](#committed) (message)
+*   [EntryUpdate](#entryUpdate) (message)
+*   [GetEntryRequest](#getEntryRequest) (message)
+*   [GetEntryResponse](#GetEntryResponse) (message)
+*   [ListEntryHistoryRequest](#ListEntryHistoryRequest) (message)
+*   [ListEntryHistoryResponse](#ListEntryHistoryResponse) (message)
+*   [SignedKV](#SignedKV) (message)
+*   [UpdateEntryRequest](#UpdateEntryRequest) (message)
+*   [UpdateEntryResponse](#UpdateEntryResponse) (message)
 
 ### Committed
 
@@ -121,7 +104,7 @@ Committed represents the data committed to in a cryptographic commitment.
  <tr>
   <td><code>committed</code></td>
   <td><a href="#Committed">Committed</a></td>
-  <td>commitment contains the serialized Profile protobuf. Last trusted epoch by the client. int64 epoch_start = 6;</td>
+  <td>commitment contains the serialized Profile protobuf.</td>
  </tr>
 </table>
 
@@ -129,7 +112,7 @@ Committed represents the data committed to in a cryptographic commitment.
 
 ### GetEntryRequest
 
-Get request for a user object.
+Get request for a user profile.
 
 <table>
  <tr>
@@ -137,17 +120,11 @@ Get request for a user object.
   <th>Type</th>
   <th>Description</th>
  </tr>
-<a name="GetEntryRequest.epoch_end"/>
- <tr>
-  <td><code>epoch_end</code></td>
-  <td>int64</td>
-  <td>Last trusted epoch by the client. int64 epoch_start = 3; Absence of the epoch_end field indicates a request for the current value.</td>
- </tr>
 <a name="GetEntryRequest.user_id"/>
  <tr>
   <td><code>user_id</code></td>
   <td>string</td>
-  <td>User identifier. Most commonly an email address.</td>
+  <td>user_id is the user identifier. Most commonly an email address.</td>
  </tr>
 </table>
 
@@ -155,7 +132,7 @@ Get request for a user object.
 
 ### GetEntryResponse
 
-GetEntryResponse
+GetEntryResponse returns a requested user entry.
 
 <table>
  <tr>
@@ -185,97 +162,25 @@ GetEntryResponse
  <tr>
   <td><code>leaf_proof</code></td>
   <td><a href="#ctmap.GetLeafResponse">GetLeafResponse</a></td>
-  <td>leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.</td>
+  <td>leaf_proof contains an Entry and an inclusion proof in the sparse Merkle Tree.</td>
  </tr>
 <a name="GetEntryResponse.smh"/>
  <tr>
   <td><code>smh</code></td>
   <td><a href="#ctmap.SignedMapHead">SignedMapHead</a></td>
-  <td>smh contains the signed map head for the sparse merkle tree. smh is also stored in the append only log.</td>
+  <td>smh contains the signed map head for the sparse Merkle Tree. smh is also stored in the append only log.</td>
  </tr>
 <a name="GetEntryResponse.smh_sct"/>
  <tr>
   <td><code>smh_sct</code></td>
   <td>bytes</td>
-  <td>smh_sct is the SCT showing that smh was submitted to CT logs.</td>
+  <td>smh_sct is the signed certificate timestamp (SCT) showing that SMH was submitted to CT logs.</td>
  </tr>
 </table>
-
-<a name="HkpLookupRequest"/>
-
-### HkpLookupRequest
-
-HkpLookupRequest contains query parameters for retrieving PGP keys.
-
-<table>
- <tr>
-  <th>Field</th>
-  <th>Type</th>
-  <th>Description</th>
- </tr>
-<a name="HkpLookupRequest.op"/>
- <tr>
-  <td><code>op</code></td>
-  <td>string</td>
-  <td>Op specifies the operation to be performed on the keyserver. - "get" returns the pgp key specified in the search parameter. - "index" returns 501 (not implemented). - "vindex" returns 501 (not implemented).</td>
- </tr>
-<a name="HkpLookupRequest.search"/>
- <tr>
-  <td><code>search</code></td>
-  <td>string</td>
-  <td>Search specifies the email address or key id being queried.</td>
- </tr>
-<a name="HkpLookupRequest.options"/>
- <tr>
-  <td><code>options</code></td>
-  <td>string</td>
-  <td>Options specifies what output format to use. - "mr" machine readable will set the content type to "application/pgp-keys" - other options will be ignored.</td>
- </tr>
-<a name="HkpLookupRequest.exact"/>
- <tr>
-  <td><code>exact</code></td>
-  <td>string</td>
-  <td>Exact specifies an exact match on search. Always on. If specified in the URL, its value will be ignored.</td>
- </tr>
-<a name="HkpLookupRequest.fingerprint"/>
- <tr>
-  <td><code>fingerprint</code></td>
-  <td>string</td>
-  <td>fingerprint is ignored.</td>
- </tr>
-</table>
-
-<a name="HttpResponse"/>
-
-### HttpResponse
-
-HttpBody represents an http body.
-
-<table>
- <tr>
-  <th>Field</th>
-  <th>Type</th>
-  <th>Description</th>
- </tr>
-<a name="HttpResponse.content_type"/>
- <tr>
-  <td><code>content_type</code></td>
-  <td>string</td>
-  <td>Header content type.</td>
- </tr>
-<a name="HttpResponse.body"/>
- <tr>
-  <td><code>body</code></td>
-  <td>bytes</td>
-  <td>The http body itself.</td>
- </tr>
-</table>
-
-<a name="ListEntryHistoryRequest"/>
 
 ### ListEntryHistoryRequest
 
-Get a list of historical values for a user.
+ListEntryHistoryReques gets a list of historical keys for a user.
 
 <table>
  <tr>
@@ -287,19 +192,19 @@ Get a list of historical values for a user.
  <tr>
   <td><code>user_id</code></td>
   <td>string</td>
-  <td>The user identifier.</td>
+  <td>user_id is the user identifier.</td>
  </tr>
 <a name="ListEntryHistoryRequest.start_epoch"/>
  <tr>
-  <td><code>start_epoch</code></td>
+  <td><code>start</code></td>
   <td>int64</td>
-  <td>from_epoch is the starting epcoh.</td>
+  <td>start is the starting epcoh.</td>
  </tr>
 <a name="ListEntryHistoryRequest.page_size"/>
  <tr>
   <td><code>page_size</code></td>
   <td>int32</td>
-  <td>The maximum number of entries to return.</td>
+  <td>page_size is the maximum number of entries to return.</td>
  </tr>
 </table>
 
@@ -307,7 +212,7 @@ Get a list of historical values for a user.
 
 ### ListEntryHistoryResponse
 
-A paginated history of values for a user.
+ListEntryHistoryResponse requests a paginated history of keys for a user.
 
 <table>
  <tr>
@@ -319,13 +224,13 @@ A paginated history of values for a user.
  <tr>
   <td><code>values[]</code></td>
   <td>repeated <a href="#GetEntryResponse">GetEntryResponse</a></td>
-  <td>The list of values this user_id has contained over time.</td>
+  <td>values represents the list of keys this user_id has contained over time.</td>
  </tr>
 <a name="ListEntryHistoryResponse.next_epoch"/>
  <tr>
   <td><code>next_epoch</code></td>
   <td>int64</td>
-  <td>The next time to query for pagination.</td>
+  <td>The next epoch to query for pagination.</td>
  </tr>
 </table>
 
@@ -350,14 +255,14 @@ SignedKV is a signed change to a map entry.
 <a name="SignedKV.signatures"/>
  <tr>
   <td><code>signatures</code></td>
-  <td>repeated map&lt;fixed64, bytes&gt;</td>
-  <td>signatures on keyvalue. Must be signed by keys from both previous and current epochs. The first proves ownership of new epoch key, and the second proves the the correct owner is making this change.</td>
+  <td>map&lt;fixed64, bytes&gt;</td>
+  <td>signatures on key_value. Must be signed by keys from both previous and current epochs. The first proves ownership of new epoch key, and the second proves the correct owner is making this change.</td>
  </tr>
 <a name="SignedKV.previous"/>
  <tr>
   <td><code>previous</code></td>
   <td>bytes</td>
-  <td>previous contains the hash of the previous entry that this mutation is modifying creating a hash chain of all mutations. The hash used is CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".</td>
+  <td>previous contains the hash of the previous entry that this mutation is modifying/creating a hash chain of all mutations. The hash used is CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".</td>
  </tr>
 </table>
 
@@ -365,7 +270,7 @@ SignedKV is a signed change to a map entry.
 
 ### UpdateEntryRequest
 
-Update a user's profile.
+UpdateEntryRequest updates a user's profile.
 
 <table>
  <tr>
@@ -377,13 +282,13 @@ Update a user's profile.
  <tr>
   <td><code>user_id</code></td>
   <td>string</td>
-  <td>user_id specifies the id for the new account to be registered.</td>
+  <td>user_id specifies the id for the user who's profile is being updated.</td>
  </tr>
 <a name="UpdateEntryRequest.entry_update"/>
  <tr>
   <td><code>entry_update</code></td>
   <td><a href="#EntryUpdate">EntryUpdate</a></td>
-  <td></td>
+  <td>entry_update contains the user submitted update.</td>
  </tr>
 </table>
 
@@ -404,13 +309,13 @@ Merkel Tree.
  <tr>
   <td><code>proof</code></td>
   <td><a href="#GetEntryResponse">GetEntryResponse</a></td>
-  <td></td>
+  <td>proof contains a proof that the update has been included in the tree.</td>
  </tr>
 </table>
 
 ## Package ctmap
 
-CT Map represents a certificate transparency style [verifiable map](https://github.com/google/trillian/blob/master/docs/VerifiableDataStructures.pdf).
+CT Map represents a Certificate Transparency style [verifiable map](https://github.com/google/trillian/blob/master/docs/VerifiableDataStructures.pdf).
 
 ### Index
 
@@ -425,19 +330,17 @@ CT Map represents a certificate transparency style [verifiable map](https://gith
 
 ### DigitallySigned
 
-DigitallySigned defines a way to sign digital objects.
+DigitallySigned defines a way to digitally sign objects.
 
 <table>
  <tr>
   <th>Field</th>
   <th>Type</th>
  </tr>
-<a name="ctmap.DigitallySigned.hash_algorithm"/>
  <tr>
   <td><code>hash_algorithm</code></td>
   <td><a href="#ctmap.DigitallySigned.HashAlgorithm">HashAlgorithm</a></td>
  </tr>
-<a name="ctmap.DigitallySigned.sig_algorithm"/>
  <tr>
   <td><code>sig_algorithm</code></td>
   <td><a href="#ctmap.DigitallySigned.SignatureAlgorithm">SignatureAlgorithm</a></td>
@@ -453,7 +356,7 @@ DigitallySigned defines a way to sign digital objects.
 
 ### HashAlgorithm
 
-HashAlgorithm defines the approved ways to hash the object.
+HashAlgorithm defines the approved methods for object hashing.
 
 <table>
  <tr>
@@ -477,7 +380,7 @@ HashAlgorithm defines the approved ways to hash the object.
 
 ### SignatureAlgorithm
 
-SignatureAlgorithm defines the way to sign the object.
+SignatureAlgorithm defines the algorithm used to sign the object.
 
 <table>
  <tr>
@@ -509,13 +412,13 @@ GetLeafResponse for a verifiable map leaf.
  <tr>
   <td><code>leaf_data</code></td>
   <td>bytes</td>
-  <td></td>
+  <td>leaf_data contains an entry stored in the leaf node.</td>
  </tr>
 <a name="ctmap.GetLeafResponse.neighbors"/>
  <tr>
   <td><code>neighbors[]</code></td>
   <td>repeated bytes</td>
-  <td>neighbors is a list of all the adjacent nodes along the path from the bottommost node to the head.</td>
+  <td>neighbors is a list of all the adjacent nodes along the path from the deepest node to the head.</td>
  </tr>
 </table>
 
@@ -542,19 +445,19 @@ the tree.
  <tr>
   <td><code>epoch</code></td>
   <td>int64</td>
-  <td>epoch number</td>
+  <td>epoch is the epoch number of this map head.</td>
  </tr>
 <a name="ctmap.MapHead.root"/>
  <tr>
   <td><code>root</code></td>
   <td>bytes</td>
-  <td>root is the value of the root node of the merkle tree.</td>
+  <td>root is the value of the root node of the Merkle Tree.</td>
  </tr>
 <a name="ctmap.MapHead.issue_time"/>
  <tr>
   <td><code>issue_time</code></td>
   <td><a href="#google.protobuf.Timestamp">Timestamp</a></td>
-  <td>issue_time is the time when this epoch was released. Monotonically increasing.</td>
+  <td>issue_time is the time when this epoch was created. Monotonically increasing.</td>
  </tr>
 </table>
 
@@ -562,7 +465,7 @@ the tree.
 
 ### SignedMapHead
 
-SignedMapHead represents a signed state of the Merkel tree.
+SignedMapHead represents a signed state of the Merkel Tree.
 
 <table>
  <tr>
@@ -574,12 +477,12 @@ SignedMapHead represents a signed state of the Merkel tree.
  <tr>
   <td><code>map_head</code></td>
   <td><a href="#ctmap.MapHead">MapHead</a></td>
-  <td></td>
+  <td>map_head contains the head node of the Merkle Tree along with other metadata.</td>
  </tr>
 <a name="ctmap.SignedMapHead.signatures"/>
  <tr>
   <td><code>signatures</code></td>
-  <td>repeated map&lt;string, <a href="#ctmap.DigitallySigned">DigitallySigned</a>&gt;</td>
-  <td>Signature of head, using the signature type of the key. keyed by the first 64 bits bytes of the hash of the key.</td>
+  <td>map&lt;string, <a href="#ctmap.DigitallySigned">DigitallySigned</a>&gt;</td>
+  <td>signatures is a set of map_head signatures. Each signature is identified by the first 64 bits of the public key that verifies it.</td>
  </tr>
 </table>

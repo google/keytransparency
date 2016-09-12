@@ -50,10 +50,10 @@ service KeyTransparencyService {
     option (google.api.http) = { get: "/v1/users/{user_id}/history" };
   }
 
-  // UpdateEntry submits a SignedEntryUpdate.
+  // UpdateEntry updates a user's profile.
   //
-  // Returns empty until this update has been included in an epoch.
-  // Clients must retry until this function returns a proof.
+  // Returns the current user profile.
+  // Clients must retry until this function returns a proof containing the desired value.
   rpc UpdateEntry(keytransparency.v1.types.UpdateEntryRequest) returns (keytransparency.v1.types.UpdateEntryResponse) {
     option (google.api.http) = {
       put: "/v1/users/{user_id}"
