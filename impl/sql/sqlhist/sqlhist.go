@@ -169,7 +169,6 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 			return -1, fmt.Errorf("Failed to set root: %v", err)
 		}
 	}
-	// TODO: Delete Map heads from this file.
 
 	m.epoch++
 	return m.epoch, nil
@@ -361,15 +360,6 @@ func (m *Map) create() error {
 		PRIMARY KEY(MapId, NodeId, Version),
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
 	);
-
-	CREATE TABLE IF NOT EXISTS MapHeads (
-		MapId	BLOB(32) NOT NULL,
-		Version INTEGER  NOT NULL,
-		Timestamp TIMESTAMP NOT NULL,
-		Value	Blob(32) NOT NULL,
-		PRIMARY KEY(MapId, Version),  
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	)
 	`
 	_, err := m.db.Exec(createStmt)
 	if err != nil {
