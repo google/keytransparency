@@ -14,6 +14,11 @@
 
 syntax = "proto3";
 
+// Key Transparency Service
+//
+// The Key Transparency Service API consists of a map of user names to public
+// keys. Each user name also has a history of public keys that have been
+// associated with it.
 package keytransparency.v1.types;
 
 import "github.com/google/key-transparency/core/proto/ctmap/ctmap.proto";
@@ -83,7 +88,7 @@ message KeyValue {
 message SignedKV {
   // key_value is a serialized KeyValue.
   bytes key_value = 1;
-  // signatures on keyvalue. Must be signed by keys from both previous and
+  // signatures on key_value. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.
   map<fixed64, bytes> signatures = 2;
@@ -99,7 +104,7 @@ message SignedKV {
 
 // GetEntryRequest for a user object.
 message GetEntryRequest {
-  // User identifier. Most commonly an email address.
+  // user_id is the user identifier. Most commonly an email address.
   string user_id = 1;
 }
 
@@ -122,17 +127,17 @@ message GetEntryResponse {
   // Verifiable map layer proves that the response is consistent.
   //
 
-  // leaf_proof contains an Entry and an inclusion proof in the sparse merkle tree at end_epoch.
+  // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle Tree.
   ctmap.GetLeafResponse leaf_proof = 5;
-  // smh contains the signed map head for the sparse merkle tree.
+  // smh contains the signed map head for the sparse Merkle Tree.
   // smh is also stored in the append only log.
   ctmap.SignedMapHead smh = 6;
-  // smh_sct is the SCT showing that smh was submitted to CT logs.
+  // smh_sct is the signed certificate timestamp (SCT) showing that SMH was submitted to CT logs.
   // TODO: Support storing smh in multiple logs.
   bytes smh_sct = 7;
 }
 
-// Get a list of historical values for a user.
+// ListEntryHistoryRequest gets a list of historical keys for a user.
 message ListEntryHistoryRequest {
   // user_id is the user identifier.
   string user_id = 1;
@@ -142,20 +147,20 @@ message ListEntryHistoryRequest {
   int32 page_size = 3;
 }
 
-// A paginated history of values for a user.
+// ListEntryHistoryResponse requests a paginated history of keys for a user.
 message ListEntryHistoryResponse {
-  // values represents the list of values this user_id has contained over time.
+  // values represents the list of keys this user_id has contained over time.
   repeated GetEntryResponse values = 1;
   // next_start is the next page token to query for pagination.
   // next_start is 0 when there are no more results to fetch.
   int64 next_start = 2;
 }
 
-// Update a user's profile.
+// UpdateEntryRequest updates a user's profile.
 message UpdateEntryRequest {
-  // user_id specifies the id for the new account to be registered.
+  // user_id specifies the id for the user who's profile is being updated.
   string user_id = 1;
-  // entry_update contains the user submitted update(s).
+  // entry_update contains the user submitted update.
   EntryUpdate entry_update = 2;
 }
 
@@ -164,32 +169,4 @@ message UpdateEntryRequest {
 message UpdateEntryResponse {
   // proof contains a proof that the update has been included in the tree.
   GetEntryResponse proof = 1;
-}
-
-// HkpLookupRequest contains query parameters for retrieving PGP keys.
-message HkpLookupRequest {
-  // Op specifies the operation to be performed on the keyserver.
-  // - "get" returns the pgp key specified in the search parameter.
-  // - "index" returns 501 (not implemented).
-  // - "vindex" returns 501 (not implemented).
-  string op = 1;
-  // Search specifies the email address or key id being queried.
-  string search = 2;
-  // Options specifies what output format to use.
-  // - "mr" machine readable will set the content type to "application/pgp-keys"
-  // - other options will be ignored.
-  string options = 3;
-  // Exact specifies an exact match on search. Always on. If specified in the
-  // URL, its value will be ignored.
-  string exact = 4;
-  // fingerprint is ignored.
-  string fingerprint = 5;
-}
-
-// HttpBody represents an http body.
-message HttpResponse {
-  // Header content type.
-  string content_type = 1;
-  // The http body itself.
-  bytes body = 2;
 }

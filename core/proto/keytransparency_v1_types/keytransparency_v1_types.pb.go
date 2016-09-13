@@ -5,6 +5,12 @@
 /*
 Package keytransparency_v1_types is a generated protocol buffer package.
 
+Key Transparency Service
+
+The Key Transparency Service API consists of a map of user names to public
+keys. Each user name also has a history of public keys that have been
+associated with it.
+
 It is generated from these files:
 	core/proto/keytransparency_v1_types/keytransparency_v1_types.proto
 
