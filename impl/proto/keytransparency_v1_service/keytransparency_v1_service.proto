@@ -60,9 +60,4 @@ service KeyTransparencyService {
       body: "entry_update"
     };
   }
-
-  // HkpLookup implements a SKS server lookup functions.
-  rpc HkpLookup(keytransparency.v1.types.HkpLookupRequest) returns (keytransparency.v1.types.HttpResponse){
-    option (google.api.http) = { get: "/v1/hkp/lookup" };
-  }
 }
