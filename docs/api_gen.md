@@ -80,7 +80,7 @@ Committed represents the data committed to in a cryptographic commitment.
  <tr>
   <td><code>data</code></td>
   <td>bytes</td>
-  <td>data is the data being comitted to.</td>
+  <td>data is the data being committed to.</td>
  </tr>
 </table>
 

@@ -36,7 +36,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// HashAlgorithm defines the approved ways to hash the object.
+// HashAlgorithm defines the approved methods for object hashing.
 type DigitallySigned_HashAlgorithm int32
 
 const (
@@ -66,7 +66,7 @@ func (DigitallySigned_HashAlgorithm) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor0, []int{2, 0}
 }
 
-// SignatureAlgorithm defines the way to sign the object.
+// SignatureAlgorithm defines the algorithm used to sign the object.
 type DigitallySigned_SignatureAlgorithm int32
 
 const (
@@ -97,11 +97,11 @@ func (DigitallySigned_SignatureAlgorithm) EnumDescriptor() ([]byte, []int) {
 type MapHead struct {
 	// realm is the domain identifier for the transparent map.
 	Realm string `protobuf:"bytes,1,opt,name=realm" json:"realm,omitempty"`
-	// epoch number
+	// epoch is the epoch number of this map head.
 	Epoch int64 `protobuf:"varint,2,opt,name=epoch" json:"epoch,omitempty"`
 	// root is the value of the root node of the Merkle tree.
 	Root []byte `protobuf:"bytes,3,opt,name=root,proto3" json:"root,omitempty"`
-	// issue_time is the time when this epoch was released. Monotonically increasing.
+	// issue_time is the time when this epoch was created. Monotonically increasing.
 	IssueTime *google_protobuf.Timestamp `protobuf:"bytes,4,opt,name=issue_time,json=issueTime" json:"issue_time,omitempty"`
 }
 
@@ -117,15 +117,13 @@ func (m *MapHead) GetIssueTime() *google_protobuf.Timestamp {
 	return nil
 }
 
-// SignedMapHead represents a signed state of the Merkel tree.
+// SignedMapHead represents a signed state of the Merkel Tree.
 type SignedMapHead struct {
-	// map_head contains the head node of the merkle tree along with other
+	// map_head contains the head node of the Merkle Tree along with other
 	// metadata.
 	MapHead *MapHead `protobuf:"bytes,1,opt,name=map_head,json=mapHead" json:"map_head,omitempty"`
-	// Signature of head, using the signature type of the key.
-	// keyed by the first 64 bits bytes of the hash of the key.
-	// TODO: Limit 1. Servers should only sign with one key at a time.
-	// TODO: Create separate data structure for aggregating signatures from monitors.
+	// signatures is a set of map_head signatures. Each signature is identified by
+	// the first 64 bits of the public key that verifies it.
 	Signatures map[string]*DigitallySigned `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 }
 
@@ -148,7 +146,7 @@ func (m *SignedMapHead) GetSignatures() map[string]*DigitallySigned {
 	return nil
 }
 
-// DigitallySigned defines a way to sign digital objects.
+// DigitallySigned defines a way to digitally sign objects.
 type DigitallySigned struct {
 	// hash_algorithm contains the hash algorithm used.
 	HashAlgorithm DigitallySigned_HashAlgorithm `protobuf:"varint,1,opt,name=hash_algorithm,json=hashAlgorithm,enum=ctmap.DigitallySigned_HashAlgorithm" json:"hash_algorithm,omitempty"`
@@ -181,7 +179,7 @@ type GetLeafResponse struct {
 	// leaf_data contains an entry stored in the leaf node.
 	LeafData []byte `protobuf:"bytes,1,opt,name=leaf_data,json=leafData,proto3" json:"leaf_data,omitempty"`
 	// neighbors is a list of all the adjacent nodes along the path
-	// from the bottommost node to the head.
+	// from the deepest node to the head.
 	Neighbors [][]byte `protobuf:"bytes,2,rep,name=neighbors,proto3" json:"neighbors,omitempty"`
 }
 
