@@ -9,9 +9,9 @@ The core [gRPC APIs](api_gen.md) are exposed over HTTP via a
 ## Index
 <table>
 <tr><td>Path</td><td>Method</td><td>Summary</td></tr>
-<tr><td>/v1/users/{user_id}</td><td>GET</td><td>GetEntry returns a user's entry in the Merkle Tree.</td></tr>
-<tr><td>/v1/users/{user_id}</td><td>PUT</td><td>UpdateEntry submits a SignedEntryUpdate.</td></tr>
-<tr><td>/v1/users/{user_id}/history</td><td>GET</td><td>ListEntryHistory returns a list of historic GetEntry values.</td></tr>
+<tr><td>`/v1/users/{user_id}`</td><td>GET</td><td>GetEntry returns a user's entry in the Merkle Tree.</td></tr>
+<tr><td>`/v1/users/{user_id}`</td><td>PUT</td><td>UpdateEntry submits a SignedEntryUpdate.</td></tr>
+<tr><td>`/v1/users/{user_id}/history`</td><td>GET</td><td>ListEntryHistory returns a list of historic GetEntry values.</td></tr>
 </table>
 
 ### `GET /v1/users/{user_id}`
