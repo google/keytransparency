@@ -1,28 +1,28 @@
-# Design Document
+# Key Transparency Architecture
 
 # Queue
-The Queue is the central component of the Key Server
+The Queue is the central component of the Key Server.
 The Queue gives a definitive, consistent ordering to all changes made to the 
-key server data structure.  
+key server data structure.
 
 The Queue is a Multi-Writer, Single Reader data object.
 Previous iterations had the Queue as a Multi-Writer, Multi-Reader object, where 
 each node would receive the same data, much like the Raft Consesnsus Algorithm. 
-In the Single Reader scheme, the queue is keeping track of global state: how 
+In the Single Reader scheme, the queue is keeping track of global state, ie. how 
 many items have been processed and added to the database.
 
 The Queue stores mutations that have not been processed by the signer and 
-written to the merkle tree data structures.
+written to the Merkle Tree data structures.
 
 ## Queue Atomicity Notes
 Mutations in the queue may be deleted from the queue once they have been 
-successfully processed by the signer and committed to the leaf database.  We do 
+successfully processed by the signer and committed to the leaf database. We do 
 not require that an epoch advancement occur before queue entries may be deleted.
 
 Cross-Domain Transactions:
 The queue waits for confirmation that an item has been proccessed before 
-deleting it from the queue. If an error occurs while deleting the item from the 
-queue, the item will simply be re-dequeued.  Since duplicate values are 
+deleting it. If an error occurs while deleting the item from the 
+queue, the item will simply be re-dequeued. Since duplicate values are 
 permitted in the queue, this behavior is safe.
 
 ## Queue Epoch Advancement Notes
@@ -35,16 +35,16 @@ queue, but this would require the Signer to know what's in the queue when it
 crashes and resumes.
 
 # Signer
-The Signer processes mutations out of the queue.  
+The signer processes mutations out of the queue.
 In the present configuration, the signer writes each node into the leaf table 
 with a version number in the future. If the signer crashes, it simply picks up
-processing the queue where it left off.  Writing to the same node twice with the 
+processing the queue where it left off. Writing to the same node twice with the 
 same data is permitted.
 
-The Signer applies the mutations in the queue to the entries contained in 
-`current_epoch - 1`.  Duplicate mutations processed during the same epoch will 
-succeed. Duplicate mutations processed across epochs SHOULD fail.  (Each 
-mutation should be explicit about the previoius version of data it is modifying)
+The signer applies the mutations in the queue to the entries contained in 
+`current_epoch - 1`. Duplicate mutations processed during the same epoch will 
+succeed. Duplicate mutations processed across epochs SHOULD fail. (Each 
+mutation should be explicit about the previoius version of data it is modifying.)
 
 To advance to the next epoch, the signer inserts an epoch advancement marker 
 into the queue and waits to receive it back on the queue before committing all 
