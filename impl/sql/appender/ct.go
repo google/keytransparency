@@ -42,16 +42,16 @@ const (
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
 	);`
 	mapRowExpr = `
-	INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
+	INSERT OR IGNORE INTO Maps (MapId) VALUES (?);`
 	insertExpr = `
 	INSERT INTO SMH (MapId, Epoch, Data, SCT)
-	VALUES ($1, $2, $3, $4);`
+	VALUES (?, ?, ?, ?);`
 	readExpr = `
 	SELECT Data, SCT FROM SMH
-	WHERE MapId = $1 AND Epoch = $2;`
+	WHERE MapId = ? AND Epoch = ?;`
 	latestExpr = `
 	SELECT Epoch, Data, SCT FROM SMH
-	WHERE MapId = $1 
+	WHERE MapId = ? 
 	ORDER BY Epoch DESC LIMIT 1;`
 )
 
