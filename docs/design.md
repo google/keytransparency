@@ -199,7 +199,7 @@ store multiple keys for you and selectively show them to different people.
 
 To prove that a single user (Alice) has exactly one profile, the server hashes
 her email address (alice@gmail.com) to produce a string of bits. For instance,
-`H(alice@gmail.com) = 010` (this is actually done using a VUF function described
+`H(alice@gmail.com) = 010` (this is actually done using a VRF function described
 below). If we think of the Merkle Tree as a binary search tree, with each bit
 in the hash indicating a "left" or a "right" child, the tree depth is the
 same as the hash output length, we then have a unique location in the tree for
@@ -211,8 +211,8 @@ Traditional PGP key servers allow everyone to get a list of all the users who
 are interested in secure email. This seems unnecessary and invites abuse. To
 prevent this, we make sure that you can only look up a user’s information if
 you already know their email address. User’s locations in the Merkle Tree will
-be calculated with an Verifiable Unpredictable Function 
-`(VUF) = H(Sig(k, user_id))`. This forces attackers to perform an online query
+be calculated with an Verifiable Random Function 
+`(VRF) = H(Sig(k, user_id))`. This forces attackers to perform an online query
 to the server to learn a user’s location in the tree. The deterministic
 signature proves that there is only one correct location in the tree for the
 user. 
@@ -238,10 +238,8 @@ user.
 
 History must be kept for a long period of time . Clients will query historical
 values for a user for the period of time since they last communicated with a
-recipient. 
-
-The longer the history, the stronger a signal on “how long has this key been
-around for” can be. 
+recipient.  The longer the history, the stronger a signal on “how long has this
+key been around for” can be. 
 
 ### [Verification by Key Owners](verification.md)
 
