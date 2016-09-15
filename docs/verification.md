@@ -2,12 +2,12 @@
 
 ## Sender Verification
 
-When looking up the public key in Key Transparency for a recipient, clients
-must complete the following verification steps to ensure that the public key
-material they are receiving is the same public key material that the account
-owners and auditors have verified. 
+When looking up a recipient's public key in Key Transparency, clients must
+complete the following verification steps to ensure that the key material
+they are receiving is the same key material that the account owners and
+auditors have verified. 
 
-Upon requesting the key material for an account, the sender is provided with
+Upon requesting the key material for an account, senders are provided with
 the following data:
 
 ```json
@@ -25,7 +25,7 @@ the following data:
   "smh": {
     "map_head": {
       "realm": "example.com",
-      "epoch": "7573",
+      "snapshot": "7573",
       "root": "3MQ3sfHl1wT6iCuVvRHFRqTN587J9Npr8rz4OzyB/iE=",
       "issue_time": "2016-09-01T21:06:09.515380163Z"
     },
@@ -45,43 +45,41 @@ the following data:
 ### Verification Steps
 
 
-1.  Verify the cryptographic commitment to the public keys. The public keys
-themselves are contained in the `data` portion of the `committed` field. To
-verify that the public keys match the commitment in the `leaf_data` of the
-merkle tree, ensure that `leaf_data == CommitName(email, committed.key,
-committed.data)` 
+1.  Verify the cryptographic commitment to the public keys. The keys themselves
+are contained in the `data` portion of the `committed` field. To verify
+that the public keys match the commitment in the `leaf_data` of the Merkle
+Tree, ensure that `leaf_data == Commit(email, committed.key, committed.data)`.
 
-1.  Verify the user’s index in the merkle tree, which is
-determined by SHA256 hash of the VRF value. Confirm that 
-`VRF_Verify(pk, email, vrf, vrf_proof)` succeeds.  
-The VRF ensures that the user’s email is protected,
-and the VRF proof ensures that there is only one possible index for the user. 
+1.  Verify the user’s index in the Merkle Tree, which is determined by a SHA256
+hash of the VRF value. Confirm that `VRF_Verify(pk, email, vrf, vrf_proof)`
+succeeds.  The VRF ensures that the user’s email is protected, and the VRF
+proof ensures that there is only one possible index for the user. 
 
 1.  Verify that the leaf data, when combined with the interior neighbor nodes
-of the merkle tree matches the expected root in the signed map head (`smh`).
-Use the index from the previous step to determine whether the neighbors values
+of the Merkle Tree matches the expected root in the signed map head (`smh`).
+Use the index from the previous step to determine whether the neighbors nodes
 are on the left or right. 
 
-1.  Verify that the signature on the SMH came from the expected domain
-provider. Use the domain provider’s public signing key to look up their
-signature in the `signatures` map.  Verify that the signature is a valid
-signature over the ObjectHash of `map_head`.
+1.  Verify that SMH is signed by the expected domain provider.  
+Use the provider’s public signing key to look up their signature in the
+`signatures` map and verify that the signature valid over the ObjectHash of
+`map_head`.
 
-1.  Verify that the signed map head has been included in an append only log
-    1.  Verify the signed certificate timestamp (SCT) signature, which
-	represents a promise by the CT server to include the SMH in the log
-	within 24 hrs. 
+1.  Verify that the signed map head has been included in an append-only log
+    1.  Verify the Signed Certificate Timestamp (SCT) signature, which
+	represents a promise by the Certificate Transparency (CT) server to
+	include the SMH in the log within 24 hrs. 
 
-    1.  If less than 24 hrs have passed, save the SCT for verification later
+    1.  If less than 24 hrs have passed, save the SCT for verification later.
 
-    1.  If more than 24 hrs have passed, request the latest signed tree head
-	(STH) from CT and verify the signature. 
+    1.  If more than 24 hrs have passed, request the latest Signed Tree Head
+	(STH) from CT and verify its signature. 
 
     1.  Request a consistency proof from the previous STH to the new one. If
-	this if the first time ever interacting with Key Transparency,
-	automatically trust the first correctly signed STH seen. 
+	this is the first time ever interacting with Key Transparency,
+	automatically trust the first correctly signed STH. 
 
-    1.  Request an inclusion proof into the current STH for the SCT for the SMH.
+    1.  Request an inclusion proof into the current STH for the SCT of the SMH.
 
 ## Account Audit
 
@@ -94,14 +92,14 @@ perform the following steps to audit their accounts:
 1.  Take on the role of a sender and request the current keys for oneself,
 performing all the verification steps outlined above. 
 
-1.  For each epoch since the last audit until the current epoch:
+1.  For each snapshot since the last audit until the current snapshot:
 
-    1.  Fetch the profile at that epoch and verify using the steps above.
+    1.  Fetch the profile at that snapshot and verify using the steps above.
 
     1.  Identify all the public keys listed. If any are unrecognized, raise a
 	warning. 
 
-Auditing in this form is simple, does not rely on 3rd parties, but it expensive
-in terms of time, compute, and network bandwidth. An optimization on this
-auditing approach using 3rd party auditors has been designed but 
+Auditing in this form is simple and does not rely on 3rd parties but it is
+expensive in terms of network time and bandwidth. An optimization on this
+auditing approach using 3rd party auditors has been designed but
 not-yet-implemented. 
