@@ -40,25 +40,25 @@ const (
 	size     = sparse.HashSize
 	readExpr = `
 	SELECT Value FROM Nodes
-	WHERE MapId = $1 AND NodeId = $2 and Version <= $3
+	WHERE MapId = ? AND NodeId = ? and Version <= ?
 	ORDER BY Version DESC LIMIT 1;`
 	leafExpr = `
 	SELECT Data FROM Leaves
-	WHERE MapId = $1 AND LeafId = $2 and Version <= $3
+	WHERE MapId = ? AND LeafId = ? and Version <= ?
 	ORDER BY Version DESC LIMIT 1;`
 	queueExpr = `
 	INSERT OR REPLACE INTO Leaves (MapId, LeafId, Version, Data)
-	VALUES ($1, $2, $3, $4);`
+	VALUES (?, ?, ?, ?);`
 	pendingLeafsExpr = `
 	SELECT LeafId, Version, Data FROM Leaves 
-	WHERE MapId = $1 AND Version >= $2;`
+	WHERE MapId = ? AND Version >= ?;`
 	setNodeExpr = `
 	INSERT OR REPLACE INTO Nodes (MapId, NodeId, Version, Value)
-	VALUES ($1, $2, $3, $4);`
-	mapRowExpr    = `INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
+	VALUES (?, ?, ?, ?);`
+	mapRowExpr    = `INSERT OR IGNORE INTO Maps (MapId) VALUES (?);`
 	readEpochExpr = `
 	SELECT Version FROM Nodes
-	WHERE MapId = $1 AND NodeId = $2
+	WHERE MapId = ? AND NodeId = ?
 	ORDER BY Version DESC LIMIT 1;`
 )
 

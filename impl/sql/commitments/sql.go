@@ -39,13 +39,13 @@ const (
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
 	);`
 	mapRowExpr = `
-	INSERT OR IGNORE INTO Maps (MapId) VALUES ($1);`
+	INSERT OR IGNORE INTO Maps (MapId) VALUES (?);`
 	insertExpr = `
 	INSERT INTO Commitments (MapId, Commitment, Value)
-	VALUES ($1, $2, $3);`
+	VALUES (?, ?, ?);`
 	readExpr = `
 	SELECT Value FROM Commitments
-	WHERE MapId = $1 AND Commitment = $2;`
+	WHERE MapId = ? AND Commitment = ?;`
 )
 
 var errDoubleCommitment = errors.New("Commitment to different key-value")
