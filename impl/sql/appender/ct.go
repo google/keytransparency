@@ -42,6 +42,22 @@ const (
 )
 
 var (
+	createStmt = []string{
+		`
+	CREATE TABLE IF NOT EXISTS Maps (
+		MapId   VARCHAR(32) NOT NULL,
+		PRIMARY KEY(MapID)
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS SMH (
+		MapId   VARCHAR(32) NOT NULL,
+		Epoch   INTEGER     NOT NULL,
+		Data    BLOB(1024)  NOT NULL,
+		SCT     BLOB(1024)  NOT NULL,
+		PRIMARY KEY(MapID, Epoch),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+	}
 	// ErrNotSupported occurs when performing an operaion that has been disabled.
 	ErrNotSupported = errors.New("operation not supported")
 )
@@ -89,22 +105,6 @@ func New(db *sql.DB, mapID, logURL string) (*CTAppender, error) {
 
 // Create creates a new database.
 func (a *CTAppender) create() error {
-	createStmt := []string{
-		`
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapId   VARCHAR(32) NOT NULL,
-		PRIMARY KEY(MapID)
-	);`,
-		`
-	CREATE TABLE IF NOT EXISTS SMH (
-		MapId   VARCHAR(32) NOT NULL,
-		Epoch   INTEGER     NOT NULL,
-		Data    BLOB(1024)  NOT NULL,
-		SCT     BLOB(1024)  NOT NULL,
-		PRIMARY KEY(MapID, Epoch),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);`,
-	}
 	for _, stmt := range createStmt {
 		_, err := a.db.Exec(stmt)
 		if err != nil {

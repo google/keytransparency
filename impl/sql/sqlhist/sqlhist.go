@@ -29,6 +29,31 @@ import (
 )
 
 var (
+	createStmt = []string{
+		`
+	CREATE TABLE IF NOT EXISTS Maps (
+		MapId   VARCHAR(32) NOT NULL,
+		PRIMARY KEY(MapID)
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS Leaves (
+		MapId   VARCHAR(32) NOT NULL,
+		LeafId  VARCHAR(32) NOT NULL,
+		Version INTEGER     NOT NULL,
+		Data    BLOB        NOT NULL,
+		PRIMARY KEY(MapID, LeafId, Version),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS Nodes (
+		MapId   VARCHAR(32) NOT NULL,
+		NodeId  VARCHAR(32) NOT NULL,
+		Version	INTEGER     NOT NULL,
+		Value	BLOB(32)    NOT NULL,
+		PRIMARY KEY(MapId, NodeId, Version),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+	}
 	hasher          = sparse.CONIKSHasher
 	errNilLeaf      = errors.New("nil leaf")
 	errIndexLen     = errors.New("index len != 32")
@@ -337,31 +362,6 @@ func (m *Map) setRootAt(ctx context.Context, value sparse.Hash, epoch int64) err
 
 // Create creates a new database.
 func (m *Map) create() error {
-	createStmt := []string{
-		`
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapId   VARCHAR(32) NOT NULL,
-		PRIMARY KEY(MapID)
-	);`,
-		`
-	CREATE TABLE IF NOT EXISTS Leaves (
-		MapId   VARCHAR(32) NOT NULL,
-		LeafId  VARCHAR(32) NOT NULL,
-		Version INTEGER     NOT NULL,
-		Data    BLOB        NOT NULL,
-		PRIMARY KEY(MapID, LeafId, Version),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);`,
-		`
-	CREATE TABLE IF NOT EXISTS Nodes (
-		MapId   VARCHAR(32) NOT NULL,
-		NodeId  VARCHAR(32) NOT NULL,
-		Version	INTEGER     NOT NULL,
-		Value	BLOB(32)    NOT NULL,
-		PRIMARY KEY(MapId, NodeId, Version),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);`,
-	}
 	for _, stmt := range createStmt {
 		_, err := m.db.Exec(stmt)
 		if err != nil {

@@ -35,7 +35,24 @@ const (
 	WHERE MapId = ? AND Commitment = ?;`
 )
 
-var errDoubleCommitment = errors.New("Commitment to different key-value")
+var (
+	createStmt = []string{
+		`
+	CREATE TABLE IF NOT EXISTS Maps (
+		MapId   VARCHAR(32) NOT NULL,
+		PRIMARY KEY(MapID)
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS Commitments (
+		MapId      VARCHAR(32) NOT NULL,
+		Commitment VARCHAR(32) NOT NULL,
+		Value      BLOB(1024)  NOT NULL,
+		PRIMARY KEY(MapID, Commitment),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+	}
+	errDoubleCommitment = errors.New("Commitment to different key-value")
+)
 
 // Commitments stores cryptographic commitments.
 type Commitments struct {
@@ -140,21 +157,6 @@ func (c *Commitments) Read(ctx context.Context, commitment []byte) (*tpb.Committ
 
 // Create creates a new database.
 func (c *Commitments) create() error {
-	createStmt := []string{
-		`
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapId   VARCHAR(32) NOT NULL,
-		PRIMARY KEY(MapID)
-	);`,
-		`
-	CREATE TABLE IF NOT EXISTS Commitments (
-		MapId      VARCHAR(32) NOT NULL,
-		Commitment VARCHAR(32) NOT NULL,
-		Value      BLOB(1024)  NOT NULL,
-		PRIMARY KEY(MapID, Commitment),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);`,
-	}
 	for _, stmt := range createStmt {
 		_, err := c.db.Exec(stmt)
 		if err != nil {
