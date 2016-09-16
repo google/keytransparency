@@ -25,21 +25,8 @@ import (
 )
 
 const (
-	createExpr = `
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapId	BLOB(32),
-		PRIMARY KEY(MapID)
-	);
-
-	CREATE TABLE IF NOT EXISTS Commitments (
-		MapId	BLOB(32) NOT NULL,
-		Commitment BLOB(32) NOT NULL,
-		Value	BLOB(1024) NOT NULL,
-		PRIMARY KEY(MapID, Commitment),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);`
 	mapRowExpr = `
-	INSERT OR IGNORE INTO Maps (MapId) VALUES (?);`
+	REPLACE INTO Maps (MapId) VALUES (?);`
 	insertExpr = `
 	INSERT INTO Commitments (MapId, Commitment, Value)
 	VALUES (?, ?, ?);`
@@ -65,9 +52,8 @@ func New(db *sql.DB, mapID string) (*Commitments, error) {
 	}
 
 	// Create tables.
-	_, err := db.Exec(createExpr)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create commitment tables: %v", err)
+	if err := c.create(); err != nil {
+		return nil, err
 	}
 	if err := c.insertMapRow(); err != nil {
 		return nil, err
@@ -150,6 +136,32 @@ func (c *Commitments) Read(ctx context.Context, commitment []byte) (*tpb.Committ
 		return nil, err
 	}
 	return &committed, nil
+}
+
+// Create creates a new database.
+func (c *Commitments) create() error {
+	createStmt := []string{
+		`
+	CREATE TABLE IF NOT EXISTS Maps (
+		MapId   VARCHAR(32) NOT NULL,
+		PRIMARY KEY(MapID)
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS Commitments (
+		MapId      VARCHAR(32) NOT NULL,
+		Commitment VARCHAR(32) NOT NULL,
+		Value      BLOB(1024)  NOT NULL,
+		PRIMARY KEY(MapID, Commitment),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+	}
+	for _, stmt := range createStmt {
+		_, err := c.db.Exec(stmt)
+		if err != nil {
+			return fmt.Errorf("Failed to create commitments tables: %v", err)
+		}
+	}
+	return nil
 }
 
 func (c *Commitments) insertMapRow() error {
