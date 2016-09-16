@@ -29,6 +29,31 @@ import (
 )
 
 var (
+	createStmt = []string{
+		`
+	CREATE TABLE IF NOT EXISTS Maps (
+		MapId   VARCHAR(32) NOT NULL,
+		PRIMARY KEY(MapID)
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS Leaves (
+		MapId   VARCHAR(32) NOT NULL,
+		LeafId  VARCHAR(32) NOT NULL,
+		Version INTEGER     NOT NULL,
+		Data    BLOB        NOT NULL,
+		PRIMARY KEY(MapID, LeafId, Version),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS Nodes (
+		MapId   VARCHAR(32) NOT NULL,
+		NodeId  VARCHAR(32) NOT NULL,
+		Version	INTEGER     NOT NULL,
+		Value	BLOB(32)    NOT NULL,
+		PRIMARY KEY(MapId, NodeId, Version),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+	}
 	hasher          = sparse.CONIKSHasher
 	errNilLeaf      = errors.New("nil leaf")
 	errIndexLen     = errors.New("index len != 32")
@@ -47,15 +72,15 @@ const (
 	WHERE MapId = ? AND LeafId = ? and Version <= ?
 	ORDER BY Version DESC LIMIT 1;`
 	queueExpr = `
-	INSERT OR REPLACE INTO Leaves (MapId, LeafId, Version, Data)
+	REPLACE INTO Leaves (MapId, LeafId, Version, Data)
 	VALUES (?, ?, ?, ?);`
 	pendingLeafsExpr = `
 	SELECT LeafId, Version, Data FROM Leaves 
 	WHERE MapId = ? AND Version >= ?;`
 	setNodeExpr = `
-	INSERT OR REPLACE INTO Nodes (MapId, NodeId, Version, Value)
+	REPLACE INTO Nodes (MapId, NodeId, Version, Value)
 	VALUES (?, ?, ?, ?);`
-	mapRowExpr    = `INSERT OR IGNORE INTO Maps (MapId) VALUES (?);`
+	mapRowExpr    = `REPLACE INTO Maps (MapId) VALUES (?);`
 	readEpochExpr = `
 	SELECT Version FROM Nodes
 	WHERE MapId = ? AND NodeId = ?
@@ -337,33 +362,11 @@ func (m *Map) setRootAt(ctx context.Context, value sparse.Hash, epoch int64) err
 
 // Create creates a new database.
 func (m *Map) create() error {
-	createStmt := `
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapId	BLOB(32),
-		PRIMARY KEY(MapID)
-	);
-
-	CREATE TABLE IF NOT EXISTS Leaves (
-		MapId	BLOB(32) NOT NULL,
-		LeafId	BLOB(32) NOT NULL,
-		Version	INTEGER	 NOT NULL,
-		Data	BLOB 	 NOT NULL,
-		PRIMARY KEY(MapID, LeafId, Version),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS Nodes (
-		MapId	BLOB(32) NOT NULL,
-		NodeId	BLOB(32) NOT NULL,
-		Version	INTEGER  NOT NULL,
-		Value	BLOB(32) NOT NULL,
-		PRIMARY KEY(MapId, NodeId, Version),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);
-	`
-	_, err := m.db.Exec(createStmt)
-	if err != nil {
-		return fmt.Errorf("Failed to create tables: %v", err)
+	for _, stmt := range createStmt {
+		_, err := m.db.Exec(stmt)
+		if err != nil {
+			return fmt.Errorf("Failed to create map tables: %v", err)
+		}
 	}
 	return nil
 }

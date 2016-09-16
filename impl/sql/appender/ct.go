@@ -27,22 +27,8 @@ import (
 )
 
 const (
-	createExpr = `
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapId	BLOB(32),
-		PRIMARY KEY(MapID)
-	);
-
-	CREATE TABLE IF NOT EXISTS SMH (
-		MapId	BLOB(32) NOT NULL,
-		Epoch 	INTEGER NOT NULL,
-		Data	BLOB(1024) NOT NULL,
-		SCT	BLOB(1024) NOT NULL,
-		PRIMARY KEY(MapID, Epoch),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
-	);`
 	mapRowExpr = `
-	INSERT OR IGNORE INTO Maps (MapId) VALUES (?);`
+	REPLACE INTO Maps (MapId) VALUES (?);`
 	insertExpr = `
 	INSERT INTO SMH (MapId, Epoch, Data, SCT)
 	VALUES (?, ?, ?, ?);`
@@ -56,6 +42,22 @@ const (
 )
 
 var (
+	createStmt = []string{
+		`
+	CREATE TABLE IF NOT EXISTS Maps (
+		MapId   VARCHAR(32) NOT NULL,
+		PRIMARY KEY(MapID)
+	);`,
+		`
+	CREATE TABLE IF NOT EXISTS SMH (
+		MapId   VARCHAR(32) NOT NULL,
+		Epoch   INTEGER     NOT NULL,
+		Data    BLOB(1024)  NOT NULL,
+		SCT     BLOB(1024)  NOT NULL,
+		PRIMARY KEY(MapID, Epoch),
+		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+	);`,
+	}
 	// ErrNotSupported occurs when performing an operaion that has been disabled.
 	ErrNotSupported = errors.New("operation not supported")
 )
@@ -84,9 +86,8 @@ func New(db *sql.DB, mapID, logURL string) (*CTAppender, error) {
 		}
 
 		// Create tables.
-		_, err := db.Exec(createExpr)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to create appender tables: %v", err)
+		if err := a.create(); err != nil {
+			return nil, err
 		}
 		if err := a.insertMapRow(); err != nil {
 			return nil, err
@@ -100,6 +101,17 @@ func New(db *sql.DB, mapID, logURL string) (*CTAppender, error) {
 		}
 	}
 	return a, nil
+}
+
+// Create creates a new database.
+func (a *CTAppender) create() error {
+	for _, stmt := range createStmt {
+		_, err := a.db.Exec(stmt)
+		if err != nil {
+			return fmt.Errorf("Failed to create appender tables: %v", err)
+		}
+	}
+	return nil
 }
 
 func (a *CTAppender) insertMapRow() error {
