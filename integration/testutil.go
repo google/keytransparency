@@ -36,6 +36,7 @@ import (
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	pb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
@@ -75,6 +76,7 @@ type Env struct {
 	V2Server   *keyserver.Server
 	Conn       *grpc.ClientConn
 	Client     *grpcc.Client
+	Queue      *queue.Queue
 	Signer     *signer.Signer
 	db         *sql.DB
 	clus       *integration.ClusterV3
@@ -158,7 +160,7 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	queue := queue.New(clus.RandClient(), mapID)
+	queue := queue.New(context.Background(), clus.RandClient(), mapID)
 	tree, err := sqlhist.New(sqldb, mapID)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
@@ -204,7 +206,7 @@ func NewEnv(t *testing.T) *Env {
 	client := grpcc.New(mapID, cli, vrfPub, verifier, fakeLog{})
 	client.RetryCount = 0
 
-	return &Env{s, server, cc, client, signer, sqldb, clus, vrfPriv, cli, hs}
+	return &Env{s, server, cc, client, queue, signer, sqldb, clus, vrfPriv, cli, hs}
 }
 
 // Close releases resources allocated by NewEnv.

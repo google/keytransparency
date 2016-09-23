@@ -33,6 +33,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -91,7 +92,7 @@ func main() {
 	etcdCli := openEtcd()
 	defer etcdCli.Close()
 
-	queue := queue.New(etcdCli, *mapID)
+	queue := queue.New(context.Background(), etcdCli, *mapID)
 	tree, err := sqlhist.New(sqldb, *mapID)
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
@@ -107,7 +108,9 @@ func main() {
 	}
 
 	signer := signer.New(*mapID, queue, tree, mutator, sths, mutations, openPrivateKey())
-	go signer.StartSequencing()
+	if _, err := queue.StartReceiving(signer.ProcessMutation, signer.CreateEpoch); err != nil {
+		log.Fatalf("failed to start queue receiver: %v", err)
+	}
 	go signer.StartSigning(time.Duration(*epochDuration) * time.Second)
 
 	log.Printf("Signer started.")

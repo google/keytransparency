@@ -26,13 +26,14 @@ type Queuer interface {
 	// Commit all enqueued items to the sparse merkle tree.
 	AdvanceEpoch() error
 
-	// Dequeue consumes one item from the queue.  Item is only dequeued if
-	// the function called, processFunc or advanceFunc, succeeds.
-	// There is no locking around an item that is currently being processed.
-	// If Dequeue is called concurrently, multiple processes will dequeue
-	// the same data. Correlary: if a crash occurs during processing, the
-	// next process will dequeue the same item to continue.
-	Dequeue(processFunc ProcessKeyValueFunc, advanceFunc AdvanceEpochFunc) error
+	// StartReceiving starts receiving queue enqueued items.
+	StartReceiving(processFunc ProcessKeyValueFunc, advanceFunc AdvanceEpochFunc) (Receiver, error)
+}
+
+// Receiver represents a queue receiver.
+type Receiver interface {
+	// Close stops the receiver from receiving items from the queue.
+	Close()
 }
 
 // ProcessKeyValueFunc is a function that processes a mutation.

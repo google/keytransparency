@@ -89,22 +89,8 @@ func (s *Signer) StartSigning(interval time.Duration) {
 	}
 }
 
-// Sequence proceses one item out of the queue. Sequence blocks if the queue
-// is empty.
-func (s *Signer) Sequence() error {
-	return s.queue.Dequeue(s.processMutation, s.CreateEpoch)
-}
-
-// StartSequencing loops over Sequence infinitely.
-func (s *Signer) StartSequencing() {
-	for {
-		if err := s.Sequence(); err != nil {
-			log.Fatalf("Dequeue failed: %v", err)
-		}
-	}
-}
-
-func (s *Signer) processMutation(index, mutation []byte) error {
+// ProcessMutation saves a mutation and adds it to the append-only log and tree.
+func (s *Signer) ProcessMutation(index, mutation []byte) error {
 	// Send mutation to append-only log.
 	ctx := context.Background()
 	if err := s.mutations.Append(ctx, 0, mutation); err != nil {

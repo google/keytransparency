@@ -40,6 +40,9 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
+	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
+		t.Fatalf("failed to start queue receiver: %v", err)
+	}
 
 	for _, tc := range []struct {
 		want   bool
@@ -62,9 +65,6 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			req, err := env.Client.Update(tc.ctx, tc.userID, &tpb.Profile{Keys: primaryKeys})
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
-			}
-			if err := env.Signer.Sequence(); err != nil {
-				t.Fatalf("Failed to sequence: %v", err)
 			}
 			if err := env.Signer.CreateEpoch(); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
@@ -101,6 +101,9 @@ func TestUpdateValidation(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
+	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
+		t.Fatalf("failed to start queue receiver: %v", err)
+	}
 
 	auth := authentication.NewFake()
 	profile := &tpb.Profile{
@@ -127,9 +130,6 @@ func TestUpdateValidation(t *testing.T) {
 			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
-			if err := env.Signer.Sequence(); err != nil {
-				t.Fatalf("Failed to sequence: %v", err)
-			}
 			if err := env.Signer.CreateEpoch(); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
 			}
@@ -147,6 +147,9 @@ func TestListHistory(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
+	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
+		t.Fatalf("failed to start queue receiver: %v", err)
+	}
 	if err := env.setupHistory(ctx, userID); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
 	}
@@ -198,9 +201,6 @@ func (e *Env) setupHistory(ctx context.Context, userID string) error {
 			// The first update response is always a retry.
 			if got, want := err, grpcc.ErrRetry; got != want {
 				return fmt.Errorf("Update(%v)=(_, %v), want (_, %v)", userID, got, want)
-			}
-			if err := e.Signer.Sequence(); err != nil {
-				return fmt.Errorf("Failed to sequence: %v", err)
 			}
 		}
 		if err := e.Signer.CreateEpoch(); err != nil {
