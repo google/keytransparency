@@ -176,8 +176,8 @@ func (fakeQueue) AdvanceEpoch() error {
 	return nil
 }
 
-func (fakeQueue) Dequeue(processFunc queue.ProcessKeyValueFunc, advanceFunc queue.AdvanceEpochFunc) error {
-	return nil
+func (fakeQueue) StartReceiving(_ queue.ProcessKeyValueFunc, _ queue.AdvanceEpochFunc) (queue.Receiver, error) {
+	return nil, nil
 }
 
 // tree.SparseHist fake.
