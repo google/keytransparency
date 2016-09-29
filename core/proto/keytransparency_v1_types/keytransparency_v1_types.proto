@@ -127,12 +127,14 @@ message GetEntryResponse {
   // Verifiable map layer proves that the response is consistent.
   //
 
-  // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle Tree.
+  // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle
+  // Tree.
   ctmap.GetLeafResponse leaf_proof = 5;
   // smh contains the signed map head for the sparse Merkle Tree.
   // smh is also stored in the append only log.
   ctmap.SignedMapHead smh = 6;
-  // smh_sct is the signed certificate timestamp (SCT) showing that SMH was submitted to CT logs.
+  // smh_sct is the signed certificate timestamp (SCT) showing that SMH was
+  // submitted to CT logs.
   // TODO: Support storing smh in multiple logs.
   bytes smh_sct = 7;
 }
@@ -143,7 +145,7 @@ message ListEntryHistoryRequest {
   string user_id = 1;
   // start is the starting epcoh.
   int64 start = 2;
-  // page_size is the maximum number of entries to return. 
+  // page_size is the maximum number of entries to return.
   int32 page_size = 3;
 }
 

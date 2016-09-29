@@ -101,7 +101,8 @@ type MapHead struct {
 	Epoch int64 `protobuf:"varint,2,opt,name=epoch" json:"epoch,omitempty"`
 	// root is the value of the root node of the Merkle tree.
 	Root []byte `protobuf:"bytes,3,opt,name=root,proto3" json:"root,omitempty"`
-	// issue_time is the time when this epoch was created. Monotonically increasing.
+	// issue_time is the time when this epoch was created. Monotonically
+	// increasing.
 	IssueTime *google_protobuf.Timestamp `protobuf:"bytes,4,opt,name=issue_time,json=issueTime" json:"issue_time,omitempty"`
 }
 
