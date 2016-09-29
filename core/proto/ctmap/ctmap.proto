@@ -30,7 +30,8 @@ message MapHead {
   int64 epoch = 2;
   // root is the value of the root node of the Merkle tree.
   bytes root = 3;
-  // issue_time is the time when this epoch was created. Monotonically increasing.
+  // issue_time is the time when this epoch was created. Monotonically
+  // increasing.
   google.protobuf.Timestamp issue_time = 4;
 }
 
@@ -87,7 +88,7 @@ message GetLeafRequest {
 // GetLeafResponse for a verifiable map leaf.
 message GetLeafResponse {
   // leaf_data contains an entry stored in the leaf node.
-  bytes leaf_data = 1; 
+  bytes leaf_data = 1;
   // neighbors is a list of all the adjacent nodes along the path
   // from the deepest node to the head.
   repeated bytes neighbors = 2;
