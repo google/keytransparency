@@ -44,9 +44,9 @@ var (
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Commitments (
-		MapId      VARCHAR(32) NOT NULL,
-		Commitment VARCHAR(32) NOT NULL,
-		Value      BLOB(1024)  NOT NULL,
+		MapId      VARCHAR(32)   NOT NULL,
+		Commitment VARBINARY(32) NOT NULL,
+		Value      BLOB(1024)    NOT NULL,
 		PRIMARY KEY(MapID, Commitment),
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
 	);`,

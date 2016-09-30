@@ -37,19 +37,19 @@ var (
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Leaves (
-		MapId   VARCHAR(32) NOT NULL,
-		LeafId  VARCHAR(32) NOT NULL,
-		Version INTEGER     NOT NULL,
-		Data    BLOB        NOT NULL,
+		MapId   VARCHAR(32)   NOT NULL,
+		LeafId  VARBINARY(32) NOT NULL,
+		Version INTEGER       NOT NULL,
+		Data    BLOB          NOT NULL,
 		PRIMARY KEY(MapID, LeafId, Version),
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Nodes (
-		MapId   VARCHAR(32) NOT NULL,
-		NodeId  VARCHAR(32) NOT NULL,
-		Version	INTEGER     NOT NULL,
-		Value	BLOB(32)    NOT NULL,
+		MapId   VARCHAR(32)   NOT NULL,
+		NodeId  VARBINARY(32) NOT NULL,
+		Version	INTEGER       NOT NULL,
+		Value	BLOB(32)      NOT NULL,
 		PRIMARY KEY(MapId, NodeId, Version),
 		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
 	);`,
