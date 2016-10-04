@@ -15,7 +15,7 @@
 // Client for communicating with the Key Server.
 // Implements verification and convenience functions.
 
-package grpcc
+package kt
 
 import (
 	"bytes"
@@ -25,8 +25,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/key-transparency/core/client"
 	"github.com/google/key-transparency/core/client/ctlog"
-	"github.com/google/key-transparency/core/client/kt"
 	"github.com/google/key-transparency/core/commitments"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/tree/sparse"
@@ -36,11 +36,9 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
 )
 
 const (
@@ -79,20 +77,20 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli        spb.KeyTransparencyServiceClient
+	dialer     client.Dialer
 	vrf        vrf.PublicKey
-	kt         *kt.Verifier
+	ktVerifier *Verifier
 	CT         ctlog.Verifier
 	RetryCount int
 	RetryDelay time.Duration
 }
 
-// New creates a new client.
-func New(mapID string, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log ctlog.Verifier) *Client {
+// NewClient creates a new client.
+func NewClient(mapID string, dialer client.Dialer, vrf vrf.PublicKey, verifier *signatures.Verifier, log ctlog.Verifier) *Client {
 	return &Client{
-		cli:        client,
+		dialer:     dialer,
 		vrf:        vrf,
-		kt:         kt.New(vrf, tv.New([]byte(mapID), sparse.CONIKSHasher), verifier, log),
+		ktVerifier: NewVerifier(vrf, tv.New([]byte(mapID), sparse.CONIKSHasher), verifier, log),
 		CT:         log,
 		RetryCount: 1,
 		RetryDelay: 3 * time.Second,
@@ -100,15 +98,15 @@ func New(mapID string, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKe
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, *ctmap.MapHead, error) {
-	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
+func (c *Client) GetEntry(ctx context.Context, userID string, connOpts ...interface{}) (*tpb.Profile, *ctmap.MapHead, error) {
+	e, err := c.dialer.Get(ctx, &tpb.GetEntryRequest{
 		UserId: userID,
-	}, opts...)
+	}, connOpts)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if err := c.kt.VerifyGetEntryResponse(userID, e); err != nil {
+	if err := c.ktVerifier.VerifyGetEntryResponse(userID, e); err != nil {
 		return nil, nil, err
 	}
 
@@ -133,22 +131,22 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID string, start, end int64, opts ...grpc.CallOption) (map[*ctmap.MapHead]*tpb.Profile, error) {
+func (c *Client) ListHistory(ctx context.Context, userID string, start, end int64, connOpts ...interface{}) (map[*ctmap.MapHead]*tpb.Profile, error) {
 	currentProfile := new(tpb.Profile)
 	profiles := make(map[*ctmap.MapHead]*tpb.Profile)
 	for start <= end {
-		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
+		resp, err := c.dialer.List(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
 			Start:    start,
 			PageSize: min(int32((end-start)+1), pageSize),
-		}, opts...)
+		}, connOpts)
 		if err != nil {
 			return nil, err
 		}
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.kt.VerifyGetEntryResponse(userID, v)
+			err = c.ktVerifier.VerifyGetEntryResponse(userID, v)
 			if err != nil {
 				return nil, err
 			}
@@ -180,14 +178,14 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
-func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
-	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
+func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, connOpts ...interface{}) (*tpb.UpdateEntryRequest, error) {
+	getResp, err := c.dialer.Get(ctx, &tpb.GetEntryRequest{UserId: userID}, connOpts)
 	if err != nil {
 		return nil, err
 	}
 	Vlog.Printf("Got current entry...")
 
-	if err := c.kt.VerifyGetEntryResponse(userID, getResp); err != nil {
+	if err := c.ktVerifier.VerifyGetEntryResponse(userID, getResp); err != nil {
 		return nil, err
 	}
 
@@ -243,26 +241,26 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 		},
 	}
 
-	err = c.Retry(ctx, req)
+	err = c.Retry(ctx, req, connOpts)
 	// Retry submitting until an incluion proof is returned.
 	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
 		time.Sleep(c.RetryDelay)
-		err = c.Retry(ctx, req)
+		err = c.Retry(ctx, req, connOpts)
 	}
 	return req, err
 }
 
 // Retry will take a pre-fabricated request and send it again.
-func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
+func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, connOpts ...interface{}) error {
 	Vlog.Printf("Sending Update request...")
-	updateResp, err := c.cli.UpdateEntry(ctx, req)
+	updateResp, err := c.dialer.Update(ctx, req, connOpts)
 	if err != nil {
 		return err
 	}
 	Vlog.Printf("Got current entry...")
 
 	// Validate response.
-	if err := c.kt.VerifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
+	if err := c.ktVerifier.VerifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
 		return err
 	}
 

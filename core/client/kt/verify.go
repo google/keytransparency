@@ -17,8 +17,6 @@ package kt
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
-	"log"
 
 	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/commitments"
@@ -36,9 +34,6 @@ import (
 var (
 	// ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
 	ErrNilProof = errors.New("nil proof")
-
-	// Vlog is the verbose logger. By default it outputs to /dev/null.
-	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
 // Verifier is a client helper library for verifying request and responses.
@@ -49,8 +44,8 @@ type Verifier struct {
 	log  ctlog.Verifier
 }
 
-// New creates a new instance of the client verifier.
-func New(vrf vrf.PublicKey, tree *tv.Verifier, sig *signatures.Verifier, log ctlog.Verifier) *Verifier {
+// NewVerifier creates a new instance of the client verifier.
+func NewVerifier(vrf vrf.PublicKey, tree *tv.Verifier, sig *signatures.Verifier, log ctlog.Verifier) *Verifier {
 	return &Verifier{
 		vrf:  vrf,
 		tree: tree,
