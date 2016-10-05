@@ -20,9 +20,9 @@ import (
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
-// Dialer defines client APIs regardless of the underlying used connection, e.g.,
+// Conn defines client APIs regardless of the underlying used connection, e.g.,
 // gRPC or HTTP.
-type Dialer interface {
+type Conn interface {
 	// Get returns an entry if it exists, and nil if it does not.
 	Get(ctx context.Context, in *tpb.GetEntryRequest, connOpts ...interface{}) (*tpb.GetEntryResponse, error)
 	// List returns a list of profiles starting and ending at given epochs.

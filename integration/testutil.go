@@ -83,7 +83,7 @@ type Env struct {
 	db         *sql.DB
 	clus       *integration.ClusterV3
 	VrfPriv    vrf.PrivateKey
-	Cli        client.Dialer
+	Cli        client.Conn
 	mapLog     *httptest.Server
 }
 

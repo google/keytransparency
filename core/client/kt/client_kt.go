@@ -77,7 +77,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	dialer     client.Dialer
+	conn       client.Conn
 	vrf        vrf.PublicKey
 	ktVerifier *Verifier
 	CT         ctlog.Verifier
@@ -86,9 +86,9 @@ type Client struct {
 }
 
 // NewClient creates a new client.
-func NewClient(mapID string, dialer client.Dialer, vrf vrf.PublicKey, verifier *signatures.Verifier, log ctlog.Verifier) *Client {
+func NewClient(mapID string, conn client.Conn, vrf vrf.PublicKey, verifier *signatures.Verifier, log ctlog.Verifier) *Client {
 	return &Client{
-		dialer:     dialer,
+		conn:       conn,
 		vrf:        vrf,
 		ktVerifier: NewVerifier(vrf, tv.New([]byte(mapID), sparse.CONIKSHasher), verifier, log),
 		CT:         log,
@@ -99,7 +99,7 @@ func NewClient(mapID string, dialer client.Dialer, vrf vrf.PublicKey, verifier *
 
 // GetEntry returns an entry if it exists, and nil if it does not.
 func (c *Client) GetEntry(ctx context.Context, userID string, connOpts ...interface{}) (*tpb.Profile, *ctmap.MapHead, error) {
-	e, err := c.dialer.Get(ctx, &tpb.GetEntryRequest{
+	e, err := c.conn.Get(ctx, &tpb.GetEntryRequest{
 		UserId: userID,
 	}, connOpts)
 	if err != nil {
@@ -135,7 +135,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 	currentProfile := new(tpb.Profile)
 	profiles := make(map[*ctmap.MapHead]*tpb.Profile)
 	for start <= end {
-		resp, err := c.dialer.List(ctx, &tpb.ListEntryHistoryRequest{
+		resp, err := c.conn.List(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
 			Start:    start,
 			PageSize: min(int32((end-start)+1), pageSize),
@@ -179,7 +179,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
 func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, connOpts ...interface{}) (*tpb.UpdateEntryRequest, error) {
-	getResp, err := c.dialer.Get(ctx, &tpb.GetEntryRequest{UserId: userID}, connOpts)
+	getResp, err := c.conn.Get(ctx, &tpb.GetEntryRequest{UserId: userID}, connOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 // Retry will take a pre-fabricated request and send it again.
 func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, connOpts ...interface{}) error {
 	Vlog.Printf("Sending Update request...")
-	updateResp, err := c.dialer.Update(ctx, req, connOpts)
+	updateResp, err := c.conn.Update(ctx, req, connOpts)
 	if err != nil {
 		return err
 	}

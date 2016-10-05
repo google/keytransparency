@@ -22,27 +22,27 @@ import (
 	spb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
 )
 
-// Dialer represents a gRPC dialer.
-type Dialer struct {
+// Client represents a gRPC client.
+type Client struct {
 	cli spb.KeyTransparencyServiceClient
 }
 
 // New creates a new gRPC dialer instance.
-func New(cc *grpc.ClientConn) *Dialer {
-	return &Dialer{spb.NewKeyTransparencyServiceClient(cc)}
+func New(cc *grpc.ClientConn) *Client {
+	return &Client{spb.NewKeyTransparencyServiceClient(cc)}
 }
 
 // Get returns an entry if it exists, and nil if it does not.
-func (c *Dialer) Get(ctx context.Context, in *tpb.GetEntryRequest, connOpts ...interface{}) (*tpb.GetEntryResponse, error) {
+func (c *Client) Get(ctx context.Context, in *tpb.GetEntryRequest, connOpts ...interface{}) (*tpb.GetEntryResponse, error) {
 	return c.cli.GetEntry(ctx, in)
 }
 
 // List returns a list of profiles starting and ending at given epochs.
-func (c *Dialer) List(ctx context.Context, in *tpb.ListEntryHistoryRequest, connOpts ...interface{}) (*tpb.ListEntryHistoryResponse, error) {
+func (c *Client) List(ctx context.Context, in *tpb.ListEntryHistoryRequest, connOpts ...interface{}) (*tpb.ListEntryHistoryResponse, error) {
 	return c.cli.ListEntryHistory(ctx, in)
 }
 
 // Update updates a user's profile.
-func (c *Dialer) Update(ctx context.Context, in *tpb.UpdateEntryRequest, connOpts ...interface{}) (*tpb.UpdateEntryResponse, error) {
+func (c *Client) Update(ctx context.Context, in *tpb.UpdateEntryRequest, connOpts ...interface{}) (*tpb.UpdateEntryResponse, error) {
 	return c.cli.UpdateEntry(ctx, in)
 }
