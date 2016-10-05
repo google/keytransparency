@@ -317,7 +317,7 @@ func (m *Map) setLeafAt(ctx context.Context, index []byte, depth int, value []by
 	defer func() {
 		if returnErr != nil {
 			if rbErr := tx.Rollback(); rbErr != nil {
-				err = fmt.Errorf("setLeafAt failed: %v, and Rollback failed: %v", err, rbErr)
+				returnErr = fmt.Errorf("setLeafAt failed: %v, and Rollback failed: %v", returnErr, rbErr)
 			}
 		}
 	}()
