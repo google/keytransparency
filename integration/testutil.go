@@ -33,6 +33,7 @@ import (
 	"github.com/google/key-transparency/impl/sql/appender"
 	"github.com/google/key-transparency/impl/sql/commitments"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
+	"github.com/google/key-transparency/impl/transaction"
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
@@ -152,6 +153,7 @@ func (DevZero) Read(b []byte) (n int, err error) {
 func NewEnv(t *testing.T) *Env {
 	hs := ctutil.NewCTServer(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	etcdCli := clus.RandClient()
 	sqldb := NewDB(t)
 
 	sig, verifier, err := staticKeyPair()
@@ -160,7 +162,8 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	queue := queue.New(context.Background(), clus.RandClient(), mapID)
+	factory := transaction.NewFactory(sqldb, etcdCli)
+	queue := queue.New(context.Background(), etcdCli, mapID, factory)
 	tree, err := sqlhist.New(sqldb, mapID)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
@@ -190,7 +193,7 @@ func NewEnv(t *testing.T) *Env {
 
 	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
 	signer.FakeTime()
-	if err := signer.CreateEpoch(); err != nil {
+	if err := signer.CreateEpoch(nil); err != nil {
 		t.Fatalf("Failed to create epoch: %v", err)
 	}
 

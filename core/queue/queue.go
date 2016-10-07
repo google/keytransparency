@@ -15,6 +15,10 @@
 // Package queue implements a single-reader, multi-writer distributed queue.
 package queue
 
+import (
+	"github.com/google/key-transparency/core/transaction"
+)
+
 // Queuer submits new mutations to be processed.
 type Queuer interface {
 	// Enqueue submits a key, value pair for processing.
@@ -37,7 +41,7 @@ type Receiver interface {
 }
 
 // ProcessKeyValueFunc is a function that processes a mutation.
-type ProcessKeyValueFunc func(key, value []byte) error
+type ProcessKeyValueFunc func(txn transaction.Txn, key, value []byte) error
 
 // AdvanceEpochFunc is a function that advances the epoch.
-type AdvanceEpochFunc func() error
+type AdvanceEpochFunc func(txn transaction.Txn) error

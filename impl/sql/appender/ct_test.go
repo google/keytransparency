@@ -56,7 +56,7 @@ func TestGetLatest(t *testing.T) {
 		{10, []byte("foo"), 10},
 		{5, []byte("foo"), 10},
 	} {
-		if err := a.Append(context.Background(), tc.epoch, tc.data); err != nil {
+		if err := a.Append(nil, tc.epoch, tc.data); err != nil {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
 
@@ -92,7 +92,7 @@ func TestAppend(t *testing.T) {
 		{0, []byte("foo"), false},
 		{1, []byte("foo"), true},
 	} {
-		err := a.Append(context.Background(), tc.epoch, tc.data)
+		err := a.Append(nil, tc.epoch, tc.data)
 		if got := err == nil; got != tc.want {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}

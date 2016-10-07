@@ -15,13 +15,15 @@
 package appender
 
 import (
+	"github.com/google/key-transparency/core/transaction"
+
 	"golang.org/x/net/context"
 )
 
 // Appender is an append only interface into a data structure.
 type Appender interface {
 	// Adds an object to the append-only data structure.
-	Append(ctx context.Context, epoch int64, obj interface{}) error
+	Append(txn transaction.Txn, epoch int64, obj interface{}) error
 
 	// Epoch retrieves a specific object.
 	// Returns obj and a serialized ct.SignedCertificateTimestamp
