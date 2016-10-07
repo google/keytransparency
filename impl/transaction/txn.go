@@ -18,7 +18,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/key-transparency/core/transaction"
 
@@ -27,8 +26,7 @@ import (
 )
 
 var (
-	errInvalidIDs       = errors.New("invalid identifiers (ids)")
-	errDeadlineExceeded = errors.New("context deadline exceeded")
+	errInvalidIDs = errors.New("invalid identifiers (ids)")
 )
 
 // Factory represents a transaction factory for atomic database and queue ops.
@@ -81,26 +79,34 @@ func (t *txn) Prepare(query string) (*sql.Stmt, error) {
 // DB transaction. An error is returned on failure and the mutation being
 // processed is lost.
 func (t *txn) Commit() error {
-	// If the deadline on ctx is passed, return error.
-	if t, ok := t.ctx.Deadline(); ok {
-		if !t.Before(time.Now()) {
-			return errDeadlineExceeded
-		}
+	// If channel is done, return error.
+	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	default:
+		// context is not done, continue.
 	}
 
 	// Delete the queue element.
 	// cmp ensures that the key has the correct revision.
 	cmp := v3.Compare(v3.ModRevision(t.key), "=", t.rev)
 	req := v3.OpDelete(t.key)
-	resp, err := t.queueTxn.If(cmp).Then(req).Commit()
+	resp, cErr := t.queueTxn.If(cmp).Then(req).Commit()
 	// If the key does not exist, queueTxn Commit returns a nil error but
 	// sets resp.Succeeded to false. Key does not exist can happen because
-	// another receiver might have already processed and deleted the item
+	// another receiver might have already processed the item and deleted it
 	// from the queue.
-	if err != nil || !resp.Succeeded {
-		err = fmt.Errorf("queue commit failed: err=%v, key found=%v", err, resp.Succeeded)
-		if rbErr := t.dbTxn.Rollback(); rbErr != nil {
-			err = fmt.Errorf("%v, database rollback failed: %v", err, rbErr)
+	var err error
+	switch {
+	case cErr != nil:
+		err = fmt.Errorf("queue commit failed: %v", cErr)
+	case !resp.Succeeded:
+		err = fmt.Errorf("queue commit failed: key not found")
+	}
+	// If commit failed or the item was not found, rollback DB transaction.
+	if err != nil {
+		if rbErr := t.Rollback(); rbErr != nil {
+			err = fmt.Errorf("%v, %v", err, rbErr)
 		}
 		return err
 	}
@@ -112,5 +118,13 @@ func (t *txn) Commit() error {
 		return fmt.Errorf("database commit failed: %v", err)
 	}
 
+	return nil
+}
+
+// Rollback aborts the transaction. It only rolls back the database transaction.
+func (t *txn) Rollback() error {
+	if err := t.dbTxn.Rollback(); err != nil {
+		return fmt.Errorf("database rollback failed: %v", err)
+	}
 	return nil
 }
