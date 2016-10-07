@@ -135,14 +135,14 @@ func TestQueueCommitRead(t *testing.T) {
 		dh("C000000000000000000000000000000000000000000000000000000000000000"),
 	} {
 		data := []byte{byte(i)}
-		if err := m.QueueLeaf(ctx, index, data); err != nil {
+		if err := m.QueueLeaf(nil, index, data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", index, data, err)
 		}
 		epoch, err := m.Commit(ctx)
 		if err != nil {
 			t.Errorf("Commit()=[_, %v], want [_, nil]", err)
 		}
-		readData, err := m.ReadLeafAt(ctx, index, epoch)
+		readData, err := m.ReadLeafAt(nil, index, epoch)
 		if err != nil {
 			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, index, err)
 		}
@@ -171,7 +171,7 @@ func TestReadNotFound(t *testing.T) {
 		{dh("C000000000000000000000000000000000000000000000000000000000000000")},
 	} {
 		var epoch int64 = 10
-		readData, err := m.ReadLeafAt(ctx, tc.index, epoch)
+		readData, err := m.ReadLeafAt(nil, tc.index, epoch)
 		if err != nil {
 			t.Errorf("ReadLeafAt(%v, %v)=%v)", epoch, tc.index, err)
 		}
@@ -203,7 +203,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 	}
 	for i, tc := range leafs {
 		data := []byte{byte(i)}
-		if err := m.QueueLeaf(ctx, tc.index, data); err != nil {
+		if err := m.QueueLeaf(nil, tc.index, data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", tc.index, data, err)
 		}
 		if got, err := m.Commit(ctx); err != nil || got != tc.epoch {
@@ -213,7 +213,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 		for _, l := range leafs {
 			// Want success for leaves in previous epochs.
 			want := l.epoch <= tc.epoch
-			val, _ := m.ReadLeafAt(ctx, l.index, tc.epoch)
+			val, _ := m.ReadLeafAt(nil, l.index, tc.epoch)
 			if got := val != nil; got != want {
 				t.Errorf("ReadLeafAt(%v, %v)=%v, want %v)", l.index, tc.epoch, got, want)
 			}
@@ -247,7 +247,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 		}
 		// Iterating over a map in Go is randomized.
 		for _, leaf := range leafs {
-			if err := m.QueueLeaf(ctx, leaf.index, []byte(leaf.data)); err != nil {
+			if err := m.QueueLeaf(nil, leaf.index, []byte(leaf.data)); err != nil {
 				t.Errorf("WriteLeaf(%v, %v)=%v", leaf.index, leaf.data, err)
 			}
 			if _, err := m.Commit(ctx); err != nil {
@@ -328,7 +328,7 @@ func createTree(db *sql.DB, mapID string, leafs []leaf) (*Map, error) {
 	}
 	for _, l := range leafs {
 		value := []byte(l.value)
-		if err := m.QueueLeaf(ctx, l.index, value); err != nil {
+		if err := m.QueueLeaf(nil, l.index, value); err != nil {
 			return nil, fmt.Errorf("QueueLeaf(%v)=%v", l.index, err)
 		}
 	}

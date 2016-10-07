@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/key-transparency/core/authentication"
 	"github.com/google/key-transparency/core/queue"
+	"github.com/google/key-transparency/core/transaction"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -185,7 +186,7 @@ type fakeSparseHist struct {
 	M map[int64][]byte
 }
 
-func (*fakeSparseHist) QueueLeaf(ctx context.Context, index, leaf []byte) error {
+func (*fakeSparseHist) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
 	return nil
 }
 
@@ -193,11 +194,11 @@ func (*fakeSparseHist) Commit(ctx context.Context) (epoch int64, err error) {
 	return 0, nil
 }
 
-func (*fakeSparseHist) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
+func (*fakeSparseHist) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
 	return nil, nil
 }
 
-func (f *fakeSparseHist) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
+func (f *fakeSparseHist) ReadLeafAt(txn transaction.Txn, index []byte, epoch int64) ([]byte, error) {
 	commitment, ok := f.M[epoch]
 	if !ok {
 		return nil, errors.New("not found")
@@ -224,7 +225,7 @@ type fakeAppender struct {
 	LatestCount  int
 }
 
-func (*fakeAppender) Append(ctx context.Context, epoch int64, obj interface{}) error {
+func (*fakeAppender) Append(txn transaction.Txn, epoch int64, obj interface{}) error {
 	return nil
 }
 

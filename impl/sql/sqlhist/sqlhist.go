@@ -23,8 +23,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/key-transparency/core/transaction"
 	"github.com/google/key-transparency/core/tree"
 	"github.com/google/key-transparency/core/tree/sparse"
+
 	"golang.org/x/net/context"
 )
 
@@ -128,8 +130,9 @@ func (m *Map) Epoch() int64 {
 	return m.epoch
 }
 
-// QueueLeaf should only be called by the sequencer.
-func (m *Map) QueueLeaf(ctx context.Context, index, leaf []byte) error {
+// QueueLeaf should only be called by the sequencer. If txn is nil, the operation
+// will not run in a transaction.
+func (m *Map) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
 	if got, want := len(index), size; got != want {
 		return errIndexLen
 	}
@@ -138,7 +141,13 @@ func (m *Map) QueueLeaf(ctx context.Context, index, leaf []byte) error {
 	}
 
 	// Write leaf nodes
-	stmt, err := m.db.Prepare(queueExpr)
+	var stmt *sql.Stmt
+	var err error
+	if txn != nil {
+		stmt, err = txn.Prepare(queueExpr)
+	} else {
+		stmt, err = m.db.Prepare(queueExpr)
+	}
 	if err != nil {
 		return err
 	}
@@ -199,9 +208,16 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 	return m.epoch, nil
 }
 
-// ReadRootAt returns the value of the root node in a specific epoch.
-func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
-	stmt, err := m.db.Prepare(readExpr)
+// ReadRootAt returns the value of the root node in a specific epoch. If txn is
+// nil the operation will not run in a transaction.
+func (m *Map) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
+	var stmt *sql.Stmt
+	var err error
+	if txn != nil {
+		stmt, err = txn.Prepare(readExpr)
+	} else {
+		stmt, err = m.db.Prepare(readExpr)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -214,9 +230,16 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 	return value, nil
 }
 
-// ReadLeafAt returns the leaf value at epoch.
-func (m *Map) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
-	readStmt, err := m.db.Prepare(leafExpr)
+// ReadLeafAt returns the leaf value at epoch. If txn is nil, the operation will
+// not run in a transaction.
+func (m *Map) ReadLeafAt(txn transaction.Txn, index []byte, epoch int64) ([]byte, error) {
+	var readStmt *sql.Stmt
+	var err error
+	if txn != nil {
+		readStmt, err = txn.Prepare(leafExpr)
+	} else {
+		readStmt, err = m.db.Prepare(leafExpr)
+	}
 	if err != nil {
 		return nil, err
 	}

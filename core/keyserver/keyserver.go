@@ -104,7 +104,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeafAt(ctx, index[:], epoch)
+	leaf, err := s.tree.ReadLeafAt(nil, index[:], epoch)
 	if err != nil {
 		log.Printf("Cannot read leaf entry: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
