@@ -52,7 +52,7 @@ func TestVerifyCommitment(t *testing.T) {
 	fakeEntryData := validEntryData[:len(validEntryData)-1]
 
 	// Create a dummy client verifier.
-	verifier := New(nil, nil, nil, nil)
+	verifier := NewVerifier(nil, nil, nil, nil)
 	for _, tc := range []struct {
 		userID    string
 		entryData []byte

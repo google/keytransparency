@@ -37,8 +37,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
-
-	pb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
 )
 
 var (
@@ -56,7 +54,6 @@ key transparency server.  The client verifies all cryptographic proofs the
 server provides to ensure that account data is accurate.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if verbose {
-			grpcc.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 			kt.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 			ctlog.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 		}
@@ -181,7 +178,7 @@ func readSignatureVerifier(ktPEM string) (*signatures.Verifier, error) {
 	return ver, nil
 }
 
-func getClient(cc *grpc.ClientConn, mapID, vrfPubFile, ktSig, ctURL, ctPEM string) (*grpcc.Client, error) {
+func getClient(cc *grpc.ClientConn, mapID, vrfPubFile, ktSig, ctURL, ctPEM string) (*kt.Client, error) {
 	// Create CT client.
 	pem, err := ioutil.ReadFile(ctPEM)
 	if err != nil {
@@ -211,8 +208,7 @@ func getClient(cc *grpc.ClientConn, mapID, vrfPubFile, ktSig, ctURL, ctPEM strin
 	if err != nil {
 		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
 	}
-	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return grpcc.New(mapID, cli, vrfKey, verifier, ctClient), nil
+	return kt.NewClient(mapID, grpcc.New(cc), vrfKey, verifier, ctClient), nil
 }
 
 func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
@@ -252,7 +248,7 @@ func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
 
 // GetClient connects to the server and returns a key transpency verification
 // client.
-func GetClient(clientSecretFile string) (*grpcc.Client, error) {
+func GetClient(clientSecretFile string) (*kt.Client, error) {
 	ktURL := viper.GetString("kt-url")
 	ktPEM := viper.GetString("kt-key")
 	ktSig := viper.GetString("kt-sig")
