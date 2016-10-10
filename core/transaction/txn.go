@@ -25,4 +25,6 @@ type Txn interface {
 	Prepare(query string) (*sql.Stmt, error)
 	// Commit commits the transaction.
 	Commit() error
+	// Rollback aborts the transaction.
+	Rollback() error
 }
