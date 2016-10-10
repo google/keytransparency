@@ -29,7 +29,6 @@ import (
 var (
 	errInvalidIDs       = errors.New("invalid identifiers (ids)")
 	errDeadlineExceeded = errors.New("context deadline exceeded")
-	errNoKey            = errors.New("key not found")
 )
 
 // Factory represents a transaction factory for atomic database and queue ops.
@@ -103,7 +102,7 @@ func (t *txn) Commit() error {
 	case cErr != nil:
 		err = fmt.Errorf("queue commit failed: %v", cErr)
 	case !resp.Succeeded:
-		err = fmt.Errorf("queue commit failed: %v", errNoKey)
+		err = fmt.Errorf("queue commit failed: key not found")
 	}
 	// If commit failed or the item was not found, rollback DB transaction.
 	if err != nil {

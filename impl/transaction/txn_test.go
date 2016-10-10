@@ -34,32 +34,32 @@ var (
 	clusterSize = 3
 )
 
-type Env struct {
+type env struct {
 	db      *sql.DB
 	cluster *integration.ClusterV3
 	cli     *v3.Client
 	factory *Factory
 }
 
-func NewEnv(t *testing.T) *Env {
+func newEnv(t *testing.T) *env {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
-	cli := c.RandClient()
+	cli := c.Client(0)
 	factory := NewFactory(db, cli)
 
-	return &Env{db, c, cli, factory}
+	return &env{db, c, cli, factory}
 }
 
-func (e *Env) Close(t *testing.T) {
+func (e *env) Close(t *testing.T) {
 	e.db.Close()
 	e.cluster.Terminate(t)
 }
 
 func TestNewTxn(t *testing.T) {
-	env := NewEnv(t)
+	env := newEnv(t)
 	defer env.Close(t)
 
 	if _, err := env.factory.NewTxn(context.Background(), testKey, testRev); err != nil {
@@ -68,7 +68,7 @@ func TestNewTxn(t *testing.T) {
 }
 
 func TestExpiredContext(t *testing.T) {
-	env := NewEnv(t)
+	env := newEnv(t)
 	defer env.Close(t)
 
 	ctx, _ := context.WithDeadline(context.Background(),
@@ -85,7 +85,7 @@ func TestExpiredContext(t *testing.T) {
 }
 
 func TestCommit(t *testing.T) {
-	env := NewEnv(t)
+	env := newEnv(t)
 	defer env.Close(t)
 
 	// Add an item to the queue
@@ -107,7 +107,7 @@ func TestCommit(t *testing.T) {
 }
 
 func TestDeletedQueueItem(t *testing.T) {
-	env := NewEnv(t)
+	env := newEnv(t)
 	defer env.Close(t)
 
 	// Add an item to the queue
@@ -134,7 +134,7 @@ func TestDeletedQueueItem(t *testing.T) {
 }
 
 func TestFailedDBTxnCommit(t *testing.T) {
-	env := NewEnv(t)
+	env := newEnv(t)
 	defer env.Close(t)
 
 	// Add an item to the queue
@@ -161,7 +161,7 @@ func TestFailedDBTxnCommit(t *testing.T) {
 }
 
 func TestRollback(t *testing.T) {
-	env := NewEnv(t)
+	env := newEnv(t)
 	defer env.Close(t)
 
 	for _, tc := range []struct {
@@ -174,13 +174,15 @@ func TestRollback(t *testing.T) {
 		// Add an item to the queue
 		rkv, err := recipe.NewUniqueKV(env.cli, testPrefix, testValue, 0)
 		if err != nil {
-			t.Fatalf("recipe.NewUniqueKV failed: %v", err)
+			t.Errorf("recipe.NewUniqueKV failed: %v", err)
+			continue
 		}
 
 		// Create a transaction.
 		txn, err := env.factory.NewTxn(context.Background(), rkv.Key(), rkv.Revision())
 		if err != nil {
-			t.Fatalf("NewTxn failed: %v", err)
+			t.Errorf("NewTxn failed: %v", err)
+			continue
 		}
 
 		if tc.commit {
