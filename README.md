@@ -6,9 +6,9 @@ Key Transparency is a distributed implementation of
 1. Install prerequisites
 
   ```sh
-  go get -u github.com/google/key-transparency/cmd/...
   go get -u github.com/mattn/goreman
   go get -u github.com/coreos/etcd
+  go get -u github.com/google/key-transparency/cmd/...
   ```
   Ensure `$GOBIN` is in your `$PATH:`
 

@@ -3,6 +3,7 @@ all: vrf tls sig
 tls:
 	openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
 	openssl rsa -passin pass:x -in server.pass.key -out server.key
+	chmod 604 server.key
 	rm server.pass.key
 	openssl req -new -key server.key -out server.csr \
 		  -subj "/C=US/ST=CA/L=MountainView/CN=localhost"
@@ -10,10 +11,12 @@ tls:
 
 sig:
 	openssl ecparam -name prime256v1 -genkey -noout -out p256-key.pem
+	chmod 604 p256-key.pem
 	openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
 
 vrf:
-	openssl ecparam -name prime256v1 -genkey -noout -out vrf-key.pem
+	openssl ecparam -name server.keyprime256v1 -genkey -noout -out vrf-key.pem
+	chmod 604 vrf-key.pem
 	openssl ec -in vrf-key.pem -pubout -out vrf-pubkey.pem
 
 clean:
