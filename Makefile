@@ -52,7 +52,6 @@ proto:
 clean:
 	rm -f $(DEPS)
 	rm -f $(GATEWAY_DEPS)
-	$(MAKE) -C testdata clean
 	rm -f srv key-transparency-server key-transparency-signer key-transparency-client
 	rm -rf infra*
 
