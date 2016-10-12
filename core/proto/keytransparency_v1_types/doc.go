@@ -12,13 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package authentication implements authentication mechanisms.
-//
-// The Transparent Key Server is designed to be used by identity providers -
-// IdP in OAuth parlance.  OAuth2 Access Tokens may be provided as
-// authentication information, which can be resolved to user information and
-// associated scopes on the backend.
-
 //go:generate protoc -I=. -I=$GOPATH/src/ --go_out=:. keytransparency_v1_types.proto
 
 package keytransparency_v1_types

@@ -19,8 +19,6 @@
 # authentication information, which can be resolved to user information and
 # associated scopes on the backend.
 
-PROTOINCLUDE ?= /usr/local/include
-
 #include $(GOHOME)/src/pkg/github.com/golang/protobuf/Make.protobuf
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
@@ -49,12 +47,7 @@ presubmit: coverage fmt
 	-ineffassign .
 	-find . -type f -name '*.md' -o -name '*.go' -o -name '*.proto' | sort | xargs misspell -locale US
 
-proto: $(DEPS) $(GATEWAY_DEPS)
-
-./%.pb.go:  %.proto
-	go generate ./...
-
-./%.pb.gw.go: %.proto	
+proto:
 	go generate ./...
 
 clean:
