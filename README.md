@@ -4,7 +4,7 @@ Key Transparency is a distributed implementation of
 
 ## Installing Key Transparency
 
-1. Install [Go Programming Language](https://golang.org/doc/install) and set your `$GOPATH` variable to point to your Go workspace directory.
+1. Install the [Go Programming Language](https://golang.org/doc/install) and set your `$GOPATH` variable to point to your Go workspace directory.
 
 2. Ensure that you have `gcc` and `openssl` commands installed and operational. On an Ubuntu machine, you can get both by running the following command:
 
@@ -156,6 +156,3 @@ You can install [ProtocolBuffers](https://github.com/golang/protobuf#installatio
   make check
   sudo make install
   ```
-
-## Projects Using Key Transparency
-* [Google End-To-End](https://github.com/google/end-to-end).
