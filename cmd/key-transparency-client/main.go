@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/google/key-transparency/cmd/client/cmd"
+import "github.com/google/key-transparency/cmd/key-transparency-client/cmd"
 
 func main() {
 	cmd.Execute()

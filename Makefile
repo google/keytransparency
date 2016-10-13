@@ -24,9 +24,9 @@ DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
 
 main: proto
-	go build -o key-transparency ./cmd/frontend
-	go build -o key-transparency-signer ./cmd/backend
-	go build -o key-transparency-client ./cmd/client
+	go build -o key-transparency-server ./cmd/key-transparency-server
+	go build -o key-transparency-signer ./cmd/key-transparency-signer
+	go build -o key-transparency-client ./cmd/key-transparency-client
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.
@@ -54,6 +54,6 @@ clean:
 	rm -f $(DEPS)
 	rm -f $(GATEWAY_DEPS)
 	$(MAKE) -C testdata clean
-	rm -f srv key-transparency key-transparency-signer 
+	rm -f srv key-transparency-server key-transparency-signer key-transparency-client
 	rm -rf infra*
 

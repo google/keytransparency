@@ -20,7 +20,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/key-transparency/cmd/client/grpcc"
+	"github.com/google/key-transparency/cmd/key-transparency-client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
 
 	"golang.org/x/net/context"
