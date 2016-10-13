@@ -19,20 +19,9 @@
 # authentication information, which can be resolved to user information and
 # associated scopes on the backend.
 
-PROTOINCLUDE ?= /usr/local/include
-
 #include $(GOHOME)/src/pkg/github.com/golang/protobuf/Make.protobuf
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
-OUTPUT:= $(GOPATH)/src
-REPLACE+=Mgoogle/api/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis/google/api
-GRPC_FLAGS+= --go_out=$(REPLACE),plugins=grpc
-GATEWAY_FLAGS+= --grpc-gateway_out=logtostderr=true
-INCLUDES+= -I=.
-INCLUDES+= -I=$(GOPATH)/src/
-INCLUDES+= -I=$(PROTOINCLUDE)
-INCLUDES+= -I=$(GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis 
-
 
 main: proto
 	go build -o key-transparency ./cmd/frontend
@@ -58,13 +47,8 @@ presubmit: coverage fmt
 	-ineffassign .
 	-find . -type f -name '*.md' -o -name '*.go' -o -name '*.proto' | sort | xargs misspell -locale US
 
-proto: $(DEPS) $(GATEWAY_DEPS)
-
-./%.pb.go:  %.proto
-	protoc $(INCLUDES) $(GRPC_FLAGS):. $(dir $<)*.proto
-
-./%.pb.gw.go: %.proto	
-	protoc $(INCLUDES) $(GATEWAY_FLAGS):. $(dir $<)*.proto
+proto:
+	go generate ./...
 
 clean:
 	rm -f $(DEPS)
