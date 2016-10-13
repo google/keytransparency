@@ -19,11 +19,10 @@
 # authentication information, which can be resolved to user information and
 # associated scopes on the backend.
 
-#include $(GOHOME)/src/pkg/github.com/golang/protobuf/Make.protobuf
 DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
 GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
 
-main: proto
+main:
 	go build ./cmd/key-transparency-server
 	go build ./cmd/key-transparency-signer
 	go build ./cmd/key-transparency-client
