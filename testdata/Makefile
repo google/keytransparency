@@ -36,7 +36,7 @@ sig:
 	openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
 
 vrf:
-	openssl ecparam -name server.key prime256v1 -genkey -noout -out vrf-key.pem
+	openssl ecparam -name prime256v1 -genkey -noout -out vrf-key.pem
 	chmod 600 vrf-key.pem
 	openssl ec -in vrf-key.pem -pubout -out vrf-pubkey.pem
 
