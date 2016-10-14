@@ -2,7 +2,7 @@
 *.swo
 *~
 
-key-transparency
+key-transparency-server
 key-transparency-signer
 key-transparency-client
 

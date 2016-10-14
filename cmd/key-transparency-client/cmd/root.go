@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/key-transparency/cmd/client/grpcc"
+	"github.com/google/key-transparency/cmd/key-transparency-client/grpcc"
 	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/client/kt"
 	"github.com/google/key-transparency/core/signatures"
