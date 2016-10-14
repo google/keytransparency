@@ -40,6 +40,7 @@ Key Transparency is a distributed implementation of
 2. Set / Update a user's keys:
 
   ```
+  go build ./cmd/key-transparency-client
   ./key-transparency-client post <email> -d '{"app1": "dGVzdA=="}' --config=./.key-transparency.yaml
   {Keys:map[app1:[116 101 115 116]}
   ```
