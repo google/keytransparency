@@ -21,6 +21,8 @@ import (
 	"log"
 
 	"github.com/google/key-transparency/core/queue"
+	ctxn "github.com/google/key-transparency/core/transaction"
+	itxn "github.com/google/key-transparency/impl/transaction"
 
 	"golang.org/x/net/context"
 
@@ -33,6 +35,7 @@ type Queue struct {
 	client    *v3.Client
 	ctx       context.Context
 	keyPrefix string
+	factory   *itxn.Factory
 }
 
 type receiver struct {
@@ -52,11 +55,12 @@ type kv struct {
 }
 
 // New creates a new consistent, distributed queue.
-func New(ctx context.Context, client *v3.Client, mapID string) *Queue {
+func New(ctx context.Context, client *v3.Client, mapID string, factory *itxn.Factory) *Queue {
 	return &Queue{
 		client:    client,
 		ctx:       ctx,
 		keyPrefix: mapID,
+		factory:   factory,
 	}
 }
 
@@ -105,43 +109,37 @@ func (q *Queue) loop(ctx context.Context, wc v3.WatchChan, cbs callbacks) {
 			dec := gob.NewDecoder(bytes.NewBuffer(ev.Kv.Value))
 			if err := dec.Decode(&dataKV); err != nil {
 				log.Printf(err.Error())
+				continue
 			}
 
-			if err := processEntry(cbs, dataKV); err != nil {
-				log.Printf(err.Error())
-			}
-
-			// Delete the entry if there were no processing errors.
-			success, err := deleteRevKey(ctx, q.client, string(ev.Kv.Key), ev.Kv.ModRevision)
+			// Create a cross-domain transaction.
+			txn, err := q.factory.NewTxn(q.ctx, string(ev.Kv.Key), ev.Kv.ModRevision)
 			if err != nil {
 				log.Printf(err.Error())
-			} else if !success {
-				log.Printf("missing key while deleting from queue")
+				continue
+			}
+
+			// Process the received entry.
+			if err := processEntry(txn, cbs, dataKV); err != nil {
+				log.Printf(err.Error())
+				continue
+			}
+
+			// Commit the transaction.
+			if err := txn.Commit(); err != nil {
+				log.Printf(err.Error())
 			}
 		}
 	}
 }
 
 // processEntry processes a given queue item.
-func processEntry(cbs callbacks, dataKV kv) error {
+func processEntry(txn ctxn.Txn, cbs callbacks, dataKV kv) error {
 	// Process the entry.
 	if dataKV.AdvanceEpoch {
-		return cbs.advanceFunc()
+		return cbs.advanceFunc(txn)
 	}
-	return cbs.processFunc(dataKV.Key, dataKV.Val)
-}
-
-// deleteRevKey deletes a key by revision, returning false if key is missing
-func deleteRevKey(ctx context.Context, kv v3.KV, key string, rev int64) (bool, error) {
-	cmp := v3.Compare(v3.ModRevision(key), "=", rev)
-	req := v3.OpDelete(key)
-	txnresp, err := kv.Txn(ctx).If(cmp).Then(req).Commit()
-	if err != nil {
-		return false, err
-	} else if !txnresp.Succeeded {
-		return false, nil
-	}
-	return true, nil
+	return cbs.processFunc(txn, dataKV.Key, dataKV.Val)
 }
 
 // Close stops the receiver from receiving items from the queue.

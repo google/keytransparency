@@ -15,6 +15,7 @@
 package keyserver
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/google/key-transparency/core/authentication"
 	"github.com/google/key-transparency/core/queue"
+	"github.com/google/key-transparency/core/transaction"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -55,7 +57,7 @@ func TestListEntryHistory(t *testing.T) {
 		c := &fakeCommitter{make(map[string]*tpb.Committed)}
 		st := &fakeSparseHist{make(map[int64][]byte)}
 		a := &fakeAppender{0, 0}
-		srv := New(c, fakeQueue{}, st, a, fakePrivateKey{}, fakeMutator{}, authentication.NewFake())
+		srv := New(c, fakeQueue{}, st, a, fakePrivateKey{}, fakeMutator{}, authentication.NewFake(), fakeFactory{})
 		if err := addProfiles(profileCount, c, st, a); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
@@ -185,7 +187,7 @@ type fakeSparseHist struct {
 	M map[int64][]byte
 }
 
-func (*fakeSparseHist) QueueLeaf(ctx context.Context, index, leaf []byte) error {
+func (*fakeSparseHist) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
 	return nil
 }
 
@@ -193,11 +195,11 @@ func (*fakeSparseHist) Commit(ctx context.Context) (epoch int64, err error) {
 	return 0, nil
 }
 
-func (*fakeSparseHist) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
+func (*fakeSparseHist) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
 	return nil, nil
 }
 
-func (f *fakeSparseHist) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
+func (f *fakeSparseHist) ReadLeafAt(txn transaction.Txn, index []byte, epoch int64) ([]byte, error) {
 	commitment, ok := f.M[epoch]
 	if !ok {
 		return nil, errors.New("not found")
@@ -224,7 +226,7 @@ type fakeAppender struct {
 	LatestCount  int
 }
 
-func (*fakeAppender) Append(ctx context.Context, epoch int64, obj interface{}) error {
+func (*fakeAppender) Append(txn transaction.Txn, epoch int64, obj interface{}) error {
 	return nil
 }
 
@@ -259,4 +261,20 @@ func (fakeMutator) CheckMutation(value, mutation []byte) error {
 
 func (fakeMutator) Mutate(value, mutation []byte) ([]byte, error) {
 	return nil, nil
+}
+
+// transaction.Txn fake
+type fakeTxn struct {
+}
+
+func (*fakeTxn) Prepare(query string) (*sql.Stmt, error) { return nil, nil }
+func (*fakeTxn) Commit() error                           { return nil }
+func (*fakeTxn) Rollback() error                         { return nil }
+
+// transaction.Factory fake
+type fakeFactory struct {
+}
+
+func (fakeFactory) NewDBTxn(ctx context.Context) (transaction.Txn, error) {
+	return &fakeTxn{}, nil
 }

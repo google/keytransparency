@@ -16,16 +16,30 @@ package queue
 
 import (
 	"bytes"
+	"database/sql"
 	"sync"
 	"testing"
 
+	ctxn "github.com/google/key-transparency/core/transaction"
+	itxn "github.com/google/key-transparency/impl/transaction"
+
 	"github.com/coreos/etcd/integration"
+	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"golang.org/x/net/context"
 )
 
 const mapID = "test_map"
 
 var clusterSize = 3
+
+// newDB creates a new in-memory database for testing.
+func newDB(t testing.TB) *sql.DB {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("sql.Open(): %v", err)
+	}
+	return db
+}
 
 // TestStartReceiving tests that the queue is receiving the correct enqueued
 // items. The test does not depend on the order the items are received.
@@ -34,7 +48,8 @@ func TestStartReceiving(t *testing.T) {
 	defer c.Terminate(t)
 
 	cli := c.RandClient()
-	q := New(context.Background(), cli, mapID)
+	factory := itxn.NewFactory(newDB(t), cli)
+	q := New(context.Background(), cli, mapID, factory)
 
 	// Prepare test data.
 	litems := []struct {
@@ -58,7 +73,7 @@ func TestStartReceiving(t *testing.T) {
 	// StartReceiving setup.
 	var done sync.WaitGroup
 	done.Add(len(mitems))
-	processFunc := func(key, value []byte) error {
+	processFunc := func(txn ctxn.Txn, key, value []byte) error {
 		if v, ok := mitems[string(key)]; !ok {
 			t.Errorf("Receive key %v was not enqueued", key)
 		} else {
@@ -71,7 +86,7 @@ func TestStartReceiving(t *testing.T) {
 		done.Done()
 		return nil
 	}
-	advanceFunc := func() error { return nil }
+	advanceFunc := func(txn ctxn.Txn) error { return nil }
 	if _, err := q.StartReceiving(processFunc, advanceFunc); err != nil {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
@@ -96,11 +111,11 @@ func TestProcessEntry(t *testing.T) {
 	// Setup
 	var pCounter, aCounter int
 	cbs := callbacks{
-		func(key, value []byte) error {
+		func(txn ctxn.Txn, key, value []byte) error {
 			pCounter++
 			return nil
 		},
-		func() error {
+		func(txn ctxn.Txn) error {
 			aCounter++
 			return nil
 		},
@@ -129,7 +144,7 @@ func TestProcessEntry(t *testing.T) {
 		aCounter = 0
 
 		for _, kv := range tc.kvs {
-			_ = processEntry(cbs, kv)
+			_ = processEntry(nil, cbs, kv)
 		}
 
 		if got, want := pCounter, tc.pCounter; got != want {
