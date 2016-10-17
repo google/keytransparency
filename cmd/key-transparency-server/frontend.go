@@ -17,7 +17,6 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -48,7 +47,7 @@ import (
 )
 
 var (
-	port          = flag.Int("port", 8080, "TCP port to listen on")
+	addr          = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
 	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
@@ -208,8 +207,7 @@ func main() {
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
 
 	// Create HTTP handlers and gRPC gateway.
-	addr := fmt.Sprintf("localhost:%d", *port)
-	gwmux, err := grpcGatewayMux(addr)
+	gwmux, err := grpcGatewayMux(*addr)
 	if err != nil {
 		log.Fatalf("Failed setting up REST proxy: %v", err)
 	}
@@ -219,8 +217,8 @@ func main() {
 	mux.Handle("/", gwmux)
 
 	// Serve HTTP2 server over TLS.
-	log.Printf("Listening on %v", addr)
-	if err := http.ListenAndServeTLS(addr, *certFile, *keyFile,
+	log.Printf("Listening on %v", *addr)
+	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
 		grpcHandlerFunc(grpcServer, mux)); err != nil {
 		log.Fatalf("ListenAndServeTLS: %v", err)
 	}
