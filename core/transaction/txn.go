@@ -16,7 +16,15 @@ package transaction
 
 import (
 	"database/sql"
+
+	"golang.org/x/net/context"
 )
+
+// Factory represents a transaction factory object.
+type Factory interface {
+	// NewDBTxn creates a new transaction object for database operations.
+	NewDBTxn(ctx context.Context) (Txn, error)
+}
 
 // Txn represents a transaction interface that provides atomic SQL database and
 // queue operations.
