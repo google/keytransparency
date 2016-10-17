@@ -58,6 +58,18 @@ func (f *Factory) NewTxn(ctx context.Context, key string, rev int64) (transactio
 	return &txn{ctx, dbTxn, quTxn, key, rev}, nil
 }
 
+// NewDBTxn creates a new transaction object to only support database operations.
+func (f *Factory) NewDBTxn(ctx context.Context) (transaction.Txn, error) {
+	// Create database transaction.
+	dbTxn, err := f.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create transaction object
+	return &txn{ctx, dbTxn, nil, "", -1}, nil
+}
+
 // txn provides a cross-domain atomic transactions between SQL database and etcd.
 type txn struct {
 	ctx      context.Context
@@ -77,7 +89,8 @@ func (t *txn) Prepare(query string) (*sql.Stmt, error) {
 // key and rev. If the delete failed due to any reason including not found key,
 // the database transaction is rolled back. Then, Commit attempts to commit the
 // DB transaction. An error is returned on failure and the mutation being
-// processed is lost.
+// processed is lost. If this transaction object is created using NewDBTxn, only
+// the database transaction will be committed.
 func (t *txn) Commit() error {
 	// If channel is done, return error.
 	select {
@@ -87,28 +100,31 @@ func (t *txn) Commit() error {
 		// context is not done, continue.
 	}
 
-	// Delete the queue element.
-	// cmp ensures that the key has the correct revision.
-	cmp := v3.Compare(v3.ModRevision(t.key), "=", t.rev)
-	req := v3.OpDelete(t.key)
-	resp, cErr := t.queueTxn.If(cmp).Then(req).Commit()
-	// If the key does not exist, queueTxn Commit returns a nil error but
-	// sets resp.Succeeded to false. Key does not exist can happen because
-	// another receiver might have already processed the item and deleted it
-	// from the queue.
-	var err error
-	switch {
-	case cErr != nil:
-		err = fmt.Errorf("queue commit failed: %v", cErr)
-	case !resp.Succeeded:
-		err = fmt.Errorf("queue commit failed: key not found")
-	}
-	// If commit failed or the item was not found, rollback DB transaction.
-	if err != nil {
-		if rbErr := t.Rollback(); rbErr != nil {
-			err = fmt.Errorf("%v, %v", err, rbErr)
+	// Delete the queue element only if queueTxn is set.
+	if t.queueTxn != nil {
+		// cmp ensures that the key has the correct revision.
+		cmp := v3.Compare(v3.ModRevision(t.key), "=", t.rev)
+		req := v3.OpDelete(t.key)
+		resp, cErr := t.queueTxn.If(cmp).Then(req).Commit()
+		// If the key does not exist, queueTxn Commit returns a nil error
+		// but sets resp.Succeeded to false. Key does not exist can
+		// happen because another receiver might have already processed
+		// the item and deleted it from the queue.
+		var err error
+		switch {
+		case cErr != nil:
+			err = fmt.Errorf("queue commit failed: %v", cErr)
+		case !resp.Succeeded:
+			err = fmt.Errorf("queue commit failed: key not found")
 		}
-		return err
+		// If commit failed or the item was not found, rollback DB
+		// transaction.
+		if err != nil {
+			if rbErr := t.Rollback(); rbErr != nil {
+				err = fmt.Errorf("%v, %v", err, rbErr)
+			}
+			return err
+		}
 	}
 
 	// Commit the database transaction. On failure, rollback the database
