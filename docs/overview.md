@@ -38,6 +38,7 @@ efficient and support proving that a piece of data is contained in the hash.
 User apps use this hash to verify that the results are part of the same hash. 
 
 ![drawing](images/Sd4HCvEtUSL.png) 
+
 _Root Merkle Tree Hash efficiently hashes whole database_
 
 ![drawing](images/7A2vuGir0yf.png)
