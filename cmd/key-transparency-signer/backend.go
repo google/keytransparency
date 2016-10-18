@@ -30,6 +30,7 @@ import (
 	"github.com/google/key-transparency/impl/etcd/queue"
 	"github.com/google/key-transparency/impl/sql/appender"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
+	"github.com/google/key-transparency/impl/transaction"
 
 	"github.com/coreos/etcd/clientv3"
 	_ "github.com/mattn/go-sqlite3"
@@ -91,9 +92,11 @@ func main() {
 	defer sqldb.Close()
 	etcdCli := openEtcd()
 	defer etcdCli.Close()
+	factory := transaction.NewFactory(sqldb, etcdCli)
 
-	queue := queue.New(context.Background(), etcdCli, *mapID)
-	tree, err := sqlhist.New(sqldb, *mapID)
+	// Create signer helper objects.
+	queue := queue.New(context.Background(), etcdCli, *mapID, factory)
+	tree, err := sqlhist.New(context.Background(), sqldb, *mapID, factory)
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}

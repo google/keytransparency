@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/key-transparency/core/transaction"
+
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/client"
 	"golang.org/x/net/context"
@@ -128,7 +130,7 @@ func (a *CTAppender) insertMapRow() error {
 }
 
 // Append adds an object to the append-only data structure.
-func (a *CTAppender) Append(ctx context.Context, epoch int64, obj interface{}) error {
+func (a *CTAppender) Append(txn transaction.Txn, epoch int64, obj interface{}) error {
 	if a.send {
 		sct, err := a.ctlog.AddJSON(obj)
 		if err != nil {
@@ -143,7 +145,7 @@ func (a *CTAppender) Append(ctx context.Context, epoch int64, obj interface{}) e
 			if err := gob.NewEncoder(&data).Encode(obj); err != nil {
 				return err
 			}
-			writeStmt, err := a.db.Prepare(insertExpr)
+			writeStmt, err := txn.Prepare(insertExpr)
 			if err != nil {
 				return fmt.Errorf("CT: DB save failure: %v", err)
 			}

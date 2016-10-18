@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/key-transparency/core/testutil/ctutil"
+	"github.com/google/key-transparency/impl/transaction"
 
 	ct "github.com/google/certificate-transparency/go"
 	_ "github.com/mattn/go-sqlite3"
@@ -41,8 +42,10 @@ func NewDB(t testing.TB) *sql.DB {
 func TestGetLatest(t *testing.T) {
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
+	db := NewDB(t)
+	factory := transaction.NewFactory(db, nil)
 
-	a, err := New(NewDB(t), mapID, hs.URL)
+	a, err := New(db, mapID, hs.URL)
 	if err != nil {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
@@ -56,8 +59,16 @@ func TestGetLatest(t *testing.T) {
 		{10, []byte("foo"), 10},
 		{5, []byte("foo"), 10},
 	} {
-		if err := a.Append(context.Background(), tc.epoch, tc.data); err != nil {
+		txn, err := factory.NewDBTxn(context.Background())
+		if err != nil {
+			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			continue
+		}
+		if err := a.Append(txn, tc.epoch, tc.data); err != nil {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
+		}
+		if err := txn.Commit(); err != nil {
+			t.Errorf("txn.Commit() failed: %v", err)
 		}
 
 		var obj []byte
@@ -77,8 +88,10 @@ func TestGetLatest(t *testing.T) {
 func TestAppend(t *testing.T) {
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
+	db := NewDB(t)
+	factory := transaction.NewFactory(db, nil)
 
-	a, err := New(NewDB(t), mapID, hs.URL)
+	a, err := New(db, mapID, hs.URL)
 	if err != nil {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
@@ -92,9 +105,17 @@ func TestAppend(t *testing.T) {
 		{0, []byte("foo"), false},
 		{1, []byte("foo"), true},
 	} {
-		err := a.Append(context.Background(), tc.epoch, tc.data)
+		txn, err := factory.NewDBTxn(context.Background())
+		if err != nil {
+			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			continue
+		}
+		err = a.Append(txn, tc.epoch, tc.data)
 		if got := err == nil; got != tc.want {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
+		}
+		if err := txn.Commit(); err != nil {
+			t.Errorf("txn.Commit() failed: %v", err)
 		}
 	}
 }

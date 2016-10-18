@@ -23,8 +23,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/key-transparency/core/transaction"
 	"github.com/google/key-transparency/core/tree"
 	"github.com/google/key-transparency/core/tree/sparse"
+
 	"golang.org/x/net/context"
 )
 
@@ -89,20 +91,22 @@ const (
 
 // Map stores a temporal sparse merkle tree, backed by an SQL database.
 type Map struct {
-	mapID []byte
-	db    *sql.DB
-	epoch int64 // The currently valid epoch. Insert at epoch+1.
+	mapID   []byte
+	db      *sql.DB
+	factory transaction.Factory
+	epoch   int64 // The currently valid epoch. Insert at epoch+1.
 }
 
 // New creates a new map.
-func New(db *sql.DB, mapID string) (*Map, error) {
+func New(ctx context.Context, db *sql.DB, mapID string, factory transaction.Factory) (*Map, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("No DB connection: %v", err)
 	}
 
 	m := &Map{
-		mapID: []byte(mapID),
-		db:    db,
+		mapID:   []byte(mapID),
+		db:      db,
+		factory: factory,
 	}
 	if err := m.create(); err != nil {
 		return nil, err
@@ -112,9 +116,19 @@ func New(db *sql.DB, mapID string) (*Map, error) {
 	}
 	index, depth := tree.InvertBitString("")
 	nodeValue := hasher.HashEmpty(m.mapID, index, depth)
-	if err := m.setRootAt(nil, nodeValue, -1); err != nil {
+
+	// Set the first root.
+	txn, err := m.factory.NewDBTxn(ctx)
+	if err != nil {
 		return nil, err
 	}
+	if err := m.setRootAt(txn, nodeValue, -1); err != nil {
+		return nil, err
+	}
+	if err := txn.Commit(); err != nil {
+		return nil, err
+	}
+
 	epoch, err := m.readEpoch()
 	if err != nil {
 		return nil, err
@@ -128,8 +142,9 @@ func (m *Map) Epoch() int64 {
 	return m.epoch
 }
 
-// QueueLeaf should only be called by the sequencer.
-func (m *Map) QueueLeaf(ctx context.Context, index, leaf []byte) error {
+// QueueLeaf should only be called by the sequencer. If txn is nil, the operation
+// will not run in a transaction.
+func (m *Map) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
 	if got, want := len(index), size; got != want {
 		return errIndexLen
 	}
@@ -138,7 +153,7 @@ func (m *Map) QueueLeaf(ctx context.Context, index, leaf []byte) error {
 	}
 
 	// Write leaf nodes
-	stmt, err := m.db.Prepare(queueExpr)
+	stmt, err := txn.Prepare(queueExpr)
 	if err != nil {
 		return err
 	}
@@ -186,12 +201,19 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 	}
 	// Always update the root node.
 	if len(leafRows) == 0 {
-		root, err := m.ReadRootAt(nil, m.epoch)
+		txn, err := m.factory.NewDBTxn(ctx)
+		if err != nil {
+			return -1, fmt.Errorf("Failed to create transaction: %v", err)
+		}
+		root, err := m.ReadRootAt(txn, m.epoch)
 		if err != nil {
 			return -1, fmt.Errorf("No root for epoch %d: %v", m.epoch, err)
 		}
-		if err := m.setRootAt(nil, sparse.FromBytes(root), m.epoch+1); err != nil {
+		if err := m.setRootAt(txn, sparse.FromBytes(root), m.epoch+1); err != nil {
 			return -1, fmt.Errorf("Failed to set root: %v", err)
+		}
+		if err := txn.Commit(); err != nil {
+			return -1, fmt.Errorf("Failed to commit transaction: %v", err)
 		}
 	}
 
@@ -199,9 +221,10 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 	return m.epoch, nil
 }
 
-// ReadRootAt returns the value of the root node in a specific epoch.
-func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
-	stmt, err := m.db.Prepare(readExpr)
+// ReadRootAt returns the value of the root node in a specific epoch. If txn is
+// nil the operation will not run in a transaction.
+func (m *Map) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
+	stmt, err := txn.Prepare(readExpr)
 	if err != nil {
 		return nil, err
 	}
@@ -214,9 +237,10 @@ func (m *Map) ReadRootAt(ctx context.Context, epoch int64) ([]byte, error) {
 	return value, nil
 }
 
-// ReadLeafAt returns the leaf value at epoch.
-func (m *Map) ReadLeafAt(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
-	readStmt, err := m.db.Prepare(leafExpr)
+// ReadLeafAt returns the leaf value at epoch. If txn is nil, the operation will
+// not run in a transaction.
+func (m *Map) ReadLeafAt(txn transaction.Txn, index []byte, epoch int64) ([]byte, error) {
+	readStmt, err := txn.Prepare(leafExpr)
 	if err != nil {
 		return nil, err
 	}
@@ -347,8 +371,8 @@ func (m *Map) setLeafAt(ctx context.Context, index []byte, depth int, value []by
 }
 
 // setRootAt sets root node values directly at epoch.
-func (m *Map) setRootAt(ctx context.Context, value sparse.Hash, epoch int64) error {
-	writeStmt, err := m.db.Prepare(setNodeExpr)
+func (m *Map) setRootAt(txn transaction.Txn, value sparse.Hash, epoch int64) error {
+	writeStmt, err := txn.Prepare(setNodeExpr)
 	if err != nil {
 		return fmt.Errorf("setRootAt(): %v", err)
 	}

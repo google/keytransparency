@@ -66,8 +66,15 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			if err := env.Signer.CreateEpoch(); err != nil {
+			txn, err := env.Factory.NewDBTxn(context.Background())
+			if err != nil {
+				t.Fatalf("Failed to create transaction: %v", err)
+			}
+			if err := env.Signer.CreateEpoch(txn); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
+			}
+			if err := txn.Commit(); err != nil {
+				t.Fatalf("Failed to commit transaction: %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
@@ -130,8 +137,15 @@ func TestUpdateValidation(t *testing.T) {
 			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
-			if err := env.Signer.CreateEpoch(); err != nil {
+			txn, err := env.Factory.NewDBTxn(context.Background())
+			if err != nil {
+				t.Fatalf("Failed to create transaction: %v", err)
+			}
+			if err := env.Signer.CreateEpoch(txn); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
+			}
+			if err := txn.Commit(); err != nil {
+				t.Fatalf("Failed to commit transaction: %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
@@ -203,8 +217,16 @@ func (e *Env) setupHistory(ctx context.Context, userID string) error {
 				return fmt.Errorf("Update(%v)=(_, %v), want (_, %v)", userID, got, want)
 			}
 		}
-		if err := e.Signer.CreateEpoch(); err != nil {
+
+		txn, err := e.Factory.NewDBTxn(context.Background())
+		if err != nil {
+			return fmt.Errorf("Failed to create transaction: %v", err)
+		}
+		if err := e.Signer.CreateEpoch(txn); err != nil {
 			return fmt.Errorf("Failed to CreateEpoch: %v", err)
+		}
+		if err := txn.Commit(); err != nil {
+			return fmt.Errorf("Failed to commit transaction: %v", err)
 		}
 	}
 	return nil
