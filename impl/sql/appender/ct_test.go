@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/key-transparency/core/testutil/ctutil"
-	"github.com/google/key-transparency/impl/transaction"
+	"github.com/google/key-transparency/impl/sql/testutil"
 
 	ct "github.com/google/certificate-transparency/go"
 	_ "github.com/mattn/go-sqlite3"
@@ -43,7 +43,7 @@ func TestGetLatest(t *testing.T) {
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 	db := NewDB(t)
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	a, err := New(db, mapID, hs.URL)
 	if err != nil {
@@ -85,11 +85,12 @@ func TestGetLatest(t *testing.T) {
 		}
 	}
 }
+
 func TestAppend(t *testing.T) {
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 	db := NewDB(t)
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	a, err := New(db, mapID, hs.URL)
 	if err != nil {
