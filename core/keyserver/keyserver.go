@@ -23,6 +23,7 @@ import (
 	"github.com/google/key-transparency/core/commitments"
 	"github.com/google/key-transparency/core/mutator"
 	"github.com/google/key-transparency/core/queue"
+	"github.com/google/key-transparency/core/transaction"
 	"github.com/google/key-transparency/core/tree"
 	"github.com/google/key-transparency/core/vrf"
 
@@ -53,10 +54,11 @@ type Server struct {
 	appender  appender.Appender
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
+	factory   transaction.Factory
 }
 
 // New creates a new instance of the key server.
-func New(committer commitments.Committer, queue queue.Queuer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator) *Server {
+func New(committer commitments.Committer, queue queue.Queuer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator, factory transaction.Factory) *Server {
 	return &Server{
 		committer: committer,
 		queue:     queue,
@@ -65,6 +67,7 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.Sparse, 
 		appender:  appender,
 		vrf:       vrf,
 		mutator:   mutator,
+		factory:   factory,
 	}
 }
 
@@ -104,11 +107,11 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeafAt(ctx, index[:], epoch)
+	leaf, err := s.getLeaf(ctx, index[:], epoch)
 	if err != nil {
-		log.Printf("Cannot read leaf entry: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
+		return nil, err
 	}
+
 	var committed *tpb.Committed
 	if leaf != nil {
 		entry := tpb.Entry{}
@@ -139,6 +142,24 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		Smh:    &smh,
 		SmhSct: sct,
 	}, nil
+}
+
+func (s *Server) getLeaf(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
+	txn, err := s.factory.NewDBTxn(ctx)
+	if err != nil {
+		log.Printf("Cannot create transaction: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
+	}
+	leaf, err := s.tree.ReadLeafAt(txn, index, epoch)
+	if err != nil {
+		log.Printf("Cannot read leaf entry: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
+	}
+	if err := txn.Commit(); err != nil {
+		log.Printf("Cannot commit transaction: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
+	}
+	return leaf, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.

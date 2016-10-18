@@ -33,6 +33,7 @@ import (
 	"github.com/google/key-transparency/impl/sql/appender"
 	"github.com/google/key-transparency/impl/sql/commitments"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
+	"github.com/google/key-transparency/impl/transaction"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/golang/protobuf/jsonpb"
@@ -170,6 +171,7 @@ func main() {
 	defer sqldb.Close()
 	etcdCli := openEtcd()
 	defer etcdCli.Close()
+	factory := transaction.NewFactory(sqldb, etcdCli)
 
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {
@@ -185,8 +187,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create committer: %v", err)
 	}
-	queue := queue.New(context.Background(), etcdCli, *mapID)
-	tree, err := sqlhist.New(sqldb, *mapID)
+	queue := queue.New(context.Background(), etcdCli, *mapID, factory)
+	tree, err := sqlhist.New(context.Background(), sqldb, *mapID, factory)
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -198,7 +200,7 @@ func main() {
 	mutator := entry.New()
 
 	// Create gRPC server.
-	svr := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
+	svr := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth, factory)
 	opts := []grpc.ServerOption{grpc.Creds(creds)}
 	if *verbose {
 		opts = append(opts, grpc.UnaryInterceptor(jsonLogger))

@@ -23,6 +23,7 @@ import (
 	"github.com/google/key-transparency/core/mutator"
 	"github.com/google/key-transparency/core/queue"
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/transaction"
 	"github.com/google/key-transparency/core/tree"
 
 	"github.com/golang/protobuf/ptypes"
@@ -90,15 +91,14 @@ func (s *Signer) StartSigning(interval time.Duration) {
 }
 
 // ProcessMutation saves a mutation and adds it to the append-only log and tree.
-func (s *Signer) ProcessMutation(index, mutation []byte) error {
+func (s *Signer) ProcessMutation(txn transaction.Txn, index, mutation []byte) error {
 	// Send mutation to append-only log.
-	ctx := context.Background()
-	if err := s.mutations.Append(ctx, 0, mutation); err != nil {
+	if err := s.mutations.Append(txn, 0, mutation); err != nil {
 		return fmt.Errorf("Append mutation failure %v", err)
 	}
 
 	// Get current value.
-	v, err := s.tree.ReadLeafAt(ctx, index, s.tree.Epoch())
+	v, err := s.tree.ReadLeafAt(txn, index, s.tree.Epoch())
 	if err != nil {
 		return fmt.Errorf("ReadLeafAt err: %v", err)
 	}
@@ -109,7 +109,7 @@ func (s *Signer) ProcessMutation(index, mutation []byte) error {
 	}
 
 	// Save new value and update tree.
-	if err := s.tree.QueueLeaf(ctx, index, newV); err != nil {
+	if err := s.tree.QueueLeaf(txn, index, newV); err != nil {
 		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
 	log.Printf("Sequenced %x", index)
@@ -117,13 +117,13 @@ func (s *Signer) ProcessMutation(index, mutation []byte) error {
 }
 
 // CreateEpoch signs the current map head.
-func (s *Signer) CreateEpoch() error {
+func (s *Signer) CreateEpoch(txn transaction.Txn) error {
 	ctx := context.Background()
 	epoch, err := s.tree.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("Commit err: %v", err)
 	}
-	root, err := s.tree.ReadRootAt(ctx, epoch)
+	root, err := s.tree.ReadRootAt(txn, epoch)
 	if err != nil {
 		return fmt.Errorf("ReadRootAt err: %v", err)
 	}
@@ -146,7 +146,7 @@ func (s *Signer) CreateEpoch() error {
 		MapHead:    mh,
 		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
-	if err := s.sths.Append(ctx, epoch, smh); err != nil {
+	if err := s.sths.Append(txn, epoch, smh); err != nil {
 		return fmt.Errorf("Append SMH failure %v", err)
 	}
 	log.Printf("Created epoch %v. SMH: %#x", epoch, root)

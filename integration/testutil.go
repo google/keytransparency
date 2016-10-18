@@ -33,6 +33,7 @@ import (
 	"github.com/google/key-transparency/impl/sql/appender"
 	"github.com/google/key-transparency/impl/sql/commitments"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
+	"github.com/google/key-transparency/impl/transaction"
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
@@ -49,7 +50,7 @@ const (
 
 // NewDB creates a new in-memory database for testing.
 func NewDB(t testing.TB) *sql.DB {
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite3", "file:dummy.db?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
 	}
@@ -79,6 +80,7 @@ type Env struct {
 	Queue      *queue.Queue
 	Signer     *signer.Signer
 	db         *sql.DB
+	Factory    *transaction.Factory
 	clus       *integration.ClusterV3
 	VrfPriv    vrf.PrivateKey
 	Cli        pb.KeyTransparencyServiceClient
@@ -152,6 +154,7 @@ func (DevZero) Read(b []byte) (n int, err error) {
 func NewEnv(t *testing.T) *Env {
 	hs := ctutil.NewCTServer(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	etcdCli := clus.RandClient()
 	sqldb := NewDB(t)
 
 	sig, verifier, err := staticKeyPair()
@@ -160,8 +163,9 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	queue := queue.New(context.Background(), clus.RandClient(), mapID)
-	tree, err := sqlhist.New(sqldb, mapID)
+	factory := transaction.NewFactory(sqldb, etcdCli)
+	queue := queue.New(context.Background(), etcdCli, mapID, factory)
+	tree, err := sqlhist.New(context.Background(), sqldb, mapID, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -184,14 +188,21 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
-	server := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth)
+	server := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth, factory)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
 	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
 	signer.FakeTime()
-	if err := signer.CreateEpoch(); err != nil {
+	txn, err := factory.NewDBTxn(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to create transaction: %v", err)
+	}
+	if err := signer.CreateEpoch(txn); err != nil {
 		t.Fatalf("Failed to create epoch: %v", err)
+	}
+	if err := txn.Commit(); err != nil {
+		t.Fatalf("Failed to commit transaction: %v", err)
 	}
 
 	addr, lis := Listen(t)
@@ -206,7 +217,7 @@ func NewEnv(t *testing.T) *Env {
 	client := grpcc.New(mapID, cli, vrfPub, verifier, fakeLog{})
 	client.RetryCount = 0
 
-	return &Env{s, server, cc, client, queue, signer, sqldb, clus, vrfPriv, cli, hs}
+	return &Env{s, server, cc, client, queue, signer, sqldb, factory, clus, vrfPriv, cli, hs}
 }
 
 // Close releases resources allocated by NewEnv.
