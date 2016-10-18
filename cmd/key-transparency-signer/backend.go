@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/key-transparency/cmd/storage"
 	"github.com/google/key-transparency/core/mutator/entry"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/signer"
@@ -33,7 +34,6 @@ import (
 	"github.com/google/key-transparency/impl/transaction"
 
 	"github.com/coreos/etcd/clientv3"
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 )
 
@@ -47,7 +47,7 @@ var (
 )
 
 func openDB() *sql.DB {
-	db, err := sql.Open("sqlite3", *serverDBPath)
+	db, err := sql.Open(storage.DriverName, *serverDBPath)
 	if err != nil {
 		log.Fatalf("sql.Open(): %v", err)
 	}

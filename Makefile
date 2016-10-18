@@ -19,9 +19,15 @@
 # authentication information, which can be resolved to user information and
 # associated scopes on the backend.
 
-main:
+main: client
 	go build ./cmd/key-transparency-server
 	go build ./cmd/key-transparency-signer
+
+mysql: client
+	go build -tags mysql ./cmd/key-transparency-server
+	go build -tags mysql ./cmd/key-transparency-signer
+
+client:
 	go build ./cmd/key-transparency-client
 
 # The list of returned packages might not be unique. Fortunately go test gets
