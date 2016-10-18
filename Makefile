@@ -19,9 +19,6 @@
 # authentication information, which can be resolved to user information and
 # associated scopes on the backend.
 
-DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.go/')
-GATEWAY_DEPS:= $(shell find . -type f -name '*.proto' | sed 's/proto$$/pb.gw.go/')
-
 main:
 	go build ./cmd/key-transparency-server
 	go build ./cmd/key-transparency-signer
@@ -50,8 +47,6 @@ proto:
 	go generate ./...
 
 clean:
-	rm -f $(DEPS)
-	rm -f $(GATEWAY_DEPS)
 	rm -f srv key-transparency-server key-transparency-signer key-transparency-client
 	rm -rf infra*
 
