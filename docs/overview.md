@@ -17,7 +17,7 @@ and there’s no audit record of the answers they have given.
 Key Transparency dramatically improves the situation by providing a public
 audit record for all changes to data. When used with account data, Key
 Transparency provides a public audit record of all the actual recipients (in
-the form of public keys) associated with an account, and all the times an
+the form of public keys) associated with an account, all the times an
 account was updated, and who it was updated by - all in a privacy preserving
 way.
 
