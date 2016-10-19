@@ -13,13 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Package authentication implements authentication mechanisms.
-#
-# The Transparent Key Server is designed to be used by identity providers -
-# IdP in OAuth parlance.  OAuth2 Access Tokens may be provided as
-# authentication information, which can be resolved to user information and
-# associated scopes on the backend.
 
 COMMONNAME=""
 ADDRESS=""
@@ -42,6 +35,10 @@ if [[ -n "${ADDRESS}" ]]; then
     SANEXT="${SANEXT},IP.2:${ADDRESS}"
 fi
 
+# Create output directory.
+mkdir -p "${GOPATH}/src/github.com/google/key-transparency/genfiles"
+cd "${GOPATH}/src/github.com/google/key-transparency/genfiles"
+
 # Generate TLS keys.
 openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
 openssl rsa -passin pass:x -in server.pass.key -out server.key
@@ -57,11 +54,6 @@ openssl req -new \
 openssl x509 -req -days 365 -in server.csr -signkey server.key \
 	-out server.crt -extensions SAN \
 	-extfile <(printf "${SANEXT}")
-
-# Generate signature keys.
-openssl ecparam -name prime256v1 -genkey -noout -out p256-key.pem
-chmod 600 p256-key.pem
-openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
 
 # Generate VRF keys.
 openssl ecparam -name prime256v1 -genkey -noout -out vrf-key.pem
