@@ -37,6 +37,8 @@ hashed together, using a Merkle Tree, and the resulting hash is shared
 efficient and support proving that a piece of data is contained in the hash.
 User apps use this hash to verify that the results are part of the same hash.
 
+<span style="display: block; text-align: center;">
+
 ![drawing](images/Sd4HCvEtUSL.png)
 
 _Root Merkle Tree Hash efficiently hashes whole database_
@@ -48,6 +50,7 @@ hashing Leaf A, and then combining the resulting hash E with intermediate
 nodes F and J to compute K.  If the computed K is equal to the known-good K,
 the proof is correct and Leaf A is part of K.  If the computed K is not equal
 to the known-good K, a data corruption warning must be displayed._
+</span>
 
 To show that there is a single entry in the Merkle Tree for each user we number
 the leaf nodes from 0 to 2^256-1, and designate a single leaf node for each
