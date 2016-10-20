@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/key-transparency/cmd/storage"
 	"github.com/google/key-transparency/core/keyserver"
 	"github.com/google/key-transparency/core/mutator/entry"
 	"github.com/google/key-transparency/core/vrf"
@@ -33,6 +32,7 @@ import (
 	"github.com/google/key-transparency/impl/google/authentication"
 	"github.com/google/key-transparency/impl/sql/appender"
 	"github.com/google/key-transparency/impl/sql/commitments"
+	"github.com/google/key-transparency/impl/sql/engine"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
 	"github.com/google/key-transparency/impl/transaction"
 
@@ -61,7 +61,7 @@ var (
 )
 
 func openDB() *sql.DB {
-	db, err := sql.Open(storage.DriverName, *serverDBPath)
+	db, err := sql.Open(engine.DriverName, *serverDBPath)
 	if err != nil {
 		log.Fatalf("sql.Open(): %v", err)
 	}

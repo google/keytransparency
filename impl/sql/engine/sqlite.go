@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build mysql
+// +build !mysql
 
-package storage
+package engine
 
 import (
-	_ "github.com/go-sql-driver/mysql" // Set database engine.
+	_ "github.com/mattn/go-sqlite3" // Set database engine.
 )
 
 // DriverName contains the SQLite driver name to be used when connecting to db.
-var DriverName = "mysql"
+var DriverName = "sqlite3"
