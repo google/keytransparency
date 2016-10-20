@@ -32,6 +32,7 @@ import (
 	"github.com/google/key-transparency/impl/google/authentication"
 	"github.com/google/key-transparency/impl/sql/appender"
 	"github.com/google/key-transparency/impl/sql/commitments"
+	"github.com/google/key-transparency/impl/sql/engine"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
 	"github.com/google/key-transparency/impl/transaction"
 
@@ -39,7 +40,6 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	_ "github.com/mattn/go-sqlite3" // Set database engine.
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -61,7 +61,7 @@ var (
 )
 
 func openDB() *sql.DB {
-	db, err := sql.Open("sqlite3", *serverDBPath)
+	db, err := sql.Open(engine.DriverName, *serverDBPath)
 	if err != nil {
 		log.Fatalf("sql.Open(): %v", err)
 	}
