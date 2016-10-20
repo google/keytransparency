@@ -37,24 +37,20 @@ hashed together, using a Merkle Tree, and the resulting hash is shared
 efficient and support proving that a piece of data is contained in the hash.
 User apps use this hash to verify that the results are part of the same hash.
 
-<p align="center">
-![drawing](images/Sd4HCvEtUSL.png)
-</p>
-<p align="center">
-_Root Merkle Tree Hash efficiently hashes whole database_
-</p>
 
-<p align="center">
-![drawing](images/7A2vuGir0yf.png)
-</p>
+<p align="center"><img src="images/Sd4HCvEtUSL.png"/></p>
+<p align="center"><i>
+Root Merkle Tree Hash efficiently hashes whole database
+</i></p>
 
-<p align="center">
-_Merkle Tree Hash is used to prove that Leaf A is part of the root hash K by
+<p align="center"><img src="images/7A2vuGir0yf.png"/></p>
+<p align="center"><i>
+Merkle Tree Hash is used to prove that Leaf A is part of the root hash K by
 hashing Leaf A, and then combining the resulting hash E with intermediate
 nodes F and J to compute K.  If the computed K is equal to the known-good K,
 the proof is correct and Leaf A is part of K.  If the computed K is not equal
-to the known-good K, a data corruption warning must be displayed._
-</p>
+to the known-good K, a data corruption warning must be displayed.
+</i></p>
 
 To show that there is a single entry in the Merkle Tree for each user we number
 the leaf nodes from 0 to 2^256-1, and designate a single leaf node for each
@@ -65,13 +61,11 @@ the privacy preserving properties of the privacy preserving hash-like function
 If the location provided does not match the pseudo-hash of the email address,
 a wrong-user warning must be displayed.
 
-<p align="center">
-![drawing](images/1A0J0Xkdvsk.png)
-</p>
-
-<p align="center">
-_Merkle Tree with 256 levels to accommodate 2^256-1 leaf nodes._
-</p>
+<p align="center"><img src="images/1A0J0Xkdvsk.png"/></p>
+<p align="center"><i>
+Merkle Tree with 256 levels to accommodate 2^256-1 leaf
+nodes.
+</i></p>
 
 #### Accurate Account History
 
@@ -84,16 +78,13 @@ To detect spurious keys, users might label the keys that they recognize with
 the device that the private keys are on.  Their client software could then
 alert them to new/unknown devices.
 
-<p align="center">
-![drawing](images/tzfWeatiEyL.png)
-![drawing](images/oTXGfRZ2X0m.png)
-</p>
-
-<p align="center">
-_Example of how users might view their history to detect any unauthorized keys
+<p align="center"><img src="images/tzfWeatiEyL.png"/></p>
+<p align="center"><img src="images/oTXGfRZ2X0m.png"/></p>
+<p align="center"><i>
+Example of how users might view their history to detect any unauthorized keys
 in the past.  The red Unknown label indicates an unlabeled key, which may be
-either malicious, or a new device._
-</p>
+either malicious, or a new device.
+</i></p>
 
 To update accounts, the server collects all the changes requested every few
 seconds, bundles them up, and creates a new snapshot of the database along with
@@ -103,27 +94,21 @@ inspection at any time by the account holder.
 To ensure that previous snapshots are not misrepresented, the Merkle Tree roots
 of each snapshot are stored in another Merkle Tree that is also gossiped.
 
-<p align="center">
-![drawing](images/auCiw34Nwjn.png)
-</p>
-
-<p align="center">
-_Merkle Tree with the roots of each snapshot.
-This is the same Merkle Tree structure as is used in Certificate Transparency._
-</p>
+<p align="center"><img src="images/auCiw34Nwjn.png"/></p>
+<p align="center"><i>
+Merkle Tree with the roots of each snapshot.
+This is the same Merkle Tree structure as is used in Certificate Transparency.
+</i></p>
 
 Because this Merkle Tree is filled in from left to right, there exists a proof
 between any two states of the tree showing that each new state is an
 append-only version of a previous state.
 
-<p align="center">
-![drawing](images/SL84rktNJb4.png)
-</p>
-
-<p align="center">
-_And append-only proof in bold, showing that the new state of the tree is equal
-to the old tree plus snapshots 4-6._
-</p>
+<p align="center"><img src="images/SL84rktNJb4.png"/></p>
+<p align="center"><i>
+And append-only proof in bold, showing that the new state of the tree is equal
+to the old tree plus snapshots 4-6.
+</i></p>
 
 #### Privacy
 
