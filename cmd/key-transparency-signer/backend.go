@@ -29,11 +29,11 @@ import (
 	"github.com/google/key-transparency/core/signer"
 	"github.com/google/key-transparency/impl/etcd/queue"
 	"github.com/google/key-transparency/impl/sql/appender"
+	"github.com/google/key-transparency/impl/sql/engine"
 	"github.com/google/key-transparency/impl/sql/sqlhist"
 	"github.com/google/key-transparency/impl/transaction"
 
 	"github.com/coreos/etcd/clientv3"
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 )
 
@@ -47,7 +47,7 @@ var (
 )
 
 func openDB() *sql.DB {
-	db, err := sql.Open("sqlite3", *serverDBPath)
+	db, err := sql.Open(engine.DriverName, *serverDBPath)
 	if err != nil {
 		log.Fatalf("sql.Open(): %v", err)
 	}
