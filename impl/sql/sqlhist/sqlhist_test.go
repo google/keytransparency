@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/key-transparency/impl/transaction"
+	"github.com/google/key-transparency/impl/sql/testutil"
 
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
@@ -55,7 +55,7 @@ func TestQueueLeaf(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	tree, err := New(ctx, db, "test", factory)
 	if err != nil {
@@ -97,7 +97,7 @@ func TestEpochNumAdvance(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	for _, tc := range []struct {
 		index  string
@@ -146,7 +146,7 @@ func TestQueueCommitRead(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	m, err := New(ctx, db, "test", factory)
 	if err != nil {
@@ -202,7 +202,7 @@ func TestReadNotFound(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	m, err := New(ctx, db, "test", factory)
 	if err != nil {
@@ -244,7 +244,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	m, err := New(ctx, db, "test", factory)
 	if err != nil {
@@ -306,7 +306,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 
 	leafs := []struct {
 		index []byte
@@ -423,7 +423,7 @@ func TestNeighborDepth(t *testing.T) {
 }
 
 func createTree(db *sql.DB, mapID string, leafs []leaf) (*Map, error) {
-	factory := transaction.NewFactory(db, nil)
+	factory := testutil.NewFakeFactory(db)
 	m, err := New(ctx, db, mapID, factory)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create map: %v", err)
