@@ -17,8 +17,9 @@ and senders a way to see how stable an account has been before trusting it.
 
 Key Transparency is inspired by [CONIKS](https://eprint.iacr.org/2014/1004.pdf)
 and [Certificate Transparency](https://www.certificate-transparency.org/).
-It is a mostly-complete work-in-progress with the [following items](docs/todo.md)
-under development.
+It is a work-in-progress with the [following
+milestones](https://github.com/google/key-transparency/milestones) under
+development.
 
 ## Running a Key Transparency Cluster
 1. Install prerequisites
