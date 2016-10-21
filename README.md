@@ -1,4 +1,9 @@
 # Key Transparency
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/google/key-transparency)](https://goreportcard.com/report/github.com/google/key-transparency)
+
+![Key Transparency Logo](docs/images/logo.png)
+
 Key Transparency provides a public audit record of all changes to generic
 records and associated data in a privacy preserving manner.  When used to
 associate accounts with public keys, it provides an _untrusted_ way to
