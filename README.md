@@ -1,6 +1,8 @@
 # Key Transparency
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/google/key-transparency)](https://goreportcard.com/report/github.com/google/key-transparency)
+[![GoDoc](https://godoc.org/github.com/google/key-transparency?status.svg)](https://godoc.org/github.com/google/key-transparency)
+
 
 ![Key Transparency Logo](docs/images/logo.png)
 
