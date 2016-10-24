@@ -7,8 +7,5 @@ key-transparency-signer
 key-transparency-client
 
 infra*.etcd
-testdata/*.pem
-testdata/*.json
-testdata/*.sqlite3
-testdata/server.*
+genfiles/*
 .key-transparency-scts.dat
