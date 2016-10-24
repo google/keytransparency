@@ -26,29 +26,29 @@ import (
 
 const (
 	mapRowExpr = `
-	REPLACE INTO Maps (MapId) VALUES (?);`
+	REPLACE INTO Maps (MapID) VALUES (?);`
 	insertExpr = `
-	INSERT INTO Commitments (MapId, Commitment, Value)
+	INSERT INTO Commitments (MapID, Commitment, Value)
 	VALUES (?, ?, ?);`
 	readExpr = `
 	SELECT Value FROM Commitments
-	WHERE MapId = ? AND Commitment = ?;`
+	WHERE MapID = ? AND Commitment = ?;`
 )
 
 var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapId   VARCHAR(32) NOT NULL,
+		MapID   VARCHAR(32) NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Commitments (
-		MapId      VARCHAR(32)   NOT NULL,
+		MapID      VARCHAR(32)   NOT NULL,
 		Commitment VARBINARY(32) NOT NULL,
 		Value      BLOB(1024)    NOT NULL,
 		PRIMARY KEY(MapID, Commitment),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
 	);`,
 	}
 	errDoubleCommitment = errors.New("Commitment to different key-value")

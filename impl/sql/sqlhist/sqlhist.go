@@ -34,26 +34,26 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapId   VARCHAR(32) NOT NULL,
+		MapID   VARCHAR(32) NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Leaves (
-		MapId   VARCHAR(32)   NOT NULL,
-		LeafId  VARBINARY(32) NOT NULL,
+		MapID   VARCHAR(32)   NOT NULL,
+		LeafID  VARBINARY(32) NOT NULL,
 		Version INTEGER       NOT NULL,
 		Data    BLOB          NOT NULL,
-		PRIMARY KEY(MapID, LeafId, Version),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+		PRIMARY KEY(MapID, LeafID, Version),
+		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Nodes (
-		MapId   VARCHAR(32)   NOT NULL,
-		NodeId  VARBINARY(32) NOT NULL,
+		MapID   VARCHAR(32)   NOT NULL,
+		NodeID  VARBINARY(32) NOT NULL,
 		Version	INTEGER       NOT NULL,
 		Value	BLOB(32)      NOT NULL,
-		PRIMARY KEY(MapId, NodeId, Version),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+		PRIMARY KEY(MapID, NodeID, Version),
+		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
 	);`,
 	}
 	hasher          = sparse.CONIKSHasher
@@ -67,25 +67,25 @@ const (
 	size     = sparse.HashSize
 	readExpr = `
 	SELECT Value FROM Nodes
-	WHERE MapId = ? AND NodeId = ? and Version <= ?
+	WHERE MapID = ? AND NodeID = ? and Version <= ?
 	ORDER BY Version DESC LIMIT 1;`
 	leafExpr = `
 	SELECT Data FROM Leaves
-	WHERE MapId = ? AND LeafId = ? and Version <= ?
+	WHERE MapID = ? AND LeafID = ? and Version <= ?
 	ORDER BY Version DESC LIMIT 1;`
 	queueExpr = `
-	REPLACE INTO Leaves (MapId, LeafId, Version, Data)
+	REPLACE INTO Leaves (MapID, LeafID, Version, Data)
 	VALUES (?, ?, ?, ?);`
 	pendingLeafsExpr = `
-	SELECT LeafId, Version, Data FROM Leaves 
-	WHERE MapId = ? AND Version >= ?;`
+	SELECT LeafID, Version, Data FROM Leaves 
+	WHERE MapID = ? AND Version >= ?;`
 	setNodeExpr = `
-	REPLACE INTO Nodes (MapId, NodeId, Version, Value)
+	REPLACE INTO Nodes (MapID, NodeID, Version, Value)
 	VALUES (?, ?, ?, ?);`
-	mapRowExpr    = `REPLACE INTO Maps (MapId) VALUES (?);`
+	mapRowExpr    = `REPLACE INTO Maps (MapID) VALUES (?);`
 	readEpochExpr = `
 	SELECT Version FROM Nodes
-	WHERE MapId = ? AND NodeId = ?
+	WHERE MapID = ? AND NodeID = ?
 	ORDER BY Version DESC LIMIT 1;`
 )
 
