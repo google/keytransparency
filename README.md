@@ -1,6 +1,27 @@
 # Key Transparency
-Key Transparency is a distributed implementation of
-[CONIKS](https://eprint.iacr.org/2014/1004.pdf), written in Go.
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/google/key-transparency)](https://goreportcard.com/report/github.com/google/key-transparency)
+[![GoDoc](https://godoc.org/github.com/google/key-transparency?status.svg)](https://godoc.org/github.com/google/key-transparency)
+
+
+![Key Transparency Logo](docs/images/logo.png)
+
+Key Transparency provides a public audit record of all changes to generic
+records and associated data in a privacy preserving manner.  When used to
+associate accounts with public keys, it provides an _untrusted_ way to
+authenticate users as a key discovery and lookup service.  Key Transparency
+provides account owners a way to [verify](docs/verification.md) their accounts
+and senders a way to see how stable an account has been before trusting it.
+
+* [Overview](docs/overview.md)
+* [Design document](docs/design.md)
+* [API](docs/http_apis.md)
+
+Key Transparency is inspired by [CONIKS](https://eprint.iacr.org/2014/1004.pdf)
+and [Certificate Transparency](https://www.certificate-transparency.org/).
+It is a work-in-progress with the [following
+milestones](https://github.com/google/key-transparency/milestones) under
+development.
 
 ## Running a Key Transparency Cluster
 1. Install prerequisites
