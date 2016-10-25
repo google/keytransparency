@@ -117,7 +117,6 @@ recipient has installed.
 ## API Reference 
 
 *   [Proto Definitions](impl/proto/keytransparency_v1_service/keytransparency_v1_service.proto)
-*   [gRPC API](api_gen.md)
 *   [HTTP API](http_apis.md)
 
 ## Multiple Apps and Keys 
@@ -302,10 +301,10 @@ The user performs an account reset
 If the user still has an authorized device to update the account with, just
 update the account. Otherwise, perform an account reset. 
 
-#### The server doesn’t add or revoke a key for the user? 
+#### The server doesn’t add or revoke a key for the user?
 
 The server can either 404 the user, in which case, the user may phone a
-journalist with an HTTP transcript of the request. 
+journalist with an HTTPS transcript of the request. 
 
 #### Equivocates (Answers the same query in different ways for different users) 
 
@@ -314,10 +313,9 @@ Clients will either keep using old key values until one hash chain gets longer
 than the other.  Clients should also report the equivocation to a monitoring
 system. 
 
-#### How can a server be revoked? 
+#### How can a server be revoked?
 
-TBD pending [Key Transparency Discovery](discovery.md)
-
+TBD pending [Key Transparency Discovery](https://github.com/google/key-transparency/issues/389)
 
 ## References
 

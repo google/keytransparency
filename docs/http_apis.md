@@ -3,7 +3,7 @@
 ## Introduction
 
 This document describes the Key Transparency Server HTTP APIs.
-The core [gRPC APIs](api_gen.md) are exposed over HTTP via a
+The core gRPC APIs are exposed over HTTP via a
 [gRPC reverse proxy](https://github.com/grpc-ecosystem/grpc-gateway).
 
 ## Index
