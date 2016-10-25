@@ -30,16 +30,16 @@ import (
 
 const (
 	mapRowExpr = `
-	REPLACE INTO Maps (MapId) VALUES (?);`
+	REPLACE INTO Maps (MapID) VALUES (?);`
 	insertExpr = `
-	INSERT INTO SMH (MapId, Epoch, Data, SCT)
+	INSERT INTO SMH (MapID, Epoch, Data, SCT)
 	VALUES (?, ?, ?, ?);`
 	readExpr = `
 	SELECT Data, SCT FROM SMH
-	WHERE MapId = ? AND Epoch = ?;`
+	WHERE MapID = ? AND Epoch = ?;`
 	latestExpr = `
 	SELECT Epoch, Data, SCT FROM SMH
-	WHERE MapId = ? 
+	WHERE MapID = ? 
 	ORDER BY Epoch DESC LIMIT 1;`
 )
 
@@ -47,17 +47,17 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapId   VARCHAR(32) NOT NULL,
+		MapID   VARCHAR(32) NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS SMH (
-		MapId   VARCHAR(32) NOT NULL,
+		MapID   VARCHAR(32) NOT NULL,
 		Epoch   INTEGER     NOT NULL,
 		Data    BLOB(1024)  NOT NULL,
 		SCT     BLOB(1024)  NOT NULL,
 		PRIMARY KEY(MapID, Epoch),
-		FOREIGN KEY(MapId) REFERENCES Maps(MapId) ON DELETE CASCADE
+		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
 	);`,
 	}
 	// ErrNotSupported occurs when performing an operaion that has been disabled.
