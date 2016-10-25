@@ -39,14 +39,6 @@
 			"revisionTime": "2016-07-15T18:38:34Z"
 		},
 		{
-			"checksumSHA1": "Mej8ot+7BmGD2dtN7G+i4rKZFbo=",
-			"path": "github.com/coreos/etcd",
-			"revision": "932370d8ca0770e4078109a80f27e08bb0a0fa2c",
-			"revisionTime": "2016-10-24T18:22:50Z",
-			"version": "release-3.0",
-			"versionExact": "release-3.0"
-		},
-		{
 			"checksumSHA1": "sFGNqtSE3WlMiyT+JkVaW2OzstM=",
 			"path": "github.com/coreos/etcd/alarm",
 			"revision": "932370d8ca0770e4078109a80f27e08bb0a0fa2c",
