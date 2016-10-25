@@ -17,11 +17,13 @@ Key Transparency is a distributed implementation of
   ```sh
   make -C testdata
   ```
-3. Get [Application Default Credentials](https://developers.google.com/identity/protocols/application-default-credentials)
 
-  Use this [wizard](https://console.developers.google.com/start/api?id=e2ekeys)
-  and set ```GOOGLE_APPLICATION_CREDENTIALS``` environment variable in
-  [.env](.env) to point to the credentials file.
+3. Get a [service account key](https://console.developers.google.com/apis/credentials)
+
+  Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable in
+  [.env](.env) to point to the json credentials file.
+  This allows the server to validate Google OAuth tokens using an online API.
+
 4. Download and run an XJSON [Certificate Transparency](https://github.com/google/certificate-transparency) Server.
 
   Set the `CTLOG` variable to the URL of the CT server URL in the [.env](.env) file.
@@ -33,9 +35,8 @@ Key Transparency is a distributed implementation of
   ```
 
 ## Using the Key Transparency Client
-1. Get a client secret
-  Use this [wizard](https://console.developers.google.com/start/api?id=e2ekeys)
-  and set the `client_secret` path in `.key-transparency.yaml`
+1. Get an OAuth [client secret](https://console.developers.google.com/apis/credentials)
+   and set the `client_secret` path in `.key-transparency.yaml`
 
 2. Set / Update a user's keys:
 
