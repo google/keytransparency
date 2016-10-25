@@ -637,6 +637,13 @@
 			"revisionTime": "2016-10-05T20:09:59Z"
 		},
 		{
+			"checksumSHA1": "YrEY+8GoQjULjuB2Fk3Rq8TRI98=",
+			"path": "github.com/google/certificate-transparency/cpp",
+			"revision": "d90e65c3a07988180c5b1ece71791c0b6506826e",
+			"revisionTime": "2016-10-25T09:38:37Z",
+			"tree": true
+		},
+		{
 			"checksumSHA1": "otIZ0qrxQBwCI0x2uZF5IhuPPiU=",
 			"path": "github.com/google/certificate-transparency/go",
 			"revision": "4be8cae1e72273f69195357ce2eb3b291f36c123",
