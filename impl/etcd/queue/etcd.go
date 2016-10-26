@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/key-transparency/core/queue"
 	ctxn "github.com/google/key-transparency/core/transaction"
@@ -27,8 +29,11 @@ import (
 	"golang.org/x/net/context"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	recipe "github.com/coreos/etcd/contrib/recipes"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 )
+
+// leaseTTL is in seconds.
+var leaseTTL = int64(30)
 
 // Queue is a single-reader, multi-writer distributed queue.
 type Queue struct {
@@ -70,7 +75,8 @@ func (q *Queue) AdvanceEpoch() error {
 	if err := gob.NewEncoder(&buf).Encode(kv{nil, nil, true}); err != nil {
 		return err
 	}
-	return q.enqueue(buf.Bytes())
+	_, _, err := q.enqueue(buf.Bytes())
+	return err
 }
 
 // Enqueue submits a key, value pair into the queue.
@@ -79,12 +85,26 @@ func (q *Queue) Enqueue(key, value []byte) error {
 	if err := gob.NewEncoder(&buf).Encode(kv{key, value, false}); err != nil {
 		return err
 	}
-	return q.enqueue(buf.Bytes())
+	_, _, err := q.enqueue(buf.Bytes())
+	return err
 }
 
-func (q *Queue) enqueue(val []byte) error {
-	_, err := recipe.NewUniqueKV(q.client, q.keyPrefix, string(val), 0)
-	return err
+func (q *Queue) enqueue(val []byte) (string, int64, error) {
+	// Grant a lease with a TTL.
+	resp, err := q.client.Grant(q.ctx, leaseTTL)
+	if err != nil {
+		return "", -1, err
+	}
+	for {
+		newKey := fmt.Sprintf("%s/%v", q.keyPrefix, time.Now().UnixNano())
+		req := v3.OpPut(newKey, string(val), v3.WithLease(resp.ID))
+		txnresp, err := q.client.Txn(q.ctx).Then(req).Commit()
+		if err == nil {
+			return newKey, txnresp.Header.Revision, nil
+		} else if err != rpctypes.ErrDuplicateKey {
+			return "", -1, err
+		}
+	}
 }
 
 // StartReceiving starts receiving queue enqueued items. This function should be
@@ -105,32 +125,36 @@ func (q *Queue) StartReceiving(processFunc queue.ProcessKeyValueFunc, advanceFun
 func (q *Queue) loop(ctx context.Context, wc v3.WatchChan, cbs callbacks) {
 	for resp := range wc {
 		for _, ev := range resp.Events {
-			var dataKV kv
-			dec := gob.NewDecoder(bytes.NewBuffer(ev.Kv.Value))
-			if err := dec.Decode(&dataKV); err != nil {
-				log.Printf(err.Error())
-				continue
-			}
-
-			// Create a cross-domain transaction.
-			txn, err := q.factory.NewTxn(q.ctx, string(ev.Kv.Key), ev.Kv.ModRevision)
-			if err != nil {
-				log.Printf(err.Error())
-				continue
-			}
-
-			// Process the received entry.
-			if err := processEntry(txn, cbs, dataKV); err != nil {
-				log.Printf(err.Error())
-				continue
-			}
-
-			// Commit the transaction.
-			if err := txn.Commit(); err != nil {
+			if err := q.dequeue(ev.Kv.Key, ev.Kv.Value, ev.Kv.ModRevision, cbs); err != nil {
 				log.Printf(err.Error())
 			}
 		}
 	}
+}
+
+func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
+	var dataKV kv
+	dec := gob.NewDecoder(bytes.NewBuffer(value))
+	if err := dec.Decode(&dataKV); err != nil {
+		return err
+	}
+
+	// Create a cross-domain transaction.
+	txn, err := q.factory.NewTxn(q.ctx, string(key), rev)
+	if err != nil {
+		return err
+	}
+
+	// Process the received entry.
+	if err := processEntry(txn, cbs, dataKV); err != nil {
+		return err
+	}
+
+	// Commit the transaction.
+	if err := txn.Commit(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // processEntry processes a given queue item.
