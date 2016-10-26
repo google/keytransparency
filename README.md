@@ -59,7 +59,7 @@ development.
   ```
 
 ## Using the Key Transparency Client
-1. Get an OAuth [client secret](https://console.developers.google.com/apis/credentials)
+1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials)
    and set the `client_secret` path in `.key-transparency.yaml`
 
 2. Set / Update a user's keys:
