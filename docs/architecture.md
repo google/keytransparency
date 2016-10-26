@@ -1,5 +1,7 @@
 # Key Transparency Architecture
 
+![Architecture](images/architecture.png)
+
 # Queue
 The Queue is the central component of the Key Server.
 The Queue gives a definitive, consistent ordering to all changes made to the 
