@@ -17,8 +17,10 @@ package queue
 import (
 	"bytes"
 	"database/sql"
+	"encoding/gob"
 	"sync"
 	"testing"
+	"time"
 
 	ctxn "github.com/google/key-transparency/core/transaction"
 	itxn "github.com/google/key-transparency/impl/transaction"
@@ -153,6 +155,57 @@ func TestProcessEntry(t *testing.T) {
 
 		if got, want := aCounter, tc.aCounter; got != want {
 			t.Errorf("aCounter=%v, want %v", got, want)
+		}
+	}
+}
+
+func TestKVTimeout(t *testing.T) {
+	defer func(oldTTL int64) {
+		leaseTTL = oldTTL
+	}(leaseTTL)
+	// Make TTL 1 seconds.
+	leaseTTL = 1
+
+	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	defer c.Terminate(t)
+
+	cli := c.RandClient()
+	factory := itxn.NewFactory(newDB(t), cli)
+	q := New(context.Background(), cli, mapID, factory)
+
+	value := kv{[]byte("test_key"), []byte("test_value"), false}
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(value); err != nil {
+		t.Fatalf("gob encoding failed: %v", err)
+	}
+
+	cbs := callbacks{
+		func(txn ctxn.Txn, key, value []byte) error {
+			return nil
+		},
+		func(txn ctxn.Txn) error {
+			return nil
+		},
+	}
+
+	for _, tc := range []struct {
+		sleep   int
+		success bool
+	}{
+		{0, true},
+		{2, false},
+	} {
+		key, rev, err := q.enqueue(buf.Bytes())
+		if err != nil {
+			t.Errorf("enqueue failed: %v", err)
+			continue
+		}
+
+		time.Sleep(time.Duration(tc.sleep) * time.Second)
+
+		err = q.dequeue([]byte(key), buf.Bytes(), rev, cbs)
+		if got, want := err == nil, tc.success; got != want {
+			t.Errorf("dequeue(%v, _, _, _)=%v, want %v, error %v", key, got, want, err)
 		}
 	}
 }
