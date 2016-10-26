@@ -29,7 +29,10 @@ development.
   ```sh
   go get -u github.com/mattn/goreman
   go get -u github.com/coreos/etcd
+  go get -u github.com/kardianos/govendor
   go get -u github.com/google/key-transparency/cmd/...
+  govendor sync
+  go build ./cmd/...
   ```
   Ensure `$GOBIN` is in your `$PATH:`
 
