@@ -15,18 +15,29 @@
 package signatures
 
 import (
+	"bytes"
 	"crypto/rand"
+	"math"
 	"testing"
+)
+
+const (
+	// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+	testPrivKey = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
+AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
+csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END EC PRIVATE KEY-----`
+	// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+	testPubKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
+1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END PUBLIC KEY-----`
 )
 
 func TestNewSigner(t *testing.T) {
 	for _, pem := range []string{
-		// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
-		`-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
-AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
-csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END EC PRIVATE KEY-----`,
+		testPrivKey,
 	} {
 		k, rest, err := PrivateKeyFromPEM([]byte(pem))
 		if err != nil {
@@ -43,12 +54,7 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 
 func TestNewVerifier(t *testing.T) {
 	for _, pem := range []string{
-		// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
-		// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
-		`-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
-1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END PUBLIC KEY-----`,
+		testPubKey,
 	} {
 		k, rest, err := PublicKeyFromPEM([]byte(pem))
 		if err != nil {
@@ -63,63 +69,13 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 	}
 }
 
-func TestSignVerifier(t *testing.T) {
-	// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
-	priv := `-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
-AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
-csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END EC PRIVATE KEY-----`
-	// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
-	pub := `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
-1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END PUBLIC KEY-----`
-
-	ka, _, _ := PrivateKeyFromPEM([]byte(priv))
-	signer, err := NewSigner(rand.Reader, ka)
-	if err != nil {
-		t.Fatalf("NewSigantureSigner(): %v", err)
-	}
-	kb, _, _ := PublicKeyFromPEM([]byte(pub))
-	verifier, err := NewVerifier(kb)
-	if err != nil {
-		t.Fatalf("NewSigantureVerifier(): %v", err)
-	}
-
-	for _, tc := range []struct {
-		data interface{}
-	}{
-		{struct{ Foo string }{"bar"}},
-	} {
-		sig, err := signer.Sign(tc.data)
-		if err != nil {
-			t.Errorf("Sign(%v): %v", tc.data, err)
-		}
-		if err := verifier.Verify(tc.data, sig); err != nil {
-			t.Errorf("Verify(%v, %v): %v", tc.data, sig, err)
-		}
-	}
-}
-
 func TestConsistentName(t *testing.T) {
 	// Verify that the ID generated from from pub and from priv are the same.
 	for _, tc := range []struct {
 		priv string
 		pub  string
 	}{
-		{
-			// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
-			`-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
-AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
-csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END EC PRIVATE KEY-----`,
-			// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
-			`-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
-1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END PUBLIC KEY-----`},
+		{testPrivKey, testPubKey},
 	} {
 		ka, _, _ := PrivateKeyFromPEM([]byte(tc.priv))
 		kb, _, _ := PublicKeyFromPEM([]byte(tc.pub))
@@ -137,4 +93,110 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 			t.Errorf("Signer.Name: %v, want %v", got, want)
 		}
 	}
+}
+
+type env struct {
+	signer   *Signer
+	verifier *Verifier
+}
+
+func newEnv(t *testing.T) *env {
+	ka, _, _ := PrivateKeyFromPEM([]byte(testPrivKey))
+	signer, err := NewSigner(rand.Reader, ka)
+	if err != nil {
+		t.Fatalf("NewSigantureSigner(): %v", err)
+	}
+	kb, _, _ := PublicKeyFromPEM([]byte(testPubKey))
+	verifier, err := NewVerifier(kb)
+	if err != nil {
+		t.Fatalf("NewSigantureVerifier(): %v", err)
+	}
+
+	return &env{signer, verifier}
+}
+
+func TestSignVerifier(t *testing.T) {
+	e := newEnv(t)
+	for _, tc := range []struct {
+		data interface{}
+	}{
+		{struct{ Foo string }{"bar"}},
+	} {
+		sig, err := e.signer.Sign(tc.data)
+		if err != nil {
+			t.Errorf("Sign(%v): %v", tc.data, err)
+		}
+		if err := e.verifier.Verify(tc.data, sig); err != nil {
+			t.Errorf("Verify(%v, %v): %v", tc.data, sig, err)
+		}
+	}
+}
+
+func TestRightTruncateSignature(t *testing.T) {
+	e := newEnv(t)
+	data := struct{ Foo string }{"bar"}
+
+	// Truncate bytes from the end of sig and try to verify.
+	sig, err := e.signer.Sign(data)
+	if err != nil {
+		t.Errorf("Sign(%v): %v", data, err)
+	}
+	sigLen := len(sig.Signature)
+	for i := 0; i < sigLen; i++ {
+		sig.Signature = sig.Signature[:len(sig.Signature)-1]
+		if err := e.verifier.Verify(data, sig); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the end of the signature", i)
+		}
+	}
+}
+
+func TestLeftTruncateSignature(t *testing.T) {
+	e := newEnv(t)
+	data := struct{ Foo string }{"bar"}
+
+	// Truncate bytes from the beginning of sig and try to verify.
+	sig, err := e.signer.Sign(data)
+	if err != nil {
+		t.Errorf("Sign(%v): %v", data, err)
+	}
+	sigLen := len(sig.Signature)
+	for i := 0; i < sigLen; i++ {
+		sig.Signature = sig.Signature[1:]
+		if err := e.verifier.Verify(data, sig); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the beginning of the signature", i)
+		}
+	}
+}
+
+func TestBitFlipSignature(t *testing.T) {
+	e := newEnv(t)
+	data := struct{ Foo string }{"bar"}
+
+	// Truncate bytes from the beginning of sig and try to verify.
+	sig, err := e.signer.Sign(data)
+	if err != nil {
+		t.Errorf("Sign(%v): %v", data, err)
+	}
+	for i := 0; i < len(sig.Signature)*8; i++ {
+		// Flip bit in position i.
+		flippedSig := *sig
+		flippedSig.Signature = flipBit(sig.Signature, uint(i))
+
+		// Verify signature
+		if err := e.verifier.Verify(data, &flippedSig); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after flipping bit %v of the signature", i)
+		}
+	}
+}
+
+func flipBit(a []byte, pos uint) []byte {
+	index := int(math.Floor(float64(pos) / 8))
+	b := byte(a[index])
+	b ^= (1 << uint(math.Mod(float64(pos), 8.0)))
+
+	var buf bytes.Buffer
+	buf.Write(a[:index])
+	buf.Write([]byte{b})
+	buf.Write(a[index+1:])
+	return buf.Bytes()
 }
