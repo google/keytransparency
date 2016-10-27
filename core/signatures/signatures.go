@@ -225,7 +225,7 @@ func (s Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 		return fmt.Errorf("failed to unmarshal ECDSA signature: %v", err)
 	}
 	if len(rest) != 0 {
-		log.Printf("Garbage following signature")
+		return ErrExtraDataAfterSig
 	}
 
 	if !ecdsa.Verify(ecdsaKey, hash[:], ecdsaSig.R, ecdsaSig.S) {
