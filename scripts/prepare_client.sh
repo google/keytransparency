@@ -20,7 +20,9 @@ KTKEYDEFAULT="testdata/server.crt"
 KTKEY=""
 SIGKEYDEFAULT="testdata/p256-pubkey.pem"
 SIGKEY=""
+DOMAINDEFAULT="example.com"
 DOMAIN=""
+KTURLDEFAULT="104.199.112.76:5001"
 KTURL=""
 CLIENTSECRET=""
 
@@ -43,8 +45,16 @@ if [[ -z "${SIGKEY}" ]]; then
     SIGKEY="${SIGKEYDEFAULT}"
 fi
 
-read -p "Key Transparency domain name: " DOMAIN
-read -p "Key Transparency URL and port (url:port): " KTURL
+read -p "Key Transparency domain name (default=${DOMAINDEFAULT}): " DOMAIN
+if [[ -z "${DOMAIN}" ]]; then
+    DOMAIN="${DOMAINDEFAULT}"
+fi
+
+read -p "Key Transparency URL and port, i.e. url:port, (default=${KTURLDEFAULT}): " KTURL
+if [[ -z "${KTURL}" ]]; then
+    KTURL="${KTURLDEFAULT}"
+fi
+
 read -p "Path to client secret file: " CLIENTSECRET
 
 
