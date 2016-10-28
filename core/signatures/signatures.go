@@ -28,7 +28,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
