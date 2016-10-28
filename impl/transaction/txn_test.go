@@ -16,7 +16,10 @@ package transaction
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
+
+	"github.com/google/key-transparency/core/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	recipe "github.com/coreos/etcd/contrib/recipes"
@@ -50,6 +53,23 @@ func newEnv(t *testing.T) *env {
 	factory := NewFactory(db, cli)
 
 	return &env{db, c, cli, factory}
+}
+
+// append prepares the test by adding a new queue item and creating a txn.
+func (e *env) append(ctx context.Context) (transaction.Txn, *recipe.RemoteKV, error) {
+	// Add an item to the queue
+	rkv, err := recipe.NewUniqueKV(e.cli, testPrefix, testValue, 0)
+	if err != nil {
+		return nil, nil, fmt.Errorf("recipe.NewUniqueKV failed: %v", err)
+	}
+
+	// Create a transaction.
+	txn, err := e.factory.NewTxn(context.Background(), rkv.Key(), rkv.Revision())
+	if err != nil {
+		return nil, nil, fmt.Errorf("NewTxn failed: %v", err)
+	}
+
+	return txn, rkv, nil
 }
 
 func (e *env) Close(t *testing.T) {
@@ -86,16 +106,10 @@ func TestCommit(t *testing.T) {
 	env := newEnv(t)
 	defer env.Close(t)
 
-	// Add an item to the queue
-	rkv, err := recipe.NewUniqueKV(env.cli, testPrefix, testValue, 0)
+	// Add a new queue item and create a transaction.
+	txn, _, err := env.append(context.Background())
 	if err != nil {
-		t.Fatalf("recipe.NewUniqueKV failed: %v", err)
-	}
-
-	// Create a transaction.
-	txn, err := env.factory.NewTxn(context.Background(), rkv.Key(), rkv.Revision())
-	if err != nil {
-		t.Fatalf("NewTxn failed: %v", err)
+		t.Fatalf("test preparation failed: %v", err)
 	}
 
 	// Commit the transaction. It should succeed.
@@ -108,16 +122,10 @@ func TestDeletedQueueItem(t *testing.T) {
 	env := newEnv(t)
 	defer env.Close(t)
 
-	// Add an item to the queue
-	rkv, err := recipe.NewUniqueKV(env.cli, testPrefix, testValue, 0)
+	// Add a new queue item and create a transaction.
+	txn, rkv, err := env.append(context.Background())
 	if err != nil {
-		t.Fatalf("recipe.NewUniqueKV failed: %v", err)
-	}
-
-	// Create a transaction.
-	txn, err := env.factory.NewTxn(context.Background(), rkv.Key(), rkv.Revision())
-	if err != nil {
-		t.Fatalf("NewTxn failed: %v", err)
+		t.Fatalf("test preparation failed: %v", err)
 	}
 
 	// Delete the added item.
@@ -135,16 +143,10 @@ func TestFailedDBTxnCommit(t *testing.T) {
 	env := newEnv(t)
 	defer env.Close(t)
 
-	// Add an item to the queue
-	rkv, err := recipe.NewUniqueKV(env.cli, testPrefix, testValue, 0)
+	// Add a new queue item and create a transaction.
+	txn, _, err := env.append(context.Background())
 	if err != nil {
-		t.Fatalf("recipe.NewUniqueKV failed: %v", err)
-	}
-
-	// Create a transaction.
-	txn, err := env.factory.NewTxn(context.Background(), rkv.Key(), rkv.Revision())
-	if err != nil {
-		t.Fatalf("NewTxn failed: %v", err)
+		t.Fatalf("test preparation failed: %v", err)
 	}
 
 	// Rollback the database transaction
@@ -169,18 +171,10 @@ func TestRollback(t *testing.T) {
 		{false, true},
 		{true, false},
 	} {
-		// Add an item to the queue
-		rkv, err := recipe.NewUniqueKV(env.cli, testPrefix, testValue, 0)
+		// Add a new queue item and create a transaction.
+		txn, _, err := env.append(context.Background())
 		if err != nil {
-			t.Errorf("recipe.NewUniqueKV failed: %v", err)
-			continue
-		}
-
-		// Create a transaction.
-		txn, err := env.factory.NewTxn(context.Background(), rkv.Key(), rkv.Revision())
-		if err != nil {
-			t.Errorf("NewTxn failed: %v", err)
-			continue
+			t.Fatalf("test preparation failed: %v", err)
 		}
 
 		if tc.commit {

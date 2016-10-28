@@ -52,10 +52,10 @@ func (f *Factory) NewTxn(ctx context.Context, key string, rev int64) (transactio
 	}
 
 	// Create queue transaction.
-	quTxn := f.client.Txn(ctx)
+	queueTxn := f.client.Txn(ctx)
 
 	// Create transaction object
-	return &txn{ctx, dbTxn, quTxn, key, rev}, nil
+	return &txn{ctx, dbTxn, queueTxn, key, rev}, nil
 }
 
 // NewDBTxn creates a new transaction object to only support database operations.
@@ -127,10 +127,8 @@ func (t *txn) Commit() error {
 		}
 	}
 
-	// Commit the database transaction. On failure, rollback the database
-	// transaction.
+	// Commit the database transaction. On failure, we lose the mutation.
 	if err := t.dbTxn.Commit(); err != nil {
-		// // We're losing the mutation here.
 		return fmt.Errorf("database commit failed: %v", err)
 	}
 
