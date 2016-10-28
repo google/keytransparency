@@ -109,6 +109,9 @@ func NewSigner(rand io.Reader, pk crypto.Signer) (*Signer, error) {
 		if params != *elliptic.P256().Params() {
 			return nil, ErrPointNotOnCurve
 		}
+		if !elliptic.P256().IsOnCurve(pkType.X, pkType.Y) {
+			return nil, ErrPointNotOnCurve
+		}
 	default:
 		return nil, ErrWrongKeyType
 	}
@@ -183,6 +186,9 @@ func NewVerifier(pk crypto.PublicKey) (*Verifier, error) {
 		if params != *elliptic.P256().Params() {
 			return nil, ErrPointNotOnCurve
 		}
+		if !elliptic.P256().IsOnCurve(pkType.X, pkType.Y) {
+			return nil, ErrPointNotOnCurve
+		}
 	default:
 		return nil, ErrWrongKeyType
 	}
@@ -225,7 +231,7 @@ func (s Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 		return fmt.Errorf("failed to unmarshal ECDSA signature: %v", err)
 	}
 	if len(rest) != 0 {
-		log.Printf("Garbage following signature")
+		return ErrExtraDataAfterSig
 	}
 
 	if !ecdsa.Verify(ecdsaKey, hash[:], ecdsaSig.R, ecdsaSig.S) {

@@ -213,12 +213,18 @@ func NewVRFSigner(key *ecdsa.PrivateKey) (*PrivateKey, error) {
 	if *(key.Params()) != *curve.Params() {
 		return nil, ErrPointNotOnCurve
 	}
+	if !curve.IsOnCurve(key.X, key.Y) {
+		return nil, ErrPointNotOnCurve
+	}
 	return &PrivateKey{key}, nil
 }
 
 // NewVRFVerifier creates a verifier object from a public key.
 func NewVRFVerifier(pubkey *ecdsa.PublicKey) (*PublicKey, error) {
 	if *(pubkey.Params()) != *curve.Params() {
+		return nil, ErrPointNotOnCurve
+	}
+	if !curve.IsOnCurve(pubkey.X, pubkey.Y) {
 		return nil, ErrPointNotOnCurve
 	}
 	return &PublicKey{pubkey}, nil
