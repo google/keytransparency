@@ -18,11 +18,12 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/key-transparency/core/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	recipe "github.com/coreos/etcd/contrib/recipes"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
@@ -56,20 +57,29 @@ func newEnv(t *testing.T) *env {
 }
 
 // append prepares the test by adding a new queue item and creating a txn.
-func (e *env) append(ctx context.Context) (transaction.Txn, *recipe.RemoteKV, error) {
+func (e *env) append(ctx context.Context) (transaction.Txn, string, int64, error) {
 	// Add an item to the queue
-	rkv, err := recipe.NewUniqueKV(e.cli, testPrefix, testValue, 0)
-	if err != nil {
-		return nil, nil, fmt.Errorf("recipe.NewUniqueKV failed: %v", err)
+	var newKey string
+	var newRev int64
+	for {
+		newKey = fmt.Sprintf("%s/%v", testPrefix, time.Now().UnixNano())
+		req := v3.OpPut(newKey, testValue)
+		txnresp, err := e.cli.Txn(ctx).Then(req).Commit()
+		if err == nil {
+			newRev = txnresp.Header.Revision
+			break
+		} else if err != rpctypes.ErrDuplicateKey {
+			return nil, "", -1, fmt.Errorf("etcd transaction Commit() failed: %v", err)
+		}
 	}
 
 	// Create a transaction.
-	txn, err := e.factory.NewTxn(context.Background(), rkv.Key(), rkv.Revision())
+	txn, err := e.factory.NewTxn(ctx, newKey, newRev)
 	if err != nil {
-		return nil, nil, fmt.Errorf("NewTxn failed: %v", err)
+		return nil, "", -1, fmt.Errorf("NewTxn failed: %v", err)
 	}
 
-	return txn, rkv, nil
+	return txn, newKey, newRev, nil
 }
 
 func (e *env) Close(t *testing.T) {
@@ -107,7 +117,7 @@ func TestCommit(t *testing.T) {
 	defer env.Close(t)
 
 	// Add a new queue item and create a transaction.
-	txn, _, err := env.append(context.Background())
+	txn, _, _, err := env.append(context.Background())
 	if err != nil {
 		t.Fatalf("test preparation failed: %v", err)
 	}
@@ -121,16 +131,23 @@ func TestCommit(t *testing.T) {
 func TestDeletedQueueItem(t *testing.T) {
 	env := newEnv(t)
 	defer env.Close(t)
+	ctx := context.Background()
 
 	// Add a new queue item and create a transaction.
-	txn, rkv, err := env.append(context.Background())
+	txn, key, rev, err := env.append(ctx)
 	if err != nil {
 		t.Fatalf("test preparation failed: %v", err)
 	}
 
 	// Delete the added item.
-	if err := rkv.Delete(); err != nil {
-		t.Fatalf("rkv.Delete() failed: %v", err)
+	cmp := v3.Compare(v3.ModRevision(key), "=", rev)
+	req := v3.OpDelete(key)
+	resp, err := env.cli.Txn(ctx).If(cmp).Then(req).Commit()
+	switch {
+	case err != nil:
+		t.Fatalf("etcd transaction Commit() failed: %v", err)
+	case !resp.Succeeded:
+		t.Fatal("cannot delete queue item, key not found")
 	}
 
 	// Commit the transaction. It should fail.
@@ -144,7 +161,7 @@ func TestFailedDBTxnCommit(t *testing.T) {
 	defer env.Close(t)
 
 	// Add a new queue item and create a transaction.
-	txn, _, err := env.append(context.Background())
+	txn, _, _, err := env.append(context.Background())
 	if err != nil {
 		t.Fatalf("test preparation failed: %v", err)
 	}
@@ -172,7 +189,7 @@ func TestRollback(t *testing.T) {
 		{true, false},
 	} {
 		// Add a new queue item and create a transaction.
-		txn, _, err := env.append(context.Background())
+		txn, _, _, err := env.append(context.Background())
 		if err != nil {
 			t.Fatalf("test preparation failed: %v", err)
 		}

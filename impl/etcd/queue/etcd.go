@@ -26,10 +26,9 @@ import (
 	ctxn "github.com/google/key-transparency/core/transaction"
 	itxn "github.com/google/key-transparency/impl/transaction"
 
-	"golang.org/x/net/context"
-
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"golang.org/x/net/context"
 )
 
 // leaseTTL is in seconds.
