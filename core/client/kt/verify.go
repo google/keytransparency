@@ -17,6 +17,7 @@ package kt
 import (
 	"bytes"
 	"errors"
+	"io"
 	"io/ioutil"
 	"log"
 
@@ -112,7 +113,10 @@ func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryRespons
 
 	// Verify SCT.
 	sct, err := ct.DeserializeSCT(bytes.NewReader(in.SmhSct))
-	if err != nil {
+	if err == io.EOF {
+		Vlog.Printf("✗ Signed Map Head CT is missing.")
+		return nil
+	} else if err != nil {
 		return err
 	}
 	if err := v.log.VerifySCT(in.GetSmh(), sct); err != nil {
