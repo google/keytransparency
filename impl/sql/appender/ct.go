@@ -55,7 +55,7 @@ var (
 		MapID   VARCHAR(32) NOT NULL,
 		Epoch   INTEGER     NOT NULL,
 		Data    BLOB(1024)  NOT NULL,
-		SCT     BLOB(1024)  NOT NULL,
+		SCT     BLOB(1024),
 		PRIMARY KEY(MapID, Epoch),
 		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
 	);`,
@@ -131,29 +131,31 @@ func (a *CTAppender) insertMapRow() error {
 
 // Append adds an object to the append-only data structure.
 func (a *CTAppender) Append(txn transaction.Txn, epoch int64, obj interface{}) error {
+	var bsct []byte
 	if a.send {
 		sct, err := a.ctlog.AddJSON(obj)
 		if err != nil {
 			return fmt.Errorf("CT: Submission failure: %v", err)
 		}
-		if a.save {
-			b, err := ct.SerializeSCT(*sct)
-			if err != nil {
-				return fmt.Errorf("CT: Serialization failure: %v", err)
-			}
-			var data bytes.Buffer
-			if err := gob.NewEncoder(&data).Encode(obj); err != nil {
-				return err
-			}
-			writeStmt, err := txn.Prepare(insertExpr)
-			if err != nil {
-				return fmt.Errorf("CT: DB save failure: %v", err)
-			}
-			defer writeStmt.Close()
-			_, err = writeStmt.Exec(a.mapID, epoch, data.Bytes(), b)
-			if err != nil {
-				return fmt.Errorf("CT: DB commit failure: %v", err)
-			}
+		b, err := ct.SerializeSCT(*sct)
+		if err != nil {
+			return fmt.Errorf("CT: Serialization failure: %v", err)
+		}
+		bsct = b
+	}
+	if a.save {
+		var data bytes.Buffer
+		if err := gob.NewEncoder(&data).Encode(obj); err != nil {
+			return err
+		}
+		writeStmt, err := txn.Prepare(insertExpr)
+		if err != nil {
+			return fmt.Errorf("CT: DB save failure: %v", err)
+		}
+		defer writeStmt.Close()
+		_, err = writeStmt.Exec(a.mapID, epoch, data.Bytes(), bsct)
+		if err != nil {
+			return fmt.Errorf("CT: DB commit failure: %v", err)
 		}
 	}
 	return nil
