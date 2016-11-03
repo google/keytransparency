@@ -8,7 +8,7 @@ discover the public keys of recipients. Key Transparency is a key directory
 that can be audited in a style inspired by 
 [CONIKS](https://coniks.cs.princeton.edu) and 
 [Certificate Transparency](https://certificate-transparency.org),
-removing the need for user's to perform manual key verification. 
+removing the need for users to perform manual key verification. 
 
 ## Security Model
 
