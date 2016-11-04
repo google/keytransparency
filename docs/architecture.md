@@ -22,18 +22,22 @@ successfully processed by the signer and committed to the leaf database. We do
 not require that an epoch advancement occur before queue entries may be deleted.
 
 Cross-Domain Transactions:
-The queue waits for confirmation that an item has been proccessed before 
-deleting it. If an error occurs while deleting the item from the 
-queue, the item will simply be re-dequeued. Since duplicate values are 
-permitted in the queue, this behavior is safe.
+To process an item from the queue, the item is first deleted. If it cannot be
+deleted (due to another process dequeueing it first or any other error), the next
+item is fetched and processed. Once an item is safely deleted from the queue, it
+is processed and the changes are written to the database. If the database commit
+fails, all changes are rolled back. The item is not placed back in the queue and
+is "lost". However, since clients perform retries until the data they are trying
+to update appears in the database, this data loss does not violate the API
+contract.
 
 ## Queue Epoch Advancement Notes
 When advancing epochs, we can't include the expected epoch number because 
 multiple epoch advancement requests could be received by the queue out-of-order.
 
 If we assume a single writer case, we could add fancy logic to the Signer such 
-that no more than one epoch advancement request is ever simultaniously in the 
-queue, but this would require the Signer to know what's in the queue when it 
+that no more than one epoch advancement request is ever present in the  queue at
+once. This, however, would require the Signer to know what's in the queue when it
 crashes and resumes.
 
 # Signer
