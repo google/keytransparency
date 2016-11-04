@@ -95,14 +95,6 @@
 			"versionExact": "v3.1.0-rc.0"
 		},
 		{
-			"checksumSHA1": "/d/xggcY2Nw/SFPdx+jwlJD97IE=",
-			"path": "github.com/coreos/etcd/contrib/recipes",
-			"revision": "83347907774bf36cbb261c594a32fd7b0f5dd9f6",
-			"revisionTime": "2016-10-14T21:40:17Z",
-			"version": "v3.1.0-rc.0",
-			"versionExact": "v3.1.0-rc.0"
-		},
-		{
 			"checksumSHA1": "outzscx0WDBY/3Igx2NucR4a/j8=",
 			"path": "github.com/coreos/etcd/discovery",
 			"revision": "83347907774bf36cbb261c594a32fd7b0f5dd9f6",
