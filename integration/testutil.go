@@ -169,11 +169,11 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
-	sths, err := appender.New(sqldb, mapID, hs.URL)
+	sths, err := appender.New(sqldb, mapID, hs.URL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create STH appender: %v", err)
 	}
-	mutations, err := appender.New(nil, mapID, "")
+	mutations, err := appender.New(nil, mapID, "", nil)
 	if err != nil {
 		t.Fatalf("Failed to create mutation appender: %v", err)
 	}

@@ -20,6 +20,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/google/key-transparency/core/transaction"
 
@@ -73,8 +74,10 @@ type CTAppender struct {
 	save  bool
 }
 
-// New creates a new client to an append-only data structure: Certificate Transparency.
-func New(db *sql.DB, mapID, logURL string) (*CTAppender, error) {
+// New creates a new client to an append-only data structure: Certificate
+// Transparency (CT). hc is the underlying HTTP client use to communicated with
+// CT. If hc is nil, CT will create a default HTTP client.
+func New(db *sql.DB, mapID, logURL string, hc *http.Client) (*CTAppender, error) {
 	a := &CTAppender{
 		mapID: []byte(mapID),
 		db:    db,
@@ -96,7 +99,7 @@ func New(db *sql.DB, mapID, logURL string) (*CTAppender, error) {
 		}
 	}
 	if a.send {
-		a.ctlog = client.New(logURL, nil)
+		a.ctlog = client.New(logURL, hc)
 		// Verify logURL.
 		if _, err := a.ctlog.GetSTH(); err != nil {
 			return nil, fmt.Errorf("Failed to ping CT server with GetSTH: %v", err)
