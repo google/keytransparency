@@ -45,7 +45,7 @@ func TestGetLatest(t *testing.T) {
 	db := NewDB(t)
 	factory := testutil.NewFakeFactory(db)
 
-	a, err := New(db, mapID, hs.URL)
+	a, err := New(db, mapID, hs.URL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestAppend(t *testing.T) {
 	db := NewDB(t)
 	factory := testutil.NewFakeFactory(db)
 
-	a, err := New(db, mapID, hs.URL)
+	a, err := New(db, mapID, hs.URL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create appender: %v", err)
 	}

@@ -101,11 +101,11 @@ func main() {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}
 	mutator := entry.New()
-	sths, err := appender.New(sqldb, *mapID, *mapLogURL)
+	sths, err := appender.New(sqldb, *mapID, *mapLogURL, nil)
 	if err != nil {
 		log.Fatalf("Failed to create STH appender: %v", err)
 	}
-	mutations, err := appender.New(nil, *mapID, *mapLogURL)
+	mutations, err := appender.New(nil, *mapID, *mapLogURL, nil)
 	if err != nil {
 		log.Fatalf("Failed to create mutation appender: %v", err)
 	}
