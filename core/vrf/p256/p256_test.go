@@ -15,7 +15,9 @@
 package p256
 
 import (
+	"bytes"
 	"crypto/rand"
+	"math"
 	"testing"
 )
 
@@ -113,4 +115,102 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 			t.Errorf("Failed verifying VRF proof")
 		}
 	}
+}
+
+func TestRightTruncateVRF(t *testing.T) {
+	k, pk := GenerateKey()
+
+	data := []byte("data")
+	vrf, proof := k.Evaluate(data)
+	vrfLen := len(vrf)
+	for i := 0; i < vrfLen; i++ {
+		vrf = vrf[:len(vrf)-1]
+		if err := pk.Verify(data, vrf, proof); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the end of vrf", i)
+		}
+	}
+}
+
+func TestLeftTruncateVRF(t *testing.T) {
+	k, pk := GenerateKey()
+
+	data := []byte("data")
+	vrf, proof := k.Evaluate(data)
+	vrfLen := len(vrf)
+	for i := 0; i < vrfLen; i++ {
+		vrf = vrf[1:]
+		if err := pk.Verify(data, vrf, proof); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the beginning of vrf", i)
+		}
+	}
+}
+
+func TestRightTruncateProof(t *testing.T) {
+	k, pk := GenerateKey()
+
+	data := []byte("data")
+	vrf, proof := k.Evaluate(data)
+	proofLen := len(proof)
+	for i := 0; i < proofLen; i++ {
+		proof = proof[:len(proof)-1]
+		if err := pk.Verify(data, vrf, proof); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the end of proof", i)
+		}
+	}
+}
+
+func TestLeftTruncateProof(t *testing.T) {
+	k, pk := GenerateKey()
+
+	data := []byte("data")
+	vrf, proof := k.Evaluate(data)
+	proofLen := len(proof)
+	for i := 0; i < proofLen; i++ {
+		proof = proof[1:]
+		if err := pk.Verify(data, vrf, proof); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the beginning of proof", i)
+		}
+	}
+}
+
+func TestBitFlipVRF(t *testing.T) {
+	k, pk := GenerateKey()
+
+	data := []byte("data")
+	vrf, proof := k.Evaluate(data)
+	for i := 0; i < len(vrf)*8; i++ {
+		// Flip bit in position i.
+		flippedVrf := flipBit(vrf, i)
+
+		if err := pk.Verify(data, flippedVrf, proof); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after flipping bit %v of vrf", i)
+		}
+	}
+}
+
+func TestBitFlipProof(t *testing.T) {
+	k, pk := GenerateKey()
+
+	data := []byte("data")
+	vrf, proof := k.Evaluate(data)
+	for i := 0; i < len(proof)*8; i++ {
+		// Flip bit in position i.
+		flippedProof := flipBit(proof, i)
+
+		if err := pk.Verify(data, vrf, flippedProof); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after flipping bit %v of proof", i)
+		}
+	}
+}
+
+func flipBit(a []byte, pos int) []byte {
+	index := int(math.Floor(float64(pos) / 8))
+	b := byte(a[index])
+	b ^= (1 << uint(math.Mod(float64(pos), 8.0)))
+
+	var buf bytes.Buffer
+	buf.Write(a[:index])
+	buf.Write([]byte{b})
+	buf.Write(a[index+1:])
+	return buf.Bytes()
 }
