@@ -158,7 +158,7 @@ func TestVerifySCT(t *testing.T) {
 			`{ "sct_version": 0, "id": "3xwuwRUAlFJHqWFoMl3cXHlZ6PfG04j8AC4LvT9012Q=", "timestamp": 1469818883686, "extensions": "", "signature": "BAMARjBEAiBRH\/bZrc4Fl6B6pTWsj0vo9elzbWzgpDKpczEod4pRDwIga03DUchNDRWwtv2xHi7v9kzestFGkEpyMn1jYTsk9nc=" }`,
 			`{ "tree_size": 29, "timestamp": 1470441152103, "sha256_root_hash": "KtOs5kyiH2mf4xSuREERqIbC4wsuwm6e7EXqXKc\/FLM=", "tree_head_signature": "BAMARzBFAiEAvgi7ETkLQTwCXR1rePmyj2CxDLnGIcS5kOoH770btzICIAw5yjO8oYR+yf\/QK4Ks59YOnkQA+I1OywGPrZIvPuU0" }`,
 			`{ "leaf_index": 26, "audit_path": [ "z6OXtl3FHCwSIDfNAwj\/5HY\/vXMgN5u3Y2LlfWmrHgY=", "grgSU6rjELf4Dff+LJ\/AjdgFt2SW85KW+Qfx3i9LSRk=", "MxibgM+03nha\/k4sbUrUgvgQ50lCYHDH6f8IzTCNYgE=", "BYB0BDK4jX6UPmSboGtIUMe9SwqLaJe6X0BkSWXCGOc=", "t9rD1TCqf2B1s8z15+fPmkRe1JVvjf2VNPhRzt\/m8nM=" ] }`,
-			"t0A8H7hDbMSFIYZSaez/JxZhhuCySpUvz4iw6RpECO0=",
+			"t0A8H7hDbMSFIYZSaez%2FJxZhhuCySpUvz4iw6RpECO0%3D",
 			"",
 			0,
 		},

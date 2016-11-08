@@ -635,47 +635,59 @@
 			"revisionTime": "2016-10-05T20:09:59Z"
 		},
 		{
-			"checksumSHA1": "YrEY+8GoQjULjuB2Fk3Rq8TRI98=",
+			"checksumSHA1": "Cvrz7kX3+5CJ7XggM9LuqkGEj0E=",
 			"path": "github.com/google/certificate-transparency/cpp",
-			"revision": "d90e65c3a07988180c5b1ece71791c0b6506826e",
-			"revisionTime": "2016-10-25T09:38:37Z",
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z",
 			"tree": true
 		},
 		{
-			"checksumSHA1": "otIZ0qrxQBwCI0x2uZF5IhuPPiU=",
+			"checksumSHA1": "0lR2nqusGkDmsAu/A1edutFa0VQ=",
 			"path": "github.com/google/certificate-transparency/go",
-			"revision": "4be8cae1e72273f69195357ce2eb3b291f36c123",
-			"revisionTime": "2016-10-18T15:33:04Z"
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
 		},
 		{
-			"checksumSHA1": "l2hfhClo5DB4MybCgXfS3n6dhCc=",
+			"checksumSHA1": "8qeVOyWflR8IMBXe5CPJPhvmnh4=",
 			"path": "github.com/google/certificate-transparency/go/asn1",
-			"revision": "4be8cae1e72273f69195357ce2eb3b291f36c123",
-			"revisionTime": "2016-10-18T15:33:04Z"
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
 		},
 		{
-			"checksumSHA1": "juwGtafOMJCEAr9OQ/IyI2f11JQ=",
+			"checksumSHA1": "N6RPi0mvjtHkncoX3ySHVdqBync=",
 			"path": "github.com/google/certificate-transparency/go/client",
-			"revision": "4be8cae1e72273f69195357ce2eb3b291f36c123",
-			"revisionTime": "2016-10-18T15:33:04Z"
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
+		},
+		{
+			"checksumSHA1": "bpeOVNCPWnnKjATWt48SoFEH2Mg=",
+			"path": "github.com/google/certificate-transparency/go/jsonclient",
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
 		},
 		{
 			"checksumSHA1": "uPx27/A4r6xpCp7SmURXZaKl4bI=",
 			"path": "github.com/google/certificate-transparency/go/merkletree",
-			"revision": "4be8cae1e72273f69195357ce2eb3b291f36c123",
-			"revisionTime": "2016-10-18T15:33:04Z"
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
 		},
 		{
-			"checksumSHA1": "5giGRbKHERH6cK68AqjTprGqe18=",
+			"checksumSHA1": "CBEdVkRCOrx/Pa64R2A9xXnEC1c=",
+			"path": "github.com/google/certificate-transparency/go/tls",
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
+		},
+		{
+			"checksumSHA1": "iu+5IFQpzb3jZ0ND9AtGdwU+754=",
 			"path": "github.com/google/certificate-transparency/go/x509",
-			"revision": "4be8cae1e72273f69195357ce2eb3b291f36c123",
-			"revisionTime": "2016-10-18T15:33:04Z"
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
 		},
 		{
-			"checksumSHA1": "uezPktTXlVvMZ13HIKl40bl/QIE=",
+			"checksumSHA1": "eyrpGZtaev40pGE0SsF+pCUVSi8=",
 			"path": "github.com/google/certificate-transparency/go/x509/pkix",
-			"revision": "4be8cae1e72273f69195357ce2eb3b291f36c123",
-			"revisionTime": "2016-10-18T15:33:04Z"
+			"revision": "e346aba6451a2f03ba5d71a1e7a21f1fdcbe1013",
+			"revisionTime": "2016-11-08T14:09:39Z"
 		},
 		{
 			"checksumSHA1": "mJuOZXdE9GBhUTHeQ/Wm8U1rR4I=",
