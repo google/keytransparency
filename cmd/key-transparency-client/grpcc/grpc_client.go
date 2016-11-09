@@ -27,13 +27,11 @@ import (
 
 	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/client/kt"
-	"github.com/google/key-transparency/core/commitments"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/tree/sparse"
 	tv "github.com/google/key-transparency/core/tree/sparse/verifier"
 	"github.com/google/key-transparency/core/vrf"
 
-	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -191,56 +189,9 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 		return nil, err
 	}
 
-	// Extract index from a prior GetEntry call.
-	index := c.vrf.Index(getResp.Vrf)
-	prevEntry := new(tpb.Entry)
-	if err := proto.Unmarshal(getResp.GetLeafProof().LeafData, prevEntry); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
-	}
-
-	// Commit to profile.
-	profileData, err := proto.Marshal(profile)
-	if err != nil {
-		return nil, fmt.Errorf("Unexpected profile marshaling error: %v", err)
-	}
-	commitment, committed, err := commitments.Commit(userID, profileData)
+	req, err := kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile)
 	if err != nil {
 		return nil, err
-	}
-
-	// Create new Entry.
-	entry := &tpb.Entry{
-		Commitment:     commitment,
-		AuthorizedKeys: prevEntry.AuthorizedKeys,
-	}
-
-	// Sign Entry.
-	entryData, err := proto.Marshal(entry)
-	if err != nil {
-		return nil, err
-	}
-	kv := &tpb.KeyValue{
-		Key:   index[:],
-		Value: entryData,
-	}
-	kvData, err := proto.Marshal(kv)
-	if err != nil {
-		return nil, err
-	}
-	previous := objecthash.ObjectHash(getResp.GetLeafProof().LeafData)
-	signedkv := &tpb.SignedKV{
-		KeyValue:   kvData,
-		Signatures: nil, // TODO: Apply Signatures.
-		Previous:   previous[:],
-	}
-
-	// Send request.
-	req := &tpb.UpdateEntryRequest{
-		UserId: userID,
-		EntryUpdate: &tpb.EntryUpdate{
-			Update:    signedkv,
-			Committed: committed,
-		},
 	}
 
 	err = c.Retry(ctx, req)
