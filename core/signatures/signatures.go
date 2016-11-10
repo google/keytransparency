@@ -48,6 +48,8 @@ var (
 	ErrExtraDataAfterSig = errors.New("extra data found after signature")
 	// ErrVerificaionFailed occurs when the signature verification failed.
 	ErrVerificaionFailed = errors.New("failed to verify ECDSA signature")
+	// ErrNoPEMFound occurs when attempting to parse a non PEM data structure.
+	ErrNoPEMFound = errors.New("no PEM block found")
 )
 
 // Signer generates signatures with a single key.
@@ -81,7 +83,7 @@ func GenerateKeyPair() (*Signer, *Verifier, error) {
 func PrivateKeyFromPEM(b []byte) (crypto.Signer, []byte, error) {
 	p, rest := pem.Decode(b)
 	if p == nil {
-		return nil, rest, fmt.Errorf("no PEM block found in %s", string(b))
+		return nil, rest, ErrNoPEMFound
 	}
 	k, err := x509.ParseECPrivateKey(p.Bytes)
 	if err != nil {
@@ -168,7 +170,7 @@ type Verifier struct {
 func PublicKeyFromPEM(b []byte) (crypto.PublicKey, []byte, error) {
 	p, rest := pem.Decode(b)
 	if p == nil {
-		return nil, rest, fmt.Errorf("no PEM block found in %s", string(b))
+		return nil, rest, ErrNoPEMFound
 	}
 	k, err := x509.ParsePKIXPublicKey(p.Bytes)
 	if err != nil {
