@@ -178,6 +178,7 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 	}
 	defer stmt.Close()
 	rows, err := stmt.Query(m.mapID, m.epoch+1)
+	defer rows.Close()
 	if err != nil {
 		return -1, err
 	}
