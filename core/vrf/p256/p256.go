@@ -236,7 +236,12 @@ func NewVRFSignerFromPEM(b []byte) (*PrivateKey, error) {
 	if p == nil {
 		return nil, ErrNoPEMFound
 	}
-	k, err := x509.ParseECPrivateKey(p.Bytes)
+	return NewVRFSignerFromRawKey(p.Bytes)
+}
+
+// NewVRFSignerFromRawKey returns the private key from a raw private key bytes.
+func NewVRFSignerFromRawKey(b []byte) (*PrivateKey, error) {
+	k, err := x509.ParseECPrivateKey(b)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +254,12 @@ func NewVRFVerifierFromPEM(b []byte) (*PublicKey, error) {
 	if p == nil {
 		return nil, ErrNoPEMFound
 	}
-	k, err := x509.ParsePKIXPublicKey(p.Bytes)
+	return NewVRFVerifierFromRawKey(p.Bytes)
+}
+
+// NewVRFVerifierFromRawKey returns the public key from a raw public key bytes.
+func NewVRFVerifierFromRawKey(b []byte) (*PublicKey, error) {
+	k, err := x509.ParsePKIXPublicKey(b)
 	if err != nil {
 		return nil, err
 	}
