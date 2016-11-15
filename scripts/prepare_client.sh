@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-VRFDEFAULT="testdata/vrf-pubkey.pem"
+VRFDEFAULT="keys/test_verification_keys/vrf-pubkey.pem"
 VRF=""
-KTKEYDEFAULT="testdata/server.crt"
+KTKEYDEFAULT="keys/test_verification_keys/server.crt"
 KTKEY=""
-SIGKEYDEFAULT="testdata/p256-pubkey.pem"
+SIGKEYDEFAULT="keys/test_verification_keys/p256-pubkey.pem"
 SIGKEY=""
 DOMAINDEFAULT="example.com"
 DOMAIN=""
