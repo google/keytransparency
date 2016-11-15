@@ -63,9 +63,11 @@ var (
 )
 
 const (
-	maxDepth = sparse.IndexLen
-	size     = sparse.HashSize
-	readExpr = `
+	maxDepth         = sparse.IndexLen
+	size             = sparse.HashSize
+	insertMapRowExpr = `INSERT INTO Maps (MapID) VALUES (?);`
+	countMapRowExpr  = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
+	readExpr         = `
 	SELECT Value FROM Nodes
 	WHERE MapID = ? AND NodeID = ? and Version <= ?
 	ORDER BY Version DESC LIMIT 1;`
@@ -82,7 +84,6 @@ const (
 	setNodeExpr = `
 	REPLACE INTO Nodes (MapID, NodeID, Version, Value)
 	VALUES (?, ?, ?, ?);`
-	mapRowExpr    = `REPLACE INTO Maps (MapID) VALUES (?);`
 	readEpochExpr = `
 	SELECT Version FROM Nodes
 	WHERE MapID = ? AND NodeID = ?
@@ -397,12 +398,27 @@ func (m *Map) create() error {
 }
 
 func (m *Map) insertMapRow() error {
-	stmt, err := m.db.Prepare(mapRowExpr)
+	// Check if a map row does not exist for the same MapID.
+	countStmt, err := m.db.Prepare(countMapRowExpr)
 	if err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
-	defer stmt.Close()
-	_, err = stmt.Exec(m.mapID)
+	defer countStmt.Close()
+	var count int
+	if err := countStmt.QueryRow(m.mapID).Scan(&count); err != nil {
+		return fmt.Errorf("insertMapRow(): %v", err)
+	}
+	if count >= 1 {
+		return nil
+	}
+
+	// Insert a map row if it does not exist already.
+	insertStmt, err := m.db.Prepare(insertMapRowExpr)
+	if err != nil {
+		return fmt.Errorf("insertMapRow(): %v", err)
+	}
+	defer insertStmt.Close()
+	_, err = insertStmt.Exec(m.mapID)
 	if err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
