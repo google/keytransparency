@@ -30,9 +30,9 @@ import (
 )
 
 const (
-	mapRowExpr = `
-	REPLACE INTO Maps (MapID) VALUES (?);`
-	insertExpr = `
+	insertMapRowExpr = `INSERT INTO Maps (MapID) VALUES (?);`
+	countMapRowExpr  = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
+	insertExpr       = `
 	INSERT INTO SMH (MapID, Epoch, Data, SCT)
 	VALUES (?, ?, ?, ?);`
 	readExpr = `
@@ -120,14 +120,29 @@ func (a *CTAppender) create() error {
 }
 
 func (a *CTAppender) insertMapRow() error {
-	stmt, err := a.db.Prepare(mapRowExpr)
+	// Check if a map row does not exist for the same MapID.
+	countStmt, err := a.db.Prepare(countMapRowExpr)
 	if err != nil {
-		return fmt.Errorf("Failed preparing mapID insert statement: %v", err)
+		return fmt.Errorf("insertMapRow(): %v", err)
 	}
-	defer stmt.Close()
-	_, err = stmt.Exec(a.mapID)
+	defer countStmt.Close()
+	var count int
+	if err := countStmt.QueryRow(a.mapID).Scan(&count); err != nil {
+		return fmt.Errorf("insertMapRow(): %v", err)
+	}
+	if count >= 1 {
+		return nil
+	}
+
+	// Insert a map row if it does not exist already.
+	insertStmt, err := a.db.Prepare(insertMapRowExpr)
 	if err != nil {
-		return fmt.Errorf("Failed executing mapID insert: %v", err)
+		return fmt.Errorf("insertMapRow(): %v", err)
+	}
+	defer insertStmt.Close()
+	_, err = insertStmt.Exec(a.mapID)
+	if err != nil {
+		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	return nil
 }
