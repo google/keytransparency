@@ -40,12 +40,13 @@ func NewDB(t testing.TB) *sql.DB {
 }
 
 func TestGetLatest(t *testing.T) {
+	ctx := context.Background()
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 	db := NewDB(t)
 	factory := testutil.NewFakeFactory(db)
 
-	a, err := New(db, mapID, hs.URL, nil)
+	a, err := New(ctx, db, mapID, hs.URL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
@@ -64,7 +65,7 @@ func TestGetLatest(t *testing.T) {
 			t.Errorf("factory.NewDBTxn() failed: %v", err)
 			continue
 		}
-		if err := a.Append(txn, tc.epoch, tc.data); err != nil {
+		if err := a.Append(ctx, txn, tc.epoch, tc.data); err != nil {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
 		if err := txn.Commit(); err != nil {
@@ -87,12 +88,13 @@ func TestGetLatest(t *testing.T) {
 }
 
 func TestAppend(t *testing.T) {
+	ctx := context.Background()
 	hs := ctutil.NewCTServer(t)
 	defer hs.Close()
 	db := NewDB(t)
 	factory := testutil.NewFakeFactory(db)
 
-	a, err := New(db, mapID, hs.URL, nil)
+	a, err := New(ctx, db, mapID, hs.URL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
@@ -111,7 +113,7 @@ func TestAppend(t *testing.T) {
 			t.Errorf("factory.NewDBTxn() failed: %v", err)
 			continue
 		}
-		err = a.Append(txn, tc.epoch, tc.data)
+		err = a.Append(ctx, txn, tc.epoch, tc.data)
 		if got := err == nil; got != tc.want {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}

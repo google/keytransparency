@@ -91,9 +91,9 @@ func (s *Signer) StartSigning(interval time.Duration) {
 }
 
 // ProcessMutation saves a mutation and adds it to the append-only log and tree.
-func (s *Signer) ProcessMutation(txn transaction.Txn, index, mutation []byte) error {
+func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index, mutation []byte) error {
 	// Send mutation to append-only log.
-	if err := s.mutations.Append(txn, 0, mutation); err != nil {
+	if err := s.mutations.Append(ctx, txn, 0, mutation); err != nil {
 		return fmt.Errorf("Append mutation failure %v", err)
 	}
 
@@ -117,8 +117,7 @@ func (s *Signer) ProcessMutation(txn transaction.Txn, index, mutation []byte) er
 }
 
 // CreateEpoch signs the current map head.
-func (s *Signer) CreateEpoch(txn transaction.Txn) error {
-	ctx := context.Background()
+func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
 	epoch, err := s.tree.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("Commit err: %v", err)
@@ -146,7 +145,7 @@ func (s *Signer) CreateEpoch(txn transaction.Txn) error {
 		MapHead:    mh,
 		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
 	}
-	if err := s.sths.Append(txn, epoch, smh); err != nil {
+	if err := s.sths.Append(ctx, txn, epoch, smh); err != nil {
 		return fmt.Errorf("Append SMH failure %v", err)
 	}
 	log.Printf("Created epoch %v. SMH: %#x", epoch, root)

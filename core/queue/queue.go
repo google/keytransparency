@@ -17,6 +17,7 @@ package queue
 
 import (
 	"github.com/google/key-transparency/core/transaction"
+	"golang.org/x/net/context"
 )
 
 // Queuer submits new mutations to be processed.
@@ -41,7 +42,7 @@ type Receiver interface {
 }
 
 // ProcessKeyValueFunc is a function that processes a mutation.
-type ProcessKeyValueFunc func(txn transaction.Txn, key, value []byte) error
+type ProcessKeyValueFunc func(ctx context.Context, txn transaction.Txn, key, value []byte) error
 
 // AdvanceEpochFunc is a function that advances the epoch.
-type AdvanceEpochFunc func(txn transaction.Txn) error
+type AdvanceEpochFunc func(ctx context.Context, txn transaction.Txn) error

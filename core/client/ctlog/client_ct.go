@@ -26,6 +26,7 @@ import (
 
 	ct "github.com/google/certificate-transparency/go"
 	logclient "github.com/google/certificate-transparency/go/client"
+	"github.com/google/certificate-transparency/go/jsonclient"
 	"github.com/google/certificate-transparency/go/merkletree"
 	"golang.org/x/net/context"
 
@@ -48,7 +49,7 @@ type Verifier interface {
 	// a Certificate Transparency append-only log. If the inclusion proof
 	// cannot be immediately verified, it is added to a list that
 	// VerifySavedSCTs can check at a later point.
-	VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error
+	VerifySCT(ctx context.Context, smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error
 	// VerifySavedSCTs attempts to complete any unverified proofs against
 	// the current, hopefully fresher, SignedTreeHead. Completed proofs are
 	// removed.  Proofs that cannot be completed yet remain saved. Failed
@@ -56,7 +57,7 @@ type Verifier interface {
 	VerifySavedSCTs() []SCTEntry
 	// UpdateSTH advances the current SignedTreeHead and verifies a
 	// consistency proof between the current and the new STH.
-	UpdateSTH() error
+	UpdateSTH(ctx context.Context) error
 	// Save unverified SCTs to disk.
 	Save(file string) error
 	// Load unverified SCTs from disk.
@@ -89,11 +90,15 @@ func New(pem []byte, logURL string) (*Log, error) {
 	if err != nil {
 		return nil, err
 	}
+	ctlog, err := logclient.New(logURL, nil, jsonclient.Options{})
+	if err != nil {
+		return nil, err
+	}
 	return &Log{
 		MMD:   24 * time.Hour,
 		mtv:   merkletree.NewMerkleVerifier(hasher),
 		ver:   ver,
-		ctlog: logclient.New(logURL, nil),
+		ctlog: ctlog,
 		scts:  make([]SCTEntry, 0),
 	}, nil
 }
@@ -109,7 +114,7 @@ func timestamp(timestamp uint64) time.Time {
 }
 
 // VerifySCT ensures that SMH has been properly included in the append only log.
-func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error {
+func (l *Log) VerifySCT(ctx context.Context, smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error {
 	requireSCT := timestamp(sct.Timestamp).Add(l.MMD)
 	STHTime := timestamp(l.STH.Timestamp)
 	// Is the current STH new enough to verify the SCT?
@@ -124,7 +129,7 @@ func (l *Log) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimes
 	// if time.Now().After(requireSCT) {
 
 	// Update the current STH and try again.
-	if err := l.UpdateSTH(); err != nil {
+	if err := l.UpdateSTH(ctx); err != nil {
 		return err
 	}
 	STHTime = timestamp(l.STH.Timestamp)
@@ -172,9 +177,9 @@ func (l *Log) VerifySavedSCTs() []SCTEntry {
 }
 
 // UpdateSTH ensures that STH is at least 1 MMD from Now().
-func (l *Log) UpdateSTH() error {
+func (l *Log) UpdateSTH(ctx context.Context) error {
 	// Fetch STH.
-	sth, err := l.ctlog.GetSTH()
+	sth, err := l.ctlog.GetSTH(ctx)
 	if err != nil {
 		return err
 	}

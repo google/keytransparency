@@ -106,7 +106,7 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, nil, err
 	}
 
-	if err := c.kt.VerifyGetEntryResponse(userID, e); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, userID, e); err != nil {
 		return nil, nil, err
 	}
 
@@ -146,7 +146,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.kt.VerifyGetEntryResponse(userID, v)
+			err = c.kt.VerifyGetEntryResponse(ctx, userID, v)
 			if err != nil {
 				return nil, err
 			}
@@ -185,7 +185,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 	}
 	Vlog.Printf("Got current entry...")
 
-	if err := c.kt.VerifyGetEntryResponse(userID, getResp); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, userID, getResp); err != nil {
 		return nil, err
 	}
 
@@ -213,7 +213,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	Vlog.Printf("Got current entry...")
 
 	// Validate response.
-	if err := c.kt.VerifyGetEntryResponse(req.UserId, updateResp.GetProof()); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, req.UserId, updateResp.GetProof()); err != nil {
 		return err
 	}
 

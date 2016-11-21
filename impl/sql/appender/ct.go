@@ -26,6 +26,7 @@ import (
 
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/client"
+	"github.com/google/certificate-transparency/go/jsonclient"
 	"golang.org/x/net/context"
 )
 
@@ -77,7 +78,7 @@ type CTAppender struct {
 // New creates a new client to an append-only data structure: Certificate
 // Transparency (CT). hc is the underlying HTTP client use to communicated with
 // CT. If hc is nil, CT will create a default HTTP client.
-func New(db *sql.DB, mapID, logURL string, hc *http.Client) (*CTAppender, error) {
+func New(ctx context.Context, db *sql.DB, mapID, logURL string, hc *http.Client) (*CTAppender, error) {
 	a := &CTAppender{
 		mapID: []byte(mapID),
 		db:    db,
@@ -99,9 +100,13 @@ func New(db *sql.DB, mapID, logURL string, hc *http.Client) (*CTAppender, error)
 		}
 	}
 	if a.send {
-		a.ctlog = client.New(logURL, hc)
+		log, err := client.New(logURL, hc, jsonclient.Options{})
+		if err != nil {
+			return nil, err
+		}
+		a.ctlog = log
 		// Verify logURL.
-		if _, err := a.ctlog.GetSTH(); err != nil {
+		if _, err := a.ctlog.GetSTH(ctx); err != nil {
 			return nil, fmt.Errorf("Failed to ping CT server with GetSTH: %v", err)
 		}
 	}
@@ -148,9 +153,9 @@ func (a *CTAppender) insertMapRow() error {
 }
 
 // Append adds an object to the append-only data structure.
-func (a *CTAppender) Append(txn transaction.Txn, epoch int64, obj interface{}) error {
+func (a *CTAppender) Append(ctx context.Context, txn transaction.Txn, epoch int64, obj interface{}) error {
 	if a.send {
-		sct, err := a.ctlog.AddJSON(obj)
+		sct, err := a.ctlog.AddJSON(ctx, obj)
 		if err != nil {
 			return fmt.Errorf("CT: Submission failure: %v", err)
 		}

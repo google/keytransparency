@@ -192,7 +192,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}
-	sths, err := appender.New(sqldb, *mapID, *mapLogURL, nil)
+	sths, err := appender.New(context.Background(), sqldb, *mapID, *mapLogURL, nil)
 	if err != nil {
 		log.Fatalf("Failed to create appender: %v", err)
 	}

@@ -145,7 +145,7 @@ func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
 	}
 
 	// Process the received entry.
-	if err := processEntry(txn, cbs, dataKV); err != nil {
+	if err := processEntry(q.ctx, txn, cbs, dataKV); err != nil {
 		return err
 	}
 
@@ -157,12 +157,12 @@ func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
 }
 
 // processEntry processes a given queue item.
-func processEntry(txn ctxn.Txn, cbs callbacks, dataKV kv) error {
+func processEntry(ctx context.Context, txn ctxn.Txn, cbs callbacks, dataKV kv) error {
 	// Process the entry.
 	if dataKV.AdvanceEpoch {
-		return cbs.advanceFunc(txn)
+		return cbs.advanceFunc(ctx, txn)
 	}
-	return cbs.processFunc(txn, dataKV.Key, dataKV.Val)
+	return cbs.processFunc(ctx, txn, dataKV.Key, dataKV.Val)
 }
 
 // Close stops the receiver from receiving items from the queue.
