@@ -26,6 +26,8 @@ import (
 
 	ct "github.com/google/certificate-transparency/go"
 	logclient "github.com/google/certificate-transparency/go/client"
+	"github.com/google/certificate-transparency/go/jsonclient"
+	"golang.org/x/net/context"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
 )
@@ -60,6 +62,7 @@ func NewCTServer(t testing.TB) *httptest.Server {
 }
 
 func TestInclusionProof(t *testing.T) {
+	ctx := context.Background()
 	hs := NewCTServer(t)
 	defer hs.Close()
 	l, err := New([]byte(pem), hs.URL)
@@ -74,11 +77,11 @@ func TestInclusionProof(t *testing.T) {
 	if err := json.Unmarshal([]byte(addJSONReq), &smh); err != nil {
 		t.Errorf("Error decoding SMH: %v", err)
 	}
-	sth, err := l.ctlog.GetSTH()
+	sth, err := l.ctlog.GetSTH(ctx)
 	if err != nil {
 		t.Fatalf("Failed to get STH: %v", err)
 	}
-	sct, err := l.ctlog.AddJSON(&smh)
+	sct, err := l.ctlog.AddJSON(ctx, &smh)
 	if err != nil {
 		t.Fatalf("Failed to get SCT from AddJSON: %v", err)
 	}
@@ -100,6 +103,7 @@ func TestInclusionProof(t *testing.T) {
 }
 
 func TestUpdateSTH(t *testing.T) {
+	ctx := context.Background()
 	l, err := New([]byte(pem), "")
 	if err != nil {
 		t.Fatalf("New(): %v", err)
@@ -127,11 +131,15 @@ func TestUpdateSTH(t *testing.T) {
 				t.Errorf("Incorrect URL path: %s", r.URL.Path)
 			}
 		}))
-		l.ctlog = logclient.New(hs.URL, nil)
+		log, err := logclient.New(hs.URL, nil, jsonclient.Options{})
+		if err != nil {
+			t.Errorf("%v: Create CT client failed: %v", i, err)
+		}
+		l.ctlog = log
 		if got := l.STH.TreeSize; got != tc.start {
 			t.Errorf("%v: Start TreeSize: %v, want %v", i, got, tc.start)
 		}
-		if err := l.UpdateSTH(); err != nil {
+		if err := l.UpdateSTH(ctx); err != nil {
 			t.Errorf("UpdateSTH(): %v", err)
 		}
 		if got := l.STH.TreeSize; got != tc.end {
@@ -144,6 +152,7 @@ func TestUpdateSTH(t *testing.T) {
 // TestVerifySCT exercises an immediate verification via an inclusion proof as
 // well as a delayed SCT verification where the SCT is stored for later verification.
 func TestVerifySCT(t *testing.T) {
+	ctx := context.Background()
 	l, err := New([]byte(pem), "")
 	if err != nil {
 		t.Fatalf("New(): %v", err)
@@ -173,16 +182,20 @@ func TestVerifySCT(t *testing.T) {
 		},
 	} {
 		hs := createServer(t, tc.sth, tc.consistency, tc.sct, tc.hash, tc.inclusion)
-		l.ctlog = logclient.New(hs.URL, nil)
+		log, err := logclient.New(hs.URL, nil, jsonclient.Options{})
+		if err != nil {
+			t.Errorf("Create CT client failed: %v", err)
+		}
+		l.ctlog = log
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
 			t.Errorf("Error decoding SMH: %v", err)
 		}
-		sct, err := l.ctlog.AddJSON(&smh)
+		sct, err := l.ctlog.AddJSON(ctx, &smh)
 		if err != nil {
 			t.Errorf("Failed to get SCT from AddJSON: %v", err)
 		}
-		if err := l.VerifySCT(&smh, sct); err != nil {
+		if err := l.VerifySCT(ctx, &smh, sct); err != nil {
 			t.Errorf("VerifySCT(): %v", err)
 		}
 		if got := len(l.scts); got != tc.cachedSCTs {
@@ -193,6 +206,7 @@ func TestVerifySCT(t *testing.T) {
 }
 
 func TestVerifySCTSig(t *testing.T) {
+	ctx := context.Background()
 	hs := NewCTServer(t)
 	defer hs.Close()
 	l, err := New([]byte(pem), hs.URL)
@@ -204,7 +218,7 @@ func TestVerifySCTSig(t *testing.T) {
 	if err := json.Unmarshal([]byte(addJSONReq), &smh); err != nil {
 		t.Fatalf("Error decoding SMH: %v", err)
 	}
-	sct, err := l.ctlog.AddJSON(&smh)
+	sct, err := l.ctlog.AddJSON(ctx, &smh)
 	if err != nil {
 		t.Fatalf("Failed to get SCT from AddJSON: %v", err)
 	}
@@ -216,6 +230,7 @@ func TestVerifySCTSig(t *testing.T) {
 
 // TestVerifySavedSCTs ensures that cached SCTs are verified.
 func TestVerifySavedSCTs(t *testing.T) {
+	ctx := context.Background()
 	l, err := New([]byte(pem), "")
 	if err != nil {
 		t.Fatalf("New(): %v", err)
@@ -233,12 +248,16 @@ func TestVerifySavedSCTs(t *testing.T) {
 		},
 	} {
 		hs := createServer(t, tc.sth, "", tc.sct, tc.hash, tc.inclusion)
-		l.ctlog = logclient.New(hs.URL, nil)
+		log, err := logclient.New(hs.URL, nil, jsonclient.Options{})
+		if err != nil {
+			t.Errorf("Create CT client failed: %v", err)
+		}
+		l.ctlog = log
 		var smh ctmap.SignedMapHead
 		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
 			t.Errorf("Error decoding SMH: %v", err)
 		}
-		sct, err := l.ctlog.AddJSON(&smh)
+		sct, err := l.ctlog.AddJSON(ctx, &smh)
 		if err != nil {
 			t.Errorf("Failed to get SCT from AddJSON: %v", err)
 		}

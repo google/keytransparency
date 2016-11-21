@@ -18,6 +18,7 @@ import (
 	"github.com/google/key-transparency/core/client/ctlog"
 
 	ct "github.com/google/certificate-transparency/go"
+	"golang.org/x/net/context"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
 )
@@ -25,7 +26,7 @@ import (
 type fakeLog struct{}
 
 // VerifySCT ensures that SMH has been properly included in the append only log.
-func (fakeLog) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error {
+func (fakeLog) VerifySCT(ctx context.Context, smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTimestamp) error {
 	return nil
 }
 
@@ -33,7 +34,7 @@ func (fakeLog) VerifySCT(smh *ctmap.SignedMapHead, sct *ct.SignedCertificateTime
 func (fakeLog) VerifySavedSCTs() []ctlog.SCTEntry { return nil }
 
 // UpdateSTH ensures that STH is at least 1 MMD from Now().
-func (fakeLog) UpdateSTH() error { return nil }
+func (fakeLog) UpdateSTH(ctx context.Context) error { return nil }
 
 // Save persists unverified SCTs to disk
 func (fakeLog) Save(file string) error { return nil }

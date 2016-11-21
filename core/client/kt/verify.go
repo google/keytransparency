@@ -16,6 +16,7 @@ package kt
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -79,7 +80,7 @@ func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error 
 //  - Verify tree proof.
 //  - Verify signature.
 //  - Verify SCT.
-func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryResponse) error {
+func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in *tpb.GetEntryResponse) error {
 	if err := v.VerifyCommitment(userID, in); err != nil {
 		Vlog.Printf("✗ Commitment verification failed.")
 		return err
@@ -115,7 +116,7 @@ func (v *Verifier) VerifyGetEntryResponse(userID string, in *tpb.GetEntryRespons
 	if err != nil {
 		return err
 	}
-	if err := v.log.VerifySCT(in.GetSmh(), sct); err != nil {
+	if err := v.log.VerifySCT(ctx, in.GetSmh(), sct); err != nil {
 		Vlog.Printf("✗ Signed Map Head CT inclusion proof verification failed.")
 		return err
 	}

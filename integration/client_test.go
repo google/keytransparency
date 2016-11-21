@@ -70,7 +70,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create transaction: %v", err)
 			}
-			if err := env.Signer.CreateEpoch(txn); err != nil {
+			if err := env.Signer.CreateEpoch(context.Background(), txn); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
 			}
 			if err := txn.Commit(); err != nil {
@@ -141,7 +141,7 @@ func TestUpdateValidation(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create transaction: %v", err)
 			}
-			if err := env.Signer.CreateEpoch(txn); err != nil {
+			if err := env.Signer.CreateEpoch(context.Background(), txn); err != nil {
 				t.Fatalf("Failed to CreateEpoch: %v", err)
 			}
 			if err := txn.Commit(); err != nil {
@@ -222,7 +222,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string) error {
 		if err != nil {
 			return fmt.Errorf("Failed to create transaction: %v", err)
 		}
-		if err := e.Signer.CreateEpoch(txn); err != nil {
+		if err := e.Signer.CreateEpoch(context.Background(), txn); err != nil {
 			return fmt.Errorf("Failed to CreateEpoch: %v", err)
 		}
 		if err := txn.Commit(); err != nil {

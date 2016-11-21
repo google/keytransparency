@@ -75,7 +75,7 @@ func TestStartReceiving(t *testing.T) {
 	// StartReceiving setup.
 	var done sync.WaitGroup
 	done.Add(len(mitems))
-	processFunc := func(txn ctxn.Txn, key, value []byte) error {
+	processFunc := func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
 		if v, ok := mitems[string(key)]; !ok {
 			t.Errorf("Receive key %v was not enqueued", key)
 		} else {
@@ -88,7 +88,7 @@ func TestStartReceiving(t *testing.T) {
 		done.Done()
 		return nil
 	}
-	advanceFunc := func(txn ctxn.Txn) error { return nil }
+	advanceFunc := func(ctx context.Context, txn ctxn.Txn) error { return nil }
 	if _, err := q.StartReceiving(processFunc, advanceFunc); err != nil {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
@@ -113,11 +113,11 @@ func TestProcessEntry(t *testing.T) {
 	// Setup
 	var pCounter, aCounter int
 	cbs := callbacks{
-		func(txn ctxn.Txn, key, value []byte) error {
+		func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
 			pCounter++
 			return nil
 		},
-		func(txn ctxn.Txn) error {
+		func(ctx context.Context, txn ctxn.Txn) error {
 			aCounter++
 			return nil
 		},
@@ -146,7 +146,7 @@ func TestProcessEntry(t *testing.T) {
 		aCounter = 0
 
 		for _, kv := range tc.kvs {
-			_ = processEntry(nil, cbs, kv)
+			_ = processEntry(context.Background(), nil, cbs, kv)
 		}
 
 		if got, want := pCounter, tc.pCounter; got != want {
@@ -180,10 +180,10 @@ func TestKVTimeout(t *testing.T) {
 	}
 
 	cbs := callbacks{
-		func(txn ctxn.Txn, key, value []byte) error {
+		func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
 			return nil
 		},
-		func(txn ctxn.Txn) error {
+		func(ctx context.Context, txn ctxn.Txn) error {
 			return nil
 		},
 	}

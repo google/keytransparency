@@ -226,7 +226,7 @@ type fakeAppender struct {
 	LatestCount  int
 }
 
-func (*fakeAppender) Append(txn transaction.Txn, epoch int64, obj interface{}) error {
+func (*fakeAppender) Append(ctx context.Context, txn transaction.Txn, epoch int64, obj interface{}) error {
 	return nil
 }
 
