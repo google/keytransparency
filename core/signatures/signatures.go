@@ -26,8 +26,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"io"
+	"log"
 	"math/big"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
@@ -42,16 +42,12 @@ var (
 	ErrPointNotOnCurve = errors.New("point is not on the P256 curve")
 	// ErrMissingSig occurs when the Verify function is called with a nil signature.
 	ErrMissingSig = errors.New("missing signature")
-	// ErrWrongHashAlgo occurs when a hash algorithm other than SHA256 was specified.
-	ErrWrongHashAlgo = errors.New("not the SHA256 hash algorithm")
-	// ErrWrongSignatureAlgo occurs when a signature algorithm other than ECDSA was specified.
-	ErrWrongSignatureAlgo = errors.New("not the ECDSA signature algorithm")
-	// ErrExtraDataAfterSig occurs when extra data was found after the signature.
-	ErrExtraDataAfterSig = errors.New("extra data found after signature")
-	// ErrVerificaionFailed occurs when the signature verification failed.
-	ErrVerificaionFailed = errors.New("failed to verify ECDSA signature")
 	// ErrNoPEMFound occurs when attempting to parse a non PEM data structure.
 	ErrNoPEMFound = errors.New("no PEM block found")
+	// ErrSign occurs whenever signature generation fails.
+	ErrSign = errors.New("signature generation failed")
+	// ErrVerify occurs whenever signature verification fails.
+	ErrVerify = errors.New("signature verification failed")
 )
 
 // Signer generates signatures with a single key.
@@ -141,18 +137,21 @@ func (s Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 
 	ecdsaKey, ok := s.privKey.(*ecdsa.PrivateKey)
 	if !ok {
-		return nil, ErrWrongKeyType
+		log.Print("not an ECDSA key")
+		return nil, ErrSign
 	}
 	var ecSig struct {
 		R, S *big.Int
 	}
 	ecSig.R, ecSig.S, err = ecdsa.Sign(s.rand, ecdsaKey, hash[:])
 	if err != nil {
-		return nil, err
+		log.Print("signature generation failed")
+		return nil, ErrSign
 	}
 	sig, err := asn1.Marshal(ecSig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ECDSA signature: %v", err)
+		log.Print("failed to marshal ECDSA signature")
+		return nil, ErrSign
 	}
 	return &ctmap.DigitallySigned{
 		HashAlgorithm: ctmap.DigitallySigned_SHA256,
@@ -213,35 +212,42 @@ func (s Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 		return ErrMissingSig
 	}
 	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
-		return ErrWrongHashAlgo
+		log.Print("not SHA256 hash algorithm")
+		return ErrVerify
 	}
 	if sig.SigAlgorithm != ctmap.DigitallySigned_ECDSA {
-		return ErrWrongSignatureAlgo
+		log.Print("not ECDSA signature algorithm")
+		return ErrVerify
 	}
 
 	j, err := json.Marshal(data)
 	if err != nil {
-		return err
+		log.Print("json.Marshal failed")
+		return ErrVerify
 	}
 	hash := objecthash.CommonJSONHash(string(j))
 
 	ecdsaKey, ok := s.pubKey.(*ecdsa.PublicKey)
 	if !ok {
-		return ErrWrongKeyType
+		log.Print("not an ECDSA key")
+		return ErrVerify
 	}
 	var ecdsaSig struct {
 		R, S *big.Int
 	}
 	rest, err := asn1.Unmarshal(sig.Signature, &ecdsaSig)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal ECDSA signature: %v", err)
+		log.Print("failed to unmarshal ECDSA signature")
+		return ErrVerify
 	}
 	if len(rest) != 0 {
-		return ErrExtraDataAfterSig
+		log.Print("extra data found after signature")
+		return ErrVerify
 	}
 
 	if !ecdsa.Verify(ecdsaKey, hash[:], ecdsaSig.R, ecdsaSig.S) {
-		return ErrVerificaionFailed
+		log.Print("failed to verify ECDSA signature")
+		return ErrVerify
 	}
 	return nil
 }
