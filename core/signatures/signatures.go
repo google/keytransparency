@@ -40,6 +40,8 @@ var (
 	ErrWrongKeyType = errors.New("not an ECDSA key")
 	// ErrPointNotOnCurve occurs when a public key is not on the curve.
 	ErrPointNotOnCurve = errors.New("point is not on the P256 curve")
+	// ErrMissingSig occurs when the Verify function is called with a nil signature.
+	ErrMissingSig = errors.New("missing signature")
 	// ErrWrongHashAlgo occurs when a hash algorithm other than SHA256 was specified.
 	ErrWrongHashAlgo = errors.New("not the SHA256 hash algorithm")
 	// ErrWrongSignatureAlgo occurs when a signature algorithm other than ECDSA was specified.
@@ -207,6 +209,9 @@ func NewVerifier(pk crypto.PublicKey) (*Verifier, error) {
 
 // Verify checks the digital signature associated applied to data.
 func (s Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
+	if sig == nil {
+		return ErrMissingSig
+	}
 	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
 		return ErrWrongHashAlgo
 	}
