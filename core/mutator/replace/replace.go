@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package replace implements a simple replacement stragey as a mapper
+// Package replace implements a simple replacement strategy as a mapper.
 package replace
-
-import ()
 
 // Replace defines mutations to simply replace the current map value with the contents of the mutation.
 type Replace struct{}

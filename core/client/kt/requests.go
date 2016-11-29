@@ -18,17 +18,19 @@ import (
 	"fmt"
 
 	"github.com/google/key-transparency/core/commitments"
+	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/vrf"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
+	"github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
 // user ID and a profile.
-func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, userID string, profile *tpb.Profile) (*tpb.UpdateEntryRequest, error) {
+func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, userID string, profile *tpb.Profile, signers []*signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index := vrf.Index(getResp.Vrf)
 	prevEntry := new(tpb.Entry)
@@ -47,9 +49,13 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 	}
 
 	// Create new Entry.
+	keys := authorizedKeys
+	if len(keys) == 0 {
+		keys = prevEntry.AuthorizedKeys
+	}
 	entry := &tpb.Entry{
 		Commitment:     commitment,
-		AuthorizedKeys: prevEntry.AuthorizedKeys,
+		AuthorizedKeys: keys,
 	}
 
 	// Sign Entry.
@@ -61,10 +67,14 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 		Key:   index[:],
 		Value: entryData,
 	}
+	sigs, err := generateSignatures(kv, signers)
+	if err != nil {
+		return nil, err
+	}
 	previous := objecthash.ObjectHash(getResp.GetLeafProof().LeafData)
 	signedkv := &tpb.SignedKV{
 		KeyValue:   kv,
-		Signatures: nil, // TODO: Apply Signatures.
+		Signatures: sigs,
 		Previous:   previous[:],
 	}
 
@@ -75,4 +85,17 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 			Committed: committed,
 		},
 	}, err
+}
+
+// TODO: enable multiple algorithms.
+func generateSignatures(data interface{}, signers []*signatures.Signer) (map[string]*ctmap.DigitallySigned, error) {
+	sigs := make(map[string]*ctmap.DigitallySigned)
+	for _, signer := range signers {
+		sig, err := signer.Sign(data)
+		if err != nil {
+			return nil, err
+		}
+		sigs[signer.KeyName] = sig
+	}
+	return sigs, nil
 }

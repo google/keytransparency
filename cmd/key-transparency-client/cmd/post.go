@@ -25,6 +25,7 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/key-transparency/core/signatures"
 )
 
 var (
@@ -73,7 +74,10 @@ User email MUST match the OAuth account used to authorize the update.
 		c.RetryDelay = retryDelay
 
 		// Update.
-		if _, err := c.Update(ctx, userID, &profile); err != nil {
+		var signers []*signatures.Signer
+		var authorizedKeys []*tpb.PublicKey
+		// TODO: fill signers and authorizedKeys.
+		if _, err := c.Update(ctx, userID, &profile, signers, authorizedKeys); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}
 		fmt.Printf("New Profile for %v: %+v", userID, profile)

@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"encoding/pem"
 	"fmt"
 	"reflect"
 	"sort"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/google/key-transparency/cmd/key-transparency-client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
+	"github.com/google/key-transparency/core/signatures"
 
 	"golang.org/x/net/context"
 
@@ -29,11 +31,54 @@ import (
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
+const (
+	// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+	testPrivKey1 = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIBoLpoKGPbrFbEzF/ZktBSuGP+Llmx2wVKSkbdAdQ+3JoAoGCCqGSM49
+AwEHoUQDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4hnGbXDPbdFlL1nmayhnqyEfR
+dXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
+-----END EC PRIVATE KEY-----`
+	// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+	testPubKey1 = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4
+hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
+-----END PUBLIC KEY-----`
+	// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+	testPrivKey2 = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIGugtYzUjyysX/JtjAFA6K3SzgBSmNjog/3e//VWRLQQoAoGCCqGSM49
+AwEHoUQDQgAEJKDbR4uyhSMXW80x02NtYRUFlMQbLOA+tLe/MbwZ69SRdG6Rx92f
+9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
+-----END EC PRIVATE KEY-----`
+	// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+	testPubKey2 = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJKDbR4uyhSMXW80x02NtYRUFlMQb
+LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
+-----END PUBLIC KEY-----`
+)
+
 var (
 	primaryKeys = map[string][]byte{
 		"foo": []byte("bar"),
 	}
 )
+
+func createSigner(t *testing.T, privKey string) *signatures.Signer {
+	sk, _, _ := signatures.PrivateKeyFromPEM([]byte(privKey))
+	signer, err := signatures.NewSigner(DevZero{}, sk)
+	if err != nil {
+		t.Fatalf("signatures.NewSigner failed: %v", err)
+	}
+	return signer
+}
+
+func getAuthorizedKey(pubKey string) *tpb.PublicKey {
+	pk, _ := pem.Decode([]byte(pubKey))
+	return &tpb.PublicKey{
+		KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
+			EcdsaVerifyingP256: pk.Bytes,
+		},
+	}
+}
 
 func TestEmptyGetAndUpdate(t *testing.T) {
 	auth := authentication.NewFake()
@@ -44,17 +89,35 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
 
+	// Create lists of signers.
+	signer1 := createSigner(t, testPrivKey1)
+	signer2 := createSigner(t, testPrivKey2)
+	signers1 := []*signatures.Signer{signer1}
+	signers2 := []*signatures.Signer{signer1, signer2}
+	signers3 := []*signatures.Signer{signer2}
+
+	// Create lists of authorized keys
+	authorizedKey1 := getAuthorizedKey(testPubKey1)
+	authorizedKey2 := getAuthorizedKey(testPubKey2)
+	authorizedKeys1 := []*tpb.PublicKey{authorizedKey1}
+	authorizedKeys2 := []*tpb.PublicKey{authorizedKey1, authorizedKey2}
+	authorizedKeys3 := []*tpb.PublicKey{authorizedKey2}
+
 	for _, tc := range []struct {
-		want   bool
-		insert bool
-		ctx    context.Context
-		userID string
+		want           bool
+		insert         bool
+		ctx            context.Context
+		userID         string
+		signers        []*signatures.Signer
+		authorizedKeys []*tpb.PublicKey
 	}{
-		{false, false, context.Background(), "noalice"}, // Empty
-		{false, true, auth.NewContext("bob"), "bob"},    // Insert
-		{false, false, context.Background(), "nocarol"}, // Empty
-		{true, false, context.Background(), "bob"},      // Not Empty
-		{true, true, auth.NewContext("bob"), "bob"},     // Update
+		{false, false, context.Background(), "noalice", signers1, authorizedKeys1}, // Empty
+		{false, true, auth.NewContext("bob"), "bob", signers1, authorizedKeys1},    // Insert
+		{false, false, context.Background(), "nocarol", signers1, authorizedKeys1}, // Empty
+		{true, false, context.Background(), "bob", signers1, authorizedKeys1},      // Not Empty
+		{true, true, auth.NewContext("bob"), "bob", signers1, authorizedKeys1},     // Update
+		{true, true, auth.NewContext("bob"), "bob", signers2, authorizedKeys2},     // Update, changing keys
+		{true, true, auth.NewContext("bob"), "bob", signers3, authorizedKeys3},     // Update, using new keys
 	} {
 		// Check profile.
 		if err := env.checkProfile(tc.userID, tc.want); err != nil {
@@ -62,7 +125,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		}
 		// Update profile.
 		if tc.insert {
-			req, err := env.Client.Update(tc.ctx, tc.userID, &tpb.Profile{Keys: primaryKeys})
+			req, err := env.Client.Update(tc.ctx, tc.userID, &tpb.Profile{Keys: primaryKeys}, tc.signers, tc.authorizedKeys)
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
@@ -119,18 +182,24 @@ func TestUpdateValidation(t *testing.T) {
 		},
 	}
 
+	// Create lists of signers and authorized keys
+	signers := []*signatures.Signer{createSigner(t, testPrivKey1)}
+	authorizedKeys := []*tpb.PublicKey{getAuthorizedKey(testPubKey1)}
+
 	for _, tc := range []struct {
-		want    bool
-		ctx     context.Context
-		userID  string
-		profile *tpb.Profile
+		want           bool
+		ctx            context.Context
+		userID         string
+		profile        *tpb.Profile
+		signers        []*signatures.Signer
+		authorizedKeys []*tpb.PublicKey
 	}{
-		{false, context.Background(), "alice", profile},
-		{false, auth.NewContext("carol"), "bob", profile},
-		{true, auth.NewContext("dave"), "dave", profile},
-		{true, auth.NewContext("eve"), "eve", profile},
+		{false, context.Background(), "alice", profile, signers, authorizedKeys},
+		{false, auth.NewContext("carol"), "bob", profile, signers, authorizedKeys},
+		{true, auth.NewContext("dave"), "dave", profile, signers, authorizedKeys},
+		{true, auth.NewContext("eve"), "eve", profile, signers, authorizedKeys},
 	} {
-		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile)
+		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile, tc.signers, tc.authorizedKeys)
 
 		// The first update response is always a retry.
 		if got, want := err, grpcc.ErrRetry; (got == want) != tc.want {
@@ -164,7 +233,12 @@ func TestListHistory(t *testing.T) {
 	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
-	if err := env.setupHistory(ctx, userID); err != nil {
+
+	// Create lists of signers and authorized keys
+	signers := []*signatures.Signer{createSigner(t, testPrivKey1)}
+	authorizedKeys := []*tpb.PublicKey{getAuthorizedKey(testPubKey1)}
+
+	if err := env.setupHistory(ctx, userID, signers, authorizedKeys); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
 	}
 
@@ -197,7 +271,7 @@ func TestListHistory(t *testing.T) {
 	}
 }
 
-func (e *Env) setupHistory(ctx context.Context, userID string) error {
+func (e *Env) setupHistory(ctx context.Context, userID string, signers []*signatures.Signer, authorizedKeys []*tpb.PublicKey) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -211,7 +285,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string) error {
 		nil, cp(5), cp(7), nil,
 	} {
 		if p != nil {
-			_, err := e.Client.Update(ctx, userID, p)
+			_, err := e.Client.Update(ctx, userID, p, signers, authorizedKeys)
 			// The first update response is always a retry.
 			if got, want := err, grpcc.ErrRetry; got != want {
 				return fmt.Errorf("Update(%v)=(_, %v), want (_, %v)", userID, got, want)
