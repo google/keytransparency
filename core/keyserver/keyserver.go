@@ -220,7 +220,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
 	index := s.vrf.Index(vrf)
 
-	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetUpdate().KeyValue, in.GetEntryUpdate().Committed); err != nil {
+	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetUpdate().GetKeyValue(), in.GetEntryUpdate().Committed); err != nil {
 		return nil, err
 	}
 
@@ -266,13 +266,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	return &tpb.UpdateEntryResponse{Proof: resp}, err
 }
 
-func (s *Server) saveCommitment(ctx context.Context, kvData []byte, committed *tpb.Committed) error {
-	// Unmarshal entry.
-	kv := new(tpb.KeyValue)
-	if err := proto.Unmarshal(kvData, kv); err != nil {
-		log.Printf("Error unmarshaling keyvalue: %v", err)
-		return grpc.Errorf(codes.InvalidArgument, "Invalid request")
-	}
+func (s *Server) saveCommitment(ctx context.Context, kv *tpb.KeyValue, committed *tpb.Committed) error {
 	entry := new(tpb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
 		log.Printf("Error unmarshaling entry: %v", err)

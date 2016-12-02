@@ -44,12 +44,8 @@ func prepareMutation(key []byte, entryData []byte, previous []byte) ([]byte, err
 		Key:   key,
 		Value: entryData,
 	}
-	kvData, err := proto.Marshal(kv)
-	if err != nil {
-		return nil, fmt.Errorf("Marshal(%v)=%v", kv, err)
-	}
 	skv := &tpb.SignedKV{
-		KeyValue: kvData,
+		KeyValue: kv,
 		Previous: previous,
 	}
 	mutation, err := proto.Marshal(skv)

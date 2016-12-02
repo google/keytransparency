@@ -48,18 +48,13 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		return mutator.ErrSize
 	}
 
-	kv := new(tpb.KeyValue)
-	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
-		return err
-	}
-
 	// Verify pointer to previous data.
 	// The very first entry will have oldValue=nil, so its hash is the
 	// ObjectHash value of nil.
 	prevEntryHash := objecthash.ObjectHash(oldValue)
 	if !bytes.Equal(prevEntryHash[:], update.Previous) {
 		// Check if this mutation is a replay.
-		if bytes.Equal(oldValue, kv.Value) {
+		if bytes.Equal(oldValue, update.GetKeyValue().Value) {
 			return mutator.ErrReplay
 		}
 
@@ -67,7 +62,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 	}
 
 	entry := new(tpb.Entry)
-	if err := proto.Unmarshal(kv.Value, entry); err != nil {
+	if err := proto.Unmarshal(update.GetKeyValue().Value, entry); err != nil {
 		return err
 	}
 
@@ -82,10 +77,5 @@ func (*Entry) Mutate(value, mutation []byte) ([]byte, error) {
 	if err := proto.Unmarshal(mutation, update); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling update: %v", err)
 	}
-	kv := new(tpb.KeyValue)
-	if err := proto.Unmarshal(update.KeyValue, kv); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling keyvalue: %v", err)
-	}
-
-	return kv.Value, nil
+	return update.GetKeyValue().Value, nil
 }
