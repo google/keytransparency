@@ -72,11 +72,7 @@ func validateKey(userID, appID string, key []byte) error {
 // - Commitment in SignedEntryUpdate maches the serialized profile.
 // - Profile is a valid.
 func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
-	// Unmarshal entry.
-	kv := new(tpb.KeyValue)
-	if err := proto.Unmarshal(in.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
-		return err
-	}
+	kv := in.GetEntryUpdate().GetUpdate().GetKeyValue()
 	entry := new(tpb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
 		return err

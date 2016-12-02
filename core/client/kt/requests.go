@@ -61,13 +61,9 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 		Key:   index[:],
 		Value: entryData,
 	}
-	kvData, err := proto.Marshal(kv)
-	if err != nil {
-		return nil, err
-	}
 	previous := objecthash.ObjectHash(getResp.GetLeafProof().LeafData)
 	signedkv := &tpb.SignedKV{
-		KeyValue:   kvData,
+		KeyValue:   kv,
 		Signatures: nil, // TODO: Apply Signatures.
 		Previous:   previous[:],
 	}

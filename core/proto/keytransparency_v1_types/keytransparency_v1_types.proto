@@ -87,7 +87,7 @@ message KeyValue {
 // SignedKV is a signed change to a map entry.
 message SignedKV {
   // key_value is a serialized KeyValue.
-  bytes key_value = 1;
+  KeyValue key_value = 1;
   // signatures on key_value. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.

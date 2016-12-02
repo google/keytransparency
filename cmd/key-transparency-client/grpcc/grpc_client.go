@@ -218,12 +218,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	}
 
 	// Check if the response is a replay.
-	kv := new(tpb.KeyValue)
-	if err := proto.Unmarshal(req.GetEntryUpdate().GetUpdate().KeyValue, kv); err != nil {
-		return fmt.Errorf("Error unmarshaling KeyValue: %v", err)
-	}
-	got := updateResp.GetProof().GetLeafProof().LeafData
-	if !bytes.Equal(got, kv.Value) {
+	if got, want := updateResp.GetProof().GetLeafProof().LeafData, req.GetEntryUpdate().GetUpdate().KeyValue.Value; !bytes.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

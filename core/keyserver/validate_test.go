@@ -110,9 +110,8 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		}
 		entryData, _ := proto.Marshal(entry)
 		kv := &tpb.KeyValue{Key: tc.index[:], Value: entryData}
-		kvData, _ := proto.Marshal(kv)
 		signedkv := &tpb.SignedKV{
-			KeyValue: kvData,
+			KeyValue: kv,
 		}
 		req := &tpb.UpdateEntryRequest{
 			UserId: tc.userID,
