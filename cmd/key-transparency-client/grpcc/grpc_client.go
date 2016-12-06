@@ -178,7 +178,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
-func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
+func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, signers []*signatures.Signer, authorizedKeys []*tpb.PublicKey, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 		return nil, err
 	}
 
-	req, err := kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile)
+	req, err := kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile, signers, authorizedKeys)
 	if err != nil {
 		return nil, err
 	}
