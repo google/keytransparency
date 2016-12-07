@@ -17,22 +17,17 @@ package signatures
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/asn1"
 	"encoding/hex"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"io"
-	"log"
-	"math/big"
-
-	"github.com/benlaurie/objecthash/go/objecthash"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
+
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -48,206 +43,90 @@ var (
 	ErrSign = errors.New("signature generation failed")
 	// ErrVerify occurs whenever signature verification fails.
 	ErrVerify = errors.New("signature verification failed")
+	// ErrUnimplemented occurs when a signature scheme is not implemented.
+	ErrUnimplemented = errors.New("scheme is unimplemented")
 )
 
-// Signer generates signatures with a single key.
-type Signer struct {
-	privKey crypto.PrivateKey
-	KeyName string
-	rand    io.Reader
+// Signer represents an object that can generate signatures with a single key.
+type Signer interface {
+	// Sign generates a digital signature object.
+	Sign(interface{}) (*ctmap.DigitallySigned, error)
+	// KeyID returns the ID of the associated public key.
+	KeyID() string
 }
 
-// GenerateKeyPair creates a new random keypair and returns the wrapped signer and verifier.
-func GenerateKeyPair() (*Signer, *Verifier, error) {
-	pubkeyCurve := elliptic.P256()
-	privatekey := new(ecdsa.PrivateKey)
-	privatekey, err := ecdsa.GenerateKey(pubkeyCurve, rand.Reader)
-	if err != nil {
-		return nil, nil, err
-	}
-	sig, err := NewSigner(rand.Reader, privatekey)
-	if err != nil {
-		return nil, nil, err
-	}
-	ver, err := NewVerifier(privatekey.Public())
-	if err != nil {
-		return nil, nil, err
-	}
-	return sig, ver, nil
+// Verifier represents an object that can verify signatures with a single key.
+type Verifier interface {
+	// Verify checks the digital signature associated applied to data.
+	Verify(interface{}, *ctmap.DigitallySigned) error
+	// KeyID returns the ID of the associated public key.
+	KeyID() string
 }
 
-// PrivateKeyFromPEM parses a PEM formatted block and returns the private key
-// contained within and any remaining unread bytes, or an error.
-func PrivateKeyFromPEM(b []byte) (crypto.Signer, []byte, error) {
-	p, rest := pem.Decode(b)
+// SignerFromPEM parses a PEM formatted block and returns a signer object created
+// using that block.
+func SignerFromPEM(rand io.Reader, b []byte) (Signer, error) {
+	p, _ := pem.Decode(b)
 	if p == nil {
-		return nil, rest, ErrNoPEMFound
+		return nil, ErrNoPEMFound
 	}
-	k, err := x509.ParseECPrivateKey(p.Bytes)
-	if err != nil {
-		return nil, nil, err
-	}
-	return k, rest, nil
+	return signerFromBytes(rand, p.Bytes)
 }
 
-// KeyName is the first 8 hex digits of the SHA256 of the public pem.
-func KeyName(k crypto.PublicKey) (string, error) {
+func signerFromBytes(rand io.Reader, b []byte) (Signer, error) {
+	if _, err := x509.ParsePKCS1PrivateKey(b); err == nil {
+		return nil, ErrUnimplemented
+	} else if k, err := x509.ParseECPrivateKey(b); err == nil {
+		return newP256Signer(rand, k)
+	}
+	return nil, ErrUnimplemented
+}
+
+// VerifierFromPEM parses a PEM formatted block and returns a verifier object
+// created using that block.
+func VerifierFromPEM(b []byte) (Verifier, error) {
+	p, _ := pem.Decode(b)
+	if p == nil {
+		return nil, ErrNoPEMFound
+	}
+	return verifierFromBytes(p.Bytes)
+}
+
+func verifierFromBytes(b []byte) (Verifier, error) {
+	k, err := x509.ParsePKIXPublicKey(b)
+	if err != nil {
+		return nil, err
+	}
+
+	switch pkType := k.(type) {
+	case *rsa.PublicKey:
+		return nil, ErrUnimplemented
+	case *ecdsa.PublicKey:
+		return newP256Verifier(pkType)
+	}
+	return nil, ErrUnimplemented
+}
+
+// VerifierFromKey creates a verifier object from a PublicKey proto object.
+func VerifierFromKey(key *tpb.PublicKey) (Verifier, error) {
+	switch {
+	case key.GetEd25519() != nil:
+		return nil, ErrUnimplemented
+	case key.GetRsaVerifyingSha256_3072() != nil:
+		return nil, ErrUnimplemented
+	case key.GetEcdsaVerifyingP256() != nil:
+		return verifierFromBytes(key.GetEcdsaVerifyingP256())
+	default:
+		return nil, errors.New("public key not found")
+	}
+}
+
+// keyID is the hex digits of the SHA256 of the public pem.
+func keyID(k crypto.PublicKey) (string, error) {
 	pubBytes, err := x509.MarshalPKIXPublicKey(k)
 	if err != nil {
 		return "", err
 	}
 	id := sha256.Sum256(pubBytes)
-	return hex.EncodeToString(id[:])[:8], nil
-}
-
-// NewSigner creates a signer object from a private key.
-func NewSigner(rand io.Reader, pk crypto.Signer) (*Signer, error) {
-	switch pkType := pk.(type) {
-	case *ecdsa.PrivateKey:
-		params := *(pkType.Params())
-		if params != *elliptic.P256().Params() {
-			return nil, ErrPointNotOnCurve
-		}
-		if !elliptic.P256().IsOnCurve(pkType.X, pkType.Y) {
-			return nil, ErrPointNotOnCurve
-		}
-	default:
-		return nil, ErrWrongKeyType
-	}
-
-	id, err := KeyName(pk.Public())
-	if err != nil {
-		return nil, err
-	}
-
-	return &Signer{
-		privKey: pk,
-		KeyName: id,
-		rand:    rand,
-	}, nil
-}
-
-// Sign generates a digital signature object.
-func (s Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
-	j, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-	hash := objecthash.CommonJSONHash(string(j))
-
-	ecdsaKey, ok := s.privKey.(*ecdsa.PrivateKey)
-	if !ok {
-		log.Print("not an ECDSA key")
-		return nil, ErrSign
-	}
-	var ecSig struct {
-		R, S *big.Int
-	}
-	ecSig.R, ecSig.S, err = ecdsa.Sign(s.rand, ecdsaKey, hash[:])
-	if err != nil {
-		log.Print("signature generation failed")
-		return nil, ErrSign
-	}
-	sig, err := asn1.Marshal(ecSig)
-	if err != nil {
-		log.Print("failed to marshal ECDSA signature")
-		return nil, ErrSign
-	}
-	return &ctmap.DigitallySigned{
-		HashAlgorithm: ctmap.DigitallySigned_SHA256,
-		SigAlgorithm:  ctmap.DigitallySigned_ECDSA,
-		Signature:     sig,
-	}, nil
-}
-
-// Verifier can verify signatures on SCTs and STHs
-type Verifier struct {
-	pubKey  crypto.PublicKey
-	KeyName string
-}
-
-// PublicKeyFromPEM parses a PEM formatted block and returns the public key
-// contained within and any remaining unread bytes, or an error.
-func PublicKeyFromPEM(b []byte) (crypto.PublicKey, []byte, error) {
-	p, rest := pem.Decode(b)
-	if p == nil {
-		return nil, rest, ErrNoPEMFound
-	}
-	k, err := x509.ParsePKIXPublicKey(p.Bytes)
-	if err != nil {
-		return nil, nil, err
-	}
-	return k, rest, nil
-}
-
-// NewVerifier creates a verifier from a ECDSA public key.
-func NewVerifier(pk crypto.PublicKey) (*Verifier, error) {
-	switch pkType := pk.(type) {
-	case *ecdsa.PublicKey:
-		params := *(pkType.Params())
-		if params != *elliptic.P256().Params() {
-			return nil, ErrPointNotOnCurve
-		}
-		if !elliptic.P256().IsOnCurve(pkType.X, pkType.Y) {
-			return nil, ErrPointNotOnCurve
-		}
-	default:
-		return nil, ErrWrongKeyType
-	}
-
-	id, err := KeyName(pk)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Verifier{
-		pubKey:  pk,
-		KeyName: id,
-	}, nil
-}
-
-// Verify checks the digital signature associated applied to data.
-func (s Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
-	if sig == nil {
-		return ErrMissingSig
-	}
-	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
-		log.Print("not SHA256 hash algorithm")
-		return ErrVerify
-	}
-	if sig.SigAlgorithm != ctmap.DigitallySigned_ECDSA {
-		log.Print("not ECDSA signature algorithm")
-		return ErrVerify
-	}
-
-	j, err := json.Marshal(data)
-	if err != nil {
-		log.Print("json.Marshal failed")
-		return ErrVerify
-	}
-	hash := objecthash.CommonJSONHash(string(j))
-
-	ecdsaKey, ok := s.pubKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Print("not an ECDSA key")
-		return ErrVerify
-	}
-	var ecdsaSig struct {
-		R, S *big.Int
-	}
-	rest, err := asn1.Unmarshal(sig.Signature, &ecdsaSig)
-	if err != nil {
-		log.Print("failed to unmarshal ECDSA signature")
-		return ErrVerify
-	}
-	if len(rest) != 0 {
-		log.Print("extra data found after signature")
-		return ErrVerify
-	}
-
-	if !ecdsa.Verify(ecdsaKey, hash[:], ecdsaSig.R, ecdsaSig.S) {
-		log.Print("failed to verify ECDSA signature")
-		return ErrVerify
-	}
-	return nil
+	return hex.EncodeToString(id[:]), nil
 }

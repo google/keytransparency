@@ -30,7 +30,7 @@ import (
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
 // user ID and a profile.
-func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, userID string, profile *tpb.Profile, signers []*signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
+func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, userID string, profile *tpb.Profile, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index := vrf.Index(getResp.Vrf)
 	prevEntry := new(tpb.Entry)
@@ -87,15 +87,14 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 	}, err
 }
 
-// TODO: enable multiple algorithms.
-func generateSignatures(data interface{}, signers []*signatures.Signer) (map[string]*ctmap.DigitallySigned, error) {
+func generateSignatures(data interface{}, signers []signatures.Signer) (map[string]*ctmap.DigitallySigned, error) {
 	sigs := make(map[string]*ctmap.DigitallySigned)
 	for _, signer := range signers {
 		sig, err := signer.Sign(data)
 		if err != nil {
 			return nil, err
 		}
-		sigs[signer.KeyName] = sig
+		sigs[signer.KeyID()] = sig
 	}
 	return sigs, nil
 }

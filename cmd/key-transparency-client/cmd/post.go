@@ -74,7 +74,7 @@ User email MUST match the OAuth account used to authorize the update.
 		c.RetryDelay = retryDelay
 
 		// Update.
-		var signers []*signatures.Signer
+		var signers []signatures.Signer
 		var authorizedKeys []*tpb.PublicKey
 		// TODO: fill signers and authorizedKeys.
 		if _, err := c.Update(ctx, userID, &profile, signers, authorizedKeys); err != nil {

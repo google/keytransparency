@@ -15,9 +15,7 @@
 package signatures
 
 import (
-	"bytes"
 	"crypto/rand"
-	"math"
 	"testing"
 )
 
@@ -35,168 +33,23 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 -----END PUBLIC KEY-----`
 )
 
-func TestNewSigner(t *testing.T) {
+func TestSignerFromPEM(t *testing.T) {
 	for _, pem := range []string{
 		testPrivKey,
 	} {
-		k, rest, err := PrivateKeyFromPEM([]byte(pem))
+		_, err := SignerFromPEM(rand.Reader, []byte(pem))
 		if err != nil {
-			t.Errorf("PrivateKeyFromPEM(): %v", err)
-		}
-		if len(rest) > 0 {
-			t.Errorf("Data left after parsing: %v", rest)
-		}
-		if _, err := NewSigner(rand.Reader, k); err != nil {
-			t.Errorf("NewSigantureSigner(): %v", err)
+			t.Errorf("SignerFromPEM(): %v", err)
 		}
 	}
 }
 
-func TestNewVerifier(t *testing.T) {
+func TestVerifierFromPEM(t *testing.T) {
 	for _, pem := range []string{
 		testPubKey,
 	} {
-		k, rest, err := PublicKeyFromPEM([]byte(pem))
-		if err != nil {
-			t.Errorf("PublicKeyFromPEM(): %v", err)
-		}
-		if len(rest) > 0 {
-			t.Errorf("Data left after parsing: %v", rest)
-		}
-		if _, err := NewVerifier(k); err != nil {
-			t.Errorf("NewSigantureVerifier(): %v", err)
+		if _, err := VerifierFromPEM([]byte(pem)); err != nil {
+			t.Errorf("VerifierFromPEM(): %v", err)
 		}
 	}
-}
-
-func TestConsistentName(t *testing.T) {
-	// Verify that the ID generated from from pub and from priv are the same.
-	for _, tc := range []struct {
-		priv string
-		pub  string
-	}{
-		{testPrivKey, testPubKey},
-	} {
-		ka, _, _ := PrivateKeyFromPEM([]byte(tc.priv))
-		kb, _, _ := PublicKeyFromPEM([]byte(tc.pub))
-
-		signer, err := NewSigner(rand.Reader, ka)
-		if err != nil {
-			t.Fatalf("NewSigantureSigner(): %v", err)
-		}
-		verifier, err := NewVerifier(kb)
-		if err != nil {
-			t.Fatalf("NewSigantureVerifier(): %v", err)
-		}
-
-		if got, want := signer.KeyName, verifier.KeyName; got != want {
-			t.Errorf("Signer.Name: %v, want %v", got, want)
-		}
-	}
-}
-
-type env struct {
-	signer   *Signer
-	verifier *Verifier
-}
-
-func newEnv(t *testing.T) *env {
-	ka, _, _ := PrivateKeyFromPEM([]byte(testPrivKey))
-	signer, err := NewSigner(rand.Reader, ka)
-	if err != nil {
-		t.Fatalf("NewSigantureSigner(): %v", err)
-	}
-	kb, _, _ := PublicKeyFromPEM([]byte(testPubKey))
-	verifier, err := NewVerifier(kb)
-	if err != nil {
-		t.Fatalf("NewSigantureVerifier(): %v", err)
-	}
-
-	return &env{signer, verifier}
-}
-
-func TestSignVerifier(t *testing.T) {
-	e := newEnv(t)
-	for _, tc := range []struct {
-		data interface{}
-	}{
-		{struct{ Foo string }{"bar"}},
-	} {
-		sig, err := e.signer.Sign(tc.data)
-		if err != nil {
-			t.Errorf("Sign(%v): %v", tc.data, err)
-		}
-		if err := e.verifier.Verify(tc.data, sig); err != nil {
-			t.Errorf("Verify(%v, %v): %v", tc.data, sig, err)
-		}
-	}
-}
-
-func TestRightTruncateSignature(t *testing.T) {
-	e := newEnv(t)
-	data := struct{ Foo string }{"bar"}
-
-	// Truncate bytes from the end of sig and try to verify.
-	sig, err := e.signer.Sign(data)
-	if err != nil {
-		t.Errorf("Sign(%v): %v", data, err)
-	}
-	sigLen := len(sig.Signature)
-	for i := 0; i < sigLen; i++ {
-		sig.Signature = sig.Signature[:len(sig.Signature)-1]
-		if err := e.verifier.Verify(data, sig); err == nil {
-			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the end of the signature", i)
-		}
-	}
-}
-
-func TestLeftTruncateSignature(t *testing.T) {
-	e := newEnv(t)
-	data := struct{ Foo string }{"bar"}
-
-	// Truncate bytes from the beginning of sig and try to verify.
-	sig, err := e.signer.Sign(data)
-	if err != nil {
-		t.Errorf("Sign(%v): %v", data, err)
-	}
-	sigLen := len(sig.Signature)
-	for i := 0; i < sigLen; i++ {
-		sig.Signature = sig.Signature[1:]
-		if err := e.verifier.Verify(data, sig); err == nil {
-			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the beginning of the signature", i)
-		}
-	}
-}
-
-func TestBitFlipSignature(t *testing.T) {
-	e := newEnv(t)
-	data := struct{ Foo string }{"bar"}
-
-	// Truncate bytes from the beginning of sig and try to verify.
-	sig, err := e.signer.Sign(data)
-	if err != nil {
-		t.Errorf("Sign(%v): %v", data, err)
-	}
-	for i := 0; i < len(sig.Signature)*8; i++ {
-		// Flip bit in position i.
-		flippedSig := *sig
-		flippedSig.Signature = flipBit(sig.Signature, uint(i))
-
-		// Verify signature
-		if err := e.verifier.Verify(data, &flippedSig); err == nil {
-			t.Errorf("Verify unexpectedly succeeded after flipping bit %v of the signature", i)
-		}
-	}
-}
-
-func flipBit(a []byte, pos uint) []byte {
-	index := int(math.Floor(float64(pos) / 8))
-	b := byte(a[index])
-	b ^= (1 << uint(math.Mod(float64(pos), 8.0)))
-
-	var buf bytes.Buffer
-	buf.Write(a[:index])
-	buf.Write([]byte{b})
-	buf.Write(a[index+1:])
-	return buf.Bytes()
 }

@@ -46,12 +46,12 @@ var (
 type Verifier struct {
 	vrf  vrf.PublicKey
 	tree *tv.Verifier
-	sig  *signatures.Verifier
+	sig  signatures.Verifier
 	log  ctlog.Verifier
 }
 
 // New creates a new instance of the client verifier.
-func New(vrf vrf.PublicKey, tree *tv.Verifier, sig *signatures.Verifier, log ctlog.Verifier) *Verifier {
+func New(vrf vrf.PublicKey, tree *tv.Verifier, sig signatures.Verifier, log ctlog.Verifier) *Verifier {
 	return &Verifier{
 		vrf:  vrf,
 		tree: tree,
@@ -105,7 +105,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
-	if err := v.sig.Verify(in.GetSmh().GetMapHead(), in.GetSmh().Signatures[v.sig.KeyName]); err != nil {
+	if err := v.sig.Verify(in.GetSmh().GetMapHead(), in.GetSmh().Signatures[v.sig.KeyID()]); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return err
 	}
