@@ -16,7 +16,10 @@ package signatures
 
 import (
 	"crypto/rand"
+	"encoding/pem"
 	"testing"
+
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 const (
@@ -34,10 +37,10 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 )
 
 func TestSignerFromPEM(t *testing.T) {
-	for _, pem := range []string{
+	for _, priv := range []string{
 		testPrivKey,
 	} {
-		_, err := SignerFromPEM(rand.Reader, []byte(pem))
+		_, err := SignerFromPEM(rand.Reader, []byte(priv))
 		if err != nil {
 			t.Errorf("SignerFromPEM(): %v", err)
 		}
@@ -45,11 +48,30 @@ func TestSignerFromPEM(t *testing.T) {
 }
 
 func TestVerifierFromPEM(t *testing.T) {
-	for _, pem := range []string{
+	for _, pub := range []string{
 		testPubKey,
 	} {
-		if _, err := VerifierFromPEM([]byte(pem)); err != nil {
+		if _, err := VerifierFromPEM([]byte(pub)); err != nil {
 			t.Errorf("VerifierFromPEM(): %v", err)
+		}
+	}
+}
+
+func TestVerifierFromKey(t *testing.T) {
+	for _, pub := range []string{
+		testPubKey,
+	} {
+		p, _ := pem.Decode([]byte(pub))
+		if p == nil {
+			t.Error("pem.Decode() failed")
+		}
+		pk := &tpb.PublicKey{
+			KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
+				EcdsaVerifyingP256: p.Bytes,
+			},
+		}
+		if _, err := VerifierFromKey(pk); err != nil {
+			t.Errorf("VerifierFromKey(): %v", err)
 		}
 	}
 }
