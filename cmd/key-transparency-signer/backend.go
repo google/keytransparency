@@ -68,16 +68,12 @@ func openEtcd() *clientv3.Client {
 	return cli
 }
 
-func openPrivateKey() *signatures.Signer {
+func openPrivateKey() signatures.Signer {
 	pem, err := ioutil.ReadFile(*signingKey)
 	if err != nil {
 		log.Fatalf("Failed to read file %v: %v", *signingKey, err)
 	}
-	key, _, err := signatures.PrivateKeyFromPEM(pem)
-	if err != nil {
-		log.Fatalf("Read to read private key: %v", err)
-	}
-	sig, err := signatures.NewSigner(rand.Reader, key)
+	sig, err := signatures.SignerFromPEM(rand.Reader, pem)
 	if err != nil {
 		log.Fatalf("Failed to create signer: %v", err)
 	}

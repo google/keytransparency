@@ -165,16 +165,12 @@ func getCreds(clientSecretFile string) (credentials.PerRPCCredentials, error) {
 	return oauth.NewOauthAccess(tok), nil
 }
 
-func readSignatureVerifier(ktPEM string) (*signatures.Verifier, error) {
+func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	pem, err := ioutil.ReadFile(ktPEM)
 	if err != nil {
 		return nil, err
 	}
-	pk, _, err := signatures.PublicKeyFromPEM(pem)
-	if err != nil {
-		return nil, err
-	}
-	ver, err := signatures.NewVerifier(pk)
+	ver, err := signatures.VerifierFromPEM(pem)
 	if err != nil {
 		return nil, err
 	}

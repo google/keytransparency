@@ -87,7 +87,7 @@ type Env struct {
 	mapLog     *httptest.Server
 }
 
-func staticKeyPair() (*signatures.Signer, *signatures.Verifier, error) {
+func staticKeyPair() (signatures.Signer, signatures.Verifier, error) {
 	sigPriv := `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
 AwEHoUQDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhWf5JqSoyp0uiL8LeNYyj5vgkl
@@ -97,20 +97,12 @@ K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`
-	signer, _, err := signatures.PrivateKeyFromPEM([]byte(sigPriv))
-	if err != nil {
-		return nil, nil, err
-	}
-	sig, err := signatures.NewSigner(DevZero{}, signer)
+	sig, err := signatures.SignerFromPEM(DevZero{}, []byte(sigPriv))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	verifier, _, err := signatures.PublicKeyFromPEM([]byte(sigPub))
-	if err != nil {
-		return nil, nil, err
-	}
-	ver, err := signatures.NewVerifier(verifier)
+	ver, err := signatures.VerifierFromPEM([]byte(sigPub))
 	if err != nil {
 		return nil, nil, err
 	}

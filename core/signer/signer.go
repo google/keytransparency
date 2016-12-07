@@ -56,14 +56,14 @@ type Signer struct {
 	tree      tree.Sparse
 	mutations appender.Appender
 	sths      appender.Appender
-	signer    *signatures.Signer
+	signer    signatures.Signer
 	clock     Clock
 }
 
 // New creates a new instance of the signer.
 func New(realm string, queue queue.Queuer, tree tree.Sparse,
 	mutator mutator.Mutator, sths, mutations appender.Appender,
-	signer *signatures.Signer) *Signer {
+	signer signatures.Signer) *Signer {
 	return &Signer{
 		realm:     realm,
 		queue:     queue,
@@ -143,7 +143,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
 	}
 	smh := &ctmap.SignedMapHead{
 		MapHead:    mh,
-		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyName: sig},
+		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyID(): sig},
 	}
 	if err := s.sths.Append(ctx, txn, epoch, smh); err != nil {
 		return fmt.Errorf("Append SMH failure %v", err)

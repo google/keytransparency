@@ -86,7 +86,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(mapID string, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier *signatures.Verifier, log ctlog.Verifier) *Client {
+func New(mapID string, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier signatures.Verifier, log ctlog.Verifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
@@ -178,7 +178,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
-func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, signers []*signatures.Signer, authorizedKeys []*tpb.PublicKey, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
+func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
 		return nil, err

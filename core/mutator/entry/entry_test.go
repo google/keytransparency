@@ -81,7 +81,7 @@ func createEntry(commitment []byte, pkeys []string) ([]byte, error) {
 	return entryData, nil
 }
 
-func prepareMutation(key []byte, entryData []byte, previous []byte, signers []*signatures.Signer) ([]byte, error) {
+func prepareMutation(key []byte, entryData []byte, previous []byte, signers []signatures.Signer) ([]byte, error) {
 	kv := &tpb.KeyValue{
 		Key:   key,
 		Value: entryData,
@@ -94,7 +94,7 @@ func prepareMutation(key []byte, entryData []byte, previous []byte, signers []*s
 		if err != nil {
 			return nil, fmt.Errorf("signerSign() failed: %v", err)
 		}
-		sigs[signer.KeyName] = sig
+		sigs[signer.KeyID()] = sig
 	}
 
 	skv := &tpb.SignedKV{
@@ -109,13 +109,10 @@ func prepareMutation(key []byte, entryData []byte, previous []byte, signers []*s
 	return mutation, nil
 }
 
-// TODO: move this function to the signature library once we can support multiple
-//       algorithms.
-func signersFromPEMs(t *testing.T, keys [][]byte) []*signatures.Signer {
-	signers := make([]*signatures.Signer, 0, len(keys))
+func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
+	signers := make([]signatures.Signer, 0, len(keys))
 	for _, key := range keys {
-		sk, _, _ := signatures.PrivateKeyFromPEM([]byte(key))
-		signer, err := signatures.NewSigner(rand.Reader, sk)
+		signer, err := signatures.SignerFromPEM(rand.Reader, key)
 		if err != nil {
 			t.Fatalf("NewSigner(): %v", err)
 		}
@@ -164,7 +161,7 @@ func TestCheckMutation(t *testing.T) {
 		oldValue  []byte
 		entryData []byte
 		previous  []byte
-		signers   []*signatures.Signer
+		signers   []signatures.Signer
 		err       error
 	}{
 		{key, entryData2, entryData2, hashEntry1[:], nil, mutator.ErrReplay},    // Replayed mutation
@@ -176,7 +173,7 @@ func TestCheckMutation(t *testing.T) {
 		{key, entryData1, entryData2, hashEntry1[:], signers3, nil},             // Second mutation, working case
 		// Test missing keys and signature cases.
 		{key, nil, missingKeyEntryData1, nilHash[:], signers1, mutator.ErrMissingKey},                     // Very first mutation, missing current key
-		{key, nil, entryData1, nilHash[:], []*signatures.Signer{}, mutator.ErrInvalidSig},                 // Very first mutation, missing current signature
+		{key, nil, entryData1, nilHash[:], []signatures.Signer{}, mutator.ErrInvalidSig},                  // Very first mutation, missing current signature
 		{key, missingKeyEntryData1, entryData2, hashMissingKeyEntry1[:], signers3, mutator.ErrInvalidSig}, // Second mutation, Missing previous authorized key
 		{key, entryData1, entryData2, hashEntry1[:], signers2, mutator.ErrInvalidSig},                     // Second mutation, missing previous signature
 		{key, entryData1, missingKeyEntryData2, hashEntry1[:], signers3, nil},                             // Second mutation, missing current authorized key

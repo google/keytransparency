@@ -62,9 +62,8 @@ var (
 	}
 )
 
-func createSigner(t *testing.T, privKey string) *signatures.Signer {
-	sk, _, _ := signatures.PrivateKeyFromPEM([]byte(privKey))
-	signer, err := signatures.NewSigner(DevZero{}, sk)
+func createSigner(t *testing.T, privKey string) signatures.Signer {
+	signer, err := signatures.SignerFromPEM(DevZero{}, []byte(privKey))
 	if err != nil {
 		t.Fatalf("signatures.NewSigner failed: %v", err)
 	}
@@ -92,9 +91,9 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 	// Create lists of signers.
 	signer1 := createSigner(t, testPrivKey1)
 	signer2 := createSigner(t, testPrivKey2)
-	signers1 := []*signatures.Signer{signer1}
-	signers2 := []*signatures.Signer{signer1, signer2}
-	signers3 := []*signatures.Signer{signer2}
+	signers1 := []signatures.Signer{signer1}
+	signers2 := []signatures.Signer{signer1, signer2}
+	signers3 := []signatures.Signer{signer2}
 
 	// Create lists of authorized keys
 	authorizedKey1 := getAuthorizedKey(testPubKey1)
@@ -108,7 +107,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		insert         bool
 		ctx            context.Context
 		userID         string
-		signers        []*signatures.Signer
+		signers        []signatures.Signer
 		authorizedKeys []*tpb.PublicKey
 	}{
 		{false, false, context.Background(), "noalice", signers1, authorizedKeys1}, // Empty
@@ -183,7 +182,7 @@ func TestUpdateValidation(t *testing.T) {
 	}
 
 	// Create lists of signers and authorized keys
-	signers := []*signatures.Signer{createSigner(t, testPrivKey1)}
+	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
 	authorizedKeys := []*tpb.PublicKey{getAuthorizedKey(testPubKey1)}
 
 	for _, tc := range []struct {
@@ -191,7 +190,7 @@ func TestUpdateValidation(t *testing.T) {
 		ctx            context.Context
 		userID         string
 		profile        *tpb.Profile
-		signers        []*signatures.Signer
+		signers        []signatures.Signer
 		authorizedKeys []*tpb.PublicKey
 	}{
 		{false, context.Background(), "alice", profile, signers, authorizedKeys},
@@ -235,7 +234,7 @@ func TestListHistory(t *testing.T) {
 	}
 
 	// Create lists of signers and authorized keys
-	signers := []*signatures.Signer{createSigner(t, testPrivKey1)}
+	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
 	authorizedKeys := []*tpb.PublicKey{getAuthorizedKey(testPubKey1)}
 
 	if err := env.setupHistory(ctx, userID, signers, authorizedKeys); err != nil {
@@ -271,7 +270,7 @@ func TestListHistory(t *testing.T) {
 	}
 }
 
-func (e *Env) setupHistory(ctx context.Context, userID string, signers []*signatures.Signer, authorizedKeys []*tpb.PublicKey) error {
+func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
