@@ -18,6 +18,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/x509"
 	"encoding/asn1"
 	"encoding/json"
 	"io"
@@ -26,17 +27,20 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/google/key-transparency/core/proto/ctmap"
+
+	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
 // p256Signer generates signatures with a single key using ECDSA P256.
 type p256Signer struct {
-	privKey crypto.PrivateKey
+	privKey *ecdsa.PrivateKey
 	keyID   string
 	rand    io.Reader
 }
 
 // newP256Signer creates a signer object from a private key.
 func newP256Signer(rand io.Reader, pk crypto.Signer) (Signer, error) {
+	var privKey *ecdsa.PrivateKey
 	switch pkType := pk.(type) {
 	case *ecdsa.PrivateKey:
 		params := *(pkType.Params())
@@ -46,17 +50,18 @@ func newP256Signer(rand io.Reader, pk crypto.Signer) (Signer, error) {
 		if !elliptic.P256().IsOnCurve(pkType.X, pkType.Y) {
 			return nil, ErrPointNotOnCurve
 		}
+		privKey = pkType
 	default:
 		return nil, ErrWrongKeyType
 	}
 
-	id, err := keyID(pk.Public())
+	id, err := keyID(&privKey.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
 	return &p256Signer{
-		privKey: pk,
+		privKey: privKey,
 		keyID:   id,
 		rand:    rand,
 	}, nil
@@ -70,15 +75,10 @@ func (s *p256Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 	}
 	hash := objecthash.CommonJSONHash(string(j))
 
-	ecdsaKey, ok := s.privKey.(*ecdsa.PrivateKey)
-	if !ok {
-		log.Print("not an ECDSA key")
-		return nil, ErrSign
-	}
 	var ecSig struct {
 		R, S *big.Int
 	}
-	ecSig.R, ecSig.S, err = ecdsa.Sign(s.rand, ecdsaKey, hash[:])
+	ecSig.R, ecSig.S, err = ecdsa.Sign(s.rand, s.privKey, hash[:])
 	if err != nil {
 		log.Print("signature generation failed")
 		return nil, ErrSign
@@ -95,6 +95,12 @@ func (s *p256Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 	}, nil
 }
 
+// PublicKey returns the signer public key as tpb.PublicKey proto
+// message.
+func (s *p256Signer) PublicKey() (*tpb.PublicKey, error) {
+	return publicKey(&s.privKey.PublicKey)
+}
+
 // KeyID returns the ID of the associated public key.
 func (s *p256Signer) KeyID() string {
 	return s.keyID
@@ -102,7 +108,7 @@ func (s *p256Signer) KeyID() string {
 
 // p256Verifier verifies signatures using ECDSA P256.
 type p256Verifier struct {
-	pubKey crypto.PublicKey
+	pubKey *ecdsa.PublicKey
 	keyID  string
 }
 
@@ -147,11 +153,6 @@ func (s *p256Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) erro
 	}
 	hash := objecthash.CommonJSONHash(string(j))
 
-	ecdsaKey, ok := s.pubKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Print("not an ECDSA key")
-		return ErrVerify
-	}
 	var ecdsaSig struct {
 		R, S *big.Int
 	}
@@ -165,14 +166,32 @@ func (s *p256Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) erro
 		return ErrVerify
 	}
 
-	if !ecdsa.Verify(ecdsaKey, hash[:], ecdsaSig.R, ecdsaSig.S) {
+	if !ecdsa.Verify(s.pubKey, hash[:], ecdsaSig.R, ecdsaSig.S) {
 		log.Print("failed to verify ECDSA signature")
 		return ErrVerify
 	}
 	return nil
 }
 
+// PublicKey returns the verifier public key as tpb.PublicKey proto
+// message.
+func (s *p256Verifier) PublicKey() (*tpb.PublicKey, error) {
+	return publicKey(s.pubKey)
+}
+
 // KeyID returns the ID of the associated public key.
 func (s *p256Verifier) KeyID() string {
 	return s.keyID
+}
+
+func publicKey(k *ecdsa.PublicKey) (*tpb.PublicKey, error) {
+	pubBytes, err := x509.MarshalPKIXPublicKey(k)
+	if err != nil {
+		return nil, err
+	}
+	return &tpb.PublicKey{
+		KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
+			EcdsaVerifyingP256: pubBytes,
+		},
+	}, nil
 }
