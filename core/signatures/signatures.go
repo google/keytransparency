@@ -51,6 +51,9 @@ var (
 type Signer interface {
 	// Sign generates a digital signature object.
 	Sign(interface{}) (*ctmap.DigitallySigned, error)
+	// PublicKey returns the signer public key as tpb.PublicKey proto
+	// message.
+	PublicKey() (*tpb.PublicKey, error)
 	// KeyID returns the ID of the associated public key.
 	KeyID() string
 }
@@ -59,6 +62,9 @@ type Signer interface {
 type Verifier interface {
 	// Verify checks the digital signature associated applied to data.
 	Verify(interface{}, *ctmap.DigitallySigned) error
+	// PublicKey returns the verifier public key as tpb.PublicKey proto
+	// message.
+	PublicKey() (*tpb.PublicKey, error)
 	// KeyID returns the ID of the associated public key.
 	KeyID() string
 }

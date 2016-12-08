@@ -17,11 +17,13 @@ package signatures
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/pem"
 	"math"
+	"reflect"
 	"testing"
 )
 
-func TestConsistentKeyIDs(t *testing.T) {
+func TTTestConsistentKeyIDs(t *testing.T) {
 	// Verify that the ID generated from from pub and from priv are the same.
 	for _, tc := range []struct {
 		priv string
@@ -62,7 +64,7 @@ func newEnv(t *testing.T) *env {
 	return &env{signer, verifier}
 }
 
-func TestSignVerifier(t *testing.T) {
+func TTTestSignVerifier(t *testing.T) {
 	e := newEnv(t)
 	for _, tc := range []struct {
 		data interface{}
@@ -79,7 +81,36 @@ func TestSignVerifier(t *testing.T) {
 	}
 }
 
-func TestRightTruncateSignature(t *testing.T) {
+func TestPublicKey(t *testing.T) {
+	e := newEnv(t)
+
+	// Make sure that signer and verifier both return the same PublicKey.
+	sPK, err := e.signer.PublicKey()
+	if err != nil {
+		t.Fatalf("signer.PublicKey() failed: %v", err)
+	}
+	vPK, err := e.verifier.PublicKey()
+	if err != nil {
+		t.Fatalf("verifier.PublicKey() failed: %v", err)
+	}
+	if !reflect.DeepEqual(sPK, vPK) {
+		t.Error("signer.PublicKey() and verifier.PublicKey() should be equal")
+	}
+
+	// Make sure that the returned PublicKey contains the correct byte slice.
+	pkBytes, _ := pem.Decode([]byte(testPubKey))
+	if pkBytes == nil {
+		t.Fatalf("pem.Decode could not find a PEM block")
+	}
+	if got, want := sPK.GetEcdsaVerifyingP256(), pkBytes.Bytes; !reflect.DeepEqual(got, want) {
+		t.Errorf("sPK.GetEcdsaVerifyingP256()=%v, want %v", got, want)
+	}
+	if got, want := vPK.GetEcdsaVerifyingP256(), pkBytes.Bytes; !reflect.DeepEqual(got, want) {
+		t.Errorf("vPK.GetEcdsaVerifyingP256()=%v, want %v", got, want)
+	}
+}
+
+func TTTestRightTruncateSignature(t *testing.T) {
 	e := newEnv(t)
 	data := struct{ Foo string }{"bar"}
 
@@ -97,7 +128,7 @@ func TestRightTruncateSignature(t *testing.T) {
 	}
 }
 
-func TestLeftTruncateSignature(t *testing.T) {
+func TTTestLeftTruncateSignature(t *testing.T) {
 	e := newEnv(t)
 	data := struct{ Foo string }{"bar"}
 
@@ -115,7 +146,7 @@ func TestLeftTruncateSignature(t *testing.T) {
 	}
 }
 
-func TestBitFlipSignature(t *testing.T) {
+func TTTestBitFlipSignature(t *testing.T) {
 	e := newEnv(t)
 	data := struct{ Foo string }{"bar"}
 
