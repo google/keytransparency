@@ -23,7 +23,7 @@ import (
 	"testing"
 )
 
-func TTTestConsistentKeyIDs(t *testing.T) {
+func TestConsistentKeyIDs(t *testing.T) {
 	// Verify that the ID generated from from pub and from priv are the same.
 	for _, tc := range []struct {
 		priv string
@@ -64,7 +64,7 @@ func newEnv(t *testing.T) *env {
 	return &env{signer, verifier}
 }
 
-func TTTestSignVerifier(t *testing.T) {
+func TestSignVerifier(t *testing.T) {
 	e := newEnv(t)
 	for _, tc := range []struct {
 		data interface{}
@@ -110,7 +110,7 @@ func TestPublicKey(t *testing.T) {
 	}
 }
 
-func TTTestRightTruncateSignature(t *testing.T) {
+func TestRightTruncateSignature(t *testing.T) {
 	e := newEnv(t)
 	data := struct{ Foo string }{"bar"}
 
@@ -128,7 +128,7 @@ func TTTestRightTruncateSignature(t *testing.T) {
 	}
 }
 
-func TTTestLeftTruncateSignature(t *testing.T) {
+func TestLeftTruncateSignature(t *testing.T) {
 	e := newEnv(t)
 	data := struct{ Foo string }{"bar"}
 
@@ -146,7 +146,7 @@ func TTTestLeftTruncateSignature(t *testing.T) {
 	}
 }
 
-func TTTestBitFlipSignature(t *testing.T) {
+func TestBitFlipSignature(t *testing.T) {
 	e := newEnv(t)
 	data := struct{ Foo string }{"bar"}
 
