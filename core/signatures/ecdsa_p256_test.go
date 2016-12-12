@@ -16,12 +16,77 @@ package signatures
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"math"
 	"reflect"
 	"testing"
 )
+
+func TestGenerateP256KeyPair(t *testing.T) {
+	skBytes, pkBytes, err := generateP256KeyPair(rand.Reader)
+	if err != nil {
+		t.Fatalf("generateP256KeyPair() failed: %v", err)
+	}
+
+	// Ensure that the generated keys are valid.
+	match, err := checkKeyPairMatch(skBytes, pkBytes)
+	if err != nil {
+		t.Fatalf("checkKeyPairMatch() failed: %v", err)
+	}
+	if got, want := match, true; got != want {
+		t.Errorf("checkKeyPairMatch()=%v, want %v", got, want)
+	}
+}
+
+func TestGeneratePEMP256KeyPair(t *testing.T) {
+	skPEM, pkPEM, err := generatePEMP256KeyPair(rand.Reader)
+	if err != nil {
+		t.Fatalf("generatePEMP256KeyPair() failed: %v", err)
+	}
+	skBlock, _ := pem.Decode(skPEM)
+	pkBlock, _ := pem.Decode(pkPEM)
+
+	// Ensure that the generated keys are valid.
+	match, err := checkKeyPairMatch(skBlock.Bytes, pkBlock.Bytes)
+	if err != nil {
+		t.Fatalf("checkKeyPairMatch() failed: %v", err)
+	}
+	if got, want := match, true; got != want {
+		t.Errorf("checkKeyPairMatch()=%v, want %v", got, want)
+	}
+}
+
+func checkKeyPairMatch(skBytes []byte, pkBytes []byte) (bool, error) {
+	data := struct{ Foo string }{"bar"}
+	sk, err := x509.ParseECPrivateKey(skBytes)
+	if err != nil {
+		return false, fmt.Errorf("x509.ParseECPrivateKey() failed: %v", err)
+	}
+	signer, err := newP256Signer(rand.Reader, sk)
+	if err != nil {
+		return false, fmt.Errorf("newP256Signer() failed: %v", err)
+	}
+	pk, err := x509.ParsePKIXPublicKey(pkBytes)
+	if err != nil {
+		return false, fmt.Errorf("x509.ParsePKIXPublicKey() failed: %v", err)
+	}
+	verifier, err := newP256Verifier(pk.(*ecdsa.PublicKey))
+	if err != nil {
+		return false, fmt.Errorf("newP256Verifier() failed: %v", err)
+	}
+	sig, err := signer.Sign(data)
+	if err != nil {
+		return false, fmt.Errorf("signer.Sign(%v) failed: %v", data, err)
+	}
+	if err := verifier.Verify(data, sig); err != nil {
+		return false, fmt.Errorf("verifier.Verify() failed: %v", err)
+	}
+	return true, nil
+}
 
 func TestConsistentKeyIDs(t *testing.T) {
 	// Verify that the ID generated from from pub and from priv are the same.

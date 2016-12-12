@@ -19,6 +19,7 @@ import (
 	"encoding/pem"
 	"testing"
 
+	ctmappb "github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
@@ -35,6 +36,44 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 -----END PUBLIC KEY-----`
 )
+
+func TestGeneratePEMKeyPair(t *testing.T) {
+	data := struct{ Foo string }{"bar"}
+	for _, tc := range []struct {
+		algorithm ctmappb.DigitallySigned_SignatureAlgorithm
+		err       error
+	}{
+		{ctmappb.DigitallySigned_ECDSA, nil},
+		{ctmappb.DigitallySigned_ANONYMOUS, ErrUnimplemented},
+	} {
+		skPEM, pkPEM, err := GeneratePEMKeyPair(tc.algorithm, rand.Reader)
+		if got, want := err, tc.err; got != want {
+			t.Errorf("GenerateKeyPair(%v)=%v, want %v", tc.algorithm, got, want)
+		}
+		if err != nil {
+			continue
+		}
+
+		// Ensure that the generated keys are valid.
+		signer, err := SignerFromPEM(rand.Reader, skPEM)
+		if err != nil {
+			t.Errorf("SignerFromPEM failed: %v", err)
+			continue
+		}
+		verifier, err := VerifierFromPEM(pkPEM)
+		if err != nil {
+			t.Errorf("VerifierFromPEM failed: %v", err)
+			continue
+		}
+		sig, err := signer.Sign(data)
+		if err != nil {
+			t.Errorf("signer.Sign(%v) failed: %v", data, err)
+		}
+		if err := verifier.Verify(data, sig); err != nil {
+			t.Errorf("verifier.Verify() failed: %v", err)
+		}
+	}
+}
 
 func TestSignerFromPEM(t *testing.T) {
 	for _, priv := range []string{

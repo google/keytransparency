@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/key-transparency/core/proto/ctmap"
 
+	ctmappb "github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
@@ -67,6 +68,17 @@ type Verifier interface {
 	PublicKey() (*tpb.PublicKey, error)
 	// KeyID returns the ID of the associated public key.
 	KeyID() string
+}
+
+// GeneratePEMKeyPair generates and returns a pair of private and public keys in
+// PEM format.
+func GeneratePEMKeyPair(algorithm ctmappb.DigitallySigned_SignatureAlgorithm, rand io.Reader) ([]byte, []byte, error) {
+	switch algorithm {
+	case ctmappb.DigitallySigned_ECDSA:
+		return generatePEMP256KeyPair(rand)
+	default:
+		return nil, nil, ErrUnimplemented
+	}
 }
 
 // SignerFromPEM parses a PEM formatted block and returns a signer object created
