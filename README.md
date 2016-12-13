@@ -8,7 +8,7 @@
 
 Key Transparency provides a lookup service for generic records and a public,
 tamper-proof audit log of all record changes. While being publicly auditable,
-individual records are only revealed in response to queries for specific ids.
+individual records are only revealed in response to queries for specific IDs.
 
 Key Transparency can be used as a public key discovery service to authenticate
 users and provides a mechanism to keep the service accountable.  It can be used
