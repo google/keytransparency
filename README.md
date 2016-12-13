@@ -95,7 +95,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 
 4. Get a [service account key](https://console.developers.google.com/apis/credentials) and download the generated JSON file.
 
-The service account key is used to verify client OAuth tokens.
+  The service account key is used to verify client OAuth tokens.
 
 5. Run server setup 
 
