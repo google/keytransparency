@@ -25,9 +25,10 @@ development.
 
 ## Using the Key Transparency Client
 
-1. Install the [Go Programming Language](https://golang.org/doc/install). Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/bin` to the `$PATH` variable.
+1. Install [Go](https://golang.org/doc/install). 
+Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/bin` to the `$PATH` variable.
 
-2. Install prerequisites, Key Transparency client code, and sycn all dependencies
+2. Install prerequisites, Key Transparency client code, and sync all dependencies
 
   ```sh
   apt-get install build-essential libssl-dev
@@ -42,23 +43,18 @@ development.
 4. Run the client setup tool
 
   ```sh
-  $GOPATH/src/github.com/google/key-transparency/scripts/prepare_client.sh
+  ./scripts/prepare_client.sh
   ```
-  
-  This tool configures the following options:
-  * VRF verification key: use the default value if you want to connect to the experimental Key Transparency server or enter the path of your own server's VRF verification key.
-  * gRPC/HTTPs certificate: use the default to connect the experimental server or your own server's certificate.
-  * Signature verification key: use the default to connect the experimental server or your own server's key.
-  * Domain name: use `example.com` if you want to use the experimental Key Transparency server or you are running your own server without a domain name.
-  * URL and port: use `104.199.112.76:5001` (which is the default value) if you want to connect to the experimental Key Transparency server, or your own server information otherwise.
 
-5. Set/Update a user's keys. Key material is represented in base64 encoding, e.g., `app1` value.
+5. Set/Update a user's keys. 
 
   ```sh
   ./key-transparency-client post <email> -d '{"app1": "dGVzdA=="}' --config=./.key-transparency.yaml
   {Keys:map[app1:[116 101 115 116]}
 
   ```
+
+Key material is base64 encoded.
 
 6. Fetch and verify a user's keys:
 
@@ -85,18 +81,9 @@ development.
 
 ## Running a Key Transparency Cluster
 
-Key Transparency cluster can run in two modes:
+1. Install [etcd v3.0.0](https://github.com/coreos/etcd/releases/tag/v3.0.0).
 
-* Local: the cluster runs on the local machine containing one frontend, one backend, and three etcd instances.
-* Remote: the cluster runs on three separate machines: two frontends and one backend. Each machine runs its own etcd instance.
-
-The following steps configures both local and remote Key Transparency clusters. In case of remote mode, these steps should be followed on each of your cluster machines.
-
-1. Install the [Go Programming Language](https://golang.org/doc/install). Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/bin` to the `$PATH` variable.
-
-2. Install [etcd v3.0.0](https://github.com/coreos/etcd/releases/tag/v3.0.0) binaries.
-
-3. Install prerequisites, Key Transparency code, and sycn all dependencies
+2. Install Key Transparency
 
   ```sh
   apt-get install build-essential libssl-dev
@@ -109,29 +96,23 @@ The following steps configures both local and remote Key Transparency clusters. 
 
 4. Get a [service account key](https://console.developers.google.com/apis/credentials) and download the generated JSON file.
 
-5. Run the server setup tool
+The service account key is used to verify client OAuth tokens.
+
+5. Run server setup 
 
   ```sh
-  $GOPATH/src/github.com/google/key-transparency/scripts/prepare_server.sh
+  ./scripts/prepare_server.sh
   ```
 
-  This tool configures the following options (not all options are configured in both local and remote mode):
-  * Whether you are configuring a frontend or a backend instance.
-  * Database engine. Key Transparency currently supports SQlite and MySQL.
-  * MySQL Data Source Name (DSN), if MySQL is selected as a database engine.
-  * Frontend and backend IP addresses. These are used to configure the etcd cluster.
-  * Application credentials file which is the service account key JSON file downloaded in the previous step.
-  * The IP address on which the frontend is listening.
-  * Frontend domain name for frontend certificate creation.
-  * Frontend public IP address to be added to the certificate SAN field in case your frontend does not have a domain name.
+  The tool will build the server binaries, generate keys, and configure the server.
+  Clients will need the following public keys in order to verify server responses:
 
-  The tool will build the binaries, generated the necessary cryptographic material in `genfiles`, and setup the configuration file. Make sure to disseminate `genfiles/vrf-pubkey.pem`, `genfiles/server.crt`, and `genfile/p256-pubkey.pem` to your clients.
+  - `genfiles/vrf-pubkey.pem`
+  - `genfiles/server.crt`
+  - `genfile/p256-pubkey.pem`
 
 6. Run
 
   ```sh
   goreman start
   ```
-
-## Projects Using Key Transparency
-* [Google End-To-End](https://github.com/google/end-to-end).
