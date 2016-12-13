@@ -5,12 +5,16 @@
 
 ![Key Transparency Logo](docs/images/logo.png)
 
-Key Transparency provides a public audit record of all changes to generic
-records and associated data in a privacy preserving manner.  When used to
-associate accounts with public keys, it provides an _untrusted_ way to
-authenticate users as a key discovery and lookup service.  Key Transparency
-provides account owners a way to [verify](docs/verification.md) their accounts
-and senders a way to see how stable an account has been before trusting it.
+
+Key Transparency provides a lookup service for generic records and a public,
+tamper-proof audit log of all record changes. While being publicly auditable,
+individual records are only revealed in response to queries for specific IDs.
+
+Key Transparency can be used as a public key discovery service to authenticate
+users and provides a mechanism to keep the service accountable.  It can be used
+by account owners to [reliably see](docs/verification.md) what keys have been
+associated with their account, and it can be used by senders to see how long an
+account has been active and stable before trusting it. 
 
 * [Overview](docs/overview.md)
 * [Design document](docs/design.md)
