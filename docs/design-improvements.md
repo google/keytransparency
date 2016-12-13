@@ -36,18 +36,18 @@ dedicated compute for up-to-date cryptographic summaries of each section.
 ## Account Recovery
 
 To provide a solution that can be deployed to users of all skill-sets without
-the risk of account loss a robust and flexible account recovery mechanism is
+the risk of account loss, a robust and flexible account recovery mechanism is
 needed. Our goal is to enable users as well as authorized third-parties to
 facilitate account recovery while retaining the transparency properties of the
 log.
 
 ## Multiple Apps
 
-To support more than one product, eventually even third party products, we
+To support more than one product, eventually even third-party products, we
 needed a data structure that would support multiple apps. We have proposed one
 such [data
 structure](https://github.com/google/key-transparency/blob/master/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto#L40)
-and will be iterating as we gain experience and feedback. 
+and will be iterating as we gain experience and recieve feedback.
 
 ## References
 *   [Why Making Jonny's Key Management Transparent Is So Challenging ](https://freedom-to-tinker.com/2016/03/31/why-making-johnnys-key-management-transparent-is-so-challenging/)
