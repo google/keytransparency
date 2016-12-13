@@ -53,8 +53,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   {Keys:map[app1:[116 101 115 116]}
 
   ```
-
-Key material is base64 encoded.
+  Key material is base64 encoded.
 
 6. Fetch and verify a user's keys:
 
