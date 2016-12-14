@@ -156,6 +156,7 @@ func TestCheckMutation(t *testing.T) {
 	signers2 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey2)})
 	signers3 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)})
 
+	_, _, _ = missingKeyEntryData2, hashMissingKeyEntry1, signers2
 	for _, tc := range []struct {
 		key       []byte
 		oldValue  []byte
@@ -177,7 +178,7 @@ func TestCheckMutation(t *testing.T) {
 		{key, missingKeyEntryData1, entryData2, hashMissingKeyEntry1[:], signers3, mutator.ErrInvalidSig}, // Second mutation, Missing previous authorized key
 		{key, entryData1, entryData2, hashEntry1[:], signers2, mutator.ErrInvalidSig},                     // Second mutation, missing previous signature
 		{key, entryData1, missingKeyEntryData2, hashEntry1[:], signers3, nil},                             // Second mutation, missing current authorized key
-		{key, entryData1, entryData2, hashEntry1[:], signers1, mutator.ErrInvalidSig},                     // Second mutation, missing current signature
+		{key, entryData1, entryData2, hashEntry1[:], signers1, nil},                                       // Second mutation, missing current signature, should work
 	} {
 		// Prepare mutations.
 		mutation, err := prepareMutation(tc.key, tc.entryData, tc.previous, tc.signers)
