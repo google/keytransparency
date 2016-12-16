@@ -25,7 +25,6 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
-	"github.com/google/key-transparency/core/signatures"
 )
 
 var (
@@ -46,6 +45,11 @@ and verifies that both the previous and current key-sets are accurate. eg:
 User email MUST match the OAuth account used to authorize the update.
 `,
 
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if err := readKeyStoreFile(); err != nil {
+			log.Fatal(err)
+		}
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate input.
 		if len(args) < 1 {
@@ -74,8 +78,14 @@ User email MUST match the OAuth account used to authorize the update.
 		c.RetryDelay = retryDelay
 
 		// Update.
-		var signers []signatures.Signer
-		var authorizedKeys []*tpb.PublicKey
+		signers := store.Signers()
+		authorizedKeys, err := store.PublicKeys()
+		if err != nil {
+			return fmt.Errorf("store.PublicKeys() failed: %v", err)
+		}
+		if err != nil {
+			return fmt.Errorf("updateKeys() failed: %v", err)
+		}
 		// TODO: fill signers and authorizedKeys.
 		if _, err := c.Update(ctx, userID, &profile, signers, authorizedKeys); err != nil {
 			return fmt.Errorf("update failed: %v", err)
