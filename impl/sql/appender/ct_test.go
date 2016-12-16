@@ -15,7 +15,6 @@
 package appender
 
 import (
-	"bytes"
 	"database/sql"
 	"testing"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/google/key-transparency/impl/sql/testutil"
 
 	ct "github.com/google/certificate-transparency/go"
+	"github.com/google/certificate-transparency/go/tls"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"
 )
@@ -80,8 +80,8 @@ func TestGetLatest(t *testing.T) {
 		if got := epoch; got != tc.want {
 			t.Errorf("Latest(): %v, want %v", got, tc.want)
 		}
-		_, err = ct.DeserializeSCT(bytes.NewReader(b))
-		if err != nil {
+		sct := new(ct.SignedCertificateTimestamp)
+		if _, err := tls.Unmarshal(b, sct); err != nil {
 			t.Errorf("Failed to deserialize SCT: %v", err)
 		}
 	}

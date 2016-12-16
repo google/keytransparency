@@ -28,6 +28,7 @@ import (
 	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/google/certificate-transparency/go/jsonclient"
 	"github.com/google/certificate-transparency/go/merkletree"
+	"github.com/google/certificate-transparency/go/tls"
 	"golang.org/x/net/context"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
@@ -218,12 +219,12 @@ func (l *Log) UpdateSTH(ctx context.Context) error {
 func (l *Log) inclusionProof(sth *ct.SignedTreeHead, smh *ctmap.SignedMapHead, timestamp uint64) error {
 	// Get inclusion proof by hash
 	leaf := ct.CreateJSONMerkleTreeLeaf(smh, timestamp)
-	leafBuff := new(bytes.Buffer)
-	if err := ct.SerializeMerkleTreeLeaf(leafBuff, leaf); err != nil {
+	leafBuff, err := tls.Marshal(*leaf)
+	if err != nil {
 		return err
 	}
 	treehasher := merkletree.NewTreeHasher(hasher)
-	hash := treehasher.HashLeaf(leafBuff.Bytes())
+	hash := treehasher.HashLeaf(leafBuff)
 	ctx := context.Background()
 	proof, err := l.ctlog.GetProofByHash(ctx, hash, sth.TreeSize)
 	if err != nil {
@@ -232,7 +233,7 @@ func (l *Log) inclusionProof(sth *ct.SignedTreeHead, smh *ctmap.SignedMapHead, t
 	// Verify inclusion proof.
 	v := merkletree.NewMerkleVerifier(hasher)
 	if err := v.VerifyInclusionProof(proof.LeafIndex, int64(sth.TreeSize),
-		proof.AuditPath, sth.SHA256RootHash[:], leafBuff.Bytes()); err != nil {
+		proof.AuditPath, sth.SHA256RootHash[:], leafBuff); err != nil {
 		Vlog.Printf("CT ✗ inclusion proof verification failed.")
 		return err
 	}

@@ -24,9 +24,9 @@ import (
 
 	"github.com/google/key-transparency/core/transaction"
 
-	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/client"
 	"github.com/google/certificate-transparency/go/jsonclient"
+	"github.com/google/certificate-transparency/go/tls"
 	"golang.org/x/net/context"
 )
 
@@ -160,7 +160,7 @@ func (a *CTAppender) Append(ctx context.Context, txn transaction.Txn, epoch int6
 			return fmt.Errorf("CT: Submission failure: %v", err)
 		}
 		if a.save {
-			b, err := ct.SerializeSCT(*sct)
+			b, err := tls.Marshal(*sct)
 			if err != nil {
 				return fmt.Errorf("CT: Serialization failure: %v", err)
 			}
