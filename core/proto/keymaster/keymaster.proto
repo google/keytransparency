@@ -1,0 +1,67 @@
+// Copyright 2016 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package keymaster;
+
+import "google/protobuf/timestamp.proto";
+
+message Metadata {
+  // key_id represents a key identifier.
+  string key_id = 1;
+  // added_at determines the time this key has been added to the key set.
+  google.protobuf.Timestamp added_at = 2;
+  // description contains an arbitrary text describing the key.
+  string description = 3;
+}
+
+// SigningKey represents a private key.
+message SigningKey {
+  // KeyStatus defines a key status.
+  enum KeyStatus {
+    ACTIVE = 0;      // indicates a key that is currently being used.
+    INACTIVE = 1;    // indicates a key status that is not active.
+    DEPRECATED = 2;  // indicates a key that is not in use.
+  }
+  // metadata contains information about this key..
+  Metadata metadata = 1;
+  // key_material contains the key material in PEM format.
+  bytes key_material = 2;
+  // status determines the status of this key, e.g., active, deprecated, etc.
+  KeyStatus status = 3;
+}
+
+// VerifyingKey represents a public key.
+message VerifyingKey {
+  // KeyStatus defines a key status.
+  enum KeyStatus {
+    ACTIVE = 0;      // indicates a key that is currently being used.
+    DEPRECATED = 1;  // indicates a key that is not in use.
+  }
+  // metadata contains information about this key..
+  Metadata metadata = 1;
+  // key_material contains the key material in PEM format.
+  bytes key_material = 2;
+  // status determines the status of this key, e.g., active, deprecated, etc.
+  KeyStatus status = 3;
+}
+
+// KeySet contains a set of public and private keys.
+message KeySet {
+  // signing_keys holds a map of private keys keyed by the ID of their
+  // corresponding public keys.
+  map<string, SigningKey> signing_keys = 1;
+  // verifying_keys holds a map of public keys keyed by their IDs.
+  map<string, VerifyingKey> verifying_keys = 2;
+}
