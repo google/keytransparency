@@ -68,6 +68,8 @@ type Signer interface {
 	Deprecate()
 	// Marshal marshals a signer object into a keymaster SigningKey message.
 	Marshal() (*kmpb.SigningKey, error)
+	// PublicKeyPEM returns the PEM-formatted public key of this signer.
+	PublicKeyPEM() ([]byte, error)
 	// Clone creates a new instance of the signer object
 	Clone() Signer
 }

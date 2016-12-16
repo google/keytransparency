@@ -163,6 +163,21 @@ func (s *p256Signer) Marshal() (*kmpb.SigningKey, error) {
 	}, nil
 }
 
+// PublicKeyPEM returns the PEM-formatted public key of this signer.
+func (s *p256Signer) PublicKeyPEM() ([]byte, error) {
+	pkBytes, err := x509.MarshalPKIXPublicKey(s.privKey.Public())
+	if err != nil {
+		return nil, err
+	}
+	pkPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkBytes,
+		},
+	)
+	return pkPEM, nil
+}
+
 // Clone creates a new instance of the signer object
 func (s *p256Signer) Clone() Signer {
 	clone := *s
