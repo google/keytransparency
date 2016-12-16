@@ -15,7 +15,6 @@
 package kt
 
 import (
-	"bytes"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
+	"github.com/google/certificate-transparency/go/tls"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
@@ -112,8 +112,8 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 
 	// Verify SCT.
-	sct, err := ct.DeserializeSCT(bytes.NewReader(in.SmhSct))
-	if err != nil {
+	sct := new(ct.SignedCertificateTimestamp)
+	if _, err := tls.Unmarshal(in.SmhSct, sct); err != nil {
 		return err
 	}
 	if err := v.log.VerifySCT(ctx, in.GetSmh(), sct); err != nil {
