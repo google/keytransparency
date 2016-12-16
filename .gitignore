@@ -10,3 +10,4 @@ key-transparency-client
 infra*.etcd
 genfiles/*
 .key-transparency-scts.dat
+.keystore
