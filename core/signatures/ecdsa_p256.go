@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/json"
+	"encoding/pem"
 	"io"
 	"log"
 	"math/big"
@@ -36,6 +37,43 @@ type p256Signer struct {
 	privKey *ecdsa.PrivateKey
 	keyID   string
 	rand    io.Reader
+}
+
+func generateP256KeyPair(rand io.Reader) ([]byte, []byte, error) {
+	p256Curve := elliptic.P256()
+	sk, err := ecdsa.GenerateKey(p256Curve, rand)
+	if err != nil {
+		return nil, nil, err
+	}
+	skBytes, err := x509.MarshalECPrivateKey(sk)
+	if err != nil {
+		return nil, nil, err
+	}
+	pkBytes, err := x509.MarshalPKIXPublicKey(sk.Public())
+	if err != nil {
+		return nil, nil, err
+	}
+	return skBytes, pkBytes, nil
+}
+
+func generatePEMP256KeyPair(rand io.Reader) ([]byte, []byte, error) {
+	skBytes, pkBytes, err := generateP256KeyPair(rand)
+	if err != nil {
+		return nil, nil, err
+	}
+	skPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "EC PRIVATE KEY",
+			Bytes: skBytes,
+		},
+	)
+	pkPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkBytes,
+		},
+	)
+	return skPEM, pkPEM, nil
 }
 
 // newP256Signer creates a signer object from a private key.
