@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/key-transparency/core/mutator"
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/signatures/factory"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
@@ -112,7 +113,7 @@ func prepareMutation(key []byte, entryData []byte, previous []byte, signers []si
 func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
 	signers := make([]signatures.Signer, 0, len(keys))
 	for _, key := range keys {
-		signer, err := signatures.SignerFromPEM(rand.Reader, key)
+		signer, err := factory.SignerFromPEM(rand.Reader, key)
 		if err != nil {
 			t.Fatalf("NewSigner(): %v", err)
 		}

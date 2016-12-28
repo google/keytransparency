@@ -12,16 +12,69 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signatures
+package p256
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/pem"
 	"math"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/google/key-transparency/core/signatures"
+
+	kmpb "github.com/google/key-transparency/core/proto/keymaster"
 )
+
+const (
+	// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+	testPrivKey = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
+AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
+csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END EC PRIVATE KEY-----`
+	// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+	testPubKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
+1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END PUBLIC KEY-----`
+)
+
+func newSigner(t *testing.T, pemKey []byte) signatures.Signer {
+	p, _ := pem.Decode(pemKey)
+	if p == nil {
+		t.Fatalf("no PEM block found")
+	}
+	k, err := x509.ParseECPrivateKey(p.Bytes)
+	if err != nil {
+		t.Fatalf("x509.ParseECPrivateKey failed: %v", err)
+	}
+	signer, err := NewSigner(rand.Reader, k, time.Now(), "test_description", kmpb.SigningKey_ACTIVE)
+	if err != nil {
+		t.Fatalf("NewSigner failed: %v", err)
+	}
+	return signer
+}
+
+func newVerifier(t *testing.T, pemKey []byte) signatures.Verifier {
+	p, _ := pem.Decode(pemKey)
+	if p == nil {
+		t.Fatalf("no PEM block found")
+	}
+	k, err := x509.ParsePKIXPublicKey(p.Bytes)
+	if err != nil {
+		t.Fatalf("x509.ParsePKIXPublicKey failed: %v", err)
+	}
+	verifier, err := NewVerifier(k.(*ecdsa.PublicKey), time.Now(), "test_description", kmpb.VerifyingKey_ACTIVE)
+	if err != nil {
+		t.Fatalf("NewVerifier failed: %v", err)
+	}
+	return verifier
+}
 
 func TestConsistentKeyIDs(t *testing.T) {
 	// Verify that the ID generated from from pub and from priv are the same.
@@ -31,14 +84,8 @@ func TestConsistentKeyIDs(t *testing.T) {
 	}{
 		{testPrivKey, testPubKey},
 	} {
-		signer, err := SignerFromPEM(rand.Reader, []byte(tc.priv))
-		if err != nil {
-			t.Fatalf("SignerFromPEM(): %v", err)
-		}
-		verifier, err := VerifierFromPEM([]byte(tc.pub))
-		if err != nil {
-			t.Fatalf("VerifierFromPEM(): %v", err)
-		}
+		signer := newSigner(t, []byte(tc.priv))
+		verifier := newVerifier(t, []byte(tc.pub))
 
 		if got, want := signer.KeyID(), verifier.KeyID(); got != want {
 			t.Errorf("signer.KeyID(): %v, want %v", got, want)
@@ -47,20 +94,13 @@ func TestConsistentKeyIDs(t *testing.T) {
 }
 
 type env struct {
-	signer   Signer
-	verifier Verifier
+	signer   signatures.Signer
+	verifier signatures.Verifier
 }
 
 func newEnv(t *testing.T) *env {
-	signer, err := SignerFromPEM(rand.Reader, []byte(testPrivKey))
-	if err != nil {
-		t.Fatalf("SignerFromPEM(): %v", err)
-	}
-	verifier, err := VerifierFromPEM([]byte(testPubKey))
-	if err != nil {
-		t.Fatalf("VerifierFromPEM(): %v", err)
-	}
-
+	signer := newSigner(t, []byte(testPrivKey))
+	verifier := newVerifier(t, []byte(testPubKey))
 	return &env{signer, verifier}
 }
 

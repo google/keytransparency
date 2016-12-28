@@ -24,6 +24,7 @@ import (
 	"github.com/google/key-transparency/cmd/key-transparency-client/grpcc"
 	"github.com/google/key-transparency/core/authentication"
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/signatures/factory"
 
 	"golang.org/x/net/context"
 
@@ -63,9 +64,9 @@ var (
 )
 
 func createSigner(t *testing.T, privKey string) signatures.Signer {
-	signer, err := signatures.SignerFromPEM(DevZero{}, []byte(privKey))
+	signer, err := factory.SignerFromPEM(DevZero{}, []byte(privKey))
 	if err != nil {
-		t.Fatalf("signatures.NewSigner failed: %v", err)
+		t.Fatalf("factory.NewSigner failed: %v", err)
 	}
 	return signer
 }

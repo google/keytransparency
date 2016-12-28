@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/signatures/factory"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -65,7 +66,7 @@ func Unmarshal(buf []byte, store *KeyStore) error {
 		if err != nil {
 			return err
 		}
-		signer, err := signatures.NewSigner(rand.Reader, key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
+		signer, err := factory.NewSigner(rand.Reader, key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
 		if err != nil {
 			return err
 		}
@@ -82,7 +83,7 @@ func Unmarshal(buf []byte, store *KeyStore) error {
 		if err != nil {
 			return err
 		}
-		verifier, err := signatures.NewVerifier(key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
+		verifier, err := factory.NewVerifier(key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
 		if err != nil {
 			return err
 		}
@@ -130,7 +131,7 @@ func (s *KeyStore) Marshal() ([]byte, error) {
 
 // AddSigningKey adds a new private key to the store.
 func (s *KeyStore) AddSigningKey(status kmpb.SigningKey_KeyStatus, description string, key []byte) (string, error) {
-	signer, err := signatures.NewSigner(rand.Reader, key, time.Now(), description, status)
+	signer, err := factory.NewSigner(rand.Reader, key, time.Now(), description, status)
 	if err != nil {
 		return "", nil
 	}
@@ -152,7 +153,7 @@ func (s *KeyStore) AddSigningKey(status kmpb.SigningKey_KeyStatus, description s
 
 // AddVerifyingKey adds a new public key to the store.
 func (s *KeyStore) AddVerifyingKey(description string, key []byte) (string, error) {
-	verifier, err := signatures.NewVerifier(key, time.Now(), description, kmpb.VerifyingKey_ACTIVE)
+	verifier, err := factory.NewVerifier(key, time.Now(), description, kmpb.VerifyingKey_ACTIVE)
 	if err != nil {
 		return "", err
 	}

@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/key-transparency/core/mutator/entry"
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/signatures/factory"
 	"github.com/google/key-transparency/core/signer"
 	"github.com/google/key-transparency/impl/etcd/queue"
 	"github.com/google/key-transparency/impl/sql/appender"
@@ -73,7 +74,7 @@ func openPrivateKey() signatures.Signer {
 	if err != nil {
 		log.Fatalf("Failed to read file %v: %v", *signingKey, err)
 	}
-	sig, err := signatures.SignerFromPEM(rand.Reader, pem)
+	sig, err := factory.SignerFromPEM(rand.Reader, pem)
 	if err != nil {
 		log.Fatalf("Failed to create signer: %v", err)
 	}
