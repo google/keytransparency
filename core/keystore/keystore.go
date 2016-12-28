@@ -15,7 +15,6 @@
 package keystore
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"sort"
@@ -66,7 +65,7 @@ func Unmarshal(buf []byte, store *KeyStore) error {
 		if err != nil {
 			return err
 		}
-		signer, err := factory.NewSigner(rand.Reader, key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
+		signer, err := factory.NewSigner(key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
 		if err != nil {
 			return err
 		}
@@ -131,7 +130,7 @@ func (s *KeyStore) Marshal() ([]byte, error) {
 
 // AddSigningKey adds a new private key to the store.
 func (s *KeyStore) AddSigningKey(status kmpb.SigningKey_KeyStatus, description string, key []byte) (string, error) {
-	signer, err := factory.NewSigner(rand.Reader, key, time.Now(), description, status)
+	signer, err := factory.NewSigner(key, time.Now(), description, status)
 	if err != nil {
 		return "", nil
 	}

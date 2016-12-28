@@ -15,11 +15,11 @@
 package factory
 
 import (
-	"crypto/rand"
 	"encoding/pem"
 	"testing"
 
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/key-transparency/core/signatures"
 )
 
 const (
@@ -36,11 +36,24 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 -----END PUBLIC KEY-----`
 )
 
+// DevZero is an io.Reader that returns 0's.
+type DevZero struct{}
+
+// Read returns 0's.
+func (DevZero) Read(b []byte) (n int, err error) {
+	for i := range b {
+		b[i] = 0
+	}
+
+	return len(b), nil
+}
+
 func TestSignerFromPEM(t *testing.T) {
+	signatures.Rand = DevZero{}
 	for _, priv := range []string{
 		testPrivKey,
 	} {
-		_, err := SignerFromPEM(rand.Reader, []byte(priv))
+		_, err := SignerFromPEM([]byte(priv))
 		if err != nil {
 			t.Errorf("SignerFromPEM(): %v", err)
 		}

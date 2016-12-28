@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"io"
 	"time"
 
 	"github.com/google/key-transparency/core/signatures"
@@ -32,25 +31,25 @@ import (
 
 // NewSigner creates a signer object based on information in given
 // keymaster-related parameters.
-func NewSigner(rand io.Reader, pemKey []byte, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
+func NewSigner(pemKey []byte, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
 	p, _ := pem.Decode(pemKey)
 	if p == nil {
 		return nil, signatures.ErrNoPEMFound
 	}
-	return signerFromBytes(rand, p.Bytes, addedAt, description, status)
+	return signerFromBytes(p.Bytes, addedAt, description, status)
 }
 
 // SignerFromPEM parses a PEM formatted block and returns a signer object created
 // using that block.
-func SignerFromPEM(rand io.Reader, pemKey []byte) (signatures.Signer, error) {
-	return NewSigner(rand, pemKey, time.Now(), "Signer created from PEM", kmpb.SigningKey_ACTIVE)
+func SignerFromPEM(pemKey []byte) (signatures.Signer, error) {
+	return NewSigner(pemKey, time.Now(), "Signer created from PEM", kmpb.SigningKey_ACTIVE)
 }
 
-func signerFromBytes(rand io.Reader, b []byte, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
+func signerFromBytes(b []byte, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
 	if _, err := x509.ParsePKCS1PrivateKey(b); err == nil {
 		return nil, signatures.ErrUnimplemented
 	} else if k, err := x509.ParseECPrivateKey(b); err == nil {
-		return p256.NewSigner(rand, k, addedAt, description, status)
+		return p256.NewSigner(k, addedAt, description, status)
 	}
 	return nil, signatures.ErrUnimplemented
 }
