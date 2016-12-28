@@ -84,9 +84,9 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 
 // verifyKeys verifies both old and new authorized keys based on the following
 // criteria:
-//   1. At least one signature should be included in the first mutation.
-//   2. At least one signature with a key in the previous entry exists,
-//      except for the very first update.
+//   1. At least one signature with a key in the previous entry should exist.
+//   2. The first mutation should contain at least one signature with a key in
+//      in that mutation.
 //   3. Signatures with no matching keys are simply ignored.
 func verifyKeys(oldValue []byte, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
 	prevEntry := new(tpb.Entry)

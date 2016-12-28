@@ -188,7 +188,7 @@ func (s *KeyStore) RemoveVerifyingKey(keyID string) error {
 		return ErrKeyNotExist
 	}
 
-	// Make sure that there are more than one deprecated
+	// Make sure the key being removed is not the only active one.
 	exist := false
 	for id, verifier := range s.verifiers {
 		if id == keyID {
