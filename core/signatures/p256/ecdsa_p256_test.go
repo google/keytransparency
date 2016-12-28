@@ -230,3 +230,20 @@ func flipBit(a []byte, pos uint) []byte {
 	buf.Write(a[index+1:])
 	return buf.Bytes()
 }
+
+func TestGeneratePEMs(t *testing.T) {
+	signatures.Rand = DevZero{}
+	skPEM, pkPEM, err := GeneratePEMs()
+
+	// Ensure that the generated keys are valid.
+	signer := newSigner(t, skPEM)
+	verifier := newVerifier(t, pkPEM)
+	data := struct{ Foo string }{"bar"}
+	sig, err := signer.Sign(data)
+	if err != nil {
+		t.Fatalf("signer.Sign(%v) failed: %v", data, err)
+	}
+	if err := verifier.Verify(data, sig); err != nil {
+		t.Errorf("verifier.Verify() failed: %v", err)
+	}
+}
