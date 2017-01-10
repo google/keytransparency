@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/key-transparency/core/keystore"
+	"github.com/google/key-transparency/core/signatures/p256"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/cobra"
@@ -41,6 +42,8 @@ var (
 	privKey     string
 	description string
 	activate    bool
+	keyType     string
+	generate    bool
 )
 
 var store *keystore.KeyStore
@@ -71,30 +74,61 @@ Verifying always happens using the keys listed in the previous epoch.`,
 
 // addCmd represents the authorized-keys add command.
 var addCmd = &cobra.Command{
-	Use:   "add [ --privkey=[path] --active | --pubkey=[path] ] --description=[comment]",
+	Use:   "add [ --privkey=[path] --activate | --pubkey=[path] | --generate --type=[key_type] --activate ] --description=[comment]",
 	Short: "Add a key to the list of authorized keys",
-	Long: `Provide a pair of public and private keys, already existing on disk, to be added to the list of authorized keys. e.g.:
+	Long: `Provide a pair of public and private keys, already existing on disk, to be added to the list of authorized keys. The --generate flag can be used to generate a random key pair.
 
 ./key-transparency-client authorized-keys add --pubkey=/path/to/PEM/pubkey --description=[comment]
 ./key-transparency-client authorized-keys add --privkey=/path/to/PEM/privkey --activate --description=[comment]
+./key-transparency-client authorized-keys add --generate --type=[key_type] --activate --description=[comment]
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate input.
-		if pubKey == "" && privKey == "" {
-			return fmt.Errorf("should provide private or public key")
-		}
-		if pubKey != "" && privKey != "" {
-			return fmt.Errorf("cannot provide public and private key at the same time")
+		if generate {
+			if pubKey != "" || privKey != "" {
+				return fmt.Errorf("cannot provide public or private key with generate")
+			}
+			if keyType == "" {
+				return fmt.Errorf("must provide key type")
+			}
+		} else {
+			if pubKey == "" && privKey == "" {
+				return fmt.Errorf("should provide private or public key")
+			}
+			if pubKey != "" && privKey != "" {
+				return fmt.Errorf("cannot provide public and private key at the same time")
+			}
 		}
 
 		// Add either a private key, or a public key.
 		switch {
-		case pubKey != "":
-			if err := addPublicKey(pubKey, description); err == nil {
-				return err
+		case generate:
+			switch keyType {
+			case "ecdsa":
+				skPEM, _, err := p256.GeneratePEMs()
+				if err != nil {
+					return err
+				}
+				if err := addPrivateKey(skPEM, description, activate); err == nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("unrecognized key type %v", keyType)
 			}
 		case privKey != "":
-			if err := addPrivateKey(privKey, description, activate); err == nil {
+			skPEM, err := ioutil.ReadFile(privKey)
+			if err != nil {
+				return err
+			}
+			if err := addPrivateKey(skPEM, description, activate); err == nil {
+				return err
+			}
+		case pubKey != "":
+			pkPEM, err := ioutil.ReadFile(pubKey)
+			if err != nil {
+				return err
+			}
+			if err := addPublicKey(pkPEM, description); err == nil {
 				return err
 			}
 		}
@@ -216,14 +250,9 @@ func readKeyStoreFile() error {
 	return nil
 }
 
-func addPublicKey(pkFile, description string) error {
+func addPublicKey(pkPEM []byte, description string) error {
 	if activate {
 		return errors.New("--activate requires a private key")
-	}
-
-	pkPEM, err := ioutil.ReadFile(pkFile)
-	if err != nil {
-		return err
 	}
 	if _, err := store.AddVerifyingKey(description, pkPEM); err != nil {
 		return err
@@ -231,11 +260,7 @@ func addPublicKey(pkFile, description string) error {
 	return nil
 }
 
-func addPrivateKey(skFile, description string, activate bool) error {
-	skPEM, err := ioutil.ReadFile(skFile)
-	if err != nil {
-		return err
-	}
+func addPrivateKey(skPEM []byte, description string, activate bool) error {
 	status := kmpb.SigningKey_INACTIVE
 	if activate {
 		status = kmpb.SigningKey_ACTIVE
@@ -279,6 +304,8 @@ func init() {
 
 	addCmd.PersistentFlags().StringVar(&pubKey, "pubkey", "", "Path to a public key file")
 	addCmd.PersistentFlags().StringVar(&privKey, "privkey", "", "Path to a private key file")
-	addCmd.PersistentFlags().StringVar(&description, "description", "", "Description of the added authorized key")
+	addCmd.PersistentFlags().StringVar(&description, "description", "", "(Optional) Description of the added authorized key")
 	addCmd.PersistentFlags().BoolVar(&activate, "activate", false, "(Optional) Activate the added signing key")
+	addCmd.PersistentFlags().BoolVar(&generate, "generate", false, "Generate a random public and private key pair")
+	addCmd.PersistentFlags().StringVar(&keyType, "type", "", "The key type to be generated, e.g., ecdsa")
 }
