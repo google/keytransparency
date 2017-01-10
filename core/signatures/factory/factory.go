@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"io"
 	"time"
 
 	"github.com/google/key-transparency/core/signatures"
@@ -47,8 +46,8 @@ func SignerFromPEM(pemKey []byte) (signatures.Signer, error) {
 }
 
 // SignerFromRawKey creates a signer object from given raw key bytes.
-func SignerFromRawKey(rand io.Reader, b []byte) (Signer, error) {
-	return signerFromBytes(rand, b, time.Now(), "Signer created from raw key", kmpb.SigningKey_ACTIVE)
+func SignerFromRawKey(b []byte) (signatures.Signer, error) {
+	return signerFromBytes(b, time.Now(), "Signer created from raw key", kmpb.SigningKey_ACTIVE)
 }
 
 func signerFromBytes(b []byte, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
@@ -77,7 +76,7 @@ func VerifierFromPEM(pemKey []byte) (signatures.Verifier, error) {
 }
 
 // VerifierFromRawKey creates a verifier object from given raw key bytes.
-func VerifierFromRawKey(b []byte) (Verifier, error) {
+func VerifierFromRawKey(b []byte) (signatures.Verifier, error) {
 	return verifierFromBytes(b, time.Now(), "Verifier created from raw key", kmpb.VerifyingKey_ACTIVE)
 }
 
