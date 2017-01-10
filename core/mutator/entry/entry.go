@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/key-transparency/core/mutator"
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/signatures/factory"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
@@ -116,7 +117,7 @@ func verifyKeys(oldValue []byte, data interface{}, update *tpb.SignedKV, entry *
 func verifiersFromKeys(keys []*tpb.PublicKey) (map[string]signatures.Verifier, error) {
 	verifiers := make(map[string]signatures.Verifier)
 	for _, key := range keys {
-		verifier, err := signatures.VerifierFromKey(key)
+		verifier, err := factory.VerifierFromKey(key)
 		if err != nil {
 			return nil, err
 		}

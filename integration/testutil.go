@@ -25,6 +25,7 @@ import (
 	"github.com/google/key-transparency/core/keyserver"
 	"github.com/google/key-transparency/core/mutator/entry"
 	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/key-transparency/core/signatures/factory"
 	"github.com/google/key-transparency/core/signer"
 	"github.com/google/key-transparency/core/testutil/ctutil"
 	"github.com/google/key-transparency/core/vrf"
@@ -97,12 +98,12 @@ K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`
-	sig, err := signatures.SignerFromPEM(DevZero{}, []byte(sigPriv))
+	sig, err := factory.SignerFromPEM(DevZero{}, []byte(sigPriv))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ver, err := signatures.VerifierFromPEM([]byte(sigPub))
+	ver, err := factory.VerifierFromPEM([]byte(sigPub))
 	if err != nil {
 		return nil, nil, err
 	}

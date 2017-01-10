@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package signatures
+package p256
 
 import (
 	"crypto"
@@ -27,6 +27,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/google/key-transparency/core/signatures"
+
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/key-transparency/core/proto/ctmap"
@@ -35,8 +37,8 @@ import (
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
 
-// p256Signer generates signatures with a single key using ECDSA P256.
-type p256Signer struct {
+// signer generates signatures with a single key using ECDSA P256.
+type signer struct {
 	privKey     *ecdsa.PrivateKey
 	keyID       string
 	rand        io.Reader
@@ -45,29 +47,29 @@ type p256Signer struct {
 	status      kmpb.SigningKey_KeyStatus
 }
 
-// newP256Signer creates a signer object from a private key.
-func newP256Signer(rand io.Reader, pk crypto.Signer, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (Signer, error) {
+// NewSigner creates a signer object from a private key.
+func NewSigner(rand io.Reader, pk crypto.Signer, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
 	var privKey *ecdsa.PrivateKey
 	switch pkType := pk.(type) {
 	case *ecdsa.PrivateKey:
 		params := *(pkType.Params())
 		if params != *elliptic.P256().Params() {
-			return nil, ErrPointNotOnCurve
+			return nil, signatures.ErrPointNotOnCurve
 		}
 		if !elliptic.P256().IsOnCurve(pkType.X, pkType.Y) {
-			return nil, ErrPointNotOnCurve
+			return nil, signatures.ErrPointNotOnCurve
 		}
 		privKey = pkType
 	default:
-		return nil, ErrWrongKeyType
+		return nil, signatures.ErrWrongKeyType
 	}
 
-	id, err := KeyID(&privKey.PublicKey)
+	id, err := signatures.KeyID(&privKey.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return &p256Signer{
+	return &signer{
 		privKey:     privKey,
 		keyID:       id,
 		rand:        rand,
@@ -78,7 +80,7 @@ func newP256Signer(rand io.Reader, pk crypto.Signer, addedAt time.Time, descript
 }
 
 // Sign generates a digital signature object.
-func (s *p256Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
+func (s *signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 	j, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -91,12 +93,12 @@ func (s *p256Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 	ecSig.R, ecSig.S, err = ecdsa.Sign(s.rand, s.privKey, hash[:])
 	if err != nil {
 		log.Print("signature generation failed")
-		return nil, ErrSign
+		return nil, signatures.ErrSign
 	}
 	sig, err := asn1.Marshal(ecSig)
 	if err != nil {
 		log.Print("failed to marshal ECDSA signature")
-		return nil, ErrSign
+		return nil, signatures.ErrSign
 	}
 	return &ctmap.DigitallySigned{
 		HashAlgorithm: ctmap.DigitallySigned_SHA256,
@@ -107,37 +109,37 @@ func (s *p256Signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 
 // PublicKey returns the signer public key as tpb.PublicKey proto
 // message.
-func (s *p256Signer) PublicKey() (*tpb.PublicKey, error) {
+func (s *signer) PublicKey() (*tpb.PublicKey, error) {
 	return publicKey(&s.privKey.PublicKey)
 }
 
 // KeyID returns the ID of the associated public key.
-func (s *p256Signer) KeyID() string {
+func (s *signer) KeyID() string {
 	return s.keyID
 }
 
 // Status returns the status of the signer.
-func (s *p256Signer) Status() kmpb.SigningKey_KeyStatus {
+func (s *signer) Status() kmpb.SigningKey_KeyStatus {
 	return s.status
 }
 
 // Activate activates the signer.
-func (s *p256Signer) Activate() {
+func (s *signer) Activate() {
 	s.status = kmpb.SigningKey_ACTIVE
 }
 
 // Deactivate deactivates the signer.
-func (s *p256Signer) Deactivate() {
+func (s *signer) Deactivate() {
 	s.status = kmpb.SigningKey_INACTIVE
 }
 
 // Deprecate sets the signer status to DEPRECATED.D
-func (s *p256Signer) Deprecate() {
+func (s *signer) Deprecate() {
 	s.status = kmpb.SigningKey_DEPRECATED
 }
 
 // Marshal marshals a signer object into a keymaster SigningKey message.
-func (s *p256Signer) Marshal() (*kmpb.SigningKey, error) {
+func (s *signer) Marshal() (*kmpb.SigningKey, error) {
 	skBytes, err := x509.MarshalECPrivateKey(s.privKey)
 	if err != nil {
 		return nil, err
@@ -164,7 +166,7 @@ func (s *p256Signer) Marshal() (*kmpb.SigningKey, error) {
 }
 
 // PublicKeyPEM returns the PEM-formatted public key of this signer.
-func (s *p256Signer) PublicKeyPEM() ([]byte, error) {
+func (s *signer) PublicKeyPEM() ([]byte, error) {
 	pkBytes, err := x509.MarshalPKIXPublicKey(s.privKey.Public())
 	if err != nil {
 		return nil, err
@@ -179,13 +181,13 @@ func (s *p256Signer) PublicKeyPEM() ([]byte, error) {
 }
 
 // Clone creates a new instance of the signer object
-func (s *p256Signer) Clone() Signer {
+func (s *signer) Clone() signatures.Signer {
 	clone := *s
 	return &clone
 }
 
-// p256Verifier verifies signatures using ECDSA P256.
-type p256Verifier struct {
+// verifier verifies signatures using ECDSA P256.
+type verifier struct {
 	pubKey      *ecdsa.PublicKey
 	keyID       string
 	addedAt     time.Time // time when key is added to keystore.
@@ -193,21 +195,21 @@ type p256Verifier struct {
 	status      kmpb.VerifyingKey_KeyStatus
 }
 
-// newP256Verifier creates a verifier from a ECDSA public key.
-func newP256Verifier(pk *ecdsa.PublicKey, addedAt time.Time, description string, status kmpb.VerifyingKey_KeyStatus) (Verifier, error) {
+// NewVerifier creates a verifier from a ECDSA public key.
+func NewVerifier(pk *ecdsa.PublicKey, addedAt time.Time, description string, status kmpb.VerifyingKey_KeyStatus) (signatures.Verifier, error) {
 	params := *(pk.Params())
 	if params != *elliptic.P256().Params() {
-		return nil, ErrPointNotOnCurve
+		return nil, signatures.ErrPointNotOnCurve
 	}
 	if !elliptic.P256().IsOnCurve(pk.X, pk.Y) {
-		return nil, ErrPointNotOnCurve
+		return nil, signatures.ErrPointNotOnCurve
 	}
-	id, err := KeyID(pk)
+	id, err := signatures.KeyID(pk)
 	if err != nil {
 		return nil, err
 	}
 
-	return &p256Verifier{
+	return &verifier{
 		pubKey:      pk,
 		keyID:       id,
 		addedAt:     addedAt,
@@ -217,23 +219,23 @@ func newP256Verifier(pk *ecdsa.PublicKey, addedAt time.Time, description string,
 }
 
 // Verify checks the digital signature associated applied to data.
-func (s *p256Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
+func (s *verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 	if sig == nil {
-		return ErrMissingSig
+		return signatures.ErrMissingSig
 	}
 	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
 		log.Print("not SHA256 hash algorithm")
-		return ErrVerify
+		return signatures.ErrVerify
 	}
 	if sig.SigAlgorithm != ctmap.DigitallySigned_ECDSA {
 		log.Print("not ECDSA signature algorithm")
-		return ErrVerify
+		return signatures.ErrVerify
 	}
 
 	j, err := json.Marshal(data)
 	if err != nil {
 		log.Print("json.Marshal failed")
-		return ErrVerify
+		return signatures.ErrVerify
 	}
 	hash := objecthash.CommonJSONHash(string(j))
 
@@ -243,28 +245,28 @@ func (s *p256Verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) erro
 	rest, err := asn1.Unmarshal(sig.Signature, &ecdsaSig)
 	if err != nil {
 		log.Print("failed to unmarshal ECDSA signature")
-		return ErrVerify
+		return signatures.ErrVerify
 	}
 	if len(rest) != 0 {
 		log.Print("extra data found after signature")
-		return ErrVerify
+		return signatures.ErrVerify
 	}
 
 	if !ecdsa.Verify(s.pubKey, hash[:], ecdsaSig.R, ecdsaSig.S) {
 		log.Print("failed to verify ECDSA signature")
-		return ErrVerify
+		return signatures.ErrVerify
 	}
 	return nil
 }
 
 // PublicKey returns the verifier public key as tpb.PublicKey proto
 // message.
-func (s *p256Verifier) PublicKey() (*tpb.PublicKey, error) {
+func (s *verifier) PublicKey() (*tpb.PublicKey, error) {
 	return publicKey(s.pubKey)
 }
 
 // KeyID returns the ID of the associated public key.
-func (s *p256Verifier) KeyID() string {
+func (s *verifier) KeyID() string {
 	return s.keyID
 }
 
@@ -281,17 +283,17 @@ func publicKey(k *ecdsa.PublicKey) (*tpb.PublicKey, error) {
 }
 
 // Status returns the status of the verifier.
-func (s *p256Verifier) Status() kmpb.VerifyingKey_KeyStatus {
+func (s *verifier) Status() kmpb.VerifyingKey_KeyStatus {
 	return s.status
 }
 
 // Deprecate sets the verifier status to DEPRECATED.
-func (s *p256Verifier) Deprecate() {
+func (s *verifier) Deprecate() {
 	s.status = kmpb.VerifyingKey_DEPRECATED
 }
 
 // Marshal marshals a verifier object into a keymaster VerifyingKey message.
-func (s *p256Verifier) Marshal() (*kmpb.VerifyingKey, error) {
+func (s *verifier) Marshal() (*kmpb.VerifyingKey, error) {
 	pkBytes, err := x509.MarshalPKIXPublicKey(s.pubKey)
 	if err != nil {
 		return nil, err
@@ -318,7 +320,7 @@ func (s *p256Verifier) Marshal() (*kmpb.VerifyingKey, error) {
 }
 
 // Clone creates a new instance of the verifier object
-func (s *p256Verifier) Clone() Verifier {
+func (s *verifier) Clone() signatures.Verifier {
 	clone := *s
 	return &clone
 }
