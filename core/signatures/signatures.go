@@ -16,6 +16,7 @@ package signatures
 
 import (
 	"crypto"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
@@ -41,6 +42,8 @@ var (
 	ErrVerify = errors.New("signature verification failed")
 	// ErrUnimplemented occurs when a signature scheme is not implemented.
 	ErrUnimplemented = errors.New("scheme is unimplemented")
+	// Rand is the PRNG reader. It can be overwritten in tests.
+	Rand = rand.Reader
 )
 
 // Signer represents an object that can generate signatures with a single key.

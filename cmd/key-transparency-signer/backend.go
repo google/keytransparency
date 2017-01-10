@@ -15,7 +15,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"database/sql"
 	"flag"
 	"io/ioutil"
@@ -74,7 +73,7 @@ func openPrivateKey() signatures.Signer {
 	if err != nil {
 		log.Fatalf("Failed to read file %v: %v", *signingKey, err)
 	}
-	sig, err := factory.SignerFromPEM(rand.Reader, pem)
+	sig, err := factory.SignerFromPEM(pem)
 	if err != nil {
 		log.Fatalf("Failed to create signer: %v", err)
 	}

@@ -48,7 +48,7 @@ type signer struct {
 }
 
 // NewSigner creates a signer object from a private key.
-func NewSigner(rand io.Reader, pk crypto.Signer, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
+func NewSigner(pk crypto.Signer, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
 	var privKey *ecdsa.PrivateKey
 	switch pkType := pk.(type) {
 	case *ecdsa.PrivateKey:
@@ -72,7 +72,7 @@ func NewSigner(rand io.Reader, pk crypto.Signer, addedAt time.Time, description 
 	return &signer{
 		privKey:     privKey,
 		keyID:       id,
-		rand:        rand,
+		rand:        signatures.Rand,
 		addedAt:     addedAt,
 		description: description,
 		status:      status,

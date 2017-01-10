@@ -98,7 +98,8 @@ K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`
-	sig, err := factory.SignerFromPEM(DevZero{}, []byte(sigPriv))
+	signatures.Rand = DevZero{}
+	sig, err := factory.SignerFromPEM([]byte(sigPriv))
 	if err != nil {
 		return nil, nil, err
 	}

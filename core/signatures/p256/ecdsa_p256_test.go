@@ -17,7 +17,6 @@ package p256
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"math"
@@ -44,7 +43,20 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 -----END PUBLIC KEY-----`
 )
 
+// DevZero is an io.Reader that returns 0's
+type DevZero struct{}
+
+// Read returns 0's
+func (DevZero) Read(b []byte) (n int, err error) {
+	for i := range b {
+		b[i] = 0
+	}
+
+	return len(b), nil
+}
+
 func newSigner(t *testing.T, pemKey []byte) signatures.Signer {
+	signatures.Rand = DevZero{}
 	p, _ := pem.Decode(pemKey)
 	if p == nil {
 		t.Fatalf("no PEM block found")
@@ -53,7 +65,7 @@ func newSigner(t *testing.T, pemKey []byte) signatures.Signer {
 	if err != nil {
 		t.Fatalf("x509.ParseECPrivateKey failed: %v", err)
 	}
-	signer, err := NewSigner(rand.Reader, k, time.Now(), "test_description", kmpb.SigningKey_ACTIVE)
+	signer, err := NewSigner(k, time.Now(), "test_description", kmpb.SigningKey_ACTIVE)
 	if err != nil {
 		t.Fatalf("NewSigner failed: %v", err)
 	}
