@@ -47,6 +47,44 @@ type signer struct {
 	status      kmpb.SigningKey_KeyStatus
 }
 
+// GeneratePEMs generates a PEM-formatted pair of P256 public and private keys.
+func GeneratePEMs() ([]byte, []byte, error) {
+	skBytes, pkBytes, err := generateByteKeys()
+	if err != nil {
+		return nil, nil, err
+	}
+	skPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "EC PRIVATE KEY",
+			Bytes: skBytes,
+		},
+	)
+	pkPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkBytes,
+		},
+	)
+	return skPEM, pkPEM, nil
+}
+
+func generateByteKeys() ([]byte, []byte, error) {
+	p256Curve := elliptic.P256()
+	sk, err := ecdsa.GenerateKey(p256Curve, signatures.Rand)
+	if err != nil {
+		return nil, nil, err
+	}
+	skBytes, err := x509.MarshalECPrivateKey(sk)
+	if err != nil {
+		return nil, nil, err
+	}
+	pkBytes, err := x509.MarshalPKIXPublicKey(sk.Public())
+	if err != nil {
+		return nil, nil, err
+	}
+	return skBytes, pkBytes, nil
+}
+
 // NewSigner creates a signer object from a private key.
 func NewSigner(pk crypto.Signer, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
 	var privKey *ecdsa.PrivateKey
