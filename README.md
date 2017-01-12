@@ -53,7 +53,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 5. Set/Update a user's keys. 
 
   ```sh
-  ./key-transparency-client authorized-keys add --pubkey=/path/to/key1 --privkey=/path/to/key1 --active
+  ./key-transparency-client authorized-keys add --generate --type=ecdsa --activate
   ./key-transparency-client post <email> -d '{"app1": "dGVzdA=="}' --config=./.key-transparency.yaml
   {Keys:map[app1:[116 101 115 116]}
   ```
