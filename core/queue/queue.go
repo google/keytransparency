@@ -23,7 +23,7 @@ import (
 // Queuer submits new mutations to be processed.
 type Queuer interface {
 	// Enqueue submits a key, value pair for processing.
-	// Duplicate key, value pairs will be procesed in the order received by
+	// Duplicate key, value pairs will be processed in the order received by
 	// the queue. Mutations SHOULD explicitly reference any data they modify
 	// to be robust across epoch updates.
 	Enqueue(key, value []byte) error

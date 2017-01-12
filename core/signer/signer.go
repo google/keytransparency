@@ -83,7 +83,7 @@ func (s *Signer) FakeTime() {
 
 // StartSigning inserts epoch advancement signals into the queue.
 func (s *Signer) StartSigning(interval time.Duration) {
-	for _ = range time.NewTicker(interval).C {
+	for range time.NewTicker(interval).C {
 		if err := s.queue.AdvanceEpoch(); err != nil {
 			log.Fatalf("Advance epoch failed: %v", err)
 		}

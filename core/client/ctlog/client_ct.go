@@ -191,7 +191,7 @@ func (l *Log) UpdateSTH(ctx context.Context) error {
 	}
 	Vlog.Printf("CT ✓ STH signature verified.")
 
-	// Implicity trust the first STH we get.
+	// Implicitly trust the first STH we get.
 	if l.STH.TreeSize != 0 {
 		// Get consistency proof.
 		ctx := context.Background()

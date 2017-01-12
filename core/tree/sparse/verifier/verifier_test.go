@@ -61,11 +61,11 @@ func TestVerifyProof(t *testing.T) {
 			[]Leaf{
 				{dh(defaultIndex[0]), []byte("3"), [][]byte{
 					dh("87bf45e808101bfd5e564dd2eed054c0879da7b0407ef895be2c1a99645da454"),
-					[]byte{},
+					{},
 				}},
 				{dh(defaultIndex[1]), []byte("4"), [][]byte{
 					dh("dfecc3e854af9140e5224942719b5ad23d637612dc146fcd600a1679d6956797"),
-					[]byte{},
+					{},
 				}},
 				{dh(defaultIndex[2]), nil, [][]byte{
 					dh("cedff4217d4b07261f009ef2331fd286fa1a7a2edbc1b5f4783735aeee02d692"),
