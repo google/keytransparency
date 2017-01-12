@@ -97,7 +97,7 @@ instance of the key server started.
 
 ## Architecture
 
-![drawing](images/arch1.svg)
+![drawing](images/architecture.png)
 
 
 ## Privacy
