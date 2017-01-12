@@ -41,13 +41,13 @@ coverage: main
 	go test -cover `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
 
 fmt:
-	find . -iregex '.*.go' ! -path "./vendor/*" -exec gofmt -w {} \;
+	find . -iregex '.*.go' ! -path "./vendor/*" -exec gofmt -s -w {} \;
 	find . -iregex '.[^.]*.go' ! -path "./vendor/*" -exec golint {} \;
 
 presubmit: coverage fmt
 	-go vet ./cmd/... ./core/... ./impl/... ./integration/...
 	find . ! -path "*/proto/*" ! -iwholename "*.git*" ! -iwholename "." ! -iwholename "*vendor*" -type d ! -name "proto" -exec errcheck -ignore 'Close|Write|Serve,os:Remove' {} \;
-	-find . -type f -name "*.go" ! -path "./vendor/*" ! -name "*.pb*go" -exec gocyclo -over 12 {} \;
+	-find . -type f -name "*.go" ! -path "./vendor/*" ! -name "*.pb*go" -exec gocyclo -over 15 {} \;
 	-ineffassign .
 	-find . -type f -name '*.md' ! -path "./vendor/*" -o -name '*.go' ! -path "./vendor/*" -o -name '*.proto' ! -path "./vendor/*" | sort | xargs misspell -locale US
 

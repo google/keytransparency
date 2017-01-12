@@ -38,7 +38,7 @@ var (
 
 	// ErrBadFormat occurs when the authentication header is malformed.
 	ErrBadFormat = errors.New("auth: bad authorization header format")
-	// ErrInvalidToken occurs when the authenitcation header is not valid.
+	// ErrInvalidToken occurs when the authentication header is not valid.
 	ErrInvalidToken = errors.New("auth: invalid token")
 	// ErrEmailNotVerified occurs when token info indicates that email has not been verified.
 	ErrEmailNotVerified = errors.New("auth: unverified email address")
