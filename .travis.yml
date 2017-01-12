@@ -1,0 +1,23 @@
+language: go
+
+go:
+  - 1.7.3
+
+dist: trusty
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install build-essential libssl-dev
+
+install:
+  - go get -u github.com/kardianos/govendor
+  - go get -u github.com/golang/lint/golint
+  - go get -u github.com/kisielk/errcheck
+  - go get -u github.com/fzipp/gocyclo
+  - go get -u github.com/gordonklaus/ineffassign
+  - go get -u github.com/client9/misspell/cmd/misspell
+  - govendor sync
+
+script:
+  - make
+  - make presubmit
