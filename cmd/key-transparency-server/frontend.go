@@ -55,8 +55,8 @@ var (
 	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath       = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
-	keyFile       = flag.String("key", "testdata/server.key", "TLS private key file")
-	certFile      = flag.String("cert", "testdata/server.pem", "TLS cert file")
+	keyFile       = flag.String("key", "", "TLS private key file")
+	certFile      = flag.String("cert", "", "TLS cert file")
 	verbose       = flag.Bool("verbose", false, "Log requests and responses")
 )
 

@@ -81,15 +81,15 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.key-transparency.yaml)")
-	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
+	RootCmd.PersistentFlags().String("vrf", "keys/test_verification_keys/vrf-pubkey.pem", "path to vrf public key")
 	RootCmd.PersistentFlags().String("ct-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-scts", ".key-transparency-scts.dat", "Path to load/save unverified SCT state from")
 	RootCmd.PersistentFlags().String("domain", "example.com", "Map ID of the Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
-	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
+	RootCmd.PersistentFlags().String("kt-key", "keys/test_verification_keys/server.crt", "Path to public key for Key Transparency")
 
-	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
+	RootCmd.PersistentFlags().String("kt-sig", "keys/test_verification_keys/p256-pubkey.pem", "Path to public key for signed map heads")
 
 	// Global flags for use by subcommands.
 	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Minute, "Time to wait before operations timeout")
