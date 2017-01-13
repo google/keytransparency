@@ -73,7 +73,7 @@ and implicates the whole server in the attack.
 
 #### 4. Computational power 
 
-Key Transparency uses P259 signatures and SHA512_256 hashes. If an adversary is
+Key Transparency uses P-256 signatures and SHA512_256 hashes. If an adversary is
 able to computationally break the cryptographic primitives Key Transparency
 relies on, the adversary may also have the ability to extract private keys,
 which is a more powerful attack.
