@@ -27,7 +27,6 @@ import (
 	itxn "github.com/google/key-transparency/impl/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"golang.org/x/net/context"
 )
 
@@ -97,11 +96,13 @@ func (q *Queue) enqueue(val []byte) (string, int64, error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", q.keyPrefix, time.Now().UnixNano())
 		req := v3.OpPut(newKey, string(val), v3.WithLease(resp.ID))
-		txnresp, err := q.client.Txn(q.ctx).Then(req).Commit()
-		if err == nil {
-			return newKey, txnresp.Header.Revision, nil
-		} else if err != rpctypes.ErrDuplicateKey {
+		cond := v3.Compare(v3.Version(newKey), "=", 0)
+		txnresp, err := q.client.Txn(q.ctx).If(cond).Then(req).Commit()
+		if err != nil {
 			return "", -1, err
+		}
+		if txnresp.Succeeded == true {
+			return newKey, txnresp.Header.Revision, nil
 		}
 	}
 }
