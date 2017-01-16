@@ -175,10 +175,10 @@
 			"versionExact": "v3.1.0-rc.0"
 		},
 		{
-			"checksumSHA1": "b0AQfM6Lh6+IHEAGvrwuU7k9iok=",
+			"checksumSHA1": "7DR73QX622RtgwohJc2DzBe+gmQ=",
 			"path": "github.com/coreos/etcd/etcdserver/etcdserverpb",
-			"revision": "83347907774bf36cbb261c594a32fd7b0f5dd9f6",
-			"revisionTime": "2016-10-14T21:40:17Z",
+			"revision": "017ea3df50e9b379d5ba3bff647cce6dd8c01a0d",
+			"revisionTime": "2017-01-15T21:12:01Z",
 			"version": "v3.1.0-rc.0",
 			"versionExact": "v3.1.0-rc.0"
 		},
