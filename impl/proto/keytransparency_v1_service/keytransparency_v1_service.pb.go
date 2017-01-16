@@ -46,7 +46,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for KeyTransparencyService service
 
@@ -197,7 +197,7 @@ var _KeyTransparencyService_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptor0,
+	Metadata: "keytransparency_v1_service.proto",
 }
 
 func init() { proto.RegisterFile("keytransparency_v1_service.proto", fileDescriptor0) }
