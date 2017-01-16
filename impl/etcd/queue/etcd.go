@@ -16,6 +16,7 @@ package queue
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -27,7 +28,6 @@ import (
 	itxn "github.com/google/key-transparency/impl/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 )
 
 // leaseTTL is in seconds.

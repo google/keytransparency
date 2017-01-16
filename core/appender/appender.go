@@ -15,9 +15,9 @@
 package appender
 
 import (
-	"github.com/google/key-transparency/core/transaction"
+	"context"
 
-	"golang.org/x/net/context"
+	"github.com/google/key-transparency/core/transaction"
 )
 
 // Appender is an append only interface into a data structure.

@@ -16,8 +16,9 @@
 package queue
 
 import (
+	"context"
+
 	"github.com/google/key-transparency/core/transaction"
-	"golang.org/x/net/context"
 )
 
 // Queuer submits new mutations to be processed.

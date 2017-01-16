@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"database/sql"
 	"net"
 	"net/http/httptest"
@@ -38,7 +39,6 @@ import (
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	pb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
