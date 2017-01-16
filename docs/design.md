@@ -73,7 +73,7 @@ and implicates the whole server in the attack.
 
 #### 4. Computational power 
 
-Key Transparency uses P259 signatures and SHA512_256 hashes. If an adversary is
+Key Transparency uses P-256 signatures and SHA512_256 hashes. If an adversary is
 able to computationally break the cryptographic primitives Key Transparency
 relies on, the adversary may also have the ability to extract private keys,
 which is a more powerful attack.
@@ -210,8 +210,8 @@ Traditional PGP key servers allow everyone to get a list of all the users who
 are interested in secure email. This seems unnecessary and invites abuse. To
 prevent this, we make sure that you can only look up a user’s information if
 you already know their email address. User’s locations in the Merkle Tree will
-be calculated with an Verifiable Random Function 
-`(VRF) = H(Sig(k, user_id))`. This forces attackers to perform an online query
+be calculated with a Verifiable Random Function (VRF), conceptually equal to
+`H(Sig(k, user_id))`. This forces attackers to perform an online query
 to the server to learn a user’s location in the tree. The deterministic
 signature proves that there is only one correct location in the tree for the
 user. 
