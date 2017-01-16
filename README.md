@@ -30,7 +30,7 @@ development.
 
 ## Using the Key Transparency Client
 
-1. Install [Go](https://golang.org/doc/install). 
+1. Install [Go](https://golang.org/doc/install) 1.7.
 Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/bin` to the `$PATH` variable.
 
 2. Install prerequisites, Key Transparency client code, and sync all dependencies
