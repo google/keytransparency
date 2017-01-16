@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"io/ioutil"
@@ -40,7 +41,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"golang.org/x/net/context"
+	oldcontext "golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -129,7 +130,8 @@ var marshaler = jsonpb.Marshaler{Indent: "  ", OrigName: true}
 var requestCounter uint64
 
 // jsonLogger logs the request and response protobufs as json objects.
-func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func jsonLogger(oldctx oldcontext.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	ctx := context.Context(oldctx)
 	atomic.AddUint64(&requestCounter, 1)
 	// Print request.
 	pb, ok := req.(proto.Message)

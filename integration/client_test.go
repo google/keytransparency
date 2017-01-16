@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"encoding/pem"
 	"fmt"
 	"reflect"
@@ -25,8 +26,6 @@ import (
 	"github.com/google/key-transparency/core/authentication"
 	"github.com/google/key-transparency/core/signatures"
 	"github.com/google/key-transparency/core/signatures/factory"
-
-	"golang.org/x/net/context"
 
 	ctmap "github.com/google/key-transparency/core/proto/ctmap"
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"

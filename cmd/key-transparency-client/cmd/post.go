@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )

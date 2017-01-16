@@ -15,9 +15,9 @@
 package authentication
 
 import (
+	"context"
 	"log"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
 

@@ -16,6 +16,7 @@
 package ctlog
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -27,7 +28,6 @@ import (
 	ct "github.com/google/certificate-transparency/go"
 	logclient "github.com/google/certificate-transparency/go/client"
 	"github.com/google/certificate-transparency/go/jsonclient"
-	"golang.org/x/net/context"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
 )

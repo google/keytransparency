@@ -16,6 +16,7 @@ package sqlhist
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
@@ -25,7 +26,6 @@ import (
 	"github.com/google/key-transparency/impl/sql/testutil"
 
 	_ "github.com/mattn/go-sqlite3"
-	"golang.org/x/net/context"
 )
 
 var (

@@ -15,6 +15,7 @@
 package appender
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -24,7 +25,6 @@ import (
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/tls"
 	_ "github.com/mattn/go-sqlite3"
-	"golang.org/x/net/context"
 )
 
 const (
