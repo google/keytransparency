@@ -61,6 +61,20 @@ func (m *Committed) String() string            { return proto.CompactTextString(
 func (*Committed) ProtoMessage()               {}
 func (*Committed) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *Committed) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *Committed) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
 // Profile contains data hidden behind the cryptographic commitment.
 type Profile struct {
 	// Keys is a map of application IDs to keys.
@@ -119,6 +133,13 @@ func (m *Entry) Reset()                    { *m = Entry{} }
 func (m *Entry) String() string            { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()               {}
 func (*Entry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+
+func (m *Entry) GetCommitment() []byte {
+	if m != nil {
+		return m.Commitment
+	}
+	return nil
+}
 
 func (m *Entry) GetAuthorizedKeys() []*PublicKey {
 	if m != nil {
@@ -283,6 +304,20 @@ func (m *KeyValue) String() string            { return proto.CompactTextString(m
 func (*KeyValue) ProtoMessage()               {}
 func (*KeyValue) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
+func (m *KeyValue) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *KeyValue) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
 // SignedKV is a signed change to a map entry.
 type SignedKV struct {
 	// key_value is a serialized KeyValue.
@@ -316,6 +351,13 @@ func (m *SignedKV) GetSignatures() map[string]*ctmap.DigitallySigned {
 	return nil
 }
 
+func (m *SignedKV) GetPrevious() []byte {
+	if m != nil {
+		return m.Previous
+	}
+	return nil
+}
+
 // GetEntryRequest for a user object.
 type GetEntryRequest struct {
 	// user_id is the user identifier. Most commonly an email address.
@@ -326,6 +368,13 @@ func (m *GetEntryRequest) Reset()                    { *m = GetEntryRequest{} }
 func (m *GetEntryRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetEntryRequest) ProtoMessage()               {}
 func (*GetEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+
+func (m *GetEntryRequest) GetUserId() string {
+	if m != nil {
+		return m.UserId
+	}
+	return ""
+}
 
 // GetEntryResponse returns a requested user entry.
 type GetEntryResponse struct {
@@ -353,6 +402,20 @@ func (m *GetEntryResponse) String() string            { return proto.CompactText
 func (*GetEntryResponse) ProtoMessage()               {}
 func (*GetEntryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
+func (m *GetEntryResponse) GetVrf() []byte {
+	if m != nil {
+		return m.Vrf
+	}
+	return nil
+}
+
+func (m *GetEntryResponse) GetVrfProof() []byte {
+	if m != nil {
+		return m.VrfProof
+	}
+	return nil
+}
+
 func (m *GetEntryResponse) GetCommitted() *Committed {
 	if m != nil {
 		return m.Committed
@@ -374,6 +437,13 @@ func (m *GetEntryResponse) GetSmh() *ctmap.SignedMapHead {
 	return nil
 }
 
+func (m *GetEntryResponse) GetSmhSct() []byte {
+	if m != nil {
+		return m.SmhSct
+	}
+	return nil
+}
+
 // ListEntryHistoryRequest gets a list of historical keys for a user.
 type ListEntryHistoryRequest struct {
 	// user_id is the user identifier.
@@ -388,6 +458,27 @@ func (m *ListEntryHistoryRequest) Reset()                    { *m = ListEntryHis
 func (m *ListEntryHistoryRequest) String() string            { return proto.CompactTextString(m) }
 func (*ListEntryHistoryRequest) ProtoMessage()               {}
 func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+
+func (m *ListEntryHistoryRequest) GetUserId() string {
+	if m != nil {
+		return m.UserId
+	}
+	return ""
+}
+
+func (m *ListEntryHistoryRequest) GetStart() int64 {
+	if m != nil {
+		return m.Start
+	}
+	return 0
+}
+
+func (m *ListEntryHistoryRequest) GetPageSize() int32 {
+	if m != nil {
+		return m.PageSize
+	}
+	return 0
+}
 
 // ListEntryHistoryResponse requests a paginated history of keys for a user.
 type ListEntryHistoryResponse struct {
@@ -410,6 +501,13 @@ func (m *ListEntryHistoryResponse) GetValues() []*GetEntryResponse {
 	return nil
 }
 
+func (m *ListEntryHistoryResponse) GetNextStart() int64 {
+	if m != nil {
+		return m.NextStart
+	}
+	return 0
+}
+
 // UpdateEntryRequest updates a user's profile.
 type UpdateEntryRequest struct {
 	// user_id specifies the id for the user who's profile is being updated.
@@ -422,6 +520,13 @@ func (m *UpdateEntryRequest) Reset()                    { *m = UpdateEntryReques
 func (m *UpdateEntryRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateEntryRequest) ProtoMessage()               {}
 func (*UpdateEntryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+
+func (m *UpdateEntryRequest) GetUserId() string {
+	if m != nil {
+		return m.UserId
+	}
+	return ""
+}
 
 func (m *UpdateEntryRequest) GetEntryUpdate() *EntryUpdate {
 	if m != nil {
