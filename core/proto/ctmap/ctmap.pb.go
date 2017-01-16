@@ -111,6 +111,27 @@ func (m *MapHead) String() string            { return proto.CompactTextString(m)
 func (*MapHead) ProtoMessage()               {}
 func (*MapHead) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *MapHead) GetRealm() string {
+	if m != nil {
+		return m.Realm
+	}
+	return ""
+}
+
+func (m *MapHead) GetEpoch() int64 {
+	if m != nil {
+		return m.Epoch
+	}
+	return 0
+}
+
+func (m *MapHead) GetRoot() []byte {
+	if m != nil {
+		return m.Root
+	}
+	return nil
+}
+
 func (m *MapHead) GetIssueTime() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.IssueTime
@@ -162,6 +183,27 @@ func (m *DigitallySigned) String() string            { return proto.CompactTextS
 func (*DigitallySigned) ProtoMessage()               {}
 func (*DigitallySigned) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
+func (m *DigitallySigned) GetHashAlgorithm() DigitallySigned_HashAlgorithm {
+	if m != nil {
+		return m.HashAlgorithm
+	}
+	return DigitallySigned_NONE
+}
+
+func (m *DigitallySigned) GetSigAlgorithm() DigitallySigned_SignatureAlgorithm {
+	if m != nil {
+		return m.SigAlgorithm
+	}
+	return DigitallySigned_ANONYMOUS
+}
+
+func (m *DigitallySigned) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
 // GetLeafRequest for a verifiable map leaf.
 type GetLeafRequest struct {
 	// index includes the requested leaf index.
@@ -174,6 +216,20 @@ func (m *GetLeafRequest) Reset()                    { *m = GetLeafRequest{} }
 func (m *GetLeafRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetLeafRequest) ProtoMessage()               {}
 func (*GetLeafRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+
+func (m *GetLeafRequest) GetIndex() []byte {
+	if m != nil {
+		return m.Index
+	}
+	return nil
+}
+
+func (m *GetLeafRequest) GetEpoch() uint64 {
+	if m != nil {
+		return m.Epoch
+	}
+	return 0
+}
 
 // GetLeafResponse for a verifiable map leaf.
 type GetLeafResponse struct {
@@ -189,6 +245,20 @@ func (m *GetLeafResponse) String() string            { return proto.CompactTextS
 func (*GetLeafResponse) ProtoMessage()               {}
 func (*GetLeafResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
+func (m *GetLeafResponse) GetLeafData() []byte {
+	if m != nil {
+		return m.LeafData
+	}
+	return nil
+}
+
+func (m *GetLeafResponse) GetNeighbors() [][]byte {
+	if m != nil {
+		return m.Neighbors
+	}
+	return nil
+}
+
 // UpdateLeafRequest submits a change for the value at index.
 type UpdateLeafRequest struct {
 	// index includes the updated leaf index.
@@ -201,6 +271,20 @@ func (m *UpdateLeafRequest) Reset()                    { *m = UpdateLeafRequest{
 func (m *UpdateLeafRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateLeafRequest) ProtoMessage()               {}
 func (*UpdateLeafRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *UpdateLeafRequest) GetIndex() []byte {
+	if m != nil {
+		return m.Index
+	}
+	return nil
+}
+
+func (m *UpdateLeafRequest) GetMutation() []byte {
+	if m != nil {
+		return m.Mutation
+	}
+	return nil
+}
 
 // UpdateLeafResponse returns the current value of index.
 type UpdateLeafResponse struct {

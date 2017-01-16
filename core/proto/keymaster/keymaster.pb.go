@@ -93,11 +93,25 @@ func (m *Metadata) String() string            { return proto.CompactTextString(m
 func (*Metadata) ProtoMessage()               {}
 func (*Metadata) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *Metadata) GetKeyId() string {
+	if m != nil {
+		return m.KeyId
+	}
+	return ""
+}
+
 func (m *Metadata) GetAddedAt() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.AddedAt
 	}
 	return nil
+}
+
+func (m *Metadata) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
 }
 
 // SigningKey represents a private key.
@@ -122,6 +136,20 @@ func (m *SigningKey) GetMetadata() *Metadata {
 	return nil
 }
 
+func (m *SigningKey) GetKeyMaterial() []byte {
+	if m != nil {
+		return m.KeyMaterial
+	}
+	return nil
+}
+
+func (m *SigningKey) GetStatus() SigningKey_KeyStatus {
+	if m != nil {
+		return m.Status
+	}
+	return SigningKey_ACTIVE
+}
+
 // VerifyingKey represents a public key.
 type VerifyingKey struct {
 	// metadata contains information about this key..
@@ -142,6 +170,20 @@ func (m *VerifyingKey) GetMetadata() *Metadata {
 		return m.Metadata
 	}
 	return nil
+}
+
+func (m *VerifyingKey) GetKeyMaterial() []byte {
+	if m != nil {
+		return m.KeyMaterial
+	}
+	return nil
+}
+
+func (m *VerifyingKey) GetStatus() VerifyingKey_KeyStatus {
+	if m != nil {
+		return m.Status
+	}
+	return VerifyingKey_ACTIVE
 }
 
 // KeySet contains a set of public and private keys.
