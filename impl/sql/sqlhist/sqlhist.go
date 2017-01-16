@@ -18,6 +18,7 @@
 package sqlhist
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"errors"
@@ -26,8 +27,6 @@ import (
 	"github.com/google/key-transparency/core/transaction"
 	"github.com/google/key-transparency/core/tree"
 	"github.com/google/key-transparency/core/tree/sparse"
-
-	"golang.org/x/net/context"
 )
 
 var (

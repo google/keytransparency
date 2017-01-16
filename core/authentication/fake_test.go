@@ -15,9 +15,8 @@
 package authentication
 
 import (
+	"context"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 func TestBasicValidateCreds(t *testing.T) {

@@ -15,6 +15,7 @@
 package keyserver
 
 import (
+	"context"
 	"encoding/hex"
 	"strings"
 	"testing"
@@ -24,7 +25,6 @@ import (
 	"github.com/google/key-transparency/core/vrf/p256"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )

@@ -15,6 +15,7 @@
 package transaction
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -26,7 +27,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3"
-	"golang.org/x/net/context"
 )
 
 var (

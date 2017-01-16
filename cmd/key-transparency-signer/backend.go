@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"io/ioutil"
@@ -34,7 +35,6 @@ import (
 	"github.com/google/key-transparency/impl/transaction"
 
 	"github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 )
 
 var (

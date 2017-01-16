@@ -15,6 +15,7 @@
 package kt
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -29,7 +30,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/tls"
-	"golang.org/x/net/context"
 
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )

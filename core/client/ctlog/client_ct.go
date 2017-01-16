@@ -16,6 +16,7 @@ package ctlog
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/gob"
 	"fmt"
@@ -29,7 +30,6 @@ import (
 	"github.com/google/certificate-transparency/go/jsonclient"
 	"github.com/google/certificate-transparency/go/merkletree"
 	"github.com/google/certificate-transparency/go/tls"
-	"golang.org/x/net/context"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
 )

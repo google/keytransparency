@@ -15,12 +15,12 @@
 package verifier
 
 import (
+	"context"
 	"encoding/hex"
 	"strings"
 	"testing"
 
 	"github.com/google/key-transparency/core/tree/sparse"
-	"golang.org/x/net/context"
 )
 
 const mapID = "verifyMap"
