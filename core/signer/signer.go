@@ -15,6 +15,7 @@
 package signer
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -27,7 +28,6 @@ import (
 	"github.com/google/key-transparency/core/tree"
 
 	"github.com/golang/protobuf/ptypes"
-	"golang.org/x/net/context"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
 )

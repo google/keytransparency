@@ -16,6 +16,7 @@ package queue
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/gob"
 	"sync"
@@ -27,7 +28,6 @@ import (
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
-	"golang.org/x/net/context"
 )
 
 const mapID = "test_map"

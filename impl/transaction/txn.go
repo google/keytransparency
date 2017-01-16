@@ -15,6 +15,7 @@
 package transaction
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -22,7 +23,6 @@ import (
 	"github.com/google/key-transparency/core/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 )
 
 var (

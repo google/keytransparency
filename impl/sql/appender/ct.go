@@ -16,6 +16,7 @@ package appender
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/gob"
 	"errors"
@@ -27,7 +28,6 @@ import (
 	"github.com/google/certificate-transparency/go/client"
 	"github.com/google/certificate-transparency/go/jsonclient"
 	"github.com/google/certificate-transparency/go/tls"
-	"golang.org/x/net/context"
 )
 
 const (

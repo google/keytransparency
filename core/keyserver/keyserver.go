@@ -16,6 +16,7 @@
 package keyserver
 
 import (
+	"context"
 	"log"
 
 	"github.com/google/key-transparency/core/appender"
@@ -28,7 +29,6 @@ import (
 	"github.com/google/key-transparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 

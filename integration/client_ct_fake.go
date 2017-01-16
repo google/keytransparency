@@ -15,11 +15,10 @@
 package integration
 
 import (
-	"github.com/google/key-transparency/core/client/ctlog"
+	"context"
 
 	ct "github.com/google/certificate-transparency/go"
-	"golang.org/x/net/context"
-
+	"github.com/google/key-transparency/core/client/ctlog"
 	"github.com/google/key-transparency/core/proto/ctmap"
 )
 

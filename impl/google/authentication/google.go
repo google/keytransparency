@@ -15,13 +15,13 @@
 package authentication
 
 import (
+	"context"
 	"errors"
 	"log"
 	"strings"
 
 	"github.com/google/key-transparency/core/authentication"
 
-	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gAPI "google.golang.org/api/oauth2/v2"

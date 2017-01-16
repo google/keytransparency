@@ -19,6 +19,7 @@ package grpcc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -33,7 +34,6 @@ import (
 	"github.com/google/key-transparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/google/key-transparency/core/proto/ctmap"
