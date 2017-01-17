@@ -43,6 +43,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 
 	pb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
 )
@@ -207,6 +208,7 @@ func main() {
 	}
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	reflection.Register(grpcServer)
 
 	// Create HTTP handlers and gRPC gateway.
 	gwmux, err := grpcGatewayMux(*addr)
