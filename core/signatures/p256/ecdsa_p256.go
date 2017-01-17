@@ -31,8 +31,8 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/google/key-transparency/core/proto/ctmap"
 
+	"github.com/google/key-transparency/core/proto/ctmap"
 	kmpb "github.com/google/key-transparency/core/proto/keymaster"
 	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
 )
@@ -145,8 +145,7 @@ func (s *signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 	}, nil
 }
 
-// PublicKey returns the signer public key as tpb.PublicKey proto
-// message.
+// PublicKey returns the signer public key as tpb.PublicKey proto message.
 func (s *signer) PublicKey() (*tpb.PublicKey, error) {
 	return publicKey(&s.privKey.PublicKey)
 }
@@ -171,7 +170,7 @@ func (s *signer) Deactivate() {
 	s.status = kmpb.SigningKey_INACTIVE
 }
 
-// Deprecate sets the signer status to DEPRECATED.D
+// Deprecate sets the signer status to DEPRECATED.
 func (s *signer) Deprecate() {
 	s.status = kmpb.SigningKey_DEPRECATED
 }
@@ -297,8 +296,7 @@ func (s *verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
 	return nil
 }
 
-// PublicKey returns the verifier public key as tpb.PublicKey proto
-// message.
+// PublicKey returns the verifier public key as tpb.PublicKey proto message.
 func (s *verifier) PublicKey() (*tpb.PublicKey, error) {
 	return publicKey(s.pubKey)
 }
@@ -306,18 +304,6 @@ func (s *verifier) PublicKey() (*tpb.PublicKey, error) {
 // KeyID returns the ID of the associated public key.
 func (s *verifier) KeyID() string {
 	return s.keyID
-}
-
-func publicKey(k *ecdsa.PublicKey) (*tpb.PublicKey, error) {
-	pubBytes, err := x509.MarshalPKIXPublicKey(k)
-	if err != nil {
-		return nil, err
-	}
-	return &tpb.PublicKey{
-		KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
-			EcdsaVerifyingP256: pubBytes,
-		},
-	}, nil
 }
 
 // Status returns the status of the verifier.
@@ -361,4 +347,16 @@ func (s *verifier) Marshal() (*kmpb.VerifyingKey, error) {
 func (s *verifier) Clone() signatures.Verifier {
 	clone := *s
 	return &clone
+}
+
+func publicKey(k *ecdsa.PublicKey) (*tpb.PublicKey, error) {
+	pubBytes, err := x509.MarshalPKIXPublicKey(k)
+	if err != nil {
+		return nil, err
+	}
+	return &tpb.PublicKey{
+		KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
+			EcdsaVerifyingP256: pubBytes,
+		},
+	}, nil
 }
