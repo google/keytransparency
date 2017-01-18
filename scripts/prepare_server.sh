@@ -112,11 +112,11 @@ cd "${GOPATH}/src/github.com/google/keytransparency"
 
 # Building binaries.
 if ((DBENGINE == 1)); then
-    go build ./cmd/key-transparency-server
-    go build ./cmd/key-transparency-signer
+    go build ./cmd/keytransparency-server
+    go build ./cmd/keytransparency-signer
 else
-    go build -tags mysql ./cmd/key-transparency-server
-    go build -tags mysql ./cmd/key-transparency-signer
+    go build -tags mysql ./cmd/keytransparency-server
+    go build -tags mysql ./cmd/keytransparency-signer
 fi
 
 # Create keys.
@@ -154,7 +154,7 @@ fi
 
 if ((DBENGINE == 1)); then
     ENV="${ENV}
-DB=\"genfiles/key-transparency-db.sqlite3\""
+DB=\"genfiles/keytransparency-db.sqlite3\""
 else
     ENV="${ENV}
 DB=\"${DSN}\""
@@ -207,12 +207,12 @@ fi
 
 if ((FRONTEND == 1)); then
     PROCFILE="${PROCFILE}
-frontend: ./key-transparency-server --addr=\$LISTEN_IP:\$PORT --key=\$KEY --cert=\$CERT --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --vrf=\$VRF_PRIV"
+frontend: ./keytransparency-server --addr=\$LISTEN_IP:\$PORT --key=\$KEY --cert=\$CERT --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --vrf=\$VRF_PRIV"
 fi
 
 if ((BACKEND == 1)); then
     PROCFILE="${PROCFILE}
-backend: ./key-transparency-signer --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --period=\$SIGN_PERIOD_SEC --key=\$SIGN_KEY"
+backend: ./keytransparency-signer --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --period=\$SIGN_PERIOD_SEC --key=\$SIGN_KEY"
 fi
 
 printf "%s\n" "${PROCFILE}" > Procfile

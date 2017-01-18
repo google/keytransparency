@@ -78,9 +78,9 @@ var addCmd = &cobra.Command{
 	Short: "Add a key to the list of authorized keys",
 	Long: `Provide a pair of public and private keys, already existing on disk, to be added to the list of authorized keys. The --generate flag can be used to generate a random key pair.
 
-./key-transparency-client authorized-keys add --pubkey=/path/to/PEM/pubkey --description=[comment]
-./key-transparency-client authorized-keys add --privkey=/path/to/PEM/privkey --activate --description=[comment]
-./key-transparency-client authorized-keys add --generate --type=[key_type] --activate --description=[comment]
+./keytransparency-client authorized-keys add --pubkey=/path/to/PEM/pubkey --description=[comment]
+./keytransparency-client authorized-keys add --privkey=/path/to/PEM/privkey --activate --description=[comment]
+./keytransparency-client authorized-keys add --generate --type=[key_type] --activate --description=[comment]
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate input.
@@ -142,7 +142,7 @@ var removeCmd = &cobra.Command{
 	Short: "Remove a key from the list of authorized keys",
 	Long: `Remove a key based on its key ID from the list of authorized keys. e.g.:
 
-./key-transparency-client authorized-keys remove [keyid]
+./keytransparency-client authorized-keys remove [keyid]
 
 If the list contains a single key, it cannot be removed.
 `,
@@ -171,7 +171,7 @@ var activateCmd = &cobra.Command{
 	Short: "Activate a key in the list of authorized keys",
 	Long: `Activate a key based on its key ID in the list of authorized keys. e.g.:
 
-./key-transparency-client authorized-keys activate [keyid]
+./keytransparency-client authorized-keys activate [keyid]
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate input.
@@ -192,7 +192,7 @@ var listCmd = &cobra.Command{
 	Short: "List all authorized keys",
 	Long: `List metadata about all authorized keys. e.g.:
 
-./key-transparency-client authorized-keys list
+./keytransparency-client authorized-keys list
 
 The actual keys are not listed, only their corresponding metadata.
 `,

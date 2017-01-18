@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/keytransparency/cmd/key-transparency-client/grpcc"
+	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/client/ctlog"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/signatures"
@@ -50,7 +50,7 @@ var (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "key-transparency-client",
+	Use:   "keytransparency-client",
 	Short: "A client for interacting with the key transparency server",
 	Long: `The key transparency client retrieves and sets keys in the 
 key transparency server.  The client verifies all cryptographic proofs the
@@ -80,11 +80,11 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.key-transparency.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
 	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
 	RootCmd.PersistentFlags().String("ct-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
-	RootCmd.PersistentFlags().String("ct-scts", ".key-transparency-scts.dat", "Path to load/save unverified SCT state from")
+	RootCmd.PersistentFlags().String("ct-scts", ".keytransparency-scts.dat", "Path to load/save unverified SCT state from")
 	RootCmd.PersistentFlags().String("domain", "example.com", "Map ID of the Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
@@ -109,7 +109,7 @@ func initConfig() {
 			log.Fatalf("Failed reading config file: %v: %v", viper.ConfigFileUsed(), err)
 		}
 	} else {
-		viper.SetConfigName(".key-transparency")
+		viper.SetConfigName(".keytransparency")
 		viper.AddConfigPath("$HOME")
 		if err := viper.ReadInConfig(); err == nil {
 			fmt.Println("Using config file:", viper.ConfigFileUsed())

@@ -3,11 +3,11 @@
 *~
 vendor/*/
 
-key-transparency-server
-key-transparency-signer
-key-transparency-client
+keytransparency-server
+keytransparency-signer
+keytransparency-client
 
 infra*.etcd
 genfiles/*
-.key-transparency-scts.dat
+.keytransparency-scts.dat
 .keystore

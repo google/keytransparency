@@ -22,15 +22,15 @@
 # TODO: Makefile will be deleted once the repo is public. Check issue #411.
 
 main: client
-	go build ./cmd/key-transparency-server
-	go build ./cmd/key-transparency-signer
+	go build ./cmd/keytransparency-server
+	go build ./cmd/keytransparency-signer
 
 mysql: client
-	go build -tags mysql ./cmd/key-transparency-server
-	go build -tags mysql ./cmd/key-transparency-signer
+	go build -tags mysql ./cmd/keytransparency-server
+	go build -tags mysql ./cmd/keytransparency-signer
 
 client:
-	go build ./cmd/key-transparency-client
+	go build ./cmd/keytransparency-client
 
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.
@@ -55,5 +55,5 @@ proto:
 	go generate ./...
 
 clean:
-	rm -f srv key-transparency-server key-transparency-signer key-transparency-client
+	rm -f srv keytransparency-server keytransparency-signer keytransparency-client
 	rm -rf infra*
