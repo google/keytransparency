@@ -36,8 +36,8 @@ if [[ -n "${ADDRESS}" ]]; then
 fi
 
 # Create output directory.
-mkdir -p "${GOPATH}/src/github.com/google/key-transparency/genfiles"
-cd "${GOPATH}/src/github.com/google/key-transparency/genfiles"
+mkdir -p "${GOPATH}/src/github.com/google/keytransparency/genfiles"
+cd "${GOPATH}/src/github.com/google/keytransparency/genfiles"
 
 # Generate TLS keys.
 openssl genrsa -des3 -passout pass:x -out server.pass.key 2048

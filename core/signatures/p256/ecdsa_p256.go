@@ -27,14 +27,14 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/keytransparency/core/signatures"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
-	kmpb "github.com/google/key-transparency/core/proto/keymaster"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/ctmap"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // signer generates signatures with a single key using ECDSA P256.

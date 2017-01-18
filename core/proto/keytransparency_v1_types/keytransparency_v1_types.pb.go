@@ -34,7 +34,7 @@ package keytransparency_v1_types
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import ctmap "github.com/google/key-transparency/core/proto/ctmap"
+import ctmap "github.com/google/keytransparency/core/proto/ctmap"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal

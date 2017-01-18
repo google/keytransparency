@@ -28,7 +28,7 @@ go get -u github.com/client9/misspell/cmd/misspell
 ### <a name="submit"></a> Submission Guidelines
 Before you submit your pull request consider the following guidelines:
 
-* Search [GitHub](https://github.com/google/key-transparency/pulls)
+* Search [GitHub](https://github.com/google/keytransparency/pulls)
   for an open or closed Pull Request that relates to your submission. You don't
   want to duplicate effort.
 * **Please sign our [Contributor License Agreement (CLA)](#cla)** before sending pull
@@ -111,6 +111,6 @@ changes to be accepted, the CLA must be signed. It's a quick process, we promise
   [print, sign and one of scan+email, fax or mail the form][corporate-cla].
 
 [corporate-cla]: http://code.google.com/legal/corporate-cla-v1.0.html
-[github]: https://github.com/google/key-transparency
+[github]: https://github.com/google/keytransparency
 [individual-cla]: http://code.google.com/legal/individual-cla-v1.0.html
-[issues]: https://github.com/google/key-transparency/issues
+[issues]: https://github.com/google/keytransparency/issues

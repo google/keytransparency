@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/key-transparency/core/tree"
-	"github.com/google/key-transparency/core/tree/sparse"
+	"github.com/google/keytransparency/core/tree"
+	"github.com/google/keytransparency/core/tree/sparse"
 )
 
 var (

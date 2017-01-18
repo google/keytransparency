@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/key-transparency/core/commitments"
-	"github.com/google/key-transparency/core/vrf"
+	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // Maximum period of time to allow between CreationTime and server time.

@@ -26,7 +26,7 @@ import (
 	"crypto/sha512"
 	"fmt"
 
-	"github.com/google/key-transparency/core/tree"
+	"github.com/google/keytransparency/core/tree"
 )
 
 const (

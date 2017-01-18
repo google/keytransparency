@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/key-transparency/core/transaction"
+	"github.com/google/keytransparency/core/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"

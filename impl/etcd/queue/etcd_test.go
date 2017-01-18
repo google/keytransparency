@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	ctxn "github.com/google/key-transparency/core/transaction"
-	itxn "github.com/google/key-transparency/impl/transaction"
+	ctxn "github.com/google/keytransparency/core/transaction"
+	itxn "github.com/google/keytransparency/impl/transaction"
 
 	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.

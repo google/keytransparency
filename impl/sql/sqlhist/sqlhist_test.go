@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/key-transparency/impl/sql/testutil"
+	"github.com/google/keytransparency/impl/sql/testutil"
 
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/context"

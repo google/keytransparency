@@ -15,8 +15,8 @@
 # limitations under the License.
 
 # Create output directory.
-mkdir -p "${GOPATH}/src/github.com/google/key-transparency/genfiles"
-cd "${GOPATH}/src/github.com/google/key-transparency/genfiles"
+mkdir -p "${GOPATH}/src/github.com/google/keytransparency/genfiles"
+cd "${GOPATH}/src/github.com/google/keytransparency/genfiles"
 
 # Generate signature keys.
 openssl ecparam -name prime256v1 -genkey -noout -out p256-key.pem

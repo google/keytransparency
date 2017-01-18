@@ -21,7 +21,7 @@ syntax = "proto3";
 // associated with it.
 package keytransparency.v1.types;
 
-import "github.com/google/key-transparency/core/proto/ctmap/ctmap.proto";
+import "github.com/google/keytransparency/core/proto/ctmap/ctmap.proto";
 
 //
 // Data types.

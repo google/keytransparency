@@ -25,20 +25,20 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/key-transparency/core/client/ctlog"
-	"github.com/google/key-transparency/core/client/kt"
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/tree/sparse"
-	tv "github.com/google/key-transparency/core/tree/sparse/verifier"
-	"github.com/google/key-transparency/core/vrf"
+	"github.com/google/keytransparency/core/client/ctlog"
+	"github.com/google/keytransparency/core/client/kt"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/tree/sparse"
+	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
+	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
+	"github.com/google/keytransparency/core/proto/ctmap"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 )
 
 const (

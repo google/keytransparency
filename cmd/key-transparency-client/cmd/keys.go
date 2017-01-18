@@ -23,13 +23,13 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/google/key-transparency/core/keystore"
-	"github.com/google/key-transparency/core/signatures/p256"
+	"github.com/google/keytransparency/core/keystore"
+	"github.com/google/keytransparency/core/signatures/p256"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/cobra"
 
-	kmpb "github.com/google/key-transparency/core/proto/keymaster"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 )
 
 const (

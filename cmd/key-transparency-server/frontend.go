@@ -24,17 +24,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/key-transparency/core/keyserver"
-	"github.com/google/key-transparency/core/mutator/entry"
-	"github.com/google/key-transparency/core/vrf"
-	"github.com/google/key-transparency/core/vrf/p256"
-	"github.com/google/key-transparency/impl/etcd/queue"
-	"github.com/google/key-transparency/impl/google/authentication"
-	"github.com/google/key-transparency/impl/sql/appender"
-	"github.com/google/key-transparency/impl/sql/commitments"
-	"github.com/google/key-transparency/impl/sql/engine"
-	"github.com/google/key-transparency/impl/sql/sqlhist"
-	"github.com/google/key-transparency/impl/transaction"
+	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/core/vrf"
+	"github.com/google/keytransparency/core/vrf/p256"
+	"github.com/google/keytransparency/impl/etcd/queue"
+	"github.com/google/keytransparency/impl/google/authentication"
+	"github.com/google/keytransparency/impl/sql/appender"
+	"github.com/google/keytransparency/impl/sql/commitments"
+	"github.com/google/keytransparency/impl/sql/engine"
+	"github.com/google/keytransparency/impl/sql/sqlhist"
+	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/golang/protobuf/jsonpb"
@@ -45,7 +45,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
+	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 )
 
 var (

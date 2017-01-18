@@ -108,7 +108,7 @@ fi
 ##### Executing #####
 #####################
 
-cd "${GOPATH}/src/github.com/google/key-transparency"
+cd "${GOPATH}/src/github.com/google/keytransparency"
 
 # Building binaries.
 if ((DBENGINE == 1)); then

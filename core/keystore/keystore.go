@@ -20,14 +20,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/signatures/factory"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/signatures/factory"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 
-	kmpb "github.com/google/key-transparency/core/proto/keymaster"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (

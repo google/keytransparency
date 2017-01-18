@@ -17,12 +17,12 @@ package kt
 import (
 	"testing"
 
-	"github.com/google/key-transparency/core/commitments"
+	"github.com/google/keytransparency/core/commitments"
 
 	"github.com/golang/protobuf/proto"
 
-	ctmap "github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	ctmap "github.com/google/keytransparency/core/proto/ctmap"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (

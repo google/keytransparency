@@ -21,16 +21,16 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/queue"
-	"github.com/google/key-transparency/core/transaction"
+	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/queue"
+	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 func TestListEntryHistory(t *testing.T) {

@@ -19,14 +19,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/commitments"
-	"github.com/google/key-transparency/core/vrf/p256"
+	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/vrf/p256"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (

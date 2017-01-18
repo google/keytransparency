@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/key-transparency/core/signatures"
+	"github.com/google/keytransparency/core/signatures"
 
-	kmpb "github.com/google/key-transparency/core/proto/keymaster"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 )
 
 const (

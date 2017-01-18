@@ -19,17 +19,17 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/key-transparency/core/appender"
-	"github.com/google/key-transparency/core/mutator"
-	"github.com/google/key-transparency/core/queue"
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/transaction"
-	"github.com/google/key-transparency/core/tree"
+	"github.com/google/keytransparency/core/appender"
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/queue"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/transaction"
+	"github.com/google/keytransparency/core/tree"
 
 	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
+	"github.com/google/keytransparency/core/proto/ctmap"
 )
 
 // Clock defines an interface for the advancement of time.

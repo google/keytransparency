@@ -15,7 +15,7 @@
 package appender
 
 import (
-	"github.com/google/key-transparency/core/transaction"
+	"github.com/google/keytransparency/core/transaction"
 
 	"golang.org/x/net/context"
 )
