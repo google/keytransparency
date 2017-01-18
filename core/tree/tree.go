@@ -18,7 +18,7 @@ package tree
 import (
 	"golang.org/x/net/context"
 
-	"github.com/google/key-transparency/core/transaction"
+	"github.com/google/keytransparency/core/transaction"
 )
 
 // Sparse is a temporal sparse merkle tree.

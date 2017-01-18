@@ -14,7 +14,7 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"golang.org/x/net/context"

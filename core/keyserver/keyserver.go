@@ -18,22 +18,22 @@ package keyserver
 import (
 	"log"
 
-	"github.com/google/key-transparency/core/appender"
-	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/commitments"
-	"github.com/google/key-transparency/core/mutator"
-	"github.com/google/key-transparency/core/queue"
-	"github.com/google/key-transparency/core/transaction"
-	"github.com/google/key-transparency/core/tree"
-	"github.com/google/key-transparency/core/vrf"
+	"github.com/google/keytransparency/core/appender"
+	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/queue"
+	"github.com/google/keytransparency/core/transaction"
+	"github.com/google/keytransparency/core/tree"
+	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/ctmap"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (

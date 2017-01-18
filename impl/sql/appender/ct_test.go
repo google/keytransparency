@@ -18,8 +18,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/google/key-transparency/core/testutil/ctutil"
-	"github.com/google/key-transparency/impl/sql/testutil"
+	"github.com/google/keytransparency/core/testutil/ctutil"
+	"github.com/google/keytransparency/impl/sql/testutil"
 
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/tls"

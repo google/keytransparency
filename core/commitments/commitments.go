@@ -28,7 +28,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (

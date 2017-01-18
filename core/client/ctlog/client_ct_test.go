@@ -29,7 +29,7 @@ import (
 	"github.com/google/certificate-transparency/go/jsonclient"
 	"golang.org/x/net/context"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
+	"github.com/google/keytransparency/core/proto/ctmap"
 )
 
 const (

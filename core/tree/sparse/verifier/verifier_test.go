@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/key-transparency/core/tree/sparse"
+	"github.com/google/keytransparency/core/tree/sparse"
 	"golang.org/x/net/context"
 )
 

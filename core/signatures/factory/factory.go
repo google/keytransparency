@@ -22,11 +22,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/signatures/p256"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/signatures/p256"
 
-	kmpb "github.com/google/key-transparency/core/proto/keymaster"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // NewSigner creates a signer object based on information in given

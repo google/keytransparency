@@ -22,9 +22,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/key-transparency/core/queue"
-	ctxn "github.com/google/key-transparency/core/transaction"
-	itxn "github.com/google/key-transparency/impl/transaction"
+	"github.com/google/keytransparency/core/queue"
+	ctxn "github.com/google/keytransparency/core/transaction"
+	itxn "github.com/google/keytransparency/impl/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"

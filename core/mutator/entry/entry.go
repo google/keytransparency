@@ -19,15 +19,15 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/google/key-transparency/core/mutator"
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/signatures/factory"
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/signatures/factory"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/ctmap"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // Entry defines mutations to simply replace the current map value with the

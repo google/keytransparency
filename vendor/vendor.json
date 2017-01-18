@@ -3,5 +3,5 @@
 	"ignore": "test",
 	"package": [
 	],
-	"rootPath": "github.com/google/key-transparency"
+	"rootPath": "github.com/google/keytransparency"
 }

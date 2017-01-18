@@ -315,7 +315,7 @@ system.
 
 #### How can a server be revoked?
 
-TBD pending [Key Transparency Discovery](https://github.com/google/key-transparency/issues/389)
+TBD pending [Key Transparency Discovery](https://github.com/google/keytransparency/issues/389)
 
 ## References
 

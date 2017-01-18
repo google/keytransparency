@@ -46,7 +46,7 @@ log.
 To support more than one product, eventually even third-party products, we
 needed a data structure that would support multiple apps. We have proposed one
 such [data
-structure](https://github.com/google/key-transparency/blob/master/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto#L40)
+structure](https://github.com/google/keytransparency/blob/master/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto#L40)
 and will be iterating as we gain experience and receive feedback.
 
 ## References

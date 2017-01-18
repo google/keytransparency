@@ -1,8 +1,8 @@
 # Key Transparency
 
-[![Build Status](https://travis-ci.org/google/key-transparency.svg?branch=master)](https://travis-ci.org/google/key-transparency)
-[![Go Report Card](https://goreportcard.com/badge/github.com/google/key-transparency)](https://goreportcard.com/report/github.com/google/key-transparency)
-[![GoDoc](https://godoc.org/github.com/google/key-transparency?status.svg)](https://godoc.org/github.com/google/key-transparency)
+[![Build Status](https://travis-ci.org/google/keytransparency.svg?branch=master)](https://travis-ci.org/google/keytransparency)
+[![Go Report Card](https://goreportcard.com/badge/github.com/google/keytransparency)](https://goreportcard.com/report/github.com/google/keytransparency)
+[![GoDoc](https://godoc.org/github.com/google/keytransparency?status.svg)](https://godoc.org/github.com/google/keytransparency)
 
 ![Key Transparency Logo](docs/images/logo.png)
 
@@ -24,7 +24,7 @@ account has been active and stable before trusting it.
 Key Transparency is inspired by [CONIKS](https://eprint.iacr.org/2014/1004.pdf)
 and [Certificate Transparency](https://www.certificate-transparency.org/).
 It is a work-in-progress with the [following
-milestones](https://github.com/google/key-transparency/milestones) under
+milestones](https://github.com/google/keytransparency/milestones) under
 development.
 
 
@@ -38,8 +38,8 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   ```sh
   apt-get install build-essential libssl-dev
   go get -u github.com/kardianos/govendor
-  go get -u github.com/google/key-transparency/cmd/...
-  cd $GOPATH/src/github.com/google/key-transparency
+  go get -u github.com/google/keytransparency/cmd/...
+  cd $GOPATH/src/github.com/google/keytransparency
   govendor sync
   ```
 
@@ -95,8 +95,8 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   apt-get install build-essential libssl-dev
   go get -u github.com/mattn/goreman
   go get -u github.com/kardianos/govendor
-  go get -u github.com/google/key-transparency/...
-  cd $GOPATH/src/github.com/google/key-transparency
+  go get -u github.com/google/keytransparency/...
+  cd $GOPATH/src/github.com/google/keytransparency
   govendor sync
   ```
 

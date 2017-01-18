@@ -17,15 +17,15 @@ package kt
 import (
 	"fmt"
 
-	"github.com/google/key-transparency/core/commitments"
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/vrf"
+	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/ctmap"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,

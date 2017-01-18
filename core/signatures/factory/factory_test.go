@@ -18,8 +18,8 @@ import (
 	"encoding/pem"
 	"testing"
 
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
-	"github.com/google/key-transparency/core/signatures"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/signatures"
 )
 
 const (

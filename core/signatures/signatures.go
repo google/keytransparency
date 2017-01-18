@@ -22,9 +22,9 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/google/key-transparency/core/proto/ctmap"
-	kmpb "github.com/google/key-transparency/core/proto/keymaster"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/ctmap"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (

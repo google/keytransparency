@@ -19,19 +19,19 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/google/key-transparency/core/client/ctlog"
-	"github.com/google/key-transparency/core/commitments"
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/tree/sparse"
-	tv "github.com/google/key-transparency/core/tree/sparse/verifier"
-	"github.com/google/key-transparency/core/vrf"
+	"github.com/google/keytransparency/core/client/ctlog"
+	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/tree/sparse"
+	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
+	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
 	ct "github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/tls"
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (

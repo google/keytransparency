@@ -62,7 +62,7 @@ read -p "Path to client secret file: " CLIENTSECRET
 ##### Executing #####
 #####################
 
-cd "${GOPATH}/src/github.com/google/key-transparency"
+cd "${GOPATH}/src/github.com/google/keytransparency"
 
 # Building binaries.
 go build ./cmd/key-transparency-client

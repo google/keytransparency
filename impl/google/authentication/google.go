@@ -19,7 +19,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/google/key-transparency/core/authentication"
+	"github.com/google/keytransparency/core/authentication"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"

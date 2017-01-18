@@ -21,15 +21,15 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/key-transparency/cmd/key-transparency-client/grpcc"
-	"github.com/google/key-transparency/core/authentication"
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/signatures/factory"
+	"github.com/google/keytransparency/cmd/key-transparency-client/grpcc"
+	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/signatures/factory"
 
 	"golang.org/x/net/context"
 
-	ctmap "github.com/google/key-transparency/core/proto/ctmap"
-	tpb "github.com/google/key-transparency/core/proto/keytransparency_v1_types"
+	ctmap "github.com/google/keytransparency/core/proto/ctmap"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (

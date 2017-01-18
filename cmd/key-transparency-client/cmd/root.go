@@ -22,14 +22,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/key-transparency/cmd/key-transparency-client/grpcc"
-	"github.com/google/key-transparency/core/client/ctlog"
-	"github.com/google/key-transparency/core/client/kt"
-	"github.com/google/key-transparency/core/signatures"
-	"github.com/google/key-transparency/core/signatures/factory"
-	"github.com/google/key-transparency/core/vrf"
-	"github.com/google/key-transparency/core/vrf/p256"
-	"github.com/google/key-transparency/impl/google/authentication"
+	"github.com/google/keytransparency/cmd/key-transparency-client/grpcc"
+	"github.com/google/keytransparency/core/client/ctlog"
+	"github.com/google/keytransparency/core/client/kt"
+	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/signatures/factory"
+	"github.com/google/keytransparency/core/vrf"
+	"github.com/google/keytransparency/core/vrf/p256"
+	"github.com/google/keytransparency/impl/google/authentication"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -39,7 +39,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	pb "github.com/google/key-transparency/impl/proto/keytransparency_v1_service"
+	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 )
 
 var (

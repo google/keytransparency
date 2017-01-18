@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/key-transparency/core/transaction"
+	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/google/certificate-transparency/go/client"
 	"github.com/google/certificate-transparency/go/jsonclient"

@@ -25,8 +25,8 @@ import (
 	"sort"
 	"testing"
 
-	kmpb "github.com/google/key-transparency/core/proto/keymaster"
-	"github.com/google/key-transparency/core/signatures"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster"
+	"github.com/google/keytransparency/core/signatures"
 )
 
 type testKey struct {
