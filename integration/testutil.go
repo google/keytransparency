@@ -20,7 +20,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/keytransparency/cmd/key-transparency-client/grpcc"
+	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"

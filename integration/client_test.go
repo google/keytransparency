@@ -21,7 +21,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/keytransparency/cmd/key-transparency-client/grpcc"
+	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/signatures"
 	"github.com/google/keytransparency/core/signatures/factory"

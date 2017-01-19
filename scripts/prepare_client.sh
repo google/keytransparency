@@ -65,9 +65,9 @@ read -p "Path to client secret file: " CLIENTSECRET
 cd "${GOPATH}/src/github.com/google/keytransparency"
 
 # Building binaries.
-go build ./cmd/key-transparency-client
+go build ./cmd/keytransparency-client
 
-# Generate .key-transparency.yaml file.
+# Generate .keytransparency.yaml file.
 KTYAML="ct-key: \"../certificate-transparency/test/testdata/ct-server-key-public.pem\"
 ct-url: \"http://107.178.246.112\"
 vrf:    \"${VRF}\"
@@ -77,4 +77,4 @@ domain: \"${DOMAIN}\"
 kt-url: \"${KTURL}\"
 client-secret: \"${CLIENTSECRET}\""
 
-printf "%s\n" "${KTYAML}" > .key-transparency.yaml
+printf "%s\n" "${KTYAML}" > .keytransparency.yaml

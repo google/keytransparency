@@ -40,7 +40,7 @@ var postCmd = &cobra.Command{
 	Long: `Post replaces the current key-set with the provided key-set, 
 and verifies that both the previous and current key-sets are accurate. eg:
 
-./key-transparency-client post foobar@example.com -d '{"app1": "dGVzdA==", "app2": "dGVzdA=="}'
+./keytransparency-client post foobar@example.com -d '{"app1": "dGVzdA==", "app2": "dGVzdA=="}'
 
 User email MUST match the OAuth account used to authorize the update.
 `,

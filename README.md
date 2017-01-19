@@ -54,18 +54,18 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 5. Set/Update a user's keys. 
 
   ```sh
-  ./key-transparency-client authorized-keys add --generate --type=ecdsa --activate
-  ./key-transparency-client post <email> -d '{"app1": "dGVzdA=="}' --config=./.key-transparency.yaml
+  ./keytransparency-client authorized-keys add --generate --type=ecdsa --activate
+  ./keytransparency-client post <email> -d '{"app1": "dGVzdA=="}' --config=./.keytransparency.yaml
   {Keys:map[app1:[116 101 115 116]}
   ```
   Key material is base64 encoded.
 
-  Note: Use `./key-transparency-client authorized-keys --help` for more information about authorized key managements.
+  Note: Use `./keytransparency-client authorized-keys --help` for more information about authorized key managements.
 
 6. Fetch and verify a user's keys:
 
   ```
-  ./key-transparency-client get <email> --config=.key-transparency.yaml --verbose
+  ./keytransparency-client get <email> --config=.keytransparency.yaml --verbose
   ✓ Commitment verified.
   ✓ VRF verified.
   ✓ Sparse tree proof verified.
@@ -79,7 +79,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   ```
 
   ```
-  ./key-transparency-client history <email> --config=.key-transparency.yaml
+  ./keytransparency-client history <email> --config=.keytransparency.yaml
   Epoch |Timestamp                    |Profile
   4     |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
