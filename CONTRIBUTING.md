@@ -45,7 +45,7 @@ Before you submit your pull request consider the following guidelines:
 * Run `make` to build your changes and ensure the build is not broken.
 * Run `go fmt` to correct any styling errors in the code
 * Run `go test` to run the full test suite.
-* Run `go presubmit` to ensure the patch includes healthy go code.
+* Run `make presubmit` to ensure the patch includes healthy go code.
 
 * Push your branch to GitHub:
 
