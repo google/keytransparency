@@ -42,7 +42,7 @@ type signer struct {
 	privKey     *ecdsa.PrivateKey
 	keyID       string
 	rand        io.Reader
-	addedAt     time.Time // time when key is added to keystore.
+	addedAt     time.Time // time when key is added to keymaster.
 	description string
 	status      kmpb.SigningKey_KeyStatus
 }
@@ -227,7 +227,7 @@ func (s *signer) Clone() signatures.Signer {
 type verifier struct {
 	pubKey      *ecdsa.PublicKey
 	keyID       string
-	addedAt     time.Time // time when key is added to keystore.
+	addedAt     time.Time // time when key is added to keymaster.
 	description string
 	status      kmpb.VerifyingKey_KeyStatus
 }
