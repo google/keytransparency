@@ -23,7 +23,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/google/keytransparency/core/keystore"
+	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/signatures/p256"
 
 	"github.com/golang/protobuf/ptypes"
@@ -46,7 +46,7 @@ var (
 	generate    bool
 )
 
-var store *keystore.KeyStore
+var store *keymaster.KeyMaster
 
 // keysCmd represents the authorized-keys command.
 var keysCmd = &cobra.Command{
@@ -158,7 +158,7 @@ If the list contains a single key, it cannot be removed.
 		if err := store.RemoveVerifyingKey(keyID); err != nil {
 			return err
 		}
-		if err := store.RemoveSigningKey(keyID); err != nil && err != keystore.ErrKeyNotExist {
+		if err := store.RemoveSigningKey(keyID); err != nil && err != keymaster.ErrKeyNotExist {
 			return err
 		}
 		return nil
@@ -234,14 +234,14 @@ The actual keys are not listed, only their corresponding metadata.
 }
 
 func readKeyStoreFile() error {
-	store = keystore.New()
+	store = keymaster.New()
 	// Authorized keys file might not exist.
 	if _, err := os.Stat(keyStoreFile); err == nil {
 		data, err := ioutil.ReadFile(keyStoreFile)
 		if err != nil {
 			return fmt.Errorf("reading keystore file failed: %v", err)
 		}
-		if err = keystore.Unmarshal(data, store); err != nil {
+		if err = keymaster.Unmarshal(data, store); err != nil {
 			return fmt.Errorf("keystore.Unmarshak() failed: %v", err)
 		}
 	} else if !os.IsNotExist(err) {

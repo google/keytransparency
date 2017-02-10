@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package keystore
+package keymaster
 
 import (
 	"bytes"
@@ -105,7 +105,7 @@ func generateTestKey() (*testKey, error) {
 	}, nil
 }
 
-func addKeys(store *KeyStore, keys []*testKey) error {
+func addKeys(store *KeyMaster, keys []*testKey) error {
 	// Add signing keys.
 	for i, status := range signingStatuses {
 		description := fmt.Sprintf("description_%v", i)
@@ -144,7 +144,7 @@ func TestAdd(t *testing.T) {
 	checkAddedVerifyingKeys(t, store, keys)
 }
 
-func checkAddedSigningKeys(t *testing.T, store *KeyStore, keys []*testKey) {
+func checkAddedSigningKeys(t *testing.T, store *KeyMaster, keys []*testKey) {
 	for i := 0; i < len(store.signers); i++ {
 		testKey := keys[i]
 		description := fmt.Sprintf("description_%v", i)
@@ -179,7 +179,7 @@ func checkAddedSigningKeys(t *testing.T, store *KeyStore, keys []*testKey) {
 	}
 }
 
-func checkAddedVerifyingKeys(t *testing.T, store *KeyStore, keys []*testKey) {
+func checkAddedVerifyingKeys(t *testing.T, store *KeyMaster, keys []*testKey) {
 	for i := 0; i < len(store.verifiers); i++ {
 		testKey := keys[i]
 		description := fmt.Sprintf("description_%v", i)
@@ -381,7 +381,7 @@ func TestInfo(t *testing.T) {
 	checkVerifyingKeysInfo(t, verifyingInfo, store, keys)
 }
 
-func checkSigningKeysInfo(t *testing.T, signingInfo []*kmpb.SigningKey, store *KeyStore, keys []*testKey) {
+func checkSigningKeysInfo(t *testing.T, signingInfo []*kmpb.SigningKey, store *KeyMaster, keys []*testKey) {
 	// Check correctness of signing keys info.
 	sort.Sort(bySigningKeyDescription(signingInfo))
 	for i, info := range signingInfo {
@@ -402,7 +402,7 @@ func checkSigningKeysInfo(t *testing.T, signingInfo []*kmpb.SigningKey, store *K
 	}
 }
 
-func checkVerifyingKeysInfo(t *testing.T, verifyingInfo []*kmpb.VerifyingKey, store *KeyStore, keys []*testKey) {
+func checkVerifyingKeysInfo(t *testing.T, verifyingInfo []*kmpb.VerifyingKey, store *KeyMaster, keys []*testKey) {
 	// Check correctness of verifying keys info.
 	sort.Sort(byVerifyingKeyDescription(verifyingInfo))
 	for i, info := range verifyingInfo {

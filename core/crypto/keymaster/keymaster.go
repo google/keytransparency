@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package keystore
+package keymaster
 
 import (
 	"errors"
@@ -35,23 +35,23 @@ var (
 	ErrKeyNotExist = errors.New("key does not exist")
 )
 
-// KeyStore contains all update signing and verification keys.
-type KeyStore struct {
+// KeyMaster contains all update signing and verification keys.
+type KeyMaster struct {
 	signers      map[string]signatures.Signer
 	verifiers    map[string]signatures.Verifier
 	activeSigner signatures.Signer
 }
 
 // New creates a new instance of an empty key store.
-func New() *KeyStore {
-	return &KeyStore{
+func New() *KeyMaster {
+	return &KeyMaster{
 		signers:   make(map[string]signatures.Signer),
 		verifiers: make(map[string]signatures.Verifier),
 	}
 }
 
 // Unmarshal unmarshals the provided protobuf into a key store object.
-func Unmarshal(buf []byte, store *KeyStore) error {
+func Unmarshal(buf []byte, store *KeyMaster) error {
 	set := new(kmpb.KeySet)
 	if err := proto.Unmarshal(buf, set); err != nil {
 		return err
@@ -99,7 +99,7 @@ func Unmarshal(buf []byte, store *KeyStore) error {
 }
 
 // Marshal marshals a key store object into a protobuf-formatted byte slice.
-func (s *KeyStore) Marshal() ([]byte, error) {
+func (s *KeyMaster) Marshal() ([]byte, error) {
 	signingKeys := make(map[string]*kmpb.SigningKey)
 	for id, signer := range s.signers {
 		key, err := signer.Marshal()
@@ -129,7 +129,7 @@ func (s *KeyStore) Marshal() ([]byte, error) {
 }
 
 // AddSigningKey adds a new private key to the store.
-func (s *KeyStore) AddSigningKey(status kmpb.SigningKey_KeyStatus, description string, key []byte) (string, error) {
+func (s *KeyMaster) AddSigningKey(status kmpb.SigningKey_KeyStatus, description string, key []byte) (string, error) {
 	signer, err := factory.NewSigner(key, time.Now(), description, status)
 	if err != nil {
 		return "", nil
@@ -151,7 +151,7 @@ func (s *KeyStore) AddSigningKey(status kmpb.SigningKey_KeyStatus, description s
 }
 
 // AddVerifyingKey adds a new public key to the store.
-func (s *KeyStore) AddVerifyingKey(description string, key []byte) (string, error) {
+func (s *KeyMaster) AddVerifyingKey(description string, key []byte) (string, error) {
 	verifier, err := factory.NewVerifier(key, time.Now(), description, kmpb.VerifyingKey_ACTIVE)
 	if err != nil {
 		return "", err
@@ -168,7 +168,7 @@ func (s *KeyStore) AddVerifyingKey(description string, key []byte) (string, erro
 
 // RemoveSigningKey marks a private key as deprecated. Keys are not permanently
 // removed. Active keys cannot be removed.
-func (s *KeyStore) RemoveSigningKey(keyID string) error {
+func (s *KeyMaster) RemoveSigningKey(keyID string) error {
 	if _, ok := s.signers[keyID]; !ok {
 		return ErrKeyNotExist
 	}
@@ -183,7 +183,7 @@ func (s *KeyStore) RemoveSigningKey(keyID string) error {
 // RemoveVerifyingKey marks a public key as deprecated. Keys are not permanently
 // removed. If the key being removed is the only non-deprecated one, it cannot
 // be deleted. This prevents account lockout.
-func (s *KeyStore) RemoveVerifyingKey(keyID string) error {
+func (s *KeyMaster) RemoveVerifyingKey(keyID string) error {
 	if _, ok := s.verifiers[keyID]; !ok {
 		return ErrKeyNotExist
 	}
@@ -209,7 +209,7 @@ func (s *KeyStore) RemoveVerifyingKey(keyID string) error {
 
 // Activate activates a list of private keys given their IDs. All other private
 // keys are marked as inactive. Deprecated keys cannot be activated.
-func (s *KeyStore) Activate(keyID string) error {
+func (s *KeyMaster) Activate(keyID string) error {
 	signer, ok := s.signers[keyID]
 	if !ok {
 		return ErrKeyNotExist
@@ -262,7 +262,7 @@ func (s byVerifyingKeyAddedAt) Less(i, j int) bool {
 
 // Info returns two list of private and public keys info. The actual key material
 // is not include in the results.
-func (s *KeyStore) Info() ([]*kmpb.SigningKey, []*kmpb.VerifyingKey, error) {
+func (s *KeyMaster) Info() ([]*kmpb.SigningKey, []*kmpb.VerifyingKey, error) {
 	// Getting signing keys info.
 	signingInfo := make([]*kmpb.SigningKey, 0, len(s.signers))
 	for _, signer := range s.signers {
@@ -292,7 +292,7 @@ func (s *KeyStore) Info() ([]*kmpb.SigningKey, []*kmpb.VerifyingKey, error) {
 }
 
 // Signer returns a signer object given the corresponding key ID.
-func (s *KeyStore) Signer(keyID string) (signatures.Signer, error) {
+func (s *KeyMaster) Signer(keyID string) (signatures.Signer, error) {
 	signer, ok := s.signers[keyID]
 	if !ok {
 		return nil, ErrKeyNotExist
@@ -301,7 +301,7 @@ func (s *KeyStore) Signer(keyID string) (signatures.Signer, error) {
 }
 
 // Signers returns a list of signers created using all active private keys.
-func (s *KeyStore) Signers() []signatures.Signer {
+func (s *KeyMaster) Signers() []signatures.Signer {
 	signers := make([]signatures.Signer, 0, len(s.signers))
 	for _, signer := range s.signers {
 		if signer.Status() == kmpb.SigningKey_ACTIVE {
@@ -312,7 +312,7 @@ func (s *KeyStore) Signers() []signatures.Signer {
 }
 
 // PublicKeys returns a list of public keys created using all active public keys.
-func (s *KeyStore) PublicKeys() ([]*tpb.PublicKey, error) {
+func (s *KeyMaster) PublicKeys() ([]*tpb.PublicKey, error) {
 	publicKeys := make([]*tpb.PublicKey, 0, len(s.verifiers))
 	for _, verifier := range s.verifiers {
 		if verifier.Status() == kmpb.VerifyingKey_ACTIVE {
@@ -327,7 +327,7 @@ func (s *KeyStore) PublicKeys() ([]*tpb.PublicKey, error) {
 }
 
 // KeyIDs returns a list of all signing and verifying key IDs.
-func (s *KeyStore) KeyIDs() []string {
+func (s *KeyMaster) KeyIDs() []string {
 	// Some singing and verifying keys might have the same key ID. Since Go
 	// does not have a set type, a map is used to filter out duplicates.
 	idsMap := make(map[string]bool)
