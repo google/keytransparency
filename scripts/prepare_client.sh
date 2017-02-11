@@ -25,6 +25,7 @@ DOMAIN=""
 KTURLDEFAULT="104.199.112.76:5001"
 KTURL=""
 CLIENTSECRET=""
+SERVICEKEY=""
 
 ##################################
 ##### Collecting information #####
@@ -56,6 +57,7 @@ if [[ -z "${KTURL}" ]]; then
 fi
 
 read -p "Path to client secret file: " CLIENTSECRET
+read -p "Path to service key file: " SERVICEKEY
 
 
 #####################
@@ -75,6 +77,7 @@ kt-key: \"${KTKEY}\"
 kt-sig: \"${SIGKEY}\"
 domain: \"${DOMAIN}\"
 kt-url: \"${KTURL}\"
-client-secret: \"${CLIENTSECRET}\""
+client-secret: \"${CLIENTSECRET}\"
+service-key: \"${SERVICEKEY}\""
 
 printf "%s\n" "${KTYAML}" > .keytransparency.yaml
