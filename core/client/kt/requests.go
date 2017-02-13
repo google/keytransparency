@@ -24,8 +24,8 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
@@ -87,8 +87,8 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 	}, err
 }
 
-func generateSignatures(data interface{}, signers []signatures.Signer) (map[string]*ctmap.DigitallySigned, error) {
-	sigs := make(map[string]*ctmap.DigitallySigned)
+func generateSignatures(data interface{}, signers []signatures.Signer) (map[string]*spb.DigitallySigned, error) {
+	sigs := make(map[string]*spb.DigitallySigned)
 	for _, signer := range signers {
 		sig, err := signer.Sign(data)
 		if err != nil {

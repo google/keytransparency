@@ -32,9 +32,9 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
 // signer generates signatures with a single key using ECDSA P256.
@@ -118,7 +118,7 @@ func NewSigner(pk crypto.Signer, addedAt time.Time, description string, status k
 }
 
 // Sign generates a digital signature object.
-func (s *signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
+func (s *signer) Sign(data interface{}) (*spb.DigitallySigned, error) {
 	j, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -138,9 +138,9 @@ func (s *signer) Sign(data interface{}) (*ctmap.DigitallySigned, error) {
 		log.Print("failed to marshal ECDSA signature")
 		return nil, signatures.ErrSign
 	}
-	return &ctmap.DigitallySigned{
-		HashAlgorithm: ctmap.DigitallySigned_SHA256,
-		SigAlgorithm:  ctmap.DigitallySigned_ECDSA,
+	return &spb.DigitallySigned{
+		HashAlgorithm: spb.DigitallySigned_SHA256,
+		SigAlgorithm:  spb.DigitallySigned_ECDSA,
 		Signature:     sig,
 	}, nil
 }
@@ -256,15 +256,15 @@ func NewVerifier(pk *ecdsa.PublicKey, addedAt time.Time, description string, sta
 }
 
 // Verify checks the digital signature associated applied to data.
-func (s *verifier) Verify(data interface{}, sig *ctmap.DigitallySigned) error {
+func (s *verifier) Verify(data interface{}, sig *spb.DigitallySigned) error {
 	if sig == nil {
 		return signatures.ErrMissingSig
 	}
-	if sig.HashAlgorithm != ctmap.DigitallySigned_SHA256 {
+	if sig.HashAlgorithm != spb.DigitallySigned_SHA256 {
 		log.Print("not SHA256 hash algorithm")
 		return signatures.ErrVerify
 	}
-	if sig.SigAlgorithm != ctmap.DigitallySigned_ECDSA {
+	if sig.SigAlgorithm != spb.DigitallySigned_ECDSA {
 		log.Print("not ECDSA signature algorithm")
 		return signatures.ErrVerify
 	}

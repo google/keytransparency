@@ -26,8 +26,8 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
 // Entry defines mutations to simply replace the current map value with the
@@ -128,7 +128,7 @@ func verifiersFromKeys(keys []*tpb.PublicKey) (map[string]signatures.Verifier, e
 
 // verifyAuthorizedKeys requires AT LEAST one verifier to have a valid
 // corresponding signature.
-func verifyAuthorizedKeys(data interface{}, verifiers map[string]signatures.Verifier, sigs map[string]*ctmap.DigitallySigned) error {
+func verifyAuthorizedKeys(data interface{}, verifiers map[string]signatures.Verifier, sigs map[string]*spb.DigitallySigned) error {
 	for _, verifier := range verifiers {
 		if sig, ok := sigs[verifier.KeyID()]; ok {
 			if err := verifier.Verify(data, sig); err == nil {

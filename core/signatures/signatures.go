@@ -22,9 +22,9 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
 var (
@@ -49,7 +49,7 @@ var (
 // Signer represents an object that can generate signatures with a single key.
 type Signer interface {
 	// Sign generates a digital signature object.
-	Sign(interface{}) (*ctmap.DigitallySigned, error)
+	Sign(interface{}) (*spb.DigitallySigned, error)
 	// PublicKey returns the signer public key as tpb.PublicKey proto
 	// message.
 	PublicKey() (*tpb.PublicKey, error)
@@ -74,7 +74,7 @@ type Signer interface {
 // Verifier represents an object that can verify signatures with a single key.
 type Verifier interface {
 	// Verify checks the digital signature associated applied to data.
-	Verify(interface{}, *ctmap.DigitallySigned) error
+	Verify(interface{}, *spb.DigitallySigned) error
 	// PublicKey returns the verifier public key as tpb.PublicKey proto
 	// message.
 	PublicKey() (*tpb.PublicKey, error)
