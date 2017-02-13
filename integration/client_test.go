@@ -23,8 +23,8 @@ import (
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/signatures"
-	"github.com/google/keytransparency/core/signatures/factory"
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
 	"golang.org/x/net/context"
 

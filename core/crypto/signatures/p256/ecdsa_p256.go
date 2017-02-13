@@ -27,7 +27,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/ptypes"

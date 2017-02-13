@@ -22,8 +22,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/keytransparency/core/signatures"
-	"github.com/google/keytransparency/core/signatures/p256"
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/p256"
 
 	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"

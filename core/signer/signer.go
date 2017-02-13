@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/appender"
+	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/queue"
-	"github.com/google/keytransparency/core/signatures"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 

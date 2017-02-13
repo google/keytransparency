@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/keytransparency/core/client/ctlog"
 	"github.com/google/keytransparency/core/commitments"
-	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/tree/sparse"
 	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 	"github.com/google/keytransparency/core/vrf"

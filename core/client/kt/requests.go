@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/google/keytransparency/core/commitments"
-	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/benlaurie/objecthash/go/objecthash"

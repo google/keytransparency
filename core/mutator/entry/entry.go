@@ -19,9 +19,9 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/signatures"
-	"github.com/google/keytransparency/core/signatures/factory"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
