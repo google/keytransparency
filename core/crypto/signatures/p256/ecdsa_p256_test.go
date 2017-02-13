@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures"
 
 	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 )

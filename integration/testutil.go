@@ -22,10 +22,10 @@ import (
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/signatures"
-	"github.com/google/keytransparency/core/signatures/factory"
 	"github.com/google/keytransparency/core/signer"
 	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/core/vrf"

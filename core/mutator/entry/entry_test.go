@@ -20,15 +20,15 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/signatures"
-	"github.com/google/keytransparency/core/signatures/factory"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
 const (
@@ -100,7 +100,7 @@ func prepareMutation(key []byte, entryData []byte, previous []byte, signers []si
 	}
 
 	// Populate signatures map.
-	sigs := make(map[string]*ctmap.DigitallySigned)
+	sigs := make(map[string]*spb.DigitallySigned)
 	for _, signer := range signers {
 		sig, err := signer.Sign(*kv)
 		if err != nil {

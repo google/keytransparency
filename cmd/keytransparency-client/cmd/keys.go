@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/crypto/keymaster"
-	"github.com/google/keytransparency/core/signatures/p256"
+	"github.com/google/keytransparency/core/crypto/signatures/p256"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/cobra"

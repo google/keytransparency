@@ -16,6 +16,7 @@ syntax = "proto3";
 package ctmap;
 
 import "google/protobuf/timestamp.proto";
+import "github.com/google/keytransparency/core/proto/signature/signature.proto";
 
 //
 // Data types
@@ -42,35 +43,7 @@ message SignedMapHead {
   MapHead map_head = 1;
   // signatures is a set of map_head signatures. Each signature is identified by
   // the first 64 bits of the public key that verifies it.
-  map<string, DigitallySigned> signatures = 2;
-}
-
-// DigitallySigned defines a way to digitally sign objects.
-message DigitallySigned {
-  // HashAlgorithm defines the approved methods for object hashing.
-  enum HashAlgorithm {
-    // No hash algorithm is used.
-    NONE = 0;
-    // SHA256 is used.
-    SHA256 = 4;
-    // SHA512 is used.
-    SHA512 = 6;
-  }
-
-  // SignatureAlgorithm defines the algorithm used to sign the object.
-  enum SignatureAlgorithm {
-    // Anonymous signature scheme.
-    ANONYMOUS = 0;
-    // ECDSA signature scheme.
-    ECDSA = 1;
-  }
-
-  // hash_algorithm contains the hash algorithm used.
-  HashAlgorithm hash_algorithm = 1;
-  // sig_algorithm contains the signing algorithm used.
-  SignatureAlgorithm sig_algorithm = 2;
-  // signature contains the object signature.
-  bytes signature = 3;
+  map<string, signature.DigitallySigned> signatures = 2;
 }
 
 //

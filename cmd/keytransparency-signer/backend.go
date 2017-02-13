@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/signatures"
-	"github.com/google/keytransparency/core/signatures/factory"
 	"github.com/google/keytransparency/core/signer"
 	"github.com/google/keytransparency/impl/etcd/queue"
 	"github.com/google/keytransparency/impl/sql/appender"

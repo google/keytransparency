@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/appender"
+	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/queue"
-	"github.com/google/keytransparency/core/signatures"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 
@@ -30,6 +30,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/google/keytransparency/core/proto/ctmap"
+	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
 // Clock defines an interface for the advancement of time.
@@ -143,7 +144,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
 	}
 	smh := &ctmap.SignedMapHead{
 		MapHead:    mh,
-		Signatures: map[string]*ctmap.DigitallySigned{s.signer.KeyID(): sig},
+		Signatures: map[string]*spb.DigitallySigned{s.signer.KeyID(): sig},
 	}
 	if err := s.sths.Append(ctx, txn, epoch, smh); err != nil {
 		return fmt.Errorf("Append SMH failure %v", err)
