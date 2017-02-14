@@ -166,6 +166,14 @@ func getCreds(clientSecretFile string) (credentials.PerRPCCredentials, error) {
 	return oauth.NewOauthAccess(tok), nil
 }
 
+func getServiceCreds(serviceKeyFile string) (credentials.PerRPCCredentials, error) {
+	b, err := ioutil.ReadFile(serviceKeyFile)
+	if err != nil {
+		return nil, err
+	}
+	return oauth.NewServiceAccountFromKey(b, authentication.RequiredScopes...)
+}
+
 func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	pem, err := ioutil.ReadFile(ktPEM)
 	if err != nil {
@@ -212,7 +220,7 @@ func getClient(cc *grpc.ClientConn, mapID, vrfPubFile, ktSig, ctURL, ctPEM strin
 	return grpcc.New(mapID, cli, vrfKey, verifier, ctClient), nil
 }
 
-func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
+func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	if true {
 		host, _, err := net.SplitHostPort(ktURL)
@@ -233,8 +241,17 @@ func dial(ktURL, caFile, clientSecretFile string) (*grpc.ClientConn, error) {
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
+	// Add client credentials otherwise add service credentials. Client
+	// credentials take priority over service credentials. Only one of the
+	// two should exist in an RPC call.
 	if clientSecretFile != "" {
 		creds, err := getCreds(clientSecretFile)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, grpc.WithPerRPCCredentials(creds))
+	} else if serviceKeyFile != "" {
+		creds, err := getServiceCreds(serviceKeyFile)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +274,8 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ctURL := viper.GetString("ct-url")
 	ctPEM := viper.GetString("ct-key")
 	vrfFile := viper.GetString("vrf")
-	cc, err := dial(ktURL, ktPEM, clientSecretFile)
+	serviceKeyFile := viper.GetString("service-key")
+	cc, err := dial(ktURL, ktPEM, clientSecretFile, serviceKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
