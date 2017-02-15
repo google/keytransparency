@@ -33,6 +33,8 @@ message DigitallySigned {
     ANONYMOUS = 0;
     // ECDSA signature scheme.
     ECDSA = 1;
+    // RSA 3072-bit signature scheme.
+    RSA_3072 = 2;
   }
 
   // hash_algorithm contains the hash algorithm used.
@@ -42,4 +44,3 @@ message DigitallySigned {
   // signature contains the object signature.
   bytes signature = 3;
 }
-
