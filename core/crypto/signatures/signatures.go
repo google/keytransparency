@@ -28,8 +28,8 @@ import (
 )
 
 var (
-	// ErrWrongKeyType occurs when a key is not an ECDSA key.
-	ErrWrongKeyType = errors.New("not an ECDSA key")
+	// ErrWrongKeyType occurs when a key is not an valid key type.
+	ErrWrongKeyType = errors.New("not an valid key type")
 	// ErrPointNotOnCurve occurs when a public key is not on the curve.
 	ErrPointNotOnCurve = errors.New("point is not on the P256 curve")
 	// ErrMissingSig occurs when the Verify function is called with a nil signature.
