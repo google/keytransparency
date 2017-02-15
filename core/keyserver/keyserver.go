@@ -263,7 +263,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		log.Printf("Enqueue error: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Write error")
 	}
-	return &tpb.UpdateEntryResponse{Proof: resp}, err
+	return &tpb.UpdateEntryResponse{Proof: resp}, nil
 }
 
 func (s *Server) saveCommitment(ctx context.Context, kv *tpb.KeyValue, committed *tpb.Committed) error {
