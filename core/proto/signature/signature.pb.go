@@ -99,27 +99,6 @@ func (m *DigitallySigned) String() string            { return proto.CompactTextS
 func (*DigitallySigned) ProtoMessage()               {}
 func (*DigitallySigned) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-func (m *DigitallySigned) GetHashAlgorithm() DigitallySigned_HashAlgorithm {
-	if m != nil {
-		return m.HashAlgorithm
-	}
-	return DigitallySigned_NONE
-}
-
-func (m *DigitallySigned) GetSigAlgorithm() DigitallySigned_SignatureAlgorithm {
-	if m != nil {
-		return m.SigAlgorithm
-	}
-	return DigitallySigned_ANONYMOUS
-}
-
-func (m *DigitallySigned) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
 func init() {
 	proto.RegisterType((*DigitallySigned)(nil), "signature.DigitallySigned")
 	proto.RegisterEnum("signature.DigitallySigned_HashAlgorithm", DigitallySigned_HashAlgorithm_name, DigitallySigned_HashAlgorithm_value)
