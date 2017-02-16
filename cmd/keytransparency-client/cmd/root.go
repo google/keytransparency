@@ -25,8 +25,8 @@ import (
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/client/ctlog"
 	"github.com/google/keytransparency/core/client/kt"
+	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/vrf"
 	"github.com/google/keytransparency/core/vrf/p256"
 	"github.com/google/keytransparency/impl/google/authentication"
@@ -179,7 +179,7 @@ func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
-	ver, err := factory.VerifierFromPEM(pem)
+	ver, err := keymaster.VerifierFromPEM(pem)
 	if err != nil {
 		return nil, err
 	}

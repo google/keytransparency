@@ -73,7 +73,7 @@ func openPrivateKey() signatures.Signer {
 	if err != nil {
 		log.Fatalf("Failed to read file %v: %v", *signingKey, err)
 	}
-	sig, err := factory.SignerFromPEM(pem)
+	sig, err := factory.NewSignerFromPEM(pem)
 	if err != nil {
 		log.Fatalf("Failed to create signer: %v", err)
 	}

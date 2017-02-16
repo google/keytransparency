@@ -99,12 +99,12 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`
 	signatures.Rand = DevZero{}
-	sig, err := factory.SignerFromPEM([]byte(sigPriv))
+	sig, err := factory.NewSignerFromPEM([]byte(sigPriv))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ver, err := factory.VerifierFromPEM([]byte(sigPub))
+	ver, err := factory.NewVerifierFromPEM([]byte(sigPub))
 	if err != nil {
 		return nil, nil, err
 	}

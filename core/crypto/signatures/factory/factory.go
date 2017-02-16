@@ -20,81 +20,34 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"time"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/p256"
-
-	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
-// NewSigner creates a signer object based on information in given
-// keymaster-related parameters.
-func NewSigner(pemKey []byte, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
-	p, _ := pem.Decode(pemKey)
-	if p == nil {
-		return nil, signatures.ErrNoPEMFound
-	}
-	return signerFromBytes(p.Bytes, addedAt, description, status)
-}
-
-// SignerFromPEM parses a PEM formatted block and returns a signer object created
-// using that block.
-func SignerFromPEM(pemKey []byte) (signatures.Signer, error) {
-	return NewSigner(pemKey, time.Now(), "Signer created from PEM", kmpb.SigningKey_ACTIVE)
-}
-
-// SignerFromRawKey creates a signer object from given raw key bytes.
-func SignerFromRawKey(b []byte) (signatures.Signer, error) {
-	return signerFromBytes(b, time.Now(), "Signer created from raw key", kmpb.SigningKey_ACTIVE)
-}
-
-func signerFromBytes(b []byte, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
+// NewSignerFromBytes creates a new signing object from the private key bytes.
+func NewSignerFromBytes(b []byte) (signatures.Signer, error) {
 	if _, err := x509.ParsePKCS1PrivateKey(b); err == nil {
 		return nil, signatures.ErrUnimplemented
 	} else if k, err := x509.ParseECPrivateKey(b); err == nil {
-		return p256.NewSigner(k, addedAt, description, status)
+		return p256.NewSigner(k)
 	}
 	return nil, signatures.ErrUnimplemented
 }
 
-// NewVerifier creates a verifier object based on information in given
+// NewSignerFromPEM creates a signer object based on information in given
 // keymaster-related parameters.
-func NewVerifier(pemKey []byte, addedAt time.Time, description string, status kmpb.VerifyingKey_KeyStatus) (signatures.Verifier, error) {
+func NewSignerFromPEM(pemKey []byte) (signatures.Signer, error) {
 	p, _ := pem.Decode(pemKey)
 	if p == nil {
 		return nil, signatures.ErrNoPEMFound
 	}
-	return verifierFromBytes(p.Bytes, addedAt, description, status)
+	return NewSignerFromBytes(p.Bytes)
 }
 
-// VerifierFromPEM parses a PEM formatted block and returns a verifier object
-// created using that block.
-func VerifierFromPEM(pemKey []byte) (signatures.Verifier, error) {
-	return NewVerifier(pemKey, time.Now(), "Verifier created from PEM", kmpb.VerifyingKey_ACTIVE)
-}
-
-// VerifierFromRawKey creates a verifier object from given raw key bytes.
-func VerifierFromRawKey(b []byte) (signatures.Verifier, error) {
-	return verifierFromBytes(b, time.Now(), "Verifier created from raw key", kmpb.VerifyingKey_ACTIVE)
-}
-
-// VerifierFromKey creates a verifier object from a PublicKey proto object.
-func VerifierFromKey(key *tpb.PublicKey) (signatures.Verifier, error) {
-	switch {
-	case key.GetEd25519() != nil:
-		return nil, signatures.ErrUnimplemented
-	case key.GetRsaVerifyingSha256_3072() != nil:
-		return nil, signatures.ErrUnimplemented
-	case key.GetEcdsaVerifyingP256() != nil:
-		return verifierFromBytes(key.GetEcdsaVerifyingP256(), time.Now(), "Verifier created from PublicKey", kmpb.VerifyingKey_ACTIVE)
-	default:
-		return nil, errors.New("public key not found")
-	}
-}
-
-func verifierFromBytes(b []byte, addedAt time.Time, description string, status kmpb.VerifyingKey_KeyStatus) (signatures.Verifier, error) {
+// NewVerifierFromBytes creates a verification object from the raw key bytes.
+func NewVerifierFromBytes(b []byte) (signatures.Verifier, error) {
 	k, err := x509.ParsePKIXPublicKey(b)
 	if err != nil {
 		return nil, err
@@ -104,7 +57,31 @@ func verifierFromBytes(b []byte, addedAt time.Time, description string, status k
 	case *rsa.PublicKey:
 		return nil, signatures.ErrUnimplemented
 	case *ecdsa.PublicKey:
-		return p256.NewVerifier(pkType, addedAt, description, status)
+		return p256.NewVerifier(pkType)
 	}
 	return nil, signatures.ErrUnimplemented
+}
+
+// NewVerifierFromPEM creates a verifier object based on information in given
+// keymaster-related parameters.
+func NewVerifierFromPEM(pemKey []byte) (signatures.Verifier, error) {
+	p, _ := pem.Decode(pemKey)
+	if p == nil {
+		return nil, signatures.ErrNoPEMFound
+	}
+	return NewVerifierFromBytes(p.Bytes)
+}
+
+// VerifierFromKey creates a verifier object from a PublicKey proto object.
+func NewVerifierFromKey(key *tpb.PublicKey) (signatures.Verifier, error) {
+	switch {
+	case key.GetEd25519() != nil:
+		return nil, signatures.ErrUnimplemented
+	case key.GetRsaVerifyingSha256_3072() != nil:
+		return nil, signatures.ErrUnimplemented
+	case key.GetEcdsaVerifyingP256() != nil:
+		return NewVerifierFromBytes(key.GetEcdsaVerifyingP256())
+	default:
+		return nil, errors.New("public key not found")
+	}
 }

@@ -65,7 +65,7 @@ var (
 
 func createSigner(t *testing.T, privKey string) signatures.Signer {
 	signatures.Rand = DevZero{}
-	signer, err := factory.SignerFromPEM([]byte(privKey))
+	signer, err := factory.NewSignerFromPEM([]byte(privKey))
 	if err != nil {
 		t.Fatalf("factory.NewSigner failed: %v", err)
 	}

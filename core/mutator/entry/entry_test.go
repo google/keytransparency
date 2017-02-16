@@ -125,7 +125,7 @@ func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
 	signatures.Rand = DevZero{}
 	signers := make([]signatures.Signer, 0, len(keys))
 	for _, key := range keys {
-		signer, err := factory.SignerFromPEM(key)
+		signer, err := factory.NewSignerFromPEM(key)
 		if err != nil {
 			t.Fatalf("NewSigner(): %v", err)
 		}
