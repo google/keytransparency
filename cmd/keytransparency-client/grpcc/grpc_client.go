@@ -28,6 +28,8 @@ import (
 	"github.com/google/keytransparency/core/client/ctlog"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/tree/sparse"
 	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 	"github.com/google/keytransparency/core/vrf"
@@ -81,6 +83,7 @@ type Client struct {
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
 	CT         ctlog.Verifier
+	mutator    mutator.Mutator
 	RetryCount int
 	RetryDelay time.Duration
 }
@@ -92,6 +95,7 @@ func New(mapID string, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKe
 		vrf:        vrf,
 		kt:         kt.New(vrf, tv.New([]byte(mapID), sparse.CONIKSHasher), verifier, log),
 		CT:         log,
+		mutator:    entry.New(),
 		RetryCount: 1,
 		RetryDelay: 3 * time.Second,
 	}
@@ -191,6 +195,15 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 
 	req, err := kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile, signers, authorizedKeys)
 	if err != nil {
+		return nil, err
+	}
+
+	// Check the mutation before submitting it.
+	m, err := proto.Marshal(req.GetEntryUpdate().GetUpdate())
+	if err != nil {
+		return nil, err
+	}
+	if err := c.mutator.CheckMutation(getResp.LeafProof.LeafData, m); err != nil {
 		return nil, err
 	}
 
