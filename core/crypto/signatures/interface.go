@@ -22,7 +22,6 @@ import (
 	"encoding/hex"
 	"errors"
 
-	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/core/proto/signature"
 )
@@ -55,20 +54,10 @@ type Signer interface {
 	PublicKey() (*tpb.PublicKey, error)
 	// KeyID returns the ID of the associated public key.
 	KeyID() string
-	// Status returns the status of the signer.
-	Status() kmpb.SigningKey_KeyStatus
-	// Activate activates the signer.
-	Activate()
-	// Deactivate deactivates the signer.
-	Deactivate()
-	// Deprecate sets the signer status to DEPRECATED.
-	Deprecate()
 	// Marshal marshals a signer object into a keymaster SigningKey message.
-	Marshal() (*kmpb.SigningKey, error)
+	PrivateKeyPEM() ([]byte, error)
 	// PublicKeyPEM returns the PEM-formatted public key of this signer.
 	PublicKeyPEM() ([]byte, error)
-	// Clone creates a new instance of the signer object
-	Clone() Signer
 }
 
 // Verifier represents an object that can verify signatures with a single key.
@@ -80,15 +69,8 @@ type Verifier interface {
 	PublicKey() (*tpb.PublicKey, error)
 	// KeyID returns the ID of the associated public key.
 	KeyID() string
-	// Status returns the status of the verifier.
-	Status() kmpb.VerifyingKey_KeyStatus
-	// Deprecate sets the verifier status to DEPRECATED.
-	Deprecate()
-	// Marshal marshals a verifier object into a keymaster VerifyingKey
-	// message.
-	Marshal() (*kmpb.VerifyingKey, error)
-	// Clone creates a new instance of the verifier object
-	Clone() Verifier
+	// PublicKeyPEM marshals a verifier object into a keymaster VerifyingKey message.
+	PublicKeyPEM() ([]byte, error)
 }
 
 // KeyID is the hex digits of the SHA256 of the public pem.

@@ -37,16 +37,16 @@ var (
 
 // KeyMaster contains all update signing and verification keys.
 type KeyMaster struct {
-	signers      map[string]signatures.Signer
-	verifiers    map[string]signatures.Verifier
-	activeSigner signatures.Signer
+	signers      map[string]Signer
+	verifiers    map[string]Verifier
+	activeSigner Signer
 }
 
 // New creates a new instance of an empty key store.
 func New() *KeyMaster {
 	return &KeyMaster{
-		signers:   make(map[string]signatures.Signer),
-		verifiers: make(map[string]signatures.Verifier),
+		signers:   make(map[string]Signer),
+		verifiers: make(map[string]Verifier),
 	}
 }
 
@@ -58,17 +58,19 @@ func Unmarshal(buf []byte, store *KeyMaster) error {
 	}
 
 	// Populate signers map.
-	var activeSigner signatures.Signer
-	signers := make(map[string]signatures.Signer)
+	var activeSigner Signer
+	signers := make(map[string]Signer)
 	for id, key := range set.SigningKeys {
 		addedAt, err := ptypes.Timestamp(key.Metadata.AddedAt)
 		if err != nil {
 			return err
 		}
-		signer, err := factory.NewSigner(key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
+
+		s, err := factory.NewSignerFromPEM(key.KeyMaterial)
 		if err != nil {
 			return err
 		}
+		signer := NewSigner(s, addedAt, key.Metadata.Description, key.Status)
 		signers[id] = signer
 		if key.Status == kmpb.SigningKey_ACTIVE {
 			activeSigner = signer
@@ -76,16 +78,17 @@ func Unmarshal(buf []byte, store *KeyMaster) error {
 	}
 
 	// Populate verifiers map.
-	verifiers := make(map[string]signatures.Verifier)
+	verifiers := make(map[string]Verifier)
 	for id, key := range set.VerifyingKeys {
 		addedAt, err := ptypes.Timestamp(key.Metadata.AddedAt)
 		if err != nil {
 			return err
 		}
-		verifier, err := factory.NewVerifier(key.KeyMaterial, addedAt, key.Metadata.Description, key.Status)
+		v, err := factory.NewVerifierFromPEM(key.KeyMaterial)
 		if err != nil {
 			return err
 		}
+		verifier := NewVerifier(v, addedAt, key.Metadata.Description, key.Status)
 		verifiers[id] = verifier
 	}
 
@@ -130,10 +133,11 @@ func (s *KeyMaster) Marshal() ([]byte, error) {
 
 // AddSigningKey adds a new private key to the store.
 func (s *KeyMaster) AddSigningKey(status kmpb.SigningKey_KeyStatus, description string, key []byte) (string, error) {
-	signer, err := factory.NewSigner(key, time.Now(), description, status)
+	sig, err := factory.NewSignerFromPEM(key)
 	if err != nil {
 		return "", nil
 	}
+	signer := NewSigner(sig, time.Now(), description, status)
 
 	mapID := signer.KeyID()
 	if _, ok := s.signers[mapID]; ok {
@@ -152,10 +156,11 @@ func (s *KeyMaster) AddSigningKey(status kmpb.SigningKey_KeyStatus, description 
 
 // AddVerifyingKey adds a new public key to the store.
 func (s *KeyMaster) AddVerifyingKey(description string, key []byte) (string, error) {
-	verifier, err := factory.NewVerifier(key, time.Now(), description, kmpb.VerifyingKey_ACTIVE)
+	v, err := factory.NewVerifierFromPEM(key)
 	if err != nil {
 		return "", err
 	}
+	verifier := NewVerifier(v, time.Now(), description, kmpb.VerifyingKey_ACTIVE)
 
 	mapID := verifier.KeyID()
 	if _, ok := s.verifiers[mapID]; ok {
@@ -292,7 +297,7 @@ func (s *KeyMaster) Info() ([]*kmpb.SigningKey, []*kmpb.VerifyingKey, error) {
 }
 
 // Signer returns a signer object given the corresponding key ID.
-func (s *KeyMaster) Signer(keyID string) (signatures.Signer, error) {
+func (s *KeyMaster) Signer(keyID string) (Signer, error) {
 	signer, ok := s.signers[keyID]
 	if !ok {
 		return nil, ErrKeyNotExist

@@ -22,11 +22,8 @@ import (
 	"math"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
-
-	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 )
 
 const (
@@ -65,7 +62,7 @@ func newSigner(t *testing.T, pemKey []byte) signatures.Signer {
 	if err != nil {
 		t.Fatalf("x509.ParseECPrivateKey failed: %v", err)
 	}
-	signer, err := NewSigner(k, time.Now(), "test_description", kmpb.SigningKey_ACTIVE)
+	signer, err := NewSigner(k)
 	if err != nil {
 		t.Fatalf("NewSigner failed: %v", err)
 	}
@@ -81,7 +78,7 @@ func newVerifier(t *testing.T, pemKey []byte) signatures.Verifier {
 	if err != nil {
 		t.Fatalf("x509.ParsePKIXPublicKey failed: %v", err)
 	}
-	verifier, err := NewVerifier(k.(*ecdsa.PublicKey), time.Now(), "test_description", kmpb.VerifyingKey_ACTIVE)
+	verifier, err := NewVerifier(k.(*ecdsa.PublicKey))
 	if err != nil {
 		t.Fatalf("NewVerifier failed: %v", err)
 	}

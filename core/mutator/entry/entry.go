@@ -122,7 +122,7 @@ func verifyKeys(oldValue []byte, data interface{}, update *tpb.SignedKV, entry *
 func verifiersFromKeys(keys []*tpb.PublicKey) (map[string]signatures.Verifier, error) {
 	verifiers := make(map[string]signatures.Verifier)
 	for _, key := range keys {
-		verifier, err := factory.VerifierFromKey(key)
+		verifier, err := factory.NewVerifierFromKey(key)
 		if err != nil {
 			return nil, err
 		}

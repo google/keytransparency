@@ -22,11 +22,8 @@ import (
 	"math"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
-
-	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 )
 
 const (
@@ -116,7 +113,7 @@ func newSigner(t *testing.T, pemKey []byte) signatures.Signer {
 	if err != nil {
 		t.Fatalf("x509.ParsePKCS1PrivateKey failed: %v", err)
 	}
-	signer, err := NewSigner(k, time.Now(), "test_description", kmpb.SigningKey_ACTIVE)
+	signer, err := NewSigner(k)
 	if err != nil {
 		t.Fatalf("NewSigner failed: %v", err)
 	}
@@ -132,7 +129,7 @@ func newVerifier(t *testing.T, pemKey []byte) signatures.Verifier {
 	if err != nil {
 		t.Fatalf("x509.ParsePKIXPublicKey failed: %v", err)
 	}
-	verifier, err := NewVerifier(k.(*rsa.PublicKey), time.Now(), "test_description", kmpb.VerifyingKey_ACTIVE)
+	verifier, err := NewVerifier(k.(*rsa.PublicKey))
 	if err != nil {
 		t.Fatalf("NewVerifier failed: %v", err)
 	}
@@ -166,7 +163,7 @@ func TestSignerWrongKeySize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("x509.ParsePKCS1PrivateKey failed: %v", err)
 	}
-	_, err = NewSigner(k, time.Now(), "test_description", kmpb.SigningKey_ACTIVE)
+	_, err = NewSigner(k)
 	if got, want := err, signatures.ErrWrongKeyType; got != want {
 		t.Errorf("NewSigner with key size 1024 returned %v, want %v", got, want)
 	}
@@ -182,7 +179,7 @@ func TestVerifierWrongKeySize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("x509.ParsePKIXPublicKey failed: %v", err)
 	}
-	_, err = NewVerifier(k.(*rsa.PublicKey), time.Now(), "test_description", kmpb.VerifyingKey_ACTIVE)
+	_, err = NewVerifier(k.(*rsa.PublicKey))
 	if got, want := err, signatures.ErrWrongKeyType; got != want {
 		t.Errorf("NewVerifier with key size 1024 returned %v, want %v", got, want)
 	}

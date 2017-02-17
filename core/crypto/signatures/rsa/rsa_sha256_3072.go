@@ -23,12 +23,9 @@ import (
 	"encoding/pem"
 	"io"
 	"log"
-	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/crypto/signatures"
 
-	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/keytransparency/core/proto/signature"
 )
@@ -38,12 +35,9 @@ const keySize = 3072
 // signer generates signatures with a single key using RSA with SHA256 and 3072
 // bits key size.
 type signer struct {
-	privKey     *rsa.PrivateKey
-	keyID       string
-	rand        io.Reader
-	addedAt     time.Time // time when key is added to keystore.
-	description string
-	status      kmpb.SigningKey_KeyStatus
+	privKey *rsa.PrivateKey
+	keyID   string
+	rand    io.Reader
 }
 
 // GeneratePEMs generates a PEM-formatted pair of RSA public and private keys of
@@ -82,7 +76,7 @@ func generateByteKeys() ([]byte, []byte, error) {
 }
 
 // NewSigner creates a signer object from a private key.
-func NewSigner(pk crypto.Signer, addedAt time.Time, description string, status kmpb.SigningKey_KeyStatus) (signatures.Signer, error) {
+func NewSigner(pk crypto.Signer) (signatures.Signer, error) {
 	privKey, ok := pk.(*rsa.PrivateKey)
 	if !ok {
 		return nil, signatures.ErrWrongKeyType
@@ -97,12 +91,9 @@ func NewSigner(pk crypto.Signer, addedAt time.Time, description string, status k
 	}
 
 	return &signer{
-		privKey:     privKey,
-		keyID:       id,
-		rand:        signatures.Rand,
-		addedAt:     addedAt,
-		description: description,
-		status:      status,
+		privKey: privKey,
+		keyID:   id,
+		rand:    signatures.Rand,
 	}, nil
 }
 
@@ -135,28 +126,8 @@ func (s *signer) KeyID() string {
 	return s.keyID
 }
 
-// Status returns the status of the signer.
-func (s *signer) Status() kmpb.SigningKey_KeyStatus {
-	return s.status
-}
-
-// Activate activates the signer.
-func (s *signer) Activate() {
-	s.status = kmpb.SigningKey_ACTIVE
-}
-
-// Deactivate deactivates the signer.
-func (s *signer) Deactivate() {
-	s.status = kmpb.SigningKey_INACTIVE
-}
-
-// Deprecate sets the signer status to DEPRECATED.
-func (s *signer) Deprecate() {
-	s.status = kmpb.SigningKey_DEPRECATED
-}
-
-// Marshal marshals a signer object into a keymaster SigningKey message.
-func (s *signer) Marshal() (*kmpb.SigningKey, error) {
+// PrivateKeyPEM marshals a signer object into a keymaster SigningKey message.
+func (s *signer) PrivateKeyPEM() ([]byte, error) {
 	skBytes := x509.MarshalPKCS1PrivateKey(s.privKey)
 	skPEM := pem.EncodeToMemory(
 		&pem.Block{
@@ -164,19 +135,7 @@ func (s *signer) Marshal() (*kmpb.SigningKey, error) {
 			Bytes: skBytes,
 		},
 	)
-	timestamp, err := ptypes.TimestampProto(s.addedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &kmpb.SigningKey{
-		Metadata: &kmpb.Metadata{
-			KeyId:       s.keyID,
-			AddedAt:     timestamp,
-			Description: s.description,
-		},
-		KeyMaterial: skPEM,
-		Status:      s.status,
-	}, nil
+	return skPEM, nil
 }
 
 // PublicKeyPEM returns the PEM-formatted public key of this signer.
@@ -194,24 +153,15 @@ func (s *signer) PublicKeyPEM() ([]byte, error) {
 	return pkPEM, nil
 }
 
-// Clone creates a new instance of the signer object
-func (s *signer) Clone() signatures.Signer {
-	clone := *s
-	return &clone
-}
-
 // verifier verifies signatures using using RSA with SHA256 and 3072 bits key
 // size.
 type verifier struct {
-	pubKey      *rsa.PublicKey
-	keyID       string
-	addedAt     time.Time // time when key is added to keystore.
-	description string
-	status      kmpb.VerifyingKey_KeyStatus
+	pubKey *rsa.PublicKey
+	keyID  string
 }
 
 // NewVerifier creates a verifier from an RSA public key.
-func NewVerifier(pk *rsa.PublicKey, addedAt time.Time, description string, status kmpb.VerifyingKey_KeyStatus) (signatures.Verifier, error) {
+func NewVerifier(pk *rsa.PublicKey) (signatures.Verifier, error) {
 	if pk.N.BitLen() != keySize {
 		return nil, signatures.ErrWrongKeyType
 	}
@@ -221,11 +171,8 @@ func NewVerifier(pk *rsa.PublicKey, addedAt time.Time, description string, statu
 	}
 
 	return &verifier{
-		pubKey:      pk,
-		keyID:       id,
-		addedAt:     addedAt,
-		description: description,
-		status:      status,
+		pubKey: pk,
+		keyID:  id,
 	}, nil
 }
 
@@ -263,18 +210,8 @@ func (s *verifier) KeyID() string {
 	return s.keyID
 }
 
-// Status returns the status of the verifier.
-func (s *verifier) Status() kmpb.VerifyingKey_KeyStatus {
-	return s.status
-}
-
-// Deprecate sets the verifier status to DEPRECATED.
-func (s *verifier) Deprecate() {
-	s.status = kmpb.VerifyingKey_DEPRECATED
-}
-
-// Marshal marshals a verifier object into a keymaster VerifyingKey message.
-func (s *verifier) Marshal() (*kmpb.VerifyingKey, error) {
+// PublicKeyPEM marshals a verifier object into a keymaster VerifyingKey message.
+func (s *verifier) PublicKeyPEM() ([]byte, error) {
 	pkBytes, err := x509.MarshalPKIXPublicKey(s.pubKey)
 	if err != nil {
 		return nil, err
@@ -285,25 +222,7 @@ func (s *verifier) Marshal() (*kmpb.VerifyingKey, error) {
 			Bytes: pkBytes,
 		},
 	)
-	timestamp, err := ptypes.TimestampProto(s.addedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &kmpb.VerifyingKey{
-		Metadata: &kmpb.Metadata{
-			KeyId:       s.keyID,
-			AddedAt:     timestamp,
-			Description: s.description,
-		},
-		KeyMaterial: pkPEM,
-		Status:      s.status,
-	}, nil
-}
-
-// Clone creates a new instance of the verifier object
-func (s *verifier) Clone() signatures.Verifier {
-	clone := *s
-	return &clone
+	return pkPEM, nil
 }
 
 func publicKey(k *rsa.PublicKey) (*tpb.PublicKey, error) {
