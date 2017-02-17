@@ -179,7 +179,7 @@ func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
-	ver, err := keymaster.VerifierFromPEM(pem)
+	ver, err := keymaster.NewVerifierFromPEM(pem)
 	if err != nil {
 		return nil, err
 	}

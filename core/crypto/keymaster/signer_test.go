@@ -15,6 +15,7 @@
 package keymaster
 
 import (
+	"encoding/pem"
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
@@ -37,6 +38,21 @@ func TestSignerFromPEM(t *testing.T) {
 		_, err := NewSignerFromPEM([]byte(priv))
 		if err != nil {
 			t.Errorf("SignerFromPEM(): %v", err)
+		}
+	}
+}
+
+func TestSignerFromKey(t *testing.T) {
+	signatures.Rand = DevZero{}
+	for _, priv := range []string{
+		testPrivKey,
+	} {
+		p, _ := pem.Decode([]byte(priv))
+		if p == nil {
+			t.Error("pem.Decode() failed")
+		}
+		if _, err := NewSignerFromRawKey(p.Bytes); err != nil {
+			t.Errorf("SignerFromRawKey(): %v", err)
 		}
 	}
 }

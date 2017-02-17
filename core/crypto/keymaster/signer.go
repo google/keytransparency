@@ -56,8 +56,8 @@ func NewSignerFromPEM(pemKey []byte) (Signer, error) {
 	}, nil
 }
 
-// SignerFromRawKey creates a signer object from given raw key bytes.
-func SignerFromRawKey(b []byte) (signatures.Signer, error) {
+// NewSignerFromRawKey creates a signer object from given raw key bytes.
+func NewSignerFromRawKey(b []byte) (signatures.Signer, error) {
 	s, err := factory.NewSignerFromBytes(b)
 	if err != nil {
 		return nil, err

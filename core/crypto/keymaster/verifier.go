@@ -42,9 +42,9 @@ func NewVerifier(v signatures.Verifier, addedAt time.Time,
 	}
 }
 
-// VerifierFromPEM parses a PEM formatted block and returns a verifier object
+// NewVerifierFromPEM parses a PEM formatted block and returns a verifier object
 // created using that block.
-func VerifierFromPEM(pemKey []byte) (Verifier, error) {
+func NewVerifierFromPEM(pemKey []byte) (Verifier, error) {
 	v, err := factory.NewVerifierFromPEM(pemKey)
 	if err != nil {
 		return nil, err
@@ -57,8 +57,8 @@ func VerifierFromPEM(pemKey []byte) (Verifier, error) {
 	}, nil
 }
 
-// VerifierFromKey creates a verifier object from a PublicKey proto object.
-func VerifierFromKey(key *tpb.PublicKey) (Verifier, error) {
+// NewVerifierFromKey creates a verifier object from a PublicKey proto object.
+func NewVerifierFromKey(key *tpb.PublicKey) (Verifier, error) {
 	v, err := factory.NewVerifierFromKey(key)
 	if err != nil {
 		return nil, err
@@ -71,8 +71,8 @@ func VerifierFromKey(key *tpb.PublicKey) (Verifier, error) {
 	}, nil
 }
 
-// VerifierFromRawKey creates a verifier object from given raw key bytes.
-func VerifierFromRawKey(b []byte) (Verifier, error) {
+// NewVerifierFromRawKey creates a verifier object from given raw key bytes.
+func NewVerifierFromRawKey(b []byte) (Verifier, error) {
 	v, err := factory.NewVerifierFromBytes(b)
 	if err != nil {
 		return nil, err

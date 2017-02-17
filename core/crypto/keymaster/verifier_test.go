@@ -45,7 +45,7 @@ func TestVerifierFromPEM(t *testing.T) {
 	for _, pub := range []string{
 		testPubKey,
 	} {
-		if _, err := VerifierFromPEM([]byte(pub)); err != nil {
+		if _, err := NewVerifierFromPEM([]byte(pub)); err != nil {
 			t.Errorf("VerifierFromPEM(): %v", err)
 		}
 	}
@@ -64,8 +64,22 @@ func TestVerifierFromKey(t *testing.T) {
 				EcdsaVerifyingP256: p.Bytes,
 			},
 		}
-		if _, err := VerifierFromKey(pk); err != nil {
+		if _, err := NewVerifierFromKey(pk); err != nil {
 			t.Errorf("VerifierFromKey(): %v", err)
+		}
+	}
+}
+
+func TestVerifierFromRawKey(t *testing.T) {
+	for _, pub := range []string{
+		testPubKey,
+	} {
+		p, _ := pem.Decode([]byte(pub))
+		if p == nil {
+			t.Error("pem.Decode() failed")
+		}
+		if _, err := NewVerifierFromRawKey(p.Bytes); err != nil {
+			t.Errorf("VerifierFromRawKey(): %v", err)
 		}
 	}
 }

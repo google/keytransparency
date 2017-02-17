@@ -16,6 +16,7 @@ package keymaster
 
 import (
 	"github.com/google/keytransparency/core/crypto/signatures"
+
 	kmpb "github.com/google/keytransparency/core/proto/keymaster"
 )
 
