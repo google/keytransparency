@@ -50,7 +50,7 @@ same data is permitted.
 The signer applies the mutations in the queue to the entries contained in 
 `current_epoch - 1`. Duplicate mutations processed during the same epoch will 
 succeed. Duplicate mutations processed across epochs SHOULD fail. (Each 
-mutation should be explicit about the previoius version of data it is modifying.)
+mutation should be explicit about the previous version of data it is modifying.)
 
 To advance to the next epoch, the signer inserts an epoch advancement marker 
 into the queue and waits to receive it back on the queue before committing all 
