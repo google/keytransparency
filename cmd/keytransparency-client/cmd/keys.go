@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/signatures/p256"
+	"github.com/google/keytransparency/core/crypto/signatures/rsa"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/cobra"
@@ -103,17 +104,24 @@ var addCmd = &cobra.Command{
 		// Add either a private key, or a public key.
 		switch {
 		case generate:
+			var skPEM []byte
+			var err error
 			switch keyType {
 			case "ecdsa":
-				skPEM, _, err := p256.GeneratePEMs()
+				skPEM, _, err = p256.GeneratePEMs()
 				if err != nil {
 					return err
 				}
-				if err := addPrivateKey(skPEM, description, activate); err == nil {
+			case "rsa":
+				skPEM, _, err = rsa.GeneratePEMs()
+				if err != nil {
 					return err
 				}
 			default:
 				return fmt.Errorf("unrecognized key type %v", keyType)
+			}
+			if err := addPrivateKey(skPEM, description, activate); err == nil {
+				return err
 			}
 		case privKey != "":
 			skPEM, err := ioutil.ReadFile(privKey)
@@ -307,5 +315,5 @@ func init() {
 	addCmd.PersistentFlags().StringVar(&description, "description", "", "(Optional) Description of the added authorized key")
 	addCmd.PersistentFlags().BoolVar(&activate, "activate", false, "(Optional) Activate the added signing key")
 	addCmd.PersistentFlags().BoolVar(&generate, "generate", false, "Generate a random public and private key pair")
-	addCmd.PersistentFlags().StringVar(&keyType, "type", "", "The key type to be generated, e.g., ecdsa")
+	addCmd.PersistentFlags().StringVar(&keyType, "type", "", "The key type to be generated, e.g., ecdsa, rsa")
 }
