@@ -23,13 +23,15 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/p256"
+	ktrsa "github.com/google/keytransparency/core/crypto/signatures/rsa"
+
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // NewSignerFromBytes creates a new signing object from the private key bytes.
 func NewSignerFromBytes(b []byte) (signatures.Signer, error) {
-	if _, err := x509.ParsePKCS1PrivateKey(b); err == nil {
-		return nil, signatures.ErrUnimplemented
+	if k, err := x509.ParsePKCS1PrivateKey(b); err == nil {
+		return ktrsa.NewSigner(k)
 	} else if k, err := x509.ParseECPrivateKey(b); err == nil {
 		return p256.NewSigner(k)
 	}
@@ -55,7 +57,7 @@ func NewVerifierFromBytes(b []byte) (signatures.Verifier, error) {
 
 	switch pkType := k.(type) {
 	case *rsa.PublicKey:
-		return nil, signatures.ErrUnimplemented
+		return ktrsa.NewVerifier(pkType)
 	case *ecdsa.PublicKey:
 		return p256.NewVerifier(pkType)
 	}
@@ -72,13 +74,13 @@ func NewVerifierFromPEM(pemKey []byte) (signatures.Verifier, error) {
 	return NewVerifierFromBytes(p.Bytes)
 }
 
-// VerifierFromKey creates a verifier object from a PublicKey proto object.
+// NewVerifierFromKey creates a verifier object from a PublicKey proto object.
 func NewVerifierFromKey(key *tpb.PublicKey) (signatures.Verifier, error) {
 	switch {
 	case key.GetEd25519() != nil:
 		return nil, signatures.ErrUnimplemented
 	case key.GetRsaVerifyingSha256_3072() != nil:
-		return nil, signatures.ErrUnimplemented
+		return NewVerifierFromBytes(key.GetRsaVerifyingSha256_3072())
 	case key.GetEcdsaVerifyingP256() != nil:
 		return NewVerifierFromBytes(key.GetEcdsaVerifyingP256())
 	default:
