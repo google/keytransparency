@@ -117,7 +117,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   - `genfiles/server.crt`
   - `genfile/p256-pubkey.pem`
 
-6. Run
+6. Run the server and the signer using
 
   ```sh
   goreman start
