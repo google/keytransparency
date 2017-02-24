@@ -31,7 +31,7 @@ type verifier struct {
 	status      kmpb.VerifyingKey_KeyStatus
 }
 
-// NewVerifier creates a verifier from a ECDSA public key.
+// NewVerifier creates a verifier from a public key.
 func NewVerifier(v signatures.Verifier, addedAt time.Time,
 	description string, status kmpb.VerifyingKey_KeyStatus) Verifier {
 	return &verifier{
