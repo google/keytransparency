@@ -18,6 +18,7 @@
 package sqlhist
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"database/sql"
 	"errors"
@@ -233,7 +234,7 @@ func (m *Map) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
 	defer stmt.Close()
 
 	var value []byte
-	if err := stmt.QueryRow(m.mapID, m.nodeID(""), epoch).Scan(&value); err != nil {
+	if err := stmt.QueryRow(m.mapID, m.nodeID("").Bytes(), epoch).Scan(&value); err != nil {
 		return nil, err
 	}
 	return value, nil
@@ -292,7 +293,7 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([]s
 	nbrValues := make([]sparse.Hash, len(neighborIDs))
 	for i, nodeID := range neighborIDs {
 		var tmp []byte
-		if err := readStmt.QueryRow(m.mapID, nodeID, epoch).Scan(&tmp); err == sql.ErrNoRows {
+		if err := readStmt.QueryRow(m.mapID, nodeID.Bytes(), epoch).Scan(&tmp); err == sql.ErrNoRows {
 			nIndex, nDepth := tree.InvertBitString(neighborBIndexes[i])
 			nbrValues[i] = hasher.HashEmpty(m.mapID, nIndex, nDepth)
 		} else if err != nil {
@@ -364,7 +365,7 @@ func (m *Map) setLeafAt(ctx context.Context, index []byte, depth int, value []by
 
 	// Save new nodes.
 	for i, nodeValue := range nodeValues {
-		_, err = writeStmt.Exec(m.mapID, nodeIDs[i], epoch, nodeValue.Bytes())
+		_, err = writeStmt.Exec(m.mapID, nodeIDs[i].Bytes(), epoch, nodeValue.Bytes())
 		if err != nil {
 			return err
 		}
@@ -379,7 +380,7 @@ func (m *Map) setRootAt(txn transaction.Txn, value sparse.Hash, epoch int64) err
 		return fmt.Errorf("setRootAt(): %v", err)
 	}
 	defer writeStmt.Close()
-	_, err = writeStmt.Exec(m.mapID, m.nodeID(""), epoch, value.Bytes())
+	_, err = writeStmt.Exec(m.mapID, m.nodeID("").Bytes(), epoch, value.Bytes())
 	if err != nil {
 		return fmt.Errorf("setRootAt(): %v", err)
 	}
@@ -432,7 +433,7 @@ func (m *Map) readEpoch() (int64, error) {
 	}
 	defer stmt.Close()
 	var epoch sql.NullInt64
-	if err := stmt.QueryRow(m.mapID, m.nodeID("")).Scan(&epoch); err != nil {
+	if err := stmt.QueryRow(m.mapID, m.nodeID("").Bytes()).Scan(&epoch); err != nil {
 		return -1, fmt.Errorf("Error reading epoch: %v", err)
 	}
 	if !epoch.Valid {
@@ -442,8 +443,8 @@ func (m *Map) readEpoch() (int64, error) {
 }
 
 // Converts a list of bit strings into their node IDs.
-func (m *Map) nodeIDs(bindexes []string) [][]byte {
-	nodes := make([][]byte, len(bindexes))
+func (m *Map) nodeIDs(bindexes []string) []ID {
+	nodes := make([]ID, len(bindexes))
 	for i, bindex := range bindexes {
 		nodes[i] = m.nodeID(bindex)
 	}
@@ -451,12 +452,12 @@ func (m *Map) nodeIDs(bindexes []string) [][]byte {
 }
 
 // nodeID computes the location of a node, given its bit string index.
-func (m *Map) nodeID(bindex string) []byte {
-	h := sha256.New()
-	h.Write(m.mapID)
-	h.Write([]byte{0})
-	h.Write([]byte(bindex))
-	return h.Sum(nil)
+func (m *Map) nodeID(bindex string) ID {
+	var b bytes.Buffer
+	b.Write(m.mapID)
+	b.Write([]byte{0})
+	b.Write([]byte(bindex))
+	return ID(sha256.Sum256(b.Bytes()))
 }
 
 // PrefixLen returns the index of the last non-zero item in the list
