@@ -87,7 +87,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 
 ## Running a Key Transparency Cluster
 
-1. Install [etcd v3.0.0](https://github.com/coreos/etcd/releases/tag/v3.0.0).
+1. Install [etcd v3.1.3](https://github.com/coreos/etcd/releases/tag/v3.1.3).
 
 2. Install Key Transparency
 
