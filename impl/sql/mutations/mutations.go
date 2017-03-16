@@ -29,11 +29,11 @@ const (
 	insertMapRowExpr = `INSERT INTO Maps (MapID) VALUES (?);`
 	countMapRowExpr  = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
 	insertExpr       = `
-	INSERT INTO Mutations (MapID, Epoch, MutationID, Mutation)
+	REPLACE INTO Mutations (MapID, Epoch, MIndex, Mutation)
 	VALUES (?, ?, ?, ?);`
 	readExpr = `
 	SELECT Mutation FROM Mutations
-	WHERE MapID = ? AND Epoch = ? AND MutationID = ?;`
+	WHERE MapID = ? AND Epoch = ? AND MIndex = ?;`
 )
 
 var (
@@ -45,10 +45,11 @@ var (
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Mutations (
-		MapID      VARCHAR(32)   NOT NULL,
-		Epoch      INTEGER       NOT NULL,
-                MutationID VARBINARY(32) NOT NULL,
-		Mutation   BLOB          NOT NULL,
+		MapID    VARCHAR(32)   NOT NULL,
+		Epoch    INTEGER       NOT NULL,
+                MIndex   VARBINARY(32) NOT NULL,
+		Mutation BLOB          NOT NULL,
+		PRIMARY KEY(MapID, Epoch, MIndex),
 		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
 	);`,
 	}
@@ -77,25 +78,21 @@ func New(db *sql.DB, mapID string) (mutator.Mutation, error) {
 }
 
 // Read reads all mutations for a specific given mapID, epoch, and index.
-func (m *mutations) Read(ctx context.Context, txn transaction.Txn, epoch int64, index []byte) ([][]byte, error) {
+func (m *mutations) Read(ctx context.Context, txn transaction.Txn, epoch int64, index []byte) ([]byte, error) {
 	readStmt, err := txn.Prepare(readExpr)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := readStmt.Query(m.mapID, epoch, index)
-	defer rows.Close()
-	if err != nil {
+	defer readStmt.Close()
+
+	var mutation []byte
+	err = readStmt.QueryRow(m.mapID, epoch, index).Scan(&mutation)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
-	ms := make([][]byte, 0, 10)
-	for rows.Next() {
-		var mutation []byte
-		if err = rows.Scan(&mutation); err != nil {
-			return nil, err
-		}
-		ms = append(ms, mutation)
-	}
-	return ms, nil
+	return mutation, nil
 }
 
 // Write saves the mutation in the database.
