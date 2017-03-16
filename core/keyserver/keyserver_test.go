@@ -187,8 +187,8 @@ type fakeSparseHist struct {
 	M map[int64][]byte
 }
 
-func (*fakeSparseHist) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
-	return nil
+func (*fakeSparseHist) QueueLeaf(txn transaction.Txn, index, leaf []byte) (int64, error) {
+	return 0, nil
 }
 
 func (*fakeSparseHist) Commit(ctx context.Context) (epoch int64, err error) {

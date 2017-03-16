@@ -23,8 +23,9 @@ import (
 
 // Sparse is a temporal sparse merkle tree.
 type Sparse interface {
-	// QueueLeaf queues a leaf to be written on the next Commit().
-	QueueLeaf(txn transaction.Txn, index, leaf []byte) error
+	// QueueLeaf queues a leaf to be written on the next Commit(). QueueLeaf
+	// returns the epoch at which the leaf is queued.
+	QueueLeaf(txn transaction.Txn, index, leaf []byte) (int64, error)
 	// Commit takes all the Queued values since the last Commmit() and writes them.
 	// Commit is NOT multi-process safe. It should only be called from the sequencer.
 	Commit(ctx context.Context) (epoch int64, err error)

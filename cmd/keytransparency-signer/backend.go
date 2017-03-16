@@ -30,6 +30,7 @@ import (
 	"github.com/google/keytransparency/impl/etcd/queue"
 	"github.com/google/keytransparency/impl/sql/appender"
 	"github.com/google/keytransparency/impl/sql/engine"
+	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
@@ -101,9 +102,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create STH appender: %v", err)
 	}
-	mutations, err := appender.New(context.Background(), nil, *mapID, *mapLogURL, nil)
+	mutations, err := mutations.New(sqldb, *mapID)
 	if err != nil {
-		log.Fatalf("Failed to create mutation appender: %v", err)
+		log.Fatalf("Failed to create mutations object: %v", err)
 	}
 
 	signer := signer.New(*mapID, queue, tree, mutator, sths, mutations, openPrivateKey())

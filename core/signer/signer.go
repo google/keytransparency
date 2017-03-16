@@ -55,7 +55,7 @@ type Signer struct {
 	queue     queue.Queuer
 	mutator   mutator.Mutator
 	tree      tree.Sparse
-	mutations appender.Appender
+	mutations mutator.Mutation
 	sths      appender.Appender
 	signer    signatures.Signer
 	clock     Clock
@@ -63,7 +63,7 @@ type Signer struct {
 
 // New creates a new instance of the signer.
 func New(realm string, queue queue.Queuer, tree tree.Sparse,
-	mutator mutator.Mutator, sths, mutations appender.Appender,
+	mutator mutator.Mutator, sths appender.Appender, mutations mutator.Mutation,
 	signer signatures.Signer) *Signer {
 	return &Signer{
 		realm:     realm,
@@ -93,11 +93,6 @@ func (s *Signer) StartSigning(interval time.Duration) {
 
 // ProcessMutation saves a mutation and adds it to the append-only log and tree.
 func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index, mutation []byte) error {
-	// Send mutation to append-only log.
-	if err := s.mutations.Append(ctx, txn, 0, mutation); err != nil {
-		return fmt.Errorf("Append mutation failure %v", err)
-	}
-
 	// Get current value.
 	v, err := s.tree.ReadLeafAt(txn, index, s.tree.Epoch())
 	if err != nil {
@@ -110,9 +105,16 @@ func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index
 	}
 
 	// Save new value and update tree.
-	if err := s.tree.QueueLeaf(txn, index, newV); err != nil {
+	epoch, err := s.tree.QueueLeaf(txn, index, newV)
+	if err != nil {
 		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
+
+	// Save the mutation to the database.
+	if err := s.mutations.Write(ctx, txn, epoch, index, mutation); err != nil {
+		return fmt.Errorf("Mutation write failed: %v", err)
+	}
+
 	log.Printf("Sequenced %x", index)
 	return nil
 }

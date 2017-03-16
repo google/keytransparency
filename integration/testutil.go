@@ -33,6 +33,7 @@ import (
 	"github.com/google/keytransparency/impl/etcd/queue"
 	"github.com/google/keytransparency/impl/sql/appender"
 	"github.com/google/keytransparency/impl/sql/commitments"
+	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
@@ -167,9 +168,9 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create STH appender: %v", err)
 	}
-	mutations, err := appender.New(context.Background(), nil, mapID, "", nil)
+	mutations, err := mutations.New(sqldb, mapID)
 	if err != nil {
-		t.Fatalf("Failed to create mutation appender: %v", err)
+		t.Fatalf("Failed to create mutations object: %v", err)
 	}
 	vrfPriv, vrfPub, err := staticVRF()
 	if err != nil {

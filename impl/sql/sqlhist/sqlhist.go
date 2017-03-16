@@ -144,23 +144,24 @@ func (m *Map) Epoch() int64 {
 }
 
 // QueueLeaf should only be called by the sequencer. If txn is nil, the operation
-// will not run in a transaction.
-func (m *Map) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
+// will not run in a transaction. QueueLeaf returns the epoch at which the leaf
+// is queued.
+func (m *Map) QueueLeaf(txn transaction.Txn, index, leaf []byte) (int64, error) {
 	if got, want := len(index), size; got != want {
-		return errIndexLen
+		return -1, errIndexLen
 	}
 	if leaf == nil {
-		return errNilLeaf
+		return -1, errNilLeaf
 	}
 
 	// Write leaf nodes
 	stmt, err := txn.Prepare(queueExpr)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(m.mapID, index, m.epoch+1, leaf)
-	return err
+	return m.epoch + 1, err
 }
 
 type leafRow struct {
