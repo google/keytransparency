@@ -13,10 +13,16 @@
 // limitations under the License.
 
 // Package mutator defines the operations to transform mutations into changes in
-// the map.
+// the map as well as operations to write and read mutations to and from the
+// database.
 package mutator
 
-import "errors"
+import (
+	"context"
+	"errors"
+
+	"github.com/google/keytransparency/core/transaction"
+)
 
 var (
 	// MaxMutationSize represent the maximum allowed mutation size in bytes.
@@ -44,4 +50,12 @@ type Mutator interface {
 	CheckMutation(value, mutation []byte) error
 	// Mutate applies mutation to value
 	Mutate(value, mutation []byte) ([]byte, error)
+}
+
+// Mutation reads and writes mutations to the database.
+type Mutation interface {
+	// Read reads all mutations for a specific given mapID, epoch, and index.
+	Read(ctx context.Context, txn transaction.Txn, epoch int64, index []byte) ([][]byte, error)
+	// Write saves the mutation in the database.
+	Write(ctx context.Context, txn transaction.Txn, epoch int64, index, mutation []byte) error
 }

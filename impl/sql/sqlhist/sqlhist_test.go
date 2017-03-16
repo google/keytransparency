@@ -80,7 +80,7 @@ func TestQueueLeaf(t *testing.T) {
 			t.Errorf("factory.NewDBTxn() failed: %v", err)
 			continue
 		}
-		err = tree.QueueLeaf(txn, []byte(tc.index), tc.leaf)
+		_, err = tree.QueueLeaf(txn, []byte(tc.index), tc.leaf)
 		if got := err == nil; got != tc.want {
 			t.Errorf("QueueLeaf(%v, %v): %v, want %v", tc.index, tc.leaf, got, tc.want)
 			continue
@@ -122,7 +122,7 @@ func TestEpochNumAdvance(t *testing.T) {
 				t.Errorf("factory.NewDBTxn() failed: %v", err)
 				continue
 			}
-			if err := tree.QueueLeaf(txn, []byte(tc.index), []byte(tc.leaf)); err != nil {
+			if _, err := tree.QueueLeaf(txn, []byte(tc.index), []byte(tc.leaf)); err != nil {
 				t.Errorf("QueueLeaf(%v, %v): %v", tc.index, tc.leaf, err)
 				continue
 			}
@@ -164,7 +164,7 @@ func TestQueueCommitRead(t *testing.T) {
 			t.Errorf("factory.NewDBTxn() failed: %v", err)
 			continue
 		}
-		if err := m.QueueLeaf(txn, index, data); err != nil {
+		if _, err := m.QueueLeaf(txn, index, data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", index, data, err)
 			continue
 		}
@@ -266,7 +266,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 			t.Errorf("factory.NewDBTxn() failed: %v", err)
 			continue
 		}
-		if err := m.QueueLeaf(txn, tc.index, data); err != nil {
+		if _, err := m.QueueLeaf(txn, tc.index, data); err != nil {
 			t.Errorf("WriteLeaf(%v, %v)=%v", tc.index, data, err)
 			continue
 		}
@@ -332,7 +332,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 				t.Errorf("factory.NewDBTxn() failed: %v", err)
 				continue
 			}
-			if err := m.QueueLeaf(txn, leaf.index, []byte(leaf.data)); err != nil {
+			if _, err := m.QueueLeaf(txn, leaf.index, []byte(leaf.data)); err != nil {
 				t.Errorf("WriteLeaf(%v, %v)=%v", leaf.index, leaf.data, err)
 				continue
 			}
@@ -434,7 +434,7 @@ func createTree(db *sql.DB, mapID string, leafs []leaf) (*Map, error) {
 			return nil, fmt.Errorf("factory.NewDBTxn() failed: %v", err)
 		}
 		value := []byte(l.value)
-		if err := m.QueueLeaf(txn, l.index, value); err != nil {
+		if _, err := m.QueueLeaf(txn, l.index, value); err != nil {
 			return nil, fmt.Errorf("QueueLeaf(%v)=%v", l.index, err)
 		}
 		if err := txn.Commit(); err != nil {
