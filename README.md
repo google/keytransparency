@@ -36,7 +36,6 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 2. Install prerequisites, Key Transparency client code, and sync all dependencies
 
   ```sh
-  apt-get install build-essential libssl-dev
   go get -u github.com/kardianos/govendor
   go get -u github.com/google/keytransparency/cmd/...
   cd $GOPATH/src/github.com/google/keytransparency
@@ -87,12 +86,13 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 
 ## Running a Key Transparency Cluster
 
-1. Install [etcd v3.1.3](https://github.com/coreos/etcd/releases/tag/v3.1.3).
+1. Install 
+- [Etcd v3.1.3](https://github.com/coreos/etcd/releases/tag/v3.1.3).
+- [OpenSSL](https://www.openssl.org/community/binaries.html)
 
 2. Install Key Transparency
 
   ```sh
-  apt-get install build-essential libssl-dev
   go get -u github.com/mattn/goreman
   go get -u github.com/kardianos/govendor
   go get -u github.com/google/keytransparency/...
