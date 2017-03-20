@@ -81,14 +81,26 @@ https://<host>/v1/users/user_id
 {
   "entry_update": {
     "update": {
-      "// serialized(KeyValue{email: serialized(Entry{ commitment }})"
-      "key_value": "CiAhWorzTMne08bTtf9tfha0ouSWD7hb2z8GLNwwyXVgyBIiCiAnVXbqdmof99bSQH5jieVmdAd8Ooss0gL8OPwF6DBb5A==",
-      "previous": "SJT3BgccSMEbSR0ZqjLHYhcXe+P04S00g1Kmktj4z8I="
+      "key_value": {
+        "//   key: VRF Index obtained via a GET operation"
+	"key": "BtVQb1P7Em+lTUKEH3c5lw==",
+        "//   value: ProtoSerialize(Entry{ "
+        "//      commitment: HMAC(comitted.key, committed.data),"
+        "//      authorized_keys: authorized_keys, "
+        "//    })"
+        "value": "CiAhWorzTMne08bTtf9tfha0ouSWD7hb2z8GLNwwyXVgyBIiCiAnVXbqdmof99bSQH5jieVmdAd8Ooss0gL8OPwF6DBb5A==",
+      },
+      "// signatures is a map from key ids to signatures on key_value"
+      "signatures": {"k": "1234", "v": "SJT3BgccSMEbSR0ZqjLHYhcXe+P04S00g1Kmktj4z8I="},
+      "// ObjectHash of previous entry."
+      "previous": "SJT3BgccSMEbSR0ZqjLHYhcXe+P04S00g1Kmktj4z8I=" 
     },
     "committed": {
+      "// key is a random 16 byte value" 
       "key": "BtVQb1P7Em+lTUKEH3c5lw==",
-      "data": "CgwKBGFwcDESBHRlc3QKDAoEYXBwMhIEdGVzdA=="
-    }
+      "// data = ProtoSerialize(Profile(your key data))"
+      "data": "CgwKBGFwcDESBHRlc3QKDAoEYXBwMhIEdGVzdA==",
+    },
   }
 }
 ```
