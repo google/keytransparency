@@ -85,7 +85,7 @@ https://<host>/v1/users/user_id
         "//   key: VRF Index obtained via a GET operation"
 	"key": "BtVQb1P7Em+lTUKEH3c5lw==",
         "//   value: ProtoSerialize(Entry{ "
-        "//      commitment: HMAC(comitted.key, committed.data),"
+        "//      commitment: HMAC(committed.key, committed.data),"
         "//      authorized_keys: authorized_keys, "
         "//    })"
         "value": "CiAhWorzTMne08bTtf9tfha0ouSWD7hb2z8GLNwwyXVgyBIiCiAnVXbqdmof99bSQH5jieVmdAd8Ooss0gL8OPwF6DBb5A==",

@@ -58,7 +58,6 @@ var (
 type Commitments struct {
 	mapID []byte
 	db    *sql.DB
-	epoch int64 // The currently valid epoch. Insert at epoch+1.
 }
 
 // New returns a new SQL backed commitment db.
