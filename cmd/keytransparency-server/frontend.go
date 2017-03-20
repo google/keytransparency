@@ -37,8 +37,10 @@ import (
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/google/trillian"
-	"github.com/google/trillian/extension/builtin"
+	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/extension"
 	"github.com/google/trillian/server"
+	"github.com/google/trillian/storage/mysql"
 	"github.com/google/trillian/util"
 
 	"github.com/coreos/etcd/clientv3"
@@ -67,11 +69,12 @@ var (
 )
 
 func newLogServer(db *sql.DB) (*server.TrillianLogRPCServer, error) {
-	timesource := &util.SystemTimeSource{}
-	registry, err := builtin.NewExtensionRegistry(db, nil)
-	if err != nil {
-		return nil, err
+	registry := extension.Registry{
+		AdminStorage:  mysql.NewAdminStorage(db),
+		SignerFactory: keys.PEMSignerFactory{},
+		LogStorage:    mysql.NewLogStorage(db),
 	}
+	timesource := &util.SystemTimeSource{}
 
 	return server.NewTrillianLogRPCServer(registry, timesource), nil
 }
