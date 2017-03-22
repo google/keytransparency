@@ -47,7 +47,7 @@ import (
 
 const (
 	clusterSize = 1
-	mapID       = "testID"
+	mapID       = 0
 )
 
 // NewDB creates a new in-memory database for testing.

@@ -42,7 +42,8 @@ var (
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
 	epochDuration = flag.Uint("period", 60, "Seconds between epoch creation")
-	mapID         = flag.String("domain", "example.com", "Distinguished name for this key server")
+	domain        = flag.String("domain", "example.com", "Distinguished name for this key server")
+	mapID         = flag.Int64("mapid", 0, "ID for backend map")
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 	signingKey    = flag.String("key", "", "Path to private key PEM for STH signing")
 )
@@ -107,7 +108,7 @@ func main() {
 		log.Fatalf("Failed to create mutations object: %v", err)
 	}
 
-	signer := signer.New(*mapID, queue, tree, mutator, sths, mutations, openPrivateKey())
+	signer := signer.New(*domain, queue, tree, mutator, sths, mutations, openPrivateKey())
 	if _, err := queue.StartReceiving(signer.ProcessMutation, signer.CreateEpoch); err != nil {
 		log.Fatalf("failed to start queue receiver: %v", err)
 	}

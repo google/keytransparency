@@ -55,6 +55,7 @@ type Mutator interface {
 // Mutation reads and writes mutations to the database.
 type Mutation interface {
 	// Read reads all mutations for a specific given mapID, epoch, and index.
+	// TODO(cesarghali): Add mapID to this interface.
 	Read(ctx context.Context, txn transaction.Txn, epoch int64, index []byte) ([]byte, error)
 	// Write saves the mutation in the database.
 	Write(ctx context.Context, txn transaction.Txn, epoch int64, index, mutation []byte) error

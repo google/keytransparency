@@ -42,7 +42,7 @@ type Hash [HashSize]byte
 // NodeValues computes the new values for leafs up the tree. nbrValues must not
 // be compressed. value is the actual value of the leaf. NodeValues returns the
 // leaf hash as part of the returned list.
-func NodeValues(mapID []byte, hasher TreeHasher, bindex string, value []byte, nbrValues []Hash) []Hash {
+func NodeValues(mapID int64, hasher TreeHasher, bindex string, value []byte, nbrValues []Hash) []Hash {
 	levels := len(bindex) + 1
 	steps := len(bindex)
 	nodeValues := make([]Hash, levels)

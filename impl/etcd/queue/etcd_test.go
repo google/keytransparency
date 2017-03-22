@@ -30,7 +30,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-const mapID = "test_map"
+const mapID = 1
 
 var clusterSize = 3
 

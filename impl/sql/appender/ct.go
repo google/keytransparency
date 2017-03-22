@@ -68,7 +68,7 @@ var (
 
 // CTAppender stores objects in a local table and submits them to an append-only log.
 type CTAppender struct {
-	mapID []byte
+	mapID int64
 	db    *sql.DB
 	ctlog *client.LogClient
 	send  bool
@@ -78,9 +78,9 @@ type CTAppender struct {
 // New creates a new client to an append-only data structure: Certificate
 // Transparency (CT). hc is the underlying HTTP client use to communicated with
 // CT. If hc is nil, CT will create a default HTTP client.
-func New(ctx context.Context, db *sql.DB, mapID, logURL string, hc *http.Client) (*CTAppender, error) {
+func New(ctx context.Context, db *sql.DB, mapID int64, logURL string, hc *http.Client) (*CTAppender, error) {
 	a := &CTAppender{
-		mapID: []byte(mapID),
+		mapID: mapID,
 		db:    db,
 		save:  db != nil,
 		send:  logURL != "",

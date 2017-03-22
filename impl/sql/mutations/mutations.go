@@ -56,14 +56,14 @@ var (
 )
 
 type mutations struct {
-	mapID []byte
+	mapID int64
 	db    *sql.DB
 }
 
 // New creates a new mutations instance.
-func New(db *sql.DB, mapID string) (mutator.Mutation, error) {
+func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 	m := &mutations{
-		mapID: []byte(mapID),
+		mapID: mapID,
 		db:    db,
 	}
 

@@ -89,11 +89,11 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(mapID string, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier signatures.Verifier, log ctlog.Verifier) *Client {
+func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier signatures.Verifier, log ctlog.Verifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, tv.New([]byte(mapID), sparse.CONIKSHasher), verifier, log),
+		kt:         kt.New(vrf, tv.New(mapID, sparse.CONIKSHasher), verifier, log),
 		CT:         log,
 		mutator:    entry.New(),
 		RetryCount: 1,

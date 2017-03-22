@@ -139,19 +139,19 @@ func (s *KeyMaster) AddSigningKey(status kmpb.SigningKey_KeyStatus, description 
 	}
 	signer := NewSigner(sig, time.Now(), description, status)
 
-	mapID := signer.KeyID()
-	if _, ok := s.signers[mapID]; ok {
-		return "", fmt.Errorf("key with ID %v already exists", mapID)
+	keyID := signer.KeyID()
+	if _, ok := s.signers[keyID]; ok {
+		return "", fmt.Errorf("key with ID %v already exists", keyID)
 	}
-	s.signers[mapID] = signer
+	s.signers[keyID] = signer
 
 	// Activate the added signing key.
 	if status == kmpb.SigningKey_ACTIVE {
-		if err := s.Activate(mapID); err != nil {
+		if err := s.Activate(keyID); err != nil {
 			return "", err
 		}
 	}
-	return mapID, nil
+	return keyID, nil
 }
 
 // AddVerifyingKey adds a new public key to the store.
@@ -162,13 +162,13 @@ func (s *KeyMaster) AddVerifyingKey(description string, key []byte) (string, err
 	}
 	verifier := NewVerifier(v, time.Now(), description, kmpb.VerifyingKey_ACTIVE)
 
-	mapID := verifier.KeyID()
-	if _, ok := s.verifiers[mapID]; ok {
-		return "", fmt.Errorf("key with ID %v already exists", mapID)
+	keyID := verifier.KeyID()
+	if _, ok := s.verifiers[keyID]; ok {
+		return "", fmt.Errorf("key with ID %v already exists", keyID)
 	}
-	s.verifiers[mapID] = verifier
+	s.verifiers[keyID] = verifier
 
-	return mapID, nil
+	return keyID, nil
 }
 
 // RemoveSigningKey marks a private key as deprecated. Keys are not permanently

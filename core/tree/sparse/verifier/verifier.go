@@ -38,13 +38,16 @@ var (
 
 // Verifier represents a sparse tree proof verifier object.
 type Verifier struct {
-	mapID  []byte
+	mapID  int64
 	hasher sparse.TreeHasher
 }
 
 // New returns a new tree proofs verifier object.
-func New(mapID []byte, hasher sparse.TreeHasher) *Verifier {
-	return &Verifier{mapID, hasher}
+func New(mapID int64, hasher sparse.TreeHasher) *Verifier {
+	return &Verifier{
+		mapID:  mapID,
+		hasher: hasher,
+	}
 }
 
 // VerifyProof verifies a tree proof of a given leaf at a given index based on
@@ -61,8 +64,9 @@ func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf []byte, root spar
 	}
 
 	// Verify that calculated and provided roots match.
-	if !bytes.Equal(calculatedRoot.Bytes(), root.Bytes()) {
-		return ErrInvalidProof
+	if got, want := calculatedRoot.Bytes(), root.Bytes(); !bytes.Equal(got, want) {
+		return fmt.Errorf("got \n%x, want \n%x", got, want)
+		//return ErrInvalidProof
 	}
 
 	return nil

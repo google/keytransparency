@@ -56,15 +56,15 @@ var (
 
 // Commitments stores cryptographic commitments.
 type Commitments struct {
-	mapID []byte
+	mapID int64
 	db    *sql.DB
 	epoch int64 // The currently valid epoch. Insert at epoch+1.
 }
 
 // New returns a new SQL backed commitment db.
-func New(db *sql.DB, mapID string) (*Commitments, error) {
+func New(db *sql.DB, mapID int64) (*Commitments, error) {
 	c := &Commitments{
-		mapID: []byte(mapID),
+		mapID: mapID,
 		db:    db,
 	}
 
