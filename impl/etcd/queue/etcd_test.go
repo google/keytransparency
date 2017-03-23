@@ -75,7 +75,7 @@ func TestStartReceiving(t *testing.T) {
 	// StartReceiving setup.
 	var done sync.WaitGroup
 	done.Add(len(mitems))
-	processFunc := func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
+	processFunc := func(ctx context.Context, txn ctxn.Txn, sequence uint64, key, value []byte) error {
 		if v, ok := mitems[string(key)]; !ok {
 			t.Errorf("Receive key %v was not enqueued", key)
 		} else {
@@ -113,7 +113,7 @@ func TestProcessEntry(t *testing.T) {
 	// Setup
 	var pCounter, aCounter int
 	cbs := callbacks{
-		func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
+		func(ctx context.Context, txn ctxn.Txn, sequence uint64, key, value []byte) error {
 			pCounter++
 			return nil
 		},
@@ -180,7 +180,7 @@ func TestKVTimeout(t *testing.T) {
 	}
 
 	cbs := callbacks{
-		func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
+		func(ctx context.Context, txn ctxn.Txn, sequence uint64, key, value []byte) error {
 			return nil
 		},
 		func(ctx context.Context, txn ctxn.Txn) error {

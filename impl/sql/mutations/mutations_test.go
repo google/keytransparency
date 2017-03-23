@@ -37,26 +37,25 @@ func newDB(t testing.TB) *sql.DB {
 
 func fillDB(t *testing.T, ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory) {
 	for _, mtn := range []struct {
-		epoch    int64
 		index    []byte
 		mutation []byte
 	}{
-		{1, []byte("index1"), []byte("mutation1")},
-		{2, []byte("index2"), []byte("mutation2")},
+		{[]byte("index1"), []byte("mutation1")},
+		{[]byte("index2"), []byte("mutation2")},
 	} {
-		if err := write(ctx, m, factory, mtn.epoch, mtn.index, mtn.mutation); err != nil {
-			t.Errorf("failed to write mutation to database, epoch=%v, mutation=%v, mutation=%v: %v", mtn.epoch, mtn.index, mtn.mutation, err)
+		if err := write(ctx, m, factory, mtn.index, mtn.mutation); err != nil {
+			t.Errorf("failed to write mutation to database, mutation=%v, mutation=%v: %v", mtn.index, mtn.mutation, err)
 		}
 	}
 }
 
-func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, epoch int64, index []byte, mutation []byte) error {
+func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, index []byte, mutation []byte) error {
 	wtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
 	}
-	if err := m.Write(ctx, wtxn, epoch, index, mutation); err != nil {
-		return fmt.Errorf("Write(%v, %v, %v): %v, want nil", epoch, index, mutation, err)
+	if _, err := m.Write(ctx, wtxn, 0, index, mutation); err != nil {
+		return fmt.Errorf("Write(%v, %v): %v, want nil", index, mutation, err)
 	}
 	if err := wtxn.Commit(); err != nil {
 		return fmt.Errorf("wtxn.Commit() failed: %v", err)
@@ -64,14 +63,14 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 	return nil
 }
 
-func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, epoch int64, index []byte) ([]byte, error) {
+func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, sequence uint64, index []byte) ([]byte, error) {
 	rtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
-	mutation, err := m.Read(ctx, rtxn, epoch, index)
+	mutation, err := m.Read(ctx, rtxn, sequence, index)
 	if err != nil {
-		return nil, fmt.Errorf("Read(%v, %v): %v, want nil", epoch, index, err)
+		return nil, fmt.Errorf("Read(%v, %v): %v, want nil", sequence, index, err)
 	}
 	if err := rtxn.Commit(); err != nil {
 		return nil, fmt.Errorf("rtxn.Commit() failed: %v", err)
@@ -91,53 +90,19 @@ func TestRead(t *testing.T) {
 
 	for _, tc := range []struct {
 		description string
-		epoch       int64
+		sequence    uint64
 		index       []byte
-		rMutation   []byte
+		mutation    []byte
 	}{
 		{"read a single mutation", 1, []byte("index1"), []byte("mutation1")},
-		{"non-existing epoch", 100, []byte("index1"), nil},
+		{"non-existing sequence", 100, []byte("index1"), nil},
 		{"non-existing index", 1, []byte("index100"), nil},
 	} {
-		mutation, err := read(ctx, m, factory, tc.epoch, tc.index)
+		mutation, err := read(ctx, m, factory, tc.sequence, tc.index)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
-		if got, want := mutation, tc.rMutation; !reflect.DeepEqual(got, want) {
-			t.Errorf("%v: mutation=%v, want %v", tc.description, got, want)
-		}
-	}
-}
-
-func TestOverwriteMutation(t *testing.T) {
-	ctx := context.Background()
-	db := newDB(t)
-	factory := testutil.NewFakeFactory(db)
-	m, err := New(db, mapID)
-	if err != nil {
-		t.Fatalf("Failed to create mutations: %v", err)
-	}
-	fillDB(t, ctx, m, factory)
-
-	for _, tc := range []struct {
-		description string
-		epoch       int64
-		index       []byte
-		wMutation   []byte
-		rMutation   []byte
-	}{
-		{"overwrite epoch 2 mutation", 2, []byte("index2"), []byte("mutation3"), []byte("mutation3")},
-		{"overwrite epoch 2 mutation again", 2, []byte("index2"), []byte("mutation4"), []byte("mutation4")},
-	} {
-		if err := write(ctx, m, factory, tc.epoch, tc.index, tc.wMutation); err != nil {
-			t.Errorf("%v: failed to write mutation: %v", tc.description, err)
-		}
-
-		mutation, err := read(ctx, m, factory, tc.epoch, tc.index)
-		if err != nil {
-			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
-		}
-		if got, want := mutation, tc.rMutation; !reflect.DeepEqual(got, want) {
+		if got, want := mutation, tc.mutation; !reflect.DeepEqual(got, want) {
 			t.Errorf("%v: mutation=%v, want %v", tc.description, got, want)
 		}
 	}

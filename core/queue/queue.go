@@ -42,7 +42,7 @@ type Receiver interface {
 }
 
 // ProcessKeyValueFunc is a function that processes a mutation.
-type ProcessKeyValueFunc func(ctx context.Context, txn transaction.Txn, key, value []byte) error
+type ProcessKeyValueFunc func(ctx context.Context, txn transaction.Txn, sequence uint64, key, value []byte) error
 
 // AdvanceEpochFunc is a function that advances the epoch.
 type AdvanceEpochFunc func(ctx context.Context, txn transaction.Txn) error

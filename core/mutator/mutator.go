@@ -53,10 +53,14 @@ type Mutator interface {
 }
 
 // Mutation reads and writes mutations to the database.
+// TODO: Add mapID to this interface to support multiple maps per server.
 type Mutation interface {
-	// Read reads all mutations for a specific given mapID, epoch, and index.
-	// TODO(cesarghali): Add mapID to this interface to support multiple maps per server.
-	Read(ctx context.Context, txn transaction.Txn, epoch int64, index []byte) ([]byte, error)
-	// Write saves the mutation in the database.
-	Write(ctx context.Context, txn transaction.Txn, epoch int64, index, mutation []byte) error
+	// Read reads all mutations for a specific given mapID, sequence, and
+	// index.
+	Read(ctx context.Context, txn transaction.Txn, sequence uint64, index []byte) ([]byte, error)
+	// Write saves the mutation in the database. Sequence might not be used
+	// by all databases engines. For instance, in MySQL and SQLite, sequence
+	// numbers are automatically added at the database level. Write returns
+	// the sequence number that is written.
+	Write(ctx context.Context, txn transaction.Txn, sequence uint64, index, mutation []byte) (uint64, error)
 }
