@@ -21,7 +21,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	ctmap "github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
@@ -65,7 +64,7 @@ func TestVerifyCommitment(t *testing.T) {
 	} {
 		resp := &tpb.GetEntryResponse{
 			Committed: tc.committed,
-			LeafProof: &ctmap.GetLeafResponse{
+			LeafProof: &tpb.LeafProof{
 				LeafData: tc.entryData,
 			},
 		}
