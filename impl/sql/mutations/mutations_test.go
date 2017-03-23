@@ -27,7 +27,7 @@ import (
 
 const mapID = 0
 
-func NewDB(t testing.TB) *sql.DB {
+func newDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
@@ -67,7 +67,7 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, epoch int64, index []byte) ([]byte, error) {
 	rtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create write transaction: %v", err)
+		return nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
 	mutation, err := m.Read(ctx, rtxn, epoch, index)
 	if err != nil {
@@ -81,7 +81,7 @@ func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory
 
 func TestRead(t *testing.T) {
 	ctx := context.Background()
-	db := NewDB(t)
+	db := newDB(t)
 	factory := testutil.NewFakeFactory(db)
 	m, err := New(db, mapID)
 	if err != nil {
@@ -111,7 +111,7 @@ func TestRead(t *testing.T) {
 
 func TestOverwriteMutation(t *testing.T) {
 	ctx := context.Background()
-	db := NewDB(t)
+	db := newDB(t)
 	factory := testutil.NewFakeFactory(db)
 	m, err := New(db, mapID)
 	if err != nil {
