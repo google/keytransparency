@@ -65,8 +65,7 @@ func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf []byte, root spar
 
 	// Verify that calculated and provided roots match.
 	if got, want := calculatedRoot.Bytes(), root.Bytes(); !bytes.Equal(got, want) {
-		return fmt.Errorf("got \n%x, want \n%x", got, want)
-		//return ErrInvalidProof
+		return ErrInvalidProof
 	}
 
 	return nil
