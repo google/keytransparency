@@ -135,7 +135,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		VrfProof:  proof,
 		Committed: committed,
 		// Leaf proof in sparse merkle tree.
-		LeafProof: &ctmap.GetLeafResponse{
+		LeafProof: &tpb.LeafProof{
 			LeafData:  leaf,
 			Neighbors: neighbors,
 		},
