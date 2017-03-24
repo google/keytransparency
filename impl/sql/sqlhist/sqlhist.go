@@ -35,12 +35,12 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   VARCHAR(32) NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Leaves (
-		MapID   VARCHAR(32)   NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		LeafID  VARBINARY(32) NOT NULL,
 		Version INTEGER       NOT NULL,
 		Data    BLOB          NOT NULL,
@@ -49,7 +49,7 @@ var (
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Nodes (
-		MapID   VARCHAR(32)   NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		NodeID  VARBINARY(32) NOT NULL,
 		Version	INTEGER       NOT NULL,
 		Value	BLOB(32)      NOT NULL,

@@ -49,12 +49,12 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   VARCHAR(32) NOT NULL,
+		MapID   BIGINT NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS SMH (
-		MapID   VARCHAR(32) NOT NULL,
+		MapID   BIGINT      NOT NULL,
 		Epoch   INTEGER     NOT NULL,
 		Data    BLOB(1024)  NOT NULL,
 		SCT     BLOB(1024)  NOT NULL,
