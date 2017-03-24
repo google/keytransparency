@@ -99,6 +99,15 @@ message SignedKV {
   bytes previous = 3;
 }
 
+// LeafProof for a verifiable map leaf.
+message LeafProof {
+  // leaf_data contains an entry stored in the leaf node.
+  bytes leaf_data = 1;
+  // neighbors is a list of all the adjacent nodes along the path
+  // from the deepest node to the head.
+  repeated bytes neighbors = 2;
+}
+
 //
 // RPC request/response messages.
 //
@@ -130,7 +139,7 @@ message GetEntryResponse {
 
   // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle
   // Tree.
-  ctmap.GetLeafResponse leaf_proof = 5;
+  LeafProof leaf_proof = 5;
   // smh contains the signed map head for the sparse Merkle Tree.
   // smh is also stored in the append only log.
   ctmap.SignedMapHead smh = 6;
