@@ -36,13 +36,6 @@ import (
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
-	"github.com/google/trillian"
-	"github.com/google/trillian/crypto/keys"
-	"github.com/google/trillian/extension"
-	"github.com/google/trillian/server"
-	"github.com/google/trillian/storage/mysql"
-	"github.com/google/trillian/util"
-
 	"github.com/coreos/etcd/clientv3"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -67,17 +60,6 @@ var (
 	certFile      = flag.String("cert", "testdata/server.pem", "TLS cert file")
 	verbose       = flag.Bool("verbose", false, "Log requests and responses")
 )
-
-func newLogServer(db *sql.DB) (*server.TrillianLogRPCServer, error) {
-	registry := extension.Registry{
-		AdminStorage:  mysql.NewAdminStorage(db),
-		SignerFactory: keys.PEMSignerFactory{},
-		LogStorage:    mysql.NewLogStorage(db),
-	}
-	timesource := &util.SystemTimeSource{}
-
-	return server.NewTrillianLogRPCServer(registry, timesource), nil
-}
 
 func openDB() *sql.DB {
 	db, err := sql.Open(engine.DriverName, *serverDBPath)
@@ -218,12 +200,6 @@ func main() {
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
-	// Create Trillian server.
-	logServer, err := newLogServer(sqldb)
-	if err != nil {
-		log.Fatalf("Failed to create trillian log server: %v", err)
-	}
-
 	// Create gRPC server.
 	svr := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth, factory)
 	opts := []grpc.ServerOption{grpc.Creds(creds)}
@@ -232,7 +208,6 @@ func main() {
 	}
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
-	trillian.RegisterTrillianLogServer(grpcServer, logServer)
 	reflection.Register(grpcServer)
 
 	// Create HTTP handlers and gRPC gateway.
