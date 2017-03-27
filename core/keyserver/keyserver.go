@@ -108,6 +108,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	neighbors, err := s.tree.NeighborsAt(txn, index[:], epoch)
 	if err != nil {
 		log.Printf("Cannot get neighbors list: %v", err)
+		txn.Rollback()
 		return nil, grpc.Errorf(codes.Internal, "Cannot get neighbors list")
 	}
 
@@ -115,6 +116,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	leaf, err := s.tree.ReadLeafAt(txn, index[:], epoch)
 	if err != nil {
 		log.Printf("Cannot read leaf entry: %v", err)
+		txn.Rollback()
 		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
 	}
 

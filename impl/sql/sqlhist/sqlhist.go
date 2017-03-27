@@ -35,12 +35,12 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   VARCHAR(32) NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Leaves (
-		MapID   VARCHAR(32)   NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		LeafID  VARBINARY(32) NOT NULL,
 		Version INTEGER       NOT NULL,
 		Data    BLOB          NOT NULL,
@@ -49,7 +49,7 @@ var (
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Nodes (
-		MapID   VARCHAR(32)   NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		NodeID  VARBINARY(32) NOT NULL,
 		Version	INTEGER       NOT NULL,
 		Value	BLOB(32)      NOT NULL,
@@ -270,9 +270,6 @@ func (m *Map) ReadLeafAt(txn transaction.Txn, index []byte, epoch int64) ([]byte
 func (m *Map) NeighborsAt(txn transaction.Txn, index []byte, epoch int64) ([][]byte, error) {
 	nbrs, err := m.neighborsAt(txn, index, maxDepth, epoch)
 	if err != nil {
-		if rbErr := txn.Rollback(); rbErr != nil {
-			err = fmt.Errorf("neighborsAt failed: %v, and Rollback failed: %v", err, rbErr)
-		}
 		return nil, err
 	}
 	cNbrs := compressNeighbors(m.mapID, nbrs, index, maxDepth)
@@ -340,14 +337,6 @@ func (m *Map) setLeafAt(tx transaction.Txn, index []byte, depth int, value []byt
 	// Set the node
 	// Compute new values
 	// Set those values.
-
-	defer func() {
-		if returnErr != nil {
-			if rbErr := tx.Rollback(); rbErr != nil {
-				returnErr = fmt.Errorf("setLeafAt failed: %v, and Rollback failed: %v", returnErr, rbErr)
-			}
-		}
-	}()
 
 	writeStmt, err := tx.Prepare(setNodeExpr)
 	if err != nil {
