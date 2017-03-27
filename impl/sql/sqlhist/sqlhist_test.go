@@ -381,6 +381,7 @@ func TestNeighborDepth(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
+	factory := testutil.NewFakeFactory(db)
 	// Construct a tree of the following form:
 	//     r
 	//       a
@@ -411,9 +412,17 @@ func TestNeighborDepth(t *testing.T) {
 		{m1, dh(defaultIndex[1]), 2},
 		{m2, dh(defaultIndex[0]), 0},
 	} {
-		nbrs, _ := tc.m.NeighborsAt(ctx, tc.index, 0)
+
+		txn, err := factory.NewDBTxn(ctx)
+		if err != nil {
+			t.Errorf("factory.NewDBTxn() failed: %v", err)
+		}
+		nbrs, _ := tc.m.NeighborsAt(txn, tc.index, 0)
 		if got, want := len(nbrs), maxDepth; got != want {
 			t.Errorf("len(nbrs): %v, want %v", got, want)
+		}
+		if err := txn.Commit(); err != nil {
+			t.Errorf("txn.Commit() failed: %v", err)
 		}
 		if got := PrefixLen(nbrs); got != tc.depth {
 			t.Errorf("PrefixLen(NeighborsAt(%v))=%v, want %v", tc.index, got, tc.depth)

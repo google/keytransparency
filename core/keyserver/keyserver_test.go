@@ -212,7 +212,7 @@ func (f *fakeSparseHist) ReadLeafAt(txn transaction.Txn, index []byte, epoch int
 	return entryData, nil
 }
 
-func (*fakeSparseHist) NeighborsAt(ctx context.Context, index []byte, epoch int64) ([][]byte, error) {
+func (*fakeSparseHist) NeighborsAt(txn transaction.Txn, index []byte, epoch int64) ([][]byte, error) {
 	return nil, nil
 }
 
