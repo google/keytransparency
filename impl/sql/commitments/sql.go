@@ -39,12 +39,12 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   VARCHAR(32) NOT NULL,
+		MapID   BIGINT NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Commitments (
-		MapID      VARCHAR(32)   NOT NULL,
+		MapID      BIGINT        NOT NULL,
 		Commitment VARBINARY(32) NOT NULL,
 		Value      BLOB(1024)    NOT NULL,
 		PRIMARY KEY(MapID, Commitment),
@@ -56,14 +56,14 @@ var (
 
 // Commitments stores cryptographic commitments.
 type Commitments struct {
-	mapID []byte
+	mapID int64
 	db    *sql.DB
 }
 
 // New returns a new SQL backed commitment db.
-func New(db *sql.DB, mapID string) (*Commitments, error) {
+func New(db *sql.DB, mapID int64) (*Commitments, error) {
 	c := &Commitments{
-		mapID: []byte(mapID),
+		mapID: mapID,
 		db:    db,
 	}
 

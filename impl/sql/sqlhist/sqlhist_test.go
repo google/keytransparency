@@ -57,7 +57,7 @@ func TestQueueLeaf(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	tree, err := New(ctx, db, "test", factory)
+	tree, err := New(ctx, db, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestEpochNumAdvance(t *testing.T) {
 		{"", "", 4, false},
 		{"", "", 5, false},
 	} {
-		tree, err := New(ctx, db, "test", factory)
+		tree, err := New(ctx, db, 0, factory)
 		if err != nil {
 			t.Fatalf("Failed to create SQL history: %v", err)
 		}
@@ -148,7 +148,7 @@ func TestQueueCommitRead(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	m, err := New(ctx, db, "test", factory)
+	m, err := New(ctx, db, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestReadNotFound(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	m, err := New(ctx, db, "test", factory)
+	m, err := New(ctx, db, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	m, err := New(ctx, db, "test", factory)
+	m, err := New(ctx, db, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -321,7 +321,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 	}
 	roots := make([][]byte, len(leafs))
 	for i := range roots {
-		m, err := New(ctx, db, "testMap", factory)
+		m, err := New(ctx, db, 0, factory)
 		if err != nil {
 			t.Fatalf("Failed to create SQL history: %v", err)
 		}
@@ -385,7 +385,7 @@ func TestNeighborDepth(t *testing.T) {
 	//     r
 	//       a
 	//      3  4
-	m1, err := createTree(db, "test1", []leaf{
+	m1, err := createTree(db, 1, []leaf{
 		{dh(defaultIndex[0]), "3"},
 		{dh(defaultIndex[1]), "4"},
 	})
@@ -393,7 +393,7 @@ func TestNeighborDepth(t *testing.T) {
 		t.Fatalf("Failed to create tree: %v", err)
 	}
 	// Construct a tree with only one item in it.
-	m2, err := createTree(db, "test2", []leaf{
+	m2, err := createTree(db, 2, []leaf{
 		{dh(defaultIndex[0]), "0"},
 	})
 	if err != nil {
@@ -422,7 +422,7 @@ func TestNeighborDepth(t *testing.T) {
 	}
 }
 
-func createTree(db *sql.DB, mapID string, leafs []leaf) (*Map, error) {
+func createTree(db *sql.DB, mapID int64, leafs []leaf) (*Map, error) {
 	factory := testutil.NewFakeFactory(db)
 	m, err := New(ctx, db, mapID, factory)
 	if err != nil {

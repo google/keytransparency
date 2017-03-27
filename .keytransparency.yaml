@@ -4,6 +4,7 @@ vrf:    "testdata/vrf-pubkey.pem"
 kt-key: "testdata/server.crt"
 kt-sig: "testdata/p256-pubkey.pem"
 domain: "example.com"
+mapid: 0
 kt-url: "104.199.112.76:5001"
 client-secret: "client_secret.json"
 service-key: ""

@@ -32,7 +32,7 @@ func TestWriteRead(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	c, err := New(db, "test")
+	c, err := New(db, 1)
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
