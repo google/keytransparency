@@ -20,6 +20,7 @@ package sqlhist
 import (
 	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -34,12 +35,12 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   VARCHAR(32) NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Leaves (
-		MapID   VARCHAR(32)   NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		LeafID  VARBINARY(32) NOT NULL,
 		Version INTEGER       NOT NULL,
 		Data    BLOB          NOT NULL,
@@ -48,7 +49,7 @@ var (
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Nodes (
-		MapID   VARCHAR(32)   NOT NULL,
+		MapID   BIGINT        NOT NULL,
 		NodeID  VARBINARY(32) NOT NULL,
 		Version	INTEGER       NOT NULL,
 		Value	BLOB(32)      NOT NULL,
@@ -92,20 +93,20 @@ const (
 
 // Map stores a temporal sparse merkle tree, backed by an SQL database.
 type Map struct {
-	mapID   []byte
+	mapID   int64
 	db      *sql.DB
 	factory transaction.Factory
 	epoch   int64 // The currently valid epoch. Insert at epoch+1.
 }
 
 // New creates a new map.
-func New(ctx context.Context, db *sql.DB, mapID string, factory transaction.Factory) (*Map, error) {
+func New(ctx context.Context, db *sql.DB, mapID int64, factory transaction.Factory) (*Map, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("No DB connection: %v", err)
 	}
 
 	m := &Map{
-		mapID:   []byte(mapID),
+		mapID:   mapID,
 		db:      db,
 		factory: factory,
 	}
@@ -309,7 +310,7 @@ func (m *Map) neighborsAt(tx *sql.Tx, index []byte, depth int, epoch int64) ([]s
 	return nbrValues, nil
 }
 
-func compressNeighbors(mapID []byte, neighbors []sparse.Hash, index []byte, depth int) [][]byte {
+func compressNeighbors(mapID int64, neighbors []sparse.Hash, index []byte, depth int) [][]byte {
 	bindex := tree.BitString(index)[:depth]
 	neighborBIndexes := tree.Neighbors(bindex)
 	compressed := make([][]byte, len(neighbors))
@@ -454,7 +455,9 @@ func (m *Map) nodeIDs(bindexes []string) [][]byte {
 // nodeID computes the location of a node, given its bit string index.
 func (m *Map) nodeID(bindex string) []byte {
 	h := sha256.New()
-	h.Write(m.mapID)
+	bMapID := make([]byte, 8)
+	binary.BigEndian.PutUint64(bMapID, uint64(m.mapID))
+	h.Write(bMapID)
 	h.Write([]byte{0})
 	h.Write([]byte(bindex))
 	return h.Sum(nil)

@@ -85,7 +85,7 @@ func init() {
 	RootCmd.PersistentFlags().String("ct-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
 	RootCmd.PersistentFlags().String("ct-scts", ".keytransparency-scts.dat", "Path to load/save unverified SCT state from")
-	RootCmd.PersistentFlags().String("domain", "example.com", "Map ID of the Key Transparency server")
+	RootCmd.PersistentFlags().Int64("mapid", 0, "Map ID of the backend map server")
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
 
@@ -186,7 +186,7 @@ func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	return ver, nil
 }
 
-func getClient(cc *grpc.ClientConn, mapID, vrfPubFile, ktSig, ctURL, ctPEM string) (*grpcc.Client, error) {
+func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig, ctURL, ctPEM string) (*grpcc.Client, error) {
 	// Create CT client.
 	pem, err := ioutil.ReadFile(ctPEM)
 	if err != nil {
@@ -270,7 +270,7 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ktURL := viper.GetString("kt-url")
 	ktPEM := viper.GetString("kt-key")
 	ktSig := viper.GetString("kt-sig")
-	domain := viper.GetString("domain")
+	mapID := viper.GetInt64("mapid")
 	ctURL := viper.GetString("ct-url")
 	ctPEM := viper.GetString("ct-key")
 	vrfFile := viper.GetString("vrf")
@@ -279,7 +279,7 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
-	c, err := getClient(cc, domain, vrfFile, ktSig, ctURL, ctPEM)
+	c, err := getClient(cc, mapID, vrfFile, ktSig, ctURL, ctPEM)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v", err)
 	}

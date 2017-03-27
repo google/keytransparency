@@ -27,9 +27,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-const (
-	mapID = "test"
-)
+const mapID = 0
 
 func NewDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")

@@ -25,9 +25,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const (
-	mapID = "test"
-)
+const mapID = 0
 
 func newDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")

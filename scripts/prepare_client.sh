@@ -76,6 +76,7 @@ vrf:    \"${VRF}\"
 kt-key: \"${KTKEY}\"
 kt-sig: \"${SIGKEY}\"
 domain: \"${DOMAIN}\"
+mapid: 0 
 kt-url: \"${KTURL}\"
 client-secret: \"${CLIENTSECRET}\"
 service-key: \"${SERVICEKEY}\""

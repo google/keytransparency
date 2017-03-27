@@ -22,9 +22,9 @@ import (
 
 // TreeHasher provides hash functions for tree implementations.
 type TreeHasher interface {
-	HashLeaf(mapID, index []byte, depth int, dataHash []byte) Hash
+	HashLeaf(mapID int64, index []byte, depth int, dataHash []byte) Hash
 	HashInterior(left, right Hash) Hash
-	HashEmpty(mapID, index []byte, depth int) Hash
+	HashEmpty(mapID int64, index []byte, depth int) Hash
 }
 
 // CONIKSHasher implements the tree hashes described in CONIKS
@@ -41,16 +41,15 @@ var (
 
 // HashLeaf calculate the merkle tree node value:
 // H(Identifier || mapID || depth || index || dataHash)
-func (coniks) HashLeaf(mapID, index []byte, depth int, dataHash []byte) Hash {
-	bmapIDLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(bmapIDLen, uint32(len(mapID)))
+func (coniks) HashLeaf(mapID int64, index []byte, depth int, dataHash []byte) Hash {
+	bmapID := make([]byte, 8)
+	binary.BigEndian.PutUint64(bmapID, uint64(mapID))
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
 
 	var b bytes.Buffer
 	b.Write(leafIdentifier)
-	b.Write(bmapIDLen)
-	b.Write(mapID)
+	b.Write(bmapID)
 	b.Write(index)
 	b.Write(bdepth)
 	b.Write(dataHash)
@@ -67,16 +66,15 @@ func (coniks) HashInterior(left, right Hash) Hash {
 
 // HashEmpty computes the value of an empty leaf:
 // H(EmptyIdentifier || mapID || depth || index)
-func (coniks) HashEmpty(mapID, index []byte, depth int) Hash {
-	bmapIDLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(bmapIDLen, uint32(len(mapID)))
+func (coniks) HashEmpty(mapID int64, index []byte, depth int) Hash {
+	bmapID := make([]byte, 8)
+	binary.BigEndian.PutUint64(bmapID, uint64(mapID))
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
 
 	var b bytes.Buffer
 	b.Write(emptyIdentifier)
-	b.Write(bmapIDLen)
-	b.Write(mapID)
+	b.Write(bmapID)
 	b.Write(index)
 	b.Write(bdepth)
 	return Hash(hash(b.Bytes()))

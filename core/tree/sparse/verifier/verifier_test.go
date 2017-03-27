@@ -21,9 +21,11 @@ import (
 
 	"github.com/google/keytransparency/core/tree/sparse"
 	"golang.org/x/net/context"
+
+	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )
 
-const mapID = "verifyMap"
+const mapID = 0
 
 var (
 	ctx          = context.Background()
@@ -41,15 +43,54 @@ type Leaf struct {
 	nbrs  [][]byte
 }
 
+/*
+// generateNbrData constructs an in-memory tree, fills it with the provided leaves
+// and returns a slice of inclusion proofs, one for each leaf.
+func generateNbrData(t *testing.T, leaves []Leaf) ([][][]byte, error) {
+	// Generate test data.
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	etcdCli := clus.RandClient()
+	sqldb, err := sql.Open("sqlite3", "file:dummy.db?mode=memory&cache=shared")
+	if err != nil {
+		return nil, err
+	}
+	factory := transaction.NewFactory(sqldb, etcdCli)
+	m, err := sqlhist.New(context.Background(), sqldb, mapID, factory)
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range leaves {
+		txn, err := factory.NewDBTxn(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		m.QueueLeaf(txn, l.index, l.value)
+		if err := txn.Commit(); err != nil {
+			return nil, err
+		}
+	}
+	m.Commit(context.Background())
+	ret := make([][][]byte, 0)
+	for _, l := range leaves {
+		nbrs, err := m.NeighborsAt(context.Background(), l.index, m.Epoch())
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, nbrs)
+	}
+	return ret, nil
+}
+*/
+
 func TestVerifyProof(t *testing.T) {
-	verifier := New([]byte(mapID), sparse.CONIKSHasher)
+	verifier := New(mapID, sparse.CONIKSHasher)
 	for _, tc := range []struct {
 		root   []byte
 		leaves []Leaf
 	}{
 		// Verify proof of absence in an empty tree.
 		{
-			dh("36d699dd75f74edb84789d1bf301a9c2ff8dc815b70f5afc8ec156f5ae102c65"),
+			dh("c2fbf0c12eb8ef812d24d08719fdf43bb805595386409baf0150c5e0947e49cd"),
 			[]Leaf{
 				{dh(AllZeros), nil, [][]byte{}},
 			},
@@ -57,39 +98,61 @@ func TestVerifyProof(t *testing.T) {
 		// Tree with multiple leaves, each has a single existing neighbor
 		// on the way to the root.
 		{
-			dh("4a1d580869a6ed8949b0035be5bfbd52085749f52b83d7eb7fab2340fdeb6070"),
+			dh("58f340a870902df3604315000a0e3ab8c5e6969cfe2ed1ad48c2b8900a72de37"),
 			[]Leaf{
-				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("87bf45e808101bfd5e564dd2eed054c0879da7b0407ef895be2c1a99645da454"),
-					{},
-				}},
-				{dh(defaultIndex[1]), []byte("4"), [][]byte{
-					dh("dfecc3e854af9140e5224942719b5ad23d637612dc146fcd600a1679d6956797"),
-					{},
-				}},
-				{dh(defaultIndex[2]), nil, [][]byte{
-					dh("cedff4217d4b07261f009ef2331fd286fa1a7a2edbc1b5f4783735aeee02d692"),
-				}},
-				{dh(AllZeros), nil, [][]byte{
-					dh("cedff4217d4b07261f009ef2331fd286fa1a7a2edbc1b5f4783735aeee02d692"),
-				}},
+				{
+					dh(defaultIndex[0]),
+					[]byte("3"),
+					[][]byte{
+						dh("1cf3d1d90436e6ad75eb2ff97816ffcad6f024c6eceb7b86b2c507efdf3567d7"),
+						{},
+					}},
+				{
+					dh(defaultIndex[1]),
+					[]byte("4"),
+					[][]byte{
+						dh("9ddd8781499f29bf51b9047da91e23d6fb18ea8b0439e4f10413ddd280cf2d20"),
+						{},
+					}},
+				{
+					dh(defaultIndex[2]),
+					nil,
+					[][]byte{
+						dh("0a1db26319a01c8cef10b06c48d6dccce9ac5b951d5b91583a8346530d3d32a5"),
+					}},
+				{
+					dh(AllZeros),
+					nil,
+					[][]byte{
+						dh("0a1db26319a01c8cef10b06c48d6dccce9ac5b951d5b91583a8346530d3d32a5"),
+					}},
 			},
 		},
 		// Tree with multiple leaves, some have multiple existing
 		// neighbors on the way to the root.
 		{
-			dh("0930a343db7e987c9635351fb8c03f9cf51cbec8e4bfd2faf5acd3c29eb9a945"),
+			dh("bfb7ba5e680bb1382982f1d769733bea32eb602787b1064ebb9f699c1d1710ca"),
 			[]Leaf{
-				{dh(defaultIndex[2]), []byte("0"), [][]byte{
-					dh("a5535c120ea1a8aa2918119d1b8123d447c1e0a95b994671f20e563ac472a7b6"),
-				}},
-				{dh(defaultIndex[0]), []byte("3"), [][]byte{
-					dh("34b5001fe4bbe7d1454f7d216c51ccb5016f980d94220015124c2d28396205a4"),
-				}},
-				{dh(AllZeros), nil, [][]byte{
-					dh("f98aa36ec5551cd216db932d2ac1d6069690c6d1189aa4dc9185bf2336410ffa"),
-					dh("a5535c120ea1a8aa2918119d1b8123d447c1e0a95b994671f20e563ac472a7b6"),
-				}},
+				{
+					dh(defaultIndex[2]),
+					[]byte("0"),
+					[][]byte{
+						dh("0a1db26319a01c8cef10b06c48d6dccce9ac5b951d5b91583a8346530d3d32a5"),
+					}},
+				{
+					dh(defaultIndex[0]),
+					[]byte("3"),
+					[][]byte{
+						dh("1cf3d1d90436e6ad75eb2ff97816ffcad6f024c6eceb7b86b2c507efdf3567d7"),
+						dh("22ed79bb41e8dbaf185691deee13645e6bd1d6faee90dc6d33b7a1342aa35555"),
+					}},
+				{
+					dh(AllZeros),
+					nil,
+					[][]byte{
+						dh("a714420de960d9c19e8963301cd7879762cf8255b06d383fba0ea8ab82d5b1c5"),
+						dh("0a1db26319a01c8cef10b06c48d6dccce9ac5b951d5b91583a8346530d3d32a5"),
+					}},
 			},
 		},
 	} {

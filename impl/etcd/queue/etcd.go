@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/google/keytransparency/core/queue"
@@ -58,11 +59,11 @@ type kv struct {
 }
 
 // New creates a new consistent, distributed queue.
-func New(ctx context.Context, client *v3.Client, mapID string, factory *itxn.Factory) *Queue {
+func New(ctx context.Context, client *v3.Client, mapID int64, factory *itxn.Factory) *Queue {
 	return &Queue{
 		client:    client,
 		ctx:       ctx,
-		keyPrefix: mapID,
+		keyPrefix: strconv.FormatInt(mapID, 10),
 		factory:   factory,
 	}
 }
