@@ -30,13 +30,13 @@ const (
 	insertMapRowExpr = `INSERT INTO Maps (MapID) VALUES (?);`
 	countMapRowExpr  = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
 	insertExpr       = `
-	INSERT INTO SMH (MapID, Epoch, Data)
+	INSERT INTO Sequenced (MapID, Epoch, Data)
 	VALUES (?, ?, ?);`
 	readExpr = `
-	SELECT Data FROM SMH
+	SELECT Data FROM Sequenced
 	WHERE MapID = ? AND Epoch = ?;`
 	latestExpr = `
-	SELECT Epoch, Data FROM SMH
+	SELECT Epoch, Data FROM Sequenced
 	WHERE MapID = ? 
 	ORDER BY Epoch DESC LIMIT 1;`
 )
@@ -49,7 +49,7 @@ var (
 		PRIMARY KEY(MapID)
 	);`,
 		`
-	CREATE TABLE IF NOT EXISTS SMH (
+	CREATE TABLE IF NOT EXISTS Sequenced (
 		MapID   BIGINT      NOT NULL,
 		Epoch   BIGINT      NOT NULL,
 		Data    BLOB(1024)  NOT NULL,
