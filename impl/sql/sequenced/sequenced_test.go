@@ -37,7 +37,7 @@ func TestGetLatest(t *testing.T) {
 	db := NewDB(t)
 	factory := testutil.NewFakeFactory(db)
 
-	a, err := New(db)
+	a, err := New(db, 0)
 	if err != nil {
 		t.Fatalf("Failed to create sequenced: %v", err)
 	}
@@ -51,10 +51,6 @@ func TestGetLatest(t *testing.T) {
 		{0, 0, []byte("foo"), 0},
 		{0, 10, []byte("foo"), 10},
 		{0, 5, []byte("foo"), 10},
-
-		{1, 0, []byte("foo"), 0},
-		{1, 10, []byte("foo"), 10},
-		{1, 5, []byte("foo"), 10},
 	} {
 		txn, err := factory.NewDBTxn(context.Background())
 		if err != nil {
@@ -81,8 +77,8 @@ func TestGetLatest(t *testing.T) {
 		if err := txn2.Commit(); err != nil {
 			t.Errorf("txn.Commit() failed: %v", err)
 		}
-		if got := epoch; got != tc.want {
-			t.Errorf("Latest(): %v, want %v", got, tc.want)
+		if got, want := epoch, tc.want; got != want {
+			t.Errorf("Latest(): %v, want %v", got, want)
 		}
 	}
 }
@@ -91,7 +87,7 @@ func TestWriteRead(t *testing.T) {
 	db := NewDB(t)
 	factory := testutil.NewFakeFactory(db)
 
-	a, err := New(db)
+	a, err := New(db, 0)
 	if err != nil {
 		t.Fatalf("Failed to create appender: %v", err)
 	}
@@ -112,8 +108,8 @@ func TestWriteRead(t *testing.T) {
 			continue
 		}
 		err = a.Write(txn, tc.mapID, tc.epoch, tc.data)
-		if got := err == nil; got != tc.want {
-			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
+		if got, want := err == nil, tc.want; got != want {
+			t.Errorf("Append(%v, %v): %v, want nil? %v", tc.epoch, tc.data, err, want)
 		}
 		if err := txn.Commit(); err != nil {
 			t.Errorf("txn.Commit() failed: %v", err)
@@ -133,8 +129,8 @@ func TestWriteRead(t *testing.T) {
 			if err := txn2.Commit(); err != nil {
 				t.Errorf("txn2.Commit() failed: %v", err)
 			}
-			if got := readData; !bytes.Equal(got, tc.data) {
-				t.Errorf("Read(%v, %v): %x, want %x", tc.mapID, tc.epoch, got, tc.data)
+			if got, want := readData, tc.data; !bytes.Equal(got, want) {
+				t.Errorf("Read(%v, %v): %x, want %x", tc.mapID, tc.epoch, got, want)
 			}
 		}
 	}

@@ -51,7 +51,7 @@ var (
 		`
 	CREATE TABLE IF NOT EXISTS Sequenced (
 		MapID   BIGINT      NOT NULL,
-		Epoch   BIGINT      NOT NULL,
+		Epoch   INTEGER     NOT NULL,
 		Data    BLOB(1024)  NOT NULL,
 		PRIMARY KEY(MapID, Epoch),
 		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
@@ -67,12 +67,16 @@ type Sequenced struct {
 }
 
 // New returns an object that can store sequenced items for multiple maps.
-func New(db *sql.DB) (sequenced.Sequenced, error) {
+// mapID will be the only allowed mapID.
+func New(db *sql.DB, mapID int64) (sequenced.Sequenced, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("No DB connection: %v", err)
 	}
 
 	if err := create(db); err != nil {
+		return nil, err
+	}
+	if err := insertMapRow(db, mapID); err != nil {
 		return nil, err
 	}
 	return &Sequenced{
@@ -91,9 +95,9 @@ func create(db *sql.DB) error {
 	return nil
 }
 
-func (s *Sequenced) insertMapRow(txn transaction.Txn, mapID int64) error {
+func insertMapRow(db *sql.DB, mapID int64) error {
 	// Check if a map row does not exist for the same MapID.
-	countStmt, err := txn.Prepare(countMapRowExpr)
+	countStmt, err := db.Prepare(countMapRowExpr)
 	if err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
@@ -107,7 +111,7 @@ func (s *Sequenced) insertMapRow(txn transaction.Txn, mapID int64) error {
 	}
 
 	// Insert a map row if it does not exist already.
-	insertStmt, err := txn.Prepare(insertMapRowExpr)
+	insertStmt, err := db.Prepare(insertMapRowExpr)
 	if err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
@@ -121,10 +125,6 @@ func (s *Sequenced) insertMapRow(txn transaction.Txn, mapID int64) error {
 
 // Append adds an object to the append-only data structure.
 func (s *Sequenced) Write(txn transaction.Txn, mapID, epoch int64, obj interface{}) error {
-	if err := s.insertMapRow(txn, mapID); err != nil {
-		return err
-	}
-
 	var data bytes.Buffer
 	if err := gob.NewEncoder(&data).Encode(obj); err != nil {
 		return err
