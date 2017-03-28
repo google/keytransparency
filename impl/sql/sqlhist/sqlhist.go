@@ -24,11 +24,11 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/net/context"
-
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 	"github.com/google/keytransparency/core/tree/sparse"
+
+	"golang.org/x/net/context"
 )
 
 var (
@@ -173,22 +173,27 @@ type leafRow struct {
 
 // Commit takes all the Queued values since the last Commmit() and writes them.
 // Commit is NOT multi-process safe. It should only be called from the sequencer.
-func (m *Map) Commit(ctx context.Context) (int64, error) {
+func (m *Map) Commit(ctx context.Context) (epoch int64, returnErr error) {
 	txn, err := m.factory.NewDBTxn(ctx)
 	if err != nil {
 		return -1, fmt.Errorf("factory.NewDBTxn() failed: %v", err)
 	}
+	defer func() {
+		if returnErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				returnErr = fmt.Errorf("setLeafAt failed: %v, and Rollback failed: %v", returnErr, rbErr)
+			}
+		}
+	}()
 	// Get the list of pending leafs
 	stmt, err := txn.Prepare(pendingLeafsExpr)
 	if err != nil {
-		txn.Rollback()
 		return -1, fmt.Errorf("Prepare(): %v", err)
 	}
 	defer stmt.Close()
 	rows, err := stmt.Query(m.mapID, m.epoch+1)
 	defer rows.Close()
 	if err != nil {
-		txn.Rollback()
 		return -1, err
 	}
 	leafRows := make([]leafRow, 0, 10)
@@ -196,7 +201,6 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 		var r leafRow
 		err = rows.Scan(&r.index, &r.version, &r.data)
 		if err != nil {
-			txn.Rollback()
 			return -1, err
 		}
 		leafRows = append(leafRows, r)
@@ -207,7 +211,6 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 			// Recovery from here would mean updating nodes that
 			// didn't get included so that they would be included
 			// in the next epoch.
-			txn.Rollback()
 			return -1, fmt.Errorf("Failed to set node: %v", err)
 		}
 	}
@@ -215,17 +218,15 @@ func (m *Map) Commit(ctx context.Context) (int64, error) {
 	if len(leafRows) == 0 {
 		root, err := m.ReadRootAt(txn, m.epoch)
 		if err != nil {
-			txn.Rollback()
 			return -1, fmt.Errorf("No root for epoch %d: %v", m.epoch, err)
 		}
 		if err := m.setRootAt(txn, sparse.FromBytes(root), m.epoch+1); err != nil {
-			txn.Rollback()
 			return -1, fmt.Errorf("Failed to set root: %v", err)
 		}
 	}
 
 	if err := txn.Commit(); err != nil {
-		return -1, err
+		return -1, fmt.Errorf("Failed to commit transaction: %v", err)
 	}
 
 	m.epoch++
@@ -276,14 +277,14 @@ func (m *Map) NeighborsAt(txn transaction.Txn, index []byte, epoch int64) ([][]b
 	return cNbrs, nil
 }
 
-func (m *Map) neighborsAt(tx transaction.Txn, index []byte, depth int, epoch int64) ([]sparse.Hash, error) {
+func (m *Map) neighborsAt(txn transaction.Txn, index []byte, depth int, epoch int64) ([]sparse.Hash, error) {
 	bindex := tree.BitString(index)[:depth]
 	neighborBIndexes := tree.Neighbors(bindex)
 	neighborIDs := m.nodeIDs(neighborBIndexes)
 
-	readStmt, err := tx.Prepare(readExpr)
+	readStmt, err := txn.Prepare(readExpr)
 	if err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil {
+		if rbErr := txn.Rollback(); rbErr != nil {
 			err = fmt.Errorf("Prepare failed: %v, and Rollback failed: %v", err, rbErr)
 		}
 		return nil, err
@@ -298,7 +299,7 @@ func (m *Map) neighborsAt(tx transaction.Txn, index []byte, depth int, epoch int
 			nIndex, nDepth := tree.InvertBitString(neighborBIndexes[i])
 			nbrValues[i] = hasher.HashEmpty(m.mapID, nIndex, nDepth)
 		} else if err != nil {
-			if rbErr := tx.Rollback(); rbErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
 				err = fmt.Errorf("QueryRow failed: %v, and Rollback failed: %v", err, rbErr)
 			}
 			return nil, err
@@ -325,7 +326,7 @@ func compressNeighbors(mapID int64, neighbors []sparse.Hash, index []byte, depth
 }
 
 // setLeafAt sets leaf node values directly at epoch.
-func (m *Map) setLeafAt(tx transaction.Txn, index []byte, depth int, value []byte, epoch int64) (returnErr error) {
+func (m *Map) setLeafAt(txn transaction.Txn, index []byte, depth int, value []byte, epoch int64) (returnErr error) {
 	if len(value) == 0 {
 		return nil
 	}
@@ -338,14 +339,14 @@ func (m *Map) setLeafAt(tx transaction.Txn, index []byte, depth int, value []byt
 	// Compute new values
 	// Set those values.
 
-	writeStmt, err := tx.Prepare(setNodeExpr)
+	writeStmt, err := txn.Prepare(setNodeExpr)
 	if err != nil {
 		return err
 	}
 	defer writeStmt.Close()
 
 	// Get neighbors.
-	nbrValues, err := m.neighborsAt(tx, index, depth, epoch)
+	nbrValues, err := m.neighborsAt(txn, index, depth, epoch)
 	if err != nil {
 		return err
 	}
