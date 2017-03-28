@@ -26,12 +26,12 @@ var (
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   VARCHAR(32) NOT NULL,
+		MapID   BIGINT NOT NULL,
 		PRIMARY KEY(MapID)
 	);`,
 		`
 	CREATE TABLE IF NOT EXISTS Mutations (
-		MapID    VARCHAR(32)   NOT NULL,
+		MapID    BIGINT        NOT NULL,
 		Sequence INTEGER       NOT NULL PRIMARY KEY AUTOINCREMENT,
                 MIndex   VARBINARY(32) NOT NULL,
 		Mutation BLOB          NOT NULL,

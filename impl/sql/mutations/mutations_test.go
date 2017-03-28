@@ -37,48 +37,57 @@ func newDB(t testing.TB) *sql.DB {
 
 func fillDB(t *testing.T, ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory) {
 	for _, mtn := range []struct {
-		index    []byte
-		mutation []byte
+		index       []byte
+		mutation    []byte
+		outSequence uint64
 	}{
-		{[]byte("index1"), []byte("mutation1")},
-		{[]byte("index2"), []byte("mutation2")},
+		{[]byte("index1"), []byte("mutation1"), 1},
+		{[]byte("index2"), []byte("mutation2"), 2},
+		{[]byte("index3"), []byte("mutation3"), 3},
+		{[]byte("index4"), []byte("mutation4"), 4},
+		{[]byte("index5"), []byte("mutation5"), 5},
 	} {
-		if err := write(ctx, m, factory, mtn.index, mtn.mutation); err != nil {
+		if err := write(ctx, m, factory, mtn.index, mtn.mutation, mtn.outSequence); err != nil {
 			t.Errorf("failed to write mutation to database, mutation=%v, mutation=%v: %v", mtn.index, mtn.mutation, err)
 		}
 	}
 }
 
-func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, index []byte, mutation []byte) error {
+func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, index []byte, mutation []byte, outSequence uint64) error {
 	wtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
 	}
-	if _, err := m.Write(ctx, wtxn, 0, index, mutation); err != nil {
+	sequence, err := m.Write(wtxn, index, mutation)
+	if err != nil {
 		return fmt.Errorf("Write(%v, %v): %v, want nil", index, mutation, err)
 	}
 	if err := wtxn.Commit(); err != nil {
 		return fmt.Errorf("wtxn.Commit() failed: %v", err)
 	}
+	if got, want := sequence, outSequence; got != want {
+		return fmt.Errorf("Write(%v, %v)=%v, want %v", index, mutation, got, want)
+	}
+
 	return nil
 }
 
-func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, sequence uint64, index []byte) ([]byte, error) {
+func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) ([]mutator.MutationInfo, error) {
 	rtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
-	mutation, err := m.Read(ctx, rtxn, sequence, index)
+	results, err := m.ReadRange(rtxn, startSequence, count)
 	if err != nil {
-		return nil, fmt.Errorf("Read(%v, %v): %v, want nil", sequence, index, err)
+		return nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
 	}
 	if err := rtxn.Commit(); err != nil {
 		return nil, fmt.Errorf("rtxn.Commit() failed: %v", err)
 	}
-	return mutation, nil
+	return results, nil
 }
 
-func TestRead(t *testing.T) {
+func TestReadRange(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	factory := testutil.NewFakeFactory(db)
@@ -89,21 +98,90 @@ func TestRead(t *testing.T) {
 	fillDB(t, ctx, m, factory)
 
 	for _, tc := range []struct {
-		description string
-		sequence    uint64
-		index       []byte
-		mutation    []byte
+		description   string
+		startSequence uint64
+		count         int
+		mutations     []mutator.MutationInfo
 	}{
-		{"read a single mutation", 1, []byte("index1"), []byte("mutation1")},
-		{"non-existing sequence", 100, []byte("index1"), nil},
-		{"non-existing index", 1, []byte("index100"), nil},
+		{
+			"read a single mutation",
+			1,
+			1,
+			[]mutator.MutationInfo{
+				{
+					Index: []byte("index1"),
+					Data:  []byte("mutation1"),
+				},
+			},
+		},
+		{
+			"empty mutation info list",
+			100,
+			10,
+			nil,
+		},
+		{
+			"full mutations range size",
+			1,
+			5,
+			[]mutator.MutationInfo{
+				{
+					Index: []byte("index1"),
+					Data:  []byte("mutation1"),
+				},
+				{
+					Index: []byte("index2"),
+					Data:  []byte("mutation2"),
+				},
+				{
+					Index: []byte("index3"),
+					Data:  []byte("mutation3"),
+				},
+				{
+					Index: []byte("index4"),
+					Data:  []byte("mutation4"),
+				},
+				{
+					Index: []byte("index5"),
+					Data:  []byte("mutation5"),
+				},
+			},
+		},
+		{
+			"incomplete mutations range",
+			3,
+			5,
+			[]mutator.MutationInfo{
+				{
+					Index: []byte("index3"),
+					Data:  []byte("mutation3"),
+				},
+				{
+					Index: []byte("index4"),
+					Data:  []byte("mutation4"),
+				},
+				{
+					Index: []byte("index5"),
+					Data:  []byte("mutation5"),
+				},
+			},
+		},
 	} {
-		mutation, err := read(ctx, m, factory, tc.sequence, tc.index)
+		results, err := read(ctx, m, factory, tc.startSequence, tc.count)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
-		if got, want := mutation, tc.mutation; !reflect.DeepEqual(got, want) {
-			t.Errorf("%v: mutation=%v, want %v", tc.description, got, want)
+		if got, want := len(results), len(tc.mutations); got != want {
+			t.Errorf("%v: len(results)=%v, want %v", tc.description, got, want)
+			continue
+		}
+		for i := range results {
+			if got, want := results[i].Index, tc.mutations[i].Index; !reflect.DeepEqual(got, want) {
+				t.Errorf("%v: results[%v].Index=%v, want %v", tc.description, i, got, want)
+			}
+			if got, want := results[i].Data, tc.mutations[i].Data; !reflect.DeepEqual(got, want) {
+				t.Errorf("%v: results[%v].Data=%v, want %v", tc.description, i, got, want)
+			}
 		}
 	}
 }

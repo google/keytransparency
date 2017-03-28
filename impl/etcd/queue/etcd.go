@@ -164,9 +164,7 @@ func processEntry(ctx context.Context, txn ctxn.Txn, cbs callbacks, dataKV kv) e
 	if dataKV.AdvanceEpoch {
 		return cbs.advanceFunc(ctx, txn)
 	}
-	// Sequence number is automatically added. However, something, e.g., has
-	// to be passed to satisfy the API.
-	return cbs.processFunc(ctx, txn, 0, dataKV.Key, dataKV.Val)
+	return cbs.processFunc(ctx, txn, dataKV.Key, dataKV.Val)
 }
 
 // Close stops the receiver from receiving items from the queue.

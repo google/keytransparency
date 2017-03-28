@@ -18,7 +18,6 @@
 package mutator
 
 import (
-	"context"
 	"errors"
 
 	"github.com/google/keytransparency/core/transaction"
@@ -52,15 +51,23 @@ type Mutator interface {
 	Mutate(value, mutation []byte) ([]byte, error)
 }
 
+// MutationInfo contains information related mutations, specifically the index
+// and the mutation data.
+type MutationInfo struct {
+	// Index determines the index of the mutation in the map.
+	Index []byte
+	// Data contains the actual mutation data.
+	Data []byte
+}
+
 // Mutation reads and writes mutations to the database.
 // TODO: Add mapID to this interface to support multiple maps per server.
 type Mutation interface {
-	// Read reads all mutations for a specific given mapID, sequence, and
-	// index.
-	Read(ctx context.Context, txn transaction.Txn, sequence uint64, index []byte) ([]byte, error)
-	// Write saves the mutation in the database. Sequence might not be used
-	// by all databases engines. For instance, in MySQL and SQLite, sequence
-	// numbers are automatically added at the database level. Write returns
-	// the sequence number that is written.
-	Write(ctx context.Context, txn transaction.Txn, sequence uint64, index, mutation []byte) (uint64, error)
+	// ReadRange reads all mutations for a specific given mapID and sequence
+	// range. The range is identified by a starting sequence number and a
+	// count.
+	ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]MutationInfo, error)
+	// Write saves the mutation in the database. Write returns the sequence
+	// number that is written.
+	Write(txn transaction.Txn, index, mutation []byte) (uint64, error)
 }

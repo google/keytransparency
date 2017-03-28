@@ -92,7 +92,7 @@ func (s *Signer) StartSigning(interval time.Duration) {
 }
 
 // ProcessMutation saves a mutation and adds it to the append-only log and tree.
-func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, sequence uint64, index, mutation []byte) error {
+func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index, mutation []byte) error {
 	// Get current value.
 	v, err := s.tree.ReadLeafAt(txn, index, s.tree.Epoch())
 	if err != nil {
@@ -109,7 +109,7 @@ func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, seque
 		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
 
-	if _, err := s.mutations.Write(ctx, txn, sequence, index, mutation); err != nil {
+	if _, err := s.mutations.Write(txn, index, mutation); err != nil {
 		return fmt.Errorf("Mutation write failed: %v", err)
 	}
 

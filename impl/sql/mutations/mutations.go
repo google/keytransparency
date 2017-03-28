@@ -17,7 +17,6 @@
 package mutations
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 
@@ -32,8 +31,9 @@ const (
 	INSERT INTO Mutations (MapID, MIndex, Mutation)
 	VALUES (?, ?, ?);`
 	readExpr = `
-	SELECT Mutation FROM Mutations
-	WHERE MapID = ? AND Sequence = ? AND MIndex = ?;`
+	SELECT MIndex, Mutation FROM Mutations
+	WHERE MapID = ? AND Sequence >= ?
+	ORDER BY Sequence ASC LIMIT ?;`
 )
 
 type mutations struct {
@@ -58,28 +58,37 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 	return m, nil
 }
 
-// Read reads all mutations for a specific given mapID, sequence, and index.
-func (m *mutations) Read(ctx context.Context, txn transaction.Txn, sequence uint64, index []byte) ([]byte, error) {
+// ReadRange reads all mutations for a specific given mapID and sequence range.
+// The range is identified by a starting sequence number and a count.
+func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]mutator.MutationInfo, error) {
 	readStmt, err := txn.Prepare(readExpr)
 	if err != nil {
 		return nil, err
 	}
 	defer readStmt.Close()
-
-	var mutation []byte
-	err = readStmt.QueryRow(m.mapID, sequence, index).Scan(&mutation)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	} else if err != nil {
+	rows, err := readStmt.Query(m.mapID, startSequence, count)
+	if err != nil {
 		return nil, err
 	}
-	return mutation, nil
+	defer rows.Close()
+
+	var results []mutator.MutationInfo
+	for rows.Next() {
+		var info mutator.MutationInfo
+		if err := rows.Scan(&info.Index, &info.Data); err != nil {
+			return nil, err
+		}
+		results = append(results, info)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
-// Write saves the mutation in the database. In MySQL or SQLite implementation,
-// sequence numbers are automatically added. Therefore, sequence variable is not
-// used here. Write returns the auto-inserted sequence number.
-func (m *mutations) Write(ctx context.Context, txn transaction.Txn, sequence uint64, index, mutation []byte) (uint64, error) {
+// Write saves the mutation in the database. Write returns the auto-inserted
+// sequence number.
+func (m *mutations) Write(txn transaction.Txn, index, mutation []byte) (uint64, error) {
 	writeStmt, err := txn.Prepare(insertExpr)
 	if err != nil {
 		return 0, err
@@ -89,11 +98,11 @@ func (m *mutations) Write(ctx context.Context, txn transaction.Txn, sequence uin
 	if err != nil {
 		return 0, err
 	}
-	autoSequence, err := result.LastInsertId()
+	sequence, err := result.LastInsertId()
 	if err != nil {
 		return 0, err
 	}
-	return uint64(autoSequence), nil
+	return uint64(sequence), nil
 }
 
 // Create creates new database tables.
