@@ -100,16 +100,29 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		return nil, err
 	}
 
-	neighbors, err := s.tree.NeighborsAt(ctx, index[:], epoch)
+	txn, err := s.factory.NewDBTxn(ctx)
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
+	}
+
+	neighbors, err := s.tree.NeighborsAt(txn, index[:], epoch)
 	if err != nil {
 		log.Printf("Cannot get neighbors list: %v", err)
+		txn.Rollback()
 		return nil, grpc.Errorf(codes.Internal, "Cannot get neighbors list")
 	}
 
 	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.getLeaf(ctx, index[:], epoch)
+	leaf, err := s.tree.ReadLeafAt(txn, index[:], epoch)
 	if err != nil {
-		return nil, err
+		log.Printf("Cannot read leaf entry: %v", err)
+		txn.Rollback()
+		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
+	}
+
+	if err := txn.Commit(); err != nil {
+		log.Printf("Cannot commit transaction: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 
 	var committed *tpb.Committed
@@ -142,24 +155,6 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		Smh:    &smh,
 		SmhSct: sct,
 	}, nil
-}
-
-func (s *Server) getLeaf(ctx context.Context, index []byte, epoch int64) ([]byte, error) {
-	txn, err := s.factory.NewDBTxn(ctx)
-	if err != nil {
-		log.Printf("Cannot create transaction: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
-	}
-	leaf, err := s.tree.ReadLeafAt(txn, index, epoch)
-	if err != nil {
-		log.Printf("Cannot read leaf entry: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
-	}
-	if err := txn.Commit(); err != nil {
-		log.Printf("Cannot commit transaction: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
-	}
-	return leaf, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
