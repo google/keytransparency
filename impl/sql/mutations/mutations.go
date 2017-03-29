@@ -20,8 +20,11 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (
@@ -31,7 +34,7 @@ const (
 	INSERT INTO Mutations (MapID, MIndex, Mutation)
 	VALUES (?, ?, ?);`
 	readExpr = `
-	SELECT MIndex, Mutation FROM Mutations
+	SELECT Mutation FROM Mutations
 	WHERE MapID = ? AND Sequence >= ?
 	ORDER BY Sequence ASC LIMIT ?;`
 )
@@ -60,7 +63,7 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 
 // ReadRange reads all mutations for a specific given mapID and sequence range.
 // The range is identified by a starting sequence number and a count.
-func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]mutator.MutationInfo, error) {
+func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]*tpb.SignedKV, error) {
 	readStmt, err := txn.Prepare(readExpr)
 	if err != nil {
 		return nil, err
@@ -72,13 +75,17 @@ func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count i
 	}
 	defer rows.Close()
 
-	var results []mutator.MutationInfo
+	results := make([]*tpb.SignedKV, 0, count)
 	for rows.Next() {
-		var info mutator.MutationInfo
-		if err := rows.Scan(&info.Index, &info.Data); err != nil {
+		var mData []byte
+		if err := rows.Scan(&mData); err != nil {
 			return nil, err
 		}
-		results = append(results, info)
+		mutation := new(tpb.SignedKV)
+		if err := proto.Unmarshal(mData, mutation); err != nil {
+			return nil, err
+		}
+		results = append(results, mutation)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -88,13 +95,19 @@ func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count i
 
 // Write saves the mutation in the database. Write returns the auto-inserted
 // sequence number.
-func (m *mutations) Write(txn transaction.Txn, index, mutation []byte) (uint64, error) {
+func (m *mutations) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
+	index := mutation.GetKeyValue().Key
+	mData, err := proto.Marshal(mutation)
+	if err != nil {
+		return 0, err
+	}
+
 	writeStmt, err := txn.Prepare(insertExpr)
 	if err != nil {
 		return 0, err
 	}
 	defer writeStmt.Close()
-	result, err := writeStmt.Exec(m.mapID, index, mutation)
+	result, err := writeStmt.Exec(m.mapID, index, mData)
 	if err != nil {
 		return 0, err
 	}

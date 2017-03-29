@@ -23,6 +23,8 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/impl/sql/testutil"
 	_ "github.com/mattn/go-sqlite3"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const mapID = 0
@@ -35,44 +37,83 @@ func newDB(t testing.TB) *sql.DB {
 	return db
 }
 
-func fillDB(t *testing.T, ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory) {
+func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *testutil.FakeFactory) {
 	for _, mtn := range []struct {
-		index       []byte
-		mutation    []byte
+		mutation    *tpb.SignedKV
 		outSequence uint64
 	}{
-		{[]byte("index1"), []byte("mutation1"), 1},
-		{[]byte("index2"), []byte("mutation2"), 2},
-		{[]byte("index3"), []byte("mutation3"), 3},
-		{[]byte("index4"), []byte("mutation4"), 4},
-		{[]byte("index5"), []byte("mutation5"), 5},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index1"),
+					Value: []byte("mutation1"),
+				},
+			},
+			1,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index2"),
+					Value: []byte("mutation2"),
+				},
+			},
+			2,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index3"),
+					Value: []byte("mutation3"),
+				},
+			},
+			3,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index4"),
+					Value: []byte("mutation4"),
+				},
+			},
+			4,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index5"),
+					Value: []byte("mutation5"),
+				},
+			},
+			5,
+		},
 	} {
-		if err := write(ctx, m, factory, mtn.index, mtn.mutation, mtn.outSequence); err != nil {
-			t.Errorf("failed to write mutation to database, mutation=%v, mutation=%v: %v", mtn.index, mtn.mutation, err)
+		if err := write(ctx, m, factory, mtn.mutation, mtn.outSequence); err != nil {
+			t.Errorf("failed to write mutation to database, mutation=%v: %v", mtn.mutation, err)
 		}
 	}
 }
 
-func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, index []byte, mutation []byte, outSequence uint64) error {
+func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, mutation *tpb.SignedKV, outSequence uint64) error {
 	wtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
 	}
-	sequence, err := m.Write(wtxn, index, mutation)
+	sequence, err := m.Write(wtxn, mutation)
 	if err != nil {
-		return fmt.Errorf("Write(%v, %v): %v, want nil", index, mutation, err)
+		return fmt.Errorf("Write(%v): %v, want nil", mutation, err)
 	}
 	if err := wtxn.Commit(); err != nil {
 		return fmt.Errorf("wtxn.Commit() failed: %v", err)
 	}
 	if got, want := sequence, outSequence; got != want {
-		return fmt.Errorf("Write(%v, %v)=%v, want %v", index, mutation, got, want)
+		return fmt.Errorf("Write(%v)=%v, want %v", mutation, got, want)
 	}
 
 	return nil
 }
 
-func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) ([]mutator.MutationInfo, error) {
+func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) ([]*tpb.SignedKV, error) {
 	rtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create read transaction: %v", err)
@@ -95,22 +136,24 @@ func TestReadRange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
-	fillDB(t, ctx, m, factory)
+	fillDB(ctx, t, m, factory)
 
 	for _, tc := range []struct {
 		description   string
 		startSequence uint64
 		count         int
-		mutations     []mutator.MutationInfo
+		mutations     []*tpb.SignedKV
 	}{
 		{
 			"read a single mutation",
 			1,
 			1,
-			[]mutator.MutationInfo{
+			[]*tpb.SignedKV{
 				{
-					Index: []byte("index1"),
-					Data:  []byte("mutation1"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index1"),
+						Value: []byte("mutation1"),
+					},
 				},
 			},
 		},
@@ -124,26 +167,36 @@ func TestReadRange(t *testing.T) {
 			"full mutations range size",
 			1,
 			5,
-			[]mutator.MutationInfo{
+			[]*tpb.SignedKV{
 				{
-					Index: []byte("index1"),
-					Data:  []byte("mutation1"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index1"),
+						Value: []byte("mutation1"),
+					},
 				},
 				{
-					Index: []byte("index2"),
-					Data:  []byte("mutation2"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index2"),
+						Value: []byte("mutation2"),
+					},
 				},
 				{
-					Index: []byte("index3"),
-					Data:  []byte("mutation3"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index3"),
+						Value: []byte("mutation3"),
+					},
 				},
 				{
-					Index: []byte("index4"),
-					Data:  []byte("mutation4"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index4"),
+						Value: []byte("mutation4"),
+					},
 				},
 				{
-					Index: []byte("index5"),
-					Data:  []byte("mutation5"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index5"),
+						Value: []byte("mutation5"),
+					},
 				},
 			},
 		},
@@ -151,18 +204,24 @@ func TestReadRange(t *testing.T) {
 			"incomplete mutations range",
 			3,
 			5,
-			[]mutator.MutationInfo{
+			[]*tpb.SignedKV{
 				{
-					Index: []byte("index3"),
-					Data:  []byte("mutation3"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index3"),
+						Value: []byte("mutation3"),
+					},
 				},
 				{
-					Index: []byte("index4"),
-					Data:  []byte("mutation4"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index4"),
+						Value: []byte("mutation4"),
+					},
 				},
 				{
-					Index: []byte("index5"),
-					Data:  []byte("mutation5"),
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index5"),
+						Value: []byte("mutation5"),
+					},
 				},
 			},
 		},
@@ -176,11 +235,11 @@ func TestReadRange(t *testing.T) {
 			continue
 		}
 		for i := range results {
-			if got, want := results[i].Index, tc.mutations[i].Index; !reflect.DeepEqual(got, want) {
-				t.Errorf("%v: results[%v].Index=%v, want %v", tc.description, i, got, want)
+			if got, want := results[i].GetKeyValue().Key, tc.mutations[i].GetKeyValue().Key; !reflect.DeepEqual(got, want) {
+				t.Errorf("%v: results[%v] index=%v, want %v", tc.description, i, got, want)
 			}
-			if got, want := results[i].Data, tc.mutations[i].Data; !reflect.DeepEqual(got, want) {
-				t.Errorf("%v: results[%v].Data=%v, want %v", tc.description, i, got, want)
+			if got, want := results[i].GetKeyValue().Value, tc.mutations[i].GetKeyValue().Value; !reflect.DeepEqual(got, want) {
+				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
 			}
 		}
 	}

@@ -21,6 +21,8 @@ import (
 	"errors"
 
 	"github.com/google/keytransparency/core/transaction"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -51,23 +53,14 @@ type Mutator interface {
 	Mutate(value, mutation []byte) ([]byte, error)
 }
 
-// MutationInfo contains information related mutations, specifically the index
-// and the mutation data.
-type MutationInfo struct {
-	// Index determines the index of the mutation in the map.
-	Index []byte
-	// Data contains the actual mutation data.
-	Data []byte
-}
-
 // Mutation reads and writes mutations to the database.
 // TODO: Add mapID to this interface to support multiple maps per server.
 type Mutation interface {
 	// ReadRange reads all mutations for a specific given mapID and sequence
 	// range. The range is identified by a starting sequence number and a
 	// count.
-	ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]MutationInfo, error)
+	ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]*tpb.SignedKV, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
-	Write(txn transaction.Txn, index, mutation []byte) (uint64, error)
+	Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error)
 }
