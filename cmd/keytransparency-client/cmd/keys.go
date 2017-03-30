@@ -179,10 +179,7 @@ var activateCmd = &cobra.Command{
 			return fmt.Errorf("key ID needs to be provided")
 		}
 		keyID := keyID(args[0])
-		if err := store.Activate(keyID); err != nil {
-			return err
-		}
-		return nil
+		return store.Activate(keyID)
 	},
 }
 

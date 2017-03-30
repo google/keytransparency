@@ -243,7 +243,7 @@ func TestGeneratePEMs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("signer.Sign(%v) failed: %v", data, err)
 	}
-	if err := verifier.Verify(data, sig); err != nil {
+	if err = verifier.Verify(data, sig); err != nil {
 		t.Errorf("verifier.Verify() failed: %v", err)
 	}
 }

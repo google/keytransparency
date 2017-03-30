@@ -189,7 +189,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 	}
 	Vlog.Printf("Got current entry...")
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, userID, getResp); err != nil {
+	if err = c.kt.VerifyGetEntryResponse(ctx, userID, getResp); err != nil {
 		return nil, err
 	}
 
@@ -203,7 +203,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 	if err != nil {
 		return nil, err
 	}
-	if err := c.mutator.CheckMutation(getResp.LeafProof.LeafData, m); err != nil {
+	if err = c.mutator.CheckMutation(getResp.LeafProof.LeafData, m); err != nil {
 		return nil, err
 	}
 

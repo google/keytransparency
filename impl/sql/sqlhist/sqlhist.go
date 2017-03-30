@@ -124,10 +124,10 @@ func New(ctx context.Context, db *sql.DB, mapID int64, factory transaction.Facto
 	if err != nil {
 		return nil, err
 	}
-	if err := m.setRootAt(txn, nodeValue, -1); err != nil {
+	if err = m.setRootAt(txn, nodeValue, -1); err != nil {
 		return nil, err
 	}
-	if err := txn.Commit(); err != nil {
+	if err = txn.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -192,10 +192,10 @@ func (m *Map) Commit(ctx context.Context) (epoch int64, returnErr error) {
 	}
 	defer stmt.Close()
 	rows, err := stmt.Query(m.mapID, m.epoch+1)
-	defer rows.Close()
 	if err != nil {
 		return -1, err
 	}
+	defer rows.Close()
 	leafRows := make([]leafRow, 0, 10)
 	for rows.Next() {
 		var r leafRow
@@ -396,7 +396,7 @@ func (m *Map) insertMapRow() error {
 	}
 	defer countStmt.Close()
 	var count int
-	if err := countStmt.QueryRow(m.mapID).Scan(&count); err != nil {
+	if err = countStmt.QueryRow(m.mapID).Scan(&count); err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	if count >= 1 {

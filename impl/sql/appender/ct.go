@@ -132,7 +132,7 @@ func (a *CTAppender) insertMapRow() error {
 	}
 	defer countStmt.Close()
 	var count int
-	if err := countStmt.QueryRow(a.mapID).Scan(&count); err != nil {
+	if err = countStmt.QueryRow(a.mapID).Scan(&count); err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	if count >= 1 {
@@ -165,7 +165,7 @@ func (a *CTAppender) Append(ctx context.Context, txn transaction.Txn, epoch int6
 				return fmt.Errorf("CT: Serialization failure: %v", err)
 			}
 			var data bytes.Buffer
-			if err := gob.NewEncoder(&data).Encode(obj); err != nil {
+			if err = gob.NewEncoder(&data).Encode(obj); err != nil {
 				return err
 			}
 			writeStmt, err := txn.Prepare(insertExpr)
@@ -195,7 +195,7 @@ func (a *CTAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([
 	defer readStmt.Close()
 
 	var data, sct []byte
-	if err := readStmt.QueryRow(a.mapID, epoch).Scan(&data, &sct); err != nil {
+	if err = readStmt.QueryRow(a.mapID, epoch).Scan(&data, &sct); err != nil {
 		return nil, err
 	}
 
@@ -220,7 +220,7 @@ func (a *CTAppender) Latest(ctx context.Context, obj interface{}) (int64, []byte
 
 	var epoch int64
 	var data, sct []byte
-	if err := readStmt.QueryRow(a.mapID).Scan(&epoch, &data, &sct); err != nil {
+	if err = readStmt.QueryRow(a.mapID).Scan(&epoch, &data, &sct); err != nil {
 		return 0, nil, err
 	}
 	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)

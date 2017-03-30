@@ -57,10 +57,10 @@ func TestGetLatest(t *testing.T) {
 			t.Errorf("factory.NewDBTxn() failed: %v", err)
 			continue
 		}
-		if err := a.Write(txn, tc.mapID, tc.epoch, tc.data); err != nil {
+		if err = a.Write(txn, tc.mapID, tc.epoch, tc.data); err != nil {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
-		if err := txn.Commit(); err != nil {
+		if err = txn.Commit(); err != nil {
 			t.Errorf("txn.Commit() failed: %v", err)
 		}
 
@@ -74,7 +74,7 @@ func TestGetLatest(t *testing.T) {
 		if err != nil {
 			t.Errorf("Latest(): %v, want nil", err)
 		}
-		if err := txn2.Commit(); err != nil {
+		if err = txn2.Commit(); err != nil {
 			t.Errorf("txn.Commit() failed: %v", err)
 		}
 		if got, want := epoch, tc.want; got != want {

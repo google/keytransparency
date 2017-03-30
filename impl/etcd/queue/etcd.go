@@ -102,7 +102,7 @@ func (q *Queue) enqueue(val []byte) (string, int64, error) {
 		if err != nil {
 			return "", -1, err
 		}
-		if txnresp.Succeeded == true {
+		if txnresp.Succeeded {
 			return newKey, txnresp.Header.Revision, nil
 		}
 	}
@@ -127,7 +127,7 @@ func (q *Queue) loop(ctx context.Context, wc v3.WatchChan, cbs callbacks) {
 	for resp := range wc {
 		for _, ev := range resp.Events {
 			if err := q.dequeue(ev.Kv.Key, ev.Kv.Value, ev.Kv.ModRevision, cbs); err != nil {
-				log.Printf(err.Error())
+				log.Println(err.Error())
 			}
 		}
 	}

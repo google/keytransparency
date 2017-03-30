@@ -66,7 +66,7 @@ func TestGetLatest(t *testing.T) {
 		if err := a.Append(ctx, txn, tc.epoch, tc.data); err != nil {
 			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
-		if err := txn.Commit(); err != nil {
+		if err = txn.Commit(); err != nil {
 			t.Errorf("txn.Commit() failed: %v", err)
 		}
 
