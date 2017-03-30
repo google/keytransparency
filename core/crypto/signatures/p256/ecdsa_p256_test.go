@@ -231,6 +231,9 @@ func flipBit(a []byte, pos uint) []byte {
 func TestGeneratePEMs(t *testing.T) {
 	signatures.Rand = DevZero{}
 	skPEM, pkPEM, err := GeneratePEMs()
+	if err != nil {
+		t.Fatalf("GeneratePEMs() failed: %v", err)
+	}
 
 	// Ensure that the generated keys are valid.
 	signer := newSigner(t, skPEM)
