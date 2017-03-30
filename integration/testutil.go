@@ -193,10 +193,10 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create transaction: %v", err)
 	}
-	if err := signer.CreateEpoch(context.Background(), txn); err != nil {
+	if err = signer.CreateEpoch(context.Background(), txn); err != nil {
 		t.Fatalf("Failed to create epoch: %v", err)
 	}
-	if err := txn.Commit(); err != nil {
+	if err = txn.Commit(); err != nil {
 		t.Fatalf("Failed to commit transaction: %v", err)
 	}
 

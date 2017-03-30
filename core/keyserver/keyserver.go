@@ -124,7 +124,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
 	}
 
-	if err := txn.Commit(); err != nil {
+	if err = txn.Commit(); err != nil {
 		log.Printf("Cannot commit transaction: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
@@ -132,7 +132,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	var committed *tpb.Committed
 	if leaf != nil {
 		entry := tpb.Entry{}
-		if err := proto.Unmarshal(leaf, &entry); err != nil {
+		if err = proto.Unmarshal(leaf, &entry); err != nil {
 			log.Printf("Error unmarshaling entry: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}

@@ -320,7 +320,7 @@ func TestActivate(t *testing.T) {
 		{keys[1].keyID, false},
 	} {
 		store := New()
-		if err := addKeys(store, keys); err != nil {
+		if err = addKeys(store, keys); err != nil {
 			t.Fatalf("addKeys() failed: %v", err)
 		}
 
@@ -369,7 +369,7 @@ func TestInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateTestKeys(%v) failed: %v", len(signingStatuses), err)
 	}
-	if err := addKeys(store, keys); err != nil {
+	if err = addKeys(store, keys); err != nil {
 		t.Fatalf("addKeys() failed: %v", err)
 	}
 
@@ -469,7 +469,7 @@ func TestPublicKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateTestKeys(%v) failed: %v", len(signingStatuses), err)
 	}
-	if err := addKeys(store, keys); err != nil {
+	if err = addKeys(store, keys); err != nil {
 		t.Fatalf("addKeys() failed: %v", err)
 	}
 
@@ -488,7 +488,7 @@ func TestMarshalling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateTestKeys(%v) failed: %v", len(signingStatuses), err)
 	}
-	if err := addKeys(store, keys); err != nil {
+	if err = addKeys(store, keys); err != nil {
 		t.Fatalf("addKeys() failed: %v", err)
 	}
 	buf, err := store.Marshal()

@@ -103,7 +103,7 @@ func insertMapRow(db *sql.DB, mapID int64) error {
 	}
 	defer countStmt.Close()
 	var count int
-	if err := countStmt.QueryRow(mapID).Scan(&count); err != nil {
+	if err = countStmt.QueryRow(mapID).Scan(&count); err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	if count >= 1 {
@@ -150,15 +150,11 @@ func (s *Sequenced) Read(txn transaction.Txn, mapID, epoch int64, obj interface{
 	defer readStmt.Close()
 
 	var data []byte
-	if err := readStmt.QueryRow(mapID, epoch).Scan(&data); err != nil {
+	if err = readStmt.QueryRow(mapID, epoch).Scan(&data); err != nil {
 		return err
 	}
 
-	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
 }
 
 // Latest returns the latest object.
@@ -171,7 +167,7 @@ func (s *Sequenced) Latest(txn transaction.Txn, mapID int64, obj interface{}) (i
 
 	var epoch int64
 	var data []byte
-	if err := readStmt.QueryRow(mapID).Scan(&epoch, &data); err != nil {
+	if err = readStmt.QueryRow(mapID).Scan(&epoch, &data); err != nil {
 		return 0, err
 	}
 	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)

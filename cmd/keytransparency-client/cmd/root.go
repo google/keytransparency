@@ -63,10 +63,7 @@ server provides to ensure that account data is accurate.`,
 		}
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		if err := ctClient.Save(viper.GetString("ct-scts")); err != nil {
-			return err
-		}
-		return nil
+		return ctClient.Save(viper.GetString("ct-scts"))
 	},
 }
 

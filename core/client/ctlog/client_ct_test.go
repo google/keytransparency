@@ -74,7 +74,7 @@ func TestInclusionProof(t *testing.T) {
 		t.Fatalf("Failed to create log client: %v", err)
 	}
 	var smh ctmap.SignedMapHead
-	if err := json.Unmarshal([]byte(addJSONReq), &smh); err != nil {
+	if err = json.Unmarshal([]byte(addJSONReq), &smh); err != nil {
 		t.Errorf("Error decoding SMH: %v", err)
 	}
 	sth, err := l.ctlog.GetSTH(ctx)
@@ -188,14 +188,14 @@ func TestVerifySCT(t *testing.T) {
 		}
 		l.ctlog = log
 		var smh ctmap.SignedMapHead
-		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
+		if err = json.Unmarshal([]byte(tc.smh), &smh); err != nil {
 			t.Errorf("Error decoding SMH: %v", err)
 		}
 		sct, err := l.ctlog.AddJSON(ctx, &smh)
 		if err != nil {
 			t.Errorf("Failed to get SCT from AddJSON: %v", err)
 		}
-		if err := l.VerifySCT(ctx, &smh, sct); err != nil {
+		if err = l.VerifySCT(ctx, &smh, sct); err != nil {
 			t.Errorf("VerifySCT(): %v", err)
 		}
 		if got := len(l.scts); got != tc.cachedSCTs {
@@ -215,7 +215,7 @@ func TestVerifySCTSig(t *testing.T) {
 	}
 
 	var smh ctmap.SignedMapHead
-	if err := json.Unmarshal([]byte(addJSONReq), &smh); err != nil {
+	if err = json.Unmarshal([]byte(addJSONReq), &smh); err != nil {
 		t.Fatalf("Error decoding SMH: %v", err)
 	}
 	sct, err := l.ctlog.AddJSON(ctx, &smh)
@@ -254,7 +254,7 @@ func TestVerifySavedSCTs(t *testing.T) {
 		}
 		l.ctlog = log
 		var smh ctmap.SignedMapHead
-		if err := json.Unmarshal([]byte(tc.smh), &smh); err != nil {
+		if err = json.Unmarshal([]byte(tc.smh), &smh); err != nil {
 			t.Errorf("Error decoding SMH: %v", err)
 		}
 		sct, err := l.ctlog.AddJSON(ctx, &smh)
@@ -310,7 +310,7 @@ func TestSaveRestore(t *testing.T) {
 	}
 	defer os.Remove(f.Name())
 
-	if err := l.Save(f.Name()); err != nil {
+	if err = l.Save(f.Name()); err != nil {
 		t.Fatalf("Save(): %v", err)
 	}
 

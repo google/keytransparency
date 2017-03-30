@@ -105,7 +105,7 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	gwmux := runtime.NewServeMux()
-	if err := pb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+	if err = pb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
 
@@ -222,7 +222,7 @@ func main() {
 
 	// Serve HTTP2 server over TLS.
 	log.Printf("Listening on %v", *addr)
-	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
+	if err = http.ListenAndServeTLS(*addr, *certFile, *keyFile,
 		grpcHandlerFunc(grpcServer, mux)); err != nil {
 		log.Fatalf("ListenAndServeTLS: %v", err)
 	}

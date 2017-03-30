@@ -173,7 +173,7 @@ func (c *Commitments) insertMapRow() error {
 	}
 	defer countStmt.Close()
 	var count int
-	if err := countStmt.QueryRow(c.mapID).Scan(&count); err != nil {
+	if err = countStmt.QueryRow(c.mapID).Scan(&count); err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	if count >= 1 {

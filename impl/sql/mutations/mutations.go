@@ -102,10 +102,8 @@ func (m *mutations) Write(ctx context.Context, txn transaction.Txn, epoch int64,
 		return err
 	}
 	defer writeStmt.Close()
-	if _, err := writeStmt.Exec(m.mapID, epoch, index, mutation); err != nil {
-		return err
-	}
-	return nil
+	_, err = writeStmt.Exec(m.mapID, epoch, index, mutation)
+	return err
 }
 
 // Create creates new database tables.
@@ -127,7 +125,7 @@ func (m *mutations) insertMapRow() error {
 	}
 	defer countStmt.Close()
 	var count int
-	if err := countStmt.QueryRow(m.mapID).Scan(&count); err != nil {
+	if err = countStmt.QueryRow(m.mapID).Scan(&count); err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	if count >= 1 {

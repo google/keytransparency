@@ -263,8 +263,5 @@ func (l *Log) Restore(file string) error {
 	}
 	defer f.Close()
 	dec := gob.NewDecoder(f)
-	if err := dec.Decode(&l.scts); err != nil {
-		return err
-	}
-	return nil
+	return dec.Decode(&l.scts)
 }
