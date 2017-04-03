@@ -19,6 +19,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
@@ -30,6 +31,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/google/keytransparency/core/proto/ctmap"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
@@ -105,13 +107,15 @@ func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index
 	}
 
 	// Save new value and update tree.
-	epoch, err := s.tree.QueueLeaf(txn, index, newV)
-	if err != nil {
+	if _, err := s.tree.QueueLeaf(txn, index, newV); err != nil {
 		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
 
-	// Save the mutation to the database.
-	if err := s.mutations.Write(ctx, txn, epoch, index, mutation); err != nil {
+	mutationObj := new(tpb.SignedKV)
+	if err := proto.Unmarshal(mutation, mutationObj); err != nil {
+		return err
+	}
+	if _, err := s.mutations.Write(txn, mutationObj); err != nil {
 		return fmt.Errorf("Mutation write failed: %v", err)
 	}
 

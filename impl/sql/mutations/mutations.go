@@ -17,42 +17,26 @@
 package mutations
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (
 	insertMapRowExpr = `INSERT INTO Maps (MapID) VALUES (?);`
 	countMapRowExpr  = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
 	insertExpr       = `
-	REPLACE INTO Mutations (MapID, Epoch, MIndex, Mutation)
-	VALUES (?, ?, ?, ?);`
+	INSERT INTO Mutations (MapID, MIndex, Mutation)
+	VALUES (?, ?, ?);`
 	readExpr = `
 	SELECT Mutation FROM Mutations
-	WHERE MapID = ? AND Epoch = ? AND MIndex = ?;`
-)
-
-var (
-	createStmt = []string{
-		`
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapID    BIGINT        NOT NULL,
-		PRIMARY KEY(MapID)
-	);`,
-		`
-	CREATE TABLE IF NOT EXISTS Mutations (
-		MapID    BIGINT        NOT NULL,
-		Epoch    INTEGER       NOT NULL,
-                MIndex   VARBINARY(32) NOT NULL,
-		Mutation BLOB          NOT NULL,
-		PRIMARY KEY(MapID, Epoch, MIndex),
-		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
-	);`,
-	}
+	WHERE MapID = ? AND Sequence >= ?
+	ORDER BY Sequence ASC LIMIT ?;`
 )
 
 type mutations struct {
@@ -77,35 +61,61 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 	return m, nil
 }
 
-// Read reads all mutations for a specific given mapID, epoch, and index.
-func (m *mutations) Read(ctx context.Context, txn transaction.Txn, epoch int64, index []byte) ([]byte, error) {
+// ReadRange reads all mutations for a specific given mapID and sequence range.
+// The range is identified by a starting sequence number and a count.
+func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]*tpb.SignedKV, error) {
 	readStmt, err := txn.Prepare(readExpr)
 	if err != nil {
 		return nil, err
 	}
 	defer readStmt.Close()
-
-	var mutation []byte
-	err = readStmt.QueryRow(m.mapID, epoch, index).Scan(&mutation)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	} else if err != nil {
+	rows, err := readStmt.Query(m.mapID, startSequence, count)
+	if err != nil {
 		return nil, err
 	}
-	return mutation, nil
+	defer rows.Close()
+
+	results := make([]*tpb.SignedKV, 0, count)
+	for rows.Next() {
+		var mData []byte
+		if err := rows.Scan(&mData); err != nil {
+			return nil, err
+		}
+		mutation := new(tpb.SignedKV)
+		if err := proto.Unmarshal(mData, mutation); err != nil {
+			return nil, err
+		}
+		results = append(results, mutation)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
-// Write saves the mutation in the database.
-func (m *mutations) Write(ctx context.Context, txn transaction.Txn, epoch int64, index, mutation []byte) error {
+// Write saves the mutation in the database. Write returns the auto-inserted
+// sequence number.
+func (m *mutations) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
+	index := mutation.GetKeyValue().Key
+	mData, err := proto.Marshal(mutation)
+	if err != nil {
+		return 0, err
+	}
+
 	writeStmt, err := txn.Prepare(insertExpr)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer writeStmt.Close()
-	if _, err := writeStmt.Exec(m.mapID, epoch, index, mutation); err != nil {
-		return err
+	result, err := writeStmt.Exec(m.mapID, index, mData)
+	if err != nil {
+		return 0, err
 	}
-	return nil
+	sequence, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(sequence), nil
 }
 
 // Create creates new database tables.

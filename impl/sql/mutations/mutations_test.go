@@ -23,6 +23,8 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/impl/sql/testutil"
 	_ "github.com/mattn/go-sqlite3"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const mapID = 0
@@ -35,51 +37,98 @@ func newDB(t testing.TB) *sql.DB {
 	return db
 }
 
-func fillDB(t *testing.T, ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory) {
+func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *testutil.FakeFactory) {
 	for _, mtn := range []struct {
-		epoch    int64
-		index    []byte
-		mutation []byte
+		mutation    *tpb.SignedKV
+		outSequence uint64
 	}{
-		{1, []byte("index1"), []byte("mutation1")},
-		{2, []byte("index2"), []byte("mutation2")},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index1"),
+					Value: []byte("mutation1"),
+				},
+			},
+			1,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index2"),
+					Value: []byte("mutation2"),
+				},
+			},
+			2,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index3"),
+					Value: []byte("mutation3"),
+				},
+			},
+			3,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index4"),
+					Value: []byte("mutation4"),
+				},
+			},
+			4,
+		},
+		{
+			&tpb.SignedKV{
+				KeyValue: &tpb.KeyValue{
+					Key:   []byte("index5"),
+					Value: []byte("mutation5"),
+				},
+			},
+			5,
+		},
 	} {
-		if err := write(ctx, m, factory, mtn.epoch, mtn.index, mtn.mutation); err != nil {
-			t.Errorf("failed to write mutation to database, epoch=%v, mutation=%v, mutation=%v: %v", mtn.epoch, mtn.index, mtn.mutation, err)
+		if err := write(ctx, m, factory, mtn.mutation, mtn.outSequence); err != nil {
+			t.Errorf("failed to write mutation to database, mutation=%v: %v", mtn.mutation, err)
 		}
 	}
 }
 
-func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, epoch int64, index []byte, mutation []byte) error {
+func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, mutation *tpb.SignedKV, outSequence uint64) error {
 	wtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
 	}
-	if err := m.Write(ctx, wtxn, epoch, index, mutation); err != nil {
-		return fmt.Errorf("Write(%v, %v, %v): %v, want nil", epoch, index, mutation, err)
+	sequence, err := m.Write(wtxn, mutation)
+	if err != nil {
+		return fmt.Errorf("Write(%v): %v, want nil", mutation, err)
 	}
 	if err := wtxn.Commit(); err != nil {
 		return fmt.Errorf("wtxn.Commit() failed: %v", err)
 	}
+	if got, want := sequence, outSequence; got != want {
+		return fmt.Errorf("Write(%v)=%v, want %v", mutation, got, want)
+	}
+
 	return nil
 }
 
-func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, epoch int64, index []byte) ([]byte, error) {
+func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) ([]*tpb.SignedKV, error) {
 	rtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
-	mutation, err := m.Read(ctx, rtxn, epoch, index)
+	results, err := m.ReadRange(rtxn, startSequence, count)
 	if err != nil {
-		return nil, fmt.Errorf("Read(%v, %v): %v, want nil", epoch, index, err)
+		return nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
 	}
 	if err := rtxn.Commit(); err != nil {
 		return nil, fmt.Errorf("rtxn.Commit() failed: %v", err)
 	}
-	return mutation, nil
+	return results, nil
 }
 
-func TestRead(t *testing.T) {
+func TestReadRange(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	factory := testutil.NewFakeFactory(db)
@@ -87,58 +136,111 @@ func TestRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
-	fillDB(t, ctx, m, factory)
+	fillDB(ctx, t, m, factory)
 
 	for _, tc := range []struct {
-		description string
-		epoch       int64
-		index       []byte
-		rMutation   []byte
+		description   string
+		startSequence uint64
+		count         int
+		mutations     []*tpb.SignedKV
 	}{
-		{"read a single mutation", 1, []byte("index1"), []byte("mutation1")},
-		{"non-existing epoch", 100, []byte("index1"), nil},
-		{"non-existing index", 1, []byte("index100"), nil},
+		{
+			"read a single mutation",
+			1,
+			1,
+			[]*tpb.SignedKV{
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index1"),
+						Value: []byte("mutation1"),
+					},
+				},
+			},
+		},
+		{
+			"empty mutation info list",
+			100,
+			10,
+			nil,
+		},
+		{
+			"full mutations range size",
+			1,
+			5,
+			[]*tpb.SignedKV{
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index1"),
+						Value: []byte("mutation1"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index2"),
+						Value: []byte("mutation2"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index3"),
+						Value: []byte("mutation3"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index4"),
+						Value: []byte("mutation4"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index5"),
+						Value: []byte("mutation5"),
+					},
+				},
+			},
+		},
+		{
+			"incomplete mutations range",
+			3,
+			5,
+			[]*tpb.SignedKV{
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index3"),
+						Value: []byte("mutation3"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index4"),
+						Value: []byte("mutation4"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index5"),
+						Value: []byte("mutation5"),
+					},
+				},
+			},
+		},
 	} {
-		mutation, err := read(ctx, m, factory, tc.epoch, tc.index)
+		results, err := read(ctx, m, factory, tc.startSequence, tc.count)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
-		if got, want := mutation, tc.rMutation; !reflect.DeepEqual(got, want) {
-			t.Errorf("%v: mutation=%v, want %v", tc.description, got, want)
+		if got, want := len(results), len(tc.mutations); got != want {
+			t.Errorf("%v: len(results)=%v, want %v", tc.description, got, want)
+			continue
 		}
-	}
-}
-
-func TestOverwriteMutation(t *testing.T) {
-	ctx := context.Background()
-	db := newDB(t)
-	factory := testutil.NewFakeFactory(db)
-	m, err := New(db, mapID)
-	if err != nil {
-		t.Fatalf("Failed to create mutations: %v", err)
-	}
-	fillDB(t, ctx, m, factory)
-
-	for _, tc := range []struct {
-		description string
-		epoch       int64
-		index       []byte
-		wMutation   []byte
-		rMutation   []byte
-	}{
-		{"overwrite epoch 2 mutation", 2, []byte("index2"), []byte("mutation3"), []byte("mutation3")},
-		{"overwrite epoch 2 mutation again", 2, []byte("index2"), []byte("mutation4"), []byte("mutation4")},
-	} {
-		if err := write(ctx, m, factory, tc.epoch, tc.index, tc.wMutation); err != nil {
-			t.Errorf("%v: failed to write mutation: %v", tc.description, err)
-		}
-
-		mutation, err := read(ctx, m, factory, tc.epoch, tc.index)
-		if err != nil {
-			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
-		}
-		if got, want := mutation, tc.rMutation; !reflect.DeepEqual(got, want) {
-			t.Errorf("%v: mutation=%v, want %v", tc.description, got, want)
+		for i := range results {
+			if got, want := results[i].GetKeyValue().Key, tc.mutations[i].GetKeyValue().Key; !reflect.DeepEqual(got, want) {
+				t.Errorf("%v: results[%v] index=%v, want %v", tc.description, i, got, want)
+			}
+			if got, want := results[i].GetKeyValue().Value, tc.mutations[i].GetKeyValue().Value; !reflect.DeepEqual(got, want) {
+				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
+			}
 		}
 	}
 }
