@@ -22,14 +22,15 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/google/keytransparency/impl/sql/sequenced"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/sql/testutil"
+
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/util"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type env struct {
@@ -89,13 +90,78 @@ func TestSetGet(t *testing.T) {
 		leaves []*trillian.MapLeaf
 	}{
 		{
-			epoch: 1,
+			epoch: 0,
 			leaves: []*trillian.MapLeaf{
 				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo")},
 				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar")},
 			}},
 		{
-			epoch: 2,
+			epoch: 1,
+			leaves: []*trillian.MapLeaf{
+				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo1")},
+				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar1")},
+			}},
+	} {
+		ctx := context.Background()
+		resp, err := env.m.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
+			MapId:  env.mapID,
+			Leaves: tc.leaves,
+		})
+		if err != nil {
+			t.Errorf("SetLeaves(%v): %v", i, err)
+			continue
+		}
+		if got, want := resp.MapRoot.MapRevision, tc.epoch; got != want {
+			t.Errorf("SetLeaves(%v).MapRevision: %v, want %v", i, got, want)
+		}
+
+		indexes := make([][]byte, 0, len(tc.leaves))
+		for _, l := range tc.leaves {
+			indexes = append(indexes, l.Index)
+		}
+		resp2, err := env.m.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
+			MapId:    env.mapID,
+			Revision: tc.epoch,
+			Index:    indexes,
+		})
+		if err != nil {
+			t.Errorf("GetLeaves(%v): %v", i, err)
+			continue
+		}
+		if got, want := resp2.MapRoot.MapRevision, tc.epoch; got != want {
+			t.Errorf("GetLeaves(%v).MapRevision: %v, want %v", i, got, want)
+			continue
+		}
+		for k, l := range resp2.MapLeafInclusion {
+			if got, want := l.Leaf.Index, tc.leaves[k].Index; !bytes.Equal(got, want) {
+				t.Errorf("GetLeaves(%v).Index[%v]: %s, want %s", i, k, got, want)
+			}
+			if got, want := l.Leaf.LeafValue, tc.leaves[k].LeafValue; !bytes.Equal(got, want) {
+				t.Errorf("GetLeaves(%v).LeafValue[%v]: %s, want %s", i, k, got, want)
+			}
+		}
+	}
+}
+
+func TestGetSignedMapRoot(t *testing.T) {
+	env, err := newEnv()
+	if err != nil {
+		t.Fatalf("Error creating env: %v", err)
+	}
+	defer env.db.Close()
+
+	for i, tc := range []struct {
+		epoch  int64
+		leaves []*trillian.MapLeaf
+	}{
+		{
+			epoch: 0,
+			leaves: []*trillian.MapLeaf{
+				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo")},
+				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar")},
+			}},
+		{
+			epoch: 1,
 			leaves: []*trillian.MapLeaf{
 				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo1")},
 				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar1")},
@@ -113,27 +179,15 @@ func TestSetGet(t *testing.T) {
 			t.Errorf("SetLeaves(%v).MapRevision: %v, want %v", i, got, want)
 		}
 
-		indexes := make([][]byte, 0, len(tc.leaves))
-		for _, l := range tc.leaves {
-			indexes = append(indexes, l.Index)
-		}
-		resp2, err := env.m.GetLeaves(context.Background(), &trillian.GetMapLeavesRequest{
-			MapId:    env.mapID,
-			Revision: tc.epoch,
-			Index:    indexes,
+		rootResp, err := env.m.GetSignedMapRoot(context.Background(), &trillian.GetSignedMapRootRequest{
+			MapId: env.mapID,
 		})
 		if err != nil {
-			t.Errorf("GetLeaves(%v): %v", i, err)
+			t.Errorf("SetLeaves(%v): %v", i, err)
 			continue
 		}
-		if got, want := resp2.MapRoot.MapRevision, tc.epoch; got != want {
-			t.Errorf("GetLeaves(%v).MapRevision: %v, want %v", i, got, want)
-			continue
-		}
-		for k, l := range resp2.MapLeafInclusion {
-			if got, want := l.Leaf.LeafValue, tc.leaves[k].LeafValue; !bytes.Equal(got, want) {
-				t.Errorf("GetLeaves(%v).Leaf[%v]: %s, want %s", i, k, got, want)
-			}
+		if got, want := rootResp.GetMapRoot().MapRevision, tc.epoch; got != want {
+			t.Errorf("GetMapRoot().MapRevision: %v, want %v", i, err)
 		}
 	}
 }

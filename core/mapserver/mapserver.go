@@ -26,6 +26,7 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 	"github.com/google/trillian"
+
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/util"
 
@@ -33,8 +34,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-// MapServer implements TrilianMap functionality.
-type MapServer struct {
+// mapServer implements TrilianMap functionality.
+type mapServer struct {
 	mapID   int64
 	tree    tree.Sparse
 	factory transaction.Factory
@@ -43,15 +44,10 @@ type MapServer struct {
 	clock   util.TimeSource
 }
 
-// New returns a MapServer.
+// New returns a TrillianMapClient.
 func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths sequenced.Sequenced,
 	signer crypto.Signer, clock util.TimeSource) trillian.TrillianMapClient {
-	if _, err := tree.Commit(context.Background()); err != nil {
-		log.Printf("tree.Commit(): %v", err)
-		panic("foo")
-	}
-
-	return &MapServer{
+	return &mapServer{
 		mapID:   mapID,
 		tree:    tree,
 		factory: factory,
@@ -61,7 +57,7 @@ func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths sequen
 	}
 }
 
-func (m *MapServer) signRoot(ctx context.Context) (*trillian.SignedMapRoot, error) {
+func (m *mapServer) signRoot(ctx context.Context) (*trillian.SignedMapRoot, error) {
 	// TODO: I think Commit should also take a txn so we can support
 	// reading pending leaves, writing the new root, and saving the SignedTreeHead
 	// all in one transaction.
@@ -105,8 +101,7 @@ func (m *MapServer) signRoot(ctx context.Context) (*trillian.SignedMapRoot, erro
 }
 
 // SetLeaves adds the leaves and commits them in a single transaction, returning the new MapRoot.
-func (m *MapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.SetMapLeavesResponse, error) {
-
+func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.SetMapLeavesResponse, error) {
 	if got, want := in.MapId, m.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
@@ -134,7 +129,7 @@ func (m *MapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequ
 }
 
 // GetLeaves returns the requested leaves.
-func (m *MapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.GetMapLeavesResponse, error) {
+func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.GetMapLeavesResponse, error) {
 	if got, want := in.MapId, m.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
@@ -181,7 +176,7 @@ func (m *MapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequ
 }
 
 // GetSignedMapRoot returns the requested MapRoot.
-func (m *MapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (*trillian.GetSignedMapRootResponse, error) {
+func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (*trillian.GetSignedMapRootResponse, error) {
 	if got, want := in.MapId, m.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
