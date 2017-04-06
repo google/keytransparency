@@ -21,20 +21,20 @@ import (
 	"github.com/google/trillian"
 )
 
-// FakeClient implements trillian/client.LogVerifier
-type FakeClient struct {
+// LogClient implements trillian/client.VerifyingLogClient.
+type LogClient struct {
 	leaves []*trillian.LogLeaf
 }
 
 // NewFakeTrillianClient returns a client that mimicks a trillian log.
-func NewFakeTrillianClient() *FakeClient {
-	return &FakeClient{
+func NewFakeTrillianClient() *LogClient {
+	return &LogClient{
 		leaves: make([]*trillian.LogLeaf, 0),
 	}
 }
 
 // AddLeaf adds a leaf to the log.
-func (f *FakeClient) AddLeaf(ctx context.Context, data []byte) error {
+func (f *LogClient) AddLeaf(ctx context.Context, data []byte) error {
 	f.leaves = append(f.leaves, &trillian.LogLeaf{
 		LeafValue: data,
 	})
@@ -42,28 +42,34 @@ func (f *FakeClient) AddLeaf(ctx context.Context, data []byte) error {
 }
 
 // GetByIndex returns the requested leaf.
-func (f *FakeClient) GetByIndex(ctx context.Context, index int64) (*trillian.LogLeaf, error) {
+func (f *LogClient) GetByIndex(ctx context.Context, index int64) (*trillian.LogLeaf, error) {
 	if got, want := index, int64(len(f.leaves)); got > want {
-		return nil, fmt.Errorf("Index out of range. Got %v, want %v", got, want)
+		return nil, fmt.Errorf("Index out of range. Got %v, want <= %v", got, want)
+	}
+	if got, want := index, int64(0); got < want {
+		return nil, fmt.Errorf("Index out of range. Got %v, want >= %v", got, want)
 	}
 	return f.leaves[index], nil
 }
 
 // ListByIndex returns the set of requested leaves.
-func (f *FakeClient) ListByIndex(ctx context.Context, start int64, count int64) ([]*trillian.LogLeaf, error) {
+func (f *LogClient) ListByIndex(ctx context.Context, start int64, count int64) ([]*trillian.LogLeaf, error) {
 	if got, want := start+count, int64(len(f.leaves)); got > want {
-		return nil, fmt.Errorf("Index out of range. Got %v, want %v", got, want)
+		return nil, fmt.Errorf("Index out of range. Got %v, want <= %v", got, want)
+	}
+	if got, want := start, int64(0); got < want {
+		return nil, fmt.Errorf("Index out of range. Got %v, want >= %v", got, want)
 	}
 	return f.leaves[start : start+count], nil
 }
 
 // UpdateRoot fetches the latest signed tree root.
-func (f *FakeClient) UpdateRoot(ctx context.Context) error {
+func (f *LogClient) UpdateRoot(ctx context.Context) error {
 	return nil
 }
 
 // Root returns the latest local copy of the signed log root.
-func (f *FakeClient) Root() trillian.SignedLogRoot {
+func (f *LogClient) Root() trillian.SignedLogRoot {
 	return trillian.SignedLogRoot{
 		TreeSize: int64(len(f.leaves)),
 	}
