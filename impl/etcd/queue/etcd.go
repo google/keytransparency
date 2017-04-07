@@ -102,7 +102,7 @@ func (q *Queue) enqueue(val []byte) (string, int64, error) {
 		if err != nil {
 			return "", -1, err
 		}
-		if txnresp.Succeeded == true {
+		if txnresp.Succeeded {
 			return newKey, txnresp.Header.Revision, nil
 		}
 	}
