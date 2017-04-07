@@ -31,7 +31,7 @@ func TestH1(t *testing.T) {
 		if x == nil {
 			t.Errorf("H1(%v)=%v, want curve point", m, x)
 		}
-		if got := curve.Params().IsOnCurve(x, y); got != true {
+		if got := curve.Params().IsOnCurve(x, y); !got {
 			t.Errorf("H1(%v)=[%v, %v], is not on curve", m, x, y)
 		}
 	}

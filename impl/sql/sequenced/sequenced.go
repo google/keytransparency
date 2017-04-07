@@ -154,11 +154,7 @@ func (s *Sequenced) Read(txn transaction.Txn, mapID, epoch int64, obj interface{
 		return err
 	}
 
-	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
-	if err != nil {
-		return err
-	}
-	return nil
+	return gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
 }
 
 // Latest returns the latest object.
