@@ -19,22 +19,23 @@ import (
 	"fmt"
 
 	"github.com/google/trillian"
+	"github.com/google/trillian/client"
 )
 
-// LogClient implements trillian/client.VerifyingLogClient.
-type LogClient struct {
+// logClient implements trillian/client.VerifyingLogClient.
+type logClient struct {
 	leaves []*trillian.LogLeaf
 }
 
 // NewFakeTrillianClient returns a client that mimicks a trillian log.
-func NewFakeTrillianClient() *LogClient {
-	return &LogClient{
+func NewFakeTrillianClient() client.VerifyingLogClient {
+	return &logClient{
 		leaves: make([]*trillian.LogLeaf, 0),
 	}
 }
 
 // AddLeaf adds a leaf to the log.
-func (f *LogClient) AddLeaf(ctx context.Context, data []byte) error {
+func (f *logClient) AddLeaf(ctx context.Context, data []byte) error {
 	f.leaves = append(f.leaves, &trillian.LogLeaf{
 		LeafValue: data,
 	})
@@ -42,7 +43,7 @@ func (f *LogClient) AddLeaf(ctx context.Context, data []byte) error {
 }
 
 // GetByIndex returns the requested leaf.
-func (f *LogClient) GetByIndex(ctx context.Context, index int64) (*trillian.LogLeaf, error) {
+func (f *logClient) GetByIndex(ctx context.Context, index int64) (*trillian.LogLeaf, error) {
 	if got, want := index, int64(len(f.leaves)); got > want {
 		return nil, fmt.Errorf("Index out of range. Got %v, want <= %v", got, want)
 	}
@@ -53,7 +54,7 @@ func (f *LogClient) GetByIndex(ctx context.Context, index int64) (*trillian.LogL
 }
 
 // ListByIndex returns the set of requested leaves.
-func (f *LogClient) ListByIndex(ctx context.Context, start int64, count int64) ([]*trillian.LogLeaf, error) {
+func (f *logClient) ListByIndex(ctx context.Context, start int64, count int64) ([]*trillian.LogLeaf, error) {
 	if got, want := start+count, int64(len(f.leaves)); got > want {
 		return nil, fmt.Errorf("Index out of range. Got %v, want <= %v", got, want)
 	}
@@ -64,13 +65,23 @@ func (f *LogClient) ListByIndex(ctx context.Context, start int64, count int64) (
 }
 
 // UpdateRoot fetches the latest signed tree root.
-func (f *LogClient) UpdateRoot(ctx context.Context) error {
+func (f *logClient) UpdateRoot(ctx context.Context) error {
 	return nil
 }
 
 // Root returns the latest local copy of the signed log root.
-func (f *LogClient) Root() trillian.SignedLogRoot {
+func (f *logClient) Root() trillian.SignedLogRoot {
 	return trillian.SignedLogRoot{
 		TreeSize: int64(len(f.leaves)),
 	}
+}
+
+// VerifyInclusion returns nil.
+func (l *logClient) VerifyInclusion(ctx context.Context, data []byte) error {
+	return nil
+}
+
+// VerifyInclusionAtIndex returns nil.
+func (l *logClient) VerifyInclusionAtIndex(ctx context.Context, data []byte, index int64) error {
+	return nil
 }
