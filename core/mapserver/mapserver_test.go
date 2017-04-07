@@ -79,6 +79,7 @@ func index(i int) []byte {
 }
 
 func TestSetGet(t *testing.T) {
+	ctx := context.Background()
 	env, err := newEnv()
 	if err != nil {
 		t.Fatalf("Error creating env: %v", err)
@@ -102,7 +103,6 @@ func TestSetGet(t *testing.T) {
 				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar1")},
 			}},
 	} {
-		ctx := context.Background()
 		resp, err := env.m.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
 			MapId:  env.mapID,
 			Leaves: tc.leaves,
@@ -144,6 +144,7 @@ func TestSetGet(t *testing.T) {
 }
 
 func TestGetSignedMapRoot(t *testing.T) {
+	ctx := context.Background()
 	env, err := newEnv()
 	if err != nil {
 		t.Fatalf("Error creating env: %v", err)
@@ -167,7 +168,7 @@ func TestGetSignedMapRoot(t *testing.T) {
 				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar1")},
 			}},
 	} {
-		resp, err := env.m.SetLeaves(context.Background(), &trillian.SetMapLeavesRequest{
+		resp, err := env.m.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
 			MapId:  env.mapID,
 			Leaves: tc.leaves,
 		})
@@ -179,7 +180,7 @@ func TestGetSignedMapRoot(t *testing.T) {
 			t.Errorf("SetLeaves(%v).MapRevision: %v, want %v", i, got, want)
 		}
 
-		rootResp, err := env.m.GetSignedMapRoot(context.Background(), &trillian.GetSignedMapRootRequest{
+		rootResp, err := env.m.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 			MapId: env.mapID,
 		})
 		if err != nil {
