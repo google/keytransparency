@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
@@ -130,16 +131,11 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			txn, err := env.Factory.NewDBTxn(context.Background())
-			if err != nil {
-				t.Fatalf("Failed to create transaction: %v", err)
+
+			if err := env.Queue.AdvanceEpoch(); err != nil {
+				t.Errorf("AdvanceEpoch: %v", err)
 			}
-			if err := env.Signer.CreateEpoch(context.Background(), txn); err != nil {
-				t.Fatalf("Failed to CreateEpoch: %v", err)
-			}
-			if err := txn.Commit(); err != nil {
-				t.Fatalf("Failed to commit transaction: %v", err)
-			}
+
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -207,15 +203,8 @@ func TestUpdateValidation(t *testing.T) {
 			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
-			txn, err := env.Factory.NewDBTxn(context.Background())
-			if err != nil {
-				t.Fatalf("Failed to create transaction: %v", err)
-			}
-			if err := env.Signer.CreateEpoch(context.Background(), txn); err != nil {
-				t.Fatalf("Failed to CreateEpoch: %v", err)
-			}
-			if err := txn.Commit(); err != nil {
-				t.Fatalf("Failed to commit transaction: %v", err)
+			if err := env.Queue.AdvanceEpoch(); err != nil {
+				t.Errorf("AdvanceEpoch: %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
@@ -280,7 +269,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 	// [nil, nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
-	for _, p := range []*tpb.Profile{
+	for i, p := range []*tpb.Profile{
 		nil, nil, cp(1), cp(2), nil, nil, cp(3), nil,
 		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
 		nil, cp(5), cp(7), nil,
@@ -289,20 +278,36 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 			_, err := e.Client.Update(ctx, userID, p, signers, authorizedKeys)
 			// The first update response is always a retry.
 			if got, want := err, grpcc.ErrRetry; got != want {
-				return fmt.Errorf("Update(%v)=(_, %v), want (_, %v)", userID, got, want)
+				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}
+		// Create a new epoch.
+		// Strategy 1: Commit the epoch to the db direcly.
+		//   Problem: The items from update might not be sequenced yet.
+		//            They've only been added to the queue.
+		// Strategy 2: Add a commit signal to the queue. This ensures that the epoch
+		//             will be created after the item has been sequenced.
+		//  Problem: This returns before the next epoch has been created.
+		//           This mean that sometimes, Update will fail from reading an old
+		//           epoch:
+		// 1. Read current mutation
+		// 2. Next epoch gets created
+		// 3. Submit new mutation, gets rejected as invalid
+		//
+		// Solutions:
+		// 1. Client retry logic on invalid mutation
+		// 2. Add wait-poll logic to observe the new epoch before continuing.
+		// 3. Add a server-side, blocking sequence function
+		//    add to queue
+		//    wait poll?
+		//    add a watcher channel for new epochs?
 
-		txn, err := e.Factory.NewDBTxn(context.Background())
-		if err != nil {
-			return fmt.Errorf("Failed to create transaction: %v", err)
+		if err := e.Queue.AdvanceEpoch(); err != nil {
+			return fmt.Errorf("AdvanceEpoch: %v", err)
 		}
-		if err := e.Signer.CreateEpoch(context.Background(), txn); err != nil {
-			return fmt.Errorf("Failed to CreateEpoch: %v", err)
-		}
-		if err := txn.Commit(); err != nil {
-			return fmt.Errorf("Failed to commit transaction: %v", err)
-		}
+		// TODO: Wait for a moment for the epoch to be created.
+		time.Sleep(1 * time.Millisecond)
+
 	}
 	return nil
 }

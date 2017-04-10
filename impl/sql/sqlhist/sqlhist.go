@@ -93,37 +93,37 @@ const (
 
 // Map stores a temporal sparse merkle tree, backed by an SQL database.
 type Map struct {
-	mapID   int64
-	db      *sql.DB
-	factory transaction.Factory
-	epoch   int64 // The currently valid epoch. Insert at epoch+1.
+	mapID int64
 }
 
 // New creates a new map.
-func New(ctx context.Context, db *sql.DB, mapID int64, factory transaction.Factory) (*Map, error) {
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("No DB connection: %v", err)
-	}
-
-	m := &Map{
-		mapID:   mapID,
-		db:      db,
-		factory: factory,
-	}
-	if err := m.create(); err != nil {
-		return nil, err
-	}
-	if err := m.insertMapRow(); err != nil {
-		return nil, err
+func New(ctx context.Context, db *sql.DB, mapID int64, factory transaction.Factory) (m *Map, returnErr error) {
+	m = &Map{
+		mapID: mapID,
 	}
 	index, depth := tree.InvertBitString("")
 	nodeValue := hasher.HashEmpty(m.mapID, index, depth)
 
-	// Set the first root.
-	txn, err := m.factory.NewDBTxn(ctx)
+	txn, err := factory.NewDBTxn(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if returnErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				returnErr = fmt.Errorf("setLeafAt failed: %v, and Rollback failed: %v", returnErr, rbErr)
+			}
+		}
+	}()
+
+	if err := m.create(txn); err != nil {
+		return nil, fmt.Errorf("create(): %v", err)
+	}
+	if err := m.insertMapRow(txn); err != nil {
+		return nil, err
+	}
+	// Set the first root.
 	if err := m.setRootAt(txn, nodeValue, -1); err != nil {
 		return nil, err
 	}
@@ -131,38 +131,49 @@ func New(ctx context.Context, db *sql.DB, mapID int64, factory transaction.Facto
 		return nil, err
 	}
 
-	epoch, err := m.readEpoch()
-	if err != nil {
-		return nil, err
-	}
-	m.epoch = epoch
 	return m, nil
 }
 
 // Epoch returns the current epoch of the merkle tree.
-func (m *Map) Epoch() int64 {
-	return m.epoch
+func (m *Map) Epoch(txn transaction.Txn) (int64, error) {
+	stmt, err := txn.Prepare(readEpochExpr)
+	if err != nil {
+		return -1, fmt.Errorf("readEpoch(): %v", err)
+	}
+	defer stmt.Close()
+	var epoch sql.NullInt64
+	if err := stmt.QueryRow(m.mapID, m.nodeID("")).Scan(&epoch); err != nil {
+		return -1, fmt.Errorf("Error reading epoch: %v", err)
+	}
+	if !epoch.Valid {
+		return -1, errInvalidEpoch
+	}
+	return epoch.Int64, nil
 }
 
 // QueueLeaf should only be called by the sequencer. If txn is nil, the operation
 // will not run in a transaction. QueueLeaf returns the epoch at which the leaf
 // is queued.
-func (m *Map) QueueLeaf(txn transaction.Txn, index, leaf []byte) (int64, error) {
+func (m *Map) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
 	if got, want := len(index), size; got != want {
-		return -1, errIndexLen
+		return errIndexLen
 	}
 	if leaf == nil {
-		return -1, errNilLeaf
+		return errNilLeaf
 	}
 
+	epoch, err := m.Epoch(txn)
+	if err != nil {
+		return err
+	}
 	// Write leaf nodes
 	stmt, err := txn.Prepare(queueExpr)
 	if err != nil {
-		return -1, err
+		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(m.mapID, index, m.epoch+1, leaf)
-	return m.epoch + 1, err
+	_, err = stmt.Exec(m.mapID, index, epoch+1, leaf)
+	return err
 }
 
 type leafRow struct {
@@ -173,64 +184,52 @@ type leafRow struct {
 
 // Commit takes all the Queued values since the last Commmit() and writes them.
 // Commit is NOT multi-process safe. It should only be called from the sequencer.
-func (m *Map) Commit(ctx context.Context) (epoch int64, returnErr error) {
-	txn, err := m.factory.NewDBTxn(ctx)
+func (m *Map) Commit(txn transaction.Txn) error {
+	epoch, err := m.Epoch(txn)
 	if err != nil {
-		return -1, fmt.Errorf("factory.NewDBTxn() failed: %v", err)
+		return err
 	}
-	defer func() {
-		if returnErr != nil {
-			if rbErr := txn.Rollback(); rbErr != nil {
-				returnErr = fmt.Errorf("setLeafAt failed: %v, and Rollback failed: %v", returnErr, rbErr)
-			}
-		}
-	}()
 	// Get the list of pending leafs
 	stmt, err := txn.Prepare(pendingLeafsExpr)
 	if err != nil {
-		return -1, fmt.Errorf("Prepare(): %v", err)
+		return fmt.Errorf("Prepare(): %v", err)
 	}
 	defer stmt.Close()
-	rows, err := stmt.Query(m.mapID, m.epoch+1)
+	rows, err := stmt.Query(m.mapID, epoch+1)
 	defer rows.Close()
 	if err != nil {
-		return -1, err
+		return err
 	}
 	leafRows := make([]leafRow, 0, 10)
 	for rows.Next() {
 		var r leafRow
 		err = rows.Scan(&r.index, &r.version, &r.data)
 		if err != nil {
-			return -1, err
+			return err
 		}
 		leafRows = append(leafRows, r)
 	}
 
 	for _, r := range leafRows {
-		if err := m.setLeafAt(txn, r.index, maxDepth, r.data, m.epoch+1); err != nil {
+		if err := m.setLeafAt(txn, r.index, maxDepth, r.data, epoch+1); err != nil {
 			// Recovery from here would mean updating nodes that
 			// didn't get included so that they would be included
 			// in the next epoch.
-			return -1, fmt.Errorf("Failed to set node: %v", err)
+			return fmt.Errorf("Failed to set node: %v", err)
 		}
 	}
 	// Always update the root node.
 	if len(leafRows) == 0 {
-		root, err := m.ReadRootAt(txn, m.epoch)
+		root, err := m.ReadRootAt(txn, epoch)
 		if err != nil {
-			return -1, fmt.Errorf("No root for epoch %d: %v", m.epoch, err)
+			return fmt.Errorf("No root for epoch %d: %v", epoch, err)
 		}
-		if err := m.setRootAt(txn, sparse.FromBytes(root), m.epoch+1); err != nil {
-			return -1, fmt.Errorf("Failed to set root: %v", err)
+		if err := m.setRootAt(txn, sparse.FromBytes(root), epoch+1); err != nil {
+			return fmt.Errorf("setRootAt(%v): %v", epoch+1, err)
 		}
 	}
 
-	if err := txn.Commit(); err != nil {
-		return -1, fmt.Errorf("Failed to commit transaction: %v", err)
-	}
-
-	m.epoch++
-	return m.epoch, nil
+	return nil
 }
 
 // ReadRootAt returns the value of the root node in a specific epoch. If txn is
@@ -367,30 +366,34 @@ func (m *Map) setLeafAt(txn transaction.Txn, index []byte, depth int, value []by
 func (m *Map) setRootAt(txn transaction.Txn, value sparse.Hash, epoch int64) error {
 	writeStmt, err := txn.Prepare(setNodeExpr)
 	if err != nil {
-		return fmt.Errorf("setRootAt(): %v", err)
+		return err
 	}
 	defer writeStmt.Close()
 	_, err = writeStmt.Exec(m.mapID, m.nodeID(""), epoch, value.Bytes())
 	if err != nil {
-		return fmt.Errorf("setRootAt(): %v", err)
+		return err
 	}
 	return nil
 }
 
 // Create creates a new database.
-func (m *Map) create() error {
+func (m *Map) create(txn transaction.Txn) error {
 	for _, stmt := range createStmt {
-		_, err := m.db.Exec(stmt)
+		prepared, err := txn.Prepare(stmt)
 		if err != nil {
-			return fmt.Errorf("Failed to create map tables: %v", err)
+			return fmt.Errorf("prepare(): %v", err)
+		}
+		defer prepared.Close()
+		if _, err := prepared.Exec(); err != nil {
+			return fmt.Errorf("exec(): %v", err)
 		}
 	}
 	return nil
 }
 
-func (m *Map) insertMapRow() error {
+func (m *Map) insertMapRow(txn transaction.Txn) error {
 	// Check if a map row does not exist for the same MapID.
-	countStmt, err := m.db.Prepare(countMapRowExpr)
+	countStmt, err := txn.Prepare(countMapRowExpr)
 	if err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
@@ -404,7 +407,7 @@ func (m *Map) insertMapRow() error {
 	}
 
 	// Insert a map row if it does not exist already.
-	insertStmt, err := m.db.Prepare(insertMapRowExpr)
+	insertStmt, err := txn.Prepare(insertMapRowExpr)
 	if err != nil {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
@@ -414,22 +417,6 @@ func (m *Map) insertMapRow() error {
 		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	return nil
-}
-
-func (m *Map) readEpoch() (int64, error) {
-	stmt, err := m.db.Prepare(readEpochExpr)
-	if err != nil {
-		return -1, fmt.Errorf("readEpoch(): %v", err)
-	}
-	defer stmt.Close()
-	var epoch sql.NullInt64
-	if err := stmt.QueryRow(m.mapID, m.nodeID("")).Scan(&epoch); err != nil {
-		return -1, fmt.Errorf("Error reading epoch: %v", err)
-	}
-	if !epoch.Valid {
-		return -1, errInvalidEpoch
-	}
-	return epoch.Int64, nil
 }
 
 // Converts a list of bit strings into their node IDs.

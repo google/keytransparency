@@ -127,7 +127,7 @@ func (q *Queue) loop(ctx context.Context, wc v3.WatchChan, cbs callbacks) {
 	for resp := range wc {
 		for _, ev := range resp.Events {
 			if err := q.dequeue(ev.Kv.Key, ev.Kv.Value, ev.Kv.ModRevision, cbs); err != nil {
-				log.Printf(err.Error())
+				log.Printf("Error: dequeue(): %v", err)
 			}
 		}
 	}
@@ -148,12 +148,15 @@ func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
 
 	// Process the received entry.
 	if err := processEntry(q.ctx, txn, cbs, dataKV); err != nil {
+		if rErr := txn.Rollback(); rErr != nil {
+			return fmt.Errorf("%v, Rollback: %v", err, rErr)
+		}
 		return err
 	}
 
 	// Commit the transaction.
 	if err := txn.Commit(); err != nil {
-		return err
+		return fmt.Errorf("txn.Commit(advanceEpoch=%v): %v", dataKV.AdvanceEpoch, err)
 	}
 	return nil
 }
@@ -162,9 +165,15 @@ func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
 func processEntry(ctx context.Context, txn ctxn.Txn, cbs callbacks, dataKV kv) error {
 	// Process the entry.
 	if dataKV.AdvanceEpoch {
-		return cbs.advanceFunc(ctx, txn)
+		if err := cbs.advanceFunc(ctx, txn); err != nil {
+			return fmt.Errorf("advanceFunc(): %v", err)
+		}
+	} else {
+		if err := cbs.processFunc(ctx, txn, dataKV.Key, dataKV.Val); err != nil {
+			return fmt.Errorf("processFunc(): %v", err)
+		}
 	}
-	return cbs.processFunc(ctx, txn, dataKV.Key, dataKV.Val)
+	return nil
 }
 
 // Close stops the receiver from receiving items from the queue.
