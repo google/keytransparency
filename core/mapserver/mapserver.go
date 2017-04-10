@@ -57,7 +57,7 @@ func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths sequen
 	}
 }
 
-func (m *mapServer) signRoot(ctx context.Context) (*trillian.SignedMapRoot, error) {
+func (m *mapServer) signRoot(ctx context.Context) (smr *trillian.SignedMapRoot, retErr error) {
 	// TODO: I think Commit should also take a txn so we can support
 	// reading pending leaves, writing the new root, and saving the SignedTreeHead
 	// all in one transaction.
@@ -70,12 +70,19 @@ func (m *mapServer) signRoot(ctx context.Context) (*trillian.SignedMapRoot, erro
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if retErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
+			}
+		}
+	}()
 	root, err := m.tree.ReadRootAt(txn, epoch)
 	if err != nil {
-		return nil, fmt.Errorf("ReadRootAt err: %v", err)
+		return nil, fmt.Errorf("ReadRootAt(%v): %v", epoch, err)
 	}
 
-	smr := &trillian.SignedMapRoot{
+	smr = &trillian.SignedMapRoot{
 		MapId:          m.mapID,
 		MapRevision:    epoch,
 		RootHash:       root,
@@ -101,7 +108,7 @@ func (m *mapServer) signRoot(ctx context.Context) (*trillian.SignedMapRoot, erro
 }
 
 // SetLeaves adds the leaves and commits them in a single transaction, returning the new MapRoot.
-func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.SetMapLeavesResponse, error) {
+func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequest, opts ...grpc.CallOption) (resp *trillian.SetMapLeavesResponse, retErr error) {
 	if got, want := in.MapId, m.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
@@ -109,6 +116,13 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequ
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if retErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
+			}
+		}
+	}()
 	for _, l := range in.Leaves {
 		if _, err := m.tree.QueueLeaf(txn, l.Index, l.LeafValue); err != nil {
 			return nil, fmt.Errorf("QueueLeaf(): %v", err)
@@ -129,7 +143,7 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequ
 }
 
 // GetLeaves returns the requested leaves.
-func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.GetMapLeavesResponse, error) {
+func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequest, opts ...grpc.CallOption) (resp *trillian.GetMapLeavesResponse, retErr error) {
 	if got, want := in.MapId, m.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
@@ -138,6 +152,13 @@ func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequ
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if retErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
+			}
+		}
+	}()
 
 	// Get current epoch.
 	var root trillian.SignedMapRoot
@@ -176,7 +197,7 @@ func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequ
 }
 
 // GetSignedMapRoot returns the requested MapRoot.
-func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (*trillian.GetSignedMapRootResponse, error) {
+func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {
 	if got, want := in.MapId, m.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
@@ -185,6 +206,13 @@ func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSigned
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if retErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
+			}
+		}
+	}()
 
 	// Get current epoch.
 	var root trillian.SignedMapRoot

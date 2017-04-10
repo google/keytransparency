@@ -95,8 +95,12 @@ func (s *Signer) StartSigning(interval time.Duration) {
 
 // ProcessMutation saves a mutation and adds it to the append-only log and tree.
 func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index, mutation []byte) error {
+	epoch, err := s.tree.Epoch(txn)
+	if err != nil {
+		return fmt.Errorf("Epoch(): %v", err)
+	}
 	// Get current value.
-	v, err := s.tree.ReadLeafAt(txn, index, s.tree.Epoch())
+	v, err := s.tree.ReadLeafAt(txn, index, epoch)
 	if err != nil {
 		return fmt.Errorf("ReadLeafAt err: %v", err)
 	}
@@ -107,7 +111,7 @@ func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index
 	}
 
 	// Save new value and update tree.
-	if _, err := s.tree.QueueLeaf(txn, index, newV); err != nil {
+	if err := s.tree.QueueLeaf(txn, index, newV); err != nil {
 		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
 
@@ -125,13 +129,16 @@ func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index
 
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
-	epoch, err := s.tree.Commit(ctx)
+	if err := s.tree.Commit(txn); err != nil {
+		return fmt.Errorf("Commit(): %v", err)
+	}
+	epoch, err := s.tree.Epoch(txn)
 	if err != nil {
-		return fmt.Errorf("Commit err: %v", err)
+		return fmt.Errorf("Epoch(): %v", err)
 	}
 	root, err := s.tree.ReadRootAt(txn, epoch)
 	if err != nil {
-		return fmt.Errorf("ReadRootAt err: %v", err)
+		return fmt.Errorf("ReadRootAt(%v): %v", epoch, err)
 	}
 	timestamp, err := ptypes.TimestampProto(s.clock.Now())
 	if err != nil {

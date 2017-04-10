@@ -15,20 +15,16 @@
 // Package tree contains functions for manipulating generic tree representations.
 package tree
 
-import (
-	"golang.org/x/net/context"
-
-	"github.com/google/keytransparency/core/transaction"
-)
+import "github.com/google/keytransparency/core/transaction"
 
 // Sparse is a temporal sparse merkle tree.
 type Sparse interface {
 	// QueueLeaf queues a leaf to be written on the next Commit(). QueueLeaf
 	// returns the epoch at which the leaf is queued.
-	QueueLeaf(txn transaction.Txn, index, leaf []byte) (int64, error)
+	QueueLeaf(txn transaction.Txn, index, leaf []byte) error
 	// Commit takes all the Queued values since the last Commmit() and writes them.
 	// Commit is NOT multi-process safe. It should only be called from the sequencer.
-	Commit(ctx context.Context) (epoch int64, err error)
+	Commit(txn transaction.Txn) error
 	// ReadRootAt returns the root value at epoch.
 	ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error)
 	// ReadLeafAt returns the leaf value at epoch.
@@ -36,5 +32,5 @@ type Sparse interface {
 	// Neighbors returns the list of neighbors from the neighbor leaf to just below the root at epoch.
 	NeighborsAt(txn transaction.Txn, index []byte, epoch int64) ([][]byte, error)
 	// Epoch returns the current epoch of the merkle tree.
-	Epoch() int64
+	Epoch(txn transaction.Txn) (int64, error)
 }

@@ -92,12 +92,11 @@ func (t *txn) Prepare(query string) (*sql.Stmt, error) {
 // processed is lost. If this transaction object is created using NewDBTxn, only
 // the database transaction will be committed.
 func (t *txn) Commit() error {
-	// If channel is done, return error.
-	select {
-	case <-t.ctx.Done():
-		return t.ctx.Err()
-	default:
-		// context is not done, continue.
+	if err := t.ctx.Err(); err != nil {
+		if rbErr := t.Rollback(); rbErr != nil {
+			err = fmt.Errorf("%v, Rollback(): %v", err, rbErr)
+		}
+		return err
 	}
 
 	// Delete the queue element only if queueTxn is set.
@@ -121,7 +120,7 @@ func (t *txn) Commit() error {
 		// transaction.
 		if err != nil {
 			if rbErr := t.Rollback(); rbErr != nil {
-				err = fmt.Errorf("%v, %v", err, rbErr)
+				err = fmt.Errorf("%v, Rollback(): %v", err, rbErr)
 			}
 			return err
 		}
@@ -129,16 +128,12 @@ func (t *txn) Commit() error {
 
 	// Commit the database transaction. On failure, we lose the mutation.
 	if err := t.dbTxn.Commit(); err != nil {
-		return fmt.Errorf("database commit failed: %v", err)
+		return fmt.Errorf("db.Commit(): %v", err)
 	}
-
 	return nil
 }
 
 // Rollback aborts the transaction. It only rolls back the database transaction.
 func (t *txn) Rollback() error {
-	if err := t.dbTxn.Rollback(); err != nil {
-		return fmt.Errorf("database rollback failed: %v", err)
-	}
-	return nil
+	return t.dbTxn.Rollback()
 }
