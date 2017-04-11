@@ -58,14 +58,6 @@ func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths sequen
 }
 
 func (m *mapServer) signRoot(ctx context.Context) (smr *trillian.SignedMapRoot, retErr error) {
-	// TODO: I think Commit should also take a txn so we can support
-	// reading pending leaves, writing the new root, and saving the SignedTreeHead
-	// all in one transaction.
-	epoch, err := m.tree.Commit(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("tree.Commit(): %v", err)
-	}
-
 	txn, err := m.factory.NewDBTxn(ctx)
 	if err != nil {
 		return nil, err
@@ -77,6 +69,14 @@ func (m *mapServer) signRoot(ctx context.Context) (smr *trillian.SignedMapRoot, 
 			}
 		}
 	}()
+
+	if err := m.tree.Commit(txn); err != nil {
+		return nil, fmt.Errorf("Commit(): %v", err)
+	}
+	epoch, err := m.tree.Epoch(txn)
+	if err != nil {
+		return nil, fmt.Errorf("Epoch(): %v", err)
+	}
 	root, err := m.tree.ReadRootAt(txn, epoch)
 	if err != nil {
 		return nil, fmt.Errorf("ReadRootAt(%v): %v", epoch, err)
@@ -124,7 +124,7 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequ
 		}
 	}()
 	for _, l := range in.Leaves {
-		if _, err := m.tree.QueueLeaf(txn, l.Index, l.LeafValue); err != nil {
+		if err := m.tree.QueueLeaf(txn, l.Index, l.LeafValue); err != nil {
 			return nil, fmt.Errorf("QueueLeaf(): %v", err)
 		}
 	}
