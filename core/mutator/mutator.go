@@ -58,8 +58,8 @@ type Mutator interface {
 type Mutation interface {
 	// ReadRange reads all mutations for a specific given mapID and sequence
 	// range. The range is identified by a starting sequence number and a
-	// count.
-	ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]*tpb.SignedKV, error)
+	// count. ReadRange also returns the maximum sequence number read.
+	ReadRange(txn transaction.Txn, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
 	Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error)

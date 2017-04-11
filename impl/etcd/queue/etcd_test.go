@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/keytransparency/core/mutator"
 	ctxn "github.com/google/keytransparency/core/transaction"
 	itxn "github.com/google/keytransparency/impl/transaction"
 
@@ -51,7 +52,7 @@ func TestStartReceiving(t *testing.T) {
 
 	cli := c.RandClient()
 	factory := itxn.NewFactory(newDB(t), cli)
-	q := New(context.Background(), cli, mapID, factory)
+	q := New(context.Background(), cli, mapID, factory, nil)
 
 	// Prepare test data.
 	litems := []struct {
@@ -69,27 +70,33 @@ func TestStartReceiving(t *testing.T) {
 	// of the test case, this map should be empty.
 	mitems := make(map[string]string)
 	for _, v := range litems {
-		mitems[v.key] = v.value
+		mitems[v.value] = v.value
 	}
 
 	// StartReceiving setup.
 	var done sync.WaitGroup
 	done.Add(len(mitems))
-	processFunc := func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
-		if v, ok := mitems[string(key)]; !ok {
+	// Overwrite saveMutation but restore it at the end.
+	backupSaveMutation := saveMutation
+	defer func() {
+		saveMutation = backupSaveMutation
+	}()
+	saveMutation = func(txn ctxn.Txn, mutations mutator.Mutation, mutation []byte) error {
+		key := string(mutation)
+		if v, ok := mitems[key]; !ok {
 			t.Errorf("Receive key %v was not enqueued", key)
 		} else {
-			if got, want := value, []byte(v); !bytes.Equal(got, want) {
+			if got, want := mutation, []byte(v); !bytes.Equal(got, want) {
 				t.Errorf("Received the wrong value for key %v: %v, want %v", key, got, want)
 			}
 		}
 		// Remove received item from items map.
-		delete(mitems, string(key))
+		delete(mitems, key)
 		done.Done()
 		return nil
 	}
 	advanceFunc := func(ctx context.Context, txn ctxn.Txn) error { return nil }
-	if _, err := q.StartReceiving(processFunc, advanceFunc); err != nil {
+	if _, err := q.StartReceiving(advanceFunc); err != nil {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
 
@@ -112,15 +119,17 @@ func TestStartReceiving(t *testing.T) {
 func TestProcessEntry(t *testing.T) {
 	// Setup
 	var pCounter, aCounter int
-	cbs := callbacks{
-		func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
-			pCounter++
-			return nil
-		},
-		func(ctx context.Context, txn ctxn.Txn) error {
-			aCounter++
-			return nil
-		},
+	backupSaveMutation := saveMutation
+	defer func() {
+		saveMutation = backupSaveMutation
+	}()
+	saveMutation = func(txn ctxn.Txn, mutations mutator.Mutation, mutation []byte) error {
+		pCounter++
+		return nil
+	}
+	advanceFunc := func(ctx context.Context, txn ctxn.Txn) error {
+		aCounter++
+		return nil
 	}
 
 	for _, tc := range []struct {
@@ -146,7 +155,7 @@ func TestProcessEntry(t *testing.T) {
 		aCounter = 0
 
 		for _, kv := range tc.kvs {
-			_ = processEntry(context.Background(), nil, cbs, kv)
+			_ = processEntry(context.Background(), nil, nil, advanceFunc, kv)
 		}
 
 		if got, want := pCounter, tc.pCounter; got != want {
@@ -171,7 +180,7 @@ func TestKVTimeout(t *testing.T) {
 
 	cli := c.RandClient()
 	factory := itxn.NewFactory(newDB(t), cli)
-	q := New(context.Background(), cli, mapID, factory)
+	q := New(context.Background(), cli, mapID, factory, nil)
 
 	value := kv{[]byte("test_key"), []byte("test_value"), false}
 	var buf bytes.Buffer
@@ -179,13 +188,15 @@ func TestKVTimeout(t *testing.T) {
 		t.Fatalf("gob encoding failed: %v", err)
 	}
 
-	cbs := callbacks{
-		func(ctx context.Context, txn ctxn.Txn, key, value []byte) error {
-			return nil
-		},
-		func(ctx context.Context, txn ctxn.Txn) error {
-			return nil
-		},
+	backupSaveMutation := saveMutation
+	defer func() {
+		saveMutation = backupSaveMutation
+	}()
+	saveMutation = func(txn ctxn.Txn, mutations mutator.Mutation, mutation []byte) error {
+		return nil
+	}
+	advanceFunc := func(ctx context.Context, txn ctxn.Txn) error {
+		return nil
 	}
 
 	for _, tc := range []struct {
@@ -203,7 +214,7 @@ func TestKVTimeout(t *testing.T) {
 
 		time.Sleep(time.Duration(tc.sleep) * time.Second)
 
-		err = q.dequeue([]byte(key), buf.Bytes(), rev, cbs)
+		err = q.dequeue([]byte(key), buf.Bytes(), rev, advanceFunc)
 		if got, want := err == nil, tc.success; got != want {
 			t.Errorf("dequeue(%v, _, _, _)=%v, want %v, error %v", key, got, want, err)
 		}

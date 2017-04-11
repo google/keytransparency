@@ -17,22 +17,38 @@ package queue
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/queue"
 	ctxn "github.com/google/keytransparency/core/transaction"
 	itxn "github.com/google/keytransparency/impl/transaction"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
-// leaseTTL is in seconds.
-var leaseTTL = int64(30)
+var (
+	// leaseTTL is in seconds.
+	leaseTTL = int64(30)
+	// saveMutation will be overwritten in tests.
+	saveMutation = func(txn ctxn.Txn, mutations mutator.Mutation, mutation []byte) error {
+		mutationObj := new(tpb.SignedKV)
+		if err := proto.Unmarshal(mutation, mutationObj); err != nil {
+			return err
+		}
+		if _, err := mutations.Write(txn, mutationObj); err != nil {
+			return fmt.Errorf("Mutation write failed: %v", err)
+		}
+		return nil
+	}
+)
 
 // Queue is a single-reader, multi-writer distributed queue.
 type Queue struct {
@@ -40,6 +56,7 @@ type Queue struct {
 	ctx        context.Context
 	keyPrefix  string
 	factory    *itxn.Factory
+	mutations  mutator.Mutation
 	epoch      chan struct{}
 	sendEpochs bool
 }
@@ -49,11 +66,6 @@ type receiver struct {
 	cancel context.CancelFunc
 }
 
-type callbacks struct {
-	processFunc queue.ProcessKeyValueFunc
-	advanceFunc queue.AdvanceEpochFunc
-}
-
 type kv struct {
 	Key          []byte
 	Val          []byte
@@ -61,12 +73,13 @@ type kv struct {
 }
 
 // New creates a new consistent, distributed queue.
-func New(ctx context.Context, client *v3.Client, mapID int64, factory *itxn.Factory) *Queue {
+func New(ctx context.Context, client *v3.Client, mapID int64, factory *itxn.Factory, mutations mutator.Mutation) *Queue {
 	return &Queue{
 		client:    client,
 		ctx:       ctx,
 		keyPrefix: strconv.FormatInt(mapID, 10),
 		factory:   factory,
+		mutations: mutations,
 		epoch:     make(chan struct{}),
 	}
 }
@@ -119,30 +132,25 @@ func (q *Queue) enqueue(val []byte) (string, int64, error) {
 
 // StartReceiving starts receiving queue enqueued items. This function should be
 // called as a Go routine.
-func (q *Queue) StartReceiving(processFunc queue.ProcessKeyValueFunc, advanceFunc queue.AdvanceEpochFunc) (queue.Receiver, error) {
-	// Ensure that callbacks are registered.
-	if processFunc == nil || advanceFunc == nil {
-		return nil, errors.New("nil function pointer")
-	}
-
+func (q *Queue) StartReceiving(advanceFunc queue.AdvanceEpochFunc) (queue.Receiver, error) {
 	cancelableCtx, cancel := context.WithCancel(q.ctx)
 	wc := q.client.Watch(cancelableCtx, q.keyPrefix, v3.WithPrefix(), v3.WithFilterDelete())
-	go q.loop(cancelableCtx, wc, callbacks{processFunc, advanceFunc})
+	go q.loop(cancelableCtx, wc, advanceFunc)
 
 	return &receiver{wc, cancel}, nil
 }
 
-func (q *Queue) loop(ctx context.Context, wc v3.WatchChan, cbs callbacks) {
+func (q *Queue) loop(ctx context.Context, wc v3.WatchChan, advanceFunc queue.AdvanceEpochFunc) {
 	for resp := range wc {
 		for _, ev := range resp.Events {
-			if err := q.dequeue(ev.Kv.Key, ev.Kv.Value, ev.Kv.ModRevision, cbs); err != nil {
+			if err := q.dequeue(ev.Kv.Key, ev.Kv.Value, ev.Kv.ModRevision, advanceFunc); err != nil {
 				log.Printf("Error: dequeue(): %v", err)
 			}
 		}
 	}
 }
 
-func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
+func (q *Queue) dequeue(key, value []byte, rev int64, advanceFunc queue.AdvanceEpochFunc) error {
 	var dataKV kv
 	dec := gob.NewDecoder(bytes.NewBuffer(value))
 	if err := dec.Decode(&dataKV); err != nil {
@@ -156,7 +164,7 @@ func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
 	}
 
 	// Process the received entry.
-	if err := processEntry(q.ctx, txn, cbs, dataKV); err != nil {
+	if err := processEntry(q.ctx, txn, q.mutations, advanceFunc, dataKV); err != nil {
 		if rErr := txn.Rollback(); rErr != nil {
 			return fmt.Errorf("%v, Rollback: %v", err, rErr)
 		}
@@ -173,15 +181,14 @@ func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
 	return nil
 }
 
-// processEntry processes a given queue item.
-func processEntry(ctx context.Context, txn ctxn.Txn, cbs callbacks, dataKV kv) error {
+func processEntry(ctx context.Context, txn ctxn.Txn, mutations mutator.Mutation, advanceFunc queue.AdvanceEpochFunc, dataKV kv) error {
 	// Process the entry.
 	if dataKV.AdvanceEpoch {
-		if err := cbs.advanceFunc(ctx, txn); err != nil {
+		if err := advanceFunc(ctx, txn); err != nil {
 			return fmt.Errorf("advanceFunc(): %v", err)
 		}
 	} else {
-		if err := cbs.processFunc(ctx, txn, dataKV.Key, dataKV.Val); err != nil {
+		if err := saveMutation(txn, mutations, dataKV.Val); err != nil {
 			return fmt.Errorf("processFunc(): %v", err)
 		}
 	}

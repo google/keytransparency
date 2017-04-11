@@ -33,6 +33,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/appender"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
+	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
@@ -188,7 +189,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create committer: %v", err)
 	}
-	queue := queue.New(context.Background(), etcdCli, *mapID, factory)
+	mutations, err := mutations.New(sqldb, *mapID)
+	if err != nil {
+		log.Fatalf("Failed to create mutations object: %v", err)
+	}
+	queue := queue.New(context.Background(), etcdCli, *mapID, factory, mutations)
 	tree, err := sqlhist.New(context.Background(), *mapID, factory)
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)

@@ -15,8 +15,10 @@
 package signer
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -31,7 +33,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/google/keytransparency/core/proto/ctmap"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
@@ -93,8 +94,8 @@ func (s *Signer) StartSigning(interval time.Duration) {
 	}
 }
 
-// ProcessMutation saves a mutation and adds it to the append-only log and tree.
-func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index, mutation []byte) error {
+// queueMutation saves a mutation and adds it to the tree.
+func (s *Signer) queueMutation(txn transaction.Txn, index, mutation []byte) error {
 	epoch, err := s.tree.Epoch(txn)
 	if err != nil {
 		return fmt.Errorf("Epoch(): %v", err)
@@ -115,20 +116,42 @@ func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index
 		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
 
-	mutationObj := new(tpb.SignedKV)
-	if err := proto.Unmarshal(mutation, mutationObj); err != nil {
-		return err
-	}
-	if _, err := s.mutations.Write(txn, mutationObj); err != nil {
-		return fmt.Errorf("Mutation write failed: %v", err)
-	}
-
 	log.Printf("Sequenced %x", index)
 	return nil
 }
 
+// processMutations reads mutations from the database and adds them to the tree.
+// processMutations returns the maximum mutation sequence number processed.
+func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uint64, error) {
+	startSequence := uint64(0)
+	smh := new(ctmap.SignedMapHead)
+	if _, _, err := s.sths.Latest(ctx, smh); err == nil {
+		startSequence = smh.GetMapHead().MaxSequenceNumber + 1
+	} else if err != sql.ErrNoRows {
+		return 0, fmt.Errorf("Latest err: %v", err)
+	}
+	maxSequence, mutations, err := s.mutations.ReadRange(txn, startSequence, math.MaxInt32)
+	if err != nil {
+		return 0, fmt.Errorf("ReadRange err: %v", err)
+	}
+	for _, mutation := range mutations {
+		mData, err := proto.Marshal(mutation)
+		if err != nil {
+			return 0, err
+		}
+		if err := s.queueMutation(txn, mutation.GetKeyValue().Key, mData); err != nil {
+			return 0, fmt.Errorf("queueMutation err: %v", err)
+		}
+	}
+	return maxSequence, nil
+}
+
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
+	maxSequence, err := s.processMutations(ctx, txn)
+	if err != nil {
+		return fmt.Errorf("processMutations err: %v", err)
+	}
 	if err := s.tree.Commit(txn); err != nil {
 		return fmt.Errorf("Commit(): %v", err)
 	}
@@ -146,10 +169,11 @@ func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
 	}
 
 	mh := &ctmap.MapHead{
-		Realm:     s.realm,
-		IssueTime: timestamp,
-		Epoch:     epoch,
-		Root:      root,
+		Realm:             s.realm,
+		IssueTime:         timestamp,
+		Epoch:             epoch,
+		Root:              root,
+		MaxSequenceNumber: maxSequence,
 	}
 	sig, err := s.signer.Sign(mh)
 	if err != nil {

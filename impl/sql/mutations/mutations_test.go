@@ -113,19 +113,19 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 	return nil
 }
 
-func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) ([]*tpb.SignedKV, error) {
+func read(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
 	rtxn, err := factory.NewDBTxn(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create read transaction: %v", err)
+		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
-	results, err := m.ReadRange(rtxn, startSequence, count)
+	maxSequence, results, err := m.ReadRange(rtxn, startSequence, count)
 	if err != nil {
-		return nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
+		return 0, nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
 	}
 	if err := rtxn.Commit(); err != nil {
-		return nil, fmt.Errorf("rtxn.Commit() failed: %v", err)
+		return 0, nil, fmt.Errorf("rtxn.Commit() failed: %v", err)
 	}
-	return results, nil
+	return maxSequence, results, nil
 }
 
 func TestReadRange(t *testing.T) {
@@ -142,10 +142,12 @@ func TestReadRange(t *testing.T) {
 		description   string
 		startSequence uint64
 		count         int
+		maxSequence   uint64
 		mutations     []*tpb.SignedKV
 	}{
 		{
 			"read a single mutation",
+			1,
 			1,
 			1,
 			[]*tpb.SignedKV{
@@ -161,11 +163,13 @@ func TestReadRange(t *testing.T) {
 			"empty mutation info list",
 			100,
 			10,
+			0,
 			nil,
 		},
 		{
 			"full mutations range size",
 			1,
+			5,
 			5,
 			[]*tpb.SignedKV{
 				{
@@ -204,6 +208,7 @@ func TestReadRange(t *testing.T) {
 			"incomplete mutations range",
 			3,
 			5,
+			5,
 			[]*tpb.SignedKV{
 				{
 					KeyValue: &tpb.KeyValue{
@@ -226,9 +231,12 @@ func TestReadRange(t *testing.T) {
 			},
 		},
 	} {
-		results, err := read(ctx, m, factory, tc.startSequence, tc.count)
+		maxSequence, results, err := read(ctx, m, factory, tc.startSequence, tc.count)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
+		}
+		if got, want := maxSequence, tc.maxSequence; got != want {
+			t.Errorf("%v: maxSequence=%v, want %v", tc.description, got, want)
 		}
 		if got, want := len(results), len(tc.mutations); got != want {
 			t.Errorf("%v: len(results)=%v, want %v", tc.description, got, want)

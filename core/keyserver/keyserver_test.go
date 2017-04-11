@@ -178,7 +178,7 @@ func (fakeQueue) AdvanceEpoch() error {
 	return nil
 }
 
-func (fakeQueue) StartReceiving(_ queue.ProcessKeyValueFunc, _ queue.AdvanceEpochFunc) (queue.Receiver, error) {
+func (fakeQueue) StartReceiving(_ queue.AdvanceEpochFunc) (queue.Receiver, error) {
 	return nil, nil
 }
 

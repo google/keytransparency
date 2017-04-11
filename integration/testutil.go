@@ -16,6 +16,7 @@ package integration
 
 import (
 	"database/sql"
+	"log"
 	"net"
 	"net/http/httptest"
 	"testing"
@@ -159,7 +160,11 @@ func NewEnv(t *testing.T) *Env {
 
 	// Common data structures.
 	factory := transaction.NewFactory(sqldb, etcdCli)
-	queue := queue.New(context.Background(), etcdCli, mapID, factory)
+	mutations, err := mutations.New(sqldb, mapID)
+	if err != nil {
+		log.Fatalf("Failed to create mutations object: %v", err)
+	}
+	queue := queue.New(context.Background(), etcdCli, mapID, factory, mutations)
 	tree, err := sqlhist.New(context.Background(), mapID, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
@@ -167,10 +172,6 @@ func NewEnv(t *testing.T) *Env {
 	sths, err := appender.New(context.Background(), sqldb, mapID, hs.URL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create STH appender: %v", err)
-	}
-	mutations, err := mutations.New(sqldb, mapID)
-	if err != nil {
-		t.Fatalf("Failed to create mutations object: %v", err)
 	}
 	vrfPriv, vrfPub, err := staticVRF()
 	if err != nil {

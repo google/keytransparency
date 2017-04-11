@@ -86,7 +86,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
+	if _, err := env.Queue.StartReceiving(env.Signer.CreateEpoch); err != nil {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
 
@@ -163,11 +163,11 @@ func (e *Env) checkProfile(userID string, want bool) error {
 	return nil
 }
 
-func TestUpdateValidation(t *testing.T) {
+func TTTestUpdateValidation(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
+	if _, err := env.Queue.StartReceiving(env.Signer.CreateEpoch); err != nil {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
 
@@ -213,14 +213,14 @@ func TestUpdateValidation(t *testing.T) {
 	}
 }
 
-func TestListHistory(t *testing.T) {
+func TTTestListHistory(t *testing.T) {
 	userID := "bob"
 	ctx := authentication.NewFake().NewContext(userID)
 
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
+	if _, err := env.Queue.StartReceiving(env.Signer.CreateEpoch); err != nil {
 		t.Fatalf("failed to start queue receiver: %v", err)
 	}
 

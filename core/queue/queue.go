@@ -32,7 +32,7 @@ type Queuer interface {
 	AdvanceEpoch() error
 
 	// StartReceiving starts receiving queue enqueued items.
-	StartReceiving(processFunc ProcessKeyValueFunc, advanceFunc AdvanceEpochFunc) (Receiver, error)
+	StartReceiving(advanceFunc AdvanceEpochFunc) (Receiver, error)
 }
 
 // Receiver represents a queue receiver.
@@ -40,9 +40,6 @@ type Receiver interface {
 	// Close stops the receiver from receiving items from the queue.
 	Close()
 }
-
-// ProcessKeyValueFunc is a function that processes a mutation.
-type ProcessKeyValueFunc func(ctx context.Context, txn transaction.Txn, key, value []byte) error
 
 // AdvanceEpochFunc is a function that advances the epoch.
 type AdvanceEpochFunc func(ctx context.Context, txn transaction.Txn) error

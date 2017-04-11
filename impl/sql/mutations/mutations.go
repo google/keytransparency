@@ -34,7 +34,7 @@ const (
 	INSERT INTO Mutations (MapID, MIndex, Mutation)
 	VALUES (?, ?, ?);`
 	readExpr = `
-	SELECT Mutation FROM Mutations
+	SELECT Sequence, Mutation FROM Mutations
 	WHERE MapID = ? AND Sequence >= ?
 	ORDER BY Sequence ASC LIMIT ?;`
 )
@@ -62,35 +62,41 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 }
 
 // ReadRange reads all mutations for a specific given mapID and sequence range.
-// The range is identified by a starting sequence number and a count.
-func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) ([]*tpb.SignedKV, error) {
+// The range is identified by a starting sequence number and a count. ReadRange
+// also returns the maximum sequence number read.
+func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
 	readStmt, err := txn.Prepare(readExpr)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	defer readStmt.Close()
 	rows, err := readStmt.Query(m.mapID, startSequence, count)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	defer rows.Close()
 
 	results := make([]*tpb.SignedKV, 0, count)
+	maxSequence := uint64(0)
 	for rows.Next() {
+		var sequence uint64
 		var mData []byte
-		if err := rows.Scan(&mData); err != nil {
-			return nil, err
+		if err := rows.Scan(&sequence, &mData); err != nil {
+			return 0, nil, err
+		}
+		if maxSequence < sequence {
+			maxSequence = sequence
 		}
 		mutation := new(tpb.SignedKV)
 		if err := proto.Unmarshal(mData, mutation); err != nil {
-			return nil, err
+			return 0, nil, err
 		}
 		results = append(results, mutation)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return 0, nil, err
 	}
-	return results, nil
+	return maxSequence, results, nil
 }
 
 // Write saves the mutation in the database. Write returns the auto-inserted
