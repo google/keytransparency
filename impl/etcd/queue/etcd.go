@@ -36,10 +36,12 @@ var leaseTTL = int64(30)
 
 // Queue is a single-reader, multi-writer distributed queue.
 type Queue struct {
-	client    *v3.Client
-	ctx       context.Context
-	keyPrefix string
-	factory   *itxn.Factory
+	client     *v3.Client
+	ctx        context.Context
+	keyPrefix  string
+	factory    *itxn.Factory
+	epoch      chan struct{}
+	sendEpochs bool
 }
 
 type receiver struct {
@@ -65,6 +67,7 @@ func New(ctx context.Context, client *v3.Client, mapID int64, factory *itxn.Fact
 		ctx:       ctx,
 		keyPrefix: strconv.FormatInt(mapID, 10),
 		factory:   factory,
+		epoch:     make(chan struct{}),
 	}
 }
 
@@ -76,6 +79,12 @@ func (q *Queue) AdvanceEpoch() error {
 	}
 	_, _, err := q.enqueue(buf.Bytes())
 	return err
+}
+
+// Epochs returns the channel of epoch notifications.
+func (q *Queue) Epochs() chan struct{} {
+	q.sendEpochs = true
+	return q.epoch
 }
 
 // Enqueue submits a key, value pair into the queue.
@@ -157,6 +166,9 @@ func (q *Queue) dequeue(key, value []byte, rev int64, cbs callbacks) error {
 	// Commit the transaction.
 	if err := txn.Commit(); err != nil {
 		return fmt.Errorf("txn.Commit(advanceEpoch=%v): %v", dataKV.AdvanceEpoch, err)
+	}
+	if dataKV.AdvanceEpoch && q.sendEpochs {
+		q.epoch <- struct{}{}
 	}
 	return nil
 }

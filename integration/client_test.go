@@ -20,7 +20,6 @@ import (
 	"reflect"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
@@ -135,6 +134,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if err := env.Queue.AdvanceEpoch(); err != nil {
 				t.Errorf("AdvanceEpoch: %v", err)
 			}
+			<-env.Queue.Epochs() // Wait for new epoch.
 
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
@@ -266,8 +266,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
 	// following profiles:
-	// [nil, nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
-	// Note that profile 5 is submitted twice by the user to test that
+	// [nil, nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].  // Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
 	for i, p := range []*tpb.Profile{
 		nil, nil, cp(1), cp(2), nil, nil, cp(3), nil,
@@ -282,32 +281,10 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 			}
 		}
 		// Create a new epoch.
-		// Strategy 1: Commit the epoch to the db direcly.
-		//   Problem: The items from update might not be sequenced yet.
-		//            They've only been added to the queue.
-		// Strategy 2: Add a commit signal to the queue. This ensures that the epoch
-		//             will be created after the item has been sequenced.
-		//  Problem: This returns before the next epoch has been created.
-		//           This mean that sometimes, Update will fail from reading an old
-		//           epoch:
-		// 1. Read current mutation
-		// 2. Next epoch gets created
-		// 3. Submit new mutation, gets rejected as invalid
-		//
-		// Solutions:
-		// 1. Client retry logic on invalid mutation
-		// 2. Add wait-poll logic to observe the new epoch before continuing.
-		// 3. Add a server-side, blocking sequence function
-		//    add to queue
-		//    wait poll?
-		//    add a watcher channel for new epochs?
-
 		if err := e.Queue.AdvanceEpoch(); err != nil {
 			return fmt.Errorf("AdvanceEpoch: %v", err)
 		}
-		// TODO: Wait for a moment for the epoch to be created.
-		time.Sleep(1 * time.Millisecond)
-
+		<-e.Queue.Epochs() // Wait for new epoch.
 	}
 	return nil
 }
