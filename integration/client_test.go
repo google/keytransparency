@@ -135,7 +135,6 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 				t.Errorf("AdvanceEpoch: %v", err)
 			}
 			<-env.Queue.Epochs() // Wait for new epoch.
-
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -206,6 +205,7 @@ func TestUpdateValidation(t *testing.T) {
 			if err := env.Queue.AdvanceEpoch(); err != nil {
 				t.Errorf("AdvanceEpoch: %v", err)
 			}
+			<-env.Queue.Epochs() // Wait for new epoch.
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}

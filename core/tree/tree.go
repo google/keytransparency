@@ -19,8 +19,7 @@ import "github.com/google/keytransparency/core/transaction"
 
 // Sparse is a temporal sparse merkle tree.
 type Sparse interface {
-	// QueueLeaf queues a leaf to be written on the next Commit(). QueueLeaf
-	// returns the epoch at which the leaf is queued.
+	// QueueLeaf queues a leaf to be written on the next Commit().
 	QueueLeaf(txn transaction.Txn, index, leaf []byte) error
 	// Commit takes all the Queued values since the last Commmit() and writes them.
 	// Commit is NOT multi-process safe. It should only be called from the sequencer.

@@ -57,7 +57,7 @@ func TestQueueLeaf(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	tree, err := New(ctx, db, 0, factory)
+	tree, err := New(ctx, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestEpochNumAdvance(t *testing.T) {
 		{"", "", 4, false},
 		{"", "", 5, false},
 	} {
-		tree, err := New(ctx, db, 0, factory)
+		tree, err := New(ctx, 0, factory)
 		if err != nil {
 			t.Fatalf("Failed to create SQL history: %v", err)
 		}
@@ -148,7 +148,7 @@ func TestQueueCommitRead(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	m, err := New(ctx, db, 0, factory)
+	m, err := New(ctx, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestReadNotFound(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	m, err := New(ctx, db, 0, factory)
+	m, err := New(ctx, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestReadPreviousEpochs(t *testing.T) {
 	defer db.Close()
 	factory := testutil.NewFakeFactory(db)
 
-	m, err := New(ctx, db, 0, factory)
+	m, err := New(ctx, 0, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
@@ -329,7 +329,7 @@ func TestAribtrayInsertOrder(t *testing.T) {
 	}
 	roots := make([][]byte, len(leafs))
 	for i := range roots {
-		m, err := New(ctx, db, 0, factory)
+		m, err := New(ctx, 0, factory)
 		if err != nil {
 			t.Fatalf("Failed to create SQL history: %v", err)
 		}
@@ -440,7 +440,7 @@ func TestNeighborDepth(t *testing.T) {
 
 func createTree(db *sql.DB, mapID int64, leafs []leaf) (*Map, error) {
 	factory := testutil.NewFakeFactory(db)
-	m, err := New(ctx, db, mapID, factory)
+	m, err := New(ctx, mapID, factory)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create map: %v", err)
 	}

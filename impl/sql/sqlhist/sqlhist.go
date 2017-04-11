@@ -97,7 +97,7 @@ type Map struct {
 }
 
 // New creates a new map.
-func New(ctx context.Context, db *sql.DB, mapID int64, factory transaction.Factory) (m *Map, returnErr error) {
+func New(ctx context.Context, mapID int64, factory transaction.Factory) (m *Map, returnErr error) {
 	m = &Map{
 		mapID: mapID,
 	}
@@ -151,9 +151,7 @@ func (m *Map) Epoch(txn transaction.Txn) (int64, error) {
 	return epoch.Int64, nil
 }
 
-// QueueLeaf should only be called by the sequencer. If txn is nil, the operation
-// will not run in a transaction. QueueLeaf returns the epoch at which the leaf
-// is queued.
+// QueueLeaf should only be called by the sequencer.
 func (m *Map) QueueLeaf(txn transaction.Txn, index, leaf []byte) error {
 	if got, want := len(index), size; got != want {
 		return errIndexLen
@@ -232,8 +230,7 @@ func (m *Map) Commit(txn transaction.Txn) error {
 	return nil
 }
 
-// ReadRootAt returns the value of the root node in a specific epoch. If txn is
-// nil the operation will not run in a transaction.
+// ReadRootAt returns the value of the root node in a specific epoch.
 func (m *Map) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
 	stmt, err := txn.Prepare(readExpr)
 	if err != nil {
@@ -248,8 +245,7 @@ func (m *Map) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
 	return value, nil
 }
 
-// ReadLeafAt returns the leaf value at epoch. If txn is nil, the operation will
-// not run in a transaction.
+// ReadLeafAt returns the leaf value at epoch.
 func (m *Map) ReadLeafAt(txn transaction.Txn, index []byte, epoch int64) ([]byte, error) {
 	readStmt, err := txn.Prepare(leafExpr)
 	if err != nil {

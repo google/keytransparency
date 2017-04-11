@@ -189,7 +189,7 @@ func main() {
 		log.Fatalf("Failed to create committer: %v", err)
 	}
 	queue := queue.New(context.Background(), etcdCli, *mapID, factory)
-	tree, err := sqlhist.New(context.Background(), sqldb, *mapID, factory)
+	tree, err := sqlhist.New(context.Background(), *mapID, factory)
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}

@@ -94,7 +94,7 @@ func main() {
 
 	// Create signer helper objects.
 	queue := queue.New(context.Background(), etcdCli, *mapID, factory)
-	tree, err := sqlhist.New(context.Background(), sqldb, *mapID, factory)
+	tree, err := sqlhist.New(context.Background(), *mapID, factory)
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}

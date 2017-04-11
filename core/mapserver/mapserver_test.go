@@ -46,7 +46,7 @@ func newEnv() (*env, error) {
 		return nil, fmt.Errorf("sql.Open(): %v", err)
 	}
 	factory := testutil.NewFakeFactory(sqldb)
-	tree, err := sqlhist.New(context.Background(), sqldb, mapID, factory)
+	tree, err := sqlhist.New(context.Background(), mapID, factory)
 	if err != nil {
 		return nil, err
 	}
