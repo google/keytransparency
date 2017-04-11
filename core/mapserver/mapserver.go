@@ -52,7 +52,7 @@ func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths sequen
 		tree:    tree,
 		factory: factory,
 		sths:    sths,
-		signer:  tcrypto.NewSigner(signer),
+		signer:  tcrypto.NewSHA256Signer(signer),
 		clock:   clock,
 	}
 }
