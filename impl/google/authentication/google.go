@@ -134,7 +134,7 @@ func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 // getIDTokenAuthorizationHeader pulls the bearer token from the "authorization"
 // header in gRPC.
 func getIDTokenAuthorizationHeader(ctx context.Context) (*oauth2.Token, error) {
-	md, ok := metadata.FromContext(ctx)
+	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, authentication.ErrMissingAuth
 	}

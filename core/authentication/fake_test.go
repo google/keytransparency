@@ -17,6 +17,8 @@ package authentication
 import (
 	"testing"
 
+	"google.golang.org/grpc/metadata"
+
 	"golang.org/x/net/context"
 )
 
@@ -25,13 +27,18 @@ func TestBasicValidateCreds(t *testing.T) {
 	for _, tc := range []struct {
 		ctx            context.Context
 		requiredUserID string
-		want           bool
+		want           error
 	}{
-		{context.Background(), "foo", false},
-		{auth.NewContext("foo"), "foo", true},
+		{context.Background(), "foo", ErrMissingAuth},
+		{auth.NewContext("foo"), "bar", ErrWrongUser},
+		{auth.NewContext("foo"), "foo", nil},
 	} {
-		if got := auth.ValidateCreds(tc.ctx, tc.requiredUserID) == nil; got != tc.want {
-			t.Errorf("ValidateCreds(%v, %v): %v, want %v", tc.ctx, tc.requiredUserID, got, tc.want)
+		// Convert outgoing to incoming context.
+		outMD, _ := metadata.FromOutgoingContext(tc.ctx)
+		inCtx := metadata.NewIncomingContext(tc.ctx, outMD)
+
+		if got, want := auth.ValidateCreds(inCtx, tc.requiredUserID), tc.want; got != want {
+			t.Errorf("ValidateCreds(%v, %v): %v, want %v", tc.ctx, tc.requiredUserID, got, want)
 		}
 	}
 }

@@ -33,12 +33,12 @@ func NewFake() *FakeAuth {
 func (a *FakeAuth) NewContext(userID string) context.Context {
 	md := make(map[string][]string)
 	md["userid"] = []string{userID}
-	return metadata.NewContext(context.TODO(), md)
+	return metadata.NewOutgoingContext(context.TODO(), md)
 }
 
 // ValidateCreds verifies that the requiredUserID is present in ctx.
 func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) error {
-	md, ok := metadata.FromContext(ctx)
+	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return ErrMissingAuth
 	}
