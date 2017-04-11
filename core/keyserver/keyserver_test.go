@@ -187,15 +187,11 @@ type fakeSparseHist struct {
 	M map[int64][]byte
 }
 
-func (*fakeSparseHist) QueueLeaf(txn transaction.Txn, index, leaf []byte) (int64, error) {
-	return 0, nil
-}
-
-func (*fakeSparseHist) Commit(ctx context.Context) (epoch int64, err error) {
-	return 0, nil
-}
-
-func (*fakeSparseHist) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) {
+func (*fakeSparseHist) QueueLeaf(txn transaction.Txn, index, leaf []byte) error     { return nil }
+func (*fakeSparseHist) Commit(txn transaction.Txn) error                            { return nil }
+func (*fakeSparseHist) ReadRootAt(txn transaction.Txn, epoch int64) ([]byte, error) { return nil, nil }
+func (*fakeSparseHist) Epoch(txn transaction.Txn) (int64, error)                    { return 0, nil }
+func (*fakeSparseHist) NeighborsAt(txn transaction.Txn, index []byte, epoch int64) ([][]byte, error) {
 	return nil, nil
 }
 
@@ -212,14 +208,6 @@ func (f *fakeSparseHist) ReadLeafAt(txn transaction.Txn, index []byte, epoch int
 	return entryData, nil
 }
 
-func (*fakeSparseHist) NeighborsAt(txn transaction.Txn, index []byte, epoch int64) ([][]byte, error) {
-	return nil, nil
-}
-
-func (*fakeSparseHist) Epoch() int64 {
-	return 0
-}
-
 // appender.Appender fake.
 type fakeAppender struct {
 	CurrentEpoch int64
@@ -229,7 +217,6 @@ type fakeAppender struct {
 func (*fakeAppender) Append(ctx context.Context, txn transaction.Txn, epoch int64, obj interface{}) error {
 	return nil
 }
-
 func (*fakeAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([]byte, error) {
 	return nil, nil
 }
@@ -240,40 +227,26 @@ func (f *fakeAppender) Latest(ctx context.Context, obj interface{}) (int64, []by
 }
 
 // vrf.PrivateKey fake.
-type fakePrivateKey struct {
-}
+type fakePrivateKey struct{}
 
-func (fakePrivateKey) Evaluate(m []byte) (vrf []byte, proof []byte) {
-	return nil, nil
-}
-
-func (fakePrivateKey) Index(vrf []byte) [32]byte {
-	return [32]byte{}
-}
+func (fakePrivateKey) Evaluate(m []byte) (vrf []byte, proof []byte) { return nil, nil }
+func (fakePrivateKey) Index(vrf []byte) [32]byte                    { return [32]byte{} }
 
 // mutator.Mutator fake.
-type fakeMutator struct {
-}
+type fakeMutator struct{}
 
-func (fakeMutator) CheckMutation(value, mutation []byte) error {
-	return nil
-}
-
-func (fakeMutator) Mutate(value, mutation []byte) ([]byte, error) {
-	return nil, nil
-}
+func (fakeMutator) CheckMutation(value, mutation []byte) error    { return nil }
+func (fakeMutator) Mutate(value, mutation []byte) ([]byte, error) { return nil, nil }
 
 // transaction.Txn fake
-type fakeTxn struct {
-}
+type fakeTxn struct{}
 
 func (*fakeTxn) Prepare(query string) (*sql.Stmt, error) { return nil, nil }
 func (*fakeTxn) Commit() error                           { return nil }
 func (*fakeTxn) Rollback() error                         { return nil }
 
 // transaction.Factory fake
-type fakeFactory struct {
-}
+type fakeFactory struct{}
 
 func (fakeFactory) NewDBTxn(ctx context.Context) (transaction.Txn, error) {
 	return &fakeTxn{}, nil
