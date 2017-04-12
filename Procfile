@@ -16,4 +16,4 @@ etcd1: etcd --name infra1 --listen-client-urls $LISTEN1 --advertise-client-urls 
 etcd2: etcd --name infra2 --listen-client-urls $LISTEN2 --advertise-client-urls $LISTEN2 --listen-peer-urls $PEER2 --initial-advertise-peer-urls $PEER2 --enable-pprof
 etcd3: etcd --name infra3 --listen-client-urls $LISTEN3 --advertise-client-urls $LISTEN3 --listen-peer-urls $PEER3 --initial-advertise-peer-urls $PEER3 --enable-pprof
 frontend: ./keytransparency-server --addr=$LISTEN_IP:$PORT --key=$KEY --cert=$CERT --mapid=$MAPID --db=$DB --maplog=$CTLOG --etcd=$LISTEN --vrf=$VRF_PRIV
-backend: ./keytransparency-signer --domain=$DOMAIN --mapid=$MAPID --db=$DB --maplog=$CTLOG --etcd=$LISTEN --period=$SIGN_PERIOD_SEC --key=$SIGN_KEY
+backend: ./keytransparency-signer --domain=$DOMAIN --mapid=$MAPID --db=$DB --maplog=$CTLOG --etcd=$LISTEN --period=$SIGN_PERIOD --key=$SIGN_KEY
