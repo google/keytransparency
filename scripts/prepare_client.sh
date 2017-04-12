@@ -70,8 +70,8 @@ cd "${GOPATH}/src/github.com/google/keytransparency"
 go build ./cmd/keytransparency-client
 
 # Generate .keytransparency.yaml file.
-KTYAML="ct-key: \"../certificate-transparency/test/testdata/ct-server-key-public.pem\"
-ct-url: \"http://107.178.246.112\"
+KTYAML="log-key: \"../certificate-transparency/test/testdata/ct-server-key-public.pem\"
+log-url: \"http://localhost:TODO\"
 vrf:    \"${VRF}\"
 kt-key: \"${KTKEY}\"
 kt-sig: \"${SIGKEY}\"
