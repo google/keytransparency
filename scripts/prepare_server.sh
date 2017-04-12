@@ -141,7 +141,7 @@ ETCD_INITIAL_CLUSTER_STATE=new
 ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster-1
 ETCD_LOG_PACKAGE_LEVELS=\"*=WARNING\"
 CTLOG=\"http://107.178.246.112\"
-SIGN_PERIOD_SEC=5
+SIGN_PERIOD=5
 GOOGLE_APPLICATION_CREDENTIALS=\"${SERVICEKEY}\""
 
 if [[ -n "${CERTDOMAIN}" ]]; then
@@ -212,7 +212,7 @@ fi
 
 if ((BACKEND == 1)); then
     PROCFILE="${PROCFILE}
-backend: ./keytransparency-signer --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --period=\$SIGN_PERIOD_SEC --key=\$SIGN_KEY"
+backend: ./keytransparency-signer --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --period=\$SIGN_PERIOD --key=\$SIGN_KEY"
 fi
 
 printf "%s\n" "${PROCFILE}" > Procfile
