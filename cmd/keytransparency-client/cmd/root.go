@@ -29,7 +29,9 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/vrf"
 	"github.com/google/keytransparency/core/vrf/p256"
+	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/google/authentication"
+	"github.com/google/trillian/client"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -43,9 +45,8 @@ import (
 )
 
 var (
-	cfgFile  string
-	verbose  bool
-	ctClient ctlog.Verifier
+	cfgFile string
+	verbose bool
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -61,9 +62,6 @@ server provides to ensure that account data is accurate.`,
 			kt.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 			ctlog.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 		}
-	},
-	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		return ctClient.Save(viper.GetString("ct-scts"))
 	},
 }
 
@@ -183,27 +181,7 @@ func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	return ver, nil
 }
 
-func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig, ctURL, ctPEM string) (*grpcc.Client, error) {
-	// Create CT client.
-	pem, err := ioutil.ReadFile(ctPEM)
-	if err != nil {
-		return nil, fmt.Errorf("error reading ctPEM: %v", err)
-	}
-	ctClient, err := ctlog.New(pem, ctURL)
-	if err != nil {
-		return nil, fmt.Errorf("error creating CT client: %v", err)
-	}
-	_, err = os.Stat(viper.GetString("ct-scts"))
-	switch {
-	case err == nil: // File is available.
-		if err := ctClient.Restore(viper.GetString("ct-scts")); err != nil {
-			return nil, err
-		}
-	case os.IsNotExist(err): // File does not exist. Create it later.
-	default:
-		return nil, err
-	}
-
+func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log client.VerifyingLogClient) (*grpcc.Client, error) {
 	// Create Key Transparency client.
 	vrfKey, err := readVrfKey(vrfPubFile)
 	if err != nil {
@@ -214,7 +192,7 @@ func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig, ctURL, ctPEM
 		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return grpcc.New(mapID, cli, vrfKey, verifier, ctClient), nil
+	return grpcc.New(mapID, cli, vrfKey, verifier, log), nil
 }
 
 func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.ClientConn, error) {
@@ -268,18 +246,24 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ktPEM := viper.GetString("kt-key")
 	ktSig := viper.GetString("kt-sig")
 	mapID := viper.GetInt64("mapid")
-	ctURL := viper.GetString("ct-url")
-	ctPEM := viper.GetString("ct-key")
+	logID := viper.GetInt64("logid")
+	logURL := viper.GetString("ct-url") // TODO: convert to log-url
+	logPEM := viper.GetString("ct-key") // TODO: convert to log-key
 	vrfFile := viper.GetString("vrf")
 	serviceKeyFile := viper.GetString("service-key")
 	cc, err := dial(ktURL, ktPEM, clientSecretFile, serviceKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
-	c, err := getClient(cc, mapID, vrfFile, ktSig, ctURL, ctPEM)
+
+	log, err := config.LogClient(logID, logURL, logPEM)
+	if err != nil {
+		return nil, fmt.Errorf("config.LogClient(): %v", err)
+	}
+
+	c, err := getClient(cc, mapID, vrfFile, ktSig, log)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v", err)
 	}
-	ctClient = c.CT
 	return c, nil
 }

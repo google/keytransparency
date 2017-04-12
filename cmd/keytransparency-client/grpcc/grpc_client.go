@@ -25,7 +25,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/keytransparency/core/client/ctlog"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
@@ -33,6 +32,7 @@ import (
 	"github.com/google/keytransparency/core/tree/sparse"
 	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 	"github.com/google/keytransparency/core/vrf"
+	"github.com/google/trillian/client"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -82,19 +82,19 @@ type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
-	CT         ctlog.Verifier
+	log        client.VerifyingLogClient
 	mutator    mutator.Mutator
 	RetryCount int
 	RetryDelay time.Duration
 }
 
 // New creates a new client.
-func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier signatures.Verifier, log ctlog.Verifier) *Client {
+func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier signatures.Verifier, log client.VerifyingLogClient) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
 		kt:         kt.New(vrf, tv.New(mapID, sparse.CONIKSHasher), verifier, log),
-		CT:         log,
+		log:        log,
 		mutator:    entry.New(),
 		RetryCount: 1,
 		RetryDelay: 3 * time.Second,
