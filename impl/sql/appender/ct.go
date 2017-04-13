@@ -208,11 +208,11 @@ func (a *CTAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([
 
 // Latest returns the latest object.
 // Returns epoch, data, and a serialized ct.SignedCertificateTimestamp
-func (a *CTAppender) Latest(ctx context.Context, obj interface{}) (int64, []byte, error) {
+func (a *CTAppender) Latest(ctx context.Context, txn transaction.Txn, obj interface{}) (int64, []byte, error) {
 	if !a.save {
 		return 0, nil, ErrNotSupported
 	}
-	readStmt, err := a.db.Prepare(latestExpr)
+	readStmt, err := txn.Prepare(latestExpr)
 	if err != nil {
 		return 0, nil, err
 	}
