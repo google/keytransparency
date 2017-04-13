@@ -75,22 +75,35 @@ func New(committer commitments.Committer, queue queue.Queuer, tree tree.Sparse, 
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-
+	txn, err := s.factory.NewDBTxn(ctx)
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
+	}
 	var smh ctmap.SignedMapHead
-	epoch, _, err := s.appender.Latest(ctx, &smh)
+	epoch, _, err := s.appender.Latest(ctx, txn, &smh)
 	if err != nil {
 		log.Printf("Cannot get SMH: %v", err)
+		if err := txn.Rollback(); err != nil {
+			log.Printf("Cannot rollback the transaction: %v", err)
+		}
 		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
 	}
-	resp, err := s.getEntry(ctx, in.UserId, epoch)
+	resp, err := s.getEntry(ctx, txn, in.UserId, epoch)
 	if err != nil {
 		log.Printf("getEntry failed: %v", err)
+		if err := txn.Rollback(); err != nil {
+			log.Printf("Cannot rollback the transaction: %v", err)
+		}
 		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
+	}
+	if err := txn.Commit(); err != nil {
+		log.Printf("Cannot commit transaction: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 	return resp, nil
 }
 
-func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb.GetEntryResponse, error) {
+func (s *Server) getEntry(ctx context.Context, txn transaction.Txn, userID string, epoch int64) (*tpb.GetEntryResponse, error) {
 	vrf, proof := s.vrf.Evaluate([]byte(userID))
 	index := s.vrf.Index(vrf)
 
@@ -100,17 +113,9 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		return nil, err
 	}
 
-	txn, err := s.factory.NewDBTxn(ctx)
-	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
-	}
-
 	neighbors, err := s.tree.NeighborsAt(txn, index[:], epoch)
 	if err != nil {
 		log.Printf("Cannot get neighbors list: %v", err)
-		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
-		}
 		return nil, grpc.Errorf(codes.Internal, "Cannot get neighbors list")
 	}
 
@@ -118,15 +123,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	leaf, err := s.tree.ReadLeafAt(txn, index[:], epoch)
 	if err != nil {
 		log.Printf("Cannot read leaf entry: %v", err)
-		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
-		}
 		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
-	}
-
-	if err := txn.Commit(); err != nil {
-		log.Printf("Cannot commit transaction: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 
 	var committed *tpb.Committed
@@ -163,16 +160,26 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
+	txn, err := s.factory.NewDBTxn(ctx)
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
+	}
 	// Get current epoch.
 	ignore := new(ctmap.SignedMapHead)
-	currentEpoch, _, err := s.appender.Latest(ctx, &ignore)
+	currentEpoch, _, err := s.appender.Latest(ctx, txn, &ignore)
 	if err != nil {
 		log.Printf("Cannot get latest epoch: %v", err)
+		if err := txn.Rollback(); err != nil {
+			log.Printf("Cannot rollback the transaction: %v", err)
+		}
 		return nil, grpc.Errorf(codes.Internal, "Cannot get latest epoch")
 	}
 
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
 		log.Printf("Invalid ListEntryHistoryRequest: %v", err)
+		if err := txn.Rollback(); err != nil {
+			log.Printf("Cannot rollback the transaction: %v", err)
+		}
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
@@ -180,12 +187,20 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 	// in.PageSize].
 	responses := make([]*tpb.GetEntryResponse, in.PageSize)
 	for i := range responses {
-		resp, err := s.getEntry(ctx, in.UserId, in.Start+int64(i))
+		resp, err := s.getEntry(ctx, txn, in.UserId, in.Start+int64(i))
 		if err != nil {
 			log.Printf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
+			if err := txn.Rollback(); err != nil {
+				log.Printf("Cannot rollback the transaction: %v", err)
+			}
 			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
 		}
 		responses[i] = resp
+	}
+
+	if err := txn.Commit(); err != nil {
+		log.Printf("Cannot commit transaction: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 
 	nextStart := in.Start + int64(in.PageSize)

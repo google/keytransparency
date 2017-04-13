@@ -221,7 +221,7 @@ func (*fakeAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([
 	return nil, nil
 }
 
-func (f *fakeAppender) Latest(ctx context.Context, obj interface{}) (int64, []byte, error) {
+func (f *fakeAppender) Latest(ctx context.Context, txn transaction.Txn, obj interface{}) (int64, []byte, error) {
 	f.LatestCount++
 	return f.CurrentEpoch, nil, nil
 }

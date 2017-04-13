@@ -31,5 +31,5 @@ type Appender interface {
 
 	// Latest returns the latest object.
 	// Returns epoch, obj, and a serialized ct.SignedCertificateTimestamp
-	Latest(ctx context.Context, obj interface{}) (int64, []byte, error)
+	Latest(ctx context.Context, txn transaction.Txn, obj interface{}) (int64, []byte, error)
 }

@@ -70,10 +70,18 @@ func TestGetLatest(t *testing.T) {
 			t.Errorf("txn.Commit() failed: %v", err)
 		}
 
+		txn, err = factory.NewDBTxn(context.Background())
+		if err != nil {
+			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			continue
+		}
 		var obj []byte
-		epoch, b, err := a.Latest(context.Background(), &obj)
+		epoch, b, err := a.Latest(context.Background(), txn, &obj)
 		if err != nil {
 			t.Errorf("Latest(): %v, want nil", err)
+		}
+		if err := txn.Commit(); err != nil {
+			t.Errorf("txn.Commit() failed: %v", err)
 		}
 		if got := epoch; got != tc.want {
 			t.Errorf("Latest(): %v, want %v", got, tc.want)
