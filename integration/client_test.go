@@ -128,22 +128,9 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-
-			txn, err := env.Factory.NewDBTxn(bctx)
-			if err != nil {
-				t.Errorf("NewDBTxn() failed: %v", err)
-				continue
+			if err := env.Signer.CreateEpoch(bctx); err != nil {
+				t.Errorf("CreateEpoch(_): %v", err)
 			}
-			if err := env.Signer.CreateEpoch(bctx, txn); err != nil {
-				if err := txn.Rollback(); err != nil {
-					t.Errorf("Cannot rollback the transaction: %v", err)
-				}
-				t.Errorf("CreateEpoch: %v", err)
-			}
-			if err := txn.Commit(); err != nil {
-				t.Errorf("txn.Commit() failed: %v", err)
-			}
-
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -209,21 +196,9 @@ func TestUpdateValidation(t *testing.T) {
 			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
-			txn, err := env.Factory.NewDBTxn(bctx)
-			if err != nil {
-				t.Errorf("NewDBTxn() failed: %v", err)
-				continue
+			if err := env.Signer.CreateEpoch(bctx); err != nil {
+				t.Errorf("CreateEpoch(_): %v", err)
 			}
-			if err := env.Signer.CreateEpoch(bctx, txn); err != nil {
-				if err := txn.Rollback(); err != nil {
-					t.Errorf("Cannot rollback the transaction: %v", err)
-				}
-				t.Errorf("CreateEpoch: %v", err)
-			}
-			if err := txn.Commit(); err != nil {
-				t.Errorf("txn.Commit() failed: %v", err)
-			}
-
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -295,19 +270,8 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}
-		// Create a new epoch.
-		txn, err := e.Factory.NewDBTxn(ctx)
-		if err != nil {
-			return fmt.Errorf("NewDBTxn() failed: %v", err)
-		}
-		if err := e.Signer.CreateEpoch(ctx, txn); err != nil {
-			if err := txn.Rollback(); err != nil {
-				return fmt.Errorf("Cannot rollback the transaction: %v", err)
-			}
-			return fmt.Errorf("CreateEpoch: %v", err)
-		}
-		if err := txn.Commit(); err != nil {
-			return fmt.Errorf("txn.Commit() failed: %v", err)
+		if err := e.Signer.CreateEpoch(ctx); err != nil {
+			return fmt.Errorf("CreateEpoch(_): %v", err)
 		}
 	}
 	return nil

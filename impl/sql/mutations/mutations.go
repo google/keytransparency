@@ -107,7 +107,7 @@ func readRows(rows *sql.Rows) (uint64, []*tpb.SignedKV, error) {
 		if err := rows.Scan(&sequence, &mData); err != nil {
 			return 0, nil, err
 		}
-		if maxSequence < sequence {
+		if sequence > maxSequence {
 			maxSequence = sequence
 		}
 		mutation := new(tpb.SignedKV)

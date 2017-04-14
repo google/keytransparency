@@ -182,15 +182,8 @@ func NewEnv(t *testing.T) *Env {
 
 	signer := signer.New("", tree, mutator, sths, mutations, sig, factory)
 	signer.FakeTime()
-	txn, err := factory.NewDBTxn(context.Background())
-	if err != nil {
-		t.Fatalf("Failed to create transaction: %v", err)
-	}
-	if err := signer.CreateEpoch(context.Background(), txn); err != nil {
+	if err := signer.CreateEpoch(context.Background()); err != nil {
 		t.Fatalf("Failed to create epoch: %v", err)
-	}
-	if err := txn.Commit(); err != nil {
-		t.Fatalf("Failed to commit transaction: %v", err)
 	}
 
 	addr, lis := Listen(t)
