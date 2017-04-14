@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/queue"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/protobuf/proto"
@@ -57,7 +56,7 @@ func TestListEntryHistory(t *testing.T) {
 		c := &fakeCommitter{make(map[string]*tpb.Committed)}
 		st := &fakeSparseHist{make(map[int64][]byte)}
 		a := &fakeAppender{0, 0}
-		srv := New(c, fakeQueue{}, st, a, fakePrivateKey{}, fakeMutator{}, authentication.NewFake(), fakeFactory{})
+		srv := New(c, st, a, fakePrivateKey{}, fakeMutator{}, authentication.NewFake(), fakeFactory{}, fakeMutation{})
 		if err := addProfiles(profileCount, c, st, a); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
@@ -166,22 +165,6 @@ func (f *fakeCommitter) Read(ctx context.Context, commitment []byte) (*tpb.Commi
 	return committed, nil
 }
 
-// queue.Queuer fake.
-type fakeQueue struct {
-}
-
-func (fakeQueue) Enqueue(key, value []byte) error {
-	return nil
-}
-
-func (fakeQueue) AdvanceEpoch() error {
-	return nil
-}
-
-func (fakeQueue) StartReceiving(_ queue.ProcessKeyValueFunc, _ queue.AdvanceEpochFunc) (queue.Receiver, error) {
-	return nil, nil
-}
-
 // tree.SparseHist fake.
 type fakeSparseHist struct {
 	M map[int64][]byte
@@ -250,4 +233,19 @@ type fakeFactory struct{}
 
 func (fakeFactory) NewDBTxn(ctx context.Context) (transaction.Txn, error) {
 	return &fakeTxn{}, nil
+}
+
+// mutator.Mutation fake
+type fakeMutation struct{}
+
+func (fakeMutation) ReadRange(txn transaction.Txn, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
+	return 0, nil, nil
+}
+
+func (fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.SignedKV, error) {
+	return 0, nil, nil
+}
+
+func (fakeMutation) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
+	return 0, nil
 }

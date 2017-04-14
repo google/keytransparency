@@ -49,12 +49,11 @@ type Leaf struct {
 func generateNbrData(t *testing.T, leaves []Leaf) ([][][]byte, error) {
 	// Generate test data.
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
-	etcdCli := clus.RandClient()
 	sqldb, err := sql.Open("sqlite3", "file:dummy.db?mode=memory&cache=shared")
 	if err != nil {
 		return nil, err
 	}
-	factory := transaction.NewFactory(sqldb, etcdCli)
+	factory := transaction.NewFactory(sqldb, nil)
 	m, err := sqlhist.New(context.Background(), sqldb, mapID, factory)
 	if err != nil {
 		return nil, err

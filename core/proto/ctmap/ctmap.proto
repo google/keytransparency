@@ -34,6 +34,9 @@ message MapHead {
   // issue_time is the time when this epoch was created. Monotonically
   // increasing.
   google.protobuf.Timestamp issue_time = 4;
+  // max_sequence_number contains the maximum mutation sequence number included
+  // in this map head.
+  uint64 max_sequence_number = 5;
 }
 
 // SignedMapHead represents a signed state of the Merkel Tree.

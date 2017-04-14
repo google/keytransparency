@@ -15,6 +15,7 @@
 package signer
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"time"
@@ -23,7 +24,6 @@ import (
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/queue"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 
@@ -31,7 +31,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/google/keytransparency/core/proto/ctmap"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/core/proto/signature"
 )
 
@@ -54,27 +53,27 @@ func (i fakeClock) Now() time.Time { i++; return time.Unix(int64(i), 0) }
 // signes the sparse map head.
 type Signer struct {
 	realm     string
-	queue     queue.Queuer
 	mutator   mutator.Mutator
 	tree      tree.Sparse
 	mutations mutator.Mutation
 	sths      appender.Appender
 	signer    signatures.Signer
+	factory   transaction.Factory
 	clock     Clock
 }
 
 // New creates a new instance of the signer.
-func New(realm string, queue queue.Queuer, tree tree.Sparse,
+func New(realm string, tree tree.Sparse,
 	mutator mutator.Mutator, sths appender.Appender, mutations mutator.Mutation,
-	signer signatures.Signer) *Signer {
+	signer signatures.Signer, factory transaction.Factory) *Signer {
 	return &Signer{
 		realm:     realm,
-		queue:     queue,
 		mutator:   mutator,
 		tree:      tree,
 		sths:      sths,
 		mutations: mutations,
 		signer:    signer,
+		factory:   factory,
 		clock:     realClock{},
 	}
 }
@@ -84,17 +83,17 @@ func (s *Signer) FakeTime() {
 	s.clock = new(fakeClock)
 }
 
-// StartSigning inserts epoch advancement signals into the queue.
-func (s *Signer) StartSigning(interval time.Duration) {
+// StartSigning advance epochs once per interval.
+func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
 	for range time.NewTicker(interval).C {
-		if err := s.queue.AdvanceEpoch(); err != nil {
-			log.Fatalf("Advance epoch failed: %v", err)
+		if err := s.CreateEpoch(ctx); err != nil {
+			log.Fatalf("CreateEpoch failed: %v", err)
 		}
 	}
 }
 
-// ProcessMutation saves a mutation and adds it to the append-only log and tree.
-func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index, mutation []byte) error {
+// queueMutation saves a mutation and adds it to the tree.
+func (s *Signer) queueMutation(txn transaction.Txn, index, mutation []byte) error {
 	epoch, err := s.tree.Epoch(txn)
 	if err != nil {
 		return fmt.Errorf("Epoch(): %v", err)
@@ -115,20 +114,59 @@ func (s *Signer) ProcessMutation(ctx context.Context, txn transaction.Txn, index
 		return fmt.Errorf("QueueLeaf err: %v", err)
 	}
 
-	mutationObj := new(tpb.SignedKV)
-	if err := proto.Unmarshal(mutation, mutationObj); err != nil {
-		return err
-	}
-	if _, err := s.mutations.Write(txn, mutationObj); err != nil {
-		return fmt.Errorf("Mutation write failed: %v", err)
-	}
-
 	log.Printf("Sequenced %x", index)
 	return nil
 }
 
+// processMutations reads mutations from the database and adds them to the tree.
+// processMutations returns the maximum mutation sequence number processed.
+func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uint64, error) {
+	startSequence := uint64(0)
+	smh := new(ctmap.SignedMapHead)
+	if _, _, err := s.sths.Latest(ctx, smh); err == nil {
+		startSequence = smh.GetMapHead().MaxSequenceNumber + 1
+	} else if err != sql.ErrNoRows {
+		return 0, fmt.Errorf("Latest err: %v", err)
+	}
+	maxSequence, mutations, err := s.mutations.ReadAll(txn, startSequence)
+	if err != nil {
+		return 0, fmt.Errorf("ReadRange err: %v", err)
+	}
+	for _, mutation := range mutations {
+		mData, err := proto.Marshal(mutation)
+		if err != nil {
+			return 0, err
+		}
+		if err := s.queueMutation(txn, mutation.GetKeyValue().Key, mData); err != nil {
+			return 0, fmt.Errorf("queueMutation err: %v", err)
+		}
+	}
+	return maxSequence, nil
+}
+
 // CreateEpoch signs the current map head.
-func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
+func (s *Signer) CreateEpoch(ctx context.Context) error {
+	txn, err := s.factory.NewDBTxn(ctx)
+	if err != nil {
+		return fmt.Errorf("NewDBTxn() failed: %v", err)
+	}
+	if err := s.createEpoch(ctx, txn); err != nil {
+		if err := txn.Rollback(); err != nil {
+			log.Printf("Cannot rollback the transaction: %v", err)
+		}
+		return fmt.Errorf("createEpoch() failed: %v", err)
+	}
+	if err := txn.Commit(); err != nil {
+		return fmt.Errorf("txn.Commit() failed: %v", err)
+	}
+	return nil
+}
+
+func (s *Signer) createEpoch(ctx context.Context, txn transaction.Txn) error {
+	maxSequence, err := s.processMutations(ctx, txn)
+	if err != nil {
+		return fmt.Errorf("processMutations err: %v", err)
+	}
 	if err := s.tree.Commit(txn); err != nil {
 		return fmt.Errorf("Commit(): %v", err)
 	}
@@ -146,10 +184,11 @@ func (s *Signer) CreateEpoch(ctx context.Context, txn transaction.Txn) error {
 	}
 
 	mh := &ctmap.MapHead{
-		Realm:     s.realm,
-		IssueTime: timestamp,
-		Epoch:     epoch,
-		Root:      root,
+		Realm:             s.realm,
+		IssueTime:         timestamp,
+		Epoch:             epoch,
+		Root:              root,
+		MaxSequenceNumber: maxSequence,
 	}
 	sig, err := s.signer.Sign(mh)
 	if err != nil {

@@ -16,6 +16,7 @@ package integration
 
 import (
 	"database/sql"
+	"log"
 	"net"
 	"net/http/httptest"
 	"testing"
@@ -30,14 +31,12 @@ import (
 	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/core/vrf"
 	"github.com/google/keytransparency/core/vrf/p256"
-	"github.com/google/keytransparency/impl/etcd/queue"
 	"github.com/google/keytransparency/impl/sql/appender"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
-	"github.com/coreos/etcd/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -46,8 +45,7 @@ import (
 )
 
 const (
-	clusterSize = 1
-	mapID       = 0
+	mapID = 0
 )
 
 // NewDB creates a new in-memory database for testing.
@@ -79,11 +77,9 @@ type Env struct {
 	V2Server   *keyserver.Server
 	Conn       *grpc.ClientConn
 	Client     *grpcc.Client
-	Queue      *queue.Queue
 	Signer     *signer.Signer
 	db         *sql.DB
 	Factory    *transaction.Factory
-	clus       *integration.ClusterV3
 	VrfPriv    vrf.PrivateKey
 	Cli        pb.KeyTransparencyServiceClient
 	mapLog     *httptest.Server
@@ -148,8 +144,6 @@ func (DevZero) Read(b []byte) (n int, err error) {
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
 	hs := ctutil.NewCTServer(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
-	etcdCli := clus.RandClient()
 	sqldb := NewDB(t)
 
 	sig, verifier, err := staticKeyPair()
@@ -158,8 +152,11 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	factory := transaction.NewFactory(sqldb, etcdCli)
-	queue := queue.New(context.Background(), etcdCli, mapID, factory)
+	factory := transaction.NewFactory(sqldb, nil)
+	mutations, err := mutations.New(sqldb, mapID)
+	if err != nil {
+		log.Fatalf("Failed to create mutations object: %v", err)
+	}
 	tree, err := sqlhist.New(context.Background(), mapID, factory)
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
@@ -167,10 +164,6 @@ func NewEnv(t *testing.T) *Env {
 	sths, err := appender.New(context.Background(), sqldb, mapID, hs.URL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create STH appender: %v", err)
-	}
-	mutations, err := mutations.New(sqldb, mapID)
-	if err != nil {
-		t.Fatalf("Failed to create mutations object: %v", err)
 	}
 	vrfPriv, vrfPub, err := staticVRF()
 	if err != nil {
@@ -183,21 +176,14 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
-	server := keyserver.New(commitments, queue, tree, sths, vrfPriv, mutator, auth, factory)
+	server := keyserver.New(commitments, tree, sths, vrfPriv, mutator, auth, factory, mutations)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
-	signer := signer.New("", queue, tree, mutator, sths, mutations, sig)
+	signer := signer.New("", tree, mutator, sths, mutations, sig, factory)
 	signer.FakeTime()
-	txn, err := factory.NewDBTxn(context.Background())
-	if err != nil {
-		t.Fatalf("Failed to create transaction: %v", err)
-	}
-	if err := signer.CreateEpoch(context.Background(), txn); err != nil {
+	if err := signer.CreateEpoch(context.Background()); err != nil {
 		t.Fatalf("Failed to create epoch: %v", err)
-	}
-	if err := txn.Commit(); err != nil {
-		t.Fatalf("Failed to commit transaction: %v", err)
 	}
 
 	addr, lis := Listen(t)
@@ -212,7 +198,7 @@ func NewEnv(t *testing.T) *Env {
 	client := grpcc.New(mapID, cli, vrfPub, verifier, fakeLog{})
 	client.RetryCount = 0
 
-	return &Env{s, server, cc, client, queue, signer, sqldb, factory, clus, vrfPriv, cli, hs}
+	return &Env{s, server, cc, client, signer, sqldb, factory, vrfPriv, cli, hs}
 }
 
 // Close releases resources allocated by NewEnv.
@@ -220,6 +206,5 @@ func (env *Env) Close(t *testing.T) {
 	env.Conn.Close()
 	env.GRPCServer.Stop()
 	env.db.Close()
-	env.clus.Terminate(t)
 	env.mapLog.Close()
 }

@@ -82,13 +82,11 @@ func getAuthorizedKey(pubKey string) *tpb.PublicKey {
 }
 
 func TestEmptyGetAndUpdate(t *testing.T) {
+	bctx := context.Background()
 	auth := authentication.NewFake()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
-		t.Fatalf("failed to start queue receiver: %v", err)
-	}
 
 	// Create lists of signers.
 	signer1 := createSigner(t, testPrivKey1)
@@ -130,11 +128,9 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-
-			if err := env.Queue.AdvanceEpoch(); err != nil {
-				t.Errorf("AdvanceEpoch: %v", err)
+			if err := env.Signer.CreateEpoch(bctx); err != nil {
+				t.Errorf("CreateEpoch(_): %v", err)
 			}
-			<-env.Queue.Epochs() // Wait for new epoch.
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -164,12 +160,10 @@ func (e *Env) checkProfile(userID string, want bool) error {
 }
 
 func TestUpdateValidation(t *testing.T) {
+	bctx := context.Background()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
-		t.Fatalf("failed to start queue receiver: %v", err)
-	}
 
 	auth := authentication.NewFake()
 	profile := &tpb.Profile{
@@ -202,10 +196,9 @@ func TestUpdateValidation(t *testing.T) {
 			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
-			if err := env.Queue.AdvanceEpoch(); err != nil {
-				t.Errorf("AdvanceEpoch: %v", err)
+			if err := env.Signer.CreateEpoch(bctx); err != nil {
+				t.Errorf("CreateEpoch(_): %v", err)
 			}
-			<-env.Queue.Epochs() // Wait for new epoch.
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -220,9 +213,6 @@ func TestListHistory(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.ProcessMutation, env.Signer.CreateEpoch); err != nil {
-		t.Fatalf("failed to start queue receiver: %v", err)
-	}
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
@@ -280,11 +270,9 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}
-		// Create a new epoch.
-		if err := e.Queue.AdvanceEpoch(); err != nil {
-			return fmt.Errorf("AdvanceEpoch: %v", err)
+		if err := e.Signer.CreateEpoch(ctx); err != nil {
+			return fmt.Errorf("CreateEpoch(_): %v", err)
 		}
-		<-e.Queue.Epochs() // Wait for new epoch.
 	}
 	return nil
 }

@@ -22,7 +22,6 @@ import (
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/commitments"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/queue"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 	"github.com/google/keytransparency/core/vrf"
@@ -48,26 +47,26 @@ const (
 // Server holds internal state for the key server.
 type Server struct {
 	committer commitments.Committer
-	queue     queue.Queuer
 	auth      authentication.Authenticator
 	tree      tree.Sparse
 	appender  appender.Appender
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
 	factory   transaction.Factory
+	mutations mutator.Mutation
 }
 
 // New creates a new instance of the key server.
-func New(committer commitments.Committer, queue queue.Queuer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator, factory transaction.Factory) *Server {
+func New(committer commitments.Committer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator, factory transaction.Factory, mutations mutator.Mutation) *Server {
 	return &Server{
 		committer: committer,
-		queue:     queue,
 		auth:      auth,
 		tree:      tree,
 		appender:  appender,
 		vrf:       vrf,
 		mutator:   mutator,
 		factory:   factory,
+		mutations: mutations,
 	}
 }
 
@@ -102,7 +101,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 
 	txn, err := s.factory.NewDBTxn(ctx)
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
+		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
 
 	neighbors, err := s.tree.NeighborsAt(txn, index[:], epoch)
@@ -216,9 +215,6 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
-	vrf, _ := s.vrf.Evaluate([]byte(in.UserId))
-	index := s.vrf.Index(vrf)
-
 	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetUpdate().GetKeyValue(), in.GetEntryUpdate().Committed); err != nil {
 		return nil, err
 	}
@@ -236,8 +232,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 
 	// Catch errors early. Perform mutation verification.
 	// Read at the current value.  Assert the following:
-	// - TODO: Correct signatures from previous epoch.
-	// - TODO: Correct signatures internal to the update.
+	// - Correct signatures from previous epoch.
+	// - Correct signatures internal to the update.
 	// - Hash of current data matches the expectation in the mutation.
 
 	m, err := proto.Marshal(in.GetEntryUpdate().GetUpdate())
@@ -258,9 +254,21 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
 	}
 
-	if err := s.queue.Enqueue(index[:], m); err != nil {
-		log.Printf("Enqueue error: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Write error")
+	// Save mutation to the database.
+	txn, err := s.factory.NewDBTxn(ctx)
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
+	}
+	if _, err := s.mutations.Write(txn, in.GetEntryUpdate().GetUpdate()); err != nil {
+		log.Printf("mutations.Write failed: %v", err)
+		if err := txn.Rollback(); err != nil {
+			log.Printf("Cannot rollback the transaction: %v", err)
+		}
+		return nil, grpc.Errorf(codes.Internal, "Mutation write error")
+	}
+	if err := txn.Commit(); err != nil {
+		log.Printf("Cannot commit transaction: %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 	return &tpb.UpdateEntryResponse{Proof: resp}, nil
 }

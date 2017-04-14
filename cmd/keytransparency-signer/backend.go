@@ -27,7 +27,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/signer"
-	"github.com/google/keytransparency/impl/etcd/queue"
 	"github.com/google/keytransparency/impl/sql/appender"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -93,7 +92,10 @@ func main() {
 	factory := transaction.NewFactory(sqldb, etcdCli)
 
 	// Create signer helper objects.
-	queue := queue.New(context.Background(), etcdCli, *mapID, factory)
+	mutations, err := mutations.New(sqldb, *mapID)
+	if err != nil {
+		log.Fatalf("Failed to create mutations object: %v", err)
+	}
 	tree, err := sqlhist.New(context.Background(), *mapID, factory)
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
@@ -103,16 +105,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create STH appender: %v", err)
 	}
-	mutations, err := mutations.New(sqldb, *mapID)
-	if err != nil {
-		log.Fatalf("Failed to create mutations object: %v", err)
-	}
 
-	signer := signer.New(*domain, queue, tree, mutator, sths, mutations, openPrivateKey())
-	if _, err := queue.StartReceiving(signer.ProcessMutation, signer.CreateEpoch); err != nil {
-		log.Fatalf("failed to start queue receiver: %v", err)
-	}
-	go signer.StartSigning(*epochDuration)
+	signer := signer.New(*domain, tree, mutator, sths, mutations, openPrivateKey(), factory)
+	go signer.StartSigning(context.Background(), *epochDuration)
 
 	log.Printf("Signer started.")
 
