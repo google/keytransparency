@@ -40,11 +40,16 @@ func TestLatest(t *testing.T) {
 		{0, 1, []byte("foo"), 1},
 		{0, 2, []byte("foo"), 2},
 	} {
-		if err := a.Write(context.Background(), tc.logID, tc.epoch, tc.data); err != nil {
-			t.Errorf("Append(%v, %v): %v, want nil", tc.epoch, tc.data, err)
+		ctx := context.Background()
+		if err := a.Write(ctx, tc.logID, tc.epoch, tc.data); err != nil {
+			t.Errorf("Write(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
 
 		var obj []byte
+		if err := a.Read(ctx, tc.logID, tc.epoch, &obj); err != nil {
+			t.Errorf("Read(%v): %v, want nil", tc.epoch, err)
+		}
+
 		epoch, err := a.Latest(context.Background(), tc.logID, &obj)
 		if err != nil {
 			t.Errorf("Latest(): %v, want nil", err)
