@@ -18,4 +18,4 @@ install:
 
 script:
   - make
-  - make presubmit
+  - make travis-presubmit
