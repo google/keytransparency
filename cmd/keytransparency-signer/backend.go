@@ -19,7 +19,6 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
@@ -33,13 +32,11 @@ import (
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
-	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 )
 
 var (
 	serverDBPath  = flag.String("db", "db", "Database connection string")
-	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
 	domain        = flag.String("domain", "example.com", "Distinguished name for this key server")
 	mapID         = flag.Int64("mapid", 0, "ID for backend map")
 	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
@@ -56,17 +53,6 @@ func openDB() *sql.DB {
 		log.Fatalf("db.Ping(): %v", err)
 	}
 	return db
-}
-
-func openEtcd() *clientv3.Client {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   strings.Split(*etcdEndpoints, ","),
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		log.Fatalf("Failed to connect to etcd: %v", err)
-	}
-	return cli
 }
 
 func openPrivateKey() signatures.Signer {
@@ -87,9 +73,7 @@ func main() {
 
 	sqldb := openDB()
 	defer sqldb.Close()
-	etcdCli := openEtcd()
-	defer etcdCli.Close()
-	factory := transaction.NewFactory(sqldb, etcdCli)
+	factory := transaction.NewFactory(sqldb, nil)
 
 	// Create signer helper objects.
 	mutations, err := mutations.New(sqldb, *mapID)

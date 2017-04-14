@@ -129,18 +129,7 @@ if ((BACKEND == 1)); then
 fi
 
 # Generating .env file
-ENV="PEER1=http://${IP1}:12380
-PEER2=http://${IP2}:22380
-PEER3=http://${IP3}:32380
-LISTEN1=http://${IP1}:12379
-LISTEN2=http://${IP2}:22379
-LISTEN3=http://${IP3}:32379
-LISTEN=\"http://${IP1}:12379,http://${IP2}:22379,http://${IP3}:32379\"
-ETCD_INITIAL_CLUSTER=\"infra1=http://${IP1}:12380,infra2=http://${IP2}:22380,infra3=http://${IP3}:32380\"
-ETCD_INITIAL_CLUSTER_STATE=new
-ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster-1
-ETCD_LOG_PACKAGE_LEVELS=\"*=WARNING\"
-CTLOG=\"http://107.178.246.112\"
+ENV="CTLOG=\"http://107.178.246.112\"
 SIGN_PERIOD=5
 GOOGLE_APPLICATION_CREDENTIALS=\"${SERVICEKEY}\""
 
@@ -151,6 +140,9 @@ else
     ENV="${ENV}
 DOMAIN=\"example.com\""
 fi
+
+ENV="${ENV}
+MAPID=\"0\""
 
 if ((DBENGINE == 1)); then
     ENV="${ENV}
@@ -192,27 +184,14 @@ PROCFILE="# Copyright 2016 Google Inc. All Rights Reserved.
 # limitations under the License.
 "
 
-if ((FRONTEND == 1 && BACKEND == 0)); then
-       PROCFILE="${PROCFILE}
-etcd: etcd --name infra${FRONTENDNUM} --listen-client-urls \$LISTEN${FRONTENDNUM} --advertise-client-urls \$LISTEN${FRONTENDNUM} --listen-peer-urls \$PEER${FRONTENDNUM} --initial-advertise-peer-urls \$PEER${FRONTENDNUM} --enable-pprof"
-elif ((FRONTEND == 0 && BACKEND == 1)); then
-       PROCFILE="${PROCFILE}
-etcd: etcd --name infra3 --listen-client-urls \$LISTEN3 --advertise-client-urls \$LISTEN3 --listen-peer-urls \$PEER3 --initial-advertise-peer-urls \$PEER3 --enable-pprof"
-elif ((FRONTEND == 1 && BACKEND == 1)); then
-    PROCFILE="${PROCFILE}
-etcd1: etcd --name infra1 --listen-client-urls \$LISTEN1 --advertise-client-urls \$LISTEN1 --listen-peer-urls \$PEER1 --initial-advertise-peer-urls \$PEER1 --enable-pprof
-etcd2: etcd --name infra2 --listen-client-urls \$LISTEN2 --advertise-client-urls \$LISTEN2 --listen-peer-urls \$PEER2 --initial-advertise-peer-urls \$PEER2 --enable-pprof
-etcd3: etcd --name infra3 --listen-client-urls \$LISTEN3 --advertise-client-urls \$LISTEN3 --listen-peer-urls \$PEER3 --initial-advertise-peer-urls \$PEER3 --enable-pprof"
-fi
-
 if ((FRONTEND == 1)); then
     PROCFILE="${PROCFILE}
-frontend: ./keytransparency-server --addr=\$LISTEN_IP:\$PORT --key=\$KEY --cert=\$CERT --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --vrf=\$VRF_PRIV"
+frontend: ./keytransparency-server --addr=\$LISTEN_IP:\$PORT --key=\$KEY --cert=\$CERT --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --vrf=\$VRF_PRIV"
 fi
 
 if ((BACKEND == 1)); then
     PROCFILE="${PROCFILE}
-backend: ./keytransparency-signer --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --etcd=\$LISTEN --period=\$SIGN_PERIOD --key=\$SIGN_KEY"
+backend: ./keytransparency-signer --domain=\$DOMAIN --db=\$DB --maplog=\$CTLOG --period=\$SIGN_PERIOD --key=\$SIGN_KEY"
 fi
 
 printf "%s\n" "${PROCFILE}" > Procfile
