@@ -60,6 +60,9 @@ type Mutation interface {
 	// range. The range is identified by a starting sequence number and a
 	// count. ReadRange also returns the maximum sequence number read.
 	ReadRange(txn transaction.Txn, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error)
+	// ReadAll reads all mutations starting from the given sequence number.
+	// ReadAll also returns the maximum sequence number read.
+	ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.SignedKV, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
 	Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error)

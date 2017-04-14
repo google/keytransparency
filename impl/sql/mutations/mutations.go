@@ -33,10 +33,14 @@ const (
 	insertExpr       = `
 	INSERT INTO Mutations (MapID, MIndex, Mutation)
 	VALUES (?, ?, ?);`
-	readExpr = `
-	SELECT Sequence, Mutation FROM Mutations
-	WHERE MapID = ? AND Sequence >= ?
-	ORDER BY Sequence ASC LIMIT ?;`
+	readRangeExpr = `
+  	SELECT Sequence, Mutation FROM Mutations
+  	WHERE MapID = ? AND Sequence >= ?
+  	ORDER BY Sequence ASC LIMIT ?;`
+	readAllExpr = `
+ 	SELECT Sequence, Mutation FROM Mutations
+ 	WHERE MapID = ? AND Sequence >= ?
+	ORDER BY Sequence ASC;`
 )
 
 type mutations struct {
@@ -65,7 +69,7 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 // The range is identified by a starting sequence number and a count. ReadRange
 // also returns the maximum sequence number read.
 func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
-	readStmt, err := txn.Prepare(readExpr)
+	readStmt, err := txn.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -75,8 +79,27 @@ func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count i
 		return 0, nil, err
 	}
 	defer rows.Close()
+	return readRows(rows)
+}
 
-	results := make([]*tpb.SignedKV, 0, count)
+// ReadAll reads all mutations starting from the given sequence number.
+// ReadAll also returns the maximum sequence number read.
+func (m *mutations) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.SignedKV, error) {
+	readStmt, err := txn.Prepare(readAllExpr)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer readStmt.Close()
+	rows, err := readStmt.Query(m.mapID, startSequence)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+	return readRows(rows)
+}
+
+func readRows(rows *sql.Rows) (uint64, []*tpb.SignedKV, error) {
+	results := make([]*tpb.SignedKV, 0)
 	maxSequence := uint64(0)
 	for rows.Next() {
 		var sequence uint64

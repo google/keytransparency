@@ -18,7 +18,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -130,7 +129,7 @@ func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uin
 	} else if err != sql.ErrNoRows {
 		return 0, fmt.Errorf("Latest err: %v", err)
 	}
-	maxSequence, mutations, err := s.mutations.ReadRange(txn, startSequence, math.MaxInt32)
+	maxSequence, mutations, err := s.mutations.ReadAll(txn, startSequence)
 	if err != nil {
 		return 0, fmt.Errorf("ReadRange err: %v", err)
 	}
