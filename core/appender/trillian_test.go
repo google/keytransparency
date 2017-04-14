@@ -23,6 +23,7 @@ import (
 )
 
 func TestLatest(t *testing.T) {
+	ctx := context.Background()
 	fakeLog := fake.NewFakeTrillianClient()
 	admin := admin.NewStatic()
 	if err := admin.AddLog(0, fakeLog); err != nil {
@@ -40,7 +41,6 @@ func TestLatest(t *testing.T) {
 		{0, 1, []byte("foo"), 1},
 		{0, 2, []byte("foo"), 2},
 	} {
-		ctx := context.Background()
 		if err := a.Write(ctx, tc.logID, tc.epoch, tc.data); err != nil {
 			t.Errorf("Write(%v, %v): %v, want nil", tc.epoch, tc.data, err)
 		}
@@ -50,7 +50,7 @@ func TestLatest(t *testing.T) {
 			t.Errorf("Read(%v): %v, want nil", tc.epoch, err)
 		}
 
-		epoch, err := a.Latest(context.Background(), tc.logID, &obj)
+		epoch, err := a.Latest(ctx, tc.logID, &obj)
 		if err != nil {
 			t.Errorf("Latest(): %v, want nil", err)
 		}
