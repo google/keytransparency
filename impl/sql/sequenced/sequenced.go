@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/keytransparency/core/sequenced"
+	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/transaction"
 )
 
@@ -68,7 +68,7 @@ type Sequenced struct {
 
 // New returns an object that can store sequenced items for multiple maps.
 // mapID will be the only allowed mapID.
-func New(db *sql.DB, mapID int64) (sequenced.Sequenced, error) {
+func New(db *sql.DB, mapID int64) (appender.Local, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("No DB connection: %v", err)
 	}

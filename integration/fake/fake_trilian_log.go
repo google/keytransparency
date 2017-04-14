@@ -35,44 +35,44 @@ func NewFakeTrillianClient() client.VerifyingLogClient {
 }
 
 // AddLeaf adds a leaf to the log.
-func (f *logClient) AddLeaf(ctx context.Context, data []byte) error {
-	f.leaves = append(f.leaves, &trillian.LogLeaf{
+func (l *logClient) AddLeaf(ctx context.Context, data []byte) error {
+	l.leaves = append(l.leaves, &trillian.LogLeaf{
 		LeafValue: data,
 	})
 	return nil
 }
 
 // GetByIndex returns the requested leaf.
-func (f *logClient) GetByIndex(ctx context.Context, index int64) (*trillian.LogLeaf, error) {
-	if got, want := index, int64(len(f.leaves)); got > want {
+func (l *logClient) GetByIndex(ctx context.Context, index int64) (*trillian.LogLeaf, error) {
+	if got, want := index, int64(len(l.leaves)); got > want {
 		return nil, fmt.Errorf("Index out of range. Got %v, want <= %v", got, want)
 	}
 	if got, want := index, int64(0); got < want {
 		return nil, fmt.Errorf("Index out of range. Got %v, want >= %v", got, want)
 	}
-	return f.leaves[index], nil
+	return l.leaves[index], nil
 }
 
 // ListByIndex returns the set of requested leaves.
-func (f *logClient) ListByIndex(ctx context.Context, start int64, count int64) ([]*trillian.LogLeaf, error) {
-	if got, want := start+count, int64(len(f.leaves)); got > want {
+func (l *logClient) ListByIndex(ctx context.Context, start int64, count int64) ([]*trillian.LogLeaf, error) {
+	if got, want := start+count, int64(len(l.leaves)); got > want {
 		return nil, fmt.Errorf("Index out of range. Got %v, want <= %v", got, want)
 	}
 	if got, want := start, int64(0); got < want {
 		return nil, fmt.Errorf("Index out of range. Got %v, want >= %v", got, want)
 	}
-	return f.leaves[start : start+count], nil
+	return l.leaves[start : start+count], nil
 }
 
 // UpdateRoot fetches the latest signed tree root.
-func (f *logClient) UpdateRoot(ctx context.Context) error {
+func (l *logClient) UpdateRoot(ctx context.Context) error {
 	return nil
 }
 
 // Root returns the latest local copy of the signed log root.
-func (f *logClient) Root() trillian.SignedLogRoot {
+func (l *logClient) Root() trillian.SignedLogRoot {
 	return trillian.SignedLogRoot{
-		TreeSize: int64(len(f.leaves)),
+		TreeSize: int64(len(l.leaves)),
 	}
 }
 
