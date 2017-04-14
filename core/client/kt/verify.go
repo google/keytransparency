@@ -27,8 +27,6 @@ import (
 	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
-	ct "github.com/google/certificate-transparency/go"
-	"github.com/google/certificate-transparency/go/tls"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
@@ -111,15 +109,6 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	}
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 
-	// Verify SCT.
-	sct := new(ct.SignedCertificateTimestamp)
-	if _, err := tls.Unmarshal(in.SmhSct, sct); err != nil {
-		return err
-	}
-	if err := v.log.VerifySCT(ctx, in.GetSmh(), sct); err != nil {
-		Vlog.Printf("✗ Signed Map Head CT inclusion proof verification failed.")
-		return err
-	}
-	Vlog.Printf("✓ Signed Map Head CT inclusion proof verified.")
+	// TODO: Verify inclusion proof.
 	return nil
 }

@@ -23,12 +23,14 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/google/keytransparency/core/admin"
+	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/vrf"
 	"github.com/google/keytransparency/core/vrf/p256"
+	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/google/authentication"
-	"github.com/google/keytransparency/impl/sql/appender"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -56,6 +58,11 @@ var (
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
 	verbose      = flag.Bool("verbose", false, "Log requests and responses")
+
+	// Info to send Signed Map Heads to a Trillian Log.
+	logID     = flag.Int64("logid", 0, "Trillian Log ID")
+	logURL    = flag.String("logurl", "", "URL of Trillian Log Server for Signed Map Heads")
+	logPubKey = flag.String("logkey", "", "File path to public key of the Trillian Log")
 )
 
 func openDB() *sql.DB {
@@ -180,15 +187,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}
-	sths, err := appender.New(context.Background(), sqldb, *mapID, *mapLogURL, nil)
+
+	tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
 	if err != nil {
-		log.Fatalf("Failed to create appender: %v", err)
+		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
 	}
+	admin := admin.NewStatic()
+	if err := admin.AddLog(*mapID, tlog); err != nil {
+		log.Fatalf("failed to add log to admin: %v", err)
+	}
+	sths := appender.NewTrillian(admin)
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
 	// Create gRPC server.
-	svr := keyserver.New(commitments, tree, sths, vrfPriv, mutator, auth, factory, mutations)
+	svr := keyserver.New(*logID, commitments, tree, sths, vrfPriv, mutator, auth, factory, mutations)
 	opts := []grpc.ServerOption{grpc.Creds(creds)}
 	if *verbose {
 		opts = append(opts, grpc.UnaryInterceptor(jsonLogger))

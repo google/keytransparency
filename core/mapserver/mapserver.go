@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/keytransparency/core/sequenced"
+	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 	"github.com/google/trillian"
@@ -39,13 +39,13 @@ type mapServer struct {
 	mapID   int64
 	tree    tree.Sparse
 	factory transaction.Factory
-	sths    sequenced.Sequenced
+	sths    appender.Local
 	signer  *tcrypto.Signer
 	clock   util.TimeSource
 }
 
 // New returns a TrillianMapClient.
-func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths sequenced.Sequenced,
+func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths appender.Local,
 	signer crypto.Signer, clock util.TimeSource) trillian.TrillianMapClient {
 	return &mapServer{
 		mapID:   mapID,

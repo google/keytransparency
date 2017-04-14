@@ -22,11 +22,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/keytransparency/core/admin"
+	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/signer"
-	"github.com/google/keytransparency/impl/sql/appender"
+	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
@@ -39,9 +41,13 @@ var (
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	domain        = flag.String("domain", "example.com", "Distinguished name for this key server")
 	mapID         = flag.Int64("mapid", 0, "ID for backend map")
-	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 	signingKey    = flag.String("key", "", "Path to private key PEM for STH signing")
 	epochDuration = flag.Duration("period", time.Second*60, "Time between epoch creation")
+
+	// Info to send Signed Map Heads to a Trillian Log.
+	logID     = flag.Int64("logid", 0, "Trillian Log ID")
+	logURL    = flag.String("logurl", "", "URL of Trillian Log Server for Signed Map Heads")
+	logPubKey = flag.String("logkey", "", "File path to public key of the Trillian Log")
 )
 
 func openDB() *sql.DB {
@@ -85,10 +91,15 @@ func main() {
 		log.Fatalf("Failed to create SQL history: %v", err)
 	}
 	mutator := entry.New()
-	sths, err := appender.New(context.Background(), sqldb, *mapID, *mapLogURL, nil)
+	tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
 	if err != nil {
-		log.Fatalf("Failed to create STH appender: %v", err)
+		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
 	}
+	admin := admin.NewStatic()
+	if err := admin.AddLog(*mapID, tlog); err != nil {
+		log.Fatalf("failed to add log to admin: %v", err)
+	}
+	sths := appender.NewTrillian(admin)
 
 	signer := signer.New(*domain, tree, mutator, sths, mutations, openPrivateKey(), factory)
 	go signer.StartSigning(context.Background(), *epochDuration)
