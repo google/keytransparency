@@ -14,6 +14,8 @@ install:
   - go get -u github.com/gordonklaus/ineffassign
   - go get -u github.com/client9/misspell/cmd/misspell
   - go get -u ./...
+  # TODO: remove the next go get after cross-domain transactions are removed.
+  - go get -u github.com/coreos/etcd/integration
   - govendor sync
 
 script:
