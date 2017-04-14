@@ -24,7 +24,6 @@ import (
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/queue"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 
@@ -54,27 +53,27 @@ func (i fakeClock) Now() time.Time { i++; return time.Unix(int64(i), 0) }
 // signes the sparse map head.
 type Signer struct {
 	realm     string
-	queue     queue.Queuer
 	mutator   mutator.Mutator
 	tree      tree.Sparse
 	mutations mutator.Mutation
 	sths      appender.Appender
 	signer    signatures.Signer
+	factory   transaction.Factory
 	clock     Clock
 }
 
 // New creates a new instance of the signer.
-func New(realm string, queue queue.Queuer, tree tree.Sparse,
+func New(realm string, tree tree.Sparse,
 	mutator mutator.Mutator, sths appender.Appender, mutations mutator.Mutation,
-	signer signatures.Signer) *Signer {
+	signer signatures.Signer, factory transaction.Factory) *Signer {
 	return &Signer{
 		realm:     realm,
-		queue:     queue,
 		mutator:   mutator,
 		tree:      tree,
 		sths:      sths,
 		mutations: mutations,
 		signer:    signer,
+		factory:   factory,
 		clock:     realClock{},
 	}
 }
@@ -84,11 +83,21 @@ func (s *Signer) FakeTime() {
 	s.clock = new(fakeClock)
 }
 
-// StartSigning inserts epoch advancement signals into the queue.
-func (s *Signer) StartSigning(interval time.Duration) {
+// StartSigning advance epochs once per interval.
+func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
 	for range time.NewTicker(interval).C {
-		if err := s.queue.AdvanceEpoch(); err != nil {
-			log.Fatalf("Advance epoch failed: %v", err)
+		txn, err := s.factory.NewDBTxn(ctx)
+		if err != nil {
+			log.Fatalf("NewDBTxn() failed: %v", err)
+		}
+		if err := s.CreateEpoch(ctx, txn); err != nil {
+			if err := txn.Rollback(); err != nil {
+				log.Printf("Cannot rollback the transaction: %v", err)
+			}
+			log.Fatalf("CreateEpoch() failed: %v", err)
+		}
+		if err := txn.Commit(); err != nil {
+			log.Fatalf("txn.Commit() failed: %v", err)
 		}
 	}
 }

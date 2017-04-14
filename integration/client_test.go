@@ -82,13 +82,11 @@ func getAuthorizedKey(pubKey string) *tpb.PublicKey {
 }
 
 func TestEmptyGetAndUpdate(t *testing.T) {
+	bctx := context.Background()
 	auth := authentication.NewFake()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.CreateEpoch); err != nil {
-		t.Fatalf("failed to start queue receiver: %v", err)
-	}
 
 	// Create lists of signers.
 	signer1 := createSigner(t, testPrivKey1)
@@ -131,10 +129,21 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
 
-			if err := env.Queue.AdvanceEpoch(); err != nil {
-				t.Errorf("AdvanceEpoch: %v", err)
+			txn, err := env.Factory.NewDBTxn(bctx)
+			if err != nil {
+				t.Errorf("NewDBTxn() failed: %v", err)
+				continue
 			}
-			<-env.Queue.Epochs() // Wait for new epoch.
+			if err := env.Signer.CreateEpoch(bctx, txn); err != nil {
+				if err := txn.Rollback(); err != nil {
+					t.Errorf("Cannot rollback the transaction: %v", err)
+				}
+				t.Errorf("CreateEpoch: %v", err)
+			}
+			if err := txn.Commit(); err != nil {
+				t.Errorf("txn.Commit() failed: %v", err)
+			}
+
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -163,13 +172,11 @@ func (e *Env) checkProfile(userID string, want bool) error {
 	return nil
 }
 
-func TTTestUpdateValidation(t *testing.T) {
+func TestUpdateValidation(t *testing.T) {
+	bctx := context.Background()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.CreateEpoch); err != nil {
-		t.Fatalf("failed to start queue receiver: %v", err)
-	}
 
 	auth := authentication.NewFake()
 	profile := &tpb.Profile{
@@ -202,10 +209,21 @@ func TTTestUpdateValidation(t *testing.T) {
 			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
 		}
 		if tc.want {
-			if err := env.Queue.AdvanceEpoch(); err != nil {
-				t.Errorf("AdvanceEpoch: %v", err)
+			txn, err := env.Factory.NewDBTxn(bctx)
+			if err != nil {
+				t.Errorf("NewDBTxn() failed: %v", err)
+				continue
 			}
-			<-env.Queue.Epochs() // Wait for new epoch.
+			if err := env.Signer.CreateEpoch(bctx, txn); err != nil {
+				if err := txn.Rollback(); err != nil {
+					t.Errorf("Cannot rollback the transaction: %v", err)
+				}
+				t.Errorf("CreateEpoch: %v", err)
+			}
+			if err := txn.Commit(); err != nil {
+				t.Errorf("txn.Commit() failed: %v", err)
+			}
+
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
 			}
@@ -213,16 +231,13 @@ func TTTestUpdateValidation(t *testing.T) {
 	}
 }
 
-func TTTestListHistory(t *testing.T) {
+func TestListHistory(t *testing.T) {
 	userID := "bob"
 	ctx := authentication.NewFake().NewContext(userID)
 
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	if _, err := env.Queue.StartReceiving(env.Signer.CreateEpoch); err != nil {
-		t.Fatalf("failed to start queue receiver: %v", err)
-	}
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
@@ -281,10 +296,19 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 			}
 		}
 		// Create a new epoch.
-		if err := e.Queue.AdvanceEpoch(); err != nil {
-			return fmt.Errorf("AdvanceEpoch: %v", err)
+		txn, err := e.Factory.NewDBTxn(ctx)
+		if err != nil {
+			return fmt.Errorf("NewDBTxn() failed: %v", err)
 		}
-		<-e.Queue.Epochs() // Wait for new epoch.
+		if err := e.Signer.CreateEpoch(ctx, txn); err != nil {
+			if err := txn.Rollback(); err != nil {
+				return fmt.Errorf("Cannot rollback the transaction: %v", err)
+			}
+			return fmt.Errorf("CreateEpoch: %v", err)
+		}
+		if err := txn.Commit(); err != nil {
+			return fmt.Errorf("txn.Commit() failed: %v", err)
+		}
 	}
 	return nil
 }
