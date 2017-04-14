@@ -93,14 +93,14 @@ func TestSetGet(t *testing.T) {
 		{
 			epoch: 0,
 			leaves: []*trillian.MapLeaf{
-				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo")},
-				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar")},
+				{Index: index(0), LeafValue: []byte("foo")},
+				{Index: index(1), LeafValue: []byte("bar")},
 			}},
 		{
 			epoch: 1,
 			leaves: []*trillian.MapLeaf{
-				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo1")},
-				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar1")},
+				{Index: index(0), LeafValue: []byte("foo1")},
+				{Index: index(1), LeafValue: []byte("bar1")},
 			}},
 	} {
 		resp, err := env.m.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
@@ -158,14 +158,14 @@ func TestGetSignedMapRoot(t *testing.T) {
 		{
 			epoch: 0,
 			leaves: []*trillian.MapLeaf{
-				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo")},
-				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar")},
+				{Index: index(0), LeafValue: []byte("foo")},
+				{Index: index(1), LeafValue: []byte("bar")},
 			}},
 		{
 			epoch: 1,
 			leaves: []*trillian.MapLeaf{
-				&trillian.MapLeaf{Index: index(0), LeafValue: []byte("foo1")},
-				&trillian.MapLeaf{Index: index(1), LeafValue: []byte("bar1")},
+				{Index: index(0), LeafValue: []byte("foo1")},
+				{Index: index(1), LeafValue: []byte("bar1")},
 			}},
 	} {
 		resp, err := env.m.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
