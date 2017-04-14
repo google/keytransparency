@@ -129,7 +129,7 @@ func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uin
 	startSequence := uint64(0)
 	smh := new(ctmap.SignedMapHead)
 	if _, err := s.sths.Latest(ctx, s.logID, smh); err == nil {
-		startSequence = smh.GetMapHead().MaxSequenceNumber + 1
+		startSequence = smh.GetMapHead().MaxSequenceNumber
 	} else if err != sql.ErrNoRows {
 		return 0, fmt.Errorf("Latest(%v): %v", s.logID, err)
 	}

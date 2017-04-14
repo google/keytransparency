@@ -162,7 +162,7 @@ func TestReadRange(t *testing.T) {
 	}{
 		{
 			"read a single mutation",
-			1,
+			0,
 			1,
 			1,
 			[]*tpb.SignedKV{
@@ -183,7 +183,7 @@ func TestReadRange(t *testing.T) {
 		},
 		{
 			"full mutations range size",
-			1,
+			0,
 			5,
 			5,
 			[]*tpb.SignedKV{
@@ -221,7 +221,7 @@ func TestReadRange(t *testing.T) {
 		},
 		{
 			"incomplete mutations range",
-			3,
+			2,
 			5,
 			5,
 			[]*tpb.SignedKV{
@@ -292,7 +292,7 @@ func TestReadAll(t *testing.T) {
 		},
 		{
 			"read all mutations",
-			1,
+			0,
 			5,
 			[]*tpb.SignedKV{
 				{
@@ -329,7 +329,7 @@ func TestReadAll(t *testing.T) {
 		},
 		{
 			"read half of the mutations",
-			3,
+			2,
 			5,
 			[]*tpb.SignedKV{
 				{
@@ -354,7 +354,7 @@ func TestReadAll(t *testing.T) {
 		},
 		{
 			"read last mutation",
-			5,
+			4,
 			5,
 			[]*tpb.SignedKV{
 				{
