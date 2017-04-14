@@ -33,3 +33,27 @@ type Appender interface {
 	// Returns epoch, obj, and a serialized ct.SignedCertificateTimestamp
 	Latest(ctx context.Context, obj interface{}) (int64, []byte, error)
 }
+
+// Local stores a list of items that have been sequenced.
+type Local interface {
+	// Write writes an object at a given epoch.
+	Write(txn transaction.Txn, logID, epoch int64, obj interface{}) error
+
+	// Read retrieves a specific object at a given epoch.
+	Read(txn transaction.Txn, logID, epoch int64, obj interface{}) error
+
+	// Latest returns the latest object and its epoch.
+	Latest(txn transaction.Txn, logID int64, obj interface{}) (int64, error)
+}
+
+// Remote stores a list of items in a remote service.
+type Remote interface {
+	// Write writes an object at a given epoch.
+	Write(ctx context.Context, logID, epoch int64, obj interface{}) error
+
+	// Read retrieves a specific object at a given epoch.
+	Read(ctx context.Context, logID, epoch int64, obj interface{}) error
+
+	// Latest returns the latest object and its epoch.
+	Latest(ctx context.Context, logID int64, obj interface{}) (int64, error)
+}
