@@ -192,11 +192,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
 	}
-	admin := admin.NewStatic()
-	if err := admin.AddLog(*mapID, tlog); err != nil {
-		log.Fatalf("failed to add log to admin: %v", err)
+	static := admin.NewStatic()
+	if err := static.AddLog(*mapID, tlog); err != nil {
+		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
 	}
-	sths := appender.NewTrillian(admin)
+	sths := appender.NewTrillian(static)
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 

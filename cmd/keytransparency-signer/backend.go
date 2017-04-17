@@ -95,11 +95,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
 	}
-	admin := admin.NewStatic()
-	if err := admin.AddLog(*mapID, tlog); err != nil {
-		log.Fatalf("failed to add log to admin: %v", err)
+	static := admin.NewStatic()
+	if err := static.AddLog(*mapID, tlog); err != nil {
+		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
 	}
-	sths := appender.NewTrillian(admin)
+	sths := appender.NewTrillian(static)
+	mutations, err := mutations.New(sqldb, *mapID)
+	if err != nil {
+		log.Fatalf("Failed to create mutations object: %v", err)
+	}
 
 	signer := signer.New(*domain, tree, mutator, sths, mutations, openPrivateKey(), factory)
 	go signer.StartSigning(context.Background(), *epochDuration)

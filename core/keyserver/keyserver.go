@@ -88,7 +88,7 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 	var smh ctmap.SignedMapHead
 	epoch, err := s.sths.Latest(ctx, s.logID, &smh)
 	if err != nil {
-		log.Printf("sth.Latest(%v): %v", s.logID, err)
+		log.Printf("sths.Latest(%v): %v", s.logID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
 	}
 	resp, err := s.getEntry(ctx, in.UserId, epoch)

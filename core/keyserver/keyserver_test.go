@@ -63,14 +63,14 @@ func TestListEntryHistory(t *testing.T) {
 		st := &fakeSparseHist{make(map[int64][]byte)}
 
 		fakeLog := fake.NewFakeTrillianClient()
-		admin := admin.NewStatic()
-		if err := admin.AddLog(logID, fakeLog); err != nil {
+		static := admin.NewStatic()
+		if err := static.AddLog(logID, fakeLog); err != nil {
 			t.Fatalf("failed to add log to admin: %v", err)
 		}
-		sths := appender.NewTrillian(admin)
+		sths := appender.NewTrillian(static)
 
 		srv := New(logID, c, st, sths, fakePrivateKey{}, fakeMutator{}, authentication.NewFake(), fakeFactory{}, fakeMutation{})
-		if err := addProfiles(profileCount, c, st, sths); err != nil {
+		if err := addProfiles(ctx, profileCount, c, st, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
 
@@ -108,7 +108,7 @@ func TestListEntryHistory(t *testing.T) {
 	}
 }
 
-func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, sths appender.Remote) error {
+func addProfiles(ctx context.Context, count int, c *fakeCommitter, st *fakeSparseHist, sths appender.Remote) error {
 	profiles := make([]*tpb.Profile, count)
 	for i := range profiles {
 		profiles[i] = createProfile(i)
@@ -124,7 +124,7 @@ func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, sths appender.
 		st.M[int64(i)] = commitment
 
 		smh := new(ctmap.SignedMapHead)
-		if err := sths.Write(context.Background(), 0, int64(i), smh); err != nil {
+		if err := sths.Write(ctx, 0, int64(i), smh); err != nil {
 			return err
 		}
 	}
