@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -36,7 +35,6 @@ import (
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -49,16 +47,15 @@ import (
 )
 
 var (
-	addr          = flag.String("addr", ":8080", "The ip:port combination to listen on")
-	serverDBPath  = flag.String("db", "db", "Database connection string")
-	etcdEndpoints = flag.String("etcd", "", "Comma delimited list of etcd endpoints")
-	mapID         = flag.Int64("mapid", 0, "ID for backend map")
-	realm         = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
-	vrfPath       = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
-	mapLogURL     = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
-	keyFile       = flag.String("key", "testdata/server.key", "TLS private key file")
-	certFile      = flag.String("cert", "testdata/server.pem", "TLS cert file")
-	verbose       = flag.Bool("verbose", false, "Log requests and responses")
+	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
+	serverDBPath = flag.String("db", "db", "Database connection string")
+	mapID        = flag.Int64("mapid", 0, "ID for backend map")
+	realm        = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
+	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
+	mapLogURL    = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
+	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
+	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
+	verbose      = flag.Bool("verbose", false, "Log requests and responses")
 )
 
 func openDB() *sql.DB {
@@ -70,17 +67,6 @@ func openDB() *sql.DB {
 		log.Fatalf("db.Ping(): %v", err)
 	}
 	return db
-}
-
-func openEtcd() *clientv3.Client {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   strings.Split(*etcdEndpoints, ","),
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		log.Fatalf("Failed to connect to etcd: %v", err)
-	}
-	return cli
 }
 
 func openVRFKey() vrf.PrivateKey {
@@ -170,9 +156,7 @@ func main() {
 	// Open Resources.
 	sqldb := openDB()
 	defer sqldb.Close()
-	etcdCli := openEtcd()
-	defer etcdCli.Close()
-	factory := transaction.NewFactory(sqldb, etcdCli)
+	factory := transaction.NewFactory(sqldb, nil)
 
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {
