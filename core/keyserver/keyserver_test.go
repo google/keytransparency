@@ -21,16 +21,22 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/keytransparency/core/admin"
+	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/transaction"
+	"github.com/google/keytransparency/integration/fake"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	"github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
+
+const logID = int64(0)
 
 func TestListEntryHistory(t *testing.T) {
 	profileCount := 25
@@ -55,9 +61,16 @@ func TestListEntryHistory(t *testing.T) {
 		// Test case setup.
 		c := &fakeCommitter{make(map[string]*tpb.Committed)}
 		st := &fakeSparseHist{make(map[int64][]byte)}
-		a := &fakeAppender{0, 0}
-		srv := New(c, st, a, fakePrivateKey{}, fakeMutator{}, authentication.NewFake(), fakeFactory{}, fakeMutation{})
-		if err := addProfiles(profileCount, c, st, a); err != nil {
+
+		fakeLog := fake.NewFakeTrillianClient()
+		static := admin.NewStatic()
+		if err := static.AddLog(logID, fakeLog); err != nil {
+			t.Fatalf("failed to add log to admin: %v", err)
+		}
+		sths := appender.NewTrillian(static)
+
+		srv := New(logID, c, st, sths, fakePrivateKey{}, fakeMutator{}, authentication.NewFake(), fakeFactory{}, fakeMutation{})
+		if err := addProfiles(ctx, profileCount, c, st, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
 
@@ -92,16 +105,10 @@ func TestListEntryHistory(t *testing.T) {
 		if got := checkProfiles(tc.wantHistory, resp.Values); got != nil {
 			t.Errorf("%v: checkProfiles failed: %v, want nil", i, got)
 		}
-
-		// Verify mocks.
-		// Ensure that latest is called only once.
-		if got, want := a.LatestCount, 1; got != want {
-			t.Errorf("%v: Incorrect number of Latest() call(s), got %v, want %v", i, got, want)
-		}
 	}
 }
 
-func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, a *fakeAppender) error {
+func addProfiles(ctx context.Context, count int, c *fakeCommitter, st *fakeSparseHist, sths appender.Remote) error {
 	profiles := make([]*tpb.Profile, count)
 	for i := range profiles {
 		profiles[i] = createProfile(i)
@@ -115,7 +122,11 @@ func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, a *fakeAppende
 		committed := &tpb.Committed{Data: pData}
 		c.M[string(commitment)] = committed
 		st.M[int64(i)] = commitment
-		a.CurrentEpoch = int64(i)
+
+		smh := new(ctmap.SignedMapHead)
+		if err := sths.Write(ctx, 0, int64(i), smh); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -148,7 +159,6 @@ func createProfile(tag int) *tpb.Profile {
 // Fakes //
 ///////////
 
-// commitments.Committer fake.
 type fakeCommitter struct {
 	M map[string]*tpb.Committed
 }
@@ -189,24 +199,6 @@ func (f *fakeSparseHist) ReadLeafAt(txn transaction.Txn, index []byte, epoch int
 		return nil, errors.New("marshaling error")
 	}
 	return entryData, nil
-}
-
-// appender.Appender fake.
-type fakeAppender struct {
-	CurrentEpoch int64
-	LatestCount  int
-}
-
-func (*fakeAppender) Append(ctx context.Context, txn transaction.Txn, epoch int64, obj interface{}) error {
-	return nil
-}
-func (*fakeAppender) Epoch(ctx context.Context, epoch int64, obj interface{}) ([]byte, error) {
-	return nil, nil
-}
-
-func (f *fakeAppender) Latest(ctx context.Context, obj interface{}) (int64, []byte, error) {
-	f.LatestCount++
-	return f.CurrentEpoch, nil, nil
 }
 
 // vrf.PrivateKey fake.

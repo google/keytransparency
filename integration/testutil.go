@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
+	"github.com/google/keytransparency/core/admin"
+	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
@@ -31,11 +33,11 @@ import (
 	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/core/vrf"
 	"github.com/google/keytransparency/core/vrf/p256"
-	"github.com/google/keytransparency/impl/sql/appender"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
+	"github.com/google/keytransparency/integration/fake"
 
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"golang.org/x/net/context"
@@ -46,6 +48,7 @@ import (
 
 const (
 	mapID = 0
+	logID = 0
 )
 
 // NewDB creates a new in-memory database for testing.
@@ -161,10 +164,13 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create SQL history: %v", err)
 	}
-	sths, err := appender.New(context.Background(), sqldb, mapID, hs.URL, nil)
-	if err != nil {
-		t.Fatalf("Failed to create STH appender: %v", err)
+
+	admin := admin.NewStatic()
+	if err := admin.AddLog(logID, fake.NewFakeTrillianClient()); err != nil {
+		t.Fatalf("failed to add log to admin: %v", err)
 	}
+	sths := appender.NewTrillian(admin)
+
 	vrfPriv, vrfPub, err := staticVRF()
 	if err != nil {
 		t.Fatalf("Failed to load vrf keypair: %v", err)
@@ -176,7 +182,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
-	server := keyserver.New(commitments, tree, sths, vrfPriv, mutator, auth, factory, mutations)
+	server := keyserver.New(logID, commitments, tree, sths, vrfPriv, mutator, auth, factory, mutations)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 

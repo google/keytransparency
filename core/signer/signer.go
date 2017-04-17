@@ -53,19 +53,24 @@ func (i fakeClock) Now() time.Time { i++; return time.Unix(int64(i), 0) }
 // signes the sparse map head.
 type Signer struct {
 	realm     string
+	logID     int64
 	mutator   mutator.Mutator
 	tree      tree.Sparse
 	mutations mutator.Mutation
-	sths      appender.Appender
+	sths      appender.Remote
 	signer    signatures.Signer
 	factory   transaction.Factory
 	clock     Clock
 }
 
 // New creates a new instance of the signer.
-func New(realm string, tree tree.Sparse,
-	mutator mutator.Mutator, sths appender.Appender, mutations mutator.Mutation,
-	signer signatures.Signer, factory transaction.Factory) *Signer {
+func New(realm string,
+	tree tree.Sparse,
+	mutator mutator.Mutator,
+	sths appender.Remote,
+	mutations mutator.Mutation,
+	signer signatures.Signer,
+	factory transaction.Factory) *Signer {
 	return &Signer{
 		realm:     realm,
 		mutator:   mutator,
@@ -123,14 +128,14 @@ func (s *Signer) queueMutation(txn transaction.Txn, index, mutation []byte) erro
 func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uint64, error) {
 	startSequence := uint64(0)
 	smh := new(ctmap.SignedMapHead)
-	if _, _, err := s.sths.Latest(ctx, smh); err == nil {
+	if _, err := s.sths.Latest(ctx, s.logID, smh); err == nil {
 		startSequence = smh.GetMapHead().MaxSequenceNumber + 1
 	} else if err != sql.ErrNoRows {
-		return 0, fmt.Errorf("Latest err: %v", err)
+		return 0, fmt.Errorf("Latest(%v): %v", s.logID, err)
 	}
 	maxSequence, mutations, err := s.mutations.ReadAll(txn, startSequence)
 	if err != nil {
-		return 0, fmt.Errorf("ReadRange err: %v", err)
+		return 0, fmt.Errorf("ReadAll(%v): %v", startSequence, err)
 	}
 	for _, mutation := range mutations {
 		mData, err := proto.Marshal(mutation)
@@ -148,16 +153,16 @@ func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uin
 func (s *Signer) CreateEpoch(ctx context.Context) error {
 	txn, err := s.factory.NewDBTxn(ctx)
 	if err != nil {
-		return fmt.Errorf("NewDBTxn() failed: %v", err)
+		return fmt.Errorf("NewDBTxn(): %v", err)
 	}
 	if err := s.createEpoch(ctx, txn); err != nil {
 		if err := txn.Rollback(); err != nil {
 			log.Printf("Cannot rollback the transaction: %v", err)
 		}
-		return fmt.Errorf("createEpoch() failed: %v", err)
+		return fmt.Errorf("createEpoch(): %v", err)
 	}
 	if err := txn.Commit(); err != nil {
-		return fmt.Errorf("txn.Commit() failed: %v", err)
+		return fmt.Errorf("txn.Commit(): %v", err)
 	}
 	return nil
 }
@@ -165,7 +170,7 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 func (s *Signer) createEpoch(ctx context.Context, txn transaction.Txn) error {
 	maxSequence, err := s.processMutations(ctx, txn)
 	if err != nil {
-		return fmt.Errorf("processMutations err: %v", err)
+		return fmt.Errorf("processMutations(): %v", err)
 	}
 	if err := s.tree.Commit(txn); err != nil {
 		return fmt.Errorf("Commit(): %v", err)
@@ -198,7 +203,7 @@ func (s *Signer) createEpoch(ctx context.Context, txn transaction.Txn) error {
 		MapHead:    mh,
 		Signatures: map[string]*spb.DigitallySigned{s.signer.KeyID(): sig},
 	}
-	if err := s.sths.Append(ctx, txn, epoch, smh); err != nil {
+	if err := s.sths.Write(ctx, s.logID, epoch, smh); err != nil {
 		return fmt.Errorf("Append SMH failure %v", err)
 	}
 	log.Printf("Created epoch %v. SMH: %#x", epoch, root)

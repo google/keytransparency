@@ -46,10 +46,11 @@ const (
 
 // Server holds internal state for the key server.
 type Server struct {
+	logID     int64
 	committer commitments.Committer
 	auth      authentication.Authenticator
 	tree      tree.Sparse
-	appender  appender.Appender
+	sths      appender.Remote
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
 	factory   transaction.Factory
@@ -57,14 +58,23 @@ type Server struct {
 }
 
 // New creates a new instance of the key server.
-func New(committer commitments.Committer, tree tree.Sparse, appender appender.Appender, vrf vrf.PrivateKey, mutator mutator.Mutator, auth authentication.Authenticator, factory transaction.Factory, mutations mutator.Mutation) *Server {
+func New(logID int64,
+	committer commitments.Committer,
+	tree tree.Sparse,
+	sths appender.Remote,
+	vrf vrf.PrivateKey,
+	mutator mutator.Mutator,
+	auth authentication.Authenticator,
+	factory transaction.Factory,
+	mutations mutator.Mutation) *Server {
 	return &Server{
+		logID:     logID,
 		committer: committer,
-		auth:      auth,
 		tree:      tree,
-		appender:  appender,
+		sths:      sths,
 		vrf:       vrf,
 		mutator:   mutator,
+		auth:      auth,
 		factory:   factory,
 		mutations: mutations,
 	}
@@ -76,9 +86,9 @@ func New(committer commitments.Committer, tree tree.Sparse, appender appender.Ap
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
 
 	var smh ctmap.SignedMapHead
-	epoch, _, err := s.appender.Latest(ctx, &smh)
+	epoch, err := s.sths.Latest(ctx, s.logID, &smh)
 	if err != nil {
-		log.Printf("Cannot get SMH: %v", err)
+		log.Printf("sths.Latest(%v): %v", s.logID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
 	}
 	resp, err := s.getEntry(ctx, in.UserId, epoch)
@@ -94,8 +104,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	index := s.vrf.Index(vrf)
 
 	var smh ctmap.SignedMapHead
-	sct, err := s.appender.Epoch(ctx, epoch, &smh)
-	if err != nil {
+	if err := s.sths.Read(ctx, s.logID, epoch, &smh); err != nil {
 		return nil, err
 	}
 
@@ -155,8 +164,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 			LeafData:  leaf,
 			Neighbors: neighbors,
 		},
-		Smh:    &smh,
-		SmhSct: sct,
+		Smh: &smh,
 	}, nil
 }
 
@@ -164,7 +172,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
 	// Get current epoch.
 	ignore := new(ctmap.SignedMapHead)
-	currentEpoch, _, err := s.appender.Latest(ctx, &ignore)
+	currentEpoch, err := s.sths.Latest(ctx, s.logID, &ignore)
 	if err != nil {
 		log.Printf("Cannot get latest epoch: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot get latest epoch")

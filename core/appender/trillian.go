@@ -15,6 +15,7 @@
 package appender
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 
@@ -74,7 +75,7 @@ func (t *Trillian) Read(ctx context.Context, logID, epoch int64, obj interface{}
 	return nil
 }
 
-// Latest retrives the last object.
+// Latest retrives the last object.  Returns sql.ErrNoRows if empty.
 func (t *Trillian) Latest(ctx context.Context, logID int64, obj interface{}) (int64, error) {
 	log, err := t.admin.LogClient(logID)
 	if err != nil {
@@ -85,6 +86,9 @@ func (t *Trillian) Latest(ctx context.Context, logID int64, obj interface{}) (in
 		return 0, err
 	}
 	epoch := log.Root().TreeSize - 1
+	if epoch < 0 {
+		return 0, sql.ErrNoRows
+	}
 	if err := t.Read(ctx, logID, epoch, obj); err != nil {
 		return 0, err
 	}
