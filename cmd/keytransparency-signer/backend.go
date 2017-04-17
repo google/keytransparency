@@ -100,10 +100,6 @@ func main() {
 		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
 	}
 	sths := appender.NewTrillian(static)
-	mutations, err := mutations.New(sqldb, *mapID)
-	if err != nil {
-		log.Fatalf("Failed to create mutations object: %v", err)
-	}
 
 	signer := signer.New(*domain, tree, mutator, sths, mutations, openPrivateKey(), factory)
 	go signer.StartSigning(context.Background(), *epochDuration)
