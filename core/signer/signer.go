@@ -15,74 +15,49 @@
 package signer
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/appender"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
-	"github.com/google/keytransparency/core/tree"
 
 	"github.com/google/trillian"
 	"golang.org/x/net/context"
 )
 
-// Clock defines an interface for the advancement of time.
-type Clock interface {
-	Now() time.Time
-}
-
-// realClock returns the real time.
-type realClock struct{}
-
-func (realClock) Now() time.Time { return time.Now() }
-
-// fakeClock returns the same sequence of time each time.
-type fakeClock int64
-
-func (i fakeClock) Now() time.Time { i++; return time.Unix(int64(i), 0) }
-
-// Signer processes mutations, applies them to the sparse merkle tree, and
-// signes the sparse map head.
+// Signer processes mutations and sends them to the trillian map.
 type Signer struct {
 	realm     string
+	mapID     int64
+	tmap      trillian.TrillianMapClient
 	logID     int64
-	mutator   mutator.Mutator
-	tree      tree.Sparse
-	mutations mutator.Mutation
 	sths      appender.Remote
-	signer    signatures.Signer
+	mutator   mutator.Mutator
+	mutations mutator.Mutation
 	factory   transaction.Factory
-	clock     Clock
 }
 
 // New creates a new instance of the signer.
 func New(realm string,
-	tree tree.Sparse,
-	mutator mutator.Mutator,
+	mapID int64,
+	tmap trillian.TrillianMapClient,
+	logID int64,
 	sths appender.Remote,
+	mutator mutator.Mutator,
 	mutations mutator.Mutation,
-	signer signatures.Signer,
 	factory transaction.Factory) *Signer {
 	return &Signer{
 		realm:     realm,
-		mutator:   mutator,
-		tree:      tree,
+		mapID:     mapID,
+		tmap:      tmap,
 		sths:      sths,
+		mutator:   mutator,
 		mutations: mutations,
-		signer:    signer,
 		factory:   factory,
-		clock:     realClock{},
 	}
-}
-
-// FakeTime uses a clock that advances one second each time it is called for testing.
-func (s *Signer) FakeTime() {
-	s.clock = new(fakeClock)
 }
 
 // StartSigning advance epochs once per interval.
@@ -94,110 +69,129 @@ func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// queueMutation saves a mutation and adds it to the tree.
-func (s *Signer) queueMutation(txn transaction.Txn, index, mutation []byte) error {
-	epoch, err := s.tree.Epoch(txn)
+// newMutations returns a list of mutations to process and highest sequence number returned.
+func (s *Signer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.SignedKV, int64, error) {
+	txn, err := s.factory.NewDBTxn(ctx)
 	if err != nil {
-		return fmt.Errorf("Epoch(): %v", err)
-	}
-	// Get current value.
-	v, err := s.tree.ReadLeafAt(txn, index, epoch)
-	if err != nil {
-		return fmt.Errorf("ReadLeafAt err: %v", err)
+		return nil, 0, fmt.Errorf("NewDBTxn(): %v", err)
 	}
 
-	newV, err := s.mutator.Mutate(v, mutation)
-	if err != nil {
-		return fmt.Errorf("Mutate err: %v", err)
-	}
-
-	// Save new value and update tree.
-	if err := s.tree.QueueLeaf(txn, index, newV); err != nil {
-		return fmt.Errorf("QueueLeaf err: %v", err)
-	}
-
-	log.Printf("Sequenced %x", index)
-	return nil
-}
-
-// processMutations reads mutations from the database and adds them to the tree.
-// processMutations returns the maximum mutation sequence number processed.
-func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (int64, error) {
-	startSequence := int64(0)
-	smr := new(trillian.SignedMapRoot)
-	if _, err := s.sths.Latest(ctx, s.logID, smr); err == nil {
-		startSequence = smr.GetMetadata().GetHighestFullyCompletedSeq()
-	} else if err != sql.ErrNoRows {
-		return 0, fmt.Errorf("Latest(%v): %v", s.logID, err)
-	}
 	maxSequence, mutations, err := s.mutations.ReadAll(txn, uint64(startSequence))
 	if err != nil {
-		return 0, fmt.Errorf("ReadAll(%v): %v", startSequence, err)
+		if err := txn.Rollback(); err != nil {
+			log.Printf("Cannot rollback the transaction: %v", err)
+		}
+		return nil, 0, fmt.Errorf("ReadAll(%v): %v", startSequence, err)
 	}
-	for _, mutation := range mutations {
-		mData, err := proto.Marshal(mutation)
+
+	if err := txn.Commit(); err != nil {
+		return nil, 0, fmt.Errorf("txn.Commit(): %v", err)
+	}
+	return mutations, int64(maxSequence), nil
+}
+
+// toArray returns the first 20 bytes from b.
+// If b is less than 20 bytes long, the output is zero padded.
+func toArray(b []byte) [20]byte {
+	var i [20]byte
+	copy(i[:], b)
+	return i
+}
+
+// applyMutations takes the set of mutations and applies them to given leafs.
+// Multiple mutations for the same leaf will be applied to provided leaf.
+// The last valid mutation for each leaf is included in the output.
+// Returns a list of map leaves that should be updated.
+func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.MapLeaf) ([]*trillian.MapLeaf, error) {
+	// Put leaves in a map from index to leaf value.
+	leafMap := make(map[[20]byte]*trillian.MapLeaf)
+	for _, l := range leaves {
+		leafMap[toArray(l.Index)] = l
+	}
+
+	retMap := make(map[[20]byte]*trillian.MapLeaf)
+	for _, m := range mutations {
+		index := m.GetKeyValue().Key
+		var oldValue []byte // If no map leaf was found, oldValue will be nil.
+		leaf, ok := leafMap[toArray(index)]
+		if ok {
+			oldValue = leaf.LeafValue
+		}
+
+		// TODO: change mutator interface to accept objects directly.
+		mData, err := proto.Marshal(m)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
-		if err := s.queueMutation(txn, mutation.GetKeyValue().Key, mData); err != nil {
-			return 0, fmt.Errorf("queueMutation err: %v", err)
+		newValue, err := s.mutator.Mutate(oldValue, mData)
+		if err != nil {
+			log.Printf("Mutate(): %v", err)
+			continue // A bad mutation should not make the whole batch fail.
+		}
+
+		retMap[toArray(index)] = &trillian.MapLeaf{
+			Index:     index,
+			LeafValue: newValue,
 		}
 	}
-	return int64(maxSequence), nil
+	// Convert return map back into a list.
+	ret := make([]*trillian.MapLeaf, 0, len(retMap))
+	for _, v := range retMap {
+		ret = append(ret, v)
+	}
+	return ret, nil
 }
 
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context) error {
-	txn, err := s.factory.NewTxn(ctx)
-	if err != nil {
-		return fmt.Errorf("NewTxn(): %v", err)
-	}
-	if err := s.createEpoch(ctx, txn); err != nil {
-		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
-		}
-		return fmt.Errorf("createEpoch(): %v", err)
-	}
-	if err := txn.Commit(); err != nil {
-		return fmt.Errorf("txn.Commit(): %v", err)
-	}
-	return nil
-}
-
-func (s *Signer) createEpoch(ctx context.Context, txn transaction.Txn) error {
-	maxSequence, err := s.processMutations(ctx, txn)
-	if err != nil {
-		return fmt.Errorf("processMutations(): %v", err)
-	}
-	if err := s.tree.Commit(txn); err != nil {
-		return fmt.Errorf("Commit(): %v", err)
-	}
-	epoch, err := s.tree.Epoch(txn)
-	if err != nil {
-		return fmt.Errorf("Epoch(): %v", err)
-	}
-	root, err := s.tree.ReadRootAt(txn, epoch)
-	if err != nil {
-		return fmt.Errorf("ReadRootAt(%v): %v", epoch, err)
-	}
-
-	smr := &trillian.SignedMapRoot{
-		MapId:          0,
-		TimestampNanos: s.clock.Now().UnixNano(),
-		RootHash:       root,
-		MapRevision:    epoch,
-		Metadata: &trillian.MapperMetadata{
-			HighestFullyCompletedSeq: maxSequence,
-		},
-	}
-	sig, err := s.signer.Sign(smr)
+	// Get the current root.
+	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		MapId: s.mapID,
+	})
 	if err != nil {
 		return err
 	}
-	smr.Signature = sig
-	if err := s.sths.Write(ctx, s.logID, epoch, smr); err != nil {
-		return fmt.Errorf("Append SMH failure %v", err)
+	startSequence := rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
+
+	// Get the list of new mutations to process.
+	mutations, seq, err := s.newMutations(ctx, startSequence)
+	if err != nil {
+		return err
 	}
-	log.Printf("Created epoch %v. SMH: %#x", epoch, root)
-	return nil
+
+	// Get current leaf values.
+	indexes := make([][]byte, 0, len(mutations))
+	for _, m := range mutations {
+		indexes = append(indexes, m.KeyValue.Key)
+	}
+	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
+		MapId: s.mapID,
+		Index: indexes,
+	})
+	if err != nil {
+		return err
+	}
+
+	// TODO: verify inclusion proofs?
+	leaves := make([]*trillian.MapLeaf, 0, len(getResp.MapLeafInclusion))
+	for _, m := range getResp.MapLeafInclusion {
+		leaves = append(leaves, m.Leaf)
+	}
+
+	// Apply mutations to values.
+	newLeaves, err := s.applyMutations(mutations, leaves)
+	if err != nil {
+		return err
+	}
+
+	// Set new leaf values.
+	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
+		MapId:  s.mapID,
+		Leaves: newLeaves,
+		MapperData: &trillian.MapperMetadata{
+			HighestFullyCompletedSeq: seq,
+		},
+	})
+	// Put SignedMapHead in an append only log.
+	return s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot)
 }

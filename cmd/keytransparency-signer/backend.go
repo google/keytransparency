@@ -17,22 +17,27 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/google/keytransparency/core/admin"
 	"github.com/google/keytransparency/core/appender"
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
+	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/signer"
+	ctxn "github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
+	"github.com/google/keytransparency/impl/sql/sequenced"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
+
+	"github.com/google/trillian"
+	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/util"
 
 	"golang.org/x/net/context"
 )
@@ -61,16 +66,24 @@ func openDB() *sql.DB {
 	return db
 }
 
-func openPrivateKey() signatures.Signer {
-	pem, err := ioutil.ReadFile(*signingKey)
+func newMapServer(ctx context.Context, sqldb *sql.DB, factory ctxn.Factory) (trillian.TrillianMapClient, error) {
+	tree, err := sqlhist.New(ctx, *mapID, factory)
 	if err != nil {
-		log.Fatalf("Failed to read file %v: %v", *signingKey, err)
+		return nil, fmt.Errorf("sqlhist.New(): %v", err)
 	}
-	sig, err := factory.NewSignerFromPEM(pem)
+
+	sths, err := sequenced.New(sqldb, *mapID)
 	if err != nil {
-		log.Fatalf("Failed to create signer: %v", err)
+		return nil, err
 	}
-	return sig
+
+	signer, err := keys.NewFromPrivatePEM(*signingKey, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return mapserver.New(*mapID, tree, factory, sths, signer,
+		util.SystemTimeSource{}), nil
 }
 
 func main() {
@@ -86,22 +99,26 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)
 	}
-	tree, err := sqlhist.New(context.Background(), *mapID, factory)
-	if err != nil {
-		log.Fatalf("Failed to create SQL history: %v", err)
-	}
 	mutator := entry.New()
+
+	mapsvr, err := newMapServer(context.Background(), sqldb, factory)
+	if err != nil {
+		log.Fatalf("newMapServer: %v", err)
+	}
+
+	// Connection to append only log
 	tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
 	if err != nil {
 		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
 	}
+
 	static := admin.NewStatic()
 	if err := static.AddLog(*mapID, tlog); err != nil {
 		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
 	}
 	sths := appender.NewTrillian(static)
 
-	signer := signer.New(*domain, tree, mutator, sths, mutations, openPrivateKey(), factory)
+	signer := signer.New(*domain, *mapID, mapsvr, *logID, sths, mutator, mutations, factory)
 	go signer.StartSigning(context.Background(), *epochDuration)
 
 	log.Printf("Signer started.")

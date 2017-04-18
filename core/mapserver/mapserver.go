@@ -82,13 +82,16 @@ func (m *mapServer) signRoot(ctx context.Context) (smr *trillian.SignedMapRoot, 
 		return nil, fmt.Errorf("ReadRootAt(%v): %v", epoch, err)
 	}
 
-	smr = &trillian.SignedMapRoot{
+	smr := &trillian.SignedMapRoot{
 		MapId:          m.mapID,
-		MapRevision:    epoch,
+		TimestampNanos: s.clock.Now().UnixNano(),
 		RootHash:       root,
-		TimestampNanos: m.clock.Now().Unix(),
-		// TODO: Add mutation high watermark?
+		MapRevision:    epoch,
+		Metadata: &trillian.MapperMetadata{
+			HighestFullyCompletedSeq: maxSequence,
+		},
 	}
+
 	sig, err := m.signer.SignObject(smr)
 	if err != nil {
 		return nil, err

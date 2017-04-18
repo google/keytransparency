@@ -24,7 +24,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
-	"github.com/google/keytransparency/core/tree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -46,10 +45,11 @@ const (
 
 // Server holds internal state for the key server.
 type Server struct {
+	mapID     int64
+	tmap      trillian.TrillianMapClient
 	logID     int64
 	committer commitments.Committer
 	auth      authentication.Authenticator
-	tree      tree.Sparse
 	sths      appender.Remote
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
@@ -59,8 +59,9 @@ type Server struct {
 
 // New creates a new instance of the key server.
 func New(logID int64,
+	mapID int64,
+	tmap trillian.TrillianMapClient,
 	committer commitments.Committer,
-	tree tree.Sparse,
 	sths appender.Remote,
 	vrf vrf.PrivateKey,
 	mutator mutator.Mutator,
@@ -68,9 +69,10 @@ func New(logID int64,
 	factory transaction.Factory,
 	mutations mutator.Mutation) *Server {
 	return &Server{
+		mapID:     mapID,
+		tmap:      tmap,
 		logID:     logID,
 		committer: committer,
-		tree:      tree,
 		sths:      sths,
 		vrf:       vrf,
 		mutator:   mutator,
@@ -103,39 +105,20 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	vrf, proof := s.vrf.Evaluate([]byte(userID))
 	index := s.vrf.Index(vrf)
 
-	var smr trillian.SignedMapRoot
-	if err := s.sths.Read(ctx, s.logID, epoch, &smr); err != nil {
-		return nil, err
-	}
-
-	txn, err := s.factory.NewTxn(ctx)
+	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
+		MapId: s.mapID,
+		Index: [][]byte{index[:]},
+	})
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
+		log.Printf("GetLeaves(): %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-
-	neighbors, err := s.tree.NeighborsAt(txn, index[:], epoch)
-	if err != nil {
-		log.Printf("Cannot get neighbors list: %v", err)
-		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
-		}
-		return nil, grpc.Errorf(codes.Internal, "Cannot get neighbors list")
+	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
+		log.Printf("GetLeaves() len: %v, want %v", got, want)
+		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-
-	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeafAt(txn, index[:], epoch)
-	if err != nil {
-		log.Printf("Cannot read leaf entry: %v", err)
-		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
-		}
-		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
-	}
-
-	if err := txn.Commit(); err != nil {
-		log.Printf("Cannot commit transaction: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
-	}
+	neighbors := getResp.MapLeafInclusion[0].Inclusion
+	leaf := getResp.MapLeafInclusion[0].Leaf.LeafValue
 
 	var committed *tpb.Committed
 	if leaf != nil {
