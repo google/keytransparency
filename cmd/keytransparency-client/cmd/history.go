@@ -21,12 +21,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/google/trillian"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
-
-	"github.com/google/keytransparency/core/proto/ctmap"
 )
 
 var (
@@ -59,9 +57,9 @@ and verify that the results are consistent.`,
 				return fmt.Errorf("GetEntry failed: %v", err)
 			}
 			if verbose {
-				fmt.Printf("Got current epoch: %v\n", smh.Epoch)
+				fmt.Printf("Got current epoch: %v\n", smh.MapRevision)
 			}
-			end = smh.Epoch
+			end = smh.MapRevision
 		}
 
 		profiles, err := c.ListHistory(ctx, userID, start, end)
@@ -70,7 +68,7 @@ and verify that the results are consistent.`,
 		}
 
 		// Sort map heads.
-		keys := make([]*ctmap.MapHead, 0, len(profiles))
+		keys := make([]*trillian.SignedMapRoot, 0, len(profiles))
 		for k := range profiles {
 			keys = append(keys, k)
 		}
@@ -78,11 +76,8 @@ and verify that the results are consistent.`,
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
 		fmt.Fprintln(w, "Epoch\tTimestamp\tProfile")
 		for _, m := range keys {
-			t, err := ptypes.Timestamp(m.IssueTime)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(w, "%v\t%v\t%v\n", m.Epoch, t.Format(time.UnixDate), profiles[m])
+			t := time.Unix(0, m.TimestampNanos)
+			fmt.Fprintf(w, "%v\t%v\t%v\n", m.MapRevision, t.Format(time.UnixDate), profiles[m])
 		}
 		if err := w.Flush(); err != nil {
 			return nil
@@ -92,11 +87,11 @@ and verify that the results are consistent.`,
 }
 
 // mapHeads satisfies sort.Interface to allow sorting []MapHead by epoch.
-type mapHeads []*ctmap.MapHead
+type mapHeads []*trillian.SignedMapRoot
 
 func (m mapHeads) Len() int           { return len(m) }
 func (m mapHeads) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m mapHeads) Less(i, j int) bool { return m[i].Epoch < m[j].Epoch }
+func (m mapHeads) Less(i, j int) bool { return m[i].MapRevision < m[j].MapRevision }
 
 func init() {
 	RootCmd.AddCommand(histCmd)

@@ -17,6 +17,7 @@ package kt
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 
@@ -66,7 +67,7 @@ func New(vrf vrf.PublicKey,
 func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error {
 	if in.Committed != nil {
 		entry := new(tpb.Entry)
-		if err := proto.Unmarshal(in.GetLeafProof().LeafData, entry); err != nil {
+		if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
 			return err
 		}
 		if err := commitments.Verify(userID, entry.Commitment, in.Committed); err != nil {
@@ -85,13 +86,13 @@ func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error 
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in *tpb.GetEntryResponse) error {
 	if err := v.VerifyCommitment(userID, in); err != nil {
 		Vlog.Printf("✗ Commitment verification failed.")
-		return err
+		return fmt.Errorf("VerifyCommitment(): %v", err)
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
 	if err := v.vrf.Verify([]byte(userID), in.Vrf, in.VrfProof); err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
-		return err
+		return fmt.Errorf("vrf.Verify(): %v", err)
 	}
 	Vlog.Printf("✓ VRF verified.")
 	index := v.vrf.Index(in.Vrf)
@@ -101,22 +102,27 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 		return ErrNilProof
 	}
 
-	if err := v.tree.VerifyProof(leafProof.Neighbors, index[:], leafProof.LeafData, sparse.FromBytes(in.GetSmh().MapHead.Root)); err != nil {
+	if err := v.tree.VerifyProof(leafProof.Inclusion, index[:], leafProof.Leaf.LeafValue, sparse.FromBytes(in.GetSmr().RootHash)); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return err
+		return fmt.Errorf("tree.VerifyProof(): %v", err)
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
-	if err := v.sig.Verify(in.GetSmh().GetMapHead(), in.GetSmh().Signatures[v.sig.KeyID()]); err != nil {
+	sig := in.GetSmr().Signature
+	in.GetSmr().Signature = nil // Remove the signature from the object to be verified.
+	if err := v.sig.Verify(in.GetSmr(), sig); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
-		return err
+		return fmt.Errorf("sig.Verify(SMR): %v", err)
 	}
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 
 	// Verify inclusion proof.
-	b, err := json.Marshal(in.GetSmh().GetMapHead())
+	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
-		return err
+		return fmt.Errorf("json.Marshal(): %v", err)
 	}
-	return v.log.VerifyInclusionAtIndex(ctx, b, in.GetSmh().GetMapHead().GetEpoch())
+	if err := v.log.VerifyInclusionAtIndex(ctx, b, in.GetSmr().GetMapRevision()); err != nil {
+		return fmt.Errorf("log.VerifyInclusionAtIndex(): %v", err)
+	}
+	return nil
 }

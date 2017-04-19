@@ -21,8 +21,9 @@ syntax = "proto3";
 // associated with it.
 package keytransparency.v1.types;
 
-import "github.com/google/keytransparency/core/proto/ctmap/ctmap.proto";
 import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
+import "github.com/google/trillian/trillian.proto";
+import "github.com/google/trillian/trillian_map_api.proto";
 
 //
 // Data types.
@@ -99,15 +100,6 @@ message SignedKV {
   bytes previous = 3;
 }
 
-// LeafProof for a verifiable map leaf.
-message LeafProof {
-  // leaf_data contains an entry stored in the leaf node.
-  bytes leaf_data = 1;
-  // neighbors is a list of all the adjacent nodes along the path
-  // from the deepest node to the head.
-  repeated bytes neighbors = 2;
-}
-
 //
 // RPC request/response messages.
 //
@@ -134,17 +126,17 @@ message GetEntryResponse {
   Committed committed = 3;
 
   //
-  // Verifiable map layer proves that the response is consistent.
+  // Trillian map layer proves that the response is consistent.
   //
 
   // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle
   // Tree.
-  LeafProof leaf_proof = 5;
-  // smh contains the signed map head for the sparse Merkle Tree.
-  // smh is also stored in the append only log.
-  ctmap.SignedMapHead smh = 6;
-  // smh_sct is the signed certificate timestamp (SCT) showing that SMH was
-  // submitted to CT logs.
+  trillian.MapLeafInclusion leaf_proof = 5;
+  // smr contains the signed map head for the sparse Merkle Tree.
+  // smr is also stored in the append only log.
+  trillian.SignedMapRoot smr = 6;
+
+  // TODO: include trillian log inclusion proof.
   // TODO: Support storing smh in multiple logs.
   bytes smh_sct = 7;
 }

@@ -26,13 +26,13 @@ import (
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/integration/fake"
+	"github.com/google/trillian"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
@@ -123,8 +123,8 @@ func addProfiles(ctx context.Context, count int, c *fakeCommitter, st *fakeSpars
 		c.M[string(commitment)] = committed
 		st.M[int64(i)] = commitment
 
-		smh := new(ctmap.SignedMapHead)
-		if err := sths.Write(ctx, 0, int64(i), smh); err != nil {
+		smr := new(trillian.SignedMapRoot)
+		if err := sths.Write(ctx, 0, int64(i), smr); err != nil {
 			return err
 		}
 	}

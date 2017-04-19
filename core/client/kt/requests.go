@@ -34,7 +34,7 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 	// Extract index from a prior GetEntry call.
 	index := vrf.Index(getResp.Vrf)
 	prevEntry := new(tpb.Entry)
-	if err := proto.Unmarshal(getResp.GetLeafProof().LeafData, prevEntry); err != nil {
+	if err := proto.Unmarshal(getResp.GetLeafProof().GetLeaf().GetLeafValue(), prevEntry); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
 	}
 
@@ -71,7 +71,7 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 	if err != nil {
 		return nil, err
 	}
-	previous := objecthash.ObjectHash(getResp.GetLeafProof().LeafData)
+	previous := objecthash.ObjectHash(getResp.GetLeafProof().GetLeaf().GetLeafValue())
 	signedkv := &tpb.SignedKV{
 		KeyValue:   kv,
 		Signatures: sigs,
