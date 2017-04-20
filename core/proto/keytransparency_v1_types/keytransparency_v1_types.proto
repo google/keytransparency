@@ -22,7 +22,7 @@ syntax = "proto3";
 package keytransparency.v1.types;
 
 import "github.com/google/keytransparency/core/proto/ctmap/ctmap.proto";
-import "github.com/google/keytransparency/core/proto/signature/signature.proto";
+import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
 
 //
 // Data types.
@@ -92,7 +92,7 @@ message SignedKV {
   // signatures on key_value. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.
-  map<string, signature.DigitallySigned> signatures = 2;
+  map<string, sigpb.DigitallySigned> signatures = 2;
   // previous contains the hash of the previous entry that this mutation is
   // modifying creating a hash chain of all mutations. The hash used is
   // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".

@@ -27,7 +27,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/keytransparency/core/proto/signature"
+	"github.com/google/trillian/crypto/sigpb"
 )
 
 const keySize = 3072
@@ -98,7 +98,7 @@ func NewSigner(pk crypto.Signer) (signatures.Signer, error) {
 }
 
 // Sign generates a digital signature object.
-func (s *signer) Sign(data interface{}) (*signature.DigitallySigned, error) {
+func (s *signer) Sign(data interface{}) (*sigpb.DigitallySigned, error) {
 	j, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -109,10 +109,10 @@ func (s *signer) Sign(data interface{}) (*signature.DigitallySigned, error) {
 	if err != nil {
 		return nil, signatures.ErrSign
 	}
-	return &signature.DigitallySigned{
-		HashAlgorithm: signature.DigitallySigned_SHA256,
-		SigAlgorithm:  signature.DigitallySigned_RSA_3072,
-		Signature:     sig,
+	return &sigpb.DigitallySigned{
+		HashAlgorithm:      sigpb.DigitallySigned_SHA256,
+		SignatureAlgorithm: sigpb.DigitallySigned_RSA,
+		Signature:          sig,
 	}, nil
 }
 
@@ -177,15 +177,15 @@ func NewVerifier(pk *rsa.PublicKey) (signatures.Verifier, error) {
 }
 
 // Verify checks the digital signature associated applied to data.
-func (s *verifier) Verify(data interface{}, sig *signature.DigitallySigned) error {
+func (s *verifier) Verify(data interface{}, sig *sigpb.DigitallySigned) error {
 	if sig == nil {
 		return signatures.ErrMissingSig
 	}
-	if sig.HashAlgorithm != signature.DigitallySigned_SHA256 {
+	if sig.HashAlgorithm != sigpb.DigitallySigned_SHA256 {
 		log.Print("not SHA256 hash algorithm")
 		return signatures.ErrVerify
 	}
-	if sig.SigAlgorithm != signature.DigitallySigned_RSA_3072 {
+	if sig.SignatureAlgorithm != sigpb.DigitallySigned_RSA {
 		log.Print("not RSA signature algorithm")
 		return signatures.ErrVerify
 	}

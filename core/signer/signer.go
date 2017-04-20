@@ -31,7 +31,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/google/keytransparency/core/proto/ctmap"
-	spb "github.com/google/keytransparency/core/proto/signature"
+	"github.com/google/trillian/crypto/sigpb"
 )
 
 // Clock defines an interface for the advancement of time.
@@ -201,7 +201,7 @@ func (s *Signer) createEpoch(ctx context.Context, txn transaction.Txn) error {
 	}
 	smh := &ctmap.SignedMapHead{
 		MapHead:    mh,
-		Signatures: map[string]*spb.DigitallySigned{s.signer.KeyID(): sig},
+		Signatures: map[string]*sigpb.DigitallySigned{s.signer.KeyID(): sig},
 	}
 	if err := s.sths.Write(ctx, s.logID, epoch, smh); err != nil {
 		return fmt.Errorf("Append SMH failure %v", err)
