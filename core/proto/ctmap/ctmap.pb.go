@@ -53,11 +53,39 @@ func (m *MapHead) String() string            { return proto.CompactTextString(m)
 func (*MapHead) ProtoMessage()               {}
 func (*MapHead) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *MapHead) GetRealm() string {
+	if m != nil {
+		return m.Realm
+	}
+	return ""
+}
+
+func (m *MapHead) GetEpoch() int64 {
+	if m != nil {
+		return m.Epoch
+	}
+	return 0
+}
+
+func (m *MapHead) GetRoot() []byte {
+	if m != nil {
+		return m.Root
+	}
+	return nil
+}
+
 func (m *MapHead) GetIssueTime() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.IssueTime
 	}
 	return nil
+}
+
+func (m *MapHead) GetMaxSequenceNumber() uint64 {
+	if m != nil {
+		return m.MaxSequenceNumber
+	}
+	return 0
 }
 
 // SignedMapHead represents a signed state of the Merkel Tree.
