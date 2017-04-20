@@ -31,10 +31,10 @@ message DigitallySigned {
   enum SignatureAlgorithm {
     // Anonymous signature scheme.
     ANONYMOUS = 0;
-    // ECDSA signature scheme.
-    ECDSA = 1;
     // RSA 3072-bit signature scheme.
-    RSA_3072 = 2;
+    RSA_3072 = 1;
+    // ECDSA signature scheme.
+    ECDSA = 3;
   }
 
   // hash_algorithm contains the hash algorithm used.
