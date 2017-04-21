@@ -21,7 +21,7 @@ install:
 script:
   - make
   - make travis-presubmit
-  - go test -race -coverprofile=coverage.txt -covermode=atomic
+  - ./coverage.sh 
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
