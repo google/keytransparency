@@ -62,7 +62,7 @@ K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 	if err != nil {
 		return nil, err
 	}
-	clock := util.FakeTimeSource{FakeTime: time.Now()}
+	clock := util.NewFakeTimeSource(time.Now())
 	m := New(mapID, tree, factory, sths, signer, clock)
 
 	return &env{

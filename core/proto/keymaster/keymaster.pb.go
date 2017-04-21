@@ -93,11 +93,25 @@ func (m *Metadata) String() string            { return proto.CompactTextString(m
 func (*Metadata) ProtoMessage()               {}
 func (*Metadata) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *Metadata) GetKeyId() string {
+	if m != nil {
+		return m.KeyId
+	}
+	return ""
+}
+
 func (m *Metadata) GetAddedAt() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.AddedAt
 	}
 	return nil
+}
+
+func (m *Metadata) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
 }
 
 // SigningKey represents a private key.
@@ -122,6 +136,20 @@ func (m *SigningKey) GetMetadata() *Metadata {
 	return nil
 }
 
+func (m *SigningKey) GetKeyMaterial() []byte {
+	if m != nil {
+		return m.KeyMaterial
+	}
+	return nil
+}
+
+func (m *SigningKey) GetStatus() SigningKey_KeyStatus {
+	if m != nil {
+		return m.Status
+	}
+	return SigningKey_ACTIVE
+}
+
 // VerifyingKey represents a public key.
 type VerifyingKey struct {
 	// metadata contains information about this key..
@@ -142,6 +170,20 @@ func (m *VerifyingKey) GetMetadata() *Metadata {
 		return m.Metadata
 	}
 	return nil
+}
+
+func (m *VerifyingKey) GetKeyMaterial() []byte {
+	if m != nil {
+		return m.KeyMaterial
+	}
+	return nil
+}
+
+func (m *VerifyingKey) GetStatus() VerifyingKey_KeyStatus {
+	if m != nil {
+		return m.Status
+	}
+	return VerifyingKey_ACTIVE
 }
 
 // KeySet contains a set of public and private keys.
@@ -185,7 +227,7 @@ func init() { proto.RegisterFile("keymaster.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
 	// 437 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x93, 0xcf, 0x8b, 0xda, 0x40,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x93, 0xcf, 0x8b, 0xda, 0x40,
 	0x1c, 0xc5, 0x3b, 0x91, 0x4d, 0xf5, 0x9b, 0xd4, 0xca, 0x94, 0xa5, 0xe2, 0x65, 0xdd, 0x50, 0xa8,
 	0x50, 0x1a, 0xc1, 0xb2, 0xf4, 0xc7, 0x4d, 0x76, 0x73, 0x10, 0xd9, 0x52, 0x66, 0xed, 0x42, 0x4f,
 	0x32, 0xdb, 0x7c, 0x57, 0x86, 0x98, 0x44, 0x32, 0xa3, 0x30, 0xfd, 0x03, 0x7b, 0x2c, 0xfd, 0x93,
