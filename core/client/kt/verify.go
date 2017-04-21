@@ -15,6 +15,7 @@
 package kt
 
 import (
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -80,7 +81,7 @@ func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error 
 //  - Verify VRF.
 //  - Verify tree proof.
 //  - Verify signature.
-//  - Verify SCT.
+//  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in *tpb.GetEntryResponse) error {
 	if err := v.VerifyCommitment(userID, in); err != nil {
 		Vlog.Printf("✗ Commitment verification failed.")
@@ -112,6 +113,10 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	}
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 
-	// TODO: Verify inclusion proof.
-	return nil
+	// Verify inclusion proof.
+	b, err := json.Marshal(in.GetSmh().GetMapHead())
+	if err != nil {
+		return err
+	}
+	return v.log.VerifyInclusionAtIndex(ctx, b, in.GetSmh().GetMapHead().GetEpoch())
 }
