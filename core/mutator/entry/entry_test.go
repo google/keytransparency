@@ -28,7 +28,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/core/proto/signature"
+	"github.com/google/trillian/crypto/sigpb"
 )
 
 const (
@@ -100,7 +100,7 @@ func prepareMutation(key []byte, entryData []byte, previous []byte, signers []si
 	}
 
 	// Populate signatures map.
-	sigs := make(map[string]*spb.DigitallySigned)
+	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
 		sig, err := signer.Sign(*kv)
 		if err != nil {

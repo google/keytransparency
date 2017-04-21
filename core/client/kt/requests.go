@@ -25,7 +25,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/core/proto/signature"
+	"github.com/google/trillian/crypto/sigpb"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
@@ -87,8 +87,8 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 	}, err
 }
 
-func generateSignatures(data interface{}, signers []signatures.Signer) (map[string]*spb.DigitallySigned, error) {
-	sigs := make(map[string]*spb.DigitallySigned)
+func generateSignatures(data interface{}, signers []signatures.Signer) (map[string]*sigpb.DigitallySigned, error) {
+	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
 		sig, err := signer.Sign(data)
 		if err != nil {

@@ -31,7 +31,7 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/core/proto/signature"
+	"github.com/google/trillian/crypto/sigpb"
 )
 
 // signer generates signatures with a single key using ECDSA P256.
@@ -109,7 +109,7 @@ func NewSigner(pk crypto.Signer) (signatures.Signer, error) {
 }
 
 // Sign generates a digital signature object.
-func (s *signer) Sign(data interface{}) (*spb.DigitallySigned, error) {
+func (s *signer) Sign(data interface{}) (*sigpb.DigitallySigned, error) {
 	j, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -129,10 +129,10 @@ func (s *signer) Sign(data interface{}) (*spb.DigitallySigned, error) {
 		log.Print("failed to marshal ECDSA signature")
 		return nil, signatures.ErrSign
 	}
-	return &spb.DigitallySigned{
-		HashAlgorithm: spb.DigitallySigned_SHA256,
-		SigAlgorithm:  spb.DigitallySigned_ECDSA,
-		Signature:     sig,
+	return &sigpb.DigitallySigned{
+		HashAlgorithm:      sigpb.DigitallySigned_SHA256,
+		SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
+		Signature:          sig,
 	}, nil
 }
 
@@ -209,15 +209,15 @@ func NewVerifier(pk *ecdsa.PublicKey) (signatures.Verifier, error) {
 }
 
 // Verify checks the digital signature associated applied to data.
-func (s *verifier) Verify(data interface{}, sig *spb.DigitallySigned) error {
+func (s *verifier) Verify(data interface{}, sig *sigpb.DigitallySigned) error {
 	if sig == nil {
 		return signatures.ErrMissingSig
 	}
-	if sig.HashAlgorithm != spb.DigitallySigned_SHA256 {
+	if sig.HashAlgorithm != sigpb.DigitallySigned_SHA256 {
 		log.Print("not SHA256 hash algorithm")
 		return signatures.ErrVerify
 	}
-	if sig.SigAlgorithm != spb.DigitallySigned_ECDSA {
+	if sig.SignatureAlgorithm != sigpb.DigitallySigned_ECDSA {
 		log.Print("not ECDSA signature algorithm")
 		return signatures.ErrVerify
 	}

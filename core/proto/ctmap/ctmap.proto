@@ -16,7 +16,7 @@ syntax = "proto3";
 package ctmap;
 
 import "google/protobuf/timestamp.proto";
-import "github.com/google/keytransparency/core/proto/signature/signature.proto";
+import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
 
 //
 // Data types
@@ -46,5 +46,5 @@ message SignedMapHead {
   MapHead map_head = 1;
   // signatures is a set of map_head signatures. Each signature is identified by
   // the first 64 bits of the public key that verifies it.
-  map<string, signature.DigitallySigned> signatures = 2;
+  map<string, sigpb.DigitallySigned> signatures = 2;
 }

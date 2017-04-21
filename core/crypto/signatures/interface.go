@@ -23,7 +23,7 @@ import (
 	"errors"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/core/proto/signature"
+	"github.com/google/trillian/crypto/sigpb"
 )
 
 var (
@@ -48,7 +48,7 @@ var (
 // Signer represents an object that can generate signatures with a single key.
 type Signer interface {
 	// Sign generates a digital signature object.
-	Sign(interface{}) (*spb.DigitallySigned, error)
+	Sign(interface{}) (*sigpb.DigitallySigned, error)
 	// PublicKey returns the signer public key as tpb.PublicKey proto
 	// message.
 	PublicKey() (*tpb.PublicKey, error)
@@ -63,7 +63,7 @@ type Signer interface {
 // Verifier represents an object that can verify signatures with a single key.
 type Verifier interface {
 	// Verify checks the digital signature associated applied to data.
-	Verify(interface{}, *spb.DigitallySigned) error
+	Verify(interface{}, *sigpb.DigitallySigned) error
 	// PublicKey returns the verifier public key as tpb.PublicKey proto
 	// message.
 	PublicKey() (*tpb.PublicKey, error)
