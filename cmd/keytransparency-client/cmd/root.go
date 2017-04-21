@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	"github.com/google/keytransparency/core/client/ctlog"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/signatures"
@@ -31,8 +30,8 @@ import (
 	"github.com/google/keytransparency/core/vrf/p256"
 	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/google/authentication"
-	"github.com/google/trillian/client"
 
+	"github.com/google/trillian/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -60,7 +59,6 @@ server provides to ensure that account data is accurate.`,
 		if verbose {
 			grpcc.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 			kt.Vlog = log.New(os.Stdout, "", log.LstdFlags)
-			ctlog.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 		}
 	},
 }
@@ -77,13 +75,15 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
 	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
+
 	RootCmd.PersistentFlags().Int64("logid", 0, "Log ID of the backend log server")
 	RootCmd.PersistentFlags().String("log-url", "", "URL of Certificate Transparency server")
-	RootCmd.PersistentFlags().String("log-key", "testdata/ct-server-key-public.pem", "Path to public key PEM for Certificate Transparency server")
+	RootCmd.PersistentFlags().String("log-key", "", "Path to public key PEM for Trillian Log server")
+
 	RootCmd.PersistentFlags().Int64("mapid", 0, "Map ID of the backend map server")
+
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
-
 	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
 
 	// Global flags for use by subcommands.

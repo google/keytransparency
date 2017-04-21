@@ -32,9 +32,9 @@ import (
 	"github.com/google/keytransparency/core/tree/sparse"
 	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 	"github.com/google/keytransparency/core/vrf"
-	"github.com/google/trillian/client"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian/client"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 

@@ -59,3 +59,4 @@ openssl x509 -req -days 365 -in server.csr -signkey server.key \
 openssl ecparam -name prime256v1 -genkey -noout -out vrf-key.pem
 chmod 600 vrf-key.pem
 openssl ec -in vrf-key.pem -pubout -out vrf-pubkey.pem
+
