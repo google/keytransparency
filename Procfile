@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-frontend: ./keytransparency-server --addr=$LISTEN_IP:$PORT --key=$KEY --cert=$CERT --mapid=$MAPID --db=$DB --maplog=$CTLOG --vrf=$VRF_PRIV
-backend: ./keytransparency-signer --domain=$DOMAIN --mapid=$MAPID --db=$DB --maplog=$CTLOG --period=$SIGN_PERIOD --key=$SIGN_KEY
+frontend: ./keytransparency-server --addr=$LISTEN_IP:$PORT --key=$KEY --cert=$CERT --map-id=$MAPID --db=$DB --log-url=$CTLOG --vrf=$VRF_PRIV
+backend: ./keytransparency-signer --domain=$DOMAIN --map-id=$MAPID --db=$DB --log-url=$CTLOG --period=$SIGN_PERIOD --key=$SIGN_KEY

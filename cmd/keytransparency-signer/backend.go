@@ -40,14 +40,14 @@ import (
 var (
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	domain        = flag.String("domain", "example.com", "Distinguished name for this key server")
-	mapID         = flag.Int64("mapid", 0, "ID for backend map")
+	mapID         = flag.Int64("map-id", 0, "ID for backend map")
 	signingKey    = flag.String("key", "", "Path to private key PEM for STH signing")
 	epochDuration = flag.Duration("period", time.Second*60, "Time between epoch creation")
 
 	// Info to send Signed Map Heads to a Trillian Log.
-	logID     = flag.Int64("logid", 0, "Trillian Log ID")
-	logURL    = flag.String("logurl", "", "URL of Trillian Log Server for Signed Map Heads")
-	logPubKey = flag.String("logkey", "", "File path to public key of the Trillian Log")
+	logID     = flag.Int64("log-id", 0, "Trillian Log ID")
+	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	logPubKey = flag.String("log-key", "", "File path to public key of the Trillian Log")
 )
 
 func openDB() *sql.DB {
