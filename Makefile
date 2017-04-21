@@ -53,7 +53,7 @@ tools:
 
 presubmit: coverage fmt tools
 
-travis-presubmit: test fmt tools
+travis-presubmit: fmt tools
 
 proto:
 	go generate ./...

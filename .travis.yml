@@ -21,3 +21,7 @@ install:
 script:
   - make
   - make travis-presubmit
+  - ./coverage.sh 
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
