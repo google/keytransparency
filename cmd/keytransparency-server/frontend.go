@@ -51,18 +51,17 @@ import (
 var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	serverDBPath = flag.String("db", "db", "Database connection string")
-	mapID        = flag.Int64("mapid", 0, "ID for backend map")
+	mapID        = flag.Int64("map-id", 0, "ID for backend map")
 	realm        = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
-	mapLogURL    = flag.String("maplog", "", "URL of CT server for Signed Map Heads")
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
 	verbose      = flag.Bool("verbose", false, "Log requests and responses")
 
 	// Info to send Signed Map Heads to a Trillian Log.
-	logID     = flag.Int64("logid", 0, "Trillian Log ID")
-	logURL    = flag.String("logurl", "", "URL of Trillian Log Server for Signed Map Heads")
-	logPubKey = flag.String("logkey", "", "File path to public key of the Trillian Log")
+	logID     = flag.Int64("log-id", 0, "Trillian Log ID")
+	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	logPubKey = flag.String("log-key", "", "File path to public key of the Trillian Log")
 )
 
 func openDB() *sql.DB {
