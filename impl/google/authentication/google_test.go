@@ -61,7 +61,8 @@ func TestGoogleValidateCreds(t *testing.T) {
 
 	// Convert http request into grpc header.
 	ctx := context.Background()
-	ctx, err = runtime.AnnotateContext(ctx, r)
+	gwmux := runtime.NewServeMux()
+	ctx, err = runtime.AnnotateContext(ctx, gwmux, r)
 	if err != nil {
 		t.Errorf("Error annotating context: %v", err)
 	}
