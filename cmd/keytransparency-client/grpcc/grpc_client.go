@@ -34,13 +34,13 @@ import (
 	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	"github.com/google/trillian"
 )
 
 const (

@@ -26,10 +26,10 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
-	"github.com/google/trillian"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 const (
