@@ -52,9 +52,9 @@ func TestGetLatest(t *testing.T) {
 		{0, 10, []byte("foo"), 10},
 		{0, 5, []byte("foo"), 10},
 	} {
-		txn, err := factory.NewDBTxn(context.Background())
+		txn, err := factory.NewTxn(context.Background())
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		if err := a.Write(txn, tc.mapID, tc.epoch, tc.data); err != nil {
@@ -65,9 +65,9 @@ func TestGetLatest(t *testing.T) {
 		}
 
 		var obj []byte
-		txn2, err := factory.NewDBTxn(context.Background())
+		txn2, err := factory.NewTxn(context.Background())
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		epoch, err := a.Latest(txn2, tc.mapID, &obj)
@@ -102,9 +102,9 @@ func TestWriteRead(t *testing.T) {
 		{0, 0, []byte("foo"), false},
 		{0, 1, []byte("foo"), true},
 	} {
-		txn, err := factory.NewDBTxn(context.Background())
+		txn, err := factory.NewTxn(context.Background())
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		err = a.Write(txn, tc.mapID, tc.epoch, tc.data)
@@ -116,9 +116,9 @@ func TestWriteRead(t *testing.T) {
 		}
 
 		if tc.want {
-			txn2, err := factory.NewDBTxn(context.Background())
+			txn2, err := factory.NewTxn(context.Background())
 			if err != nil {
-				t.Errorf("factory.NewDBTxn() failed: %v", err)
+				t.Errorf("factory.NewTxn() failed: %v", err)
 				continue
 			}
 			var readData []byte

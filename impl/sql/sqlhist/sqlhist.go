@@ -104,7 +104,7 @@ func New(ctx context.Context, mapID int64, factory transaction.Factory) (m *Map,
 	index, depth := tree.InvertBitString("")
 	nodeValue := hasher.HashEmpty(m.mapID, index, depth)
 
-	txn, err := factory.NewDBTxn(ctx)
+	txn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return nil, err
 	}

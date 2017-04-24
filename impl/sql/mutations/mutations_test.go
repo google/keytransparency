@@ -95,7 +95,7 @@ func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *test
 }
 
 func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, mutation *tpb.SignedKV, outSequence uint64) error {
-	wtxn, err := factory.NewDBTxn(ctx)
+	wtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
 	}
@@ -114,7 +114,7 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 }
 
 func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
-	rtxn, err := factory.NewDBTxn(ctx)
+	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
@@ -129,7 +129,7 @@ func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFa
 }
 
 func readAll(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64) (uint64, []*tpb.SignedKV, error) {
-	rtxn, err := factory.NewDBTxn(ctx)
+	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}

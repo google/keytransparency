@@ -79,7 +79,7 @@ func main() {
 
 	sqldb := openDB()
 	defer sqldb.Close()
-	factory := transaction.NewFactory(sqldb, nil)
+	factory := transaction.NewFactory(sqldb)
 
 	// Create signer helper objects.
 	mutations, err := mutations.New(sqldb, *mapID)

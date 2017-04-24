@@ -58,7 +58,7 @@ func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths append
 }
 
 func (m *mapServer) signRoot(ctx context.Context) (smr *trillian.SignedMapRoot, retErr error) {
-	txn, err := m.factory.NewDBTxn(ctx)
+	txn, err := m.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequ
 	if got, want := in.MapId, m.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
-	txn, err := m.factory.NewDBTxn(ctx)
+	txn, err := m.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequ
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
 
-	txn, err := m.factory.NewDBTxn(ctx)
+	txn, err := m.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSigned
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
 
-	txn, err := m.factory.NewDBTxn(ctx)
+	txn, err := m.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, err
 	}

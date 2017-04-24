@@ -151,9 +151,9 @@ func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uin
 
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context) error {
-	txn, err := s.factory.NewDBTxn(ctx)
+	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
-		return fmt.Errorf("NewDBTxn(): %v", err)
+		return fmt.Errorf("NewTxn(): %v", err)
 	}
 	if err := s.createEpoch(ctx, txn); err != nil {
 		if err := txn.Rollback(); err != nil {

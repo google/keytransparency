@@ -59,7 +59,7 @@ func generateNbrData(t *testing.T, leaves []Leaf) ([][][]byte, error) {
 		return nil, err
 	}
 	for _, l := range leaves {
-		txn, err := factory.NewDBTxn(context.Background())
+		txn, err := factory.NewTxn(context.Background())
 		if err != nil {
 			return nil, err
 		}
