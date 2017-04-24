@@ -75,9 +75,9 @@ func TestQueueLeaf(t *testing.T) {
 		{strings.Repeat("C", 30), nil, false},            // errNilLeaf
 
 	} {
-		txn, err := factory.NewDBTxn(ctx)
+		txn, err := factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		err = tree.QueueLeaf(txn, []byte(tc.index), tc.leaf)
@@ -116,9 +116,9 @@ func TestEpochNumAdvance(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create SQL history: %v", err)
 		}
-		txn, err := factory.NewDBTxn(ctx)
+		txn, err := factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		if tc.insert {
@@ -159,9 +159,9 @@ func TestQueueCommitRead(t *testing.T) {
 		dh("C000000000000000000000000000000000000000000000000000000000000000"),
 	} {
 		data := []byte{byte(i)}
-		txn, err := factory.NewDBTxn(ctx)
+		txn, err := factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		if err := m.QueueLeaf(txn, index, data); err != nil {
@@ -181,9 +181,9 @@ func TestQueueCommitRead(t *testing.T) {
 		}
 
 		// Create a new transaction.
-		txn, err = factory.NewDBTxn(ctx)
+		txn, err = factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		readData, err := m.ReadLeafAt(txn, index, epoch)
@@ -220,9 +220,9 @@ func TestReadNotFound(t *testing.T) {
 		{dh("2000000000000000000000000000000000000000000000000000000000000000")},
 		{dh("C000000000000000000000000000000000000000000000000000000000000000")},
 	} {
-		txn, err := factory.NewDBTxn(ctx)
+		txn, err := factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		var epoch int64 = 10
@@ -265,9 +265,9 @@ func TestReadPreviousEpochs(t *testing.T) {
 	}
 	for i, tc := range leafs {
 		data := []byte{byte(i)}
-		txn, err := factory.NewDBTxn(ctx)
+		txn, err := factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		if err := m.QueueLeaf(txn, tc.index, data); err != nil {
@@ -288,9 +288,9 @@ func TestReadPreviousEpochs(t *testing.T) {
 		}
 
 		for _, l := range leafs {
-			txn, err := factory.NewDBTxn(ctx)
+			txn, err := factory.NewTxn(ctx)
 			if err != nil {
-				t.Errorf("factory.NewDBTxn() failed: %v", err)
+				t.Errorf("factory.NewTxn() failed: %v", err)
 				continue
 			}
 			// Want success for leaves in previous epochs.
@@ -335,9 +335,9 @@ func TestAribtrayInsertOrder(t *testing.T) {
 		}
 		// Iterating over a map in Go is randomized.
 		for _, leaf := range leafs {
-			txn, err := factory.NewDBTxn(ctx)
+			txn, err := factory.NewTxn(ctx)
 			if err != nil {
-				t.Errorf("factory.NewDBTxn() failed: %v", err)
+				t.Errorf("factory.NewTxn() failed: %v", err)
 				continue
 			}
 			if err := m.QueueLeaf(txn, leaf.index, []byte(leaf.data)); err != nil {
@@ -352,9 +352,9 @@ func TestAribtrayInsertOrder(t *testing.T) {
 				continue
 			}
 		}
-		txn, err := factory.NewDBTxn(ctx)
+		txn, err := factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 			continue
 		}
 		r, err := m.ReadRootAt(txn, 10)
@@ -420,9 +420,9 @@ func TestNeighborDepth(t *testing.T) {
 		{m2, dh(defaultIndex[0]), 0},
 	} {
 
-		txn, err := factory.NewDBTxn(ctx)
+		txn, err := factory.NewTxn(ctx)
 		if err != nil {
-			t.Errorf("factory.NewDBTxn() failed: %v", err)
+			t.Errorf("factory.NewTxn() failed: %v", err)
 		}
 		nbrs, _ := tc.m.NeighborsAt(txn, tc.index, 0)
 		if got, want := len(nbrs), maxDepth; got != want {
@@ -444,9 +444,9 @@ func createTree(db *sql.DB, mapID int64, leafs []leaf) (*Map, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create map: %v", err)
 	}
-	txn, err := factory.NewDBTxn(ctx)
+	txn, err := factory.NewTxn(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("factory.NewDBTxn() failed: %v", err)
+		return nil, fmt.Errorf("factory.NewTxn() failed: %v", err)
 	}
 	for _, l := range leafs {
 		value := []byte(l.value)

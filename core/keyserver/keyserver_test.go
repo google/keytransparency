@@ -223,7 +223,7 @@ func (*fakeTxn) Rollback() error                         { return nil }
 // transaction.Factory fake
 type fakeFactory struct{}
 
-func (fakeFactory) NewDBTxn(ctx context.Context) (transaction.Txn, error) {
+func (fakeFactory) NewTxn(ctx context.Context) (transaction.Txn, error) {
 	return &fakeTxn{}, nil
 }
 

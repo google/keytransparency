@@ -155,7 +155,7 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	factory := transaction.NewFactory(sqldb, nil)
+	factory := transaction.NewFactory(sqldb)
 	mutations, err := mutations.New(sqldb, mapID)
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)

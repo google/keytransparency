@@ -108,7 +108,7 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		return nil, err
 	}
 
-	txn, err := s.factory.NewDBTxn(ctx)
+	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
@@ -263,7 +263,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	}
 
 	// Save mutation to the database.
-	txn, err := s.factory.NewDBTxn(ctx)
+	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}

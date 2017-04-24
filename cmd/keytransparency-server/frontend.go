@@ -162,7 +162,7 @@ func main() {
 	// Open Resources.
 	sqldb := openDB()
 	defer sqldb.Close()
-	factory := transaction.NewFactory(sqldb, nil)
+	factory := transaction.NewFactory(sqldb)
 
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {

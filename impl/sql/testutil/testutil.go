@@ -33,8 +33,8 @@ func NewFakeFactory(db *sql.DB) *FakeFactory {
 	return &FakeFactory{db}
 }
 
-// NewDBTxn creates a new database transaction.
-func (f *FakeFactory) NewDBTxn(ctx context.Context) (transaction.Txn, error) {
+// NewTxn creates a new database transaction.
+func (f *FakeFactory) NewTxn(ctx context.Context) (transaction.Txn, error) {
 	dbTxn, err := f.db.Begin()
 	if err != nil {
 		return nil, err
