@@ -26,6 +26,8 @@ import (
 
 	"github.com/google/trillian"
 	"golang.org/x/net/context"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // Signer processes mutations and sends them to the trillian map.
@@ -71,7 +73,7 @@ func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
 
 // newMutations returns a list of mutations to process and highest sequence number returned.
 func (s *Signer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.SignedKV, int64, error) {
-	txn, err := s.factory.NewDBTxn(ctx)
+	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("NewDBTxn(): %v", err)
 	}

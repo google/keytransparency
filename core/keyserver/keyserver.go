@@ -18,7 +18,6 @@ package keyserver
 import (
 	"log"
 
-	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
@@ -31,7 +30,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian"
 )
 
 const (
@@ -50,7 +48,6 @@ type Server struct {
 	logID     int64
 	committer commitments.Committer
 	auth      authentication.Authenticator
-	sths      appender.Remote
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
 	factory   transaction.Factory
@@ -62,7 +59,6 @@ func New(logID int64,
 	mapID int64,
 	tmap trillian.TrillianMapClient,
 	committer commitments.Committer,
-	sths appender.Remote,
 	vrf vrf.PrivateKey,
 	mutator mutator.Mutator,
 	auth authentication.Authenticator,
@@ -73,7 +69,6 @@ func New(logID int64,
 		tmap:      tmap,
 		logID:     logID,
 		committer: committer,
-		sths:      sths,
 		vrf:       vrf,
 		mutator:   mutator,
 		auth:      auth,
@@ -86,14 +81,7 @@ func New(logID int64,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-
-	var smr trillian.SignedMapRoot
-	epoch, err := s.sths.Latest(ctx, s.logID, &smr)
-	if err != nil {
-		log.Printf("sths.Latest(%v): %v", s.logID, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
-	}
-	resp, err := s.getEntry(ctx, in.UserId, epoch)
+	resp, err := s.getEntry(ctx, in.UserId, -1)
 	if err != nil {
 		log.Printf("getEntry failed: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
@@ -106,8 +94,9 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	index := s.vrf.Index(vrf)
 
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
-		MapId: s.mapID,
-		Index: [][]byte{index[:]},
+		MapId:    s.mapID,
+		Index:    [][]byte{index[:]},
+		Revision: epoch,
 	})
 	if err != nil {
 		log.Printf("GetLeaves(): %v", err)
@@ -148,22 +137,22 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 				LeafValue: leaf,
 			},
 		},
-		Smr: &smr,
+		Smr: getResp.GetMapRoot(),
 	}, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
 	// Get current epoch.
-	ignore := new(trillian.SignedMapRoot)
-	currentEpoch, err := s.sths.Latest(ctx, s.logID, &ignore)
+	resp, err := s.getEntry(ctx, in.UserId, -1)
 	if err != nil {
-		log.Printf("Cannot get latest epoch: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot get latest epoch")
+		log.Printf("GetEntry(%v): %v", in.UserId, err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "getEntry failed")
 	}
 
+	currentEpoch := resp.GetSmr().MapRevision
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
-		log.Printf("Invalid ListEntryHistoryRequest: %v", err)
+		log.Printf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 

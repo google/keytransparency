@@ -15,17 +15,18 @@
 package keyserver
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/google/keytransparency/core/admin"
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/transaction"
-	"github.com/google/keytransparency/integration/fake"
 	"github.com/google/trillian"
 
 	"github.com/golang/protobuf/proto"
@@ -36,7 +37,10 @@ import (
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
-const logID = int64(0)
+const (
+	logID = int64(0)
+	mapID = int64(0)
+)
 
 func TestListEntryHistory(t *testing.T) {
 	profileCount := 25
@@ -60,17 +64,13 @@ func TestListEntryHistory(t *testing.T) {
 	} {
 		// Test case setup.
 		c := &fakeCommitter{make(map[string]*tpb.Committed)}
-		st := &fakeSparseHist{make(map[int64][]byte)}
+		tree := &fakeSparseHist{make(map[int64][]byte)}
+		sths := &fakeSequenced{make([][]byte, 0)}
+		mapsvr := mapserver.NewReadonly(mapID, tree, fakeFactory{}, sths)
 
-		fakeLog := fake.NewFakeTrillianClient()
-		static := admin.NewStatic()
-		if err := static.AddLog(logID, fakeLog); err != nil {
-			t.Fatalf("failed to add log to admin: %v", err)
-		}
-		sths := appender.NewTrillian(static)
-
-		srv := New(logID, c, st, sths, fakePrivateKey{}, fakeMutator{}, authentication.NewFake(), fakeFactory{}, fakeMutation{})
-		if err := addProfiles(ctx, profileCount, c, st, sths); err != nil {
+		srv := New(logID, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
+			authentication.NewFake(), fakeFactory{}, fakeMutation{})
+		if err := addProfiles(profileCount, c, tree, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
 
@@ -82,7 +82,7 @@ func TestListEntryHistory(t *testing.T) {
 		}
 		resp, err := srv.ListEntryHistory(ctx, req)
 		if got, want := grpc.Code(err), tc.err; got != want {
-			t.Errorf("%v: ListEntryHistory(_, %v)=(_, %v), want %v", i, req, err, tc.err)
+			t.Errorf("%v: ListEntryHistory(%v): %v, want %v", i, req, err, tc.err)
 		}
 		// Skip the rest of the test if there is an error.
 		if err != nil {
@@ -103,12 +103,12 @@ func TestListEntryHistory(t *testing.T) {
 		}
 
 		if got := checkProfiles(tc.wantHistory, resp.Values); got != nil {
-			t.Errorf("%v: checkProfiles failed: %v, want nil", i, got)
+			t.Errorf("%v: checkProfiles(%v, _): %v, want nil", i, tc.wantHistory, got)
 		}
 	}
 }
 
-func addProfiles(ctx context.Context, count int, c *fakeCommitter, st *fakeSparseHist, sths appender.Remote) error {
+func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, sths appender.Local) error {
 	profiles := make([]*tpb.Profile, count)
 	for i := range profiles {
 		profiles[i] = createProfile(i)
@@ -123,8 +123,10 @@ func addProfiles(ctx context.Context, count int, c *fakeCommitter, st *fakeSpars
 		c.M[string(commitment)] = committed
 		st.M[int64(i)] = commitment
 
-		smr := new(trillian.SignedMapRoot)
-		if err := sths.Write(ctx, 0, int64(i), smr); err != nil {
+		smr := &trillian.SignedMapRoot{
+			MapRevision: int64(i),
+		}
+		if err := sths.Write(nil, 0, int64(i), smr); err != nil {
 			return err
 		}
 	}
@@ -238,6 +240,29 @@ func (fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, 
 	return 0, nil, nil
 }
 
-func (fakeMutation) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
-	return 0, nil
+func (fakeMutation) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) { return 0, nil }
+
+// appender.Local
+type fakeSequenced struct {
+	l [][]byte
+}
+
+func (f *fakeSequenced) Write(txn transaction.Txn, logID int64, epoch int64, obj interface{}) error {
+	var data bytes.Buffer
+	if err := gob.NewEncoder(&data).Encode(obj); err != nil {
+		return err
+	}
+	f.l = append(f.l, data.Bytes())
+	return nil
+}
+
+func (f *fakeSequenced) Read(txn transaction.Txn, logID int64, epoch int64, obj interface{}) error {
+	data := f.l[epoch]
+	return gob.NewDecoder(bytes.NewBuffer(data)).Decode(obj)
+}
+
+func (f *fakeSequenced) Latest(txn transaction.Txn, logID int64, obj interface{}) (int64, error) {
+	epoch := int64(len(f.l) - 1)
+	err := f.Read(txn, logID, epoch, obj)
+	return epoch, err
 }
