@@ -38,9 +38,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	"github.com/google/trillian"
 )
 
 const (
@@ -102,7 +102,7 @@ func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, *ctmap.MapHead, error) {
+func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, *trillian.SignedMapRoot, error) {
 	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
 		UserId: userID,
 	}, opts...)
@@ -116,14 +116,14 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 
 	// Empty case.
 	if e.GetCommitted() == nil {
-		return nil, e.GetSmh().GetMapHead(), nil
+		return nil, e.GetSmr(), nil
 	}
 
 	profile := new(tpb.Profile)
 	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
 		return nil, nil, fmt.Errorf("Error unmarshaling profile: %v", err)
 	}
-	return profile, e.GetSmh().GetMapHead(), nil
+	return profile, e.GetSmr(), nil
 }
 
 func min(x, y int32) int32 {
@@ -135,9 +135,9 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID string, start, end int64, opts ...grpc.CallOption) (map[*ctmap.MapHead]*tpb.Profile, error) {
+func (c *Client) ListHistory(ctx context.Context, userID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot]*tpb.Profile, error) {
 	currentProfile := new(tpb.Profile)
-	profiles := make(map[*ctmap.MapHead]*tpb.Profile)
+	profiles := make(map[*trillian.SignedMapRoot]*tpb.Profile)
 	for start <= end {
 		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
@@ -168,7 +168,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 			}
 
 			// Append the slice and update currentProfile.
-			profiles[v.GetSmh().GetMapHead()] = &profile
+			profiles[v.GetSmr()] = &profile
 			currentProfile = &profile
 		}
 		if resp.NextStart == 0 {
@@ -185,26 +185,26 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetEntry(%v): %v", userID, err)
 	}
 	Vlog.Printf("Got current entry...")
 
 	if err := c.kt.VerifyGetEntryResponse(ctx, userID, getResp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
 	req, err := kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile, signers, authorizedKeys)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
 
 	// Check the mutation before submitting it.
 	m, err := proto.Marshal(req.GetEntryUpdate().GetUpdate())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("proto.Marshal(): %v", err)
 	}
-	if err := c.mutator.CheckMutation(getResp.LeafProof.LeafData, m); err != nil {
-		return nil, err
+	if err := c.mutator.CheckMutation(getResp.LeafProof.Leaf.LeafValue, m); err != nil {
+		return nil, fmt.Errorf("CheckMutation: %v", err)
 	}
 
 	err = c.Retry(ctx, req)
@@ -231,7 +231,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	}
 
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().LeafData, req.GetEntryUpdate().GetUpdate().KeyValue.Value; !bytes.Equal(got, want) {
+	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().KeyValue.Value; !bytes.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

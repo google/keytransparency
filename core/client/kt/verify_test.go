@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 var (
@@ -64,8 +65,10 @@ func TestVerifyCommitment(t *testing.T) {
 	} {
 		resp := &tpb.GetEntryResponse{
 			Committed: tc.committed,
-			LeafProof: &tpb.LeafProof{
-				LeafData: tc.entryData,
+			LeafProof: &trillian.MapLeafInclusion{
+				Leaf: &trillian.MapLeaf{
+					LeafValue: tc.entryData,
+				},
 			},
 		}
 		err = verifier.VerifyCommitment(tc.userID, resp)

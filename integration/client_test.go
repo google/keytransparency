@@ -28,8 +28,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	ctmap "github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 const (
@@ -191,16 +191,20 @@ func TestUpdateValidation(t *testing.T) {
 	} {
 		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile, tc.signers, tc.authorizedKeys)
 
-		// The first update response is always a retry.
-		if got, want := err, grpcc.ErrRetry; (got == want) != tc.want {
-			t.Fatalf("Update(%v): %v != %v, want %v", tc.userID, err, want, tc.want)
-		}
 		if tc.want {
+			// The first update response is always a retry.
+			if got, want := err, grpcc.ErrRetry; got != want {
+				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
+			}
 			if err := env.Signer.CreateEpoch(bctx); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", req, err)
+			}
+		} else {
+			if got, want := err, grpcc.ErrRetry; got == want {
+				t.Fatalf("Update(%v): %v, don't want %v", tc.userID, got, want)
 			}
 		}
 	}
@@ -277,8 +281,8 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 	return nil
 }
 
-func sortHistory(history map[*ctmap.MapHead]*tpb.Profile) []*tpb.Profile {
-	keys := make([]*ctmap.MapHead, 0, len(history))
+func sortHistory(history map[*trillian.SignedMapRoot]*tpb.Profile) []*tpb.Profile {
+	keys := make([]*trillian.SignedMapRoot, 0, len(history))
 	for k := range history {
 		keys = append(keys, k)
 	}
@@ -291,11 +295,11 @@ func sortHistory(history map[*ctmap.MapHead]*tpb.Profile) []*tpb.Profile {
 }
 
 // MapHead sorter.
-type mapHeads []*ctmap.MapHead
+type mapHeads []*trillian.SignedMapRoot
 
 func (m mapHeads) Len() int           { return len(m) }
 func (m mapHeads) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m mapHeads) Less(i, j int) bool { return m[i].Epoch < m[j].Epoch }
+func (m mapHeads) Less(i, j int) bool { return m[i].MapRevision < m[j].MapRevision }
 
 // cp creates a dummy profile using the passed tag.
 func cp(tag int) *tpb.Profile {

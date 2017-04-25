@@ -27,11 +27,8 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/google/trillian"
 	"golang.org/x/net/context"
-
-	"github.com/google/keytransparency/core/proto/ctmap"
-	"github.com/google/trillian/crypto/sigpb"
 )
 
 // Clock defines an interface for the advancement of time.
@@ -125,15 +122,15 @@ func (s *Signer) queueMutation(txn transaction.Txn, index, mutation []byte) erro
 
 // processMutations reads mutations from the database and adds them to the tree.
 // processMutations returns the maximum mutation sequence number processed.
-func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uint64, error) {
-	startSequence := uint64(0)
-	smh := new(ctmap.SignedMapHead)
-	if _, err := s.sths.Latest(ctx, s.logID, smh); err == nil {
-		startSequence = smh.GetMapHead().MaxSequenceNumber
+func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (int64, error) {
+	startSequence := int64(0)
+	smr := new(trillian.SignedMapRoot)
+	if _, err := s.sths.Latest(ctx, s.logID, smr); err == nil {
+		startSequence = smr.GetMetadata().GetHighestFullyCompletedSeq()
 	} else if err != sql.ErrNoRows {
 		return 0, fmt.Errorf("Latest(%v): %v", s.logID, err)
 	}
-	maxSequence, mutations, err := s.mutations.ReadAll(txn, startSequence)
+	maxSequence, mutations, err := s.mutations.ReadAll(txn, uint64(startSequence))
 	if err != nil {
 		return 0, fmt.Errorf("ReadAll(%v): %v", startSequence, err)
 	}
@@ -146,7 +143,7 @@ func (s *Signer) processMutations(ctx context.Context, txn transaction.Txn) (uin
 			return 0, fmt.Errorf("queueMutation err: %v", err)
 		}
 	}
-	return maxSequence, nil
+	return int64(maxSequence), nil
 }
 
 // CreateEpoch signs the current map head.
@@ -183,27 +180,22 @@ func (s *Signer) createEpoch(ctx context.Context, txn transaction.Txn) error {
 	if err != nil {
 		return fmt.Errorf("ReadRootAt(%v): %v", epoch, err)
 	}
-	timestamp, err := ptypes.TimestampProto(s.clock.Now())
-	if err != nil {
-		return err
-	}
 
-	mh := &ctmap.MapHead{
-		Realm:             s.realm,
-		IssueTime:         timestamp,
-		Epoch:             epoch,
-		Root:              root,
-		MaxSequenceNumber: maxSequence,
+	smr := &trillian.SignedMapRoot{
+		MapId:          0,
+		TimestampNanos: s.clock.Now().UnixNano(),
+		RootHash:       root,
+		MapRevision:    epoch,
+		Metadata: &trillian.MapperMetadata{
+			HighestFullyCompletedSeq: maxSequence,
+		},
 	}
-	sig, err := s.signer.Sign(mh)
+	sig, err := s.signer.Sign(smr)
 	if err != nil {
 		return err
 	}
-	smh := &ctmap.SignedMapHead{
-		MapHead:    mh,
-		Signatures: map[string]*sigpb.DigitallySigned{s.signer.KeyID(): sig},
-	}
-	if err := s.sths.Write(ctx, s.logID, epoch, smh); err != nil {
+	smr.Signature = sig
+	if err := s.sths.Write(ctx, s.logID, epoch, smr); err != nil {
 		return fmt.Errorf("Append SMH failure %v", err)
 	}
 	log.Printf("Created epoch %v. SMH: %#x", epoch, root)

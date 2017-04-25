@@ -31,8 +31,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/google/keytransparency/core/proto/ctmap"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 const (
@@ -85,8 +85,8 @@ func New(logID int64,
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
 
-	var smh ctmap.SignedMapHead
-	epoch, err := s.sths.Latest(ctx, s.logID, &smh)
+	var smr trillian.SignedMapRoot
+	epoch, err := s.sths.Latest(ctx, s.logID, &smr)
 	if err != nil {
 		log.Printf("sths.Latest(%v): %v", s.logID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
@@ -103,8 +103,8 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	vrf, proof := s.vrf.Evaluate([]byte(userID))
 	index := s.vrf.Index(vrf)
 
-	var smh ctmap.SignedMapHead
-	if err := s.sths.Read(ctx, s.logID, epoch, &smh); err != nil {
+	var smr trillian.SignedMapRoot
+	if err := s.sths.Read(ctx, s.logID, epoch, &smr); err != nil {
 		return nil, err
 	}
 
@@ -159,19 +159,20 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		Vrf:       vrf,
 		VrfProof:  proof,
 		Committed: committed,
-		// Leaf proof in sparse merkle tree.
-		LeafProof: &tpb.LeafProof{
-			LeafData:  leaf,
-			Neighbors: neighbors,
+		LeafProof: &trillian.MapLeafInclusion{
+			Inclusion: neighbors,
+			Leaf: &trillian.MapLeaf{
+				LeafValue: leaf,
+			},
 		},
-		Smh: &smh,
+		Smr: &smr,
 	}, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
 	// Get current epoch.
-	ignore := new(ctmap.SignedMapHead)
+	ignore := new(trillian.SignedMapRoot)
 	currentEpoch, err := s.sths.Latest(ctx, s.logID, &ignore)
 	if err != nil {
 		log.Printf("Cannot get latest epoch: %v", err)
@@ -251,7 +252,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	}
 
 	// The very first mutation will have resp.LeafProof.LeafData=nil.
-	if err := s.mutator.CheckMutation(resp.LeafProof.LeafData, m); err == mutator.ErrReplay {
+	if err := s.mutator.CheckMutation(resp.LeafProof.Leaf.LeafValue, m); err == mutator.ErrReplay {
 		log.Printf("Discarding request due to replay")
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
