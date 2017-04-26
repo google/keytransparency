@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 const (
@@ -144,13 +145,15 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
 	// Get current epoch.
-	resp, err := s.getEntry(ctx, in.UserId, -1)
+	resp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		MapId: s.mapID,
+	})
 	if err != nil {
 		log.Printf("GetEntry(%v): %v", in.UserId, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "getEntry failed")
 	}
 
-	currentEpoch := resp.GetSmr().MapRevision
+	currentEpoch := resp.GetMapRoot().MapRevision
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
 		log.Printf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")

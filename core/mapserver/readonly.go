@@ -107,6 +107,34 @@ func (r *readonly) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesReque
 	panic("not implemented")
 }
 
-func (r *readonly) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (*trillian.GetSignedMapRootResponse, error) {
-	panic("not implemented")
+func (r *readonly) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {
+	if got, want := in.MapId, r.mapID; got != want {
+		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
+	}
+
+	txn, err := r.factory.NewTxn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if retErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
+			}
+		}
+	}()
+
+	// Get current epoch.
+	var root trillian.SignedMapRoot
+	if _, err := r.sths.Latest(txn, in.MapId, &root); err != nil {
+		return nil, err
+	}
+
+	if err := txn.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &trillian.GetSignedMapRootResponse{
+		MapRoot: &root,
+	}, nil
 }

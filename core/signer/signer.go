@@ -92,10 +92,10 @@ func (s *Signer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.
 	return mutations, int64(maxSequence), nil
 }
 
-// toArray returns the first 20 bytes from b.
-// If b is less than 20 bytes long, the output is zero padded.
-func toArray(b []byte) [20]byte {
-	var i [20]byte
+// toArray returns the first 32 bytes from b.
+// If b is less than 32 bytes long, the output is zero padded.
+func toArray(b []byte) [32]byte {
+	var i [32]byte
 	copy(i[:], b)
 	return i
 }
@@ -106,17 +106,16 @@ func toArray(b []byte) [20]byte {
 // Returns a list of map leaves that should be updated.
 func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.MapLeaf) ([]*trillian.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
-	leafMap := make(map[[20]byte]*trillian.MapLeaf)
+	leafMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, l := range leaves {
 		leafMap[toArray(l.Index)] = l
 	}
 
-	retMap := make(map[[20]byte]*trillian.MapLeaf)
+	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
 		index := m.GetKeyValue().Key
 		var oldValue []byte // If no map leaf was found, oldValue will be nil.
-		leaf, ok := leafMap[toArray(index)]
-		if ok {
+		if leaf, ok := leafMap[toArray(index)]; ok {
 			oldValue = leaf.LeafValue
 		}
 
@@ -147,18 +146,19 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context) error {
 	// Get the current root.
+	startSequence := int64(0)
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 	}
-	startSequence := rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
+	startSequence = rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
 
 	// Get the list of new mutations to process.
 	mutations, seq, err := s.newMutations(ctx, startSequence)
 	if err != nil {
-		return err
+		return fmt.Errorf("newMutations(%v): %v", startSequence, err)
 	}
 
 	// Get current leaf values.

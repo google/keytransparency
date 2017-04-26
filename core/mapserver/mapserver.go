@@ -149,33 +149,5 @@ func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequ
 
 // GetSignedMapRoot returns the requested MapRoot.
 func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {
-	if got, want := in.MapId, m.mapID; got != want {
-		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
-	}
-
-	txn, err := m.factory.NewTxn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if retErr != nil {
-			if rbErr := txn.Rollback(); rbErr != nil {
-				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
-			}
-		}
-	}()
-
-	// Get current epoch.
-	var root trillian.SignedMapRoot
-	if _, err := m.sths.Latest(txn, in.MapId, &root); err != nil {
-		return nil, err
-	}
-
-	if err := txn.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &trillian.GetSignedMapRootResponse{
-		MapRoot: &root,
-	}, nil
+	return m.readonly.GetSignedMapRoot(ctx, in)
 }
