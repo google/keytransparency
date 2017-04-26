@@ -124,23 +124,24 @@ func (k PrivateKey) Evaluate(m []byte) (index [32]byte, proof []byte) {
 	// H = H1(m)
 	hx, hy := H1(m)
 
+	// VRF_k(m) = [k]H
+	vrfx, vrfy := params.ScalarMult(hx, hy, k.D.Bytes())
+	vrf := elliptic.Marshal(curve, vrfx, vrfy) // 65 bytes.
+
 	// G is the base point
-	// s = H2(m, [r]G, [r]H)
+	// s = H2(m, [r]G, [r]H, [k]H)
 	gRx, gRy := params.ScalarBaseMult(r)
 	hRx, hRy := params.ScalarMult(hx, hy, r)
 	var b bytes.Buffer
 	b.Write(m)
 	b.Write(elliptic.Marshal(curve, gRx, gRy))
 	b.Write(elliptic.Marshal(curve, hRx, hRy))
+	b.Write(elliptic.Marshal(curve, vrfx, vrfy))
 	s := H2(b.Bytes())
 
 	// t = r−s*k mod N
 	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, k.D))
 	t.Mod(t, params.N)
-
-	// VRF_k(m) = [k]H
-	vrfx, vrfy := params.ScalarMult(hx, hy, k.D.Bytes())
-	vrf := elliptic.Marshal(curve, vrfx, vrfy) // 65 bytes.
 
 	// Index = H(vrf)
 	index = sha256.Sum256(vrf)
@@ -187,13 +188,14 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 	vSx, vSy := params.ScalarMult(vrfx, vrfy, s)
 	h1TKSx, h1TKSy := params.Add(hTx, hTy, vSx, vSy)
 
-	// H2(m, [t]G + [s]([k]G), [t]H + [s]VRF)
-	// = H2(m, [t+ks]G, [t+ks]H)
-	// = H2(m, [r]G, [r]H)
+	//   H2(m, [t]G + [s]([k]G), [t]H + [s]VRF, VRF)
+	// = H2(m, [t+ks]G, [t+ks]H, VRF)
+	// = H2(m, [r]G, [r]H, VRF)
 	var b bytes.Buffer
 	b.Write(m)
 	b.Write(elliptic.Marshal(curve, gTKSx, gTKSy))
 	b.Write(elliptic.Marshal(curve, h1TKSx, h1TKSy))
+	b.Write(elliptic.Marshal(curve, vrfx, vrfy))
 	h2 := H2(b.Bytes())
 
 	// Left pad h2 with zeros if needed. This will ensure that h2 is padded
