@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/commitments"
-	"github.com/google/keytransparency/core/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf"
 
 	"github.com/golang/protobuf/proto"
 

@@ -21,10 +21,10 @@ import (
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
-	"github.com/google/keytransparency/core/vrf"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"

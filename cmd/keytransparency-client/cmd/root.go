@@ -26,8 +26,8 @@ import (
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/vrf"
-	"github.com/google/keytransparency/core/vrf/p256"
+	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/google/authentication"
 
