@@ -25,10 +25,10 @@ import (
 
 	"github.com/google/keytransparency/core/admin"
 	"github.com/google/keytransparency/core/appender"
+	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/vrf"
-	"github.com/google/keytransparency/core/vrf/p256"
 	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/sql/commitments"

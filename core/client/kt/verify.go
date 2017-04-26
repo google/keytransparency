@@ -23,9 +23,9 @@ import (
 
 	"github.com/google/keytransparency/core/commitments"
 	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/tree/sparse"
 	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
-	"github.com/google/keytransparency/core/vrf"
 	"github.com/google/trillian/client"
 
 	"github.com/golang/protobuf/proto"

@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/commitments"
-	"github.com/google/keytransparency/core/vrf/p256"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
