@@ -129,14 +129,16 @@ func (k PrivateKey) Evaluate(m []byte) (index [32]byte, proof []byte) {
 	vrf := elliptic.Marshal(curve, vrfx, vrfy) // 65 bytes.
 
 	// G is the base point
-	// s = H2(m, [r]G, [r]H, [k]H)
+	// s = H2(G, h, [k]G, [k]H, [r]G, [r]H)
 	gRx, gRy := params.ScalarBaseMult(r)
 	hRx, hRy := params.ScalarMult(hx, hy, r)
 	var b bytes.Buffer
-	b.Write(m)
+	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, hx, hy))
+	b.Write(elliptic.Marshal(curve, k.PublicKey.X, k.PublicKey.Y))
+	b.Write(elliptic.Marshal(curve, vrfx, vrfy))
 	b.Write(elliptic.Marshal(curve, gRx, gRy))
 	b.Write(elliptic.Marshal(curve, hRx, hRy))
-	b.Write(elliptic.Marshal(curve, vrfx, vrfy))
 	s := H2(b.Bytes())
 
 	// t = r−s*k mod N
@@ -188,14 +190,16 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 	vSx, vSy := params.ScalarMult(vrfx, vrfy, s)
 	h1TKSx, h1TKSy := params.Add(hTx, hTy, vSx, vSy)
 
-	//   H2(m, [t]G + [s]([k]G), [t]H + [s]VRF, VRF)
-	// = H2(m, [t+ks]G, [t+ks]H, VRF)
-	// = H2(m, [r]G, [r]H, VRF)
+	//   H2(G, h, [k]G, VRF, [t]G + [s]([k]G), [t]H + [s]VRF)
+	// = H2(G, h, [k]G, VRF, [t+ks]G, [t+ks]H)
+	// = H2(G, h, [k]G, VRF, [r]G, [r]H)
 	var b bytes.Buffer
-	b.Write(m)
+	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, hx, hy))
+	b.Write(elliptic.Marshal(curve, pk.X, pk.Y))
+	b.Write(elliptic.Marshal(curve, vrfx, vrfy))
 	b.Write(elliptic.Marshal(curve, gTKSx, gTKSy))
 	b.Write(elliptic.Marshal(curve, h1TKSx, h1TKSy))
-	b.Write(elliptic.Marshal(curve, vrfx, vrfy))
 	h2 := H2(b.Bytes())
 
 	// Left pad h2 with zeros if needed. This will ensure that h2 is padded
