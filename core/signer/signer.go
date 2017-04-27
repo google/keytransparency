@@ -146,14 +146,13 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context) error {
 	// Get the current root.
-	startSequence := int64(0)
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
 	})
 	if err != nil {
 		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 	}
-	startSequence = rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
+	startSequence := rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
 
 	// Get the list of new mutations to process.
 	mutations, seq, err := s.newMutations(ctx, startSequence)
@@ -196,6 +195,9 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 			HighestFullyCompletedSeq: seq,
 		},
 	})
+	if err != nil {
+		return err
+	}
 	// Put SignedMapHead in an append only log.
 	return s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot)
 }
