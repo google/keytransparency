@@ -42,6 +42,23 @@ const (
 	mapID = int64(0)
 )
 
+type env struct {
+	c    *fakeCommitter
+	tree *fakeSparseHist
+	sths appender.Local
+	srv  *Server
+}
+
+func newEnv() *env {
+	c := &fakeCommitter{make(map[string]*tpb.Committed)}
+	tree := &fakeSparseHist{make(map[int64][]byte)}
+	sths := &fakeSequenced{make([][]byte, 0)}
+	mapsvr := mapserver.NewReadonly(mapID, tree, fakeFactory{}, sths)
+	srv := New(logID, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
+		authentication.NewFake(), fakeFactory{}, fakeMutation{})
+	return &env{c, tree, sths, srv}
+}
+
 func TestListEntryHistory(t *testing.T) {
 	profileCount := 25
 	ctx := context.Background()
@@ -63,14 +80,8 @@ func TestListEntryHistory(t *testing.T) {
 		{0, 1, 1, []int{0}, codes.OK},                                                            // start epoch is less than 1.
 	} {
 		// Test case setup.
-		c := &fakeCommitter{make(map[string]*tpb.Committed)}
-		tree := &fakeSparseHist{make(map[int64][]byte)}
-		sths := &fakeSequenced{make([][]byte, 0)}
-		mapsvr := mapserver.NewReadonly(mapID, tree, fakeFactory{}, sths)
-
-		srv := New(logID, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
-			authentication.NewFake(), fakeFactory{}, fakeMutation{})
-		if err := addProfiles(profileCount, c, tree, sths); err != nil {
+		e := newEnv()
+		if err := addProfiles(profileCount, e.c, e.tree, e.sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
 
@@ -80,7 +91,7 @@ func TestListEntryHistory(t *testing.T) {
 			Start:    tc.start,
 			PageSize: tc.page,
 		}
-		resp, err := srv.ListEntryHistory(ctx, req)
+		resp, err := e.srv.ListEntryHistory(ctx, req)
 		if got, want := grpc.Code(err), tc.err; got != want {
 			t.Errorf("%v: ListEntryHistory(%v): %v, want %v", i, req, err, tc.err)
 		}
@@ -105,6 +116,38 @@ func TestListEntryHistory(t *testing.T) {
 		if got := checkProfiles(tc.wantHistory, resp.Values); got != nil {
 			t.Errorf("%v: checkProfiles(%v, _): %v, want nil", i, tc.wantHistory, got)
 		}
+	}
+}
+
+func TestGetMutationsByEpoch(t *testing.T) {
+	e := newEnv()
+	_, err := e.srv.GetMutationsByEpoch(nil, nil)
+	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+		t.Errorf("GetMutationsByEpoch(_, _): %v, want %v", got, want)
+	}
+}
+
+func TestGetMutationsBySequence(t *testing.T) {
+	e := newEnv()
+	_, err := e.srv.GetMutationsBySequence(nil, nil)
+	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+		t.Errorf("GetMutationsBySequence(_, _): %v, want %v", got, want)
+	}
+}
+
+func TestGetMutationsByEpochStream(t *testing.T) {
+	e := newEnv()
+	err := e.srv.GetMutationsByEpochStream(nil, nil)
+	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+		t.Errorf("GetMutationsByEpochStream(_, _): %v, want %v", got, want)
+	}
+}
+
+func TestGetMutationsBySequenceStream(t *testing.T) {
+	e := newEnv()
+	err := e.srv.GetMutationsBySequenceStream(nil, nil)
+	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+		t.Errorf("GetMutationsBySequenceStream(_, _): %v, want %v", got, want)
 	}
 }
 

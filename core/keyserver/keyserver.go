@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	"github.com/google/trillian"
 )
 
@@ -270,4 +271,25 @@ func (s *Server) saveCommitment(ctx context.Context, kv *tpb.KeyValue, committed
 		return grpc.Errorf(codes.Internal, "Write failed")
 	}
 	return nil
+}
+
+// GetMutationsByEpoch returns a list of mutations paged by epoch number.
+func (s *Server) GetMutationsByEpoch(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
+	return nil, grpc.Errorf(codes.Unimplemented, "GetMutationsByEpoch is unimplemented")
+}
+
+// GetMutationsBySequence returns a list of mutations paged by sequence number.
+func (s *Server) GetMutationsBySequence(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
+	return nil, grpc.Errorf(codes.Unimplemented, "GetMutationsBySequence is unimplemented")
+}
+
+// GetMutationsByEpochStream is a streaming API similar to GetMutationsByEpoch.
+func (s *Server) GetMutationsByEpochStream(in *tpb.GetMutationsRequest, stream spb.KeyTransparencyService_GetMutationsByEpochStreamServer) error {
+	return grpc.Errorf(codes.Unimplemented, "GetMutationsByEpochStream is unimplemented")
+}
+
+// GetMutationsBySequenceStream is a streaming API similar to
+// GetMutationsBySequence.
+func (s *Server) GetMutationsBySequenceStream(in *tpb.GetMutationsRequest, stream spb.KeyTransparencyService_GetMutationsBySequenceStreamServer) error {
+	return grpc.Errorf(codes.Unimplemented, "GetMutationsBySequenceStream is unimplemented")
 }
