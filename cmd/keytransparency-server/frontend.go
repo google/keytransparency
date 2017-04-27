@@ -17,6 +17,7 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
+	ctxn "github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
@@ -35,6 +37,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/sequenced"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
+	"github.com/google/trillian"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -156,6 +159,18 @@ func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 	return resp, err
 }
 
+func newReadonlyMapServer(ctx context.Context, mapID int64, sqldb *sql.DB, factory ctxn.Factory) (trillian.TrillianMapClient, error) {
+	tree, err := sqlhist.New(ctx, mapID, factory)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create SQL history: %v", err)
+	}
+	sths, err := sequenced.New(sqldb, mapID)
+	if err != nil {
+		return nil, fmt.Errorf("sequenced.New(%v): %v", mapID, err)
+	}
+	return mapserver.NewReadonly(mapID, tree, factory, sths), nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
@@ -199,12 +214,10 @@ func main() {
 	*/
 
 	// Create mapserver front end.
-	tree, err := sqlhist.New(context.Background(), *mapID, factory)
+	mapsvr, err := newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
 	if err != nil {
-		log.Fatalf("Failed to create SQL history: %v", err)
+		log.Fatalf("newReadonlyMapServer(): %v", err)
 	}
-	sths, err := sequenced.New(sqldb, *mapID)
-	mapsvr := mapserver.NewReadonly(*mapID, tree, factory, sths)
 
 	// Create gRPC server.
 	svr := keyserver.New(*logID, *mapID, mapsvr, commitments, vrfPriv, mutator, auth, factory, mutations)

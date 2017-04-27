@@ -38,7 +38,6 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/util"
-
 	"golang.org/x/net/context"
 )
 

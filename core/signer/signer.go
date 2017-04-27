@@ -174,7 +174,9 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: verify inclusion proofs?
+	// Trust the leaf values provided by the map server.
+	// If the map server is run by an untrusted entity, perform inclusion
+	// and signature verification here.
 	leaves := make([]*trillian.MapLeaf, 0, len(getResp.MapLeafInclusion))
 	for _, m := range getResp.MapLeafInclusion {
 		leaves = append(leaves, m.Leaf)

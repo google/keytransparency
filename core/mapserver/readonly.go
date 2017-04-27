@@ -45,6 +45,7 @@ func NewReadonly(mapID int64, tree tree.Sparse, factory transaction.Factory, sth
 }
 
 func (r *readonly) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequest, opts ...grpc.CallOption) (resp *trillian.GetMapLeavesResponse, retErr error) {
+	// TODO: remove when multi-tennant maps are supported.
 	if got, want := in.MapId, r.mapID; got != want {
 		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
 	}
@@ -104,7 +105,7 @@ func (r *readonly) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesReque
 }
 
 func (r *readonly) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.SetMapLeavesResponse, error) {
-	panic("not implemented")
+	panic("SetLeaves not implmeneted in read only object")
 }
 
 func (r *readonly) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {

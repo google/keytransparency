@@ -109,6 +109,9 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
+	// SignedMapRoot contains its own signature. To verify, we need to create a local
+	// copy of the object and return the object to the state it was in when signed
+	// by removing the signature from the object.
 	smr := *in.GetSmr()
 	smr.Signature = nil // Remove the signature from the object to be verified.
 	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().Signature); err != nil {
