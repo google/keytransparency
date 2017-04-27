@@ -15,35 +15,41 @@
 package integration
 
 import (
+	"crypto"
 	"database/sql"
 	"log"
 	"net"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/admin"
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/signer"
 	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
+	"github.com/google/keytransparency/impl/sql/sequenced"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 	"github.com/google/keytransparency/integration/fake"
 
+	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/util"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	"github.com/google/trillian"
 )
 
 const (
@@ -88,7 +94,7 @@ type Env struct {
 	mapLog     *httptest.Server
 }
 
-func staticKeyPair() (signatures.Signer, signatures.Verifier, error) {
+func staticKeyPair() (crypto.Signer, crypto.PublicKey, error) {
 	sigPriv := `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
 AwEHoUQDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhWf5JqSoyp0uiL8LeNYyj5vgkl
@@ -99,12 +105,12 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`
 	signatures.Rand = DevZero{}
-	sig, err := factory.NewSignerFromPEM([]byte(sigPriv))
+	sig, err := keys.NewFromPrivatePEM(sigPriv, "")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ver, err := factory.NewVerifierFromPEM([]byte(sigPub))
+	ver, err := keys.NewFromPublicPEM(sigPub)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -155,42 +161,55 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	factory := transaction.NewFactory(sqldb)
 	mutations, err := mutations.New(sqldb, mapID)
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)
 	}
-	tree, err := sqlhist.New(context.Background(), mapID, factory)
-	if err != nil {
-		t.Fatalf("Failed to create SQL history: %v", err)
-	}
-
-	admin := admin.NewStatic()
-	if err := admin.AddLog(logID, fake.NewFakeTrillianClient()); err != nil {
-		t.Fatalf("failed to add log to admin: %v", err)
-	}
-	sths := appender.NewTrillian(admin)
-
 	vrfPriv, vrfPub, err := staticVRF()
 	if err != nil {
 		t.Fatalf("Failed to load vrf keypair: %v", err)
 	}
 	mutator := entry.New()
 	auth := authentication.NewFake()
-
 	commitments, err := commitments.New(sqldb, mapID)
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
-	server := keyserver.New(logID, commitments, tree, sths, vrfPriv, mutator, auth, factory, mutations)
+
+	// Map server
+	factory := transaction.NewFactory(sqldb)
+	tree, err := sqlhist.New(context.Background(), mapID, factory)
+	if err != nil {
+		t.Fatalf("Failed to create SQL history: %v", err)
+	}
+	sths, err := sequenced.New(sqldb, mapID)
+	if err != nil {
+		t.Fatalf("sequenced.New(): %v", err)
+	}
+	clock := util.NewFakeTimeSource(time.Now())
+	mapsvr := mapserver.New(mapID, tree, factory, sths, sig, clock)
+	// Configure map. TODO: setup map through admin interface.
+	if _, err := mapsvr.SetLeaves(context.Background(), &trillian.SetMapLeavesRequest{
+		MapId: mapID,
+		MapperData: &trillian.MapperMetadata{
+			HighestFullyCompletedSeq: int64(0),
+		},
+	}); err != nil {
+		t.Fatalf("SetLeaves(): %v", err)
+	}
+
+	server := keyserver.New(logID, mapID, mapsvr, commitments, vrfPriv, mutator,
+		auth, factory, mutations)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
-	signer := signer.New("", tree, mutator, sths, mutations, sig, factory)
-	signer.FakeTime()
-	if err := signer.CreateEpoch(context.Background()); err != nil {
-		t.Fatalf("Failed to create epoch: %v", err)
+	// Signer
+	admin := admin.NewStatic()
+	if err := admin.AddLog(logID, fake.NewFakeTrillianClient()); err != nil {
+		t.Fatalf("failed to add log to admin: %v", err)
 	}
+	sthsLog := appender.NewTrillian(admin)
+	signer := signer.New("", mapID, mapsvr, logID, sthsLog, mutator, mutations, factory)
 
 	addr, lis := Listen(t)
 	go s.Serve(lis)

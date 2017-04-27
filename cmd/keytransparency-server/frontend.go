@@ -17,25 +17,27 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
 	"sync/atomic"
 
-	"github.com/google/keytransparency/core/admin"
-	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/impl/config"
+	ctxn "github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
+	"github.com/google/keytransparency/impl/sql/sequenced"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
+	"github.com/google/trillian"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -51,12 +53,14 @@ import (
 var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	serverDBPath = flag.String("db", "db", "Database connection string")
-	mapID        = flag.Int64("map-id", 0, "ID for backend map")
 	realm        = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
 	verbose      = flag.Bool("verbose", false, "Log requests and responses")
+
+	// Info to connect to sparse merkle tree database.
+	mapID = flag.Int64("map-id", 0, "ID for backend map")
 
 	// Info to send Signed Map Heads to a Trillian Log.
 	logID     = flag.Int64("log-id", 0, "Trillian Log ID")
@@ -155,6 +159,18 @@ func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 	return resp, err
 }
 
+func newReadonlyMapServer(ctx context.Context, mapID int64, sqldb *sql.DB, factory ctxn.Factory) (trillian.TrillianMapClient, error) {
+	tree, err := sqlhist.New(ctx, mapID, factory)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create SQL history: %v", err)
+	}
+	sths, err := sequenced.New(sqldb, mapID)
+	if err != nil {
+		return nil, fmt.Errorf("sequenced.New(%v): %v", mapID, err)
+	}
+	return mapserver.NewReadonly(mapID, tree, factory, sths), nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
@@ -182,25 +198,29 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)
 	}
-	tree, err := sqlhist.New(context.Background(), *mapID, factory)
-	if err != nil {
-		log.Fatalf("Failed to create SQL history: %v", err)
-	}
-
-	tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
-	if err != nil {
-		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
-	}
-	static := admin.NewStatic()
-	if err := static.AddLog(*mapID, tlog); err != nil {
-		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
-	}
-	sths := appender.NewTrillian(static)
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
+	/*
+		// TODO: Include trillian log proofs in server responses #563.
+		tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
+		if err != nil {
+			log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
+		}
+		static := admin.NewStatic()
+		if err := static.AddLog(*mapID, tlog); err != nil {
+			log.Fatalf("static.AddLog(%v): %v", *mapID, err)
+		}
+	*/
+
+	// Create mapserver front end.
+	mapsvr, err := newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
+	if err != nil {
+		log.Fatalf("newReadonlyMapServer(): %v", err)
+	}
+
 	// Create gRPC server.
-	svr := keyserver.New(*logID, commitments, tree, sths, vrfPriv, mutator, auth, factory, mutations)
+	svr := keyserver.New(*logID, *mapID, mapsvr, commitments, vrfPriv, mutator, auth, factory, mutations)
 	opts := []grpc.ServerOption{grpc.Creds(creds)}
 	if *verbose {
 		opts = append(opts, grpc.UnaryInterceptor(jsonLogger))

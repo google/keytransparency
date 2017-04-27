@@ -15,6 +15,7 @@
 package kt
 
 import (
+	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,13 +23,13 @@ import (
 	"log"
 
 	"github.com/google/keytransparency/core/commitments"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/tree/sparse"
 	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
-	"github.com/google/trillian/client"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian/client"
+	tcrypto "github.com/google/trillian/crypto"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
@@ -46,14 +47,14 @@ var (
 type Verifier struct {
 	vrf  vrf.PublicKey
 	tree *tv.Verifier
-	sig  signatures.Verifier
+	sig  crypto.PublicKey
 	log  client.VerifyingLogClient
 }
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
 	tree *tv.Verifier,
-	sig signatures.Verifier,
+	sig crypto.PublicKey,
 	log client.VerifyingLogClient) *Verifier {
 	return &Verifier{
 		vrf:  vrf,
@@ -108,9 +109,12 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
-	sig := in.GetSmr().Signature
-	in.GetSmr().Signature = nil // Remove the signature from the object to be verified.
-	if err := v.sig.Verify(in.GetSmr(), sig); err != nil {
+	// SignedMapRoot contains its own signature. To verify, we need to create a local
+	// copy of the object and return the object to the state it was in when signed
+	// by removing the signature from the object.
+	smr := *in.GetSmr()
+	smr.Signature = nil // Remove the signature from the object to be verified.
+	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().Signature); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return fmt.Errorf("sig.Verify(SMR): %v", err)
 	}

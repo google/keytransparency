@@ -19,6 +19,7 @@ package grpcc
 
 import (
 	"bytes"
+	"crypto"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -89,7 +90,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier signatures.Verifier, log client.VerifyingLogClient) *Client {
+func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier crypto.PublicKey, log client.VerifyingLogClient) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,

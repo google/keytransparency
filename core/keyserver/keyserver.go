@@ -18,13 +18,11 @@ package keyserver
 import (
 	"log"
 
-	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
-	"github.com/google/keytransparency/core/tree"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -46,11 +44,11 @@ const (
 
 // Server holds internal state for the key server.
 type Server struct {
+	mapID     int64
+	tmap      trillian.TrillianMapClient
 	logID     int64
 	committer commitments.Committer
 	auth      authentication.Authenticator
-	tree      tree.Sparse
-	sths      appender.Remote
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
 	factory   transaction.Factory
@@ -59,19 +57,19 @@ type Server struct {
 
 // New creates a new instance of the key server.
 func New(logID int64,
+	mapID int64,
+	tmap trillian.TrillianMapClient,
 	committer commitments.Committer,
-	tree tree.Sparse,
-	sths appender.Remote,
 	vrf vrf.PrivateKey,
 	mutator mutator.Mutator,
 	auth authentication.Authenticator,
 	factory transaction.Factory,
 	mutations mutator.Mutation) *Server {
 	return &Server{
+		mapID:     mapID,
+		tmap:      tmap,
 		logID:     logID,
 		committer: committer,
-		tree:      tree,
-		sths:      sths,
 		vrf:       vrf,
 		mutator:   mutator,
 		auth:      auth,
@@ -84,14 +82,7 @@ func New(logID int64,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-
-	var smr trillian.SignedMapRoot
-	epoch, err := s.sths.Latest(ctx, s.logID, &smr)
-	if err != nil {
-		log.Printf("sths.Latest(%v): %v", s.logID, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot get SMH")
-	}
-	resp, err := s.getEntry(ctx, in.UserId, epoch)
+	resp, err := s.getEntry(ctx, in.UserId, -1)
 	if err != nil {
 		log.Printf("getEntry failed: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
@@ -103,39 +94,21 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 	vrf, proof := s.vrf.Evaluate([]byte(userID))
 	index := s.vrf.Index(vrf)
 
-	var smr trillian.SignedMapRoot
-	if err := s.sths.Read(ctx, s.logID, epoch, &smr); err != nil {
-		return nil, err
-	}
-
-	txn, err := s.factory.NewTxn(ctx)
+	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
+		MapId:    s.mapID,
+		Index:    [][]byte{index[:]},
+		Revision: epoch,
+	})
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
+		log.Printf("GetLeaves(): %v", err)
+		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-
-	neighbors, err := s.tree.NeighborsAt(txn, index[:], epoch)
-	if err != nil {
-		log.Printf("Cannot get neighbors list: %v", err)
-		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
-		}
-		return nil, grpc.Errorf(codes.Internal, "Cannot get neighbors list")
+	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
+		log.Printf("GetLeaves() len: %v, want %v", got, want)
+		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-
-	// Retrieve the leaf if this is not a proof of absence.
-	leaf, err := s.tree.ReadLeafAt(txn, index[:], epoch)
-	if err != nil {
-		log.Printf("Cannot read leaf entry: %v", err)
-		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
-		}
-		return nil, grpc.Errorf(codes.Internal, "Cannot read leaf entry")
-	}
-
-	if err := txn.Commit(); err != nil {
-		log.Printf("Cannot commit transaction: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
-	}
+	neighbors := getResp.MapLeafInclusion[0].Inclusion
+	leaf := getResp.MapLeafInclusion[0].Leaf.LeafValue
 
 	var committed *tpb.Committed
 	if leaf != nil {
@@ -165,22 +138,24 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 				LeafValue: leaf,
 			},
 		},
-		Smr: &smr,
+		Smr: getResp.GetMapRoot(),
 	}, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
 	// Get current epoch.
-	ignore := new(trillian.SignedMapRoot)
-	currentEpoch, err := s.sths.Latest(ctx, s.logID, &ignore)
+	resp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		MapId: s.mapID,
+	})
 	if err != nil {
-		log.Printf("Cannot get latest epoch: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot get latest epoch")
+		log.Printf("GetEntry(%v): %v", in.UserId, err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "getEntry failed")
 	}
 
+	currentEpoch := resp.GetMapRoot().MapRevision
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
-		log.Printf("Invalid ListEntryHistoryRequest: %v", err)
+		log.Printf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 

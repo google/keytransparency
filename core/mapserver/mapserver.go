@@ -36,28 +36,27 @@ import (
 
 // mapServer implements TrilianMap functionality.
 type mapServer struct {
-	mapID   int64
-	tree    tree.Sparse
-	factory transaction.Factory
-	sths    appender.Local
-	signer  *tcrypto.Signer
-	clock   util.TimeSource
+	readonly
+	signer *tcrypto.Signer
+	clock  util.TimeSource
 }
 
 // New returns a TrillianMapClient.
 func New(mapID int64, tree tree.Sparse, factory transaction.Factory, sths appender.Local,
 	signer crypto.Signer, clock util.TimeSource) trillian.TrillianMapClient {
 	return &mapServer{
-		mapID:   mapID,
-		tree:    tree,
-		factory: factory,
-		sths:    sths,
-		signer:  tcrypto.NewSHA256Signer(signer),
-		clock:   clock,
+		readonly: readonly{
+			mapID:   mapID,
+			tree:    tree,
+			factory: factory,
+			sths:    sths,
+		},
+		signer: tcrypto.NewSHA256Signer(signer),
+		clock:  clock,
 	}
 }
 
-func (m *mapServer) signRoot(ctx context.Context) (smr *trillian.SignedMapRoot, retErr error) {
+func (m *mapServer) signRoot(ctx context.Context, metadata *trillian.MapperMetadata) (smr *trillian.SignedMapRoot, retErr error) {
 	txn, err := m.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, err
@@ -84,11 +83,12 @@ func (m *mapServer) signRoot(ctx context.Context) (smr *trillian.SignedMapRoot, 
 
 	smr = &trillian.SignedMapRoot{
 		MapId:          m.mapID,
-		MapRevision:    epoch,
+		TimestampNanos: m.clock.Now().UnixNano(),
 		RootHash:       root,
-		TimestampNanos: m.clock.Now().Unix(),
-		// TODO: Add mutation high watermark?
+		MapRevision:    epoch,
+		Metadata:       metadata,
 	}
+
 	sig, err := m.signer.SignObject(smr)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequ
 		return nil, err
 	}
 
-	smh, err := m.signRoot(ctx)
+	smh, err := m.signRoot(ctx, in.MapperData)
 	if err != nil {
 		return nil, fmt.Errorf("signRoot(): %v", err)
 	}
@@ -144,87 +144,10 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequ
 
 // GetLeaves returns the requested leaves.
 func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequest, opts ...grpc.CallOption) (resp *trillian.GetMapLeavesResponse, retErr error) {
-	if got, want := in.MapId, m.mapID; got != want {
-		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
-	}
-
-	txn, err := m.factory.NewTxn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if retErr != nil {
-			if rbErr := txn.Rollback(); rbErr != nil {
-				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
-			}
-		}
-	}()
-
-	// Get current epoch.
-	var root trillian.SignedMapRoot
-	if _, err := m.sths.Latest(txn, in.MapId, &root); err != nil {
-		return nil, err
-	}
-
-	// ReadLeavesAtEpoch.
-	inclusions := make([]*trillian.MapLeafInclusion, 0, len(in.Index))
-	for _, index := range in.Index {
-		leafData, err := m.tree.ReadLeafAt(txn, index, root.MapRevision)
-		if err != nil {
-			return nil, err
-		}
-		nbrs, err := m.tree.NeighborsAt(txn, index, root.MapRevision)
-		if err != nil {
-			return nil, err
-		}
-		inclusions = append(inclusions, &trillian.MapLeafInclusion{
-			Leaf: &trillian.MapLeaf{
-				Index:     index,
-				LeafValue: leafData,
-			},
-			Inclusion: nbrs,
-		})
-	}
-
-	if err := txn.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &trillian.GetMapLeavesResponse{
-		MapLeafInclusion: inclusions,
-		MapRoot:          &root,
-	}, nil
+	return m.readonly.GetLeaves(ctx, in)
 }
 
 // GetSignedMapRoot returns the requested MapRoot.
 func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {
-	if got, want := in.MapId, m.mapID; got != want {
-		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
-	}
-
-	txn, err := m.factory.NewTxn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if retErr != nil {
-			if rbErr := txn.Rollback(); rbErr != nil {
-				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
-			}
-		}
-	}()
-
-	// Get current epoch.
-	var root trillian.SignedMapRoot
-	if _, err := m.sths.Latest(txn, in.MapId, &root); err != nil {
-		return nil, err
-	}
-
-	if err := txn.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &trillian.GetSignedMapRootResponse{
-		MapRoot: &root,
-	}, nil
+	return m.readonly.GetSignedMapRoot(ctx, in)
 }

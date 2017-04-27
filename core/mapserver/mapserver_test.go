@@ -37,6 +37,7 @@ type env struct {
 	mapID int64
 	db    *sql.DB
 	m     trillian.TrillianMapClient
+	ro    trillian.TrillianMapClient
 }
 
 func newEnv() (*env, error) {
@@ -64,11 +65,13 @@ K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 	}
 	clock := util.NewFakeTimeSource(time.Now())
 	m := New(mapID, tree, factory, sths, signer, clock)
+	ro := NewReadonly(mapID, tree, factory, sths)
 
 	return &env{
 		mapID: mapID,
 		db:    sqldb,
 		m:     m,
+		ro:    ro,
 	}, nil
 }
 
@@ -119,7 +122,7 @@ func TestSetGet(t *testing.T) {
 		for _, l := range tc.leaves {
 			indexes = append(indexes, l.Index)
 		}
-		resp2, err := env.m.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
+		resp2, err := env.ro.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 			MapId:    env.mapID,
 			Revision: tc.epoch,
 			Index:    indexes,
@@ -180,7 +183,7 @@ func TestGetSignedMapRoot(t *testing.T) {
 			t.Errorf("SetLeaves(%v).MapRevision: %v, want %v", i, got, want)
 		}
 
-		rootResp, err := env.m.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		rootResp, err := env.ro.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 			MapId: env.mapID,
 		})
 		if err != nil {
