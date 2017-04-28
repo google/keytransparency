@@ -63,9 +63,8 @@ var (
 	mapID = flag.Int64("map-id", 0, "ID for backend map")
 
 	// Info to send Signed Map Heads to a Trillian Log.
-	logID     = flag.Int64("log-id", 0, "Trillian Log ID")
-	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
-	logPubKey = flag.String("log-key", "", "File path to public key of the Trillian Log")
+	logID  = flag.Int64("log-id", 0, "Trillian Log ID")
+	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 )
 
 func openDB() *sql.DB {
@@ -120,6 +119,14 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	})
+}
+
+func connectToLog(endpoint string, opts []grpc.DialOption) (trillian.TrillianLogClient, error) {
+	conn, err := grpc.Dial(endpoint, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return trillian.NewTrillianLogClient(conn), nil
 }
 
 var marshaler = jsonpb.Marshaler{Indent: "  ", OrigName: true}
@@ -201,17 +208,12 @@ func main() {
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
-	/*
-		// TODO: Include trillian log proofs in server responses #563.
-		tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
-		if err != nil {
-			log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
-		}
-		static := admin.NewStatic()
-		if err := static.AddLog(*mapID, tlog); err != nil {
-			log.Fatalf("static.AddLog(%v): %v", *mapID, err)
-		}
-	*/
+	// Connect to log server.
+	// TODO: Include trillian log proofs in server responses #563.
+	tlog, err := connectToLog(*logURL, []grpc.DialOption{})
+	if err != nil {
+		log.Fatalf("connectToLog(%v): %v", *logURL, err)
+	}
 
 	// Create mapserver front end.
 	mapsvr, err := newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
@@ -220,7 +222,8 @@ func main() {
 	}
 
 	// Create gRPC server.
-	svr := keyserver.New(*logID, *mapID, mapsvr, commitments, vrfPriv, mutator, auth, factory, mutations)
+	svr := keyserver.New(*logID, tlog, *mapID, mapsvr, commitments,
+		vrfPriv, mutator, auth, factory, mutations)
 	opts := []grpc.ServerOption{grpc.Creds(creds)}
 	if *verbose {
 		opts = append(opts, grpc.UnaryInterceptor(jsonLogger))
