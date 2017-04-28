@@ -83,14 +83,18 @@ type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
-	log        client.VerifyingLogClient
+	log        client.LogVerifier
 	mutator    mutator.Mutator
 	RetryCount int
 	RetryDelay time.Duration
 }
 
 // New creates a new client.
-func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier crypto.PublicKey, log client.VerifyingLogClient) *Client {
+func New(mapID int64,
+	client spb.KeyTransparencyServiceClient,
+	vrf vrf.PublicKey,
+	verifier crypto.PublicKey,
+	log client.LogVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
@@ -105,7 +109,8 @@ func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey
 // GetEntry returns an entry if it exists, and nil if it does not.
 func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, *trillian.SignedMapRoot, error) {
 	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
-		UserId: userID,
+		UserId:        userID,
+		FirstTreeSize: c.kt.Root().TreeSize,
 	}, opts...)
 	if err != nil {
 		return nil, nil, err
@@ -184,7 +189,10 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
 func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
-	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
+	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
+		UserId:        userID,
+		FirstTreeSize: c.kt.Root().TreeSize,
+	}, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry(%v): %v", userID, err)
 	}
@@ -194,7 +202,7 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
-	req, err := kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile, signers, authorizedKeys)
+	req, err := c.kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile, signers, authorizedKeys)
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}

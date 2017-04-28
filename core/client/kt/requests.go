@@ -25,12 +25,24 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/sigpb"
 )
 
+// Root returns the currently trusted SignedLogRoot.
+func (v *Verifier) Root() trillian.SignedLogRoot {
+	return v.log.Root()
+}
+
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
 // user ID and a profile.
-func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, userID string, profile *tpb.Profile, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
+func (v *Verifier) CreateUpdateEntryRequest(
+	getResp *tpb.GetEntryResponse,
+	vrf vrf.PublicKey,
+	userID string,
+	profile *tpb.Profile,
+	signers []signatures.Signer,
+	authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index := vrf.Index(getResp.Vrf)
 	prevEntry := new(tpb.Entry)
@@ -79,7 +91,8 @@ func CreateUpdateEntryRequest(getResp *tpb.GetEntryResponse, vrf vrf.PublicKey, 
 	}
 
 	return &tpb.UpdateEntryRequest{
-		UserId: userID,
+		UserId:        userID,
+		FirstTreeSize: v.log.Root().TreeSize,
 		EntryUpdate: &tpb.EntryUpdate{
 			Update:    signedkv,
 			Committed: committed,
