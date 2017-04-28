@@ -27,6 +27,7 @@ import (
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/transaction"
+	"github.com/google/keytransparency/integration/fake"
 	"github.com/google/trillian"
 
 	"github.com/golang/protobuf/proto"
@@ -67,8 +68,9 @@ func TestListEntryHistory(t *testing.T) {
 		tree := &fakeSparseHist{make(map[int64][]byte)}
 		sths := &fakeSequenced{make([][]byte, 0)}
 		mapsvr := mapserver.NewReadonly(mapID, tree, fakeFactory{}, sths)
+		tlog := fake.NewFakeTrillianLogServer()
 
-		srv := New(logID, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
+		srv := New(logID, tlog, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
 			authentication.NewFake(), fakeFactory{}, fakeMutation{})
 		if err := addProfiles(profileCount, c, tree, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)

@@ -44,9 +44,10 @@ const (
 
 // Server holds internal state for the key server.
 type Server struct {
+	logID     int64
+	tlog      trillian.TrillianLogClient
 	mapID     int64
 	tmap      trillian.TrillianMapClient
-	logID     int64
 	committer commitments.Committer
 	auth      authentication.Authenticator
 	vrf       vrf.PrivateKey
@@ -57,6 +58,7 @@ type Server struct {
 
 // New creates a new instance of the key server.
 func New(logID int64,
+	tlog trillian.TrillianLogClient,
 	mapID int64,
 	tmap trillian.TrillianMapClient,
 	committer commitments.Committer,
@@ -66,9 +68,10 @@ func New(logID int64,
 	factory transaction.Factory,
 	mutations mutator.Mutation) *Server {
 	return &Server{
+		logID:     logID,
+		tlog:      tlog,
 		mapID:     mapID,
 		tmap:      tmap,
-		logID:     logID,
 		committer: committer,
 		vrf:       vrf,
 		mutator:   mutator,
@@ -82,7 +85,7 @@ func New(logID int64,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-	resp, err := s.getEntry(ctx, in.UserId, -1)
+	resp, err := s.getEntry(ctx, in.UserId, -1, in.FirstTreeSize)
 	if err != nil {
 		log.Printf("getEntry failed: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
@@ -90,7 +93,7 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 	return resp, nil
 }
 
-func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb.GetEntryResponse, error) {
+func (s *Server) getEntry(ctx context.Context, userID string, epoch, firstTreeSize int64) (*tpb.GetEntryResponse, error) {
 	vrf, proof := s.vrf.Evaluate([]byte(userID))
 	index := s.vrf.Index(vrf)
 
@@ -128,6 +131,48 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 		}
 	}
 
+	// Fetch log proofs.
+	// Fresh Root.
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
+		&trillian.GetLatestSignedLogRootRequest{
+			LogId: s.logID,
+		})
+	if err != nil {
+		log.Printf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+	}
+	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
+
+	// Consistency proof.
+	var logConsistency *trillian.GetConsistencyProofResponse
+	if firstTreeSize != 0 {
+		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
+			&trillian.GetConsistencyProofRequest{
+				LogId:          s.logID,
+				FirstTreeSize:  firstTreeSize,
+				SecondTreeSize: secondTreeSize,
+			})
+		if err != nil {
+			log.Printf("tlog.GetConsistency(%v, %v, %v): %v",
+				s.logID, firstTreeSize, secondTreeSize, err)
+			return nil, grpc.Errorf(codes.Internal, "Cannot fetch log consistency proof")
+		}
+	}
+
+	// Inclusion proof.
+	logInclusion, err := s.tlog.GetInclusionProof(ctx,
+		&trillian.GetInclusionProofRequest{
+			LogId: s.logID,
+			// SignedMapRoot must be placed in the log at MapRevision.
+			LeafIndex: getResp.GetMapRoot().MapRevision,
+			TreeSize:  secondTreeSize,
+		})
+	if err != nil {
+		log.Printf("tlog.GetInclusionProof(%v, %v, %v): %v",
+			s.logID, getResp.GetMapRoot().MapRevision, secondTreeSize, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
+	}
+
 	return &tpb.GetEntryResponse{
 		Vrf:       vrf,
 		VrfProof:  proof,
@@ -138,7 +183,10 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch int64) (*tpb
 				LeafValue: leaf,
 			},
 		},
-		Smr: getResp.GetMapRoot(),
+		Smr:            getResp.GetMapRoot(),
+		LogRoot:        logRoot,
+		LogConsistency: logConsistency,
+		LogInclusion:   logInclusion,
 	}, nil
 }
 
@@ -163,7 +211,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 	// in.PageSize].
 	responses := make([]*tpb.GetEntryResponse, in.PageSize)
 	for i := range responses {
-		resp, err := s.getEntry(ctx, in.UserId, in.Start+int64(i))
+		resp, err := s.getEntry(ctx, in.UserId, in.Start+int64(i), in.FirstTreeSize)
 		if err != nil {
 			log.Printf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
 			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
