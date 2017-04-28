@@ -1,6 +1,4 @@
 log-key: "../certificate-transparency/test/testdata/ct-server-key-public.pem"
-log-url: "http://107.178.246.112"
-log-id: "0"
 vrf:    "testdata/vrf-pubkey.pem"
 kt-key: "testdata/server.crt"
 kt-sig: "testdata/p256-pubkey.pem"

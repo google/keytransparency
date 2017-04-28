@@ -28,10 +28,11 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/google/authentication"
 
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/merkle/objhasher"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -181,7 +182,7 @@ func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	return ver, nil
 }
 
-func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log client.VerifyingLogClient) (*grpcc.Client, error) {
+func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log client.LogVerifier) (*grpcc.Client, error) {
 	// Create Key Transparency client.
 	vrfKey, err := readVrfKey(vrfPubFile)
 	if err != nil {
@@ -247,8 +248,6 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ktPEM := viper.GetString("kt-key")
 	ktSig := viper.GetString("kt-sig")
 	mapID := viper.GetInt64("map-id")
-	logID := viper.GetInt64("log-id")
-	logURL := viper.GetString("log-url")
 	logPEM := viper.GetString("log-key")
 	serviceKeyFile := viper.GetString("service-key")
 	cc, err := dial(ktURL, ktPEM, clientSecretFile, serviceKeyFile)
@@ -256,10 +255,12 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
 
-	log, err := config.LogClient(logID, logURL, logPEM)
+	// Log verifier.
+	logPubKey, err := keys.NewFromPublicPEMFile(logPEM)
 	if err != nil {
-		return nil, fmt.Errorf("config.LogClient(): %v", err)
+		log.Fatalf("Failed to open public key %v: %v", logPubKey, err)
 	}
+	log := client.NewLogVerifier(objhasher.ObjectHasher, logPubKey)
 
 	c, err := getClient(cc, mapID, vrfFile, ktSig, log)
 	if err != nil {
