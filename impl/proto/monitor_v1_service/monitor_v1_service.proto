@@ -22,21 +22,19 @@ package monitor.v1.service;
 import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
 import "google/api/annotations.proto";
 
-
 // The MonitorService API represents a directory of mutations:
 //
 // - Mutations can be collected using the GetMutation APIs. Mutation resources
 //   are named /v1/mutations/* and /v1/mutations/*/stream.
 //
 service MonitorService {
-  // GetMutations returns a list of mutations paged by epoch or mutation sequence
-  // number.
+  // GetMutations returns a list of mutations in a specific epoch.
   //
   // Returns a list of mutations and their inclusion proofs along with the epoch
   // signed map root.
   rpc GetMutations(keytransparency.v1.types.GetMutationsRequest)
       returns (keytransparency.v1.types.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/mutations/{page_token}" };
+    option (google.api.http) = { get: "/v1/epochs" };
   }
 
   // GetMutationsStream is a streaming API similar to GetMutations.
@@ -45,6 +43,6 @@ service MonitorService {
   // signed map root.
   rpc GetMutationsStream(keytransparency.v1.types.GetMutationsRequest)
       returns (stream keytransparency.v1.types.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/mutations/{page_token}/stream" };
+    option (google.api.http) = { get: "/v1/epochs/stream" };
   }
 }

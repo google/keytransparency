@@ -23,6 +23,7 @@ package keytransparency.v1.types;
 
 import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
 import "github.com/google/trillian/trillian.proto";
+import "github.com/google/trillian/trillian_log_api.proto";
 import "github.com/google/trillian/trillian_map_api.proto";
 
 //
@@ -98,21 +99,6 @@ message SignedKV {
   // modifying creating a hash chain of all mutations. The hash used is
   // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
   bytes previous = 3;
-}
-
-// EpochInfo contains epoch-related information that are returned in the response
-// of GetMutation APIs.
-message EpochInfo {
-  // epoch specifies the epoch of the included mutations.
-  int64 epoch = 1;
-  // smr contains the signed map root for the sparse Merkle Tree.
-  trillian.SignedMapRoot smr = 2;
-  // smh_sct is the signed certificate timestamp (SCT) showing
-  // that SMH was submitted to Trillian log.
-  // TODO: replace smh_sct with Trillian.SignedLogRoot.
-  bytes smh_sct = 3;
-  // mutation contains mutation information.
-  repeated Mutation mutations = 4;
 }
 
 // Mutation contains the actual mutation and the inclusion proof of the
@@ -202,29 +188,36 @@ message UpdateEntryResponse {
 
 // GetMutationsRequest contains the input parameters of the GetMutation APIs.
 message GetMutationsRequest {
-  // Pagination specifies the pagination criteria of the request.
-  enum Pagination {
-    EPOCH = 0;     // pagination by epoch number.
-    SEQUENCE = 1;  // pagination by mutation sequence number.
-  }
+  // epoch specifies the epoch number in which mutations will be returned.
+  int64 epoch = 1;
+  // first_tree_size is the tree_size of the currently trusted log root.
+  // Omitting this field will ommit the log consistency proof from the response.
+  int64 first_tree_size = 2;
   // page_token defines the starting point for pagination. An empty
   // value means start from the beginning. A non-empty value requests the next
   // page of values.
-  string page_token = 1;
+  string page_token = 3;
   // page_size is the maximum number of epochs to return.
-  int32 page_size = 2;
-  // by specifies the pagination criteria of the request.
-  Pagination by = 3;
+  int32 page_size = 4;
 }
 
 // GetMutationsResponse contains the results of GetMutation APIs.
 message GetMutationsResponse {
-  // epochs contains epoch information, i.e., number, map head
-  // and mutations, in this response.
-  repeated EpochInfo epochs = 1;
+  // epoch specifies the epoch number of the returned mutations.
+  int64 epoch = 1;
+  // smr contains the signed map root for the sparse Merkle Tree.
+  trillian.SignedMapRoot smr = 2;
+  // log_root is the latest globally consistent log root.
+  trillian.GetLatestSignedLogRootResponse log_root = 3;
+  // log_consistency proves that log_root is consistent with previously seen roots.
+  trillian.GetConsistencyProofResponse log_consistency = 4;
+  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  trillian.GetInclusionProofResponse log_inclusion = 5;
+  // mutation contains mutation information.
+  repeated Mutation mutations = 6;
   // next_page_token is the next page token to query for pagination.
   // An empty value means there are no more results to fetch.
   // A non-zero value may be used by the client to fetch the next page of
   // results.
-  string next_page_token = 5;
+  string next_page_token = 7;
 }

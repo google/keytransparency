@@ -29,30 +29,12 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_MonitorService_GetMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"page_token": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_MonitorService_GetMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
 func request_MonitorService_GetMutations_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1_types.GetMutationsRequest
 	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["page_token"]
-	if !ok {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "page_token")
-	}
-
-	protoReq.PageToken, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, err
-	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MonitorService_GetMutations_0); err != nil {
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
@@ -64,30 +46,12 @@ func request_MonitorService_GetMutations_0(ctx context.Context, marshaler runtim
 }
 
 var (
-	filter_MonitorService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"page_token": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_MonitorService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
 func request_MonitorService_GetMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (MonitorService_GetMutationsStreamClient, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1_types.GetMutationsRequest
 	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["page_token"]
-	if !ok {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "page_token")
-	}
-
-	protoReq.PageToken, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, err
-	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MonitorService_GetMutationsStream_0); err != nil {
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
@@ -196,9 +160,9 @@ func RegisterMonitorServiceHandler(ctx context.Context, mux *runtime.ServeMux, c
 }
 
 var (
-	pattern_MonitorService_GetMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "mutations", "page_token"}, ""))
+	pattern_MonitorService_GetMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "epochs"}, ""))
 
-	pattern_MonitorService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "mutations", "page_token", "stream"}, ""))
+	pattern_MonitorService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "epochs", "stream"}, ""))
 )
 
 var (
