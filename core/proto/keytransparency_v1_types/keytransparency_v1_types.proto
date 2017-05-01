@@ -202,13 +202,19 @@ message UpdateEntryResponse {
 
 // GetMutationsRequest contains the input parameters of the GetMutation APIs.
 message GetMutationsRequest {
+  // Pagination specifies the pagination criteria of the request.
+  enum Pagination {
+    EPOCH = 0;     // pagination by epoch number.
+    SEQUENCE = 1;  // pagination by mutation sequence number.
+  }
   // page_token defines the starting point for pagination. An empty
-  // value means start from the beginning. A non-empty value is used by
-  // the server as an epoch or a mutation sequence number depending on
-  // the API called.
-  string page_token = 4;
+  // value means start from the beginning. A non-empty value requests the next
+  // page of values.
+  string page_token = 1;
   // page_size is the maximum number of epochs to return.
-  int32 page_size = 5;
+  int32 page_size = 2;
+  // by specifies the pagination criteria of the request.
+  Pagination by = 3;
 }
 
 // GetMutationsResponse contains the results of GetMutation APIs.
@@ -218,7 +224,7 @@ message GetMutationsResponse {
   repeated EpochInfo epochs = 1;
   // next_page_token is the next page token to query for pagination.
   // An empty value means there are no more results to fetch.
-  // A non-zero value will be returned by the client in the page_token
-  // field of GetMutationsRequest in the following request.
+  // A non-zero value may be used by the client to fetch the next page of
+  // results.
   string next_page_token = 5;
 }
