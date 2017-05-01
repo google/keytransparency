@@ -14,10 +14,11 @@
 
 syntax = "proto3";
 
-// Monitor Service
+// Monitor Server Service
 //
-// The Key Transparency monitor service consists of APIs to fetch mutations.
-package monitor.v1.service;
+// The Key Transparency monitor server service consists of APIs to fetch
+// mutations.
+package monitorserver.v1.service;
 
 import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
 import "google/api/annotations.proto";

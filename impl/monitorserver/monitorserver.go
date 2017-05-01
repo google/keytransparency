@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package monitor implements the monitor service.
-package monitor
+// Package monitorserver implements the monitor service.
+package monitorserver
 
 import (
 	"golang.org/x/net/context"
@@ -21,24 +21,24 @@ import (
 	"google.golang.org/grpc/codes"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
+	spb "github.com/google/keytransparency/impl/proto/monitorserver_v1_service"
 )
 
-// Monitor holds internal state for the monitor server.
-type Monitor struct {
+// Server holds internal state for the monitor server.
+type Server struct {
 }
 
 // New creates a new instance of the monitor server.
-func New() *Monitor {
-	return &Monitor{}
+func New() *Server {
+	return &Server{}
 }
 
 // GetMutations returns a list of mutations paged by epoch number.
-func (s *Monitor) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
+func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "GetMutations is unimplemented")
 }
 
 // GetMutationsStream is a streaming API similar to GetMutations.
-func (s *Monitor) GetMutationsStream(in *tpb.GetMutationsRequest, stream spb.MonitorService_GetMutationsStreamServer) error {
+func (s *Server) GetMutationsStream(in *tpb.GetMutationsRequest, stream spb.MonitorService_GetMutationsStreamServer) error {
 	return grpc.Errorf(codes.Unimplemented, "GetMutationsStream is unimplemented")
 }
