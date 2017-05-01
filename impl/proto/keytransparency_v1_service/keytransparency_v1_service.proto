@@ -34,9 +34,6 @@ import "google/api/annotations.proto";
 // - Entries have a collection of historical
 //   [Entry][keytransparency.Entry] resources named `/users/*/history`.
 //
-// - Mutations can be collected using the GetMutation APIs. Mutation resources
-//   are named /v1/mutations/* and /v1/mutations/*/stream.
-//
 service KeyTransparencyService {
   // GetEntry returns a user's entry in the Merkle Tree.
   //
@@ -62,24 +59,5 @@ service KeyTransparencyService {
       put: "/v1/users/{user_id}"
       body: "entry_update"
     };
-  }
-
-  // GetMutations returns a list of mutations paged by epoch or mutation sequence
-  // number.
-  //
-  // Returns a list of mutations and their inclusion proofs along with the epoch
-  // signed map root.
-  rpc GetMutations(keytransparency.v1.types.GetMutationsRequest)
-      returns (keytransparency.v1.types.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/mutations/{page_token}" };
-  }
-
-  // GetMutationsStream is a streaming API similar to GetMutations.
-  //
-  // Returns a list of mutations and their inclusion proofs along with the epoch
-  // signed map root.
-  rpc GetMutationsStream(keytransparency.v1.types.GetMutationsRequest)
-      returns (stream keytransparency.v1.types.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/mutations/{page_token}/stream" };
   }
 }

@@ -119,38 +119,6 @@ func TestListEntryHistory(t *testing.T) {
 	}
 }
 
-func TestGetMutationsByEpoch(t *testing.T) {
-	e := newEnv()
-	_, err := e.srv.GetMutationsByEpoch(nil, nil)
-	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
-		t.Errorf("GetMutationsByEpoch(_, _): %v, want %v", got, want)
-	}
-}
-
-func TestGetMutationsBySequence(t *testing.T) {
-	e := newEnv()
-	_, err := e.srv.GetMutationsBySequence(nil, nil)
-	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
-		t.Errorf("GetMutationsBySequence(_, _): %v, want %v", got, want)
-	}
-}
-
-func TestGetMutationsByEpochStream(t *testing.T) {
-	e := newEnv()
-	err := e.srv.GetMutationsByEpochStream(nil, nil)
-	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
-		t.Errorf("GetMutationsByEpochStream(_, _): %v, want %v", got, want)
-	}
-}
-
-func TestGetMutationsBySequenceStream(t *testing.T) {
-	e := newEnv()
-	err := e.srv.GetMutationsBySequenceStream(nil, nil)
-	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
-		t.Errorf("GetMutationsBySequenceStream(_, _): %v, want %v", got, want)
-	}
-}
-
 func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, sths appender.Local) error {
 	profiles := make([]*tpb.Profile, count)
 	for i := range profiles {
