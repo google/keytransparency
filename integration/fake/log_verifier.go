@@ -26,18 +26,14 @@ func NewFakeTrillianLogVerifier() client.LogVerifier {
 	return &logVerifier{}
 }
 
-func (l *logVerifier) Root() trillian.SignedLogRoot {
-	return trillian.SignedLogRoot{}
-}
-
-func (l *logVerifier) UpdateRoot(resp *trillian.GetLatestSignedLogRootResponse, consistency *trillian.GetConsistencyProofResponse) error {
+func (l *logVerifier) VerifyRoot(trusted, newRoot *trillian.SignedLogRoot, consistency [][]byte) error {
 	return nil
 }
 
-func (l *logVerifier) VerifyInclusionAtIndex(data []byte, leafIndex int64, resp *trillian.GetInclusionProofResponse) error {
+func (l *logVerifier) VerifyInclusionAtIndex(trusted *trillian.SignedLogRoot, data []byte, leafIndex int64, proof [][]byte) error {
 	return nil
 }
 
-func (l *logVerifier) VerifyInclusionByHash(leafHash []byte, proof *trillian.Proof) error {
+func (l *logVerifier) VerifyInclusionByHash(trusted *trillian.SignedLogRoot, leafHash []byte, proof *trillian.Proof) error {
 	return nil
 }

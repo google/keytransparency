@@ -258,7 +258,7 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	// Log verifier.
 	logPubKey, err := keys.NewFromPublicPEMFile(logPEM)
 	if err != nil {
-		log.Fatalf("Failed to open public key %v: %v", logPubKey, err)
+		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
 	}
 	log := client.NewLogVerifier(objhasher.ObjectHasher, logPubKey)
 

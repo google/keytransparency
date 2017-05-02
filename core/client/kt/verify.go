@@ -33,6 +33,7 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 var (
@@ -85,7 +86,8 @@ func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error 
 //  - Verify signature.
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
-func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in *tpb.GetEntryResponse) error {
+func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string,
+	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
 	if err := v.VerifyCommitment(userID, in); err != nil {
 		Vlog.Printf("✗ Commitment verification failed.")
 		return fmt.Errorf("VerifyCommitment(): %v", err)
@@ -121,9 +123,9 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	}
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 
-	// Update the log root.
+	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	if err := v.log.UpdateRoot(in.LogRoot, in.LogConsistency); err != nil {
+	if err := v.log.VerifyRoot(trusted, in.LogRoot, in.LogConsistency); err != nil {
 		return fmt.Errorf("UpdateRoot(%v, %v): %v", in.LogRoot, in.LogConsistency, err)
 	}
 	Vlog.Printf("✓ Log root updated.")
@@ -133,7 +135,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	if err != nil {
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
-	if err := v.log.VerifyInclusionAtIndex(b, in.GetSmr().GetMapRevision(),
+	if err := v.log.VerifyInclusionAtIndex(trusted, b, in.GetSmr().GetMapRevision(),
 		in.LogInclusion); err != nil {
 		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
 			b, in.GetSmr().GetMapRevision(), err)

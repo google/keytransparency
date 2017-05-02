@@ -184,9 +184,9 @@ func (s *Server) getEntry(ctx context.Context, userID string, epoch, firstTreeSi
 			},
 		},
 		Smr:            getResp.GetMapRoot(),
-		LogRoot:        logRoot,
-		LogConsistency: logConsistency,
-		LogInclusion:   logInclusion,
+		LogRoot:        logRoot.GetSignedLogRoot(),
+		LogConsistency: logConsistency.GetProof().GetHashes(),
+		LogInclusion:   logInclusion.GetProof().GetHashes(),
 	}, nil
 }
 

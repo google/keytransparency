@@ -29,20 +29,12 @@ import (
 	"github.com/google/trillian/crypto/sigpb"
 )
 
-// Root returns the currently trusted SignedLogRoot.
-func (v *Verifier) Root() trillian.SignedLogRoot {
-	return v.log.Root()
-}
-
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
 // user ID and a profile.
 func (v *Verifier) CreateUpdateEntryRequest(
-	getResp *tpb.GetEntryResponse,
-	vrf vrf.PublicKey,
-	userID string,
-	profile *tpb.Profile,
-	signers []signatures.Signer,
-	authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
+	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
+	vrf vrf.PublicKey, userID string, profile *tpb.Profile,
+	signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index := vrf.Index(getResp.Vrf)
 	prevEntry := new(tpb.Entry)
@@ -92,7 +84,7 @@ func (v *Verifier) CreateUpdateEntryRequest(
 
 	return &tpb.UpdateEntryRequest{
 		UserId:        userID,
-		FirstTreeSize: v.log.Root().TreeSize,
+		FirstTreeSize: trusted.TreeSize,
 		EntryUpdate: &tpb.EntryUpdate{
 			Update:    signedkv,
 			Committed: committed,
