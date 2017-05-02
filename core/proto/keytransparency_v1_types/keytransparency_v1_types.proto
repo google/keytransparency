@@ -23,7 +23,6 @@ package keytransparency.v1.types;
 
 import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
 import "github.com/google/trillian/trillian.proto";
-import "github.com/google/trillian/trillian_log_api.proto";
 import "github.com/google/trillian/trillian_map_api.proto";
 
 //
@@ -156,11 +155,11 @@ message GetEntryResponse {
 
   // log_root is the latest globally consistent log root.
   // TODO: gossip the log root to verify global consistency.
-  trillian.GetLatestSignedLogRootResponse log_root = 7;
+  trillian.SignedLogRoot log_root = 7;
   // log_consistency proves that log_root is consistent with previously seen roots.
-  trillian.GetConsistencyProofResponse log_consistency = 8;
+  repeated bytes log_consistency = 8;
   // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
-  trillian.GetInclusionProofResponse log_inclusion = 9;
+  repeated bytes log_inclusion = 9;
 }
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
