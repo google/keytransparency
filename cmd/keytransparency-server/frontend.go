@@ -60,7 +60,8 @@ var (
 	verbose      = flag.Bool("verbose", false, "Log requests and responses")
 
 	// Info to connect to sparse merkle tree database.
-	mapID = flag.Int64("map-id", 0, "ID for backend map")
+	mapID  = flag.Int64("map-id", 0, "ID for backend map")
+	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
 
 	// Info to send Signed Map Heads to a Trillian Log.
 	logID  = flag.Int64("log-id", 0, "Trillian Log ID")
@@ -119,14 +120,6 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	})
-}
-
-func connectToLog(endpoint string, opts ...grpc.DialOption) (trillian.TrillianLogClient, error) {
-	conn, err := grpc.Dial(endpoint, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return trillian.NewTrillianLogClient(conn), nil
 }
 
 var marshaler = jsonpb.Marshaler{Indent: "  ", OrigName: true}
@@ -209,20 +202,30 @@ func main() {
 	mutator := entry.New()
 
 	// Connect to log server.
-	// TODO: Include trillian log proofs in server responses #563.
-	tlog, err := connectToLog(*logURL)
+	tconn, err := grpc.Dial(*logURL)
 	if err != nil {
-		log.Fatalf("connectToLog(%v): %v", *logURL, err)
+		log.Fatalf("grpc.Dial(%v): %v", *logURL, err)
 	}
+	tlog := trillian.NewTrillianLogClient(tconn)
 
-	// Create mapserver front end.
-	mapsvr, err := newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
-	if err != nil {
-		log.Fatalf("newReadonlyMapServer(): %v", err)
+	// Connect to map server.
+	var tmap trillian.TrillianMapClient
+	if *mapURL != "" {
+		mconn, err := grpc.Dial(*mapURL)
+		if err != nil {
+			log.Fatalf("grpc.Dial(%v): %v", *mapURL, err)
+		}
+		tmap = trillian.NewTrillianMapClient(mconn)
+	} else {
+		// Create an in-process readonly mapserver.
+		tmap, err = newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
+		if err != nil {
+			log.Fatalf("newReadonlyMapServer(): %v", err)
+		}
 	}
 
 	// Create gRPC server.
-	svr := keyserver.New(*logID, tlog, *mapID, mapsvr, commitments,
+	svr := keyserver.New(*logID, tlog, *mapID, tmap, commitments,
 		vrfPriv, mutator, auth, factory, mutations)
 	opts := []grpc.ServerOption{grpc.Creds(creds)}
 	if *verbose {
