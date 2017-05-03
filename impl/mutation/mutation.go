@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package monitorserver implements the monitor service.
-package monitorserver
+// Package mutation implements the monitor service.
+package mutation
 
 import (
 	"golang.org/x/net/context"
@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/impl/proto/monitorserver_v1_service"
+	spb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 
 // Server holds internal state for the monitor server.
@@ -39,6 +39,6 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 }
 
 // GetMutationsStream is a streaming API similar to GetMutations.
-func (s *Server) GetMutationsStream(in *tpb.GetMutationsRequest, stream spb.MonitorService_GetMutationsStreamServer) error {
+func (s *Server) GetMutationsStream(in *tpb.GetMutationsRequest, stream spb.MutationService_GetMutationsStreamServer) error {
 	return grpc.Errorf(codes.Unimplemented, "GetMutationsStream is unimplemented")
 }

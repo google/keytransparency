@@ -14,21 +14,21 @@
 
 syntax = "proto3";
 
-// Monitor Server Service
+// Mutation Service
 //
-// The Key Transparency monitor server service consists of APIs to fetch
+// The Key Transparency mutation server service consists of APIs to fetch
 // mutations.
-package monitorserver.v1.service;
+package mutation.v1.service;
 
 import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
 import "google/api/annotations.proto";
 
-// The MonitorService API represents a directory of mutations:
+// The Mutation Service API represents a directory of mutations:
 //
 // - Mutations can be collected using the GetMutation APIs. Mutation resources
 //   are named /v1/mutations/* and /v1/mutations/*/stream.
 //
-service MonitorService {
+service MutationService {
   // GetMutations returns a list of mutations in a specific epoch.
   //
   // Returns a list of mutations and their inclusion proofs along with the epoch

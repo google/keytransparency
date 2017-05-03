@@ -12,8 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:. monitorserver_v1_service.proto
+package mutation
 
-//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. monitorserver_v1_service.proto
+import (
+	"testing"
 
-package monitorserver_v1_service
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+)
+
+func TestGetMutations(t *testing.T) {
+	srv := New()
+	_, err := srv.GetMutations(nil, nil)
+	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+		t.Errorf("GetMutations(_, _): %v, want %v", got, want)
+	}
+}
+
+func TestGetMutationsStream(t *testing.T) {
+	srv := New()
+	err := srv.GetMutationsStream(nil, nil)
+	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+		t.Errorf("GetMutationsStream(_, _): %v, want %v", got, want)
+	}
+}
