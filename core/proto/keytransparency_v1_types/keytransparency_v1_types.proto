@@ -23,7 +23,6 @@ package keytransparency.v1.types;
 
 import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
 import "github.com/google/trillian/trillian.proto";
-import "github.com/google/trillian/trillian_log_api.proto";
 import "github.com/google/trillian/trillian_map_api.proto";
 
 //
@@ -208,11 +207,11 @@ message GetMutationsResponse {
   // smr contains the signed map root for the sparse Merkle Tree.
   trillian.SignedMapRoot smr = 2;
   // log_root is the latest globally consistent log root.
-  trillian.GetLatestSignedLogRootResponse log_root = 3;
+  trillian.SignedLogRoot log_root = 3;
   // log_consistency proves that log_root is consistent with previously seen roots.
-  trillian.GetConsistencyProofResponse log_consistency = 4;
+  repeated bytes log_consistency = 4;
   // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
-  trillian.GetInclusionProofResponse log_inclusion = 5;
+  repeated bytes log_inclusion = 5;
   // mutation contains mutation information.
   repeated Mutation mutations = 6;
   // next_page_token is the next page token to query for pagination.
