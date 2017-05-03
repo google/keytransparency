@@ -26,7 +26,7 @@ import "google/api/annotations.proto";
 // The Mutation Service API represents a directory of mutations:
 //
 // - Mutations can be collected using the GetMutation APIs. Mutation resources
-//   are named /v1/mutations/* and /v1/mutations/*/stream.
+//   are named /v1/epochs/* and /v1/epochs/stream.
 //
 service MutationService {
   // GetMutations returns a list of mutations in a specific epoch.
@@ -35,7 +35,7 @@ service MutationService {
   // signed map root.
   rpc GetMutations(keytransparency.v1.types.GetMutationsRequest)
       returns (keytransparency.v1.types.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/epochs" };
+    option (google.api.http) = { get: "/v1/epochs/{epoch}" };
   }
 
   // GetMutationsStream is a streaming API similar to GetMutations.
@@ -44,6 +44,6 @@ service MutationService {
   // signed map root.
   rpc GetMutationsStream(keytransparency.v1.types.GetMutationsRequest)
       returns (stream keytransparency.v1.types.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/epochs/stream" };
+    option (google.api.http) = { get: "/v1/epochs/{epoch}:stream" };
   }
 }
