@@ -100,6 +100,16 @@ message SignedKV {
   bytes previous = 3;
 }
 
+// Mutation contains the actual mutation and the inclusion proof of the
+// corresponding leaf.
+message Mutation {
+  // update contains the actual mutation information.
+  SignedKV update = 1;
+  // proof contains a leaf and an inclusion proof in the map.
+  // This is used by Storage-less monitors.
+  trillian.MapLeafInclusion proof = 2;
+}
+
 //
 // RPC request/response messages.
 //
@@ -173,4 +183,40 @@ message UpdateEntryRequest {
 message UpdateEntryResponse {
   // proof contains a proof that the update has been included in the tree.
   GetEntryResponse proof = 1;
+}
+
+// GetMutationsRequest contains the input parameters of the GetMutation APIs.
+message GetMutationsRequest {
+  // epoch specifies the epoch number in which mutations will be returned.
+  int64 epoch = 1;
+  // first_tree_size is the tree_size of the currently trusted log root.
+  // Omitting this field will ommit the log consistency proof from the response.
+  int64 first_tree_size = 2;
+  // page_token defines the starting point for pagination. An empty
+  // value means start from the beginning. A non-empty value requests the next
+  // page of values.
+  string page_token = 3;
+  // page_size is the maximum number of epochs to return.
+  int32 page_size = 4;
+}
+
+// GetMutationsResponse contains the results of GetMutation APIs.
+message GetMutationsResponse {
+  // epoch specifies the epoch number of the returned mutations.
+  int64 epoch = 1;
+  // smr contains the signed map root for the sparse Merkle Tree.
+  trillian.SignedMapRoot smr = 2;
+  // log_root is the latest globally consistent log root.
+  trillian.SignedLogRoot log_root = 3;
+  // log_consistency proves that log_root is consistent with previously seen roots.
+  repeated bytes log_consistency = 4;
+  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  repeated bytes log_inclusion = 5;
+  // mutation contains mutation information.
+  repeated Mutation mutations = 6;
+  // next_page_token is the next page token to query for pagination.
+  // An empty value means there are no more results to fetch.
+  // A non-zero value may be used by the client to fetch the next page of
+  // results.
+  string next_page_token = 7;
 }
