@@ -18,7 +18,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/commitments"
 
 	"github.com/golang/protobuf/proto"
 	_ "github.com/mattn/go-sqlite3"

@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 
 	"github.com/golang/protobuf/proto"

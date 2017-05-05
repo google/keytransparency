@@ -22,7 +22,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/tree/sparse"
 	tv "github.com/google/keytransparency/core/tree/sparse/verifier"

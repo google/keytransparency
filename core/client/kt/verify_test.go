@@ -17,7 +17,7 @@ package kt
 import (
 	"testing"
 
-	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/commitments"
 
 	"github.com/golang/protobuf/proto"
 
