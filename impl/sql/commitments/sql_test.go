@@ -38,33 +38,25 @@ func TestWriteRead(t *testing.T) {
 	}
 
 	// Create test data.
-	p := &tpb.Profile{Keys: map[string][]byte{"foo": []byte("cat")}}
-	a, err := proto.Marshal(p)
-	if err != nil {
-		t.Fatalf("Failed to marshal profile: %v", err)
-	}
-	commitmentC, committedC, err := commitments.Commit("foo", a)
+	pdata := []byte("key")
+	commitmentC, committedC, err := commitments.Commit("foo", "app", pdata)
 	if err != nil {
 		t.Fatalf("Failed to create commitment: %v", err)
 	}
 
 	for _, tc := range []struct {
 		commitment, key []byte
-		value           *tpb.Profile
+		value           []byte
 		wantNoErr       bool
 	}{
-		{[]byte("committmentA"), []byte("key 1"), &tpb.Profile{}, true},
-		{[]byte("committmentA"), []byte("key 1"), &tpb.Profile{}, true},
-		{[]byte("committmentA"), []byte("key 1"), &tpb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}, false},
-		{[]byte("committmentA"), []byte("key 2"), &tpb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}, false},
-		{[]byte("committmentB"), []byte("key 2"), &tpb.Profile{Keys: map[string][]byte{"foo": []byte("bar")}}, true},
-		{commitmentC, committedC.Key, p, true},
+		{[]byte("committmentA"), []byte("key 1"), []byte{}, true},
+		{[]byte("committmentA"), []byte("key 1"), []byte{}, true},
+		{[]byte("committmentA"), []byte("key 1"), []byte("key1"), false},
+		{[]byte("committmentA"), []byte("key 2"), []byte("key2"), false},
+		{[]byte("committmentB"), []byte("key 2"), []byte("key2"), true},
+		{commitmentC, committedC.Key, pdata, true},
 	} {
-		a, err := proto.Marshal(tc.value)
-		if err != nil {
-			t.Errorf("Failed to marshal profile: %v", err)
-		}
-		committed := &tpb.Committed{Key: tc.key, Data: a}
+		committed := &tpb.Committed{Key: tc.key, Data: tc.value}
 		err = c.Write(nil, tc.commitment, committed)
 		if got := err == nil; got != tc.wantNoErr {
 			t.Errorf("WriteCommitment(%s, %v): %v, want %v", tc.commitment, committed, err, tc.wantNoErr)

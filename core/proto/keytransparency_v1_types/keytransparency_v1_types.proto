@@ -38,17 +38,11 @@ message Committed {
   bytes data = 2;
 }
 
-// Profile contains data hidden behind the cryptographic commitment.
-message Profile {
-  // Keys is a map of application IDs to keys.
-  map<string, bytes> keys = 1;
-}
-
 // EntryUpdate contains the user entry update(s).
 message EntryUpdate {
-  // update authorizes the change to profile.
+  // update authorizes the change to entry.
   SignedKV update = 2;
-  // commitment contains the serialized Profile protobuf.
+  // commitment contains the data committed to in update.commitment.
   Committed committed = 3;
 }
 
@@ -118,9 +112,11 @@ message Mutation {
 message GetEntryRequest {
   // user_id is the user identifier. Most commonly an email address.
   string user_id = 1;
+  // app_id is the identifier for the application.
+  string app_id = 2;
   // first_tree_size is the tree_size of the currently trusted log root. 
   // Omitting this field will ommit the log consistency proof from the response.
-  int64 first_tree_size = 2;
+  int64 first_tree_size = 3;
 }
 
 // GetEntryResponse returns a requested user entry.
@@ -170,9 +166,11 @@ message ListEntryHistoryRequest {
   int64 start = 2;
   // page_size is the maximum number of entries to return.
   int32 page_size = 3;
+  // app_id is the identifier for the application.
+  string app_id = 4;
   // first_tree_size is the tree_size of the currently trusted log root. 
   // Omitting this field will ommit the log consistency proof from the response.
-  int64 first_tree_size = 4;
+  int64 first_tree_size = 5;
 }
 
 // ListEntryHistoryResponse requests a paginated history of keys for a user.
@@ -188,11 +186,13 @@ message ListEntryHistoryResponse {
 message UpdateEntryRequest {
   // user_id specifies the id for the user who's profile is being updated.
   string user_id = 1;
-  // entry_update contains the user submitted update.
-  EntryUpdate entry_update = 2;
+  // app_id is the identifier for the application.
+  string app_id = 2;
   // first_tree_size is the tree_size of the currently trusted log root. 
   // Omitting this field will ommit the log consistency proof from the response.
   int64 first_tree_size = 3;
+  // entry_update contains the user submitted update.
+  EntryUpdate entry_update = 4;
 }
 
 // UpdateEntryResponse contains a proof once the update has been included in

@@ -22,22 +22,26 @@ import (
 
 func TestCommit(t *testing.T) {
 	for _, tc := range []struct {
-		userID, data string
-		mutate       bool
-		want         error
+		userID, appID, data    string
+		muserID, mappID, mdata string
+		mutate                 bool
+		want                   error
 	}{
-		{"foo", "bar", false, nil},
-		{"foo", "bar", true, ErrInvalidCommitment},
+		{"foo", "app", "bar", "foo", "app", "bar", false, nil},
+		{"foo", "app", "bar", "foo", "app", "bar", true, ErrInvalidCommitment},
+		{"foo", "app", "bar", "fooa", "pp", "bar", false, ErrInvalidCommitment},
+		{"foo", "app", "bar", "foo", "ap", "pbar", false, ErrInvalidCommitment},
 	} {
-		k, c, err := Commit(tc.userID, []byte(tc.data))
+		k, c, err := Commit(tc.userID, tc.appID, []byte(tc.data))
 		if err != nil {
 			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.data, err)
 		}
 		if tc.mutate {
 			k[0] ^= 1
 		}
-		if got := Verify(tc.userID, k, c); got != tc.want {
-			t.Errorf("Verify(%v, %x, %v): %v, want %v", tc.userID, k, c, err, tc.want)
+		c.Data = []byte(tc.mdata)
+		if got := Verify(tc.muserID, tc.mappID, k, c); got != tc.want {
+			t.Errorf("Verify(%v, %v, %x, %x): %v, want %v", tc.userID, tc.appID, k, c, err, tc.want)
 		}
 	}
 }

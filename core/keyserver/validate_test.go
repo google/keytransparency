@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
 	"github.com/golang/protobuf/proto"
@@ -75,20 +76,15 @@ func TestValidateKey(t *testing.T) {
 
 func TestValidateUpdateEntryRequest(t *testing.T) {
 	// Create and marshal a profile.
-	profile := &tpb.Profile{
-		Keys: map[string][]byte{"foo": []byte("bar")},
-	}
-	profileData, err := proto.Marshal(profile)
-	if err != nil {
-		t.Fatalf("Marshal(%v)=%v", profile, err)
-	}
+	profileData := []byte("bar")
 
 	// Test verification for new entries.
 	userID := "joe"
+	appID := "app"
 	vrfPriv, _ := p256.GenerateKey()
-	vrf, _ := vrfPriv.Evaluate([]byte(userID))
+	vrf, _ := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
 	index := vrfPriv.Index(vrf)
-	commitment, committed, _ := commitments.Commit(userID, profileData)
+	commitment, committed, _ := commitments.Commit(userID, appID, profileData)
 	authCtx := authentication.NewFake().NewContext(userID)
 
 	for _, tc := range []struct {
@@ -115,6 +111,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		}
 		req := &tpb.UpdateEntryRequest{
 			UserId: tc.userID,
+			AppId:  appID,
 			EntryUpdate: &tpb.EntryUpdate{
 				Update:    signedkv,
 				Committed: tc.committed,

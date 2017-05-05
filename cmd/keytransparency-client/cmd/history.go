@@ -34,15 +34,16 @@ var (
 
 // histCmd fetches the account history for a user
 var histCmd = &cobra.Command{
-	Use:   "history [user email]",
+	Use:   "history [user email] [app]",
 	Short: "Retrieve and verify all keys used for this account",
 	Long: `Retrieve all user profiles for this account from the key server 
 and verify that the results are consistent.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("user email needs to be provided")
+		if len(args) < 2 {
+			return fmt.Errorf("user email and application need to be provided")
 		}
 		userID := args[0]
+		appID := args[1]
 		timeout := viper.GetDuration("timeout")
 
 		c, err := GetClient("")
@@ -53,7 +54,7 @@ and verify that the results are consistent.`,
 		defer cancel()
 		if end == 0 {
 			// Get the current epoch.
-			_, smh, err := c.GetEntry(ctx, userID)
+			_, smh, err := c.GetEntry(ctx, userID, appID)
 			if err != nil {
 				return fmt.Errorf("GetEntry failed: %v", err)
 			}
@@ -63,7 +64,7 @@ and verify that the results are consistent.`,
 			end = smh.MapRevision
 		}
 
-		profiles, err := c.ListHistory(ctx, userID, start, end)
+		profiles, err := c.ListHistory(ctx, userID, appID, start, end)
 		if err != nil {
 			return fmt.Errorf("ListHistory failed: %v", err)
 		}

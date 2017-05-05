@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"bytes"
 	"encoding/pem"
 	"fmt"
 	"reflect"
@@ -58,9 +59,8 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 )
 
 var (
-	primaryKeys = map[string][]byte{
-		"foo": []byte("bar"),
-	}
+	primaryKey = []byte("bar")
+	appID      = "app"
 )
 
 func createSigner(t *testing.T, privKey string) signatures.Signer {
@@ -119,12 +119,12 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		{true, true, auth.NewContext("bob"), "bob", signers3, authorizedKeys3},     // Update, using new keys
 	} {
 		// Check profile.
-		if err := env.checkProfile(tc.userID, tc.want); err != nil {
+		if err := env.checkProfile(tc.userID, appID, tc.want); err != nil {
 			t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
 		}
 		// Update profile.
 		if tc.insert {
-			req, err := env.Client.Update(tc.ctx, tc.userID, &tpb.Profile{Keys: primaryKeys}, tc.signers, tc.authorizedKeys)
+			req, err := env.Client.Update(tc.ctx, tc.userID, appID, primaryKey, tc.signers, tc.authorizedKeys)
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
@@ -140,8 +140,8 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 
 // checkProfile ensures that the returned profile is as expected along with the
 // keys it carries.
-func (e *Env) checkProfile(userID string, want bool) error {
-	profile, _, err := e.Client.GetEntry(context.Background(), userID)
+func (e *Env) checkProfile(userID, appID string, want bool) error {
+	profile, _, err := e.Client.GetEntry(context.Background(), userID, appID)
 	if err != nil {
 		return fmt.Errorf("GetEntry(%v): %v, want nil", userID, err)
 	}
@@ -149,11 +149,8 @@ func (e *Env) checkProfile(userID string, want bool) error {
 		return fmt.Errorf("GetEntry(%v): %v, want %v", userID, profile, want)
 	}
 	if want {
-		if got, want := len(profile.GetKeys()), 1; got != want {
-			return fmt.Errorf("len(GetKeys()) = %v, want; %v", got, want)
-		}
-		if got, want := profile.GetKeys(), primaryKeys; !reflect.DeepEqual(got, want) {
-			return fmt.Errorf("GetKeys() = %v, want: %v", got, want)
+		if got, want := profile, primaryKey; !bytes.Equal(got, want) {
+			return fmt.Errorf("profile = %x, want: %x", got, want)
 		}
 	}
 	return nil
@@ -166,11 +163,7 @@ func TestUpdateValidation(t *testing.T) {
 	env.Client.RetryCount = 0
 
 	auth := authentication.NewFake()
-	profile := &tpb.Profile{
-		Keys: map[string][]byte{
-			"foo": []byte("bar"),
-		},
-	}
+	profile := []byte("bar")
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
@@ -180,7 +173,7 @@ func TestUpdateValidation(t *testing.T) {
 		want           bool
 		ctx            context.Context
 		userID         string
-		profile        *tpb.Profile
+		profile        []byte
 		signers        []signatures.Signer
 		authorizedKeys []*tpb.PublicKey
 	}{
@@ -189,7 +182,7 @@ func TestUpdateValidation(t *testing.T) {
 		{true, auth.NewContext("dave"), "dave", profile, signers, authorizedKeys},
 		{true, auth.NewContext("eve"), "eve", profile, signers, authorizedKeys},
 	} {
-		req, err := env.Client.Update(tc.ctx, tc.userID, tc.profile, tc.signers, tc.authorizedKeys)
+		req, err := env.Client.Update(tc.ctx, tc.userID, appID, tc.profile, tc.signers, tc.authorizedKeys)
 
 		if tc.want {
 			// The first update response is always a retry.
@@ -228,20 +221,20 @@ func TestListHistory(t *testing.T) {
 
 	for _, tc := range []struct {
 		start, end  int64
-		wantHistory []*tpb.Profile
+		wantHistory [][]byte
 		wantErr     bool
 	}{
-		{0, 3, []*tpb.Profile{cp(1)}, false},                                                   // zero start epoch
-		{3, 3, []*tpb.Profile{cp(1)}, false},                                                   // single profile
-		{3, 4, []*tpb.Profile{cp(1), cp(2)}, false},                                            // multiple profiles
-		{1, 4, []*tpb.Profile{cp(1), cp(2)}, false},                                            // test 'nil' first profile(s)
-		{3, 10, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                      // filtering
-		{9, 16, []*tpb.Profile{cp(4), cp(5), cp(6)}, false},                                    // filtering consecutive resubmitted profiles
-		{9, 19, []*tpb.Profile{cp(4), cp(5), cp(6), cp(5), cp(7)}, false},                      // no filtering of resubmitted profiles
-		{1, 19, []*tpb.Profile{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
-		{1, 1000, []*tpb.Profile{}, true},                                                      // Invalid end epoch, beyond current epoch
+		{0, 3, [][]byte{cp(1)}, false},                                                   // zero start epoch
+		{3, 3, [][]byte{cp(1)}, false},                                                   // single profile
+		{3, 4, [][]byte{cp(1), cp(2)}, false},                                            // multiple profiles
+		{1, 4, [][]byte{cp(1), cp(2)}, false},                                            // test 'nil' first profile(s)
+		{3, 10, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                      // filtering
+		{9, 16, [][]byte{cp(4), cp(5), cp(6)}, false},                                    // filtering consecutive resubmitted profiles
+		{9, 19, [][]byte{cp(4), cp(5), cp(6), cp(5), cp(7)}, false},                      // no filtering of resubmitted profiles
+		{1, 19, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
+		{1, 1000, [][]byte{}, true},                                                      // Invalid end epoch, beyond current epoch
 	} {
-		resp, err := env.Client.ListHistory(ctx, userID, tc.start, tc.end)
+		resp, err := env.Client.ListHistory(ctx, userID, appID, tc.start, tc.end)
 		if got := err != nil; got != tc.wantErr {
 			t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
 		}
@@ -263,13 +256,13 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 	// [nil, nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
-	for i, p := range []*tpb.Profile{
+	for i, p := range [][]byte{
 		nil, nil, cp(1), cp(2), nil, nil, cp(3), nil,
 		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
 		nil, cp(5), cp(7), nil,
 	} {
 		if p != nil {
-			_, err := e.Client.Update(ctx, userID, p, signers, authorizedKeys)
+			_, err := e.Client.Update(ctx, userID, appID, p, signers, authorizedKeys)
 			// The first update response is always a retry.
 			if got, want := err, grpcc.ErrRetry; got != want {
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
@@ -282,13 +275,13 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 	return nil
 }
 
-func sortHistory(history map[*trillian.SignedMapRoot]*tpb.Profile) []*tpb.Profile {
+func sortHistory(history map[*trillian.SignedMapRoot][]byte) [][]byte {
 	keys := make([]*trillian.SignedMapRoot, 0, len(history))
 	for k := range history {
 		keys = append(keys, k)
 	}
 	sort.Sort(mapHeads(keys))
-	profiles := make([]*tpb.Profile, len(keys))
+	profiles := make([][]byte, len(keys))
 	for i, k := range keys {
 		profiles[i] = history[k]
 	}
@@ -303,12 +296,8 @@ func (m mapHeads) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 func (m mapHeads) Less(i, j int) bool { return m[i].MapRevision < m[j].MapRevision }
 
 // cp creates a dummy profile using the passed tag.
-func cp(tag int) *tpb.Profile {
-	return &tpb.Profile{
-		Keys: map[string][]byte{
-			fmt.Sprintf("foo%v", tag): []byte(fmt.Sprintf("bar%v", tag)),
-		},
-	}
+func cp(tag int) []byte {
+	return []byte(fmt.Sprintf("bar%v", tag))
 }
 
 // TODO: Test AppID filtering when implemented.

@@ -108,16 +108,17 @@ func New(mapID int64,
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, *trillian.SignedMapRoot, error) {
+func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grpc.CallOption) ([]byte, *trillian.SignedMapRoot, error) {
 	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
 		UserId:        userID,
+		AppId:         appID,
 		FirstTreeSize: c.trusted.TreeSize,
 	}, opts...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, userID, &c.trusted, e); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, userID, appID, &c.trusted, e); err != nil {
 		return nil, nil, err
 	}
 
@@ -126,11 +127,7 @@ func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallO
 		return nil, e.GetSmr(), nil
 	}
 
-	profile := new(tpb.Profile)
-	if err := proto.Unmarshal(e.GetCommitted().Data, profile); err != nil {
-		return nil, nil, fmt.Errorf("Error unmarshaling profile: %v", err)
-	}
-	return profile, e.GetSmr(), nil
+	return e.GetCommitted().GetData(), e.GetSmr(), nil
 }
 
 func min(x, y int32) int32 {
@@ -142,12 +139,13 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot]*tpb.Profile, error) {
-	currentProfile := new(tpb.Profile)
-	profiles := make(map[*trillian.SignedMapRoot]*tpb.Profile)
+func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot][]byte, error) {
+	var currentProfile []byte
+	profiles := make(map[*trillian.SignedMapRoot][]byte)
 	for start <= end {
 		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
+			AppId:    appID,
 			Start:    start,
 			PageSize: min(int32((end-start)+1), pageSize),
 		}, opts...)
@@ -157,26 +155,21 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.kt.VerifyGetEntryResponse(ctx, userID, &c.trusted, v)
+			err = c.kt.VerifyGetEntryResponse(ctx, userID, appID, &c.trusted, v)
 			if err != nil {
 				return nil, err
 			}
 
-			var profile tpb.Profile
-			if v.GetCommitted() != nil {
-				if err := proto.Unmarshal(v.GetCommitted().Data, &profile); err != nil {
-					return nil, err
-				}
-			}
 			// Compress profiles that are equal through time.  All
 			// nil profiles before the first profile are ignored.
-			if proto.Equal(currentProfile, &profile) {
+			profile := v.GetCommitted().GetData()
+			if bytes.Equal(currentProfile, profile) {
 				continue
 			}
 
 			// Append the slice and update currentProfile.
-			profiles[v.GetSmr()] = &profile
-			currentProfile = &profile
+			profiles[v.GetSmr()] = profile
+			currentProfile = profile
 		}
 		if resp.NextStart == 0 {
 			return nil, ErrIncomplete // No more data.
@@ -189,9 +182,12 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
-func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
+func (c *Client) Update(ctx context.Context, userID, appID string, profileData []byte,
+	signers []signatures.Signer, authorizedKeys []*tpb.PublicKey,
+	opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
 	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
 		UserId:        userID,
+		AppId:         appID,
 		FirstTreeSize: c.trusted.TreeSize,
 	}, opts...)
 	if err != nil {
@@ -199,11 +195,11 @@ func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile
 	}
 	Vlog.Printf("Got current entry...")
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, userID, &c.trusted, getResp); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, userID, appID, &c.trusted, getResp); err != nil {
 		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
-	req, err := c.kt.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, userID, profile, signers, authorizedKeys)
+	req, err := c.kt.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, userID, appID, profileData, signers, authorizedKeys)
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
@@ -236,8 +232,8 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	Vlog.Printf("Got current entry...")
 
 	// Validate response.
-	if err := c.kt.VerifyGetEntryResponse(ctx, req.UserId, &c.trusted, updateResp.GetProof()); err != nil {
-		return err
+	if err := c.kt.VerifyGetEntryResponse(ctx, req.UserId, req.AppId, &c.trusted, updateResp.GetProof()); err != nil {
+		return fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
 	// Check if the response is a replay.

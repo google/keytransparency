@@ -20,7 +20,6 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/google/keytransparency/core/appender"
@@ -111,17 +110,13 @@ func TestListEntryHistory(t *testing.T) {
 }
 
 func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, sths appender.Local) error {
-	profiles := make([]*tpb.Profile, count)
+	profiles := make([][]byte, count)
 	for i := range profiles {
-		profiles[i] = createProfile(i)
+		profiles[i] = []byte(fmt.Sprintf("bar%v", i))
 		commitment := []byte{uint8(i)}
 
 		// Fill the committer map.
-		pData, err := proto.Marshal(profiles[i])
-		if err != nil {
-			return fmt.Errorf("%v: Failed to Marshal: %v", i, err)
-		}
-		committed := &tpb.Committed{Data: pData}
+		committed := &tpb.Committed{Data: profiles[i]}
 		c.M[string(commitment)] = committed
 		st.M[int64(i)] = commitment
 
@@ -139,24 +134,12 @@ func addProfiles(count int, c *fakeCommitter, st *fakeSparseHist, sths appender.
 // order.
 func checkProfiles(wantHistory []int, values []*tpb.GetEntryResponse) error {
 	for i, tag := range wantHistory {
-		p := new(tpb.Profile)
-		if err := proto.Unmarshal(values[i].Committed.Data, p); err != nil {
-			return fmt.Errorf("%v: Failed to Unmarshal: %v", i, err)
-		}
-		if got, want := p, createProfile(tag); !reflect.DeepEqual(got, want) {
+		if got, want := values[i].Committed.Data,
+			[]byte(fmt.Sprintf("bar%v", tag)); !bytes.Equal(got, want) {
 			return fmt.Errorf("%v: Invalid profile: %v, want %v", i, got, want)
 		}
 	}
 	return nil
-}
-
-// createProfile creates a dummy profile using the passed tag.
-func createProfile(tag int) *tpb.Profile {
-	return &tpb.Profile{
-		Keys: map[string][]byte{
-			fmt.Sprintf("foo%v", tag): []byte(fmt.Sprintf("bar%v", tag)),
-		},
-	}
 }
 
 ///////////

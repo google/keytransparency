@@ -85,7 +85,7 @@ func New(logID int64,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-	resp, err := s.getEntry(ctx, in.UserId, -1, in.FirstTreeSize)
+	resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
 	if err != nil {
 		log.Printf("getEntry failed: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
@@ -93,8 +93,8 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 	return resp, nil
 }
 
-func (s *Server) getEntry(ctx context.Context, userID string, epoch, firstTreeSize int64) (*tpb.GetEntryResponse, error) {
-	vrf, proof := s.vrf.Evaluate([]byte(userID))
+func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, epoch int64) (*tpb.GetEntryResponse, error) {
+	vrf, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
 	index := s.vrf.Index(vrf)
 
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
@@ -211,7 +211,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 	// in.PageSize].
 	responses := make([]*tpb.GetEntryResponse, in.PageSize)
 	for i := range responses {
-		resp, err := s.getEntry(ctx, in.UserId, in.Start+int64(i), in.FirstTreeSize)
+		resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
 		if err != nil {
 			log.Printf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
 			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
@@ -254,6 +254,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	// Query for the current epoch.
 	req := &tpb.GetEntryRequest{
 		UserId: in.UserId,
+		AppId:  in.AppId,
 		//EpochStart: in.GetEntryUpdate().EpochStart,
 	}
 	resp, err := s.GetEntry(ctx, req)
