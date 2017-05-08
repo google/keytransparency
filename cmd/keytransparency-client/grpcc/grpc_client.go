@@ -83,14 +83,19 @@ type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
-	log        client.VerifyingLogClient
+	log        client.LogVerifier
 	mutator    mutator.Mutator
 	RetryCount int
 	RetryDelay time.Duration
+	trusted    trillian.SignedLogRoot
 }
 
 // New creates a new client.
-func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey, verifier crypto.PublicKey, log client.VerifyingLogClient) *Client {
+func New(mapID int64,
+	client spb.KeyTransparencyServiceClient,
+	vrf vrf.PublicKey,
+	verifier crypto.PublicKey,
+	log client.LogVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
@@ -105,13 +110,14 @@ func New(mapID int64, client spb.KeyTransparencyServiceClient, vrf vrf.PublicKey
 // GetEntry returns an entry if it exists, and nil if it does not.
 func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (*tpb.Profile, *trillian.SignedMapRoot, error) {
 	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
-		UserId: userID,
+		UserId:        userID,
+		FirstTreeSize: c.trusted.TreeSize,
 	}, opts...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, userID, e); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, userID, &c.trusted, e); err != nil {
 		return nil, nil, err
 	}
 
@@ -151,7 +157,7 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.kt.VerifyGetEntryResponse(ctx, userID, v)
+			err = c.kt.VerifyGetEntryResponse(ctx, userID, &c.trusted, v)
 			if err != nil {
 				return nil, err
 			}
@@ -184,17 +190,20 @@ func (c *Client) ListHistory(ctx context.Context, userID string, start, end int6
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
 func (c *Client) Update(ctx context.Context, userID string, profile *tpb.Profile, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey, opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
-	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{UserId: userID}, opts...)
+	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
+		UserId:        userID,
+		FirstTreeSize: c.trusted.TreeSize,
+	}, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry(%v): %v", userID, err)
 	}
 	Vlog.Printf("Got current entry...")
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, userID, getResp); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, userID, &c.trusted, getResp); err != nil {
 		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
-	req, err := kt.CreateUpdateEntryRequest(getResp, c.vrf, userID, profile, signers, authorizedKeys)
+	req, err := c.kt.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, userID, profile, signers, authorizedKeys)
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
@@ -227,7 +236,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	Vlog.Printf("Got current entry...")
 
 	// Validate response.
-	if err := c.kt.VerifyGetEntryResponse(ctx, req.UserId, updateResp.GetProof()); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, req.UserId, &c.trusted, updateResp.GetProof()); err != nil {
 		return err
 	}
 

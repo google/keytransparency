@@ -33,6 +33,7 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 var (
@@ -48,14 +49,14 @@ type Verifier struct {
 	vrf  vrf.PublicKey
 	tree *tv.Verifier
 	sig  crypto.PublicKey
-	log  client.VerifyingLogClient
+	log  client.LogVerifier
 }
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
 	tree *tv.Verifier,
 	sig crypto.PublicKey,
-	log client.VerifyingLogClient) *Verifier {
+	log client.LogVerifier) *Verifier {
 	return &Verifier{
 		vrf:  vrf,
 		tree: tree,
@@ -83,8 +84,10 @@ func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error 
 //  - Verify VRF.
 //  - Verify tree proof.
 //  - Verify signature.
+//  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
-func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in *tpb.GetEntryResponse) error {
+func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string,
+	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
 	if err := v.VerifyCommitment(userID, in); err != nil {
 		Vlog.Printf("✗ Commitment verification failed.")
 		return fmt.Errorf("VerifyCommitment(): %v", err)
@@ -120,13 +123,23 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string, in
 	}
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 
+	// Verify consistency proof between root and newroot.
+	// TODO(gdbelvin): Gossip root.
+	if err := v.log.VerifyRoot(trusted, in.LogRoot, in.LogConsistency); err != nil {
+		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.LogRoot, in.LogConsistency, err)
+	}
+	Vlog.Printf("✓ Log root updated.")
+
 	// Verify inclusion proof.
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
-	if err := v.log.VerifyInclusionAtIndex(ctx, b, in.GetSmr().GetMapRevision()); err != nil {
-		return fmt.Errorf("log.VerifyInclusionAtIndex(): %v", err)
+	if err := v.log.VerifyInclusionAtIndex(trusted, b, in.GetSmr().GetMapRevision(),
+		in.LogInclusion); err != nil {
+		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
+			b, in.GetSmr().GetMapRevision(), err)
 	}
+	Vlog.Printf("✓ Log inclusion proof verified.")
 	return nil
 }

@@ -197,8 +197,9 @@ func NewEnv(t *testing.T) *Env {
 	}); err != nil {
 		t.Fatalf("SetLeaves(): %v", err)
 	}
+	tlog := fake.NewFakeTrillianLogServer()
 
-	server := keyserver.New(logID, mapID, mapsvr, commitments, vrfPriv, mutator,
+	server := keyserver.New(logID, tlog, mapID, mapsvr, commitments, vrfPriv, mutator,
 		auth, factory, mutations)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
@@ -220,7 +221,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	client := grpcc.New(mapID, cli, vrfPub, verifier, fake.NewFakeTrillianClient())
+	client := grpcc.New(mapID, cli, vrfPub, verifier, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 
 	return &Env{s, server, cc, client, signer, sqldb, factory, vrfPriv, cli, hs}

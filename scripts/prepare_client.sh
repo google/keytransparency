@@ -71,7 +71,6 @@ go build ./cmd/keytransparency-client
 
 # Generate .keytransparency.yaml file.
 KTYAML="log-key: \"../trillian/testdata/ct-http-server.pubkey.pem\"
-log-url: \"http://localhost:TODO\"
 vrf:    \"${VRF}\"
 kt-key: \"${KTKEY}\"
 kt-sig: \"${SIGKEY}\"

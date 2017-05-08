@@ -118,6 +118,9 @@ message Mutation {
 message GetEntryRequest {
   // user_id is the user identifier. Most commonly an email address.
   string user_id = 1;
+  // first_tree_size is the tree_size of the currently trusted log root. 
+  // Omitting this field will ommit the log consistency proof from the response.
+  int64 first_tree_size = 2;
 }
 
 // GetEntryResponse returns a requested user entry.
@@ -146,9 +149,17 @@ message GetEntryResponse {
   // smr is also stored in the append only log.
   trillian.SignedMapRoot smr = 6;
 
-  // TODO: include trillian log inclusion proof.
-  // TODO: Support storing smh in multiple logs.
-  bytes smh_sct = 7;
+  //
+  // Trillian log layer proves that smr is part of a globally consistent, append only log.
+  //
+
+  // log_root is the latest globally consistent log root.
+  // TODO: gossip the log root to verify global consistency.
+  trillian.SignedLogRoot log_root = 7;
+  // log_consistency proves that log_root is consistent with previously seen roots.
+  repeated bytes log_consistency = 8;
+  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  repeated bytes log_inclusion = 9;
 }
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
@@ -159,6 +170,9 @@ message ListEntryHistoryRequest {
   int64 start = 2;
   // page_size is the maximum number of entries to return.
   int32 page_size = 3;
+  // first_tree_size is the tree_size of the currently trusted log root. 
+  // Omitting this field will ommit the log consistency proof from the response.
+  int64 first_tree_size = 4;
 }
 
 // ListEntryHistoryResponse requests a paginated history of keys for a user.
@@ -176,6 +190,9 @@ message UpdateEntryRequest {
   string user_id = 1;
   // entry_update contains the user submitted update.
   EntryUpdate entry_update = 2;
+  // first_tree_size is the tree_size of the currently trusted log root. 
+  // Omitting this field will ommit the log consistency proof from the response.
+  int64 first_tree_size = 3;
 }
 
 // UpdateEntryResponse contains a proof once the update has been included in
