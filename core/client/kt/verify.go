@@ -126,7 +126,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string,
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
 	if err := v.log.VerifyRoot(trusted, in.LogRoot, in.LogConsistency); err != nil {
-		return fmt.Errorf("UpdateRoot(%v, %v): %v", in.LogRoot, in.LogConsistency, err)
+		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.LogRoot, in.LogConsistency, err)
 	}
 	Vlog.Printf("✓ Log root updated.")
 

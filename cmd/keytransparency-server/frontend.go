@@ -121,7 +121,7 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
-func connectToLog(endpoint string, opts []grpc.DialOption) (trillian.TrillianLogClient, error) {
+func connectToLog(endpoint string, opts ...grpc.DialOption) (trillian.TrillianLogClient, error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return nil, err
@@ -210,7 +210,7 @@ func main() {
 
 	// Connect to log server.
 	// TODO: Include trillian log proofs in server responses #563.
-	tlog, err := connectToLog(*logURL, []grpc.DialOption{})
+	tlog, err := connectToLog(*logURL)
 	if err != nil {
 		log.Fatalf("connectToLog(%v): %v", *logURL, err)
 	}
