@@ -16,6 +16,7 @@ package vrf
 
 import (
 	"bytes"
+	"encoding/hex"
 	"testing"
 )
 
@@ -26,6 +27,7 @@ func TestUniqueID(t *testing.T) {
 	}{
 		{"foo", "app", "fooa", "pp"},
 		{"foo", "app", "", "fooapp"},
+		{"foo", "app", "fooapp", ""},
 	} {
 		if got, want :=
 			UniqueID(tc.userID, tc.appID),
@@ -33,4 +35,26 @@ func TestUniqueID(t *testing.T) {
 			t.Errorf("UniqueID(%v, %v) == UniqueID(%v, %v): %s, want !=", tc.userID, tc.appID, tc.muserID, tc.mappID, got)
 		}
 	}
+}
+
+func TestUniqueIDTestVector(t *testing.T) {
+	for _, tc := range []struct {
+		userID, appID string
+		expected      []byte
+	}{
+		{"foo", "app", dh("00000003666f6f00000003617070")},
+		{"foo", "", dh("00000003666f6f00000000")},
+	} {
+		if got, want := UniqueID(tc.userID, tc.appID), tc.expected; !bytes.Equal(got, want) {
+			t.Errorf("UniqueID(%v, %v): %x, want %v", tc.userID, tc.appID, got, want)
+		}
+	}
+}
+
+func dh(h string) []byte {
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }

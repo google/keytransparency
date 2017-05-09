@@ -197,8 +197,9 @@ one key for you in the whole server. Otherwise, a malicious key server could
 store multiple keys for you and selectively show them to different people.
 
 To prove that a single user (Alice) has exactly one profile, the server hashes
-her email address (alice@gmail.com) to produce a string of bits. For instance,
-`H(alice@gmail.com) = 010` (this is actually done using a VRF function described
+her email address and application identifier (alice@gmail.com, appid) to produce 
+a string of bits. For instance,
+`H(alice@gmail.com, pgp) = 010` (this is actually done using a VRF function described
 below). If we think of the Merkle Tree as a binary search tree, with each bit
 in the hash indicating a "left" or a "right" child, the tree depth is the
 same as the hash output length, we then have a unique location in the tree for
