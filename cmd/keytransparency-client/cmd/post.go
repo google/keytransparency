@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"time"
@@ -33,12 +33,12 @@ var (
 
 // postCmd represents the post command
 var postCmd = &cobra.Command{
-	Use:   "post [user email] [app] -d {key data}",
+	Use:   "post [user email] [app] -d {base64 key data}",
 	Short: "Update the account with the given profile",
 	Long: `Post replaces the current key-set with the provided key-set, 
 and verifies that both the previous and current key-sets are accurate. eg:
 
-./keytransparency-client post foobar@example.com app1 -d "01020304"
+./keytransparency-client post foobar@example.com app1 -d "dGVzdA=="
 
 User email MUST match the OAuth account used to authorize the update.
 `,
@@ -59,7 +59,7 @@ User email MUST match the OAuth account used to authorize the update.
 		if !viper.IsSet("client-secret") {
 			return fmt.Errorf("no client secret provided")
 		}
-		profileData, err := hex.DecodeString(data)
+		profileData, err := base64.StdEncoding.DecodeString(data)
 		if err != nil {
 			return fmt.Errorf("hex.Decode(%v): %v", data, err)
 		}
