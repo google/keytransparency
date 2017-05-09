@@ -39,14 +39,20 @@ import (
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/util"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 var (
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	domain        = flag.String("domain", "example.com", "Distinguished name for this key server")
-	mapID         = flag.Int64("map-id", 0, "ID for backend map")
-	signingKey    = flag.String("key", "", "Path to private key PEM for STH signing")
 	epochDuration = flag.Duration("period", time.Second*60, "Time between epoch creation")
+
+	// Info to connect to sparse merkle tree database.
+	mapID  = flag.Int64("map-id", 0, "ID for backend map")
+	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
+
+	// Info to replicate the Trillian Map Server locally.
+	signingKey = flag.String("key", "", "Path to private key PEM for STH signing")
 
 	// Info to send Signed Map Heads to a Trillian Log.
 	logID     = flag.Int64("log-id", 0, "Trillian Log ID")
@@ -93,16 +99,20 @@ func main() {
 	defer sqldb.Close()
 	factory := transaction.NewFactory(sqldb)
 
-	// Create signer helper objects.
-	mutations, err := mutations.New(sqldb, *mapID)
-	if err != nil {
-		log.Fatalf("Failed to create mutations object: %v", err)
-	}
-	mutator := entry.New()
-
-	mapsvr, err := newMapServer(context.Background(), sqldb, factory)
-	if err != nil {
-		log.Fatalf("newMapServer: %v", err)
+	// Connect to map server.
+	var tmap trillian.TrillianMapClient
+	if *mapURL != "" {
+		mconn, err := grpc.Dial(*mapURL)
+		if err != nil {
+			log.Fatalf("grpc.Dial(%v): %v", *mapURL, err)
+		}
+		tmap = trillian.NewTrillianMapClient(mconn)
+	} else {
+		var err error
+		tmap, err = newMapServer(context.Background(), sqldb, factory)
+		if err != nil {
+			log.Fatalf("newMapServer: %v", err)
+		}
 	}
 
 	// Connection to append only log
@@ -111,13 +121,20 @@ func main() {
 		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
 	}
 
+	// Create signer helper objects.
 	static := admin.NewStatic()
 	if err := static.AddLog(*mapID, tlog); err != nil {
 		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
 	}
 	sths := appender.NewTrillian(static)
+	// TODO: add mutations and mutator to admin.
+	mutations, err := mutations.New(sqldb, *mapID)
+	if err != nil {
+		log.Fatalf("Failed to create mutations object: %v", err)
+	}
+	mutator := entry.New()
 
-	signer := signer.New(*domain, *mapID, mapsvr, *logID, sths, mutator, mutations, factory)
+	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)
 	go signer.StartSigning(context.Background(), *epochDuration)
 
 	log.Printf("Signer started.")
