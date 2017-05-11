@@ -17,7 +17,7 @@ package kt
 import (
 	"fmt"
 
-	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 

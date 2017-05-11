@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/commitments"
+	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
