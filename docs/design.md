@@ -212,7 +212,7 @@ are interested in secure email. This seems unnecessary and invites abuse. To
 prevent this, we make sure that you can only look up a user’s information if
 you already know their email address. User’s locations in the Merkle Tree will
 be calculated with a Verifiable Random Function (VRF), conceptually equal to
-`H(Sig(k, user_id))`. This forces attackers to perform an online query
+`H(Sig(k, user_id+app_id))`. This forces attackers to perform an online query
 to the server to learn a user’s location in the tree. The deterministic
 signature proves that there is only one correct location in the tree for the
 user. 
@@ -221,10 +221,10 @@ user.
 
 ### Client Operations 
 
-*   `Update key (user_id, app_label, public_key_material)`
-*   `Get keys (user_id, epoch_num, app_label_filter)`
-*   `Get key history (user_id, epoch_num, app_label_filter)`
-*   `Invoke account reset (user_id)`
+*   `Update key (user_id, app_id, public_key_material)`
+*   `Get keys (user_id, app_id, epoch_num, app_label_filter)`
+*   `Get key history (user_id, app_id, epoch_num, app_label_filter)`
+*   `Invoke account reset (user_id, app_id)`
 
 ### Server Operations 
 
