@@ -74,14 +74,12 @@ func H1(m []byte) (x, y *big.Int) {
 	h := sha512.New()
 	var i uint32
 	byteLen := (params.BitSize + 7) >> 3
-	buf := make([]byte, 4)
 	for x == nil && i < 100 {
 		// TODO: Use a NIST specified DRBG.
-		binary.BigEndian.PutUint32(buf[:], i)
 		h.Reset()
-		h.Write(buf)
+		binary.Write(h, binary.BigEndian, uint32(i))
 		h.Write(m)
-		r := []byte{2} // Set point encoding to "compressed".
+		r := []byte{2} // Set point encoding to "compressed", y=0.
 		r = h.Sum(r)
 		x, y = Unmarshal(curve, r[:byteLen+1])
 		i++
@@ -92,16 +90,22 @@ func H1(m []byte) (x, y *big.Int) {
 var one = big.NewInt(1)
 
 // H2 hashes to an integer [1,N-1]
+// TODO: replace with first 128 bits of SHA256.
+// To cheat, find new m that produces same output.
+// To cheet, find a new m that produces a partiuclar output.
+//   close to fix x find x' s.t H(x') == H(x)
+// For 128 bit security only need 128 bits.
+// NSEC5 - This only needs to be SHA256[:]
+// Only need uniqueness. Non-uniformity is not a requirement.
+// Truncated SHA.
 func H2(m []byte) *big.Int {
 	// NIST SP 800-90A § A.5.1: Simple discard method.
 	byteLen := (params.BitSize + 7) >> 3
 	h := sha512.New()
-	buf := make([]byte, 4)
 	for i := uint32(0); ; i++ {
 		// TODO: Use a NIST specified DRBG.
-		binary.BigEndian.PutUint32(buf[:], i)
 		h.Reset()
-		h.Write(buf)
+		binary.Write(h, binary.BigEndian, uint32(i))
 		h.Write(m)
 		b := h.Sum(nil)
 		k := new(big.Int).SetBytes(b[:byteLen])

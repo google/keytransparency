@@ -21,6 +21,8 @@ import (
 	"testing"
 )
 
+// TODO: Add test vectors
+
 func TestH1(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		m := make([]byte, 100)
