@@ -33,7 +33,7 @@ import (
 // user ID and a profile.
 func (v *Verifier) CreateUpdateEntryRequest(
 	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
-	vrf vrf.PublicKey, userID string, profile *tpb.Profile,
+	vrf vrf.PublicKey, userID, appID string, profileData []byte,
 	signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index := vrf.Index(getResp.Vrf)
@@ -43,11 +43,7 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	}
 
 	// Commit to profile.
-	profileData, err := proto.Marshal(profile)
-	if err != nil {
-		return nil, fmt.Errorf("Unexpected profile marshaling error: %v", err)
-	}
-	commitment, committed, err := commitments.Commit(userID, profileData)
+	commitment, committed, err := commitments.Commit(userID, appID, profileData)
 	if err != nil {
 		return nil, err
 	}
@@ -83,12 +79,13 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	}
 
 	return &tpb.UpdateEntryRequest{
-		UserId:        userID,
-		FirstTreeSize: trusted.TreeSize,
+		UserId: userID,
+		AppId:  appID,
 		EntryUpdate: &tpb.EntryUpdate{
 			Update:    signedkv,
 			Committed: committed,
 		},
+		FirstTreeSize: trusted.TreeSize,
 	}, err
 }
 

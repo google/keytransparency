@@ -15,6 +15,11 @@
 // Package vrf defines the interface to a verifiable random function.
 package vrf
 
+import (
+	"bytes"
+	"encoding/binary"
+)
+
 // A VRF is a pseudorandom function f_k from a secret key k, such that that
 // knowledge of k not only enables one to evaluate f_k at for any message m,
 // but also to provide an NP-proof that the value f_k(m) is indeed correct
@@ -37,4 +42,14 @@ type PublicKey interface {
 
 	// Index returns the index indicated by a given VRF evaluation.
 	Index(vrf []byte) [32]byte
+}
+
+// UniqueID computes a unique string for a domain, userID and appID combo.
+func UniqueID(userID, appID string) []byte {
+	b := new(bytes.Buffer)
+	binary.Write(b, binary.BigEndian, uint32(len(userID)))
+	b.WriteString(userID)
+	binary.Write(b, binary.BigEndian, uint32(len(appID)))
+	b.WriteString(appID)
+	return b.Bytes()
 }

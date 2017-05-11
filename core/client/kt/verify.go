@@ -66,13 +66,13 @@ func New(vrf vrf.PublicKey,
 }
 
 // VerifyCommitment verifies that the commitment in `in` is correct for userID.
-func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error {
+func (Verifier) VerifyCommitment(userID, appID string, in *tpb.GetEntryResponse) error {
 	if in.Committed != nil {
 		entry := new(tpb.Entry)
 		if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
 			return err
 		}
-		if err := commitments.Verify(userID, entry.Commitment, in.Committed); err != nil {
+		if err := commitments.Verify(userID, appID, entry.Commitment, in.Committed); err != nil {
 			return err
 		}
 	}
@@ -86,17 +86,17 @@ func (Verifier) VerifyCommitment(userID string, in *tpb.GetEntryResponse) error 
 //  - Verify signature.
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
-func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID string,
+func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID string,
 	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
-	if err := v.VerifyCommitment(userID, in); err != nil {
+	if err := v.VerifyCommitment(userID, appID, in); err != nil {
 		Vlog.Printf("✗ Commitment verification failed.")
 		return fmt.Errorf("VerifyCommitment(): %v", err)
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	if err := v.vrf.Verify([]byte(userID), in.Vrf, in.VrfProof); err != nil {
+	if err := v.vrf.Verify(vrf.UniqueID(userID, appID), in.Vrf, in.VrfProof); err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
-		return fmt.Errorf("vrf.Verify(): %v", err)
+		return fmt.Errorf("vrf.Verify(%v, %v): %v", userID, appID, err)
 	}
 	Vlog.Printf("✓ VRF verified.")
 	index := v.vrf.Index(in.Vrf)

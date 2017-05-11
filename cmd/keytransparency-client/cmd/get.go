@@ -24,15 +24,16 @@ import (
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get [user email]",
+	Use:   "get [user email] [app]",
 	Short: "Retrieve and verify the current keyset",
 	Long: `Retrieve the user profile from the key server and verify that the
 results are consistent.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("user email needs to be provided")
+		if len(args) < 2 {
+			return fmt.Errorf("user email and app name need to be provided")
 		}
 		userID := args[0]
+		appID := args[1]
 		timeout := viper.GetDuration("timeout")
 
 		c, err := GetClient("")
@@ -40,7 +41,7 @@ results are consistent.`,
 			return fmt.Errorf("error connecting: %v", err)
 		}
 		ctx, _ := context.WithTimeout(context.Background(), timeout)
-		profile, _, err := c.GetEntry(ctx, userID)
+		profile, _, err := c.GetEntry(ctx, userID, appID)
 		if err != nil {
 			return fmt.Errorf("GetEntry failed: %v", err)
 		}

@@ -27,19 +27,13 @@ import (
 
 var (
 	primaryUserID = "bob"
+	primaryAppID  = "myapp"
 	fakeUserID    = "eve"
-	profile       = &tpb.Profile{Keys: primaryKeys}
-	primaryKeys   = map[string][]byte{
-		"foo": []byte("bar"),
-	}
+	profileData   = []byte("key")
 )
 
 func TestVerifyCommitment(t *testing.T) {
-	profileData, err := proto.Marshal(profile)
-	if err != nil {
-		t.Fatalf("Marshal(%v)=%v", profile, err)
-	}
-	commitment, committed, err := commitments.Commit(primaryUserID, profileData)
+	commitment, committed, err := commitments.Commit(primaryUserID, primaryAppID, profileData)
 	if err != nil {
 		t.Fatalf("Commit(%v, %v)=%v", primaryUserID, profileData, err)
 	}
@@ -54,14 +48,14 @@ func TestVerifyCommitment(t *testing.T) {
 	// Create a dummy client verifier.
 	verifier := New(nil, nil, nil, nil)
 	for _, tc := range []struct {
-		userID    string
-		entryData []byte
-		committed *tpb.Committed
-		want      bool
+		userID, appID string
+		entryData     []byte
+		committed     *tpb.Committed
+		want          bool
 	}{
-		{primaryUserID, validEntryData, committed, false}, // Working case
-		{primaryUserID, validEntryData, nil, false},       // nil committed
-		{primaryUserID, fakeEntryData, committed, true},   // Unmarshable entry
+		{primaryUserID, primaryAppID, validEntryData, committed, false}, // Working case
+		{primaryUserID, primaryAppID, validEntryData, nil, false},       // nil committed
+		{primaryUserID, primaryAppID, fakeEntryData, committed, true},   // Unmarshable entry
 	} {
 		resp := &tpb.GetEntryResponse{
 			Committed: tc.committed,
@@ -71,7 +65,7 @@ func TestVerifyCommitment(t *testing.T) {
 				},
 			},
 		}
-		err = verifier.VerifyCommitment(tc.userID, resp)
+		err = verifier.VerifyCommitment(tc.userID, tc.appID, resp)
 		if got := err != nil; got != tc.want {
 			t.Errorf("VerifyCommitment(%v, %v)=%v, want %v", tc.userID, resp, got, tc.want)
 		}

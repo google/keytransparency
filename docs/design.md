@@ -197,8 +197,9 @@ one key for you in the whole server. Otherwise, a malicious key server could
 store multiple keys for you and selectively show them to different people.
 
 To prove that a single user (Alice) has exactly one profile, the server hashes
-her email address (alice@gmail.com) to produce a string of bits. For instance,
-`H(alice@gmail.com) = 010` (this is actually done using a VRF function described
+her email address and application identifier (alice@gmail.com, appid) to produce 
+a string of bits. For instance,
+`H(alice@gmail.com, pgp) = 010` (this is actually done using a VRF function described
 below). If we think of the Merkle Tree as a binary search tree, with each bit
 in the hash indicating a "left" or a "right" child, the tree depth is the
 same as the hash output length, we then have a unique location in the tree for
@@ -211,7 +212,7 @@ are interested in secure email. This seems unnecessary and invites abuse. To
 prevent this, we make sure that you can only look up a user’s information if
 you already know their email address. User’s locations in the Merkle Tree will
 be calculated with a Verifiable Random Function (VRF), conceptually equal to
-`H(Sig(k, user_id))`. This forces attackers to perform an online query
+`H(Sig(k, user_id+app_id))`. This forces attackers to perform an online query
 to the server to learn a user’s location in the tree. The deterministic
 signature proves that there is only one correct location in the tree for the
 user. 
@@ -220,10 +221,10 @@ user.
 
 ### Client Operations 
 
-*   `Update key (user_id, app_label, public_key_material)`
-*   `Get keys (user_id, epoch_num, app_label_filter)`
-*   `Get key history (user_id, epoch_num, app_label_filter)`
-*   `Invoke account reset (user_id)`
+*   `Update key (user_id, app_id, public_key_material)`
+*   `Get keys (user_id, app_id, epoch_num, app_label_filter)`
+*   `Get key history (user_id, app_id, epoch_num, app_label_filter)`
+*   `Invoke account reset (user_id, app_id)`
 
 ### Server Operations 
 

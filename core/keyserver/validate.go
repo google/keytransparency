@@ -79,29 +79,25 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 	}
 
 	// Verify Index / VRF
-	v, _ := vrfPriv.Evaluate([]byte(in.UserId))
+	v, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId, in.AppId))
 	index := vrfPriv.Index(v)
 	if got, want := kv.Key, index[:]; !bytes.Equal(got, want) {
 		return ErrWrongIndex
 	}
 
 	// Verify correct commitment to profile.
-	if in.GetEntryUpdate().GetCommitted() == nil {
+	committed := in.GetEntryUpdate().GetCommitted()
+	if committed == nil {
 		return ErrNoCommitted
 	}
-	p := new(tpb.Profile)
-	if err := proto.Unmarshal(in.GetEntryUpdate().GetCommitted().Data, p); err != nil {
-		return err
-	}
-	if got, want := len(in.GetEntryUpdate().GetCommitted().Key), MinNonceLen; got < want {
+	if got, want := len(committed.Key), MinNonceLen; got < want {
 		return ErrCommittedKeyLen
 	}
-	if err := commitments.Verify(in.UserId, entry.Commitment, in.GetEntryUpdate().Committed); err != nil {
+	if err := commitments.Verify(in.UserId, in.AppId, entry.Commitment, committed); err != nil {
 		return err
 	}
 
-	// Validate the profile.
-	if err := validateProfile(p, in.UserId); err != nil {
+	if err := validateKey(in.GetUserId(), in.GetAppId(), committed.GetData()); err != nil {
 		return err
 	}
 	return nil
@@ -126,15 +122,6 @@ func validateListEntryHistoryRequest(in *tpb.ListEntryHistoryRequest, currentEpo
 	// Ensure in.PageSize does not exceed currentEpoch.
 	if in.Start+int64(in.PageSize) > currentEpoch {
 		in.PageSize = int32(currentEpoch - in.Start + 1)
-	}
-	return nil
-}
-
-func validateProfile(p *tpb.Profile, userID string) error {
-	for appID, key := range p.GetKeys() {
-		if err := validateKey(userID, appID, key); err != nil {
-			return err
-		}
 	}
 	return nil
 }

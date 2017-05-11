@@ -57,7 +57,7 @@ type Committer interface {
 }
 
 // Commit makes a cryptographic commitment under a specific userID to data.
-func Commit(userID string, data []byte) ([]byte, *tpb.Committed, error) {
+func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
 	// Generate commitment nonce.
 	nonce := make([]byte, commitmentKeyLen)
 	if _, err := rand.Read(nonce); err != nil {
@@ -69,26 +69,26 @@ func Commit(userID string, data []byte) ([]byte, *tpb.Committed, error) {
 	mac.Write(nonce)
 
 	// Message
-	strlen := make([]byte, 4)
-	binary.BigEndian.PutUint32(strlen, uint32(len(userID)))
-	mac.Write(strlen)
+	binary.Write(mac, binary.BigEndian, uint32(len(userID)))
 	mac.Write([]byte(userID))
+	binary.Write(mac, binary.BigEndian, uint32(len(appID)))
+	mac.Write([]byte(appID))
 	mac.Write(data)
 
 	return mac.Sum(nil), &tpb.Committed{Key: nonce, Data: data}, nil
 }
 
 // Verify customizes a commitment with a userID.
-func Verify(userID string, commitment []byte, committed *tpb.Committed) error {
+func Verify(userID, appID string, commitment []byte, committed *tpb.Committed) error {
 	mac := hmac.New(hashAlgo, fixedKey)
 	mac.Write([]byte(prefix))
 	mac.Write(committed.Key)
 
 	// Message
-	strlen := make([]byte, 4)
-	binary.BigEndian.PutUint32(strlen, uint32(len(userID)))
-	mac.Write(strlen)
+	binary.Write(mac, binary.BigEndian, uint32(len(userID)))
 	mac.Write([]byte(userID))
+	binary.Write(mac, binary.BigEndian, uint32(len(appID)))
+	mac.Write([]byte(appID))
 	mac.Write(committed.Data)
 
 	if !hmac.Equal(mac.Sum(nil), commitment) {
