@@ -86,12 +86,15 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 1. Install 
 - [Etcd v3.1.3](https://github.com/coreos/etcd/releases/tag/v3.1.3).
 - [OpenSSL](https://www.openssl.org/community/binaries.html)
+- [Docker](https://docs.docker.com/engine/installation/) 
+  - Docker Engine 1.13.0+ `docker version -f '{{.Server.APIVersion}}'`
+  - Docker Compose 1.11.0+ `docker-compose --version`
 
 2. Install Key Transparency
 
   ```sh
-  go get -u github.com/mattn/goreman
   go get -u github.com/google/keytransparency/...
+  go get -u github.com/google/trillian/...
   ```
 
 4. Get a [service account key](https://console.developers.google.com/apis/credentials) and download the generated JSON file.
@@ -101,7 +104,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 5. Run server setup 
 
   ```sh
-  ./scripts/prepare_server.sh
+./scripts/prepare_server.sh
   ```
 
   The tool will build the server binaries, generate keys, and configure the server.
@@ -111,8 +114,24 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   - `genfiles/server.crt`
   - `genfile/p256-pubkey.pem`
 
-6. Run the server and the signer using
+6. Run the trillian-map server 
 
   ```sh
-  goreman start
+docker-compose up -d trillian-map
   ```
+
+7. Provision a log and a map 
+```sh
+MAP_IP=`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' keytransparency_trillian-map_1`
+go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=$MAP_IP:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=LOG
+go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=$MAP_IP:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=MAP
+```
+
+Set the `LOG_ID` and `MAP_ID` environment variables in `docker-compose.yml` with the output
+of the respective commands.
+
+8. Launch the rest of the cluster and observe.
+- `docker-compose up -d`
+- `docker-compose logs --tail=0 --follow`
+- [https://localhost:8080/v1/users/foo@bar.com](https://localhost:8080/v1/users/foo@bar.com)
+

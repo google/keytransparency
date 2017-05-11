@@ -17,20 +17,20 @@ package config
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/merkle/objhasher"
 	"google.golang.org/grpc"
+	"github.com/golang/glog"
 )
 
 // LogClient creates a log client.
 func LogClient(logID int64, logURL, pubKeyFile string) (client.VerifyingLogClient, error) {
 	sthPubKey, err := keys.NewFromPublicPEMFile(pubKeyFile)
 	if err != nil {
-		log.Fatalf("Failed to open public key %v: %v", pubKeyFile, err)
+		glog.Fatalf("Failed to open public key %v: %v", pubKeyFile, err)
 	}
 	// The log should be in a restricted access backend environment.
 	cc, err := grpc.Dial(logURL, grpc.WithInsecure())

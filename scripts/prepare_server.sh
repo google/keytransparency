@@ -32,7 +32,7 @@ IP3="127.0.0.1"
 SERVICEKEY=""
 LISTENADDR=""
 CERTDOMAIN=""
-CERTIP=""
+CERTIP="0.0.0.0"
 
 
 ##################################
@@ -100,7 +100,11 @@ if ((FRONTEND == 1)); then
 
     # Read certificate related information.
     read -p "Frontend domain name (optional): " CERTDOMAIN
-    read -p "Frontend public IP address (optional): " CERTIP
+    read -p "Frontend public IP address (optional): " CERTIP_TEMP
+    if [[ -n "${CERTIP_TEMP}" ]]; then
+      CERTIP="${CERTIP_TEMP}"
+    fi
+
 fi
 
 
@@ -129,8 +133,7 @@ if ((BACKEND == 1)); then
 fi
 
 # Generating .env file
-ENV="CTLOG=\"http://107.178.246.112\"
-SIGN_PERIOD=5
+ENV="SIGN_PERIOD=5
 GOOGLE_APPLICATION_CREDENTIALS=\"${SERVICEKEY}\""
 
 if [[ -n "${CERTDOMAIN}" ]]; then

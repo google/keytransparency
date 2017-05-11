@@ -2,9 +2,9 @@
 *.swo
 *~
 
-keytransparency-server
-keytransparency-signer
-keytransparency-client
+/keytransparency-server
+/keytransparency-signer
+/keytransparency-client
 
 infra*.etcd
 genfiles/*
