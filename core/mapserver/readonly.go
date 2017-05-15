@@ -139,3 +139,35 @@ func (r *readonly) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedM
 		MapRoot: &root,
 	}, nil
 }
+
+func (r *readonly) GetSignedMapRootByRevision(ctx context.Context, in *trillian.GetSignedMapRootByRevisionRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {
+	if got, want := in.MapId, r.mapID; got != want {
+		return nil, fmt.Errorf("Wrong Map ID: %v, want %v", got, want)
+	}
+
+	txn, err := r.factory.NewTxn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if retErr != nil {
+			if rbErr := txn.Rollback(); rbErr != nil {
+				retErr = fmt.Errorf("%v, Rollback(): %v", retErr, rbErr)
+			}
+		}
+	}()
+
+	// Get current epoch.
+	var root trillian.SignedMapRoot
+	if err := r.sths.Read(txn, in.MapId, in.Revision, &root); err != nil {
+		return nil, err
+	}
+
+	if err := txn.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &trillian.GetSignedMapRootResponse{
+		MapRoot: &root,
+	}, nil
+}

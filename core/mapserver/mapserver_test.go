@@ -195,3 +195,54 @@ func TestGetSignedMapRoot(t *testing.T) {
 		}
 	}
 }
+
+func TestGetSignedMapRootByRevision(t *testing.T) {
+	ctx := context.Background()
+	env, err := newEnv()
+	if err != nil {
+		t.Fatalf("Error creating env: %v", err)
+	}
+	defer env.db.Close()
+
+	for i, tc := range []struct {
+		epoch  int64
+		leaves []*trillian.MapLeaf
+	}{
+		{
+			epoch: 0,
+			leaves: []*trillian.MapLeaf{
+				{Index: index(0), LeafValue: []byte("foo")},
+				{Index: index(1), LeafValue: []byte("bar")},
+			}},
+		{
+			epoch: 1,
+			leaves: []*trillian.MapLeaf{
+				{Index: index(0), LeafValue: []byte("foo1")},
+				{Index: index(1), LeafValue: []byte("bar1")},
+			}},
+	} {
+		resp, err := env.m.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
+			MapId:  env.mapID,
+			Leaves: tc.leaves,
+		})
+		if err != nil {
+			t.Errorf("SetLeaves(%v): %v", i, err)
+			continue
+		}
+		if got, want := resp.MapRoot.MapRevision, tc.epoch; got != want {
+			t.Errorf("SetLeaves(%v).MapRevision: %v, want %v", i, got, want)
+		}
+
+		rootResp, err := env.ro.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
+			MapId:    env.mapID,
+			Revision: tc.epoch,
+		})
+		if err != nil {
+			t.Errorf("SetLeaves(%v): %v", i, err)
+			continue
+		}
+		if got, want := rootResp.GetMapRoot().MapRevision, tc.epoch; got != want {
+			t.Errorf("GetMapRoot().MapRevision: %v, want %v", i, err)
+		}
+	}
+}

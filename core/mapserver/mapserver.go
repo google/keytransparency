@@ -151,3 +151,8 @@ func (m *mapServer) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequ
 func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {
 	return m.readonly.GetSignedMapRoot(ctx, in)
 }
+
+// GetSignedMapRootByRevision returns the requested MapRoot for a given revision.
+func (m *mapServer) GetSignedMapRootByRevision(ctx context.Context, in *trillian.GetSignedMapRootByRevisionRequest, opts ...grpc.CallOption) (resp *trillian.GetSignedMapRootResponse, retErr error) {
+	return m.readonly.GetSignedMapRootByRevision(ctx, in)
+}
