@@ -35,7 +35,7 @@ const (
 	VALUES (?, ?, ?);`
 	readRangeExpr = `
   	SELECT Sequence, Mutation FROM Mutations
-  	WHERE MapID = ? AND Sequence > ?
+  	WHERE MapID = ? AND Sequence > ? AND Sequence <= ?
   	ORDER BY Sequence ASC LIMIT ?;`
 	readAllExpr = `
  	SELECT Sequence, Mutation FROM Mutations
@@ -67,15 +67,16 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 
 // ReadRange reads all mutations for a specific given mapID and sequence range.
 // The range is identified by a starting sequence number and a count. Note that
-// startSequence is not included in the result. ReadRange also returns the
-// maximum sequence number read.
-func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
+// startSequence is not included in the result. ReadRange stops when endSequence
+// or count is reached, whichever comes first. ReadRange also returns the maximum
+// sequence number read.
+func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error) {
 	readStmt, err := txn.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.Query(m.mapID, startSequence, count)
+	rows, err := readStmt.Query(m.mapID, startSequence, endSequence, count)
 	if err != nil {
 		return 0, nil, err
 	}

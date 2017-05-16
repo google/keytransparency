@@ -217,7 +217,7 @@ func (fakeFactory) NewTxn(ctx context.Context) (transaction.Txn, error) {
 // mutator.Mutation fake
 type fakeMutation struct{}
 
-func (fakeMutation) ReadRange(txn transaction.Txn, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
+func (fakeMutation) ReadRange(txn transaction.Txn, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error) {
 	return 0, nil, nil
 }
 
