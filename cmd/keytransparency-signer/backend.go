@@ -102,7 +102,7 @@ func main() {
 	// Connect to map server.
 	var tmap trillian.TrillianMapClient
 	if *mapURL != "" {
-		mconn, err := grpc.Dial(*mapURL)
+		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("grpc.Dial(%v): %v", *mapURL, err)
 		}
@@ -123,7 +123,7 @@ func main() {
 
 	// Create signer helper objects.
 	static := admin.NewStatic()
-	if err := static.AddLog(*mapID, tlog); err != nil {
+	if err := static.AddLog(*logID, tlog); err != nil {
 		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
 	}
 	sths := appender.NewTrillian(static)
