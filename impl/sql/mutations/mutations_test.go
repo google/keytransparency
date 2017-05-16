@@ -113,12 +113,12 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 	return nil
 }
 
-func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, count int) (uint64, []*tpb.SignedKV, error) {
+func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error) {
 	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
-	maxSequence, results, err := m.ReadRange(rtxn, startSequence, count)
+	maxSequence, results, err := m.ReadRange(rtxn, startSequence, endSequence, count)
 	if err != nil {
 		return 0, nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
 	}
@@ -156,13 +156,15 @@ func TestReadRange(t *testing.T) {
 	for _, tc := range []struct {
 		description   string
 		startSequence uint64
-		count         int
+		endSequence   uint64
+		count         int32
 		maxSequence   uint64
 		mutations     []*tpb.SignedKV
 	}{
 		{
 			"read a single mutation",
 			0,
+			1,
 			1,
 			1,
 			[]*tpb.SignedKV{
@@ -177,6 +179,7 @@ func TestReadRange(t *testing.T) {
 		{
 			"empty mutations list",
 			100,
+			110,
 			10,
 			0,
 			nil,
@@ -184,6 +187,7 @@ func TestReadRange(t *testing.T) {
 		{
 			"full mutations range size",
 			0,
+			5,
 			5,
 			5,
 			[]*tpb.SignedKV{
@@ -223,6 +227,7 @@ func TestReadRange(t *testing.T) {
 			"incomplete mutations range",
 			2,
 			5,
+			3,
 			5,
 			[]*tpb.SignedKV{
 				{
@@ -245,8 +250,62 @@ func TestReadRange(t *testing.T) {
 				},
 			},
 		},
+		{
+			"end sequence less than count",
+			2,
+			5,
+			5,
+			5,
+			[]*tpb.SignedKV{
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index3"),
+						Value: []byte("mutation3"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index4"),
+						Value: []byte("mutation4"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index5"),
+						Value: []byte("mutation5"),
+					},
+				},
+			},
+		},
+		{
+			"count less than end sequence",
+			0,
+			5,
+			3,
+			3,
+			[]*tpb.SignedKV{
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index1"),
+						Value: []byte("mutation1"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index2"),
+						Value: []byte("mutation2"),
+					},
+				},
+				{
+					KeyValue: &tpb.KeyValue{
+						Key:   []byte("index3"),
+						Value: []byte("mutation3"),
+					},
+				},
+			},
+		},
 	} {
-		maxSequence, results, err := readRange(ctx, m, factory, tc.startSequence, tc.count)
+		maxSequence, results, err := readRange(ctx, m, factory, tc.startSequence, tc.endSequence, tc.count)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
