@@ -197,8 +197,8 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 		MapId: s.mapID,
 	})
 	if err != nil {
-		log.Printf("GetEntry(%v): %v", in.UserId, err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "getEntry failed")
+		log.Printf("GetSignedMapRoot(%v): %v", s.mapID, err)
+		return nil, grpc.Errorf(codes.Internal, "Fetching latest signed map root failed")
 	}
 
 	currentEpoch := resp.GetMapRoot().MapRevision
