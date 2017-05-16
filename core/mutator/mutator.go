@@ -61,7 +61,7 @@ type Mutation interface {
 	// count. Note that startSequence is not included in the result.
 	// ReadRange stops when endSequence or count is reached, whichever comes
 	// first. ReadRange also returns the maximum sequence number read.
-	ReadRange(txn transaction.Txn, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error)
+	ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error)
 	// ReadAll reads all mutations starting from the given sequence number.
 	// Note that startSequence is not included in the result. ReadAll also
 	// returns the maximum sequence number read.

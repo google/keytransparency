@@ -70,7 +70,7 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *mutations) ReadRange(txn transaction.Txn, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error) {
+func (m *mutations) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error) {
 	readStmt, err := txn.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
