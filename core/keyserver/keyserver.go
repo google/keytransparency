@@ -85,12 +85,7 @@ func New(logID int64,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-	resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
-	if err != nil {
-		log.Printf("getEntry failed: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
-	}
-	return resp, nil
+	return s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
 }
 
 func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, epoch int64) (*tpb.GetEntryResponse, error) {
@@ -163,12 +158,12 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 		&trillian.GetInclusionProofRequest{
 			LogId: s.logID,
 			// SignedMapRoot must be placed in the log at MapRevision.
-			LeafIndex: getResp.GetMapRoot().MapRevision,
+			LeafIndex: getResp.GetMapRoot().GetMapRevision(),
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
 		log.Printf("tlog.GetInclusionProof(%v, %v, %v): %v",
-			s.logID, getResp.GetMapRoot().MapRevision, secondTreeSize, err)
+			s.logID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
@@ -199,7 +194,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 		return nil, grpc.Errorf(codes.Internal, "Fetching latest signed map root failed")
 	}
 
-	currentEpoch := resp.GetMapRoot().MapRevision
+	currentEpoch := resp.GetMapRoot().GetMapRevision()
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
 		log.Printf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
