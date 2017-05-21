@@ -19,12 +19,12 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/admin"
-	"github.com/google/keytransparency/integration/fake"
+	"github.com/google/keytransparency/core/fake"
 )
 
 func TestLatest(t *testing.T) {
 	ctx := context.Background()
-	fakeLog := fake.NewFakeTrillianClient()
+	fakeLog := fake.NewFakeVerifyingLogClient()
 	admin := admin.NewStatic()
 	if err := admin.AddLog(0, fakeLog); err != nil {
 		t.Fatalf("failed to add log to admin: %v", err)

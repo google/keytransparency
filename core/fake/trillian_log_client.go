@@ -22,8 +22,8 @@ import (
 
 type logServer struct{}
 
-// NewFakeTrillianLogServer returns a fake trillian log server.
-func NewFakeTrillianLogServer() trillian.TrillianLogClient {
+// NewFakeTrillianLogClient returns a fake trillian log client.
+func NewFakeTrillianLogClient() trillian.TrillianLogClient {
 	return &logServer{}
 }
 

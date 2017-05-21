@@ -27,8 +27,8 @@ type logClient struct {
 	leaves []*trillian.LogLeaf
 }
 
-// NewFakeTrillianClient returns a client that mimicks a trillian log.
-func NewFakeTrillianClient() client.VerifyingLogClient {
+// NewFakeVerifyingLogClient returns a client that mimicks a trillian log.
+func NewFakeVerifyingLogClient() client.VerifyingLogClient {
 	return &logClient{
 		leaves: make([]*trillian.LogLeaf, 0),
 	}
