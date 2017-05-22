@@ -94,8 +94,7 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 }
 
 func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, epoch int64) (*tpb.GetEntryResponse, error) {
-	vrf, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
-	index := s.vrf.Index(vrf)
+	index, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
 
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    s.mapID,
@@ -174,7 +173,6 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	}
 
 	return &tpb.GetEntryResponse{
-		Vrf:       vrf,
 		VrfProof:  proof,
 		Committed: committed,
 		LeafProof: &trillian.MapLeafInclusion{

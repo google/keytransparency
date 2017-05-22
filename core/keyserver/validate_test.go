@@ -82,8 +82,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	userID := "joe"
 	appID := "app"
 	vrfPriv, _ := p256.GenerateKey()
-	vrf, _ := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
-	index := vrfPriv.Index(vrf)
+	index, _ := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
 	commitment, committed, _ := commitments.Commit(userID, appID, profileData)
 	authCtx := authentication.NewFake().NewContext(userID)
 

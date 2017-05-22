@@ -191,8 +191,7 @@ func (f *fakeSparseHist) ReadLeafAt(txn transaction.Txn, index []byte, epoch int
 // vrf.PrivateKey fake.
 type fakePrivateKey struct{}
 
-func (fakePrivateKey) Evaluate(m []byte) (vrf []byte, proof []byte) { return nil, nil }
-func (fakePrivateKey) Index(vrf []byte) [32]byte                    { return [32]byte{} }
+func (fakePrivateKey) Evaluate(m []byte) ([32]byte, []byte) { return [32]byte{}, nil }
 
 // mutator.Mutator fake.
 type fakeMutator struct{}

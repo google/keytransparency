@@ -125,14 +125,12 @@ message GetEntryResponse {
   // Privacy layer hides user_id and profile data until requested.
   //
 
-  // vrf is the output of VRF on user_id.
-  bytes vrf = 1;
   // vrf_proof is the proof for VRF on user_id.
-  bytes vrf_proof = 2;
+  bytes vrf_proof = 1;
 
   // committed contains the profile for this account and connects the data
   // in profile to the commitment in leaf_proof.
-  Committed committed = 3;
+  Committed committed = 2;
 
   //
   // Trillian map layer proves that the response is consistent.
@@ -140,10 +138,10 @@ message GetEntryResponse {
 
   // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle
   // Tree.
-  trillian.MapLeafInclusion leaf_proof = 5;
+  trillian.MapLeafInclusion leaf_proof = 3;
   // smr contains the signed map head for the sparse Merkle Tree.
   // smr is also stored in the append only log.
-  trillian.SignedMapRoot smr = 6;
+  trillian.SignedMapRoot smr = 4;
 
   //
   // Trillian log layer proves that smr is part of a globally consistent, append only log.
@@ -151,11 +149,11 @@ message GetEntryResponse {
 
   // log_root is the latest globally consistent log root.
   // TODO: gossip the log root to verify global consistency.
-  trillian.SignedLogRoot log_root = 7;
+  trillian.SignedLogRoot log_root = 5;
   // log_consistency proves that log_root is consistent with previously seen roots.
-  repeated bytes log_consistency = 8;
+  repeated bytes log_consistency = 6;
   // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
-  repeated bytes log_inclusion = 9;
+  repeated bytes log_inclusion = 7;
 }
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.

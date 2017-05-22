@@ -33,10 +33,13 @@ import (
 // user ID and a profile.
 func (v *Verifier) CreateUpdateEntryRequest(
 	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
-	vrf vrf.PublicKey, userID, appID string, profileData []byte,
+	vrfPub vrf.PublicKey, userID, appID string, profileData []byte,
 	signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
-	index := vrf.Index(getResp.Vrf)
+	index, err := vrfPub.ProofToHash(vrf.UniqueID(userID, appID), getResp.VrfProof)
+	if err != nil {
+		return nil, fmt.Errorf("ProofToIndex(): %v")
+	}
 	prevEntry := new(tpb.Entry)
 	if err := proto.Unmarshal(getResp.GetLeafProof().GetLeaf().GetLeafValue(), prevEntry); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
