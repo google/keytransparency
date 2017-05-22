@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/transaction"
 
 	"golang.org/x/net/context"
@@ -79,7 +80,7 @@ func TestGetMutations(t *testing.T) {
 		{"working case with page token and small page size", 1, "2", 2, signedKV(t, 3, 4), "4", true},
 		{"invalid page token", 1, "some_token", 0, nil, "", false},
 	} {
-		srv := New(logID, mapID, &fakeTrillianLogClient{}, fakeMap, fakeMutations, &fakeFactory{})
+		srv := New(logID, mapID, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
 		resp, err := srv.GetMutations(ctx, &tpb.GetMutationsRequest{
 			Epoch:     tc.epoch,
 			PageToken: tc.token,
@@ -126,7 +127,7 @@ func TestLowestSequenceNumber(t *testing.T) {
 		{"some_token", 0, 0, false},
 		{"", 1, 6, true},
 	} {
-		srv := New(logID, mapID, &fakeTrillianLogClient{}, fakeMap, fakeMutations, &fakeFactory{})
+		srv := New(logID, mapID, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
 		seq, err := srv.lowestSequenceNumber(ctx, tc.token, tc.epoch)
 		if got, want := err == nil, tc.success; got != want {
 			t.Errorf("lowestSequenceNumber(%v, %v): err=%v, want %v", tc.token, tc.epoch, got, want)
@@ -218,47 +219,4 @@ func (m *fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint6
 func (m *fakeMutation) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
 	m.mtns = append(m.mtns, mutation)
 	return uint64(len(m.mtns)), nil
-}
-
-// trillian.TrillianLogClient fake.
-type fakeTrillianLogClient struct{}
-
-func (*fakeTrillianLogClient) QueueLeaf(ctx context.Context, in *trillian.QueueLeafRequest, opts ...grpc.CallOption) (*trillian.QueueLeafResponse, error) {
-	return nil, nil
-}
-
-func (*fakeTrillianLogClient) QueueLeaves(ctx context.Context, in *trillian.QueueLeavesRequest, opts ...grpc.CallOption) (*trillian.QueueLeavesResponse, error) {
-	return nil, nil
-}
-
-func (*fakeTrillianLogClient) GetInclusionProof(ctx context.Context, in *trillian.GetInclusionProofRequest, opts ...grpc.CallOption) (*trillian.GetInclusionProofResponse, error) {
-	return &trillian.GetInclusionProofResponse{}, nil
-}
-
-func (*fakeTrillianLogClient) GetInclusionProofByHash(ctx context.Context, in *trillian.GetInclusionProofByHashRequest, opts ...grpc.CallOption) (*trillian.GetInclusionProofByHashResponse, error) {
-	return nil, nil
-}
-
-func (*fakeTrillianLogClient) GetConsistencyProof(ctx context.Context, in *trillian.GetConsistencyProofRequest, opts ...grpc.CallOption) (*trillian.GetConsistencyProofResponse, error) {
-	return &trillian.GetConsistencyProofResponse{}, nil
-}
-
-func (*fakeTrillianLogClient) GetLatestSignedLogRoot(ctx context.Context, in *trillian.GetLatestSignedLogRootRequest, opts ...grpc.CallOption) (*trillian.GetLatestSignedLogRootResponse, error) {
-	return &trillian.GetLatestSignedLogRootResponse{}, nil
-}
-
-func (*fakeTrillianLogClient) GetSequencedLeafCount(ctx context.Context, in *trillian.GetSequencedLeafCountRequest, opts ...grpc.CallOption) (*trillian.GetSequencedLeafCountResponse, error) {
-	return nil, nil
-}
-
-func (*fakeTrillianLogClient) GetLeavesByIndex(ctx context.Context, in *trillian.GetLeavesByIndexRequest, opts ...grpc.CallOption) (*trillian.GetLeavesByIndexResponse, error) {
-	return nil, nil
-}
-
-func (*fakeTrillianLogClient) GetLeavesByHash(ctx context.Context, in *trillian.GetLeavesByHashRequest, opts ...grpc.CallOption) (*trillian.GetLeavesByHashResponse, error) {
-	return nil, nil
-}
-
-func (*fakeTrillianLogClient) GetEntryAndProof(ctx context.Context, in *trillian.GetEntryAndProofRequest, opts ...grpc.CallOption) (*trillian.GetEntryAndProofResponse, error) {
-	return nil, nil
 }
