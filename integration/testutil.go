@@ -30,6 +30,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
+	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -40,7 +41,6 @@ import (
 	"github.com/google/keytransparency/impl/sql/sequenced"
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
-	"github.com/google/keytransparency/integration/fake"
 
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/util"
@@ -197,7 +197,7 @@ func NewEnv(t *testing.T) *Env {
 	}); err != nil {
 		t.Fatalf("SetLeaves(): %v", err)
 	}
-	tlog := fake.NewFakeTrillianLogServer()
+	tlog := fake.NewFakeTrillianLogClient()
 
 	server := keyserver.New(logID, tlog, mapID, mapsvr, commitments, vrfPriv, mutator,
 		auth, factory, mutations)
@@ -206,7 +206,7 @@ func NewEnv(t *testing.T) *Env {
 
 	// Signer
 	admin := admin.NewStatic()
-	if err := admin.AddLog(logID, fake.NewFakeTrillianClient()); err != nil {
+	if err := admin.AddLog(logID, fake.NewFakeVerifyingLogClient()); err != nil {
 		t.Fatalf("failed to add log to admin: %v", err)
 	}
 	sthsLog := appender.NewTrillian(admin)

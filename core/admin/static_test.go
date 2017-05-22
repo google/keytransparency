@@ -17,12 +17,12 @@ package admin
 import (
 	"testing"
 
-	"github.com/google/keytransparency/integration/fake"
+	"github.com/google/keytransparency/core/fake"
 )
 
 func TestStatic(t *testing.T) {
 	admin := NewStatic()
-	client := fake.NewFakeTrillianClient()
+	client := fake.NewFakeVerifyingLogClient()
 
 	for _, tc := range []struct {
 		logID     int64
