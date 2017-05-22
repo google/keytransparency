@@ -112,11 +112,12 @@ func H2(m []byte) *big.Int {
 }
 
 // Evaluate returns the verifiable unpredictable function evaluated at m
-func (k PrivateKey) Evaluate(m []byte) (vrf, proof []byte) {
+func (k PrivateKey) Evaluate(m []byte) (index [32]byte, proof []byte) {
+	nilIndex := [32]byte{}
 	// Prover chooses r <-- [1,N-1]
 	r, _, _, err := elliptic.GenerateKey(curve, rand.Reader)
 	if err != nil {
-		return nil, nil
+		return nilIndex, nil
 	}
 	ri := new(big.Int).SetBytes(r)
 
@@ -137,33 +138,42 @@ func (k PrivateKey) Evaluate(m []byte) (vrf, proof []byte) {
 	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, k.D))
 	t.Mod(t, params.N)
 
-	// Write s and t to a proof blob. Also write leading zeros before s and t
+	// VRF_k(m) = [k]H
+	vrfx, vrfy := params.ScalarMult(hx, hy, k.D.Bytes())
+	vrf := elliptic.Marshal(curve, vrfx, vrfy) // 65 bytes.
+
+	// Index = H(vrf)
+	index = sha256.Sum256(vrf)
+
+	// Write s, t, and vrf to a proof blob. Also write leading zeros before s and t
 	// if needed.
 	var buf bytes.Buffer
 	buf.Write(make([]byte, 32-len(s.Bytes())))
 	buf.Write(s.Bytes())
 	buf.Write(make([]byte, 32-len(t.Bytes())))
 	buf.Write(t.Bytes())
+	buf.Write(vrf)
 
-	// VRF_k(m) = [k]H
-	vrfx, vrfy := params.ScalarMult(hx, hy, k.D.Bytes())
-	return elliptic.Marshal(curve, vrfx, vrfy), buf.Bytes()
+	return index, buf.Bytes()
 }
 
-// Verify asserts that vrf is the hash of proof and the proof is correct
-func (pk *PublicKey) Verify(m, vrf, proof []byte) error {
+// ProofToHash asserts that proof is correct for m and outputs index.
+func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
+	nilIndex := [32]byte{}
 	// verifier checks that s == H2(m, [t]G + [s]([k]G), [t]H1(m) + [s]VRF_k(m))
-	vrfx, vrfy := elliptic.Unmarshal(curve, vrf)
-	if vrfx == nil {
-		return ErrInvalidVRF
-	}
-	if len(proof) != 64 {
-		return ErrInvalidVRF
+	if got, want := len(proof), 64+65; got != want {
+		return nilIndex, ErrInvalidVRF
 	}
 
-	// Parse proof into s and t.
+	// Parse proof into s, t, and vrf.
 	s := proof[0:32]
 	t := proof[32:64]
+	vrf := proof[64 : 64+65]
+
+	vrfx, vrfy := elliptic.Unmarshal(curve, vrf)
+	if vrfx == nil {
+		return nilIndex, ErrInvalidVRF
+	}
 
 	// [t]G + [s]([k]G) = [t+ks]G
 	gTx, gTy := params.ScalarBaseMult(t)
@@ -193,19 +203,9 @@ func (pk *PublicKey) Verify(m, vrf, proof []byte) error {
 	buf.Write(h2.Bytes())
 
 	if !hmac.Equal(s, buf.Bytes()) {
-		return ErrInvalidVRF
+		return nilIndex, ErrInvalidVRF
 	}
-	return nil
-}
-
-// Index computes the index for a given vrf output.
-func (k *PrivateKey) Index(vrf []byte) [32]byte {
-	return sha256.Sum256(vrf)
-}
-
-// Index computes the index for a given vrf output.
-func (pk *PublicKey) Index(vrf []byte) [32]byte {
-	return sha256.Sum256(vrf)
+	return sha256.Sum256(vrf), nil
 }
 
 // NewVRFSigner creates a signer object from a private key.

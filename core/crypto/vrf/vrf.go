@@ -28,20 +28,14 @@ import (
 
 // PrivateKey supports evaluating the VRF function.
 type PrivateKey interface {
-	// Evaluate returns the output of f_k(m) and its proof.
-	Evaluate(m []byte) (vrf []byte, proof []byte)
-
-	// Index returns the index indicated by a given VRF evaluation.
-	Index(vrf []byte) [32]byte
+	// Evaluate returns the output of H(f_k(m)) and its proof.
+	Evaluate(m []byte) (index [32]byte, proof []byte)
 }
 
 // PublicKey supports verifying output from the VRF function.
 type PublicKey interface {
-	// Verify verifies the NP-proof supplied by Proof.
-	Verify(m, vrf, proof []byte) error
-
-	// Index returns the index indicated by a given VRF evaluation.
-	Index(vrf []byte) [32]byte
+	// ProofToHash verifies the NP-proof supplied by Proof and outputs Index.
+	ProofToHash(m, proof []byte) (index [32]byte, err error)
 }
 
 // UniqueID computes a unique string for a domain, userID and appID combo.

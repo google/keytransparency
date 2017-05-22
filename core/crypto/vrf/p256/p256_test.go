@@ -57,23 +57,30 @@ func TestVRF(t *testing.T) {
 	m1 := []byte("data1")
 	m2 := []byte("data2")
 	m3 := []byte("data2")
-	vrf1, proof1 := k.Evaluate(m1)
-	vrf2, proof2 := k.Evaluate(m2)
-	vrf3, proof3 := k.Evaluate(m3)
+	index1, proof1 := k.Evaluate(m1)
+	index2, proof2 := k.Evaluate(m2)
+	index3, proof3 := k.Evaluate(m3)
 	for _, tc := range []struct {
 		m     []byte
-		vrf   []byte
+		index [32]byte
 		proof []byte
 		err   error
 	}{
-		{m1, vrf1, proof1, nil},
-		{m2, vrf2, proof2, nil},
-		{m3, vrf3, proof3, nil},
-		{m3, vrf3, proof2, nil},
-		{m3, vrf3, proof1, ErrInvalidVRF},
+		{m1, index1, proof1, nil},
+		{m2, index2, proof2, nil},
+		{m3, index3, proof3, nil},
+		{m3, index3, proof2, nil},
+		{m3, index3, proof1, ErrInvalidVRF},
 	} {
-		if got, want := pk.Verify(tc.m, tc.vrf[:], tc.proof), tc.err; got != want {
-			t.Errorf("Verify(%v, %v, %v): got %v, want %v", tc.m, tc.vrf, tc.proof, got, want)
+		index, err := pk.ProofToHash(tc.m, tc.proof)
+		if got, want := err, tc.err; got != want {
+			t.Errorf("ProofToIndex(%s, %x): %v, want %v", tc.m, tc.proof, got, want)
+		}
+		if err != nil {
+			continue
+		}
+		if got, want := index, tc.index; got != want {
+			t.Errorf("ProofToInex(%s, %x): %x, want %x", tc.m, tc.proof, got, want)
 		}
 	}
 }
@@ -110,37 +117,9 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 
 		// Evaluate and verify.
 		m := []byte("M")
-		vrf, proof := signer.Evaluate(m)
-		if verifier.Verify(m, vrf, proof) != nil {
+		_, proof := signer.Evaluate(m)
+		if _, err := verifier.ProofToHash(m, proof); err != nil {
 			t.Errorf("Failed verifying VRF proof")
-		}
-	}
-}
-
-func TestRightTruncateVRF(t *testing.T) {
-	k, pk := GenerateKey()
-
-	data := []byte("data")
-	vrf, proof := k.Evaluate(data)
-	vrfLen := len(vrf)
-	for i := 0; i < vrfLen; i++ {
-		vrf = vrf[:len(vrf)-1]
-		if err := pk.Verify(data, vrf, proof); err == nil {
-			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the end of vrf", i)
-		}
-	}
-}
-
-func TestLeftTruncateVRF(t *testing.T) {
-	k, pk := GenerateKey()
-
-	data := []byte("data")
-	vrf, proof := k.Evaluate(data)
-	vrfLen := len(vrf)
-	for i := 0; i < vrfLen; i++ {
-		vrf = vrf[1:]
-		if err := pk.Verify(data, vrf, proof); err == nil {
-			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the beginning of vrf", i)
 		}
 	}
 }
@@ -149,11 +128,11 @@ func TestRightTruncateProof(t *testing.T) {
 	k, pk := GenerateKey()
 
 	data := []byte("data")
-	vrf, proof := k.Evaluate(data)
+	_, proof := k.Evaluate(data)
 	proofLen := len(proof)
 	for i := 0; i < proofLen; i++ {
 		proof = proof[:len(proof)-1]
-		if err := pk.Verify(data, vrf, proof); err == nil {
+		if _, err := pk.ProofToHash(data, proof); err == nil {
 			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the end of proof", i)
 		}
 	}
@@ -163,42 +142,25 @@ func TestLeftTruncateProof(t *testing.T) {
 	k, pk := GenerateKey()
 
 	data := []byte("data")
-	vrf, proof := k.Evaluate(data)
+	_, proof := k.Evaluate(data)
 	proofLen := len(proof)
 	for i := 0; i < proofLen; i++ {
 		proof = proof[1:]
-		if err := pk.Verify(data, vrf, proof); err == nil {
+		if _, err := pk.ProofToHash(data, proof); err == nil {
 			t.Errorf("Verify unexpectedly succeeded after truncating %v bytes from the beginning of proof", i)
 		}
 	}
 }
 
-func TestBitFlipVRF(t *testing.T) {
+func TestBitFlip(t *testing.T) {
 	k, pk := GenerateKey()
 
 	data := []byte("data")
-	vrf, proof := k.Evaluate(data)
-	for i := 0; i < len(vrf)*8; i++ {
-		// Flip bit in position i.
-		flippedVrf := flipBit(vrf, i)
-
-		if err := pk.Verify(data, flippedVrf, proof); err == nil {
-			t.Errorf("Verify unexpectedly succeeded after flipping bit %v of vrf", i)
-		}
-	}
-}
-
-func TestBitFlipProof(t *testing.T) {
-	k, pk := GenerateKey()
-
-	data := []byte("data")
-	vrf, proof := k.Evaluate(data)
+	_, proof := k.Evaluate(data)
 	for i := 0; i < len(proof)*8; i++ {
 		// Flip bit in position i.
-		flippedProof := flipBit(proof, i)
-
-		if err := pk.Verify(data, vrf, flippedProof); err == nil {
-			t.Errorf("Verify unexpectedly succeeded after flipping bit %v of proof", i)
+		if _, err := pk.ProofToHash(data, flipBit(proof, i)); err == nil {
+			t.Errorf("Verify unexpectedly succeeded after flipping bit %v of vrf", i)
 		}
 	}
 }
