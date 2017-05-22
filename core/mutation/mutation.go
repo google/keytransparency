@@ -72,7 +72,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	}
 
 	// Get highest and lowest sequence number.
-	highestSeq := uint64(resp.GetMapRoot().GetMetadata().HighestFullyCompletedSeq)
+	highestSeq := uint64(resp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq())
 	lowestSeq, err := s.lowestSequenceNumber(ctx, in.PageToken, in.Epoch-1)
 	if err != nil {
 		return nil, err
@@ -101,6 +101,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		indexes = append(indexes, m.GetKeyValue().GetKey())
 	}
 	// Get leaf proofs.
+	// TODO: allow leaf proofs to be optional.
 	proofs, err := s.inclusionProofs(ctx, indexes, in.Epoch)
 	if err != nil {
 		return nil, err
@@ -110,7 +111,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	}
 
 	// Fetch log proofs.
-	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, in.FirstTreeSize, resp.GetMapRoot().MapRevision)
+	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, in.GetFirstTreeSize(), resp.GetMapRoot().GetMapRevision())
 	if err != nil {
 		return nil, err
 	}
