@@ -20,22 +20,25 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	cmutation "github.com/google/keytransparency/core/mutation"
+
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 
 // Server holds internal state for the monitor server.
 type Server struct {
+	srv *cmutation.Server
 }
 
 // New creates a new instance of the monitor server.
-func New() *Server {
-	return &Server{}
+func New(srv *cmutation.Server) *Server {
+	return &Server{srv}
 }
 
 // GetMutations returns a list of mutations paged by epoch number.
 func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "GetMutations is unimplemented")
+	return s.srv.GetMutations(ctx, in)
 }
 
 // GetMutationsStream is a streaming API similar to GetMutations.
