@@ -202,7 +202,7 @@ func main() {
 	mutator := entry.New()
 
 	// Connect to log server.
-	tconn, err := grpc.Dial(*logURL)
+	tconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("grpc.Dial(%v): %v", *logURL, err)
 	}
@@ -211,7 +211,7 @@ func main() {
 	// Connect to map server.
 	var tmap trillian.TrillianMapClient
 	if *mapURL != "" {
-		mconn, err := grpc.Dial(*mapURL)
+		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("grpc.Dial(%v): %v", *mapURL, err)
 		}
