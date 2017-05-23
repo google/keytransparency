@@ -19,9 +19,9 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
-	"sync/atomic"
 
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/vrf"
@@ -41,9 +41,9 @@ import (
 	"github.com/google/trillian"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -52,6 +52,7 @@ import (
 
 var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
+	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath = flag.String("db", "db", "Database connection string")
 	realm        = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
@@ -121,43 +122,6 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	})
-}
-
-var marshaler = jsonpb.Marshaler{Indent: "  ", OrigName: true}
-var requestCounter uint64
-
-// jsonLogger logs the request and response protobufs as json objects.
-func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	atomic.AddUint64(&requestCounter, 1)
-	// Print request.
-	pb, ok := req.(proto.Message)
-	if !ok {
-		glog.Warningf("req %t, %v, not a proto.Message", req, req)
-		return handler(ctx, req)
-	}
-	s, err := marshaler.MarshalToString(pb)
-	if err != nil {
-		glog.Warningf("Failed to marshal %v", pb)
-		return handler(ctx, req)
-	}
-	glog.Infof("%v>%v", requestCounter, s)
-
-	resp, err = handler(ctx, req)
-
-	// Print response.
-	pb, ok = resp.(proto.Message)
-	if !ok {
-		glog.Warningf("req %t, %v, not a proto.Message", req, req)
-		return resp, err
-	}
-	s, err = marshaler.MarshalToString(pb)
-	if err != nil {
-		glog.Warningf("Failed to marshal %v", pb)
-		return resp, err
-	}
-	glog.Infof("%v<%v", requestCounter, s)
-
-	return resp, err
 }
 
 func newReadonlyMapServer(ctx context.Context, mapID int64, sqldb *sql.DB, factory ctxn.Factory) (trillian.TrillianMapClient, error) {
@@ -238,13 +202,15 @@ func main() {
 	// Create gRPC server.
 	svr := keyserver.New(*logID, tlog, *mapID, tmap, commitments,
 		vrfPriv, mutator, auth, factory, mutations)
-	opts := []grpc.ServerOption{grpc.Creds(creds)}
-	if *verbose {
-		opts = append(opts, grpc.UnaryInterceptor(jsonLogger))
-	}
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
 	reflection.Register(grpcServer)
+	grpc_prometheus.Register(grpcServer)
+	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	// Create HTTP handlers and gRPC gateway.
 	gwmux, err := grpcGatewayMux(*addr)
@@ -252,10 +218,17 @@ func main() {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
 
-	mux := http.NewServeMux()
 	// Insert handlers for other http paths here.
+	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
 
+	metricMux := http.NewServeMux()
+	metricMux.Handle("/metrics", prometheus.Handler())
+	go func() {
+		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
+			log.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
+		}
+	}()
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)
 	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,

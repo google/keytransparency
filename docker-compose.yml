@@ -1,5 +1,14 @@
 version: "3"
 services:
+  prometheus:
+    depends_on:
+      - kt-server
+      - kt-signer
+    image: prom/prometheus
+    volumes: 
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
   db:
     image: mysql
     volumes:
@@ -84,7 +93,8 @@ services:
       - ./genfiles/:/kt/
     restart: always
     ports:
-      - "8080:8080" # JSON & gRPC
+      - "8080:8080" # json & grpc
+      - "8081:8081" # metrics
     environment:
       LOG_ID: 4450861294505218766 # Update with trillian admin CLI.
       LOG_URL: trillian-log:8090
@@ -116,6 +126,8 @@ services:
     volumes:
       - ./genfiles/:/kt/
       - ../trillian/testdata/:/trillian/
+    ports:
+      - "8082:8081" # metrics
     restart: always
     environment:
       LOG_ID: 4450861294505218766 # Update with trillian admin CLI.
@@ -137,6 +149,4 @@ services:
 
 volumes:
   kt:
-
-
 
