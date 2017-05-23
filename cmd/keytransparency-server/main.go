@@ -225,6 +225,7 @@ func main() {
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/metrics", prometheus.Handler())
 	go func() {
+		log.Printf("Hosting metrics on %v", *metricsAddr)
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
 			log.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
 		}

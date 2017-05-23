@@ -7,6 +7,7 @@ services:
     image: prom/prometheus
     volumes: 
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.rules:/etc/prometheus/prometheus.rules
     ports:
       - 9090:9090
   db:
@@ -61,7 +62,7 @@ services:
       VRF_PUB: /kt/vrf-pubkey.pem
       SIGN_KEY: /kt/p256-key.pem
       SIGN_KEY_PW: "towel"
-
+      SEQUENCER_PERIOD: 2.5s # shorter than kt-signer period.
 
   trillian-map:
     depends_on:
@@ -146,6 +147,7 @@ services:
       VRF_PUB: /kt/genfiles/vrf-pubkey.pem
       SIGN_KEY: /trillian/log-rpc-server.privkey.pem
       SIGN_KEY_PW: towel
+      SIGN_PERIOD: 5s
 
 volumes:
   kt:

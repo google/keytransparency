@@ -16,6 +16,7 @@ package signer
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -25,11 +26,41 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian/util"
 )
+
+var (
+	timeout      = 10 * time.Second
+	mutationsCtr = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "kt_signer_mutations",
+		Help: "Number of mutations the signer has processed.",
+	})
+	indexCtr = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "kt_signer_mutations_unique",
+		Help: "Number of mutations the signer has processed post per epoch dedupe.",
+	})
+	mapUpdateHist = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "kt_signer_map_update_seconds",
+		Help:    "Seconds waiting for map update",
+		Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, math.Inf(1)},
+	})
+	createEpochHist = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "kt_signer_create_epoch_seconds",
+		Help:    "Seconds spent generating epoch",
+		Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, math.Inf(1)},
+	})
+)
+
+func init() {
+	prometheus.MustRegister(mutationsCtr)
+	prometheus.MustRegister(indexCtr)
+	prometheus.MustRegister(mapUpdateHist)
+	prometheus.MustRegister(createEpochHist)
+}
 
 // Signer processes mutations and sends them to the trillian map.
 type Signer struct {
@@ -200,6 +231,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: starting")
+	start := time.Now()
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
@@ -257,6 +289,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 		len(mutations), len(leaves))
 
 	// Set new leaf values.
+	mapSetStart := time.Now()
 	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
 		MapId:  s.mapID,
 		Leaves: newLeaves,
@@ -264,14 +297,24 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 			HighestFullyCompletedSeq: seq,
 		},
 	})
+	mapSetEnd := time.Now()
 	if err != nil {
 		return err
 	}
 	glog.V(2).Infof("CreateEpoch: SetLeaves.HighestFullyCompletedSeq: %v", seq)
 
 	// Put SignedMapHead in an append only log.
-	if err := s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot); err != nil {
+	// TODO: sths.Write currently hangs.
+	ctxTime, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	if err := s.sths.Write(ctxTime, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot); err != nil {
 		return fmt.Errorf("sths.Write(%v, %v): %v", s.logID, setResp.MapRoot.MapRevision, err)
 	}
+
+	mutationsCtr.Add(float64(len(mutations)))
+	indexCtr.Add(float64(len(indexes)))
+	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
+	createEpochHist.Observe(time.Now().Sub(start).Seconds())
+	glog.Infof("CreatedEpoch: rev: %v, root: %x", setResp.MapRoot.MapRevision, setResp.MapRoot.RootHash)
 	return nil
 }

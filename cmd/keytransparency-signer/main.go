@@ -18,7 +18,6 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -146,11 +145,12 @@ func main() {
 	metricMux.Handle("/metrics", prometheus.Handler())
 	go func() {
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			log.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
+			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
 		}
 	}()
 
 	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)
-	glog.Infof("Signer started.")
+	glog.Infof("Signer starting")
 	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
+	glog.Errorf("Signer exiting")
 }
