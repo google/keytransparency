@@ -20,16 +20,15 @@ package mapserver
 import (
 	"crypto"
 	"fmt"
-	"log"
 
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 	"github.com/google/trillian"
 
+	"github.com/golang/glog"
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/util"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -103,7 +102,7 @@ func (m *mapServer) signRoot(ctx context.Context, metadata *trillian.MapperMetad
 		return nil, err
 	}
 
-	log.Printf("Created epoch %v. SMH: %#x", epoch, root)
+	glog.Infof("Created epoch %v. SMH: %#x", epoch, root)
 	return smr, nil
 }
 

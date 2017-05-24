@@ -18,13 +18,13 @@ package entry
 import (
 	"bytes"
 	"fmt"
-	"log"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
@@ -49,7 +49,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 
 	// Ensure that the mutaiton size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
-		log.Printf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
+		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
 		return mutator.ErrSize
 	}
 
@@ -60,11 +60,11 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 	if !bytes.Equal(prevEntryHash[:], update.Previous) {
 		// Check if this mutation is a replay.
 		if bytes.Equal(oldValue, update.GetKeyValue().Value) {
-			log.Print("mutation is a replay of an old one")
+			glog.Warningf("mutation is a replay of an old one")
 			return mutator.ErrReplay
 		}
 
-		log.Printf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], update.Previous)
+		glog.Warningf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], update.Previous)
 		return mutator.ErrPreviousHash
 	}
 
@@ -77,7 +77,7 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 	// Ensure that the mutation has at least one authorized key to prevent
 	// account lockout.
 	if len(entry.GetAuthorizedKeys()) == 0 {
-		log.Print("mutation should contain at least one authorized key")
+		glog.Warningf("mutation should contain at least one authorized key")
 		return mutator.ErrMissingKey
 	}
 

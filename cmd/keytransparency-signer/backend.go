@@ -18,8 +18,6 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"log"
-	"sync"
 	"time"
 
 	"github.com/google/keytransparency/core/admin"
@@ -35,6 +33,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
+	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/util"
@@ -63,10 +62,10 @@ var (
 func openDB() *sql.DB {
 	db, err := sql.Open(engine.DriverName, *serverDBPath)
 	if err != nil {
-		log.Fatalf("sql.Open(): %v", err)
+		glog.Exitf("sql.Open(): %v", err)
 	}
 	if err := db.Ping(); err != nil {
-		log.Fatalf("db.Ping(): %v", err)
+		glog.Exitf("db.Ping(): %v", err)
 	}
 	return db
 }
@@ -92,7 +91,6 @@ func newMapServer(ctx context.Context, sqldb *sql.DB, factory ctxn.Factory) (tri
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 
 	sqldb := openDB()
@@ -104,42 +102,37 @@ func main() {
 	if *mapURL != "" {
 		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("grpc.Dial(%v): %v", *mapURL, err)
+			glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 		}
 		tmap = trillian.NewTrillianMapClient(mconn)
 	} else {
 		var err error
 		tmap, err = newMapServer(context.Background(), sqldb, factory)
 		if err != nil {
-			log.Fatalf("newMapServer: %v", err)
+			glog.Exitf("newMapServer: %v", err)
 		}
 	}
 
 	// Connection to append only log
 	tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
 	if err != nil {
-		log.Fatalf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
+		glog.Exitf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
 	}
 
 	// Create signer helper objects.
 	static := admin.NewStatic()
 	if err := static.AddLog(*logID, tlog); err != nil {
-		log.Fatalf("static.AddLog(%v): %v", *mapID, err)
+		glog.Exitf("static.AddLog(%v): %v", *mapID, err)
 	}
 	sths := appender.NewTrillian(static)
 	// TODO: add mutations and mutator to admin.
 	mutations, err := mutations.New(sqldb, *mapID)
 	if err != nil {
-		log.Fatalf("Failed to create mutations object: %v", err)
+		glog.Exitf("Failed to create mutations object: %v", err)
 	}
 	mutator := entry.New()
 
 	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)
-	go signer.StartSigning(context.Background(), *epochDuration)
-
-	log.Printf("Signer started.")
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	wg.Wait()
+	glog.Infof("Signer started.")
+	signer.StartSigning(context.Background(), *epochDuration)
 }

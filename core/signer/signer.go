@@ -16,7 +16,6 @@ package signer
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -24,6 +23,7 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
+	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"golang.org/x/net/context"
 
@@ -67,7 +67,7 @@ func New(realm string,
 func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
 	for range time.NewTicker(interval).C {
 		if err := s.CreateEpoch(ctx); err != nil {
-			log.Fatalf("CreateEpoch failed: %v", err)
+			glog.Fatalf("CreateEpoch failed: %v", err)
 		}
 	}
 }
@@ -82,7 +82,7 @@ func (s *Signer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.
 	maxSequence, mutations, err := s.mutations.ReadAll(txn, uint64(startSequence))
 	if err != nil {
 		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
+			glog.Errorf("Cannot rollback the transaction: %v", err)
 		}
 		return nil, 0, fmt.Errorf("ReadAll(%v): %v", startSequence, err)
 	}
@@ -127,7 +127,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 		}
 		newValue, err := s.mutator.Mutate(oldValue, mData)
 		if err != nil {
-			log.Printf("Mutate(): %v", err)
+			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.
 		}
 
@@ -146,6 +146,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context) error {
+	glog.V(2).Infof("CreateEpoch: starting")
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
@@ -154,6 +155,7 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 	}
 	startSequence := rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
+	glog.V(2).Infof("CreateEpoch: startSequence: %v", startSequence)
 
 	// Get the list of new mutations to process.
 	mutations, seq, err := s.newMutations(ctx, startSequence)
@@ -166,6 +168,8 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 	for _, m := range mutations {
 		indexes = append(indexes, m.KeyValue.Key)
 	}
+	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v",
+		len(mutations), len(indexes))
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    s.mapID,
 		Index:    indexes,
@@ -174,6 +178,8 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	glog.V(2).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
+		len(getResp.MapLeafInclusion))
 
 	// Trust the leaf values provided by the map server.
 	// If the map server is run by an untrusted entity, perform inclusion
@@ -188,6 +194,8 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves",
+		len(mutations), len(leaves))
 
 	// Set new leaf values.
 	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
@@ -200,6 +208,8 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	glog.V(2).Infof("CreateEpoch: SetLeaves.HighestFullyCompletedSeq: %v", seq)
+
 	// Put SignedMapHead in an append only log.
 	if err := s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot); err != nil {
 		return fmt.Errorf("sths.Write(%v, %v): %v", s.logID, setResp.MapRoot.MapRevision, err)
