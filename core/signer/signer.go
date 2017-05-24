@@ -167,8 +167,9 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 		indexes = append(indexes, m.KeyValue.Key)
 	}
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
-		MapId: s.mapID,
-		Index: indexes,
+		MapId:    s.mapID,
+		Index:    indexes,
+		Revision: -1, // Get the latest version.
 	})
 	if err != nil {
 		return err
@@ -200,5 +201,8 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 		return err
 	}
 	// Put SignedMapHead in an append only log.
-	return s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot)
+	if err := s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot); err != nil {
+		return fmt.Errorf("sths.Write(%v, %v): %v", s.logID, setResp.MapRoot.MapRevision, err)
+	}
+	return nil
 }
