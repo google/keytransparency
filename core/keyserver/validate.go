@@ -79,8 +79,7 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 	}
 
 	// Verify Index / VRF
-	v, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId, in.AppId))
-	index := vrfPriv.Index(v)
+	index, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId, in.AppId))
 	if got, want := kv.Key, index[:]; !bytes.Equal(got, want) {
 		return ErrWrongIndex
 	}

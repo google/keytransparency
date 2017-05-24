@@ -94,12 +94,12 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	if err := v.vrf.Verify(vrf.UniqueID(userID, appID), in.Vrf, in.VrfProof); err != nil {
+	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), in.VrfProof)
+	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
-		return fmt.Errorf("vrf.Verify(%v, %v): %v", userID, appID, err)
+		return fmt.Errorf("vrf.ProofToHash(%v, %v): %v", userID, appID, err)
 	}
 	Vlog.Printf("✓ VRF verified.")
-	index := v.vrf.Index(in.Vrf)
 
 	leafProof := in.GetLeafProof()
 	if leafProof == nil {
