@@ -64,9 +64,21 @@ func New(realm string,
 }
 
 // StartSigning advance epochs once per interval.
-func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
-	for range time.NewTicker(interval).C {
-		if err := s.CreateEpoch(ctx); err != nil {
+func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, maxElapsed uint) {
+	// count elapsed minIntervals:
+	elapsed := uint(0)
+	for range time.NewTicker(minInterval).C {
+		elapsed++
+		var createNewEpoch bool
+		if elapsed >= maxElapsed {
+			createNewEpoch = true
+			elapsed = 0
+		} else {
+			createNewEpoch = false
+		}
+		// only create a new epoch if elapsed intervals >= max. elapsed intervals
+		// OR there were mutations in between max. elapsed epochs:
+		if err := s.CreateEpoch(ctx, createNewEpoch); err != nil {
 			glog.Fatalf("CreateEpoch failed: %v", err)
 		}
 	}
@@ -145,7 +157,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 }
 
 // CreateEpoch signs the current map head.
-func (s *Signer) CreateEpoch(ctx context.Context) error {
+func (s *Signer) CreateEpoch(ctx context.Context, alwaysCreateNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: starting")
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
@@ -161,6 +173,11 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 	mutations, seq, err := s.newMutations(ctx, startSequence)
 	if err != nil {
 		return fmt.Errorf("newMutations(%v): %v", startSequence, err)
+	}
+
+	// don't create epoch if there is nothing to process unless explicitly specified by caller
+	if len(mutations) == 0 && !alwaysCreateNewEpoch {
+		return nil
 	}
 
 	// Get current leaf values.
