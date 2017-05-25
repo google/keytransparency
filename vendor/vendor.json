@@ -1,7 +1,6 @@
 {
 	"comment": "",
 	"ignore": "test",
-	"package": [
-	],
+	"package": [],
 	"rootPath": "github.com/google/keytransparency"
 }
