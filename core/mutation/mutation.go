@@ -18,9 +18,9 @@ package mutation
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
@@ -67,7 +67,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		Revision: in.Epoch,
 	})
 	if err != nil {
-		log.Printf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, in.Epoch, err)
+		glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, in.Epoch, err)
 		return nil, grpc.Errorf(codes.Internal, "Get signed map root failed")
 	}
 
@@ -85,9 +85,9 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	}
 	maxSequence, mRange, err := s.mutations.ReadRange(txn, lowestSeq, highestSeq, in.PageSize)
 	if err != nil {
-		log.Printf("mutations.ReadRange(%v, %v, %v): %v", lowestSeq, highestSeq, in.PageSize, err)
+		glog.Errorf("mutations.ReadRange(%v, %v, %v): %v", lowestSeq, highestSeq, in.PageSize, err)
 		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
+			glog.Errorf("Cannot rollback the transaction: %v", err)
 		}
 		return nil, grpc.Errorf(codes.Internal, "Reading mutations range failed")
 	}
@@ -137,7 +137,7 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, revision in
 			LogId: s.logID,
 		})
 	if err != nil {
-		log.Printf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
 		return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
@@ -151,7 +151,7 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, revision in
 				SecondTreeSize: secondTreeSize,
 			})
 		if err != nil {
-			log.Printf("tlog.GetConsistency(%v, %v, %v): %v", s.logID, firstTreeSize, secondTreeSize, err)
+			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v", s.logID, firstTreeSize, secondTreeSize, err)
 			return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch log consistency proof")
 		}
 	}
@@ -164,7 +164,7 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, revision in
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		log.Printf("tlog.GetInclusionProof(%v, %v, %v): %v", s.logID, revision, secondTreeSize, err)
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", s.logID, revision, secondTreeSize, err)
 		return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 	return logRoot, logConsistency, logInclusion, nil
@@ -177,7 +177,7 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 		// string. To avoid this, strconv is used.
 		var err error
 		if lowestSeq, err = strconv.ParseInt(token, 10, 64); err != nil {
-			log.Printf("strconv.ParseInt(%v, 10, 64): %v", token, err)
+			glog.Errorf("strconv.ParseInt(%v, 10, 64): %v", token, err)
 			return 0, grpc.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
 		}
 	} else if epoch != 0 {
@@ -186,7 +186,7 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 			Revision: epoch,
 		})
 		if err != nil {
-			log.Printf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, epoch, err)
+			glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, epoch, err)
 			return 0, grpc.Errorf(codes.Internal, "Get previous signed map root failed")
 		}
 		lowestSeq = resp.GetMapRoot().GetMetadata().HighestFullyCompletedSeq
@@ -201,11 +201,11 @@ func (s *Server) inclusionProofs(ctx context.Context, indexes [][]byte, epoch in
 		Revision: epoch,
 	})
 	if err != nil {
-		log.Printf("GetLeaves(): %v", err)
+		glog.Errorf("GetLeaves(): %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), len(indexes); got != want {
-		log.Printf("GetLeaves() len: %v, want %v", got, want)
+		glog.Errorf("GetLeaves() len: %v, want %v", got, want)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	return getResp.MapLeafInclusion, nil

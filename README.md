@@ -36,10 +36,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 2. Install prerequisites, Key Transparency client code, and sync all dependencies
 
   ```sh
-  go get -u github.com/kardianos/govendor
   go get -u github.com/google/keytransparency/cmd/...
-  cd $GOPATH/src/github.com/google/keytransparency
-  govendor sync
   ```
 
 3. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file.
@@ -94,10 +91,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 
   ```sh
   go get -u github.com/mattn/goreman
-  go get -u github.com/kardianos/govendor
   go get -u github.com/google/keytransparency/...
-  cd $GOPATH/src/github.com/google/keytransparency
-  govendor sync
   ```
 
 4. Get a [service account key](https://console.developers.google.com/apis/credentials) and download the generated JSON file.

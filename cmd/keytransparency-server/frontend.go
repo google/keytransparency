@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -39,6 +38,7 @@ import (
 	"github.com/google/keytransparency/impl/transaction"
 	"github.com/google/trillian"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -71,10 +71,10 @@ var (
 func openDB() *sql.DB {
 	db, err := sql.Open(engine.DriverName, *serverDBPath)
 	if err != nil {
-		log.Fatalf("sql.Open(): %v", err)
+		glog.Exitf("sql.Open(): %v", err)
 	}
 	if err := db.Ping(); err != nil {
-		log.Fatalf("db.Ping(): %v", err)
+		glog.Exitf("db.Ping(): %v", err)
 	}
 	return db
 }
@@ -82,11 +82,11 @@ func openDB() *sql.DB {
 func openVRFKey() vrf.PrivateKey {
 	vrfBytes, err := ioutil.ReadFile(*vrfPath)
 	if err != nil {
-		log.Fatalf("Failed opening VRF private key: %v", err)
+		glog.Exitf("Failed opening VRF private key: %v", err)
 	}
 	vrfPriv, err := p256.NewVRFSignerFromPEM(vrfBytes)
 	if err != nil {
-		log.Fatalf("Failed parsing VRF private key: %v", err)
+		glog.Exitf("Failed parsing VRF private key: %v", err)
 	}
 	return vrfPriv
 }
@@ -131,30 +131,30 @@ func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 	// Print request.
 	pb, ok := req.(proto.Message)
 	if !ok {
-		log.Printf("req %t, %v, not a proto.Message", req, req)
+		glog.Warningf("req %t, %v, not a proto.Message", req, req)
 		return handler(ctx, req)
 	}
 	s, err := marshaler.MarshalToString(pb)
 	if err != nil {
-		log.Printf("Failed to marshal %v", pb)
+		glog.Warningf("Failed to marshal %v", pb)
 		return handler(ctx, req)
 	}
-	log.Printf("%v>%v", requestCounter, s)
+	glog.Infof("%v>%v", requestCounter, s)
 
 	resp, err = handler(ctx, req)
 
 	// Print response.
 	pb, ok = resp.(proto.Message)
 	if !ok {
-		log.Printf("req %t, %v, not a proto.Message", req, req)
+		glog.Warningf("req %t, %v, not a proto.Message", req, req)
 		return resp, err
 	}
 	s, err = marshaler.MarshalToString(pb)
 	if err != nil {
-		log.Printf("Failed to marshal %v", pb)
+		glog.Warningf("Failed to marshal %v", pb)
 		return resp, err
 	}
-	log.Printf("%v<%v", requestCounter, s)
+	glog.Infof("%v<%v", requestCounter, s)
 
 	return resp, err
 }
@@ -172,7 +172,6 @@ func newReadonlyMapServer(ctx context.Context, mapID int64, sqldb *sql.DB, facto
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 
 	// Open Resources.
@@ -182,21 +181,21 @@ func main() {
 
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {
-		log.Fatalf("Failed to load server credentials %v", err)
+		glog.Exitf("Failed to load server credentials %v", err)
 	}
 	auth, err := authentication.NewGoogleAuth()
 	if err != nil {
-		log.Fatalf("Failed to create authentication library instance: %v", err)
+		glog.Exitf("Failed to create authentication library instance: %v", err)
 	}
 
 	// Create database and helper objects.
 	commitments, err := commitments.New(sqldb, *mapID)
 	if err != nil {
-		log.Fatalf("Failed to create committer: %v", err)
+		glog.Exitf("Failed to create committer: %v", err)
 	}
 	mutations, err := mutations.New(sqldb, *mapID)
 	if err != nil {
-		log.Fatalf("Failed to create mutations object: %v", err)
+		glog.Exitf("Failed to create mutations object: %v", err)
 	}
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
@@ -204,7 +203,7 @@ func main() {
 	// Connect to log server.
 	tconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("grpc.Dial(%v): %v", *logURL, err)
+		glog.Exitf("grpc.Dial(%v): %v", *logURL, err)
 	}
 	tlog := trillian.NewTrillianLogClient(tconn)
 
@@ -213,14 +212,14 @@ func main() {
 	if *mapURL != "" {
 		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("grpc.Dial(%v): %v", *mapURL, err)
+			glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 		}
 		tmap = trillian.NewTrillianMapClient(mconn)
 	} else {
 		// Create an in-process readonly mapserver.
 		tmap, err = newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
 		if err != nil {
-			log.Fatalf("newReadonlyMapServer(): %v", err)
+			glog.Exitf("newReadonlyMapServer(): %v", err)
 		}
 	}
 
@@ -238,7 +237,7 @@ func main() {
 	// Create HTTP handlers and gRPC gateway.
 	gwmux, err := grpcGatewayMux(*addr)
 	if err != nil {
-		log.Fatalf("Failed setting up REST proxy: %v", err)
+		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
 
 	mux := http.NewServeMux()
@@ -246,9 +245,9 @@ func main() {
 	mux.Handle("/", gwmux)
 
 	// Serve HTTP2 server over TLS.
-	log.Printf("Listening on %v", *addr)
+	glog.Infof("Listening on %v", *addr)
 	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
 		grpcHandlerFunc(grpcServer, mux)); err != nil {
-		log.Fatalf("ListenAndServeTLS: %v", err)
+		glog.Errorf("ListenAndServeTLS: %v", err)
 	}
 }

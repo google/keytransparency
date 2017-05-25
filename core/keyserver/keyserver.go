@@ -16,14 +16,13 @@
 package keyserver
 
 import (
-	"log"
-
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -97,11 +96,11 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 		Revision: epoch,
 	})
 	if err != nil {
-		log.Printf("GetLeaves(): %v", err)
+		glog.Errorf("GetLeaves(): %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
-		log.Printf("GetLeaves() len: %v, want %v", got, want)
+		glog.Errorf("GetLeaves() len: %v, want %v", got, want)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	neighbors := getResp.MapLeafInclusion[0].Inclusion
@@ -111,13 +110,13 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	if leaf != nil {
 		entry := tpb.Entry{}
 		if err := proto.Unmarshal(leaf, &entry); err != nil {
-			log.Printf("Error unmarshaling entry: %v", err)
+			glog.Errorf("Error unmarshaling entry: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
 
 		committed, err = s.committer.Read(ctx, entry.Commitment)
 		if err != nil {
-			log.Printf("Cannot read committed value: %v", err)
+			glog.Errorf("Cannot read committed value: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
 		}
 		if committed == nil {
@@ -132,7 +131,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 			LogId: s.logID,
 		})
 	if err != nil {
-		log.Printf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
@@ -147,7 +146,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 				SecondTreeSize: secondTreeSize,
 			})
 		if err != nil {
-			log.Printf("tlog.GetConsistency(%v, %v, %v): %v",
+			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v",
 				s.logID, firstTreeSize, secondTreeSize, err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot fetch log consistency proof")
 		}
@@ -162,7 +161,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		log.Printf("tlog.GetInclusionProof(%v, %v, %v): %v",
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v",
 			s.logID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
@@ -190,13 +189,13 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 		MapId: s.mapID,
 	})
 	if err != nil {
-		log.Printf("GetSignedMapRoot(%v): %v", s.mapID, err)
+		glog.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 		return nil, grpc.Errorf(codes.Internal, "Fetching latest signed map root failed")
 	}
 
 	currentEpoch := resp.GetMapRoot().GetMapRevision()
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
-		log.Printf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
+		glog.Errorf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
@@ -206,7 +205,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 	for i := range responses {
 		resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
 		if err != nil {
-			log.Printf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
+			glog.Errorf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
 			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
 		}
 		responses[i] = resp
@@ -228,7 +227,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*tpb.UpdateEntryResponse, error) {
 	// Validate proper authentication.
 	if err := s.auth.ValidateCreds(ctx, in.UserId); err != nil {
-		log.Printf("Auth failed: %v", err)
+		glog.Warningf("Auth failed: %v", err)
 		return nil, grpc.Errorf(codes.PermissionDenied, "Permission denied")
 	}
 	// Verify:
@@ -236,7 +235,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	// - Correct profile commitment.
 	// - Correct key formats.
 	if err := validateUpdateEntryRequest(in, s.vrf); err != nil {
-		log.Printf("Invalid UpdateEntryRequest: %v", err)
+		glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
@@ -252,7 +251,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	}
 	resp, err := s.GetEntry(ctx, req)
 	if err != nil {
-		log.Printf("GetEntry failed: %v", err)
+		glog.Errorf("GetEntry failed: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Read failed")
 	}
 
@@ -264,19 +263,19 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 
 	m, err := proto.Marshal(in.GetEntryUpdate().GetUpdate())
 	if err != nil {
-		log.Printf("Marshal error of Update: %v", err)
+		glog.Warningf("Marshal error of Update: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Marshaling error")
 	}
 
 	// The very first mutation will have resp.LeafProof.LeafData=nil.
 	if err := s.mutator.CheckMutation(resp.LeafProof.Leaf.LeafValue, m); err == mutator.ErrReplay {
-		log.Printf("Discarding request due to replay")
+		glog.Warningf("Discarding request due to replay")
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
 		// Retry() in client/client.go.
 		return &tpb.UpdateEntryResponse{Proof: resp}, nil
 	} else if err != nil {
-		log.Printf("Invalid mutation: %v", err)
+		glog.Warningf("Invalid mutation: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
 	}
 
@@ -286,14 +285,14 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
 	if _, err := s.mutations.Write(txn, in.GetEntryUpdate().GetUpdate()); err != nil {
-		log.Printf("mutations.Write failed: %v", err)
+		glog.Errorf("mutations.Write failed: %v", err)
 		if err := txn.Rollback(); err != nil {
-			log.Printf("Cannot rollback the transaction: %v", err)
+			glog.Errorf("Cannot rollback the transaction: %v", err)
 		}
 		return nil, grpc.Errorf(codes.Internal, "Mutation write error")
 	}
 	if err := txn.Commit(); err != nil {
-		log.Printf("Cannot commit transaction: %v", err)
+		glog.Errorf("Cannot commit transaction: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 	return &tpb.UpdateEntryResponse{Proof: resp}, nil
@@ -302,13 +301,13 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 func (s *Server) saveCommitment(ctx context.Context, kv *tpb.KeyValue, committed *tpb.Committed) error {
 	entry := new(tpb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
-		log.Printf("Error unmarshaling entry: %v", err)
+		glog.Warningf("Error unmarshaling entry: %v", err)
 		return grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
 	// Write the commitment.
 	if err := s.committer.Write(ctx, entry.Commitment, committed); err != nil {
-		log.Printf("committer.Write failed: %v", err)
+		glog.Errorf("committer.Write failed: %v", err)
 		return grpc.Errorf(codes.Internal, "Write failed")
 	}
 	return nil

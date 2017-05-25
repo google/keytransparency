@@ -1,7 +1,6 @@
 *.swp
 *.swo
 *~
-vendor/*/
 
 keytransparency-server
 keytransparency-signer

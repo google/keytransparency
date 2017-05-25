@@ -7,16 +7,12 @@ dist: trusty
 sudo: false
 
 install:
-  - go get -u github.com/kardianos/govendor
-  - go get -u github.com/golang/lint/golint
-  - go get -u github.com/kisielk/errcheck
-  - go get -u github.com/fzipp/gocyclo
-  - go get -u github.com/gordonklaus/ineffassign
-  - go get -u github.com/client9/misspell/cmd/misspell
-  - go get -u ./...
-  # TODO: remove the next go get after cross-domain transactions are removed.
-  - go get -u github.com/coreos/etcd/integration
-  - govendor sync
+  - go get github.com/golang/lint/golint
+  - go get github.com/kisielk/errcheck
+  - go get github.com/fzipp/gocyclo
+  - go get github.com/gordonklaus/ineffassign
+  - go get github.com/client9/misspell/cmd/misspell
+  - go get ./...
 
 script:
   - make
