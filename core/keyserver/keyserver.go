@@ -84,12 +84,7 @@ func New(logID int64,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-	resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
-	if err != nil {
-		glog.Errorf("getEntry failed: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
-	}
-	return resp, nil
+	return s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
 }
 
 func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, epoch int64) (*tpb.GetEntryResponse, error) {
@@ -136,7 +131,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 			LogId: s.logID,
 		})
 	if err != nil {
-		glog.Warningf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
@@ -194,13 +189,13 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 		MapId: s.mapID,
 	})
 	if err != nil {
-		glog.Warningf("GetSignedMapRoot(%v): %v", s.mapID, err)
+		glog.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 		return nil, grpc.Errorf(codes.Internal, "Fetching latest signed map root failed")
 	}
 
 	currentEpoch := resp.GetMapRoot().GetMapRevision()
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
-		glog.Warningf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
+		glog.Errorf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
@@ -210,7 +205,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 	for i := range responses {
 		resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
 		if err != nil {
-			glog.Warningf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
+			glog.Errorf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
 			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
 		}
 		responses[i] = resp
@@ -256,7 +251,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	}
 	resp, err := s.GetEntry(ctx, req)
 	if err != nil {
-		glog.Warningf("GetEntry failed: %v", err)
+		glog.Errorf("GetEntry failed: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Read failed")
 	}
 
@@ -290,7 +285,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
 	if _, err := s.mutations.Write(txn, in.GetEntryUpdate().GetUpdate()); err != nil {
-		glog.Warningf("mutations.Write failed: %v", err)
+		glog.Errorf("mutations.Write failed: %v", err)
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)
 		}
