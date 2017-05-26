@@ -33,10 +33,10 @@ func TestEpochCreation(t *testing.T) {
 	got := 0
 	want := 1
 	for i := 0; i < N; i++ {
-		g := <-gotQ
-		if g {
+		force := <-gotQ
+		if force {
 			got++
-			// expect the first x-1 calls with enforce == false (no epoch enforced)
+			// expect the first x-1 calls with enforce == false (epoch creation not enforced)
 			if i < (x - 1) {
 				t.Errorf("Epoch enforced during minEpoch %d (before %dth epoch)", i, x)
 			}

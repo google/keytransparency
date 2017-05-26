@@ -161,7 +161,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 }
 
 // CreateEpoch signs the current map head.
-func (s *Signer) CreateEpoch(ctx context.Context, alwaysCreateNewEpoch bool) error {
+func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: starting")
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
@@ -180,7 +180,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, alwaysCreateNewEpoch bool) err
 	}
 
 	// don't create epoch if there is nothing to process unless explicitly specified by caller
-	if len(mutations) == 0 && !alwaysCreateNewEpoch {
+	if len(mutations) == 0 && !forceNewEpoch {
 		return nil
 	}
 

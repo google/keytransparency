@@ -133,6 +133,10 @@ func main() {
 	}
 	mutator := entry.New()
 
+	if *maxEpochDuration < *minEpochDuration {
+		glog.Exitf("Maximum time between epoch creation (%v) must be grater or equal minimum time between epoch creation.")
+	}
+
 	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)
 	glog.Infof("Signer started.")
 	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
