@@ -45,7 +45,7 @@ var (
 	serverDBPath  = flag.String("db", "db", "Database connection string")
 	domain        = flag.String("domain", "example.com", "Distinguished name for this key server")
 	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations)")
-	maxElapsedEpochs = flag.Uint("max-period", 60, "Maximum elapsed min-periods until epoch creation (independent from mutations)")
+	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations)")
 
 	// Info to connect to sparse merkle tree database.
 	mapID  = flag.Int64("map-id", 0, "ID for backend map")
@@ -135,5 +135,5 @@ func main() {
 
 	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)
 	glog.Infof("Signer started.")
-	signer.StartSigning(context.Background(), *minEpochDuration, *maxElapsedEpochs)
+	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
 }

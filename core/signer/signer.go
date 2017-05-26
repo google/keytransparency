@@ -65,25 +65,23 @@ func New(realm string,
 
 // StartSigning advance epochs once per minInterval, if there were mutations, and at least once per
 // maxElapsed minIntervals.
-func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, maxElapsed uint) {
-	// count elapsed minIntervals:
-	tc := time.NewTicker(minInterval).C
-	processEpochs(ctx, tc, maxElapsed, s.CreateEpoch)
+func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, maxInterval time.Duration) {
+	tc := time.Tick(minInterval)
+	processEpochs(ctx, tc, maxInterval, s.CreateEpoch)
 }
 
-func processEpochs(ctx context.Context, tc <-chan time.Time, maxElapsed uint, sign func(ctx context.Context, enforce bool) error) {
-	elapsed := uint(0)
-	for range tc {
-		elapsed++
+func processEpochs(ctx context.Context, tc <-chan time.Time, maxElapsed time.Duration, sign func(ctx context.Context, enforce bool) error) {
+	last := time.Now()
+	for now := range tc {
 		var forceNewEpoch bool
-		if elapsed >= maxElapsed {
+		if time.Since(last) >= maxElapsed {
 			forceNewEpoch = true
-			elapsed = 0
+			last = now
 		} else {
 			forceNewEpoch = false
 		}
 		// only create a new epoch if elapsed intervals >= max. elapsed intervals
-		// OR there were mutations in between max. elapsed epochs (handled by passed callback):
+		// OR there were mutations in between max. elapsed epochs (expected to be handled by passed callback):
 		if err := sign(ctx, forceNewEpoch); err != nil {
 			glog.Fatalf("CreateEpoch failed: %v", err)
 		}
