@@ -66,22 +66,52 @@ func New(realm string,
 // StartSigning advance epochs once per minInterval, if there were mutations, and at least once per
 // maxElapsed minIntervals.
 func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, maxInterval time.Duration) {
-	tc := time.Tick(minInterval)
-	processEpochs(ctx, tc, maxInterval, s.CreateEpoch)
+	// TODO Fetch last time from previous map head (as stored in the map server) if it exists:
+	last := time.Now()
+	processEpochs(ctx, last, minInterval, maxInterval, s.CreateEpoch)
 }
 
-func processEpochs(ctx context.Context, tc <-chan time.Time, maxElapsed time.Duration, sign func(ctx context.Context, enforce bool) error) {
-	last := time.Now()
-	for now := range tc {
+// processEpochs calls the given callback (usually Signer.CreateEpoch) every minElapsed and every
+// maxElapsed time.
+// The callback is meant to create epochs when necessary, i.e. there where mutations in between, or
+// independent from mutations, when called with the enforce flag set to true.
+// On "maxElapsed-calls" the callback is called with the enforce flag set to true otherwise it is set to false.
+// The caller should pass the last time the maxElapsed call was successful.
+func processEpochs(ctx context.Context, last time.Time, minElapsed, maxElapsed time.Duration, sign func(ctx context.Context, enforce bool) error) {
+
+	// TODO decide this loop or the one below (max duration independent from min-duration):
+	//for now := range tc {
+	//	var forceNewEpoch bool
+	//	if time.Since(last) >= maxElapsed {
+	//		forceNewEpoch = true
+	//		last = now
+	//	} else {
+	//		forceNewEpoch = false
+	//	}
+	//	// Only create a new epoch if elapsed intervals >= max. elapsed intervals
+	//	// OR there were mutations in between max. elapsed epochs (expected to be handled by passed callback):
+	//	if err := sign(ctx, forceNewEpoch); err != nil {
+	//		glog.Fatalf("CreateEpoch failed: %v", err)
+	//	}
+	//}
+
+
+	// Resume from last epoch creation (once):
+	tcl := time.After(time.Until(last.Add(maxElapsed)))
+	// After that both tickers
+	tcm := time.Tick(-1)
+	tc := time.NewTicker(minElapsed).C
+	for {
 		var forceNewEpoch bool
-		if time.Since(last) >= maxElapsed {
-			forceNewEpoch = true
-			last = now
-		} else {
+		select {
+		case <-tc:
 			forceNewEpoch = false
+		case <-tcm:
+			forceNewEpoch = true
+		case <-tcl:
+			forceNewEpoch = true
+			tcm = time.NewTicker(maxElapsed).C
 		}
-		// only create a new epoch if elapsed intervals >= max. elapsed intervals
-		// OR there were mutations in between max. elapsed epochs (expected to be handled by passed callback):
 		if err := sign(ctx, forceNewEpoch); err != nil {
 			glog.Fatalf("CreateEpoch failed: %v", err)
 		}

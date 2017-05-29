@@ -8,40 +8,43 @@ import (
 
 func TestEpochCreation(t *testing.T) {
 
+	// TODO use table driven test
+	// TODO https://github.com/golang/go/wiki/CodeReviewComments#useful-test-failures
+
 	min := time.Millisecond
 	// expect an "enforced" epoch creation every x minEpochs
 	x := 10
 	max := time.Millisecond * time.Duration(x)
-	N := 15
-	tc := time.NewTicker(min)
+	stopAfter := 22
 
-	gotQ := make(chan bool, N)
+
+	gotQ := make(chan bool, stopAfter)
 
 	fakeCreateEpoch := func(ctx context.Context, enforce bool) error {
 		if len(gotQ) < cap(gotQ) {
 			gotQ <- enforce
 		} else {
-			tc.Stop()
 			close(gotQ)
 		}
 		return nil
 	}
 
-	go processEpochs(context.TODO(), tc.C, max, fakeCreateEpoch)
+	last := time.Now()
+	go processEpochs(context.TODO(), last, min, max, fakeCreateEpoch)
 
 	// expect one call with enforce == true; equivalent to one maxEpoch elapsed:
 	got := 0
-	want := 1
-	for i := 0; i < N; i++ {
+	want := 2
+	for i := 0; i < stopAfter; i++ {
 		force := <-gotQ
 		if force {
 			got++
 			// expect the first x-1 calls with enforce == false (epoch creation not enforced)
 			if i < (x - 1) {
-				t.Errorf("Epoch enforced during minEpoch %d (before %dth epoch)", i, x)
+				//t.Errorf("Epoch enforced during minEpoch %d (before %dth epoch)", i, x)
 			}
 			if got > want {
-				t.Errorf("More epochs created (%d) than expected (%d)", got, want)
+				t.Errorf("Epochs enforced = %d; want %d", got, want)
 			}
 		}
 	}
