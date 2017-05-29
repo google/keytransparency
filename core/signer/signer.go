@@ -44,13 +44,13 @@ type Signer struct {
 
 // New creates a new instance of the signer.
 func New(realm string,
-	mapID int64,
-	tmap trillian.TrillianMapClient,
-	logID int64,
-	sths appender.Remote,
-	mutator mutator.Mutator,
-	mutations mutator.Mutation,
-	factory transaction.Factory) *Signer {
+mapID int64,
+tmap trillian.TrillianMapClient,
+logID int64,
+sths appender.Remote,
+mutator mutator.Mutator,
+mutations mutator.Mutation,
+factory transaction.Factory) *Signer {
 	return &Signer{
 		realm:     realm,
 		mapID:     mapID,
@@ -63,21 +63,28 @@ func New(realm string,
 	}
 }
 
-// StartSigning advance epochs once per minInterval, if there were mutations, and at least once per
-// maxElapsed minIntervals.
+// StartSigning advance epochs once per minInterval, if there were mutations,
+// and at least once per maxElapsed minIntervals.
 func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, maxInterval time.Duration) {
 	// TODO Fetch last time from previous map head (as stored in the map server) if it exists:
 	last := time.Now()
-	processEpochs(ctx, last, minInterval, maxInterval, s.CreateEpoch)
+	processEpochs(ctx, last, minInterval, maxInterval, s.CreateEpoch, nil)
 }
 
-// processEpochs calls the given callback (usually Signer.CreateEpoch) every minElapsed and every
-// maxElapsed time.
-// The callback is meant to create epochs when necessary, i.e. there where mutations in between, or
-// independent from mutations, when called with the enforce flag set to true.
-// On "maxElapsed-calls" the callback is called with the enforce flag set to true otherwise it is set to false.
+// processEpochs calls the given callback (usually Signer.CreateEpoch) every
+// minElapsed and every maxElapsed time.
+// The callback is meant to create epochs when necessary, i.e. there where
+// mutations in between, or independent from mutations, if called with the
+// enforce flag set to true.
+// On "maxElapsed-calls" the callback is called with the enforce flag set to
+// true otherwise it is set to false.
 // The caller should pass the last time the maxElapsed call was successful.
-func processEpochs(ctx context.Context, last time.Time, minElapsed, maxElapsed time.Duration, sign func(ctx context.Context, enforce bool) error) {
+// Use the quit channel to stop processing and return.
+func processEpochs(ctx context.Context,
+last time.Time,
+minElapsed, maxElapsed time.Duration,
+sign func(ctx context.Context, enforce bool) error,
+quit <-chan bool) {
 
 	// TODO decide this loop or the one below (max duration independent from min-duration):
 	//for now := range tc {
@@ -98,8 +105,8 @@ func processEpochs(ctx context.Context, last time.Time, minElapsed, maxElapsed t
 
 	// Resume from last epoch creation (once):
 	tcl := time.After(time.Until(last.Add(maxElapsed)))
-	// After that both tickers
-	tcm := time.Tick(-1)
+	// After that the maxDuration ticker gets started (here nil):
+	tcm := (<-chan time.Time)(nil)//time.Tick(-1)
 	tc := time.NewTicker(minElapsed).C
 	for {
 		var forceNewEpoch bool
@@ -111,6 +118,9 @@ func processEpochs(ctx context.Context, last time.Time, minElapsed, maxElapsed t
 		case <-tcl:
 			forceNewEpoch = true
 			tcm = time.NewTicker(maxElapsed).C
+		case <-quit:
+			// Quit and let the GC handle the resources:
+			return
 		}
 		if err := sign(ctx, forceNewEpoch); err != nil {
 			glog.Fatalf("CreateEpoch failed: %v", err)

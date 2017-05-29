@@ -30,7 +30,9 @@ func TestEpochCreation(t *testing.T) {
 	}
 
 	last := time.Now()
-	go processEpochs(context.TODO(), last, min, max, fakeCreateEpoch)
+	// FIXME this go-routine leaks (sometimes)
+	quit := make(chan bool)
+	go processEpochs(context.TODO(), last, min, max, fakeCreateEpoch, quit)
 
 	// expect one call with enforce == true; equivalent to one maxEpoch elapsed:
 	got := 0
@@ -48,6 +50,7 @@ func TestEpochCreation(t *testing.T) {
 			}
 		}
 	}
+	quit<-true
 
 	// see if only one epoch creation was enforced:
 	if got != want {
