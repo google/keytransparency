@@ -42,10 +42,10 @@ import (
 )
 
 var (
-	serverDBPath  = flag.String("db", "db", "Database connection string")
-	domain        = flag.String("domain", "example.com", "Distinguished name for this key server")
-	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations)")
-	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations)")
+	serverDBPath     = flag.String("db", "db", "Database connection string")
+	domain           = flag.String("domain", "example.com", "Distinguished name for this key server")
+	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations). Expected to be smaller than max-period.")
+	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations). This value should about half the time guaranteed by the policy.")
 
 	// Info to connect to sparse merkle tree database.
 	mapID  = flag.Int64("map-id", 0, "ID for backend map")
@@ -134,7 +134,7 @@ func main() {
 	mutator := entry.New()
 
 	if *maxEpochDuration < *minEpochDuration {
-		glog.Exitf("Maximum time between epoch creation (%v) must be grater or equal minimum time between epoch creation.")
+		glog.Exitf("maxEpochDuration < minEpochDuration: %v < %v, want maxEpochDuration >= minEpochDuration")
 	}
 
 	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)

@@ -44,13 +44,13 @@ type Signer struct {
 
 // New creates a new instance of the signer.
 func New(realm string,
-mapID int64,
-tmap trillian.TrillianMapClient,
-logID int64,
-sths appender.Remote,
-mutator mutator.Mutator,
-mutations mutator.Mutation,
-factory transaction.Factory) *Signer {
+	mapID int64,
+	tmap trillian.TrillianMapClient,
+	logID int64,
+	sths appender.Remote,
+	mutator mutator.Mutator,
+	mutations mutator.Mutation,
+	factory transaction.Factory) *Signer {
 	return &Signer{
 		realm:     realm,
 		mapID:     mapID,
@@ -65,14 +65,15 @@ factory transaction.Factory) *Signer {
 
 // StartSigning advance epochs once per minInterval, if there were mutations,
 // and at least once per maxElapsed minIntervals.
-func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, maxInterval time.Duration) {
-	// Fetch last time from previous map head (as stored in the map server) if it exists:
+func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time.Duration) {
+	// Fetch last time from previous map head (as stored in the map server) if it
+	// exists:
 	var last time.Time
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
 	})
 	if err != nil {
-		// TODO(Ismail) log error
+		glog.Infof("GetSignedMapRoot failed: %v", err)
 		last = time.Now()
 	} else {
 		mapRoot := rootResp.GetMapRoot()
@@ -83,69 +84,44 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, ma
 		}
 	}
 	// Start issuing epochs:
-	processEpochs(ctx, last, minInterval, maxInterval, s.CreateEpoch, nil)
-}
-
-// processEpochs calls the given callback (usually Signer.CreateEpoch) every
-// minElapsed and every maxElapsed time.
-// The callback should create epochs when necessary, i.e. there where
-// mutations in between, or, if called with the enforce flag set to true,
-// independent from mutations (this happens every maxDuration).
-// The caller should pass the last time the maxElapsed call was successful.
-// and can use quit channel to stop processing and return.
-// TODO For debugging and testing processEpochs returns the times it called the
-// callback and if it was called with an enforce flag.
-func processEpochs(ctx context.Context,
-last time.Time,
-minElapsed, maxElapsed time.Duration,
-sign func(ctx context.Context, enforce bool) error,
-quit <-chan bool) {
-
-	// TODO decide this loop or the one below (max duration independent from min-duration):
-	//for now := range tc {
-	//	var forceNewEpoch bool
-	//	if time.Since(last) >= maxElapsed {
-	//		forceNewEpoch = true
-	//		last = now
-	//	} else {
-	//		forceNewEpoch = false
-	//	}
-	//	// Only create a new epoch if elapsed intervals >= max. elapsed intervals
-	//	// OR there were mutations in between max. elapsed epochs (expected to be handled by passed callback):
-	//	if err := sign(ctx, forceNewEpoch); err != nil {
-	//		glog.Fatalf("CreateEpoch failed: %v", err)
-	//	}
-	//}
-
-
-	// Resume from last epoch creation (once):
-	tcLast := time.After(time.Until(last.Add(maxElapsed)))
-	// After that the maxDuration ticker gets started (here nil):
-	tcMax := time.Tick(-1)
-	tcMin := time.NewTicker(minElapsed).C
-
-	for {
-		var forceNewEpoch bool
-		select {
-		case <-tcMin:
-			forceNewEpoch = false
-		case <-tcMax:
-			forceNewEpoch = true
-		case <-tcLast:
-			// Resume from last epoch and start the maxDuration Ticker:
-			forceNewEpoch = true
-			tcMax = time.NewTicker(maxElapsed).C
-		case <-quit:
-			// Quit and let the GC handle resources:
-			return
-		}
-		if err := sign(ctx, forceNewEpoch); err != nil {
+	enforceChan := processEpochs(last, minInterval, maxInterval)
+	for f := range enforceChan {
+		if err := s.CreateEpoch(ctx, f); err != nil {
 			glog.Fatalf("CreateEpoch failed: %v", err)
 		}
 	}
 }
 
-// newMutations returns a list of mutations to process and highest sequence number returned.
+// processEpochs returns and sends to a bool channel every time an epoch should
+// be created. If the boolean value is true this indicates that the epoch should
+// be created independent from if there were mutations or not.
+func processEpochs(last time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
+	enforce := make(chan bool)
+	tc := time.Tick(minElapsed)
+
+	go func() {
+		// Do not wait for the first minDuration to pass but directly resume from
+		// last
+		if (time.Since(last) + minElapsed) >= maxElapsed {
+			enforce <- true
+			last = time.Now()
+		}
+
+		for now := range tc {
+			if (time.Since(last) + minElapsed) >= maxElapsed {
+				enforce <- true
+				last = now
+			} else {
+				enforce <- false
+			}
+		}
+	}()
+
+	return enforce
+}
+
+// newMutations returns a list of mutations to process and highest sequence
+// number returned.
 func (s *Signer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.SignedKV, int64, error) {
 	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
@@ -236,7 +212,8 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 		return fmt.Errorf("newMutations(%v): %v", startSequence, err)
 	}
 
-	// don't create epoch if there is nothing to process unless explicitly specified by caller
+	// Don't create epoch if there is nothing to process unless explicitly
+	// specified by caller
 	if len(mutations) == 0 && !forceNewEpoch {
 		return nil
 	}
