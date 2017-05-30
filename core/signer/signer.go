@@ -66,20 +66,35 @@ factory transaction.Factory) *Signer {
 // StartSigning advance epochs once per minInterval, if there were mutations,
 // and at least once per maxElapsed minIntervals.
 func (s *Signer) StartSigning(ctx context.Context, minInterval time.Duration, maxInterval time.Duration) {
-	// TODO Fetch last time from previous map head (as stored in the map server) if it exists:
-	last := time.Now()
+	// Fetch last time from previous map head (as stored in the map server) if it exists:
+	var last time.Time
+	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		MapId: s.mapID,
+	})
+	if err != nil {
+		// TODO(Ismail) log error
+		last = time.Now()
+	} else {
+		mapRoot := rootResp.GetMapRoot()
+		if mapRoot != nil {
+			last = time.Unix(0, mapRoot.TimestampNanos)
+		} else {
+			last = time.Now()
+		}
+	}
+	// Start issuing epochs:
 	processEpochs(ctx, last, minInterval, maxInterval, s.CreateEpoch, nil)
 }
 
 // processEpochs calls the given callback (usually Signer.CreateEpoch) every
 // minElapsed and every maxElapsed time.
-// The callback is meant to create epochs when necessary, i.e. there where
-// mutations in between, or independent from mutations, if called with the
-// enforce flag set to true.
-// On "maxElapsed-calls" the callback is called with the enforce flag set to
-// true otherwise it is set to false.
+// The callback should create epochs when necessary, i.e. there where
+// mutations in between, or, if called with the enforce flag set to true,
+// independent from mutations (this happens every maxDuration).
 // The caller should pass the last time the maxElapsed call was successful.
-// Use the quit channel to stop processing and return.
+// and can use quit channel to stop processing and return.
+// TODO For debugging and testing processEpochs returns the times it called the
+// callback and if it was called with an enforce flag.
 func processEpochs(ctx context.Context,
 last time.Time,
 minElapsed, maxElapsed time.Duration,
@@ -104,22 +119,24 @@ quit <-chan bool) {
 
 
 	// Resume from last epoch creation (once):
-	tcl := time.After(time.Until(last.Add(maxElapsed)))
+	tcLast := time.After(time.Until(last.Add(maxElapsed)))
 	// After that the maxDuration ticker gets started (here nil):
-	tcm := (<-chan time.Time)(nil)//time.Tick(-1)
-	tc := time.NewTicker(minElapsed).C
+	tcMax := time.Tick(-1)
+	tcMin := time.NewTicker(minElapsed).C
+
 	for {
 		var forceNewEpoch bool
 		select {
-		case <-tc:
+		case <-tcMin:
 			forceNewEpoch = false
-		case <-tcm:
+		case <-tcMax:
 			forceNewEpoch = true
-		case <-tcl:
+		case <-tcLast:
+			// Resume from last epoch and start the maxDuration Ticker:
 			forceNewEpoch = true
-			tcm = time.NewTicker(maxElapsed).C
+			tcMax = time.NewTicker(maxElapsed).C
 		case <-quit:
-			// Quit and let the GC handle the resources:
+			// Quit and let the GC handle resources:
 			return
 		}
 		if err := sign(ctx, forceNewEpoch); err != nil {
