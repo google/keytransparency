@@ -24,14 +24,14 @@ func TestEpochCreation(t *testing.T) {
 		{4, zero, time.Millisecond, time.Millisecond * 10, 42},
 		{5, zero, time.Millisecond, time.Millisecond * 10, 51},
 		// Resume from last epoch in the past (negative offset from time.Now()):
-		{2, -9 * time.Millisecond, time.Millisecond, time.Millisecond * 10, 11},
-		{2, -9 * time.Millisecond, time.Millisecond, time.Millisecond * 10, 11},
+		{1, -9 * time.Millisecond, time.Millisecond, time.Millisecond * 10, 5},
+		{2, -9 * time.Millisecond, time.Millisecond, time.Millisecond * 10, 12},
 		{2, -99 * time.Millisecond, time.Millisecond, time.Millisecond * 100, 110},
 		{2, -50 * time.Millisecond, time.Millisecond, time.Millisecond * 100, 155},
 		{4, -99 * time.Millisecond, time.Millisecond, time.Millisecond * 100, 310},
 	} {
 		last := time.Now().Add(tc.offset)
-		enforce := processEpochs(last, tc.min, tc.max)
+		enforce := genEpochTicks(last, tc.min, tc.max)
 		got := 0
 
 		for i := 0; i < tc.stopAfter; i++ {

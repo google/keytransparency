@@ -84,18 +84,17 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time
 		}
 	}
 	// Start issuing epochs:
-	enforceChan := processEpochs(last, minInterval, maxInterval)
-	for f := range enforceChan {
+	for f := range genEpochTicks(last, minInterval, maxInterval) {
 		if err := s.CreateEpoch(ctx, f); err != nil {
 			glog.Fatalf("CreateEpoch failed: %v", err)
 		}
 	}
 }
 
-// processEpochs returns and sends to a bool channel every time an epoch should
+// genEpochTicks returns and sends to a bool channel every time an epoch should
 // be created. If the boolean value is true this indicates that the epoch should
 // be created independent from if there were mutations or not.
-func processEpochs(last time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
+func genEpochTicks(last time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
 	enforce := make(chan bool)
 	tc := time.Tick(minElapsed)
 
@@ -108,7 +107,7 @@ func processEpochs(last time.Time, minElapsed, maxElapsed time.Duration) <-chan 
 		}
 
 		for now := range tc {
-			if (time.Since(last) + minElapsed) >= maxElapsed {
+			if (now.Sub(last) + minElapsed) >= maxElapsed {
 				enforce <- true
 				last = now
 			} else {
