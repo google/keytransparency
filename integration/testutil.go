@@ -27,6 +27,7 @@ import (
 	"github.com/google/keytransparency/core/admin"
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -104,7 +105,7 @@ K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`
-	signatures.Rand = DevZero{}
+	signatures.Rand = dev.Zeros
 	sig, err := keys.NewFromPrivatePEM(sigPriv, "")
 	if err != nil {
 		return nil, nil, err
@@ -136,18 +137,6 @@ f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 		return nil, nil, err
 	}
 	return vrf, verfier, nil
-}
-
-// DevZero is an io.Reader that returns 0's
-type DevZero struct{}
-
-// Read returns 0's
-func (DevZero) Read(b []byte) (n int, err error) {
-	for i := range b {
-		b[i] = 0
-	}
-
-	return len(b), nil
 }
 
 // NewEnv sets up common resources for tests.

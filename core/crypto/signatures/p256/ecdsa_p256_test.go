@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 )
 
@@ -40,20 +41,8 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
 -----END PUBLIC KEY-----`
 )
 
-// DevZero is an io.Reader that returns 0's
-type DevZero struct{}
-
-// Read returns 0's
-func (DevZero) Read(b []byte) (n int, err error) {
-	for i := range b {
-		b[i] = 0
-	}
-
-	return len(b), nil
-}
-
 func newSigner(t *testing.T, pemKey []byte) signatures.Signer {
-	signatures.Rand = DevZero{}
+	signatures.Rand = dev.Zeros
 	p, _ := pem.Decode(pemKey)
 	if p == nil {
 		t.Fatalf("no PEM block found")
@@ -229,7 +218,7 @@ func flipBit(a []byte, pos uint) []byte {
 }
 
 func TestGeneratePEMs(t *testing.T) {
-	signatures.Rand = DevZero{}
+	signatures.Rand = dev.Zeros
 	skPEM, pkPEM, err := GeneratePEMs()
 	if err != nil {
 		t.Fatalf("GeneratePEMs() failed: %v", err)

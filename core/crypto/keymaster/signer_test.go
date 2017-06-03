@@ -18,6 +18,7 @@ import (
 	"encoding/pem"
 	"testing"
 
+	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 )
 
@@ -31,7 +32,7 @@ csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
 )
 
 func TestSignerFromPEM(t *testing.T) {
-	signatures.Rand = DevZero{}
+	signatures.Rand = dev.Zeros
 	for _, priv := range []string{
 		testPrivKey,
 	} {
@@ -43,7 +44,7 @@ func TestSignerFromPEM(t *testing.T) {
 }
 
 func TestSignerFromKey(t *testing.T) {
-	signatures.Rand = DevZero{}
+	signatures.Rand = dev.Zeros
 	for _, priv := range []string{
 		testPrivKey,
 	} {
