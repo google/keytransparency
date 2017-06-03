@@ -46,6 +46,8 @@ var (
 	fixedKey = []byte{0x19, 0x6e, 0x7e, 0x52, 0x84, 0xa7, 0xef, 0x93, 0x0e, 0xcb, 0x9a, 0x19, 0x78, 0x74, 0x97, 0x55}
 	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
 	ErrInvalidCommitment = errors.New("invalid commitment")
+	// Rand is the PRNG reader. It can be overwritten in tests.
+	Rand = rand.Reader
 )
 
 // Committer saves cryptographic commitments.
@@ -60,7 +62,7 @@ type Committer interface {
 func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
 	// Generate commitment nonce.
 	nonce := make([]byte, commitmentKeyLen)
-	if _, err := rand.Read(nonce); err != nil {
+	if _, err := Rand.Read(nonce); err != nil {
 		return nil, nil, err
 	}
 
