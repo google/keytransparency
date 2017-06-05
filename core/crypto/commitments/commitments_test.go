@@ -59,7 +59,11 @@ func TestVectors(t *testing.T) {
 		userID, appID, data string
 		want                []byte
 	}{
+		{"", "", "", dh("0698789c7beed09e93848e4df08be5c911de534d286abcbf69359debe4c62bc2")},
 		{"foo", "app", "bar", dh("064c8933f50f897e8b179065c6b3ec13e9d093337c6d403c77e3ed1701378ed6")},
+		{"foo1", "app", "bar", dh("77015921f7fe584e1b5866a32ab9f305715c4e0241581d41f66ee34b24cdb566")},
+		{"foo", "app1", "bar", dh("e7337229d7747cc2c9a83ee08adbec712f4acafd1b72258bbebf74637de987b7")},
+		{"foo", "app", "bar1", dh("0fa2d7d53552e0871564c0e82ad394e72476b75f7fc77f40e2080af7f33d66eb")},
 	} {
 		k, c, err := Commit(tc.userID, tc.appID, []byte(tc.data))
 		if err != nil {
