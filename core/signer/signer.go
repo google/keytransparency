@@ -63,16 +63,78 @@ func New(realm string,
 	}
 }
 
-// StartSigning advance epochs once per interval.
-func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
-	for range time.NewTicker(interval).C {
-		if err := s.CreateEpoch(ctx); err != nil {
+// StartSigning advance epochs once per minInterval, if there were mutations,
+// and at least once per maxElapsed minIntervals.
+func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time.Duration) {
+	// Fetch last time from previous map head (as stored in the map server) if it
+	// exists:
+	var last time.Time
+	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		MapId: s.mapID,
+	})
+	if err != nil {
+		glog.Infof("GetSignedMapRoot failed: %v", err)
+		last = time.Now()
+	} else {
+		mapRoot := rootResp.GetMapRoot()
+		if mapRoot != nil {
+			last = time.Unix(0, mapRoot.TimestampNanos)
+		} else {
+			last = time.Now()
+		}
+	}
+	// Start issuing epochs:
+	tc := time.Tick(minInterval)
+	for f := range genEpochTicks(sysClock{}, last, tc, minInterval, maxInterval) {
+		if err := s.CreateEpoch(ctx, f); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 	}
 }
 
-// newMutations returns a list of mutations to process and highest sequence number returned.
+type clock interface {
+	Now() time.Time
+	Since(time.Time) time.Duration
+}
+
+type sysClock struct{}
+
+func (c sysClock) Now() time.Time {
+	return time.Now()
+}
+
+func (c sysClock) Since(t time.Time) time.Duration {
+	return time.Since(t)
+}
+
+// genEpochTicks returns and sends to a bool channel every time an epoch should
+// be created. If the boolean value is true this indicates that the epoch should
+// be created independent from if there were mutations or not.
+func genEpochTicks(t clock, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
+	enforce := make(chan bool)
+	go func() {
+		// Do not wait for the first minDuration to pass but directly resume from
+		// last
+		if (t.Since(last) + minElapsed) >= maxElapsed {
+			enforce <- true
+			last = t.Now()
+		}
+
+		for now := range minTick {
+			if (now.Sub(last) + minElapsed) >= maxElapsed {
+				enforce <- true
+				last = now
+			} else {
+				enforce <- false
+			}
+		}
+	}()
+
+	return enforce
+}
+
+// newMutations returns a list of mutations to process and highest sequence
+// number returned.
 func (s *Signer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.SignedKV, int64, error) {
 	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
@@ -145,7 +207,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 }
 
 // CreateEpoch signs the current map head.
-func (s *Signer) CreateEpoch(ctx context.Context) error {
+func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: starting")
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
@@ -161,6 +223,12 @@ func (s *Signer) CreateEpoch(ctx context.Context) error {
 	mutations, seq, err := s.newMutations(ctx, startSequence)
 	if err != nil {
 		return fmt.Errorf("newMutations(%v): %v", startSequence, err)
+	}
+
+	// Don't create epoch if there is nothing to process unless explicitly
+	// specified by caller
+	if len(mutations) == 0 && !forceNewEpoch {
+		return nil
 	}
 
 	// Get current leaf values.
