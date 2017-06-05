@@ -66,6 +66,20 @@ func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
 		return nil, nil, err
 	}
 
+	return createCommitment(userID, appID, data, nonce),
+		&tpb.Committed{Key: nonce, Data: data}, nil
+}
+
+// Verify customizes a commitment with a userID.
+func Verify(userID, appID string, commitment []byte, committed *tpb.Committed) error {
+	if got, want := createCommitment(userID, appID, committed.Data, committed.Key),
+		commitment; !hmac.Equal(got, want) {
+		return ErrInvalidCommitment
+	}
+	return nil
+}
+
+func createCommitment(userID, appID string, data, nonce []byte) []byte {
 	mac := hmac.New(hashAlgo, fixedKey)
 	mac.Write([]byte(prefix))
 	mac.Write(nonce)
@@ -77,24 +91,5 @@ func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
 	mac.Write([]byte(appID))
 	mac.Write(data)
 
-	return mac.Sum(nil), &tpb.Committed{Key: nonce, Data: data}, nil
-}
-
-// Verify customizes a commitment with a userID.
-func Verify(userID, appID string, commitment []byte, committed *tpb.Committed) error {
-	mac := hmac.New(hashAlgo, fixedKey)
-	mac.Write([]byte(prefix))
-	mac.Write(committed.Key)
-
-	// Message
-	binary.Write(mac, binary.BigEndian, uint32(len(userID)))
-	mac.Write([]byte(userID))
-	binary.Write(mac, binary.BigEndian, uint32(len(appID)))
-	mac.Write([]byte(appID))
-	mac.Write(committed.Data)
-
-	if !hmac.Equal(mac.Sum(nil), commitment) {
-		return ErrInvalidCommitment
-	}
-	return nil
+	return mac.Sum(nil)
 }
