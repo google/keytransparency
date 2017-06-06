@@ -46,6 +46,8 @@ var (
 	fixedKey = []byte{0x19, 0x6e, 0x7e, 0x52, 0x84, 0xa7, 0xef, 0x93, 0x0e, 0xcb, 0x9a, 0x19, 0x78, 0x74, 0x97, 0x55}
 	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
 	ErrInvalidCommitment = errors.New("invalid commitment")
+	// Rand is the PRNG reader. It can be overwritten in tests.
+	Rand = rand.Reader
 )
 
 // Committer saves cryptographic commitments.
@@ -60,10 +62,24 @@ type Committer interface {
 func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
 	// Generate commitment nonce.
 	nonce := make([]byte, commitmentKeyLen)
-	if _, err := rand.Read(nonce); err != nil {
+	if _, err := Rand.Read(nonce); err != nil {
 		return nil, nil, err
 	}
 
+	return createCommitment(userID, appID, data, nonce),
+		&tpb.Committed{Key: nonce, Data: data}, nil
+}
+
+// Verify customizes a commitment with a userID.
+func Verify(userID, appID string, commitment []byte, committed *tpb.Committed) error {
+	if got, want := createCommitment(userID, appID, committed.Data, committed.Key),
+		commitment; !hmac.Equal(got, want) {
+		return ErrInvalidCommitment
+	}
+	return nil
+}
+
+func createCommitment(userID, appID string, data, nonce []byte) []byte {
 	mac := hmac.New(hashAlgo, fixedKey)
 	mac.Write([]byte(prefix))
 	mac.Write(nonce)
@@ -75,24 +91,5 @@ func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
 	mac.Write([]byte(appID))
 	mac.Write(data)
 
-	return mac.Sum(nil), &tpb.Committed{Key: nonce, Data: data}, nil
-}
-
-// Verify customizes a commitment with a userID.
-func Verify(userID, appID string, commitment []byte, committed *tpb.Committed) error {
-	mac := hmac.New(hashAlgo, fixedKey)
-	mac.Write([]byte(prefix))
-	mac.Write(committed.Key)
-
-	// Message
-	binary.Write(mac, binary.BigEndian, uint32(len(userID)))
-	mac.Write([]byte(userID))
-	binary.Write(mac, binary.BigEndian, uint32(len(appID)))
-	mac.Write([]byte(appID))
-	mac.Write(committed.Data)
-
-	if !hmac.Equal(mac.Sum(nil), commitment) {
-		return ErrInvalidCommitment
-	}
-	return nil
+	return mac.Sum(nil)
 }

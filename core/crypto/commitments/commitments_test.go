@@ -17,7 +17,11 @@
 package commitments
 
 import (
+	"bytes"
+	"encoding/hex"
 	"testing"
+
+	"github.com/google/keytransparency/core/crypto/dev"
 )
 
 func TestCommit(t *testing.T) {
@@ -44,4 +48,44 @@ func TestCommit(t *testing.T) {
 			t.Errorf("Verify(%v, %v, %x, %x): %v, want %v", tc.userID, tc.appID, k, c, err, tc.want)
 		}
 	}
+}
+
+func TestVectors(t *testing.T) {
+	// Use a constant key of zero to obtain consistent test vectors.
+	// Real commitment library MUST use random keys.
+	Rand = dev.Zeros
+	zeroKey := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	for _, tc := range []struct {
+		userID, appID, data string
+		want                []byte
+	}{
+		{"", "", "", dh("0698789c7beed09e93848e4df08be5c911de534d286abcbf69359debe4c62bc2")},
+		{"foo", "app", "bar", dh("064c8933f50f897e8b179065c6b3ec13e9d093337c6d403c77e3ed1701378ed6")},
+		{"foo1", "app", "bar", dh("77015921f7fe584e1b5866a32ab9f305715c4e0241581d41f66ee34b24cdb566")},
+		{"foo", "app1", "bar", dh("e7337229d7747cc2c9a83ee08adbec712f4acafd1b72258bbebf74637de987b7")},
+		{"foo", "app", "bar1", dh("0fa2d7d53552e0871564c0e82ad394e72476b75f7fc77f40e2080af7f33d66eb")},
+	} {
+		k, c, err := Commit(tc.userID, tc.appID, []byte(tc.data))
+		if err != nil {
+			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.data, err)
+		}
+		if got, want := k, tc.want; !bytes.Equal(got, want) {
+			t.Errorf("Commit(%v, %x): %x ,want %x", tc.userID, tc.data, got, want)
+		}
+		if got, want := c.Key, zeroKey; !bytes.Equal(got, want) {
+			t.Errorf("Commit(%v, %x).Key: %x ,want %x", tc.userID, tc.data, got, want)
+		}
+		if got, want := c.Data, []byte(tc.data); !bytes.Equal(got, want) {
+			t.Errorf("Commit(%v, %x).Data: %x ,want %x", tc.userID, tc.data, got, want)
+		}
+	}
+}
+
+// Hex to Bytes
+func dh(h string) []byte {
+	result, err := hex.DecodeString(h)
+	if err != nil {
+		panic("DecodeString failed")
+	}
+	return result
 }
