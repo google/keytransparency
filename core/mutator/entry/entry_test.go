@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator"
@@ -55,18 +56,6 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJKDbR4uyhSMXW80x02NtYRUFlMQb
 LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
-
-// DevZero is an io.Reader that returns 0's
-type DevZero struct{}
-
-// Read returns 0's
-func (DevZero) Read(b []byte) (n int, err error) {
-	for i := range b {
-		b[i] = 0
-	}
-
-	return len(b), nil
-}
 
 func createEntry(commitment []byte, pkeys []string) ([]byte, error) {
 	authKeys := make([]*tpb.PublicKey, len(pkeys))
@@ -122,7 +111,7 @@ func prepareMutation(key []byte, entryData []byte, previous []byte, signers []si
 }
 
 func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
-	signatures.Rand = DevZero{}
+	signatures.Rand = dev.Zeros
 	signers := make([]signatures.Signer, 0, len(keys))
 	for _, key := range keys {
 		signer, err := factory.NewSignerFromPEM(key)
