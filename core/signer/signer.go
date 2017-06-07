@@ -109,7 +109,7 @@ func (c sysClock) Since(t time.Time) time.Duration {
 
 // genEpochTicks returns and sends to a bool channel every time an epoch should
 // be created. If the boolean value is true this indicates that the epoch should
-// be created independent from if there were mutations or not.
+// be created regardless of whether mutations exist.
 func genEpochTicks(t clock, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
 	enforce := make(chan bool)
 	go func() {
