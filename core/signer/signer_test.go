@@ -5,15 +5,15 @@ import (
 	"time"
 )
 
-const (
+var (
 	minDurationS = time.Second * 1
 	maxDurationH = time.Hour * 6
 	minInMax     = int(maxDurationH / minDurationS)
-	fakeNow      = "2015-10-21T04:29:00+00:00"
-	oneOff       = "2015-10-21T03:29:00+00:00"
-	twoOff       = "2015-10-21T02:29:00+00:00"
-	threeOff     = "2015-10-21T01:29:00+00:00"
-	sixOff       = "2015-10-20T22:29:00+00:00"
+	fakeNow      = parseTime("2015-10-21T04:29:00+00:00")
+	oneOff       = parseTime("2015-10-21T03:29:00+00:00")
+	twoOff       = parseTime("2015-10-21T02:29:00+00:00")
+	threeOff     = parseTime("2015-10-21T01:29:00+00:00")
+	sixOff       = parseTime("2015-10-20T22:29:00+00:00")
 )
 
 type fakeClock struct {
@@ -29,7 +29,7 @@ func (c fakeClock) Since(t time.Time) time.Duration {
 }
 
 func TestEpochCreation(t *testing.T) {
-	clock := fakeClock{now: parseTime(fakeNow)}
+	clock := fakeClock{now: fakeNow}
 	now := clock.Now()
 	for _, tc := range []struct {
 		wantForced int
@@ -52,14 +52,14 @@ func TestEpochCreation(t *testing.T) {
 		{5, now, now, minInMax*5 + int(minInMax*3/4), minDurationS, maxDurationH},
 		{6, now, now, minInMax*6 + int(minInMax/4), minDurationS, maxDurationH},
 		// Resume from last epoch in the past:
-		{1, now, parseTime(oneOff), minInMax, minDurationS, maxDurationH},
-		{1, now, parseTime(sixOff), minInMax / 2, minDurationS, maxDurationH},
-		{1, now, parseTime(threeOff), minInMax, minDurationS, maxDurationH},
+		{1, now, oneOff, minInMax, minDurationS, maxDurationH},
+		{1, now, sixOff, minInMax / 2, minDurationS, maxDurationH},
+		{1, now, threeOff, minInMax, minDurationS, maxDurationH},
 		// one forced epoch after 1 hour and one after 7 hours:
-		{2, now, parseTime(threeOff), minInMax + int(minInMax/2), minDurationS, maxDurationH},
+		{2, now, threeOff, minInMax + int(minInMax/2), minDurationS, maxDurationH},
 		// One forced epoch "after 4 = -2+6 hours" catching up and 3 forced epochs
 		// "after 10, 16, and 22 hours"
-		{4, now, parseTime(twoOff), minInMax * 4, minDurationS, maxDurationH},
+		{4, now, twoOff, minInMax * 4, minDurationS, maxDurationH},
 	} {
 		enforce := genEpochTicks(clock, tc.lastForced, genFakeTicker(now, tc.min, tc.nTicks), tc.min, tc.max)
 		got := 0
