@@ -28,7 +28,7 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/keytransparency/core/clock"
+	"github.com/google/trillian/util"
 )
 
 // Signer processes mutations and sends them to the trillian map.
@@ -89,8 +89,9 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time
 	mapRoot := rootResp.GetMapRoot()
 	last := time.Unix(0, mapRoot.TimestampNanos)
 	// Start issuing epochs:
+	clock := util.SystemTimeSource{}
 	tc := time.Tick(minInterval)
-	for f := range genEpochTicks(clock.System, last, tc, minInterval, maxInterval) {
+	for f := range genEpochTicks(clock, last, tc, minInterval, maxInterval) {
 		if err := s.CreateEpoch(ctx, f); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
@@ -100,12 +101,12 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time
 // genEpochTicks returns and sends to a bool channel every time an epoch should
 // be created. If the boolean value is true this indicates that the epoch should
 // be created regardless of whether mutations exist.
-func genEpochTicks(t clock.Time, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
+func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
 	enforce := make(chan bool)
 	go func() {
 		// Do not wait for the first minDuration to pass but directly resume from
 		// last
-		if (t.Since(last) + minElapsed) >= maxElapsed {
+		if (t.Now().Sub(last) + minElapsed) >= maxElapsed {
 			enforce <- true
 			last = t.Now()
 		}
