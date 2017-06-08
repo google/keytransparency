@@ -66,23 +66,27 @@ func New(realm string,
 // StartSigning advance epochs once per minInterval, if there were mutations,
 // and at least once per maxElapsed minIntervals.
 func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time.Duration) {
-	// Fetch last time from previous map head (as stored in the map server) if it
-	// exists:
-	var last time.Time
+	var rootResp *trillian.GetSignedMapRootResponse
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
 	})
 	if err != nil {
 		glog.Infof("GetSignedMapRoot failed: %v", err)
-		last = time.Now()
-	} else {
-		mapRoot := rootResp.GetMapRoot()
-		if mapRoot != nil {
-			last = time.Unix(0, mapRoot.TimestampNanos)
-		} else {
-			last = time.Now()
+		// Immediately create new epoch and write new sth:
+		if err := s.CreateEpoch(ctx, true); err != nil {
+			glog.Fatalf("CreateEpoch failed: %v", err)
+		}
+		// Request map head again to get the exact time it was created:
+		rootResp, err = s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+			MapId: s.mapID,
+		})
+		if err != nil {
+			glog.Fatalf("GetSignedMapRoot failed after CreateEpoch: %v", err)
 		}
 	}
+	// Fetch last time from previous map head (as stored in the map server)
+	mapRoot := rootResp.GetMapRoot()
+	last := time.Unix(0, mapRoot.TimestampNanos)
 	// Start issuing epochs:
 	tc := time.Tick(minInterval)
 	for f := range genEpochTicks(sysClock{}, last, tc, minInterval, maxInterval) {
