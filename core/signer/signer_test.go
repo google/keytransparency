@@ -62,16 +62,16 @@ func TestEpochCreation(t *testing.T) {
 		{4, now, twoOff, minInMax * 4, minDurationS, maxDurationH},
 	} {
 		enforce := genEpochTicks(clock, tc.lastForced, genFakeTicker(now, tc.min, tc.nTicks), tc.min, tc.max)
-		got := 0
+		forcedTicks := 0
 		for i := 0; i < tc.nTicks; i++ {
 			force := <-enforce
 			if force {
-				got++
+				forcedTicks++
 			}
 		}
 
 		// Make sure we got the expected number of enforced epochs:
-		if got != tc.wantForced {
+		if got, want := forcedTicks, tc.wantForced; got != want {
 			t.Fatalf("Read from genEpochTicks(%v, %v, _, %v, %v) %v times: %v, want  %v",
 				tc.fakeNow, tc.lastForced, tc.min, tc.max, tc.nTicks, got, tc.wantForced)
 		}
