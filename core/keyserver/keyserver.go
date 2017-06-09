@@ -226,9 +226,16 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*tpb.UpdateEntryResponse, error) {
 	// Validate proper authentication.
-	if err := s.auth.ValidateCreds(ctx, in.UserId); err != nil {
-		glog.Warningf("Auth failed: %v", err)
+	switch err := s.auth.ValidateCreds(ctx, in.UserId); err {
+	case nil:
+		break // Authentication succeded.
+	case authentication.ErrWrongUser:
 		return nil, grpc.Errorf(codes.PermissionDenied, "Permission denied")
+	case authentication.ErrMissingAuth:
+		return nil, grpc.Errorf(codes.Unauthenticated, "Missing authentication header")
+	default:
+		glog.Warningf("Auth failed: %v", err)
+		return nil, grpc.Errorf(codes.Unauthenticated, "Unauthenticated")
 	}
 	// Verify:
 	// - Index to Key equality in SignedKV.
