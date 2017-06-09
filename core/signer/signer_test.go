@@ -3,6 +3,7 @@ package signer
 import (
 	"testing"
 	"time"
+	"github.com/google/trillian/util"
 )
 
 var (
@@ -16,20 +17,8 @@ var (
 	sixOff       = parseTime("2015-10-20T22:29:00+00:00")
 )
 
-type fakeClock struct {
-	now time.Time
-}
-
-func (c fakeClock) Now() time.Time {
-	return c.now
-}
-
-func (c fakeClock) Since(t time.Time) time.Duration {
-	return c.now.Sub(t)
-}
-
 func TestEpochCreation(t *testing.T) {
-	clock := fakeClock{now: fakeNow}
+	clock := util.NewFakeTimeSource(fakeNow)
 	now := clock.Now()
 	for _, tc := range []struct {
 		wantForced int
