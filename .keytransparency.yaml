@@ -1,9 +1,9 @@
-log-key: "../certificate-transparency/test/testdata/ct-server-key-public.pem"
-vrf:    "testdata/vrf-pubkey.pem"
-kt-key: "testdata/server.crt"
-kt-sig: "testdata/p256-pubkey.pem"
+log-key: "../trillian/testdata/ct-http-server.pubkey.pem"
+vrf:    "genfiles/vrf-pubkey.pem"
+kt-key: "genfiles/server.crt"
+kt-sig: "genfiles/p256-pubkey.pem"
 domain: "example.com"
-map-id: 0
+mapid: 0 
 kt-url: "104.199.112.76:5001"
-client-secret: "client_secret.json"
-service-key: ""
+-client-secret: "client_secret.json"
+-service-key: ""

@@ -67,7 +67,7 @@ func New(realm string,
 func (s *Signer) StartSigning(ctx context.Context, interval time.Duration) {
 	for range time.NewTicker(interval).C {
 		if err := s.CreateEpoch(ctx); err != nil {
-			glog.Fatalf("CreateEpoch failed: %v", err)
+			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 	}
 }
