@@ -129,7 +129,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			if err := env.Signer.CreateEpoch(bctx); err != nil {
+			if err := env.Signer.CreateEpoch(bctx, true); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
@@ -190,7 +190,7 @@ func TestUpdateValidation(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			if err := env.Signer.CreateEpoch(bctx); err != nil {
+			if err := env.Signer.CreateEpoch(bctx, true); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
@@ -269,7 +269,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}
-		if err := e.Signer.CreateEpoch(ctx); err != nil {
+		if err := e.Signer.CreateEpoch(ctx, true); err != nil {
 			return fmt.Errorf("CreateEpoch(_): %v", err)
 		}
 	}
