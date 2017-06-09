@@ -87,7 +87,7 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time
 	}
 	// Fetch last time from previous map head (as stored in the map server)
 	mapRoot := rootResp.GetMapRoot()
-	last := time.Unix(0, mapRoot.TimestampNanos)
+	last := time.Unix(0, mapRoot.GetTimestampNanos())
 	// Start issuing epochs:
 	clock := util.SystemTimeSource{}
 	tc := time.Tick(minInterval)
