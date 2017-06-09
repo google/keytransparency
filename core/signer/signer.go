@@ -75,14 +75,14 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time
 		glog.Infof("GetSignedMapRoot failed: %v", err)
 		// Immediately create new epoch and write new sth:
 		if err := s.CreateEpoch(ctx, true); err != nil {
-			glog.Fatalf("CreateEpoch failed: %v", err)
+			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		// Request map head again to get the exact time it was created:
 		rootResp, err = s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 			MapId: s.mapID,
 		})
 		if err != nil {
-			glog.Fatalf("GetSignedMapRoot failed after CreateEpoch: %v", err)
+			glog.Errorf("GetSignedMapRoot failed after CreateEpoch: %v", err)
 		}
 	}
 	// Fetch last time from previous map head (as stored in the map server)
