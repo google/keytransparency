@@ -15,8 +15,7 @@
 package authentication
 
 import (
-	"log"
-
+	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
@@ -31,24 +30,30 @@ func NewFake() *FakeAuth {
 
 // NewContext adds authentication details to a new background context.
 func (a *FakeAuth) NewContext(userID string) context.Context {
-	md := make(map[string][]string)
-	md["userid"] = []string{userID}
-	return metadata.NewOutgoingContext(context.TODO(), md)
+	return InsertFakeAuthIntoContext(context.TODO(), userID)
+}
+
+// Includes (fake) authentication information in the context to authenticate to the server as userID.
+func InsertFakeAuthIntoContext(ctx context.Context, userID string) context.Context {
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs("userid", userID))
 }
 
 // ValidateCreds verifies that the requiredUserID is present in ctx.
 func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) error {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
+		glog.V(2).Infof("FakeAuth: missing authentication data")
 		return ErrMissingAuth
 	}
 	userIDs, ok := md["userid"]
 	if !ok || len(userIDs) != 1 {
+		glog.V(2).Infof("FakeAuth: missing authentication data")
 		return ErrMissingAuth
 	}
 	if got, want := md["userid"][0], requiredUserID; got != want {
-		log.Printf("auth: wrong user. got: %v, want %v", got, want)
+		glog.V(2).Infof("FakeAuth: wrong user. got: %v, want %v", got, want)
 		return ErrWrongUser
 	}
+	glog.V(2).Infof("FakeAuth: fake authentication suceeded for user %+v", requiredUserID)
 	return nil
 }

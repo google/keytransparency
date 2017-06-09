@@ -29,7 +29,8 @@ import (
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	ctxn "github.com/google/keytransparency/core/transaction"
-	"github.com/google/keytransparency/impl/google/authentication"
+	"github.com/google/keytransparency/core/authentication"
+	gauth "github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -40,7 +41,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -58,6 +58,7 @@ var (
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
 	verbose      = flag.Bool("verbose", false, "Log requests and responses")
+	fakeAuth     = flag.Bool("insecure-fake-auth", false, "INSECURE! Do not user in production! Use a fake authentication instead of getting a google oauth token from clients.")
 
 	// Info to connect to sparse merkle tree database.
 	mapID  = flag.Int64("map-id", 0, "ID for backend map")
@@ -128,6 +129,8 @@ var requestCounter uint64
 // jsonLogger logs the request and response protobufs as json objects.
 func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	atomic.AddUint64(&requestCounter, 1)
+
+	/* TODO(amarcedone): logger not working. commenting out.
 	// Print request.
 	pb, ok := req.(proto.Message)
 	if !ok {
@@ -140,9 +143,11 @@ func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 		return handler(ctx, req)
 	}
 	glog.Infof("%v>%v", requestCounter, s)
+	*/
 
 	resp, err = handler(ctx, req)
 
+	/* TODO(amarcedone): logger not working. commenting out.
 	// Print response.
 	pb, ok = resp.(proto.Message)
 	if !ok {
@@ -155,7 +160,7 @@ func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 		return resp, err
 	}
 	glog.Infof("%v<%v", requestCounter, s)
-
+	*/
 	return resp, err
 }
 
@@ -183,9 +188,17 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to load server credentials %v", err)
 	}
-	auth, err := authentication.NewGoogleAuth()
-	if err != nil {
-		glog.Exitf("Failed to create authentication library instance: %v", err)
+
+	var auth authentication.Authenticator
+	if *fakeAuth {
+		glog.Warning("INSECURE! Using fake authentication.")
+		auth = authentication.NewFake()
+	} else {
+		var err error
+		auth, err = gauth.NewGoogleAuth()
+		if err != nil {
+			glog.Exitf("Failed to create authentication library instance: %v", err)
+		}
 	}
 
 	// Create database and helper objects.

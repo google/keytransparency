@@ -87,6 +87,8 @@ func init() {
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
 
+	RootCmd.PersistentFlags().String("fake-auth-userid","","userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
+
 	// Global flags for use by subcommands.
 	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Minute, "Time to wait before operations timeout")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print in/out and verification steps")
@@ -217,22 +219,32 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
-	// Add client credentials otherwise add service credentials. Client
-	// credentials take priority over service credentials. Only one of the
-	// two should exist in an RPC call.
-	if clientSecretFile != "" {
-		creds, err := getCreds(clientSecretFile)
-		if err != nil {
-			return nil, err
+	// Add authentication information for the grpc.
+	fakeUserId := viper.GetString("fake-auth-userid")
+	if fakeUserId != "" { // Using fake authentication.
+		// Fake authentication information are added in cmd/keytransparency-client/cmd/post.go
+		// TODO(amarcedone) Consider having the GetClient method (or this method) initialize
+		// the context so that we can set the metadata parameters for the fake authentication
+		// here rather than in post.go.
+	} else {
+		// Add client credentials otherwise add service credentials. Client
+		// credentials take priority over service credentials. Only one of the
+		// two should exist in an RPC call.
+		if clientSecretFile != "" {
+			creds, err := getCreds(clientSecretFile)
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, grpc.WithPerRPCCredentials(creds))
+		} else if serviceKeyFile != "" {
+			creds, err := getServiceCreds(serviceKeyFile)
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, grpc.WithPerRPCCredentials(creds))
 		}
-		opts = append(opts, grpc.WithPerRPCCredentials(creds))
-	} else if serviceKeyFile != "" {
-		creds, err := getServiceCreds(serviceKeyFile)
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, grpc.WithPerRPCCredentials(creds))
 	}
+
 	cc, err := grpc.Dial(ktURL, opts...)
 	if err != nil {
 		return nil, err
