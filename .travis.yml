@@ -35,14 +35,6 @@ script:
   - ./coverage.sh
 after_success:
   - bash <(curl -s https://codecov.io/bash)
-deploy:
-  - provider: script
-    script:
-      - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv
-        -in credentials.tar.gz.enc -out credentials.tar.gz -d
-      - curl https://sdk.cloud.google.com | bash
-      - gcloud --quiet version
-      - gcloud --quiet components update kubectl
-      - gcloud auth activate-service-account --key-file client-secret.json
-      - gcloud config set project ${PROJECT_NAME}
-      - ./scripts/deploy.sh
+  - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in credentials.tar.gz.enc -out credentials.tar.gz -d
+  - curl https://sdk.cloud.google.com | bash
+  - ./scripts/deploy.sh
