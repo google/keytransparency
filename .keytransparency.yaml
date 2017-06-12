@@ -1,9 +1,9 @@
-log-key: "../trillian/testdata/ct-http-server.pubkey.pem"
+log-key: "../trillian/testdata/log-rpc-server.pubkey.pem"
 vrf:    "genfiles/vrf-pubkey.pem"
 kt-key: "genfiles/server.crt"
 kt-sig: "genfiles/p256-pubkey.pem"
 domain: "example.com"
-mapid: 0 
+map-id: 0
 kt-url: "104.199.112.76:5001"
 -client-secret: "client_secret.json"
 -service-key: ""
