@@ -14,8 +14,6 @@ addons:
     packages:
       - parallel
 
-- docker
-
 env:
   global:
     - DOCKER_COMPOSE_VERSION="1.13.0"
@@ -23,12 +21,6 @@ env:
     - PROJECT_NAME=transparent-keyserver
 
 before_install:
-  - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
-  - docker --version
-  - docker-compose --version
 
 install:
   -  go get github.com/golang/lint/golint
@@ -46,7 +38,7 @@ after_success:
 deploy:
 - provider: script
   script:
-  - openssl aes-256-cbc -K $encrypted_6467d76e6a97_key -iv $encrypted_6467d76e6a97_iv
+  - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv
     -in credentials.tar.gz.enc -out credentials.tar.gz -d
   - curl https://sdk.cloud.google.com | bash
   - gcloud --quiet version
