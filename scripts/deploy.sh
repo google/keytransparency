@@ -11,6 +11,7 @@ images=("trillian_log_server" "trillian_map_server" "keytransparency-server" \
 "trillian_log_signer" "keytransparency-signer")
 for DOCKER_IMAGE_NAME in "${images[@]}"
 do
+  echo ${DOCKER_IMAGE_NAME}
 	docker tag ${DOCKER_IMAGE_NAME} us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}:$TRAVIS_COMMIT
 	#TODO gcloud docker -- push us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
 done
