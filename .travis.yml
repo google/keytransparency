@@ -4,7 +4,10 @@ go:
   - 1.8
 
 dist: trusty
-sudo: false
+sudo: required
+
+services:
+  - docker
 
 addons:
   apt:
@@ -12,6 +15,7 @@ addons:
       - parallel
 
 install:
+  - docker-compose --version
   - go get github.com/golang/lint/golint
   - go get github.com/kisielk/errcheck
   - go get github.com/fzipp/gocyclo
