@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  containers:
+  - env:
+    - name: MYSQL_USER
+      value: test
+    - name: MYSQL_DATABASE
+      value: test
+    - name: MYSQL_PASSWORD
+      value: zaphod
+    - name: MYSQL_RANDOM_ROOT_PASSWORD
+      value: "yes"
+    image: mysql
+    name: db
+    volumeMounts:
+        - mountPath: ../trillian/storage/mysql/
+          name: entry-point-path
+    volumes:
+    - name: entry-point-path
+        hostPath:
+          path: /docker-entrypoint-initdb.d/
+    restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  labels:
+    app: mysql
+spec:
+  ports:
+   - port: 3306
+        name: mysql
+    type: LoadBalancer

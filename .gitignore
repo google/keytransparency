@@ -10,3 +10,6 @@ infra*.etcd
 genfiles/*
 .keytransparency-scts.dat
 .keystore
+credentials.tar.gz
+service_key.json
+client-secret.json
