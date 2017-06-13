@@ -28,6 +28,8 @@ done
 
 # TODO(ismail): actually run the images and some integration tests
 kubectl apply -f kubernetes/keytransparency-deployment.yml
+LOGID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=LOG' | kubectl exec -it trillian-map-2888489038-lx634 -- /bin/sh )
+
 # TODO(ismail): additionally to above container images we might want one that
 # simply queries (the equivalent of) https://localhost:8080/v1/users/foo@bar.com
 # later we would want one that runs a client, too
