@@ -17,28 +17,33 @@ package authentication
 import (
 	"testing"
 
-	"google.golang.org/grpc/metadata"
-
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/credentials"
 )
 
 func TestBasicValidateCreds(t *testing.T) {
 	auth := NewFake()
 	for _, tc := range []struct {
-		ctx            context.Context
-		requiredUserID string
-		want           error
+		cred	 	credentials.PerRPCCredentials
+		requiredUserID 	string
+		want           	error
 	}{
-		{context.Background(), "foo", ErrMissingAuth},
-		{auth.NewContext("foo"), "bar", ErrWrongUser},
-		{auth.NewContext("foo"), "foo", nil},
+		{nil, "foo", ErrMissingAuth},
+		{GetFakeCredential("foo"), "bar", ErrWrongUser},
+		{GetFakeCredential("foo"), "foo", nil},
 	} {
-		// Convert outgoing to incoming context.
-		outMD, _ := metadata.FromOutgoingContext(tc.ctx)
-		inCtx := metadata.NewIncomingContext(tc.ctx, outMD)
+		// Build context by adding the credential information.
+		var inCtx context.Context
+		if tc.cred == nil {
+			inCtx = metadata.NewIncomingContext(context.Background(),nil)
+		} else {
+			md, _ := tc.cred.GetRequestMetadata(context.Background())
+			inCtx = metadata.NewIncomingContext(context.Background(), metadata.New(md))
+		}
 
 		if got, want := auth.ValidateCreds(inCtx, tc.requiredUserID), tc.want; got != want {
-			t.Errorf("ValidateCreds(%v, %v): %v, want %v", tc.ctx, tc.requiredUserID, got, want)
+			t.Errorf("ValidateCreds(%v, %v): %v, want %v", inCtx, tc.requiredUserID, got, want)
 		}
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -86,12 +85,6 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
-
-		// Put fake authentication information in the context
-		if fakeUserId := viper.GetString("fake-auth-userid"); fakeUserId != "" {
-			ctx = authentication.InsertFakeAuthIntoContext(ctx,fakeUserId)
-		}
-
 		// TODO: fill signers and authorizedKeys.
 		if _, err := c.Update(ctx, userID, appID, profileData, signers, authorizedKeys); err != nil {
 			return fmt.Errorf("update failed: %v", err)
