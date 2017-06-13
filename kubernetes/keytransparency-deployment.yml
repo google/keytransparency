@@ -1,37 +1,94 @@
-apiVersion: v1
-kind: Deployment
-metadata:
-  name: db
-spec:
-  containers:
-  - env:
-    - name: MYSQL_USER
-      value: test
-    - name: MYSQL_DATABASE
-      value: test
-    - name: MYSQL_PASSWORD
-      value: zaphod
-    - name: MYSQL_RANDOM_ROOT_PASSWORD
-      value: "yes"
-    image: mysql
-    name: db
-    volumeMounts:
-        - mountPath: ../trillian/storage/mysql/
-          name: entry-point-path
-    volumes:
-    - name: entry-point-path
-        hostPath:
-          path: /docker-entrypoint-initdb.d/
-    restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: db
+  name: mysql
   labels:
-    app: mysql
+    run: mysql
 spec:
+  type: NodePort
   ports:
-   - port: 3306
-        name: mysql
-    type: LoadBalancer
+    - port: 3306
+      targetPort: 3306
+      name: mysql
+  selector:
+    run: mysql
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: us.gcr.io/transparent-keyserver/db
+        ports:
+          - containerPort: 3306
+            name: mysql
+        env:
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: MYSQL_RANDOM_ROOT_PASSWORD
+              value: "yes"
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: trillian-map
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: trillian-map
+    spec:
+      containers:
+      - name: trillian-map
+        image: us.gcr.io/transparent-keyserver/trillian_map_server
+        ports:
+          - containerPort: 8093
+            name: rpc
+          - containerPort: 8094
+            name: metrics
+        env:
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: MYSQL_RANDOM_ROOT_PASSWORD
+              value: "yes"
+            - name: DB_HOST
+              value: mysql:3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trillian-map
+  labels:
+    run: trillian-map
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 8093
+      name: rpc
+    - port: 8091
+      targetPort: 8094
+      name: metrics
+  selector:
+    run: trillian-map
+---
