@@ -129,7 +129,6 @@ var requestCounter uint64
 // jsonLogger logs the request and response protobufs as json objects.
 func jsonLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	atomic.AddUint64(&requestCounter, 1)
-
 	// Print request.
 	pb, ok := req.(proto.Message)
 	if !ok {

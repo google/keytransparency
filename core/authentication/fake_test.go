@@ -18,8 +18,8 @@ import (
 	"testing"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 )
 
 func TestBasicValidateCreds(t *testing.T) {
