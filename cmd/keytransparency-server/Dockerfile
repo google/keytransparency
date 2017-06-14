@@ -18,8 +18,9 @@ ENV MAP_ID=0 \
 ENV LOG_ID=0 \
     LOG_URL=localhost:8090 
 ENV GOOGLE_APPLICATION_CREDENTIALS=genfiles/service_key.json
-ENV VERBOSE=0
+ENV VERBOSE=1
 
+ADD genfiles/* /kt/
 ADD . /go/src/github.com/google/keytransparency
 WORKDIR /go/src/github.com/google/keytransparency 
 

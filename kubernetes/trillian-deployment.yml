@@ -42,6 +42,7 @@ spec:
             - name: MYSQL_RANDOM_ROOT_PASSWORD
               value: "yes"
 ---
+---
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
@@ -58,9 +59,9 @@ spec:
       - name: trillian-map
         image: us.gcr.io/transparent-keyserver/trillian_map_server
         ports:
-          - containerPort: 8093
+          - containerPort: 8090
             name: rpc
-          - containerPort: 8094
+          - containerPort: 8091
             name: metrics
         env:
             - name: MYSQL_USER
@@ -69,8 +70,6 @@ spec:
               value: test
             - name: MYSQL_PASSWORD
               value: zaphod
-            - name: MYSQL_RANDOM_ROOT_PASSWORD
-              value: "yes"
             - name: DB_HOST
               value: mysql:3306
 ---
@@ -84,13 +83,14 @@ spec:
   type: NodePort
   ports:
     - port: 8090
-      targetPort: 8093
+      targetPort: 8090
       name: rpc
     - port: 8091
-      targetPort: 8094
+      targetPort: 8091
       name: metrics
   selector:
     run: trillian-map
+---
 ---
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -119,8 +119,6 @@ spec:
               value: test
             - name: MYSQL_PASSWORD
               value: zaphod
-            - name: MYSQL_RANDOM_ROOT_PASSWORD
-              value: "yes"
             - name: DB_HOST
               value: mysql:3306
 ---
@@ -141,6 +139,7 @@ spec:
       name: metrics
   selector:
     run: trillian-log
+---
 ---
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -167,8 +166,6 @@ spec:
               value: test
             - name: MYSQL_PASSWORD
               value: zaphod
-            - name: MYSQL_RANDOM_ROOT_PASSWORD
-              value: "yes"
             - name: DB_HOST
               value: mysql:3306
 ---
@@ -186,4 +183,3 @@ spec:
       name: metrics
   selector:
     run: trillian-log-signer
----

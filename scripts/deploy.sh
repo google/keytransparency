@@ -11,7 +11,7 @@ gcloud config set project ${PROJECT_NAME}
 gcloud config set compute/zone us-central1-b
 
 # Build using docker compose
-#docker-compose build
+docker-compose build -f ../docker-compose.yml
 
 # Work around some git permission issues on linux:
 chmod a+r ../../trillian/storage/mysql/storage.sql
@@ -28,7 +28,9 @@ do
   gcloud docker -- push us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
 done
 
-kubectl apply -f kubernetes/trillian-deployment.yml
+kubectl apply -f ../kubernetes/trillian-deployment.yml
+sleep 5
+kubectl apply -f ../kubernetes/keytransparency-deployment.yml
 
 # We need to be sure trillian-map is up and running before we create the tree:
 
@@ -39,7 +41,9 @@ kubectl apply -f kubernetes/trillian-deployment.yml
 # TODO: put log and map-id into config map? (https://kubernetes.io/docs/tasks/configure-pod-container/configmap/)
 
 # TODO run this command on the trillian-map instead (will simplify things for Docker and other deployments, too):
-# curl -X POST -d '{"tree":{"tree_state":1,"tree_type":1,"hash_algorithm":4,"hash_strategy":1,"signature_algorithm":3},"key_spec":{"ecdsa_params":{"curve":1}}}'  http://localhost:8091/v1beta/trees
+# curl -X POST -d \
+# '{"tree":{"tree_state":1,"tree_type":1,"hash_algorithm":4,"hash_strategy":1,"signature_algorithm":3},"key_spec":{"ecdsa_params":{"curve":1}}}' \
+# http://localhost:8091/v1beta1/trees
 
 # TODO(ismail): additionally to above container images we might want one that
 # simply queries (the equivalent of) https://localhost:8080/v1/users/foo@bar.com
