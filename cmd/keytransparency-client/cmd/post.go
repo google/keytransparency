@@ -51,7 +51,7 @@ User email MUST match the OAuth account used to authorize the update.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate input.
 		if len(args) < 2 {
-			return fmt.Errorf("user email needs to be provided")
+			return fmt.Errorf("user email and app-id need to be provided")
 		}
 		if data == "" {
 			return fmt.Errorf("no key data provided")
