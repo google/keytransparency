@@ -142,3 +142,48 @@ spec:
   selector:
     run: trillian-log
 ---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: trillian-log-signer
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: trillian-log-signer
+    spec:
+      containers:
+      - name: trillian-log-signer
+        image: us.gcr.io/transparent-keyserver/trillian_log_signer
+        ports:
+          - containerPort: 8092
+            name: metrics
+        env:
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: MYSQL_RANDOM_ROOT_PASSWORD
+              value: "yes"
+            - name: DB_HOST
+              value: mysql:3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trillian-log-signer
+  labels:
+    run: trillian-log-signer
+spec:
+  type: NodePort
+  ports:
+    - port: 8091
+      targetPort: 8092
+      name: metrics
+  selector:
+    run: trillian-log-signer
+---

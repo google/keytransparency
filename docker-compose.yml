@@ -4,7 +4,7 @@ services:
     depends_on:
       - kt-server
       - kt-signer
-    build: 
+    build:
       context: .
       dockerfile: prometheus/Dockerfile
     ports:
@@ -42,9 +42,7 @@ services:
     depends_on:
       - db
     image: trillian_log_signer:latest
-    volumes:
-         - ../keytransparency/genfiles:/kt
-    build: 
+    build:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
     restart: always
@@ -55,14 +53,7 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      GOOGLE_APPLICATION_CREDENTIALS: /genfiles/service_key.json
-      KEY: /kt/server.key
-      CERT: /kt/server.crt
-      VRF_PRIV: /kt/vrf-key.pem
-      VRF_PUB: /kt/vrf-pubkey.pem
-      SIGN_KEY: /kt/p256-key.pem
-      SIGN_KEY_PW: "towel"
-      SEQUENCER_PERIOD: 2.5s # shorter than kt-signer period.
+
 
   trillian-map:
     depends_on:
