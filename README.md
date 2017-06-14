@@ -51,10 +51,9 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
 
   ```sh
   ./keytransparency-client authorized-keys add --generate --type=ecdsa --activate
-  ./keytransparency-client post <email> -d '{"app1": "dGVzdA=="}' --config=./.keytransparency.yaml
-  {Keys:map[app1:[116 101 115 116]}
+  ./keytransparency-client post user@domain.com app1 -d 'dGVzdA==' --config=./.keytransparency.yaml
   ```
-  Key material is base64 encoded.
+  Key material is base64 encoded, e.g., 'dGVzdA==' is 'test' encoded.
 
   Note: Use `./keytransparency-client authorized-keys --help` for more information about authorized key managements.
 
