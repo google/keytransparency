@@ -25,9 +25,9 @@ import (
 func TestBasicValidateCreds(t *testing.T) {
 	auth := NewFake()
 	for _, tc := range []struct {
-		cred	 	credentials.PerRPCCredentials
-		requiredUserID 	string
-		want           	error
+		cred           credentials.PerRPCCredentials
+		requiredUserID string
+		want           error
 	}{
 		{nil, "foo", ErrMissingAuth},
 		{GetFakeCredential("foo"), "bar", ErrWrongUser},
@@ -36,7 +36,7 @@ func TestBasicValidateCreds(t *testing.T) {
 		// Build context by adding the credential information.
 		var inCtx context.Context
 		if tc.cred == nil {
-			inCtx = metadata.NewIncomingContext(context.Background(),nil)
+			inCtx = metadata.NewIncomingContext(context.Background(), nil)
 		} else {
 			md, _ := tc.cred.GetRequestMetadata(context.Background())
 			inCtx = metadata.NewIncomingContext(context.Background(), metadata.New(md))

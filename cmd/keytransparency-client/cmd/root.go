@@ -42,7 +42,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
-
 )
 
 var (
@@ -88,7 +87,7 @@ func init() {
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
 
-	RootCmd.PersistentFlags().String("fake-auth-userid","","userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
+	RootCmd.PersistentFlags().String("fake-auth-userid", "", "userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
 
 	// Global flags for use by subcommands.
 	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Minute, "Time to wait before operations timeout")
@@ -234,7 +233,7 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 			return nil, err
 		}
 		opts = append(opts, grpc.WithPerRPCCredentials(creds))
-	case serviceKeyFile != "" :
+	case serviceKeyFile != "":
 		creds, err := getServiceCreds(serviceKeyFile)
 		if err != nil {
 			return nil, err

@@ -90,9 +90,9 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		commitment []byte
 		committed  *tpb.Committed
 	}{
-		{false, userID, [32]byte{}, nil, nil},              // Incorrect index
-		{false, userID, index, nil, nil},                   // Incorrect commitment
-		{false, userID, index, commitment, nil},            // Incorrect key
+		{false, userID, [32]byte{}, nil, nil},   // Incorrect index
+		{false, userID, index, nil, nil},        // Incorrect commitment
+		{false, userID, index, commitment, nil}, // Incorrect key
 		{true, userID, index, commitment, committed},
 	} {
 		entry := &tpb.Entry{

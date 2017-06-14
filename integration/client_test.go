@@ -109,13 +109,13 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		signers        []signatures.Signer
 		authorizedKeys []*tpb.PublicKey
 	}{
-		{false, false, context.Background(), "noalice", signers1, authorizedKeys1}, // Empty
-		{false, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1},    // Insert
-		{false, false, context.Background(), "nocarol", signers1, authorizedKeys1}, // Empty
-		{true, false, context.Background(), "bob", signers1, authorizedKeys1},      // Not Empty
-		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1},     // Update
-		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers2, authorizedKeys2},     // Update, changing keys
-		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers3, authorizedKeys3},     // Update, using new keys
+		{false, false, context.Background(), "noalice", signers1, authorizedKeys1},                // Empty
+		{false, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1}, // Insert
+		{false, false, context.Background(), "nocarol", signers1, authorizedKeys1},                // Empty
+		{true, false, context.Background(), "bob", signers1, authorizedKeys1},                     // Not Empty
+		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1},  // Update
+		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers2, authorizedKeys2},  // Update, changing keys
+		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers3, authorizedKeys3},  // Update, using new keys
 	} {
 		// Check profile.
 		if err := env.checkProfile(tc.userID, appID, tc.want); err != nil {

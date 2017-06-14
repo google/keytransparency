@@ -20,12 +20,11 @@ import (
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 )
 
 const fakeCredentialType string = "FakeCredential"
-
 
 // NewFake returns a new authenticator.
 func NewFake() *FakeAuth {
@@ -51,7 +50,7 @@ func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) err
 		return fmt.Errorf("Bad Authentication Format")
 	}
 
-	if got,want := p[0], fakeCredentialType; got!= want {
+	if got, want := p[0], fakeCredentialType; got != want {
 		return fmt.Errorf("FakeAuth: wrong credential type. got: %v, want %v", got, want)
 	}
 
@@ -63,11 +62,11 @@ func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) err
 	return nil
 }
 
-func GetFakeCredential(userID string) credentials.PerRPCCredentials{
+func GetFakeCredential(userID string) credentials.PerRPCCredentials {
 	return FakeCredential{userID}
 }
 
-type FakeCredential struct{
+type FakeCredential struct {
 	userID string
 }
 

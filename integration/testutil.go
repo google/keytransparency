@@ -226,7 +226,7 @@ func (env *Env) Close(t *testing.T) {
 }
 
 // GetNewOutgoingContextWithFakeAuth returns a new context containing FakeAuth information to authenticate userID
-func GetNewOutgoingContextWithFakeAuth(userID string) context.Context{
+func GetNewOutgoingContextWithFakeAuth(userID string) context.Context {
 	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(context.Background())
 	return metadata.NewOutgoingContext(context.Background(), metadata.New(md))
 }
