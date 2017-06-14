@@ -128,12 +128,7 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      GOOGLE_APPLICATION_CREDENTIALS: /kt/service_key.json
-      KEY: /kt/server.key
       LOG_KEY: /trillian/log-rpc-server.pubkey.pem
-      CERT: /kt/server.crt
-      VRF_PRIV: /kt/genfiles/vrf-key.pem
-      VRF_PUB: /kt/genfiles/vrf-pubkey.pem
       SIGN_KEY: /trillian/log-rpc-server.privkey.pem
       SIGN_KEY_PW: towel
       MIN_SIGN_PERIOD: 5s
