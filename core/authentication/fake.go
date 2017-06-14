@@ -24,18 +24,16 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+const fakeCredentialType string = "FakeCredential"
 
-// FakeAuth provides a fake authenticator for testing.
-type FakeAuth struct{}
 
 // NewFake returns a new authenticator.
 func NewFake() *FakeAuth {
 	return &FakeAuth{}
 }
 
-func GetFakeCredential(userID string) credentials.PerRPCCredentials{
-	return FakeCredential{userID}
-}
+// FakeAuth provides a fake authenticator for testing.
+type FakeAuth struct{}
 
 // ValidateCreds verifies that the requiredUserID is present in the authorization metadata of the ctx.
 func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) error {
@@ -65,7 +63,9 @@ func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) err
 	return nil
 }
 
-const fakeCredentialType string = "FakeCredential"
+func GetFakeCredential(userID string) credentials.PerRPCCredentials{
+	return FakeCredential{userID}
+}
 
 type FakeCredential struct{
 	userID string
