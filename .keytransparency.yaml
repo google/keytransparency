@@ -5,5 +5,5 @@ kt-sig: "genfiles/p256-pubkey.pem"
 domain: "example.com"
 map-id: 0
 kt-url: "104.199.112.76:5001"
--client-secret: "client_secret.json"
--service-key: ""
+client-secret: "client_secret.json"
+service-key: ""
