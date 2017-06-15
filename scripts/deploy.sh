@@ -9,6 +9,8 @@ MAX_RETRY=30
 
 function main()
 {
+  # create key-pairs:
+  ./prepare_server.sh -f
   initGcloud
   buildDockerImgs
   tearDown
