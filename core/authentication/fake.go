@@ -58,24 +58,26 @@ func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) err
 		glog.V(2).Infof("FakeAuth: wrong user. got: %v, want %v", got, want)
 		return ErrWrongUser
 	}
-	glog.V(2).Infof("FakeAuth: fake authentication suceeded for user %+v", requiredUserID)
+	glog.V(2).Infof("FakeAuth: fake authentication succeeded for user %+v", requiredUserID)
 	return nil
 }
 
+// GetFakeCredential returns fake PerRPCCredentials
 func GetFakeCredential(userID string) credentials.PerRPCCredentials {
-	return FakeCredential{userID}
+	return fakeCredential{userID}
 }
 
-type FakeCredential struct {
+// fakeCredential implements credentials.PerRPCCredentials.
+type fakeCredential struct {
 	userID string
 }
 
-func (c FakeCredential) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+func (c fakeCredential) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
 	return map[string]string{
 		"authorization": fakeCredentialType + " " + c.userID,
 	}, nil
 }
 
-func (c FakeCredential) RequireTransportSecurity() bool {
+func (c fakeCredential) RequireTransportSecurity() bool {
 	return true
 }

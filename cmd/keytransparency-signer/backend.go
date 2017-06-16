@@ -52,7 +52,7 @@ var (
 	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
 
 	// Info to replicate the Trillian Map Server locally.
-	signingKey = flag.String("key", "", "Path to private key PEM for STH signing")
+	signingKey         = flag.String("key", "", "Path to private key PEM for STH signing")
 	signingKeyPassword = flag.String("password", "", "Password of the private key PEM file for STH signing")
 
 	// Info to send Signed Map Heads to a Trillian Log.
