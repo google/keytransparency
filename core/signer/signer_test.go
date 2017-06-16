@@ -3,6 +3,7 @@ package signer
 import (
 	"testing"
 	"time"
+
 	"github.com/google/trillian/util"
 )
 

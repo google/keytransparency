@@ -228,7 +228,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	// Validate proper authentication.
 	switch err := s.auth.ValidateCreds(ctx, in.UserId); err {
 	case nil:
-		break // Authentication succeded.
+		break // Authentication succeeded.
 	case authentication.ErrWrongUser:
 		return nil, grpc.Errorf(codes.PermissionDenied, "Permission denied")
 	case authentication.ErrMissingAuth:

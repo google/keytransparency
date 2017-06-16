@@ -222,11 +222,11 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 	// Add authentication information for the grpc. Only one type of credential
 	// should exist in an RPC call. Fake credentials have the highest priority, followed
 	// by Client credentials and Service Credentials.
-	fakeUserId := viper.GetString("fake-auth-userid")
+	fakeUserID := viper.GetString("fake-auth-userid")
 	switch {
-	case fakeUserId != "":
+	case fakeUserID != "":
 		opts = append(opts, grpc.WithPerRPCCredentials(
-			authentication.GetFakeCredential(fakeUserId)))
+			authentication.GetFakeCredential(fakeUserID)))
 	case clientSecretFile != "":
 		creds, err := getCreds(clientSecretFile)
 		if err != nil {

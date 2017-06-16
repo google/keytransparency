@@ -38,7 +38,7 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	// Extract index from a prior GetEntry call.
 	index, err := vrfPub.ProofToHash(vrf.UniqueID(userID, appID), getResp.VrfProof)
 	if err != nil {
-		return nil, fmt.Errorf("ProofToIndex(): %v")
+		return nil, fmt.Errorf("ProofToHash(): %v", err)
 	}
 	prevEntry := new(tpb.Entry)
 	if err := proto.Unmarshal(getResp.GetLeafProof().GetLeaf().GetLeafValue(), prevEntry); err != nil {
