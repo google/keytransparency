@@ -6,6 +6,11 @@ go:
 dist: trusty
 sudo: false
 
+addons:
+  apt:
+    packages:
+      - parallel
+
 install:
   - go get github.com/golang/lint/golint
   - go get github.com/kisielk/errcheck
