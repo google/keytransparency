@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
@@ -84,7 +83,6 @@ func getAuthorizedKey(pubKey string) *tpb.PublicKey {
 
 func TestEmptyGetAndUpdate(t *testing.T) {
 	bctx := context.Background()
-	auth := authentication.NewFake()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
@@ -111,13 +109,13 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		signers        []signatures.Signer
 		authorizedKeys []*tpb.PublicKey
 	}{
-		{false, false, context.Background(), "noalice", signers1, authorizedKeys1}, // Empty
-		{false, true, auth.NewContext("bob"), "bob", signers1, authorizedKeys1},    // Insert
-		{false, false, context.Background(), "nocarol", signers1, authorizedKeys1}, // Empty
-		{true, false, context.Background(), "bob", signers1, authorizedKeys1},      // Not Empty
-		{true, true, auth.NewContext("bob"), "bob", signers1, authorizedKeys1},     // Update
-		{true, true, auth.NewContext("bob"), "bob", signers2, authorizedKeys2},     // Update, changing keys
-		{true, true, auth.NewContext("bob"), "bob", signers3, authorizedKeys3},     // Update, using new keys
+		{false, false, context.Background(), "noalice", signers1, authorizedKeys1},                // Empty
+		{false, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1}, // Insert
+		{false, false, context.Background(), "nocarol", signers1, authorizedKeys1},                // Empty
+		{true, false, context.Background(), "bob", signers1, authorizedKeys1},                     // Not Empty
+		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1},  // Update
+		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers2, authorizedKeys2},  // Update, changing keys
+		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers3, authorizedKeys3},  // Update, using new keys
 	} {
 		// Check profile.
 		if err := env.checkProfile(tc.userID, appID, tc.want); err != nil {
@@ -163,7 +161,6 @@ func TestUpdateValidation(t *testing.T) {
 	defer env.Close(t)
 	env.Client.RetryCount = 0
 
-	auth := authentication.NewFake()
 	profile := []byte("bar")
 
 	// Create lists of signers and authorized keys
@@ -179,9 +176,9 @@ func TestUpdateValidation(t *testing.T) {
 		authorizedKeys []*tpb.PublicKey
 	}{
 		{false, context.Background(), "alice", profile, signers, authorizedKeys},
-		{false, auth.NewContext("carol"), "bob", profile, signers, authorizedKeys},
-		{true, auth.NewContext("dave"), "dave", profile, signers, authorizedKeys},
-		{true, auth.NewContext("eve"), "eve", profile, signers, authorizedKeys},
+		{false, GetNewOutgoingContextWithFakeAuth("carol"), "bob", profile, signers, authorizedKeys},
+		{true, GetNewOutgoingContextWithFakeAuth("dave"), "dave", profile, signers, authorizedKeys},
+		{true, GetNewOutgoingContextWithFakeAuth("eve"), "eve", profile, signers, authorizedKeys},
 	} {
 		req, err := env.Client.Update(tc.ctx, tc.userID, appID, tc.profile, tc.signers, tc.authorizedKeys)
 
@@ -206,7 +203,7 @@ func TestUpdateValidation(t *testing.T) {
 
 func TestListHistory(t *testing.T) {
 	userID := "bob"
-	ctx := authentication.NewFake().NewContext(userID)
+	ctx := GetNewOutgoingContextWithFakeAuth(userID)
 
 	env := NewEnv(t)
 	defer env.Close(t)

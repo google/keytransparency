@@ -23,13 +23,15 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	ctxn "github.com/google/keytransparency/core/transaction"
-	"github.com/google/keytransparency/impl/google/authentication"
+	gauth "github.com/google/keytransparency/impl/google/authentication"
+	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -46,8 +48,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-
-	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 )
 
 var (
@@ -58,6 +58,7 @@ var (
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
 	verbose      = flag.Bool("verbose", false, "Log requests and responses")
+	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
 	// Info to connect to sparse merkle tree database.
 	mapID  = flag.Int64("map-id", 0, "ID for backend map")
@@ -183,9 +184,20 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to load server credentials %v", err)
 	}
-	auth, err := authentication.NewGoogleAuth()
-	if err != nil {
-		glog.Exitf("Failed to create authentication library instance: %v", err)
+
+	var auth authentication.Authenticator
+	switch *authType {
+	case "insecure-fake":
+		glog.Warning("INSECURE! Using fake authentication.")
+		auth = authentication.NewFake()
+	case "google":
+		var err error
+		auth, err = gauth.NewGoogleAuth()
+		if err != nil {
+			glog.Exitf("Failed to create authentication library instance: %v", err)
+		}
+	default:
+		glog.Exitf("Invalid auth-type parameter: %v.", *authType)
 	}
 
 	// Create database and helper objects.

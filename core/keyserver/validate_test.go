@@ -19,13 +19,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
@@ -84,21 +82,18 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	vrfPriv, _ := p256.GenerateKey()
 	index, _ := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
 	commitment, committed, _ := commitments.Commit(userID, appID, profileData)
-	authCtx := authentication.NewFake().NewContext(userID)
 
 	for _, tc := range []struct {
 		want       bool
-		ctx        context.Context
 		userID     string
 		index      [32]byte
 		commitment []byte
 		committed  *tpb.Committed
 	}{
-		{false, context.Background(), userID, [32]byte{}, nil, nil}, // Incorrect auth
-		{false, authCtx, userID, [32]byte{}, nil, nil},              // Incorrect index
-		{false, authCtx, userID, index, nil, nil},                   // Incorrect commitment
-		{false, authCtx, userID, index, commitment, nil},            // Incorrect key
-		{true, authCtx, userID, index, commitment, committed},
+		{false, userID, [32]byte{}, nil, nil},   // Incorrect index
+		{false, userID, index, nil, nil},        // Incorrect commitment
+		{false, userID, index, commitment, nil}, // Incorrect key
+		{true, userID, index, commitment, committed},
 	} {
 		entry := &tpb.Entry{
 			Commitment: tc.commitment,
