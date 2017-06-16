@@ -22,8 +22,9 @@ import (
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/merkle/objhasher"
-	"google.golang.org/grpc"
+
 	"github.com/golang/glog"
+	"google.golang.org/grpc"
 )
 
 // LogClient creates a log client.

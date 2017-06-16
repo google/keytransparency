@@ -48,6 +48,7 @@ import (
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	"github.com/google/trillian"
@@ -222,4 +223,10 @@ func (env *Env) Close(t *testing.T) {
 	env.GRPCServer.Stop()
 	env.db.Close()
 	env.mapLog.Close()
+}
+
+// GetNewOutgoingContextWithFakeAuth returns a new context containing FakeAuth information to authenticate userID
+func GetNewOutgoingContextWithFakeAuth(userID string) context.Context {
+	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(context.Background())
+	return metadata.NewOutgoingContext(context.Background(), metadata.New(md))
 }

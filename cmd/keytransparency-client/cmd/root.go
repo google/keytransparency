@@ -23,12 +23,14 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
+	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/impl/google/authentication"
+	gauth "github.com/google/keytransparency/impl/google/authentication"
+	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
@@ -40,8 +42,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
-
-	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 )
 
 var (
@@ -86,6 +86,8 @@ func init() {
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
+
+	RootCmd.PersistentFlags().String("fake-auth-userid", "", "userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
 
 	// Global flags for use by subcommands.
 	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Minute, "Time to wait before operations timeout")
@@ -150,7 +152,7 @@ func getCreds(clientSecretFile string) (credentials.PerRPCCredentials, error) {
 		return nil, err
 	}
 
-	config, err := google.ConfigFromJSON(b, authentication.RequiredScopes...)
+	config, err := google.ConfigFromJSON(b, gauth.RequiredScopes...)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +169,7 @@ func getServiceCreds(serviceKeyFile string) (credentials.PerRPCCredentials, erro
 	if err != nil {
 		return nil, err
 	}
-	return oauth.NewServiceAccountFromKey(b, authentication.RequiredScopes...)
+	return oauth.NewServiceAccountFromKey(b, gauth.RequiredScopes...)
 }
 
 func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
@@ -217,22 +219,28 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
-	// Add client credentials otherwise add service credentials. Client
-	// credentials take priority over service credentials. Only one of the
-	// two should exist in an RPC call.
-	if clientSecretFile != "" {
+	// Add authentication information for the grpc. Only one type of credential
+	// should exist in an RPC call. Fake credentials have the highest priority, followed
+	// by Client credentials and Service Credentials.
+	fakeUserID := viper.GetString("fake-auth-userid")
+	switch {
+	case fakeUserID != "":
+		opts = append(opts, grpc.WithPerRPCCredentials(
+			authentication.GetFakeCredential(fakeUserID)))
+	case clientSecretFile != "":
 		creds, err := getCreds(clientSecretFile)
 		if err != nil {
 			return nil, err
 		}
 		opts = append(opts, grpc.WithPerRPCCredentials(creds))
-	} else if serviceKeyFile != "" {
+	case serviceKeyFile != "":
 		creds, err := getServiceCreds(serviceKeyFile)
 		if err != nil {
 			return nil, err
 		}
 		opts = append(opts, grpc.WithPerRPCCredentials(creds))
 	}
+
 	cc, err := grpc.Dial(ktURL, opts...)
 	if err != nil {
 		return nil, err
