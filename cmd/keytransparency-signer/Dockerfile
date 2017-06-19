@@ -12,7 +12,7 @@ ENV LOG_ID=0 \
     LOG_KEY=../trillian/testdata/log-rpc-server.pubkey.pem
 
 ENV MIN_SIGN_PERIOD=5s \
-    MAX_SIGN_PERIOD=1d
+    MAX_SIGN_PERIOD=24h
 
 ADD trillian/testdata/* /trillian/
 
