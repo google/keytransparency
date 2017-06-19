@@ -40,14 +40,19 @@ script:
   - ./coverage.sh
 
 after_success:
-  - sudo apt-get update
-  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
-  - pip install docker-compose
-  - docker --version
-  - docker-compose --version
-  - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; curl https://sdk.cloud.google.com | bash; fi
-  - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in client_secret-and-service_key.tar.gz.enc -out client_secret-and-service_key.tar.gz -d
-  - tar -xzf client_secret-and-service_key.tar.gz
-  - (cd scripts && ./deploy.sh)
- on:
-   branch: master
+  - bash <(curl -s https://codecov.io/bash)
+
+deploy:
+  provider: script
+  script:
+    - sudo apt-get update
+    - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
+    - pip install docker-compose
+    - docker --version
+    - docker-compose --version
+    - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; curl https://sdk.cloud.google.com | bash; fi
+    - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in client_secret-and-service_key.tar.gz.enc -out client_secret-and-service_key.tar.gz -d
+    - tar -xzf client_secret-and-service_key.tar.gz
+    - (cd scripts && ./deploy.sh)
+   on:
+     branch: master
