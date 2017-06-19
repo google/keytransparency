@@ -3,6 +3,8 @@
 # Following assumptions are made by this script:
 # - gcloud, docker, and docker-compose is installed
 # - it is called with CWD=$GOPATH/src/github.com/google/keytransparency/scripts
+# - there is a service key to authenticate with glcoud in
+#   $GOPATH/src/github.com/google/keytransparency/service_key.json
 
 PROJECT_NAME=key-transparency
 NAME_SPACE=default
@@ -32,11 +34,12 @@ function main()
 function initGcloud()
 {
   gcloud --quiet version
-  gcloud auth activate-service-account --key-file client-secret.json
+  gcloud auth activate-service-account --key-file ../service_key.json
   # This might fail locally but is necessary on travis:
   gcloud --quiet components update kubectl
   gcloud config set project ${PROJECT_NAME}
-  gcloud config set compute/zone us-central1-b
+  gcloud config set compute/zone us-central1-a
+  gcloud container clusters get-credentials ci-cluster
 }
 
 function buildDockerImgs()
@@ -111,8 +114,8 @@ function createTreeAndSetIDs()
   if [ -n "$LOG_ID" ] && [ -n "$MAP_ID" ]; then
     echo "Trees created with MAP_ID=$MAP_ID and LOG_ID=$LOG_ID"
     # Substitute LOG_ID and MAP_ID in template kubernetes file:
-    sed 's/${LOG_ID}'/${LOG_ID}/g kubernetes/keytransparency-deployment.yml.tmpl > ../kubernetes/keytransparency-deployment.yml
-    sed -i 's/${MAP_ID}'/${MAP_ID}/g kubernetes/keytransparency-deployment.yml
+    sed 's/${LOG_ID}'/${LOG_ID}/g ../kubernetes/keytransparency-deployment.yml.tmpl > ../kubernetes/keytransparency-deployment.yml
+    sed -i 's/${MAP_ID}'/${MAP_ID}/g ../kubernetes/keytransparency-deployment.yml
   else
     echo "Failed to create tree. Need map-id and log-id before running kt-server/-signer."
     exit 1

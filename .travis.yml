@@ -1,30 +1,25 @@
 language: go
-
 go:
-  - 1.8
-
+- 1.8
 dist: trusty
 sudo: required
-
 services:
-  - docker
-
+- docker
 cache:
   directories:
-    - "$HOME/google-cloud-sdk/"
-
+  - $HOME/google-cloud-sdk/
 env:
   global:
-    - DOCKER_COMPOSE_VERSION="1.13.0"
-    - PATH=$PATH:${HOME}/google-cloud-sdk/bin
-    - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-    - PROJECT_NAME=key-transparency
+  - DOCKER_COMPOSE_VERSION="1.13.0"
+  - PATH=$PATH:${HOME}/google-cloud-sdk/bin
+  - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+  - PROJECT_NAME=key-transparency
 
 addons:
   apt:
     packages:
-      - python-pip
-      - parallel
+    - python-pip
+    - parallel
 
 install:
   - go get github.com/golang/lint/golint
@@ -50,9 +45,10 @@ deploy:
     - pip install docker-compose
     - docker --version
     - docker-compose --version
-    - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; curl https://sdk.cloud.google.com | bash; fi
-    - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in client_secret-and-service_key.tar.gz.enc -out client_secret-and-service_key.tar.gz -d
-    - tar -xzf client_secret-and-service_key.tar.gz
+    - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
+      curl https://sdk.cloud.google.com | bash; fi
+    - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in service_key.tar.gz.enc -out service_key.tar.gz -d
+    - tar -xzf service_key.tar.gz
     - (cd scripts && ./deploy.sh)
   on:
     branch: master

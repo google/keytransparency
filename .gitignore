@@ -11,5 +11,6 @@ genfiles/*
 .keytransparency-scts.dat
 .keystore
 credentials.tar.gz
+service_key.tar.gz
 service_key.json
 client-secret.json
