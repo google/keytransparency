@@ -1,5 +1,15 @@
 version: "3"
 services:
+  prometheus:
+    depends_on:
+      - kt-server
+      - kt-signer
+    build: 
+      context: .
+      dockerfile: prometheus/Dockerfile
+    ports:
+      - 9090:9090
+
   db:
     image: mysql
     volumes:
@@ -52,7 +62,7 @@ services:
       VRF_PUB: /kt/vrf-pubkey.pem
       SIGN_KEY: /kt/p256-key.pem
       SIGN_KEY_PW: "towel"
-
+      SEQUENCER_PERIOD: 2.5s # shorter than kt-signer period.
 
   trillian-map:
     depends_on:
@@ -84,7 +94,8 @@ services:
       - ./genfiles/:/kt/
     restart: always
     ports:
-      - "8080:8080" # JSON & gRPC
+      - "8080:8080" # json & grpc
+      - "8081:8081" # metrics
     environment:
       LOG_ID: 4450861294505218766 # Update with trillian admin CLI.
       LOG_URL: trillian-log:8090
@@ -102,8 +113,6 @@ services:
       TLS_KEY_PATH: /kt/server.key
       TLS_CRT_PATH: /kt/server.crt
 
-
-
   kt-signer:
     depends_on:
       - db
@@ -116,6 +125,8 @@ services:
     volumes:
       - ./genfiles/:/kt/
       - ../trillian/testdata/:/trillian/
+    ports:
+      - "8082:8081" # metrics
     restart: always
     environment:
       LOG_ID: 4450861294505218766 # Update with trillian admin CLI.
@@ -134,9 +145,8 @@ services:
       VRF_PUB: /kt/genfiles/vrf-pubkey.pem
       SIGN_KEY: /trillian/log-rpc-server.privkey.pem
       SIGN_KEY_PW: towel
+      MIN_SIGN_PERIOD: 5s
 
 volumes:
   kt:
-
-
 

@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/google/keytransparency/core/admin"
@@ -37,11 +38,13 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/util"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 var (
+	metricsAddr      = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath     = flag.String("db", "db", "Database connection string")
 	domain           = flag.String("domain", "example.com", "Distinguished name for this key server")
 	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations). Expected to be smaller than max-period.")
@@ -94,6 +97,11 @@ func newMapServer(ctx context.Context, sqldb *sql.DB, factory ctxn.Factory) (tri
 func main() {
 	flag.Parse()
 
+	// Flag validation.
+	if *maxEpochDuration < *minEpochDuration {
+		glog.Exitf("maxEpochDuration < minEpochDuration: %v < %v, want maxEpochDuration >= minEpochDuration")
+	}
+
 	sqldb := openDB()
 	defer sqldb.Close()
 	factory := transaction.NewFactory(sqldb)
@@ -133,11 +141,16 @@ func main() {
 	}
 	mutator := entry.New()
 
-	if *maxEpochDuration < *minEpochDuration {
-		glog.Exitf("maxEpochDuration < minEpochDuration: %v < %v, want maxEpochDuration >= minEpochDuration")
-	}
+	metricMux := http.NewServeMux()
+	metricMux.Handle("/metrics", prometheus.Handler())
+	go func() {
+		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
+			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
+		}
+	}()
 
 	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)
-	glog.Infof("Signer started.")
+	glog.Infof("Signer starting")
 	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
+	glog.Errorf("Signer exiting")
 }
