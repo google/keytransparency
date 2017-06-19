@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
-# Following assumptions are made by this script:
-# - gcloud, docker, and docker-compose is installed
-# - it is called with CWD=$GOPATH/src/github.com/google/keytransparency/scripts
-# - there is a service key to authenticate with glcoud in
-#   $GOPATH/src/github.com/google/keytransparency/service_key.json
+################################################################################
+# Following assumptions are made by this script:                               #
+# * gcloud, docker, and docker-compose is installed                            #
+# * it is called from $GOPATH/src/github.com/google/keytransparency/scripts    #
+# * there is a project called key-transparency on gce which has a cluster      #
+#   called "ci-cluster" within the "us-central1-a" compute zone                #
+# * there is a service key to authenticate with glcoud to above project in     #
+#   $GOPATH/src/github.com/google/keytransparency/service_key.json             #
+################################################################################
 
 PROJECT_NAME=key-transparency
 NAME_SPACE=default
@@ -107,6 +111,8 @@ function createTreeAndSetIDs()
     # RPC was not available yet, wait and retry:
     sleep 10;
     let COUNTER+=1
+    # get the currentl trillian-map pod:
+    MAPSRV=$(kubectl get pods --selector=run=trillian-map -o jsonpath={.items[*].metadata.name});
     LOG_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=LOG' | kubectl exec -i $MAPSRV -- /bin/sh )
     MAP_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=MAP' | kubectl exec -i $MAPSRV -- /bin/sh )
   done
