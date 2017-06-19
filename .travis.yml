@@ -54,5 +54,5 @@ deploy:
     - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in client_secret-and-service_key.tar.gz.enc -out client_secret-and-service_key.tar.gz -d
     - tar -xzf client_secret-and-service_key.tar.gz
     - (cd scripts && ./deploy.sh)
-   on:
-     branch: master
+  on:
+    branch: master

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 # Following assumptions are made by this script:
+# - gcloud, docker, and docker-compose is installed
+# - it is called with CWD=$GOPATH/src/github.com/google/keytransparency/scripts
 
 PROJECT_NAME=transparent-keyserver
 NAME_SPACE=default
@@ -11,10 +13,10 @@ function main()
 {
   # create key-pairs:
   ./prepare_server.sh -f
-  #initGcloud
+  initGcloud
   buildDockerImgs
-  #tearDown
-  #pushTrillianImgs
+  tearDown
+  pushTrillianImgs
 
   # Deploy all trillian related services:
   kubectl apply -f ../kubernetes/trillian-deployment.yml
