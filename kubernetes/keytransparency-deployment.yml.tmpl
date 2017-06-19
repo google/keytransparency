@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: kt-server
-        image: us.gcr.io/transparent-keyserver/keytransparency-server
+        image: us.gcr.io/key-transparency/keytransparency-server
         ports:
           - containerPort: 8080
             name: json-grpc
@@ -69,7 +69,7 @@ spec:
     spec:
       containers:
       - name: kt-signer
-        image: us.gcr.io/transparent-keyserver/keytransparency-signer
+        image: us.gcr.io/key-transparency/keytransparency-signer
         ports:
           - containerPort: 8080
             name: json-grpc

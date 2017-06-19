@@ -4,7 +4,7 @@
 # - gcloud, docker, and docker-compose is installed
 # - it is called with CWD=$GOPATH/src/github.com/google/keytransparency/scripts
 
-PROJECT_NAME=transparent-keyserver
+PROJECT_NAME=key-transparency
 NAME_SPACE=default
 
 MAX_RETRY=30
