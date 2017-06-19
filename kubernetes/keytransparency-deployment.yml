@@ -21,11 +21,11 @@ spec:
             - name: LOG_URL
               value: trillian-log:8090
             - name: LOG_ID
-              value: "7753055418157973961"
+              value: "123"
             - name: MAP_URL
               value: trillian-map:8090
             - name: MAP_ID
-              value: "1390757038192440782"
+              value: "12434"
             - name: MYSQL_USER
               value: test
             - name: MYSQL_DATABASE
@@ -77,11 +77,11 @@ spec:
             - name: LOG_URL
               value: trillian-log:8090
             - name: LOG_ID
-              value: "7753055418157973961"
+              value: "123"
             - name: MAP_URL
               value: trillian-map:8090
             - name: MAP_ID
-              value: "1390757038192440782"
+              value: "12434"
             - name: MYSQL_USER
               value: test
             - name: MYSQL_DATABASE

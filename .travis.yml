@@ -16,8 +16,9 @@ cache:
 env:
   global:
     - DOCKER_COMPOSE_VERSION="1.13.0"
-    - PATH=$PATH:${HOME}/google-cloud-sdk/bin CLOUDSDK_CORE_DISABLE_PROMPTS=1
-    - PROJECT_NAME=transparent-keyserver
+    - PATH=$PATH:${HOME}/google-cloud-sdk/bin
+    - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+    - PROJECT_NAME=key-transparency
 
 addons:
   apt:
