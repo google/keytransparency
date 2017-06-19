@@ -34,7 +34,6 @@ import (
 )
 
 var (
-	timeout      = 10 * time.Second
 	mutationsCtr = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "kt_signer_mutations",
 		Help: "Number of mutations the signer has processed.",
@@ -99,23 +98,25 @@ func New(realm string,
 // and at least once per maxElapsed minIntervals.
 func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time.Duration) {
 	var rootResp *trillian.GetSignedMapRootResponse
-	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+	ctxTime, cancel := context.WithTimeout(ctx, minInterval)
+	rootResp, err := s.tmap.GetSignedMapRoot(ctxTime, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
 	})
 	if err != nil {
 		glog.Infof("GetSignedMapRoot failed: %v", err)
 		// Immediately create new epoch and write new sth:
-		if err := s.CreateEpoch(ctx, true); err != nil {
+		if err := s.CreateEpoch(ctxTime, true); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		// Request map head again to get the exact time it was created:
-		rootResp, err = s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		rootResp, err = s.tmap.GetSignedMapRoot(ctxTime, &trillian.GetSignedMapRootRequest{
 			MapId: s.mapID,
 		})
 		if err != nil {
 			glog.Errorf("GetSignedMapRoot failed after CreateEpoch: %v", err)
 		}
 	}
+	cancel()
 	// Fetch last time from previous map head (as stored in the map server)
 	mapRoot := rootResp.GetMapRoot()
 	last := time.Unix(0, mapRoot.GetTimestampNanos())
@@ -123,9 +124,11 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time
 	clock := util.SystemTimeSource{}
 	tc := time.Tick(minInterval)
 	for f := range genEpochTicks(clock, last, tc, minInterval, maxInterval) {
-		if err := s.CreateEpoch(ctx, f); err != nil {
+		ctxTime, cancel := context.WithTimeout(ctx, minInterval)
+		if err := s.CreateEpoch(ctxTime, f); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
+		cancel()
 	}
 }
 
@@ -304,10 +307,8 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: SetLeaves.HighestFullyCompletedSeq: %v", seq)
 
 	// Put SignedMapHead in an append only log.
-	// TODO: sths.Write currently hangs.
-	ctxTime, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	if err := s.sths.Write(ctxTime, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot); err != nil {
+	if err := s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot); err != nil {
+		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return fmt.Errorf("sths.Write(%v, %v): %v", s.logID, setResp.MapRoot.MapRevision, err)
 	}
 

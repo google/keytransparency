@@ -4,12 +4,12 @@ services:
     depends_on:
       - kt-server
       - kt-signer
-    image: prom/prometheus
-    volumes: 
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus.rules:/etc/prometheus/prometheus.rules
+    build: 
+      context: .
+      dockerfile: prometheus/Dockerfile
     ports:
       - 9090:9090
+
   db:
     image: mysql
     volumes:
@@ -113,8 +113,6 @@ services:
       TLS_KEY_PATH: /kt/server.key
       TLS_CRT_PATH: /kt/server.crt
 
-
-
   kt-signer:
     depends_on:
       - db
@@ -147,7 +145,7 @@ services:
       VRF_PUB: /kt/genfiles/vrf-pubkey.pem
       SIGN_KEY: /trillian/log-rpc-server.privkey.pem
       SIGN_KEY_PW: towel
-      SIGN_PERIOD: 5s
+      MIN_SIGN_PERIOD: 5s
 
 volumes:
   kt:
