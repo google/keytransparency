@@ -1,15 +1,25 @@
 language: go
-
 go:
-  - 1.8
-
+- 1.8
 dist: trusty
-sudo: false
+sudo: required
+services:
+- docker
+cache:
+  directories:
+  - $HOME/google-cloud-sdk/
+env:
+  global:
+  - DOCKER_COMPOSE_VERSION="1.13.0"
+  - PATH=$PATH:${HOME}/google-cloud-sdk/bin
+  - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+  - PROJECT_NAME=key-transparency
 
 addons:
   apt:
     packages:
-      - parallel
+    - python-pip
+    - parallel
 
 install:
   - go get github.com/golang/lint/golint
@@ -22,7 +32,26 @@ install:
 script:
   - make
   - make travis-presubmit
-  - ./coverage.sh 
+  - ./coverage.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+
+before_deploy:
+  - sudo apt-get update
+  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
+  - pip install docker-compose
+  - docker --version
+  - docker-compose --version
+  - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
+    curl https://sdk.cloud.google.com | bash; fi
+  - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
+  - tar -xzf travis_secrets.tar.gz
+  - gcloud --quiet version
+  - sudo gcloud --quiet components update kubectl
+
+deploy:
+  provider: script
+  script: ./scripts/deploy.sh
+  on:
+    branch: master

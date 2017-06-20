@@ -20,6 +20,7 @@ ENV LOG_ID=0 \
 ENV GOOGLE_APPLICATION_CREDENTIALS=genfiles/service_key.json
 ENV VERBOSE=0
 
+ADD genfiles/* /kt/
 ADD . /go/src/github.com/google/keytransparency
 WORKDIR /go/src/github.com/google/keytransparency 
 
