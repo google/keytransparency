@@ -37,7 +37,6 @@ function main()
 
 function initGcloud()
 {
-  gcloud auth activate-service-account --key-file service_key.json
   gcloud config set project ${PROJECT_NAME}
   gcloud config set compute/zone us-central1-a
   gcloud container clusters get-credentials ci-cluster
