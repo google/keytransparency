@@ -15,7 +15,6 @@ ENV MIN_SIGN_PERIOD=5s \
     MAX_SIGN_PERIOD=24h
 
 ADD trillian/testdata/* /trillian/
-
 ADD ./keytransparency /go/src/github.com/google/keytransparency
 WORKDIR /go/src/github.com/google/keytransparency 
 

@@ -37,18 +37,21 @@ script:
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 
+before_deploy:
+  - sudo apt-get update
+  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
+  - pip install docker-compose
+  - docker --version
+  - docker-compose --version
+  - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
+    curl https://sdk.cloud.google.com | bash; fi
+  - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
+  - tar -xzf service_key.tar.gz
+  - gcloud --quiet version
+  - gcloud --quiet components update kubectl
+
 deploy:
   provider: script
-  script:
-    - sudo apt-get update
-    - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
-    - pip install docker-compose
-    - docker --version
-    - docker-compose --version
-    - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
-      curl https://sdk.cloud.google.com | bash; fi
-    - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
-    - tar -xzf service_key.tar.gz
-    - (cd scripts && ./deploy.sh)
+  script: ./scripts/deploy.sh
   on:
     branch: master

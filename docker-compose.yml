@@ -4,16 +4,18 @@ services:
     depends_on:
       - kt-server
       - kt-signer
+    image: us.gcr.io/key-transparency/prometheus
     build:
       context: .
-      dockerfile: prometheus/Dockerfile
+      dockerfile: deploy/prometheus/Dockerfile
     ports:
       - 9090:9090
 
   db:
-    image: mysql
-    volumes:
-      - ../trillian/storage/mysql/storage.sql:/docker-entrypoint-initdb.d/storage.sql
+    image: us.gcr.io/key-transparency/db
+    build:
+      context: ../.
+      dockerfile: keytransparency/deploy/mysql-trillian/Dockerfile
     restart: always
     environment:
       MYSQL_PASSWORD: zaphod
@@ -24,7 +26,7 @@ services:
   trillian-log:
     depends_on:
       - db
-    image: trillian_log_server:latest
+    image: us.gcr.io/key-transparency/trillian_log_server
     build: 
       context: ../trillian
       dockerfile: server/trillian_log_server/Dockerfile
@@ -41,7 +43,7 @@ services:
   trillian-log-signer:
     depends_on:
       - db
-    image: trillian_log_signer:latest
+    image: us.gcr.io/key-transparency/trillian_log_signer
     build:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
@@ -58,7 +60,7 @@ services:
   trillian-map:
     depends_on:
       - db
-    image: trillian_map_server:latest
+    image: us.gcr.io/key-transparency/trillian_map_server
     build: 
       context: ../trillian
       dockerfile: server/trillian_map_server/Dockerfile
@@ -80,7 +82,7 @@ services:
     build:
       context: .
       dockerfile: ./cmd/keytransparency-server/Dockerfile
-    image: keytransparency-server:latest
+    image: us.gcr.io/key-transparency/keytransparency-server
     restart: always
     ports:
       - "8080:8080" # json & grpc
@@ -109,7 +111,7 @@ services:
     build:
       context: ../.
       dockerfile: ./keytransparency/cmd/keytransparency-signer/Dockerfile
-    image: keytransparency-signer:latest
+    image: us.gcr.io/key-transparency/keytransparency-signer
     restart: always
     environment:
       LOG_ID: 4450861294505218766 # Update with trillian admin CLI.

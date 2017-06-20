@@ -3,7 +3,7 @@
 ################################################################################
 # Following assumptions are made by this script:                               #
 # * gcloud, docker, and docker-compose is installed                            #
-# * it is called from $GOPATH/src/github.com/google/keytransparency/scripts    #
+# * it is called from $GOPATH/src/github.com/google/keytransparency            #
 # * there is a project called key-transparency on gce which has a cluster      #
 #   called "ci-cluster" within the "us-central1-a" compute zone                #
 # * there is a service key to authenticate with glcoud to above project in     #
@@ -18,29 +18,26 @@ MAX_RETRY=30
 function main()
 {
   # create key-pairs:
-  ./prepare_server.sh -f
+  ./scripts/prepare_server.sh -f
   initGcloud
   buildDockerImgs
   tearDown
-  pushTrillianImgs
+  pushAllTrillianImgs
 
   # Deploy all trillian related services:
-  kubectl apply -f ../kubernetes/trillian-deployment.yml
+  kubectl apply -f deploy/kubernetes/trillian-deployment.yml
 
   pushKTImgs
   waitForTrillian
   createTreeAndSetIDs
 
   # Deploy all keytransparency related services (server and signer):
-  kubectl apply -f ../kubernetes/keytransparency-deployment.yml
+  kubectl apply -f deploy/kubernetes/keytransparency-deployment.yml
 }
 
 function initGcloud()
 {
-  gcloud --quiet version
-  gcloud auth activate-service-account --key-file ../service_key.json
-  # This might fail locally but is necessary on travis:
-  gcloud --quiet components update kubectl
+  gcloud auth activate-service-account --key-file service_key.json
   gcloud config set project ${PROJECT_NAME}
   gcloud config set compute/zone us-central1-a
   gcloud container clusters get-credentials ci-cluster
@@ -48,23 +45,19 @@ function initGcloud()
 
 function buildDockerImgs()
 {
-  # Build all images defined in the docker-compose.yml:
-  (cd ../ && docker-compose build)
-  # Separately build the DB:
   # Work around some git permission issues on linux:
-  chmod a+r ../../trillian/storage/mysql/storage.sql
-  # Create and push a fresh db image (with schema created)
-  docker build -t  us.gcr.io/${PROJECT_NAME}/db -f ../kubernetes/mysql-trillian/Dockerfile ../..
+  chmod a+r ../trillian/storage/mysql/storage.sql
+
+  # Build all images defined in the docker-compose.yml:
+  docker-compose build
 }
 
 function pushTrillianImgs()
 {
   gcloud docker -- push us.gcr.io/${PROJECT_NAME}/db
-  images=("trillian_log_server" "trillian_map_server" "keytransparency-server" \
-  "trillian_log_signer" "keytransparency-signer")
+  images=("db" "trillian_log_server" "trillian_map_server" "trillian_log_signer")
   for DOCKER_IMAGE_NAME in "${images[@]}"
   do
-    docker tag ${DOCKER_IMAGE_NAME} us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
     # Push the images as we refer to them in the kubernetes config files:
     gcloud docker -- push us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
   done
@@ -72,11 +65,9 @@ function pushTrillianImgs()
 
 function pushKTImgs()
 {
- gcloud docker -- push us.gcr.io/${PROJECT_NAME}/db
-  images=("keytransparency-server" "keytransparency-signer")
+  images=("keytransparency-server" "keytransparency-signer" "prometheus")
   for DOCKER_IMAGE_NAME in "${images[@]}"
   do
-    docker tag ${DOCKER_IMAGE_NAME} us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
     # Push the images as we refer to them in the kubernetes config files:
     gcloud docker -- push us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
   done
@@ -84,6 +75,8 @@ function pushKTImgs()
 
 function waitForTrillian()
 {
+  # It's very unlikely that everything is up running before 15 sec.:
+  sleep 15
   # Wait for trillian-map pod to be up:
   COUNTER=0
   MAPSRV=""
@@ -120,8 +113,8 @@ function createTreeAndSetIDs()
   if [ -n "$LOG_ID" ] && [ -n "$MAP_ID" ]; then
     echo "Trees created with MAP_ID=$MAP_ID and LOG_ID=$LOG_ID"
     # Substitute LOG_ID and MAP_ID in template kubernetes file:
-    sed 's/${LOG_ID}'/${LOG_ID}/g ../kubernetes/keytransparency-deployment.yml.tmpl > ../kubernetes/keytransparency-deployment.yml
-    sed -i 's/${MAP_ID}'/${MAP_ID}/g ../kubernetes/keytransparency-deployment.yml
+    sed 's/${LOG_ID}'/${LOG_ID}/g kubernetes/keytransparency-deployment.yml.tmpl > kubernetes/keytransparency-deployment.yml
+    sed -i 's/${MAP_ID}'/${MAP_ID}/g kubernetes/keytransparency-deployment.yml
   else
     echo "Failed to create tree. Need map-id and log-id before running kt-server/-signer."
     exit 1
