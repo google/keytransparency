@@ -47,7 +47,7 @@ deploy:
     - docker-compose --version
     - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
       curl https://sdk.cloud.google.com | bash; fi
-    - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in service_key.tar.gz.enc -out service_key.tar.gz -d
+    - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
     - tar -xzf service_key.tar.gz
     - (cd scripts && ./deploy.sh)
   on:
