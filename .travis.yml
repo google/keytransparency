@@ -45,6 +45,8 @@ before_deploy:
   - docker-compose --version
   - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
     curl https://sdk.cloud.google.com | bash; fi
+  - source ~/virtualenv/python2.7/bin/activate
+  - source $HOME/google-cloud-sdk/path.bash.inc
   - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
   - tar -xzf travis_secrets.tar.gz
   - gcloud auth activate-service-account --key-file service_key.json
