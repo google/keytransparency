@@ -1,0 +1,4 @@
+# exclude top-level credential files:
+/service_key.json
+/client_secret*.json
+/travis_secrets.tar.gz
