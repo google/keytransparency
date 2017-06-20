@@ -90,14 +90,6 @@ func H1(m []byte) (x, y *big.Int) {
 var one = big.NewInt(1)
 
 // H2 hashes to an integer [1,N-1]
-// TODO: replace with first 128 bits of SHA256.
-// To cheat, find new m that produces same output.
-// To cheet, find a new m that produces a partiuclar output.
-//   close to fix x find x' s.t H(x') == H(x)
-// For 128 bit security only need 128 bits.
-// NSEC5 - This only needs to be SHA256[:]
-// Only need uniqueness. Non-uniformity is not a requirement.
-// Truncated SHA.
 func H2(m []byte) *big.Int {
 	// NIST SP 800-90A § A.5.1: Simple discard method.
 	byteLen := (params.BitSize + 7) >> 3
