@@ -45,7 +45,7 @@ func TestH2(t *testing.T) {
 			t.Fatalf("Failed generating random message: %v", err)
 		}
 		x := H2(m)
-		if got := len(x.Bytes()); got < 1 && got > l {
+		if got := len(x.Bytes()); got < 1 || got > l {
 			t.Errorf("len(h2(%v)) = %v, want %v", m, got, l)
 		}
 	}
