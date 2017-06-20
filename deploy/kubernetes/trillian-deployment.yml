@@ -1,0 +1,185 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    run: mysql
+spec:
+  type: NodePort
+  ports:
+    - port: 3306
+      targetPort: 3306
+      name: mysql
+  selector:
+    run: mysql
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: us.gcr.io/key-transparency/db
+        ports:
+          - containerPort: 3306
+            name: mysql
+        env:
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: MYSQL_RANDOM_ROOT_PASSWORD
+              value: "yes"
+---
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: trillian-map
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: trillian-map
+    spec:
+      containers:
+      - name: trillian-map
+        image: us.gcr.io/key-transparency/trillian_map_server
+        ports:
+          - containerPort: 8090
+            name: rpc
+          - containerPort: 8091
+            name: metrics
+        env:
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: DB_HOST
+              value: mysql:3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trillian-map
+  labels:
+    run: trillian-map
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 8090
+      name: rpc
+    - port: 8091
+      targetPort: 8091
+      name: metrics
+  selector:
+    run: trillian-map
+---
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: trillian-log
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: trillian-log
+    spec:
+      containers:
+      - name: trillian-log
+        image: us.gcr.io/key-transparency/trillian_log_server
+        ports:
+          - containerPort: 8090
+            name: rpc
+          - containerPort: 8091
+            name: metrics
+        env:
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: DB_HOST
+              value: mysql:3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trillian-log
+  labels:
+    run: trillian-log
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 8090
+      name: rpc
+    - port: 8091
+      targetPort: 8091
+      name: metrics
+  selector:
+    run: trillian-log
+---
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: trillian-log-signer
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: trillian-log-signer
+    spec:
+      containers:
+      - name: trillian-log-signer
+        image: us.gcr.io/key-transparency/trillian_log_signer
+        ports:
+          - containerPort: 8092
+            name: metrics
+        env:
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: DB_HOST
+              value: mysql:3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trillian-log-signer
+  labels:
+    run: trillian-log-signer
+spec:
+  type: NodePort
+  ports:
+    - port: 8091
+      targetPort: 8092
+      name: metrics
+  selector:
+    run: trillian-log-signer
