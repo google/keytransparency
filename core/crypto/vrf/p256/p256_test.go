@@ -17,11 +17,24 @@ package p256
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/hex"
 	"math"
 	"testing"
 )
 
-// TODO: Add test vectors
+const (
+	// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+	privKey = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
+AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
+csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END EC PRIVATE KEY-----`
+	// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+	pubKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
+1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
+-----END PUBLIC KEY-----`
+)
 
 func TestH1(t *testing.T) {
 	for i := 0; i < 10000; i++ {
@@ -40,6 +53,7 @@ func TestH1(t *testing.T) {
 }
 
 func TestH2(t *testing.T) {
+	t.Skip("Too long")
 	l := 32
 	for i := 0; i < 10000; i++ {
 		m := make([]byte, 100)
@@ -92,18 +106,7 @@ func TestReadFromOpenSSL(t *testing.T) {
 		priv string
 		pub  string
 	}{
-		{
-			// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
-			`-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIGbhE2+z8d5lHzb0gmkS78d86gm5gHUtXCpXveFbK3pcoAoGCCqGSM49
-AwEHoUQDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD1NXK9m8VivPmQSoYUdVFgNav
-csFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END EC PRIVATE KEY-----`,
-			// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
-			`-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUxX42oxJ5voiNfbjoz8UgsGqh1bD
-1NXK9m8VivPmQSoYUdVFgNavcsFaQhohkiCEthY51Ga6Xa+ggn+eTZtf9Q==
------END PUBLIC KEY-----`},
+		{privKey, pubKey},
 	} {
 		// Private VRF Key
 		signer, err := NewVRFSignerFromPEM([]byte(tc.priv))
@@ -177,4 +180,50 @@ func flipBit(a []byte, pos int) []byte {
 	buf.Write([]byte{b})
 	buf.Write(a[index+1:])
 	return buf.Bytes()
+}
+
+func TestVectors(t *testing.T) {
+	k, err := NewVRFSignerFromPEM([]byte(privKey))
+	if err != nil {
+		t.Errorf("NewVRFSigner failure: %v", err)
+	}
+	pk, err := NewVRFVerifierFromPEM([]byte(pubKey))
+	if err != nil {
+		t.Errorf("NewVRFSigner failure: %v", err)
+	}
+	for _, tc := range []struct {
+		m     []byte
+		index [32]byte
+	}{
+		{
+			m:     []byte("test"),
+			index: h2i("1af0a7e3d9a96a71be6257cf4ad1a0ffdec57e9959b2eafc4673a6c31241fc9f"),
+		},
+		{
+			m:     nil,
+			index: h2i("2ebac3669807f474f4d49891a1d0b2fba8e966f945ac01cbfffb3bb48627e67d"),
+		},
+	} {
+		index, proof := k.Evaluate(tc.m)
+		if got, want := index, tc.index; got != want {
+			t.Errorf("Evaluate(%s).Index: %x, want %x", tc.m, got, want)
+		}
+		index2, err := pk.ProofToHash(tc.m, proof)
+		if err != nil {
+			t.Errorf("ProofToHash(%s): %v", tc.m, err)
+		}
+		if got, want := index2, index; got != want {
+			t.Errorf("ProofToHash(%s): %x, want %x", tc.m, got, want)
+		}
+	}
+}
+
+func h2i(h string) [32]byte {
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		panic("Invalid hex")
+	}
+	var i [32]byte
+	copy(i[:], b)
+	return i
 }
