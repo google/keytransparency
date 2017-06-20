@@ -22,7 +22,7 @@ function main()
   initGcloud
   buildDockerImgs
   tearDown
-  pushAllTrillianImgs
+  pushTrillianImgs
 
   # Deploy all trillian related services:
   kubectl apply -f deploy/kubernetes/trillian-deployment.yml
@@ -113,8 +113,8 @@ function createTreeAndSetIDs()
   if [ -n "$LOG_ID" ] && [ -n "$MAP_ID" ]; then
     echo "Trees created with MAP_ID=$MAP_ID and LOG_ID=$LOG_ID"
     # Substitute LOG_ID and MAP_ID in template kubernetes file:
-    sed 's/${LOG_ID}'/${LOG_ID}/g kubernetes/keytransparency-deployment.yml.tmpl > kubernetes/keytransparency-deployment.yml
-    sed -i 's/${MAP_ID}'/${MAP_ID}/g kubernetes/keytransparency-deployment.yml
+    sed 's/${LOG_ID}'/${LOG_ID}/g deploy/kubernetes/keytransparency-deployment.yml.tmpl > deploy/kubernetes/keytransparency-deployment.yml
+    sed -i 's/${MAP_ID}'/${MAP_ID}/g deploy/kubernetes/keytransparency-deployment.yml
   else
     echo "Failed to create tree. Need map-id and log-id before running kt-server/-signer."
     exit 1

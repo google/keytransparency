@@ -96,3 +96,37 @@ spec:
               value: /trillian/log-rpc-server.privkey.pem
             - name: SIGN_KEY_PW
               value: towel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    run: prometheus
+spec:
+  type: NodePort
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: prometheus
+  selector:
+    run: prometheus
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: us.gcr.io/key-transparency/prometheus
+        ports:
+          - containerPort: 9090
+            name: prometheus
