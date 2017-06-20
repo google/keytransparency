@@ -46,7 +46,7 @@ func TestH2(t *testing.T) {
 		}
 		x := H2(m)
 		if got := len(x.Bytes()); got < 1 || got > l {
-			t.Errorf("len(h2(%v)) = %v, want %v", m, got, l)
+			t.Errorf("len(h2(%v)) = %v, want: 1 <= %v <= %v", m, got, got, l)
 		}
 	}
 }
