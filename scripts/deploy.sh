@@ -4,10 +4,13 @@
 # Following assumptions are made by this script:                               #
 # * gcloud, docker, and docker-compose is installed                            #
 # * it is called from $GOPATH/src/github.com/google/keytransparency            #
-# * there is a project called key-transparency on gce which has a cluster      #
-#   called "ci-cluster" within the "us-central1-a" compute zone                #
-# * there is a service key to authenticate with glcoud to above project in     #
-#   $GOPATH/src/github.com/google/keytransparency/service_key.json             #
+# * there is a project called key-transparency on gce  which has has gke       #
+#   enabled and a cluster configured; gcloud is already set to this            #
+#   project via:                                                               #
+#   # see gcloud help auth and authenticate, then:                             #
+#   gcloud config set project key-transparency                                 #
+#   gcloud container clusters get-credentials <cluster-name>                   #
+#   gcloud config set compute/zone us-central1-a                               #
 ################################################################################
 
 PROJECT_NAME=key-transparency
@@ -19,7 +22,6 @@ function main()
 {
   # create key-pairs:
   ./scripts/prepare_server.sh -f
-  initGcloud
   buildDockerImgs
   tearDown
   pushTrillianImgs
@@ -35,12 +37,6 @@ function main()
   kubectl apply -f deploy/kubernetes/keytransparency-deployment.yml
 }
 
-function initGcloud()
-{
-  gcloud config set project ${PROJECT_NAME}
-  gcloud config set compute/zone us-central1-a
-  gcloud container clusters get-credentials ci-cluster
-}
 
 function buildDockerImgs()
 {
