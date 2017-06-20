@@ -4,16 +4,18 @@ services:
     depends_on:
       - kt-server
       - kt-signer
-    build: 
+    image: us.gcr.io/key-transparency/prometheus
+    build:
       context: .
-      dockerfile: prometheus/Dockerfile
+      dockerfile: deploy/prometheus/Dockerfile
     ports:
       - 9090:9090
 
   db:
-    image: mysql
-    volumes:
-      - ../trillian/storage/mysql/storage.sql:/docker-entrypoint-initdb.d/storage.sql
+    image: us.gcr.io/key-transparency/db
+    build:
+      context: ../.
+      dockerfile: keytransparency/deploy/mysql-trillian/Dockerfile
     restart: always
     environment:
       MYSQL_PASSWORD: zaphod
@@ -24,7 +26,7 @@ services:
   trillian-log:
     depends_on:
       - db
-    image: trillian_log_server:latest
+    image: us.gcr.io/key-transparency/trillian_log_server
     build: 
       context: ../trillian
       dockerfile: server/trillian_log_server/Dockerfile
@@ -41,10 +43,8 @@ services:
   trillian-log-signer:
     depends_on:
       - db
-    image: trillian_log_signer:latest
-    volumes:
-         - ../keytransparency/genfiles:/kt
-    build: 
+    image: us.gcr.io/key-transparency/trillian_log_signer
+    build:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
     restart: always
@@ -55,19 +55,12 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      GOOGLE_APPLICATION_CREDENTIALS: /genfiles/service_key.json
-      KEY: /kt/server.key
-      CERT: /kt/server.crt
-      VRF_PRIV: /kt/vrf-key.pem
-      VRF_PUB: /kt/vrf-pubkey.pem
-      SIGN_KEY: /kt/p256-key.pem
-      SIGN_KEY_PW: "towel"
-      SEQUENCER_PERIOD: 2.5s # shorter than kt-signer period.
+
 
   trillian-map:
     depends_on:
       - db
-    image: trillian_map_server:latest
+    image: us.gcr.io/key-transparency/trillian_map_server
     build: 
       context: ../trillian
       dockerfile: server/trillian_map_server/Dockerfile
@@ -89,9 +82,7 @@ services:
     build:
       context: .
       dockerfile: ./cmd/keytransparency-server/Dockerfile
-    image: keytransparency-server:latest
-    volumes:
-      - ./genfiles/:/kt/
+    image: us.gcr.io/key-transparency/keytransparency-server
     restart: always
     ports:
       - "8080:8080" # json & grpc
@@ -106,7 +97,6 @@ services:
       DB_USER: test
       DB_PASSWORD: zaphod
       GOOGLE_APPLICATION_CREDENTIALS: /kt/service_key.json
-      KEY: /kt/server.key
       CERT: /kt/server.crt
       VRF_PRIV: /kt/vrf-key.pem
       VRF_PUB: /kt/vrf-pubkey.pem
@@ -119,14 +109,9 @@ services:
       - trillian-log
       - trillian-map
     build:
-      context: .
-      dockerfile: ./cmd/keytransparency-signer/Dockerfile
-    image: keytransparency-signer:latest
-    volumes:
-      - ./genfiles/:/kt/
-      - ../trillian/testdata/:/trillian/
-    ports:
-      - "8082:8081" # metrics
+      context: ../.
+      dockerfile: ./keytransparency/cmd/keytransparency-signer/Dockerfile
+    image: us.gcr.io/key-transparency/keytransparency-signer
     restart: always
     environment:
       LOG_ID: 4450861294505218766 # Update with trillian admin CLI.
@@ -137,16 +122,7 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      GOOGLE_APPLICATION_CREDENTIALS: /kt/service_key.json
-      KEY: /kt/server.key
       LOG_KEY: /trillian/log-rpc-server.pubkey.pem
-      CERT: /kt/server.crt
-      VRF_PRIV: /kt/genfiles/vrf-key.pem
-      VRF_PUB: /kt/genfiles/vrf-pubkey.pem
       SIGN_KEY: /trillian/log-rpc-server.privkey.pem
       SIGN_KEY_PW: towel
       MIN_SIGN_PERIOD: 5s
-
-volumes:
-  kt:
-

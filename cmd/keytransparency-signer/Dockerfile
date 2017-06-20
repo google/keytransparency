@@ -12,9 +12,10 @@ ENV LOG_ID=0 \
     LOG_KEY=../trillian/testdata/log-rpc-server.pubkey.pem
 
 ENV MIN_SIGN_PERIOD=5s \
-    MAX_SIGN_PERIOD=1d
+    MAX_SIGN_PERIOD=24h
 
-ADD . /go/src/github.com/google/keytransparency
+ADD trillian/testdata/* /trillian/
+ADD ./keytransparency /go/src/github.com/google/keytransparency
 WORKDIR /go/src/github.com/google/keytransparency 
 
 RUN go get -tags="mysql" ./cmd/keytransparency-signer

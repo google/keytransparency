@@ -1,0 +1,132 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: kt-server
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: kt-server
+    spec:
+      containers:
+      - name: kt-server
+        image: us.gcr.io/key-transparency/keytransparency-server
+        ports:
+          - containerPort: 8080
+            name: json-grpc
+        env:
+            - name: LOG_URL
+              value: trillian-log:8090
+            - name: LOG_ID
+              value: "${LOG_ID}"
+            - name: MAP_URL
+              value: trillian-map:8090
+            - name: MAP_ID
+              value: "${MAP_ID}"
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: DB_HOST
+              value: mysql:3306
+      initContainers:
+      - name: init-trillian-map
+        image: radial/busyboxplus
+        command: ['sh', '-c', "until curl  http://trillian-map:8091/v1beta1/trees; do echo 'waiting'; sleep 5; done"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kt-server
+  labels:
+    run: kt-server
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: json-grpc
+  selector:
+    run: kt-server
+---
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: kt-signer
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: kt-signer
+    spec:
+      containers:
+      - name: kt-signer
+        image: us.gcr.io/key-transparency/keytransparency-signer
+        ports:
+          - containerPort: 8080
+            name: json-grpc
+        env:
+            - name: LOG_URL
+              value: trillian-log:8090
+            - name: LOG_ID
+              value: "${LOG_ID}"
+            - name: MAP_URL
+              value: trillian-map:8090
+            - name: MAP_ID
+              value: "${MAP_ID}"
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_DATABASE
+              value: test
+            - name: MYSQL_PASSWORD
+              value: zaphod
+            - name: DB_HOST
+              value: mysql:3306
+            - name: LOG_KEY
+              value: /trillian/log-rpc-server.pubkey.pem
+            - name: SIGN_KEY # TODO(ismail): https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/
+              value: /trillian/log-rpc-server.privkey.pem
+            - name: SIGN_KEY_PW
+              value: towel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    run: prometheus
+spec:
+  type: NodePort
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: prometheus
+  selector:
+    run: prometheus
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        run: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: us.gcr.io/key-transparency/prometheus
+        ports:
+          - containerPort: 9090
+            name: prometheus
