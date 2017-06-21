@@ -74,14 +74,12 @@ func H1(m []byte) (x, y *big.Int) {
 	h := sha512.New()
 	var i uint32
 	byteLen := (params.BitSize + 7) >> 3
-	buf := make([]byte, 4)
 	for x == nil && i < 100 {
 		// TODO: Use a NIST specified DRBG.
-		binary.BigEndian.PutUint32(buf[:], i)
 		h.Reset()
-		h.Write(buf)
+		binary.Write(h, binary.BigEndian, uint32(i))
 		h.Write(m)
-		r := []byte{2} // Set point encoding to "compressed".
+		r := []byte{2} // Set point encoding to "compressed", y=0.
 		r = h.Sum(r)
 		x, y = Unmarshal(curve, r[:byteLen+1])
 		i++
@@ -96,12 +94,10 @@ func H2(m []byte) *big.Int {
 	// NIST SP 800-90A § A.5.1: Simple discard method.
 	byteLen := (params.BitSize + 7) >> 3
 	h := sha512.New()
-	buf := make([]byte, 4)
 	for i := uint32(0); ; i++ {
 		// TODO: Use a NIST specified DRBG.
-		binary.BigEndian.PutUint32(buf[:], i)
 		h.Reset()
-		h.Write(buf)
+		binary.Write(h, binary.BigEndian, uint32(i))
 		h.Write(m)
 		b := h.Sum(nil)
 		k := new(big.Int).SetBytes(b[:byteLen])
@@ -122,25 +118,28 @@ func (k PrivateKey) Evaluate(m []byte) (index [32]byte, proof []byte) {
 	ri := new(big.Int).SetBytes(r)
 
 	// H = H1(m)
-	hx, hy := H1(m)
+	Hx, Hy := H1(m)
+
+	// VRF_k(m) = [k]H
+	kHx, kHy := params.ScalarMult(Hx, Hy, k.D.Bytes())
+	vrf := elliptic.Marshal(curve, kHx, kHy) // 65 bytes.
 
 	// G is the base point
-	// s = H2(m, [r]G, [r]H)
-	gRx, gRy := params.ScalarBaseMult(r)
-	hRx, hRy := params.ScalarMult(hx, hy, r)
+	// s = H2(G, H, [k]G, VRF, [r]G, [r]H)
+	rGx, rGy := params.ScalarBaseMult(r)
+	rHx, rHy := params.ScalarMult(Hx, Hy, r)
 	var b bytes.Buffer
-	b.Write(m)
-	b.Write(elliptic.Marshal(curve, gRx, gRy))
-	b.Write(elliptic.Marshal(curve, hRx, hRy))
+	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, Hx, Hy))
+	b.Write(elliptic.Marshal(curve, k.PublicKey.X, k.PublicKey.Y))
+	b.Write(vrf)
+	b.Write(elliptic.Marshal(curve, rGx, rGy))
+	b.Write(elliptic.Marshal(curve, rHx, rHy))
 	s := H2(b.Bytes())
 
 	// t = r−s*k mod N
 	t := new(big.Int).Sub(ri, new(big.Int).Mul(s, k.D))
 	t.Mod(t, params.N)
-
-	// VRF_k(m) = [k]H
-	vrfx, vrfy := params.ScalarMult(hx, hy, k.D.Bytes())
-	vrf := elliptic.Marshal(curve, vrfx, vrfy) // 65 bytes.
 
 	// Index = H(vrf)
 	index = sha256.Sum256(vrf)
@@ -170,30 +169,33 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 	t := proof[32:64]
 	vrf := proof[64 : 64+65]
 
-	vrfx, vrfy := elliptic.Unmarshal(curve, vrf)
-	if vrfx == nil {
+	kHx, kHy := elliptic.Unmarshal(curve, vrf)
+	if kHx == nil {
 		return nilIndex, ErrInvalidVRF
 	}
 
 	// [t]G + [s]([k]G) = [t+ks]G
-	gTx, gTy := params.ScalarBaseMult(t)
-	pkSx, pkSy := params.ScalarMult(pk.X, pk.Y, s)
-	gTKSx, gTKSy := params.Add(gTx, gTy, pkSx, pkSy)
+	tGx, tGy := params.ScalarBaseMult(t)
+	ksGx, ksGy := params.ScalarMult(pk.X, pk.Y, s)
+	tksGx, tksGy := params.Add(tGx, tGy, ksGx, ksGy)
 
 	// H = H1(m)
 	// [t]H + [s]VRF = [t+ks]H
-	hx, hy := H1(m)
-	hTx, hTy := params.ScalarMult(hx, hy, t)
-	vSx, vSy := params.ScalarMult(vrfx, vrfy, s)
-	h1TKSx, h1TKSy := params.Add(hTx, hTy, vSx, vSy)
+	Hx, Hy := H1(m)
+	tHx, tHy := params.ScalarMult(Hx, Hy, t)
+	skHx, skHy := params.ScalarMult(kHx, kHy, s)
+	tksHx, tksHy := params.Add(tHx, tHy, skHx, skHy)
 
-	// H2(m, [t]G + [s]([k]G), [t]H + [s]VRF)
-	// = H2(m, [t+ks]G, [t+ks]H)
-	// = H2(m, [r]G, [r]H)
+	//   H2(G, H, [k]G, VRF, [t]G + [s]([k]G), [t]H + [s]VRF)
+	// = H2(G, H, [k]G, VRF, [t+ks]G, [t+ks]H)
+	// = H2(G, H, [k]G, VRF, [r]G, [r]H)
 	var b bytes.Buffer
-	b.Write(m)
-	b.Write(elliptic.Marshal(curve, gTKSx, gTKSy))
-	b.Write(elliptic.Marshal(curve, h1TKSx, h1TKSy))
+	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
+	b.Write(elliptic.Marshal(curve, Hx, Hy))
+	b.Write(elliptic.Marshal(curve, pk.X, pk.Y))
+	b.Write(vrf)
+	b.Write(elliptic.Marshal(curve, tksGx, tksGy))
+	b.Write(elliptic.Marshal(curve, tksHx, tksHy))
 	h2 := H2(b.Bytes())
 
 	// Left pad h2 with zeros if needed. This will ensure that h2 is padded
