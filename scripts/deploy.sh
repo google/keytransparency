@@ -101,8 +101,8 @@ function createTreeAndSetIDs()
     let COUNTER+=1
     # get the currentl trillian-map pod:
     MAPSRV=$(kubectl get pods --selector=run=trillian-map -o jsonpath={.items[*].metadata.name});
-    LOG_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=LOG' | kubectl exec -i $MAPSRV -- /bin/sh )
-    MAP_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=MAP' | kubectl exec -i $MAPSRV -- /bin/sh )
+    LOG_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --hash_strategy=TEST_MAP_HASHER --tree_type=LOG' | kubectl exec -i $MAPSRV -- /bin/sh )
+    MAP_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --hash_strategy=TEST_MAP_HASHER --tree_type=MAP' | kubectl exec -i $MAPSRV -- /bin/sh )
   done
 
   if [ -n "$LOG_ID" ] && [ -n "$MAP_ID" ]; then
