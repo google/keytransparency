@@ -53,7 +53,6 @@ func TestH1(t *testing.T) {
 }
 
 func TestH2(t *testing.T) {
-	t.Skip("Too long")
 	l := 32
 	for i := 0; i < 10000; i++ {
 		m := make([]byte, 100)
