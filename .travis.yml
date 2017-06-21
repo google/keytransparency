@@ -52,7 +52,10 @@ before_deploy:
   - gcloud auth activate-service-account --key-file service_key.json
   - rm -f service_key.json
   - gcloud --quiet version
-  - sudo gcloud --quiet components update kubectl && gcloud info --show-log
+  - gcloud config set project key-transparency
+  - gcloud container clusters get-credentials ci-cluster
+  - gcloud config set compute/zone us-central1-a
+  - gcloud --quiet components update kubectl && gcloud info --show-log
 
 deploy:
   skip_cleanup: true
