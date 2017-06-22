@@ -88,9 +88,9 @@ services:
       - "8080:8080" # json & grpc
       - "8081:8081" # metrics
     environment:
-      LOG_ID: 4450861294505218766 # Update with trillian admin CLI.
+      LOG_ID: ${LOG_ID} # Update with trillian admin CLI.
       LOG_URL: trillian-log:8090
-      MAP_ID: 5698043027494814677 # Update with trillian admin CLI.
+      MAP_ID: ${MAP_ID} # Update with trillian admin CLI.
       MAP_URL: trillian-map:8090
       DB_HOST: db:3306
       DB_DATABASE: test
@@ -114,9 +114,9 @@ services:
     image: us.gcr.io/key-transparency/keytransparency-signer
     restart: always
     environment:
-      LOG_ID: 4450861294505218766 # Update with trillian admin CLI.
+      LOG_ID: ${LOG_ID} # Update with trillian admin CLI.
       LOG_URL: trillian-log:8090
-      MAP_ID: 5698043027494814677 # Update with trillian admin CLI.
+      MAP_ID: ${MAP_ID} # Update with trillian admin CLI.
       MAP_URL: trillian-map:8090
       DB_HOST: db:3306
       DB_DATABASE: test
