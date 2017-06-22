@@ -25,6 +25,7 @@ import (
 	"golang.org/x/oauth2"
 	gAPI "google.golang.org/api/oauth2/v2"
 	"google.golang.org/grpc/metadata"
+	"net/http"
 )
 
 // GRPC stores authentication information in the "authorization" header.
@@ -46,11 +47,17 @@ var (
 )
 
 // GAuth authenticates Google users through the Google TokenInfo API endpoint.
-type GAuth struct {}
+type GAuth struct {
+	service *gAPI.Service
+}
 
 // NewGoogleAuth creates a new authenticator for Google users.
 func NewGoogleAuth() (*GAuth, error) {
-	return &GAuth{}, nil
+	googleService, err := gAPI.New(http.DefaultClient)
+	if err != nil {
+		return nil, err
+	}
+	return &GAuth{googleService}, nil
 }
 
 // ValidateCreds verifies that email is equal to the validated email address
@@ -109,7 +116,7 @@ func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 		return nil, ErrInvalidToken
 	}
 
-	infoCall := gAPI.TokeninfoCall{}
+	infoCall := a.service.Tokeninfo()
 	infoCall.AccessToken(token.AccessToken)
 	info, err := infoCall.Do()
 	if err != nil {
