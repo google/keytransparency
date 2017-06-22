@@ -248,7 +248,7 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 	return cc, nil
 }
 
-// GetClient connects to the server and returns a key transpency verification
+// GetClient connects to the server and returns a key transparency verification
 // client.
 func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	vrfFile := viper.GetString("vrf")

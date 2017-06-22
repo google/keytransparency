@@ -9,8 +9,11 @@
 #   project via:                                                               #
 #   # see gcloud help auth and authenticate, then:                             #
 #   gcloud config set project key-transparency                                 #
-#   gcloud container clusters get-credentials <cluster-name>                   #
-#   gcloud config set compute/zone us-central1-a                               #
+#   gcloud container clusters get-credentials <your-cluster-name>              #
+#   gcloud config set compute/zone <your-compute-zone>                         #
+#                                                                              #
+#   See the project's .travis.yml file for a working example.                  #
+#                                                                              #
 ################################################################################
 
 PROJECT_NAME=key-transparency

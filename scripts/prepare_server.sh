@@ -159,7 +159,6 @@ fi
 
 # Generating .env file
 ENV="SIGN_PERIOD=5
-GOOGLE_APPLICATION_CREDENTIALS=\"${SERVICEKEY}\""
 
 if [[ -n "${CERTDOMAIN}" ]]; then
     ENV="${ENV}

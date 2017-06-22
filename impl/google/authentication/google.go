@@ -23,9 +23,9 @@ import (
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	gAPI "google.golang.org/api/oauth2/v2"
 	"google.golang.org/grpc/metadata"
+	"net/http"
 )
 
 // GRPC stores authentication information in the "authorization" header.
@@ -53,13 +53,7 @@ type GAuth struct {
 
 // NewGoogleAuth creates a new authenticator for Google users.
 func NewGoogleAuth() (*GAuth, error) {
-	//httpClient := a.config.Client(ctx, token)
-	ctx := context.TODO()
-	httpClient, err := google.DefaultClient(ctx, gAPI.UserinfoEmailScope)
-	if err != nil {
-		return nil, err
-	}
-	googleService, err := gAPI.New(httpClient)
+	googleService, err := gAPI.New(http.DefaultClient)
 	if err != nil {
 		return nil, err
 	}
