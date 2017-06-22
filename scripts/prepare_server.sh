@@ -158,7 +158,7 @@ if ((BACKEND == 1)); then
 fi
 
 # Generating .env file
-ENV="SIGN_PERIOD=5
+ENV="SIGN_PERIOD=5"
 
 if [[ -n "${CERTDOMAIN}" ]]; then
     ENV="${ENV}
