@@ -2,7 +2,8 @@ log-key: "../trillian/testdata/log-rpc-server.pubkey.pem"
 vrf:    "genfiles/vrf-pubkey.pem"
 kt-key: "genfiles/server.crt"
 kt-sig: "genfiles/p256-pubkey.pem"
-map-id: 3506304676031956248
-kt-url: "localhost:8080"
-client-secret: "/usr/local/google/home/ismailkhoffi/go/src/github.com/google/keytransparency/client_secret_825145729157-c5frj7vasev3fectclbqpfp2mgdl44pe.apps.googleusercontent.com.json"
+domain: "example.com"
+map-id: 0
+kt-url: "104.199.112.76:5001"
+client-secret: "client_secret.json"
 service-key: ""
