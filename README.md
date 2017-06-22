@@ -96,11 +96,7 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   go get -u github.com/google/trillian/...
   ```
 
-4. Get a [service account key](https://console.developers.google.com/apis/credentials) and download the generated JSON file.
-
-  The service account key is used to verify client OAuth tokens.
-
-5. Run server setup 
+3. Run server setup 
 
   ```sh
 ./scripts/prepare_server.sh
@@ -113,13 +109,13 @@ Set `$GOPATH` variable to point to your Go workspace directory and add `$GOPATH/
   - `genfiles/server.crt`
   - `genfile/p256-pubkey.pem`
 
-6. Run the trillian-map server 
+4. Run the trillian-map server 
 
   ```sh
 docker-compose up -d trillian-map
   ```
 
-7. Provision a log and a map 
+5. Provision a log and a map 
 ```sh
 MAP_IP=`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' keytransparency_trillian-map_1`
 export LOG_ID=`go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=$MAP_IP:8090 --pem_key_path=$GOPATH/src/github.com/google/trillian/testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=LOG`
@@ -127,7 +123,7 @@ export MAP_ID=`go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main
 ```
 
 
-8. Launch the rest of the cluster and observe.
+6. Launch the rest of the cluster and observe.
 - `docker-compose up -d`
 - `docker-compose logs --tail=0 --follow`
 - [https://localhost:8080/v1/users/foo@bar.com](https://localhost:8080/v1/users/foo@bar.com)
