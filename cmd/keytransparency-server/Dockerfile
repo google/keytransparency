@@ -16,8 +16,7 @@ ENV VRF_PRIV=genfiles/vrf-key.pem \
 ENV MAP_ID=0 \
     MAP_URL=""
 ENV LOG_ID=0 \
-    LOG_URL=localhost:8090 
-ENV GOOGLE_APPLICATION_CREDENTIALS=genfiles/service_key.json
+    LOG_URL=localhost:8090
 ENV VERBOSE=0
 
 ADD genfiles/* /kt/

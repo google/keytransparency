@@ -96,7 +96,6 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      GOOGLE_APPLICATION_CREDENTIALS: /kt/service_key.json
       CERT: /kt/server.crt
       VRF_PRIV: /kt/vrf-key.pem
       VRF_PUB: /kt/vrf-pubkey.pem
