@@ -39,7 +39,7 @@ after_success:
 
 before_deploy:
   - sudo apt-get update
-  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
+  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
   - pip install docker-compose
   - docker --version
   - docker-compose --version
