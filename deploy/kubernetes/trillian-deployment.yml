@@ -168,6 +168,8 @@ spec:
               value: zaphod
             - name: DB_HOST
               value: mysql:3306
+            - name: SEQUENCER_INTERVAL
+              value: 1s
 ---
 apiVersion: v1
 kind: Service

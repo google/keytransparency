@@ -17,7 +17,8 @@ ENV MAP_ID=0 \
     MAP_URL=""
 ENV LOG_ID=0 \
     LOG_URL=localhost:8090
-ENV VERBOSE=0
+
+ENV VERBOSITY=1
 
 ADD genfiles/* /kt/
 ADD . /go/src/github.com/google/keytransparency
@@ -32,8 +33,8 @@ ENTRYPOINT /go/bin/keytransparency-server \
 	--key="$TLS_KEY_PATH" --cert="$TLS_CRT_PATH" \
 	--log-id="$LOG_ID" --log-url="$LOG_URL" \
 	--map-id="$MAP_ID" --map-url="$MAP_URL" \
-	--alsologtostderr \
-	--verbose="$VERBOSE"
+	--alsologtostderr  \
+	--v=${VERBOSITY}
 
 EXPOSE $RPC_PORT
 

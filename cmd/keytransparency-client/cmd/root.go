@@ -34,7 +34,8 @@ import (
 
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	"github.com/google/trillian/merkle/objhasher"
+	// Make sure the objhasher is registered:
+	_ "github.com/google/trillian/merkle/objhasher"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -42,6 +43,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
+	"github.com/google/trillian"
+	"github.com/google/trillian/merkle/hashers"
 )
 
 var (
@@ -268,7 +271,12 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
 	}
-	log := client.NewLogVerifier(objhasher.ObjectHasher, logPubKey)
+
+	hasher, err := 	hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	if err != nil {
+		return nil, fmt.Errorf("Failed retrieving LogHasher from registry %v:", err)
+	}
+	log := client.NewLogVerifier(hasher, logPubKey)
 
 	c, err := getClient(cc, mapID, vrfFile, ktSig, log)
 	if err != nil {

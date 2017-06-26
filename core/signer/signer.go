@@ -254,6 +254,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	// Don't create epoch if there is nothing to process unless explicitly
 	// specified by caller
 	if len(mutations) == 0 && !forceNewEpoch {
+		glog.Infof("CreateEpoch: no mutations. No epoch created.")
 		return nil
 	}
 

@@ -58,7 +58,6 @@ var (
 	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
-	verbose      = flag.Bool("verbose", false, "Log requests and responses")
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
 	// Info to connect to sparse merkle tree database.
