@@ -115,7 +115,7 @@ message GetEntryRequest {
   // app_id is the identifier for the application.
   string app_id = 2;
   // first_tree_size is the tree_size of the currently trusted log root. 
-  // Omitting this field will ommit the log consistency proof from the response.
+  // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 3;
 }
 
@@ -160,7 +160,7 @@ message GetEntryResponse {
 message ListEntryHistoryRequest {
   // user_id is the user identifier.
   string user_id = 1;
-  // start is the starting epcoh.
+  // start is the starting epoch.
   int64 start = 2;
   // page_size is the maximum number of entries to return.
   int32 page_size = 3;
@@ -187,7 +187,7 @@ message UpdateEntryRequest {
   // app_id is the identifier for the application.
   string app_id = 2;
   // first_tree_size is the tree_size of the currently trusted log root. 
-  // Omitting this field will ommit the log consistency proof from the response.
+  // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 3;
   // entry_update contains the user submitted update.
   EntryUpdate entry_update = 4;
@@ -205,7 +205,7 @@ message GetMutationsRequest {
   // epoch specifies the epoch number in which mutations will be returned.
   int64 epoch = 1;
   // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will ommit the log consistency proof from the response.
+  // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 2;
   // page_token defines the starting point for pagination. An empty
   // value means start from the beginning. A non-empty value requests the next
