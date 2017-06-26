@@ -21,7 +21,9 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	"github.com/google/trillian/merkle/rfc6962"
+	// Make sure the objecthasher is registered:
+	_ "github.com/google/trillian/merkle/objhasher"
+	"github.com/google/trillian/merkle/hashers"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
@@ -38,8 +40,11 @@ func LogClient(logID int64, logURL, pubKeyFile string) (client.VerifyingLogClien
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to %v: %v", logURL, err)
 	}
-	log := client.New(logID, trillian.NewTrillianLogClient(cc),
-		rfc6962.DefaultHasher, sthPubKey)
+	hasher, err := 	hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	if err != nil {
+		return nil, fmt.Errorf("Failed retrieving LogHasher from registry %v:", err)
+	}
+	log := client.New(logID, trillian.NewTrillianLogClient(cc), hasher, sthPubKey)
 
 	return log, nil
 }
