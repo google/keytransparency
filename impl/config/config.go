@@ -21,7 +21,7 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	"github.com/google/trillian/merkle/objhasher"
+	"github.com/google/trillian/merkle/rfc6962"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
@@ -39,7 +39,7 @@ func LogClient(logID int64, logURL, pubKeyFile string) (client.VerifyingLogClien
 		return nil, fmt.Errorf("Failed to connect to %v: %v", logURL, err)
 	}
 	log := client.New(logID, trillian.NewTrillianLogClient(cc),
-		objhasher.ObjectHasher, sthPubKey)
+		rfc6962.DefaultHasher, sthPubKey)
 
 	return log, nil
 }

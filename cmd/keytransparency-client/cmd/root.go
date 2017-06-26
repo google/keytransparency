@@ -34,7 +34,7 @@ import (
 
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	"github.com/google/trillian/merkle/objhasher"
+	"github.com/google/trillian/merkle/rfc6962"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -268,7 +268,9 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
 	}
-	log := client.NewLogVerifier(objhasher.ObjectHasher, logPubKey)
+	// TODO(ismail): make the hasher a command-line flag (and default to new
+	// ObjectHasher):
+	log := client.NewLogVerifier(rfc6962.DefaultHasher, logPubKey)
 
 	c, err := getClient(cc, mapID, vrfFile, ktSig, log)
 	if err != nil {
