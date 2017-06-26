@@ -14,6 +14,8 @@ ENV LOG_ID=0 \
 ENV MIN_SIGN_PERIOD=5s \
     MAX_SIGN_PERIOD=24h
 
+ENV VERBOSITY=0
+
 ADD trillian/testdata/* /trillian/
 ADD ./keytransparency /go/src/github.com/google/keytransparency
 WORKDIR /go/src/github.com/google/keytransparency 
@@ -26,4 +28,5 @@ ENTRYPOINT /go/bin/keytransparency-signer \
         --key="$SIGN_KEY" --password="$SIGN_KEY_PW" \
 	--log-id="$LOG_ID" --log-url="$LOG_URL" --log-key="$LOG_KEY" \
 	--map-id="$MAP_ID" --map-url="$MAP_URL" \
-	--alsologtostderr 
+	--alsologtostderr --v=${VERBOSITY}
+
