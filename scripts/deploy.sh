@@ -107,9 +107,9 @@ function createTreeAndSetIDs()
     # RPC was not available yet, wait and retry:
     sleep 10;
     let COUNTER+=1
-    # get the current trillian-map and trillian-log pods:
-    export LOG_URL=$(kubectl get pods --selector=run=trillian-log -o jsonpath={.items[*].metadata.name});
-    export MAP_URL=$(kubectl get pods --selector=run=trillian-map -o jsonpath={.items[*].metadata.name});
+    # Overwrite default LOG_URL and MAP_URL:
+    export LOG_URL=trillian-log;
+    export MAP_URL=trillian-map;
     createLog
     createMap
   done
