@@ -106,12 +106,9 @@ function createTreeAndSetIDs()
   until [ -n "$LOG_ID" ] || [  $COUNTER -gt $MAX_RETRY ]; do
     # RPC was not available yet, wait and retry:
     sleep 10;
-    let COUNTER+=1
-    # Overwrite default LOG_URL and MAP_URL:
-    export LOG_URL=trillian-log:8091;
-    export MAP_URL=trillian-map:8091;
-    createLog
-    createMap
+    let COUNTER+=1;
+    export LOCAL=false;
+    createLog && createMap
   done
 
   if [ -n "$LOG_ID" ] && [ -n "$MAP_ID" ]; then
