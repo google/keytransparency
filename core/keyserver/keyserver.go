@@ -157,7 +157,10 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 		&trillian.GetInclusionProofRequest{
 			LogId: s.logID,
 			// SignedMapRoot must be placed in the log at MapRevision.
-			LeafIndex: getResp.GetMapRoot().GetMapRevision(),
+			// MapRevisions start at 1. Log leaves start at 0.
+			// MapRevision should be at least 1 since the Signer is
+			// supposed to create at least one revision on startup.
+			LeafIndex: getResp.GetMapRoot().GetMapRevision() - 1,
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {

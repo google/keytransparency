@@ -47,6 +47,7 @@ func (t *Trillian) Write(ctx context.Context, logID, epoch int64, obj interface{
 		return err
 	}
 	// TODO(gbelvin): Add leaf at a specific index. trillian#423
+	// Insert index = epoch -1. MapRevisions start at 1. Log leaves start at 0.
 	if err := log.AddLeaf(ctx, b); err != nil {
 		return err
 	}
