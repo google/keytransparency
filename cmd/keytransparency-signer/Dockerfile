@@ -16,8 +16,8 @@ ENV MIN_SIGN_PERIOD=5s \
 
 ENV VERBOSITY=0
 
-ADD trillian/testdata/* /trillian/
-ADD ./keytransparency /go/src/github.com/google/keytransparency
+ADD genfiles/* /kt/
+ADD . /go/src/github.com/google/keytransparency
 WORKDIR /go/src/github.com/google/keytransparency 
 
 RUN go get -tags="mysql" ./cmd/keytransparency-signer

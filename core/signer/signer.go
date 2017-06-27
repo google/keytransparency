@@ -233,7 +233,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 
 // CreateEpoch signs the current map head.
 func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
-	glog.V(2).Infof("CreateEpoch: starting")
+	glog.V(2).Infof("CreateEpoch: starting sequencing run")
 	start := time.Now()
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
@@ -243,7 +243,8 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 	}
 	startSequence := rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
-	glog.V(2).Infof("CreateEpoch: startSequence: %v", startSequence)
+	revision := rootResp.GetMapRoot().GetMapRevision()
+	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSequence)
 
 	// Get the list of new mutations to process.
 	mutations, seq, err := s.newMutations(ctx, startSequence)
@@ -254,7 +255,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	// Don't create epoch if there is nothing to process unless explicitly
 	// specified by caller
 	if len(mutations) == 0 && !forceNewEpoch {
-		glog.Infof("CreateEpoch: no mutations. No epoch created.")
+		glog.Infof("CreateEpoch: No mutations found. Exiting.")
 		return nil
 	}
 
@@ -273,7 +274,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	if err != nil {
 		return err
 	}
-	glog.V(2).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
+	glog.V(3).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
 		len(getResp.MapLeafInclusion))
 
 	// Trust the leaf values provided by the map server.
@@ -305,18 +306,19 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	if err != nil {
 		return err
 	}
-	glog.V(2).Infof("CreateEpoch: SetLeaves.HighestFullyCompletedSeq: %v", seq)
+	revision = setResp.GetMapRoot().GetMapRevision()
+	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, seq)
 
 	// Put SignedMapHead in an append only log.
-	if err := s.sths.Write(ctx, s.logID, setResp.MapRoot.MapRevision, setResp.MapRoot); err != nil {
+	if err := s.sths.Write(ctx, s.logID, revision, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
-		return fmt.Errorf("sths.Write(%v, %v): %v", s.logID, setResp.MapRoot.MapRevision, err)
+		return fmt.Errorf("sths.Write(%v, %v): %v", s.logID, revision, err)
 	}
 
 	mutationsCtr.Add(float64(len(mutations)))
 	indexCtr.Add(float64(len(indexes)))
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Now().Sub(start).Seconds())
-	glog.Infof("CreatedEpoch: rev: %v, root: %x", setResp.MapRoot.MapRevision, setResp.MapRoot.RootHash)
+	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
 	return nil
 }

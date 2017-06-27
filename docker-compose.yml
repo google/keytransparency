@@ -8,6 +8,7 @@ services:
     build:
       context: .
       dockerfile: deploy/prometheus/Dockerfile
+    restart: always
     ports:
       - 9090:9090
 
@@ -32,8 +33,8 @@ services:
       dockerfile: server/trillian_log_server/Dockerfile
     restart: always
     ports:
-      - "8090:8090" # RPCs
-      - "8091:8091" # Metrics
+      - "8090:8090" # gRPC
+      - "8091:8091" # HTTP & Metrics
     environment:
       DB_HOST: db:3306
       DB_DATABASE: test
@@ -49,7 +50,7 @@ services:
       dockerfile: server/trillian_log_signer/Dockerfile
     restart: always
     ports:
-      - "8092:8091" # Metrics
+      - "8092:8091" # HTTP & Metrics
     environment:
       DB_HOST: db:3306
       DB_DATABASE: test
@@ -67,8 +68,8 @@ services:
       dockerfile: server/trillian_map_server/Dockerfile
     restart: always
     ports:
-      - "8093:8090" # RPCs
-      - "8094:8091" # Metrics
+      - "8093:8090" # gRPC
+      - "8094:8091" # HTTP & Metrics
     environment:
       DB_HOST: db:3306
       DB_DATABASE: test
@@ -110,8 +111,8 @@ services:
       - trillian-log
       - trillian-map
     build:
-      context: ../.
-      dockerfile: ./keytransparency/cmd/keytransparency-signer/Dockerfile
+      context: .
+      dockerfile: ./cmd/keytransparency-signer/Dockerfile
     image: us.gcr.io/key-transparency/keytransparency-signer
     restart: always
     environment:
@@ -123,8 +124,8 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      LOG_KEY: /trillian/log-rpc-server.pubkey.pem
-      SIGN_KEY: /trillian/log-rpc-server.privkey.pem
+      LOG_KEY: /kt/trillian-log.pem
+      SIGN_KEY: /kt/p256-key.pem
       SIGN_KEY_PW: towel
       MIN_SIGN_PERIOD: 5s
       VERBOSITY: 5
