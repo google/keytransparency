@@ -34,8 +34,8 @@ import (
 
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	// Make sure the objhasher is registered:
-	_ "github.com/google/trillian/merkle/objhasher"
+	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
+	"github.com/google/trillian/merkle/hashers"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -44,7 +44,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"github.com/google/trillian"
-	"github.com/google/trillian/merkle/hashers"
 )
 
 var (

@@ -38,6 +38,7 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/util"
+	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
