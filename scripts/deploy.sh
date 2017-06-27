@@ -21,8 +21,13 @@ NAME_SPACE=default
 
 MAX_RETRY=30
 
+dir="$(dirname "$0")"
+# Import createTree commands:
+source ${dir}/configure_trillian.sh
+
 function main()
 {
+  checkCmdsAvailable
   # create key-pairs:
   ./scripts/prepare_server.sh -f
   buildDockerImgs
@@ -102,10 +107,11 @@ function createTreeAndSetIDs()
     # RPC was not available yet, wait and retry:
     sleep 10;
     let COUNTER+=1
-    # get the currentl trillian-map pod:
-    MAPSRV=$(kubectl get pods --selector=run=trillian-map -o jsonpath={.items[*].metadata.name});
-    LOG_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --tree_type=LOG' | kubectl exec -i $MAPSRV -- /bin/sh )
-    MAP_ID=$(echo 'go run $GOPATH/src/github.com/google/trillian/cmd/createtree/main.go --admin_server=localhost:8090 --pem_key_path=testdata/log-rpc-server.privkey.pem --pem_key_password="towel" --signature_algorithm=ECDSA --hash_strategy=TEST_MAP_HASHER --tree_type=MAP' | kubectl exec -i $MAPSRV -- /bin/sh )
+    # get the current trillian-map and trillian-log pods:
+    export LOG_URL=$(kubectl get pods --selector=run=trillian-log -o jsonpath={.items[*].metadata.name});
+    export MAP_URL=$(kubectl get pods --selector=run=trillian-map -o jsonpath={.items[*].metadata.name});
+    createLog
+    createMap
   done
 
   if [ -n "$LOG_ID" ] && [ -n "$MAP_ID" ]; then
@@ -115,6 +121,14 @@ function createTreeAndSetIDs()
     sed -i 's/${MAP_ID}'/${MAP_ID}/g deploy/kubernetes/keytransparency-deployment.yml
   else
     echo "Failed to create tree. Need map-id and log-id before running kt-server/-signer."
+    exit 1
+  fi
+}
+
+function checkCmdsAvailable()
+{
+  if ! type jq > /dev/null 2>&1;
+    then echo "Please install jq. See: https://stedolan.github.io/jq/download/"
     exit 1
   fi
 }

@@ -55,6 +55,7 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
+      SEQUENCER_INTERVAL: 1s
 
 
   trillian-map:
@@ -101,6 +102,7 @@ services:
       VRF_PUB: /kt/vrf-pubkey.pem
       TLS_KEY_PATH: /kt/server.key
       TLS_CRT_PATH: /kt/server.crt
+      VERBOSITY: 5
 
   kt-signer:
     depends_on:
@@ -125,3 +127,4 @@ services:
       SIGN_KEY: /trillian/log-rpc-server.privkey.pem
       SIGN_KEY_PW: towel
       MIN_SIGN_PERIOD: 5s
+      VERBOSITY: 5

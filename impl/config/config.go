@@ -21,8 +21,7 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	// Make sure the objecthasher is registered:
-	_ "github.com/google/trillian/merkle/objhasher"
+	_ "github.com/google/trillian/merkle/objhasher" // Register objecthasher
 	"github.com/google/trillian/merkle/hashers"
 
 	"github.com/golang/glog"
