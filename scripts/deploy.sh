@@ -108,8 +108,8 @@ function createTreeAndSetIDs()
     sleep 10;
     let COUNTER+=1
     # Overwrite default LOG_URL and MAP_URL:
-    export LOG_URL=trillian-log;
-    export MAP_URL=trillian-map;
+    export LOG_URL=trillian-log:8091;
+    export MAP_URL=trillian-map:8091;
     createLog
     createMap
   done
