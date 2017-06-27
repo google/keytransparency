@@ -20,6 +20,7 @@ ADD genfiles/* /kt/
 ADD . /go/src/github.com/google/keytransparency
 WORKDIR /go/src/github.com/google/keytransparency 
 
+RUN apt-get update && apt-get install -y libtool libltdl-dev
 RUN go get -tags="mysql" ./cmd/keytransparency-signer
 
 ENTRYPOINT /go/bin/keytransparency-signer \

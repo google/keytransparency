@@ -91,9 +91,9 @@ spec:
             - name: DB_HOST
               value: mysql:3306
             - name: LOG_KEY
-              value: /trillian/log-rpc-server.pubkey.pem
+              value: /kt/trillian-log.pem
             - name: SIGN_KEY # TODO(ismail): https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/
-              value: /trillian/log-rpc-server.privkey.pem
+              value: /kt/p256-key.pem
             - name: SIGN_KEY_PW
               value: towel
 ---
