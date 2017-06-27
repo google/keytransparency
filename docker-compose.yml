@@ -121,7 +121,7 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      LOG_KEY: /trillian/log-rpc-server.pubkey.pem
-      SIGN_KEY: /trillian/log-rpc-server.privkey.pem
+      LOG_KEY: /kt/trillian-log.pem
+      SIGN_KEY: /kt/p256-key.pem
       SIGN_KEY_PW: towel
       MIN_SIGN_PERIOD: 5s
