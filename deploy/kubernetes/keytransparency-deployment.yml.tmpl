@@ -49,6 +49,7 @@ metadata:
     run: kt-server
 spec:
   type: LoadBalancer
+  loadBalancerIP: 35.184.134.53
   ports:
     - port: 8080
       targetPort: 8080
@@ -114,6 +115,7 @@ metadata:
     run: prometheus
 spec:
   type: LoadBalancer
+  loadBalancerIP: 35.184.145.242
   ports:
     - port: 9090
       targetPort: 9090
