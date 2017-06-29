@@ -278,7 +278,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	}
 
 	// The very first mutation will have resp.LeafProof.LeafData=nil.
-	if err := s.mutator.CheckMutation(resp.LeafProof.Leaf.LeafValue, m); err == mutator.ErrReplay {
+	if _, err := s.mutator.Mutate(resp.LeafProof.Leaf.LeafValue, m); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
