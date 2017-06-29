@@ -17,6 +17,8 @@ spec:
         ports:
           - containerPort: 8080
             name: json-grpc
+          - containerPort: 8081
+            name: metrics
         env:
             - name: LOG_URL
               value: trillian-log:8090
@@ -42,15 +44,31 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: kt-server-external
+  labels:
+    run: kt-server-external
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 35.184.134.53
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: json-grpc
+  selector:
+    run: kt-server
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: kt-server
   labels:
     run: kt-server
 spec:
   type: NodePort
   ports:
-    - port: 8080
-      targetPort: 8080
-      name: json-grpc
+    - port: 8081
+      targetPort: 8081
+      name: metrics
   selector:
     run: kt-server
 ---
@@ -82,6 +100,10 @@ spec:
               value: trillian-map:8090
             - name: MAP_ID
               value: "${MAP_ID}"
+            - name: MIN_SIGN_PERIOD
+              value: 5s
+            - name: MAX_SIGN_PERIOD
+              value: 12h
             - name: MYSQL_USER
               value: test
             - name: MYSQL_DATABASE
@@ -100,11 +122,27 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: kt-signer
+  labels:
+    run: kt-signer
+spec:
+  type: NodePort
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: metrics
+  selector:
+    run: kt-signer
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: prometheus
   labels:
     run: prometheus
 spec:
-  type: NodePort
+  type: LoadBalancer
+  loadBalancerIP: 35.184.145.242
   ports:
     - port: 9090
       targetPort: 9090

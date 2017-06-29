@@ -22,7 +22,7 @@ SIGKEYDEFAULT="testdata/p256-pubkey.pem"
 SIGKEY=""
 DOMAINDEFAULT="example.com"
 DOMAIN=""
-KTURLDEFAULT="104.199.112.76:5001"
+KTURLDEFAULT="35.184.134.53:8080"
 KTURL=""
 CLIENTSECRET=""
 SERVICEKEY=""
@@ -69,8 +69,9 @@ cd "${GOPATH}/src/github.com/google/keytransparency"
 # Building binaries.
 go build ./cmd/keytransparency-client
 
+# TODO(ismail): fetch the keys from the discovery API (#672)
 # Generate .keytransparency.yaml file.
-KTYAML="log-key: \"../trillian/testdata/ct-http-server.pubkey.pem\"
+KTYAML="log-key: \"../trillian/testdata/log-rpc-server.pubkey.pem\"
 vrf:    \"${VRF}\"
 kt-key: \"${KTKEY}\"
 kt-sig: \"${SIGKEY}\"
