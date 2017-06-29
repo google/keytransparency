@@ -188,7 +188,7 @@ func TestCheckMutation(t *testing.T) {
 			t.Fatalf("prepareMutation(%v, %v, %v)=%v", tc.key, tc.entryData, tc.previous, err)
 		}
 
-		if got := New().CheckMutation(tc.oldValue, mutation); got != tc.err {
+		if _, got := New().Mutate(tc.oldValue, mutation); got != tc.err {
 			t.Errorf("CheckMutation(%v, %v)=%v, want %v", tc.oldValue, mutation, got, tc.err)
 		}
 	}
