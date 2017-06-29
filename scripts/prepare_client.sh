@@ -69,6 +69,7 @@ cd "${GOPATH}/src/github.com/google/keytransparency"
 # Building binaries.
 go build ./cmd/keytransparency-client
 
+# TODO(ismail): fetch the keys from the discovery API (#672)
 # Generate .keytransparency.yaml file.
 KTYAML="log-key: \"../trillian/testdata/log-rpc-server.pubkey.pem\"
 vrf:    \"${VRF}\"

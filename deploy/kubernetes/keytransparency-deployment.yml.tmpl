@@ -44,9 +44,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kt-server
+  name: kt-server-external
   labels:
-    run: kt-server
+    run: kt-server-external
 spec:
   type: LoadBalancer
   loadBalancerIP: 35.184.134.53
@@ -54,6 +54,18 @@ spec:
     - port: 8080
       targetPort: 8080
       name: json-grpc
+  selector:
+    run: kt-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kt-server
+  labels:
+    run: kt-server
+spec:
+  type: NodePort
+  ports:
     - port: 8081
       targetPort: 8081
       name: metrics
@@ -106,6 +118,21 @@ spec:
               value: /kt/p256-key.pem
             - name: SIGN_KEY_PW
               value: towel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kt-signer
+  labels:
+    run: kt-signer
+spec:
+  type: NodePort
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: metrics
+  selector:
+    run: kt-signer
 ---
 apiVersion: v1
 kind: Service
