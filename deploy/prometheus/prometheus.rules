@@ -1,0 +1,29 @@
+###
+# Recording Rules
+#
+# Record grpc latencies
+grpc_latency = histogram_quantile(0.95, 
+  sum(rate(grpc_server_handling_seconds_bucket{grpc_type="unary"}[1m])) by (grpc_service, grpc_method,le)
+)
+
+grpc_rate = rate(
+  grpc_server_handled_total{grpc_type="unary"}[15m]
+)
+
+grpc_rate:errors = rate(
+  grpc_server_handled_total{grpc_type="unary", grpc_code!="OK"}[15m]
+)
+
+###
+# Alerting Rules
+#
+## Alert: High error rate
+ALERT HighErrorRate
+  IF gprc_rate:errors > 5
+  FOR 5m
+  LABELS {
+    severity = "warning"
+  }
+  ANNOTATIONS {
+    summary = "High Error rate",
+  }
