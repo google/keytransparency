@@ -209,12 +209,12 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 	if err != nil {
 		return nil, fmt.Errorf("proto.Marshal(): %v", err)
 	}
-	if err := c.mutator.CheckMutation(getResp.LeafProof.Leaf.LeafValue, m); err != nil {
+	if _, err := c.mutator.Mutate(getResp.GetLeafProof().GetLeaf().GetLeafValue(), m); err != nil {
 		return nil, fmt.Errorf("CheckMutation: %v", err)
 	}
 
 	err = c.Retry(ctx, req)
-	// Retry submitting until an incluion proof is returned.
+	// Retry submitting until an inclusion proof is returned.
 	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
 		time.Sleep(c.RetryDelay)
 		err = c.Retry(ctx, req)

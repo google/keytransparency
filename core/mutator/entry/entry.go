@@ -17,7 +17,6 @@ package entry
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
@@ -40,17 +39,18 @@ func New() *Entry {
 	return &Entry{}
 }
 
-// CheckMutation verifies that this is a valid mutation for this item.
-func (*Entry) CheckMutation(oldValue, mutation []byte) error {
+// CheckMutation verifies that this is a valid mutation for this item and
+// applies mutation to value.
+func (*Entry) Mutate(oldValue, mutation []byte) ([]byte, error) {
 	update := new(tpb.SignedKV)
 	if err := proto.Unmarshal(mutation, update); err != nil {
-		return err
+		return nil, err
 	}
 
-	// Ensure that the mutaiton size is within bounds.
+	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
 		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
-		return mutator.ErrSize
+		return nil, mutator.ErrSize
 	}
 
 	// Verify pointer to previous data.
@@ -61,31 +61,31 @@ func (*Entry) CheckMutation(oldValue, mutation []byte) error {
 		// Check if this mutation is a replay.
 		if bytes.Equal(oldValue, update.GetKeyValue().Value) {
 			glog.Warningf("mutation is a replay of an old one")
-			return mutator.ErrReplay
+			return nil, mutator.ErrReplay
 		}
 
 		glog.Warningf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], update.Previous)
-		return mutator.ErrPreviousHash
+		return nil, mutator.ErrPreviousHash
 	}
 
 	kv := update.GetKeyValue()
 	entry := new(tpb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Ensure that the mutation has at least one authorized key to prevent
 	// account lockout.
 	if len(entry.GetAuthorizedKeys()) == 0 {
 		glog.Warningf("mutation should contain at least one authorized key")
-		return mutator.ErrMissingKey
+		return nil, mutator.ErrMissingKey
 	}
 
 	if err := verifyKeys(oldValue, kv, update, entry); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return update.GetKeyValue().GetValue(), nil
 }
 
 // verifyKeys verifies both old and new authorized keys based on the following
@@ -142,13 +142,4 @@ func verifyAuthorizedKeys(data interface{}, verifiers map[string]signatures.Veri
 		}
 	}
 	return mutator.ErrInvalidSig
-}
-
-// Mutate applies mutation to value.
-func (*Entry) Mutate(value, mutation []byte) ([]byte, error) {
-	update := new(tpb.SignedKV)
-	if err := proto.Unmarshal(mutation, update); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling update: %v", err)
-	}
-	return update.GetKeyValue().Value, nil
 }

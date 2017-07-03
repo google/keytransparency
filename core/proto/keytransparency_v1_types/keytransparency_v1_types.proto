@@ -78,6 +78,7 @@ message KeyValue {
   bytes key = 1;
   // value contains the map entry value.
   bytes value = 2;
+  // TODO(ismail): make proto.Any
 }
 
 // SignedKV is a signed change to a map entry.
