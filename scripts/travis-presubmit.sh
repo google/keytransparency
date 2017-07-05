@@ -48,10 +48,9 @@ main() {
   fi
 
   printf "running golint...\n"
-  status=$(find . -iregex '.[^.]*.go' ! -name 'gen.go' ! -path "./vendor/*" -exec golint {} \;)
+  status=$(find . -iregex '.[^.]*.go' ! -path "./vendor/*" -exec golint {} \;)
   if [[ -n ${status} ]]; then
     printf "golint found the following issues:\n${status}\n"
-    fail=1
   fi
 
   printf "running go vet...\n"
