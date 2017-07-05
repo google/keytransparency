@@ -32,10 +32,11 @@ import (
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 
+	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/google/trillian/merkle/hashers"
+	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -43,7 +44,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
-	"github.com/google/trillian"
 )
 
 var (
@@ -271,9 +271,9 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
 	}
 
-	hasher, err := 	hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
 	if err != nil {
-		return nil, fmt.Errorf("Failed retrieving LogHasher from registry %v:", err)
+		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
 	}
 	log := client.NewLogVerifier(hasher, logPubKey)
 

@@ -39,8 +39,8 @@ func New() *Entry {
 	return &Entry{}
 }
 
-// CheckMutation verifies that this is a valid mutation for this item and
-// applies mutation to value.
+// Mutate verifies that this is a valid mutation for this item and applies
+// mutation to value.
 func (*Entry) Mutate(oldValue, mutation []byte) ([]byte, error) {
 	update := new(tpb.SignedKV)
 	if err := proto.Unmarshal(mutation, update); err != nil {
