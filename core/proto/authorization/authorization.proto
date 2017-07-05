@@ -15,9 +15,9 @@ syntax = "proto3";
 
 package authorization;
 
-// Permission specifies the permission and principal can take.
+// Permission specifies the permission a role can take.
 enum Permission {
-  // LOG indicates whether access will be logged.
+  // LOG indicates whether access to resources will be logged.
   LOG = 0;
   READ = 1;
   WRITE = 2;
