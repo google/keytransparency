@@ -25,12 +25,12 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 	"github.com/google/trillian"
-	"github.com/google/trillian/util"
 	tcrypto "github.com/google/trillian/crypto"
+	"github.com/google/trillian/util"
 
 	"github.com/golang/glog"
-	"google.golang.org/grpc"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 // mapServer implements TrilianMap functionality.
