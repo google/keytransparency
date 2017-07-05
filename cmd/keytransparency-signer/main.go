@@ -37,8 +37,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
-	"github.com/google/trillian/util"
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
+	"github.com/google/trillian/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
