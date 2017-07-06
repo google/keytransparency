@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	spb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 )
@@ -61,6 +62,7 @@ func New(logID int64,
 
 // GetMutations returns a list of mutations paged by epoch number.
 func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
+	glog.Errorf("GetMutations(_, %+v) called.", *in)
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
 		MapId:    s.mapID,
@@ -129,6 +131,10 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		Mutations:      mutations,
 		NextPageToken:  nextPageToken,
 	}, nil
+}
+
+func (s *Server) GetMutationsStream(in *tpb.GetMutationsRequest, stream spb.MutationService_GetMutationsStreamServer) error {
+	return grpc.Errorf(codes.Unimplemented, "GetMutationsStream is unimplemented")
 }
 
 func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, revision int64) (*trillian.GetLatestSignedLogRootResponse, *trillian.GetConsistencyProofResponse, *trillian.GetInclusionProofResponse, error) {
