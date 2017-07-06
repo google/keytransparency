@@ -29,9 +29,13 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
+
+	cmutation "github.com/google/keytransparency/core/mutation"
 	ctxn "github.com/google/keytransparency/core/transaction"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
+	"github.com/google/keytransparency/impl/mutation"
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	pbm "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -103,6 +107,9 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 
 	gwmux := runtime.NewServeMux()
 	if err := pb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+		return nil, err
+	}
+	if err := pbm.RegisterMutationServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
 
@@ -206,7 +213,11 @@ func main() {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
+
+	// TODO(ismail): replace with a non-core version (cmutations)?
+	msrv := mutation.New(cmutation.New(*logID, *mapID, tlog, tmap, mutations, factory))
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	pbm.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
