@@ -28,10 +28,10 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mapserver"
-	"github.com/google/keytransparency/core/mutator/entry"
-
 	cmutation "github.com/google/keytransparency/core/mutation"
+	"github.com/google/keytransparency/core/mutator/entry"
 	ctxn "github.com/google/keytransparency/core/transaction"
+
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/mutation"
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
@@ -214,7 +214,6 @@ func main() {
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 
-	// TODO(ismail): replace with a non-core version (cmutations)?
 	msrv := mutation.New(cmutation.New(*logID, *mapID, tlog, tmap, mutations, factory))
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
 	pbm.RegisterMutationServiceServer(grpcServer, msrv)
