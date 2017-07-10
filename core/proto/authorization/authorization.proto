@@ -43,7 +43,7 @@ message AuthorizationPolicy {
 
   // Roles contains a lot of role labels identifying each role.
   message Roles {
-    repeated string label = 1;
+    repeated string labels = 1;
   }
 
   // label_to_role is a map of roles keyed by labels used in Roles.
