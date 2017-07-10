@@ -76,7 +76,7 @@ func (t *Trillian) Read(ctx context.Context, logID, epoch int64, obj interface{}
 	return nil
 }
 
-// Latest retrives the last object.  Returns sql.ErrNoRows if empty.
+// Latest retrieves the last object. Returns sql.ErrNoRows if empty.
 func (t *Trillian) Latest(ctx context.Context, logID int64, obj interface{}) (int64, error) {
 	log, err := t.admin.LogClient(logID)
 	if err != nil {
