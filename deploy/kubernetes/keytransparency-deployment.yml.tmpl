@@ -36,6 +36,10 @@ spec:
               value: zaphod
             - name: DB_HOST
               value: mysql:3306
+            - name: TLS_KEY_PATH
+              value: /kt/server.key
+            - name: TLS_CRT_PATH
+              value: /kt/server.crt
       initContainers:
       - name: init-trillian-map
         image: radial/busyboxplus
