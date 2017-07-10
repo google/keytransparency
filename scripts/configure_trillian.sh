@@ -8,7 +8,7 @@ LOCAL=true
 function createLog()
 {
   if [ "$LOCAL" = true ]; then
-    LOG_JSON=`curl -X POST http://${LOG_URL}/v1beta1/trees -d @scripts/log_payload.json`
+    LOG_JSON=`curl -f -X POST http://${LOG_URL}/v1beta1/trees -d @scripts/log_payload.json`
   else
     # Run curl from inside the cluster
     LOGSRV=$(kubectl get pods --selector=run=trillian-log -o jsonpath={.items[*].metadata.name});
@@ -24,7 +24,7 @@ function createLog()
 function createMap()
 {
   if [ "$LOCAL" = true ]; then
-    MAP_JSON=`curl -X POST http://${MAP_URL}/v1beta1/trees -d @scripts/map_payload.json`
+    MAP_JSON=`curl -f -X POST http://${MAP_URL}/v1beta1/trees -d @scripts/map_payload.json`
   else
   # Run curl from inside the cluster
     MAPSRV=$(kubectl get pods --selector=run=trillian-map -o jsonpath={.items[*].metadata.name});
