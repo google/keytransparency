@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package config has utilitites for loading configuration files from disk.
+// Package config has utilities for loading configuration files from disk.
 package config
 
 import (
