@@ -63,8 +63,6 @@ var (
 	logID     = flag.Int64("log-id", 0, "Trillian Log ID")
 	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 	logPubKey = flag.String("log-key", "", "File path to public key of the Trillian Log")
-	// TODO(ismail): add hasher flag; defaults to hasher used to create tree in
-	// log_payload.json (hash_algorithm)
 )
 
 func openDB() *sql.DB {

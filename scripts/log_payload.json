@@ -5,7 +5,7 @@
     "hash_strategy":"RFC6962_SHA256",
     "signature_algorithm":"ECDSA",
     "max_root_duration":"0",
-    "hash_algorithm":"SHA256"
+    "hash_algorithm":"OBJECT_RFC6962_SHA256"
   },
   "key_spec":{
     "ecdsa_params":{

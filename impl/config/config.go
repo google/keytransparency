@@ -21,13 +21,13 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/merkle/hashers"
+	_ "github.com/google/trillian/merkle/objhasher" // Register objecthasher1
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
-	"github.com/google/trillian/merkle/rfc6962"
 )
 
-// TODO(ismail): add hasher param
 // LogClient creates a log client.
 func LogClient(logID int64, logURL, pubKeyFile string) (client.VerifyingLogClient, error) {
 	sthPubKey, err := keys.NewFromPublicPEMFile(pubKeyFile)
@@ -39,7 +39,11 @@ func LogClient(logID int64, logURL, pubKeyFile string) (client.VerifyingLogClien
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to %v: %v", logURL, err)
 	}
-	log := client.New(logID, trillian.NewTrillianLogClient(cc), rfc6962.DefaultHasher, sthPubKey)
+	hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	if err != nil {
+		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
+	}
+	log := client.New(logID, trillian.NewTrillianLogClient(cc), hasher, sthPubKey)
 
 	return log, nil
 }
