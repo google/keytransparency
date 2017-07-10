@@ -22,7 +22,7 @@ import (
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/merkle/hashers"
-	_ "github.com/google/trillian/merkle/objhasher" // Register objecthasher1
+	_ "github.com/google/trillian/merkle/objhasher" // Register objecthasher
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"

@@ -9,9 +9,9 @@ ENV HOST=0.0.0.0 \
     RPC_PORT=8080
 
 # TLS Certificate needs 0.0.0.0 to be in the SAN IP field.
-ENV VRF_PRIV=genfiles/vrf-key.pem \
-    TLS_KEY_PATH=genfiles/server.key \
-    TLS_CRT_PATH=genfiles/server.crt
+ENV VRF_PRIV=keytransparency/genfiles/vrf-key.pem \
+    TLS_KEY_PATH=keytransparency/genfiles/server.key \
+    TLS_CRT_PATH=keytransparency/genfiles/server.crt
 
 ENV MAP_ID=0 \
     MAP_URL=""
@@ -20,8 +20,9 @@ ENV LOG_ID=0 \
 
 ENV VERBOSITY=1
 
-ADD genfiles/* /kt/
-ADD . /go/src/github.com/google/keytransparency
+ADD keytransparency/genfiles/* /kt/
+ADD ./keytransparency /go/src/github.com/google/keytransparency
+ADD ./trillian /go/src/github.com/google/trillian
 WORKDIR /go/src/github.com/google/keytransparency 
 
 RUN apt-get update && apt-get install -y libtool libltdl-dev
