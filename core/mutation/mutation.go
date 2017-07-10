@@ -61,7 +61,6 @@ func New(logID int64,
 
 // GetMutations returns a list of mutations paged by epoch number.
 func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
-	glog.Errorf("GetMutations(_, %+v) called.", *in)
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
 		MapId:    s.mapID,
