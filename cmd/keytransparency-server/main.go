@@ -29,9 +29,13 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
+
+	cmutation "github.com/google/keytransparency/core/mutation"
 	ctxn "github.com/google/keytransparency/core/transaction"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
-	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	"github.com/google/keytransparency/impl/mutation"
+	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -102,7 +106,10 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	gwmux := runtime.NewServeMux()
-	if err := pb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+	if err := ktpb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+		return nil, err
+	}
+	if err := mpb.RegisterMutationServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
 
@@ -206,7 +213,9 @@ func main() {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	msrv := mutation.New(cmutation.New(*logID, *mapID, tlog, tmap, mutations, factory))
+	ktpb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	mpb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
