@@ -40,6 +40,8 @@ spec:
               value: /kt/server.key
             - name: TLS_CRT_PATH
               value: /kt/server.crt
+            - name: VRF_PRIV
+              value: /kt/vrf-key.pem
       initContainers:
       - name: init-trillian-map
         image: radial/busyboxplus

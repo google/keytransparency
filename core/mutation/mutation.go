@@ -110,8 +110,12 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		mutations[i].Proof = p
 	}
 
+	// MapRevisions start at 1. Log leave's index starts at 0.
+	// MapRevision should be at least 1 since the Signer is
+	// supposed to create at least one revision on startup.
+	respEpoch := resp.GetMapRoot().GetMapRevision() - 1
 	// Fetch log proofs.
-	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, in.GetFirstTreeSize(), resp.GetMapRoot().GetMapRevision())
+	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, in.GetFirstTreeSize(), respEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +135,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	}, nil
 }
 
-func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, revision int64) (*trillian.GetLatestSignedLogRootResponse, *trillian.GetConsistencyProofResponse, *trillian.GetInclusionProofResponse, error) {
+func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, epoch int64) (*trillian.GetLatestSignedLogRootResponse, *trillian.GetConsistencyProofResponse, *trillian.GetInclusionProofResponse, error) {
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
 		&trillian.GetLatestSignedLogRootRequest{
 			LogId: s.logID,
@@ -160,11 +164,11 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, revision in
 		&trillian.GetInclusionProofRequest{
 			LogId: s.logID,
 			// SignedMapRoot must be in the log at MapRevision.
-			LeafIndex: revision,
+			LeafIndex: epoch,
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", s.logID, revision, secondTreeSize, err)
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", s.logID, epoch, secondTreeSize, err)
 		return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 	return logRoot, logConsistency, logInclusion, nil
