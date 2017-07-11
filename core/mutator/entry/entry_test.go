@@ -189,7 +189,7 @@ func TestCheckMutation(t *testing.T) {
 		}
 
 		if _, got := New().Mutate(tc.oldValue, mutation); got != tc.err {
-			t.Errorf("CheckMutation(%v, %v)=%v, want %v", tc.oldValue, mutation, got, tc.err)
+			t.Errorf("Mutate(%v, %v)=%v, want %v", tc.oldValue, mutation, got, tc.err)
 		}
 	}
 }

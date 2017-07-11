@@ -139,7 +139,11 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
+// Epochs start at 1.
 func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot][]byte, error) {
+	if start <= 0 {
+		return nil, fmt.Errorf("start=%v, want > 0", start)
+	}
 	var currentProfile []byte
 	profiles := make(map[*trillian.SignedMapRoot][]byte)
 	for start <= end {
@@ -210,7 +214,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 		return nil, fmt.Errorf("proto.Marshal(): %v", err)
 	}
 	if _, err := c.mutator.Mutate(getResp.GetLeafProof().GetLeaf().GetLeafValue(), m); err != nil {
-		return nil, fmt.Errorf("CheckMutation: %v", err)
+		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 
 	err = c.Retry(ctx, req)
@@ -237,7 +241,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	}
 
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().KeyValue.Value; !bytes.Equal(got, want) {
+	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetKeyValue().GetValue(); !bytes.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil
