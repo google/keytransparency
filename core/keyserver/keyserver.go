@@ -39,7 +39,7 @@ const (
 	defaultPageSize = 16
 	// Maximum allowed requested page size to prevent DOS.
 	maxPageSize = 16
-  // If no epoch is provided default to epoch 1.
+	// If no epoch is provided default to epoch 1.
 	defaultStartEpoch = 1
 )
 

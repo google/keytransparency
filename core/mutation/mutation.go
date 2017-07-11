@@ -62,7 +62,7 @@ func New(logID int64,
 // GetMutations returns a list of mutations paged by epoch number.
 func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
 	if err := validateGetMutationsRequest(in); err != nil {
-		glog.Errorf("validateGetMutationsRequest(%v): %v", in,  err)
+		glog.Errorf("validateGetMutationsRequest(%v): %v", in, err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 	// Get signed map root by revision.

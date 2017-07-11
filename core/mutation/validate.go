@@ -16,6 +16,7 @@ package mutation
 
 import (
 	"errors"
+
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
@@ -29,11 +30,11 @@ const (
 )
 
 var (
+	// ErrInvalidPagesize occurs when the page size is > 0.
+	ErrInvalidPageSize = errors.New("Invalid page size")
 	// ErrInvalidStart occurs when the start epoch of ListEntryHistoryRequest
 	// is not valid (not in [1, currentEpoch]).
 	ErrInvalidStart = errors.New("invalid start epoch")
-	// ErrInvalidPagesize occurs when the page size is > 0.
-	ErrInvalidPagesize = errors.New("Invalid page size")
 )
 
 // validateGetMutationsRequest ensures that start epoch starts with 1 and that
@@ -44,7 +45,7 @@ func validateGetMutationsRequest(in *tpb.GetMutationsRequest) error {
 	}
 	switch {
 	case in.PageSize < 0:
-		return ErrInvalidPagesize
+		return ErrInvalidPageSize
 	case in.PageSize == 0:
 		in.PageSize = defaultPageSize
 	case in.PageSize > maxPageSize:
