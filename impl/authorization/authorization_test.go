@@ -1,3 +1,18 @@
+// Copyright 2016 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package authorization contains the authorization module implementation.
 package authorization
 
 import (
@@ -26,52 +41,43 @@ const (
 )
 
 func setup() *authz {
-	roles1 := &authzpb.AuthorizationPolicy_Roles{
-		Labels: []string{l1, l2},
-	}
-	roles2 := &authzpb.AuthorizationPolicy_Roles{
-		Labels: []string{l3},
-	}
-	roles3 := &authzpb.AuthorizationPolicy_Roles{
-		Labels: []string{l4},
-	}
-	roles4 := &authzpb.AuthorizationPolicy_Roles{
-		Labels: []string{l5},
-	}
-	role1 := &authzpb.AuthorizationPolicy_Role{
-		Principals: []string{admin1},
-		Permissions: []authzpb.Permission{
-			authzpb.Permission_WRITE,
-		},
-	}
-	role2 := &authzpb.AuthorizationPolicy_Role{
-		Principals: []string{admin1, admin2},
-		Permissions: []authzpb.Permission{
-			authzpb.Permission_LOG,
-			authzpb.Permission_READ,
-		},
-	}
-	role3 := &authzpb.AuthorizationPolicy_Role{
-		Principals: []string{admin3},
-		Permissions: []authzpb.Permission{
-			authzpb.Permission_LOG,
-		},
-	}
-	role4 := &authzpb.AuthorizationPolicy_Role{}
-
 	a := &authz{}
 	a.policy = &authzpb.AuthorizationPolicy{
-		LabelToRole: map[string]*authzpb.AuthorizationPolicy_Role{
-			l1: role1,
-			l2: role2,
-			l3: role3,
-			l4: role4,
+		Roles: map[string]*authzpb.AuthorizationPolicy_Role{
+			l1: {
+				Principals: []string{admin1},
+				Permissions: []authzpb.Permission{
+					authzpb.Permission_WRITE,
+				},
+			},
+			l2: {
+				Principals: []string{admin1, admin2},
+				Permissions: []authzpb.Permission{
+					authzpb.Permission_LOG,
+					authzpb.Permission_READ,
+				},
+			},
+			l3: {
+				Principals: []string{admin3},
+				Permissions: []authzpb.Permission{
+					authzpb.Permission_LOG,
+				},
+			},
+			l4: {},
 		},
-		ResourceToRoles: map[string]*authzpb.AuthorizationPolicy_Roles{
-			res1: roles1,
-			res2: roles2,
-			res3: roles3,
-			res4: roles4,
+		ResourceToRoleLabels: map[string]*authzpb.AuthorizationPolicy_RoleLabels{
+			res1: {
+				Labels: []string{l1, l2},
+			},
+			res2: {
+				Labels: []string{l3},
+			},
+			res3: {
+				Labels: []string{l4},
+			},
+			res4: {
+				Labels: []string{l5},
+			},
 		},
 	}
 	return a
@@ -195,7 +201,7 @@ func TestResouceLabel(t *testing.T) {
 	}
 }
 
-func TestPermitted(t *testing.T) {
+func TestIsPermisionInRole(t *testing.T) {
 	// AuthorizationPolicy_Role.Principals is not relevant in this test.
 	for _, tc := range []struct {
 		description string
@@ -204,7 +210,7 @@ func TestPermitted(t *testing.T) {
 		out         bool
 	}{
 		{
-			"not permitted, empty permissions list",
+			"permission is not in role, empty permissions list",
 			&authzpb.AuthorizationPolicy_Role{
 				Principals:  []string{},
 				Permissions: []authzpb.Permission{},
@@ -213,7 +219,7 @@ func TestPermitted(t *testing.T) {
 			false,
 		},
 		{
-			"not permitted, permission not found",
+			"permission is not in role, permission not found",
 			&authzpb.AuthorizationPolicy_Role{
 				Principals: []string{},
 				Permissions: []authzpb.Permission{
@@ -225,7 +231,7 @@ func TestPermitted(t *testing.T) {
 			false,
 		},
 		{
-			"permitted, one permission in the list",
+			"permission is in role, one permission in the list",
 			&authzpb.AuthorizationPolicy_Role{
 				Principals: []string{},
 				Permissions: []authzpb.Permission{
@@ -237,7 +243,7 @@ func TestPermitted(t *testing.T) {
 			true,
 		},
 		{
-			"permitted, multiple permissions in the list",
+			"permission is in role, multiple permissions in the list",
 			&authzpb.AuthorizationPolicy_Role{
 				Principals: []string{},
 				Permissions: []authzpb.Permission{
@@ -250,8 +256,8 @@ func TestPermitted(t *testing.T) {
 			true,
 		},
 	} {
-		if got, want := permitted(tc.role, tc.permission), tc.out; got != want {
-			t.Errorf("%v: permitted=%v, want %v", tc.description, got, want)
+		if got, want := isPermisionInRole(tc.role, tc.permission), tc.out; got != want {
+			t.Errorf("%v: isPermisionInRole=%v, want %v", tc.description, got, want)
 		}
 	}
 }

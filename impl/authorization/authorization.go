@@ -46,16 +46,14 @@ func (a *authz) IsAuthorized(sctx *authentication.SecurityContext, mapID, appID 
 
 	// Case 2.
 	rLabel := resourceLabel(mapID, appID)
-	roles, ok := a.policy.GetResourceToRoles()[rLabel]
+	roles, ok := a.policy.GetResourceToRoleLabels()[rLabel]
 	if !ok {
-		return fmt.Errorf("resource defined by <mapID=%v, appID=%v> does not exist", mapID, appID)
+		return fmt.Errorf("resource <mapID=%v, appID=%v> does not have a defined policy", mapID, appID)
 	}
 	for _, l := range roles.GetLabels() {
-		role := a.policy.GetLabelToRole()[l]
-		for _, p := range role.GetPrincipals() {
-			if p == sctx.Identity() && permitted(role, permission) {
-				return nil
-			}
+		role := a.policy.GetRoles()[l]
+		if isPrincipalInRole(role, sctx.Identity(), permission) {
+			return nil
 		}
 	}
 	return fmt.Errorf("%v is not authorized to perform %v on resource defined by <mapID=%v, appID=%v>", sctx.Identity(), permission, mapID, appID)
@@ -65,7 +63,16 @@ func resourceLabel(mapID, appID int64) string {
 	return fmt.Sprintf("%d|%d", mapID, appID)
 }
 
-func permitted(role *authzpb.AuthorizationPolicy_Role, permission authzpb.Permission) bool {
+func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string, permission authzpb.Permission) bool {
+	for _, p := range role.GetPrincipals() {
+		if p == identity && isPermisionInRole(role, permission) {
+			return true
+		}
+	}
+	return false
+}
+
+func isPermisionInRole(role *authzpb.AuthorizationPolicy_Role, permission authzpb.Permission) bool {
 	for _, p := range role.GetPermissions() {
 		if p == permission {
 			return true

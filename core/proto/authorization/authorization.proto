@@ -41,14 +41,14 @@ message AuthorizationPolicy {
     repeated Permission permissions = 2;
   }
 
-  // Roles contains a lot of role labels identifying each role.
-  message Roles {
+  // RoleLabels contains a lot of role labels identifying each role.
+  message RoleLabels {
     repeated string labels = 1;
   }
 
-  // label_to_role is a map of roles keyed by labels used in Roles.
-  map<string, Role> label_to_role = 2;
-  // resouce_to_roles specifies the authorization policy keyed by resource
+  // roles is a map of roles keyed by labels used in RoleLabels.
+  map<string, Role> roles = 2;
+  // resource_to_role_labels specifies the authorization policy keyed by resource
   // map_id|app_id concatenation as a string.
-  map<string, Roles> resource_to_roles = 3;
+  map<string, RoleLabels> resource_to_role_labels = 3;
 }
