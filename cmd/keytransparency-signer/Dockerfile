@@ -9,15 +9,16 @@ ENV MAP_ID=0 \
     MAP_URL=""
 ENV LOG_ID=0 \
     LOG_URL=localhost:8090 \
-    LOG_KEY=../trillian/testdata/log-rpc-server.pubkey.pem
+    LOG_KEY=trillian/testdata/log-rpc-server.pubkey.pem
 
 ENV MIN_SIGN_PERIOD=5s \
     MAX_SIGN_PERIOD=24h
 
 ENV VERBOSITY=0
 
-ADD genfiles/* /kt/
-ADD . /go/src/github.com/google/keytransparency
+ADD keytransparency/genfiles/* /kt/
+ADD ./keytransparency /go/src/github.com/google/keytransparency
+ADD ./trillian /go/src/github.com/google/trillian
 WORKDIR /go/src/github.com/google/keytransparency 
 
 RUN apt-get update && apt-get install -y libtool libltdl-dev

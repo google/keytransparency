@@ -189,7 +189,7 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 			glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, epoch, err)
 			return 0, grpc.Errorf(codes.Internal, "Get previous signed map root failed")
 		}
-		lowestSeq = resp.GetMapRoot().GetMetadata().HighestFullyCompletedSeq
+		lowestSeq = resp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
 	}
 	return uint64(lowestSeq), nil
 }

@@ -82,8 +82,8 @@ services:
       - trillian-log
       - trillian-map
     build:
-      context: .
-      dockerfile: ./cmd/keytransparency-server/Dockerfile
+      context: ..
+      dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
     image: us.gcr.io/key-transparency/keytransparency-server
     restart: always
     ports:
@@ -98,7 +98,6 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      CERT: /kt/server.crt
       VRF_PRIV: /kt/vrf-key.pem
       VRF_PUB: /kt/vrf-pubkey.pem
       TLS_KEY_PATH: /kt/server.key
@@ -111,8 +110,8 @@ services:
       - trillian-log
       - trillian-map
     build:
-      context: .
-      dockerfile: ./cmd/keytransparency-signer/Dockerfile
+      context: ..
+      dockerfile: ./keytransparency/cmd/keytransparency-signer/Dockerfile
     image: us.gcr.io/key-transparency/keytransparency-signer
     restart: always
     environment:
@@ -128,4 +127,5 @@ services:
       SIGN_KEY: /kt/p256-key.pem
       SIGN_KEY_PW: towel
       MIN_SIGN_PERIOD: 5s
+      MAX_SIGN_PERIOD: 5m
       VERBOSITY: 5
