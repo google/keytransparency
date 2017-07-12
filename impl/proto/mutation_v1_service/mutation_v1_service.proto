@@ -44,6 +44,6 @@ service MutationService {
   // signed map root.
   rpc GetMutationsStream(keytransparency.v1.types.GetMutationsRequest)
       returns (stream keytransparency.v1.types.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/epochs/{epoch}:stream" };
+    option (google.api.http) = { get: "/v1/epochs:stream" };
   }
 }
