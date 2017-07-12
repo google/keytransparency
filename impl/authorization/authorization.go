@@ -52,7 +52,7 @@ func (a *authz) IsAuthorized(sctx *authentication.SecurityContext, mapID, appID 
 	}
 	for _, l := range roles.GetLabels() {
 		role := a.policy.GetRoles()[l]
-		if isPrincipalInRole(role, sctx.Identity(), permission) {
+		if isPrincipalInRole(role, sctx.Identity()) && isPermisionInRole(role, permission) {
 			return nil
 		}
 	}
@@ -63,9 +63,9 @@ func resourceLabel(mapID, appID int64) string {
 	return fmt.Sprintf("%d|%d", mapID, appID)
 }
 
-func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string, permission authzpb.Permission) bool {
+func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string) bool {
 	for _, p := range role.GetPrincipals() {
-		if p == identity && isPermisionInRole(role, permission) {
+		if p == identity {
 			return true
 		}
 	}
