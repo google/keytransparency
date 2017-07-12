@@ -169,7 +169,7 @@ message ListEntryHistoryRequest {
   // app_id is the identifier for the application.
   string app_id = 4;
   // first_tree_size is the tree_size of the currently trusted log root. 
-  // Omitting this field will ommit the log consistency proof from the response.
+  // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 5;
 }
 
@@ -196,7 +196,7 @@ message UpdateEntryRequest {
 }
 
 // UpdateEntryResponse contains a proof once the update has been included in
-// the Merkel Tree.
+// the Merkle Tree.
 message UpdateEntryResponse {
   // proof contains a proof that the update has been included in the tree.
   GetEntryResponse proof = 1;
@@ -250,4 +250,34 @@ message GetDomainInfoResponse {
   trillian.Tree map = 2;
   // Vrf contains the VRF public key.
   keyspb.PublicKey vrf = 3;
+}
+
+// GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
+message GetMonitoringRequest {
+  // start specifies the start epoch number from which monitoring results will
+  // be returned (ranging from [start, latestObserved] and starting at 1).
+  int64 start = 1;
+}
+
+message GetMonitoringResponse {
+  // smr contains the map root for the sparse Merkle Tree signed with the
+  // monitor's key on success. If the checks were not successful the
+  // smr will be empty. The epochs are encoded into the smr map_revision.
+  trillian.SignedMapRoot smr = 1;
+
+  //
+  // The following fields provide more information about each failure in this
+  // response, if any.
+  //
+
+  // isValid signals if all verification steps for the requested epoch passed
+  // or not.
+  bool isValid = 2;
+  // invalidRootSig contains the signed map root received by the
+  // key-transparency server, if and only if the key-server's signature was
+  // invalid.
+  trillian.SignedMapRoot invalidRootSig = 3;
+  // TODO(ismail): add field for the following cases:
+  // - Invalid mutation from epoch e to e+1
+  // - Set of mutations does not produce new map root
 }

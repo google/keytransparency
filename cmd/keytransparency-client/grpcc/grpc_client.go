@@ -53,7 +53,7 @@ const (
 
 var (
 	// ErrRetry occurs when an update request has been submitted, but the
-	// results of the udpate are not visible on the server yet. The client
+	// results of the update are not visible on the server yet. The client
 	// must retry until the request is visible.
 	ErrRetry = errors.New("update not present on server yet")
 	// ErrIncomplete occurs when the server indicates that requested epochs

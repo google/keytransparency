@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mutation implements the monitor service.
+// Package mutation implements the mutations service a monitor can query.
 package mutation
 
 import (

@@ -147,3 +147,15 @@ services:
       MIN_SIGN_PERIOD: 5s
       MAX_SIGN_PERIOD: 5m
       VERBOSITY: 5
+
+  kt-monitor:
+    depends_on:
+      - kt-server
+      - kt-signer
+    build:
+      context: ..
+      dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile
+    image: us.gcr.io/key-transparency/keytransparency-monitor
+    restart: always
+    ports:
+    - "8099:8099" # gRPC / HTTPS

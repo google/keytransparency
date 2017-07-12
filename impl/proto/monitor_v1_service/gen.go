@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis/ -I=$GOPATH/src/github.com/google/trillian/ --go_out=:. keytransparency_v1_types.proto
+//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:. monitor_v1_service.proto
 
-package keytransparency_v1_types
+//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. monitor_v1_service.proto
+
+package monitor_v1_service
