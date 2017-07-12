@@ -44,12 +44,12 @@ var (
 	ErrNoCommitted = errors.New("missing commitment")
 	// ErrCommittedKeyLen occurs when the committed key is too small.
 	ErrCommittedKeyLen = errors.New("committed.key is too small")
-	// ErrInvalidStart occurs when the start epoch of ListEntryHistoryRequest
-	// is not valid (not in [1, currentEpoch]).
-	ErrInvalidStart = errors.New("invalid start epoch")
 	// ErrWrongIndex occurs when the index in key value does not match the
 	// output of VRF.
 	ErrWrongIndex = errors.New("index does not match VRF")
+	// ErrInvalidStart occurs when the start epoch of ListEntryHistoryRequest
+	// is not valid (not in [1, currentEpoch]).
+	ErrInvalidStart = errors.New("invalid start epoch")
 )
 
 // validateKey verifies:
