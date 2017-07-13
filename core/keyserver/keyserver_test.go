@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/transaction"
@@ -71,7 +72,7 @@ func TestListEntryHistory(t *testing.T) {
 		tlog := fake.NewFakeTrillianLogClient()
 
 		srv := New(logID, tlog, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
-			authentication.NewFake(), fakeFactory{}, fakeMutation{})
+			authentication.NewFake(), authorization.NewFake(), fakeFactory{}, fakeMutation{})
 		if err := addProfiles(profileCount, c, tree, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}

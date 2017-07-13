@@ -67,8 +67,12 @@ func TestGoogleValidateCreds(t *testing.T) {
 		t.Errorf("Error annotating context: %v", err)
 	}
 
-	if err := a.ValidateCreds(ctx, *email); err != nil {
-		t.Errorf("ValidateCreds(): %v", err)
+	sctx, err := a.ValidateCreds(ctx)
+	if err != nil {
+		t.Fatalf("ValidateCreds(): %v", err)
+	}
+	if got, want := sctx.Identity(), *email; got != want {
+		t.Errorf("sctx.Identity()=%v, want %v", got, want)
 	}
 }
 

@@ -37,6 +37,7 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/signer"
 	"github.com/google/keytransparency/core/testutil/ctutil"
+	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/sql/sequenced"
@@ -165,6 +166,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
+	authz := authorization.New()
 
 	// Map server
 	factory := transaction.NewFactory(sqldb)
@@ -190,7 +192,7 @@ func NewEnv(t *testing.T) *Env {
 	tlog := fake.NewFakeTrillianLogClient()
 
 	server := keyserver.New(logID, tlog, mapID, mapsvr, commitments, vrfPriv, mutator,
-		auth, factory, mutations)
+		auth, authz, factory, mutations)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 

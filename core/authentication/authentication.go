@@ -29,13 +29,10 @@ import (
 var (
 	// ErrMissingAuth occurs when authentication information is missing.
 	ErrMissingAuth = errors.New("auth: missing authentication header")
-	// ErrWrongUser occurs when the authenticated user does not match the owner of the requested resource.
-	ErrWrongUser = errors.New("auth: email missmatch")
 )
 
 // Authenticator provides services to authenticate users.
 type Authenticator interface {
-	// ValidateCreds verifies that the requiredUserID, and any other
-	// required authentication information is present in ctx.
-	ValidateCreds(ctx context.Context, requiredUserID string) error
+	// ValidateCreds authenticate the information present in ctx.
+	ValidateCreds(ctx context.Context) (*SecurityContext, error)
 }
