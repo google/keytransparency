@@ -21,10 +21,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/status"
 )
 
 var _ codes.Code
 var _ io.Reader
+var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
@@ -45,17 +47,17 @@ func request_MutationService_GetMutations_0(ctx context.Context, marshaler runti
 
 	val, ok = pathParams["epoch"]
 	if !ok {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
 	}
 
 	protoReq.Epoch, err = runtime.Int64(val)
 
 	if err != nil {
-		return nil, metadata, err
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
 	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MutationService_GetMutations_0); err != nil {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetMutations(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -64,33 +66,15 @@ func request_MutationService_GetMutations_0(ctx context.Context, marshaler runti
 }
 
 var (
-	filter_MutationService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"epoch": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_MutationService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
 func request_MutationService_GetMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client MutationServiceClient, req *http.Request, pathParams map[string]string) (MutationService_GetMutationsStreamClient, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1_types.GetMutationsRequest
 	var metadata runtime.ServerMetadata
 
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["epoch"]
-	if !ok {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
-	}
-
-	protoReq.Epoch, err = runtime.Int64(val)
-
-	if err != nil {
-		return nil, metadata, err
-	}
-
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MutationService_GetMutationsStream_0); err != nil {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	stream, err := client.GetMutationsStream(ctx, &protoReq)
@@ -152,6 +136,7 @@ func RegisterMutationServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 		rctx, err := runtime.AnnotateContext(ctx, mux, req)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
 		}
 		resp, md, err := request_MutationService_GetMutations_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
@@ -180,6 +165,7 @@ func RegisterMutationServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 		rctx, err := runtime.AnnotateContext(ctx, mux, req)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
 		}
 		resp, md, err := request_MutationService_GetMutationsStream_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
@@ -198,7 +184,7 @@ func RegisterMutationServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 var (
 	pattern_MutationService_GetMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "epochs", "epoch"}, ""))
 
-	pattern_MutationService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "epochs", "epoch"}, "stream"))
+	pattern_MutationService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "epochs"}, "stream"))
 )
 
 var (
