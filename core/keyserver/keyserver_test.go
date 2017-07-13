@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/transaction"
@@ -35,6 +34,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	authzpb "github.com/google/keytransparency/core/proto/authorization"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
@@ -72,7 +72,7 @@ func TestListEntryHistory(t *testing.T) {
 		tlog := fake.NewFakeTrillianLogClient()
 
 		srv := New(logID, tlog, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
-			authentication.NewFake(), authorization.NewFake(), fakeFactory{}, fakeMutation{})
+			authentication.NewFake(), fakeAuthz{}, fakeFactory{}, fakeMutation{})
 		if err := addProfiles(profileCount, c, tree, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
@@ -252,4 +252,13 @@ func (f *fakeSequenced) Latest(txn transaction.Txn, logID int64, obj interface{}
 	epoch := int64(len(f.l) - 1)
 	err := f.Read(txn, logID, epoch, obj)
 	return epoch, err
+}
+
+// authorization.Authorization fake
+type fakeAuthz struct {
+}
+
+func (fakeAuthz) IsAuthorized(sctx *authentication.SecurityContext, mapID, appID int64,
+	userID string, permission authzpb.Permission) error {
+	return nil
 }
