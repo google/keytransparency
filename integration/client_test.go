@@ -222,8 +222,16 @@ func TestListHistory(t *testing.T) {
 		wantHistory [][]byte
 		wantErr     bool
 	}{
-		{0, 3, [][]byte{cp(1)}, false},                                                   // zero start epoch
-		{3, 3, [][]byte{cp(1)}, false},                                                   // single profile
+		{-1, 1, [][]byte{}, true},                                                        // start epoch < 0: expect error
+		{0, 1, [][]byte{}, true},                                                         // zero start epoch: expect error
+		{0, 3, [][]byte{}, true},                                                         // zero start epoch: expect error
+		{1, 2, [][]byte{}, false},                                                        // no profile yet
+		{2, 3, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
+		{3, 3, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
+		{4, 4, [][]byte{cp(2)}, false},                                                   // single (changed) profile
+		{5, 5, [][]byte{cp(2)}, false},                                                   // single (unchanged) profile
+		{6, 6, [][]byte{cp(2)}, false},                                                   // single (unchanged) profile
+		{7, 7, [][]byte{cp(3)}, false},                                                   // single (changed) profile
 		{3, 4, [][]byte{cp(1), cp(2)}, false},                                            // multiple profiles
 		{1, 4, [][]byte{cp(1), cp(2)}, false},                                            // test 'nil' first profile(s)
 		{3, 10, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                      // filtering
