@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
+	"github.com/google/trillian/merkle/coniks"
 
 	"github.com/golang/protobuf/proto"
 
@@ -46,7 +47,7 @@ func TestVerifyCommitment(t *testing.T) {
 	fakeEntryData := validEntryData[:len(validEntryData)-1]
 
 	// Create a dummy client verifier.
-	verifier := New(nil, nil, nil, nil)
+	verifier := New(0, nil, coniks.Default, nil, nil)
 	for _, tc := range []struct {
 		userID, appID string
 		entryData     []byte
@@ -71,3 +72,5 @@ func TestVerifyCommitment(t *testing.T) {
 		}
 	}
 }
+
+// TODO(gbelvin): add test for VerifyGetEntryResponse.

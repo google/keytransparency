@@ -58,7 +58,6 @@ services:
       DB_PASSWORD: zaphod
       SEQUENCER_INTERVAL: 1s
 
-
   trillian-map:
     depends_on:
       - db

@@ -106,12 +106,11 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 		glog.Errorf("GetLeaves(): %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
+	if got, want := len(getResp.GetMapLeafInclusion()), 1; got != want {
 		glog.Errorf("GetLeaves() len: %v, want %v", got, want)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-	neighbors := getResp.MapLeafInclusion[0].Inclusion
-	leaf := getResp.MapLeafInclusion[0].Leaf.LeafValue
+	leaf := getResp.MapLeafInclusion[0].GetLeaf().GetLeafValue()
 
 	var committed *tpb.Committed
 	if leaf != nil {
@@ -177,14 +176,9 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	}
 
 	return &tpb.GetEntryResponse{
-		VrfProof:  proof,
-		Committed: committed,
-		LeafProof: &trillian.MapLeafInclusion{
-			Inclusion: neighbors,
-			Leaf: &trillian.MapLeaf{
-				LeafValue: leaf,
-			},
-		},
+		VrfProof:       proof,
+		Committed:      committed,
+		LeafProof:      getResp.MapLeafInclusion[0],
 		Smr:            getResp.GetMapRoot(),
 		LogRoot:        logRoot.GetSignedLogRoot(),
 		LogConsistency: logConsistency.GetProof().GetHashes(),
