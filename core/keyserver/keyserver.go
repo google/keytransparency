@@ -17,6 +17,7 @@ package keyserver
 
 import (
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
@@ -28,6 +29,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	authzpb "github.com/google/keytransparency/core/proto/authorization"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 )
@@ -51,6 +53,7 @@ type Server struct {
 	tmap      trillian.TrillianMapClient
 	committer commitments.Committer
 	auth      authentication.Authenticator
+	authz     authorization.Authorization
 	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
 	factory   transaction.Factory
@@ -66,6 +69,7 @@ func New(logID int64,
 	vrf vrf.PrivateKey,
 	mutator mutator.Mutator,
 	auth authentication.Authenticator,
+	authz authorization.Authorization,
 	factory transaction.Factory,
 	mutations mutator.Mutation) *Server {
 	return &Server{
@@ -77,6 +81,7 @@ func New(logID int64,
 		vrf:       vrf,
 		mutator:   mutator,
 		auth:      auth,
+		authz:     authz,
 		factory:   factory,
 		mutations: mutations,
 	}
@@ -231,16 +236,20 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*tpb.UpdateEntryResponse, error) {
 	// Validate proper authentication.
-	switch err := s.auth.ValidateCreds(ctx, in.UserId); err {
+	sctx, err := s.auth.ValidateCreds(ctx)
+	switch err {
 	case nil:
 		break // Authentication succeeded.
-	case authentication.ErrWrongUser:
-		return nil, grpc.Errorf(codes.PermissionDenied, "Permission denied")
 	case authentication.ErrMissingAuth:
 		return nil, grpc.Errorf(codes.Unauthenticated, "Missing authentication header")
 	default:
 		glog.Warningf("Auth failed: %v", err)
 		return nil, grpc.Errorf(codes.Unauthenticated, "Unauthenticated")
+	}
+	// Validate proper authorization.
+	if s.authz.IsAuthorized(sctx, s.mapID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
+		glog.Warningf("Authz failed: %v", err)
+		return nil, grpc.Errorf(codes.PermissionDenied, "Unauthorized")
 	}
 	// Verify:
 	// - Index to Key equality in SignedKV.

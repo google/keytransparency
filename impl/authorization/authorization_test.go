@@ -89,7 +89,7 @@ func TestIsAuthorized(t *testing.T) {
 		description string
 		sctx        *authentication.SecurityContext
 		mapID       int64
-		appID       int64
+		appID       string
 		userID      string
 		permission  authzpb.Permission
 		success     bool
@@ -98,7 +98,7 @@ func TestIsAuthorized(t *testing.T) {
 			"self updating own profile",
 			authentication.NewSecurityContext(testUser),
 			1,
-			1,
+			"1",
 			testUser,
 			authzpb.Permission_WRITE,
 			true,
@@ -107,7 +107,7 @@ func TestIsAuthorized(t *testing.T) {
 			"other accessing profile, authorized with one role",
 			authentication.NewSecurityContext(admin1),
 			1,
-			1,
+			"1",
 			"",
 			authzpb.Permission_WRITE,
 			true,
@@ -116,7 +116,7 @@ func TestIsAuthorized(t *testing.T) {
 			"other accessing profile, authorized with multiple roles",
 			authentication.NewSecurityContext(admin2),
 			1,
-			1,
+			"1",
 			"",
 			authzpb.Permission_READ,
 			true,
@@ -125,7 +125,7 @@ func TestIsAuthorized(t *testing.T) {
 			"other accessing profile, authorized second resource",
 			authentication.NewSecurityContext(admin3),
 			1,
-			2,
+			"2",
 			"",
 			authzpb.Permission_LOG,
 			true,
@@ -134,7 +134,7 @@ func TestIsAuthorized(t *testing.T) {
 			"not authorized, no resource label",
 			authentication.NewSecurityContext(admin1),
 			1,
-			10,
+			"10",
 			"",
 			authzpb.Permission_WRITE,
 			false,
@@ -143,7 +143,7 @@ func TestIsAuthorized(t *testing.T) {
 			"not authorized, no label_to_role defined",
 			authentication.NewSecurityContext(admin1),
 			1,
-			4,
+			"4",
 			"",
 			authzpb.Permission_LOG,
 			false,
@@ -152,7 +152,7 @@ func TestIsAuthorized(t *testing.T) {
 			"not authorized, empty role definition",
 			authentication.NewSecurityContext(admin1),
 			1,
-			3,
+			"3",
 			"",
 			authzpb.Permission_WRITE,
 			false,
@@ -161,7 +161,7 @@ func TestIsAuthorized(t *testing.T) {
 			"not authorized, wrong permission",
 			authentication.NewSecurityContext(admin2),
 			1,
-			1,
+			"1",
 			"",
 			authzpb.Permission_WRITE,
 			false,
@@ -170,7 +170,7 @@ func TestIsAuthorized(t *testing.T) {
 			"not authorized principal",
 			authentication.NewSecurityContext(admin4),
 			1,
-			1,
+			"1",
 			"",
 			authzpb.Permission_WRITE,
 			false,
@@ -186,14 +186,14 @@ func TestIsAuthorized(t *testing.T) {
 func TestResouceLabel(t *testing.T) {
 	for _, tc := range []struct {
 		mapID int64
-		appID int64
+		appID string
 		out   string
 	}{
-		{1, 1, "1|1"},
-		{1, 2, "1|2"},
-		{1, 111, "1|111"},
-		{111, 1, "111|1"},
-		{111, 111, "111|111"},
+		{1, "1", "1|1"},
+		{1, "2", "1|2"},
+		{1, "111", "1|111"},
+		{111, "1", "111|1"},
+		{111, "111", "111|111"},
 	} {
 		if got, want := resourceLabel(tc.mapID, tc.appID), tc.out; got != want {
 			t.Errorf("resourceLabel(%v, %v)=%v, want %v", tc.mapID, tc.appID, got, want)

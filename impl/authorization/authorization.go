@@ -37,8 +37,8 @@ func New() authorization.Authorization {
 // authorized to carry the given permission. A call is authorized if:
 //  1. userID matches the identity in sctx,
 //  2. or, sctx's identity is authorized to do the action in mapID and appID.
-func (a *authz) IsAuthorized(sctx *authentication.SecurityContext, mapID, appID int64,
-	userID string, permission authzpb.Permission) error {
+func (a *authz) IsAuthorized(sctx *authentication.SecurityContext, mapID int64,
+	appID, userID string, permission authzpb.Permission) error {
 	// Case 1.
 	if sctx.Identity() == userID {
 		return nil
@@ -59,8 +59,8 @@ func (a *authz) IsAuthorized(sctx *authentication.SecurityContext, mapID, appID 
 	return fmt.Errorf("%v is not authorized to perform %v on resource defined by <mapID=%v, appID=%v>", sctx.Identity(), permission, mapID, appID)
 }
 
-func resourceLabel(mapID, appID int64) string {
-	return fmt.Sprintf("%d|%d", mapID, appID)
+func resourceLabel(mapID int64, appID string) string {
+	return fmt.Sprintf("%d|%s", mapID, appID)
 }
 
 func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string) bool {
