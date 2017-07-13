@@ -258,7 +258,7 @@ func (f *fakeSequenced) Latest(txn transaction.Txn, logID int64, obj interface{}
 type fakeAuthz struct {
 }
 
-func (fakeAuthz) IsAuthorized(sctx *authentication.SecurityContext, mapID, appID int64,
-	userID string, permission authzpb.Permission) error {
+func (fakeAuthz) IsAuthorized(sctx *authentication.SecurityContext, mapID int64,
+	appID, userID string, permission authzpb.Permission) error {
 	return nil
 }

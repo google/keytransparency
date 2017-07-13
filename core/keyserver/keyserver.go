@@ -247,8 +247,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.Unauthenticated, "Unauthenticated")
 	}
 	// Validate proper authorization.
-	// TODO: use the correct appID.
-	if s.authz.IsAuthorized(sctx, s.mapID, 0, in.UserId, authzpb.Permission_WRITE) != nil {
+	if s.authz.IsAuthorized(sctx, s.mapID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
 		glog.Warningf("Authz failed: %v", err)
 		return nil, grpc.Errorf(codes.PermissionDenied, "Unauthorized")
 	}
