@@ -15,6 +15,7 @@
 package kt
 
 import (
+	"bytes"
 	"crypto"
 	"encoding/json"
 	"errors"
@@ -24,12 +25,12 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/tree/sparse"
-	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
+	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
@@ -46,22 +47,22 @@ var (
 
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
-	vrf  vrf.PublicKey
-	tree *tv.Verifier
-	sig  crypto.PublicKey
-	log  client.LogVerifier
+	vrf    vrf.PublicKey
+	hasher hashers.MapHasher
+	mapKey crypto.PublicKey
+	log    client.LogVerifier
 }
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
-	tree *tv.Verifier,
-	sig crypto.PublicKey,
+	hasher hashers.MapHasher,
+	mapKey crypto.PublicKey,
 	log client.LogVerifier) *Verifier {
 	return &Verifier{
-		vrf:  vrf,
-		tree: tree,
-		sig:  sig,
-		log:  log,
+		vrf:    vrf,
+		hasher: hasher,
+		mapKey: mapKey,
+		log:    log,
 	}
 }
 
@@ -96,28 +97,31 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 
 	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), in.VrfProof)
 	if err != nil {
-		Vlog.Printf("✗ VRF verification failed.")
+		Vlog.Printf("✗ Index verification failed.")
 		return fmt.Errorf("vrf.ProofToHash(%v, %v): %v", userID, appID, err)
 	}
-	Vlog.Printf("✓ VRF verified.")
-
-	leafProof := in.GetLeafProof()
-	if leafProof == nil {
-		return ErrNilProof
+	if got, want := in.GetLeafProof().GetLeaf().GetIndex(), index[:]; !bytes.Equal(got, want) {
+		return fmt.Errorf("Leaf.Index: %x, want %x", got, want)
 	}
+	Vlog.Printf("✓ Index verified.")
 
-	if err := v.tree.VerifyProof(leafProof.Inclusion, index[:], leafProof.Leaf.LeafValue, sparse.FromBytes(in.GetSmr().RootHash)); err != nil {
-		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return fmt.Errorf("tree.VerifyProof(): %v", err)
+	mapID := in.GetSmr().GetMapId()
+	leafValue := in.GetLeafProof().GetLeaf().GetLeafValue()
+	leafHash := v.hasher.HashLeaf(mapID, index[:], v.hasher.BitLen(), leafValue)
+	proof := in.GetLeafProof().GetInclusion()
+	expectedRoot := in.GetSmr().GetRootHash()
+	if err := merkle.VerifyMapInclusionProof(mapID, index[:], leafHash, expectedRoot, proof, v.hasher); err != nil {
+		Vlog.Printf("✗ Map inclusion proof failed.")
+		return fmt.Errorf("VerifyMapInclusionProof(): %v", err)
 	}
-	Vlog.Printf("✓ Sparse tree proof verified.")
+	Vlog.Printf("✓ Map inclusion proof verified.")
 
 	// SignedMapRoot contains its own signature. To verify, we need to create a local
 	// copy of the object and return the object to the state it was in when signed
 	// by removing the signature from the object.
 	smr := *in.GetSmr()
 	smr.Signature = nil // Remove the signature from the object to be verified.
-	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().Signature); err != nil {
+	if err := tcrypto.VerifyObject(v.mapKey, smr, in.GetSmr().Signature); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return fmt.Errorf("sig.Verify(SMR): %v", err)
 	}
@@ -125,7 +129,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	if err := v.log.VerifyRoot(trusted, in.LogRoot, in.LogConsistency); err != nil {
+	if err := v.log.VerifyRoot(trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
 		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.LogRoot, in.LogConsistency, err)
 	}
 	Vlog.Printf("✓ Log root updated.")
