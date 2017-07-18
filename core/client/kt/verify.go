@@ -121,7 +121,8 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	// by removing the signature from the object.
 	smr := *in.GetSmr()
 	smr.Signature = nil // Remove the signature from the object to be verified.
-	if err := tcrypto.VerifyObject(v.mapKey, smr, in.GetSmr().Signature); err != nil {
+	Vlog.Printf("? smr: %#v", smr)
+	if err := tcrypto.VerifyObject(v.mapKey, smr, in.GetSmr().GetSignature()); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return fmt.Errorf("sig.Verify(SMR): %v", err)
 	}

@@ -2,7 +2,7 @@
   "tree":{
     "tree_state":"ACTIVE",
     "tree_type":"MAP",
-    "hash_strategy":"CONIKS_SHA512_256",
+    "hash_strategy":"TEST_MAP_HASHER",
     "signature_algorithm":"ECDSA",
     "max_root_duration":"0",
     "hash_algorithm":"SHA256"

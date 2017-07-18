@@ -1,5 +1,4 @@
 kt-url: "localhost:8080"
-#kt-url: "35.184.134.53:8080"
 kt-cert: "genfiles/server.crt"
 vrf:    "genfiles/vrf-pubkey.pem"
 domain: "example.com"

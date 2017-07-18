@@ -34,7 +34,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/merkle/coniks"
+	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -93,11 +93,12 @@ type Client struct {
 func New(client spb.KeyTransparencyServiceClient,
 	vrf vrf.PublicKey,
 	mapKey crypto.PublicKey,
+	mapHasher hashers.MapHasher,
 	log client.LogVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, coniks.Default, mapKey, log),
+		kt:         kt.New(vrf, mapHasher, mapKey, log),
 		log:        log,
 		mutator:    entry.New(),
 		RetryCount: 1,
@@ -239,7 +240,8 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	}
 
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetKeyValue().GetValue(); !bytes.Equal(got, want) {
+	if got, want := updateResp.GetProof().GetLeafProof().GetLeaf().GetLeafValue(),
+		req.GetEntryUpdate().GetUpdate().GetKeyValue().GetValue(); !bytes.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil
