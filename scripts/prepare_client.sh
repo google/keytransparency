@@ -18,7 +18,7 @@ VRFDEFAULT="testdata/vrf-pubkey.pem"
 VRF=""
 KTKEYDEFAULT="testdata/server.crt"
 KTKEY=""
-SIGKEYDEFAULT="testdata/p256-pubkey.pem"
+SIGKEYDEFAULT="testdata/trillian-map.pem"
 SIGKEY=""
 DOMAINDEFAULT="example.com"
 DOMAIN=""
@@ -71,13 +71,13 @@ go build ./cmd/keytransparency-client
 
 # TODO(ismail): fetch the keys from the discovery API (#672)
 # Generate .keytransparency.yaml file.
-KTYAML="log-key: \"../trillian/testdata/log-rpc-server.pubkey.pem\"
-vrf:    \"${VRF}\"
-kt-key: \"${KTKEY}\"
-kt-sig: \"${SIGKEY}\"
-domain: \"${DOMAIN}\"
-mapid: ${MAP_ID}
+KTYAML="
 kt-url: \"${KTURL}\"
+kt-cert: \"${KTKEY}\"
+vrf:    \"${VRF}\"
+domain: \"${DOMAIN}\"
+log-key: \"../trillian/testdata/ct-http-server.pubkey.pem\"
+map-key: \"${SIGKEY}\"
 client-secret: \"${CLIENTSECRET}\"
 service-key: \"${SERVICEKEY}\""
 

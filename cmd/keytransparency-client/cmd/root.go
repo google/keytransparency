@@ -20,23 +20,18 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/kt"
-	"github.com/google/keytransparency/core/crypto/keymaster"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	gauth "github.com/google/keytransparency/impl/google/authentication"
-	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/merkle/hashers"
-	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -44,6 +39,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
+
+	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
+	_ "github.com/google/trillian/merkle/maphasher" // Register maphasher
+	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
+
+	gauth "github.com/google/keytransparency/impl/google/authentication"
+	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 )
 
 var (
@@ -83,11 +85,11 @@ func init() {
 	RootCmd.PersistentFlags().String("log-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("log-key", "", "Path to public key PEM for Trillian Log server")
 
-	RootCmd.PersistentFlags().Int64("map-id", 0, "Map ID of the backend map server")
+	RootCmd.PersistentFlags().String("map-key", "genfiles/trillian-map.pem", "Path to public key for signed map heads")
+	RootCmd.PersistentFlags().String("map-hasher", "TEST_MAP_HASHER", "Hash strategy used by map")
 
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
-	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
-	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
+	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
 
 	RootCmd.PersistentFlags().String("fake-auth-userid", "", "userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
 
@@ -101,8 +103,8 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv() // Read in environment variables that match.
-
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		if err := viper.ReadInConfig(); err != nil {
@@ -174,30 +176,19 @@ func getServiceCreds(serviceKeyFile string) (credentials.PerRPCCredentials, erro
 	return oauth.NewServiceAccountFromKey(b, gauth.RequiredScopes...)
 }
 
-func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
-	pem, err := ioutil.ReadFile(ktPEM)
-	if err != nil {
-		return nil, err
-	}
-	ver, err := keymaster.NewVerifierFromPEM(pem)
-	if err != nil {
-		return nil, err
-	}
-	return ver, nil
-}
-
-func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log client.LogVerifier) (*grpcc.Client, error) {
+func getClient(cc *grpc.ClientConn, vrfPubFile, mapKeyFile string, mapHasher hashers.MapHasher, log client.LogVerifier) (*grpcc.Client, error) {
 	// Create Key Transparency client.
 	vrfKey, err := readVrfKey(vrfPubFile)
 	if err != nil {
 		return nil, err
 	}
-	verifier, err := readSignatureVerifier(ktSig)
+	mapKey, err := keys.NewFromPublicPEMFile(mapKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
 	}
+
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return grpcc.New(mapID, cli, vrfKey, verifier, log), nil
+	return grpcc.New(cli, vrfKey, mapKey, mapHasher, log), nil
 }
 
 func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.ClientConn, error) {
@@ -255,31 +246,36 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	vrfFile := viper.GetString("vrf")
 	ktURL := viper.GetString("kt-url")
-	ktPEM := viper.GetString("kt-key")
-	ktSig := viper.GetString("kt-sig")
-	mapID := viper.GetInt64("map-id")
+	ktCert := viper.GetString("kt-cert")
+	mapKey := viper.GetString("map-key")
+	mapHashStrategy := viper.GetString("map-hasher")
 	logPEM := viper.GetString("log-key")
 	serviceKeyFile := viper.GetString("service-key")
-	cc, err := dial(ktURL, ktPEM, clientSecretFile, serviceKeyFile)
+	cc, err := dial(ktURL, ktCert, clientSecretFile, serviceKeyFile)
 	if err != nil {
-		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
+		return nil, fmt.Errorf("Dial(%v): %v", ktURL, err)
 	}
 
 	// Log verifier.
 	logPubKey, err := keys.NewFromPublicPEMFile(logPEM)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
+		return nil, fmt.Errorf("NewFromPublicPEMFile(%v): %v", logPubKey, err)
 	}
 
-	hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	logHasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
 	if err != nil {
 		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
 	}
-	log := client.NewLogVerifier(hasher, logPubKey)
+	log := client.NewLogVerifier(logHasher, logPubKey)
 
-	c, err := getClient(cc, mapID, vrfFile, ktSig, log)
+	mapHasher, err := hashers.NewMapHasher(trillian.HashStrategy(trillian.HashStrategy_value[mapHashStrategy]))
 	if err != nil {
-		return nil, fmt.Errorf("Error creating client: %v", err)
+		return nil, fmt.Errorf("Failed retrieving MapHasher from registry: %v", err)
+	}
+
+	c, err := getClient(cc, vrfFile, mapKey, mapHasher, log)
+	if err != nil {
+		return nil, fmt.Errorf("error creating client: %v", err)
 	}
 	return c, nil
 }
