@@ -259,11 +259,38 @@ message GetMonitoringRequest {
   int64 start = 1;
 }
 
+// InvalidMutation includes all information to reproduce that there was an
+// invalid mutation from epoch e to e+1.
+message InvalidMutation {
+  // old_leaf is the inclusion proof to the leaf at epoch e.
+  trillian.MapLeafInclusion old_leaf = 1;
+  // new_leaf is the inclusion proof to the leaf at epoch e+1.
+  trillian.MapLeafInclusion new_leaf = 2;
+}
+
+// NotMatchingMapRootProof contains all data necessary to reproduce that set of
+// mutations does not produce new expected map root.
+message NotMatchingMapRootProof {
+  // map_root contains the map root hash the monitor observed.
+  trillian.SignedMapRoot map_root = 1;
+  // old_leafs is a list of inclusion proofs for the leafs in epoch e.
+  repeated trillian.MapLeafInclusion old_leafs = 2;
+  // new_leafs is a list of inclusion proofs for changed leafs (from epoch e
+  // to epoch e+1). Hashing these produces a different hash than root hash in
+  // above's map_root.
+  repeated trillian.MapLeafInclusion new_leafs = 3;
+}
+
 message GetMonitoringResponse {
   // smr contains the map root for the sparse Merkle Tree signed with the
   // monitor's key on success. If the checks were not successful the
   // smr will be empty. The epochs are encoded into the smr map_revision.
   trillian.SignedMapRoot smr = 1;
+
+  // seen_timestamp_nanos contains the time in nanoseconds where this particular
+  // signed map root was retrieved and processed. The actual timestamp of the
+  // smr returned by the server is contained in above smr field.
+  int64 seen_timestamp_nanos = 2;
 
   //
   // The following fields provide more information about each failure in this
@@ -272,12 +299,15 @@ message GetMonitoringResponse {
 
   // isValid signals if all verification steps for the requested epoch passed
   // or not.
-  bool isValid = 2;
-  // invalidRootSig contains the signed map root received by the
+  bool isValid = 3;
+  // invalidRootSigProof contains the signed map root received by the
   // key-transparency server, if and only if the key-server's signature was
   // invalid.
-  trillian.SignedMapRoot invalidRootSig = 3;
-  // TODO(ismail): add field for the following cases:
-  // - Invalid mutation from epoch e to e+1
-  // - Set of mutations does not produce new map root
+  trillian.SignedMapRoot invalidRootSigProof = 4;
+  // invalidMutation contains data to reproduce that there was an invalid
+  // mutation from epoch e to epoch e+1
+  InvalidMutation invalidMutation = 5;
+  // NotMatchingMapRoot contains all data to reproduce that the set of mutations
+  // does not produce observed new map root.
+  NotMatchingMapRootProof notMatchingMapRoot = 6;
 }

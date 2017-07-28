@@ -32,21 +32,33 @@ import "google/api/annotations.proto";
 //
 service MonitorService {
   // GetSignedMapRoot returns the latest valid signed map root the monitor
-  // observed.
+  // observed. Additionally, the response contains additional data necessary to
+  // reproduce errors on failure.
   //
   // Returns the signed map root for the latest epoch the monitor observed. If
   // the monitor could not reconstruct the map root given the set of mutations
-  // from the previous to the current epoch it won't sign the map root.
+  // from the previous to the current epoch it won't sign the map root and
+  // additional data will be provided to reproduce the failure.
   rpc GetSignedMapRoot(keytransparency.v1.types.GetMonitoringRequest)
     returns (keytransparency.v1.types.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/map/roots:latest" };
   }
-  // TODO(ismail): comments
+
+  // GetSignedMapRootByRevision works similar to GetSignedMapRoot but returns
+  // the monitor's result for a specific map revision.
+  //
+  // Returns the signed map root for the specified epoch the monitor observed.
+  // If the monitor could not reconstruct the map root given the set of
+  // mutations from the previous to the current epoch it won't sign the map root
+  // and additional data will be provided to reproduce the failure.
   rpc GetSignedMapRootByRevision(keytransparency.v1.types.GetMonitoringRequest)
     returns(keytransparency.v1.types.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/map/roots/{start}" };
   }
 
+  // GetSignedMapRootStream is a streaming API similar to GetSignedMapRoot.
+  //
+  // Returns a list of SMRs along with data to reproduce any errors.
   rpc GetSignedMapRootStream(keytransparency.v1.types.GetMonitoringRequest)
     returns (stream keytransparency.v1.types.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/map/roots:stream" };

@@ -217,7 +217,7 @@ func RegisterMonitorServiceHandler(ctx context.Context, mux *runtime.ServeMux, c
 var (
 	pattern_MonitorService_GetSignedMapRoot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "map", "roots"}, "latest"))
 
-	pattern_MonitorService_GetSignedMapRootByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1beta1", "map", "roots", "start"}, ""))
+	pattern_MonitorService_GetSignedMapRootByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "map", "roots", "start"}, ""))
 
 	pattern_MonitorService_GetSignedMapRootStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "map", "roots"}, "stream"))
 )

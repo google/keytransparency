@@ -26,6 +26,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/impl/monitor"
+	"github.com/google/trillian/crypto"
+	"github.com/google/trillian/crypto/keys"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
@@ -35,16 +37,18 @@ import (
 )
 
 var (
-	addr      = flag.String("addr", ":8099", "The ip:port combination to listen on")
-	keyFile   = flag.String("key", "genfiles/server.key", "TLS private key file")
-	certFile  = flag.String("cert", "genfiles/server.pem", "TLS cert file")
+	addr     = flag.String("addr", ":8099", "The ip:port combination to listen on")
+	keyFile  = flag.String("key", "genfiles/server.key", "TLS private key file")
+	certFile = flag.String("cert", "genfiles/server.pem", "TLS cert file")
+
+	signingKey         = flag.String("sign-key", "genfiles/p256-key.pem", "Path to private key PEM for SMH signing")
+	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
 
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
 	ktURL      = flag.String("kt-url", "localhost:8080", "URL of key-server.")
 	ktPEM      = flag.String("kt-key", "genfiles/server.crt", "Path to kt-server's public key")
-	// TODO(ismail): are the IDs actually needed for verification operations?
+	// TODO(ismail): remove mapID
 	mapID = flag.Int64("map-id", 0, "Trillian map ID")
-	logID = flag.Int64("log-id", 0, "Trillian Log ID")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
 	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
@@ -101,7 +105,13 @@ func main() {
 	}
 	mcc := mupb.NewMutationServiceClient(grpcc)
 
-	srv := monitor.New(mcc, *mapID, *pollPeriod)
+	// Read signing key:
+	key, err := keys.NewFromPrivatePEMFile(*signingKey, *signingKeyPassword)
+	if err != nil {
+		glog.Fatalf("Could not create signer from %v: %v", *signingKey, err)
+	}
+
+	srv := monitor.New(mcc, *crypto.NewSHA256Signer(key), *mapID, *pollPeriod)
 
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)

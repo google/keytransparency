@@ -155,6 +155,18 @@ services:
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile
+    entrypoint:
+      - /go/bin/keytransparency-monitor
+      - --addr=0.0.0.0:8099
+      - --kt-url=kt-server:8080
+      - --poll-period=5s
+      - --key=genfiles/server.key
+      - --cert=genfiles/server.crt
+      - --sign-key=/kt/p256-monitor_sign-key.pem
+      - --password=towel
+      - --map-id=$MAP_ID
+      - --alsologtostderr
+      - --v=3
     image: us.gcr.io/key-transparency/keytransparency-monitor
     restart: always
     ports:
