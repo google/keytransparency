@@ -21,9 +21,6 @@ import (
 	"strings"
 	"time"
 
-	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
-	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
-
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/impl/monitor"
 	"github.com/google/trillian/crypto"
@@ -34,12 +31,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+
+	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
+	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 
 var (
 	addr     = flag.String("addr", ":8099", "The ip:port combination to listen on")
-	keyFile  = flag.String("key", "genfiles/server.key", "TLS private key file")
-	certFile = flag.String("cert", "genfiles/server.pem", "TLS cert file")
+	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
+	certFile = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
 
 	signingKey         = flag.String("sign-key", "genfiles/p256-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
@@ -47,8 +47,9 @@ var (
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
 	ktURL      = flag.String("kt-url", "localhost:8080", "URL of key-server.")
 	ktPEM      = flag.String("kt-key", "genfiles/server.crt", "Path to kt-server's public key")
-	// TODO(ismail): remove mapID
-	mapID = flag.Int64("map-id", 0, "Trillian map ID")
+
+	mapKey = flag.String("map-key", "genfiles/map-rpc-server.pubkey.pem", "Path to public key PEM used to verify the SMH signature")
+	logKey = flag.String("log-key", "genfiles/log-rpc-server.pubkey.pem", "Path to public key PEM used to verify the STH signature")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
 	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
@@ -111,7 +112,7 @@ func main() {
 		glog.Fatalf("Could not create signer from %v: %v", *signingKey, err)
 	}
 
-	srv := monitor.New(mcc, *crypto.NewSHA256Signer(key), *mapID, *pollPeriod)
+	srv := monitor.New(mcc, *crypto.NewSHA256Signer(key), *mapKey, *logKey, *pollPeriod)
 
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)

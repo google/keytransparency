@@ -12,21 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package monitor implements the monitor service. A monitor repeatedly polls a
-// key-transparency server's Mutations API and signs Map Roots if it could
-// reconstruct
-// clients can query.
 package monitor
 
-import (
-	"golang.org/x/net/context"
-	"testing"
-)
-
-func TestGetSignedMapRoot(t *testing.T) {
-	srv := Server{}
-	_, err := srv.GetSignedMapRoot(context.TODO(), nil)
-	if got, want := err, ErrNothingProcessed; got != want {
-		t.Errorf("GetSignedMapRoot(_, _): %v, want %v", got, want)
-	}
-}
+// TODO(ismail): write extensive tests for verification steps (if not existing
+// in trillian)

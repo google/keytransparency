@@ -47,7 +47,7 @@ var (
 
 // Mutator verifies mutations and transforms values in the map.
 type Mutator interface {
-	// CheckMutation verifies that this is a valid mutation for this item and
+	// Mutate verifies that this is a valid mutation for this item and
 	// applies mutation to value.
 	Mutate(value, mutation []byte) ([]byte, error)
 }

@@ -55,14 +55,6 @@ service MonitorService {
     returns(keytransparency.v1.types.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/map/roots/{start}" };
   }
-
-  // GetSignedMapRootStream is a streaming API similar to GetSignedMapRoot.
-  //
-  // Returns a list of SMRs along with data to reproduce any errors.
-  rpc GetSignedMapRootStream(keytransparency.v1.types.GetMonitoringRequest)
-    returns (stream keytransparency.v1.types.GetMonitoringResponse) {
-    option (google.api.http) = { get: "/v1/map/roots:stream" };
-  }
 }
 
 

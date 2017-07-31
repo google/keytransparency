@@ -160,11 +160,13 @@ services:
       - --addr=0.0.0.0:8099
       - --kt-url=kt-server:8080
       - --poll-period=5s
-      - --key=genfiles/server.key
-      - --cert=genfiles/server.crt
+      - --tls-key=genfiles/server.key
+      - --tls-cert=genfiles/server.crt
       - --sign-key=/kt/p256-monitor_sign-key.pem
       - --password=towel
-      - --map-id=$MAP_ID
+      # TODO(ismail): this needs to be the public-key returned by the createTree operation:
+      - --map-key=trillian/testdata/map-rpc-server.pubkey.pem
+      - --log-key=trillian/testdata/log-rpc-server.pubkey.pem
       - --alsologtostderr
       - --v=3
     image: us.gcr.io/key-transparency/keytransparency-monitor

@@ -72,7 +72,7 @@ function pushTrillianImgs()
 
 function pushKTImgs()
 {
-  images=("keytransparency-server" "prometheus")
+  images=("keytransparency-server" "keytransparency-monitor" "prometheus")
   for DOCKER_IMAGE_NAME in "${images[@]}"
   do
     # Push the images as we refer to them in the kubernetes config files:

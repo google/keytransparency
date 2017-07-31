@@ -285,7 +285,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	}
 
 	// Catch errors early. Perform mutation verification.
-	// Read at the current value.  Assert the following:
+	// Read at the current value. Assert the following:
 	// - Correct signatures from previous epoch.
 	// - Correct signatures internal to the update.
 	// - Hash of current data matches the expectation in the mutation.

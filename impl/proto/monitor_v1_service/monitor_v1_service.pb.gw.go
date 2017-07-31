@@ -72,31 +72,6 @@ func request_MonitorService_GetSignedMapRootByRevision_0(ctx context.Context, ma
 
 }
 
-var (
-	filter_MonitorService_GetSignedMapRootStream_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
-)
-
-func request_MonitorService_GetSignedMapRootStream_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (MonitorService_GetSignedMapRootStreamClient, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.GetMonitoringRequest
-	var metadata runtime.ServerMetadata
-
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MonitorService_GetSignedMapRootStream_0); err != nil {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	stream, err := client.GetSignedMapRootStream(ctx, &protoReq)
-	if err != nil {
-		return nil, metadata, err
-	}
-	header, err := stream.Header()
-	if err != nil {
-		return nil, metadata, err
-	}
-	metadata.HeaderMD = header
-	return stream, metadata, nil
-
-}
-
 // RegisterMonitorServiceHandlerFromEndpoint is same as RegisterMonitorServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterMonitorServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
@@ -183,34 +158,6 @@ func RegisterMonitorServiceHandler(ctx context.Context, mux *runtime.ServeMux, c
 
 	})
 
-	mux.Handle("GET", pattern_MonitorService_GetSignedMapRootStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		if cn, ok := w.(http.CloseNotifier); ok {
-			go func(done <-chan struct{}, closed <-chan bool) {
-				select {
-				case <-done:
-				case <-closed:
-					cancel()
-				}
-			}(ctx.Done(), cn.CloseNotify())
-		}
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, req)
-		if err != nil {
-			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
-		}
-		resp, md, err := request_MonitorService_GetSignedMapRootStream_0(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_MonitorService_GetSignedMapRootStream_0(ctx, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
-
-	})
-
 	return nil
 }
 
@@ -218,14 +165,10 @@ var (
 	pattern_MonitorService_GetSignedMapRoot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "map", "roots"}, "latest"))
 
 	pattern_MonitorService_GetSignedMapRootByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "map", "roots", "start"}, ""))
-
-	pattern_MonitorService_GetSignedMapRootStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "map", "roots"}, "stream"))
 )
 
 var (
 	forward_MonitorService_GetSignedMapRoot_0 = runtime.ForwardResponseMessage
 
 	forward_MonitorService_GetSignedMapRootByRevision_0 = runtime.ForwardResponseMessage
-
-	forward_MonitorService_GetSignedMapRootStream_0 = runtime.ForwardResponseStream
 )

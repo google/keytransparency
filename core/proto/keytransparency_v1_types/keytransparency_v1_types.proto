@@ -21,10 +21,10 @@ syntax = "proto3";
 // associated with it.
 package keytransparency.v1.types;
 
-import "crypto/keyspb/keyspb.proto";
-import "crypto/sigpb/sigpb.proto";
-import "trillian.proto";
-import "trillian_map_api.proto";
+import "github.com/google/trillian/crypto/keyspb/keyspb.proto";
+import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
+import "github.com/google/trillian/trillian.proto";
+import "github.com/google/trillian/trillian_map_api.proto";
 
 //
 // Data types.
@@ -300,14 +300,18 @@ message GetMonitoringResponse {
   // isValid signals if all verification steps for the requested epoch passed
   // or not.
   bool isValid = 3;
-  // invalidRootSigProof contains the signed map root received by the
+  // invalidMapSigProof contains the signed map root received by the
   // key-transparency server, if and only if the key-server's signature was
   // invalid.
-  trillian.SignedMapRoot invalidRootSigProof = 4;
+  trillian.SignedMapRoot invalidMapSigProof = 4;
+  // invalidLogSigProof contains the signed map root received by the
+  // key-transparency server, if and only if the key-server's signature was
+  // invalid.
+  trillian.SignedLogRoot invalidLogSigProof = 5;
   // invalidMutation contains data to reproduce that there was an invalid
   // mutation from epoch e to epoch e+1
-  InvalidMutation invalidMutation = 5;
+  InvalidMutation invalidMutation = 6;
   // NotMatchingMapRoot contains all data to reproduce that the set of mutations
   // does not produce observed new map root.
-  NotMatchingMapRootProof notMatchingMapRoot = 6;
+  NotMatchingMapRootProof notMatchingMapRoot = 7;
 }
