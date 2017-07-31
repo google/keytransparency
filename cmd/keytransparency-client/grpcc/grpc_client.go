@@ -32,7 +32,6 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
@@ -202,12 +201,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
 
-	// Check the mutation before submitting it.
-	m, err := proto.Marshal(req.GetEntryUpdate().GetUpdate())
-	if err != nil {
-		return nil, fmt.Errorf("proto.Marshal(): %v", err)
-	}
-	if _, err := c.mutator.Mutate(getResp.GetLeafProof().GetLeaf().GetLeafValue(), m); err != nil {
+	if _, err := c.mutator.Mutate(getResp.GetLeafProof().GetLeaf().GetLeafValue(), req.GetEntryUpdate().GetUpdate()); err != nil {
 		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 

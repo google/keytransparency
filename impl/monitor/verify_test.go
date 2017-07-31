@@ -14,5 +14,24 @@
 
 package monitor
 
+import (
+	"testing"
+	"github.com/google/trillian/merkle"
+	"fmt"
+)
+
+
 // TODO(ismail): write extensive tests for verification steps (if not existing
 // in trillian)
+const (
+	emptyMapRootB64 = "xmifEIEqCYCXbZUz2Dh1KCFmFZVn7DUVVxbBQTr1PWo="
+	mapID          = int64(0)
+)
+
+func TestServerVerifyMutations(t *testing.T) {
+	// verifyInclusionProof for empty leaf
+	if err := merkle.VerifyMapInclusionProof(mapID, index,
+		leafHash, rootHash, proof, hasher); err != nil {
+		return fmt.Errorf("VerifyMapInclusionProof(%x): %v", index, err)
+	}
+}

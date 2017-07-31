@@ -19,16 +19,20 @@
 package monitor
 
 import (
+	"fmt"
+	"crypto"
 	"errors"
 
 	"github.com/golang/glog"
 
 	// "github.com/google/trillian"
 	// "github.com/google/trillian/merkle"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	tcrypto "github.com/google/trillian/crypto"
 
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian"
 )
 
 var (
@@ -41,7 +45,7 @@ var (
 	// ErrInvalidMapSignature occurs when the signature on the observed map root
 	// is invalid.
 	ErrInvalidMapSignature = errors.New("invalid signature on map in GetMutationsResponse")
-	// ErrInvalidMapSignature occurs when the signature on the observed map root
+	// ErrInvalidLogSignature occurs when the signature on the observed map root
 	// is invalid.
 	ErrInvalidLogSignature = errors.New("invalid signature on log in GetMutationsResponse")
 )
@@ -50,37 +54,95 @@ var (
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
-func (s *Server) verifyResponse(resp *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) error {
+func verifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) error {
 	// verify signature on map root:
-	if err := tcrypto.VerifyObject(s.mapPubKey, resp.GetSmr(), resp.GetSmr().GetSignature()); err != nil {
+	if err := tcrypto.VerifyObject(mapPubKey, resp.GetSmr(), resp.GetSmr().GetSignature()); err != nil {
 		glog.Errorf("couldn't verify signature on map root: %v", err)
 		return ErrInvalidMapSignature
 	}
-	// verify signature on log root:
-	if err := tcrypto.VerifyObject(s.logPubKey, resp.GetSmr(), resp.GetLogRoot().GetSignature()); err != nil {
-		glog.Errorf("couldn't verify signature on log root: %v", err)
+
+	// verify signature on log-root:
+	hash := tcrypto.HashLogRoot(*resp.GetLogRoot())
+	if err := tcrypto.Verify(logPubKey, hash, resp.GetLogRoot().GetSignature()); err != nil {
 		return ErrInvalidLogSignature
 	}
-	// TODO verify log-root:
-	// VerifyRoot(trusted, newRoot *trillian.SignedLogRoot, consistency [][]byte) error
-	// mapID := resp.GetSmr().GetMapId()
+	//hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	//if err != nil {
+	//	return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
+	//}
+	// logVerifier := merkle.NewLogVerifier(hasher)
+	// logVerifier.VerifyConsistencyProof()
+	// logVerifier.VerifyInclusionProof()
 
+	// mapID := resp.GetSmr().GetMapId()
+	if err := verifyMutations(allMuts, resp.GetSmr().GetRootHash()); err != nil {
+		return err
+	}
+
+	return errors.New("TODO: implement verification logic")
+}
+
+
+func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte) error {
 	// TODO: export applyMutations in CreateEpoch / signer.go?
 	//
-	// verify that the provided leaf’s inclusion proof goes to epoch e-1.
-	//
-	// for each mutation:
-	//if err := merkle.VerifyMapInclusionProof(mapID, index,
-	//	leafHash, rootHash, proof, hasher); err != nil {
-	//	glog.Errorf("VerifyMapInclusionProof(%x): %v", index, err)
-	//	return ErrInvalidMutation
-	//}
 
 	// verify the mutation’s validity against the previous leaf.
+	//
+	// entry.VerifyKeys()
+	// or
+	// entry.Mutate() // does all checks and returns the new leaf as well
+	inclusionMap := make(map[[32]byte]*trillian.MapLeafInclusion)
+	updatedLeafMap := make(map[[32]byte]*trillian.MapLeaf)
+	mutator := entry.New()
+	for _, m := range muts {
+		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
+		//
+		//if err := merkle.VerifyMapInclusionProof(mapID, index,
+		//	leafHash, rootHash, proof, hasher); err != nil {
+		//	glog.Errorf("VerifyMapInclusionProof(%x): %v", index, err)
+		//	return ErrInvalidMutation
+		//}
+
+		newLeaf, err := mutator.Mutate(m.GetProof().GetLeaf().GetLeafValue(), m.GetUpdate())
+		if err != nil {
+			// TODO(ismail): do not return; collect other errors if any
+			return ErrInvalidMutation
+		}
+		// update and store intermediate hashes for this new leaf
+		// (using old inclusion proof and already updated intermediate leafs)
+		fmt.Println(newLeaf)
+		// the index shouldn't change:
+		var index [32]byte
+		copy(index[:], m.GetProof().GetLeaf().GetIndex()[:32])
+		// TODO(ismail): do we actually need these copies?
+		inclusionMap[index] = m.GetProof()
+
+		updatedLeafMap[index] = &trillian.MapLeaf{
+			Index: index[:],
+			// LeafHash: hasher.HashLeaf(mapID, l.Index, l.LeafValue),
+			LeafValue: newLeaf,
+		}
+
+		//for level, proof := range m.GetProof().GetInclusion() {
+		//	pElement := proof
+		//	if len(pElement) == 0 {
+		//		pElement = hasher.HashEmpty(treeID, sib.Path, level)
+		//	}
+		//	if proofIsRightHandElement {
+		//		runningHash = hasher.HashChildren(runningHash, pElement)
+		//	} else {
+		//		runningHash = hasher.HashChildren(pElement, runningHash)
+		//	}
+		//}
+		//
+
+	}
+
+
 
 	// compute the new leaf and store the intermediate hashes locally.
 	// compute the new root using local intermediate hashes from epoch e.
 	// verify rootHash
-
 	return errors.New("TODO: implement verification logic")
 }

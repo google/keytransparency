@@ -19,7 +19,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
@@ -207,12 +206,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 			oldValue = leaf.LeafValue
 		}
 
-		// TODO: change mutator interface to accept objects directly.
-		mData, err := proto.Marshal(m)
-		if err != nil {
-			return nil, err
-		}
-		newValue, err := s.mutator.Mutate(oldValue, mData)
+		newValue, err := s.mutator.Mutate(oldValue, m)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.

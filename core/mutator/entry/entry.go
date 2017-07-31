@@ -41,12 +41,7 @@ func New() *Entry {
 
 // Mutate verifies that this is a valid mutation for this item and applies
 // mutation to value.
-func (*Entry) Mutate(oldValue, mutation []byte) ([]byte, error) {
-	update := new(tpb.SignedKV)
-	if err := proto.Unmarshal(mutation, update); err != nil {
-		return nil, err
-	}
-
+func (*Entry) Mutate(oldValue []byte, update *tpb.SignedKV) ([]byte, error) {
 	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
 		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)

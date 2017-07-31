@@ -68,10 +68,10 @@ func New(cli mupb.MutationServiceClient,
 	logPubKey, mapPubKey crypto.PublicKey,
 	poll time.Duration) *Server {
 	return &Server{
-		client:     cli,
-		pollPeriod: poll,
-		logPubKey:  logPubKey,
-		mapPubKey:  mapPubKey,
+		client:         cli,
+		pollPeriod:     poll,
+		logPubKey:      logPubKey,
+		mapPubKey:      mapPubKey,
 		signer:         signer,
 		proccessedSMRs: make([]*ktpb.GetMonitoringResponse, 256),
 	}
@@ -144,7 +144,7 @@ func (s *Server) pollMutations(ctx context.Context, opts ...grpc.CallOption) ([]
 	}
 	respSmr := resp.GetSmr()
 	var monitorResp *ktpb.GetMonitoringResponse
-	switch err := s.verifyResponse(resp, mutations); err {
+	switch err := verifyResponse(s.logPubKey, s.mapPubKey, resp, mutations); err {
 	// TODO(ismail): return proper data for failure cases:
 	case ErrInvalidMutation:
 		glog.Errorf("TODO: handle this ErrInvalidMutation properly")
