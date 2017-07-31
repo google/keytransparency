@@ -39,7 +39,7 @@ func TestWriteRead(t *testing.T) {
 
 	// Create test data.
 	pdata := []byte("key")
-	commitmentC, committedC, err := commitments.Commit("foo", "app", pdata)
+	commitment, nonce, err := commitments.Commit("foo", "app", pdata)
 	if err != nil {
 		t.Fatalf("Failed to create commitment: %v", err)
 	}
@@ -54,20 +54,20 @@ func TestWriteRead(t *testing.T) {
 		{[]byte("committmentA"), []byte("key 1"), []byte("key1"), false},
 		{[]byte("committmentA"), []byte("key 2"), []byte("key2"), false},
 		{[]byte("committmentB"), []byte("key 2"), []byte("key2"), true},
-		{commitmentC, committedC.Key, pdata, true},
+		{commitment, nonce, pdata, true},
 	} {
 		committed := &tpb.Committed{Key: tc.key, Data: tc.value}
-		err = c.Write(nil, tc.commitment, committed)
+		err = c.Write(nil, tc.commitment, tc.value, tc.key)
 		if got := err == nil; got != tc.wantNoErr {
 			t.Errorf("WriteCommitment(%s, %v): %v, want %v", tc.commitment, committed, err, tc.wantNoErr)
 		}
 		if tc.wantNoErr {
-			value, err := c.Read(nil, tc.commitment)
+			data, nonce, err := c.Read(nil, tc.commitment)
 			if err != nil {
 				t.Errorf("Read(_, %v): %v", tc.commitment, err)
 			}
-			if !proto.Equal(value, committed) {
-				t.Errorf("Read(%v): %v want %v", tc.commitment, value, committed)
+			if got, want := (&tpb.Committed{Key: nonce, Data: data}), committed; !proto.Equal(got, want) {
+				t.Errorf("Read(%v): %v want %v", tc.commitment, got, want)
 			}
 		}
 	}

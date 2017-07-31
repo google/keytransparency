@@ -65,20 +65,6 @@ func New(vrf vrf.PublicKey,
 	}
 }
 
-// VerifyCommitment verifies that the commitment in `in` is correct for userID.
-func (Verifier) VerifyCommitment(userID, appID string, in *tpb.GetEntryResponse) error {
-	if in.Committed != nil {
-		entry := new(tpb.Entry)
-		if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
-			return err
-		}
-		if err := commitments.Verify(userID, appID, entry.GetCommitment(), in.GetCommitted()); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // VerifyGetEntryResponse verifies GetEntryResponse:
 //  - Verify commitment.
 //  - Verify VRF.
@@ -88,9 +74,22 @@ func (Verifier) VerifyCommitment(userID, appID string, in *tpb.GetEntryResponse)
 //  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID string,
 	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
-	if err := v.VerifyCommitment(userID, appID, in); err != nil {
-		Vlog.Printf("✗ Commitment verification failed.")
-		return fmt.Errorf("VerifyCommitment(): %v", err)
+	// Unpack the merkle tree leaf value.
+	entry := new(tpb.Entry)
+	if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
+		return err
+	}
+
+	// If this is not a proof of absence, verify the connection between
+	// profileData and the commitment in the merkle tree leaf.
+	if in.GetCommitted() != nil {
+		commitment := entry.GetCommitment()
+		data := in.GetCommitted().GetData()
+		nonce := in.GetCommitted().GetKey()
+		if err := commitments.Verify(userID, appID, commitment, data, nonce); err != nil {
+			Vlog.Printf("✗ Commitment verification failed.")
+			return fmt.Errorf("VerifyCommitment(): %v", err)
+		}
 	}
 	Vlog.Printf("✓ Commitment verified.")
 

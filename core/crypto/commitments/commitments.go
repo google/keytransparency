@@ -27,8 +27,6 @@ import (
 	"errors"
 
 	"golang.org/x/net/context"
-
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (
@@ -53,26 +51,25 @@ var (
 // Committer saves cryptographic commitments.
 type Committer interface {
 	// Write saves a cryptographic commitment and associated data.
-	Write(ctx context.Context, commitment []byte, committed *tpb.Committed) error
+	Write(ctx context.Context, commitment, data, nonce []byte) error
 	// Read looks up a cryptograpic commitment and returns associated data.
-	Read(ctx context.Context, commitment []byte) (*tpb.Committed, error)
+	Read(ctx context.Context, commitment []byte) (data, nonce []byte, err error)
 }
 
 // Commit makes a cryptographic commitment under a specific userID to data.
-func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
+func Commit(userID, appID string, data []byte) (commitment, nonce []byte, err error) {
 	// Generate commitment nonce.
-	nonce := make([]byte, commitmentKeyLen)
+	nonce = make([]byte, commitmentKeyLen)
 	if _, err := Rand.Read(nonce); err != nil {
 		return nil, nil, err
 	}
 
-	return createCommitment(userID, appID, data, nonce),
-		&tpb.Committed{Key: nonce, Data: data}, nil
+	return createCommitment(userID, appID, data, nonce), nonce, nil
 }
 
 // Verify customizes a commitment with a userID.
-func Verify(userID, appID string, commitment []byte, committed *tpb.Committed) error {
-	if got, want := createCommitment(userID, appID, committed.Data, committed.Key),
+func Verify(userID, appID string, commitment, data, nonce []byte) error {
+	if got, want := createCommitment(userID, appID, data, nonce),
 		commitment; !hmac.Equal(got, want) {
 		return ErrInvalidCommitment
 	}
