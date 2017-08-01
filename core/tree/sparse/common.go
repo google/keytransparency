@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/keytransparency/core/tree"
+	"github.com/google/trillian/merkle/hashers"
 )
 
 const (
@@ -37,12 +38,12 @@ const (
 )
 
 // Hash represents the output of the hash function used in the sparse tree.
-type Hash [HashSize]byte
+type Hash []byte
 
 // NodeValues computes the new values for leafs up the tree. nbrValues must not
 // be compressed. value is the actual value of the leaf. NodeValues returns the
 // leaf hash as part of the returned list.
-func NodeValues(mapID int64, hasher TreeHasher, bindex string, value []byte, nbrValues []Hash) []Hash {
+func NodeValues(mapID int64, hasher hashers.MapHasher, bindex string, value []byte, nbrValues []Hash) []Hash {
 	levels := len(bindex) + 1
 	steps := len(bindex)
 	nodeValues := make([]Hash, levels)
@@ -59,7 +60,7 @@ func NodeValues(mapID int64, hasher TreeHasher, bindex string, value []byte, nbr
 			left = nbrValues[i]
 			right = nodeValues[i]
 		}
-		nodeValues[i+1] = hasher.HashInterior(left, right)
+		nodeValues[i+1] = hasher.HashChildren(left, right)
 	}
 	return nodeValues
 }
