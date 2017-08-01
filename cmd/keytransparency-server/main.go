@@ -17,7 +17,6 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -27,11 +26,9 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
-	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	cmutation "github.com/google/keytransparency/core/mutation"
-	ctxn "github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/impl/authorization"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/mutation"
@@ -40,8 +37,6 @@ import (
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
-	"github.com/google/keytransparency/impl/sql/sequenced"
-	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 	"github.com/google/trillian"
 
@@ -131,18 +126,6 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
-func newReadonlyMapServer(ctx context.Context, mapID int64, sqldb *sql.DB, factory ctxn.Factory) (trillian.TrillianMapClient, error) {
-	tree, err := sqlhist.New(ctx, mapID, factory)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create SQL history: %v", err)
-	}
-	sths, err := sequenced.New(sqldb, mapID)
-	if err != nil {
-		return nil, fmt.Errorf("sequenced.New(%v): %v", mapID, err)
-	}
-	return mapserver.NewReadonly(mapID, tree, factory, sths), nil
-}
-
 func main() {
 	flag.Parse()
 
@@ -192,22 +175,13 @@ func main() {
 	tlog := trillian.NewTrillianLogClient(tconn)
 
 	// Connect to map server.
-	var tmap trillian.TrillianMapClient
-	var tadmin trillian.TrillianAdminClient
-	if *mapURL != "" {
-		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
-		if err != nil {
-			glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
-		}
-		tmap = trillian.NewTrillianMapClient(mconn)
-		tadmin = trillian.NewTrillianAdminClient(mconn)
-	} else {
-		// Create an in-process readonly mapserver.
-		tmap, err = newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
-		if err != nil {
-			glog.Exitf("newReadonlyMapServer(): %v", err)
-		}
+
+	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
+	if err != nil {
+		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 	}
+	tmap := trillian.NewTrillianMapClient(mconn)
+	tadmin = trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
 	svr := keyserver.New(*logID, tlog, *mapID, tmap, tadmin, commitments,

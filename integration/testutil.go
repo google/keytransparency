@@ -21,7 +21,6 @@ import (
 	"net"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/admin"
@@ -33,30 +32,28 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
-	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/signer"
 	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
-	"github.com/google/keytransparency/impl/sql/sequenced"
-	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
 
+	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
-	"github.com/google/trillian/util"
-	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+	"github.com/google/trillian/testonly/integration"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-	"github.com/google/trillian"
+	stestonly "github.com/google/trillian/storage/testonly"
 )
 
 const (
-	mapID = 0
 	logID = 0
 )
 
@@ -85,6 +82,7 @@ func Listen(t testing.TB) (string, net.Listener) {
 
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
+	mapEnv     *integration.MapEnv
 	GRPCServer *grpc.Server
 	V2Server   *keyserver.Server
 	Conn       *grpc.ClientConn
@@ -143,10 +141,37 @@ f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
+	ctx := context.Background()
 	hs := ctutil.NewCTServer(t)
 	sqldb := NewDB(t)
 
-	sig, verifier, err := staticKeyPair()
+	// Map server
+	mapEnv, err := integration.NewMapEnv(ctx, "keytransparency")
+	if err != nil {
+		t.Fatalf("Failed to create trillian map server: %v", err)
+	}
+
+	// Configure map.
+	treeParams := stestonly.MapTree
+	treeParams.HashStrategy = trillian.HashStrategy_TEST_MAP_HASHER
+	tree, err := mapEnv.AdminClient.CreateTree(ctx, &trillian.CreateTreeRequest{
+		Tree: treeParams,
+	})
+	if err != nil {
+		t.Fatalf("CreateTree(): %v", err)
+	}
+	mapID := tree.TreeId
+	if _, err := mapEnv.MapClient.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
+		MapId:  mapID,
+		Leaves: nil,
+		MapperData: &trillian.MapperMetadata{
+			HighestFullyCompletedSeq: 0,
+		},
+	}); err != nil {
+		t.Fatalf("SetLeaves(): %v", err)
+	}
+
+	_, verifier, err := staticKeyPair()
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
@@ -168,31 +193,11 @@ func NewEnv(t *testing.T) *Env {
 	}
 	authz := authorization.New()
 
-	// Map server
-	factory := transaction.NewFactory(sqldb)
-	tree, err := sqlhist.New(context.Background(), mapID, factory)
-	if err != nil {
-		t.Fatalf("Failed to create SQL history: %v", err)
-	}
-	sths, err := sequenced.New(sqldb, mapID)
-	if err != nil {
-		t.Fatalf("sequenced.New(): %v", err)
-	}
-	clock := util.NewFakeTimeSource(time.Now())
-	mapsvr := mapserver.New(mapID, tree, factory, sths, sig, clock)
-	// Configure map. TODO: setup map through admin interface.
-	if _, err := mapsvr.SetLeaves(context.Background(), &trillian.SetMapLeavesRequest{
-		MapId: mapID,
-		MapperData: &trillian.MapperMetadata{
-			HighestFullyCompletedSeq: int64(0),
-		},
-	}); err != nil {
-		t.Fatalf("SetLeaves(): %v", err)
-	}
 	tlog := fake.NewFakeTrillianLogClient()
 	tadmin := trillian.NewTrillianAdminClient(nil)
 
-	server := keyserver.New(logID, tlog, mapID, mapsvr, tadmin, commitments,
+	factory := transaction.NewFactory(sqldb)
+	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, tadmin, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
@@ -203,7 +208,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("failed to add log to admin: %v", err)
 	}
 	sthsLog := appender.NewTrillian(admin)
-	signer := signer.New("", mapID, mapsvr, logID, sthsLog, mutator, mutations, factory)
+	signer := signer.New("", mapID, mapEnv.MapClient, logID, sthsLog, mutator, mutations, factory)
 
 	addr, lis := Listen(t)
 	go s.Serve(lis)
@@ -217,13 +222,26 @@ func NewEnv(t *testing.T) *Env {
 	client := grpcc.New(cli, vrfPub, verifier, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 
-	return &Env{s, server, cc, client, signer, sqldb, factory, vrfPriv, cli, hs}
+	return &Env{
+		mapEnv:     mapEnv,
+		GRPCServer: s,
+		V2Server:   server,
+		Conn:       cc,
+		Client:     client,
+		Signer:     signer,
+		db:         sqldb,
+		Factory:    factory,
+		VrfPriv:    vrfPriv,
+		Cli:        cli,
+		mapLog:     hs,
+	}
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close(t *testing.T) {
 	env.Conn.Close()
 	env.GRPCServer.Stop()
+	env.mapEnv.Close()
 	env.db.Close()
 	env.mapLog.Close()
 }
