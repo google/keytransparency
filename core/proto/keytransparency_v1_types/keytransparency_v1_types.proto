@@ -238,7 +238,7 @@ message GetMutationsResponse {
   string next_page_token = 7;
 }
 
-// GetDomainInfoRequest contains an emtpy request to query the GetDomainInfo
+// GetDomainInfoRequest contains an empty request to query the GetDomainInfo
 // APIs.
 message GetDomainInfoRequest {}
 
