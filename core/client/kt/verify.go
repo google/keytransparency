@@ -25,15 +25,16 @@ import (
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/tree/sparse"
-	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	tcrypto "github.com/google/trillian/crypto"
 	"golang.org/x/net/context"
 
+	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
+	tcrypto "github.com/google/trillian/crypto"
+
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian"
 )
 
 var (
@@ -106,7 +107,8 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 		return ErrNilProof
 	}
 
-	if err := v.tree.VerifyProof(leafProof.Inclusion, index[:], leafProof.Leaf.LeafValue, sparse.FromBytes(in.GetSmr().RootHash)); err != nil {
+	mapID := in.GetSmr().GetMapId()
+	if err := v.tree.VerifyProof(mapID, leafProof.Inclusion, index[:], leafProof.Leaf.LeafValue, sparse.FromBytes(in.GetSmr().RootHash)); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return fmt.Errorf("tree.VerifyProof(): %v", err)
 	}

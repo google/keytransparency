@@ -38,27 +38,25 @@ var (
 
 // Verifier represents a sparse tree proof verifier object.
 type Verifier struct {
-	mapID  int64
 	hasher sparse.TreeHasher
 }
 
 // New returns a new tree proofs verifier object.
-func New(mapID int64, hasher sparse.TreeHasher) *Verifier {
+func New(hasher sparse.TreeHasher) *Verifier {
 	return &Verifier{
-		mapID:  mapID,
 		hasher: hasher,
 	}
 }
 
 // VerifyProof verifies a tree proof of a given leaf at a given index based on
 // the provided root and neighbor list
-func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf []byte, root sparse.Hash) error {
+func (v *Verifier) VerifyProof(treeID int64, neighbors [][]byte, index, leaf []byte, root sparse.Hash) error {
 	if len(neighbors) > sparse.IndexLen {
 		return ErrNeighborsLen
 	}
 
 	// Calculate the tree root based on neighbors and leaf.
-	calculatedRoot, err := v.calculateRoot(neighbors, tree.BitString(index), leaf)
+	calculatedRoot, err := v.calculateRoot(treeID, neighbors, tree.BitString(index), leaf)
 	if err != nil {
 		return err
 	}
@@ -73,7 +71,7 @@ func (v *Verifier) VerifyProof(neighbors [][]byte, index, leaf []byte, root spar
 
 // calculateRoot calculates the root of the tree branch defined by leaf and
 // neighbors.
-func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte) (sparse.Hash, error) {
+func (v *Verifier) calculateRoot(treeID int64, neighbors [][]byte, bindex string, leaf []byte) (sparse.Hash, error) {
 	var leafHash sparse.Hash
 
 	// If the leaf is empty, it is a proof of absence.
@@ -84,10 +82,10 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 		// Calculate the value of the empty leaf
 		missingBranchBIndex := bindex[:len(neighbors)]
 		index, depth := tree.InvertBitString(missingBranchBIndex)
-		leafHash = v.hasher.HashEmpty(v.mapID, index, depth)
+		leafHash = v.hasher.HashEmpty(treeID, index, depth)
 	} else {
 		index, depth := tree.InvertBitString(bindex)
-		leafHash = v.hasher.HashLeaf(v.mapID, index, depth, leaf)
+		leafHash = v.hasher.HashLeaf(treeID, index, depth, leaf)
 	}
 
 	// calculatedRoot holds the calculated root so far, starting from leaf.
@@ -100,7 +98,7 @@ func (v *Verifier) calculateRoot(neighbors [][]byte, bindex string, leaf []byte)
 		// If the neighbor is empty, set it to HashEmpty output.
 		if len(neighbor) == 0 {
 			nIndex, nDepth := tree.InvertBitString(neighborBIndex)
-			neighborHash = v.hasher.HashEmpty(v.mapID, nIndex, nDepth)
+			neighborHash = v.hasher.HashEmpty(treeID, nIndex, nDepth)
 		} else {
 			neighborHash = sparse.FromBytes(neighbor)
 		}

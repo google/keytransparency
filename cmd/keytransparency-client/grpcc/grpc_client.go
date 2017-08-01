@@ -91,7 +91,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(mapID int64,
+func New(
 	client spb.KeyTransparencyServiceClient,
 	vrf vrf.PublicKey,
 	verifier crypto.PublicKey,
@@ -99,7 +99,7 @@ func New(mapID int64,
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, tv.New(mapID, sparse.CONIKSHasher), verifier, log),
+		kt:         kt.New(vrf, tv.New(sparse.CONIKSHasher), verifier, log),
 		log:        log,
 		mutator:    entry.New(),
 		RetryCount: 1,
