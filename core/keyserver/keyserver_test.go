@@ -197,6 +197,8 @@ type fakePrivateKey struct{}
 
 func (fakePrivateKey) Evaluate(m []byte) ([32]byte, []byte) { return [32]byte{}, nil }
 
+func (fakePrivateKey) Public() ([]byte, error) { return []byte{}, nil }
+
 // mutator.Mutator fake.
 type fakeMutator struct{}
 
