@@ -33,6 +33,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"math/big"
+	"github.com/golang/glog"
+	"reflect"
 )
 
 var (
@@ -219,6 +221,23 @@ func NewVRFSigner(key *ecdsa.PrivateKey) (*PrivateKey, error) {
 		return nil, ErrPointNotOnCurve
 	}
 	return &PrivateKey{key}, nil
+}
+
+// Public returns the corresponding public key as bytes.
+func (k PrivateKey) Public() ([]byte, error) {
+	// Copied from: core/crypto/signatures/p256/ecdsa_p256.go
+	glog.Errorf("reflect.TypeOf(k.PublicKey)=%v", reflect.TypeOf(k.PublicKey))
+	pkBytes, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+	pkPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkBytes,
+		},
+	)
+	return pkPEM, nil
 }
 
 // NewVRFVerifier creates a verifier object from a public key.

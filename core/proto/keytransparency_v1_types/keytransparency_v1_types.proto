@@ -21,9 +21,10 @@ syntax = "proto3";
 // associated with it.
 package keytransparency.v1.types;
 
-import "crypto/sigpb/sigpb.proto";
-import "trillian.proto";
-import "trillian_map_api.proto";
+import "github.com/google/trillian/crypto/keyspb/keyspb.proto";
+import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
+import "github.com/google/trillian/trillian.proto";
+import "github.com/google/trillian/trillian_map_api.proto";
 
 //
 // Data types.
@@ -100,8 +101,8 @@ message SignedKV {
 message Mutation {
   // update contains the actual mutation information.
   SignedKV update = 1;
-  // proof contains a leaf and an inclusion proof in the map.
-  // This is used by Storage-less monitors.
+  // proof contains a leaf and an inclusion proof in the map of the previous
+  // epoch. This is used by Storage-less monitors.
   trillian.MapLeafInclusion proof = 2;
 }
 
@@ -235,4 +236,18 @@ message GetMutationsResponse {
   // A non-zero value may be used by the client to fetch the next page of
   // results.
   string next_page_token = 7;
+}
+
+// GetDomainInfoRequest contains an emtpy request to query the GetDomainInfo
+// APIs.
+message GetDomainInfoRequest {}
+
+// GetDomainInfoResponse contains the results of GetDomainInfo APIs.
+message GetDomainInfoResponse {
+  // Log contains the Log-Tree's info.
+  trillian.Tree log = 1;
+  // Map contains the Map-Tree's info.
+  trillian.Tree map = 2;
+  // Vrf contains the VRF public key.
+  keyspb.PublicKey vrf = 3;
 }
