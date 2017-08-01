@@ -70,8 +70,9 @@ func TestListEntryHistory(t *testing.T) {
 		sths := &fakeSequenced{make([][]byte, 0)}
 		mapsvr := mapserver.NewReadonly(mapID, tree, fakeFactory{}, sths)
 		tlog := fake.NewFakeTrillianLogClient()
+		tadmin := trillian.NewTrillianAdminClient(nil)
 
-		srv := New(logID, tlog, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
+		srv := New(logID, tlog, mapID, mapsvr, tadmin, c, fakePrivateKey{}, fakeMutator{},
 			authentication.NewFake(), fakeAuthz{}, fakeFactory{}, fakeMutation{})
 		if err := addProfiles(profileCount, c, tree, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
@@ -195,6 +196,8 @@ func (f *fakeSparseHist) ReadLeafAt(txn transaction.Txn, index []byte, epoch int
 type fakePrivateKey struct{}
 
 func (fakePrivateKey) Evaluate(m []byte) ([32]byte, []byte) { return [32]byte{}, nil }
+
+func (fakePrivateKey) Public() ([]byte, error) { return []byte{}, nil }
 
 // mutator.Mutator fake.
 type fakeMutator struct{}

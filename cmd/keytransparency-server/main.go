@@ -193,12 +193,14 @@ func main() {
 
 	// Connect to map server.
 	var tmap trillian.TrillianMapClient
+	var tadmin trillian.TrillianAdminClient
 	if *mapURL != "" {
 		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 		if err != nil {
 			glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 		}
 		tmap = trillian.NewTrillianMapClient(mconn)
+		tadmin = trillian.NewTrillianAdminClient(mconn)
 	} else {
 		// Create an in-process readonly mapserver.
 		tmap, err = newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
@@ -208,7 +210,7 @@ func main() {
 	}
 
 	// Create gRPC server.
-	svr := keyserver.New(*logID, tlog, *mapID, tmap, commitments,
+	svr := keyserver.New(*logID, tlog, *mapID, tmap, tadmin, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),

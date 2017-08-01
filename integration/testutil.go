@@ -190,9 +190,10 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("SetLeaves(): %v", err)
 	}
 	tlog := fake.NewFakeTrillianLogClient()
+	tadmin := trillian.NewTrillianAdminClient(nil)
 
-	server := keyserver.New(logID, tlog, mapID, mapsvr, commitments, vrfPriv, mutator,
-		auth, authz, factory, mutations)
+	server := keyserver.New(logID, tlog, mapID, mapsvr, tadmin, commitments,
+		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 

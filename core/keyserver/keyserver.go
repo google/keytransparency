@@ -32,6 +32,7 @@ import (
 	authzpb "github.com/google/keytransparency/core/proto/authorization"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
+	"github.com/google/trillian/crypto/keyspb"
 )
 
 const (
@@ -51,6 +52,7 @@ type Server struct {
 	tlog      trillian.TrillianLogClient
 	mapID     int64
 	tmap      trillian.TrillianMapClient
+	tadmin    trillian.TrillianAdminClient
 	committer commitments.Committer
 	auth      authentication.Authenticator
 	authz     authorization.Authorization
@@ -65,6 +67,7 @@ func New(logID int64,
 	tlog trillian.TrillianLogClient,
 	mapID int64,
 	tmap trillian.TrillianMapClient,
+	tadmin trillian.TrillianAdminClient,
 	committer commitments.Committer,
 	vrf vrf.PrivateKey,
 	mutator mutator.Mutator,
@@ -77,6 +80,7 @@ func New(logID int64,
 		tlog:      tlog,
 		mapID:     mapID,
 		tmap:      tmap,
+		tadmin:    tadmin,
 		committer: committer,
 		vrf:       vrf,
 		mutator:   mutator,
@@ -317,6 +321,39 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 	return &tpb.UpdateEntryResponse{Proof: resp}, nil
+}
+
+// GetDomainInfo returns all info tied to the specified domain.
+//
+// This API to get all necessary data needed to verify a particular
+// key-server. Data contains for instance the tree-info, like for instance the
+// log-/map-id and the corresponding public-keys.
+func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest) (*tpb.GetDomainInfoResponse, error) {
+	logTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{
+		TreeId: s.logID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	mapTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{
+		TreeId: s.mapID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	vrfPub, err := s.vrf.Public()
+	if err != nil {
+		return nil, err
+	}
+
+	return &tpb.GetDomainInfoResponse{
+		Log: logTree,
+		Map: mapTree,
+		Vrf: &keyspb.PublicKey{
+			Der: vrfPub,
+		},
+	}, nil
 }
 
 func (s *Server) saveCommitment(ctx context.Context, kv *tpb.KeyValue, committed *tpb.Committed) error {
