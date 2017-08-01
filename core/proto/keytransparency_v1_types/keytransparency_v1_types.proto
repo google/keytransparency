@@ -21,10 +21,10 @@ syntax = "proto3";
 // associated with it.
 package keytransparency.v1.types;
 
-import "github.com/google/trillian/crypto/keyspb/keyspb.proto";
-import "github.com/google/trillian/crypto/sigpb/sigpb.proto";
-import "github.com/google/trillian/trillian.proto";
-import "github.com/google/trillian/trillian_map_api.proto";
+import "crypto/keyspb/keyspb.proto";
+import "crypto/sigpb/sigpb.proto";
+import "trillian.proto";
+import "trillian_map_api.proto";
 
 //
 // Data types.

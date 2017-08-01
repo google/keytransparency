@@ -323,7 +323,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	return &tpb.UpdateEntryResponse{Proof: resp}, nil
 }
 
-// GetDomainInfo returns all info tight to this specific domain.
+// GetDomainInfo returns all info tied to the specified domain.
 //
 // This API to get all necessary data needed to verify a particular
 // key-server. Data contains for instance the tree-info, like for instance the

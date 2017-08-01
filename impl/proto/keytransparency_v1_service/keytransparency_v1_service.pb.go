@@ -64,7 +64,7 @@ type KeyTransparencyServiceClient interface {
 	// Returns the current user profile.
 	// Clients must retry until this function returns a proof containing the desired value.
 	UpdateEntry(ctx context.Context, in *keytransparency_v1_types.UpdateEntryRequest, opts ...grpc.CallOption) (*keytransparency_v1_types.UpdateEntryResponse, error)
-	// GetDomainInfo returns all info tight to this specific domain.
+	// GetDomainInfo returns all info tied to the specified domain.
 	//
 	// This API to get all necessary data needed to verify a particular
 	// key-server. Data contains for instance the tree-info, like for instance the
@@ -133,7 +133,7 @@ type KeyTransparencyServiceServer interface {
 	// Returns the current user profile.
 	// Clients must retry until this function returns a proof containing the desired value.
 	UpdateEntry(context.Context, *keytransparency_v1_types.UpdateEntryRequest) (*keytransparency_v1_types.UpdateEntryResponse, error)
-	// GetDomainInfo returns all info tight to this specific domain.
+	// GetDomainInfo returns all info tied to the specified domain.
 	//
 	// This API to get all necessary data needed to verify a particular
 	// key-server. Data contains for instance the tree-info, like for instance the
