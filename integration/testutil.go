@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"crypto"
 	"database/sql"
 	"log"
 	"net"
@@ -26,8 +25,6 @@ import (
 	"github.com/google/keytransparency/core/admin"
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/crypto/dev"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
@@ -95,29 +92,6 @@ type Env struct {
 	mapLog     *httptest.Server
 }
 
-func staticKeyPair() (crypto.Signer, crypto.PublicKey, error) {
-	sigPriv := `-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
-AwEHoUQDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhWf5JqSoyp0uiL8LeNYyj5vgkl
-K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
------END EC PRIVATE KEY-----`
-	sigPub := `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
-f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
------END PUBLIC KEY-----`
-	signatures.Rand = dev.Zeros
-	sig, err := keys.NewFromPrivatePEM(sigPriv, "")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ver, err := keys.NewFromPublicPEM(sigPub)
-	if err != nil {
-		return nil, nil, err
-	}
-	return sig, ver, nil
-}
-
 func staticVRF() (vrf.PrivateKey, vrf.PublicKey, error) {
 	priv := `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
@@ -171,7 +145,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("SetLeaves(): %v", err)
 	}
 
-	_, verifier, err := staticKeyPair()
+	verifier, err := keys.NewFromPublicDER(tree.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
