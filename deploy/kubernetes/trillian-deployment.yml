@@ -63,15 +63,10 @@ spec:
             name: rpc
           - containerPort: 8091
             name: metrics
-        env:
-            - name: MYSQL_USER
-              value: test
-            - name: MYSQL_DATABASE
-              value: test
-            - name: MYSQL_PASSWORD
-              value: zaphod
-            - name: DB_HOST
-              value: mysql:3306
+        args: ["--mysql_uri=test:zaphod@tcp(mysql:3306)/test",
+               "--rpc_endpoint=0.0.0.0:8090",
+               "--http_endpoint=0.0.0.0:8091",
+               "--alsologtostderr"]
 ---
 apiVersion: v1
 kind: Service
@@ -112,15 +107,10 @@ spec:
             name: rpc
           - containerPort: 8091
             name: metrics
-        env:
-            - name: MYSQL_USER
-              value: test
-            - name: MYSQL_DATABASE
-              value: test
-            - name: MYSQL_PASSWORD
-              value: zaphod
-            - name: DB_HOST
-              value: mysql:3306
+        args: ["--mysql_uri=test:zaphod@tcp(mysql:3306)/test",
+                       "--rpc_endpoint=0.0.0.0:8090",
+                       "--http_endpoint=0.0.0.0:8091",
+                       "--alsologtostderr"]
 ---
 apiVersion: v1
 kind: Service
@@ -159,17 +149,12 @@ spec:
         ports:
           - containerPort: 8092
             name: metrics
-        env:
-            - name: MYSQL_USER
-              value: test
-            - name: MYSQL_DATABASE
-              value: test
-            - name: MYSQL_PASSWORD
-              value: zaphod
-            - name: DB_HOST
-              value: mysql:3306
-            - name: SEQUENCER_INTERVAL
-              value: 1s
+        args: ["--mysql_uri=test:zaphod@tcp(mysql:3306)/test",
+               "--http_endpoint=0.0.0.0:8091",
+               "--sequencer_guard_window=0s",
+               "--sequencer_interval=1s",
+               "--force_master=true",
+               "--alsologtostderr"]
 ---
 apiVersion: v1
 kind: Service
