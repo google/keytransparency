@@ -34,7 +34,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/merkle/coniks"
+	"github.com/google/trillian/merkle/maphasher"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -98,7 +98,7 @@ func New(
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, coniks.Default, verifier, log),
+		kt:         kt.New(vrf, maphasher.Default, verifier, log),
 		log:        log,
 		mutator:    entry.New(),
 		RetryCount: 1,
