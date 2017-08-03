@@ -31,6 +31,9 @@ IP3="127.0.0.1"
 SERVICEKEY="service_key.json"
 LISTENADDR=""
 CERTDOMAIN=""
+# SAN extension's domain, change to localhost if the grpc server will be reached
+# via the loopback interface and not via docker/kubernetes:
+SAN_DNS="kt-server"
 CERTIP="0.0.0.0"
 
 function usage()
@@ -125,7 +128,7 @@ cd "${GOPATH}/src/github.com/google/keytransparency"
 
 # Create keys.
 if ((FRONTEND == 1)); then
-    ./scripts/gen_server_keys.sh -d "${CERTDOMAIN}" -a "${CERTIP}"
+    ./scripts/gen_server_keys.sh -d "${CERTDOMAIN}" -a "${CERTIP}" -s "${SAN_DNS}"
 fi
 
 if ((BACKEND == 1)); then
