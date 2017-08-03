@@ -67,7 +67,7 @@ func NodeValues(mapID int64, hasher TreeHasher, bindex string, value []byte, nbr
 // FromBytes initializes a Hash object from a byte slice.
 func FromBytes(b []byte) Hash {
 	if len(b) != HashSize {
-		panic(fmt.Sprintf("hash len != %v", HashSize))
+		panic(fmt.Sprintf("sparse.FromBytes(%x) len %d, want %d", b, len(b), HashSize))
 	}
 	var h Hash
 	copy(h[:], b)
