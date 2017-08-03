@@ -47,8 +47,8 @@ func NodeValues(mapID int64, hasher hashers.MapHasher, bindex string, value []by
 	levels := len(bindex) + 1
 	steps := len(bindex)
 	nodeValues := make([]Hash, levels)
-	index, depth := tree.InvertBitString(bindex)
-	nodeValues[0] = hasher.HashLeaf(mapID, index, depth, value)
+	index, _ := tree.InvertBitString(bindex)
+	nodeValues[0] = hasher.HashLeaf(mapID, index, value)
 	// assert len(nbrValues) == levels - 1
 	for i := 0; i < steps; i++ {
 		// Is the last node 0 or 1?
