@@ -25,13 +25,13 @@ import (
 func TestBasicValidateCreds(t *testing.T) {
 	auth := NewFake()
 	for _, tc := range []struct {
+		description    string
 		cred           credentials.PerRPCCredentials
 		requiredUserID string
 		want           error
 	}{
-		{nil, "foo", ErrMissingAuth},
-		{GetFakeCredential("foo"), "bar", ErrWrongUser},
-		{GetFakeCredential("foo"), "foo", nil},
+		{"missing authentication", nil, "foo", ErrMissingAuth},
+		{"working case", GetFakeCredential("foo"), "foo", nil},
 	} {
 		// Build context by adding the credential information.
 		var inCtx context.Context
@@ -42,8 +42,15 @@ func TestBasicValidateCreds(t *testing.T) {
 			inCtx = metadata.NewIncomingContext(context.Background(), metadata.New(md))
 		}
 
-		if got, want := auth.ValidateCreds(inCtx, tc.requiredUserID), tc.want; got != want {
-			t.Errorf("ValidateCreds(%v, %v): %v, want %v", inCtx, tc.requiredUserID, got, want)
+		sctx, err := auth.ValidateCreds(inCtx)
+		if got, want := err, tc.want; got != want {
+			t.Errorf("%v: ValidateCreds()=(_, %v), want (_, %v)", tc.description, got, want)
+		}
+		if err != nil {
+			continue
+		}
+		if got, want := sctx.Identity(), tc.requiredUserID; got != want {
+			t.Errorf("%v: sctx.Identity()=%v, want %v", tc.description, got, want)
 		}
 	}
 }

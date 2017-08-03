@@ -44,7 +44,7 @@ At a minimum, the RemoteAddr is included in the fashion of "X-Forwarded-For",
 except that the forwarded destination is not another HTTP service but rather
 a gRPC service.
 */
-func AnnotateContext(ctx context.Context, mux *ServeMux, req *http.Request) (context.Context, error) {
+func AnnotateContext(ctx context.Context, req *http.Request) (context.Context, error) {
 	var pairs []string
 	timeout := DefaultContextTimeout
 	if tm := req.Header.Get(metadataGrpcTimeout); tm != "" {
@@ -61,10 +61,12 @@ func AnnotateContext(ctx context.Context, mux *ServeMux, req *http.Request) (con
 			if strings.ToLower(key) == "authorization" {
 				pairs = append(pairs, "authorization", val)
 			}
-			if mux.incomingHeaderMatcher != nil {
-				if h, ok := mux.incomingHeaderMatcher(key); ok {
-					pairs = append(pairs, h, val)
-				}
+			if isPermanentHTTPHeader(key) {
+				pairs = append(pairs, strings.ToLower(fmt.Sprintf("%s%s", MetadataPrefix, key)), val)
+				continue
+			}
+			if strings.HasPrefix(key, MetadataHeaderPrefix) {
+				pairs = append(pairs, key[len(MetadataHeaderPrefix):], val)
 			}
 		}
 	}
@@ -92,11 +94,7 @@ func AnnotateContext(ctx context.Context, mux *ServeMux, req *http.Request) (con
 	if len(pairs) == 0 {
 		return ctx, nil
 	}
-	md := metadata.Pairs(pairs...)
-	if mux.metadataAnnotator != nil {
-		md = metadata.Join(md, mux.metadataAnnotator(ctx, req))
-	}
-	return metadata.NewOutgoingContext(ctx, md), nil
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs(pairs...)), nil
 }
 
 // ServerMetadata consists of metadata sent from gRPC server.

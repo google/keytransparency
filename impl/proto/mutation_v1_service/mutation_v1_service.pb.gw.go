@@ -64,30 +64,12 @@ func request_MutationService_GetMutations_0(ctx context.Context, marshaler runti
 }
 
 var (
-	filter_MutationService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"epoch": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_MutationService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
 func request_MutationService_GetMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client MutationServiceClient, req *http.Request, pathParams map[string]string) (MutationService_GetMutationsStreamClient, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1_types.GetMutationsRequest
 	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["epoch"]
-	if !ok {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
-	}
-
-	protoReq.Epoch, err = runtime.Int64(val)
-
-	if err != nil {
-		return nil, metadata, err
-	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MutationService_GetMutationsStream_0); err != nil {
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
@@ -149,18 +131,18 @@ func RegisterMutationServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 			}(ctx.Done(), cn.CloseNotify())
 		}
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, req)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 		}
 		resp, md, err := request_MutationService_GetMutations_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_MutationService_GetMutations_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_MutationService_GetMutations_0(ctx, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -177,18 +159,18 @@ func RegisterMutationServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 			}(ctx.Done(), cn.CloseNotify())
 		}
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, req)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 		}
 		resp, md, err := request_MutationService_GetMutationsStream_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(ctx, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_MutationService_GetMutationsStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+		forward_MutationService_GetMutationsStream_0(ctx, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -198,7 +180,7 @@ func RegisterMutationServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 var (
 	pattern_MutationService_GetMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "epochs", "epoch"}, ""))
 
-	pattern_MutationService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "epochs", "epoch"}, "stream"))
+	pattern_MutationService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "epochs"}, "stream"))
 )
 
 var (

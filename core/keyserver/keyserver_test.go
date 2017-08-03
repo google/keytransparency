@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	authzpb "github.com/google/keytransparency/core/proto/authorization"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
@@ -53,6 +54,7 @@ func TestListEntryHistory(t *testing.T) {
 		err         codes.Code
 	}{
 		{1, 1, 2, []int{1}, codes.OK},                                                            // one entry per page.
+		{0, 1, 2, []int{1}, codes.OK},                                                            // start epoch is not set (will default to 1).
 		{1, 10, 11, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, codes.OK},                              // 10 entries per page.
 		{4, 10, 14, []int{4, 5, 6, 7, 8, 9, 10, 11, 12, 13}, codes.OK},                           // start epoch is not 1.
 		{1, 0, 17, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, codes.OK},       // zero page size.
@@ -60,7 +62,7 @@ func TestListEntryHistory(t *testing.T) {
 		{24, 10, 0, []int{24}, codes.OK},                                                         // requesting the very last entry.
 		{1, 1000000, 17, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, codes.OK}, // DOS prevention.
 		{40, 10, 0, []int{}, codes.InvalidArgument},                                              // start epoch is beyond current epoch.
-		{0, 1, 1, []int{0}, codes.OK},                                                            // start epoch is less than 1.
+		{-1, 1, 1, []int{0}, codes.InvalidArgument},                                              // start epoch is less than 0.
 	} {
 		// Test case setup.
 		c := &fakeCommitter{make(map[string]*tpb.Committed)}
@@ -68,9 +70,10 @@ func TestListEntryHistory(t *testing.T) {
 		sths := &fakeSequenced{make([][]byte, 0)}
 		mapsvr := mapserver.NewReadonly(mapID, tree, fakeFactory{}, sths)
 		tlog := fake.NewFakeTrillianLogClient()
+		tadmin := trillian.NewTrillianAdminClient(nil)
 
-		srv := New(logID, tlog, mapID, mapsvr, c, fakePrivateKey{}, fakeMutator{},
-			authentication.NewFake(), fakeFactory{}, fakeMutation{})
+		srv := New(logID, tlog, mapID, mapsvr, tadmin, c, fakePrivateKey{}, fakeMutator{},
+			authentication.NewFake(), fakeAuthz{}, fakeFactory{}, fakeMutation{})
 		if err := addProfiles(profileCount, c, tree, sths); err != nil {
 			t.Fatalf("addProfile(%v, _, _, _)=%v", profileCount, err)
 		}
@@ -92,6 +95,7 @@ func TestListEntryHistory(t *testing.T) {
 
 		// Check next epoch.
 		if got, want := resp.NextStart, tc.wantNext; got != want {
+			fmt.Printf("tc: %+v", tc)
 			t.Errorf("%v: NextEpoch=%v, want %v", i, got, want)
 		}
 
@@ -193,6 +197,8 @@ type fakePrivateKey struct{}
 
 func (fakePrivateKey) Evaluate(m []byte) ([32]byte, []byte) { return [32]byte{}, nil }
 
+func (fakePrivateKey) Public() ([]byte, error) { return []byte{}, nil }
+
 // mutator.Mutator fake.
 type fakeMutator struct{}
 
@@ -249,4 +255,13 @@ func (f *fakeSequenced) Latest(txn transaction.Txn, logID int64, obj interface{}
 	epoch := int64(len(f.l) - 1)
 	err := f.Read(txn, logID, epoch, obj)
 	return epoch, err
+}
+
+// authorization.Authorization fake
+type fakeAuthz struct {
+}
+
+func (fakeAuthz) IsAuthorized(sctx *authentication.SecurityContext, mapID int64,
+	appID, userID string, permission authzpb.Permission) error {
+	return nil
 }

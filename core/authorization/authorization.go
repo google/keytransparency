@@ -12,6 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis --go_out=:. keytransparency_v1_types.proto
+// Package authorization defines the authorization interface of Key Transparency.
+package authorization
 
-package keytransparency_v1_types
+import (
+	"github.com/google/keytransparency/core/authentication"
+
+	authzpb "github.com/google/keytransparency/core/proto/authorization"
+)
+
+// Authorization authorizes access to RPCs.
+type Authorization interface {
+	// IsAuthorized verifies that the identity issuing the call
+	// (from ctx) is authorized to carry the given permission.
+	IsAuthorized(ctx *authentication.SecurityContext, mapID int64,
+		appID, userID string, permission authzpb.Permission) error
+}

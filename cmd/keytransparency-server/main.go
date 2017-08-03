@@ -32,6 +32,7 @@ import (
 
 	cmutation "github.com/google/keytransparency/core/mutation"
 	ctxn "github.com/google/keytransparency/core/transaction"
+	"github.com/google/keytransparency/impl/authorization"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/mutation"
 	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
@@ -45,7 +46,7 @@ import (
 	"github.com/google/trillian"
 
 	"github.com/golang/glog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
@@ -169,6 +170,7 @@ func main() {
 	default:
 		glog.Exitf("Invalid auth-type parameter: %v.", *authType)
 	}
+	authz := authorization.New()
 
 	// Create database and helper objects.
 	commitments, err := commitments.New(sqldb, *mapID)
@@ -191,12 +193,14 @@ func main() {
 
 	// Connect to map server.
 	var tmap trillian.TrillianMapClient
+	var tadmin trillian.TrillianAdminClient
 	if *mapURL != "" {
 		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 		if err != nil {
 			glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 		}
 		tmap = trillian.NewTrillianMapClient(mconn)
+		tadmin = trillian.NewTrillianAdminClient(mconn)
 	} else {
 		// Create an in-process readonly mapserver.
 		tmap, err = newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
@@ -206,8 +210,8 @@ func main() {
 	}
 
 	// Create gRPC server.
-	svr := keyserver.New(*logID, tlog, *mapID, tmap, commitments,
-		vrfPriv, mutator, auth, factory, mutations)
+	svr := keyserver.New(*logID, tlog, *mapID, tmap, tadmin, commitments,
+		vrfPriv, mutator, auth, authz, factory, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
