@@ -175,13 +175,12 @@ func main() {
 	tlog := trillian.NewTrillianLogClient(tconn)
 
 	// Connect to map server.
-
 	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 	}
 	tmap := trillian.NewTrillianMapClient(mconn)
-	tadmin = trillian.NewTrillianAdminClient(mconn)
+	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
 	svr := keyserver.New(*logID, tlog, *mapID, tmap, tadmin, commitments,

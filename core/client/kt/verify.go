@@ -47,7 +47,6 @@ var (
 
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
-	mapID  int64
 	vrf    vrf.PublicKey
 	hasher hashers.MapHasher
 	sig    crypto.PublicKey
@@ -55,13 +54,11 @@ type Verifier struct {
 }
 
 // New creates a new instance of the client verifier.
-func New(mapID int64,
-	vrf vrf.PublicKey,
+func New(vrf vrf.PublicKey,
 	hasher hashers.MapHasher,
 	sig crypto.PublicKey,
 	log client.LogVerifier) *Verifier {
 	return &Verifier{
-		mapID:  mapID,
 		vrf:    vrf,
 		hasher: hasher,
 		sig:    sig,

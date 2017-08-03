@@ -259,7 +259,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
 	// following profiles:
-	// [nil, nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
+	// [nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
 	for i, p := range [][]byte{
