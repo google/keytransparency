@@ -82,7 +82,7 @@ func generateNbrData(t *testing.T, leaves []Leaf) ([][][]byte, error) {
 */
 
 func TestVerifyProof(t *testing.T) {
-	verifier := New(mapID, sparse.CONIKSHasher)
+	verifier := New(sparse.CONIKSHasher)
 	for _, tc := range []struct {
 		root   []byte
 		leaves []Leaf
@@ -165,7 +165,7 @@ func TestVerifyProof(t *testing.T) {
 				nbrs[256-len(leaf.nbrs)+k] = nbr
 			}
 
-			if err := verifier.VerifyProof(nbrs, leaf.index, leaf.value, sparse.FromBytes(tc.root)); err != nil {
+			if err := verifier.VerifyProof(mapID, nbrs, leaf.index, leaf.value, sparse.FromBytes(tc.root)); err != nil {
 				t.Errorf("VerifyProof(_, %v, _, _)=%v", leaf.index, err)
 			}
 		}
