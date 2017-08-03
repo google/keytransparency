@@ -18,6 +18,7 @@
 package sqlhist
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/binary"
@@ -27,6 +28,7 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/tree"
 	"github.com/google/keytransparency/core/tree/sparse"
+	"github.com/google/trillian/merkle/coniks"
 
 	"golang.org/x/net/context"
 )
@@ -57,7 +59,7 @@ var (
 		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
 	);`,
 	}
-	hasher          = sparse.CONIKSHasher
+	hasher          = coniks.Default
 	errNilLeaf      = errors.New("nil leaf")
 	errIndexLen     = errors.New("index len != 32")
 	errInvalidEpoch = errors.New("invalid epoch")
@@ -313,7 +315,7 @@ func compressNeighbors(mapID int64, neighbors []sparse.Hash, index []byte, depth
 	for i, v := range neighbors {
 		// TODO: convert values to arrays rather than slices for comparison.
 		nIndex, nDepth := tree.InvertBitString(neighborBIndexes[i])
-		if v != hasher.HashEmpty(mapID, nIndex, nDepth) {
+		if got, want := v, hasher.HashEmpty(mapID, nIndex, nDepth); !bytes.Equal(got, want) {
 			compressed[i] = v.Bytes()
 		}
 	}

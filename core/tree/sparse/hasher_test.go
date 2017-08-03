@@ -15,6 +15,7 @@
 package sparse
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 )
@@ -25,9 +26,7 @@ func h2h(h string) Hash {
 	if err != nil {
 		panic("invalid hex string")
 	}
-	var ret Hash
-	copy(ret[:], b)
-	return ret
+	return b
 }
 
 func TestHashLeafVectors(t *testing.T) {
@@ -40,7 +39,7 @@ func TestHashLeafVectors(t *testing.T) {
 	}{
 		{treeID: 0, index: []byte("foo"), depth: 128, leaf: []byte("leaf"), want: h2h("2d6c9f648b61e786e18bcba49d1dc62dee2020cec168f0d2c9e47a7bd4633f02")},
 	} {
-		if got, want := CONIKSHasher.HashLeaf(tc.treeID, tc.index, tc.depth, tc.leaf), tc.want; got != want {
+		if got, want := CONIKSHasher.HashLeaf(tc.treeID, tc.index, tc.depth, tc.leaf), tc.want; !bytes.Equal(got, want) {
 			t.Errorf("HashLeaf(%v, %s, %v, %s): %x, want %x", tc.treeID, tc.index, tc.depth, tc.leaf, got, want)
 		}
 	}
@@ -55,7 +54,7 @@ func TestHashEmptyVectors(t *testing.T) {
 	}{
 		{treeID: 0, index: []byte("foo"), depth: 128, want: h2h("6db629ab14386f31c5f573a5734d7f3c50d97bf06fa0da606dad47b8b1a3eb32")},
 	} {
-		if got, want := CONIKSHasher.HashEmpty(tc.treeID, tc.index, tc.depth), tc.want; got != want {
+		if got, want := CONIKSHasher.HashEmpty(tc.treeID, tc.index, tc.depth), tc.want; !bytes.Equal(got, want) {
 			t.Errorf("HashEmpty(%v, %s, %v): %x, want %x", tc.treeID, tc.index, tc.depth, got, want)
 		}
 	}

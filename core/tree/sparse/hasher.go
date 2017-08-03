@@ -15,8 +15,7 @@
 package sparse
 
 import (
-	"bytes"
-	"crypto/sha512"
+	"crypto"
 	"encoding/binary"
 )
 
@@ -29,53 +28,53 @@ type TreeHasher interface {
 
 // CONIKSHasher implements the tree hashes described in CONIKS
 // http://www.jbonneau.com/doc/MBBFF15-coniks.pdf
-var CONIKSHasher TreeHasher = &coniks{}
+var CONIKSHasher TreeHasher = &coniksHasher{}
 
-type coniks struct{}
+type coniksHasher struct{}
 
 var (
 	leafIdentifier  = []byte("L")
 	emptyIdentifier = []byte("E")
-	hash            = sha512.Sum512_256
+	hash            = crypto.SHA512_256
 )
 
 // HashLeaf calculate the merkle tree node value:
 // H(Identifier || mapID || depth || index || dataHash)
-func (coniks) HashLeaf(mapID int64, index []byte, depth int, dataHash []byte) Hash {
+func (coniksHasher) HashLeaf(mapID int64, index []byte, depth int, dataHash []byte) Hash {
 	bmapID := make([]byte, 8)
 	binary.BigEndian.PutUint64(bmapID, uint64(mapID))
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
 
-	var b bytes.Buffer
+	b := hash.New()
 	b.Write(leafIdentifier)
 	b.Write(bmapID)
 	b.Write(index)
 	b.Write(bdepth)
 	b.Write(dataHash)
-	return Hash(hash(b.Bytes()))
+	return Hash(b.Sum(nil))
 }
 
 // HashInterior calculates an interior node's value: H(left || right)
-func (coniks) HashInterior(left, right Hash) Hash {
-	var b bytes.Buffer
+func (coniksHasher) HashInterior(left, right Hash) Hash {
+	b := hash.New()
 	b.Write(left.Bytes())
 	b.Write(right.Bytes())
-	return Hash(hash(b.Bytes()))
+	return Hash(b.Sum(nil))
 }
 
 // HashEmpty computes the value of an empty leaf:
 // H(EmptyIdentifier || mapID || depth || index)
-func (coniks) HashEmpty(mapID int64, index []byte, depth int) Hash {
+func (coniksHasher) HashEmpty(mapID int64, index []byte, depth int) Hash {
 	bmapID := make([]byte, 8)
 	binary.BigEndian.PutUint64(bmapID, uint64(mapID))
 	bdepth := make([]byte, 4)
 	binary.BigEndian.PutUint32(bdepth, uint32(depth))
 
-	var b bytes.Buffer
+	b := hash.New()
 	b.Write(emptyIdentifier)
 	b.Write(bmapID)
 	b.Write(index)
 	b.Write(bdepth)
-	return Hash(hash(b.Bytes()))
+	return Hash(b.Sum(nil))
 }
