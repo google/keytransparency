@@ -24,16 +24,17 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/tree/sparse"
-	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	tcrypto "github.com/google/trillian/crypto"
+	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 
+	tcrypto "github.com/google/trillian/crypto"
+
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian"
 )
 
 var (
@@ -46,22 +47,22 @@ var (
 
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
-	vrf  vrf.PublicKey
-	tree *tv.Verifier
-	sig  crypto.PublicKey
-	log  client.LogVerifier
+	vrf    vrf.PublicKey
+	hasher hashers.MapHasher
+	sig    crypto.PublicKey
+	log    client.LogVerifier
 }
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
-	tree *tv.Verifier,
+	hasher hashers.MapHasher,
 	sig crypto.PublicKey,
 	log client.LogVerifier) *Verifier {
 	return &Verifier{
-		vrf:  vrf,
-		tree: tree,
-		sig:  sig,
-		log:  log,
+		vrf:    vrf,
+		hasher: hasher,
+		sig:    sig,
+		log:    log,
 	}
 }
 
@@ -106,9 +107,14 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 		return ErrNilProof
 	}
 
-	if err := v.tree.VerifyProof(leafProof.Inclusion, index[:], leafProof.Leaf.LeafValue, sparse.FromBytes(in.GetSmr().RootHash)); err != nil {
+	leaf := leafProof.GetLeaf().GetLeafValue()
+	proof := leafProof.GetInclusion()
+	expectedRoot := in.GetSmr().GetRootHash()
+	mapID := in.GetSmr().GetMapId()
+	leafHash := v.hasher.HashLeaf(mapID, index[:], leaf)
+	if err := merkle.VerifyMapInclusionProof(mapID, index[:], leafHash, expectedRoot, proof, v.hasher); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return fmt.Errorf("tree.VerifyProof(): %v", err)
+		return fmt.Errorf("VerifyMapInclusionProof(): %v", err)
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 

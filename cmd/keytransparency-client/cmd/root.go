@@ -83,8 +83,6 @@ func init() {
 	RootCmd.PersistentFlags().String("log-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("log-key", "", "Path to public key PEM for Trillian Log server")
 
-	RootCmd.PersistentFlags().Int64("map-id", 0, "Map ID of the backend map server")
-
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
@@ -186,7 +184,7 @@ func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	return ver, nil
 }
 
-func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log client.LogVerifier) (*grpcc.Client, error) {
+func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig string, log client.LogVerifier) (*grpcc.Client, error) {
 	// Create Key Transparency client.
 	vrfKey, err := readVrfKey(vrfPubFile)
 	if err != nil {
@@ -197,7 +195,7 @@ func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log c
 		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return grpcc.New(mapID, cli, vrfKey, verifier, log), nil
+	return grpcc.New(cli, vrfKey, verifier, log), nil
 }
 
 func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.ClientConn, error) {
@@ -257,7 +255,6 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ktURL := viper.GetString("kt-url")
 	ktPEM := viper.GetString("kt-key")
 	ktSig := viper.GetString("kt-sig")
-	mapID := viper.GetInt64("map-id")
 	logPEM := viper.GetString("log-key")
 	serviceKeyFile := viper.GetString("service-key")
 	cc, err := dial(ktURL, ktPEM, clientSecretFile, serviceKeyFile)
@@ -277,7 +274,7 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	}
 	log := client.NewLogVerifier(hasher, logPubKey)
 
-	c, err := getClient(cc, mapID, vrfFile, ktSig, log)
+	c, err := getClient(cc, vrfFile, ktSig, log)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v", err)
 	}
