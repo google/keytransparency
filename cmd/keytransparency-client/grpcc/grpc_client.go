@@ -31,11 +31,10 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/tree/sparse"
-	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/merkle/maphasher"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -99,7 +98,7 @@ func New(
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, tv.New(sparse.CONIKSHasher), verifier, log),
+		kt:         kt.New(vrf, maphasher.Default, verifier, log),
 		log:        log,
 		mutator:    entry.New(),
 		RetryCount: 1,

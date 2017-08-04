@@ -249,7 +249,7 @@ func TestListHistory(t *testing.T) {
 		}
 
 		if got := sortHistory(resp); !reflect.DeepEqual(got, tc.wantHistory) {
-			t.Errorf("ListHistory(%v, %v): \n%v, want \n%v", tc.start, tc.end, got, tc.wantHistory)
+			t.Errorf("ListHistory(%v, %v): %x, want %x", tc.start, tc.end, got, tc.wantHistory)
 		}
 	}
 }
@@ -259,11 +259,11 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
 	// following profiles:
-	// [nil, nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
+	// [nil, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 5, 5, 5, 6, 6, 5, 7, 7].
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
 	for i, p := range [][]byte{
-		nil, nil, cp(1), cp(2), nil, nil, cp(3), nil,
+		nil, cp(1), cp(2), nil, nil, cp(3), nil,
 		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
 		nil, cp(5), cp(7), nil,
 	} {
