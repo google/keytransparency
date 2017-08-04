@@ -28,11 +28,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
+	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
-
-	tcrypto "github.com/google/trillian/crypto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )

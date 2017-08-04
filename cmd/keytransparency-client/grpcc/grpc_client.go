@@ -90,8 +90,7 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(
-	client spb.KeyTransparencyServiceClient,
+func New(client spb.KeyTransparencyServiceClient,
 	vrf vrf.PublicKey,
 	verifier crypto.PublicKey,
 	log client.LogVerifier) *Client {
