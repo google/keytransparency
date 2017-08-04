@@ -31,8 +31,8 @@ IP3="127.0.0.1"
 SERVICEKEY="service_key.json"
 LISTENADDR=""
 CERTDOMAIN=""
-# SAN extension's domain, change to localhost if the grpc server will be reached
-# via the loopback interface and not via docker/kubernetes:
+# Additional SAN extension domain (besides localhost for local testing).
+# (domain kt-server is valid from inside docker-compose/kubernetes)
 SAN_DNS="kt-server"
 CERTIP="0.0.0.0"
 
