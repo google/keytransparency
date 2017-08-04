@@ -127,7 +127,7 @@ func NewEnv(t *testing.T) *Env {
 
 	// Configure map.
 	treeParams := stestonly.MapTree
-	treeParams.HashStrategy = trillian.HashStrategy_TEST_MAP_HASHER
+	treeParams.HashStrategy = trillian.HashStrategy_CONIKS_SHA512_256
 	tree, err := mapEnv.AdminClient.CreateTree(ctx, &trillian.CreateTreeRequest{
 		Tree: treeParams,
 	})
