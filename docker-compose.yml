@@ -124,8 +124,6 @@ services:
       DB_USER: test
       DB_PASSWORD: zaphod
       LOG_KEY: /kt/trillian-log.pem
-      SIGN_KEY: /kt/p256-key.pem
-      SIGN_KEY_PW: towel
       MIN_SIGN_PERIOD: 5s
       MAX_SIGN_PERIOD: 5m
       VERBOSITY: 5
