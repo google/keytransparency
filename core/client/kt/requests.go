@@ -46,10 +46,11 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	}
 
 	// Commit to profile.
-	commitment, commitmentNonce, err := commitments.Commit(userID, appID, profileData)
+	commitmentNonce, err := commitments.GenCommitmentKey()
 	if err != nil {
 		return nil, err
 	}
+	commitment := commitments.Commit(userID, appID, profileData, commitmentNonce)
 
 	// Create new Entry.
 	keys := authorizedKeys

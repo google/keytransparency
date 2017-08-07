@@ -81,7 +81,11 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	appID := "app"
 	vrfPriv, _ := p256.GenerateKey()
 	index, _ := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
-	commitment, nonce, _ := commitments.Commit(userID, appID, profileData)
+	nonce, err := commitments.GenCommitmentKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	commitment := commitments.Commit(userID, appID, profileData, nonce)
 
 	for _, tc := range []struct {
 		want       bool

@@ -25,8 +25,6 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"errors"
-
-	"golang.org/x/net/context"
 )
 
 const (
@@ -48,35 +46,21 @@ var (
 	Rand = rand.Reader
 )
 
-// Committer saves cryptographic commitments.
-type Committer interface {
-	// Write saves a cryptographic commitment and associated data.
-	Write(ctx context.Context, commitment, data, nonce []byte) error
-	// Read looks up a cryptograpic commitment and returns associated data.
-	Read(ctx context.Context, commitment []byte) (data, nonce []byte, err error)
+// GenCommitmentKey generates a commitment key for use in Commit.  This key
+// must be kept secret in order to prevent an adversary from learning what data
+// has been committed to by a commitment. To unseal and verify a commitment,
+// provide this key, along with the data under commitment to the client.
+func GenCommitmentKey() ([]byte, error) {
+	// Generate commitment nonce.
+	nonce := make([]byte, commitmentKeyLen)
+	if _, err := Rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	return nonce, nil
 }
 
 // Commit makes a cryptographic commitment under a specific userID to data.
-func Commit(userID, appID string, data []byte) (commitment, nonce []byte, err error) {
-	// Generate commitment nonce.
-	nonce = make([]byte, commitmentKeyLen)
-	if _, err := Rand.Read(nonce); err != nil {
-		return nil, nil, err
-	}
-
-	return createCommitment(userID, appID, data, nonce), nonce, nil
-}
-
-// Verify customizes a commitment with a userID.
-func Verify(userID, appID string, commitment, data, nonce []byte) error {
-	if got, want := createCommitment(userID, appID, data, nonce),
-		commitment; !hmac.Equal(got, want) {
-		return ErrInvalidCommitment
-	}
-	return nil
-}
-
-func createCommitment(userID, appID string, data, nonce []byte) []byte {
+func Commit(userID, appID string, data, nonce []byte) []byte {
 	mac := hmac.New(hashAlgo, fixedKey)
 	mac.Write([]byte(prefix))
 	mac.Write(nonce)
@@ -89,4 +73,13 @@ func createCommitment(userID, appID string, data, nonce []byte) []byte {
 	mac.Write(data)
 
 	return mac.Sum(nil)
+}
+
+// Verify customizes a commitment with a userID.
+func Verify(userID, appID string, commitment, data, nonce []byte) error {
+	if got, want := Commit(userID, appID, data, nonce),
+		commitment; !hmac.Equal(got, want) {
+		return ErrInvalidCommitment
+	}
+	return nil
 }

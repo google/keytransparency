@@ -37,10 +37,11 @@ func TestCommit(t *testing.T) {
 		{"foo", "app", "bar", "foo", "ap", "pbar", false, ErrInvalidCommitment},
 	} {
 		data := []byte(tc.data)
-		c, nonce, err := Commit(tc.userID, tc.appID, data)
+		nonce, err := GenCommitmentKey()
 		if err != nil {
 			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.data, err)
 		}
+		c := Commit(tc.userID, tc.appID, data, nonce)
 		if tc.mutate {
 			c[0] ^= 1
 		}
@@ -66,15 +67,15 @@ func TestVectors(t *testing.T) {
 		{"foo", "app", "bar1", dh("0fa2d7d53552e0871564c0e82ad394e72476b75f7fc77f40e2080af7f33d66eb")},
 	} {
 		data := []byte(tc.data)
-		c, nonce, err := Commit(tc.userID, tc.appID, data)
+		nonce, err := GenCommitmentKey()
 		if err != nil {
-			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.data, err)
-		}
-		if got, want := c, tc.want; !bytes.Equal(got, want) {
-			t.Errorf("Commit(%v, %x): %x ,want %x", tc.userID, tc.data, got, want)
+			t.Errorf("GenCommitmentKey(%v, %x): %v", tc.userID, tc.data, err)
 		}
 		if got, want := nonce, zeroKey; !bytes.Equal(got, want) {
 			t.Errorf("Commit(%v, %x).Key: %x ,want %x", tc.userID, tc.data, got, want)
+		}
+		if got, want := Commit(tc.userID, tc.appID, data, nonce), tc.want; !bytes.Equal(got, want) {
+			t.Errorf("Commit(%v, %x): %x ,want %x", tc.userID, tc.data, got, want)
 		}
 	}
 }

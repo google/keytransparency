@@ -39,10 +39,11 @@ func TestWriteRead(t *testing.T) {
 
 	// Create test data.
 	pdata := []byte("key")
-	commitment, nonce, err := commitments.Commit("foo", "app", pdata)
+	nonce, err := commitments.GenCommitmentKey()
 	if err != nil {
 		t.Fatalf("Failed to create commitment: %v", err)
 	}
+	commitment := commitments.Commit("foo", "app", pdata, nonce)
 
 	for _, tc := range []struct {
 		commitment, key []byte
