@@ -31,10 +31,10 @@ IP3="127.0.0.1"
 SERVICEKEY="service_key.json"
 LISTENADDR=""
 CERTDOMAIN=""
-# Additional SAN extension domain (besides localhost for local testing).
+# Additional SAN extension domain and IP; besides localhost for local testing.
 # (domain kt-server is valid from inside docker-compose/kubernetes)
 SAN_DNS="kt-server"
-CERTIP="0.0.0.0"
+CERTIP="35.184.134.53"
 
 function usage()
 {

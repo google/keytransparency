@@ -32,11 +32,11 @@ if [[ -n "${COMMONNAME}" ]]; then
 fi
 
 # TODO(ismail): make the IPs configurable as well
-ALTNAMES="[alt_names]\nDNS.1=${SAN_DNS}\nDNS.2=localhost\nIP.1=0.0.0.0\nIP.2=35.184.134.53"
-SANEXT="[SAN]\nbasicConstraints=CA:TRUE\nsubjectAltName=@alt_names\n\n${ALTNAMES}"
+ALTNAMES="[alt_names]\nDNS.1=${SAN_DNS}\nDNS.2=localhost\nIP.1=0.0.0.0"
 if [[ -n "${ADDRESS}" ]]; then
-    SANEXT="${SANEXT}"
+    ALTNAMES="${ALTNAMES}\nIP.2=${ADDRESS}"
 fi
+SANEXT="[SAN]\nbasicConstraints=CA:TRUE\nsubjectAltName=@alt_names\n\n${ALTNAMES}"
 
 # Create output directory.
 mkdir -p "${GOPATH}/src/github.com/google/keytransparency/genfiles"
@@ -47,8 +47,6 @@ openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
 openssl rsa -passin pass:x -in server.pass.key -out server.key
 chmod 600 server.key
 rm server.pass.key
-# The following command does not work on a Mac
-# (unless /System/Library/OpenSSL/openssl.cnf is linked to /etc/ssl/openssl.cnf):
 openssl req -new \
 	-key server.key \
 	-subj "${SUBJECT}" \
