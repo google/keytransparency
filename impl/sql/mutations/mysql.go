@@ -21,8 +21,6 @@ import (
 )
 
 var (
-	driverName = "mysql"
-
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (

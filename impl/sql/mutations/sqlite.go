@@ -21,8 +21,6 @@ import (
 )
 
 var (
-	driverName = "sqlite3"
-
 	createStmt = []string{
 		`
 	CREATE TABLE IF NOT EXISTS Maps (
