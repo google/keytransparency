@@ -72,7 +72,7 @@ func (Verifier) VerifyCommitment(userID, appID string, in *tpb.GetEntryResponse)
 		if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
 			return err
 		}
-		if err := commitments.Verify(userID, appID, entry.Commitment, in.Committed); err != nil {
+		if err := commitments.Verify(userID, appID, entry.GetCommitment(), in.GetCommitted()); err != nil {
 			return err
 		}
 	}
@@ -94,7 +94,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), in.VrfProof)
+	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), in.GetVrfProof())
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
 		return fmt.Errorf("vrf.ProofToHash(%v, %v): %v", userID, appID, err)
@@ -122,7 +122,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	// by removing the signature from the object.
 	smr := *in.GetSmr()
 	smr.Signature = nil // Remove the signature from the object to be verified.
-	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().Signature); err != nil {
+	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().GetSignature()); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return fmt.Errorf("sig.Verify(SMR): %v", err)
 	}
@@ -130,8 +130,8 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	if err := v.log.VerifyRoot(trusted, in.LogRoot, in.LogConsistency); err != nil {
-		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.LogRoot, in.LogConsistency, err)
+	if err := v.log.VerifyRoot(trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
+		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
 	Vlog.Printf("✓ Log root updated.")
 
@@ -141,7 +141,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
 	if err := v.log.VerifyInclusionAtIndex(trusted, b, in.GetSmr().GetMapRevision(),
-		in.LogInclusion); err != nil {
+		in.GetLogInclusion()); err != nil {
 		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
 			b, in.GetSmr().GetMapRevision(), err)
 	}

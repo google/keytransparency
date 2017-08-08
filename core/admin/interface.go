@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package admin supports configuing Key Transparency with multiple Trillian backends.
+// Package admin supports configuring Key Transparency with multiple Trillian backends.
 package admin
 
 import "github.com/google/trillian/client"
