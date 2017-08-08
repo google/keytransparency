@@ -158,9 +158,4 @@ VRF_PRIV=\"genfiles/vrf-key.pem\"
 VRF_PUB=\"genfiles/vrf-pubkey.pem\""
 fi
 
-if ((BACKEND == 1)); then
-    ENV="${ENV}
-SIGN_KEY=\"genfiles/p256-key.pem\""
-fi
-
 printf "%s\n" "${ENV}" > .env
