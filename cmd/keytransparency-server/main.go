@@ -113,7 +113,7 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
 // connections or otherHandler otherwise. Copied from cockroachdb.
-func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+func grpcHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is a partial recreation of gRPC's internal checks.
 		// https://github.com/grpc/grpc-go/blob/master/transport/handler_server.go#L62
