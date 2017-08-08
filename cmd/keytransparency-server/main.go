@@ -28,26 +28,27 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 
-	cmutation "github.com/google/keytransparency/core/mutation"
 	"github.com/google/keytransparency/impl/authorization"
-	gauth "github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/mutation"
-	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/transaction"
-	"github.com/google/trillian"
 
 	"github.com/golang/glog"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/google/trillian"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+
+	cmutation "github.com/google/keytransparency/core/mutation"
+	gauth "github.com/google/keytransparency/impl/google/authentication"
+	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
@@ -207,7 +208,7 @@ func main() {
 	mux.Handle("/", gwmux)
 
 	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", prometheus.Handler())
+	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
 		log.Printf("Hosting metrics on %v", *metricsAddr)
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {

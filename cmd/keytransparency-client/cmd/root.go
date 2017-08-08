@@ -39,6 +39,7 @@ import (
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
@@ -128,7 +129,7 @@ func readVrfKey(vrfPubFile string) (vrf.PublicKey, error) {
 }
 
 // getTokenFromWeb uses config to request a Token.  Returns the retrieved Token.
-func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
+func getTokenFromWeb(ctx context.Context, config *oauth2.Config) (*oauth2.Token, error) {
 	// TODO: replace state token with something random to prevent CSRF.
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOnline)
 	fmt.Printf("Go to the following link in your browser then type the "+
@@ -139,14 +140,14 @@ func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 		return nil, err
 	}
 
-	tok, err := config.Exchange(oauth2.NoContext, code)
+	tok, err := config.Exchange(ctx, code)
 	if err != nil {
 		return nil, err
 	}
 	return tok, nil
 }
 
-func getCreds(clientSecretFile string) (credentials.PerRPCCredentials, error) {
+func getCreds(ctx context.Context, clientSecretFile string) (credentials.PerRPCCredentials, error) {
 	b, err := ioutil.ReadFile(clientSecretFile)
 	if err != nil {
 		return nil, err
@@ -157,7 +158,7 @@ func getCreds(clientSecretFile string) (credentials.PerRPCCredentials, error) {
 		return nil, err
 	}
 
-	tok, err := getTokenFromWeb(config)
+	tok, err := getTokenFromWeb(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -199,6 +200,7 @@ func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig string, log client.LogVeri
 }
 
 func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.ClientConn, error) {
+	ctx := context.Background()
 	var opts []grpc.DialOption
 	if true {
 		host, _, err := net.SplitHostPort(ktURL)
@@ -228,7 +230,7 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 		opts = append(opts, grpc.WithPerRPCCredentials(
 			authentication.GetFakeCredential(fakeUserID)))
 	case clientSecretFile != "":
-		creds, err := getCreds(clientSecretFile)
+		creds, err := getCreds(ctx, clientSecretFile)
 		if err != nil {
 			return nil, err
 		}

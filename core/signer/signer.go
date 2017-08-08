@@ -122,7 +122,7 @@ func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time
 	last := time.Unix(0, mapRoot.GetTimestampNanos())
 	// Start issuing epochs:
 	clock := util.SystemTimeSource{}
-	tc := time.Tick(minInterval)
+	tc := time.NewTicker(minInterval).C
 	for f := range genEpochTicks(clock, last, tc, minInterval, maxInterval) {
 		ctxTime, cancel := context.WithTimeout(ctx, minInterval)
 		if err := s.CreateEpoch(ctxTime, f); err != nil {
@@ -318,7 +318,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	mutationsCtr.Add(float64(len(mutations)))
 	indexCtr.Add(float64(len(indexes)))
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
-	createEpochHist.Observe(time.Now().Sub(start).Seconds())
+	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
 	return nil
 }

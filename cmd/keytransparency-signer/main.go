@@ -24,6 +24,7 @@ import (
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/signer"
+
 	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -32,7 +33,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -104,7 +105,7 @@ func main() {
 	mutator := entry.New()
 
 	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", prometheus.Handler())
+	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
 			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
