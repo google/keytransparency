@@ -42,18 +42,22 @@ var (
 	fixedKey = []byte{0x19, 0x6e, 0x7e, 0x52, 0x84, 0xa7, 0xef, 0x93, 0x0e, 0xcb, 0x9a, 0x19, 0x78, 0x74, 0x97, 0x55}
 	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
 	ErrInvalidCommitment = errors.New("invalid commitment")
-	// Rand is the PRNG reader. It can be overwritten in tests.
-	Rand = rand.Reader
 )
 
-// GenCommitmentKey generates a commitment key for use in Commit.  This key
-// must be kept secret in order to prevent an adversary from learning what data
-// has been committed to by a commitment. To unseal and verify a commitment,
+// GenCommitmentKey generates a commitment key for use in Commit. This key must
+// be kept secret in order to prevent an adversary from learning what data has
+// been committed to by a commitment. To unseal and verify a commitment,
 // provide this key, along with the data under commitment to the client.
+//
+// In Key Transparency, the user generates this key, creates a commitment, and
+// signs it.  The user uploads the signed commitment along with this key and
+// the associated data to the server in order for the server to reveal the
+// associated data to senders. This commitment scheme keeps the associated data
+// from leeking to anyone that has not explicitly requested it from the server.
 func GenCommitmentKey() ([]byte, error) {
 	// Generate commitment nonce.
 	nonce := make([]byte, commitmentKeyLen)
-	if _, err := Rand.Read(nonce); err != nil {
+	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
 	}
 	return nonce, nil

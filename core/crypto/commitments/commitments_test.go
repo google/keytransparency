@@ -20,9 +20,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"testing"
-
-	"github.com/google/keytransparency/core/crypto/dev"
 )
+
+// Use a constant key of zero to obtain consistent test vectors.
+// Real commitment library MUST use random keys.
+var zeroKey = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 func TestCommit(t *testing.T) {
 	for _, tc := range []struct {
@@ -37,25 +39,18 @@ func TestCommit(t *testing.T) {
 		{"foo", "app", "bar", "foo", "ap", "pbar", false, ErrInvalidCommitment},
 	} {
 		data := []byte(tc.data)
-		nonce, err := GenCommitmentKey()
-		if err != nil {
-			t.Errorf("Commit(%v, %x): %v", tc.userID, tc.data, err)
-		}
-		c := Commit(tc.userID, tc.appID, data, nonce)
+		c := Commit(tc.userID, tc.appID, data, zeroKey)
 		if tc.mutate {
 			c[0] ^= 1
 		}
-		if got := Verify(tc.muserID, tc.mappID, c, data, nonce); got != tc.want {
-			t.Errorf("Verify(%v, %v, %x, %x, %x): %v, want %v", tc.userID, tc.appID, c, data, nonce, err, tc.want)
+		if got := Verify(tc.muserID, tc.mappID, c, data, zeroKey); got != tc.want {
+			t.Errorf("Verify(%v, %v, %x, %x, %x): %v, want %v",
+				tc.userID, tc.appID, c, data, zeroKey, got, tc.want)
 		}
 	}
 }
 
 func TestVectors(t *testing.T) {
-	// Use a constant key of zero to obtain consistent test vectors.
-	// Real commitment library MUST use random keys.
-	Rand = dev.Zeros
-	zeroKey := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	for _, tc := range []struct {
 		userID, appID, data string
 		want                []byte
@@ -67,14 +62,7 @@ func TestVectors(t *testing.T) {
 		{"foo", "app", "bar1", dh("0fa2d7d53552e0871564c0e82ad394e72476b75f7fc77f40e2080af7f33d66eb")},
 	} {
 		data := []byte(tc.data)
-		nonce, err := GenCommitmentKey()
-		if err != nil {
-			t.Errorf("GenCommitmentKey(%v, %x): %v", tc.userID, tc.data, err)
-		}
-		if got, want := nonce, zeroKey; !bytes.Equal(got, want) {
-			t.Errorf("Commit(%v, %x).Key: %x ,want %x", tc.userID, tc.data, got, want)
-		}
-		if got, want := Commit(tc.userID, tc.appID, data, nonce), tc.want; !bytes.Equal(got, want) {
+		if got, want := Commit(tc.userID, tc.appID, data, zeroKey), tc.want; !bytes.Equal(got, want) {
 			t.Errorf("Commit(%v, %x): %x ,want %x", tc.userID, tc.data, got, want)
 		}
 	}
