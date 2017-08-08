@@ -24,16 +24,16 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/tree/sparse"
-	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
+	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian"
 )
 
 var (
@@ -46,22 +46,22 @@ var (
 
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
-	vrf  vrf.PublicKey
-	tree *tv.Verifier
-	sig  crypto.PublicKey
-	log  client.LogVerifier
+	vrf    vrf.PublicKey
+	hasher hashers.MapHasher
+	sig    crypto.PublicKey
+	log    client.LogVerifier
 }
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
-	tree *tv.Verifier,
+	hasher hashers.MapHasher,
 	sig crypto.PublicKey,
 	log client.LogVerifier) *Verifier {
 	return &Verifier{
-		vrf:  vrf,
-		tree: tree,
-		sig:  sig,
-		log:  log,
+		vrf:    vrf,
+		hasher: hasher,
+		sig:    sig,
+		log:    log,
 	}
 }
 
@@ -72,7 +72,7 @@ func (Verifier) VerifyCommitment(userID, appID string, in *tpb.GetEntryResponse)
 		if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
 			return err
 		}
-		if err := commitments.Verify(userID, appID, entry.Commitment, in.Committed); err != nil {
+		if err := commitments.Verify(userID, appID, entry.GetCommitment(), in.GetCommitted()); err != nil {
 			return err
 		}
 	}
@@ -94,7 +94,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), in.VrfProof)
+	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), in.GetVrfProof())
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
 		return fmt.Errorf("vrf.ProofToHash(%v, %v): %v", userID, appID, err)
@@ -106,9 +106,14 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 		return ErrNilProof
 	}
 
-	if err := v.tree.VerifyProof(leafProof.Inclusion, index[:], leafProof.Leaf.LeafValue, sparse.FromBytes(in.GetSmr().RootHash)); err != nil {
+	leaf := leafProof.GetLeaf().GetLeafValue()
+	proof := leafProof.GetInclusion()
+	expectedRoot := in.GetSmr().GetRootHash()
+	mapID := in.GetSmr().GetMapId()
+	leafHash := v.hasher.HashLeaf(mapID, index[:], leaf)
+	if err := merkle.VerifyMapInclusionProof(mapID, index[:], leafHash, expectedRoot, proof, v.hasher); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return fmt.Errorf("tree.VerifyProof(): %v", err)
+		return fmt.Errorf("VerifyMapInclusionProof(): %v", err)
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
@@ -117,7 +122,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	// by removing the signature from the object.
 	smr := *in.GetSmr()
 	smr.Signature = nil // Remove the signature from the object to be verified.
-	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().Signature); err != nil {
+	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().GetSignature()); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return fmt.Errorf("sig.Verify(SMR): %v", err)
 	}
@@ -125,8 +130,8 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	if err := v.log.VerifyRoot(trusted, in.LogRoot, in.LogConsistency); err != nil {
-		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.LogRoot, in.LogConsistency, err)
+	if err := v.log.VerifyRoot(trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
+		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
 	Vlog.Printf("✓ Log root updated.")
 
@@ -136,7 +141,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
 	if err := v.log.VerifyInclusionAtIndex(trusted, b, in.GetSmr().GetMapRevision(),
-		in.LogInclusion); err != nil {
+		in.GetLogInclusion()); err != nil {
 		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
 			b, in.GetSmr().GetMapRevision(), err)
 	}
