@@ -78,15 +78,13 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
-	RootCmd.PersistentFlags().String("vrf", "testdata/vrf-pubkey.pem", "path to vrf public key")
-
-	RootCmd.PersistentFlags().Int64("log-id", 0, "Log ID of the backend log server")
-	RootCmd.PersistentFlags().String("log-url", "", "URL of Certificate Transparency server")
-	RootCmd.PersistentFlags().String("log-key", "", "Path to public key PEM for Trillian Log server")
 
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
-	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
-	RootCmd.PersistentFlags().String("kt-sig", "testdata/p256-pubkey.pem", "Path to public key for signed map heads")
+	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
+	RootCmd.PersistentFlags().String("vrf", "genfiles/vrf-pubkey.pem", "path to vrf public key")
+
+	RootCmd.PersistentFlags().String("log-key", "genfiles/trillian-log.pem", "Path to public key PEM for Trillian Log server")
+	RootCmd.PersistentFlags().String("map-key", "genfiles/trillian-map.pem", "Path to public key PEM for Trillian Map server")
 
 	RootCmd.PersistentFlags().String("fake-auth-userid", "", "userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
 
@@ -253,13 +251,13 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 // GetClient connects to the server and returns a key transparency verification
 // client.
 func GetClient(clientSecretFile string) (*grpcc.Client, error) {
-	vrfFile := viper.GetString("vrf")
 	ktURL := viper.GetString("kt-url")
-	ktPEM := viper.GetString("kt-key")
-	ktSig := viper.GetString("kt-sig")
+	ktCert := viper.GetString("kt-cert")
+	vrfFile := viper.GetString("vrf")
 	logPEM := viper.GetString("log-key")
-	serviceKeyFile := viper.GetString("service-key")
-	cc, err := dial(ktURL, ktPEM, clientSecretFile, serviceKeyFile)
+	mapPEM := viper.GetString("map-key")
+	serviceKeyFile := viper.GetString("service-key") // Anonymous user creds.
+	cc, err := dial(ktURL, ktCert, clientSecretFile, serviceKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
@@ -276,7 +274,7 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	}
 	log := client.NewLogVerifier(hasher, logPubKey)
 
-	c, err := getClient(cc, vrfFile, ktSig, log)
+	c, err := getClient(cc, vrfFile, mapPEM, log)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v", err)
 	}
