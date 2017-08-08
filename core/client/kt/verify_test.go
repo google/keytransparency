@@ -28,7 +28,6 @@ import (
 var (
 	primaryUserID = "bob"
 	primaryAppID  = "myapp"
-	fakeUserID    = "eve"
 	profileData   = []byte("key")
 )
 
