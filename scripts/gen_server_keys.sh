@@ -18,11 +18,12 @@ COMMONNAME=""
 ADDRESS=""
 SUBJECT="/C=US"
 
-while getopts d:a: option; do
+while getopts d:a:s: option; do
     case "${option}" in
 	d) COMMONNAME=${OPTARG};;
 	a) ADDRESS=${OPTARG};;
-	*) echo "usage: ./generate.sh -d <domain> -a <ip_address>"; exit 1;;
+	s) SAN_DNS=${OPTARG};;
+	*) echo "usage: ./generate.sh -d <domain> -a <ip_address> -s <san_extension_DNS>"; exit 1;;
     esac
 done
 
@@ -30,10 +31,12 @@ if [[ -n "${COMMONNAME}" ]]; then
     SUBJECT="${SUBJECT}/CN=${COMMONNAME}"
 fi
 
-SANEXT="[SAN]\nbasicConstraints=CA:TRUE\nsubjectAltName=DNS:localhost"
+# TODO(ismail): make the IPs configurable as well
+ALTNAMES="[alt_names]\nDNS.1=${SAN_DNS}\nDNS.2=localhost\nIP.1=0.0.0.0"
 if [[ -n "${ADDRESS}" ]]; then
-    SANEXT="${SANEXT},IP.2:${ADDRESS}"
+    ALTNAMES="${ALTNAMES}\nIP.2=${ADDRESS}"
 fi
+SANEXT="[SAN]\nbasicConstraints=CA:TRUE\nsubjectAltName=@alt_names\n\n${ALTNAMES}"
 
 # Create output directory.
 mkdir -p "${GOPATH}/src/github.com/google/keytransparency/genfiles"

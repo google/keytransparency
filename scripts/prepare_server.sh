@@ -31,7 +31,10 @@ IP3="127.0.0.1"
 SERVICEKEY="service_key.json"
 LISTENADDR=""
 CERTDOMAIN=""
-CERTIP="0.0.0.0"
+# Additional SAN extension domain and IP; besides localhost for local testing.
+# (domain kt-server is valid from inside docker-compose/kubernetes)
+SAN_DNS="kt-server"
+CERTIP="35.184.134.53"
 
 function usage()
 {
@@ -125,7 +128,7 @@ cd "${GOPATH}/src/github.com/google/keytransparency"
 
 # Create keys.
 if ((FRONTEND == 1)); then
-    ./scripts/gen_server_keys.sh -d "${CERTDOMAIN}" -a "${CERTIP}"
+    ./scripts/gen_server_keys.sh -d "${CERTDOMAIN}" -a "${CERTIP}" -s "${SAN_DNS}"
 fi
 
 if ((BACKEND == 1)); then
