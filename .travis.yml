@@ -22,16 +22,13 @@ addons:
     - parallel
 
 install:
-  - go get github.com/golang/lint/golint
-  - go get github.com/kisielk/errcheck
-  - go get github.com/fzipp/gocyclo
-  - go get github.com/gordonklaus/ineffassign
-  - go get github.com/client9/misspell/cmd/misspell
+  - go get -u github.com/alecthomas/gometalinter
+  - gometalinter --install 
   - go get ./...
 
 script:
   - make
-  - ./scripts/travis-presubmit.sh
+  - gometalinter --config=metalinter.json ./...
   - ./coverage.sh
 
 after_success:
