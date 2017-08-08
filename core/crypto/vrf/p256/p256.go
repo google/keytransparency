@@ -77,7 +77,7 @@ func H1(m []byte) (x, y *big.Int) {
 	for x == nil && i < 100 {
 		// TODO: Use a NIST specified DRBG.
 		h.Reset()
-		binary.Write(h, binary.BigEndian, uint32(i))
+		binary.Write(h, binary.BigEndian, i)
 		h.Write(m)
 		r := []byte{2} // Set point encoding to "compressed", y=0.
 		r = h.Sum(r)
@@ -97,7 +97,7 @@ func H2(m []byte) *big.Int {
 	for i := uint32(0); ; i++ {
 		// TODO: Use a NIST specified DRBG.
 		h.Reset()
-		binary.Write(h, binary.BigEndian, uint32(i))
+		binary.Write(h, binary.BigEndian, i)
 		h.Write(m)
 		b := h.Sum(nil)
 		k := new(big.Int).SetBytes(b[:byteLen])

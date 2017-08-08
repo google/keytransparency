@@ -28,33 +28,33 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 
-	cmutation "github.com/google/keytransparency/core/mutation"
 	"github.com/google/keytransparency/impl/authorization"
-	gauth "github.com/google/keytransparency/impl/google/authentication"
 	"github.com/google/keytransparency/impl/mutation"
-	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/transaction"
-	"github.com/google/trillian"
 
 	"github.com/golang/glog"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/google/trillian"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+
+	cmutation "github.com/google/keytransparency/core/mutation"
+	gauth "github.com/google/keytransparency/impl/google/authentication"
+	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath = flag.String("db", "db", "Database connection string")
-	realm        = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
@@ -114,7 +114,7 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
 // connections or otherHandler otherwise. Copied from cockroachdb.
-func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+func grpcHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is a partial recreation of gRPC's internal checks.
 		// https://github.com/grpc/grpc-go/blob/master/transport/handler_server.go#L62
@@ -208,7 +208,7 @@ func main() {
 	mux.Handle("/", gwmux)
 
 	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", prometheus.Handler())
+	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
 		log.Printf("Hosting metrics on %v", *metricsAddr)
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {

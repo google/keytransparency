@@ -48,9 +48,6 @@ const (
 	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
 	// size 16 will contain about 8KB of data.
 	pageSize = 16
-	// The default capacity used when creating a profiles list in
-	// ListHistory.
-	defaultListCap = 10
 	// TODO: Public keys of trusted monitors.
 )
 
