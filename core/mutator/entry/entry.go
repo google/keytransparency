@@ -103,6 +103,22 @@ func (*Entry) Mutate(oldValueM, updateM proto.Message) ([]byte, error) {
 	return update.GetKeyValue().GetValue(), nil
 }
 
+// FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
+// Entry or nil if the passes LeafValue was nil.
+func FromLeafValue(value []byte) (*tpb.Entry, error) {
+	if len(value) > 0 {
+		entry := new(tpb.Entry)
+		if err := proto.Unmarshal(value, entry); err != nil {
+			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)
+		 	return nil, err
+		}
+		return entry, nil
+	}
+	// For the very first mutation we will have
+	// resp.LeafProof.MapLeaf.LeafValue=nil.
+	return nil, nil
+}
+
 // verifyKeys verifies both old and new authorized keys based on the following
 // criteria:
 //   1. At least one signature with a key in the previous entry should exist.

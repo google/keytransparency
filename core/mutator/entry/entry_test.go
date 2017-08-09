@@ -188,7 +188,10 @@ func TestCheckMutation(t *testing.T) {
 
 		if _, got := New().Mutate(tc.oldEntry, mutation); got != tc.err {
 			t.Errorf("In %d: Mutate(%v, %v)=%v, want %v", i, tc.oldEntry, mutation, got, tc.err)
-
 		}
 	}
+}
+
+func TestFromLeafValue(t *testing.T) {
+
 }
