@@ -292,7 +292,6 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	// - Hash of current data matches the expectation in the mutation.
 
 	// The very first mutation will have resp.LeafProof.MapLeaf.LeafValue=nil.
-
 	oldLeafB := resp.GetLeafProof().GetLeaf().GetLeafValue()
 	oldEntry, err := entry.FromLeafValue(oldLeafB)
 	if err != nil {
