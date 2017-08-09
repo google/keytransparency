@@ -4,7 +4,7 @@
 	      "license": "grep -rL 'Apache License' {path}:^(?P<path>.*?\\.go.*)"
              },
   "Severity": {"license": "error"},
-  "Enable": ["gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
+  "Enable": ["license", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
   "Vendor": true,
   "VendoredLinters": true,
   "Skip": ["core/proto", "impl/proto"],
