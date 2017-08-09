@@ -15,11 +15,9 @@ import (
 	"net"
 	"time"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
