@@ -27,6 +27,7 @@ import (
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/sigpb"
+	"github.com/google/keytransparency/core/mutator/entry"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
@@ -40,8 +41,9 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, fmt.Errorf("ProofToHash(): %v", err)
 	}
-	prevEntry := new(tpb.Entry)
-	if err := proto.Unmarshal(getResp.GetLeafProof().GetLeaf().GetLeafValue(), prevEntry); err != nil {
+	oldLeaf := getResp.GetLeafProof().GetLeaf().GetLeafValue()
+	prevEntry, err := entry.FromLeafValue(oldLeaf)
+	if err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
 	}
 

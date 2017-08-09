@@ -203,7 +203,7 @@ func TestFromLeafValue(t *testing.T) {
 	}{
 		{make([]byte, 0), nil, false},            // empty leaf -> nil, no error
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
-		{entryB, entry, false},
+		{entryB, entry, false},										// valid leaf
 	} {
 		if got, _ := FromLeafValue(tc.leafVal); !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("FromLeafValue(%v)=%v, _ , want %v", tc.leafVal, got, tc.want)
