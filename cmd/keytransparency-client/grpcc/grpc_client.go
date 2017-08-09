@@ -34,7 +34,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/merkle/maphasher"
+	"github.com/google/trillian/merkle/coniks"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -94,7 +94,7 @@ func New(client spb.KeyTransparencyServiceClient,
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, maphasher.Default, verifier, log),
+		kt:         kt.New(vrf, coniks.Default, verifier, log),
 		log:        log,
 		mutator:    entry.New(),
 		RetryCount: 1,
