@@ -125,13 +125,17 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
 
-		committed, err = s.committer.Read(ctx, entry.Commitment)
+		data, nonce, err := s.committer.Read(ctx, entry.Commitment)
 		if err != nil {
 			glog.Errorf("Cannot read committed value: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
 		}
-		if committed == nil {
+		if data == nil {
 			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", entry.Commitment)
+		}
+		committed = &tpb.Committed{
+			Key:  nonce,
+			Data: data,
 		}
 	}
 
@@ -364,7 +368,7 @@ func (s *Server) saveCommitment(ctx context.Context, kv *tpb.KeyValue, committed
 	}
 
 	// Write the commitment.
-	if err := s.committer.Write(ctx, entry.Commitment, committed); err != nil {
+	if err := s.committer.Write(ctx, entry.Commitment, committed.Data, committed.Key); err != nil {
 		glog.Errorf("committer.Write failed: %v", err)
 		return grpc.Errorf(codes.Internal, "Write failed")
 	}

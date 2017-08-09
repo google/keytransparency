@@ -81,19 +81,23 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	appID := "app"
 	vrfPriv, _ := p256.GenerateKey()
 	index, _ := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
-	commitment, committed, _ := commitments.Commit(userID, appID, profileData)
+	nonce, err := commitments.GenCommitmentKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	commitment := commitments.Commit(userID, appID, profileData, nonce)
 
 	for _, tc := range []struct {
 		want       bool
 		userID     string
 		index      [32]byte
 		commitment []byte
-		committed  *tpb.Committed
+		nonce      []byte
 	}{
 		{false, userID, [32]byte{}, nil, nil},   // Incorrect index
 		{false, userID, index, nil, nil},        // Incorrect commitment
 		{false, userID, index, commitment, nil}, // Incorrect key
-		{true, userID, index, commitment, committed},
+		{true, userID, index, commitment, nonce},
 	} {
 		entry := &tpb.Entry{
 			Commitment: tc.commitment,
@@ -107,8 +111,11 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 			UserId: tc.userID,
 			AppId:  appID,
 			EntryUpdate: &tpb.EntryUpdate{
-				Update:    signedkv,
-				Committed: tc.committed,
+				Update: signedkv,
+				Committed: &tpb.Committed{
+					Key:  tc.nonce,
+					Data: profileData,
+				},
 			},
 		}
 		err := validateUpdateEntryRequest(req, vrfPriv)
