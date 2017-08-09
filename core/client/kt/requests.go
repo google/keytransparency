@@ -24,10 +24,10 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
+	"github.com/google/keytransparency/core/mutator/entry"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/sigpb"
-	"github.com/google/keytransparency/core/mutator/entry"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
@@ -76,7 +76,7 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, err
 	}
-	previous := objecthash.ObjectHash(getResp.GetLeafProof().GetLeaf().GetLeafValue())
+	previous := objecthash.ObjectHash(prevEntry)
 	signedkv := &tpb.SignedKV{
 		KeyValue:   kv,
 		Signatures: sigs,

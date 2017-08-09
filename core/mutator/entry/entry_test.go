@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/pem"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/dev"
@@ -30,7 +31,6 @@ import (
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian/crypto/sigpb"
-	"reflect"
 )
 
 const (
@@ -203,7 +203,7 @@ func TestFromLeafValue(t *testing.T) {
 	}{
 		{make([]byte, 0), nil, false},            // empty leaf -> nil, no error
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
-		{entryB, entry, false},										// valid leaf
+		{entryB, entry, false},                   // valid leaf
 	} {
 		if got, _ := FromLeafValue(tc.leafVal); !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("FromLeafValue(%v)=%v, _ , want %v", tc.leafVal, got, tc.want)
