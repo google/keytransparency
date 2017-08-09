@@ -17,6 +17,7 @@ package entry
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
@@ -41,20 +42,39 @@ func New() *Entry {
 
 // Mutate verifies that this is a valid mutation for this item and applies
 // mutation to value.
-func (*Entry) Mutate(oldValue []byte, update *tpb.SignedKV) ([]byte, error) {
+func (*Entry) Mutate(oldValueM, updateM proto.Message) ([]byte, error) {
 	// Ensure that the mutation size is within bounds.
-	if proto.Size(update) > mutator.MaxMutationSize {
-		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
+	if proto.Size(updateM) > mutator.MaxMutationSize {
+		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(updateM), mutator.MaxMutationSize)
 		return nil, mutator.ErrSize
+	}
+
+	update, ok := updateM.(*tpb.SignedKV)
+	if !ok {
+		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
+		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
+	}
+
+	oldEntry, ok := oldValueM.(*tpb.Entry)
+	if !ok {
+		glog.Warning("received proto.Message is not of type *tpb.Entry.")
+		return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
 	}
 
 	// Verify pointer to previous data.
 	// The very first entry will have oldValue=nil, so its hash is the
 	// ObjectHash value of nil.
-	prevEntryHash := objecthash.ObjectHash(oldValue)
+	prevEntryHash := objecthash.ObjectHash(oldEntry)
 	if !bytes.Equal(prevEntryHash[:], update.Previous) {
+		var entryData []byte
+		if oldEntry != nil {
+			var err error
+			if entryData, err = proto.Marshal(oldEntry); err != nil {
+				return nil, fmt.Errorf("Marshal(%v)=%v", oldEntry, err)
+			}
+		}
 		// Check if this mutation is a replay.
-		if bytes.Equal(oldValue, update.GetKeyValue().Value) {
+		if bytes.Equal(entryData, update.GetKeyValue().Value) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
@@ -76,7 +96,7 @@ func (*Entry) Mutate(oldValue []byte, update *tpb.SignedKV) ([]byte, error) {
 		return nil, mutator.ErrMissingKey
 	}
 
-	if err := verifyKeys(oldValue, kv, update, entry); err != nil {
+	if err := verifyKeys(oldEntry, kv, update, entry); err != nil {
 		return nil, err
 	}
 
@@ -89,26 +109,22 @@ func (*Entry) Mutate(oldValue []byte, update *tpb.SignedKV) ([]byte, error) {
 //   2. The first mutation should contain at least one signature with a key in
 //      in that mutation.
 //   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(oldValue []byte, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
-	prevEntry := new(tpb.Entry)
+func verifyKeys(prevEntry *tpb.Entry, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
 	var verifiers map[string]signatures.Verifier
 	var err error
-	if oldValue == nil {
+	if prevEntry == nil {
 		verifiers, err = verifiersFromKeys(entry.GetAuthorizedKeys())
 		if err != nil {
 			return err
 		}
 	} else {
-		if err = proto.Unmarshal(oldValue, prevEntry); err != nil {
-			return err
-		}
 		verifiers, err = verifiersFromKeys(prevEntry.GetAuthorizedKeys())
 		if err != nil {
 			return err
 		}
 	}
 
-	if err = verifyAuthorizedKeys(data, verifiers, update.Signatures); err != nil {
+	if err := verifyAuthorizedKeys(data, verifiers, update.GetSignatures()); err != nil {
 		return err
 	}
 	return nil

@@ -37,6 +37,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"github.com/golang/protobuf/proto"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	"github.com/google/trillian"
@@ -201,8 +202,11 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
-
-	if _, err := c.mutator.Mutate(getResp.GetLeafProof().GetLeaf().GetLeafValue(), req.GetEntryUpdate().GetUpdate()); err != nil {
+	var oldLeaf *tpb.Entry
+	if err := proto.Unmarshal(getResp.GetLeafProof().GetLeaf().GetLeafValue(), oldLeaf); err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal: %v", err)
+	}
+	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetUpdate()); err != nil {
 		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 

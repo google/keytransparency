@@ -287,8 +287,12 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	// - Hash of current data matches the expectation in the mutation.
 
 	// The very first mutation will have resp.LeafProof.LeafData=nil.
-	if _, err := s.mutator.Mutate(resp.LeafProof.Leaf.LeafValue,
-		in.GetEntryUpdate().GetUpdate()); err == mutator.ErrReplay {
+	oldEntry := &tpb.Entry{}
+	if err := proto.Unmarshal(resp.GetLeafProof().GetLeaf().GetLeafValue(), oldEntry); err != nil {
+		glog.Errorf("proto.Unmarshal(%v, _): %v", resp.GetLeafProof().GetLeaf().GetLeafValue(), err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "invalid previous leaf value")
+	}
+	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetUpdate()); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
