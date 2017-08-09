@@ -21,8 +21,8 @@ import (
 
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/transaction"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"

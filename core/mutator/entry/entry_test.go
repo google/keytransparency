@@ -30,6 +30,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian/crypto/sigpb"
+	"reflect"
 )
 
 const (
@@ -157,7 +158,7 @@ func TestCheckMutation(t *testing.T) {
 	signers3 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)})
 
 	_, _, _ = missingKeyEntryData2, hashMissingKeyEntry1, signers2
-	for i, tc := range []struct {
+	for _, tc := range []struct {
 		key      []byte
 		oldEntry *tpb.Entry
 		newEntry *tpb.Entry
@@ -187,11 +188,29 @@ func TestCheckMutation(t *testing.T) {
 		}
 
 		if _, got := New().Mutate(tc.oldEntry, mutation); got != tc.err {
-			t.Errorf("In %d: Mutate(%v, %v)=%v, want %v", i, tc.oldEntry, mutation, got, tc.err)
+			t.Errorf("Mutate(%v, %v)=%v, want %v", tc.oldEntry, mutation, got, tc.err)
 		}
 	}
 }
 
 func TestFromLeafValue(t *testing.T) {
-
+	entry := &tpb.Entry{Commitment: []byte{1, 2}}
+	entryB, _ := proto.Marshal(entry)
+	for i, tc := range []struct {
+		leafVal []byte
+		want    *tpb.Entry
+		wantErr bool
+	}{
+		{make([]byte, 0), nil, false},            // empty leaf -> nil, no error
+		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
+		{entryB, entry, false},
+	} {
+		if got, _ := FromLeafValue(tc.leafVal); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("FromLeafValue(%v)=%v, _ , want %v", tc.leafVal, got, tc.want)
+			t.Error(i)
+		}
+		if _, gotErr := FromLeafValue(tc.leafVal); (gotErr != nil) != tc.wantErr {
+			t.Errorf("FromLeafValue(%v)=_, %v", tc.leafVal, gotErr)
+		}
+	}
 }
