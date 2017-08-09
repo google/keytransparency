@@ -202,9 +202,13 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
-	oldLeaf := &tpb.Entry{}
-	if err := proto.Unmarshal(getResp.GetLeafProof().GetLeaf().GetLeafValue(), oldLeaf); err != nil {
-		return nil, fmt.Errorf("proto.Unmarshal: %v", err)
+	oldLeafB := getResp.GetLeafProof().GetLeaf().GetLeafValue()
+	var oldLeaf *tpb.Entry // oldLeaf will be nil if getResp has empty Leaf
+	if len(oldLeafB) > 0 {
+		oldLeaf = &tpb.Entry{}
+		if err := proto.Unmarshal(oldLeafB, oldLeaf); err != nil {
+			return nil, fmt.Errorf("proto.Unmarshal: %v", err)
+		}
 	}
 	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetUpdate()); err != nil {
 		return nil, fmt.Errorf("Mutate: %v", err)
