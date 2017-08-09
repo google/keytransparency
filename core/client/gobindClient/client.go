@@ -174,19 +174,3 @@ func BSetCustomLogger(writer BWriter) {
 type BWriter interface {
 	Write(p []byte) (n int, err error)
 }
-
-// TODO(amarcedone): remove the following two functions.
-func BGetTestTrillianSignedLogRoot() ([]byte, error) {
-	p, err := proto.Marshal(&trillian.SignedLogRoot{})
-	if err != nil {
-		return []byte{}, err
-	}
-	return p, nil
-}
-func BGetTestTpbGetEntryResponse() ([]byte, error) {
-	p, err := proto.Marshal(&tpb.GetEntryResponse{})
-	if err != nil {
-		return []byte{}, err
-	}
-	return p, nil
-}
