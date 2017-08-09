@@ -110,8 +110,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	proof := leafProof.GetInclusion()
 	expectedRoot := in.GetSmr().GetRootHash()
 	mapID := in.GetSmr().GetMapId()
-	leafHash := v.hasher.HashLeaf(mapID, index[:], leaf)
-	if err := merkle.VerifyMapInclusionProof(mapID, index[:], leafHash, expectedRoot, proof, v.hasher); err != nil {
+	if err := merkle.VerifyMapInclusionProof(mapID, index[:], leaf, expectedRoot, proof, v.hasher); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return fmt.Errorf("VerifyMapInclusionProof(): %v", err)
 	}
