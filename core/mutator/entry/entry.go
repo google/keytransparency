@@ -54,11 +54,13 @@ func (*Entry) Mutate(oldValueM, updateM proto.Message) ([]byte, error) {
 		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
 		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
 	}
-
-	oldEntry, ok := oldValueM.(*tpb.Entry)
-	if !ok {
-		glog.Warning("received proto.Message is not of type *tpb.Entry.")
-		return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
+	var oldEntry *tpb.Entry
+	if oldValueM != nil {
+		oldEntry, ok = oldValueM.(*tpb.Entry)
+		if !ok {
+			glog.Warning("received proto.Message is not of type *tpb.Entry.")
+			return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
+		}
 	}
 
 	// Verify pointer to previous data.
@@ -110,7 +112,7 @@ func FromLeafValue(value []byte) (*tpb.Entry, error) {
 		entry := new(tpb.Entry)
 		if err := proto.Unmarshal(value, entry); err != nil {
 			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)
-		 	return nil, err
+			return nil, err
 		}
 		return entry, nil
 	}
