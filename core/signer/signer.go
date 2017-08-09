@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 
+	"github.com/gogo/protobuf/proto"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian/util"
 )
@@ -200,10 +201,13 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 
 	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
-		index := m.GetKeyValue().Key
-		var oldValue []byte // If no map leaf was found, oldValue will be nil.
+		index := m.GetKeyValue().GetKey()
+		var oldValue *tpb.Entry // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
-			oldValue = leaf.LeafValue
+			if err := proto.Unmarshal(leaf.GetLeafValue(), oldValue); err != nil {
+				glog.Warningf("proto.Unmarshal(%v, _): %v", leaf.GetLeafValue(), err)
+				continue // A bad mutation should not make the whole batch fail.
+			}
 		}
 
 		newValue, err := s.mutator.Mutate(oldValue, m)
