@@ -202,7 +202,7 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
 		index := m.GetKeyValue().GetKey()
-		var oldValue *tpb.Entry // If no map leaf was found, oldValue will be nil.
+		oldValue := &tpb.Entry{} // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
 			if err := proto.Unmarshal(leaf.GetLeafValue(), oldValue); err != nil {
 				glog.Warningf("proto.Unmarshal(%v, _): %v", leaf.GetLeafValue(), err)
