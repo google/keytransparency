@@ -1,7 +1,4 @@
-kt-url: "35.184.134.53:8080"
-kt-cert: "genfiles/server.crt"
-vrf:    "genfiles/vrf-pubkey.pem"
-log-key: "genfiles/trillian-log.pem"
-map-key: "genfiles/trillian-map.pem"
-client-secret: "client_secret.json"
-service-key: ""
+
+kt-url: localhost:8080
+client-secret: 
+service-key: 
