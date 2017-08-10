@@ -25,10 +25,6 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"errors"
-
-	"golang.org/x/net/context"
-
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (
@@ -46,40 +42,29 @@ var (
 	fixedKey = []byte{0x19, 0x6e, 0x7e, 0x52, 0x84, 0xa7, 0xef, 0x93, 0x0e, 0xcb, 0x9a, 0x19, 0x78, 0x74, 0x97, 0x55}
 	// ErrInvalidCommitment occurs when the commitment doesn't match the profile.
 	ErrInvalidCommitment = errors.New("invalid commitment")
-	// Rand is the PRNG reader. It can be overwritten in tests.
-	Rand = rand.Reader
 )
 
-// Committer saves cryptographic commitments.
-type Committer interface {
-	// Write saves a cryptographic commitment and associated data.
-	Write(ctx context.Context, commitment []byte, committed *tpb.Committed) error
-	// Read looks up a cryptograpic commitment and returns associated data.
-	Read(ctx context.Context, commitment []byte) (*tpb.Committed, error)
+// GenCommitmentKey generates a commitment key for use in Commit. This key must
+// be kept secret in order to prevent an adversary from learning what data has
+// been committed to by a commitment. To unseal and verify a commitment,
+// provide this key, along with the data under commitment to the client.
+//
+// In Key Transparency, the user generates this key, creates a commitment, and
+// signs it.  The user uploads the signed commitment along with this key and
+// the associated data to the server in order for the server to reveal the
+// associated data to senders. This commitment scheme keeps the associated data
+// from leeking to anyone that has not explicitly requested it from the server.
+func GenCommitmentKey() ([]byte, error) {
+	// Generate commitment nonce.
+	nonce := make([]byte, commitmentKeyLen)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	return nonce, nil
 }
 
 // Commit makes a cryptographic commitment under a specific userID to data.
-func Commit(userID, appID string, data []byte) ([]byte, *tpb.Committed, error) {
-	// Generate commitment nonce.
-	nonce := make([]byte, commitmentKeyLen)
-	if _, err := Rand.Read(nonce); err != nil {
-		return nil, nil, err
-	}
-
-	return createCommitment(userID, appID, data, nonce),
-		&tpb.Committed{Key: nonce, Data: data}, nil
-}
-
-// Verify customizes a commitment with a userID.
-func Verify(userID, appID string, commitment []byte, committed *tpb.Committed) error {
-	if got, want := createCommitment(userID, appID, committed.Data, committed.Key),
-		commitment; !hmac.Equal(got, want) {
-		return ErrInvalidCommitment
-	}
-	return nil
-}
-
-func createCommitment(userID, appID string, data, nonce []byte) []byte {
+func Commit(userID, appID string, data, nonce []byte) []byte {
 	mac := hmac.New(hashAlgo, fixedKey)
 	mac.Write([]byte(prefix))
 	mac.Write(nonce)
@@ -92,4 +77,13 @@ func createCommitment(userID, appID string, data, nonce []byte) []byte {
 	mac.Write(data)
 
 	return mac.Sum(nil)
+}
+
+// Verify customizes a commitment with a userID.
+func Verify(userID, appID string, commitment, data, nonce []byte) error {
+	if got, want := Commit(userID, appID, data, nonce),
+		commitment; !hmac.Equal(got, want) {
+		return ErrInvalidCommitment
+	}
+	return nil
 }

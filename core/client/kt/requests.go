@@ -48,10 +48,11 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	}
 
 	// Commit to profile.
-	commitment, committed, err := commitments.Commit(userID, appID, profileData)
+	commitmentNonce, err := commitments.GenCommitmentKey()
 	if err != nil {
 		return nil, err
 	}
+	commitment := commitments.Commit(userID, appID, profileData, commitmentNonce)
 
 	// Create new Entry.
 	keys := authorizedKeys
@@ -87,8 +88,11 @@ func (v *Verifier) CreateUpdateEntryRequest(
 		UserId: userID,
 		AppId:  appID,
 		EntryUpdate: &tpb.EntryUpdate{
-			Update:    signedkv,
-			Committed: committed,
+			Update: signedkv,
+			Committed: &tpb.Committed{
+				Key:  commitmentNonce,
+				Data: profileData,
+			},
 		},
 		FirstTreeSize: trusted.TreeSize,
 	}, err
