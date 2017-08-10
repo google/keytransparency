@@ -76,20 +76,20 @@ func (*Entry) Mutate(oldValue []byte, update *tpb.SignedKV) ([]byte, error) {
 		return nil, mutator.ErrMissingKey
 	}
 
-	if err := VerifyKeys(oldValue, kv, update, entry); err != nil {
+	if err := verifyKeys(oldValue, kv, update, entry); err != nil {
 		return nil, err
 	}
 
 	return update.GetKeyValue().GetValue(), nil
 }
 
-// VerifyKeys verifies both old and new authorized keys based on the following
+// verifyKeys verifies both old and new authorized keys based on the following
 // criteria:
 //   1. At least one signature with a key in the previous entry should exist.
 //   2. The first mutation should contain at least one signature with a key in
 //      in that mutation.
 //   3. Signatures with no matching keys are simply ignored.
-func VerifyKeys(oldValue []byte, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
+func verifyKeys(oldValue []byte, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
 	prevEntry := new(tpb.Entry)
 	var verifiers map[string]signatures.Verifier
 	var err error

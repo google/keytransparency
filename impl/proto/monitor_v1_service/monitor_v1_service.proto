@@ -20,7 +20,7 @@ syntax = "proto3";
 // monitor results queried using the mutations API.
 package monitor.v1.service;
 
-import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
+import "github.com/google/keytransparency/core/proto/monitor_v1_types/monitor_v1_types.proto";
 import "google/api/annotations.proto";
 
 // The Monitor Service API allows clients to query the monitors observed and
@@ -28,7 +28,8 @@ import "google/api/annotations.proto";
 //
 // - Signed Map Roots can be collected using the GetSignedMapRoot APIs.
 // - Monitor resources are named:
-//   /v1/map/roots/* /v1/map/roots:latest and v1/map/roots:stream.
+//   - /v1/map/roots/*
+//   - /v1/map/roots:latest
 //
 service MonitorService {
   // GetSignedMapRoot returns the latest valid signed map root the monitor
@@ -39,8 +40,8 @@ service MonitorService {
   // the monitor could not reconstruct the map root given the set of mutations
   // from the previous to the current epoch it won't sign the map root and
   // additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRoot(keytransparency.v1.types.GetMonitoringRequest)
-    returns (keytransparency.v1.types.GetMonitoringResponse) {
+  rpc GetSignedMapRoot(monitor.v1.types.GetMonitoringRequest)
+    returns (monitor.v1.types.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/map/roots:latest" };
   }
 
@@ -51,8 +52,8 @@ service MonitorService {
   // If the monitor could not reconstruct the map root given the set of
   // mutations from the previous to the current epoch it won't sign the map root
   // and additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRootByRevision(keytransparency.v1.types.GetMonitoringRequest)
-    returns(keytransparency.v1.types.GetMonitoringResponse) {
+  rpc GetSignedMapRootByRevision(monitor.v1.types.GetMonitoringRequest)
+    returns(monitor.v1.types.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/map/roots/{start}" };
   }
 }

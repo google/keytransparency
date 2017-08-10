@@ -1,0 +1,86 @@
+// Copyright 2016 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+// Key Transparency Monitor Service
+//
+package monitor.v1.types;
+
+import "github.com/google/trillian/trillian.proto";
+import "github.com/google/trillian/trillian_map_api.proto";
+
+// GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
+message GetMonitoringRequest {
+  // start specifies the start epoch number from which monitoring results will
+  // be returned (ranging from [start, latestObserved] and starting at 1).
+  int64 start = 1;
+}
+
+// InvalidMutation includes all information to reproduce that there was an
+// invalid mutation from epoch e to e+1.
+message InvalidMutation {
+  // old_leaf is the inclusion proof to the leaf at epoch e.
+  trillian.MapLeafInclusion old_leaf = 1;
+  // new_leaf is the inclusion proof to the leaf at epoch e+1.
+  trillian.MapLeafInclusion new_leaf = 2;
+}
+
+// NotMatchingMapRootProof contains all data necessary to reproduce that set of
+// mutations does not produce new expected map root.
+message NotMatchingMapRootProof {
+  // map_root contains the map root hash the monitor observed.
+  trillian.SignedMapRoot map_root = 1;
+  // old_leafs is a list of inclusion proofs for the leafs in epoch e.
+  repeated trillian.MapLeafInclusion old_leafs = 2;
+  // new_leafs is a list of inclusion proofs for changed leafs (from epoch e
+  // to epoch e+1). Hashing these produces a different hash than root hash in
+  // above's map_root.
+  repeated trillian.MapLeafInclusion new_leafs = 3;
+}
+
+message GetMonitoringResponse {
+  // smr contains the map root for the sparse Merkle Tree signed with the
+  // monitor's key on success. If the checks were not successful the
+  // smr will be empty. The epochs are encoded into the smr map_revision.
+  trillian.SignedMapRoot smr = 1;
+
+  // seen_timestamp_nanos contains the time in nanoseconds where this particular
+  // signed map root was retrieved and processed. The actual timestamp of the
+  // smr returned by the server is contained in above smr field.
+  int64 seen_timestamp_nanos = 2;
+
+  //
+  // The following fields provide more information about each failure in this
+  // response, if any.
+  //
+
+  // isValid signals if all verification steps for the requested epoch passed
+  // or not.
+  bool isValid = 3;
+  // invalidMapSigProof contains the signed map root received by the
+  // key-transparency server, if and only if the key-server's signature was
+  // invalid.
+  trillian.SignedMapRoot invalidMapSigProof = 4;
+  // invalidLogSigProof contains the signed map root received by the
+  // key-transparency server, if and only if the key-server's signature was
+  // invalid.
+  trillian.SignedLogRoot invalidLogSigProof = 5;
+  // invalidMutation contains data to reproduce that there was an invalid
+  // mutation from epoch e to epoch e+1
+  InvalidMutation invalidMutation = 6;
+  // NotMatchingMapRoot contains all data to reproduce that the set of mutations
+  // does not produce observed new map root.
+  NotMatchingMapRootProof notMatchingMapRoot = 7;
+}

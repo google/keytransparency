@@ -54,7 +54,7 @@ var (
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
-func verifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) error {
+func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) error {
 	// verify signature on map root:
 	if err := tcrypto.VerifyObject(mapPubKey, resp.GetSmr(), resp.GetSmr().GetSignature()); err != nil {
 		glog.Errorf("couldn't verify signature on map root: %v", err)

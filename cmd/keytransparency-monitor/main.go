@@ -41,7 +41,7 @@ var (
 	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
 	certFile = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
 
-	signingKey         = flag.String("sign-key", "genfiles/p256-key.pem", "Path to private key PEM for SMH signing")
+	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
 
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
@@ -112,7 +112,7 @@ func main() {
 		glog.Fatalf("Could not create signer from %v: %v", *signingKey, err)
 	}
 
-	srv := monitor.New(mcc, *crypto.NewSHA256Signer(key), *mapKey, *logKey, *pollPeriod)
+	srv := monitor.New(mcc, crypto.NewSHA256Signer(key), *mapKey, *logKey, *pollPeriod)
 
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)

@@ -162,7 +162,7 @@ services:
       - --poll-period=5s
       - --tls-key=genfiles/server.key
       - --tls-cert=genfiles/server.crt
-      - --sign-key=/kt/p256-monitor_sign-key.pem
+      - --sign-key=/kt/monitor_sign-key.pem
       - --password=towel
       # TODO(ismail): this needs to be the public-key returned by the createTree operation:
       - --map-key=trillian/testdata/map-rpc-server.pubkey.pem

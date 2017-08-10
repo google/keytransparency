@@ -39,10 +39,10 @@ DEFAULT_PWD=towel
 # Generate monitor signing key-pair:
 if ((INTERACTIVE == 1)); then
   # Prompts for password:
-  openssl ecparam -name prime256v1 -genkey | openssl ec -aes256 -out p256-monitor_sign-key.pem
+  openssl ecparam -name prime256v1 -genkey | openssl ec -aes256 -out monitor_sign-key.pem
 else
 
-  openssl ecparam -name prime256v1 -genkey | openssl ec -aes256 -passout pass:$DEFAULT_PWD -out p256-monitor_sign-key.pem
+  openssl ecparam -name prime256v1 -genkey | openssl ec -aes256 -passout pass:$DEFAULT_PWD -out monitor_sign-key.pem
 fi
-chmod 600 p256-monitor_sign-key.pem
+chmod 600 monitor_sign-key.pem
 

@@ -34,7 +34,10 @@ import (
 
 	tcrypto "github.com/google/trillian/crypto"
 
+	cmon "github.com/google/keytransparency/core/monitor"
+	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+
 
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
@@ -58,13 +61,13 @@ type Server struct {
 	mapPubKey crypto.PublicKey
 	logPubKey crypto.PublicKey
 
-	signer         tcrypto.Signer
-	proccessedSMRs []*ktpb.GetMonitoringResponse
+	signer         *tcrypto.Signer
+	proccessedSMRs []*mopb.GetMonitoringResponse
 }
 
 // New creates a new instance of the monitor server.
 func New(cli mupb.MutationServiceClient,
-	signer tcrypto.Signer,
+	signer *tcrypto.Signer,
 	logPubKey, mapPubKey crypto.PublicKey,
 	poll time.Duration) *Server {
 	return &Server{
@@ -73,7 +76,7 @@ func New(cli mupb.MutationServiceClient,
 		logPubKey:      logPubKey,
 		mapPubKey:      mapPubKey,
 		signer:         signer,
-		proccessedSMRs: make([]*ktpb.GetMonitoringResponse, 256),
+		proccessedSMRs: make([]*mopb.GetMonitoringResponse, 256),
 	}
 }
 
@@ -98,7 +101,7 @@ func (s *Server) StartPolling() error {
 // the monitor could not reconstruct the map root given the set of mutations
 // from the previous to the current epoch it won't sign the map root and
 // additional data will be provided to reproduce the failure.
-func (s *Server) GetSignedMapRoot(ctx context.Context, in *ktpb.GetMonitoringRequest) (*ktpb.GetMonitoringResponse, error) {
+func (s *Server) GetSignedMapRoot(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
 	if len(s.proccessedSMRs) > 0 {
 		return s.proccessedSMRs[len(s.proccessedSMRs)-1], nil
 	}
@@ -112,7 +115,7 @@ func (s *Server) GetSignedMapRoot(ctx context.Context, in *ktpb.GetMonitoringReq
 // If the monitor could not reconstruct the map root given the set of
 // mutations from the previous to the current epoch it won't sign the map root
 // and additional data will be provided to reproduce the failure.
-func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *ktpb.GetMonitoringRequest) (*ktpb.GetMonitoringResponse, error) {
+func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
 	// TODO(ismail): implement by revision API
 	return nil, grpc.Errorf(codes.Unimplemented, "GetSignedMapRoot is unimplemented")
 }
@@ -143,26 +146,26 @@ func (s *Server) pollMutations(ctx context.Context, opts ...grpc.CallOption) ([]
 		return nil, err
 	}
 	respSmr := resp.GetSmr()
-	var monitorResp *ktpb.GetMonitoringResponse
-	switch err := verifyResponse(s.logPubKey, s.mapPubKey, resp, mutations); err {
+	var monitorResp *mopb.GetMonitoringResponse
+	switch err := cmon.VerifyResponse(s.logPubKey, s.mapPubKey, resp, mutations); err {
 	// TODO(ismail): return proper data for failure cases:
-	case ErrInvalidMutation:
+	case cmon.ErrInvalidMutation:
 		glog.Errorf("TODO: handle this ErrInvalidMutation properly")
-	case ErrInvalidMapSignature:
+	case cmon.ErrInvalidMapSignature:
 		glog.Infof("Signature on map did not verify: %v", err)
-		monitorResp = &ktpb.GetMonitoringResponse{
+		monitorResp = &mopb.GetMonitoringResponse{
 			IsValid:            false,
 			SeenTimestampNanos: seen,
 			InvalidMapSigProof: respSmr,
 		}
-	case ErrInvalidLogSignature:
+	case cmon.ErrInvalidLogSignature:
 		glog.Infof("Signature on log did not verify: %v", err)
-		monitorResp = &ktpb.GetMonitoringResponse{
+		monitorResp = &mopb.GetMonitoringResponse{
 			IsValid:            false,
 			SeenTimestampNanos: seen,
 			InvalidLogSigProof: resp.GetLogRoot(),
 		}
-	case ErrNotMatchingRoot:
+	case cmon.ErrNotMatchingRoot:
 		glog.Errorf("TODO: handle this ErrNotMatchingRoot properly")
 	case nil:
 		// Sign map root with monitor key:
@@ -172,7 +175,7 @@ func (s *Server) pollMutations(ctx context.Context, opts ...grpc.CallOption) ([]
 		}
 		// update signature on smr:
 		respSmr.Signature = sig
-		monitorResp = &ktpb.GetMonitoringResponse{
+		monitorResp = &mopb.GetMonitoringResponse{
 			Smr:                respSmr,
 			IsValid:            true,
 			SeenTimestampNanos: seen,
