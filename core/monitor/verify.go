@@ -31,8 +31,12 @@ import (
 
 	tcrypto "github.com/google/trillian/crypto"
 
+	"bytes"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
+	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/merkle/coniks"
+	"github.com/google/trillian/storage"
 )
 
 var (
@@ -75,14 +79,14 @@ func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutatio
 	// logVerifier.VerifyInclusionProof()
 
 	// mapID := resp.GetSmr().GetMapId()
-	if err := verifyMutations(allMuts, resp.GetSmr().GetRootHash()); err != nil {
+	if err := verifyMutations(allMuts, resp.GetSmr().GetRootHash(), resp.GetSmr().GetMapId()); err != nil {
 		return err
 	}
 
 	return errors.New("TODO: implement verification logic")
 }
 
-func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte) error {
+func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) error {
 	// TODO: export applyMutations in CreateEpoch / signer.go?
 	//
 
@@ -94,6 +98,9 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte) error {
 	inclusionMap := make(map[[32]byte]*trillian.MapLeafInclusion)
 	updatedLeafMap := make(map[[32]byte]*trillian.MapLeaf)
 	mutator := entry.New()
+	oldProofNodes := make(map[string]*storage.Node)
+	hasher := coniks.Default
+
 	for _, m := range muts {
 		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
 		//
@@ -125,22 +132,34 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte) error {
 			// LeafHash: hasher.HashLeaf(mapID, l.Index, l.LeafValue),
 			LeafValue: newLeaf,
 		}
-
-		//for level, proof := range m.GetProof().GetInclusion() {
-		//	pElement := proof
-		//	if len(pElement) == 0 {
-		//		pElement = hasher.HashEmpty(treeID, sib.Path, level)
-		//	}
-		//	if proofIsRightHandElement {
-		//		runningHash = hasher.HashChildren(runningHash, pElement)
-		//	} else {
-		//		runningHash = hasher.HashChildren(pElement, runningHash)
-		//	}
-		//}
-		//
-
+		// cache proof nodes:
+		for level, proof := range m.GetProof().GetInclusion() {
+			sid := storage.NewNodeIDFromBigInt(level, index, hasher.BitLen())
+			pid := sid.Neighbor()
+			// TODO Do we need the node revision or is this only used internally?
+			pNode := &storage.Node{
+				NodeID:       pid,
+				Hash:         proof,
+				NodeRevision: 0,
+			}
+			if p, ok := oldProofNodes[pid.String()]; ok {
+				// sanity check: for each mutation overlapping proof nodes should be
+				// equal:
+				bytes.Equal(p.Hash, proof)
+			} else {
+				oldProofNodes[pid.String()] = pNode
+			}
+		}
 	}
+	// TODO write get function that returns and potentially recomputes proof nodes
+	// (if neccessary) and a set method that updates recomputed proof nodes and
+	// call:
+	//
+	//hs2 := merkle.NewHStar2(mapID, hasher)
+	//hs2.HStar2Nodes([]byte{}, hasher.Size(), new []HStar2LeafHash
 
+	//			get SparseGetNodeFunc, set SparseSetNodeFunc)
+	//
 	// compute the new leaf and store the intermediate hashes locally.
 	// compute the new root using local intermediate hashes from epoch e.
 	// verify rootHash
