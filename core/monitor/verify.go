@@ -19,9 +19,9 @@
 package monitor
 
 import (
-	"fmt"
 	"crypto"
 	"errors"
+	"fmt"
 
 	"github.com/golang/glog"
 
@@ -82,7 +82,6 @@ func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutatio
 	return errors.New("TODO: implement verification logic")
 }
 
-
 func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte) error {
 	// TODO: export applyMutations in CreateEpoch / signer.go?
 	//
@@ -103,8 +102,11 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte) error {
 		//	glog.Errorf("VerifyMapInclusionProof(%x): %v", index, err)
 		//	return ErrInvalidMutation
 		//}
-
-		newLeaf, err := mutator.Mutate(m.GetProof().GetLeaf().GetLeafValue(), m.GetUpdate())
+		leafVal, err := entry.FromLeafValue(m.GetProof().GetLeaf().GetLeafValue())
+		if err != nil {
+			return ErrInvalidMutation
+		}
+		newLeaf, err := mutator.Mutate(leafVal, m.GetUpdate())
 		if err != nil {
 			// TODO(ismail): do not return; collect other errors if any
 			return ErrInvalidMutation
@@ -138,8 +140,6 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte) error {
 		//
 
 	}
-
-
 
 	// compute the new leaf and store the intermediate hashes locally.
 	// compute the new root using local intermediate hashes from epoch e.

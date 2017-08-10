@@ -35,9 +35,8 @@ import (
 	tcrypto "github.com/google/trillian/crypto"
 
 	cmon "github.com/google/keytransparency/core/monitor"
-	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-
+	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
 
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
