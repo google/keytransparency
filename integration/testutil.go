@@ -39,6 +39,7 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/testonly/integration"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -145,7 +146,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("SetLeaves(): %v", err)
 	}
 
-	verifier, err := keys.NewFromPublicDER(tree.GetPublicKey().GetDer())
+	mapPubKey, err := keys.NewFromPublicDER(tree.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
@@ -192,8 +193,8 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	cli := pb.NewKeyTransparencyServiceClient(cc)
-	client := grpcc.New(cli, vrfPub, verifier, fake.NewFakeTrillianLogVerifier())
+	client := grpcc.New(cc, vrfPub, mapPubKey, coniks.Default,
+		fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 
 	return &Env{
@@ -206,7 +207,7 @@ func NewEnv(t *testing.T) *Env {
 		db:         sqldb,
 		Factory:    factory,
 		VrfPriv:    vrfPriv,
-		Cli:        cli,
+		Cli:        pb.NewKeyTransparencyServiceClient(cc),
 		mapLog:     hs,
 	}
 }
