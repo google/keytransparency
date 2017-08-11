@@ -79,7 +79,6 @@ type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
-	log        client.LogVerifier
 	mutator    mutator.Mutator
 	RetryCount int
 	RetryDelay time.Duration
@@ -90,12 +89,11 @@ type Client struct {
 func New(client spb.KeyTransparencyServiceClient,
 	vrf vrf.PublicKey,
 	verifier crypto.PublicKey,
-	log client.LogVerifier) *Client {
+	logVerifier client.LogVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, coniks.Default, verifier, log),
-		log:        log,
+		kt:         kt.New(vrf, coniks.Default, verifier, logVerifier),
 		mutator:    entry.New(),
 		RetryCount: 1,
 		RetryDelay: 3 * time.Second,

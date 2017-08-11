@@ -25,8 +25,6 @@ import (
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/kt"
-	"github.com/google/keytransparency/core/crypto/keymaster"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
@@ -171,32 +169,6 @@ func getServiceCreds(serviceKeyFile string) (credentials.PerRPCCredentials, erro
 	return oauth.NewServiceAccountFromKey(b, gauth.RequiredScopes...)
 }
 
-func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
-	pem, err := ioutil.ReadFile(ktPEM)
-	if err != nil {
-		return nil, err
-	}
-	ver, err := keymaster.NewVerifierFromPEM(pem)
-	if err != nil {
-		return nil, err
-	}
-	return ver, nil
-}
-
-func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig string, log client.LogVerifier) (*grpcc.Client, error) {
-	// Create Key Transparency client.
-	vrfKey, err := readVrfKey(vrfPubFile)
-	if err != nil {
-		return nil, err
-	}
-	verifier, err := readSignatureVerifier(ktSig)
-	if err != nil {
-		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
-	}
-	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return grpcc.New(cli, vrfKey, verifier, log), nil
-}
-
 func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.ClientConn, error) {
 	ctx := context.Background()
 	var opts []grpc.DialOption
@@ -253,30 +225,42 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ktURL := viper.GetString("kt-url")
 	ktCert := viper.GetString("kt-cert")
-	vrfFile := viper.GetString("vrf")
-	logPEM := viper.GetString("log-key")
-	mapPEM := viper.GetString("map-key")
+	vrfPubFile := viper.GetString("vrf")
+	logPEMFile := viper.GetString("log-key")
+	mapPEMFile := viper.GetString("map-key")
 	serviceKeyFile := viper.GetString("service-key") // Anonymous user creds.
+
+	// Client Connection.
 	cc, err := dial(ktURL, ktCert, clientSecretFile, serviceKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
 
-	// Log verifier.
-	logPubKey, err := keys.NewFromPublicPEMFile(logPEM)
+	// Log PubKey.
+	logPubKey, err := keys.NewFromPublicPEMFile(logPEMFile)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
 	}
 
+	// Hasher.
 	hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
 	if err != nil {
 		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
 	}
-	log := client.NewLogVerifier(hasher, logPubKey)
 
-	c, err := getClient(cc, vrfFile, mapPEM, log)
+	// VRF PubKey.
+	vrfPubKey, err := readVrfKey(vrfPubFile)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating client: %v", err)
+		return nil, err
 	}
-	return c, nil
+
+	// MapPubKey.
+	mapPubKey, err := keys.NewFromPublicPEMFile(mapPEMFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
+	}
+
+	logVerifier := client.NewLogVerifier(hasher, logPubKey)
+	KTClientConn := pb.NewKeyTransparencyServiceClient(cc)
+	return grpcc.New(KTClientConn, vrfPubKey, mapPubKey, logVerifier), nil
 }
