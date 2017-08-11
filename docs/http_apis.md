@@ -70,7 +70,7 @@ TODO
 
 ```sh
 curl
--X POST
+-X PUT
 -H "Authorization: OAuth <ACCESS_TOKEN>"
 https://<host>/v1/users/user_id
 -d "<json below>"
