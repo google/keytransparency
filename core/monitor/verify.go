@@ -19,24 +19,22 @@
 package monitor
 
 import (
+	"bytes"
 	"crypto"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/golang/glog"
 
-	// "github.com/google/trillian"
-	// "github.com/google/trillian/merkle"
-	"github.com/google/keytransparency/core/mutator/entry"
-
-	tcrypto "github.com/google/trillian/crypto"
-
-	"bytes"
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/storage"
+
+	tcrypto "github.com/google/trillian/crypto"
+
+	"github.com/google/keytransparency/core/mutator/entry"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -87,18 +85,9 @@ func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutatio
 }
 
 func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) error {
-	// TODO: export applyMutations in CreateEpoch / signer.go?
-	//
-
-	// verify the mutation’s validity against the previous leaf.
-	//
-	// entry.VerifyKeys()
-	// or
-	// entry.Mutate() // does all checks and returns the new leaf as well
-	inclusionMap := make(map[[32]byte]*trillian.MapLeafInclusion)
-	updatedLeafMap := make(map[[32]byte]*trillian.MapLeaf)
+	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
 	mutator := entry.New()
-	oldProofNodes := make(map[string]*storage.Node)
+	oldProofNodes := make(map[string][]byte)
 	hasher := coniks.Default
 
 	for _, m := range muts {
@@ -115,53 +104,53 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) er
 		}
 		newLeaf, err := mutator.Mutate(leafVal, m.GetUpdate())
 		if err != nil {
-			// TODO(ismail): do not return; collect other errors if any
+			// TODO(ismail): collect all data to reproduce this (expectedRoot, oldLeaf, and mutation)
 			return ErrInvalidMutation
 		}
-		// update and store intermediate hashes for this new leaf
-		// (using old inclusion proof and already updated intermediate leafs)
-		fmt.Println(newLeaf)
-		// the index shouldn't change:
-		var index [32]byte
-		copy(index[:], m.GetProof().GetLeaf().GetIndex()[:32])
-		// TODO(ismail): do we actually need these copies?
-		inclusionMap[index] = m.GetProof()
 
-		updatedLeafMap[index] = &trillian.MapLeaf{
-			Index: index[:],
-			// LeafHash: hasher.HashLeaf(mapID, l.Index, l.LeafValue),
-			LeafValue: newLeaf,
-		}
-		// cache proof nodes:
+		index := m.GetProof().GetLeaf().GetIndex()
+
+		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, hasher.BitLen())
+		newLeafH := hasher.HashLeaf(mapID, index, newLeaf)
+		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
+			Index:    newLeafnID.BigInt(),
+			LeafHash: newLeafH,
+		})
+
+		sibIDs := newLeafnID.Siblings()
 		for level, proof := range m.GetProof().GetInclusion() {
-			sid := storage.NewNodeIDFromBigInt(level, index, hasher.BitLen())
-			pid := sid.Neighbor()
-			// TODO Do we need the node revision or is this only used internally?
-			pNode := &storage.Node{
-				NodeID:       pid,
-				Hash:         proof,
-				NodeRevision: 0,
-			}
-			if p, ok := oldProofNodes[pid.String()]; ok {
+			pID := sibIDs[level]
+			if p, ok := oldProofNodes[pID.String()]; ok {
 				// sanity check: for each mutation overlapping proof nodes should be
 				// equal:
-				bytes.Equal(p.Hash, proof)
+				if !bytes.Equal(p, proof) {
+					// TODO: this is really odd
+				}
 			} else {
-				oldProofNodes[pid.String()] = pNode
+				oldProofNodes[pID.String()] = proof
 			}
 		}
 	}
-	// TODO write get function that returns and potentially recomputes proof nodes
-	// (if neccessary) and a set method that updates recomputed proof nodes and
-	// call:
-	//
-	//hs2 := merkle.NewHStar2(mapID, hasher)
-	//hs2.HStar2Nodes([]byte{}, hasher.Size(), new []HStar2LeafHash
-
-	//			get SparseGetNodeFunc, set SparseSetNodeFunc)
-	//
+	// TODO write get function that returns old proof nodes by index and level
 	// compute the new leaf and store the intermediate hashes locally.
 	// compute the new root using local intermediate hashes from epoch e.
 	// verify rootHash
-	return errors.New("TODO: implement verification logic")
+
+	hs2 := merkle.NewHStar2(mapID, hasher)
+	newRoot, err := hs2.HStar2Nodes([]byte{}, hasher.Size(), newLeaves,
+		func(depth int, index *big.Int) ([]byte, error) {
+			nID := storage.NewNodeIDFromBigInt(depth, index, hasher.BitLen())
+			if p, ok := oldProofNodes[nID.String()]; ok {
+				return p, nil
+			}
+			return nil, nil
+		}, nil)
+	if err != nil {
+		glog.Errorf("hs2.HStar2Nodes(_): %v", err)
+		fmt.Errorf("could not compute new root hash: hs2.HStar2Nodes(_): %v", err)
+	}
+	if !bytes.Equal(newRoot, expectedRoot) {
+		return ErrNotMatchingRoot
+	}
+	return nil
 }
