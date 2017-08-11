@@ -108,7 +108,7 @@ func (*Entry) Mutate(oldValueM, updateM proto.Message) ([]byte, error) {
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
 // Entry or nil if the passes LeafValue was nil.
 func FromLeafValue(value []byte) (*tpb.Entry, error) {
-	if len(value) > 0 {
+	if value != nil {
 		entry := new(tpb.Entry)
 		if err := proto.Unmarshal(value, entry); err != nil {
 			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)
