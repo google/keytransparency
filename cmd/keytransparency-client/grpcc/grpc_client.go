@@ -31,11 +31,10 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/tree/sparse"
-	tv "github.com/google/keytransparency/core/tree/sparse/verifier"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/merkle/coniks"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -49,9 +48,6 @@ const (
 	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
 	// size 16 will contain about 8KB of data.
 	pageSize = 16
-	// The default capacity used when creating a profiles list in
-	// ListHistory.
-	defaultListCap = 10
 	// TODO: Public keys of trusted monitors.
 )
 
@@ -91,15 +87,14 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(mapID int64,
-	client spb.KeyTransparencyServiceClient,
+func New(client spb.KeyTransparencyServiceClient,
 	vrf vrf.PublicKey,
 	verifier crypto.PublicKey,
 	log client.LogVerifier) *Client {
 	return &Client{
 		cli:        client,
 		vrf:        vrf,
-		kt:         kt.New(vrf, tv.New(mapID, sparse.CONIKSHasher), verifier, log),
+		kt:         kt.New(vrf, coniks.Default, verifier, log),
 		log:        log,
 		mutator:    entry.New(),
 		RetryCount: 1,
@@ -139,7 +134,11 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
+// Epochs start at 1.
 func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot][]byte, error) {
+	if start <= 0 {
+		return nil, fmt.Errorf("start=%v, want > 0", start)
+	}
 	var currentProfile []byte
 	profiles := make(map[*trillian.SignedMapRoot][]byte)
 	for start <= end {
@@ -210,7 +209,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 		return nil, fmt.Errorf("proto.Marshal(): %v", err)
 	}
 	if _, err := c.mutator.Mutate(getResp.GetLeafProof().GetLeaf().GetLeafValue(), m); err != nil {
-		return nil, fmt.Errorf("CheckMutation: %v", err)
+		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 
 	err = c.Retry(ctx, req)
@@ -237,7 +236,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	}
 
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().KeyValue.Value; !bytes.Equal(got, want) {
+	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetKeyValue().GetValue(); !bytes.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

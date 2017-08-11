@@ -12,28 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !mysql
+//go:generate protoc -I=. --go_out=:. authorization.proto
 
-package mutations
-
-import (
-	_ "github.com/mattn/go-sqlite3" // Set database engine.
-)
-
-var (
-	createStmt = []string{
-		`
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   BIGINT NOT NULL,
-		PRIMARY KEY(MapID)
-	);`,
-		`
-	CREATE TABLE IF NOT EXISTS Mutations (
-		MapID    BIGINT        NOT NULL,
-		Sequence INTEGER       NOT NULL PRIMARY KEY AUTOINCREMENT,
-                MIndex   VARBINARY(32) NOT NULL,
-		Mutation BLOB          NOT NULL,
-		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
-	);`,
-	}
-)
+package authorization

@@ -79,7 +79,11 @@ func New(db *sql.DB, mapID int64) (*Commitments, error) {
 
 // WriteCommitment saves a commitment to the database.
 // Writes if the same commitment value succeeds.
-func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *tpb.Committed) (returnErr error) {
+func (c *Commitments) Write(ctx context.Context, commitment, data, nonce []byte) (returnErr error) {
+	committed := &tpb.Committed{
+		Key:  nonce,
+		Data: data,
+	}
 	tx, err := c.db.Begin()
 	if err != nil {
 		return err
@@ -133,25 +137,25 @@ func (c *Commitments) Write(ctx context.Context, commitment []byte, committed *t
 }
 
 // Read retrieves a commitment from the database.
-func (c *Commitments) Read(ctx context.Context, commitment []byte) (*tpb.Committed, error) {
+func (c *Commitments) Read(ctx context.Context, commitment []byte) (data, nonce []byte, err error) {
 	stmt, err := c.db.Prepare(readExpr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer stmt.Close()
 
 	var value []byte
 	if err := stmt.QueryRow(c.mapID, commitment).Scan(&value); err == sql.ErrNoRows {
-		return nil, nil
+		return nil, nil, nil
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var committed tpb.Committed
 	if err := proto.Unmarshal(value, &committed); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &committed, nil
+	return committed.Data, committed.Key, nil
 }
 
 // Create creates a new database.

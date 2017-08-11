@@ -36,6 +36,12 @@ spec:
               value: zaphod
             - name: DB_HOST
               value: mysql:3306
+            - name: TLS_KEY_PATH
+              value: /kt/server.key
+            - name: TLS_CRT_PATH
+              value: /kt/server.crt
+            - name: VRF_PRIV
+              value: /kt/vrf-key.pem
       initContainers:
       - name: init-trillian-map
         image: radial/busyboxplus
@@ -114,10 +120,6 @@ spec:
               value: mysql:3306
             - name: LOG_KEY
               value: /kt/trillian-log.pem
-            - name: SIGN_KEY # TODO(ismail): https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/
-              value: /kt/p256-key.pem
-            - name: SIGN_KEY_PW
-              value: towel
 ---
 apiVersion: v1
 kind: Service

@@ -32,18 +32,19 @@ import (
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 
+	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
-	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/google/trillian/merkle/hashers"
+	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
-	"github.com/google/trillian"
 )
 
 var (
@@ -82,8 +83,6 @@ func init() {
 	RootCmd.PersistentFlags().Int64("log-id", 0, "Log ID of the backend log server")
 	RootCmd.PersistentFlags().String("log-url", "", "URL of Certificate Transparency server")
 	RootCmd.PersistentFlags().String("log-key", "", "Path to public key PEM for Trillian Log server")
-
-	RootCmd.PersistentFlags().Int64("map-id", 0, "Map ID of the backend map server")
 
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-key", "testdata/server.crt", "Path to public key for Key Transparency")
@@ -130,7 +129,7 @@ func readVrfKey(vrfPubFile string) (vrf.PublicKey, error) {
 }
 
 // getTokenFromWeb uses config to request a Token.  Returns the retrieved Token.
-func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
+func getTokenFromWeb(ctx context.Context, config *oauth2.Config) (*oauth2.Token, error) {
 	// TODO: replace state token with something random to prevent CSRF.
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOnline)
 	fmt.Printf("Go to the following link in your browser then type the "+
@@ -141,14 +140,14 @@ func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 		return nil, err
 	}
 
-	tok, err := config.Exchange(oauth2.NoContext, code)
+	tok, err := config.Exchange(ctx, code)
 	if err != nil {
 		return nil, err
 	}
 	return tok, nil
 }
 
-func getCreds(clientSecretFile string) (credentials.PerRPCCredentials, error) {
+func getCreds(ctx context.Context, clientSecretFile string) (credentials.PerRPCCredentials, error) {
 	b, err := ioutil.ReadFile(clientSecretFile)
 	if err != nil {
 		return nil, err
@@ -159,7 +158,7 @@ func getCreds(clientSecretFile string) (credentials.PerRPCCredentials, error) {
 		return nil, err
 	}
 
-	tok, err := getTokenFromWeb(config)
+	tok, err := getTokenFromWeb(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +185,7 @@ func readSignatureVerifier(ktPEM string) (signatures.Verifier, error) {
 	return ver, nil
 }
 
-func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log client.LogVerifier) (*grpcc.Client, error) {
+func getClient(cc *grpc.ClientConn, vrfPubFile, ktSig string, log client.LogVerifier) (*grpcc.Client, error) {
 	// Create Key Transparency client.
 	vrfKey, err := readVrfKey(vrfPubFile)
 	if err != nil {
@@ -197,10 +196,11 @@ func getClient(cc *grpc.ClientConn, mapID int64, vrfPubFile, ktSig string, log c
 		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
 	}
 	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return grpcc.New(mapID, cli, vrfKey, verifier, log), nil
+	return grpcc.New(cli, vrfKey, verifier, log), nil
 }
 
 func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.ClientConn, error) {
+	ctx := context.Background()
 	var opts []grpc.DialOption
 	if true {
 		host, _, err := net.SplitHostPort(ktURL)
@@ -230,7 +230,7 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 		opts = append(opts, grpc.WithPerRPCCredentials(
 			authentication.GetFakeCredential(fakeUserID)))
 	case clientSecretFile != "":
-		creds, err := getCreds(clientSecretFile)
+		creds, err := getCreds(ctx, clientSecretFile)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +257,6 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	ktURL := viper.GetString("kt-url")
 	ktPEM := viper.GetString("kt-key")
 	ktSig := viper.GetString("kt-sig")
-	mapID := viper.GetInt64("map-id")
 	logPEM := viper.GetString("log-key")
 	serviceKeyFile := viper.GetString("service-key")
 	cc, err := dial(ktURL, ktPEM, clientSecretFile, serviceKeyFile)
@@ -271,13 +270,13 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
 	}
 
-	hasher, err := 	hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
 	if err != nil {
-		return nil, fmt.Errorf("Failed retrieving LogHasher from registry %v:", err)
+		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
 	}
 	log := client.NewLogVerifier(hasher, logPubKey)
 
-	c, err := getClient(cc, mapID, vrfFile, ktSig, log)
+	c, err := getClient(cc, vrfFile, ktSig, log)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v", err)
 	}

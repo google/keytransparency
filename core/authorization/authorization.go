@@ -12,28 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !mysql
-
-package mutations
+// Package authorization defines the authorization interface of Key Transparency.
+package authorization
 
 import (
-	_ "github.com/mattn/go-sqlite3" // Set database engine.
+	"github.com/google/keytransparency/core/authentication"
+
+	authzpb "github.com/google/keytransparency/core/proto/authorization"
 )
 
-var (
-	createStmt = []string{
-		`
-	CREATE TABLE IF NOT EXISTS Maps (
-		MapID   BIGINT NOT NULL,
-		PRIMARY KEY(MapID)
-	);`,
-		`
-	CREATE TABLE IF NOT EXISTS Mutations (
-		MapID    BIGINT        NOT NULL,
-		Sequence INTEGER       NOT NULL PRIMARY KEY AUTOINCREMENT,
-                MIndex   VARBINARY(32) NOT NULL,
-		Mutation BLOB          NOT NULL,
-		FOREIGN KEY(MapID) REFERENCES Maps(MapID) ON DELETE CASCADE
-	);`,
-	}
-)
+// Authorization authorizes access to RPCs.
+type Authorization interface {
+	// IsAuthorized verifies that the identity issuing the call
+	// (from ctx) is authorized to carry the given permission.
+	IsAuthorized(ctx *authentication.SecurityContext, mapID int64,
+		appID, userID string, permission authzpb.Permission) error
+}

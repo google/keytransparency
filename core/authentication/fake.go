@@ -34,32 +34,28 @@ func NewFake() *FakeAuth {
 // FakeAuth provides a fake authenticator for testing.
 type FakeAuth struct{}
 
-// ValidateCreds verifies that the requiredUserID is present in the authorization metadata of the ctx.
-func (a *FakeAuth) ValidateCreds(ctx context.Context, requiredUserID string) error {
+// ValidateCreds authenticate the information present in ctx.
+func (a *FakeAuth) ValidateCreds(ctx context.Context) (*SecurityContext, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		glog.V(2).Infof("FakeAuth: missing authentication data")
-		return ErrMissingAuth
+		return nil, ErrMissingAuth
 	}
 	authHeader, ok := md["authorization"]
 	if !ok || len(authHeader) != 1 {
-		return ErrMissingAuth
+		return nil, ErrMissingAuth
 	}
 	p := strings.Split(authHeader[0], " ")
 	if len(p) != 2 {
-		return fmt.Errorf("Bad Authentication Format")
+		return nil, fmt.Errorf("Bad Authentication Format")
 	}
 
 	if got, want := p[0], fakeCredentialType; got != want {
-		return fmt.Errorf("FakeAuth: wrong credential type. got: %v, want %v", got, want)
+		return nil, fmt.Errorf("FakeAuth: wrong credential type. got: %v, want %v", got, want)
 	}
 
-	if got, want := p[1], requiredUserID; got != want {
-		glog.V(2).Infof("FakeAuth: wrong user. got: %v, want %v", got, want)
-		return ErrWrongUser
-	}
-	glog.V(2).Infof("FakeAuth: fake authentication succeeded for user %+v", requiredUserID)
-	return nil
+	glog.V(2).Infof("FakeAuth: fake authentication succeeded for user %+v", p[1])
+	return NewSecurityContext(p[1]), nil
 }
 
 // GetFakeCredential returns fake PerRPCCredentials

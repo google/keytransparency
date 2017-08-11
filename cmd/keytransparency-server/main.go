@@ -17,7 +17,6 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -27,34 +26,35 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
-	"github.com/google/keytransparency/core/mapserver"
 	"github.com/google/keytransparency/core/mutator/entry"
-	ctxn "github.com/google/keytransparency/core/transaction"
-	gauth "github.com/google/keytransparency/impl/google/authentication"
-	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+
+	"github.com/google/keytransparency/impl/authorization"
+	"github.com/google/keytransparency/impl/mutation"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
-	"github.com/google/keytransparency/impl/sql/sequenced"
-	"github.com/google/keytransparency/impl/sql/sqlhist"
 	"github.com/google/keytransparency/impl/transaction"
-	"github.com/google/trillian"
 
 	"github.com/golang/glog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/google/trillian"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+
+	cmutation "github.com/google/keytransparency/core/mutation"
+	gauth "github.com/google/keytransparency/impl/google/authentication"
+	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath = flag.String("db", "db", "Database connection string")
-	realm        = flag.String("auth-realm", "registered-users@gmail.com", "Authentication realm for WWW-Authenticate response header")
 	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
 	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
@@ -102,7 +102,10 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	gwmux := runtime.NewServeMux()
-	if err := pb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+	if err := ktpb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+		return nil, err
+	}
+	if err := mpb.RegisterMutationServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
 
@@ -111,7 +114,7 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
 // connections or otherHandler otherwise. Copied from cockroachdb.
-func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+func grpcHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is a partial recreation of gRPC's internal checks.
 		// https://github.com/grpc/grpc-go/blob/master/transport/handler_server.go#L62
@@ -121,18 +124,6 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	})
-}
-
-func newReadonlyMapServer(ctx context.Context, mapID int64, sqldb *sql.DB, factory ctxn.Factory) (trillian.TrillianMapClient, error) {
-	tree, err := sqlhist.New(ctx, mapID, factory)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create SQL history: %v", err)
-	}
-	sths, err := sequenced.New(sqldb, mapID)
-	if err != nil {
-		return nil, fmt.Errorf("sequenced.New(%v): %v", mapID, err)
-	}
-	return mapserver.NewReadonly(mapID, tree, factory, sths), nil
 }
 
 func main() {
@@ -162,6 +153,7 @@ func main() {
 	default:
 		glog.Exitf("Invalid auth-type parameter: %v.", *authType)
 	}
+	authz := authorization.New()
 
 	// Create database and helper objects.
 	commitments, err := commitments.New(sqldb, *mapID)
@@ -183,30 +175,24 @@ func main() {
 	tlog := trillian.NewTrillianLogClient(tconn)
 
 	// Connect to map server.
-	var tmap trillian.TrillianMapClient
-	if *mapURL != "" {
-		mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
-		if err != nil {
-			glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
-		}
-		tmap = trillian.NewTrillianMapClient(mconn)
-	} else {
-		// Create an in-process readonly mapserver.
-		tmap, err = newReadonlyMapServer(context.Background(), *mapID, sqldb, factory)
-		if err != nil {
-			glog.Exitf("newReadonlyMapServer(): %v", err)
-		}
+	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
+	if err != nil {
+		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 	}
+	tmap := trillian.NewTrillianMapClient(mconn)
+	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	svr := keyserver.New(*logID, tlog, *mapID, tmap, commitments,
-		vrfPriv, mutator, auth, factory, mutations)
+	svr := keyserver.New(*logID, tlog, *mapID, tmap, tadmin, commitments,
+		vrfPriv, mutator, auth, authz, factory, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	pb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	msrv := mutation.New(cmutation.New(*logID, *mapID, tlog, tmap, mutations, factory))
+	ktpb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	mpb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
@@ -222,7 +208,7 @@ func main() {
 	mux.Handle("/", gwmux)
 
 	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", prometheus.Handler())
+	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
 		log.Printf("Hosting metrics on %v", *metricsAddr)
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {

@@ -69,7 +69,7 @@ func validateKey(userID, appID string, key []byte) error {
 }
 
 // validateUpdateEntryRequest verifies
-// - Commitment in SignedEntryUpdate maches the serialized profile.
+// - Commitment in SignedEntryUpdate matches the serialized profile.
 // - Profile is a valid.
 func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
 	kv := in.GetEntryUpdate().GetUpdate().GetKeyValue()
@@ -92,7 +92,7 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 	if got, want := len(committed.Key), MinNonceLen; got < want {
 		return ErrCommittedKeyLen
 	}
-	if err := commitments.Verify(in.UserId, in.AppId, entry.Commitment, committed); err != nil {
+	if err := commitments.Verify(in.UserId, in.AppId, entry.Commitment, committed.Data, committed.Key); err != nil {
 		return err
 	}
 
@@ -108,6 +108,12 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 func validateListEntryHistoryRequest(in *tpb.ListEntryHistoryRequest, currentEpoch int64) error {
 	if in.Start < 0 || in.Start > currentEpoch {
 		return ErrInvalidStart
+	}
+	// TODO(ismail): make epochs consistently start from 0 and provide a function
+	// such that callers don't need convert between starting 0 and 1.
+	// Ensure a valid start epoch is provided if the Start parameter is not set.
+	if in.Start == 0 {
+		in.Start = defaultStartEpoch
 	}
 
 	switch {

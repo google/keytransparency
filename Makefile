@@ -21,13 +21,11 @@
 
 # TODO: Makefile will be deleted once the repo is public. Check issue #411.
 
-main: client
-	go build ./cmd/keytransparency-server
-	go build ./cmd/keytransparency-signer
+main: 
+	go build ./cmd/keytransparency-server ./cmd/keytransparency-signer ./cmd/keytransparency-client
 
-mysql: client
-	go build -tags mysql ./cmd/keytransparency-server
-	go build -tags mysql ./cmd/keytransparency-signer
+mysql: 
+	go build -tags mysql ./cmd/keytransparency-server ./cmd/keytransparency-signer ./cmd/keytransparency-client
 
 client:
 	go build ./cmd/keytransparency-client
@@ -35,25 +33,15 @@ client:
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.
 test: main
-	go test `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
+	govendor test +local
 
 coverage: main
-	go test -cover `find . | grep '_test\.go$$' | sort | xargs -n 1 dirname`
+	govendor test +local -cover 
 
-fmt:
-	find . -iregex '.*.go' ! -path "./vendor/*" -exec gofmt -s -w {} \;
-	find . -iregex '.[^.]*.go' ! -path "./vendor/*" -exec golint {} \;
+check:
+	gometalinter --config=metalinter.json ./...
 
-tools:
-	-go vet ./cmd/... ./core/... ./impl/... ./integration/...
-	find . ! -path "*/proto/*" ! -iwholename "*.git*" ! -iwholename "." ! -iwholename "*vendor*" -type d ! -name "proto" -exec errcheck -ignore 'Close|Write|Serve,os:Remove' {} \;
-	-find . -type f -name "*.go" ! -path "./vendor/*" ! -name "*.pb*go" -exec gocyclo -over 15 {} \;
-	-ineffassign .
-	-find . -type f -name '*.md' ! -path "./vendor/*" -o -name '*.go' ! -path "./vendor/*" -o -name '*.proto' ! -path "./vendor/*" | sort | xargs misspell -locale US
-
-presubmit: coverage fmt tools
-
-travis-presubmit: fmt tools
+presubmit: coverage check
 
 proto:
 	go generate ./...

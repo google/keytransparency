@@ -77,7 +77,7 @@ func H1(m []byte) (x, y *big.Int) {
 	for x == nil && i < 100 {
 		// TODO: Use a NIST specified DRBG.
 		h.Reset()
-		binary.Write(h, binary.BigEndian, uint32(i))
+		binary.Write(h, binary.BigEndian, i)
 		h.Write(m)
 		r := []byte{2} // Set point encoding to "compressed", y=0.
 		r = h.Sum(r)
@@ -97,7 +97,7 @@ func H2(m []byte) *big.Int {
 	for i := uint32(0); ; i++ {
 		// TODO: Use a NIST specified DRBG.
 		h.Reset()
-		binary.Write(h, binary.BigEndian, uint32(i))
+		binary.Write(h, binary.BigEndian, i)
 		h.Write(m)
 		b := h.Sum(nil)
 		k := new(big.Int).SetBytes(b[:byteLen])
@@ -121,8 +121,8 @@ func (k PrivateKey) Evaluate(m []byte) (index [32]byte, proof []byte) {
 	Hx, Hy := H1(m)
 
 	// VRF_k(m) = [k]H
-	kHx, kHy := params.ScalarMult(Hx, Hy, k.D.Bytes())
-	vrf := elliptic.Marshal(curve, kHx, kHy) // 65 bytes.
+	sHx, sHy := params.ScalarMult(Hx, Hy, k.D.Bytes())
+	vrf := elliptic.Marshal(curve, sHx, sHy) // 65 bytes.
 
 	// G is the base point
 	// s = H2(G, H, [k]G, VRF, [r]G, [r]H)
@@ -169,8 +169,8 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 	t := proof[32:64]
 	vrf := proof[64 : 64+65]
 
-	kHx, kHy := elliptic.Unmarshal(curve, vrf)
-	if kHx == nil {
+	uHx, uHy := elliptic.Unmarshal(curve, vrf)
+	if uHx == nil {
 		return nilIndex, ErrInvalidVRF
 	}
 
@@ -183,8 +183,8 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 	// [t]H + [s]VRF = [t+ks]H
 	Hx, Hy := H1(m)
 	tHx, tHy := params.ScalarMult(Hx, Hy, t)
-	skHx, skHy := params.ScalarMult(kHx, kHy, s)
-	tksHx, tksHy := params.Add(tHx, tHy, skHx, skHy)
+	sHx, sHy := params.ScalarMult(uHx, uHy, s)
+	tksHx, tksHy := params.Add(tHx, tHy, sHx, sHy)
 
 	//   H2(G, H, [k]G, VRF, [t]G + [s]([k]G), [t]H + [s]VRF)
 	// = H2(G, H, [k]G, VRF, [t+ks]G, [t+ks]H)
@@ -219,6 +219,22 @@ func NewVRFSigner(key *ecdsa.PrivateKey) (*PrivateKey, error) {
 		return nil, ErrPointNotOnCurve
 	}
 	return &PrivateKey{key}, nil
+}
+
+// Public returns the corresponding public key as bytes.
+func (k PrivateKey) Public() ([]byte, error) {
+	// Copied from: core/crypto/signatures/p256/ecdsa_p256.go
+	pkBytes, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+	pkPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pkBytes,
+		},
+	)
+	return pkPEM, nil
 }
 
 // NewVRFVerifier creates a verifier object from a public key.

@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sparse
+package commitments
 
-import (
-	"testing"
-)
+import "golang.org/x/net/context"
 
-func TestComputeNodeValues(t *testing.T) {
-	for _, tc := range []struct {
-		bindex    string
-		leafHash  []byte
-		neighbors []Hash
-		expected  []string
-	}{
-		{"0100", []byte(""), make([]Hash, 4), []string{"0100", "010", "01", "0", ""}},
-	} {
-		actual := NodeValues(0, CONIKSHasher, tc.bindex, tc.leafHash, tc.neighbors)
-		if got, want := len(actual), len(tc.expected); got != want {
-			t.Errorf("len(%v)=%v, want %v", actual, got, want)
-		}
-	}
+// Committer saves cryptographic commitments.
+type Committer interface {
+	// Write saves a cryptographic commitment and associated data.
+	Write(ctx context.Context, commitment, data, nonce []byte) error
+	// Read looks up a cryptograpic commitment and returns associated data.
+	Read(ctx context.Context, commitment []byte) (data, nonce []byte, err error)
 }
