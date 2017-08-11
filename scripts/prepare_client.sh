@@ -47,7 +47,7 @@ fi
 
 read -p "Trillian Map verification key: " MAPKEY
 if [[ -n "${MAPKEY}" ]]; then
-    printf "map-key: %s\n" "${LOGKEY}" >> .keytransparency.yaml
+    printf "map-key: %s\n" "${MAPKEY}" >> .keytransparency.yaml
 fi
 
 read -p "Path to client secret file: " CLIENTSECRET
