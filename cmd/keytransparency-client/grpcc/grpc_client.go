@@ -34,7 +34,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/merkle/coniks"
+	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -79,7 +79,6 @@ type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
-	log        client.LogVerifier
 	mutator    mutator.Mutator
 	RetryCount int
 	RetryDelay time.Duration
@@ -87,15 +86,15 @@ type Client struct {
 }
 
 // New creates a new client.
-func New(client spb.KeyTransparencyServiceClient,
+func New(cc *grpc.ClientConn,
 	vrf vrf.PublicKey,
-	verifier crypto.PublicKey,
-	log client.LogVerifier) *Client {
+	mapPubKey crypto.PublicKey,
+	mapHasher hashers.MapHasher,
+	logVerifier client.LogVerifier) *Client {
 	return &Client{
-		cli:        client,
+		cli:        spb.NewKeyTransparencyServiceClient(cc),
 		vrf:        vrf,
-		kt:         kt.New(vrf, coniks.Default, verifier, log),
-		log:        log,
+		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),
 		RetryCount: 1,
 		RetryDelay: 3 * time.Second,

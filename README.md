@@ -101,5 +101,6 @@ source scripts/configure_trillian.sh && createLog && createMap
 - `docker-compose up -d`
 - `docker-compose logs --tail=0 --follow`
 - [https://localhost:8080/v1/users/foo@bar.com](https://localhost:8080/v1/users/foo@bar.com)
+- [https://localhost:8080/v1/domain/info](https://localhost:8080/v1/domain/info)
 - [Prometheus graphs](http://localhost:9090/graph)
 
