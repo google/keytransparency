@@ -29,6 +29,7 @@ function main()
   checkCmdsAvailable
   # create key-pairs:
   ./scripts/prepare_server.sh -f
+  prepareSecrets
   buildDockerImgs
   tearDown
   pushTrillianImgs
@@ -132,6 +133,17 @@ function checkCmdsAvailable()
   if ! type jq > /dev/null 2>&1;
     then echo "Please install jq. See: https://stedolan.github.io/jq/download/"
     exit 1
+  fi
+}
+
+function prepareSecrets()
+{
+  local EXISTS=0
+  # if kt-secrets does not exist, create it:
+  kubectl get secret kt-secrets
+  # kubectl exits with 1 if kt-secret does not exist
+  if [ $? -ne 0 ]; then
+    kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key --from-file=genfiles/vrf-key.pem
   fi
 }
 
