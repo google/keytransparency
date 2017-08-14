@@ -23,7 +23,7 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
-	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/sigpb"
 	"github.com/google/trillian/merkle/maphasher"
 )
@@ -43,7 +43,7 @@ func TestVerifyGetEntyrResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mapPub, err := keys.NewFromPublicDER(MapPub)
+	mapPub, err := der.UnmarshalPublicKey(MapPub)
 	if err != nil {
 		t.Fatal(err)
 	}
