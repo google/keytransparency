@@ -46,22 +46,22 @@ var (
 
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
-	vrf    vrf.PublicKey
-	hasher hashers.MapHasher
-	sig    crypto.PublicKey
-	log    client.LogVerifier
+	vrf         vrf.PublicKey
+	hasher      hashers.MapHasher
+	mapPubKey   crypto.PublicKey
+	logVerifier client.LogVerifier
 }
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
 	hasher hashers.MapHasher,
-	sig crypto.PublicKey,
-	log client.LogVerifier) *Verifier {
+	mapPubKey crypto.PublicKey,
+	logVerifier client.LogVerifier) *Verifier {
 	return &Verifier{
-		vrf:    vrf,
-		hasher: hasher,
-		sig:    sig,
-		log:    log,
+		vrf:         vrf,
+		hasher:      hasher,
+		mapPubKey:   mapPubKey,
+		logVerifier: logVerifier,
 	}
 }
 
@@ -120,7 +120,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	// by removing the signature from the object.
 	smr := *in.GetSmr()
 	smr.Signature = nil // Remove the signature from the object to be verified.
-	if err := tcrypto.VerifyObject(v.sig, smr, in.GetSmr().GetSignature()); err != nil {
+	if err := tcrypto.VerifyObject(v.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return fmt.Errorf("sig.Verify(SMR): %v", err)
 	}
@@ -128,17 +128,19 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	if err := v.log.VerifyRoot(trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
+	if err := v.logVerifier.VerifyRoot(trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
 		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
 	Vlog.Printf("✓ Log root updated.")
+	trusted = in.GetLogRoot()
 
 	// Verify inclusion proof.
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
-	if err := v.log.VerifyInclusionAtIndex(trusted, b, in.GetSmr().GetMapRevision(),
+	logLeafIndex := in.GetSmr().GetMapRevision() - 1
+	if err := v.logVerifier.VerifyInclusionAtIndex(trusted, b, logLeafIndex,
 		in.GetLogInclusion()); err != nil {
 		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
 			b, in.GetSmr().GetMapRevision(), err)

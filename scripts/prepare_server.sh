@@ -131,10 +131,6 @@ if ((FRONTEND == 1)); then
     ./scripts/gen_server_keys.sh -d "${CERTDOMAIN}" -a "${CERTIP}" -s "${SAN_DNS}"
 fi
 
-if ((BACKEND == 1)); then
-    ./scripts/gen_signer_keys.sh
-fi
-
 # Generating .env file
 ENV="SIGN_PERIOD=5"
 
