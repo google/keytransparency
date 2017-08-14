@@ -50,6 +50,7 @@ spec:
               value: /kt-secrets/server.crt
             - name: VRF_PRIV
               value: /kt-secrets/vrf-key.pem
+      imagePullPolicy: Always
       initContainers:
       - name: init-trillian-map
         image: radial/busyboxplus
@@ -128,6 +129,7 @@ spec:
               value: mysql:3306
             - name: LOG_KEY
               value: /kt/trillian-log.pem
+    imagePullPolicy: Always
 ---
 apiVersion: v1
 kind: Service
@@ -178,3 +180,4 @@ spec:
         ports:
           - containerPort: 9090
             name: prometheus
+      imagePullPolicy: Always
