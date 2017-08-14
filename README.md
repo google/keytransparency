@@ -49,7 +49,7 @@ development.
 #### Get and verify a public key
 
   ```
-  keytransparency-client get <email> --config=.keytransparency.yaml --verbose
+  keytransparency-client get <email> <app> --config=.keytransparency.yaml --verbose
   ✓ Commitment verified.
   ✓ VRF verified.
   ✓ Sparse tree proof verified.
