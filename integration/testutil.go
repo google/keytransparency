@@ -38,7 +38,7 @@ import (
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/google/trillian"
-	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/testonly/integration"
 	"golang.org/x/net/context"
@@ -146,7 +146,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("SetLeaves(): %v", err)
 	}
 
-	mapPubKey, err := keys.NewFromPublicDER(tree.GetPublicKey().GetDer())
+	mapPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
