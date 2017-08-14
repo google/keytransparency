@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"crypto"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/golang/glog"
@@ -31,6 +30,9 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/google/trillian"
+	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/merkle/maphasher"
+	"github.com/google/trillian/merkle/rfc6962"
 
 	tcrypto "github.com/google/trillian/crypto"
 
@@ -57,9 +59,7 @@ type Server struct {
 	client     mupb.MutationServiceClient
 	pollPeriod time.Duration
 
-	mapPubKey crypto.PublicKey
-	logPubKey crypto.PublicKey
-
+	monitor        *cmon.Monitor
 	signer         *tcrypto.Signer
 	proccessedSMRs []*mopb.GetMonitoringResponse
 }
@@ -70,10 +70,13 @@ func New(cli mupb.MutationServiceClient,
 	logPubKey, mapPubKey crypto.PublicKey,
 	poll time.Duration) *Server {
 	return &Server{
-		client:         cli,
-		pollPeriod:     poll,
-		logPubKey:      logPubKey,
-		mapPubKey:      mapPubKey,
+		client:     cli,
+		pollPeriod: poll,
+		monitor: cmon.New(maphasher.Default,
+			mapPubKey,
+			logPubKey,
+			merkle.NewLogVerifier(rfc6962.DefaultHasher),
+		),
 		signer:         signer,
 		proccessedSMRs: make([]*mopb.GetMonitoringResponse, 256),
 	}
@@ -130,7 +133,6 @@ func (s *Server) pollMutations(ctx context.Context, opts ...grpc.CallOption) ([]
 		return nil, err
 	}
 
-	seen := time.Now().UnixNano()
 	if got, want := resp.GetSmr(), s.lastSeenSMR(); bytes.Equal(got.GetRootHash(), want.GetRootHash()) &&
 		got.GetMapRevision() == want.GetMapRevision() {
 		// We already processed this SMR. Do not update seen SMRs. Do not scroll
@@ -144,50 +146,9 @@ func (s *Server) pollMutations(ctx context.Context, opts ...grpc.CallOption) ([]
 		glog.Errorf("s.pageMutations(_): %v", err)
 		return nil, err
 	}
-	respSmr := resp.GetSmr()
-	var monitorResp *mopb.GetMonitoringResponse
 
 	// TODO(Ismail): let the verification method in core directly return the response
-	switch err := cmon.VerifyResponse(s.logPubKey, s.mapPubKey, resp, mutations); err {
-	// TODO(ismail): return proper data for failure cases:
-	case cmon.ErrInvalidMutation:
-		glog.Errorf("TODO: handle this ErrInvalidMutation properly")
-	case cmon.ErrInvalidMapSignature:
-		glog.Infof("Signature on map did not verify: %v", err)
-		monitorResp = &mopb.GetMonitoringResponse{
-			IsValid:            false,
-			SeenTimestampNanos: seen,
-			InvalidMapSigProof: respSmr,
-		}
-	case cmon.ErrInvalidLogSignature:
-		glog.Infof("Signature on log did not verify: %v", err)
-		monitorResp = &mopb.GetMonitoringResponse{
-			IsValid:            false,
-			SeenTimestampNanos: seen,
-			InvalidLogSigProof: resp.GetLogRoot(),
-		}
-	case cmon.ErrNotMatchingRoot:
-		glog.Errorf("TODO: handle this ErrNotMatchingRoot properly")
-	case nil:
-		// Sign map root with monitor key:
-		sig, err := s.signer.SignObject(resp.GetSmr().GetRootHash())
-		if err != nil {
-			return nil, fmt.Errorf("s.signer.SignObject(_): %v", err)
-		}
-		// update signature on smr:
-		respSmr.Signature = sig
-		monitorResp = &mopb.GetMonitoringResponse{
-			Smr:                respSmr,
-			IsValid:            true,
-			SeenTimestampNanos: seen,
-		}
-	default:
-		glog.Errorf("Unexpected error: %v", err)
-		// TODO(ismail): Clarify: Would we still want to create a monitor response
-		// in this case?
-		return nil, err
-	}
-
+	monitorResp := s.monitor.VerifyResponse(resp, mutations)
 	// Update seen/processed signed map roots:
 	s.proccessedSMRs = append(s.proccessedSMRs, monitorResp)
 

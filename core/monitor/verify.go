@@ -19,7 +19,6 @@ package monitor
 
 import (
 	"bytes"
-	"crypto"
 	"errors"
 	"fmt"
 	"math/big"
@@ -35,6 +34,7 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
+	"time"
 )
 
 var (
@@ -56,37 +56,49 @@ var (
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
-func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, getMutResp *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) *mopb.GetMonitoringResponse {
+func (m *Monitor) VerifyResponse(in *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) *mopb.GetMonitoringResponse {
 	resp := new(mopb.GetMonitoringResponse)
-	resp.Smr = *getMutResp.Smr
+	seen := time.Now().UnixNano()
+	resp.SeenTimestampNanos = seen
+
+	// copy of received SMR:
+	smr := *in.Smr
+	resp.Smr = &smr
 	// reset map
 	resp.Smr.Signature = nil
-	sig := getMutResp.GetSmr().GetSignature()
+
 	// verify signature on map root:
-	if err := tcrypto.VerifyObject(mapPubKey, resp.Smr, sig); err != nil {
+	if err := tcrypto.VerifyObject(m.mapPubKey, resp.Smr, in.GetSmr().GetSignature()); err != nil {
 		glog.Errorf("couldn't verify signature on map root: %v", err)
-		return ErrInvalidMapSignature
+		resp.InvalidMapSigProof = in.GetSmr()
 	}
 
-	// verify signature on log-root:
-	hash := tcrypto.HashLogRoot(*getMutResp.GetLogRoot())
-	if err := tcrypto.Verify(logPubKey, hash, getMutResp.GetLogRoot().GetSignature()); err != nil {
-		return ErrInvalidLogSignature
+	logRoot :=  in.GetLogRoot()
+	// Verify SignedLogRoot signature.
+	hash := tcrypto.HashLogRoot(*logRoot)
+	if err := tcrypto.Verify(m.logPubKey, hash, logRoot.GetSignature()); err != nil {
+		resp.InvalidLogSigProof = logRoot
 	}
-	//hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
-	//if err != nil {
-	//	return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
-	//}
-	// logVerifier := merkle.NewLogVerifier(hasher)
-	// logVerifier.VerifyConsistencyProof()
+
+	// Implicitly trust the first root we get.
+	if m.trusted.TreeSize != 0 {
+		// Verify consistency proof.
+		if err := m.logVerifier.VerifyConsistencyProof(
+			m.trusted.TreeSize, logRoot.TreeSize,
+			m.trusted.RootHash, logRoot.RootHash,
+			in.GetLogConsistency()); err != nil {
+			// TODO
+		}
+	}
+
+	// TODO:
 	// logVerifier.VerifyInclusionProof()
 
-	// mapID := resp.GetSmr().GetMapId()
-	if err := verifyMutations(allMuts, getMutResp.GetSmr().GetRootHash(), getMutResp.GetSmr().GetMapId()); err != nil {
-		return err
+	if err := verifyMutations(allMuts, in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); err != nil {
+		// TODO resp.InvalidMutation
 	}
 
-	return errors.New("TODO: implement verification logic")
+	return resp
 }
 
 func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) error {
@@ -97,19 +109,18 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) er
 
 	for _, m := range muts {
 		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
-		//
 		//if err := merkle.VerifyMapInclusionProof(mapID, index,
 		//	leafHash, rootHash, proof, hasher); err != nil {
 		//	glog.Errorf("VerifyMapInclusionProof(%x): %v", index, err)
-		//	return ErrInvalidMutation
+		//	// TODO modify response object
 		//}
-		leafVal, err := entry.FromLeafValue(m.GetProof().GetLeaf().GetLeafValue())
+		oldLeaf, err := entry.FromLeafValue(m.GetProof().GetLeaf().GetLeafValue())
 		if err != nil {
 			return ErrInvalidMutation
 		}
 
 		// compute the new leaf
-		newLeaf, err := mutator.Mutate(leafVal, m.GetUpdate())
+		newLeaf, err := mutator.Mutate(oldLeaf, m.GetUpdate())
 		if err != nil {
 			// TODO(ismail): collect all data to reproduce this (expectedRoot, oldLeaf, and mutation)
 			return ErrInvalidMutation
@@ -129,7 +140,7 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) er
 				// sanity check: for each mutation overlapping proof nodes should be
 				// equal:
 				if !bytes.Equal(p, proof) {
-					// TODO: this is really odd
+					// TODO: this is really odd -> monitor should complain!
 				}
 			} else {
 				oldProofNodes[pID.String()] = proof
@@ -137,9 +148,8 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) er
 		}
 	}
 
-	// compute the new root using local intermediate hashes from epoch e.
-	// verify rootHash
-
+	// compute the new root using local intermediate hashes from epoch e
+	// (above proof hashes):
 	hs2 := merkle.NewHStar2(mapID, hasher)
 	newRoot, err := hs2.HStar2Nodes([]byte{}, hasher.Size(), newLeaves,
 		func(depth int, index *big.Int) ([]byte, error) {
@@ -153,6 +163,7 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) er
 		glog.Errorf("hs2.HStar2Nodes(_): %v", err)
 		fmt.Errorf("could not compute new root hash: hs2.HStar2Nodes(_): %v", err)
 	}
+	// verify rootHash
 	if !bytes.Equal(newRoot, expectedRoot) {
 		return ErrNotMatchingRoot
 	}

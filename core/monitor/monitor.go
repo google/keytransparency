@@ -12,9 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 package monitor
 
-type Monitor struct {
+import (
+	"crypto"
 
+	"github.com/google/trillian"
+	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/merkle/hashers"
+)
+
+type Monitor struct {
+	hasher      hashers.MapHasher
+	logPubKey   crypto.PublicKey
+	mapPubKey   crypto.PublicKey
+	logVerifier merkle.LogVerifier
+	trusted     trillian.SignedLogRoot
+}
+
+func New(hasher hashers.MapHasher, mapPubKey, logPubKey crypto.PublicKey, logVerifier merkle.LogVerifier) *Monitor {
+	return &Monitor{
+		hasher:      hasher,
+		logVerifier: logVerifier,
+		logPubKey:   logPubKey,
+		mapPubKey:   mapPubKey,
+	}
 }
