@@ -17,7 +17,9 @@ package entry
 import (
 	"bytes"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/dev"
@@ -57,12 +59,12 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func createEntry(commitment []byte, pkeys []string) ([]byte, error) {
+func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 	authKeys := make([]*tpb.PublicKey, len(pkeys))
 	for i, key := range pkeys {
 		p, _ := pem.Decode([]byte(key))
 		if p == nil {
-			return nil, fmt.Errorf("no PEM block found")
+			return nil, errors.New("no PEM block found")
 		}
 		authKeys[i] = &tpb.PublicKey{
 			KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
@@ -71,18 +73,17 @@ func createEntry(commitment []byte, pkeys []string) ([]byte, error) {
 		}
 	}
 
-	entry := &tpb.Entry{
+	return &tpb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: authKeys,
-	}
-	entryData, err := proto.Marshal(entry)
-	if err != nil {
-		return nil, fmt.Errorf("Marshal(%v)=%v", entry, err)
-	}
-	return entryData, nil
+	}, nil
 }
 
-func prepareMutation(key []byte, entryData []byte, previous []byte, signers []signatures.Signer) ([]byte, error) {
+func prepareMutation(key []byte, newEntry *tpb.Entry, previous []byte, signers []signatures.Signer) (*tpb.SignedKV, error) {
+	entryData, err := proto.Marshal(newEntry)
+	if err != nil {
+		return nil, fmt.Errorf("Marshal(%v)=%v", newEntry, err)
+	}
 	kv := &tpb.KeyValue{
 		Key:   key,
 		Value: entryData,
@@ -98,16 +99,11 @@ func prepareMutation(key []byte, entryData []byte, previous []byte, signers []si
 		sigs[signer.KeyID()] = sig
 	}
 
-	skv := &tpb.SignedKV{
+	return &tpb.SignedKV{
 		KeyValue:   kv,
 		Signatures: sigs,
 		Previous:   previous,
-	}
-	mutation, err := proto.Marshal(skv)
-	if err != nil {
-		return nil, fmt.Errorf("Marshal(%v)=%v", skv, err)
-	}
-	return mutation, nil
+	}, nil
 }
 
 func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
@@ -139,6 +135,10 @@ func TestCheckMutation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createEntry()=%v", err)
 	}
+	emptyEntryData, err := createEntry([]byte{}, []string{testPubKey1})
+	if err != nil {
+		t.Fatalf("createEntry()=%v", err)
+	}
 	missingKeyEntryData2, err := createEntry([]byte{2}, []string{testPubKey1})
 	if err != nil {
 		t.Fatalf("createEntry()=%v", err)
@@ -160,18 +160,19 @@ func TestCheckMutation(t *testing.T) {
 
 	_, _, _ = missingKeyEntryData2, hashMissingKeyEntry1, signers2
 	for _, tc := range []struct {
-		key       []byte
-		oldValue  []byte
-		entryData []byte
-		previous  []byte
-		signers   []signatures.Signer
-		err       error
+		key      []byte
+		oldEntry *tpb.Entry
+		newEntry *tpb.Entry
+		previous []byte
+		signers  []signatures.Signer
+		err      error
 	}{
 		{key, entryData2, entryData2, hashEntry1[:], nil, mutator.ErrReplay},    // Replayed mutation
 		{largeKey, entryData1, entryData2, hashEntry1[:], nil, mutator.ErrSize}, // Large mutation
 		{key, entryData1, entryData2, nil, nil, mutator.ErrPreviousHash},        // Invalid previous entry hash
 		{key, nil, entryData1, nil, nil, mutator.ErrPreviousHash},               // Very first mutation, invalid previous entry hash
-		{key, nil, nil, nil, nil, mutator.ErrReplay},                            // Very first mutation, replayed mutation
+		{key, nil, &tpb.Entry{}, nil, nil, mutator.ErrPreviousHash},             // Very first mutation, invalid previous entry hash
+		{key, nil, emptyEntryData, nilHash[:], signers1, nil},                   // Very first mutation, empty commitment, working case
 		{key, nil, entryData1, nilHash[:], signers1, nil},                       // Very first mutation, working case
 		{key, entryData1, entryData2, hashEntry1[:], signers3, nil},             // Second mutation, working case
 		// Test missing keys and signature cases.
@@ -183,13 +184,36 @@ func TestCheckMutation(t *testing.T) {
 		{key, entryData1, entryData2, hashEntry1[:], signers1, nil},                                       // Second mutation, missing current signature, should work
 	} {
 		// Prepare mutations.
-		mutation, err := prepareMutation(tc.key, tc.entryData, tc.previous, tc.signers)
+		mutation, err := prepareMutation(tc.key, tc.newEntry, tc.previous, tc.signers)
 		if err != nil {
-			t.Fatalf("prepareMutation(%v, %v, %v)=%v", tc.key, tc.entryData, tc.previous, err)
+			t.Fatalf("prepareMutation(%v, %v, %v)=%v", tc.key, tc.newEntry, tc.previous, err)
 		}
 
-		if _, got := New().Mutate(tc.oldValue, mutation); got != tc.err {
-			t.Errorf("Mutate(%v, %v)=%v, want %v", tc.oldValue, mutation, got, tc.err)
+		if _, got := New().Mutate(tc.oldEntry, mutation); got != tc.err {
+			t.Errorf("Mutate(%v, %v)=%v, want %v", tc.oldEntry, mutation, got, tc.err)
+		}
+	}
+}
+
+func TestFromLeafValue(t *testing.T) {
+	entry := &tpb.Entry{Commitment: []byte{1, 2}}
+	entryB, _ := proto.Marshal(entry)
+	for i, tc := range []struct {
+		leafVal []byte
+		want    *tpb.Entry
+		wantErr bool
+	}{
+		{[]byte{}, &tpb.Entry{}, false},          // empty leaf bytes -> return 'empty' proto, no error
+		{nil, nil, false},                        // non-existing leaf -> return nil, no error
+		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
+		{entryB, entry, false},                   // valid leaf
+	} {
+		if got, _ := FromLeafValue(tc.leafVal); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("FromLeafValue(%v)=%v, _ , want %v", tc.leafVal, got, tc.want)
+			t.Error(i)
+		}
+		if _, gotErr := FromLeafValue(tc.leafVal); (gotErr != nil) != tc.wantErr {
+			t.Errorf("FromLeafValue(%v)=_, %v", tc.leafVal, gotErr)
 		}
 	}
 }

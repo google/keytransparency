@@ -19,18 +19,18 @@ import (
 	"math"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
+	"github.com/google/trillian/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian/util"
 )
 
 var (
@@ -201,18 +201,18 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 
 	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
-		index := m.GetKeyValue().Key
-		var oldValue []byte // If no map leaf was found, oldValue will be nil.
+		index := m.GetKeyValue().GetKey()
+		var oldValue *tpb.Entry // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
-			oldValue = leaf.LeafValue
+			var err error
+			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
+			if err != nil {
+				glog.Warningf("entry.FromLeafValue(%v): %v", err)
+				continue
+			}
 		}
 
-		// TODO: change mutator interface to accept objects directly.
-		mData, err := proto.Marshal(m)
-		if err != nil {
-			return nil, err
-		}
-		newValue, err := s.mutator.Mutate(oldValue, mData)
+		newValue, err := s.mutator.Mutate(oldValue, m)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.

@@ -24,6 +24,7 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
+	"github.com/google/keytransparency/core/mutator/entry"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/sigpb"
@@ -40,10 +41,6 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, fmt.Errorf("ProofToHash(): %v", err)
 	}
-	prevEntry := new(tpb.Entry)
-	if err := proto.Unmarshal(getResp.GetLeafProof().GetLeaf().GetLeafValue(), prevEntry); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
-	}
 
 	// Commit to profile.
 	commitmentNonce, err := commitments.GenCommitmentKey()
@@ -51,6 +48,12 @@ func (v *Verifier) CreateUpdateEntryRequest(
 		return nil, err
 	}
 	commitment := commitments.Commit(userID, appID, profileData, commitmentNonce)
+
+	oldLeaf := getResp.GetLeafProof().GetLeaf().GetLeafValue()
+	prevEntry, err := entry.FromLeafValue(oldLeaf)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
+	}
 
 	// Create new Entry.
 	keys := authorizedKeys
@@ -75,7 +78,8 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, err
 	}
-	previous := objecthash.ObjectHash(getResp.GetLeafProof().GetLeaf().GetLeafValue())
+	// TODO(ismail): Change this to plain sha256:
+	previous := objecthash.ObjectHash(prevEntry)
 	signedkv := &tpb.SignedKV{
 		KeyValue:   kv,
 		Signatures: sigs,

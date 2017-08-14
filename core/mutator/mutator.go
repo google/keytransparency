@@ -20,6 +20,8 @@ package mutator
 import (
 	"errors"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/google/keytransparency/core/transaction"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
@@ -47,9 +49,9 @@ var (
 
 // Mutator verifies mutations and transforms values in the map.
 type Mutator interface {
-	// CheckMutation verifies that this is a valid mutation for this item and
+	// Mutate verifies that this is a valid mutation for this item and
 	// applies mutation to value.
-	Mutate(value, mutation []byte) ([]byte, error)
+	Mutate(value, mutation proto.Message) ([]byte, error)
 }
 
 // Mutation reads and writes mutations to the database.

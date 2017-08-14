@@ -21,6 +21,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
@@ -285,19 +286,19 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	}
 
 	// Catch errors early. Perform mutation verification.
-	// Read at the current value.  Assert the following:
+	// Read at the current value. Assert the following:
 	// - Correct signatures from previous epoch.
 	// - Correct signatures internal to the update.
 	// - Hash of current data matches the expectation in the mutation.
 
-	m, err := proto.Marshal(in.GetEntryUpdate().GetUpdate())
+	// The very first mutation will have resp.LeafProof.MapLeaf.LeafValue=nil.
+	oldLeafB := resp.GetLeafProof().GetLeaf().GetLeafValue()
+	oldEntry, err := entry.FromLeafValue(oldLeafB)
 	if err != nil {
-		glog.Warningf("Marshal error of Update: %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Marshaling error")
+		glog.Errorf("entry.FromLeafValue: %v", err)
+		return nil, grpc.Errorf(codes.InvalidArgument, "invalid previous leaf value")
 	}
-
-	// The very first mutation will have resp.LeafProof.LeafData=nil.
-	if _, err := s.mutator.Mutate(resp.LeafProof.Leaf.LeafValue, m); err == mutator.ErrReplay {
+	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetUpdate()); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
