@@ -14,8 +14,7 @@
 
 // Package monitor implements the monitor service. A monitor repeatedly polls a
 // key-transparency server's Mutations API and signs Map Roots if it could
-// reconstruct
-// clients can query.
+// reconstruct clients can query.
 package monitor
 
 import (
@@ -35,6 +34,7 @@ import (
 
 	"github.com/google/keytransparency/core/mutator/entry"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
 )
 
 var (
@@ -56,16 +56,21 @@ var (
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
-func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) error {
+func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, getMutResp *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) *mopb.GetMonitoringResponse {
+	resp := new(mopb.GetMonitoringResponse)
+	resp.Smr = *getMutResp.Smr
+	// reset map
+	resp.Smr.Signature = nil
+	sig := getMutResp.GetSmr().GetSignature()
 	// verify signature on map root:
-	if err := tcrypto.VerifyObject(mapPubKey, resp.GetSmr(), resp.GetSmr().GetSignature()); err != nil {
+	if err := tcrypto.VerifyObject(mapPubKey, resp.Smr, sig); err != nil {
 		glog.Errorf("couldn't verify signature on map root: %v", err)
 		return ErrInvalidMapSignature
 	}
 
 	// verify signature on log-root:
-	hash := tcrypto.HashLogRoot(*resp.GetLogRoot())
-	if err := tcrypto.Verify(logPubKey, hash, resp.GetLogRoot().GetSignature()); err != nil {
+	hash := tcrypto.HashLogRoot(*getMutResp.GetLogRoot())
+	if err := tcrypto.Verify(logPubKey, hash, getMutResp.GetLogRoot().GetSignature()); err != nil {
 		return ErrInvalidLogSignature
 	}
 	//hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
@@ -77,7 +82,7 @@ func VerifyResponse(logPubKey, mapPubKey crypto.PublicKey, resp *ktpb.GetMutatio
 	// logVerifier.VerifyInclusionProof()
 
 	// mapID := resp.GetSmr().GetMapId()
-	if err := verifyMutations(allMuts, resp.GetSmr().GetRootHash(), resp.GetSmr().GetMapId()); err != nil {
+	if err := verifyMutations(allMuts, getMutResp.GetSmr().GetRootHash(), getMutResp.GetSmr().GetMapId()); err != nil {
 		return err
 	}
 
@@ -102,21 +107,21 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) er
 		if err != nil {
 			return ErrInvalidMutation
 		}
+
+		// compute the new leaf
 		newLeaf, err := mutator.Mutate(leafVal, m.GetUpdate())
 		if err != nil {
 			// TODO(ismail): collect all data to reproduce this (expectedRoot, oldLeaf, and mutation)
 			return ErrInvalidMutation
 		}
-
 		index := m.GetProof().GetLeaf().GetIndex()
-
 		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, hasher.BitLen())
-		newLeafH := hasher.HashLeaf(mapID, index, newLeaf)
+		newLeafHash := hasher.HashLeaf(mapID, index, newLeaf)
 		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
 			Index:    newLeafnID.BigInt(),
-			LeafHash: newLeafH,
+			LeafHash: newLeafHash,
 		})
-
+		// store the proof hashes locally to recompute the tree below:
 		sibIDs := newLeafnID.Siblings()
 		for level, proof := range m.GetProof().GetInclusion() {
 			pID := sibIDs[level]
@@ -131,8 +136,7 @@ func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) er
 			}
 		}
 	}
-	// TODO write get function that returns old proof nodes by index and level
-	// compute the new leaf and store the intermediate hashes locally.
+
 	// compute the new root using local intermediate hashes from epoch e.
 	// verify rootHash
 

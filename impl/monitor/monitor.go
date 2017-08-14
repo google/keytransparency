@@ -146,6 +146,8 @@ func (s *Server) pollMutations(ctx context.Context, opts ...grpc.CallOption) ([]
 	}
 	respSmr := resp.GetSmr()
 	var monitorResp *mopb.GetMonitoringResponse
+
+	// TODO(Ismail): let the verification method in core directly return the response
 	switch err := cmon.VerifyResponse(s.logPubKey, s.mapPubKey, resp, mutations); err {
 	// TODO(ismail): return proper data for failure cases:
 	case cmon.ErrInvalidMutation:
