@@ -17,7 +17,6 @@
 ################################################################################
 
 PROJECT_NAME=key-transparency
-NAME_SPACE=default
 
 MAX_RETRY=30
 
@@ -34,7 +33,9 @@ function main()
   tearDown
   pushTrillianImgs
 
-  # Deploy all trillian related services:
+  # Deploy all trillian related services.
+  # the following line only restarts the DB if its config changed:
+  kubectl apply -f deploy/kubernetes/db-deployment.yml
   kubectl apply -f deploy/kubernetes/trillian-deployment.yml
 
   pushKTImgs
@@ -136,9 +137,11 @@ function checkCmdsAvailable()
 
 function tearDown()
 {
-  kubectl delete --all services --namespace=$NAME_SPACE
-  kubectl delete --all deployments --namespace=$NAME_SPACE
-  kubectl delete --all pods --namespace=$NAME_SPACE
+  # delete all running services/deployments/pods besides the mysql DB ones:
+  kubectl delete -f deploy/kubernetes/trillian-deployment.yml
+  kubectl delete -f deploy/kubernetes/keytransparency-deployment.yml
+  # to manually delete the DB use kubernetes UI or run:
+  # kubectl delete -f deploy/kubernetes/db-deployment.yml
 }
 
 # Run everything:
