@@ -17,6 +17,7 @@ package entry
 import (
 	"bytes"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -63,7 +64,7 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 	for i, key := range pkeys {
 		p, _ := pem.Decode([]byte(key))
 		if p == nil {
-			return nil, fmt.Errorf("no PEM block found")
+			return nil, errors.New("no PEM block found")
 		}
 		authKeys[i] = &tpb.PublicKey{
 			KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
@@ -134,6 +135,10 @@ func TestCheckMutation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createEntry()=%v", err)
 	}
+	emptyEntryData, err := createEntry([]byte{}, []string{testPubKey1})
+	if err != nil {
+		t.Fatalf("createEntry()=%v", err)
+	}
 	missingKeyEntryData2, err := createEntry([]byte{2}, []string{testPubKey1})
 	if err != nil {
 		t.Fatalf("createEntry()=%v", err)
@@ -166,7 +171,8 @@ func TestCheckMutation(t *testing.T) {
 		{largeKey, entryData1, entryData2, hashEntry1[:], nil, mutator.ErrSize}, // Large mutation
 		{key, entryData1, entryData2, nil, nil, mutator.ErrPreviousHash},        // Invalid previous entry hash
 		{key, nil, entryData1, nil, nil, mutator.ErrPreviousHash},               // Very first mutation, invalid previous entry hash
-		{key, nil, &tpb.Entry{}, nil, nil, mutator.ErrReplay},                   // Very first mutation, mutation is a replay
+		{key, nil, &tpb.Entry{}, nil, nil, mutator.ErrPreviousHash},             // Very first mutation, invalid previous entry hash
+		{key, nil, emptyEntryData, nilHash[:], signers1, nil},                   // Very first mutation, empty commitment, working case
 		{key, nil, entryData1, nilHash[:], signers1, nil},                       // Very first mutation, working case
 		{key, entryData1, entryData2, hashEntry1[:], signers3, nil},             // Second mutation, working case
 		// Test missing keys and signature cases.
