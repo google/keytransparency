@@ -42,73 +42,66 @@ func New() *Entry {
 
 // Mutate verifies that this is a valid mutation for this item and applies
 // mutation to value.
-func (*Entry) Mutate(oldValueM, updateM proto.Message) ([]byte, error) {
+func (*Entry) Mutate(oldValue, update proto.Message) ([]byte, error) {
 	// Ensure that the mutation size is within bounds.
-	if proto.Size(updateM) > mutator.MaxMutationSize {
-		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(updateM), mutator.MaxMutationSize)
+	if proto.Size(update) > mutator.MaxMutationSize {
+		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
 		return nil, mutator.ErrSize
 	}
 
-	update, ok := updateM.(*tpb.SignedKV)
+	updated, ok := update.(*tpb.SignedKV)
 	if !ok {
 		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
 		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
 	}
 	var oldEntry *tpb.Entry
-	if oldValueM != nil {
-		oldEntry, ok = oldValueM.(*tpb.Entry)
+	if oldValue != nil {
+		old, ok := oldValue.(*tpb.Entry)
 		if !ok {
 			glog.Warning("received proto.Message is not of type *tpb.Entry.")
 			return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
 		}
+		oldEntry = old
+	}
+
+	kv := updated.GetKeyValue()
+	newEntry := new(tpb.Entry)
+	if err := proto.Unmarshal(kv.Value, newEntry); err != nil {
+		return nil, err
 	}
 
 	// Verify pointer to previous data.
 	// The very first entry will have oldValue=nil, so its hash is the
 	// ObjectHash value of nil.
 	prevEntryHash := objecthash.ObjectHash(oldEntry)
-	if !bytes.Equal(prevEntryHash[:], update.Previous) {
-		var entryData []byte
-		if oldEntry != nil {
-			var err error
-			if entryData, err = proto.Marshal(oldEntry); err != nil {
-				return nil, fmt.Errorf("Marshal(%v)=%v", oldEntry, err)
-			}
-		}
+	if !bytes.Equal(prevEntryHash[:], updated.Previous) {
 		// Check if this mutation is a replay.
-		if bytes.Equal(entryData, update.GetKeyValue().Value) {
+		if oldEntry != nil && proto.Equal(oldEntry, newEntry) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
-
-		glog.Warningf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], update.Previous)
+		glog.Warningf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], updated.Previous)
 		return nil, mutator.ErrPreviousHash
-	}
-
-	kv := update.GetKeyValue()
-	entry := new(tpb.Entry)
-	if err := proto.Unmarshal(kv.Value, entry); err != nil {
-		return nil, err
 	}
 
 	// Ensure that the mutation has at least one authorized key to prevent
 	// account lockout.
-	if len(entry.GetAuthorizedKeys()) == 0 {
+	if len(newEntry.GetAuthorizedKeys()) == 0 {
 		glog.Warningf("mutation should contain at least one authorized key")
 		return nil, mutator.ErrMissingKey
 	}
 
-	if err := verifyKeys(oldEntry, kv, update, entry); err != nil {
+	if err := verifyKeys(oldEntry, kv, updated, newEntry); err != nil {
 		return nil, err
 	}
 
-	return update.GetKeyValue().GetValue(), nil
+	return updated.GetKeyValue().GetValue(), nil
 }
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
 // Entry or nil if the passes LeafValue was nil.
 func FromLeafValue(value []byte) (*tpb.Entry, error) {
-	if len(value) > 0 {
+	if value != nil {
 		entry := new(tpb.Entry)
 		if err := proto.Unmarshal(value, entry); err != nil {
 			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)

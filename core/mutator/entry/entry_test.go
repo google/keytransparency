@@ -17,6 +17,7 @@ package entry
 import (
 	"bytes"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -63,7 +64,7 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 	for i, key := range pkeys {
 		p, _ := pem.Decode([]byte(key))
 		if p == nil {
-			return nil, fmt.Errorf("no PEM block found")
+			return nil, errors.New("no PEM block found")
 		}
 		authKeys[i] = &tpb.PublicKey{
 			KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
@@ -79,13 +80,9 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 }
 
 func prepareMutation(key []byte, newEntry *tpb.Entry, previous []byte, signers []signatures.Signer) (*tpb.SignedKV, error) {
-	var entryData []byte
-	if newEntry != nil {
-		var err error
-		entryData, err = proto.Marshal(newEntry)
-		if err != nil {
-			return nil, fmt.Errorf("Marshal(%v)=%v", newEntry, err)
-		}
+	entryData, err := proto.Marshal(newEntry)
+	if err != nil {
+		return nil, fmt.Errorf("Marshal(%v)=%v", newEntry, err)
 	}
 	kv := &tpb.KeyValue{
 		Key:   key,
@@ -138,6 +135,10 @@ func TestCheckMutation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createEntry()=%v", err)
 	}
+	emptyEntryData, err := createEntry([]byte{}, []string{testPubKey1})
+	if err != nil {
+		t.Fatalf("createEntry()=%v", err)
+	}
 	missingKeyEntryData2, err := createEntry([]byte{2}, []string{testPubKey1})
 	if err != nil {
 		t.Fatalf("createEntry()=%v", err)
@@ -170,7 +171,8 @@ func TestCheckMutation(t *testing.T) {
 		{largeKey, entryData1, entryData2, hashEntry1[:], nil, mutator.ErrSize}, // Large mutation
 		{key, entryData1, entryData2, nil, nil, mutator.ErrPreviousHash},        // Invalid previous entry hash
 		{key, nil, entryData1, nil, nil, mutator.ErrPreviousHash},               // Very first mutation, invalid previous entry hash
-		{key, nil, nil, nil, nil, mutator.ErrReplay},                            // Very first mutation, replayed mutation
+		{key, nil, &tpb.Entry{}, nil, nil, mutator.ErrPreviousHash},             // Very first mutation, invalid previous entry hash
+		{key, nil, emptyEntryData, nilHash[:], signers1, nil},                   // Very first mutation, empty commitment, working case
 		{key, nil, entryData1, nilHash[:], signers1, nil},                       // Very first mutation, working case
 		{key, entryData1, entryData2, hashEntry1[:], signers3, nil},             // Second mutation, working case
 		// Test missing keys and signature cases.
@@ -201,7 +203,8 @@ func TestFromLeafValue(t *testing.T) {
 		want    *tpb.Entry
 		wantErr bool
 	}{
-		{make([]byte, 0), nil, false},            // empty leaf -> nil, no error
+		{[]byte{}, &tpb.Entry{}, false},          // empty leaf bytes -> return 'empty' proto, no error
+		{nil, nil, false},                        // non-existing leaf -> return nil, no error
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
 		{entryB, entry, false},                   // valid leaf
 	} {
