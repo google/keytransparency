@@ -1,8 +1,3 @@
-log-key: "genfiles/trillian-log.pem"
-vrf:    "genfiles/vrf-pubkey.pem"
-kt-key: "genfiles/server.crt"
-kt-sig: "genfiles/p256-pubkey.pem"
-domain: "example.com"
-kt-url: "35.184.134.53:8080"
-client-secret: "client_secret.json"
-service-key: ""
+kt-url: localhost:8080
+client-secret: 
+service-key: 

@@ -35,11 +35,17 @@ services:
     ports:
       - "8090:8090" # gRPC
       - "8091:8091" # HTTP & Metrics
-    environment:
-      DB_HOST: db:3306
-      DB_DATABASE: test
-      DB_USER: test
-      DB_PASSWORD: zaphod 
+    entrypoint:
+      - /go/bin/trillian_log_server
+      - --mysql_uri=test:zaphod@tcp(db:3306)/test
+      - --rpc_endpoint=0.0.0.0:8090
+      - --http_endpoint=0.0.0.0:8091
+      - --alsologtostderr 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   trillian-log-signer:
     depends_on:
@@ -51,13 +57,21 @@ services:
     restart: always
     ports:
       - "8092:8091" # HTTP & Metrics
-    environment:
-      DB_HOST: db:3306
-      DB_DATABASE: test
-      DB_USER: test
-      DB_PASSWORD: zaphod
-      SEQUENCER_INTERVAL: 1s
-
+    entrypoint: 
+      - /go/bin/trillian_log_signer
+      - --mysql_uri=test:zaphod@tcp(db:3306)/test
+      - --http_endpoint=0.0.0.0:8091
+      - --sequencer_guard_window=0s
+      - --sequencer_interval=1s
+      - --num_sequencers=1
+      - --batch_size=50
+      - --force_master=true
+      - --alsologtostderr
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   trillian-map:
     depends_on:
@@ -70,11 +84,17 @@ services:
     ports:
       - "8093:8090" # gRPC
       - "8094:8091" # HTTP & Metrics
-    environment:
-      DB_HOST: db:3306
-      DB_DATABASE: test
-      DB_USER: test
-      DB_PASSWORD: zaphod 
+    entrypoint:
+      - /go/bin/trillian_map_server
+      - --mysql_uri=test:zaphod@tcp(db:3306)/test
+      - --rpc_endpoint=0.0.0.0:8090
+      - --http_endpoint=0.0.0.0:8091
+      - --alsologtostderr 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   kt-server:
     depends_on:
