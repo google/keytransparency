@@ -18,6 +18,7 @@ spec:
       containers:
       - name: kt-server
         image: us.gcr.io/key-transparency/keytransparency-server
+        imagePullPolicy: Always
         volumeMounts:
         - name: secrets-volume
           readOnly: true
@@ -50,7 +51,6 @@ spec:
               value: /kt-secrets/server.crt
             - name: VRF_PRIV
               value: /kt-secrets/vrf-key.pem
-      imagePullPolicy: Always
       initContainers:
       - name: init-trillian-map
         image: radial/busyboxplus
@@ -103,6 +103,7 @@ spec:
       containers:
       - name: kt-signer
         image: us.gcr.io/key-transparency/keytransparency-signer
+        imagePullPolicy: Always
         ports:
           - containerPort: 8080
             name: json-grpc
@@ -129,7 +130,6 @@ spec:
               value: mysql:3306
             - name: LOG_KEY
               value: /kt/trillian-log.pem
-    imagePullPolicy: Always
 ---
 apiVersion: v1
 kind: Service
@@ -177,7 +177,7 @@ spec:
       containers:
       - name: prometheus
         image: us.gcr.io/key-transparency/prometheus
+        imagePullPolicy: Always
         ports:
           - containerPort: 9090
             name: prometheus
-      imagePullPolicy: Always
