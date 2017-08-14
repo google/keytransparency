@@ -13,6 +13,7 @@ spec:
       containers:
       - name: trillian-map
         image: us.gcr.io/key-transparency/trillian_map_server
+        imagePullPolicy: Always
         ports:
           - containerPort: 8090
             name: rpc
@@ -57,6 +58,7 @@ spec:
       containers:
       - name: trillian-log
         image: us.gcr.io/key-transparency/trillian_log_server
+        imagePullPolicy: Always
         ports:
           - containerPort: 8090
             name: rpc
@@ -101,6 +103,7 @@ spec:
       containers:
       - name: trillian-log-signer
         image: us.gcr.io/key-transparency/trillian_log_signer
+        imagePullPolicy: Always
         ports:
           - containerPort: 8092
             name: metrics

@@ -29,8 +29,8 @@ function main()
   checkCmdsAvailable
   # create key-pairs:
   ./scripts/prepare_server.sh -f
+  prepareSecrets
   buildDockerImgs
-  tearDown
   pushTrillianImgs
 
   # Deploy all trillian related services.
@@ -135,13 +135,15 @@ function checkCmdsAvailable()
   fi
 }
 
-function tearDown()
+function prepareSecrets()
 {
-  # delete all running services/deployments/pods besides the mysql DB ones:
-  kubectl delete -f deploy/kubernetes/trillian-deployment.yml
-  kubectl delete -f deploy/kubernetes/keytransparency-deployment.yml
-  # to manually delete the DB use kubernetes UI or run:
-  # kubectl delete -f deploy/kubernetes/db-deployment.yml
+  local EXISTS=0
+  # if kt-secrets does not exist, create it:
+  kubectl get secret kt-secrets
+  # kubectl exits with 1 if kt-secret does not exist
+  if [ $? -ne 0 ]; then
+    kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key --from-file=genfiles/vrf-key.pem
+  fi
 }
 
 # Run everything:

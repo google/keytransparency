@@ -55,9 +55,9 @@ var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath = flag.String("db", "db", "Database connection string")
-	vrfPath      = flag.String("vrf", "private_vrf_key.dat", "Path to VRF private key")
-	keyFile      = flag.String("key", "testdata/server.key", "TLS private key file")
-	certFile     = flag.String("cert", "testdata/server.pem", "TLS cert file")
+	vrfPath      = flag.String("vrf", "genfiles/vrf-key.pem", "Path to VRF private key")
+	keyFile      = flag.String("key", "genfiles/server.key", "TLS private key file")
+	certFile     = flag.String("cert", "genfiles/server.crt", "TLS cert file")
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
 	// Info to connect to sparse merkle tree database.

@@ -11,9 +11,18 @@ spec:
       labels:
         run: kt-server
     spec:
+      volumes:
+      - name: secrets-volume
+        secret:
+          secretName: kt-secrets
       containers:
       - name: kt-server
         image: us.gcr.io/key-transparency/keytransparency-server
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: secrets-volume
+          readOnly: true
+          mountPath: "/kt-secrets"
         ports:
           - containerPort: 8080
             name: json-grpc
@@ -37,11 +46,11 @@ spec:
             - name: DB_HOST
               value: mysql:3306
             - name: TLS_KEY_PATH
-              value: /kt/server.key
+              value: /kt-secrets/server.key
             - name: TLS_CRT_PATH
-              value: /kt/server.crt
+              value: /kt-secrets/server.crt
             - name: VRF_PRIV
-              value: /kt/vrf-key.pem
+              value: /kt-secrets/vrf-key.pem
       initContainers:
       - name: init-trillian-map
         image: radial/busyboxplus
@@ -94,6 +103,7 @@ spec:
       containers:
       - name: kt-signer
         image: us.gcr.io/key-transparency/keytransparency-signer
+        imagePullPolicy: Always
         ports:
           - containerPort: 8080
             name: json-grpc
@@ -167,6 +177,7 @@ spec:
       containers:
       - name: prometheus
         image: us.gcr.io/key-transparency/prometheus
+        imagePullPolicy: Always
         ports:
           - containerPort: 9090
             name: prometheus
