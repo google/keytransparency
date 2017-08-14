@@ -56,11 +56,12 @@ func (*Entry) Mutate(oldValue, update proto.Message) ([]byte, error) {
 	}
 	var oldEntry *tpb.Entry
 	if oldValue != nil {
-		oldEntry, ok = oldValue.(*tpb.Entry)
+		old, ok := oldValue.(*tpb.Entry)
 		if !ok {
 			glog.Warning("received proto.Message is not of type *tpb.Entry.")
 			return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
 		}
+		oldEntry = old
 	}
 
 	kv := updated.GetKeyValue()
