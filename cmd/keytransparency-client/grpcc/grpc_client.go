@@ -29,10 +29,12 @@ import (
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -82,6 +84,42 @@ type Client struct {
 	RetryCount int
 	RetryDelay time.Duration
 	trusted    trillian.SignedLogRoot
+}
+
+// NewFromConfig creates a new client from a config
+func NewFromConfig(cc *grpc.ClientConn, config *tpb.GetDomainInfoResponse) (*Client, error) {
+	// Log Hasher.
+	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
+	if err != nil {
+		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
+	}
+
+	// Log Key
+	logPubKey, err := der.UnmarshalPublicKey(config.GetLog().GetPublicKey().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing Log public key: %v", err)
+	}
+
+	// Map Hasher
+	mapHasher, err := hashers.NewMapHasher(config.GetMap().GetHashStrategy())
+	if err != nil {
+		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
+	}
+
+	// Map Key
+	mapPubKey, err := der.UnmarshalPublicKey(config.GetMap().GetPublicKey().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing Map public key: %v", err)
+	}
+
+	// VRF key
+	vrfPubKey, err := p256.NewVRFVerifierFromRawKey(config.GetVrf().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
+	}
+
+	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
+	return New(cc, vrfPubKey, mapPubKey, mapHasher, logVerifier), nil
 }
 
 // New creates a new client.

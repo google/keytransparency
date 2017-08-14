@@ -23,6 +23,7 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
+	"github.com/google/trillian/crypto/keys"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -33,7 +34,6 @@ import (
 	authzpb "github.com/google/keytransparency/core/proto/authorization"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
-	"github.com/google/trillian/crypto/keyspb"
 )
 
 const (
@@ -347,7 +347,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 		return nil, err
 	}
 
-	vrfPub, err := s.vrf.Public()
+	vrfPubKeyPB, err := keys.ToPublicKeyPB(s.vrf.Public())
 	if err != nil {
 		return nil, err
 	}
@@ -355,9 +355,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 	return &tpb.GetDomainInfoResponse{
 		Log: logTree,
 		Map: mapTree,
-		Vrf: &keyspb.PublicKey{
-			Der: vrfPub,
-		},
+		Vrf: vrfPubKeyPB,
 	}, nil
 }
 

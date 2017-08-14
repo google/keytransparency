@@ -25,16 +25,9 @@ import (
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/kt"
-	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	gauth "github.com/google/keytransparency/impl/google/authentication"
 
 	"github.com/google/trillian"
-	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/merkle/coniks"
-	"github.com/google/trillian/merkle/hashers"
-	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -43,6 +36,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
+
+	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	gauth "github.com/google/keytransparency/impl/google/authentication"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
+	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
+	_ "github.com/spf13/viper/remote"               // Enable remote configs
 )
 
 var (
@@ -69,7 +69,8 @@ server provides to ensure that account data is accurate.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
-		log.Fatalf("%v", err)
+		fmt.Printf("%v", err)
+		os.Exit(1)
 	}
 }
 
@@ -79,6 +80,8 @@ func init() {
 
 	RootCmd.PersistentFlags().String("kt-url", "", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
+	RootCmd.PersistentFlags().Bool("kt-autoconfig", true, "Fetch config info from the server's /v1/domain/info")
+
 	RootCmd.PersistentFlags().String("vrf", "genfiles/vrf-pubkey.pem", "path to vrf public key")
 
 	RootCmd.PersistentFlags().String("log-key", "genfiles/trillian-log.pem", "Path to public key PEM for Trillian Log server")
@@ -95,13 +98,15 @@ func init() {
 }
 
 // initConfig reads in config file and ENV variables if set.
+// initConfig is run during a command's preRun().
 func initConfig() {
 	viper.AutomaticEnv() // Read in environment variables that match.
 
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		if err := viper.ReadInConfig(); err != nil {
-			log.Fatalf("Failed reading config file: %v: %v", viper.ConfigFileUsed(), err)
+			fmt.Printf("Failed reading config file: %v: %v", viper.ConfigFileUsed(), err)
+			os.Exit(1)
 		}
 	} else {
 		viper.SetConfigName(".keytransparency")
@@ -110,18 +115,7 @@ func initConfig() {
 			fmt.Println("Using config file:", viper.ConfigFileUsed())
 		}
 	}
-}
 
-func readVrfKey(vrfPubFile string) (vrf.PublicKey, error) {
-	b, err := ioutil.ReadFile(vrfPubFile)
-	if err != nil {
-		return nil, fmt.Errorf("Error reading vrf public key: %v, %v", vrfPubFile, err)
-	}
-	v, err := p256.NewVRFVerifierFromPEM(b)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
-	}
-	return v, nil
 }
 
 // getTokenFromWeb uses config to request a Token.  Returns the retrieved Token.
@@ -222,47 +216,91 @@ func dial(ktURL, caFile, clientSecretFile string, serviceKeyFile string) (*grpc.
 
 // GetClient connects to the server and returns a key transparency verification
 // client.
-func GetClient(clientSecretFile string) (*grpcc.Client, error) {
+func GetClient(useClientSecret bool) (*grpcc.Client, error) {
+	cc, err := newConnection(useClientSecret)
+	if err != nil {
+		return nil, fmt.Errorf("Error Dialing: %v", err)
+	}
+
+	autoConfig := viper.GetBool("kt-autoconfig")
+	var config *kpb.GetDomainInfoResponse
+	if autoConfig {
+		ktClient := spb.NewKeyTransparencyServiceClient(cc)
+		ctx := context.Background()
+		remoteConfig, err := ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
+		if err != nil {
+			return nil, fmt.Errorf("Error reading remote config: %v", err)
+		}
+		config = remoteConfig
+
+	} else {
+		diskConfig, err := readConfigFromDisk()
+		if err != nil {
+			return nil, fmt.Errorf("Error reading config: %v", err)
+		}
+		config = diskConfig
+	}
+
+	return grpcc.NewFromConfig(cc, config)
+}
+
+// newConnection returns a grpcc.Client using the viper configs.
+func newConnection(useClientSecret bool) (*grpc.ClientConn, error) {
 	ktURL := viper.GetString("kt-url")
 	ktCert := viper.GetString("kt-cert")
+	serviceKeyFile := viper.GetString("service-key") // Anonymous user creds.
+	clientSecretFile := viper.GetString("client-secret")
+	if !useClientSecret {
+		clientSecretFile = ""
+	}
+
+	return dial(ktURL, ktCert, clientSecretFile, serviceKeyFile)
+}
+
+func readConfigFromDisk() (*kpb.GetDomainInfoResponse, error) {
 	vrfPubFile := viper.GetString("vrf")
 	logPEMFile := viper.GetString("log-key")
 	mapPEMFile := viper.GetString("map-key")
-	serviceKeyFile := viper.GetString("service-key") // Anonymous user creds.
-
-	// Client Connection.
-	cc, err := dial(ktURL, ktCert, clientSecretFile, serviceKeyFile)
-	if err != nil {
-		return nil, fmt.Errorf("Error Dialing %v: %v", ktURL, err)
-	}
 
 	// Log PubKey.
 	logPubKey, err := pem.ReadPublicKeyFile(logPEMFile)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
+		return nil, fmt.Errorf("Failed to open log public key %v: %v", logPEMFile, err)
+	}
+	logPubPB, err := keys.ToPublicKeyPB(logPubKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize log public key: %v", err)
 	}
 
-	// Log Hasher.
-	logHasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
+	// VRF PubKey
+	vrfPubKey, err := keys.NewFromPublicPEMFile(vrfPubFile)
 	if err != nil {
-		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
+		return nil, fmt.Errorf("failed to read: %s. %v", vrfPubFile, err)
 	}
-
-	// VRF PubKey.
-	vrfPubKey, err := readVrfKey(vrfPubFile)
+	vrfPubPB, err := keys.ToPublicKeyPB(vrfPubKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to serialize vrf public key: %v", err)
 	}
 
 	// MapPubKey.
 	mapPubKey, err := pem.ReadPublicKeyFile(mapPEMFile)
 	if err != nil {
-		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
+		return nil, fmt.Errorf("error reading map public key %v: %v", mapPEMFile, err)
+	}
+	mapPubPB, err := keys.ToPublicKeyPB(mapPubKey)
+	if err != nil {
+		return nil, fmt.Errorf("error seralizeing map public key: %v", err)
 	}
 
-	// Map Hasher
-	mapHasher := coniks.Default
-
-	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
-	return grpcc.New(cc, vrfPubKey, mapPubKey, mapHasher, logVerifier), nil
+	return &kpb.GetDomainInfoResponse{
+		Log: &trillian.Tree{
+			HashStrategy: trillian.HashStrategy_OBJECT_RFC6962_SHA256,
+			PublicKey:    logPubPB,
+		},
+		Map: &trillian.Tree{
+			HashStrategy: trillian.HashStrategy_CONIKS_SHA512_256,
+			PublicKey:    mapPubPB,
+		},
+		Vrf: vrfPubPB,
+	}, nil
 }
