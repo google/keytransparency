@@ -48,7 +48,7 @@ development.
 #### Get and verify a public key
 
   ```
-  keytransparency-client get <email> <app> --config=.keytransparency.yaml --verbose
+  keytransparency-client get <email> <app> --insecure --verbose
   ✓ Commitment verified.
   ✓ VRF verified.
   ✓ Sparse tree proof verified.
@@ -63,7 +63,7 @@ development.
 
 #### Verify key history
   ```
-  keytransparency-client history <email> --config=.keytransparency.yaml
+  keytransparency-client history <email> --insecure
   Epoch |Timestamp                    |Profile
   4     |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
