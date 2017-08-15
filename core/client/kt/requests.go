@@ -16,12 +16,12 @@ package kt
 
 import (
 	"fmt"
+	"crypto/sha256"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 
-	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -48,8 +48,8 @@ func (v *Verifier) CreateUpdateEntryRequest(
 		return nil, err
 	}
 	commitment := commitments.Commit(userID, appID, profileData, commitmentNonce)
-
 	oldLeaf := getResp.GetLeafProof().GetLeaf().GetLeafValue()
+	// TODO(ismail): maybe get rid of this helper again:
 	prevEntry, err := entry.FromLeafValue(oldLeaf)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
@@ -79,7 +79,7 @@ func (v *Verifier) CreateUpdateEntryRequest(
 		return nil, err
 	}
 	// TODO(ismail): Change this to plain sha256:
-	previous := objecthash.ObjectHash(prevEntry)
+	previous := sha256.Sum256(oldLeaf)
 	signedkv := &tpb.SignedKV{
 		KeyValue:   kv,
 		Signatures: sigs,

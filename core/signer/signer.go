@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
@@ -31,6 +30,7 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/gogo/protobuf/proto"
 )
 
 var (
@@ -202,25 +202,24 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
 		index := m.GetKeyValue().GetKey()
-		var oldValue *tpb.Entry // If no map leaf was found, oldValue will be nil.
+		var oldValue []byte // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
-			var err error
-			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
-			if err != nil {
-				glog.Warningf("entry.FromLeafValue(%v): %v", err)
-				continue
-			}
+			oldValue = leaf.LeafValue
 		}
 
-		newValue, err := s.mutator.Mutate(oldValue, m)
+		newEntry, err := s.mutator.Mutate(oldValue, m)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.
 		}
-
+		leafVal, err := proto.Marshal(newEntry)
+		if err != nil {
+			glog.Warningf("proto.Marshal(%v): %v", newEntry, err)
+			continue // A bad mutation should not make the whole batch fail.
+		}
 		retMap[toArray(index)] = &trillian.MapLeaf{
 			Index:     index,
-			LeafValue: newValue,
+			LeafValue: leafVal,
 		}
 	}
 	// Convert return map back into a list.

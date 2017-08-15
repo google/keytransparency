@@ -21,7 +21,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
@@ -292,13 +291,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	// - Hash of current data matches the expectation in the mutation.
 
 	// The very first mutation will have resp.LeafProof.MapLeaf.LeafValue=nil.
-	oldLeafB := resp.GetLeafProof().GetLeaf().GetLeafValue()
-	oldEntry, err := entry.FromLeafValue(oldLeafB)
-	if err != nil {
-		glog.Errorf("entry.FromLeafValue: %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid previous leaf value")
-	}
-	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetUpdate()); err == mutator.ErrReplay {
+	oldLeafVal := resp.GetLeafProof().GetLeaf().GetLeafValue()
+	if _, err := s.mutator.Mutate(oldLeafVal, in.GetEntryUpdate().GetUpdate()); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check

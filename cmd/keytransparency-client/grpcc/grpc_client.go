@@ -238,12 +238,8 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
-	oldLeafB := getResp.GetLeafProof().GetLeaf().GetLeafValue()
-	oldLeaf, err := entry.FromLeafValue(oldLeafB)
-	if err != nil {
-		return nil, fmt.Errorf("entry.FromLeafValue: %v", err)
-	}
-	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetUpdate()); err != nil {
+	oldLeafVal := getResp.GetLeafProof().GetLeaf().GetLeafValue()
+	if _, err := c.mutator.Mutate(oldLeafVal, req.GetEntryUpdate().GetUpdate()); err != nil {
 		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 
