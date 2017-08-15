@@ -34,7 +34,6 @@ development.
 1. Install [Go 1.7](https://golang.org/doc/install).
 2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
 3. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
-4. Run the client setup tool: `./scripts/prepare_client.sh`
 
 ### Client operations
 
@@ -43,13 +42,13 @@ development.
   ```sh
   keytransparency-client authorized-keys --help 
   keytransparency-client authorized-keys add --generate --type=ecdsa --activate
-  keytransparency-client post user@domain.com app1  --config=./.keytransparency.yaml -d 'dGVzdA==' #Base64
+  keytransparency-client post user@domain.com app1 --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
   ```
 
 #### Get and verify a public key
 
   ```
-  keytransparency-client get <email> <app> --config=.keytransparency.yaml --verbose
+  keytransparency-client get <email> <app> --insecure --verbose
   ✓ Commitment verified.
   ✓ VRF verified.
   ✓ Sparse tree proof verified.
@@ -64,7 +63,7 @@ development.
 
 #### Verify key history
   ```
-  keytransparency-client history <email> --config=.keytransparency.yaml
+  keytransparency-client history <email> --insecure
   Epoch |Timestamp                    |Profile
   4     |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
@@ -100,7 +99,7 @@ source scripts/configure_trillian.sh && createLog && createMap
 - `docker-compose build kt-signer`
 - `docker-compose up -d`
 - `docker-compose logs --tail=0 --follow`
-- [https://localhost:8080/v1/users/foo@bar.com](https://localhost:8080/v1/users/foo@bar.com)
+- [https://localhost:8080/v1/users/foo@bar.com?app_id=app1](https://localhost:8080/v1/users/foo@bar.com?app_id=app1)
 - [https://localhost:8080/v1/domain/info](https://localhost:8080/v1/domain/info)
 - [Prometheus graphs](http://localhost:9090/graph)
 

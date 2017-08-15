@@ -36,7 +36,7 @@ results are consistent.`,
 		appID := args[1]
 		timeout := viper.GetDuration("timeout")
 
-		c, err := GetClient("")
+		c, err := GetClient(false)
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
