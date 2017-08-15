@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/impl/monitor"
 	"github.com/google/trillian/crypto"
-	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
@@ -107,7 +107,7 @@ func main() {
 	mcc := mupb.NewMutationServiceClient(grpcc)
 
 	// Read signing key:
-	key, err := keys.NewFromPrivatePEMFile(*signingKey, *signingKeyPassword)
+	key, err := pem.ReadPrivateKeyFile(*signingKey, *signingKeyPassword)
 	if err != nil {
 		glog.Fatalf("Could not create signer from %v: %v", *signingKey, err)
 	}

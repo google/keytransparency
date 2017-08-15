@@ -31,7 +31,7 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/merkle/hashers"
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
@@ -237,7 +237,7 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	}
 
 	// Log PubKey.
-	logPubKey, err := keys.NewFromPublicPEMFile(logPEMFile)
+	logPubKey, err := pem.ReadPublicKeyFile(logPEMFile)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
 	}
@@ -255,7 +255,7 @@ func GetClient(clientSecretFile string) (*grpcc.Client, error) {
 	}
 
 	// MapPubKey.
-	mapPubKey, err := keys.NewFromPublicPEMFile(mapPEMFile)
+	mapPubKey, err := pem.ReadPublicKeyFile(mapPEMFile)
 	if err != nil {
 		return nil, fmt.Errorf("error reading key transparency PEM: %v", err)
 	}

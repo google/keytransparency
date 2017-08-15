@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/merkle/hashers"
 	_ "github.com/google/trillian/merkle/objhasher" // Register objecthasher
 
@@ -30,7 +30,7 @@ import (
 
 // LogClient creates a log client.
 func LogClient(logID int64, logURL, pubKeyFile string) (client.VerifyingLogClient, error) {
-	sthPubKey, err := keys.NewFromPublicPEMFile(pubKeyFile)
+	sthPubKey, err := pem.ReadPublicKeyFile(pubKeyFile)
 	if err != nil {
 		glog.Fatalf("Failed to open public key %v: %v", pubKeyFile, err)
 	}
