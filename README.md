@@ -34,7 +34,6 @@ development.
 1. Install [Go 1.7](https://golang.org/doc/install).
 2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
 3. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
-4. Run the client setup tool: `./scripts/prepare_client.sh`
 
 ### Client operations
 
@@ -43,7 +42,7 @@ development.
   ```sh
   keytransparency-client authorized-keys --help 
   keytransparency-client authorized-keys add --generate --type=ecdsa --activate
-  keytransparency-client post user@domain.com app1  --config=./.keytransparency.yaml -d 'dGVzdA==' #Base64
+  keytransparency-client post user@domain.com app1 --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
   ```
 
 #### Get and verify a public key

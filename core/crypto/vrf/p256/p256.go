@@ -33,6 +33,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"math/big"
+
+	"github.com/google/keytransparency/core/crypto/vrf"
 )
 
 var (
@@ -222,7 +224,7 @@ func NewVRFSigner(key *ecdsa.PrivateKey) (*PrivateKey, error) {
 }
 
 // Public returns the corresponding public key as bytes.
-func (k PrivateKey) Public() *PublicKey {
+func (k PrivateKey) Public() vrf.PublicKey {
 	return &PublicKey{&k.PublicKey}
 }
 

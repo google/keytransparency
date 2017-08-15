@@ -23,10 +23,10 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
-	"github.com/google/trillian/crypto/keys"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian/crypto/keys/der"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -347,7 +347,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 		return nil, err
 	}
 
-	vrfPubKeyPB, err := keys.ToPublicKeyPB(s.vrf.Public())
+	vrfPubKeyPB, err := der.ToPublicProto(s.vrf.Public())
 	if err != nil {
 		return nil, err
 	}
