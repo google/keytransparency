@@ -71,8 +71,7 @@ server provides to ensure that account data is accurate.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
-		fmt.Printf("%v", err)
-		os.Exit(1)
+		log.Fatalf("%v", err)
 	}
 }
 
@@ -110,8 +109,7 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		if err := viper.ReadInConfig(); err != nil {
-			fmt.Printf("Failed reading config file: %v: %v", viper.ConfigFileUsed(), err)
-			os.Exit(1)
+			log.Fatalf("Failed reading config file: %v: %v", viper.ConfigFileUsed(), err)
 		}
 	} else {
 		viper.SetConfigName(".keytransparency")
