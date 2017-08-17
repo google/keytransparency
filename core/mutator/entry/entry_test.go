@@ -154,7 +154,10 @@ func TestCheckMutation(t *testing.T) {
 	signers2 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey2)})
 	signers3 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)})
 
-	// Calculate hashes.
+	// Calculate hashes:
+	//
+	// nilHash is used as the previous hash value when submitting the very
+	// first mutation.
 	nilHash := sha256.Sum256(nil)
 	update1, _ := prepareSignedKV(key, entryData1, nilHash[:], signers1)
 	leaf1, _ := proto.Marshal(update1)
@@ -162,8 +165,6 @@ func TestCheckMutation(t *testing.T) {
 	missingKeyEntryData1Update, _ := prepareSignedKV(key, missingKeyEntryData1, nilHash[:], signers1)
 	leaf2, _ := proto.Marshal(missingKeyEntryData1Update)
 	hashMissingKeyEntry1 := sha256.Sum256(leaf2)
-	// nilHash is used as the previous hash value when submitting the very
-	// first mutation.
 
 	for i, tc := range []struct {
 		key        []byte
