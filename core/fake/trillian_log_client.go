@@ -28,7 +28,7 @@ func NewFakeTrillianLogClient() trillian.TrillianLogClient {
 }
 
 func (l *logServer) QueueLeaf(ctx context.Context, in *trillian.QueueLeafRequest, opts ...grpc.CallOption) (*trillian.QueueLeafResponse, error) {
-	panic("not implemented")
+	return nil, nil
 }
 
 func (l *logServer) QueueLeaves(ctx context.Context, in *trillian.QueueLeavesRequest, opts ...grpc.CallOption) (*trillian.QueueLeavesResponse, error) {
