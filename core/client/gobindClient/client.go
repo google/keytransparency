@@ -21,8 +21,11 @@ import (
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+
 	"log"
+	"github.com/google/trillian/merkle/coniks"
 )
 
 type BClientParams struct {
@@ -52,12 +55,19 @@ func NewBClientParams(KtURL string, MapID int64, KtTLSCertPEM, VrfPubPEM, KtSigP
 
 func BGetEntry(timeoutInMilliseconds int, clientParams *BClientParams, userID, appID string) ([]byte, error) {
 
-	timeout := time.Duration(timeoutInMilliseconds) * time.Millisecond
-	c, err := GetClient(*clientParams, "")
+	//timeout := time.Duration(timeoutInMilliseconds) * time.Millisecond
+	//c, err := GetClient(*clientParams, "")
+
+	timeout := time.Duration(700) * time.Millisecond
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+
+	//c, err := GetClient(*clientParams, "")
+	c, err := GetClientWithAutoConfig(ctx, *clientParams)
+
+
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: error connecting: %v", err)
 	}
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
 	entry, smr, err := c.GetEntry(ctx, userID, appID)
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: %v", err)
@@ -71,6 +81,27 @@ func BGetEntry(timeoutInMilliseconds int, clientParams *BClientParams, userID, a
 
 	return entry, nil
 }
+
+func GetClientWithAutoConfig(ctx context.Context, clientParams BClientParams) (*grpcc.Client, error) {
+      // TODO(amarcedone) For now clientSecretFile is not needed as there is no authentication. Consider removing.
+
+      cc, err := dial(clientParams.KtURL, clientParams.KtTLSCertPEM, "")
+
+      if err != nil {
+              return nil, fmt.Errorf("Error Dialing %v: %v", clientParams.KtURL, err)
+      }
+
+      ktClient := spb.NewKeyTransparencyServiceClient(cc)
+
+      config, err := ktClient.GetDomainInfo(ctx, &tpb.GetDomainInfoRequest{})
+      if err != nil {
+              return nil, fmt.Errorf("Error getting config: %v", err)
+      }
+      //return nil, fmt.Errorf("Error Dialing for AutoConfig3")
+
+      return grpcc.NewFromConfig(cc, config)
+}
+
 
 func GetClient(clientParams BClientParams, clientSecretFile string) (*grpcc.Client, error) {
 	// TODO(amarcedone) For now clientSecretFile is not needed as there is no authentication. Consider removing.
@@ -102,8 +133,11 @@ func GetClient(clientParams BClientParams, clientSecretFile string) (*grpcc.Clie
 		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
 	}
 
-	cli := pb.NewKeyTransparencyServiceClient(cc)
-	return grpcc.New(cli, vrfVerifier, verifier, log), nil
+	//cli := pb.NewKeyTransparencyServiceClient(cc)
+	//return grpcc.New(cli, vrfVerifier, verifier, log, true), nil
+
+	//cc, vrfPub, mapPubKey, coniks.Default
+	return grpcc.New(cc, vrfVerifier, verifier, coniks.Default, log), nil
 }
 
 func dial(ktURL string, caPEM []byte, clientSecretFile string) (*grpc.ClientConn, error) {
