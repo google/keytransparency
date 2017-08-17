@@ -22,8 +22,6 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	"github.com/google/keytransparency/core/admin"
-	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -178,12 +176,7 @@ func NewEnv(t *testing.T) *Env {
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
 	// Signer
-	admin := admin.NewStatic()
-	if err := admin.AddLog(logID, fake.NewFakeVerifyingLogClient()); err != nil {
-		t.Fatalf("failed to add log to admin: %v", err)
-	}
-	sthsLog := appender.NewTrillian(admin)
-	signer := signer.New("", mapID, mapEnv.MapClient, logID, sthsLog, mutator, mutations, factory)
+	signer := signer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
 
 	addr, lis := Listen(t)
 	go s.Serve(lis)

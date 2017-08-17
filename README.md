@@ -96,7 +96,6 @@ source scripts/configure_trillian.sh && createLog && createMap
 ```
 
 3. Run Key Transparency
-- `docker-compose build kt-signer`
 - `docker-compose up -d`
 - `docker-compose logs --tail=0 --follow`
 - [https://localhost:8080/v1/users/foo@bar.com?app_id=app1](https://localhost:8080/v1/users/foo@bar.com?app_id=app1)
