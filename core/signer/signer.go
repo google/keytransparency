@@ -113,20 +113,8 @@ func (s *Signer) Initialize(ctx context.Context) error {
 	// add the empty map root to the log.
 	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
 		mapRoot.GetMapRoot().GetMapRevision() == 0 {
-		smrJSON, err := json.Marshal(mapRoot.GetMapRoot())
-		idHash := sha256.Sum256(smrJSON)
-		if err != nil {
+		if err := queueLogLeaf(ctx, s.tlog, s.logID, mapRoot.GetMapRoot()); err != nil {
 			return err
-		}
-		if _, err := s.tlog.QueueLeaf(ctx, &trillian.QueueLeafRequest{
-			LogId: s.logID,
-			Leaf: &trillian.LogLeaf{
-				LeafValue:        smrJSON,
-				LeafIdentityHash: idHash[:],
-			},
-		}); err != nil {
-			return fmt.Errorf("trillian.QueueLeaf(logID: %v, leaf: %v): %v",
-				s.logID, smrJSON, err)
 		}
 	}
 	return nil
@@ -351,22 +339,9 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, seq)
 
 	// Put SignedMapHead in an append only log.
-	smrJSON, err := json.Marshal(setResp.GetMapRoot())
-	if err != nil {
+	if err := queueLogLeaf(ctx, s.tlog, s.logID, setResp.GetMapRoot()); err != nil {
+		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
-	}
-	idHash := sha256.Sum256(smrJSON)
-	// TODO(gbelvin): Add leaf at a specific index. trillian#423
-	// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
-	if _, err := s.tlog.QueueLeaf(ctx, &trillian.QueueLeafRequest{
-		LogId: s.logID,
-		Leaf: &trillian.LogLeaf{
-			LeafValue:        smrJSON,
-			LeafIdentityHash: idHash[:],
-		},
-	}); err != nil {
-		return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
-			s.logID, smrJSON, err)
 	}
 
 	mutationsCtr.Add(float64(len(mutations)))
@@ -374,5 +349,26 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
+	return nil
+}
+
+// TODO(gbelvin): Add leaf at a specific index. trillian#423
+func queueLogLeaf(ctx context.Context, tlog trillian.TrillianLogClient, logID int64, smr *trillian.SignedMapRoot) error {
+	smrJSON, err := json.Marshal(smr)
+	if err != nil {
+		return err
+	}
+	idHash := sha256.Sum256(smrJSON)
+
+	if _, err := tlog.QueueLeaf(ctx, &trillian.QueueLeafRequest{
+		LogId: logID,
+		Leaf: &trillian.LogLeaf{
+			LeafValue:        smrJSON,
+			LeafIdentityHash: idHash[:],
+		},
+	}); err != nil {
+		return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
+			logID, smrJSON, err)
+	}
 	return nil
 }
