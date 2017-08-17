@@ -7,11 +7,7 @@ WORKDIR /go/src/github.com/google/keytransparency
 
 RUN go get -tags="mysql" ./cmd/keytransparency-server
 
-ENTRYPOINT
-  - /go/bin/keytransparency-server
-	- --log-id="$LOG_ID"
-	- --log-url="$LOG_URL" \
-	- --map-url="$MAP_URL" \
-	- --alsologtostderr
+# Image is not runnable without providing a map-id and log-id
+# see Readme.md on how to use docker-compose to run this image.
 
 EXPOSE 8080

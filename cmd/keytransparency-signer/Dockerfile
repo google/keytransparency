@@ -7,11 +7,5 @@ WORKDIR /go/src/github.com/google/keytransparency
 
 RUN go get -tags="mysql" ./cmd/keytransparency-signer
 
-ENTRYPOINT
-  - /go/bin/keytransparency-signer
-	- --log-id="$LOG_ID"
-	- --log-url="$LOG_URL"
-	- --log-key="$LOG_KEY"
-	- --map-id="$MAP_ID"
-	- --map-url="$MAP_URL"
-
+# Image is not runnable without providing a map-id and log-id
+# see Readme.md on how to use docker-compose to run this image.

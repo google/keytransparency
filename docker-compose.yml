@@ -113,10 +113,10 @@ services:
       - /go/bin/keytransparency-server
       - --addr=0.0.0.0.:8080
       - --db=test:zaphod@tcp(db:3306)/test
-      - --log-id={$LOG_ID}
-      - --log-url={$LOG_URL}
-      - --map-id={$MAP_ID}
-      - --map-url={$MAP_URL)
+      - --log-id=$LOG_ID
+      - --log-url=trillian-log:8090
+      - --map-id=$MAP_ID
+      - --map-url=trillian-map:8090
       - --vrf=/kt/vrf-key.pem
       - --key=/kt/server.key
       - --cert=/kt/server.crt
@@ -141,10 +141,10 @@ services:
     entrypoint:
       - /go/bin/keytransparency-signer
       - --db=test:zaphod@tcp(db:3306)/test
-      - --log-id={$LOG_ID}
-      - --log-url={$LOG_URL}
-      - --map-id={$MAP_ID}
-      - --map-url={$MAP_URL)
+      - --log-id=$LOG_ID
+      - --log-url=trillian-log:8090
+      - --map-id=$MAP_ID
+      - --map-url=trillian-map:8090
       - --log-key=/kt/trillian-log.pem
       - --min-period=5s
       - --max-period=5m
