@@ -184,14 +184,8 @@ func NewEnv(t *testing.T) *Env {
 	if err := signer.Initialize(ctx); err != nil {
 		t.Fatalf("signer.Initialize() = %v", err)
 	}
-	if _, err := mapEnv.MapClient.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
-		MapId:  mapID,
-		Leaves: nil,
-		MapperData: &trillian.MapperMetadata{
-			HighestFullyCompletedSeq: 0,
-		},
-	}); err != nil {
-		t.Fatalf("SetLeaves(): %v", err)
+	if err := signer.CreateEpoch(ctx, true); err != nil {
+		t.Fatalf("CreateEpoch(_): %v", err)
 	}
 
 	return &Env{
