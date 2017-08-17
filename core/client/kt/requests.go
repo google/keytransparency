@@ -15,8 +15,8 @@
 package kt
 
 import (
-	"fmt"
 	"crypto/sha256"
+	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/signatures"
@@ -58,7 +58,7 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	// Create new Entry.
 	keys := authorizedKeys
 	if len(keys) == 0 {
-		keys = prevEntry.AuthorizedKeys
+		keys = prevEntry.GetAuthorizedKeys()
 	}
 	entry := &tpb.Entry{
 		Commitment:     commitment,
@@ -78,7 +78,6 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, err
 	}
-	// TODO(ismail): Change this to plain sha256:
 	previous := sha256.Sum256(oldLeaf)
 	signedkv := &tpb.SignedKV{
 		KeyValue:   kv,

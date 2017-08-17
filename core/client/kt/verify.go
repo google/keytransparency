@@ -24,8 +24,8 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/mutator/entry"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
@@ -75,8 +75,8 @@ func New(vrf vrf.PublicKey,
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID string,
 	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
 	// Unpack the merkle tree leaf value.
-	entry := new(tpb.Entry)
-	if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
+	entry, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
+	if err != nil {
 		return err
 	}
 

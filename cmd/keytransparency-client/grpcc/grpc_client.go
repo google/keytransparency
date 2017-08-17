@@ -26,6 +26,10 @@ import (
 	"log"
 	"time"
 
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"github.com/golang/protobuf/proto"
+
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
@@ -36,8 +40,6 @@ import (
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/merkle/hashers"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
@@ -267,7 +269,11 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
 	}
 
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetKeyValue().GetValue(); !bytes.Equal(got, want) {
+	serverKV := new(tpb.SignedKV)
+	if err := proto.Unmarshal(updateResp.GetProof().GetLeafProof().Leaf.LeafValue, serverKV); err != nil {
+		return err
+	}
+	if got, want := serverKV, req.GetEntryUpdate().GetUpdate(); !proto.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

@@ -30,7 +30,6 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/gogo/protobuf/proto"
 )
 
 var (
@@ -212,14 +211,10 @@ func (s *Signer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.Ma
 			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.
 		}
-		leafVal, err := proto.Marshal(newEntry)
-		if err != nil {
-			glog.Warningf("proto.Marshal(%v): %v", newEntry, err)
-			continue // A bad mutation should not make the whole batch fail.
-		}
+
 		retMap[toArray(index)] = &trillian.MapLeaf{
 			Index:     index,
-			LeafValue: leafVal,
+			LeafValue: newEntry,
 		}
 	}
 	// Convert return map back into a list.
