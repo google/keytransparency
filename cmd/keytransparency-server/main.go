@@ -54,7 +54,7 @@ import (
 var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
-	serverDBPath = flag.String("db", "db", "Database connection string")
+	serverDBPath = flag.String("db", "test:zaphod@tcp(localhost:3306)/test", "Database connection string")
 	vrfPath      = flag.String("vrf", "genfiles/vrf-key.pem", "Path to VRF private key")
 	keyFile      = flag.String("key", "genfiles/server.key", "TLS private key file")
 	certFile     = flag.String("cert", "genfiles/server.crt", "TLS cert file")

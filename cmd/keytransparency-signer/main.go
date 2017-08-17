@@ -40,7 +40,7 @@ import (
 
 var (
 	metricsAddr      = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
-	serverDBPath     = flag.String("db", "db", "Database connection string")
+	serverDBPath     = flag.String("db", "test:zaphod@tcp(localhost:3306)/test", "Database connection string")
 	domain           = flag.String("domain", "example.com", "Distinguished name for this key server")
 	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations). Expected to be smaller than max-period.")
 	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations). This value should about half the time guaranteed by the policy.")
