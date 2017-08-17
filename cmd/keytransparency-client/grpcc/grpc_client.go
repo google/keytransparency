@@ -170,14 +170,15 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-// Epochs start at 1.
 func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot][]byte, error) {
-	if start <= 0 {
-		return nil, fmt.Errorf("start=%v, want > 0", start)
+	if start < 0 {
+		return nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
 	var currentProfile []byte
 	profiles := make(map[*trillian.SignedMapRoot][]byte)
-	for start <= end {
+	epochsReceived := int64(0)
+	epochsWant := end - start
+	for epochsReceived < epochsWant {
 		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
 			AppId:    appID,
@@ -187,6 +188,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 		if err != nil {
 			return nil, err
 		}
+		epochsReceived += int64(len(resp.GetValues()))
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
@@ -207,9 +209,13 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 			currentProfile = profile
 		}
 		if resp.NextStart == 0 {
-			return nil, ErrIncomplete // No more data.
+			break // No more data.
 		}
 		start = resp.NextStart // Fetch the next block of results.
+	}
+
+	if epochsReceived < epochsWant {
+		return nil, ErrIncomplete
 	}
 
 	return profiles, nil
