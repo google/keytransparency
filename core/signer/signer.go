@@ -15,6 +15,7 @@
 package signer
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -91,9 +92,52 @@ func New(mapID int64,
 	}
 }
 
+// Initialize inserts the object hash of an empty struct into the log if it is empty.
+// This keeps the log leaves in-sync with the map which starts off with an
+// empty log root at map revision 0.
+func (s *Signer) Initialize(ctx context.Context) error {
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx, &trillian.GetLatestSignedLogRootRequest{
+		LogId: s.logID,
+	})
+	if err != nil {
+		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", s.logID, err)
+	}
+	mapRoot, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		MapId: s.mapID,
+	})
+	if err != nil {
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
+	}
+
+	// If the tree is empty and the map is empty,
+	// add the empty map root to the log.
+	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
+		mapRoot.GetMapRoot().GetMapRevision() == 0 {
+		smrJSON, err := json.Marshal(mapRoot.GetMapRoot())
+		idHash := sha256.Sum256(smrJSON)
+		if err != nil {
+			return err
+		}
+		if _, err := s.tlog.QueueLeaf(ctx, &trillian.QueueLeafRequest{
+			LogId: s.logID,
+			Leaf: &trillian.LogLeaf{
+				LeafValue:        smrJSON,
+				LeafIdentityHash: idHash[:],
+			},
+		}); err != nil {
+			return fmt.Errorf("trillian.QueueLeaf(logID: %v, leaf: %v): %v",
+				s.logID, smrJSON, err)
+		}
+	}
+	return nil
+}
+
 // StartSigning advance epochs once per minInterval, if there were mutations,
 // and at least once per maxElapsed minIntervals.
 func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time.Duration) {
+	if err := s.Initialize(ctx); err != nil {
+		glog.Errorf("Initialize() failed: %v", err)
+	}
 	var rootResp *trillian.GetSignedMapRootResponse
 	ctxTime, cancel := context.WithTimeout(ctx, minInterval)
 	rootResp, err := s.tmap.GetSignedMapRoot(ctxTime, &trillian.GetSignedMapRootRequest{
@@ -311,12 +355,14 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	if err != nil {
 		return err
 	}
+	idHash := sha256.Sum256(smrJSON)
 	// TODO(gbelvin): Add leaf at a specific index. trillian#423
 	// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 	if _, err := s.tlog.QueueLeaf(ctx, &trillian.QueueLeafRequest{
 		LogId: s.logID,
 		Leaf: &trillian.LogLeaf{
-			LeafValue: smrJSON,
+			LeafValue:        smrJSON,
+			LeafIdentityHash: idHash[:],
 		},
 	}); err != nil {
 		return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",

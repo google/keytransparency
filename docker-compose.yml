@@ -143,7 +143,6 @@ services:
       DB_DATABASE: test
       DB_USER: test
       DB_PASSWORD: zaphod
-      LOG_KEY: /kt/trillian-log.pem
       MIN_SIGN_PERIOD: 5s
       MAX_SIGN_PERIOD: 5m
       VERBOSITY: 5

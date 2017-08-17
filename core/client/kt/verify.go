@@ -139,7 +139,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	if err != nil {
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
-	logLeafIndex := in.GetSmr().GetMapRevision() - 1
+	logLeafIndex := in.GetSmr().GetMapRevision()
 	if err := v.logVerifier.VerifyInclusionAtIndex(trusted, b, logLeafIndex,
 		in.GetLogInclusion()); err != nil {
 		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
