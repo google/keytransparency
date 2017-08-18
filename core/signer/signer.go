@@ -15,11 +15,12 @@
 package signer
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
 
-	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
@@ -63,40 +64,68 @@ func init() {
 
 // Signer processes mutations and sends them to the trillian map.
 type Signer struct {
-	realm     string
 	mapID     int64
 	tmap      trillian.TrillianMapClient
 	logID     int64
-	sths      appender.Remote
+	tlog      trillian.TrillianLogClient
 	mutator   mutator.Mutator
 	mutations mutator.Mutation
 	factory   transaction.Factory
 }
 
 // New creates a new instance of the signer.
-func New(realm string,
-	mapID int64,
+func New(mapID int64,
 	tmap trillian.TrillianMapClient,
 	logID int64,
-	sths appender.Remote,
+	tlog trillian.TrillianLogClient,
 	mutator mutator.Mutator,
 	mutations mutator.Mutation,
 	factory transaction.Factory) *Signer {
 	return &Signer{
-		realm:     realm,
 		mapID:     mapID,
 		tmap:      tmap,
 		logID:     logID,
-		sths:      sths,
+		tlog:      tlog,
 		mutator:   mutator,
 		mutations: mutations,
 		factory:   factory,
 	}
 }
 
+// Initialize inserts the object hash of an empty struct into the log if it is empty.
+// This keeps the log leaves in-sync with the map which starts off with an
+// empty log root at map revision 0.
+func (s *Signer) Initialize(ctx context.Context) error {
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx, &trillian.GetLatestSignedLogRootRequest{
+		LogId: s.logID,
+	})
+	if err != nil {
+		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", s.logID, err)
+	}
+	mapRoot, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
+		MapId: s.mapID,
+	})
+	if err != nil {
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
+	}
+
+	// If the tree is empty and the map is empty,
+	// add the empty map root to the log.
+	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
+		mapRoot.GetMapRoot().GetMapRevision() == 0 {
+		if err := queueLogLeaf(ctx, s.tlog, s.logID, mapRoot.GetMapRoot()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // StartSigning advance epochs once per minInterval, if there were mutations,
 // and at least once per maxElapsed minIntervals.
 func (s *Signer) StartSigning(ctx context.Context, minInterval, maxInterval time.Duration) {
+	if err := s.Initialize(ctx); err != nil {
+		glog.Errorf("Initialize() failed: %v", err)
+	}
 	var rootResp *trillian.GetSignedMapRootResponse
 	ctxTime, cancel := context.WithTimeout(ctx, minInterval)
 	rootResp, err := s.tmap.GetSignedMapRoot(ctxTime, &trillian.GetSignedMapRootRequest{
@@ -310,9 +339,9 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, seq)
 
 	// Put SignedMapHead in an append only log.
-	if err := s.sths.Write(ctx, s.logID, revision, setResp.GetMapRoot()); err != nil {
+	if err := queueLogLeaf(ctx, s.tlog, s.logID, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
-		return fmt.Errorf("sths.Write(%v, %v): %v", s.logID, revision, err)
+		return err
 	}
 
 	mutationsCtr.Add(float64(len(mutations)))
@@ -320,5 +349,26 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
+	return nil
+}
+
+// TODO(gdbelvin): Add leaf at a specific index. trillian#423
+func queueLogLeaf(ctx context.Context, tlog trillian.TrillianLogClient, logID int64, smr *trillian.SignedMapRoot) error {
+	smrJSON, err := json.Marshal(smr)
+	if err != nil {
+		return err
+	}
+	idHash := sha256.Sum256(smrJSON)
+
+	if _, err := tlog.QueueLeaf(ctx, &trillian.QueueLeafRequest{
+		LogId: logID,
+		Leaf: &trillian.LogLeaf{
+			LeafValue:        smrJSON,
+			LeafIdentityHash: idHash[:],
+		},
+	}); err != nil {
+		return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
+			logID, smrJSON, err)
+	}
 	return nil
 }
