@@ -28,7 +28,7 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/signer"
+	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/commitments"
@@ -83,7 +83,7 @@ type Env struct {
 	V2Server   *keyserver.Server
 	Conn       *grpc.ClientConn
 	Client     *grpcc.Client
-	Signer     *signer.Signer
+	Signer     *sequencer.Signer
 	db         *sql.DB
 	Factory    *transaction.Factory
 	VrfPriv    vrf.PrivateKey
@@ -167,7 +167,7 @@ func NewEnv(t *testing.T) *Env {
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
 	// Signer
-	signer := signer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
+	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
 
 	addr, lis := Listen(t)
 	go s.Serve(lis)

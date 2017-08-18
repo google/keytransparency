@@ -14,7 +14,7 @@
 
 // Package mutation implements the monitor service. This package contains the
 // core functionality.
-package signer
+package sequencer
 
 import (
 	"testing"
