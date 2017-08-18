@@ -177,7 +177,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 	var currentProfile []byte
 	profiles := make(map[*trillian.SignedMapRoot][]byte)
 	epochsReceived := int64(0)
-	epochsWant := end - start
+	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
 		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
