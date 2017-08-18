@@ -76,10 +76,12 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 	return &tpb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: authKeys,
+		Previous: nil,
 	}, nil
 }
 
 func prepareMutation(key []byte, newEntry *tpb.Entry, previous []byte, signers []signatures.Signer) (*tpb.SignedKV, error) {
+	newEntry.Previous = previous
 	entryData, err := proto.Marshal(newEntry)
 	if err != nil {
 		return nil, fmt.Errorf("Marshal(%v)=%v", newEntry, err)
@@ -102,7 +104,6 @@ func prepareMutation(key []byte, newEntry *tpb.Entry, previous []byte, signers [
 	return &tpb.SignedKV{
 		KeyValue:   kv,
 		Signatures: sigs,
-		Previous:   previous,
 	}, nil
 }
 
@@ -147,19 +148,21 @@ func TestCheckMutation(t *testing.T) {
 	largeKey := bytes.Repeat(key, mutator.MaxMutationSize)
 
 	// Calculate hashes.
-	hashEntry1 := objecthash.ObjectHash(entryData1)
-	hashMissingKeyEntry1 := objecthash.ObjectHash(missingKeyEntryData1)
 	// nilHash is used as the previous hash value when submitting the very
 	// first mutation.
 	nilHash := objecthash.ObjectHash(nil)
+	// Set hash for first entries correctly, then hash it for the next entry:
+	entryData1.Previous = nilHash[:]
+	hashEntry1 := objecthash.ObjectHash(entryData1)
+	missingKeyEntryData1.Previous = nilHash[:]
+	hashMissingKeyEntry1 := objecthash.ObjectHash(missingKeyEntryData1)
 
 	// Create signers.
 	signers1 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)})
 	signers2 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey2)})
 	signers3 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)})
 
-	_, _, _ = missingKeyEntryData2, hashMissingKeyEntry1, signers2
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		key      []byte
 		oldEntry *tpb.Entry
 		newEntry *tpb.Entry
@@ -190,7 +193,7 @@ func TestCheckMutation(t *testing.T) {
 		}
 
 		if _, got := New().Mutate(tc.oldEntry, mutation); got != tc.err {
-			t.Errorf("Mutate(%v, %v)=%v, want %v", tc.oldEntry, mutation, got, tc.err)
+			t.Errorf("%d Mutate(%v, %v)=%v, want %v", i, tc.oldEntry, mutation, got, tc.err)
 		}
 	}
 }
