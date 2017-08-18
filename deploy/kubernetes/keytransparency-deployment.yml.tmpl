@@ -30,9 +30,9 @@ spec:
             name: metrics
         args: ["--addr=0.0.0.0.:8080",
                "--db=test:zaphod@tcp(mysql:3306)/test",
-               "--log-id=$LOG_ID",
+               "--log-id=${LOG_ID}",
                "--log-url=trillian-log:8090",
-               "--map-id=$MAP_ID",
+               "--map-id=${MAP_ID}",
                "--map-url=trillian-map:8090",
                "--vrf=/kt-secrets/vrf-key.pem",
                "--tls-key=/kt-secrets/server.key",
@@ -96,9 +96,9 @@ spec:
           - containerPort: 8080
             name: json-grpc
         args: ["--db=test:zaphod@tcp(mysql:3306)/test",
-               "--log-id=$LOG_ID",
+               "--log-id=${LOG_ID}",
                "--log-url=trillian-log:8090",
-               "--map-id=$MAP_ID",
+               "--map-id=${MAP_ID}",
                "--map-url=trillian-map:8090",
                "--min-period=5s",
                "--max-period=12h",
