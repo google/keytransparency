@@ -44,12 +44,6 @@ var (
 	// ErrNotMatchingRoot occurs when the reconstructed root differs from the one
 	// we received from the server.
 	ErrNotMatchingRoot = errors.New("recreated root does not match")
-	// ErrInvalidMapSignature occurs when the signature on the observed map root
-	// is invalid.
-	ErrInvalidMapSignature = errors.New("invalid signature on map in GetMutationsResponse")
-	// ErrInvalidLogSignature occurs when the signature on the observed map root
-	// is invalid.
-	ErrInvalidLogSignature = errors.New("invalid signature on log in GetMutationsResponse")
 )
 
 // verifyResponse verifies a response received by the GetMutations API.
@@ -101,7 +95,7 @@ func (m *Monitor) VerifyResponse(in *ktpb.GetMutationsResponse, allMuts []*ktpb.
 	return resp
 }
 
-func verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) error {
+func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, expectedRoot []byte, mapID int64) error {
 	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)

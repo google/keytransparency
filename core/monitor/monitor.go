@@ -16,6 +16,7 @@ package monitor
 
 import (
 	"crypto"
+	"fmt"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/merkle"
@@ -30,11 +31,15 @@ type Monitor struct {
 	trusted     trillian.SignedLogRoot
 }
 
-func New(hasher hashers.MapHasher, mapPubKey, logPubKey crypto.PublicKey, logVerifier merkle.LogVerifier) *Monitor {
+func New(logTree, mapTree trillian.Tree) (*Monitor, error) {
+	// Log Hasher.
+	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
+	if err != nil {
+		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
+	}
 	return &Monitor{
-		hasher:      hasher,
-		logVerifier: logVerifier,
-		logPubKey:   logPubKey,
-		mapPubKey:   mapPubKey,
+		logVerifier: merkle.NewLogVerifier(logHasher),
+		logPubKey:   logTree.GetPublicKey(),
+		mapPubKey:   mapTree.GetPublicKey(),
 	}
 }
