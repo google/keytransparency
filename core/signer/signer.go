@@ -352,7 +352,7 @@ func (s *Signer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	return nil
 }
 
-// TODO(gbelvin): Add leaf at a specific index. trillian#423
+// TODO(gdbelvin): Add leaf at a specific index. trillian#423
 func queueLogLeaf(ctx context.Context, tlog trillian.TrillianLogClient, logID int64, smr *trillian.SignedMapRoot) error {
 	smrJSON, err := json.Marshal(smr)
 	if err != nil {
