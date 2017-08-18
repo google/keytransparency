@@ -109,12 +109,6 @@ func validateListEntryHistoryRequest(in *tpb.ListEntryHistoryRequest, currentEpo
 	if in.Start < 0 || in.Start > currentEpoch {
 		return ErrInvalidStart
 	}
-	// TODO(ismail): make epochs consistently start from 0 and provide a function
-	// such that callers don't need convert between starting 0 and 1.
-	// Ensure a valid start epoch is provided if the Start parameter is not set.
-	if in.Start == 0 {
-		in.Start = defaultStartEpoch
-	}
 
 	switch {
 	case in.PageSize < 0:

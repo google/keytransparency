@@ -20,7 +20,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-type logServer struct{}
+type logServer struct {
+	treeSize int64
+}
 
 // NewFakeTrillianLogClient returns a fake trillian log client.
 func NewFakeTrillianLogClient() trillian.TrillianLogClient {
@@ -28,6 +30,7 @@ func NewFakeTrillianLogClient() trillian.TrillianLogClient {
 }
 
 func (l *logServer) QueueLeaf(ctx context.Context, in *trillian.QueueLeafRequest, opts ...grpc.CallOption) (*trillian.QueueLeafResponse, error) {
+	l.treeSize++
 	return nil, nil
 }
 
@@ -48,7 +51,11 @@ func (l *logServer) GetConsistencyProof(ctx context.Context, in *trillian.GetCon
 }
 
 func (l *logServer) GetLatestSignedLogRoot(ctx context.Context, in *trillian.GetLatestSignedLogRootRequest, opts ...grpc.CallOption) (*trillian.GetLatestSignedLogRootResponse, error) {
-	return &trillian.GetLatestSignedLogRootResponse{}, nil
+	return &trillian.GetLatestSignedLogRootResponse{
+		SignedLogRoot: &trillian.SignedLogRoot{
+			TreeSize: l.treeSize,
+		},
+	}, nil
 }
 
 func (l *logServer) GetSequencedLeafCount(ctx context.Context, in *trillian.GetSequencedLeafCountRequest, opts ...grpc.CallOption) (*trillian.GetSequencedLeafCountResponse, error) {

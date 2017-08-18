@@ -134,15 +134,6 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("CreateTree(): %v", err)
 	}
 	mapID := tree.TreeId
-	if _, err := mapEnv.MapClient.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
-		MapId:  mapID,
-		Leaves: nil,
-		MapperData: &trillian.MapperMetadata{
-			HighestFullyCompletedSeq: 0,
-		},
-	}); err != nil {
-		t.Fatalf("SetLeaves(): %v", err)
-	}
 
 	mapPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
 	if err != nil {
@@ -186,9 +177,22 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	client := grpcc.New(cc, vrfPub, mapPubKey, coniks.Default,
-		fake.NewFakeTrillianLogVerifier())
+	client := grpcc.New(cc, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
+
+	// Mimic first sequence event
+	if err := signer.Initialize(ctx); err != nil {
+		t.Fatalf("signer.Initialize() = %v", err)
+	}
+	if _, err := mapEnv.MapClient.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
+		MapId:  mapID,
+		Leaves: nil,
+		MapperData: &trillian.MapperMetadata{
+			HighestFullyCompletedSeq: 0,
+		},
+	}); err != nil {
+		t.Fatalf("SetLeaves(): %v", err)
+	}
 
 	return &Env{
 		mapEnv:     mapEnv,

@@ -43,8 +43,6 @@ const (
 	defaultPageSize = 16
 	// Maximum allowed requested page size to prevent DOS.
 	maxPageSize = 16
-	// If no epoch is provided default to epoch 1.
-	defaultStartEpoch = 1
 )
 
 // Server holds internal state for the key server.
@@ -101,6 +99,10 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 
 func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, epoch int64) (*tpb.GetEntryResponse, error) {
 	index, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
+	if epoch == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument,
+			"Epoch 0 is inavlid. The first map revision is epoch 1.")
+	}
 
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    s.mapID,
