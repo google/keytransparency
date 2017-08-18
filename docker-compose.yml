@@ -118,8 +118,8 @@ services:
       - --map-id=$MAP_ID
       - --map-url=trillian-map:8090
       - --vrf=/kt/vrf-key.pem
-      - --key=/kt/server.key
-      - --cert=/kt/server.crt
+      - --tls-key=/kt/server.key
+      - --tls-cert=/kt/server.crt
       - --alsologtostderr
       - --v=5
     healthcheck:
