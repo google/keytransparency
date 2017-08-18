@@ -145,7 +145,6 @@ services:
       - --log-url=trillian-log:8090
       - --map-id=$MAP_ID
       - --map-url=trillian-map:8090
-      - --log-key=/kt/trillian-log.pem
       - --min-period=5s
       - --max-period=5m
       - --alsologtostderr
