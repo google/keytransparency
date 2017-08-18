@@ -83,7 +83,7 @@ type Env struct {
 	V2Server   *keyserver.Server
 	Conn       *grpc.ClientConn
 	Client     *grpcc.Client
-	Signer     *sequencer.Signer
+	Signer     *sequencer.Sequencer
 	db         *sql.DB
 	Factory    *transaction.Factory
 	VrfPriv    vrf.PrivateKey
