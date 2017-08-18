@@ -97,17 +97,34 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 	return s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
 }
 
-func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, epoch int64) (*tpb.GetEntryResponse, error) {
-	index, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
-	if epoch == 0 {
+func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, revision int64) (*tpb.GetEntryResponse, error) {
+	if revision == 0 {
 		return nil, grpc.Errorf(codes.InvalidArgument,
 			"Epoch 0 is inavlid. The first map revision is epoch 1.")
 	}
 
+	// Fresh Root.
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
+		&trillian.GetLatestSignedLogRootRequest{
+			LogId: s.logID,
+		})
+	if err != nil {
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+	}
+	// Use the log as the athoritative source of the latest revision.
+	if revision < 0 {
+		// The maximum index in the log is one minus the number of items in the log.
+		revision = logRoot.GetSignedLogRoot().GetTreeSize() - 1
+	}
+
+	// VRF.
+	index, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
+
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    s.mapID,
 		Index:    [][]byte{index[:]},
-		Revision: epoch,
+		Revision: revision,
 	})
 	if err != nil {
 		glog.Errorf("GetLeaves(): %v", err)
@@ -143,15 +160,6 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	}
 
 	// Fetch log proofs.
-	// Fresh Root.
-	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
-		&trillian.GetLatestSignedLogRootRequest{
-			LogId: s.logID,
-		})
-	if err != nil {
-		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
-	}
 	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
 
 	// Consistency proof.
