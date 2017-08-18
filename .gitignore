@@ -3,7 +3,7 @@
 *~
 
 /keytransparency-server
-/keytransparency-signer
+/keytransparency-sequencer
 /keytransparency-client
 
 infra*.etcd

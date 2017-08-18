@@ -44,7 +44,7 @@ function main()
 
   # Need to (re)build kt-signer after writing the public-keys
   docker-compose build kt-signer
-  gcloud docker -- push us.gcr.io/key-transparency/keytransparency-signer
+  gcloud docker -- push us.gcr.io/key-transparency/keytransparency-sequencer
 
   # Deploy all keytransparency related services (server and signer):
   kubectl apply -f deploy/kubernetes/keytransparency-deployment.yml
