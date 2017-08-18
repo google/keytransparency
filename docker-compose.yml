@@ -109,20 +109,24 @@ services:
     ports:
       - "8080:8080" # json & grpc
       - "8081:8081" # metrics
-    environment:
-      LOG_ID: ${LOG_ID} # Update with trillian admin CLI.
-      LOG_URL: trillian-log:8090
-      MAP_ID: ${MAP_ID} # Update with trillian admin CLI.
-      MAP_URL: trillian-map:8090
-      DB_HOST: db:3306
-      DB_DATABASE: test
-      DB_USER: test
-      DB_PASSWORD: zaphod
-      VRF_PRIV: /kt/vrf-key.pem
-      VRF_PUB: /kt/vrf-pubkey.pem
-      TLS_KEY_PATH: /kt/server.key
-      TLS_CRT_PATH: /kt/server.crt
-      VERBOSITY: 5
+    entrypoint:
+      - /go/bin/keytransparency-server
+      - --addr=0.0.0.0.:8080
+      - --db=test:zaphod@tcp(db:3306)/test
+      - --log-id=$LOG_ID
+      - --log-url=trillian-log:8090
+      - --map-id=$MAP_ID
+      - --map-url=trillian-map:8090
+      - --vrf=/kt/vrf-key.pem
+      - --tls-key=/kt/server.key
+      - --tls-cert=/kt/server.crt
+      - --alsologtostderr
+      - --v=5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/debug/var"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   kt-signer:
     depends_on:
@@ -134,18 +138,17 @@ services:
       dockerfile: ./keytransparency/cmd/keytransparency-signer/Dockerfile
     image: us.gcr.io/key-transparency/keytransparency-signer
     restart: always
-    environment:
-      LOG_ID: ${LOG_ID} # Update with trillian admin CLI.
-      LOG_URL: trillian-log:8090
-      MAP_ID: ${MAP_ID} # Update with trillian admin CLI.
-      MAP_URL: trillian-map:8090
-      DB_HOST: db:3306
-      DB_DATABASE: test
-      DB_USER: test
-      DB_PASSWORD: zaphod
-      MIN_SIGN_PERIOD: 5s
-      MAX_SIGN_PERIOD: 5m
-      VERBOSITY: 5
+    entrypoint:
+      - /go/bin/keytransparency-signer
+      - --db=test:zaphod@tcp(db:3306)/test
+      - --log-id=$LOG_ID
+      - --log-url=trillian-log:8090
+      - --map-id=$MAP_ID
+      - --map-url=trillian-map:8090
+      - --min-period=5s
+      - --max-period=5m
+      - --alsologtostderr
+      - --v=5
 
   kt-monitor:
     depends_on:
