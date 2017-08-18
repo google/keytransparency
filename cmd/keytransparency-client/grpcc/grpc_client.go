@@ -29,10 +29,12 @@ import (
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -84,6 +86,42 @@ type Client struct {
 	trusted    trillian.SignedLogRoot
 }
 
+// NewFromConfig creates a new client from a config
+func NewFromConfig(cc *grpc.ClientConn, config *tpb.GetDomainInfoResponse) (*Client, error) {
+	// Log Hasher.
+	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
+	if err != nil {
+		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
+	}
+
+	// Log Key
+	logPubKey, err := der.UnmarshalPublicKey(config.GetLog().GetPublicKey().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing Log public key: %v", err)
+	}
+
+	// Map Hasher
+	mapHasher, err := hashers.NewMapHasher(config.GetMap().GetHashStrategy())
+	if err != nil {
+		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
+	}
+
+	// Map Key
+	mapPubKey, err := der.UnmarshalPublicKey(config.GetMap().GetPublicKey().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing Map public key: %v", err)
+	}
+
+	// VRF key
+	vrfPubKey, err := p256.NewVRFVerifierFromRawKey(config.GetVrf().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
+	}
+
+	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
+	return New(cc, vrfPubKey, mapPubKey, mapHasher, logVerifier), nil
+}
+
 // New creates a new client.
 func New(cc *grpc.ClientConn,
 	vrf vrf.PublicKey,
@@ -132,14 +170,15 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-// Epochs start at 1.
 func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot][]byte, error) {
-	if start <= 0 {
-		return nil, fmt.Errorf("start=%v, want > 0", start)
+	if start < 0 {
+		return nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
 	var currentProfile []byte
 	profiles := make(map[*trillian.SignedMapRoot][]byte)
-	for start <= end {
+	epochsReceived := int64(0)
+	epochsWant := end - start + 1
+	for epochsReceived < epochsWant {
 		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
 			UserId:   userID,
 			AppId:    appID,
@@ -149,6 +188,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 		if err != nil {
 			return nil, err
 		}
+		epochsReceived += int64(len(resp.GetValues()))
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
@@ -169,9 +209,13 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 			currentProfile = profile
 		}
 		if resp.NextStart == 0 {
-			return nil, ErrIncomplete // No more data.
+			break // No more data.
 		}
 		start = resp.NextStart // Fetch the next block of results.
+	}
+
+	if epochsReceived < epochsWant {
+		return nil, ErrIncomplete
 	}
 
 	return profiles, nil

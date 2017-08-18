@@ -46,7 +46,7 @@ and verify that the results are consistent.`,
 		appID := args[1]
 		timeout := viper.GetDuration("timeout")
 
-		c, err := GetClient("")
+		c, err := GetClient(false)
 		if err != nil {
 			return fmt.Errorf("Error connecting: %v", err)
 		}
@@ -98,6 +98,6 @@ func (m mapHeads) Less(i, j int) bool { return m[i].MapRevision < m[j].MapRevisi
 func init() {
 	RootCmd.AddCommand(histCmd)
 
-	histCmd.PersistentFlags().Int64Var(&start, "start", 0, "Start epoch")
+	histCmd.PersistentFlags().Int64Var(&start, "start", 1, "Start epoch")
 	histCmd.PersistentFlags().Int64Var(&end, "end", 0, "End epoch")
 }

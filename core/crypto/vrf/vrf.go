@@ -17,6 +17,7 @@ package vrf
 
 import (
 	"bytes"
+	"crypto"
 	"encoding/binary"
 )
 
@@ -30,8 +31,8 @@ import (
 type PrivateKey interface {
 	// Evaluate returns the output of H(f_k(m)) and its proof.
 	Evaluate(m []byte) (index [32]byte, proof []byte)
-	// Public returns the corresponding public key as bytes.
-	Public() ([]byte, error)
+	// Public returns the corresponding public key.
+	Public() crypto.PublicKey
 }
 
 // PublicKey supports verifying output from the VRF function.

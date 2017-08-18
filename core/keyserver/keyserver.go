@@ -26,6 +26,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian/crypto/keys/der"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -33,7 +34,6 @@ import (
 	authzpb "github.com/google/keytransparency/core/proto/authorization"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
-	"github.com/google/trillian/crypto/keyspb"
 )
 
 const (
@@ -43,8 +43,6 @@ const (
 	defaultPageSize = 16
 	// Maximum allowed requested page size to prevent DOS.
 	maxPageSize = 16
-	// If no epoch is provided default to epoch 1.
-	defaultStartEpoch = 1
 )
 
 // Server holds internal state for the key server.
@@ -101,6 +99,10 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 
 func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, epoch int64) (*tpb.GetEntryResponse, error) {
 	index, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
+	if epoch == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument,
+			"Epoch 0 is inavlid. The first map revision is epoch 1.")
+	}
 
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    s.mapID,
@@ -173,10 +175,8 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 		&trillian.GetInclusionProofRequest{
 			LogId: s.logID,
 			// SignedMapRoot must be placed in the log at MapRevision.
-			// MapRevisions start at 1. Log leaves start at 0.
-			// MapRevision should be at least 1 since the Signer is
-			// supposed to create at least one revision on startup.
-			LeafIndex: getResp.GetMapRoot().GetMapRevision() - 1,
+			// MapRevisions start at 1. Log leaves start at 1.
+			LeafIndex: getResp.GetMapRoot().GetMapRevision(),
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
@@ -347,7 +347,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 		return nil, err
 	}
 
-	vrfPub, err := s.vrf.Public()
+	vrfPubKeyPB, err := der.ToPublicProto(s.vrf.Public())
 	if err != nil {
 		return nil, err
 	}
@@ -355,9 +355,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 	return &tpb.GetDomainInfoResponse{
 		Log: logTree,
 		Map: mapTree,
-		Vrf: &keyspb.PublicKey{
-			Der: vrfPub,
-		},
+		Vrf: vrfPubKeyPB,
 	}, nil
 }
 
