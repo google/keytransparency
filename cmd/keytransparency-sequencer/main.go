@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/signer"
+	"github.com/google/keytransparency/core/sequencer"
 
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -100,7 +100,7 @@ func main() {
 		}
 	}()
 
-	signer := signer.New(*mapID, tmap, *logID, tlog, mutator, mutations, factory)
+	signer := sequencer.New(*mapID, tmap, *logID, tlog, mutator, mutations, factory)
 	glog.Infof("Signer starting")
 	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
 	glog.Errorf("Signer exiting")
