@@ -135,8 +135,8 @@ services:
       - trillian-map
     build:
       context: ..
-      dockerfile: ./keytransparency/cmd/keytransparency-signer/Dockerfile
-    image: us.gcr.io/key-transparency/keytransparency-signer
+      dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
+    image: us.gcr.io/key-transparency/keytransparency-sequencer
     restart: always
     entrypoint:
       - /go/bin/keytransparency-signer
