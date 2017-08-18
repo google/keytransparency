@@ -28,7 +28,7 @@ spec:
             name: json-grpc
           - containerPort: 8081
             name: metrics
-        args: ["--addr=0.0.0.0.:8080",
+        args: ["--addr=0.0.0.0:8080",
                "--db=test:zaphod@tcp(mysql:3306)/test",
                "--log-id=${LOG_ID}",
                "--log-url=trillian-log:8090",
