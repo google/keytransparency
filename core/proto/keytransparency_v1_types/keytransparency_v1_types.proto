@@ -90,9 +90,9 @@ message SignedKV {
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.
   map<string, sigpb.DigitallySigned> signatures = 2;
-  // previous contains the hash of the previous entry that this mutation is
-  // modifying creating a hash chain of all mutations. The hash used is
-  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
+  // previous contains the hash of the previous leaf that this mutation is
+  // modifying creating a hash chain of all mutations. The hash used is sha256
+  // applied directly to the leaf value.
   bytes previous = 3;
 }
 

@@ -23,10 +23,10 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator"
 
-	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
+	"crypto/sha256"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian/crypto/sigpb"
 )
@@ -42,7 +42,7 @@ func New() *Entry {
 
 // Mutate verifies that this is a valid mutation for this item and applies
 // mutation to value.
-func (*Entry) Mutate(oldValue, update proto.Message) ([]byte, error) {
+func (*Entry) Mutate(old []byte, update proto.Message) ([]byte, error) {
 	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
 		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
@@ -54,15 +54,6 @@ func (*Entry) Mutate(oldValue, update proto.Message) ([]byte, error) {
 		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
 		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
 	}
-	var oldEntry *tpb.Entry
-	if oldValue != nil {
-		old, ok := oldValue.(*tpb.Entry)
-		if !ok {
-			glog.Warning("received proto.Message is not of type *tpb.Entry.")
-			return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
-		}
-		oldEntry = old
-	}
 
 	kv := updated.GetKeyValue()
 	newEntry := new(tpb.Entry)
@@ -70,13 +61,17 @@ func (*Entry) Mutate(oldValue, update proto.Message) ([]byte, error) {
 		return nil, err
 	}
 
+	oldKV := new(tpb.SignedKV)
+	if err := proto.Unmarshal(old, oldKV); err != nil {
+		glog.Warningf("proto.Unmarshal(): %v", err)
+	}
 	// Verify pointer to previous data.
 	// The very first entry will have oldValue=nil, so its hash is the
 	// ObjectHash value of nil.
-	prevEntryHash := objecthash.ObjectHash(oldEntry)
+	prevEntryHash := sha256.Sum256(old)
 	if !bytes.Equal(prevEntryHash[:], updated.Previous) {
 		// Check if this mutation is a replay.
-		if oldEntry != nil && proto.Equal(oldEntry, newEntry) {
+		if proto.Equal(oldKV, updated) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
@@ -90,20 +85,31 @@ func (*Entry) Mutate(oldValue, update proto.Message) ([]byte, error) {
 		glog.Warningf("mutation should contain at least one authorized key")
 		return nil, mutator.ErrMissingKey
 	}
-
-	if err := verifyKeys(oldEntry, kv, updated, newEntry); err != nil {
+	// tpb.Entry is stored in SignedKV.KeyValue.Value in bytes:
+	if err := verifyKeys(oldKV.GetKeyValue().GetValue(), kv, updated, newEntry); err != nil {
 		return nil, err
 	}
 
-	return updated.GetKeyValue().GetValue(), nil
+	newLeaf, err := proto.Marshal(updated)
+	if err != nil {
+		glog.Warningf("proto.Marshal(): ", err)
+		return nil, err
+	}
+
+	return newLeaf, nil
 }
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
-// Entry or nil if the passes LeafValue was nil.
+// Entry.
 func FromLeafValue(value []byte) (*tpb.Entry, error) {
 	if value != nil {
+		kv := new(tpb.SignedKV)
+		if err := proto.Unmarshal(value, kv); err != nil {
+			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)
+			return nil, err
+		}
 		entry := new(tpb.Entry)
-		if err := proto.Unmarshal(value, entry); err != nil {
+		if err := proto.Unmarshal(kv.GetKeyValue().GetValue(), entry); err != nil {
 			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)
 			return nil, err
 		}
@@ -120,22 +126,26 @@ func FromLeafValue(value []byte) (*tpb.Entry, error) {
 //   2. The first mutation should contain at least one signature with a key in
 //      in that mutation.
 //   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(prevEntry *tpb.Entry, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
+func verifyKeys(oldValue []byte, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
+	prevEntry := new(tpb.Entry)
 	var verifiers map[string]signatures.Verifier
 	var err error
-	if prevEntry == nil {
+	if oldValue == nil {
 		verifiers, err = verifiersFromKeys(entry.GetAuthorizedKeys())
 		if err != nil {
 			return err
 		}
 	} else {
+		if err = proto.Unmarshal(oldValue, prevEntry); err != nil {
+			return err
+		}
 		verifiers, err = verifiersFromKeys(prevEntry.GetAuthorizedKeys())
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := verifyAuthorizedKeys(data, verifiers, update.GetSignatures()); err != nil {
+	if err = verifyAuthorizedKeys(data, verifiers, update.GetSignatures()); err != nil {
 		return err
 	}
 	return nil
