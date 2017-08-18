@@ -6,7 +6,7 @@
 Clients make requests to Key Transparency servers over HTTPS / JSON or gRPC.  
 
 # Key Transparency Server
-The front end servers reveal the mappings between user identifiers (eg email
+The front end servers reveal the mappings between user identifiers (e.g. email
 address) and their anonymized index in the Trillan Map with the Verifiable
 Random Function. 
 
@@ -22,11 +22,11 @@ nessesary to verify the commitment stored in the Trillian Map.
 When a user wishes to make a change to their account, they create a signed change
 request (also known as a mutation) and send it to a Key Transparency frontend.
 
-The frontend then saves the mutation in the mutation table, allowin the database 
-to assign the mutation a monotinically increasing sequence number or timestamp, 
+The frontend then saves the mutation in the mutation table, allowing the database 
+to assign the mutation a monotonically increasing sequence number or timestamp, 
 establishing an authoritative ordering for new mutations.
 
-This strict ordering requirement could be loostened in the future for
+This strict ordering requirement could be relaxed in the future for
 performance reasons.  Strictly speaking only given sets (batches) of mutations
 that need to be ordered relative to other sets.
 
@@ -54,24 +54,25 @@ streaming gRPC channel. The frontends will then forward those same notification
 to active monitors over a streaming gRPC channel.
 
 # Mutation
-Mutations in Key Transparency are defined as a SignedKeyValue object. 
+Mutations in Key Transparency are defined as a signed key-value object. 
 - The Key must the the valid index associated with the user's identifier. 
 - The Value is an object that contains 
    - A cryptographic commitment to the user's data.
    - The set of public keys that are allowed to update this account.
-- SignedKV also contains the hash of the previous SignedKeyValue. This helps
+- The mutation also contains the hash of the previous mutation. This helps
   break race conditions and it forms a hash chain in each account.
 
 # Monitors
 Monitors process and verify the mutations that make each new epoch.
-Monitors verify various policy properties of the SignedKeyValues in the
+Monitors verify various policy properties of the signed key-values in the
 Trillian Map.  In particular, monitors verify that 
 - Back pointers in each leaf do not skip over any values - an operation that
   would be bandwidth intensive for mobile clients.  
-- SignedKeyValues are properly signed by public keys declared in the prior
+- signed key-values are properly signed by public keys declared in the prior
   epoch. 
 
-Monitors also observe the Trillian Log to detect any log forks.  
+Monitors also observe the Trillian Log proofs provided by the Key Transparency 
+front end to detect any log forks.  
 
 Monitors participate in a primitive form of gossip by signing the Trillian Log
 roots that they see and make them available over an API.
