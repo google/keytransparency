@@ -42,7 +42,7 @@ message Committed {
 // EntryUpdate contains the user entry update(s).
 message EntryUpdate {
   // update authorizes the change to entry.
-  SignedKV update = 2;
+  Entry update = 2;
   // commitment contains the data committed to in update.commitment.
   Committed committed = 3;
 }
@@ -51,13 +51,24 @@ message EntryUpdate {
 // Verifiable Map Leaf Data and Mutation Data.
 //
 
-// Entry contains a commitment to profile and a set of authorized update keys.
+// Entry (leaf value & mutation) contains a commitment to profile and a set of authorized update keys.
 // Entry is placed in the verifiable map as leaf data.
 message Entry {
+  // index contains the map entry key.
+  bytes index = 1;
   // commitment is a cryptographic commitment to arbitrary data.
-  bytes commitment = 1;
+  bytes commitment = 2;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
-  repeated PublicKey authorized_keys = 2;
+  repeated PublicKey authorized_keys = 3;
+  // previous contains the hash of the previous entry that this mutation is
+  // modifying creating a hash chain of all mutations. The hash used is
+  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
+  bytes previous = 4;
+
+  // signatures on key_value. Must be signed by keys from both previous and
+  // current epochs. The first proves ownership of new epoch key, and the
+  // second proves that the correct owner is making this change.
+  map<string, sigpb.DigitallySigned> signatures = 2;
 }
 
 // PublicKey defines a key this domain uses to sign MapHeads with.
@@ -73,34 +84,13 @@ message PublicKey {
   }
 }
 
-// KeyValue is a map entry.
-message KeyValue {
-  // key contains the map entry key.
-  bytes key = 1;
-  // value contains the map entry value.
-  bytes value = 2;
-  // TODO(ismail): make proto.Any
-}
 
-// SignedKV is a signed change to a map entry.
-message SignedKV {
-  // key_value is a serialized KeyValue.
-  KeyValue key_value = 1;
-  // signatures on key_value. Must be signed by keys from both previous and
-  // current epochs. The first proves ownership of new epoch key, and the
-  // second proves that the correct owner is making this change.
-  map<string, sigpb.DigitallySigned> signatures = 2;
-  // previous contains the hash of the previous entry that this mutation is
-  // modifying creating a hash chain of all mutations. The hash used is
-  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
-  bytes previous = 3;
-}
-
-// Mutation contains the actual mutation and the inclusion proof of the
+// MutationProof contains the actual mutation and the inclusion proof of the
 // corresponding leaf.
-message Mutation {
+message MutationProof {
+  // TODO(ismail): change to proto.Any to be more generic
   // update contains the actual mutation information.
-  SignedKV update = 1;
+  Entry update = 1;
   // proof contains a leaf and an inclusion proof in the map of the previous
   // epoch. This is used by Storage-less monitors.
   trillian.MapLeafInclusion proof = 2;
