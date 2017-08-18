@@ -113,6 +113,7 @@ func (s *Signer) Initialize(ctx context.Context) error {
 	// add the empty map root to the log.
 	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
 		mapRoot.GetMapRoot().GetMapRevision() == 0 {
+		glog.Infof("Initializing Trillian Log with empty map root")
 		if err := queueLogLeaf(ctx, s.tlog, s.logID, mapRoot.GetMapRoot()); err != nil {
 			return err
 		}
