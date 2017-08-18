@@ -65,7 +65,7 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	entry := &tpb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: keys,
-		Previous:   previous[:],
+		Previous:       previous[:],
 	}
 
 	// Sign Entry.

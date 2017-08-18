@@ -76,7 +76,7 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 	return &tpb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: authKeys,
-		Previous: nil,
+		Previous:       nil,
 	}, nil
 }
 
