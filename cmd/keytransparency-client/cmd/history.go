@@ -98,6 +98,6 @@ func (m mapHeads) Less(i, j int) bool { return m[i].MapRevision < m[j].MapRevisi
 func init() {
 	RootCmd.AddCommand(histCmd)
 
-	histCmd.PersistentFlags().Int64Var(&start, "start", 0, "Start epoch")
+	histCmd.PersistentFlags().Int64Var(&start, "start", 1, "Start epoch")
 	histCmd.PersistentFlags().Int64Var(&end, "end", 0, "End epoch")
 }

@@ -22,15 +22,13 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	"github.com/google/keytransparency/core/admin"
-	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/signer"
+	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/commitments"
@@ -85,7 +83,7 @@ type Env struct {
 	V2Server   *keyserver.Server
 	Conn       *grpc.ClientConn
 	Client     *grpcc.Client
-	Signer     *signer.Signer
+	Signer     *sequencer.Sequencer
 	db         *sql.DB
 	Factory    *transaction.Factory
 	VrfPriv    vrf.PrivateKey
@@ -136,15 +134,6 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("CreateTree(): %v", err)
 	}
 	mapID := tree.TreeId
-	if _, err := mapEnv.MapClient.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
-		MapId:  mapID,
-		Leaves: nil,
-		MapperData: &trillian.MapperMetadata{
-			HighestFullyCompletedSeq: 0,
-		},
-	}); err != nil {
-		t.Fatalf("SetLeaves(): %v", err)
-	}
 
 	mapPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
 	if err != nil {
@@ -178,12 +167,7 @@ func NewEnv(t *testing.T) *Env {
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
 	// Signer
-	admin := admin.NewStatic()
-	if err := admin.AddLog(logID, fake.NewFakeVerifyingLogClient()); err != nil {
-		t.Fatalf("failed to add log to admin: %v", err)
-	}
-	sthsLog := appender.NewTrillian(admin)
-	signer := signer.New("", mapID, mapEnv.MapClient, logID, sthsLog, mutator, mutations, factory)
+	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
 
 	addr, lis := Listen(t)
 	go s.Serve(lis)
@@ -193,9 +177,22 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	client := grpcc.New(cc, vrfPub, mapPubKey, coniks.Default,
-		fake.NewFakeTrillianLogVerifier())
+	client := grpcc.New(cc, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
+
+	// Mimic first sequence event
+	if err := signer.Initialize(ctx); err != nil {
+		t.Fatalf("signer.Initialize() = %v", err)
+	}
+	if _, err := mapEnv.MapClient.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
+		MapId:  mapID,
+		Leaves: nil,
+		MapperData: &trillian.MapperMetadata{
+			HighestFullyCompletedSeq: 0,
+		},
+	}); err != nil {
+		t.Fatalf("SetLeaves(): %v", err)
+	}
 
 	return &Env{
 		mapEnv:     mapEnv,

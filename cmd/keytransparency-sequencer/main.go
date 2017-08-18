@@ -20,12 +20,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/keytransparency/core/admin"
-	"github.com/google/keytransparency/core/appender"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/signer"
+	"github.com/google/keytransparency/core/sequencer"
 
-	"github.com/google/keytransparency/impl/config"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/transaction"
@@ -41,18 +38,14 @@ import (
 var (
 	metricsAddr      = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath     = flag.String("db", "db", "Database connection string")
-	domain           = flag.String("domain", "example.com", "Distinguished name for this key server")
 	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations). Expected to be smaller than max-period.")
 	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations). This value should about half the time guaranteed by the policy.")
 
-	// Info to connect to sparse merkle tree database.
+	// Info to connect to the trillian map and log.
 	mapID  = flag.Int64("map-id", 0, "ID for backend map")
 	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
-
-	// Info to send Signed Map Heads to a Trillian Log.
-	logID     = flag.Int64("log-id", 0, "Trillian Log ID")
-	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
-	logPubKey = flag.String("log-key", "", "File path to public key of the Trillian Log")
+	logID  = flag.Int64("log-id", 0, "Trillian Log ID")
+	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 )
 
 func openDB() *sql.DB {
@@ -86,17 +79,12 @@ func main() {
 	tmap := trillian.NewTrillianMapClient(mconn)
 
 	// Connection to append only log
-	tlog, err := config.LogClient(*logID, *logURL, *logPubKey)
+	lconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
 	if err != nil {
-		glog.Exitf("LogClient(%v, %v, %v): %v", *logID, *logURL, *logPubKey, err)
+		glog.Exitf("Failed to connect to %v: %v", *logURL, err)
 	}
+	tlog := trillian.NewTrillianLogClient(lconn)
 
-	// Create signer helper objects.
-	static := admin.NewStatic()
-	if err := static.AddLog(*logID, tlog); err != nil {
-		glog.Exitf("static.AddLog(%v): %v", *mapID, err)
-	}
-	sths := appender.NewTrillian(static)
 	// TODO: add mutations and mutator to admin.
 	mutations, err := mutations.New(sqldb, *mapID)
 	if err != nil {
@@ -112,7 +100,7 @@ func main() {
 		}
 	}()
 
-	signer := signer.New(*domain, *mapID, tmap, *logID, sths, mutator, mutations, factory)
+	signer := sequencer.New(*mapID, tmap, *logID, tlog, mutator, mutations, factory)
 	glog.Infof("Signer starting")
 	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
 	glog.Errorf("Signer exiting")
