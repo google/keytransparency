@@ -18,36 +18,13 @@ syntax = "proto3";
 //
 package monitor.v1.types;
 
-import "github.com/google/trillian/trillian.proto";
-import "github.com/google/trillian/trillian_map_api.proto";
+import "trillian.proto";
 
 // GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
 message GetMonitoringRequest {
   // start specifies the start epoch number from which monitoring results will
   // be returned (ranging from [start, latestObserved] and starting at 1).
   int64 start = 1;
-}
-
-// InvalidMutation includes all information to reproduce that there was an
-// invalid mutation from epoch e to e+1.
-message InvalidMutation {
-  // old_leaf is the inclusion proof to the leaf at epoch e.
-  trillian.MapLeafInclusion old_leaf = 1;
-  // new_leaf is the inclusion proof to the leaf at epoch e+1.
-  trillian.MapLeafInclusion new_leaf = 2;
-}
-
-// NotMatchingMapRootProof contains all data necessary to reproduce that set of
-// mutations does not produce new expected map root.
-message NotMatchingMapRootProof {
-  // map_root contains the map root hash the monitor observed.
-  trillian.SignedMapRoot map_root = 1;
-  // old_leafs is a list of inclusion proofs for the leafs in epoch e.
-  repeated trillian.MapLeafInclusion old_leafs = 2;
-  // new_leafs is a list of inclusion proofs for changed leafs (from epoch e
-  // to epoch e+1). Hashing these produces a different hash than root hash in
-  // above's map_root.
-  repeated trillian.MapLeafInclusion new_leafs = 3;
 }
 
 message GetMonitoringResponse {
@@ -69,18 +46,4 @@ message GetMonitoringResponse {
   // isValid signals if all verification steps for the requested epoch passed
   // or not.
   bool isValid = 3;
-  // invalidMapSigProof contains the signed map root received by the
-  // key-transparency server, if and only if the key-server's signature was
-  // invalid.
-  trillian.SignedMapRoot invalidMapSigProof = 4;
-  // invalidLogSigProof contains the signed map root received by the
-  // key-transparency server, if and only if the key-server's signature was
-  // invalid.
-  trillian.SignedLogRoot invalidLogSigProof = 5;
-  // invalidMutation contains data to reproduce that there was an invalid
-  // mutation from epoch e to epoch e+1
-  InvalidMutation invalidMutation = 6;
-  // NotMatchingMapRoot contains all data to reproduce that the set of mutations
-  // does not produce observed new map root.
-  NotMatchingMapRootProof notMatchingMapRoot = 7;
-}
+ }
