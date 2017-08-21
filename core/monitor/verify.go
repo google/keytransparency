@@ -67,7 +67,7 @@ func (m *Monitor) VerifyResponse(in *ktpb.GetMutationsResponse, allMuts []*ktpb.
 		resp.InvalidMapSigProof = in.GetSmr()
 	}
 
-	logRoot :=  in.GetLogRoot()
+	logRoot := in.GetLogRoot()
 	// Verify SignedLogRoot signature.
 	hash := tcrypto.HashLogRoot(*logRoot)
 	if err := tcrypto.Verify(m.logPubKey, hash, logRoot.GetSignature()); err != nil {

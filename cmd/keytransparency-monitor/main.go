@@ -15,7 +15,9 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -23,15 +25,20 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/impl/monitor"
+	"github.com/google/trillian"
 	"github.com/google/trillian/crypto"
+	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
+	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
@@ -41,15 +48,17 @@ var (
 	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
 	certFile = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
 
+	autoConfig = flag.Bool("autoconfig", true, "Fetch config info from the server's /v1/domain/info")
+	mapKey     = flag.String("map-key", "genfiles/map-rpc-server.pubkey.pem", "Path to public key PEM used to verify the SMH signature")
+	logKey     = flag.String("log-key", "genfiles/log-rpc-server.pubkey.pem", "Path to public key PEM used to verify the STH signature")
+
 	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
+	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
+	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
+	ktCert             = flag.String("kt-cert", "genfiles/server.crt", "Path to kt-server's public key")
 
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
-	ktURL      = flag.String("kt-url", "localhost:8080", "URL of key-server.")
-	ktPEM      = flag.String("kt-key", "genfiles/server.crt", "Path to kt-server's public key")
-
-	mapKey = flag.String("map-key", "genfiles/map-rpc-server.pubkey.pem", "Path to public key PEM used to verify the SMH signature")
-	logKey = flag.String("log-key", "genfiles/log-rpc-server.pubkey.pem", "Path to public key PEM used to verify the STH signature")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
 	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
@@ -100,7 +109,7 @@ func main() {
 	)
 
 	// Connect to the kt-server's mutation API:
-	grpcc, err := dial(*ktURL, *ktPEM)
+	grpcc, err := dial(*ktURL)
 	if err != nil {
 		glog.Fatalf("Error Dialing %v: %v", ktURL, err)
 	}
@@ -111,8 +120,13 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Could not create signer from %v: %v", *signingKey, err)
 	}
+	ctx := context.Background()
+	logTree, mapTree, err := getTrees(ctx, grpcc)
+	if err != nil {
+		glog.Fatalf("Could not read domain info %v:", err)
+	}
 
-	srv := monitor.New(mcc, crypto.NewSHA256Signer(key), *mapKey, *logKey, *pollPeriod)
+	srv := monitor.New(mcc, crypto.NewSHA256Signer(key), logTree, mapTree, *pollPeriod)
 
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)
@@ -143,24 +157,14 @@ func main() {
 	}
 }
 
-func dial(ktURL, caFile string) (*grpc.ClientConn, error) {
+func dial(ktURL string) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
-	host, _, err := net.SplitHostPort(ktURL)
+
+	transportCreds, err := transportCreds(ktURL, *ktCert, *insecure)
 	if err != nil {
 		return nil, err
 	}
-	var creds credentials.TransportCredentials
-	if caFile != "" {
-		var err error
-		creds, err = credentials.NewClientTLSFromFile(caFile, host)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// Use the local set of root certs.
-		creds = credentials.NewClientTLSFromCert(nil, host)
-	}
-	opts = append(opts, grpc.WithTransportCredentials(creds))
+	opts = append(opts, grpc.WithTransportCredentials(transportCreds))
 
 	// TODO(ismail): authenticate the monitor to the kt-server:
 	cc, err := grpc.Dial(ktURL, opts...)
@@ -168,4 +172,75 @@ func dial(ktURL, caFile string) (*grpc.ClientConn, error) {
 		return nil, err
 	}
 	return cc, nil
+}
+
+// TODO(ismail): refactor client and monitor to use the same methods
+func transportCreds(ktURL string, ktCert string, insecure bool) (credentials.TransportCredentials, error) {
+	// copied from keytransparency-client/cmd/root.go: transportCreds
+	host, _, err := net.SplitHostPort(ktURL)
+	if err != nil {
+		return nil, err
+	}
+
+	switch {
+	case insecure: // Impatient insecure.
+		return credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		}), nil
+
+	case ktCert != "": // Custom CA Cert.
+		return credentials.NewClientTLSFromFile(ktCert, host)
+
+	default: // Use the local set of root certs.
+		return credentials.NewClientTLSFromCert(nil, host), nil
+	}
+}
+
+// config selects a source for and returns the client configuration.
+func getTrees(ctx context.Context, cc *grpc.ClientConn) (mapTree *trillian.Tree, logTree *trillian.Tree, err error) {
+	switch {
+	case *autoConfig:
+		ktClient := spb.NewKeyTransparencyServiceClient(cc)
+		resp, err2 := ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
+		if err2 != nil {
+			err = err2
+			return
+		}
+		logTree = resp.GetLog()
+		mapTree = resp.GetMap()
+		return
+	default:
+		return readConfigFromDisk()
+	}
+}
+
+func readConfigFromDisk() (mapTree *trillian.Tree, logTree *trillian.Tree, err error) {
+	// Log PubKey.
+	logPubKey, err := pem.ReadPublicKeyFile(*logKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to open log public key %v: %v", *logKey, err)
+	}
+	logPubPB, err := der.ToPublicProto(logPubKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to serialize log public key: %v", err)
+	}
+
+	// MapPubKey.
+	mapPubKey, err := pem.ReadPublicKeyFile(*mapKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading map public key %v: %v", *mapKey, err)
+	}
+	mapPubPB, err := der.ToPublicProto(mapPubKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error seralizeing map public key: %v", err)
+	}
+	logTree = &trillian.Tree{
+		HashStrategy: trillian.HashStrategy_OBJECT_RFC6962_SHA256,
+		PublicKey:    logPubPB,
+	}
+	mapTree = &trillian.Tree{
+		HashStrategy: trillian.HashStrategy_CONIKS_SHA512_256,
+		PublicKey:    mapPubPB,
+	}
+	return
 }

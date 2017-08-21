@@ -20,7 +20,6 @@ package monitor
 
 import (
 	"bytes"
-	"crypto"
 	"errors"
 	"time"
 
@@ -64,13 +63,13 @@ type Server struct {
 // New creates a new instance of the monitor server.
 func New(cli mupb.MutationServiceClient,
 	signer *tcrypto.Signer,
-	logPubKey, mapPubKey crypto.PublicKey,
+	logTree, mapTree *trillian.Tree,
 	poll time.Duration) *Server {
 	return &Server{
 		client:     cli,
 		pollPeriod: poll,
 		// TODO(ismail) use domain info to properly init. the monitor:
-		monitor: &cmon.Monitor{},
+		monitor:        &cmon.Monitor{},
 		signer:         signer,
 		proccessedSMRs: make([]*mopb.GetMonitoringResponse, 256),
 	}
