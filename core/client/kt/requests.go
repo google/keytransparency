@@ -60,9 +60,12 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	if len(keys) == 0 {
 		keys = prevEntry.AuthorizedKeys
 	}
+	// TODO(ismail): Change this to plain sha256:
+	previous := objecthash.ObjectHash(prevEntry)
 	entry := &tpb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: keys,
+		Previous:       previous[:],
 	}
 
 	// Sign Entry.
@@ -78,12 +81,9 @@ func (v *Verifier) CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, err
 	}
-	// TODO(ismail): Change this to plain sha256:
-	previous := objecthash.ObjectHash(prevEntry)
 	signedkv := &tpb.SignedKV{
 		KeyValue:   kv,
 		Signatures: sigs,
-		Previous:   previous[:],
 	}
 
 	return &tpb.UpdateEntryRequest{

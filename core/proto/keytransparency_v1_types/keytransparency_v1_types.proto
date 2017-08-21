@@ -58,6 +58,10 @@ message Entry {
   bytes commitment = 1;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
   repeated PublicKey authorized_keys = 2;
+  // previous contains the hash of the previous entry that this mutation is
+  // modifying creating a hash chain of all mutations. The hash used is
+  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
+  bytes previous = 3;
 }
 
 // PublicKey defines a key this domain uses to sign MapHeads with.
@@ -77,9 +81,9 @@ message PublicKey {
 message KeyValue {
   // key contains the map entry key.
   bytes key = 1;
+  // TODO(ismail): make proto.Any
   // value contains the map entry value.
   bytes value = 2;
-  // TODO(ismail): make proto.Any
 }
 
 // SignedKV is a signed change to a map entry.
@@ -90,10 +94,6 @@ message SignedKV {
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.
   map<string, sigpb.DigitallySigned> signatures = 2;
-  // previous contains the hash of the previous entry that this mutation is
-  // modifying creating a hash chain of all mutations. The hash used is
-  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
-  bytes previous = 3;
 }
 
 // Mutation contains the actual mutation and the inclusion proof of the
