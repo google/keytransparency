@@ -17,7 +17,6 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -27,7 +26,6 @@ import (
 	"github.com/google/keytransparency/impl/monitor"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto"
-	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -47,10 +45,6 @@ var (
 	addr     = flag.String("addr", ":8099", "The ip:port combination to listen on")
 	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
 	certFile = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
-
-	autoConfig = flag.Bool("autoconfig", true, "Fetch config info from the server's /v1/domain/info")
-	mapKey     = flag.String("map-key", "genfiles/map-rpc-server.pubkey.pem", "Path to public key PEM used to verify the SMH signature")
-	logKey     = flag.String("log-key", "genfiles/log-rpc-server.pubkey.pem", "Path to public key PEM used to verify the STH signature")
 
 	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
@@ -198,8 +192,6 @@ func transportCreds(ktURL string, ktCert string, insecure bool) (credentials.Tra
 
 // config selects a source for and returns the client configuration.
 func getTrees(ctx context.Context, cc *grpc.ClientConn) (mapTree *trillian.Tree, logTree *trillian.Tree, err error) {
-	switch {
-	case *autoConfig:
 		ktClient := spb.NewKeyTransparencyServiceClient(cc)
 		resp, err2 := ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
 		if err2 != nil {
@@ -209,38 +201,4 @@ func getTrees(ctx context.Context, cc *grpc.ClientConn) (mapTree *trillian.Tree,
 		logTree = resp.GetLog()
 		mapTree = resp.GetMap()
 		return
-	default:
-		return readConfigFromDisk()
-	}
-}
-
-func readConfigFromDisk() (mapTree *trillian.Tree, logTree *trillian.Tree, err error) {
-	// Log PubKey.
-	logPubKey, err := pem.ReadPublicKeyFile(*logKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to open log public key %v: %v", *logKey, err)
-	}
-	logPubPB, err := der.ToPublicProto(logPubKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to serialize log public key: %v", err)
-	}
-
-	// MapPubKey.
-	mapPubKey, err := pem.ReadPublicKeyFile(*mapKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error reading map public key %v: %v", *mapKey, err)
-	}
-	mapPubPB, err := der.ToPublicProto(mapPubKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error seralizeing map public key: %v", err)
-	}
-	logTree = &trillian.Tree{
-		HashStrategy: trillian.HashStrategy_OBJECT_RFC6962_SHA256,
-		PublicKey:    logPubPB,
-	}
-	mapTree = &trillian.Tree{
-		HashStrategy: trillian.HashStrategy_CONIKS_SHA512_256,
-		PublicKey:    mapPubPB,
-	}
-	return
 }

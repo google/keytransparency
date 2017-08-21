@@ -166,9 +166,6 @@ services:
       - --tls-cert=genfiles/server.crt
       - --sign-key=/kt/monitor_sign-key.pem
       - --password=towel
-      # TODO(ismail): this needs to be the public-key returned by the createTree operation:
-      - --map-key=trillian/testdata/map-rpc-server.pubkey.pem
-      - --log-key=trillian/testdata/log-rpc-server.pubkey.pem
       - --alsologtostderr
       - --v=3
     image: us.gcr.io/key-transparency/keytransparency-monitor

@@ -120,41 +120,6 @@ spec:
   selector:
     run: kt-signer
 ---
-------
-   apiVersion: apps/v1beta1
-   kind: Deployment
-   metadata:
-     name: kt-monitor
-   spec:
-     strategy:
-       type: Recreate
-     template:
-       metadata:
-         labels:
-           run: kt-monitor
-       spec:
-         containers:
-         - name: kt-monitor
-           image: us.gcr.io/key-transparency/keytransparency-monitor
-           ports:
-             - containerPort: 8099
-               name: json-grpc
-   ---
-   apiVersion: v1
-   kind: Service
-   metadata:
-     name: kt-monitor
-     labels:
-       run: kt-monitor
-   spec:
-     type: NodePort
-     ports:
-       - port: 8099
-         targetPort: 8099
-         name: http
-     selector:
-       run: kt-monitor
-   ---
 apiVersion: v1
 kind: Service
 metadata:
