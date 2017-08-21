@@ -14,9 +14,5 @@
 
 package monitor
 
-// TODO(ismail): write extensive tests for verification steps (if not existing
-// in trillian)
-const (
-	emptyMapRootB64 = "xmifEIEqCYCXbZUz2Dh1KCFmFZVn7DUVVxbBQTr1PWo="
-	mapID           = int64(0)
-)
+// TODO(ismail): write extensive tests for verification steps, where necessary
+// tests should go into integration tests
