@@ -88,7 +88,7 @@ func (m *Monitor) VerifyResponse(in *ktpb.GetMutationsResponse, allMuts []*ktpb.
 	// TODO:
 	// logVerifier.VerifyInclusionProof()
 
-	if err := verifyMutations(allMuts, in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); err != nil {
+	if err := m.verifyMutations(allMuts, in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); err != nil {
 		// TODO resp.InvalidMutation
 	}
 

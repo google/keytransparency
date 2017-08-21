@@ -41,5 +41,5 @@ func New(logTree, mapTree trillian.Tree) (*Monitor, error) {
 		logVerifier: merkle.NewLogVerifier(logHasher),
 		logPubKey:   logTree.GetPublicKey(),
 		mapPubKey:   mapTree.GetPublicKey(),
-	}
+	}, nil
 }

@@ -30,9 +30,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/google/trillian"
-	"github.com/google/trillian/merkle"
-	"github.com/google/trillian/merkle/maphasher"
-	"github.com/google/trillian/merkle/rfc6962"
 
 	tcrypto "github.com/google/trillian/crypto"
 
@@ -72,11 +69,8 @@ func New(cli mupb.MutationServiceClient,
 	return &Server{
 		client:     cli,
 		pollPeriod: poll,
-		monitor: cmon.New(maphasher.Default,
-			mapPubKey,
-			logPubKey,
-			merkle.NewLogVerifier(rfc6962.DefaultHasher),
-		),
+		// TODO(ismail) use domain info to properly init. the monitor:
+		monitor: &cmon.Monitor{},
 		signer:         signer,
 		proccessedSMRs: make([]*mopb.GetMonitoringResponse, 256),
 	}
