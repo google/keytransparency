@@ -55,7 +55,7 @@ var (
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
-	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+	// metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 )
 
 func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
@@ -192,13 +192,13 @@ func transportCreds(ktURL string, ktCert string, insecure bool) (credentials.Tra
 
 // config selects a source for and returns the client configuration.
 func getTrees(ctx context.Context, cc *grpc.ClientConn) (mapTree *trillian.Tree, logTree *trillian.Tree, err error) {
-		ktClient := spb.NewKeyTransparencyServiceClient(cc)
-		resp, err2 := ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
-		if err2 != nil {
-			err = err2
-			return
-		}
-		logTree = resp.GetLog()
-		mapTree = resp.GetMap()
+	ktClient := spb.NewKeyTransparencyServiceClient(cc)
+	resp, err2 := ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
+	if err2 != nil {
+		err = err2
 		return
+	}
+	logTree = resp.GetLog()
+	mapTree = resp.GetMap()
+	return
 }

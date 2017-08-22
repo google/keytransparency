@@ -18,14 +18,13 @@
 package monitor
 
 import (
-
 	"time"
 
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
 )
 
-// verifyResponse verifies a response received by the GetMutations API.
+// VerifyResponse verifies a response received by the GetMutations API.
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
