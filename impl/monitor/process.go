@@ -14,19 +14,19 @@
 
 // Package monitor implements the monitor service. A monitor repeatedly polls a
 // key-transparency server's Mutations API and signs Map Roots if it could
-// reconstruct clients can query.
+// reconstruct
+// clients can query.
 package monitor
 
 import (
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"errors"
 )
 
-// VerifyResponse verifies a response received by the GetMutations API.
-// Additionally to the response it takes a complete list of mutations. The list
-// of received mutations may differ from those included in the initial response
-// because of the max. page size. If any verification check failed it returns
-// an error.
-// TODO(ismail): make this return a list of errors
-func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) error {
-	return nil
-}
+var (
+	// ErrNothingProcessed occurs when the monitor did not process any mutations /
+	// smrs yet.
+	ErrNothingProcessed = errors.New("did not process any mutations yet")
+)
+
+// TODO(ismail): call the client, actually process the mutations by calling API
+// in core

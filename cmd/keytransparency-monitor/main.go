@@ -35,6 +35,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
+	cmon "github.com/google/keytransparency/core/monitor"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
@@ -121,6 +122,10 @@ func main() {
 	}
 
 	srv := monitor.New(mcc, crypto.NewSHA256Signer(key), logTree, mapTree, *pollPeriod)
+	mon, err := cmon.New(logTree, mapTree, crypto.NewSHA256Signer(key))
+	if err != nil {
+		glog.Exitf("Failed setting up REST proxy: %v", err)
+	}
 
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)
@@ -136,12 +141,6 @@ func main() {
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
-
-	go func() {
-		if err := srv.StartPolling(); err != nil {
-			glog.Fatalf("Could not start polling mutations.")
-		}
-	}()
 
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)

@@ -1,0 +1,92 @@
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package monitor
+
+//
+// This file contains Monitor's grpc client logic: poll mutations from the
+// kt-server mutations API and page if necessary.
+//
+
+import (
+	"time"
+
+	"github.com/golang/glog"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+)
+
+// Each page contains pageSize profiles. Each profile contains multiple
+// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
+// size 16 will contain about 8KB of data.
+const pageSize = 16
+
+// MutationsClient queries the server side mutations API.
+type MutationsClient struct {
+	client     mupb.MutationServiceClient
+	pollPeriod time.Duration
+}
+
+// StartPolling initiates polling the server side mutations API. It does not
+// block returns a channel.
+// The caller should listen on the channel to receiving the latest polled
+// mutations response including all paged mutations. If anything went wrong
+// while polling the response channel contains an error.
+func (c *MutationsClient) StartPolling(startEpoch int64) (response chan<- *ktpb.GetMutationsResponse, errChan chan<- error) {
+	response = make(chan *ktpb.GetMutationsResponse)
+	errChan = make(chan error)
+	go func() {
+		epoch := startEpoch
+		t := time.NewTicker(c.pollPeriod)
+		for now := range t.C {
+			glog.Infof("Polling: %v", now)
+			// time out if we exceed the poll period:
+			ctx, _ := context.WithTimeout(context.Background(), c.pollPeriod)
+			monitorResp, err := c.pollMutations(ctx, epoch)
+			if err != nil {
+				glog.Errorf("pollMutations(_): %v", err)
+				errChan <- err
+			}
+
+			response <- monitorResp
+			epoch++
+		}
+	}()
+	return response
+}
+
+func (s *MutationsClient) pollMutations(ctx context.Context, queryEpoch int64, opts ...grpc.CallOption) (*ktpb.GetMutationsResponse, error) {
+	response, err := s.client.GetMutations(ctx, &ktpb.GetMutationsRequest{
+		PageSize: pageSize,
+		Epoch:    queryEpoch,
+	}, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Page if necessary: query all mutations in the current epoch
+	for response.GetNextPageToken() != "" {
+		req := &ktpb.GetMutationsRequest{PageSize: pageSize}
+		resp, err := s.client.GetMutations(ctx, req, opts...)
+		if err != nil {
+			return nil, err
+		}
+		response.Mutations = append(response.Mutations, resp.GetMutations()...)
+	}
+
+	return response, nil
+}

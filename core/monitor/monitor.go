@@ -21,6 +21,8 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
+
+	tcrypto "github.com/google/trillian/crypto"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
@@ -30,12 +32,13 @@ type Monitor struct {
 	logPubKey   crypto.PublicKey
 	mapPubKey   crypto.PublicKey
 	logVerifier merkle.LogVerifier
+	signer      *tcrypto.Signer
 	// TODO(ismail): update last trusted signed log root
 	//trusted     trillian.SignedLogRoot
 }
 
 // New creates a new instance of the monitor.
-func New(logTree, mapTree trillian.Tree) (*Monitor, error) {
+func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer) (*Monitor, error) {
 	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
@@ -49,5 +52,6 @@ func New(logTree, mapTree trillian.Tree) (*Monitor, error) {
 		logVerifier: merkle.NewLogVerifier(logHasher),
 		logPubKey:   logTree.GetPublicKey(),
 		mapPubKey:   mapTree.GetPublicKey(),
+		signer:      signer,
 	}, nil
 }
