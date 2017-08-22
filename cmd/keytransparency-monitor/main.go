@@ -103,7 +103,7 @@ func main() {
 	)
 
 	// Connect to the kt-server's mutation API:
-	grpcc, err := dial(*ktURL)
+	grpcc, err := dial()
 	if err != nil {
 		glog.Fatalf("Error Dialing %v: %v", ktURL, err)
 	}
@@ -151,17 +151,17 @@ func main() {
 	}
 }
 
-func dial(ktURL string) (*grpc.ClientConn, error) {
+func dial() (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 
-	transportCreds, err := transportCreds(ktURL, *ktCert, *insecure)
+	transportCreds, err := transportCreds(*ktURL, *ktCert, *insecure)
 	if err != nil {
 		return nil, err
 	}
 	opts = append(opts, grpc.WithTransportCredentials(transportCreds))
 
 	// TODO(ismail): authenticate the monitor to the kt-server:
-	cc, err := grpc.Dial(ktURL, opts...)
+	cc, err := grpc.Dial(*ktURL, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -41,7 +41,6 @@ if ((INTERACTIVE == 1)); then
   # Prompts for password:
   openssl ecparam -name prime256v1 -genkey | openssl ec -aes256 -out monitor_sign-key.pem
 else
-
   openssl ecparam -name prime256v1 -genkey | openssl ec -aes256 -passout pass:$DEFAULT_PWD -out monitor_sign-key.pem
 fi
 chmod 600 monitor_sign-key.pem

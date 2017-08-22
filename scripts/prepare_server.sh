@@ -133,7 +133,7 @@ if ((FRONTEND == 1)); then
 fi
 
 if ((MONITOR == 1)); then
-    ./scripts/gen_monitor_keys.sh
+    ./scripts/gen_monitor_keys.sh -f
 fi
 
 # Generating .env file
