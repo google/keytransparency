@@ -70,3 +70,15 @@ service KeyTransparencyService {
     option (google.api.http) = { get: "/v1/domain/info" };
   }
 }
+
+// The KeyTransparencyAdminService API provides batch access to the directory of public keys. 
+service KeyTransparencyAdminService {
+  // BatchSetEntries uses an authorized_public key to perform a set request on multiple entries at once.  
+  rpc BatchSetEntries(keytransparency.v1.types.BatchSetEntriesRequest) returns (keytransparency.v1.types.BatchSetEntriesResponse) {
+    option (google.api.http) = {
+      post: "/v1/users:batch"
+      body: ""
+    };
+  }
+}
+
