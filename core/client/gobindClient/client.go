@@ -5,70 +5,108 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	"github.com/google/trillian"
-	"github.com/google/trillian/client"
-	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/merkle/hashers"
-	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered (needed by the bGetVerifierFromParams function)
+	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
+	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"net"
 	"time"
 
-
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/google/keytransparency/core/client/kt"
-	"github.com/google/keytransparency/core/crypto/keymaster"
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 
+	"bytes"
+	"github.com/benlaurie/objecthash/go/objecthash"
+	"io/ioutil"
 	"log"
-	"github.com/google/trillian/merkle/coniks"
 )
 
-type BClientParams struct {
-	KtURL        string
-	MapID        int64
-	KtTLSCertPEM []byte
-	VrfPubPEM    []byte
-	KtSigPubKey  []byte
-	LogPEM       []byte
-}
+var (
+	initialized bool
 
-// TODO(amarcedone) consider persisting the client or at least the trusted smr, to gain efficiency and stronger consistency guarantees.
+	clients map[string]*grpcc.Client = make(map[string]*grpcc.Client)
 
-func NewBClientParams(KtURL string, MapID int64, KtTLSCertPEM, VrfPubPEM, KtSigPubKey, LogPEM []byte) *BClientParams {
-	// Note: byte arrays need to be explicitly cloned due to some gobind limitations.
-	cKtTLSCertPEM := make([]byte, len(KtTLSCertPEM))
-	copy(cKtTLSCertPEM, KtTLSCertPEM)
-	cVrfPubPEM := make([]byte, len(VrfPubPEM))
-	copy(cVrfPubPEM, VrfPubPEM)
-	cKtSigPubKey := make([]byte, len(KtSigPubKey))
-	copy(cKtSigPubKey, KtSigPubKey)
-	cLogPEM := make([]byte, len(LogPEM))
-	copy(cLogPEM, LogPEM)
+	timeout time.Duration
 
-	return &BClientParams{KtURL, MapID, cKtTLSCertPEM, cVrfPubPEM, cKtSigPubKey, cLogPEM}
-}
+	// Vlog is the verbose logger. By default it outputs to /dev/null.
+	Vlog = log.New(ioutil.Discard, "", 0)
+)
 
-func BGetEntry(timeoutInMilliseconds int, clientParams *BClientParams, userID, appID string) ([]byte, error) {
-
-	//timeout := time.Duration(timeoutInMilliseconds) * time.Millisecond
-	//c, err := GetClient(*clientParams, "")
-
-	timeout := time.Duration(700) * time.Millisecond
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-
-	//c, err := GetClient(*clientParams, "")
-	c, err := GetClientWithAutoConfig(ctx, *clientParams)
-
-
-	if err != nil {
-		return nil, fmt.Errorf("GetEntry failed: error connecting: %v", err)
+func checkInitialized() error {
+	if initialized == false {
+		return fmt.Errorf("The keytransparency gobindClient has not been intialized yet. Please call init first.")
 	}
-	entry, smr, err := c.GetEntry(ctx, userID, appID)
+	return nil
+}
+
+func BInit(timeoutInMs int32) error {
+	if initialized {
+		fmt.Errorf("The library was already initialized.")
+	}
+
+	initialized = true
+
+	timeout = time.Duration(timeoutInMs) * time.Millisecond
+
+	// TODO Persistence_path processing will go here.
+
+	return nil
+}
+
+func BAddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfoHash []byte) error {
+	if _, exists := clients[ktURL]; exists == true {
+		fmt.Errorf("The KtServer connection for %v already exists", ktURL)
+	}
+
+	// TODO Add URL validation here.
+
+	cc, err := dial(ktURL, insecureTLS, ktTLSCertPEM)
+	if err != nil {
+		return fmt.Errorf("Error Dialing %v: %v", ktURL, err)
+	}
+
+	ktClient := spb.NewKeyTransparencyServiceClient(cc)
+
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	config, err := ktClient.GetDomainInfo(ctx, &tpb.GetDomainInfoRequest{})
+	if err != nil {
+		return fmt.Errorf("Error getting config: %v", err)
+	}
+
+	if len(domainInfoHash) == 0 {
+		Vlog.Print("Warning: no domainInfoHash provided. Key material from the server will be trusted.")
+	} else {
+		if got := objecthash.ObjectHash(config); bytes.Compare(got[:], domainInfoHash) != 0 {
+			return fmt.Errorf("The KtServer %v returned a domainInfoResponse inconsistent with the provided domainInfoHash")
+		}
+	}
+
+	client, err := grpcc.NewFromConfig(cc, config)
+	if err != nil {
+		return fmt.Errorf("Error adding the KtServer: %v", err)
+	}
+
+	clients[ktURL] = client
+	return nil
+}
+
+func BGetEntry(ktURL, userID, appID string) ([]byte, error) {
+
+	if err := checkInitialized(); err != nil {
+		return []byte{}, err
+	}
+
+	client, exists := clients[ktURL]
+	if !exists {
+		fmt.Errorf("A connection to %v does not exists. Please call BAddKtServer first", ktURL)
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	entry, smr, err := client.GetEntry(ctx, userID, appID)
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: %v", err)
 	}
@@ -82,124 +120,46 @@ func BGetEntry(timeoutInMilliseconds int, clientParams *BClientParams, userID, a
 	return entry, nil
 }
 
-func GetClientWithAutoConfig(ctx context.Context, clientParams BClientParams) (*grpcc.Client, error) {
-      // TODO(amarcedone) For now clientSecretFile is not needed as there is no authentication. Consider removing.
+func dial(ktURL string, insecureTLS bool, ktTLSCertPEM []byte) (*grpc.ClientConn, error) {
 
-      cc, err := dial(clientParams.KtURL, clientParams.KtTLSCertPEM, "")
+	creds, err := transportCreds(ktURL, insecureTLS, ktTLSCertPEM)
 
-      if err != nil {
-              return nil, fmt.Errorf("Error Dialing %v: %v", clientParams.KtURL, err)
-      }
-
-      ktClient := spb.NewKeyTransparencyServiceClient(cc)
-
-      config, err := ktClient.GetDomainInfo(ctx, &tpb.GetDomainInfoRequest{})
-      if err != nil {
-              return nil, fmt.Errorf("Error getting config: %v", err)
-      }
-      //return nil, fmt.Errorf("Error Dialing for AutoConfig3")
-
-      return grpcc.NewFromConfig(cc, config)
-}
-
-
-func GetClient(clientParams BClientParams, clientSecretFile string) (*grpcc.Client, error) {
-	// TODO(amarcedone) For now clientSecretFile is not needed as there is no authentication. Consider removing.
-
-	cc, err := dial(clientParams.KtURL, clientParams.KtTLSCertPEM, clientSecretFile)
-	if err != nil {
-		return nil, fmt.Errorf("Error Dialing %v: %v", clientParams.KtURL, err)
-	}
-
-	// Log verifier.
-	logPubKey, err := pem.UnmarshalPublicKey(string(clientParams.LogPEM))
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open public key %v: %v", string(clientParams.LogPEM), err)
-	}
-
-	hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
-	if err != nil {
-		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
-	}
-	log := client.NewLogVerifier(hasher, logPubKey)
-
-	verifier, err := keymaster.NewVerifierFromPEM(clientParams.KtSigPubKey)
-	if err != nil {
-		return nil, fmt.Errorf("Error creating verifier from PEM encoded key: %v", err)
-	}
-
-	vrfVerifier, err := p256.NewVRFVerifierFromPEM(clientParams.VrfPubPEM)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
-	}
-
-	//cli := pb.NewKeyTransparencyServiceClient(cc)
-	//return grpcc.New(cli, vrfVerifier, verifier, log, true), nil
-
-	//cc, vrfPub, mapPubKey, coniks.Default
-	return grpcc.New(cc, vrfVerifier, verifier, coniks.Default, log), nil
-}
-
-func dial(ktURL string, caPEM []byte, clientSecretFile string) (*grpc.ClientConn, error) {
-	// TODO(amarcedone) For now clientSecretFile is not needed as there is no authentication. Consider removing.
-
-	var opts []grpc.DialOption
-	// TODO(amarcedone) Copied from root.go. Figure out why we have "if true" here. Perhaps for scope?
-	if true {
-		host, _, err := net.SplitHostPort(ktURL)
-		if err != nil {
-			return nil, err
-		}
-		var creds credentials.TransportCredentials
-		if len(caPEM) != 0 {
-			var err error
-			cp := x509.NewCertPool()
-			if !cp.AppendCertsFromPEM(caPEM) {
-				return nil, fmt.Errorf("credentials: failed to append certificates")
-			}
-			creds, err = credentials.NewTLS(&tls.Config{ServerName: host, RootCAs: cp}), nil
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			// Use the local set of root certs.
-			creds = credentials.NewClientTLSFromCert(nil, host)
-		}
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	}
-
-	// AUTHENTICATION is not needed for gobind clients as they only perform get requests.
-	//// Add authentication information for the grpc. Only one type of credential
-	//// should exist in an RPC call. Fake credentials have the highest priority, followed
-	//// by Client credentials and Service Credentials.
-	//fakeUserID := viper.GetString("fake-auth-userid")
-	//switch {
-	//case fakeUserID != "":
-	//	opts = append(opts, grpc.WithPerRPCCredentials(
-	//		authentication.GetFakeCredential(fakeUserID)))
-	//case clientSecretFile != "":
-	//	creds, err := getCreds(clientSecretFile)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	opts = append(opts, grpc.WithPerRPCCredentials(creds))
-	//case serviceKeyFile != "":
-	//	creds, err := getServiceCreds(serviceKeyFile)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	opts = append(opts, grpc.WithPerRPCCredentials(creds))
-	//}
-
-	cc, err := grpc.Dial(ktURL, opts...)
+	cc, err := grpc.Dial(ktURL, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err
 	}
 	return cc, nil
 }
 
+func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentials.TransportCredentials, error) {
+
+	host, _, err := net.SplitHostPort(ktURL)
+	if err != nil {
+		return nil, err
+	}
+
+	switch {
+	case insecure: // Impatient insecure.
+		return credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		}), nil
+
+	case len(ktTLSCertPEM) != 0: // Custom CA Cert.
+		cp := x509.NewCertPool()
+		if !cp.AppendCertsFromPEM(ktTLSCertPEM) {
+			return nil, fmt.Errorf("credentials: failed to append certificates")
+		}
+		creds := credentials.NewTLS(&tls.Config{ServerName: host, RootCAs: cp})
+		return creds, nil
+
+	default: // Use the local set of root certs.
+		return credentials.NewClientTLSFromCert(nil, host), nil
+	}
+}
+
 func BSetCustomLogger(writer BWriter) {
 	kt.Vlog = log.New(writer, "", log.Lshortfile)
+	Vlog = log.New(writer, "", log.Lshortfile)
 }
 
 // Local copy of io.Writer interface used to redirect logs.
