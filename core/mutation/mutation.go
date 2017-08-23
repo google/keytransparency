@@ -212,9 +212,9 @@ func (s *Server) inclusionProofs(ctx context.Context, indexes [][]byte, epoch in
 		glog.Errorf("GetLeaves(): %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-	if got, want := len(getResp.MapLeafInclusion), len(indexes); got != want {
+	if got, want := len(getResp.GetMapLeafInclusion()), len(indexes); got != want {
 		glog.Errorf("GetLeaves() len: %v, want %v", got, want)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-	return getResp.MapLeafInclusion, nil
+	return getResp.GetMapLeafInclusion(), nil
 }

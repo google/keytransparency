@@ -23,6 +23,7 @@ INTERACTIVE=1
 FRONTEND=1
 FRONTENDNUM=0
 BACKEND=1
+MONITOR=1
 # 1 means SQLite, 2 means MySQL
 DSN=""
 IP1="127.0.0.1"
@@ -129,6 +130,10 @@ cd "${GOPATH}/src/github.com/google/keytransparency"
 # Create keys.
 if ((FRONTEND == 1)); then
     ./scripts/gen_server_keys.sh -d "${CERTDOMAIN}" -a "${CERTIP}" -s "${SAN_DNS}"
+fi
+
+if ((MONITOR == 1)); then
+    ./scripts/gen_monitor_keys.sh
 fi
 
 # Generating .env file

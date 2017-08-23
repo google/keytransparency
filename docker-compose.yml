@@ -149,3 +149,29 @@ services:
       - --max-period=5m
       - --alsologtostderr
       - --v=5
+
+  kt-monitor:
+    depends_on:
+      - kt-server
+      - kt-signer
+    build:
+      context: ..
+      dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile
+    entrypoint:
+      - /go/bin/keytransparency-monitor
+      - --addr=0.0.0.0:8099
+      - --kt-url=kt-server:8080
+      - --poll-period=5s
+      - --tls-key=genfiles/server.key
+      - --tls-cert=genfiles/server.crt
+      - --sign-key=/kt/monitor_sign-key.pem
+      - --password=towel
+      # TODO(ismail): this needs to be the public-key returned by the createTree operation:
+      - --map-key=trillian/testdata/map-rpc-server.pubkey.pem
+      - --log-key=trillian/testdata/log-rpc-server.pubkey.pem
+      - --alsologtostderr
+      - --v=3
+    image: us.gcr.io/key-transparency/keytransparency-monitor
+    restart: always
+    ports:
+    - "8099:8099" # gRPC / HTTPS
