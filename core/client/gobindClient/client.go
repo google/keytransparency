@@ -7,13 +7,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	"github.com/google/keytransparency/core/client/kt"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"google.golang.org/grpc"
@@ -30,11 +28,10 @@ var (
 
 	timeout time.Duration = time.Duration(500) * time.Millisecond
 
-	// Vlog is the verbose logger. By default it outputs to /dev/null.
-	Vlog = log.New(ioutil.Discard, "", 0)
+	Vlog = log.New(&multiLogWriter, "", log.LstdFlags)
 )
 
-func SetTimeout(ms int32){
+func SetTimeout(ms int32) {
 	timeout = time.Duration(ms) * time.Millisecond
 }
 
@@ -124,7 +121,7 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 	case len(ktTLSCertPEM) != 0: // Custom CA Cert.
 		cp := x509.NewCertPool()
 		if !cp.AppendCertsFromPEM(ktTLSCertPEM) {
-			return nil, fmt.Errorf("credentials: failed to append certificates")
+			return nil, fmt.Errorf("Failed to append certificates")
 		}
 		creds := credentials.NewTLS(&tls.Config{ServerName: host, RootCAs: cp})
 		return creds, nil
@@ -132,14 +129,4 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 	default: // Use the local set of root certs.
 		return credentials.NewClientTLSFromCert(nil, host), nil
 	}
-}
-
-func SetCustomLogger(writer LogWriter) {
-	kt.Vlog = log.New(writer, "", log.Lshortfile)
-	Vlog = log.New(writer, "", log.Lshortfile)
-}
-
-// Local copy of io.Writer interface used to redirect logs.
-type LogWriter interface {
-	Write(p []byte) (n int, err error)
 }
