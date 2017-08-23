@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
+	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -140,6 +140,7 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 
 	switch {
 	case insecure: // Impatient insecure.
+		Vlog.Printf("Warning: Skipping verification of KT Server's TLS certificate.")
 		return credentials.NewTLS(&tls.Config{
 			InsecureSkipVerify: true,
 		}), nil
