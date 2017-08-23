@@ -26,38 +26,19 @@ import (
 )
 
 var (
-	initialized bool
-
 	clients map[string]*grpcc.Client = make(map[string]*grpcc.Client)
 
-	timeout time.Duration
+	timeout time.Duration = time.Duration(500) * time.Millisecond
 
 	// Vlog is the verbose logger. By default it outputs to /dev/null.
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
-func checkInitialized() error {
-	if initialized == false {
-		return fmt.Errorf("The keytransparency gobindClient has not been intialized yet. Please call init first.")
-	}
-	return nil
+func SetTimeout(ms int32){
+	timeout = time.Duration(ms) * time.Millisecond
 }
 
-func BInit(timeoutInMs int32) error {
-	if initialized {
-		fmt.Errorf("The library was already initialized.")
-	}
-
-	initialized = true
-
-	timeout = time.Duration(timeoutInMs) * time.Millisecond
-
-	// TODO Persistence_path processing will go here.
-
-	return nil
-}
-
-func BAddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfoHash []byte) error {
+func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfoHash []byte) error {
 	if _, exists := clients[ktURL]; exists == true {
 		fmt.Errorf("The KtServer connection for %v already exists", ktURL)
 	}
@@ -94,12 +75,7 @@ func BAddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInf
 	return nil
 }
 
-func BGetEntry(ktURL, userID, appID string) ([]byte, error) {
-	log.Println("AXAX test logs.")
-	if err := checkInitialized(); err != nil {
-		return []byte{}, err
-	}
-
+func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 	client, exists := clients[ktURL]
 	if !exists {
 		fmt.Errorf("A connection to %v does not exists. Please call BAddKtServer first", ktURL)
@@ -158,12 +134,12 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 	}
 }
 
-func BSetCustomLogger(writer BWriter) {
+func SetCustomLogger(writer LogWriter) {
 	kt.Vlog = log.New(writer, "", log.Lshortfile)
 	Vlog = log.New(writer, "", log.Lshortfile)
 }
 
 // Local copy of io.Writer interface used to redirect logs.
-type BWriter interface {
+type LogWriter interface {
 	Write(p []byte) (n int, err error)
 }
