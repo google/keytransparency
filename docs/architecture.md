@@ -2,78 +2,81 @@
 
 ![Architecture](images/architecture.png)
 
-# Queue
-The Queue is the central component of the Key Server.
-The Queue gives a definitive, consistent ordering to all changes made to the 
-key server data structure.
+#Clients
+Clients make requests to Key Transparency servers over HTTPS / JSON or gRPC.  
 
-The Queue is a Multi-Writer, Single Reader data object.
-Previous iterations had the Queue as a Multi-Writer, Multi-Reader object, where 
-each node would receive the same data, much like the Raft Consesnsus Algorithm. 
-In the Single Reader scheme, the queue is keeping track of global state, ie. how 
-many items have been processed and added to the database.
+# Key Transparency Server
+The front end servers reveal the mappings between user identifiers (e.g. email
+address) and their anonymized index in the Trillan Map with the Verifiable
+Random Function. 
 
-The Queue stores mutations that have not been processed by the signer and 
-written to the Merkle Tree data structures.
+The front ends also provide account data for particular users and the mappings
+between that account data and the public commitments stored in the Trillian
+Map.
 
-## Queue Atomicity Notes
-Mutations in the queue may be deleted from the queue once they have been 
-successfully processed by the signer and committed to the leaf database. We do 
-not require that an epoch advancement occur before queue entries may be deleted.
+# Commitment Table
+The commitment table stores account values and the associated commitment key 
+nessesary to verify the commitment stored in the Trillian Map. 
 
-Cross-Domain Transactions:
-To process an item from the queue, the item is first deleted. If it cannot be
-deleted (due to another process dequeueing it first or any other error), the next
-item is fetched and processed. Once an item is safely deleted from the queue, it
-is processed and the changes are written to the database. If the database commit
-fails, all changes are rolled back. The item is not placed back in the queue and
-is "lost". However, since clients perform retries until the data they are trying
-to update appears in the database, this data loss does not violate the API
-contract.
+# Mutation Table
+When a user wishes to make a change to their account, they create a signed change
+request (also known as a mutation) and send it to a Key Transparency frontend.
 
-## Queue Epoch Advancement Notes
-When advancing epochs, we can't include the expected epoch number because 
-multiple epoch advancement requests could be received by the queue out-of-order.
+The frontend then saves the mutation in the mutation table, allowing the database 
+to assign the mutation a monotonically increasing sequence number or timestamp, 
+establishing an authoritative ordering for new mutations.
 
-If we assume a single writer case, we could add fancy logic to the Signer such 
-that no more than one epoch advancement request is ever present in the  queue at
-once. This, however, would require the Signer to know what's in the queue when it
-crashes and resumes.
+This strict ordering requirement could be relaxed in the future for
+performance reasons.  Strictly speaking only given sets (batches) of mutations
+that need to be ordered relative to other sets.
 
-# Signer
-The signer processes mutations out of the queue.
-In the present configuration, the signer writes each node into the leaf table 
-with a version number in the future. If the signer crashes, it simply picks up
-processing the queue where it left off. Writing to the same node twice with the 
-same data is permitted.
+# Trillian Map
+The Trillian Map stores the sparse merkle tree and is designed to scale to
+extremely large trees. The Trilian Map is updated in batches.
 
-The signer applies the mutations in the queue to the entries contained in 
-`current_epoch - 1`. Duplicate mutations processed during the same epoch will 
-succeed. Duplicate mutations processed across epochs SHOULD fail. (Each 
-mutation should be explicit about the previous version of data it is modifying.)
+# Trillian Log
+The Trillian Log stores a dense merkle tree in the style of Ceritificate 
+Transparency.  The Key Transparency Sequencer adds SignedMapRoots from the
+Trillian Map to the Trillian Log as they are created. 
 
-To advance to the next epoch, the signer inserts an epoch advancement marker 
-into the queue and waits to receive it back on the queue before committing all 
-the changes received between epoch markers into a version of the sparse merkle
-tree and signing the root node. 
+# Key Transparency Sequencer
+The Key Transparency Sequencer runs periodically.  It creates a batch of new 
+mutations that have occurred since the last sequencing run. It then verifies 
+the mutations and applies them to the currently stored values in the map.
 
-The Signer also takes each item received in the queue and sends it to the 
-Log of Mutations, so that Monitors can recreate the tree by just reading the 
-Log of Mutations.
+After each new map revision, the sequencer sends the new SignedMapRoot (SMR) to
+the Trillian Log which must sequence the new SMR before the front ends will
+start using the new map revision. 
 
-# Front End Nodes
-Front end nodes submit mutations into the queue. 
+After each new map revision, the sequencer will also send the new SignedMapRoot,
+SignedLogRoot, Mutations, and associated proofs to the front ends over a
+streaming gRPC channel. The frontends will then forward those same notification
+to active monitors over a streaming gRPC channel.
 
-In previous iterations, the nodes would also receive all mutations and apply 
-them to their local copies of the tree. In this revision, we decided the tree
-could be too big to fit on any particular node, so the tree has been moved to 
-a distributed database that the Signer updates.
+# Mutation
+Mutations in Key Transparency are defined as a signed key-value object. 
+- The Key must the the valid index associated with the user's identifier. 
+- The Value is an object that contains 
+   - A cryptographic commitment to the user's data.
+   - The set of public keys that are allowed to update this account.
+- The mutation also contains the hash of the previous mutation. This helps
+  break race conditions and it forms a hash chain in each account.
 
-# Log of Mutations
-Stores a signed list of mutations and epoch advancement markers that come out of 
-the queue.
+# Monitors
+Monitors process and verify the mutations that make each new epoch.
+Monitors verify various policy properties of the signed key-values in the
+Trillian Map.  In particular, monitors verify that 
+- Back pointers in each leaf do not skip over any values - an operation that
+  would be bandwidth intensive for mobile clients.  
+- Mutations are properly signed and verified by public keys declared in the
+  prior epoch. 
 
-# Log of Signed Map Heads
-Stores a signed list of Signed Map Heads (SMHs), one for each epoch.
+Monitors also observe the Trillian Log proofs provided by the Key Transparency 
+front end to detect any log forks.  
+
+Monitors participate in a primitive form of gossip by signing the Trillian Log
+roots that they see and make them available over an API.
+
+
 
 

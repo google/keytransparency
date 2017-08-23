@@ -18,7 +18,6 @@ import (
 	"database/sql"
 	"log"
 	"net"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
@@ -29,7 +28,6 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/core/testutil/ctutil"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -88,7 +86,6 @@ type Env struct {
 	Factory    *transaction.Factory
 	VrfPriv    vrf.PrivateKey
 	Cli        pb.KeyTransparencyServiceClient
-	mapLog     *httptest.Server
 }
 
 func staticVRF() (vrf.PrivateKey, vrf.PublicKey, error) {
@@ -115,7 +112,6 @@ f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
-	hs := ctutil.NewCTServer(t)
 	sqldb := NewDB(t)
 
 	// Map server
@@ -199,7 +195,6 @@ func NewEnv(t *testing.T) *Env {
 		Factory:    factory,
 		VrfPriv:    vrfPriv,
 		Cli:        pb.NewKeyTransparencyServiceClient(cc),
-		mapLog:     hs,
 	}
 }
 
@@ -209,7 +204,6 @@ func (env *Env) Close(t *testing.T) {
 	env.GRPCServer.Stop()
 	env.mapEnv.Close()
 	env.db.Close()
-	env.mapLog.Close()
 }
 
 // GetNewOutgoingContextWithFakeAuth returns a new context containing FakeAuth information to authenticate userID
