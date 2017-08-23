@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package gobindClient contains a gobind friendly implementation of a KeyTransparency Client able to make
+// Package gobindclient contains a gobind friendly implementation of a KeyTransparency Client able to make
 // GetEntry requests to a KT server and verify the soundness of the responses.
-package gobindClient
-
-// TODO(amarcedone) : rename package to gobind_client after https://github.com/golang/go/issues/17359 is solved.
+package gobindclient
 
 import (
 	"bytes"
@@ -59,7 +57,7 @@ func init() {
 	kt.Vlog = log.New(multiLogWriter, "", log.LstdFlags)
 }
 
-// AddVerboseLogsDestination instructs the logger of the gobindClient package to also write all log statements to the provided writer.
+// AddVerboseLogsDestination instructs the logger of the gobindclient package to also write all log statements to the provided writer.
 func AddVerboseLogsDestination(writer LogWriter) {
 	multiLogWriter.AddWriter(writer)
 }
