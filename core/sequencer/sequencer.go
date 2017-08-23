@@ -32,6 +32,8 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"net/http"
+	"strings"
 )
 
 var (
@@ -350,7 +352,26 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
+
+	// store smr in BFTKV
+	writeToBFTKV(string(s.logID) + "|" + string(revision), string(setResp.GetMapRoot().GetRootHash()))
 	return nil
+}
+
+
+func writeToBFTKV(key string, value string) {
+	glog.Infoln("Writing to BFTKV...")
+	req, err := http.NewRequest("GET", "http://docker.for.mac.localhost:6001/write/" + key, strings.NewReader(value))
+	if err != nil {
+		glog.Errorf("BFTKV write error: %v", err)
+	}
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		glog.Errorf("BFTKV request error: %v", err)
+	}
+	defer resp.Body.Close()
+	glog.Info("Response: ", resp)
 }
 
 // TODO(gdbelvin): Add leaf at a specific index. trillian#423
