@@ -346,6 +346,15 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
+	
+	// Store signed log root in BFTKV
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx, &trillian.GetLatestSignedLogRootRequest{
+		LogId: s.logID,
+	})
+	if err != nil {
+		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", s.logID, err)
+	}
+	writeToBFTKV(string(s.logID) + "|" + string(revision), string(logRoot.GetSignedLogRoot().GetRootHash()))
 
 	mutationsCtr.Add(float64(len(mutations)))
 	indexCtr.Add(float64(len(indexes)))
@@ -353,8 +362,6 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
 
-	// store smr in BFTKV
-	writeToBFTKV(string(s.logID) + "|" + string(revision), string(setResp.GetMapRoot().GetRootHash()))
 	return nil
 }
 
