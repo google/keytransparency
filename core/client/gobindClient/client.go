@@ -1,5 +1,22 @@
-// TODO(amarcedone) : rename package to gobind_client after https://github.com/golang/go/issues/17359 is solved.
+// Copyright 2016 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package gobindClient contains a gobind friendly implementation of a KeyTransparency Client able to make
+// GetEntry requests to a KT server and verify the soundness of the responses.
 package gobindClient
+
+// TODO(amarcedone) : rename package to gobind_client after https://github.com/golang/go/issues/17359 is solved.
 
 import (
 	"bytes"
@@ -9,9 +26,12 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
+	"github.com/google/keytransparency/core/client/kt"
+	"github.com/google/keytransparency/core/client/multiWriter"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"google.golang.org/grpc"
@@ -24,20 +44,40 @@ import (
 )
 
 var (
-	clients map[string]*grpcc.Client = make(map[string]*grpcc.Client)
+	clients = make(map[string]*grpcc.Client)
 
-	timeout time.Duration = time.Duration(500) * time.Millisecond
+	timeout = 500 * time.Millisecond
 
-	Vlog = log.New(&multiLogWriter, "", log.LstdFlags)
+	multiLogWriter = multiWriter.New(os.Stderr)
+
+	// Vlog is the verbose logger. By default it outputs to stderr (logcat on Android), but other destination can be
+	// added through the AddVerboseLogsDestination method.
+	Vlog = log.New(multiLogWriter, "", log.LstdFlags)
 )
 
+func init() {
+	kt.Vlog = log.New(multiLogWriter, "", log.LstdFlags)
+}
+
+// AddVerboseLogsDestination instructs the logger of the gobindClient package to also write all log statements to the provided writer.
+func AddVerboseLogsDestination(writer LogWriter) {
+	multiLogWriter.AddWriter(writer)
+}
+
+// LogWriter is a local copy of the io.Writer interface which can be implemented in Java. Used to redirect logs.
+type LogWriter interface {
+	Write(p []byte) (n int, err error)
+}
+
+// SetTimeout sets the timeout (in milliseconds) used for all rpc network requests.
 func SetTimeout(ms int32) {
 	timeout = time.Duration(ms) * time.Millisecond
 }
 
+// AddKtServer creates a new grpc client to handle connections to the ktURL server and adds it to the global map of clients.
 func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfoHash []byte) error {
-	if _, exists := clients[ktURL]; exists == true {
-		fmt.Errorf("The KtServer connection for %v already exists", ktURL)
+	if _, exists := clients[ktURL]; exists {
+		return fmt.Errorf("The KtServer connection for %v already exists", ktURL)
 	}
 
 	// TODO Add URL validation here.
@@ -49,7 +89,8 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 
 	ktClient := spb.NewKeyTransparencyServiceClient(cc)
 
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	config, err := ktClient.GetDomainInfo(ctx, &tpb.GetDomainInfoRequest{})
 	if err != nil {
 		return fmt.Errorf("Error getting config: %v", err)
@@ -58,8 +99,8 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 	if len(domainInfoHash) == 0 {
 		Vlog.Print("Warning: no domainInfoHash provided. Key material from the server will be trusted.")
 	} else {
-		if got := objecthash.ObjectHash(config); bytes.Compare(got[:], domainInfoHash) != 0 {
-			return fmt.Errorf("The KtServer %v returned a domainInfoResponse inconsistent with the provided domainInfoHash")
+		if got := objecthash.ObjectHash(config); !bytes.Equal(got[:], domainInfoHash) {
+			return fmt.Errorf("The KtServer %v returned a domainInfoResponse inconsistent with the provided domainInfoHash", ktURL)
 		}
 	}
 
@@ -72,13 +113,15 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 	return nil
 }
 
+// GetEntry retrieves an entry from the ktURL server and verifies the soundness of the corresponding proofs.
 func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 	client, exists := clients[ktURL]
 	if !exists {
-		fmt.Errorf("A connection to %v does not exists. Please call BAddKtServer first", ktURL)
+		return nil, fmt.Errorf("A connection to %v does not exists. Please call BAddKtServer first", ktURL)
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	entry, smr, err := client.GetEntry(ctx, userID, appID)
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: %v", err)
@@ -96,6 +139,9 @@ func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 func dial(ktURL string, insecureTLS bool, ktTLSCertPEM []byte) (*grpc.ClientConn, error) {
 
 	creds, err := transportCreds(ktURL, insecureTLS, ktTLSCertPEM)
+	if err != nil {
+		return nil, err
+	}
 
 	cc, err := grpc.Dial(ktURL, grpc.WithTransportCredentials(creds))
 	if err != nil {
