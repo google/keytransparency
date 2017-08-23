@@ -39,8 +39,8 @@ type Monitor struct {
 	logVerifier merkle.LogVerifier
 	signer      *tcrypto.Signer
 	// TODO(ismail): update last trusted signed log root
-	//trusted     trillian.SignedLogRoot
-	store *storage.Storage
+	trusted *trillian.SignedLogRoot
+	store   *storage.Storage
 }
 
 // New creates a new instance of the monitor.
