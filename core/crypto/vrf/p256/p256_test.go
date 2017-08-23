@@ -100,6 +100,44 @@ func TestVRF(t *testing.T) {
 	}
 }
 
+func TestProofToHash(t *testing.T) {
+	pk, err := NewVRFVerifierFromPEM([]byte(pubKey))
+	if err != nil {
+		t.Errorf("NewVRFSigner failure: %v", err)
+	}
+
+	for _, tc := range []struct {
+		m     []byte
+		index [32]byte
+		proof []byte
+	}{
+		{
+			m:     []byte("data1"),
+			index: h2i("6ed5469b409c4ac0e48151d6db6250b28f6776af0f6eb05aaeb3970f3b72e022"),
+			proof: h2b("ceaccb3cfc61954004948f131de6cd689555b3834480221ab9ef103a40a63f7a9b47fe8155512531bc0acf9b2314837c2fc43d24b4b9d98f13aff09b2a7ae8810423835a97b337a06769a47e05e4c0b68bcd499d35e7cf7606283d74e41d59a4bbc5f4af2da3b83b7c7ab76598aecbf495714815eae51016410e961f6153a6c5ea"),
+		},
+		{
+			m:     []byte("data2"),
+			index: h2i("ff6743a082fe6ed66dc04e6e11775070ebbe1088b0a378bf97fd84e960c9ed89"),
+			proof: h2b("0c39c84e152596e81df4281c5459957b893a7fde2492e0358cc1c8ab891c9a00c74f36c349306e039a3c0f1fcc9e9523ee8d8f29398b68e6c02ddb70b3406f9e0447d0f7c330343720da2ae0959cfd2c3bda9083af475203efb07bcb2e18d12b99abf1a10001d355ae3f9a34c53052a70ff3af03024ad3ada1d188949a707376e6"),
+		},
+		{
+			m:     []byte("data2"),
+			index: h2i("ff6743a082fe6ed66dc04e6e11775070ebbe1088b0a378bf97fd84e960c9ed89"),
+			proof: h2b("a907df20dcd190c10ab217db1c752ccf12817a221e43e99e6187e3d3848b803b991b7e474c120af45a46698724136a5691c189afdf73ab00033eb491849b44600447d0f7c330343720da2ae0959cfd2c3bda9083af475203efb07bcb2e18d12b99abf1a10001d355ae3f9a34c53052a70ff3af03024ad3ada1d188949a707376e6"),
+		},
+	} {
+		index, err := pk.ProofToHash(tc.m, tc.proof)
+		if err != nil {
+			t.Errorf("ProofToHash(%s, %x): %v, want nil", tc.m, tc.proof, err)
+			continue
+		}
+		if got, want := index, tc.index; got != want {
+			t.Errorf("ProofToHash(%s, %x): %x, want %x", tc.m, tc.proof, got, want)
+		}
+	}
+}
+
 func TestReadFromOpenSSL(t *testing.T) {
 	for _, tc := range []struct {
 		priv string
@@ -225,4 +263,12 @@ func h2i(h string) [32]byte {
 	var i [32]byte
 	copy(i[:], b)
 	return i
+}
+
+func h2b(h string) []byte {
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		panic("Invalid hex")
+	}
+	return b
 }
