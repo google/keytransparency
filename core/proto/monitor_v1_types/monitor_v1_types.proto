@@ -23,9 +23,13 @@ import "trillian.proto";
 
 // GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
 message GetMonitoringRequest {
-  // start specifies the start epoch number from which monitoring results will
-  // be returned (ranging from [start, latestObserved] and starting at 1).
-  int64 start = 1;
+  // epoch specifies the for which the monitoring results will
+  // be returned (epochs start at 1).
+  int64 epoch = 1;
+
+  // ktURL is the URL of the keytransparency server for which the monitoring
+  // result will be returned.
+  string kt_URL = 2;
 }
 
 message GetMonitoringResponse {

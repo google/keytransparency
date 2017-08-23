@@ -29,12 +29,30 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_MonitorService_GetSignedMapRoot_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_MonitorService_GetSignedMapRoot_0 = &utilities.DoubleArray{Encoding: map[string]int{"kt_URL": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_MonitorService_GetSignedMapRoot_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq monitor_v1_types.GetMonitoringRequest
 	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["kt_URL"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "kt_URL")
+	}
+
+	protoReq.Kt_URL, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MonitorService_GetSignedMapRoot_0); err != nil {
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
@@ -56,12 +74,23 @@ func request_MonitorService_GetSignedMapRootByRevision_0(ctx context.Context, ma
 		_   = err
 	)
 
-	val, ok = pathParams["start"]
+	val, ok = pathParams["kt_URL"]
 	if !ok {
-		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "start")
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "kt_URL")
 	}
 
-	protoReq.Start, err = runtime.Int64(val)
+	protoReq.Kt_URL, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
+
+	val, ok = pathParams["epoch"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
+	}
+
+	protoReq.Epoch, err = runtime.Int64(val)
 
 	if err != nil {
 		return nil, metadata, err
@@ -162,9 +191,9 @@ func RegisterMonitorServiceHandler(ctx context.Context, mux *runtime.ServeMux, c
 }
 
 var (
-	pattern_MonitorService_GetSignedMapRoot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "map", "roots"}, "latest"))
+	pattern_MonitorService_GetSignedMapRoot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1", "monitor", "kt_URL", "map", "results"}, "latest"))
 
-	pattern_MonitorService_GetSignedMapRootByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "map", "roots", "start"}, ""))
+	pattern_MonitorService_GetSignedMapRootByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "monitor", "kt_URL", "map", "results", "epoch"}, ""))
 )
 
 var (

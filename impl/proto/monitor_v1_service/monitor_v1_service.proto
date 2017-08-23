@@ -28,8 +28,8 @@ import "google/api/annotations.proto";
 //
 // - Signed Map Roots can be collected using the GetSignedMapRoot APIs.
 // - Monitor resources are named:
-//   - /v1/map/roots/*
-//   - /v1/map/roots:latest
+//   - /v1/monitor/{kt-url}/map/results/{epoch}
+//   - /v1/monitor/{kt-url}/map/results:latest
 //
 service MonitorService {
   // GetSignedMapRoot returns the latest valid signed map root the monitor
@@ -42,7 +42,7 @@ service MonitorService {
   // additional data will be provided to reproduce the failure.
   rpc GetSignedMapRoot(monitor.v1.types.GetMonitoringRequest)
     returns (monitor.v1.types.GetMonitoringResponse) {
-    option (google.api.http) = { get: "/v1/map/roots:latest" };
+    option (google.api.http) = { get: "/v1/monitor/{kt_URL}/map/results:latest" };
   }
 
   // GetSignedMapRootByRevision works similar to GetSignedMapRoot but returns
@@ -54,7 +54,7 @@ service MonitorService {
   // and additional data will be provided to reproduce the failure.
   rpc GetSignedMapRootByRevision(monitor.v1.types.GetMonitoringRequest)
     returns(monitor.v1.types.GetMonitoringResponse) {
-    option (google.api.http) = { get: "/v1/map/roots/{start}" };
+    option (google.api.http) = { get: "/v1/monitor/{kt_URL}/map/results/{epoch}" };
   }
 }
 

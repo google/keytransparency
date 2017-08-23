@@ -72,7 +72,7 @@ func (s *Server) GetSignedMapRoot(ctx context.Context, in *mopb.GetMonitoringReq
 // mutations from the previous to the current epoch it won't sign the map root
 // and additional data will be provided to reproduce the failure.
 func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
-	return s.getResponseByRevision(in.GetStart())
+	return s.getResponseByRevision(in.GetEpoch())
 }
 
 func (s *Server) getResponseByRevision(epoch int64) (*mopb.GetMonitoringResponse, error) {
