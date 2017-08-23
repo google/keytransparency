@@ -23,21 +23,17 @@ import (
 	"log"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
-	"github.com/google/keytransparency/core/crypto/keymaster"
 	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
-	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
-	"github.com/google/trillian/merkle/maphasher"
-	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered (needed by the bGetVerifierFromParams function)
 	"golang.org/x/net/context"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -151,77 +147,4 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	}
 	Vlog.Printf("✓ Log inclusion proof verified.")
 	return nil
-}
-
-type BVerifierParams struct {
-	MapID     int64
-	VrfPubPEM []byte
-	KtPEM     []byte
-	LogPEM    []byte
-}
-
-func NewBVerifierParams(MapID int64, VrfPubPEM, KtPEM, LogPEM []byte) *BVerifierParams {
-	// Note: byte arrays need to be explicitly cloned due to some gobind limitations.
-	cVrfPubPEM := make([]byte, len(VrfPubPEM))
-	copy(cVrfPubPEM, VrfPubPEM)
-	cKtPEM := make([]byte, len(KtPEM))
-	copy(cKtPEM, KtPEM)
-	cLogPEM := make([]byte, len(LogPEM))
-	copy(cLogPEM, LogPEM)
-
-	return &BVerifierParams{MapID, cVrfPubPEM, cKtPEM, cLogPEM}
-}
-
-func bGetVerifierFromParams(p BVerifierParams) (*Verifier, error) {
-
-	vrf, err := p256.NewVRFVerifierFromPEM(p.VrfPubPEM)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
-	}
-
-	// TODO this maphasher implementation is ok for debug only. Update.
-	maphasher := maphasher.Default
-
-	// Verifier
-	ver, err := keymaster.NewVerifierFromPEM(p.KtPEM)
-	if err != nil {
-		return nil, fmt.Errorf("Error creating verifier from PEM encoded key: %v", err)
-	}
-
-	// log can verify Trillian Logs.
-	logPubKey, err := pem.UnmarshalPublicKey(string(p.LogPEM))
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open public key %v: %v", logPubKey, err)
-	}
-	hasher, err := hashers.NewLogHasher(trillian.HashStrategy_OBJECT_RFC6962_SHA256)
-	if err != nil {
-		return nil, fmt.Errorf("Failed retrieving LogHasher from registry: %v", err)
-	}
-	log := client.NewLogVerifier(hasher, logPubKey)
-
-	return New(vrf, maphasher, ver, log), nil
-}
-
-func BVerifyGetEntryResponse(verParam *BVerifierParams, userID string, appID string,
-	trusted_trillianSignedLogRoot []byte, in_tpbGetEntryResponse []byte) error {
-
-	v, err := bGetVerifierFromParams(*verParam)
-	if err != nil {
-		return fmt.Errorf("Couldn't build verifier: %v", err)
-	}
-
-	trusted := &trillian.SignedLogRoot{}
-	err = proto.Unmarshal(trusted_trillianSignedLogRoot, trusted)
-	if err != nil {
-		return err
-	}
-
-	in := &tpb.GetEntryResponse{}
-	err = proto.Unmarshal(in_tpbGetEntryResponse, in)
-	if err != nil {
-		return err
-	}
-
-	// TODO(amarcedone) Is context.Background() appropriate here?
-	return v.VerifyGetEntryResponse(context.Background(), userID, appID, trusted, in)
 }
