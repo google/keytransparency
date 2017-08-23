@@ -21,11 +21,11 @@ import (
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
-// VerifyResponse verifies a response received by the GetMutations API.
+// verifyMutationsResponse verifies a response received by the GetMutations API.
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size. If any verification check failed it returns
 // an error.
-func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
+func (m *Monitor) verifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
 	return nil
 }

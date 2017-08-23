@@ -25,9 +25,9 @@ import (
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
 	"github.com/google/trillian"
+	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
-	tcrypto "github.com/google/trillian/crypto"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
@@ -63,11 +63,14 @@ func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage
 	}, nil
 }
 
+// Process processes a mutation response received from the keytransparency
+// server. Processing includes verifying, signing and storing the resulting
+// monitoring response.
 func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
 	var smr *trillian.SignedMapRoot
 	var err error
 	seen := time.Now().Unix()
-	errs := m.VerifyMutationsResponse(resp)
+	errs := m.verifyMutationsResponse(resp)
 	if len(errs) == 0 {
 		glog.Infof("Successfully verified mutations response for epoch: %v", resp.Epoch)
 		smr, err = m.signMapRoot(resp)

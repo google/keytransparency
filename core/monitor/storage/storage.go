@@ -22,31 +22,45 @@ import (
 )
 
 var (
+	// ErrAlreadyStored is raised if the caller tries storing a response which
+	// has already been stored.
 	ErrAlreadyStored = errors.New("already stored epoch")
-	ErrNotFound      = errors.New("data for epoch not found")
+	// ErrNotFound is raised if the caller tries to retrieve data for an epoch
+	// which has not been processed and stored yet.
+	ErrNotFound = errors.New("data for epoch not found")
 )
 
+// MonitoringResult stores all data
 type MonitoringResult struct {
-	// in case of success this contains the map root signed by the monitor
+	// Smr contains the map root signed by the monitor in case all verifications
+	// have passed.
 	Smr *trillian.SignedMapRoot
-	// response contains the original mutations API response from the server
-	// in case at least one verification step failed
+	// Seen is the the unix timestamp at which the mutations response has been
+	// received.
+	Seen int64
+	// Errors contains a string representation of the verifications steps that
+	// failed.
+	Errors []error
+	// Response contains the original mutations API response from the server
+	// in case at least one verification step failed.
 	Response *ktpb.GetMutationsResponse
-	Seen     int64
-	Errors   []error
 }
 
+// Storage is an in-memory store for the monitoring results.
 type Storage struct {
-	store map[int64]*MonitoringResult
+	store  map[int64]*MonitoringResult
 	latest int64
 }
 
+// New initializes a
 func New() *Storage {
 	return &Storage{
 		store: make(map[int64]*MonitoringResult),
 	}
 }
 
+// Set internally stores the given data as a MonitoringResult which can be
+// retrieved by Get.
 func (s *Storage) Set(epoch int64,
 	seenNanos int64,
 	smr *trillian.SignedMapRoot,
@@ -63,10 +77,12 @@ func (s *Storage) Set(epoch int64,
 		Response: response,
 		Errors:   errorList,
 	}
-	s.latest=epoch
+	s.latest = epoch
 	return nil
 }
 
+// Get returns the MonitoringResult for the given epoch. It returns an error
+// if the result does not exist.
 func (s *Storage) Get(epoch int64) (*MonitoringResult, error) {
 	if result, ok := s.store[epoch]; ok {
 		return result, nil
@@ -74,6 +90,7 @@ func (s *Storage) Get(epoch int64) (*MonitoringResult, error) {
 	return nil, ErrNotFound
 }
 
+// LatestEpoch is a convenience method to retrieve the latest stored epoch.
 func (s *Storage) LatestEpoch() int64 {
 	return s.latest
 }

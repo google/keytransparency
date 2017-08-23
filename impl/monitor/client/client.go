@@ -15,7 +15,7 @@
 package client
 
 //
-// This file contains Monitor's grpc client logic: poll mutations from the
+// This file contains Monitor'c grpc client logic: poll mutations from the
 // kt-server mutations API and page if necessary.
 //
 
@@ -44,7 +44,7 @@ type Client struct {
 // New initializes a new mutations API monitoring client.
 func New(client mupb.MutationServiceClient, pollPeriod time.Duration) *Client {
 	return &Client{
-		client: client,
+		client:     client,
 		pollPeriod: pollPeriod,
 	}
 }
@@ -80,10 +80,10 @@ func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsRespon
 	return response, errChan
 }
 
-func (s *Client) pollMutations(ctx context.Context,
+func (c *Client) pollMutations(ctx context.Context,
 	queryEpoch int64,
 	opts ...grpc.CallOption) (*ktpb.GetMutationsResponse, error) {
-	response, err := s.client.GetMutations(ctx, &ktpb.GetMutationsRequest{
+	response, err := c.client.GetMutations(ctx, &ktpb.GetMutationsRequest{
 		PageSize: pageSize,
 		Epoch:    queryEpoch,
 	}, opts...)
@@ -94,7 +94,7 @@ func (s *Client) pollMutations(ctx context.Context,
 	// Page if necessary: query all mutations in the current epoch
 	for response.GetNextPageToken() != "" {
 		req := &ktpb.GetMutationsRequest{PageSize: pageSize}
-		resp, err := s.client.GetMutations(ctx, req, opts...)
+		resp, err := c.client.GetMutations(ctx, req, opts...)
 		if err != nil {
 			return nil, err
 		}

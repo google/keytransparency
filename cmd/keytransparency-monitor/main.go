@@ -35,8 +35,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/google/keytransparency/core/monitor/storage"
 	cmon "github.com/google/keytransparency/core/monitor"
+	"github.com/google/keytransparency/core/monitor/storage"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/keytransparency/impl/monitor/client"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
