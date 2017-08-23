@@ -145,12 +145,16 @@ function checkCmdsAvailable()
 
 function prepareSecrets()
 {
-  local EXISTS=0
   # if kt-secrets does not exist, create it:
   kubectl get secret kt-secrets
   # kubectl exits with 1 if kt-secret does not exist
   if [ $? -ne 0 ]; then
     kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key --from-file=genfiles/vrf-key.pem
+  fi
+  # if monitor-secrets does not exist, create it, too:
+  kubectl get secret kt-monitor-secrets
+  if [ $? -ne 0 ]; then
+    kubectl create secret generic kt-monitor-secrets --from-file=genfiles/monitor_sign-key.pem
   fi
 }
 
