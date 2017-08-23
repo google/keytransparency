@@ -17,11 +17,16 @@ package monitor
 import (
 	"crypto"
 	"fmt"
+	"time"
+
+	"github.com/golang/glog"
+
+	"github.com/google/keytransparency/core/monitor/storage"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
-
 	tcrypto "github.com/google/trillian/crypto"
 )
 
@@ -35,10 +40,11 @@ type Monitor struct {
 	signer      *tcrypto.Signer
 	// TODO(ismail): update last trusted signed log root
 	//trusted     trillian.SignedLogRoot
+	store *storage.Storage
 }
 
 // New creates a new instance of the monitor.
-func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer) (*Monitor, error) {
+func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
 	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
@@ -53,5 +59,26 @@ func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer) (*Monitor, err
 		logPubKey:   logTree.GetPublicKey(),
 		mapPubKey:   mapTree.GetPublicKey(),
 		signer:      signer,
+		store:       store,
 	}, nil
+}
+
+func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
+	var smr *trillian.SignedMapRoot
+	var err error
+	seen := time.Now().Unix()
+	errs := m.VerifyMutationsResponse(resp)
+	if len(errs) == 0 {
+		glog.Infof("Successfully verified mutations response for epoch: %v", resp.Epoch)
+		smr, err = m.signMapRoot(resp)
+		if err != nil {
+			glog.Errorf("Failed to sign map root for epoch %v: %v", resp.Epoch, err)
+			return fmt.Errorf("m.signMapRoot(_): %v", err)
+		}
+	}
+	if err := m.store.Set(resp.Epoch, seen, smr, resp, errs); err != nil {
+		glog.Errorf("m.store.Set(%v, %v, _, _, %v): %v", resp.Epoch, seen, errs, err)
+		return err
+	}
+	return nil
 }

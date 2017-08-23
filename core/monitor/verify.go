@@ -26,7 +26,6 @@ import (
 // of received mutations may differ from those included in the initial response
 // because of the max. page size. If any verification check failed it returns
 // an error.
-// TODO(ismail): make this return a list of errors
-func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse, allMuts []*ktpb.Mutation) error {
+func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
 	return nil
 }

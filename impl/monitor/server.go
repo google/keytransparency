@@ -1,46 +1,32 @@
 package monitor
 
 import (
-	"time"
+	"errors"
 
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/google/trillian"
-
-	tcrypto "github.com/google/trillian/crypto"
-
-	cmon "github.com/google/keytransparency/core/monitor"
+	"github.com/google/keytransparency/core/monitor/storage"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
+)
 
-	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+var (
+	// ErrNothingProcessed occurs when the monitor did not process any mutations /
+	// smrs yet.
+	ErrNothingProcessed = errors.New("did not process any mutations yet")
 )
 
 // Server holds internal state for the monitor server. It serves monitoring
 // responses via a grpc and HTTP API.
 type Server struct {
-	client *MutationsClient
-
-	monitor        *cmon.Monitor
+	storage *storage.Storage
 }
 
 // New creates a new instance of the monitor server.
-func New(cli mupb.MutationServiceClient,
-	signer *tcrypto.Signer,
-	logTree, mapTree *trillian.Tree,
-	poll time.Duration) *Server {
-	mon, err := cmon.New(logTree, mapTree, signer)
-	if err != nil {
-		glog.Fatalf("Could not create monitor: %v", err)
-	}
+func New(storage *storage.Storage) *Server {
 	return &Server{
-		client: &MutationsClient{
-			client:     cli,
-			pollPeriod: poll,
-		},
-		monitor:        mon,
+		storage: storage,
 	}
 }
 
@@ -53,7 +39,8 @@ func New(cli mupb.MutationServiceClient,
 // from the previous to the current epoch it won't sign the map root and
 // additional data will be provided to reproduce the failure.
 func (s *Server) GetSignedMapRoot(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
-	return nil, ErrNothingProcessed
+	latestEpoch := s.storage.LatestEpoch()
+	return s.getResponseByRevision(latestEpoch)
 }
 
 // GetSignedMapRootByRevision works similar to GetSignedMapRoot but returns
@@ -64,6 +51,28 @@ func (s *Server) GetSignedMapRoot(ctx context.Context, in *mopb.GetMonitoringReq
 // mutations from the previous to the current epoch it won't sign the map root
 // and additional data will be provided to reproduce the failure.
 func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
-	// TODO(ismail): implement by revision API
-	return nil, grpc.Errorf(codes.Unimplemented, "GetSignedMapRoot is unimplemented")
+	return s.getResponseByRevision(in.GetStart())
+}
+
+func (s *Server) getResponseByRevision(epoch int64) (*mopb.GetMonitoringResponse, error) {
+	res, err := s.storage.Get(epoch)
+	if err == storage.ErrNotFound {
+		return nil, grpc.Errorf(codes.NotFound,
+			"Could not find monitoring response for epoch %d", epoch)
+	}
+
+	resp := &mopb.GetMonitoringResponse{
+		Smr:                res.Smr,
+		SeenTimestampNanos: res.Seen,
+	}
+
+	if len(res.Errors) > 0 {
+		for _, err := range resp.Errors {
+			resp.Errors = append(resp.Errors, err)
+		}
+		// data to replay the verification steps:
+		resp.ErrorData = res.Response
+	}
+
+	return resp, nil
 }

@@ -18,6 +18,7 @@ syntax = "proto3";
 //
 package monitor.v1.types;
 
+import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
 import "trillian.proto";
 
 // GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
@@ -43,7 +44,12 @@ message GetMonitoringResponse {
   // response, if any.
   //
 
-  // isValid signals if all verification steps for the requested epoch passed
-  // or not.
-  bool isValid = 3;
+  // errors contains a list of error string representing the verification checks
+  // that failed while monitoring the key-transparency server.
+  repeated string errors = 3;
+
+  // error_data contains the original response from the mutations API if and
+  // only if at least one verification step failed. It can be used to re-run the
+  // verification steps.
+  keytransparency.v1.types.GetMutationsResponse error_data = 4;
  }

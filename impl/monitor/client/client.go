@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package monitor
+package client
 
 //
 // This file contains Monitor's grpc client logic: poll mutations from the
@@ -35,10 +35,18 @@ import (
 // size 16 will contain about 8KB of data.
 const pageSize = 16
 
-// MutationsClient queries the server side mutations API.
-type MutationsClient struct {
+// Client queries the server side mutations API.
+type Client struct {
 	client     mupb.MutationServiceClient
 	pollPeriod time.Duration
+}
+
+// New initializes a new mutations API monitoring client.
+func New(client mupb.MutationServiceClient, pollPeriod time.Duration) *Client {
+	return &Client{
+		client: client,
+		pollPeriod: pollPeriod,
+	}
 }
 
 // StartPolling initiates polling the server side mutations API. It does not
@@ -46,9 +54,9 @@ type MutationsClient struct {
 // The caller should listen on the channel to receiving the latest polled
 // mutations response including all paged mutations. If anything went wrong
 // while polling the response channel contains an error.
-func (c *MutationsClient) StartPolling(startEpoch int64) (response chan<- *ktpb.GetMutationsResponse, errChan chan<- error) {
-	response = make(chan *ktpb.GetMutationsResponse)
-	errChan = make(chan error)
+func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsResponse, <-chan error) {
+	response := make(chan *ktpb.GetMutationsResponse)
+	errChan := make(chan error)
 	go func() {
 		epoch := startEpoch
 		t := time.NewTicker(c.pollPeriod)
@@ -58,18 +66,23 @@ func (c *MutationsClient) StartPolling(startEpoch int64) (response chan<- *ktpb.
 			ctx, _ := context.WithTimeout(context.Background(), c.pollPeriod)
 			monitorResp, err := c.pollMutations(ctx, epoch)
 			if err != nil {
-				glog.Errorf("pollMutations(_): %v", err)
+				glog.Infof("pollMutations(_): %v", err)
 				errChan <- err
+			} else {
+				// only write to results channel and increment epoch
+				// if there was no error:
+				glog.Infof("Got response %v at %v", monitorResp.Epoch, now)
+				response <- monitorResp
+				epoch++
 			}
-
-			response <- monitorResp
-			epoch++
 		}
 	}()
-	return response
+	return response, errChan
 }
 
-func (s *MutationsClient) pollMutations(ctx context.Context, queryEpoch int64, opts ...grpc.CallOption) (*ktpb.GetMutationsResponse, error) {
+func (s *Client) pollMutations(ctx context.Context,
+	queryEpoch int64,
+	opts ...grpc.CallOption) (*ktpb.GetMutationsResponse, error) {
 	response, err := s.client.GetMutations(ctx, &ktpb.GetMutationsRequest{
 		PageSize: pageSize,
 		Epoch:    queryEpoch,

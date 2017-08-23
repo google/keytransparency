@@ -12,21 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package monitor implements the monitor service. A monitor repeatedly polls a
-// key-transparency server's Mutations API and signs Map Roots if it could
-// reconstruct
-// clients can query.
 package monitor
 
 import (
-	"errors"
+	"fmt"
+
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+
+	"github.com/google/trillian"
 )
 
-var (
-	// ErrNothingProcessed occurs when the monitor did not process any mutations /
-	// smrs yet.
-	ErrNothingProcessed = errors.New("did not process any mutations yet")
-)
+func (m *Monitor) signMapRoot(in *ktpb.GetMutationsResponse) (*trillian.SignedMapRoot, error) {
+	// copy of received SMR:
+	smr := *in.Smr
+	smr.Signature = nil
 
-// TODO(ismail): call the client, actually process the mutations by calling API
-// in core
+	sig, err := m.signer.SignObject(smr)
+	if err != nil {
+		return nil, fmt.Errorf("SignObject(): %v", err)
+	}
+	smr.Signature = sig
+
+	return &smr, nil
+}
