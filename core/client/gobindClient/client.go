@@ -2,27 +2,27 @@
 package gobindClient
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
-	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
-	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"io/ioutil"
+	"log"
 	"net"
 	"time"
 
-	"crypto/tls"
-	"crypto/x509"
+	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/client/kt"
+
+	"github.com/benlaurie/objecthash/go/objecthash"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-
-	"bytes"
-	"github.com/benlaurie/objecthash/go/objecthash"
-	"io/ioutil"
-	"log"
+	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
+	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
 )
 
 var (
@@ -95,7 +95,7 @@ func BAddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInf
 }
 
 func BGetEntry(ktURL, userID, appID string) ([]byte, error) {
-
+	log.Println("AXAX test logs.")
 	if err := checkInitialized(); err != nil {
 		return []byte{}, err
 	}
