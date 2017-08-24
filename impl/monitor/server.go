@@ -61,6 +61,9 @@ func New(storage *storage.Storage) *Server {
 // additional data will be provided to reproduce the failure.
 func (s *Server) GetSignedMapRoot(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
 	latestEpoch := s.storage.LatestEpoch()
+	if latestEpoch == 0 {
+		return nil, ErrNothingProcessed
+	}
 	return s.getResponseByRevision(latestEpoch)
 }
 

@@ -19,12 +19,15 @@
 package monitor
 
 import (
-	"golang.org/x/net/context"
 	"testing"
+
+	"golang.org/x/net/context"
+
+	"github.com/google/keytransparency/core/monitor/storage"
 )
 
 func TestGetSignedMapRoot(t *testing.T) {
-	srv := Server{}
+	srv := New(storage.New())
 	_, err := srv.GetSignedMapRoot(context.TODO(), nil)
 	if got, want := err, ErrNothingProcessed; got != want {
 		t.Errorf("GetSignedMapRoot(_, _): %v, want %v", got, want)
