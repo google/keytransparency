@@ -16,87 +16,16 @@
 package entry
 
 import (
-	"bytes"
-	"fmt"
-
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/mutator"
 
-	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian/crypto/sigpb"
 )
-
-// Mutator defines mutations to simply replace the current map value with the
-// contents of the mutation.
-type Mutator struct{}
-
-// New creates a new entry mutator.
-func New() *Mutator {
-	return &Mutator{}
-}
-
-// Mutate verifies that this is a valid mutation for this item and applies
-// mutation to value.
-func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
-	// Ensure that the mutation size is within bounds.
-	if proto.Size(update) > mutator.MaxMutationSize {
-		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
-		return nil, mutator.ErrSize
-	}
-
-	updated, ok := update.(*tpb.SignedKV)
-	if !ok {
-		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
-		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
-	}
-	var oldEntry *tpb.Entry
-	if oldValue != nil {
-		old, ok := oldValue.(*tpb.Entry)
-		if !ok {
-			glog.Warning("received proto.Message is not of type *tpb.Entry.")
-			return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
-		}
-		oldEntry = old
-	}
-
-	kv := updated.GetKeyValue()
-	newEntry := new(tpb.Entry)
-	if err := proto.Unmarshal(kv.Value, newEntry); err != nil {
-		return nil, err
-	}
-
-	// Verify pointer to previous data.
-	// The very first entry will have oldValue=nil, so its hash is the
-	// ObjectHash value of nil.
-	prevEntryHash := objecthash.ObjectHash(oldEntry)
-	if !bytes.Equal(prevEntryHash[:], newEntry.GetPrevious()) {
-		// Check if this mutation is a replay.
-		if oldEntry != nil && proto.Equal(oldEntry, newEntry) {
-			glog.Warningf("mutation is a replay of an old one")
-			return nil, mutator.ErrReplay
-		}
-		glog.Warningf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], newEntry.GetPrevious())
-		return nil, mutator.ErrPreviousHash
-	}
-
-	// Ensure that the mutation has at least one authorized key to prevent
-	// account lockout.
-	if len(newEntry.GetAuthorizedKeys()) == 0 {
-		glog.Warningf("mutation should contain at least one authorized key")
-		return nil, mutator.ErrMissingKey
-	}
-
-	if err := verifyKeys(oldEntry, kv, updated, newEntry); err != nil {
-		return nil, err
-	}
-
-	return updated.GetKeyValue().GetValue(), nil
-}
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
 // Entry or nil if the passes LeafValue was nil.
