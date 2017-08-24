@@ -35,6 +35,10 @@ type Mutation struct {
 }
 
 // NewMutation creates a mutation object from a previous value which can be modified.
+// To create a new value:
+// - Create a new mutation for a user starting with the previous value with NewMutation.
+// - Change the value with SetCommitment and ReplaceAuthorizedKeys.
+// - Finalize the changes and create the mutation with SerializeAndSign.
 func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error) {
 	prevEntry, err := FromLeafValue(oldValue)
 	if err != nil {
