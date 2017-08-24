@@ -240,7 +240,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
-	req, err := c.kt.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, userID, appID, profileData, signers, authorizedKeys)
+	req, err := kt.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, userID, appID, profileData, signers, authorizedKeys)
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}

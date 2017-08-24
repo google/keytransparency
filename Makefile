@@ -41,7 +41,7 @@ coverage: main
 check:
 	gometalinter --config=metalinter.json ./...
 
-presubmit: coverage check
+presubmit: test check
 
 proto:
 	go generate ./...
