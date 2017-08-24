@@ -32,6 +32,7 @@ import (
 
 	"github.com/google/keytransparency/core/mutator/entry"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"fmt"
 )
 
 var (
@@ -66,12 +67,23 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	//
 	// log verification
 	//
+	if m.trusted == nil {
+		m.trusted = in.GetLogRoot()
+	}
 
+
+	// TODO(ismail): pass in a (trillian) logverifier instead
+	// - create an equivalent map verifier (in trillian)
+	//   between different error types (like below)
+	// - create a set of fixed error messages so the caller can differentiate
+	if err := m.logVerifierCli.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogInclusion()); err != nil {
+		errList = append(errList, err)
+	}
 	logRoot := in.GetLogRoot()
 	// Verify SignedLogRoot signature.
 	hash := tcrypto.HashLogRoot(*logRoot)
 	if err := tcrypto.Verify(m.logPubKey, hash, logRoot.GetSignature()); err != nil {
-		glog.Infof("couldn't verify signature on log root: %v", err)
+		glog.Infof("couldn't verify signature on log root: %v: %v", logRoot, err)
 		errList = append(errList, ErrInvalidLogSignature)
 	}
 
@@ -117,15 +129,13 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	// reset to the state before it was signed:
 	smr.Signature = nil
 	// verify signature on map root:
+	fmt.Println("tcrypto.VerifyObject:")
+	fmt.Println(m.mapPubKey)
+	fmt.Println(smr)
+	fmt.Println(in.GetSmr().GetSignature())
 	if err := tcrypto.VerifyObject(m.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
 		glog.Infof("couldn't verify signature on map root: %v", err)
 		errList = append(errList, ErrInvalidMapSignature)
-	}
-
-	// retrieve the old root hash from storage!
-	monRes, err := m.store.Get(in.Epoch - 1)
-	if err != nil {
-		glog.Infof("Could not retrieve previous monitoring result: %v", err)
 	}
 
 	//
@@ -137,6 +147,11 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	// from if the checks succeeded or not.
 	var oldRoot []byte
 	if m.store.LatestEpoch() > 0 {
+		// retrieve the old root hash from storage!
+		monRes, err := m.store.Get(in.Epoch - 1)
+		if err != nil {
+			glog.Infof("Could not retrieve previous monitoring result: %v", err)
+		}
 		oldRoot = monRes.Response.GetSmr().GetRootHash()
 		if err := m.verifyMutations(in.GetMutations(), oldRoot,
 			in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {

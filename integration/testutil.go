@@ -50,10 +50,6 @@ import (
 	"github.com/google/keytransparency/impl/mutation"
 )
 
-const (
-	logID = 0
-)
-
 // NewDB creates a new in-memory database for testing.
 func NewDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", "file:dummy.db?mode=memory&cache=shared")
@@ -133,11 +129,24 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("CreateTree(): %v", err)
 	}
 	mapID := tree.TreeId
-
 	mapPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
+
+	// Configure log.
+	logTree, err := mapEnv.AdminClient.CreateTree(ctx, &trillian.CreateTreeRequest{
+		Tree: stestonly.LogTree,
+	})
+	//logPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
+	//if err != nil {
+	//	t.Fatalf("Failed to load signing keypair: %v", err)
+	//}
+
+	if err != nil {
+		t.Fatalf("CreateTree(): %v", err)
+	}
+	logID := logTree.GetTreeId()
 
 	// Common data structures.
 	mutations, err := mutations.New(sqldb, mapID)
@@ -155,7 +164,6 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
 	authz := authorization.New()
-
 	tlog := fake.NewFakeTrillianLogClient()
 
 	factory := transaction.NewFactory(sqldb)

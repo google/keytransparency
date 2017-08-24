@@ -16,19 +16,19 @@ package integration
 
 import (
 	"context"
-
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitor/storage"
-	// kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	// spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	"github.com/google/keytransparency/impl/monitor/client"
+	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	"github.com/google/trillian/crypto"
-	"github.com/google/keytransparency/impl/monitor/client"
 	"github.com/google/trillian/crypto/keys/pem"
-	"time"
-	stestonly "github.com/google/trillian/storage/testonly"
+
+	"github.com/google/keytransparency/core/fake"
 )
 
 const (
@@ -49,27 +49,23 @@ func TestMonitorEmptyStart(t *testing.T) {
 
 	// TODO(ismail) setup a proper log environment in the integration
 	// environment, then use GetDomainInfo here:
-	//c := spb.NewKeyTransparencyServiceClient(env.Conn)
-	//resp, err := c.GetDomainInfo(bctx, &kpb.GetDomainInfoRequest{})
-	//if err != nil {
-	//	t.Fatalf("Couldn't retrieve domain info: %v", err)
-	//}
+	c := spb.NewKeyTransparencyServiceClient(env.Conn)
+	resp, err := c.GetDomainInfo(bctx, &kpb.GetDomainInfoRequest{})
+	if err != nil {
+		t.Fatalf("Couldn't retrieve domain info: %v", err)
+	}
 	signer, err  := pem.UnmarshalPrivateKey(monitorPrivKey, "")
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	logTree := stestonly.LogTree
-	mapTree := stestonly.MapTree
+	logTree := resp.Log
+	mapTree := resp.Map
 	store := storage.New()
-	mon, err := monitor.New(logTree, mapTree, crypto.NewSHA256Signer(signer), store)
+	mon, err := monitor.New(fake.NewFakeTrillianLogVerifier(), logTree, mapTree, crypto.NewSHA256Signer(signer), store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
-
-	// start with no mutations, sequencer initially runs
-	if err := env.Signer.CreateEpoch(bctx, true); err != nil {
-		t.Fatalf("CreateEpoch(_): %v", err)
-	}
+	// Initialization and CreateEpoch is called by NewEnv
 	mcc := mupb.NewMutationServiceClient(env.Conn)
 	mutCli := client.New(mcc, time.Second)
 	//  verify first SMR
@@ -81,15 +77,13 @@ func TestMonitorEmptyStart(t *testing.T) {
 	if err := mon.Process(mutResp); err != nil {
 		t.Fatalf("Monitor could process mutations: %v", err)
 	}
-	resp, err := store.Get(1)
+	mresp, err := store.Get(1)
 	if err != nil {
 		t.Fatalf("Could not read monitoring response: %v", err)
 	}
-	for _, err := range resp.Errors {
+	for _, err := range mresp.Errors {
 		t.Errorf("Got error: %v", err)
 	}
 
-
-
-	// TODO start, client sends one mutation, sequencer "signs", monitor verifies
+	// TODO client sends one mutation, sequencer "signs", monitor verifies
 }

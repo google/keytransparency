@@ -25,27 +25,30 @@ import (
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
 	"github.com/google/trillian"
+	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
+	"github.com/google/trillian/crypto/keys/der"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
-	mapID       int64
-	logHasher   hashers.LogHasher
-	mapHasher   hashers.MapHasher
-	logPubKey   crypto.PublicKey
-	mapPubKey   crypto.PublicKey
-	logVerifier merkle.LogVerifier
-	signer      *tcrypto.Signer
-	trusted     *trillian.SignedLogRoot
-	store       *storage.Storage
+	mapID          int64
+	logHasher      hashers.LogHasher
+	mapHasher      hashers.MapHasher
+	logPubKey      crypto.PublicKey
+	mapPubKey      crypto.PublicKey
+	logVerifier    merkle.LogVerifier
+	logVerifierCli client.LogVerifier
+	signer         *tcrypto.Signer
+	trusted        *trillian.SignedLogRoot
+	store          *storage.Storage
 }
 
 // New creates a new instance of the monitor.
-func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
+func New(logverifierCli client.LogVerifier, logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
 	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
@@ -54,15 +57,20 @@ func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
 	}
+	mapPubKey, err  := der.UnmarshalPublicKey(mapTree.GetPublicKey().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal map public key: %v", err)
+	}
 	return &Monitor{
-		mapID:       mapTree.TreeId,
-		mapHasher:   mapHasher,
-		logHasher:   logHasher,
-		logVerifier: merkle.NewLogVerifier(logHasher),
-		logPubKey:   logTree.GetPublicKey(),
-		mapPubKey:   mapTree.GetPublicKey(),
-		signer:      signer,
-		store:       store,
+		logVerifierCli: logverifierCli,
+		mapID:          mapTree.TreeId,
+		mapHasher:      mapHasher,
+		logHasher:      logHasher,
+		logVerifier:    merkle.NewLogVerifier(logHasher),
+		logPubKey:      logTree.GetPublicKey(),
+		mapPubKey:      mapPubKey,
+		signer:         signer,
+		store:          store,
 	}, nil
 }
 
