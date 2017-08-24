@@ -26,7 +26,7 @@ func TestReplaceAuthorizedKeys(t *testing.T) {
 		wantErr bool
 	}{
 		{pubKeys: nil, wantErr: true},
-		{pubKeys: []*tpb.PublicKey{&tpb.PublicKey{}}, wantErr: false},
+		{pubKeys: []*tpb.PublicKey{{}}, wantErr: false},
 	} {
 		index := []byte("index")
 		userID := "bob"
