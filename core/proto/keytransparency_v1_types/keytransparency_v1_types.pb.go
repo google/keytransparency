@@ -500,7 +500,7 @@ type ListEntryHistoryRequest struct {
 	// app_id is the identifier for the application.
 	AppId string `protobuf:"bytes,4,opt,name=app_id,json=appId" json:"app_id,omitempty"`
 	// first_tree_size is the tree_size of the currently trusted log root.
-	// Omitting this field will ommit the log consistency proof from the response.
+	// Omitting this field will omit the log consistency proof from the response.
 	FirstTreeSize int64 `protobuf:"varint,5,opt,name=first_tree_size,json=firstTreeSize" json:"first_tree_size,omitempty"`
 }
 
@@ -619,7 +619,7 @@ func (m *UpdateEntryRequest) GetEntryUpdate() *EntryUpdate {
 }
 
 // UpdateEntryResponse contains a proof once the update has been included in
-// the Merkel Tree.
+// the Merkle Tree.
 type UpdateEntryResponse struct {
 	// proof contains a proof that the update has been included in the tree.
 	Proof *GetEntryResponse `protobuf:"bytes,1,opt,name=proof" json:"proof,omitempty"`

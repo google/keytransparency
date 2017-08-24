@@ -169,7 +169,7 @@ message ListEntryHistoryRequest {
   // app_id is the identifier for the application.
   string app_id = 4;
   // first_tree_size is the tree_size of the currently trusted log root. 
-  // Omitting this field will ommit the log consistency proof from the response.
+  // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 5;
 }
 
@@ -196,7 +196,7 @@ message UpdateEntryRequest {
 }
 
 // UpdateEntryResponse contains a proof once the update has been included in
-// the Merkel Tree.
+// the Merkle Tree.
 message UpdateEntryResponse {
   // proof contains a proof that the update has been included in the tree.
   GetEntryResponse proof = 1;

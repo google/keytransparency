@@ -1,0 +1,59 @@
+// Copyright 2016 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+// Key Transparency Monitor Service
+//
+package monitor.v1.types;
+
+import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
+import "trillian.proto";
+
+// GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
+message GetMonitoringRequest {
+  // epoch specifies the for which the monitoring results will
+  // be returned (epochs start at 1).
+  int64 epoch = 1;
+
+  // ktURL is the URL of the keytransparency server for which the monitoring
+  // result will be returned.
+  string kt_URL = 2;
+}
+
+message GetMonitoringResponse {
+  // smr contains the map root for the sparse Merkle Tree signed with the
+  // monitor's key on success. If the checks were not successful the
+  // smr will be empty. The epochs are encoded into the smr map_revision.
+  trillian.SignedMapRoot smr = 1;
+
+  // seen_timestamp_nanos contains the time in nanoseconds where this particular
+  // signed map root was retrieved and processed. The actual timestamp of the
+  // smr returned by the server is contained in above smr field.
+  int64 seen_timestamp_nanos = 2;
+
+  //
+  // The following fields provide more information about each failure in this
+  // response, if any.
+  //
+
+  // errors contains a list of error string representing the verification checks
+  // that failed while monitoring the key-transparency server.
+  repeated string errors = 3;
+
+  // error_data contains the original response from the mutations API if and
+  // only if at least one verification step failed. It can be used to re-run the
+  // verification steps.
+  keytransparency.v1.types.GetMutationsResponse error_data = 4;
+ }
