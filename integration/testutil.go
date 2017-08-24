@@ -44,11 +44,10 @@ import (
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	cmutation "github.com/google/keytransparency/core/mutation"
 	stestonly "github.com/google/trillian/storage/testonly"
-)
-
-const (
-	logID = 0
+	"github.com/google/keytransparency/impl/mutation"
 )
 
 // NewDB creates a new in-memory database for testing.
@@ -130,11 +129,24 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("CreateTree(): %v", err)
 	}
 	mapID := tree.TreeId
-
 	mapPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
+
+	// Configure log.
+	logTree, err := mapEnv.AdminClient.CreateTree(ctx, &trillian.CreateTreeRequest{
+		Tree: stestonly.LogTree,
+	})
+	//logPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
+	//if err != nil {
+	//	t.Fatalf("Failed to load signing keypair: %v", err)
+	//}
+
+	if err != nil {
+		t.Fatalf("CreateTree(): %v", err)
+	}
+	logID := logTree.GetTreeId()
 
 	// Common data structures.
 	mutations, err := mutations.New(sqldb, mapID)
@@ -152,15 +164,15 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Failed to create committer: %v", err)
 	}
 	authz := authorization.New()
-
 	tlog := fake.NewFakeTrillianLogClient()
-	tadmin := trillian.NewTrillianAdminClient(nil)
 
 	factory := transaction.NewFactory(sqldb)
-	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, tadmin, commitments,
+	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, mapEnv.AdminClient, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
+	msrv := mutation.New(cmutation.New(logID, mapID, tlog, mapEnv.MapClient, mutations, factory))
 	pb.RegisterKeyTransparencyServiceServer(s, server)
+	mpb.RegisterMutationServiceServer(s, msrv)
 
 	// Signer
 	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
