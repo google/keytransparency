@@ -79,8 +79,8 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*tpb.PublicKey) error {
 	return nil
 }
 
-// GenerateMutation produces the mutation.
-func (m *Mutation) GenerateMutation(signers []signatures.Signer) (*tpb.UpdateEntryRequest, error) {
+// SerializeAndSign produces the mutation.
+func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEntryRequest, error) {
 	signedkv, err := m.sign(signers)
 	if err != nil {
 		return nil, err

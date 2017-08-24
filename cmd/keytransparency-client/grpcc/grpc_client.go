@@ -26,7 +26,7 @@ import (
 	"log"
 	"time"
 
-	ktclient "github.com/google/keytransparency/core/client/kt"
+	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -79,7 +79,7 @@ var (
 type Client struct {
 	cli        spb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
-	kt         *ktclient.Verifier
+	kt         *kt.Verifier
 	mutator    mutator.Mutator
 	RetryCount int
 	RetryDelay time.Duration
@@ -131,7 +131,7 @@ func New(cc *grpc.ClientConn,
 	return &Client{
 		cli:        spb.NewKeyTransparencyServiceClient(cc),
 		vrf:        vrf,
-		kt:         ktclient.New(vrf, mapHasher, mapPubKey, logVerifier),
+		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),
 		RetryCount: 1,
 		RetryDelay: 3 * time.Second,
@@ -240,7 +240,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
-	req, err := ktclient.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, userID, appID, profileData, signers, authorizedKeys)
+	req, err := kt.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, userID, appID, profileData, signers, authorizedKeys)
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}

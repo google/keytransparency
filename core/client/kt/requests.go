@@ -20,6 +20,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator/entry"
+
 	"github.com/google/trillian"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
@@ -56,7 +57,7 @@ func CreateUpdateEntryRequest(
 	}
 
 	// Sign Entry
-	updateRequest, err := mutation.GenerateMutation(signers)
+	updateRequest, err := mutation.SerializeAndSign(signers)
 	if err != nil {
 		return nil, err
 	}
