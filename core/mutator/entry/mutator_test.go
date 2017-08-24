@@ -71,12 +71,12 @@ func TestCheckMutation(t *testing.T) {
 		{key, nil, entryData1, nilHash[:], signers1, nil},                       // Very first mutation, working case
 		{key, entryData1, entryData2, hashEntry1[:], signers3, nil},             // Second mutation, working case
 		// Test missing keys and signature cases.
-		{key, nil, missingKeyEntryData1, nilHash[:], signers1, mutator.ErrMissingKey},                     // Very first mutation, missing current key
-		{key, nil, entryData1, nilHash[:], []signatures.Signer{}, mutator.ErrInvalidSig},                  // Very first mutation, missing current signature
-		{key, missingKeyEntryData1, entryData2, hashMissingKeyEntry1[:], signers3, mutator.ErrInvalidSig}, // Second mutation, Missing previous authorized key
-		{key, entryData1, entryData2, hashEntry1[:], signers2, mutator.ErrInvalidSig},                     // Second mutation, missing previous signature
-		{key, entryData1, missingKeyEntryData2, hashEntry1[:], signers3, nil},                             // Second mutation, missing current authorized key
-		{key, entryData1, entryData2, hashEntry1[:], signers1, nil},                                       // Second mutation, missing current signature, should work
+		{key, nil, missingKeyEntryData1, nilHash[:], signers1, mutator.ErrMissingKey},                       // Very first mutation, missing current key
+		{key, nil, entryData1, nilHash[:], []signatures.Signer{}, mutator.ErrUnauthorized},                  // Very first mutation, missing current signature
+		{key, missingKeyEntryData1, entryData2, hashMissingKeyEntry1[:], signers3, mutator.ErrUnauthorized}, // Second mutation, Missing previous authorized key
+		{key, entryData1, entryData2, hashEntry1[:], signers2, mutator.ErrUnauthorized},                     // Second mutation, missing previous signature
+		{key, entryData1, missingKeyEntryData2, hashEntry1[:], signers3, nil},                               // Second mutation, missing current authorized key
+		{key, entryData1, entryData2, hashEntry1[:], signers1, nil},                                         // Second mutation, missing current signature, should work
 	} {
 		// Prepare mutations.
 		mutation, err := prepareMutation(tc.key, tc.newEntry, tc.previous, tc.signers)

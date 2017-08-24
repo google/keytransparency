@@ -18,13 +18,11 @@ package entry
 import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
-	"github.com/google/keytransparency/core/mutator"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian/crypto/sigpb"
 )
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
@@ -43,33 +41,6 @@ func FromLeafValue(value []byte) (*tpb.Entry, error) {
 	return nil, nil
 }
 
-// verifyKeys verifies both old and new authorized keys based on the following
-// criteria:
-//   1. At least one signature with a key in the previous entry should exist.
-//   2. The first mutation should contain at least one signature with a key in
-//      in that mutation.
-//   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(prevEntry *tpb.Entry, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
-	var verifiers map[string]signatures.Verifier
-	var err error
-	if prevEntry == nil {
-		verifiers, err = verifiersFromKeys(entry.GetAuthorizedKeys())
-		if err != nil {
-			return err
-		}
-	} else {
-		verifiers, err = verifiersFromKeys(prevEntry.GetAuthorizedKeys())
-		if err != nil {
-			return err
-		}
-	}
-
-	if err := verifyAuthorizedKeys(data, verifiers, update.GetSignatures()); err != nil {
-		return err
-	}
-	return nil
-}
-
 func verifiersFromKeys(keys []*tpb.PublicKey) (map[string]signatures.Verifier, error) {
 	verifiers := make(map[string]signatures.Verifier)
 	for _, key := range keys {
@@ -80,17 +51,4 @@ func verifiersFromKeys(keys []*tpb.PublicKey) (map[string]signatures.Verifier, e
 		verifiers[verifier.KeyID()] = verifier
 	}
 	return verifiers, nil
-}
-
-// verifyAuthorizedKeys requires AT LEAST one verifier to have a valid
-// corresponding signature.
-func verifyAuthorizedKeys(data interface{}, verifiers map[string]signatures.Verifier, sigs map[string]*sigpb.DigitallySigned) error {
-	for _, verifier := range verifiers {
-		if sig, ok := sigs[verifier.KeyID()]; ok {
-			if err := verifier.Verify(data, sig); err == nil {
-				return nil
-			}
-		}
-	}
-	return mutator.ErrInvalidSig
 }

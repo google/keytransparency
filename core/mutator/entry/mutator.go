@@ -21,7 +21,9 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/trillian/crypto/sigpb"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
@@ -86,7 +88,9 @@ func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
 		return nil, mutator.ErrMissingKey
 	}
 
-	if err := verifyKeys(oldEntry, kv, updated, newEntry); err != nil {
+	if err := verifyKeys(oldEntry.GetAuthorizedKeys(),
+		newEntry.GetAuthorizedKeys(),
+		kv, updated.GetSignatures()); err != nil {
 		return nil, err
 	}
 
@@ -96,25 +100,25 @@ func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
 // verifyKeys verifies both old and new authorized keys based on the following
 // criteria:
 //   1. At least one signature with a key in the previous entry should exist.
-//   2. The first mutation should contain at least one signature with a key in
-//      in that mutation.
+//   2. If prevAuthz is nil, at least one signature with a key from the new
+//   authorized_key set should exist.
 //   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(prevEntry *tpb.Entry, data interface{}, update *tpb.SignedKV, entry *tpb.Entry) error {
+func verifyKeys(prevAuthz, authz []*tpb.PublicKey, data interface{}, sigs map[string]*sigpb.DigitallySigned) error {
 	var verifiers map[string]signatures.Verifier
 	var err error
-	if prevEntry == nil {
-		verifiers, err = verifiersFromKeys(entry.GetAuthorizedKeys())
+	if prevAuthz == nil {
+		verifiers, err = verifiersFromKeys(authz)
 		if err != nil {
 			return err
 		}
 	} else {
-		verifiers, err = verifiersFromKeys(prevEntry.GetAuthorizedKeys())
+		verifiers, err = verifiersFromKeys(prevAuthz)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := verifyAuthorizedKeys(data, verifiers, update.GetSignatures()); err != nil {
+	if err := verifyAuthorizedKeys(data, verifiers, sigs); err != nil {
 		return err
 	}
 	return nil
@@ -130,5 +134,5 @@ func verifyAuthorizedKeys(data interface{}, verifiers map[string]signatures.Veri
 			}
 		}
 	}
-	return mutator.ErrInvalidSig
+	return mutator.ErrUnauthorized
 }
