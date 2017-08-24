@@ -19,6 +19,7 @@ package monitor
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"math/big"
 
@@ -37,8 +38,8 @@ var (
 	// ErrInvalidMutation occurs when verification failed because of an invalid
 	// mutation.
 	ErrInvalidMutation = errors.New("invalid mutation")
-	// ErrNotMatchingMapRoot occurs when the reconstructed root differs from the one
-	// we received from the server.
+	// ErrNotMatchingMapRoot occurs when the reconstructed root differs from the
+	// one we received from the server.
 	ErrNotMatchingMapRoot = errors.New("recreated root does not match")
 	// ErrInvalidMapSignature occurs if the map roots signature does not verify.
 	ErrInvalidMapSignature = errors.New("invalid signature on map root")
@@ -47,9 +48,12 @@ var (
 	// ErrInconsistentProofs occurs when the server returned different hashes
 	// for the same inclusion proof node in the tree.
 	ErrInconsistentProofs = errors.New("inconsistent inclusion proofs")
-	// ErrInvalidConsistencyProof occurs when the log consistency proof does not
-	// verify.
-	ErrInvalidConsistencyProof = errors.New("invalid log consistency proof")
+	// ErrInvalidLogConsistencyProof occurs when the log consistency proof does
+	// not verify.
+	ErrInvalidLogConsistencyProof = errors.New("invalid log consistency proof")
+	// ErrInvalidLogInclusion occurs if the inclusion proof for the signed map
+	// root into the log does not verify.
+	ErrInvalidLogInclusion = errors.New("invalid log inclusion proof")
 )
 
 // verifyResponse verifies a response received by the GetMutations API.
@@ -58,6 +62,56 @@ var (
 // because of the max. page size.
 func (m *Monitor) verifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
 	errList := make([]error, 0)
+
+	//
+	// log verification
+	//
+
+	logRoot := in.GetLogRoot()
+	// Verify SignedLogRoot signature.
+	hash := tcrypto.HashLogRoot(*logRoot)
+	if err := tcrypto.Verify(m.logPubKey, hash, logRoot.GetSignature()); err != nil {
+		glog.Infof("couldn't verify signature on log root: %v", err)
+		errList = append(errList, ErrInvalidLogSignature)
+	}
+
+	if m.trusted != nil && m.trusted.GetTreeSize() > 0 {
+		// Verify consistency proof:
+		err := m.logVerifier.VerifyConsistencyProof(
+			m.trusted.TreeSize, logRoot.TreeSize,
+			m.trusted.RootHash, logRoot.RootHash,
+			in.GetLogConsistency())
+		if err != nil {
+			errList = append(errList, ErrInvalidLogConsistencyProof)
+		}
+	} else {
+		// trust the first log root we see, don't verify anything yet
+		m.trusted = in.GetLogRoot()
+	}
+
+	b, err := json.Marshal(in.GetSmr())
+	if err != nil {
+		glog.Errorf("json.Marshal(): %v", err)
+		// Encoding error
+	}
+	leafIndex := in.GetSmr().GetMapRevision()
+	treeSize := in.GetLogRoot().GetTreeSize()
+	leafHash := m.logHasher.HashLeaf(b)
+	err = m.logVerifier.VerifyInclusionProof(
+		leafIndex,
+		treeSize,
+		in.GetLogInclusion(),
+		in.GetLogRoot().GetRootHash(),
+		leafHash)
+	if err != nil {
+		glog.Errorf("m.logVerifier.VerifyInclusionProof((%v, %v, _): %v", leafIndex, treeSize, err)
+		errList = append(errList, ErrInvalidLogInclusion)
+	}
+
+	//
+	// map verification
+	//
+
 	// copy of singed map root
 	smr := *in.GetSmr()
 	// reset to the state before it was signed:
@@ -68,40 +122,20 @@ func (m *Monitor) verifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 		errList = append(errList, ErrInvalidMapSignature)
 	}
 
-	logRoot := in.GetLogRoot()
-	// Verify SignedLogRoot signature.
-	hash := tcrypto.HashLogRoot(*logRoot)
-	if err := tcrypto.Verify(m.logPubKey, hash, logRoot.GetSignature()); err != nil {
-		glog.Infof("couldn't verify signature on log root: %v", err)
-		errList = append(errList, ErrInvalidLogSignature)
-	}
-
-	if m.trusted != nil {
-		// Verify consistency proof:
-		err := m.logVerifier.VerifyConsistencyProof(
-			m.trusted.TreeSize, logRoot.TreeSize,
-			m.trusted.RootHash, logRoot.RootHash,
-			in.GetLogConsistency())
-		if err != nil {
-			errList = append(errList, ErrInvalidConsistencyProof)
-		}
-	} else {
-		// trust the first log root we see, don't verify anything yet
-		m.trusted = in.GetLogRoot()
-	}
-
-	// m.logVerifier.VerifyInclusionProof()
-	//
 	// retrieve the old root hash from storage!
 	monRes, err := m.store.Get(in.Epoch - 1)
 	if err != nil {
 		glog.Infof("Could not retrieve previous monitoring result: %v", err)
 	}
+
+	//
+	// mutations verification:
+	//
+
 	// we need the old root for verifying the inclusion of the old leafs in the
 	// previous epoch. Storage always stores the mutations response independent
 	// from if the checks succeeded or not.
 	oldRoot := monRes.Response.GetSmr().GetRootHash()
-
 	if err := m.verifyMutations(in.GetMutations(), oldRoot,
 		in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
 		errList = append(errList, err...)
@@ -126,9 +160,9 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 		index := mut.GetProof().GetLeaf().GetIndex()
 		leafHash := mut.GetProof().GetLeaf().GetLeafHash()
 		if err := merkle.VerifyMapInclusionProof(mapID, index,
-			leafHash, oldRoot, mut.GetProof().GetInclusion(), m.hasher); err != nil {
+			leafHash, oldRoot, mut.GetProof().GetInclusion(), m.mapHasher); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
-			errList = append(errList, err)
+			errList = append(errList, ErrInvalidMutation)
 		}
 
 		// compute the new leaf
@@ -136,8 +170,8 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 		if err != nil {
 			errList = append(errList, ErrInvalidMutation)
 		}
-		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.hasher.BitLen())
-		newLeafHash := m.hasher.HashLeaf(mapID, index, newLeaf)
+		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapHasher.BitLen())
+		newLeafHash := m.mapHasher.HashLeaf(mapID, index, newLeaf)
 		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
 			Index:    newLeafnID.BigInt(),
 			LeafHash: newLeafHash,
@@ -145,25 +179,23 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 
 		// store the proof hashes locally to recompute the tree below:
 		sibIDs := newLeafnID.Siblings()
-		// TODO(ismail) iterate over the sibIDs instead!
-		for level, proof := range mut.GetProof().GetInclusion() {
-			pID := sibIDs[level]
-			if p, ok := oldProofNodes[pID.String()]; ok {
+		proofs := mut.GetProof().GetInclusion()
+		for level, sibID := range sibIDs {
+			proof := proofs[level]
+			if p, ok := oldProofNodes[sibID.String()]; ok {
 				// sanity check: for each mut overlapping proof nodes should be
 				// equal:
 				if !bytes.Equal(p, proof) {
-					// TODO(ismail): remove this check and this error type as
-					// soon as the server does not return interior proof nodes
-					// multiple times
-					//
 					// this is really odd and should never happen
 					errList = append(errList, ErrInconsistentProofs)
 				}
 			} else {
-				oldProofNodes[pID.String()] = proof
+				oldProofNodes[sibID.String()] = proof
 			}
+
 		}
 	}
+
 	if err := m.validateMapRoot(expectedNewRoot, mapID, newLeaves, oldProofNodes); err != nil {
 		errList = append(errList, err)
 	}
@@ -174,10 +206,10 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 func (m *Monitor) validateMapRoot(expectedRoot []byte, mapID int64, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
 	// compute the new root using local intermediate hashes from epoch e
 	// (above proof hashes):
-	hs2 := merkle.NewHStar2(mapID, m.hasher)
-	newRoot, err := hs2.HStar2Nodes([]byte{}, m.hasher.Size(), mutatedLeaves,
+	hs2 := merkle.NewHStar2(mapID, m.mapHasher)
+	newRoot, err := hs2.HStar2Nodes([]byte{}, m.mapHasher.Size(), mutatedLeaves,
 		func(depth int, index *big.Int) ([]byte, error) {
-			nID := storage.NewNodeIDFromBigInt(depth, index, m.hasher.BitLen())
+			nID := storage.NewNodeIDFromBigInt(depth, index, m.mapHasher.BitLen())
 			if p, ok := oldProofNodes[nID.String()]; ok {
 				return p, nil
 			}
@@ -186,7 +218,7 @@ func (m *Monitor) validateMapRoot(expectedRoot []byte, mapID int64, mutatedLeave
 
 	if err != nil {
 		glog.Errorf("hs2.HStar2Nodes(_): %v", err)
-		// TODO(ismail): figure out what to return here
+		return ErrNotMatchingMapRoot
 	}
 
 	// verify rootHash
