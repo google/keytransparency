@@ -31,18 +31,18 @@ import (
 	"github.com/google/trillian/crypto/sigpb"
 )
 
-// Entry defines mutations to simply replace the current map value with the
+// Mutator defines mutations to simply replace the current map value with the
 // contents of the mutation.
-type Entry struct{}
+type Mutator struct{}
 
 // New creates a new entry mutator.
-func New() *Entry {
-	return &Entry{}
+func New() *Mutator {
+	return &Mutator{}
 }
 
 // Mutate verifies that this is a valid mutation for this item and applies
 // mutation to value.
-func (*Entry) Mutate(oldValue, update proto.Message) ([]byte, error) {
+func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
 	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
 		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
