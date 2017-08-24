@@ -279,3 +279,12 @@ message BatchUpdateEntriesResponse {
   // errors is a map from user_ids to errors, if there was an error for that user.
   map<string, string> errors = 1;
 }
+
+// GetEpochsRequest is an empty proto message used as input to GetEpochs API.
+message GetEpochsRequest {}
+
+// GetEpochsResponse contains mutations of a newly created epoch.
+message GetEpochsResponse {
+  // mutations contains all mutations information of a newly created epoch.
+  GetMutationsResponse mutations = 1;
+}
