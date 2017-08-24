@@ -33,6 +33,7 @@ import (
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
+	mapID       int64
 	logHasher   hashers.LogHasher
 	mapHasher   hashers.MapHasher
 	logPubKey   crypto.PublicKey
@@ -54,6 +55,7 @@ func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
 	}
 	return &Monitor{
+		mapID:       mapTree.TreeId,
 		mapHasher:   mapHasher,
 		logHasher:   logHasher,
 		logVerifier: merkle.NewLogVerifier(logHasher),
@@ -71,7 +73,7 @@ func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
 	var smr *trillian.SignedMapRoot
 	var err error
 	seen := time.Now().Unix()
-	errs := m.verifyMutationsResponse(resp)
+	errs := m.VerifyMutationsResponse(resp)
 	if len(errs) == 0 {
 		glog.Infof("Successfully verified mutations response for epoch: %v", resp.Epoch)
 		smr, err = m.signMapRoot(resp)

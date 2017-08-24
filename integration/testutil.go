@@ -44,7 +44,10 @@ import (
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	cmutation "github.com/google/keytransparency/core/mutation"
 	stestonly "github.com/google/trillian/storage/testonly"
+	"github.com/google/keytransparency/impl/mutation"
 )
 
 const (
@@ -154,13 +157,14 @@ func NewEnv(t *testing.T) *Env {
 	authz := authorization.New()
 
 	tlog := fake.NewFakeTrillianLogClient()
-	tadmin := trillian.NewTrillianAdminClient(nil)
 
 	factory := transaction.NewFactory(sqldb)
-	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, tadmin, commitments,
+	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, mapEnv.AdminClient, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
+	msrv := mutation.New(cmutation.New(logID, mapID, tlog, mapEnv.MapClient, mutations, factory))
 	pb.RegisterKeyTransparencyServiceServer(s, server)
+	mpb.RegisterMutationServiceServer(s, msrv)
 
 	// Signer
 	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)

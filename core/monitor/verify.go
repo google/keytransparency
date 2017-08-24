@@ -56,11 +56,11 @@ var (
 	ErrInvalidLogInclusion = errors.New("invalid log inclusion proof")
 )
 
-// verifyResponse verifies a response received by the GetMutations API.
+// VerifyMutationsResponse verifies a response received by the GetMutations API.
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
-func (m *Monitor) verifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
+func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
 	errList := make([]error, 0)
 
 	//
@@ -135,10 +135,15 @@ func (m *Monitor) verifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	// we need the old root for verifying the inclusion of the old leafs in the
 	// previous epoch. Storage always stores the mutations response independent
 	// from if the checks succeeded or not.
-	oldRoot := monRes.Response.GetSmr().GetRootHash()
-	if err := m.verifyMutations(in.GetMutations(), oldRoot,
-		in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
-		errList = append(errList, err...)
+	var oldRoot []byte
+	if m.store.LatestEpoch() > 0 {
+		oldRoot = monRes.Response.GetSmr().GetRootHash()
+		if err := m.verifyMutations(in.GetMutations(), oldRoot,
+			in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
+			errList = append(errList, err...)
+		}
+	} else {
+		// TODO oldRoot is the hash of the initial tree
 	}
 
 	return errList
@@ -192,7 +197,6 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 			} else {
 				oldProofNodes[sibID.String()] = proof
 			}
-
 		}
 	}
 
