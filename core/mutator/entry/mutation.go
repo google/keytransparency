@@ -97,6 +97,14 @@ func (m *Mutation) SetCommitment(data []byte) error {
 	return nil
 }
 
+// GetCommitment returns the commitment information in this mutation.
+func (m *Mutation) GetCommitment() (commitment, data, nonce []byte) {
+	data = m.data
+	nonce = m.nonce
+	commitment = m.entry.Commitment
+	return
+}
+
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
 func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
