@@ -32,7 +32,6 @@ import (
 
 	"github.com/google/keytransparency/core/mutator/entry"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"fmt"
 )
 
 var (
@@ -73,33 +72,15 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 
 
 	// TODO(ismail): pass in a (trillian) logverifier instead
-	// - create an equivalent map verifier (in trillian)
-	//   between different error types (like below)
 	// - create a set of fixed error messages so the caller can differentiate
-	if err := m.logVerifierCli.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogInclusion()); err != nil {
+	//   between different error types (like below)
+	// - also, create an equivalent map verifier (in trillian)
+	if err := m.logVerifier.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
+		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
 		errList = append(errList, err)
 	}
-	logRoot := in.GetLogRoot()
-	// Verify SignedLogRoot signature.
-	hash := tcrypto.HashLogRoot(*logRoot)
-	if err := tcrypto.Verify(m.logPubKey, hash, logRoot.GetSignature()); err != nil {
-		glog.Infof("couldn't verify signature on log root: %v: %v", logRoot, err)
-		errList = append(errList, ErrInvalidLogSignature)
-	}
-
-	if m.trusted != nil && m.trusted.GetTreeSize() > 0 {
-		// Verify consistency proof:
-		err := m.logVerifier.VerifyConsistencyProof(
-			m.trusted.TreeSize, logRoot.TreeSize,
-			m.trusted.RootHash, logRoot.RootHash,
-			in.GetLogConsistency())
-		if err != nil {
-			errList = append(errList, ErrInvalidLogConsistencyProof)
-		}
-	} else {
-		// trust the first log root we see, don't verify anything yet
-		m.trusted = in.GetLogRoot()
-	}
+	// updated trusted log root
+	m.trusted = in.GetLogRoot()
 
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
@@ -108,15 +89,9 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	}
 	leafIndex := in.GetSmr().GetMapRevision()
 	treeSize := in.GetLogRoot().GetTreeSize()
-	leafHash := m.logHasher.HashLeaf(b)
-	err = m.logVerifier.VerifyInclusionProof(
-		leafIndex,
-		treeSize,
-		in.GetLogInclusion(),
-		in.GetLogRoot().GetRootHash(),
-		leafHash)
+	err = m.logVerifier.VerifyInclusionAtIndex(in.GetLogRoot(), b, leafIndex, in.GetLogInclusion())
 	if err != nil {
-		glog.Errorf("m.logVerifier.VerifyInclusionProof((%v, %v, _): %v", leafIndex, treeSize, err)
+		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
 		errList = append(errList, ErrInvalidLogInclusion)
 	}
 
@@ -129,24 +104,20 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	// reset to the state before it was signed:
 	smr.Signature = nil
 	// verify signature on map root:
-	fmt.Println("tcrypto.VerifyObject:")
-	fmt.Println(m.mapPubKey)
-	fmt.Println(smr)
-	fmt.Println(in.GetSmr().GetSignature())
 	if err := tcrypto.VerifyObject(m.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
 		glog.Infof("couldn't verify signature on map root: %v", err)
 		errList = append(errList, ErrInvalidMapSignature)
 	}
 
 	//
-	// mutations verification:
+	// mutations verification
 	//
 
 	// we need the old root for verifying the inclusion of the old leafs in the
 	// previous epoch. Storage always stores the mutations response independent
 	// from if the checks succeeded or not.
 	var oldRoot []byte
-	if m.store.LatestEpoch() > 0 {
+	if m.store.LatestEpoch() > 1 {
 		// retrieve the old root hash from storage!
 		monRes, err := m.store.Get(in.Epoch - 1)
 		if err != nil {
@@ -158,7 +129,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 			errList = append(errList, err...)
 		}
 	} else {
-		// TODO oldRoot is the hash of the initial tree
+		// TODO oldRoot is the hash of the initial empty sparse merkle tree
 	}
 
 	return errList

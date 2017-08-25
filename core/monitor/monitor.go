@@ -35,24 +35,19 @@ import (
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
-	mapID          int64
-	logHasher      hashers.LogHasher
-	mapHasher      hashers.MapHasher
-	logPubKey      crypto.PublicKey
-	mapPubKey      crypto.PublicKey
-	logVerifier    merkle.LogVerifier
-	logVerifierCli client.LogVerifier
-	signer         *tcrypto.Signer
-	trusted        *trillian.SignedLogRoot
-	store          *storage.Storage
+	mapID       int64
+	logHasher   hashers.LogHasher
+	mapHasher   hashers.MapHasher
+	logPubKey   crypto.PublicKey
+	mapPubKey   crypto.PublicKey
+	logVerifier client.LogVerifier
+	signer      *tcrypto.Signer
+	trusted     *trillian.SignedLogRoot
+	store       *storage.Storage
 }
 
 // New creates a new instance of the monitor.
-func New(logverifierCli client.LogVerifier, logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
-	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
-	if err != nil {
-		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
-	}
+func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
 	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
@@ -62,15 +57,12 @@ func New(logverifierCli client.LogVerifier, logTree, mapTree *trillian.Tree, sig
 		return nil, fmt.Errorf("Could not unmarshal map public key: %v", err)
 	}
 	return &Monitor{
-		logVerifierCli: logverifierCli,
-		mapID:          mapTree.TreeId,
-		mapHasher:      mapHasher,
-		logHasher:      logHasher,
-		logVerifier:    merkle.NewLogVerifier(logHasher),
-		logPubKey:      logTree.GetPublicKey(),
-		mapPubKey:      mapPubKey,
-		signer:         signer,
-		store:          store,
+		logVerifier: logverifierCli,
+		mapID:       mapTree.TreeId,
+		mapHasher:   mapHasher,
+		mapPubKey:   mapPubKey,
+		signer:      signer,
+		store:       store,
 	}, nil
 }
 
