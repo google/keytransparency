@@ -27,18 +27,15 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
-	"github.com/google/trillian/merkle"
-	"github.com/google/trillian/merkle/hashers"
 	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/merkle/hashers"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
 	mapID       int64
-	logHasher   hashers.LogHasher
 	mapHasher   hashers.MapHasher
-	logPubKey   crypto.PublicKey
 	mapPubKey   crypto.PublicKey
 	logVerifier client.LogVerifier
 	signer      *tcrypto.Signer
@@ -52,7 +49,7 @@ func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcry
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
 	}
-	mapPubKey, err  := der.UnmarshalPublicKey(mapTree.GetPublicKey().GetDer())
+	mapPubKey, err := der.UnmarshalPublicKey(mapTree.GetPublicKey().GetDer())
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal map public key: %v", err)
 	}
