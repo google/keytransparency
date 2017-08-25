@@ -13,7 +13,7 @@ function retrieveTrees()
     JSON=`curl -f http://${KT_URL}/v1/domain/info`
   else
     KTSRV=$(kubectl get pods --selector=run=kt-server -o jsonpath={.items[*].metadata.name})
-    JSON=`kubectl exec -i ${KTSRV} -- curl http://kt-server:8080/v1/domain/info`
+    JSON=`kubectl exec -i ${KTSRV} -- curl -k https://localhost:8080/v1/domain/info`
   fi
 
   export LOG_ID=`echo ${JSON} | jq -r '.log.tree_id'`
