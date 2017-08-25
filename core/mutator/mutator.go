@@ -35,16 +35,19 @@ var (
 	ErrReplay = errors.New("mutation replay")
 	// ErrSize occurs when the mutation size is larger than the allowed upper
 	// bound.
-	ErrSize = errors.New("mutation is too large")
+	ErrSize = errors.New("mutation: too large")
 	// ErrPreviousHash occurs when the mutation the hash of the previous
 	// entry provided in the mutation does not match the previous entry
 	// itself.
-	ErrPreviousHash = errors.New("previous entry hash does not match the hash provided in the mutation")
+	ErrPreviousHash = errors.New("mutation: previous entry hash does not match the hash provided in the mutation")
 	// ErrMissingKey occurs when a mutation does not have authorized keys.
-	ErrMissingKey = errors.New("missing authorized key(s)")
+	ErrMissingKey = errors.New("mutation: missing authorized key(s)")
 	// ErrInvalidSig occurs when either the current or previous update entry
 	// signature verification fails.
-	ErrInvalidSig = errors.New("invalid signature")
+	ErrInvalidSig = errors.New("mutation: invalid signature")
+	// ErrUnauthorized occurs when the mutation has not been signed by a key in the
+	// previous entry.
+	ErrUnauthorized = errors.New("mutation: unauthorized")
 )
 
 // Mutator verifies mutations and transforms values in the map.

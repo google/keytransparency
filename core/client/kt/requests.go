@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,22 +17,18 @@ package kt
 import (
 	"fmt"
 
-	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
-
-	"github.com/benlaurie/objecthash/go/objecthash"
-	"github.com/golang/protobuf/proto"
-
 	"github.com/google/keytransparency/core/mutator/entry"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+
 	"github.com/google/trillian"
-	"github.com/google/trillian/crypto/sigpb"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
 // user ID and a profile.
-func (v *Verifier) CreateUpdateEntryRequest(
+func CreateUpdateEntryRequest(
 	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
 	vrfPub vrf.PublicKey, userID, appID string, profileData []byte,
 	signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
@@ -42,72 +38,29 @@ func (v *Verifier) CreateUpdateEntryRequest(
 		return nil, fmt.Errorf("ProofToHash(): %v", err)
 	}
 
-	// Commit to profile.
-	commitmentNonce, err := commitments.GenCommitmentKey()
-	if err != nil {
-		return nil, err
-	}
-	commitment := commitments.Commit(userID, appID, profileData, commitmentNonce)
-
 	oldLeaf := getResp.GetLeafProof().GetLeaf().GetLeafValue()
-	prevEntry, err := entry.FromLeafValue(oldLeaf)
+	mutation, err := entry.NewMutation(oldLeaf, index[:], userID, appID)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
 	}
 
-	// Create new Entry.
-	keys := authorizedKeys
-	if len(keys) == 0 {
-		keys = prevEntry.AuthorizedKeys
-	}
-	// TODO(ismail): Change this to plain sha256:
-	previous := objecthash.ObjectHash(prevEntry)
-	entry := &tpb.Entry{
-		Commitment:     commitment,
-		AuthorizedKeys: keys,
-		Previous:       previous[:],
-	}
-
-	// Sign Entry.
-	entryData, err := proto.Marshal(entry)
-	if err != nil {
+	// Update Commitment.
+	if err := mutation.SetCommitment(profileData); err != nil {
 		return nil, err
 	}
-	kv := &tpb.KeyValue{
-		Key:   index[:],
-		Value: entryData,
-	}
-	sigs, err := generateSignatures(kv, signers)
-	if err != nil {
-		return nil, err
-	}
-	signedkv := &tpb.SignedKV{
-		KeyValue:   kv,
-		Signatures: sigs,
-	}
 
-	return &tpb.UpdateEntryRequest{
-		UserId: userID,
-		AppId:  appID,
-		EntryUpdate: &tpb.EntryUpdate{
-			Update: signedkv,
-			Committed: &tpb.Committed{
-				Key:  commitmentNonce,
-				Data: profileData,
-			},
-		},
-		FirstTreeSize: trusted.TreeSize,
-	}, err
-}
-
-func generateSignatures(data interface{}, signers []signatures.Signer) (map[string]*sigpb.DigitallySigned, error) {
-	sigs := make(map[string]*sigpb.DigitallySigned)
-	for _, signer := range signers {
-		sig, err := signer.Sign(data)
-		if err != nil {
+	// Update Authorization.
+	if len(authorizedKeys) != 0 {
+		if err := mutation.ReplaceAuthorizedKeys(authorizedKeys); err != nil {
 			return nil, err
 		}
-		sigs[signer.KeyID()] = sig
 	}
-	return sigs, nil
+
+	// Sign Entry
+	updateRequest, err := mutation.SerializeAndSign(signers)
+	if err != nil {
+		return nil, err
+	}
+	updateRequest.FirstTreeSize = trusted.TreeSize
+	return updateRequest, nil
 }

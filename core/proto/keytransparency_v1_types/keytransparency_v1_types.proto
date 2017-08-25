@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -278,4 +278,13 @@ message BatchUpdateEntriesRequest {
 message BatchUpdateEntriesResponse {
   // errors is a map from user_ids to errors, if there was an error for that user.
   map<string, string> errors = 1;
+}
+
+// GetEpochsRequest is an empty proto message used as input to GetEpochs API.
+message GetEpochsRequest {}
+
+// GetEpochsResponse contains mutations of a newly created epoch.
+message GetEpochsResponse {
+  // mutations contains all mutations information of a newly created epoch.
+  GetMutationsResponse mutations = 1;
 }
