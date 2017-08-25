@@ -32,6 +32,7 @@ import (
 
 	"github.com/google/keytransparency/core/mutator/entry"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"fmt"
 )
 
 var (
@@ -108,13 +109,15 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	// previous epoch. Storage always stores the mutations response independent
 	// from if the checks succeeded or not.
 	var oldRoot []byte
-	if m.store.LatestEpoch() > 1 {
+	if m.store.LatestEpoch() > 0 {
+		fmt.Println("Called")
 		// retrieve the old root hash from storage!
 		monRes, err := m.store.Get(in.Epoch - 1)
 		if err != nil {
 			glog.Infof("Could not retrieve previous monitoring result: %v", err)
 		}
 		oldRoot = monRes.Response.GetSmr().GetRootHash()
+
 		if err := m.verifyMutations(in.GetMutations(), oldRoot,
 			in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
 			errList = append(errList, err...)
@@ -129,7 +132,7 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
 	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
-
+	glog.Infof("verifyMutations() called with %v mutations.", len(muts))
 	for _, mut := range muts {
 		oldLeaf, err := entry.FromLeafValue(mut.GetProof().GetLeaf().GetLeafValue())
 		if err != nil {
@@ -146,8 +149,12 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 		}
 
 		// compute the new leaf
+		fmt.Println("old leaf: ")
+		fmt.Println(mut.GetProof().GetLeaf().GetLeafValue())
+		fmt.Println(oldLeaf)
 		newLeaf, err := mutator.Mutate(oldLeaf, mut.GetUpdate())
 		if err != nil {
+			glog.Infof("Mutation did not verify: %v", err)
 			errList = append(errList, ErrInvalidMutation)
 		}
 		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapHasher.BitLen())
