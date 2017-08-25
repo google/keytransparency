@@ -40,7 +40,7 @@ function main()
 
   pushKTImgs
   waitForTrillian
-  createTreeAndSetIDs
+  createTreeIfNeccessaryAndSetIDs
 
   # Need to (re)build kt-signer after writing the public-keys
   docker-compose build kt-signer
@@ -103,16 +103,21 @@ function waitForTrillian()
   fi
 }
 
-function createTreeAndSetIDs()
+function createTreeIfNeccessaryAndSetIDs()
 {
-  LOG_ID=""
-  MAP_ID=""
+  # first request domain info:
+  retrieveTrees
+
+  if [ -n "$LOG_ID" ] && [ -n "$MAP_ID" ]; then
+    echo "Using existing trees with MAP_ID=$MAP_ID and LOG_ID=$LOG_ID"
+  fi
+
   COUNTER=0
+  export LOCAL=false;
   until [ -n "$LOG_ID" ] || [  $COUNTER -gt $MAX_RETRY ]; do
     # RPC was not available yet, wait and retry:
     sleep 10;
     let COUNTER+=1;
-    export LOCAL=false;
     createLog && createMap
   done
 

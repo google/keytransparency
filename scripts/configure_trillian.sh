@@ -3,7 +3,29 @@
 # Defaults from docker-compose.yml.
 LOG_URL=localhost:8091
 MAP_URL=localhost:8094
+KT_URL=localhost:8080
+
 LOCAL=true
+
+function retrieveTrees()
+{
+  if [ "$LOCAL" = true ]; then
+    JSON=`curl -f http://${KT_URL}/v1/domain/info`
+  else
+    KTSRV=$(kubectl get pods --selector=run=kt-server -o jsonpath={.items[*].metadata.name})
+    JSON=`kubectl exec -i ${KTSRV} -- curl http://kt-server:8080/v1/domain/info`
+  fi
+
+  export LOG_ID=`echo ${JSON} | jq -r 'log.tree_id'`
+  echo "-----BEGIN PUBLIC KEY-----" > genfiles/trillian-log.pem
+  echo ${JSON} | jq -r 'log.public_key.der' | cat >> genfiles/trillian-log.pem
+  echo "-----END PUBLIC KEY-----" >> genfiles/trillian-log.pem
+
+  export MAP_ID=`echo ${JSON} | jq -r 'map.tree_id'`
+  echo "-----BEGIN PUBLIC KEY-----" > genfiles/trillian-map.pem
+  echo ${JSON} | jq -r 'map.public_key.der' | cat >> genfiles/trillian-map.pem
+  echo "-----END PUBLIC KEY-----" >> genfiles/trillian-map.pem
+}
 
 function createLog()
 {
