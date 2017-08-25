@@ -16,14 +16,14 @@ function retrieveTrees()
     JSON=`kubectl exec -i ${KTSRV} -- curl http://kt-server:8080/v1/domain/info`
   fi
 
-  export LOG_ID=`echo ${JSON} | jq -r 'log.tree_id'`
+  export LOG_ID=`echo ${JSON} | jq -r '.log.tree_id'`
   echo "-----BEGIN PUBLIC KEY-----" > genfiles/trillian-log.pem
-  echo ${JSON} | jq -r 'log.public_key.der' | cat >> genfiles/trillian-log.pem
+  echo ${JSON} | jq -r '.log.public_key.der' | cat >> genfiles/trillian-log.pem
   echo "-----END PUBLIC KEY-----" >> genfiles/trillian-log.pem
 
-  export MAP_ID=`echo ${JSON} | jq -r 'map.tree_id'`
+  export MAP_ID=`echo ${JSON} | jq -r '.map.tree_id'`
   echo "-----BEGIN PUBLIC KEY-----" > genfiles/trillian-map.pem
-  echo ${JSON} | jq -r 'map.public_key.der' | cat >> genfiles/trillian-map.pem
+  echo ${JSON} | jq -r '.map.public_key.der' | cat >> genfiles/trillian-map.pem
   echo "-----END PUBLIC KEY-----" >> genfiles/trillian-map.pem
 }
 
