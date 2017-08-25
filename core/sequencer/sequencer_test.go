@@ -17,10 +17,13 @@
 package sequencer
 
 import (
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/trillian/util"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -82,6 +85,54 @@ func TestEpochCreation(t *testing.T) {
 				tc.fakeNow, tc.lastForced, tc.min, tc.max, tc.nTicks, got, tc.wantForced)
 		}
 	}
+}
+
+func TestRegisterMutationsChannel(t *testing.T) {
+	seq := &Sequencer{
+		mMux: &sync.Mutex{},
+	}
+	if got, want := len(seq.mChannels), 0; got != want {
+		t.Errorf("Before adding channels, len(seq.mChannels)=%v, want %v", got, want)
+	}
+
+	// Adding some channels.
+	numOfChannels := 5
+	for i := 0; i < numOfChannels; i++ {
+		ch := make(chan *tpb.GetMutationsResponse, 1)
+		seq.RegisterMutationsChannel(ch)
+	}
+	if got, want := len(seq.mChannels), numOfChannels; got != want {
+		t.Errorf("After adding channels, len(seq.mChannels)=%v, want %v", got, want)
+	}
+}
+
+func TestDisseminateMutations(t *testing.T) {
+	seq := &Sequencer{
+		mMux: &sync.Mutex{},
+	}
+
+	numOfChannels := 3
+	mChannels := make([]chan *tpb.GetMutationsResponse, numOfChannels)
+	for i := 0; i < numOfChannels; i++ {
+		mChannels[i] = make(chan *tpb.GetMutationsResponse, 1)
+		seq.RegisterMutationsChannel(mChannels[i])
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(numOfChannels)
+
+	// Read from the channels
+	for _, ch := range mChannels {
+		go func(ch chan *tpb.GetMutationsResponse) {
+			<-ch
+			wg.Done()
+		}(ch)
+	}
+
+	// Write to the channels
+	seq.disseminateMutations(&tpb.GetMutationsResponse{})
+
+	wg.Wait()
 }
 
 // genFakeTicker creates a time.Tick and generates n Ticks starting from start.

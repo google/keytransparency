@@ -180,7 +180,7 @@ func NewEnv(t *testing.T) *Env {
 	if err := signer.Initialize(ctx); err != nil {
 		t.Fatalf("signer.Initialize() = %v", err)
 	}
-	if err := signer.CreateEpoch(ctx, true); err != nil {
+	if _, err := signer.CreateEpoch(ctx, true); err != nil {
 		t.Fatalf("CreateEpoch(_): %v", err)
 	}
 

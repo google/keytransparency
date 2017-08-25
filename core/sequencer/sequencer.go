@@ -19,7 +19,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sync"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -71,6 +75,8 @@ type Sequencer struct {
 	mutator   mutator.Mutator
 	mutations mutator.Mutation
 	factory   transaction.Factory
+	mMux      *sync.Mutex
+	mChannels []chan *tpb.GetMutationsResponse
 }
 
 // New creates a new instance of the signer.
@@ -89,6 +95,7 @@ func New(mapID int64,
 		mutator:   mutator,
 		mutations: mutations,
 		factory:   factory,
+		mMux:      &sync.Mutex{},
 	}
 }
 
@@ -135,7 +142,7 @@ func (s *Sequencer) StartSigning(ctx context.Context, minInterval, maxInterval t
 	if err != nil {
 		glog.Infof("GetSignedMapRoot failed: %v", err)
 		// Immediately create new epoch and write new sth:
-		if err := s.CreateEpoch(ctxTime, true); err != nil {
+		if _, err := s.CreateEpoch(ctxTime, true); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		// Request map head again to get the exact time it was created:
@@ -155,9 +162,12 @@ func (s *Sequencer) StartSigning(ctx context.Context, minInterval, maxInterval t
 	tc := time.NewTicker(minInterval).C
 	for f := range genEpochTicks(clock, last, tc, minInterval, maxInterval) {
 		ctxTime, cancel := context.WithTimeout(ctx, minInterval)
-		if err := s.CreateEpoch(ctxTime, f); err != nil {
+		mutations, err := s.CreateEpoch(ctxTime, f)
+		if err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
+		// Send mutations to sequencer service handler.
+		s.disseminateMutations(mutations)
 		cancel()
 	}
 }
@@ -168,8 +178,8 @@ func (s *Sequencer) StartSigning(ctx context.Context, minInterval, maxInterval t
 func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
 	enforce := make(chan bool)
 	go func() {
-		// Do not wait for the first minDuration to pass but directly resume from
-		// last
+		// Do not wait for the first minDuration to pass but directly
+		// resume from last.
 		if (t.Now().Sub(last) + minElapsed) >= maxElapsed {
 			enforce <- true
 			last = t.Now()
@@ -262,7 +272,7 @@ func (s *Sequencer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian
 }
 
 // CreateEpoch signs the current map head.
-func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
+func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) (*tpb.GetMutationsResponse, error) {
 	glog.V(2).Infof("CreateEpoch: starting sequencing run")
 	start := time.Now()
 	// Get the current root.
@@ -270,39 +280,41 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 		MapId: s.mapID,
 	})
 	if err != nil {
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
+		return nil, fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 	}
 	startSequence := rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
 	revision := rootResp.GetMapRoot().GetMapRevision()
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSequence)
 
 	// Get the list of new mutations to process.
-	mutations, seq, err := s.newMutations(ctx, startSequence)
+	mRange, seq, err := s.newMutations(ctx, startSequence)
 	if err != nil {
-		return fmt.Errorf("newMutations(%v): %v", startSequence, err)
+		return nil, fmt.Errorf("newMutations(%v): %v", startSequence, err)
 	}
 
 	// Don't create epoch if there is nothing to process unless explicitly
 	// specified by caller
-	if len(mutations) == 0 && !forceNewEpoch {
+	if len(mRange) == 0 && !forceNewEpoch {
 		glog.Infof("CreateEpoch: No mutations found. Exiting.")
-		return nil
+		return nil, nil
 	}
 
 	// Get current leaf values.
-	indexes := make([][]byte, 0, len(mutations))
-	for _, m := range mutations {
-		indexes = append(indexes, m.KeyValue.Key)
+	mutations := make([]*tpb.Mutation, 0, len(mRange))
+	indexes := make([][]byte, 0, len(mRange))
+	for _, m := range mRange {
+		mutations = append(mutations, &tpb.Mutation{Update: m})
+		indexes = append(indexes, m.GetKeyValue().GetKey())
 	}
 	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v",
-		len(mutations), len(indexes))
+		len(mRange), len(indexes))
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    s.mapID,
 		Index:    indexes,
 		Revision: -1, // Get the latest version.
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	glog.V(3).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
 		len(getResp.MapLeafInclusion))
@@ -311,17 +323,18 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	// If the map server is run by an untrusted entity, perform inclusion
 	// and signature verification here.
 	leaves := make([]*trillian.MapLeaf, 0, len(getResp.MapLeafInclusion))
-	for _, m := range getResp.MapLeafInclusion {
+	for i, m := range getResp.GetMapLeafInclusion() {
 		leaves = append(leaves, m.Leaf)
+		mutations[i].Proof = m
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(mutations, leaves)
+	newLeaves, err := s.applyMutations(mRange, leaves)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves",
-		len(mutations), len(leaves))
+		len(mRange), len(leaves))
 
 	// Set new leaf values.
 	mapSetStart := time.Now()
@@ -334,7 +347,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	})
 	mapSetEnd := time.Now()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	revision = setResp.GetMapRoot().GetMapRevision()
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, seq)
@@ -342,15 +355,74 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	// Put SignedMapHead in an append only log.
 	if err := queueLogLeaf(ctx, s.tlog, s.logID, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
-		return err
+		return nil, err
 	}
 
-	mutationsCtr.Add(float64(len(mutations)))
+	mutationsCtr.Add(float64(len(mRange)))
 	indexCtr.Add(float64(len(indexes)))
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
-	return nil
+
+	// MapRevisions start at 1. Log leave's index starts at 0.
+	// MapRevision should be at least 1 since the Signer is
+	// supposed to create at least one revision on startup.
+	respEpoch := setResp.GetMapRoot().GetMapRevision() - 1
+	// Fetch log proofs.
+	// TODO(cesarghali): fill in the right value for first tree size.
+	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, 0, respEpoch)
+	if err != nil {
+		return nil, err
+	}
+	// Create mutations response to be sent to frontend servers.
+	mutationsResp := &tpb.GetMutationsResponse{
+		Epoch:          revision,
+		Smr:            setResp.GetMapRoot(),
+		LogRoot:        logRoot.GetSignedLogRoot(),
+		LogConsistency: logConsistency.GetProof().GetHashes(),
+		LogInclusion:   logInclusion.GetProof().GetHashes(),
+		Mutations:      mutations,
+	}
+	return mutationsResp, nil
+}
+
+func (s *Sequencer) logProofs(ctx context.Context, firstTreeSize int64, epoch int64) (*trillian.GetLatestSignedLogRootResponse, *trillian.GetConsistencyProofResponse, *trillian.GetInclusionProofResponse, error) {
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
+		&trillian.GetLatestSignedLogRootRequest{
+			LogId: s.logID,
+		})
+	if err != nil {
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+	}
+	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
+	// Consistency proof.
+	var logConsistency *trillian.GetConsistencyProofResponse
+	if firstTreeSize != 0 {
+		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
+			&trillian.GetConsistencyProofRequest{
+				LogId:          s.logID,
+				FirstTreeSize:  firstTreeSize,
+				SecondTreeSize: secondTreeSize,
+			})
+		if err != nil {
+			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v", s.logID, firstTreeSize, secondTreeSize, err)
+			return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch log consistency proof")
+		}
+	}
+	// Inclusion proof.
+	logInclusion, err := s.tlog.GetInclusionProof(ctx,
+		&trillian.GetInclusionProofRequest{
+			LogId: s.logID,
+			// SignedMapRoot must be in the log at MapRevision.
+			LeafIndex: epoch,
+			TreeSize:  secondTreeSize,
+		})
+	if err != nil {
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", s.logID, epoch, secondTreeSize, err)
+		return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
+	}
+	return logRoot, logConsistency, logInclusion, nil
 }
 
 // TODO(gdbelvin): Add leaf at a specific index. trillian#423
@@ -372,4 +444,22 @@ func queueLogLeaf(ctx context.Context, tlog trillian.TrillianLogClient, logID in
 			logID, smrJSON, err)
 	}
 	return nil
+}
+
+// RegisterMutationsChannel registers a mutations channel created by the
+// sequencer service handler.
+func (s *Sequencer) RegisterMutationsChannel(ch chan *tpb.GetMutationsResponse) {
+	s.mMux.Lock()
+	defer s.mMux.Unlock()
+	s.mChannels = append(s.mChannels, ch)
+}
+
+// disseminateMutations sends mutations to sequencer service handler through the
+// registered channels.
+func (s *Sequencer) disseminateMutations(m *tpb.GetMutationsResponse) {
+	s.mMux.Lock()
+	defer s.mMux.Unlock()
+	for _, ch := range s.mChannels {
+		ch <- m
+	}
 }
