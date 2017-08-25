@@ -141,9 +141,9 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 
 		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
 		index := mut.GetProof().GetLeaf().GetIndex()
-		leafHash := mut.GetProof().GetLeaf().GetLeafHash()
+		leaf := mut.GetProof().GetLeaf().GetLeafValue()
 		if err := merkle.VerifyMapInclusionProof(mapID, index,
-			leafHash, oldRoot, mut.GetProof().GetInclusion(), m.mapHasher); err != nil {
+			leaf, oldRoot, mut.GetProof().GetInclusion(), m.mapHasher); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
 			errList = append(errList, ErrInvalidMutation)
 		}
@@ -177,11 +177,15 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 					errList = append(errList, ErrInconsistentProofs)
 				}
 			} else {
-				oldProofNodes[sibID.String()] = proof
+				if len(proof) > 0 {
+					oldProofNodes[sibID.String()] = proof
+				}
 			}
 		}
 	}
-
+	fmt.Println(newLeaves)
+	fmt.Println(expectedNewRoot)
+	fmt.Println(oldProofNodes)
 	if err := m.validateMapRoot(expectedNewRoot, mapID, newLeaves, oldProofNodes); err != nil {
 		errList = append(errList, err)
 	}
@@ -193,7 +197,7 @@ func (m *Monitor) validateMapRoot(expectedRoot []byte, mapID int64, mutatedLeave
 	// compute the new root using local intermediate hashes from epoch e
 	// (above proof hashes):
 	hs2 := merkle.NewHStar2(mapID, m.mapHasher)
-	newRoot, err := hs2.HStar2Nodes([]byte{}, m.mapHasher.Size(), mutatedLeaves,
+	newRoot, err := hs2.HStar2Nodes([]byte{}, m.mapHasher.BitLen(), mutatedLeaves,
 		func(depth int, index *big.Int) ([]byte, error) {
 			nID := storage.NewNodeIDFromBigInt(depth, index, m.mapHasher.BitLen())
 			if p, ok := oldProofNodes[nID.String()]; ok {
