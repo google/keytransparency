@@ -47,16 +47,17 @@ import (
 	_ "github.com/google/trillian/merkle/coniks" // Register coniks
 	"github.com/google/trillian/merkle/hashers"
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
+	"html/template"
 )
 
 var (
 	addr     = flag.String("addr", ":8099", "The ip:port combination to listen on")
-	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
+	keyFile  = flag.String("tls-key", "../../genfiles/server.key", "TLS private key file")
+	certFile = flag.String("tls-cert", "../../genfiles/server.pem", "TLS cert file")
 
-	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
+	signingKey         = flag.String("sign-key", "../../genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
-	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
+	ktURL              = flag.String("kt-url", "35.184.134.53:8080", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	ktCert             = flag.String("kt-cert", "genfiles/server.crt", "Path to kt-server's public key")
 
@@ -68,11 +69,11 @@ var (
 
 func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	ctx := context.Background()
-	creds, err := credentials.NewClientTLSFromFile(*certFile, "")
-	if err != nil {
-		return nil, err
-	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
+	//creds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	//if err != nil {
+	//	return nil, err
+	//}
+	dopts := []grpc.DialOption{grpc.WithInsecure()}
 	gwmux := runtime.NewServeMux()
 	if err := mopb.RegisterMonitorServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
@@ -95,19 +96,47 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
+// Hackathon only code. Remove later!
+type resHandler struct {
+	store *storage.Storage
+}
+
+func (h *resHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	max := h.store.LatestEpoch()
+	results := make([]*storage.MonitoringResult, max)
+	for i:=int64(1); i<= max ; i++  {
+		monRes, err := h.store.Get(i)
+		if err != nil {
+			glog.Errorf("Couldn't retrieve mon result: %v", err)
+		}
+		results[i-1] = monRes
+	}
+	// TODO(ismail) make this file path configurable so that it can be found in
+	// docker as well
+	tmpl, err := template.ParseFiles("/Users/khoffi/go/src/github.com/google/keytransparency/cmd/keytransparency-monitor/web/monitoring.tmpl")
+	if err != nil {
+		glog.Errorf("Could not parse template: %v", err)
+	}
+
+	err = tmpl.Execute(w, results)
+	if err != nil {
+		glog.Errorf("Could not write result: %v", err)
+	}
+}
+
 func main() {
 	flag.Parse()
 
-	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-	if err != nil {
-		glog.Exitf("Failed to load server credentials %v", err)
-	}
+	//creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
+	//if err != nil {
+	//	glog.Exitf("Failed to load server credentials %v", err)
+	//}
 
 	// Create gRPC server.
 	grpcServer := grpc.NewServer(
-		grpc.Creds(creds),
+		//grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		//grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 
 	// Connect to the kt-server's mutation API:
@@ -143,6 +172,10 @@ func main() {
 
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
+
+	resultHandler := &resHandler{store:store}
+	mux.Handle("/monitor", resultHandler)
+
 	mux.Handle("/", gwmux)
 	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
 	if err != nil {
@@ -181,7 +214,7 @@ func main() {
 
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)
-	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
+	if err := http.ListenAndServe(*addr, /**certFile, *keyFile,*/
 		grpcHandlerFunc(grpcServer, mux)); err != nil {
 		glog.Errorf("ListenAndServeTLS: %v", err)
 	}

@@ -1,0 +1,19 @@
+{{range .}}
+<table>
+        <tr><td>Epoch: {{.Response.Epoch}}</td></tr>
+        <tr><td>Map-id: {{.Response.Smr.MapId}}</td></tr>
+        <tr><td>Log-id: {{.Response.LogRoot.LogId}}</td></tr>
+        <tr><td>SMR roothash: {{.Response.Smr.RootHash}}</td></tr>
+        <tr><td>&nbsp;</td></tr>
+        <tr><td>Errors: </td></tr>
+        {{range .Errors}}
+        <tr>
+        <td>&nbsp;&nbsp;&nbsp;Error: {{.}}</td>
+        </tr>
+        {{end}}
+        <hr>
+        <hr>
+        <hr>
+        &nbsp;
+</table>
+{{end}}
