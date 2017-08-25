@@ -15,6 +15,7 @@
 package commitments
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -58,12 +59,12 @@ func TestWriteRead(t *testing.T) {
 		{commitment, nonce, pdata, true},
 	} {
 		committed := &tpb.Committed{Key: tc.key, Data: tc.value}
-		err = c.Write(nil, tc.commitment, tc.value, tc.key)
+		err = c.Write(context.TODO(), tc.commitment, tc.value, tc.key)
 		if got := err == nil; got != tc.wantNoErr {
 			t.Errorf("WriteCommitment(%s, %v): %v, want %v", tc.commitment, committed, err, tc.wantNoErr)
 		}
 		if tc.wantNoErr {
-			data, nonce, err := c.Read(nil, tc.commitment)
+			data, nonce, err := c.Read(context.TODO(), tc.commitment)
 			if err != nil {
 				t.Errorf("Read(_, %v): %v", tc.commitment, err)
 			}
