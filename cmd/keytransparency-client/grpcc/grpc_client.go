@@ -253,19 +253,19 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 
-	err = c.Retry(ctx, req)
+	err = c.Retry(ctx, req, opts...)
 	// Retry submitting until an inclusion proof is returned.
 	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
 		time.Sleep(c.RetryDelay)
-		err = c.Retry(ctx, req)
+		err = c.Retry(ctx, req, opts...)
 	}
 	return req, err
 }
 
 // Retry will take a pre-fabricated request and send it again.
-func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest) error {
+func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, opts ...grpc.CallOption) error {
 	Vlog.Printf("Sending Update request...")
-	updateResp, err := c.cli.UpdateEntry(ctx, req)
+	updateResp, err := c.cli.UpdateEntry(ctx, req, opts...)
 	if err != nil {
 		return err
 	}

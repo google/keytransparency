@@ -39,6 +39,10 @@ import (
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
+	"github.com/google/keytransparency/core/crypto/keymaster"
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/factory"
+	"github.com/google/keytransparency/core/authentication"
 )
 
 var (
@@ -115,7 +119,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 	client, exists := clients[ktURL]
 	if !exists {
-		return nil, fmt.Errorf("A connection to %v does not exists. Please call BAddKtServer first", ktURL)
+		return nil, fmt.Errorf("A connection to %v does not exists. Please call AddKtServer first", ktURL)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -124,7 +128,7 @@ func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: %v", err)
 	}
-	// TODO(amarcedone): Consider returning or persisting smr it to verify consistency over time
+	// TODO(amarcedone): Consider returning or persisting smr to verify consistency over time
 	_ = smr
 	//encodedSmr, err := proto.Marshal(smr)
 	//if err != nil {
@@ -132,6 +136,43 @@ func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 	//}
 
 	return entry, nil
+}
+
+func UpdateEntryWithFakeAuth(ktURL, userID, appID string, profileData []byte, authorizedPrivateKeyPem, authorizedPublicKeyPem string, retryCount int) error {
+	client, exists := clients[ktURL]
+	if !exists {
+		return fmt.Errorf("A connection to %v does not exists. Please call AddKtServer first", ktURL)
+	}
+
+	client.RetryCount = retryCount
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// Generate new key to sign updates
+	signer, err := keymaster.NewSignerFromPEM([]byte(authorizedPrivateKeyPem))
+	if err!= nil{
+		return fmt.Errorf("UpdateEntry: Error creating signer: %v", err)
+	}
+
+	pk, err := factory.NewVerifierFromPEM([]byte(authorizedPublicKeyPem))
+	if err!= nil{
+		return fmt.Errorf("UpdateEntry: Error parsing Public Key: %v", err)
+	}
+
+	authorizedKey, err := pk.PublicKey()
+	if err!= nil{
+		return fmt.Errorf("UpdateEntry: Error parsing Public Key: %v", err)
+	}
+
+	fakeCredOption := grpc.PerRPCCredentials(fakeUserCreds(userID))
+
+	_, err = client.Update(ctx,userID,appID,profileData, []signatures.Signer{signer}, []*tpb.PublicKey{authorizedKey}, fakeCredOption)
+	if err!= nil{
+		return fmt.Errorf("UpdateEntry: Error submitting the update: %v", err)
+	}
+
+	return nil
 }
 
 func dial(ktURL string, insecureTLS bool, ktTLSCertPEM []byte) (*grpc.ClientConn, error) {
@@ -173,4 +214,11 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 	default: // Use the local set of root certs.
 		return credentials.NewClientTLSFromCert(nil, host), nil
 	}
+}
+
+func fakeUserCreds(fakeUserID string) credentials.PerRPCCredentials {
+	if fakeUserID != "" {
+		return authentication.GetFakeCredential(fakeUserID)
+	}
+	return nil
 }
