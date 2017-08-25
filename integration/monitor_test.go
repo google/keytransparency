@@ -29,6 +29,8 @@ import (
 	"github.com/google/trillian/crypto/keys/pem"
 
 	"github.com/google/keytransparency/core/fake"
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 )
 
 const (
@@ -73,7 +75,6 @@ func TestMonitorEmptyStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not query mutations: %v", err)
 	}
-	_ = mon
 	if err := mon.Process(mutResp); err != nil {
 		t.Fatalf("Monitor could process mutations: %v", err)
 	}
@@ -85,5 +86,30 @@ func TestMonitorEmptyStart(t *testing.T) {
 		t.Errorf("Got error: %v", err)
 	}
 
-	// TODO client sends one mutation, sequencer "signs", monitor verifies
+	// client sends one mutation, sequencer "signs", monitor verifies
+	userID := "test@test.com"
+	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
+	authorizedKeys := []*kpb.PublicKey{getAuthorizedKey(testPubKey1)}
+
+	_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth("test@test.com"), userID, appID, []byte("testProfile"), signers, authorizedKeys)
+	if err != grpcc.ErrRetry {
+		t.Fatalf("Could not send update request: %v", err)
+	}
+	if err := env.Signer.CreateEpoch(bctx, false); err != nil {
+		t.Errorf("CreateEpoch(_): %v", err)
+	}
+	mutResp, err = mutCli.PollMutations(bctx, 2)
+	if err != nil {
+		t.Fatalf("Could not query mutations: %v", err)
+	}
+	if err := mon.Process(mutResp); err != nil {
+		t.Fatalf("Monitor could not process mutations: %v", err)
+	}
+	mresp, err = store.Get(2)
+	if err != nil {
+		t.Fatalf("Could not read monitoring response: %v", err)
+	}
+	for _, err := range mresp.Errors {
+		t.Errorf("Got error: %v", err)
+	}
 }
