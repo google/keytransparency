@@ -42,7 +42,10 @@ import (
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
-	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
+	tlogcli "github.com/google/trillian/client"
+	"github.com/google/trillian/crypto/keys/der"
+	_ "github.com/google/trillian/merkle/coniks" // Register coniks
+	"github.com/google/trillian/merkle/hashers"
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 )
 
@@ -141,13 +144,22 @@ func main() {
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
+	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
+	if err != nil {
+		glog.Fatalf("Could not initialize log hasher: %v", err)
+	}
+	logPubKey, err := der.UnmarshalPublicKey(logTree.GetPublicKey().GetDer())
+	if err != nil {
+		glog.Fatalf("Failed parsing Log public key: %v", err)
+	}
+	logVerifier := tlogcli.NewLogVerifier(logHasher, logPubKey)
 
-	// initialize the mutations API client and feed the responses it got
-	// into the monitor:
-	mon, err := cmon.New(logTree, mapTree, crypto.NewSHA256Signer(key), store)
+	mon, err := cmon.New(logVerifier, mapTree, crypto.NewSHA256Signer(key), store)
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}
+	// initialize the mutations API client and feed the responses it got
+	// into the monitor:
 	mutCli := client.New(mcc, *pollPeriod)
 	responses, errs := mutCli.StartPolling(1)
 	go func() {

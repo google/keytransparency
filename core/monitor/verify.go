@@ -70,11 +70,6 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 		m.trusted = in.GetLogRoot()
 	}
 
-
-	// TODO(ismail): pass in a (trillian) logverifier instead
-	// - create a set of fixed error messages so the caller can differentiate
-	//   between different error types (like below)
-	// - also, create an equivalent map verifier (in trillian)
 	if err := m.logVerifier.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
 		errList = append(errList, err)
@@ -85,7 +80,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
 		glog.Errorf("json.Marshal(): %v", err)
-		// Encoding error
+		errList = append(errList, ErrInvalidMapSignature)
 	}
 	leafIndex := in.GetSmr().GetMapRevision()
 	treeSize := in.GetLogRoot().GetTreeSize()
@@ -95,9 +90,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 		errList = append(errList, ErrInvalidLogInclusion)
 	}
 
-	//
 	// map verification
-	//
 
 	// copy of singed map root
 	smr := *in.GetSmr()
@@ -109,9 +102,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 		errList = append(errList, ErrInvalidMapSignature)
 	}
 
-	//
 	// mutations verification
-	//
 
 	// we need the old root for verifying the inclusion of the old leafs in the
 	// previous epoch. Storage always stores the mutations response independent
@@ -128,9 +119,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 			in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
 			errList = append(errList, err...)
 		}
-	} else {
-		// TODO oldRoot is the hash of the initial empty sparse merkle tree
-	}
+	} // TODO else oldRoot is the hash of the initial empty sparse merkle tree
 
 	return errList
 }

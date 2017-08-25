@@ -21,8 +21,8 @@ import (
 
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitor/storage"
-	"github.com/google/keytransparency/impl/monitor/client"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/impl/monitor/client"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	"github.com/google/trillian/crypto"
@@ -54,14 +54,14 @@ func TestMonitorEmptyStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
-	signer, err  := pem.UnmarshalPrivateKey(monitorPrivKey, "")
+	signer, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	logTree := resp.Log
+	//logTree := resp.Log
 	mapTree := resp.Map
 	store := storage.New()
-	mon, err := monitor.New(fake.NewFakeTrillianLogVerifier(), logTree, mapTree, crypto.NewSHA256Signer(signer), store)
+	mon, err := monitor.New(fake.NewFakeTrillianLogVerifier(), mapTree, crypto.NewSHA256Signer(signer), store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}

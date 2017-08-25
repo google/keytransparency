@@ -43,11 +43,11 @@ import (
 
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 
+	cmutation "github.com/google/keytransparency/core/mutation"
+	"github.com/google/keytransparency/impl/mutation"
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
-	cmutation "github.com/google/keytransparency/core/mutation"
 	stestonly "github.com/google/trillian/storage/testonly"
-	"github.com/google/keytransparency/impl/mutation"
 )
 
 // NewDB creates a new in-memory database for testing.
