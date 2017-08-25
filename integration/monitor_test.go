@@ -41,16 +41,13 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 -----END EC PRIVATE KEY-----`
 )
 
-func TestMonitorEmptyStart(t *testing.T) {
+func TestMonitor(t *testing.T) {
 	bctx := context.Background()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
 
 	// setup monitor:
-
-	// TODO(ismail) setup a proper log environment in the integration
-	// environment, then use GetDomainInfo here:
 	c := spb.NewKeyTransparencyServiceClient(env.Conn)
 	resp, err := c.GetDomainInfo(bctx, &kpb.GetDomainInfoRequest{})
 	if err != nil {
@@ -63,6 +60,7 @@ func TestMonitorEmptyStart(t *testing.T) {
 	//logTree := resp.Log
 	mapTree := resp.Map
 	store := storage.New()
+	// TODO(ismail): setup and use a real logVerifier instead:
 	mon, err := monitor.New(fake.NewFakeTrillianLogVerifier(), mapTree, crypto.NewSHA256Signer(signer), store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)

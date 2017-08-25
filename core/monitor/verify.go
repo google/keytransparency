@@ -32,7 +32,6 @@ import (
 
 	"github.com/google/keytransparency/core/mutator/entry"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"fmt"
 )
 
 var (
@@ -110,7 +109,6 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	// from if the checks succeeded or not.
 	var oldRoot []byte
 	if m.store.LatestEpoch() > 0 {
-		fmt.Println("Called")
 		// retrieve the old root hash from storage!
 		monRes, err := m.store.Get(in.Epoch - 1)
 		if err != nil {
@@ -149,9 +147,6 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 		}
 
 		// compute the new leaf
-		fmt.Println("old leaf: ")
-		fmt.Println(mut.GetProof().GetLeaf().GetLeafValue())
-		fmt.Println(oldLeaf)
 		newLeaf, err := mutator.Mutate(oldLeaf, mut.GetUpdate())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
@@ -183,9 +178,6 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 			}
 		}
 	}
-	fmt.Println(newLeaves)
-	fmt.Println(expectedNewRoot)
-	fmt.Println(oldProofNodes)
 	if err := m.validateMapRoot(expectedNewRoot, mapID, newLeaves, oldProofNodes); err != nil {
 		errList = append(errList, err)
 	}
