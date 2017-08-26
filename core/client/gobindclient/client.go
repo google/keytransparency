@@ -48,7 +48,7 @@ import (
 var (
 	clients = make(map[string]*grpcc.Client)
 
-	timeout = 500 * time.Millisecond
+	timeout = 5 * time.Second
 
 	multiLogWriter = multiWriter.New(os.Stderr)
 
@@ -77,6 +77,16 @@ func SetTimeout(ms int32) {
 }
 
 // AddKtServer creates a new grpc client to handle connections to the ktURL server and adds it to the global map of clients.
+// If such connection already exists, it does nothing (no error is returned).
+func AddKtServerIfNotExists(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfoHash []byte) error {
+	if _, exists := clients[ktURL]; exists {
+		return nil
+	}
+	return AddKtServer(ktURL, insecureTLS, ktTLSCertPEM, domainInfoHash)
+}
+
+// AddKtServer creates a new grpc client to handle connections to the ktURL server and adds it to the global map of clients.
+// If such a connection already exists, an error is returned.
 func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfoHash []byte) error {
 	if _, exists := clients[ktURL]; exists {
 		return fmt.Errorf("The KtServer connection for %v already exists", ktURL)
@@ -99,6 +109,9 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 	}
 
 	if len(domainInfoHash) == 0 {
+		// TODO this log is duplicated, but it is important that it gets to the log even when the verbose log is suppressed.
+		// This needs to be polished.
+		log.Print("Warning: no domainInfoHash provided. Key material from the server will be trusted.")
 		Vlog.Print("Warning: no domainInfoHash provided. Key material from the server will be trusted.")
 	} else {
 		if got := objecthash.ObjectHash(config); !bytes.Equal(got[:], domainInfoHash) {
@@ -198,6 +211,9 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 
 	switch {
 	case insecure: // Impatient insecure.
+		// TODO this log is duplicated, but it is important that it gets to the log even when the verbose log is suppressed.
+		// This needs to be polished.
+		log.Printf("Warning: Skipping verification of KT Server's TLS certificate.")
 		Vlog.Printf("Warning: Skipping verification of KT Server's TLS certificate.")
 		return credentials.NewTLS(&tls.Config{
 			InsecureSkipVerify: true,
