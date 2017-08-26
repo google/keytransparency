@@ -290,7 +290,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	resp, err := s.GetEntry(ctx, req)
 	if err != nil {
 		glog.Errorf("GetEntry failed: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Read failed")
+		return nil, grpc.Errorf(codes.Internal, "Read failed: %v", err)
 	}
 
 	// Catch errors early. Perform mutation verification.
