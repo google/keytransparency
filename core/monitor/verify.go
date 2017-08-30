@@ -35,16 +35,6 @@ import (
 )
 
 var (
-	// ErrInvalidMutation occurs when verification failed because of an invalid
-	// mutation.
-	ErrInvalidMutation = errors.New("invalid mutation")
-	// ErrNotMatchingMapRoot occurs when the reconstructed root differs from the
-	// one we received from the server.
-	ErrNotMatchingMapRoot = errors.New("recreated root does not match")
-	// ErrInvalidMapSignature occurs if the map roots signature does not verify.
-	ErrInvalidMapSignature = errors.New("invalid signature on map root")
-	// ErrInvalidLogSignature occurs if the log roots signature does not verify.
-	ErrInvalidLogSignature = errors.New("invalid signature on log root")
 	// ErrInconsistentProofs occurs when the server returned different hashes
 	// for the same inclusion proof node in the tree.
 	ErrInconsistentProofs = errors.New("inconsistent inclusion proofs")
@@ -54,6 +44,16 @@ var (
 	// ErrInvalidLogInclusion occurs if the inclusion proof for the signed map
 	// root into the log does not verify.
 	ErrInvalidLogInclusion = errors.New("invalid log inclusion proof")
+	// ErrInvalidLogSignature occurs if the log roots signature does not verify.
+	ErrInvalidLogSignature = errors.New("invalid signature on log root")
+	// ErrInvalidMapSignature occurs if the map roots signature does not verify.
+	ErrInvalidMapSignature = errors.New("invalid signature on map root")
+	// ErrInvalidMutation occurs when verification failed because of an invalid
+	// mutation.
+	ErrInvalidMutation = errors.New("invalid mutation")
+	// ErrNotMatchingMapRoot occurs when the reconstructed root differs from the
+	// one we received from the server.
+	ErrNotMatchingMapRoot = errors.New("recreated root does not match")
 )
 
 // VerifyMutationsResponse verifies a response received by the GetMutations API.
@@ -63,9 +63,6 @@ var (
 func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
 	errList := make([]error, 0)
 
-	//
-	// log verification
-	//
 	if m.trusted == nil {
 		m.trusted = in.GetLogRoot()
 	}
@@ -90,8 +87,6 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 		errList = append(errList, ErrInvalidLogInclusion)
 	}
 
-	// map verification
-
 	// copy of singed map root
 	smr := *in.GetSmr()
 	// reset to the state before it was signed:
@@ -102,14 +97,13 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 		errList = append(errList, ErrInvalidMapSignature)
 	}
 
-	// mutations verification
-
 	// we need the old root for verifying the inclusion of the old leafs in the
 	// previous epoch. Storage always stores the mutations response independent
 	// from if the checks succeeded or not.
 	var oldRoot []byte
+	// mutations happen after epoch 1 which is stored in storage:
 	if m.store.LatestEpoch() > 0 {
-		// retrieve the old root hash from storage!
+		// retrieve the old root hash from storage
 		monRes, err := m.store.Get(in.Epoch - 1)
 		if err != nil {
 			glog.Infof("Could not retrieve previous monitoring result: %v", err)
@@ -120,7 +114,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 			in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
 			errList = append(errList, err...)
 		}
-	} // TODO else oldRoot is the hash of the initial empty sparse merkle tree
+	}
 
 	return errList
 }
@@ -131,6 +125,7 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 	oldProofNodes := make(map[string][]byte)
 	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
 	glog.Infof("verifyMutations() called with %v mutations.", len(muts))
+
 	for _, mut := range muts {
 		oldLeaf, err := entry.FromLeafValue(mut.GetProof().GetLeaf().GetLeafValue())
 		if err != nil {
@@ -178,6 +173,7 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 			}
 		}
 	}
+
 	if err := m.validateMapRoot(expectedNewRoot, mapID, newLeaves, oldProofNodes); err != nil {
 		errList = append(errList, err)
 	}

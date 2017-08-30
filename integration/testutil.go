@@ -138,11 +138,6 @@ func NewEnv(t *testing.T) *Env {
 	logTree, err := mapEnv.AdminClient.CreateTree(ctx, &trillian.CreateTreeRequest{
 		Tree: stestonly.LogTree,
 	})
-	//logPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
-	//if err != nil {
-	//	t.Fatalf("Failed to load signing keypair: %v", err)
-	//}
-
 	if err != nil {
 		t.Fatalf("CreateTree(): %v", err)
 	}

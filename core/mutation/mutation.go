@@ -108,7 +108,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	// TODO: allow leaf proofs to be optional.
 	var epoch int64
 	if in.Epoch > 1 {
-		epoch = in.Epoch-1
+		epoch = in.Epoch - 1
 	} else {
 		epoch = 1
 	}

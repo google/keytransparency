@@ -28,9 +28,9 @@ import (
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 
-	"github.com/google/keytransparency/core/fake"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/fake"
 )
 
 const (
@@ -46,9 +46,8 @@ func TestMonitor(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-
-	// setup monitor:
 	c := spb.NewKeyTransparencyServiceClient(env.Conn)
+	// setup monitor:
 	resp, err := c.GetDomainInfo(bctx, &kpb.GetDomainInfoRequest{})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
@@ -57,57 +56,63 @@ func TestMonitor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	//logTree := resp.Log
+	logTree := resp.Log
 	mapTree := resp.Map
+	_ = logTree
 	store := storage.New()
 	// TODO(ismail): setup and use a real logVerifier instead:
 	mon, err := monitor.New(fake.NewFakeTrillianLogVerifier(), mapTree, crypto.NewSHA256Signer(signer), store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
-	// Initialization and CreateEpoch is called by NewEnv
 	mcc := mupb.NewMutationServiceClient(env.Conn)
 	mutCli := client.New(mcc, time.Second)
-	//  verify first SMR
-	mutResp, err := mutCli.PollMutations(bctx, 1)
-	if err != nil {
-		t.Fatalf("Could not query mutations: %v", err)
-	}
-	if err := mon.Process(mutResp); err != nil {
-		t.Fatalf("Monitor could process mutations: %v", err)
-	}
-	mresp, err := store.Get(1)
-	if err != nil {
-		t.Fatalf("Could not read monitoring response: %v", err)
-	}
-	for _, err := range mresp.Errors {
-		t.Errorf("Got error: %v", err)
-	}
 
-	// client sends one mutation, sequencer "signs", monitor verifies
-	userID := "test@test.com"
-	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
-	authorizedKeys := []*kpb.PublicKey{getAuthorizedKey(testPubKey1)}
+	for _, tc := range []struct {
+		// the userIDs to update, if no userIDs are provided, no update request
+		// will be send before querying
+		userIDs        []string
+		updateData     []byte
+		signers        []signatures.Signer
+		authorizedKeys []*kpb.PublicKey
+		// the epoch to query after sending potential updates
+		queryEpoch int64
+	}{
+		// query first epoch, don't update
+		{[]string{}, nil, nil, nil, 1},
+		// create one mutation and new epoch (not forced like in sequencer):
+		{[]string{"test@test.com"}, []byte("testData"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*kpb.PublicKey{getAuthorizedKey(testPubKey1)}, 2},
+		// create several mutations and new epoch
+		{[]string{"test@test.com", "test2@test2.com"}, []byte("more update data"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*kpb.PublicKey{getAuthorizedKey(testPubKey1)}, 3},
+	} {
+		for _, userID := range tc.userIDs {
+			_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth(userID),
+				userID, appID, tc.updateData, tc.signers, tc.authorizedKeys)
+			if err != grpcc.ErrRetry {
+				t.Fatalf("Could not send update request: %v", err)
+			}
+		}
 
-	_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth("test@test.com"), userID, appID, []byte("testProfile"), signers, authorizedKeys)
-	if err != grpcc.ErrRetry {
-		t.Fatalf("Could not send update request: %v", err)
-	}
-	if err := env.Signer.CreateEpoch(bctx, false); err != nil {
-		t.Errorf("CreateEpoch(_): %v", err)
-	}
-	mutResp, err = mutCli.PollMutations(bctx, 2)
-	if err != nil {
-		t.Fatalf("Could not query mutations: %v", err)
-	}
-	if err := mon.Process(mutResp); err != nil {
-		t.Fatalf("Monitor could not process mutations: %v", err)
-	}
-	mresp, err = store.Get(2)
-	if err != nil {
-		t.Fatalf("Could not read monitoring response: %v", err)
-	}
-	for _, err := range mresp.Errors {
-		t.Errorf("Got error: %v", err)
+		if err := env.Signer.CreateEpoch(bctx, false); err != nil {
+			t.Fatalf("CreateEpoch(_): %v", err)
+		}
+
+		mutResp, err := mutCli.PollMutations(bctx, tc.queryEpoch)
+		if err != nil {
+			t.Fatalf("Could not query mutations: %v", err)
+		}
+
+		if err := mon.Process(mutResp); err != nil {
+			t.Fatalf("Monitor could not process mutations: %v", err)
+		}
+
+		mresp, err := store.Get(tc.queryEpoch)
+		if err != nil {
+			t.Fatalf("Could not read monitoring response: %v", err)
+		}
+
+		for _, err := range mresp.Errors {
+			t.Errorf("Got error: %v", err)
+		}
 	}
 }
