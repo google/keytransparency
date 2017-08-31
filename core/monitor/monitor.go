@@ -28,6 +28,8 @@ import (
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
+	"github.com/yahoo/bftkv/protocol"
+	"bytes"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
@@ -41,10 +43,11 @@ type Monitor struct {
 	// TODO(ismail): update last trusted signed log root
 	//trusted     trillian.SignedLogRoot
 	store *storage.Storage
+	bftkvClient protocol.Client
 }
 
 // New creates a new instance of the monitor.
-func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
+func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage, bftkvClient protocol.Client) (*Monitor, error) {
 	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
@@ -60,6 +63,7 @@ func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage
 		mapPubKey:   mapTree.GetPublicKey(),
 		signer:      signer,
 		store:       store,
+		bftkvClient: bftkvClient,
 	}, nil
 }
 
@@ -82,6 +86,21 @@ func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
 	if err := m.store.Set(resp.Epoch, seen, smr, resp, errs); err != nil {
 		glog.Errorf("m.store.Set(%v, %v, _, _, %v): %v", resp.Epoch, seen, errs, err)
 		return err
+	}
+
+	// Make sure the root hash in a monitor matches the root hash stored in BFTKV
+	rootIdentifier := fmt.Sprintf("%v_%v", smr.MapId, resp.Epoch)
+	glog.Infof("Root identifier: %v", rootIdentifier)
+	rootHash, err := m.bftkvClient.Read([]byte(rootIdentifier))
+
+	if err != nil {
+		glog.Errorf("Read error from BFTKV: %v", err)
+	}
+
+	if bytes.Compare(rootHash, smr.GetRootHash()) == 0 {
+		glog.Infoln("BFTKV and Monitor root hashes match.")
+	} else {
+		glog.Errorf("Root hash mismatch. Got from BFTKV [%x], want [%x]", rootHash, smr.GetRootHash())
 	}
 	return nil
 }

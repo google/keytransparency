@@ -33,6 +33,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	"github.com/yahoo/bftkv/api"
 )
 
 var (
@@ -46,6 +48,7 @@ var (
 	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
 	logID  = flag.Int64("log-id", 0, "Trillian Log ID")
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	keyringPath = flag.String("keyring-path", "testdata/u01", "PGP keyring ")
 )
 
 func openDB() *sql.DB {
@@ -92,6 +95,14 @@ func main() {
 	}
 	mutator := entry.New()
 
+	bftkvClient, err := api.OpenClient(*keyringPath)
+
+	if err != nil {
+		glog.Exitf("Failed to create a BFTKV client: %v", err)
+	} else {
+		glog.Infoln("BFTKV Client created successfully.")
+	}
+
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
@@ -100,7 +111,7 @@ func main() {
 		}
 	}()
 
-	signer := sequencer.New(*mapID, tmap, *logID, tlog, mutator, mutations, factory)
+	signer := sequencer.New(*mapID, tmap, *logID, tlog, mutator, mutations, factory, *bftkvClient)
 	glog.Infof("Signer starting")
 	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
 	glog.Errorf("Signer exiting")

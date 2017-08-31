@@ -32,6 +32,7 @@ import (
 	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/yahoo/bftkv/protocol"
 )
 
 var (
@@ -71,6 +72,7 @@ type Sequencer struct {
 	mutator   mutator.Mutator
 	mutations mutator.Mutation
 	factory   transaction.Factory
+	bftkvClient protocol.Client
 }
 
 // New creates a new instance of the signer.
@@ -80,7 +82,8 @@ func New(mapID int64,
 	tlog trillian.TrillianLogClient,
 	mutator mutator.Mutator,
 	mutations mutator.Mutation,
-	factory transaction.Factory) *Sequencer {
+	factory transaction.Factory,
+	bftkvClient protocol.Client) *Sequencer {
 	return &Sequencer{
 		mapID:     mapID,
 		tmap:      tmap,
@@ -89,6 +92,7 @@ func New(mapID int64,
 		mutator:   mutator,
 		mutations: mutations,
 		factory:   factory,
+		bftkvClient: bftkvClient,
 	}
 }
 
@@ -343,6 +347,22 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	if err := queueLogLeaf(ctx, s.tlog, s.logID, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
+	}
+
+	glog.Infoln("Writing to BFTKV...")
+	rootIdentifier := fmt.Sprintf("%v_%v", s.mapID, revision)
+	rootHash := setResp.GetMapRoot().GetRootHash()
+
+	glog.Infof("Root identifier: %s", rootIdentifier)
+	glog.Infof("Root hash: %x", rootHash)
+
+	// Use WriteOnce since it will prevent updates to data
+	err = s.bftkvClient.WriteOnce([]byte(rootIdentifier), rootHash)
+
+	if err != nil {
+		glog.Errorf("BFTKV write error: %v", err)
+	} else {
+		glog.Infoln("BFTKV write success!")
 	}
 
 	mutationsCtr.Add(float64(len(mutations)))

@@ -44,6 +44,7 @@ import (
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
+	"github.com/yahoo/bftkv/api"
 )
 
 var (
@@ -58,6 +59,7 @@ var (
 	ktCert             = flag.String("kt-cert", "genfiles/server.crt", "Path to kt-server's public key")
 
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
+	keyringPath = flag.String("keyring-path", "testdata/u01", "PGP keyring ")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
 	// metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
@@ -142,9 +144,17 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
 
+	bftkvClient, err := api.OpenClient(*keyringPath)
+
+	if err != nil {
+		glog.Exitf("Failed to create a BFTKV client: %v", err)
+	} else {
+		glog.Infoln("BFTKV Client created successfully.")
+	}
+
 	// initialize the mutations API client and feed the responses it got
 	// into the monitor:
-	mon, err := cmon.New(logTree, mapTree, crypto.NewSHA256Signer(key), store)
+	mon, err := cmon.New(logTree, mapTree, crypto.NewSHA256Signer(key), store, *bftkvClient)
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}

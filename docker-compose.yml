@@ -172,3 +172,10 @@ services:
     restart: always
     ports:
     - "8099:8099" # gRPC / HTTPS
+
+  bftkv:
+    build:
+      context: ../../yahoo/bftkv
+      dockerfile: ./Dockerfile
+    ports:
+        - "6001:6001" # BFTKV API Server 
