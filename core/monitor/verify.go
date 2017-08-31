@@ -23,14 +23,13 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/golang/glog"
+	"github.com/google/keytransparency/core/mutator/entry"
 
+	"github.com/golang/glog"
+	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/storage"
 
-	tcrypto "github.com/google/trillian/crypto"
-
-	"github.com/google/keytransparency/core/mutator/entry"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
