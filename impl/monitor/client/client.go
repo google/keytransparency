@@ -64,9 +64,9 @@ func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsRespon
 			glog.Infof("Polling: %v", now)
 			// time out if we exceed the poll period:
 			ctx, _ := context.WithTimeout(context.Background(), c.pollPeriod)
-			monitorResp, err := c.pollMutations(ctx, epoch)
+			monitorResp, err := c.PollMutations(ctx, epoch)
 			if err != nil {
-				glog.Infof("pollMutations(_): %v", err)
+				glog.Infof("PollMutations(_): %v", err)
 				errChan <- err
 			} else {
 				// only write to results channel and increment epoch
@@ -80,7 +80,9 @@ func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsRespon
 	return response, errChan
 }
 
-func (c *Client) pollMutations(ctx context.Context,
+// PollMutations polls GetMutationsResponses from the configured
+// key-transparency server's mutations API.
+func (c *Client) PollMutations(ctx context.Context,
 	queryEpoch int64,
 	opts ...grpc.CallOption) (*ktpb.GetMutationsResponse, error) {
 	response, err := c.client.GetMutations(ctx, &ktpb.GetMutationsRequest{

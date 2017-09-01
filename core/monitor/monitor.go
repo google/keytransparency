@@ -25,39 +25,39 @@ import (
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
 	"github.com/google/trillian"
+	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
-	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/merkle/hashers"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
-	hasher      hashers.MapHasher
-	logPubKey   crypto.PublicKey
+	mapID       int64
+	mapHasher   hashers.MapHasher
 	mapPubKey   crypto.PublicKey
-	logVerifier merkle.LogVerifier
+	logVerifier client.LogVerifier
 	signer      *tcrypto.Signer
-	// TODO(ismail): update last trusted signed log root
-	//trusted     trillian.SignedLogRoot
-	store *storage.Storage
+	trusted     *trillian.SignedLogRoot
+	store       *storage.Storage
 }
 
 // New creates a new instance of the monitor.
-func New(logTree, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
-	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
-	if err != nil {
-		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
-	}
+func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
 	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
 	}
+	mapPubKey, err := der.UnmarshalPublicKey(mapTree.GetPublicKey().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal map public key: %v", err)
+	}
 	return &Monitor{
-		hasher:      mapHasher,
-		logVerifier: merkle.NewLogVerifier(logHasher),
-		logPubKey:   logTree.GetPublicKey(),
-		mapPubKey:   mapTree.GetPublicKey(),
+		logVerifier: logverifierCli,
+		mapID:       mapTree.TreeId,
+		mapHasher:   mapHasher,
+		mapPubKey:   mapPubKey,
 		signer:      signer,
 		store:       store,
 	}, nil
@@ -70,7 +70,7 @@ func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
 	var smr *trillian.SignedMapRoot
 	var err error
 	seen := time.Now().Unix()
-	errs := m.verifyMutationsResponse(resp)
+	errs := m.VerifyMutationsResponse(resp)
 	if len(errs) == 0 {
 		glog.Infof("Successfully verified mutations response for epoch: %v", resp.Epoch)
 		smr, err = m.signMapRoot(resp)

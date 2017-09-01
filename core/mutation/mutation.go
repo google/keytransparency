@@ -106,7 +106,13 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	}
 	// Get leaf proofs.
 	// TODO: allow leaf proofs to be optional.
-	proofs, err := s.inclusionProofs(ctx, indexes, in.Epoch)
+	var epoch int64
+	if in.Epoch > 1 {
+		epoch = in.Epoch - 1
+	} else {
+		epoch = 1
+	}
+	proofs, err := s.inclusionProofs(ctx, indexes, epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -114,10 +120,10 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		mutations[i].Proof = p
 	}
 
-	// MapRevisions start at 1. Log leave's index starts at 0.
+	// MapRevisions start at 1. Log leave's index starts at 1.
 	// MapRevision should be at least 1 since the Signer is
 	// supposed to create at least one revision on startup.
-	respEpoch := resp.GetMapRoot().GetMapRevision() - 1
+	respEpoch := resp.GetMapRoot().GetMapRevision()
 	// Fetch log proofs.
 	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, in.GetFirstTreeSize(), respEpoch)
 	if err != nil {
