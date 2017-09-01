@@ -164,7 +164,7 @@ func NewEnv(t *testing.T) *Env {
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
-	bftkvClient, err := api.OpenClient("testdata/u01")
+	bftkvClient, err := api.OpenClient("../testdata/u01")
 	if err != nil {
 		t.Fatalf("Failed to create a BFTKV client: %v", err)
 	}
