@@ -45,7 +45,6 @@ import (
 
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	stestonly "github.com/google/trillian/storage/testonly"
-	"github.com/golang/glog"
 
 	"github.com/yahoo/bftkv/api"
 )
