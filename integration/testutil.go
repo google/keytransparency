@@ -45,6 +45,9 @@ import (
 
 	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	stestonly "github.com/google/trillian/storage/testonly"
+	"github.com/golang/glog"
+
+	"github.com/yahoo/bftkv/api"
 )
 
 const (
@@ -162,8 +165,13 @@ func NewEnv(t *testing.T) *Env {
 	s := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(s, server)
 
+	bftkvClient, err := api.OpenClient("testdata/u01")
+	if err != nil {
+		t.Fatalf("Failed to create a BFTKV client: %v", err)
+	}
+
 	// Signer
-	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
+	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory, *bftkvClient)
 
 	addr, lis := Listen(t)
 	go s.Serve(lis)
