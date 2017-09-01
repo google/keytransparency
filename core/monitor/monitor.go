@@ -97,7 +97,7 @@ func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
 		glog.Errorf("Read error from BFTKV: %v", err)
 	}
 
-	if bytes.Compare(rootHash, smr.GetRootHash()) == 0 {
+	if bytes.Equal(rootHash, smr.GetRootHash()) {
 		glog.Infoln("BFTKV and Monitor root hashes match.")
 	} else {
 		glog.Errorf("Root hash mismatch. Got from BFTKV [%x], want [%x]", rootHash, smr.GetRootHash())
