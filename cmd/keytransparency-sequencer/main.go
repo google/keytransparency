@@ -44,10 +44,10 @@ var (
 	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations). This value should about half the time guaranteed by the policy.")
 
 	// Info to connect to the trillian map and log.
-	mapID  = flag.Int64("map-id", 0, "ID for backend map")
-	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
-	logID  = flag.Int64("log-id", 0, "Trillian Log ID")
-	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	mapID       = flag.Int64("map-id", 0, "ID for backend map")
+	mapURL      = flag.String("map-url", "", "URL of Trilian Map Server")
+	logID       = flag.Int64("log-id", 0, "Trillian Log ID")
+	logURL      = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 	keyringPath = flag.String("keyring-path", "testdata/u01", "PGP keyring ")
 )
 

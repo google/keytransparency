@@ -65,13 +65,13 @@ func init() {
 
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
-	mapID     int64
-	tmap      trillian.TrillianMapClient
-	logID     int64
-	tlog      trillian.TrillianLogClient
-	mutator   mutator.Mutator
-	mutations mutator.Mutation
-	factory   transaction.Factory
+	mapID       int64
+	tmap        trillian.TrillianMapClient
+	logID       int64
+	tlog        trillian.TrillianLogClient
+	mutator     mutator.Mutator
+	mutations   mutator.Mutation
+	factory     transaction.Factory
 	bftkvClient protocol.Client
 }
 
@@ -85,13 +85,13 @@ func New(mapID int64,
 	factory transaction.Factory,
 	bftkvClient protocol.Client) *Sequencer {
 	return &Sequencer{
-		mapID:     mapID,
-		tmap:      tmap,
-		logID:     logID,
-		tlog:      tlog,
-		mutator:   mutator,
-		mutations: mutations,
-		factory:   factory,
+		mapID:       mapID,
+		tmap:        tmap,
+		logID:       logID,
+		tlog:        tlog,
+		mutator:     mutator,
+		mutations:   mutations,
+		factory:     factory,
 		bftkvClient: bftkvClient,
 	}
 }

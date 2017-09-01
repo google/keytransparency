@@ -24,12 +24,12 @@ import (
 	"github.com/google/keytransparency/core/monitor/storage"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
+	"bytes"
 	"github.com/google/trillian"
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
 	"github.com/yahoo/bftkv/protocol"
-	"bytes"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
@@ -42,7 +42,7 @@ type Monitor struct {
 	signer      *tcrypto.Signer
 	// TODO(ismail): update last trusted signed log root
 	//trusted     trillian.SignedLogRoot
-	store *storage.Storage
+	store       *storage.Storage
 	bftkvClient protocol.Client
 }
 

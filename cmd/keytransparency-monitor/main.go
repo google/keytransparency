@@ -58,7 +58,7 @@ var (
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	ktCert             = flag.String("kt-cert", "genfiles/server.crt", "Path to kt-server's public key")
 
-	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
+	pollPeriod  = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
 	keyringPath = flag.String("keyring-path", "testdata/u01", "PGP keyring ")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
