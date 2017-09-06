@@ -179,3 +179,4 @@ services:
       dockerfile: ./Dockerfile
     ports:
         - "6001:6001" # BFTKV API Server 
+        - "5001-5040:5001-5040" # Websockets for visual
