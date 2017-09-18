@@ -122,6 +122,7 @@ services:
       - --tls-cert=/kt/server.crt
       - --alsologtostderr
       - --v=5
+      - --auth-type=insecure-fake
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/debug/var"]
       interval: 30s
@@ -149,6 +150,7 @@ services:
       - --max-period=5m
       - --alsologtostderr
       - --v=5
+      - --keyring-path=genfiles/bftkv.key
 
   kt-monitor:
     depends_on:
@@ -168,6 +170,7 @@ services:
       - --password=towel
       - --alsologtostderr
       - --v=3
+      - --keyring-path=genfiles/bftkv.key
     image: us.gcr.io/key-transparency/keytransparency-monitor
     restart: always
     ports:
