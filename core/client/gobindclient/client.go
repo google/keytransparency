@@ -115,7 +115,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 	client, exists := clients[ktURL]
 	if !exists {
-		return nil, fmt.Errorf("A connection to %v does not exists. Please call BAddKtServer first", ktURL)
+		return nil, fmt.Errorf("A connection to %v does not exists. Please call AddKtServer first", ktURL)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
