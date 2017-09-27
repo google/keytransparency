@@ -20,8 +20,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
+	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -110,20 +110,6 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	}
 
 	return gwmux, nil
-}
-
-// grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
-// connections or otherHandler otherwise. Copied from cockroachdb.
-func grpcHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// This is a partial recreation of gRPC's internal checks.
-		// https://github.com/grpc/grpc-go/blob/master/transport/handler_server.go#L62
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			grpcServer.ServeHTTP(w, r)
-		} else {
-			otherHandler.ServeHTTP(w, r)
-		}
-	})
 }
 
 func main() {
@@ -218,7 +204,7 @@ func main() {
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)
 	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
-		grpcHandlerFunc(grpcServer, mux)); err != nil {
+		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
 		glog.Errorf("ListenAndServeTLS: %v", err)
 	}
 }
