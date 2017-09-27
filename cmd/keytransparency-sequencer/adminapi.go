@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 

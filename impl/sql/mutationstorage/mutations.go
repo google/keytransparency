@@ -128,6 +128,8 @@ func (m *mutations) Write(txn transaction.Txn, mapID int64, update *pb.EntryUpda
 		return 0, err
 	}
 
+	// TODO(gbelvin): Move this prepare into the mutations struct and
+	// create a Close() method.
 	writeStmt, err := txn.Prepare(insertExpr)
 	if err != nil {
 		return 0, err
@@ -144,12 +146,29 @@ func (m *mutations) Write(txn transaction.Txn, mapID int64, update *pb.EntryUpda
 	return uint64(sequence), nil
 }
 
+func (m *mutations) BulkWrite(txn transaction.Txn, mutations []*tpb.Entry) (uint64, error) {
+	var highestSeq uint64
+	for _, mutation := range mutations {
+		seq, err := m.Write(txn, mutation)
+		if err != nil {
+			if rErr := txn.Rollback(); err != nil {
+				return 0, fmt.Errorf("rollback error: %v for %v", rErr, err)
+			}
+			return 0, fmt.Errorf("mutation write error: %v", err)
+		}
+		if seq > highestSeq {
+			highestSeq = seq
+		}
+	}
+	return highestSeq, nil
+}
+
 // Create creates new database tables.
 func (m *mutations) create() error {
 	for _, stmt := range createStmt {
 		_, err := m.db.Exec(stmt)
 		if err != nil {
-			return fmt.Errorf("Failed to create mutation tables: %v", err)
+			return fmt.Errorf("failed to create mutation tables: %v", err)
 		}
 	}
 	return nil

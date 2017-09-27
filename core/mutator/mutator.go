@@ -72,4 +72,7 @@ type MutationStorage interface {
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
 	Write(txn transaction.Txn, mapID int64, mutation *pb.EntryUpdate) (uint64, error)
+	// BulkWrite saves many mutations to the database.
+	// BulkWrite returns the highest sequence number that was written.
+	BulkWrite(txn transaction.Txn, mapID int64, mutations []*tpb.EntryUpdate) (uint64, error)
 }
