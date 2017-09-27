@@ -123,7 +123,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		return nil, err
 	}
 	for i, p := range proofs {
-		mutations[i].Proof = p
+		mutations[i].LeafProof = p
 	}
 
 	// MapRevisions start at 1. Log leave's index starts at 1.
