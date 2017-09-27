@@ -105,9 +105,9 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		return nil, fmt.Errorf("txn.Commit(): %v", err)
 	}
 	indexes := make([][]byte, 0, len(mRange))
-	mutations := make([]*tpb.Mutation, 0, len(mRange))
+	mutations := make([]*tpb.MutationProof, 0, len(mRange))
 	for _, m := range mRange {
-		mutations = append(mutations, &tpb.Mutation{Update: m})
+		mutations = append(mutations, &tpb.MutationProof{Update: m})
 		indexes = append(indexes, m.GetKeyValue().GetKey())
 	}
 	// Get leaf proofs.

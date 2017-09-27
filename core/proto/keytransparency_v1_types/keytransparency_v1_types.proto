@@ -239,7 +239,7 @@ message GetMutationsResponse {
   // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
   repeated bytes log_inclusion = 5;
   // mutation contains mutation information.
-  repeated Mutation mutations = 6;
+  repeated MutationProof mutations = 6;
   // next_page_token is the next page token to query for pagination.
   // An empty value means there are no more results to fetch.
   // A non-zero value may be used by the client to fetch the next page of

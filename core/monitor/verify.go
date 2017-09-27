@@ -118,7 +118,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	return errList
 }
 
-func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoot []byte, mapID int64) []error {
+func (m *Monitor) verifyMutations(muts []*ktpb.MutationProof, oldRoot, expectedNewRoot []byte, mapID int64) []error {
 	errList := make([]error, 0)
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
