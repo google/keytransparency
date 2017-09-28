@@ -93,7 +93,12 @@ func TestCheckMutation(t *testing.T) {
 		{key, entryData1, entryData2, hashEntry1[:], signers1, nil},                                         // Second mutation, missing current signature, should work
 	} {
 		// Prepare mutations.
-		mutation, err := prepareMutation(tc.key, tc.newEntry, tc.previous, tc.signers)
+		m := &Mutation{
+			index: tc.key,
+			entry: tc.newEntry,
+		}
+		m.entry.Previous = tc.previous
+		mutation, err := m.sign(tc.signers)
 		if err != nil {
 			t.Fatalf("prepareMutation(%v, %v, %v)=%v", tc.key, tc.newEntry, tc.previous, err)
 		}

@@ -128,7 +128,7 @@ func readRows(rows *sql.Rows) (uint64, []*tpb.SignedKV, error) {
 // Write saves the mutation in the database. Write returns the auto-inserted
 // sequence number.
 func (m *mutations) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
-	index := mutation.GetKeyValue().Key
+	index := mutation.GetIndex()
 	mData, err := proto.Marshal(mutation)
 	if err != nil {
 		return 0, err

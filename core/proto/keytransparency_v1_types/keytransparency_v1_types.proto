@@ -42,6 +42,7 @@ message Committed {
 // EntryUpdate contains the user entry update(s).
 message EntryUpdate {
   // update authorizes the change to entry.
+  // TODO(gdbelvin): rename to mutation.
   SignedKV update = 2;
   // commitment contains the data committed to in update.commitment.
   Committed committed = 3;
@@ -64,19 +65,13 @@ message Entry {
   bytes previous = 3;
 }
 
-// KeyValue is a map entry.
-message KeyValue {
-  // key contains the map entry key.
-  bytes key = 1;
-  // TODO(ismail): make proto.Any
-  // value contains the map entry value.
-  bytes value = 2;
-}
-
 // SignedKV is a signed change to a map entry.
 message SignedKV {
-  // key_value is a serialized KeyValue.
-  KeyValue key_value = 1;
+  // index is the location of this leaf in the sparse merkle tree.
+  bytes index = 3;
+  // value is a serialized Entry proto.
+  bytes value = 4;
+
   // signatures on key_value. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.

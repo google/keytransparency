@@ -14,6 +14,7 @@
 package mutations
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -44,46 +45,36 @@ func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *test
 	}{
 		{
 			&tpb.SignedKV{
-				KeyValue: &tpb.KeyValue{
-					Key:   []byte("index1"),
-					Value: []byte("mutation1"),
-				},
+				Index: []byte("index1"),
+				Value: []byte("mutation1"),
 			},
 			1,
 		},
 		{
 			&tpb.SignedKV{
-				KeyValue: &tpb.KeyValue{
-					Key:   []byte("index2"),
-					Value: []byte("mutation2"),
-				},
+				Index: []byte("index2"),
+				Value: []byte("mutation2"),
 			},
 			2,
 		},
 		{
 			&tpb.SignedKV{
-				KeyValue: &tpb.KeyValue{
-					Key:   []byte("index3"),
-					Value: []byte("mutation3"),
-				},
+				Index: []byte("index3"),
+				Value: []byte("mutation3"),
 			},
 			3,
 		},
 		{
 			&tpb.SignedKV{
-				KeyValue: &tpb.KeyValue{
-					Key:   []byte("index4"),
-					Value: []byte("mutation4"),
-				},
+				Index: []byte("index4"),
+				Value: []byte("mutation4"),
 			},
 			4,
 		},
 		{
 			&tpb.SignedKV{
-				KeyValue: &tpb.KeyValue{
-					Key:   []byte("index5"),
-					Value: []byte("mutation5"),
-				},
+				Index: []byte("index5"),
+				Value: []byte("mutation5"),
 			},
 			5,
 		},
@@ -169,10 +160,8 @@ func TestReadRange(t *testing.T) {
 			1,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index1"),
-						Value: []byte("mutation1"),
-					},
+					Index: []byte("index1"),
+					Value: []byte("mutation1"),
 				},
 			},
 		},
@@ -192,34 +181,24 @@ func TestReadRange(t *testing.T) {
 			5,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index1"),
-						Value: []byte("mutation1"),
-					},
+					Index: []byte("index1"),
+					Value: []byte("mutation1"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index2"),
-						Value: []byte("mutation2"),
-					},
+					Index: []byte("index2"),
+					Value: []byte("mutation2"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index3"),
-						Value: []byte("mutation3"),
-					},
+					Index: []byte("index3"),
+					Value: []byte("mutation3"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index4"),
-						Value: []byte("mutation4"),
-					},
+					Index: []byte("index4"),
+					Value: []byte("mutation4"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index5"),
-						Value: []byte("mutation5"),
-					},
+					Index: []byte("index5"),
+					Value: []byte("mutation5"),
 				},
 			},
 		},
@@ -231,22 +210,16 @@ func TestReadRange(t *testing.T) {
 			5,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index3"),
-						Value: []byte("mutation3"),
-					},
+					Index: []byte("index3"),
+					Value: []byte("mutation3"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index4"),
-						Value: []byte("mutation4"),
-					},
+					Index: []byte("index4"),
+					Value: []byte("mutation4"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index5"),
-						Value: []byte("mutation5"),
-					},
+					Index: []byte("index5"),
+					Value: []byte("mutation5"),
 				},
 			},
 		},
@@ -258,22 +231,16 @@ func TestReadRange(t *testing.T) {
 			5,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index3"),
-						Value: []byte("mutation3"),
-					},
+					Index: []byte("index3"),
+					Value: []byte("mutation3"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index4"),
-						Value: []byte("mutation4"),
-					},
+					Index: []byte("index4"),
+					Value: []byte("mutation4"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index5"),
-						Value: []byte("mutation5"),
-					},
+					Index: []byte("index5"),
+					Value: []byte("mutation5"),
 				},
 			},
 		},
@@ -285,22 +252,16 @@ func TestReadRange(t *testing.T) {
 			3,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index1"),
-						Value: []byte("mutation1"),
-					},
+					Index: []byte("index1"),
+					Value: []byte("mutation1"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index2"),
-						Value: []byte("mutation2"),
-					},
+					Index: []byte("index2"),
+					Value: []byte("mutation2"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index3"),
-						Value: []byte("mutation3"),
-					},
+					Index: []byte("index3"),
+					Value: []byte("mutation3"),
 				},
 			},
 		},
@@ -317,10 +278,10 @@ func TestReadRange(t *testing.T) {
 			continue
 		}
 		for i := range results {
-			if got, want := results[i].GetKeyValue().Key, tc.mutations[i].GetKeyValue().Key; !reflect.DeepEqual(got, want) {
+			if got, want := results[i].GetIndex(), tc.mutations[i].GetIndex(); !reflect.DeepEqual(got, want) {
 				t.Errorf("%v: results[%v] index=%v, want %v", tc.description, i, got, want)
 			}
-			if got, want := results[i].GetKeyValue().Value, tc.mutations[i].GetKeyValue().Value; !reflect.DeepEqual(got, want) {
+			if got, want := results[i].GetValue(), tc.mutations[i].GetValue(); !reflect.DeepEqual(got, want) {
 				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
 			}
 		}
@@ -355,34 +316,24 @@ func TestReadAll(t *testing.T) {
 			5,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index1"),
-						Value: []byte("mutation1"),
-					},
+					Index: []byte("index1"),
+					Value: []byte("mutation1"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index2"),
-						Value: []byte("mutation2"),
-					},
+					Index: []byte("index2"),
+					Value: []byte("mutation2"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index3"),
-						Value: []byte("mutation3"),
-					},
+					Index: []byte("index3"),
+					Value: []byte("mutation3"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index4"),
-						Value: []byte("mutation4"),
-					},
+					Index: []byte("index4"),
+					Value: []byte("mutation4"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index5"),
-						Value: []byte("mutation5"),
-					},
+					Index: []byte("index5"),
+					Value: []byte("mutation5"),
 				},
 			},
 		},
@@ -392,22 +343,16 @@ func TestReadAll(t *testing.T) {
 			5,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index3"),
-						Value: []byte("mutation3"),
-					},
+					Index: []byte("index3"),
+					Value: []byte("mutation3"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index4"),
-						Value: []byte("mutation4"),
-					},
+					Index: []byte("index4"),
+					Value: []byte("mutation4"),
 				},
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index5"),
-						Value: []byte("mutation5"),
-					},
+					Index: []byte("index5"),
+					Value: []byte("mutation5"),
 				},
 			},
 		},
@@ -417,10 +362,8 @@ func TestReadAll(t *testing.T) {
 			5,
 			[]*tpb.SignedKV{
 				{
-					KeyValue: &tpb.KeyValue{
-						Key:   []byte("index5"),
-						Value: []byte("mutation5"),
-					},
+					Index: []byte("index5"),
+					Value: []byte("mutation5"),
 				},
 			},
 		},
@@ -437,10 +380,10 @@ func TestReadAll(t *testing.T) {
 			continue
 		}
 		for i := range results {
-			if got, want := results[i].GetKeyValue().Key, tc.mutations[i].GetKeyValue().Key; !reflect.DeepEqual(got, want) {
+			if got, want := results[i].GetIndex(), tc.mutations[i].GetIndex(); !bytes.Equal(got, want) {
 				t.Errorf("%v: results[%v] index=%v, want %v", tc.description, i, got, want)
 			}
-			if got, want := results[i].GetKeyValue().Value, tc.mutations[i].GetKeyValue().Value; !reflect.DeepEqual(got, want) {
+			if got, want := results[i].GetValue(), tc.mutations[i].GetValue(); !bytes.Equal(got, want) {
 				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
 			}
 		}

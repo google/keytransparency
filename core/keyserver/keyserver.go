@@ -277,7 +277,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
-	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetUpdate().GetKeyValue(), in.GetEntryUpdate().Committed); err != nil {
+	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetUpdate(), in.GetEntryUpdate().Committed); err != nil {
 		return nil, err
 	}
 
@@ -367,7 +367,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 	}, nil
 }
 
-func (s *Server) saveCommitment(ctx context.Context, kv *tpb.KeyValue, committed *tpb.Committed) error {
+func (s *Server) saveCommitment(ctx context.Context, kv *tpb.SignedKV, committed *tpb.Committed) error {
 	entry := new(tpb.Entry)
 	if err := proto.Unmarshal(kv.Value, entry); err != nil {
 		glog.Warningf("Error unmarshaling entry: %v", err)

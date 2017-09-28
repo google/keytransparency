@@ -278,7 +278,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, opts ..
 	}
 
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetKeyValue().GetValue(); !bytes.Equal(got, want) {
+	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetValue(); !bytes.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

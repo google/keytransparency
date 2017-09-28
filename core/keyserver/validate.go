@@ -72,15 +72,15 @@ func validateKey(userID, appID string, key []byte) error {
 // - Commitment in SignedEntryUpdate matches the serialized profile.
 // - Profile is a valid.
 func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
-	kv := in.GetEntryUpdate().GetUpdate().GetKeyValue()
+	skv := in.GetEntryUpdate().GetUpdate()
 	entry := new(tpb.Entry)
-	if err := proto.Unmarshal(kv.Value, entry); err != nil {
+	if err := proto.Unmarshal(skv.GetValue(), entry); err != nil {
 		return err
 	}
 
 	// Verify Index / VRF
 	index, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId, in.AppId))
-	if got, want := kv.Key, index[:]; !bytes.Equal(got, want) {
+	if got, want := skv.Index, index[:]; !bytes.Equal(got, want) {
 		return ErrWrongIndex
 	}
 

@@ -64,9 +64,8 @@ func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
 		oldEntry = old
 	}
 
-	kv := updated.GetKeyValue()
 	newEntry := new(tpb.Entry)
-	if err := proto.Unmarshal(kv.Value, newEntry); err != nil {
+	if err := proto.Unmarshal(updated.Value, newEntry); err != nil {
 		return nil, err
 	}
 
@@ -91,13 +90,16 @@ func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
 		return nil, mutator.ErrMissingKey
 	}
 
+	kv := *updated
+	kv.Signatures = nil
 	if err := verifyKeys(oldEntry.GetAuthorizedKeys(),
 		newEntry.GetAuthorizedKeys(),
-		kv, updated.GetSignatures()); err != nil {
+		kv,
+		updated.GetSignatures()); err != nil {
 		return nil, err
 	}
 
-	return updated.GetKeyValue().GetValue(), nil
+	return updated.GetValue(), nil
 }
 
 // verifyKeys verifies both old and new authorized keys based on the following
