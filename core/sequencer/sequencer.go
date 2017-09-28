@@ -341,8 +341,8 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	// Set new leaf values.
 	mapSetStart := time.Now()
 	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
-		MapId:  s.mapID,
-		Leaves: newLeaves,
+		MapId:    s.mapID,
+		Leaves:   newLeaves,
 		Metadata: metaAny,
 	})
 	mapSetEnd := time.Now()
