@@ -41,9 +41,8 @@ message Committed {
 
 // EntryUpdate contains the user entry update(s).
 message EntryUpdate {
-  // update authorizes the change to entry.
-  // TODO(gdbelvin): rename to mutation.
-  SignedKV update = 2;
+  // mutation authorizes the change to entry.
+  SignedKV mutation = 2;
   // commitment contains the data committed to in update.commitment.
   Committed committed = 3;
 }

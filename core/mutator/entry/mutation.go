@@ -108,7 +108,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 		UserId: m.userID,
 		AppId:  m.appID,
 		EntryUpdate: &tpb.EntryUpdate{
-			Update: signedkv,
+			Mutation: signedkv,
 			Committed: &tpb.Committed{
 				Key:  m.nonce,
 				Data: m.data,
