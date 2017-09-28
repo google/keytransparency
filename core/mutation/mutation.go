@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
@@ -76,7 +77,15 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	}
 
 	// Get highest and lowest sequence number.
-	highestSeq := uint64(resp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq())
+	meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, err.Error())
+	}
+	if meta.GetHighestFullyCompletedSeq() == 0 {
+		glog.Infof("GetMutations: Map Root probably has no metadata yet")
+	}
+
+	highestSeq := uint64(meta.GetHighestFullyCompletedSeq())
 	lowestSeq, err := s.lowestSequenceNumber(ctx, in.PageToken, in.Epoch-1)
 	if err != nil {
 		return nil, err
@@ -203,7 +212,14 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 			glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, epoch, err)
 			return 0, grpc.Errorf(codes.Internal, "Get previous signed map root failed")
 		}
-		lowestSeq = resp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
+		meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
+		if err != nil {
+			return 0, grpc.Errorf(codes.Internal, err.Error())
+		}
+		if meta.GetHighestFullyCompletedSeq() == 0 {
+			glog.Infof("lowestSequenceNumber: Map Root probably has no metadata yet")
+		}
+		lowestSeq = meta.GetHighestFullyCompletedSeq()
 	}
 	return uint64(lowestSeq), nil
 }

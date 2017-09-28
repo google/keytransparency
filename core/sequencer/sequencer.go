@@ -21,6 +21,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
@@ -272,7 +273,14 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	if err != nil {
 		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
 	}
-	startSequence := rootResp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
+	meta, err := internal.MetadataFromMapRoot(rootResp.GetMapRoot())
+	if err != nil {
+		return err
+	}
+	if meta.GetHighestFullyCompletedSeq() == 0 {
+		glog.Infof("Sequencer.CreateEpoch: Map Root probably has no metadata yet")
+	}
+	startSequence := meta.GetHighestFullyCompletedSeq()
 	revision := rootResp.GetMapRoot().GetMapRevision()
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSequence)
 
@@ -323,14 +331,19 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves",
 		len(mutations), len(leaves))
 
+	metaAny, err := internal.MetadataAsAny(&tpb.MapperMetadata{
+		HighestFullyCompletedSeq: seq,
+	})
+	if err != nil {
+		return err
+	}
+
 	// Set new leaf values.
 	mapSetStart := time.Now()
 	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
 		MapId:  s.mapID,
 		Leaves: newLeaves,
-		MapperData: &trillian.MapperMetadata{
-			HighestFullyCompletedSeq: seq,
-		},
+		Metadata: metaAny,
 	})
 	mapSetEnd := time.Now()
 	if err != nil {
