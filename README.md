@@ -102,3 +102,8 @@ source scripts/configure_trillian.sh && createLog && createMap
 - [https://localhost:8080/v1/domain/info](https://localhost:8080/v1/domain/info)
 - [Prometheus graphs](http://localhost:9090/graph)
 
+## Development and Testing
+Key Transparency and its [Trillian](https://github.com/google/trillian) backend
+use a [MySQL database](https://github.com/google/trillian/blob/master/README.md#mysql-setup),
+which must be setup in order for the Key Transparency tests to work.
+
