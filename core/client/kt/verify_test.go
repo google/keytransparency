@@ -112,29 +112,9 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 				Committed: nil,
 				LeafProof: &trillian.MapLeafInclusion{
 					Leaf: &trillian.MapLeaf{},
-					Inclusion: [][]byte{
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-						nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-
-						{92, 215, 13, 113, 97, 138, 214, 158, 13, 29, 227, 67, 236, 34, 215, 4, 76, 188, 79, 247, 149, 223, 227, 147, 86, 214, 90, 126, 192, 212, 113, 64},
-					},
+					Inclusion: append(make([][]byte, 255), []byte{
+						92, 215, 13, 113, 97, 138, 214, 158, 13, 29, 227, 67, 236, 34, 215, 4, 76, 188, 79, 247, 149, 223, 227, 147, 86, 214, 90, 126, 192, 212, 113, 64,
+					}),
 				},
 				Smr: &trillian.SignedMapRoot{
 					TimestampNanos: 1506596629587264426,
