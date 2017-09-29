@@ -96,14 +96,13 @@ message SignedKV {
   map<string, sigpb.DigitallySigned> signatures = 2;
 }
 
-// MutationProof contains the information nessesary to compute the new leaf value.
-// It contains the a) old leaf value with it's inclusion proof and b) the mutation.
+// MutationProof contains the information necessary to compute the new leaf value.
+// It contains a) the old leaf value with it's inclusion proof and b) the mutation.
 // The new leaf value is computed via:
 //       Mutate(leaf_value, mutation)
 message MutationProof {
   // mutation contains the information needed to modify the old leaf.
   // The format of a mutation is specific to the particular Mutate function being used.
-  // TODO: figure out if we want to keep this generic and embed proto.Any here instead.
   SignedKV mutation = 1;
   // leaf_proof contains the leaf and its inclusion proof for a particular map revision.
   trillian.MapLeafInclusion leaf_proof = 2;
