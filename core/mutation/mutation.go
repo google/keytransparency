@@ -81,9 +81,6 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
-	if meta.GetHighestFullyCompletedSeq() == 0 {
-		glog.Infof("GetMutations: Map Root probably has no metadata yet")
-	}
 
 	highestSeq := uint64(meta.GetHighestFullyCompletedSeq())
 	lowestSeq, err := s.lowestSequenceNumber(ctx, in.PageToken, in.Epoch-1)
@@ -215,9 +212,6 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 		meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
 		if err != nil {
 			return 0, grpc.Errorf(codes.Internal, err.Error())
-		}
-		if meta.GetHighestFullyCompletedSeq() == 0 {
-			glog.Infof("lowestSequenceNumber: Map Root probably has no metadata yet")
 		}
 		lowestSeq = meta.GetHighestFullyCompletedSeq()
 	}
