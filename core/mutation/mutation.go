@@ -105,9 +105,9 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		return nil, fmt.Errorf("txn.Commit(): %v", err)
 	}
 	indexes := make([][]byte, 0, len(mRange))
-	mutations := make([]*tpb.Mutation, 0, len(mRange))
+	mutations := make([]*tpb.MutationProof, 0, len(mRange))
 	for _, m := range mRange {
-		mutations = append(mutations, &tpb.Mutation{Update: m})
+		mutations = append(mutations, &tpb.MutationProof{Mutation: m})
 		indexes = append(indexes, m.GetKeyValue().GetKey())
 	}
 	// Get leaf proofs.
@@ -123,7 +123,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		return nil, err
 	}
 	for i, p := range proofs {
-		mutations[i].Proof = p
+		mutations[i].LeafProof = p
 	}
 
 	// MapRevisions start at 1. Log leave's index starts at 1.

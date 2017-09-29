@@ -126,7 +126,7 @@ func TestGetMutations(t *testing.T) {
 			t.Errorf("%v: len(resp.Mutations)=%v, want %v", tc.description, got, want)
 		}
 		for i := 0; i < len(resp.Mutations); i++ {
-			if got, want := resp.Mutations[i].Update, tc.mutations[i]; !reflect.DeepEqual(got, want) {
+			if got, want := resp.Mutations[i].Mutation, tc.mutations[i]; !reflect.DeepEqual(got, want) {
 				t.Errorf("%v: resp.Mutations[i].Update=%v, want %v", tc.description, got, want)
 			}
 		}

@@ -118,7 +118,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 	return errList
 }
 
-func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoot []byte, mapID int64) []error {
+func (m *Monitor) verifyMutations(muts []*ktpb.MutationProof, oldRoot, expectedNewRoot []byte, mapID int64) []error {
 	errList := make([]error, 0)
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
@@ -126,22 +126,22 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 	glog.Infof("verifyMutations() called with %v mutations.", len(muts))
 
 	for _, mut := range muts {
-		oldLeaf, err := entry.FromLeafValue(mut.GetProof().GetLeaf().GetLeafValue())
+		oldLeaf, err := entry.FromLeafValue(mut.GetLeafProof().GetLeaf().GetLeafValue())
 		if err != nil {
 			errList = append(errList, ErrInvalidMutation)
 		}
 
 		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
-		index := mut.GetProof().GetLeaf().GetIndex()
-		leaf := mut.GetProof().GetLeaf().GetLeafValue()
+		index := mut.GetLeafProof().GetLeaf().GetIndex()
+		leaf := mut.GetLeafProof().GetLeaf().GetLeafValue()
 		if err := merkle.VerifyMapInclusionProof(mapID, index,
-			leaf, oldRoot, mut.GetProof().GetInclusion(), m.mapHasher); err != nil {
+			leaf, oldRoot, mut.GetLeafProof().GetInclusion(), m.mapHasher); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
 			errList = append(errList, ErrInvalidMutation)
 		}
 
 		// compute the new leaf
-		newLeaf, err := mutator.Mutate(oldLeaf, mut.GetUpdate())
+		newLeaf, err := mutator.Mutate(oldLeaf, mut.GetMutation())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
 			errList = append(errList, ErrInvalidMutation)
@@ -155,7 +155,7 @@ func (m *Monitor) verifyMutations(muts []*ktpb.Mutation, oldRoot, expectedNewRoo
 
 		// store the proof hashes locally to recompute the tree below:
 		sibIDs := newLeafnID.Siblings()
-		proofs := mut.GetProof().GetInclusion()
+		proofs := mut.GetLeafProof().GetInclusion()
 		for level, sibID := range sibIDs {
 			proof := proofs[level]
 			if p, ok := oldProofNodes[sibID.String()]; ok {
