@@ -27,10 +27,10 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
-	"golang.org/x/net/context"
-
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
+	"github.com/google/trillian/crypto/keyspb"
+
+	"golang.org/x/net/context"
 )
 
 const (
@@ -72,13 +72,9 @@ func createSigner(t *testing.T, privKey string) signatures.Signer {
 	return signer
 }
 
-func getAuthorizedKey(pubKey string) *tpb.PublicKey {
+func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
 	pk, _ := pem.Decode([]byte(pubKey))
-	return &tpb.PublicKey{
-		KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
-			EcdsaVerifyingP256: pk.Bytes,
-		},
-	}
+	return &keyspb.PublicKey{Der: pk.Bytes}
 }
 
 func TestEmptyGetAndUpdate(t *testing.T) {
@@ -97,9 +93,9 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 	// Create lists of authorized keys
 	authorizedKey1 := getAuthorizedKey(testPubKey1)
 	authorizedKey2 := getAuthorizedKey(testPubKey2)
-	authorizedKeys1 := []*tpb.PublicKey{authorizedKey1}
-	authorizedKeys2 := []*tpb.PublicKey{authorizedKey1, authorizedKey2}
-	authorizedKeys3 := []*tpb.PublicKey{authorizedKey2}
+	authorizedKeys1 := []*keyspb.PublicKey{authorizedKey1}
+	authorizedKeys2 := []*keyspb.PublicKey{authorizedKey1, authorizedKey2}
+	authorizedKeys3 := []*keyspb.PublicKey{authorizedKey2}
 
 	for _, tc := range []struct {
 		want           bool
@@ -107,7 +103,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		ctx            context.Context
 		userID         string
 		signers        []signatures.Signer
-		authorizedKeys []*tpb.PublicKey
+		authorizedKeys []*keyspb.PublicKey
 	}{
 		{false, false, context.Background(), "noalice", signers1, authorizedKeys1},                // Empty
 		{false, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1}, // Insert
@@ -165,7 +161,7 @@ func TestUpdateValidation(t *testing.T) {
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
-	authorizedKeys := []*tpb.PublicKey{getAuthorizedKey(testPubKey1)}
+	authorizedKeys := []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}
 
 	for _, tc := range []struct {
 		want           bool
@@ -173,7 +169,7 @@ func TestUpdateValidation(t *testing.T) {
 		userID         string
 		profile        []byte
 		signers        []signatures.Signer
-		authorizedKeys []*tpb.PublicKey
+		authorizedKeys []*keyspb.PublicKey
 	}{
 		{false, context.Background(), "alice", profile, signers, authorizedKeys},
 		{false, GetNewOutgoingContextWithFakeAuth("carol"), "bob", profile, signers, authorizedKeys},
@@ -211,7 +207,7 @@ func TestListHistory(t *testing.T) {
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
-	authorizedKeys := []*tpb.PublicKey{getAuthorizedKey(testPubKey1)}
+	authorizedKeys := []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}
 
 	if err := env.setupHistory(ctx, userID, signers, authorizedKeys); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
@@ -254,7 +250,7 @@ func TestListHistory(t *testing.T) {
 	}
 }
 
-func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) error {
+func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the

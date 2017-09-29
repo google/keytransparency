@@ -25,10 +25,12 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
+	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/crypto/sigpb"
+
 	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/trillian/crypto/sigpb"
 )
 
 const (
@@ -57,17 +59,13 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 )
 
 func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
-	authKeys := make([]*tpb.PublicKey, len(pkeys))
+	authKeys := make([]*keyspb.PublicKey, len(pkeys))
 	for i, key := range pkeys {
 		p, _ := pem.Decode([]byte(key))
 		if p == nil {
 			return nil, errors.New("no PEM block found")
 		}
-		authKeys[i] = &tpb.PublicKey{
-			KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
-				EcdsaVerifyingP256: p.Bytes,
-			},
-		}
+		authKeys[i] = &keyspb.PublicKey{Der: p.Bytes}
 	}
 
 	return &tpb.Entry{

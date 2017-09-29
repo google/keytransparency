@@ -22,7 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
 )
 
@@ -49,9 +49,9 @@ var (
 type Signer interface {
 	// Sign generates a digital signature object.
 	Sign(interface{}) (*sigpb.DigitallySigned, error)
-	// PublicKey returns the signer public key as tpb.PublicKey proto
+	// PublicKey returns the signer public key as keyspb.PublicKey proto
 	// message.
-	PublicKey() (*tpb.PublicKey, error)
+	PublicKey() (*keyspb.PublicKey, error)
 	// KeyID returns the ID of the associated public key.
 	KeyID() string
 	// Marshal marshals a signer object into a keymaster SigningKey message.
@@ -64,9 +64,9 @@ type Signer interface {
 type Verifier interface {
 	// Verify checks the digital signature associated applied to data.
 	Verify(interface{}, *sigpb.DigitallySigned) error
-	// PublicKey returns the verifier public key as tpb.PublicKey proto
+	// PublicKey returns the verifier public key as keyspb.PublicKey proto
 	// message.
-	PublicKey() (*tpb.PublicKey, error)
+	PublicKey() (*keyspb.PublicKey, error)
 	// KeyID returns the ID of the associated public key.
 	KeyID() string
 	// PublicKeyPEM marshals a verifier object into a keymaster VerifyingKey message.

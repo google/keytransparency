@@ -19,6 +19,8 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
+	"github.com/google/trillian/crypto/keyspb"
+
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
@@ -41,7 +43,7 @@ func FromLeafValue(value []byte) (*tpb.Entry, error) {
 	return nil, nil
 }
 
-func verifiersFromKeys(keys []*tpb.PublicKey) (map[string]signatures.Verifier, error) {
+func verifiersFromKeys(keys []*keyspb.PublicKey) (map[string]signatures.Verifier, error) {
 	verifiers := make(map[string]signatures.Verifier)
 	for _, key := range keys {
 		verifier, err := factory.NewVerifierFromKey(key)

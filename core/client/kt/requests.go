@@ -20,6 +20,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/trillian/crypto/keyspb"
 
 	"github.com/google/trillian"
 
@@ -31,7 +32,7 @@ import (
 func CreateUpdateEntryRequest(
 	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
 	vrfPub vrf.PublicKey, userID, appID string, profileData []byte,
-	signers []signatures.Signer, authorizedKeys []*tpb.PublicKey) (*tpb.UpdateEntryRequest, error) {
+	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index, err := vrfPub.ProofToHash(vrf.UniqueID(userID, appID), getResp.VrfProof)
 	if err != nil {

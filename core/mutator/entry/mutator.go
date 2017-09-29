@@ -18,12 +18,15 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/mutator"
+
+	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/crypto/sigpb"
+
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/trillian/crypto/sigpb"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
@@ -103,7 +106,7 @@ func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
 //   2. If prevAuthz is nil, at least one signature with a key from the new
 //   authorized_key set should exist.
 //   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(prevAuthz, authz []*tpb.PublicKey, data interface{}, sigs map[string]*sigpb.DigitallySigned) error {
+func verifyKeys(prevAuthz, authz []*keyspb.PublicKey, data interface{}, sigs map[string]*sigpb.DigitallySigned) error {
 	var verifiers map[string]signatures.Verifier
 	var err error
 	if prevAuthz == nil {

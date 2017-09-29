@@ -57,24 +57,11 @@ message Entry {
   // commitment is a cryptographic commitment to arbitrary data.
   bytes commitment = 1;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
-  repeated PublicKey authorized_keys = 2;
+  repeated keyspb.PublicKey authorized_keys = 2;
   // previous contains the hash of the previous entry that this mutation is
   // modifying creating a hash chain of all mutations. The hash used is
   // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
   bytes previous = 3;
-}
-
-// PublicKey defines a key this domain uses to sign MapHeads with.
-message PublicKey {
-  // Key formats from Keyczar.
-  oneof key_type {
-    // ed25519 contains an ed25519 32 bytes key (<http://ed25519.cr.yp.to/>).
-    bytes ed25519 = 1;
-    // rsa_verifying_sha256_3072 contains a SHA256 RSA 3072-bit key.
-    bytes rsa_verifying_sha256_3072 = 2;
-    // ecdsa_verifying_p256 contains ECC P256 key.
-    bytes ecdsa_verifying_p256 = 3;
-  }
 }
 
 // KeyValue is a map entry.

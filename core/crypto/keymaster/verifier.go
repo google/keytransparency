@@ -20,8 +20,10 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
+
+	"github.com/google/trillian/crypto/keyspb"
+
 	kmpb "github.com/google/keytransparency/core/proto/keymaster"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 type verifier struct {
@@ -58,7 +60,7 @@ func NewVerifierFromPEM(pemKey []byte) (Verifier, error) {
 }
 
 // NewVerifierFromKey creates a verifier object from a PublicKey proto object.
-func NewVerifierFromKey(key *tpb.PublicKey) (Verifier, error) {
+func NewVerifierFromKey(key *keyspb.PublicKey) (Verifier, error) {
 	v, err := factory.NewVerifierFromKey(key)
 	if err != nil {
 		return nil, err
