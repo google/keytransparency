@@ -21,12 +21,13 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
@@ -63,7 +64,7 @@ func New(logID int64,
 func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
 	if err := validateGetMutationsRequest(in); err != nil {
 		glog.Errorf("validateGetMutationsRequest(%v): %v", in, err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
+		return nil, status.Error(codes.InvalidArgument, "Invalid request")
 	}
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
@@ -72,11 +73,16 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 	})
 	if err != nil {
 		glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, in.Epoch, err)
-		return nil, grpc.Errorf(codes.Internal, "Get signed map root failed")
+		return nil, status.Error(codes.Internal, "Get signed map root failed")
 	}
 
 	// Get highest and lowest sequence number.
-	highestSeq := uint64(resp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq())
+	meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	highestSeq := uint64(meta.GetHighestFullyCompletedSeq())
 	lowestSeq, err := s.lowestSequenceNumber(ctx, in.PageToken, in.Epoch-1)
 	if err != nil {
 		return nil, err
@@ -93,7 +99,7 @@ func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) 
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)
 		}
-		return nil, grpc.Errorf(codes.Internal, "Reading mutations range failed")
+		return nil, status.Error(codes.Internal, "Reading mutations range failed")
 	}
 	if err := txn.Commit(); err != nil {
 		return nil, fmt.Errorf("txn.Commit(): %v", err)
@@ -152,7 +158,7 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, epoch int64
 		})
 	if err != nil {
 		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
-		return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
 	// Consistency proof.
@@ -166,7 +172,7 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, epoch int64
 			})
 		if err != nil {
 			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v", s.logID, firstTreeSize, secondTreeSize, err)
-			return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch log consistency proof")
+			return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log consistency proof")
 		}
 	}
 	// Inclusion proof.
@@ -179,7 +185,7 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, epoch int64
 		})
 	if err != nil {
 		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", s.logID, epoch, secondTreeSize, err)
-		return nil, nil, nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
+		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 	return logRoot, logConsistency, logInclusion, nil
 }
@@ -192,7 +198,7 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 		var err error
 		if lowestSeq, err = strconv.ParseInt(token, 10, 64); err != nil {
 			glog.Errorf("strconv.ParseInt(%v, 10, 64): %v", token, err)
-			return 0, grpc.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
+			return 0, status.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
 		}
 	} else if epoch != 0 {
 		resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
@@ -201,9 +207,13 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 		})
 		if err != nil {
 			glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, epoch, err)
-			return 0, grpc.Errorf(codes.Internal, "Get previous signed map root failed")
+			return 0, status.Error(codes.Internal, "Get previous signed map root failed")
 		}
-		lowestSeq = resp.GetMapRoot().GetMetadata().GetHighestFullyCompletedSeq()
+		meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
+		if err != nil {
+			return 0, status.Error(codes.Internal, err.Error())
+		}
+		lowestSeq = meta.GetHighestFullyCompletedSeq()
 	}
 	return uint64(lowestSeq), nil
 }
@@ -216,11 +226,11 @@ func (s *Server) inclusionProofs(ctx context.Context, indexes [][]byte, epoch in
 	})
 	if err != nil {
 		glog.Errorf("GetLeaves(): %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
+		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.GetMapLeafInclusion()), len(indexes); got != want {
 		glog.Errorf("GetLeaves() len: %v, want %v", got, want)
-		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
+		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	return getResp.GetMapLeafInclusion(), nil
 }

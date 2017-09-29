@@ -22,7 +22,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/keytransparency/core/fake"
+	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/transaction"
 
 	"golang.org/x/net/context"
@@ -65,11 +67,19 @@ func createEpoch(t *testing.T, mutations *fakeMutation, fakeMap *fakeTrillianMap
 		}
 	}
 	fakeMap.tmap[epoch] = &trillian.SignedMapRoot{
-		Metadata: &trillian.MapperMetadata{
+		Metadata: mustMetadataAsAny(t, &tpb.MapperMetadata{
 			HighestFullyCompletedSeq: int64(end),
-		},
+		}),
 		MapRevision: epoch,
 	}
+}
+
+func mustMetadataAsAny(t *testing.T, meta *tpb.MapperMetadata) *any.Any {
+	m, err := internal.MetadataAsAny(meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
 }
 
 func TestGetMutations(t *testing.T) {

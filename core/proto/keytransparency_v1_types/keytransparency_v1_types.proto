@@ -106,6 +106,12 @@ message Mutation {
   trillian.MapLeafInclusion proof = 2;
 }
 
+// MapperMetadata tracks the mutations that have been mapped so far. It is
+// embedded in the Trillian SignedMapHead.
+message MapperMetadata {
+  int64 highest_fully_completed_seq = 1;
+}
+
 //
 // RPC request/response messages.
 //
@@ -271,7 +277,6 @@ message BatchUpdateEntriesRequest {
   // This must be a key that this server has the private key for.
   string key_id = 3;
 }
-
 
 // BatchUpdateEntriesResponse returns a list of users for which the set operation
 // was unsuccessful.

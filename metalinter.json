@@ -9,5 +9,5 @@
   "VendoredLinters": true,
   "Skip": ["core/proto", "impl/proto"],
   "Deadline": "4m", 
-  "Cyclo": 15
+  "Cyclo": 18
 }
