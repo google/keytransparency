@@ -65,11 +65,13 @@ message Entry {
 }
 
 // SignedKV is a signed change to a map entry.
+// TODO(gbelvin) rename to Entry.
 message SignedKV {
   // index is the location of this leaf in the sparse merkle tree.
   bytes index = 3;
-  // value is a serialized Entry proto.
-  bytes value = 4;
+  // value is an Entry.
+  // TODO(gbelvin): migrate the elements from Entry into SignedKV.
+  Entry value = 5;
 
   // signatures on key_value. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the

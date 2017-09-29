@@ -25,8 +25,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 
-	"github.com/golang/protobuf/proto"
-
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
@@ -72,11 +70,8 @@ func validateKey(userID, appID string, key []byte) error {
 // - Commitment in SignedEntryUpdate matches the serialized profile.
 // - Profile is a valid.
 func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
-	skv := in.GetEntryUpdate().GetUpdate()
-	entry := new(tpb.Entry)
-	if err := proto.Unmarshal(skv.GetValue(), entry); err != nil {
-		return err
-	}
+	skv := in.GetEntryUpdate().GetMutation()
+	entry := skv.GetValue()
 
 	// Verify Index / VRF
 	index, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId, in.AppId))

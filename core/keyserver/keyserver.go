@@ -277,7 +277,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
-	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetUpdate(), in.GetEntryUpdate().Committed); err != nil {
+	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetMutation(), in.GetEntryUpdate().Committed); err != nil {
 		return nil, err
 	}
 
@@ -306,7 +306,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		glog.Errorf("entry.FromLeafValue: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "invalid previous leaf value")
 	}
-	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetUpdate()); err == mutator.ErrReplay {
+	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetMutation()); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
@@ -322,7 +322,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
-	if _, err := s.mutations.Write(txn, in.GetEntryUpdate().GetUpdate()); err != nil {
+	if _, err := s.mutations.Write(txn, in.GetEntryUpdate().GetMutation()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)
@@ -367,12 +367,8 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 	}, nil
 }
 
-func (s *Server) saveCommitment(ctx context.Context, kv *tpb.SignedKV, committed *tpb.Committed) error {
-	entry := new(tpb.Entry)
-	if err := proto.Unmarshal(kv.Value, entry); err != nil {
-		glog.Warningf("Error unmarshaling entry: %v", err)
-		return grpc.Errorf(codes.InvalidArgument, "Invalid request")
-	}
+func (s *Server) saveCommitment(ctx context.Context, skv *tpb.SignedKV, committed *tpb.Committed) error {
+	entry := skv.Value
 
 	// Write the commitment.
 	if err := s.committer.Write(ctx, entry.Commitment, committed.Data, committed.Key); err != nil {

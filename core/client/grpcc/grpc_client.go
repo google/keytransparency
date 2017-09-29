@@ -26,6 +26,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
@@ -250,7 +251,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 	if err != nil {
 		return nil, fmt.Errorf("entry.FromLeafValue: %v", err)
 	}
-	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetUpdate()); err != nil {
+	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetMutation()); err != nil {
 		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 
@@ -277,8 +278,16 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, opts ..
 		return fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
+	// Mutations are no longer stable serialized byte slices, so we need to use
+	// an equality operation on the proto itself.
+	leafValue, err := entry.FromLeafValue(
+		updateResp.GetProof().GetLeafProof().GetLeaf().GetLeafValue())
+	if err != nil {
+		return fmt.Errorf("failed to decode current entry: %v", err)
+	}
+
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetValue(); !bytes.Equal(got, want) {
+	if got, want := leafValue, req.GetEntryUpdate().GetMutation().GetValue(); !proto.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

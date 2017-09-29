@@ -41,8 +41,9 @@ func New() *Mutator {
 }
 
 // Mutate verifies that this is a valid mutation for this item and applies
-// mutation to value.
-func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
+// mutation to value. Repeated applications of Mutate on the same input produce
+// the same output.
+func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
 		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
@@ -64,10 +65,7 @@ func (*Mutator) Mutate(oldValue, update proto.Message) ([]byte, error) {
 		oldEntry = old
 	}
 
-	newEntry := new(tpb.Entry)
-	if err := proto.Unmarshal(updated.Value, newEntry); err != nil {
-		return nil, err
-	}
+	newEntry := updated.Value
 
 	// Verify pointer to previous data.
 	// The very first entry will have oldValue=nil, so its hash is the

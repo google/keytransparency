@@ -141,12 +141,21 @@ func (m *Monitor) verifyMutations(muts []*ktpb.MutationProof, oldRoot, expectedN
 		}
 
 		// compute the new leaf
-		newLeaf, err := mutator.Mutate(oldLeaf, mut.GetMutation())
+		newValue, err := mutator.Mutate(oldLeaf, mut.GetMutation())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
 			errList = append(errList, ErrInvalidMutation)
 		}
 		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapHasher.BitLen())
+		newLeaf, err := entry.ToLeafValue(newValue)
+		if err != nil {
+			glog.Infof("Failed to serialize: %v", err)
+			errList = append(errList, err)
+		}
+
+		// BUG(gdbelvin): Proto serializations are not idempotent.
+		// - Upgrade the hasher to use ObjectHash.
+		// - Use deep compare between the tree and the computed value.
 		newLeafHash := m.mapHasher.HashLeaf(mapID, index, newLeaf)
 		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
 			Index:    newLeafnID.BigInt(),

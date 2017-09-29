@@ -248,10 +248,15 @@ func (s *Sequencer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian
 			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.
 		}
+		leafValue, err := entry.ToLeafValue(newValue)
+		if err != nil {
+			glog.Warningf("ToLeafValue(): %v", err)
+			continue
+		}
 
 		retMap[toArray(index)] = &trillian.MapLeaf{
 			Index:     index,
-			LeafValue: newValue,
+			LeafValue: leafValue,
 		}
 	}
 	// Convert return map back into a list.
