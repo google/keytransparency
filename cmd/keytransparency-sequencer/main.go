@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 
@@ -36,7 +37,10 @@ import (
 )
 
 var (
-	metricsAddr      = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+	addr     = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
+	certFile = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
+
 	serverDBPath     = flag.String("db", "db", "Database connection string")
 	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations). Expected to be smaller than max-period.")
 	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations). This value should about half the time guaranteed by the policy.")
@@ -92,16 +96,19 @@ func main() {
 	}
 	mutator := entry.New()
 
-	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", promhttp.Handler())
-	go func() {
-		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
-		}
-	}()
+	grpcServer := grpc.NewServer()
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
 
 	signer := sequencer.New(*mapID, tmap, *logID, tlog, mutator, mutations, factory)
 	glog.Infof("Signer starting")
-	signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
+	go signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
+
+	glog.Infof("Listening on %v", *addr)
+	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
+		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
+		glog.Errorf("ListenAndServeTLS: %v", err)
+	}
 	glog.Errorf("Signer exiting")
 }
