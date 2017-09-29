@@ -44,7 +44,7 @@ func MetadataFromMapRoot(r *trillian.SignedMapRoot) (*tpb.MapperMetadata, error)
 // can be supplied as metadata to the Trillian map when setting leaves.
 func MetadataAsAny(meta *tpb.MapperMetadata) (*any.Any, error) {
 	if meta == nil {
-		return &any.Any{}, nil
+		meta = &tpb.MapperMetadata{}
 	}
 	metaAny, err := ptypes.MarshalAny(meta)
 	if err != nil {
