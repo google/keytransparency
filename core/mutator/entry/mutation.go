@@ -15,13 +15,17 @@
 package entry
 
 import (
-	"github.com/benlaurie/objecthash/go/objecthash"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+
+	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
+
+	"github.com/benlaurie/objecthash/go/objecthash"
+	"github.com/golang/protobuf/proto"
+
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // Mutation provides APIs for manipulating entries.
@@ -75,7 +79,7 @@ func (m *Mutation) SetCommitment(data []byte) error {
 
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
-func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*tpb.PublicKey) error {
+func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
 	if got, want := len(pubkeys), 1; got < want {
 		return mutator.ErrMissingKey
 	}

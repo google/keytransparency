@@ -17,16 +17,16 @@ package entry
 import (
 	"testing"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian/crypto/keyspb"
 )
 
 func TestReplaceAuthorizedKeys(t *testing.T) {
 	for _, tc := range []struct {
-		pubKeys []*tpb.PublicKey
+		pubKeys []*keyspb.PublicKey
 		wantErr bool
 	}{
 		{pubKeys: nil, wantErr: true},
-		{pubKeys: []*tpb.PublicKey{{}}, wantErr: false},
+		{pubKeys: []*keyspb.PublicKey{{}}, wantErr: false},
 	} {
 		index := []byte("index")
 		userID := "bob"

@@ -19,18 +19,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/monitor"
-	"github.com/google/keytransparency/core/monitor/storage"
-	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/keytransparency/impl/monitor/client"
-	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
-	"github.com/google/trillian/crypto"
-	"github.com/google/trillian/crypto/keys/pem"
-
 	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
+	"github.com/google/keytransparency/core/monitor"
+	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/impl/monitor/client"
+
+	"github.com/google/trillian/crypto"
+	"github.com/google/trillian/crypto/keys/pem"
+	"github.com/google/trillian/crypto/keyspb"
+
+	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 
 const (
@@ -74,16 +76,16 @@ func TestMonitor(t *testing.T) {
 		userIDs        []string
 		updateData     []byte
 		signers        []signatures.Signer
-		authorizedKeys []*kpb.PublicKey
+		authorizedKeys []*keyspb.PublicKey
 		// the epoch to query after sending potential updates
 		queryEpoch int64
 	}{
 		// query first epoch, don't update
 		{[]string{}, nil, nil, nil, 1},
 		// create one mutation and new epoch (not forced like in sequencer):
-		{[]string{"test@test.com"}, []byte("testData"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*kpb.PublicKey{getAuthorizedKey(testPubKey1)}, 2},
+		{[]string{"test@test.com"}, []byte("testData"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}, 2},
 		// create several mutations and new epoch
-		{[]string{"test@test.com", "test2@test2.com"}, []byte("more update data"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*kpb.PublicKey{getAuthorizedKey(testPubKey1)}, 3},
+		{[]string{"test@test.com", "test2@test2.com"}, []byte("more update data"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}, 3},
 	} {
 		for _, userID := range tc.userIDs {
 			_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth(userID),

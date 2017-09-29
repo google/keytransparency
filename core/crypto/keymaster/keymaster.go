@@ -22,12 +22,12 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
+	"github.com/google/trillian/crypto/keyspb"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 
 	kmpb "github.com/google/keytransparency/core/proto/keymaster"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -317,8 +317,8 @@ func (s *KeyMaster) Signers() []signatures.Signer {
 }
 
 // PublicKeys returns a list of public keys created using all active public keys.
-func (s *KeyMaster) PublicKeys() ([]*tpb.PublicKey, error) {
-	publicKeys := make([]*tpb.PublicKey, 0, len(s.verifiers))
+func (s *KeyMaster) PublicKeys() ([]*keyspb.PublicKey, error) {
+	publicKeys := make([]*keyspb.PublicKey, 0, len(s.verifiers))
 	for _, verifier := range s.verifiers {
 		if verifier.Status() == kmpb.VerifyingKey_ACTIVE {
 			publicKey, err := verifier.PublicKey()

@@ -22,9 +22,9 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/p256"
-	ktrsa "github.com/google/keytransparency/core/crypto/signatures/rsa"
+	"github.com/google/trillian/crypto/keyspb"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	ktrsa "github.com/google/keytransparency/core/crypto/signatures/rsa"
 )
 
 // NewSignerFromBytes creates a new signing object from the private key bytes.
@@ -74,6 +74,6 @@ func NewVerifierFromPEM(pemKey []byte) (signatures.Verifier, error) {
 }
 
 // NewVerifierFromKey creates a verifier object from a PublicKey proto object.
-func NewVerifierFromKey(key *tpb.PublicKey) (signatures.Verifier, error) {
+func NewVerifierFromKey(key *keyspb.PublicKey) (signatures.Verifier, error) {
 	return NewVerifierFromBytes(key.Der)
 }

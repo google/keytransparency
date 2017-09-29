@@ -18,7 +18,7 @@ import (
 	"encoding/pem"
 	"testing"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian/crypto/keyspb"
 )
 
 const (
@@ -47,7 +47,7 @@ func TestVerifierFromKey(t *testing.T) {
 		if p == nil {
 			t.Error("pem.Decode() failed")
 		}
-		pk := &tpb.PublicKey{Der: p.Bytes}
+		pk := &keyspb.PublicKey{Der: p.Bytes}
 		if _, err := NewVerifierFromKey(pk); err != nil {
 			t.Errorf("VerifierFromKey(): %v", err)
 		}

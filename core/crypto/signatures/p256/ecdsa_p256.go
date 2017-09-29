@@ -30,7 +30,7 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
 )
 
@@ -136,8 +136,8 @@ func (s *signer) Sign(data interface{}) (*sigpb.DigitallySigned, error) {
 	}, nil
 }
 
-// PublicKey returns the signer public key as tpb.PublicKey proto message.
-func (s *signer) PublicKey() (*tpb.PublicKey, error) {
+// PublicKey returns the signer public key as keyspb.PublicKey proto message.
+func (s *signer) PublicKey() (*keyspb.PublicKey, error) {
 	return publicKey(&s.privKey.PublicKey)
 }
 
@@ -249,8 +249,8 @@ func (s *verifier) Verify(data interface{}, sig *sigpb.DigitallySigned) error {
 	return nil
 }
 
-// PublicKey returns the verifier public key as tpb.PublicKey proto message.
-func (s *verifier) PublicKey() (*tpb.PublicKey, error) {
+// PublicKey returns the verifier public key as keyspb.PublicKey proto message.
+func (s *verifier) PublicKey() (*keyspb.PublicKey, error) {
 	return publicKey(s.pubKey)
 }
 
@@ -280,10 +280,10 @@ func (s *verifier) Clone() signatures.Verifier {
 	return &clone
 }
 
-func publicKey(k *ecdsa.PublicKey) (*tpb.PublicKey, error) {
+func publicKey(k *ecdsa.PublicKey) (*keyspb.PublicKey, error) {
 	keyDER, err := x509.MarshalPKIXPublicKey(k)
 	if err != nil {
 		return nil, err
 	}
-	return &tpb.PublicKey{Der: keyDER}, nil
+	return &keyspb.PublicKey{Der: keyDER}, nil
 }
