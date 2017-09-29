@@ -47,11 +47,7 @@ func TestVerifierFromKey(t *testing.T) {
 		if p == nil {
 			t.Error("pem.Decode() failed")
 		}
-		pk := &tpb.PublicKey{
-			KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
-				EcdsaVerifyingP256: p.Bytes,
-			},
-		}
+		pk := &tpb.PublicKey{Der: p.Bytes}
 		if _, err := NewVerifierFromKey(pk); err != nil {
 			t.Errorf("VerifierFromKey(): %v", err)
 		}

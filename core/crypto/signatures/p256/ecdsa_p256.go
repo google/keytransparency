@@ -281,13 +281,9 @@ func (s *verifier) Clone() signatures.Verifier {
 }
 
 func publicKey(k *ecdsa.PublicKey) (*tpb.PublicKey, error) {
-	pubBytes, err := x509.MarshalPKIXPublicKey(k)
+	keyDER, err := x509.MarshalPKIXPublicKey(k)
 	if err != nil {
 		return nil, err
 	}
-	return &tpb.PublicKey{
-		KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
-			EcdsaVerifyingP256: pubBytes,
-		},
-	}, nil
+	return &tpb.PublicKey{Der: keyDER}, nil
 }

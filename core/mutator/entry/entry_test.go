@@ -63,11 +63,7 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 		if p == nil {
 			return nil, errors.New("no PEM block found")
 		}
-		authKeys[i] = &tpb.PublicKey{
-			KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
-				EcdsaVerifyingP256: p.Bytes,
-			},
-		}
+		authKeys[i] = &tpb.PublicKey{Der: p.Bytes}
 	}
 
 	return &tpb.Entry{

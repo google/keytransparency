@@ -66,15 +66,7 @@ message Entry {
 
 // PublicKey defines a key this domain uses to sign MapHeads with.
 message PublicKey {
-  // Key formats from Keyczar.
-  oneof key_type {
-    // ed25519 contains an ed25519 32 bytes key (<http://ed25519.cr.yp.to/>).
-    bytes ed25519 = 1;
-    // rsa_verifying_sha256_3072 contains a SHA256 RSA 3072-bit key.
-    bytes rsa_verifying_sha256_3072 = 2;
-    // ecdsa_verifying_p256 contains ECC P256 key.
-    bytes ecdsa_verifying_p256 = 3;
-  }
+  bytes der = 4;
 }
 
 // KeyValue is a map entry.

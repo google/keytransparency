@@ -140,10 +140,10 @@ func TestPublicKey(t *testing.T) {
 	if pkBytes == nil {
 		t.Fatalf("pem.Decode could not find a PEM block")
 	}
-	if got, want := sPK.GetEcdsaVerifyingP256(), pkBytes.Bytes; !reflect.DeepEqual(got, want) {
+	if got, want := sPK.GetDer(), pkBytes.Bytes; !reflect.DeepEqual(got, want) {
 		t.Errorf("sPK.GetEcdsaVerifyingP256()=%v, want %v", got, want)
 	}
-	if got, want := vPK.GetEcdsaVerifyingP256(), pkBytes.Bytes; !reflect.DeepEqual(got, want) {
+	if got, want := vPK.GetDer(), pkBytes.Bytes; !reflect.DeepEqual(got, want) {
 		t.Errorf("vPK.GetEcdsaVerifyingP256()=%v, want %v", got, want)
 	}
 }

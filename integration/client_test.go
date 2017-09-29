@@ -74,11 +74,7 @@ func createSigner(t *testing.T, privKey string) signatures.Signer {
 
 func getAuthorizedKey(pubKey string) *tpb.PublicKey {
 	pk, _ := pem.Decode([]byte(pubKey))
-	return &tpb.PublicKey{
-		KeyType: &tpb.PublicKey_EcdsaVerifyingP256{
-			EcdsaVerifyingP256: pk.Bytes,
-		},
-	}
+	return &tpb.PublicKey{Der: pk.Bytes}
 }
 
 func TestEmptyGetAndUpdate(t *testing.T) {

@@ -225,14 +225,11 @@ func (s *verifier) PublicKeyPEM() ([]byte, error) {
 	return pkPEM, nil
 }
 
+// TODO(gdbelvin): rename to ToPublicProto
 func publicKey(k *rsa.PublicKey) (*tpb.PublicKey, error) {
-	pubBytes, err := x509.MarshalPKIXPublicKey(k)
+	keyDER, err := x509.MarshalPKIXPublicKey(k)
 	if err != nil {
 		return nil, err
 	}
-	return &tpb.PublicKey{
-		KeyType: &tpb.PublicKey_RsaVerifyingSha256_3072{
-			RsaVerifyingSha256_3072: pubBytes,
-		},
-	}, nil
+	return &tpb.PublicKey{Der: keyDER}, nil
 }

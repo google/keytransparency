@@ -19,7 +19,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/p256"
@@ -76,14 +75,5 @@ func NewVerifierFromPEM(pemKey []byte) (signatures.Verifier, error) {
 
 // NewVerifierFromKey creates a verifier object from a PublicKey proto object.
 func NewVerifierFromKey(key *tpb.PublicKey) (signatures.Verifier, error) {
-	switch {
-	case key.GetEd25519() != nil:
-		return nil, signatures.ErrUnimplemented
-	case key.GetRsaVerifyingSha256_3072() != nil:
-		return NewVerifierFromBytes(key.GetRsaVerifyingSha256_3072())
-	case key.GetEcdsaVerifyingP256() != nil:
-		return NewVerifierFromBytes(key.GetEcdsaVerifyingP256())
-	default:
-		return nil, errors.New("public key not found")
-	}
+	return NewVerifierFromBytes(key.Der)
 }
