@@ -19,33 +19,34 @@ import (
 	"flag"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/golang/glog"
+	"github.com/google/keytransparency/cmd/serverutil"
+	"github.com/google/keytransparency/core/monitor/storage"
 	"github.com/google/keytransparency/impl/monitor"
+	"github.com/google/keytransparency/impl/monitor/client"
+
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto"
+	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keys/pem"
+	"github.com/google/trillian/merkle/hashers"
+
+	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	cmon "github.com/google/keytransparency/core/monitor"
-	"github.com/google/keytransparency/core/monitor/storage"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	"github.com/google/keytransparency/impl/monitor/client"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	tlogcli "github.com/google/trillian/client"
-	"github.com/google/trillian/crypto/keys/der"
-	_ "github.com/google/trillian/merkle/coniks" // Register coniks
-	"github.com/google/trillian/merkle/hashers"
+	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 )
 
@@ -79,20 +80,6 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	}
 
 	return gwmux, nil
-}
-
-// grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
-// connections or otherHandler otherwise. Copied from cockroachdb.
-func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// This is a partial recreation of gRPC's internal checks.
-		// https://github.com/grpc/grpc-go/blob/master/transport/handler_server.go#L62
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			grpcServer.ServeHTTP(w, r)
-		} else {
-			otherHandler.ServeHTTP(w, r)
-		}
-	})
 }
 
 func main() {
@@ -182,7 +169,7 @@ func main() {
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)
 	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
-		grpcHandlerFunc(grpcServer, mux)); err != nil {
+		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
 		glog.Errorf("ListenAndServeTLS: %v", err)
 	}
 }
