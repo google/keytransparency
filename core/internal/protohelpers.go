@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package internal gathers helpers used by code in ./core/... but not visible
+// outside core.
 package internal
 
 import (
