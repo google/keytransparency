@@ -17,7 +17,6 @@ package entry
 import (
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
 	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/crypto/sigpb"
 
 	"github.com/golang/protobuf/proto"
 
@@ -72,33 +70,6 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 		Commitment:     commitment,
 		AuthorizedKeys: authKeys,
 		Previous:       nil,
-	}, nil
-}
-
-func prepareMutation(key []byte, newEntry *tpb.Entry, previous []byte, signers []signatures.Signer) (*tpb.SignedKV, error) {
-	newEntry.Previous = previous
-	entryData, err := proto.Marshal(newEntry)
-	if err != nil {
-		return nil, fmt.Errorf("Marshal(%v)=%v", newEntry, err)
-	}
-	kv := &tpb.KeyValue{
-		Key:   key,
-		Value: entryData,
-	}
-
-	// Populate signatures map.
-	sigs := make(map[string]*sigpb.DigitallySigned)
-	for _, signer := range signers {
-		sig, err := signer.Sign(*kv)
-		if err != nil {
-			return nil, fmt.Errorf("signerSign() failed: %v", err)
-		}
-		sigs[signer.KeyID()] = sig
-	}
-
-	return &tpb.SignedKV{
-		KeyValue:   kv,
-		Signatures: sigs,
 	}, nil
 }
 

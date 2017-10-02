@@ -23,7 +23,6 @@ import (
 	"github.com/google/trillian/crypto/sigpb"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
-	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
@@ -95,9 +94,11 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 	}
 
 	// Check authorization.
+	skv := *signedkv
+	skv.Signatures = nil
 	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(),
 		m.entry.GetAuthorizedKeys(),
-		signedkv.GetKeyValue(),
+		skv,
 		signedkv.GetSignatures()); err != nil {
 		return nil, err
 	}
@@ -106,7 +107,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 		UserId: m.userID,
 		AppId:  m.appID,
 		EntryUpdate: &tpb.EntryUpdate{
-			Update: signedkv,
+			Mutation: signedkv,
 			Committed: &tpb.Committed{
 				Key:  m.nonce,
 				Data: m.data,
@@ -117,26 +118,20 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 
 // Sign produces the SignedKV
 func (m *Mutation) sign(signers []signatures.Signer) (*tpb.SignedKV, error) {
-	entryData, err := proto.Marshal(m.entry)
-	if err != nil {
-		return nil, err
-	}
-	kv := &tpb.KeyValue{
-		Key:   m.index,
-		Value: entryData,
+	skv := &tpb.SignedKV{
+		Index: m.index,
+		Value: m.entry,
 	}
 
 	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
-		sig, err := signer.Sign(kv)
+		sig, err := signer.Sign(skv)
 		if err != nil {
 			return nil, err
 		}
 		sigs[signer.KeyID()] = sig
 	}
 
-	return &tpb.SignedKV{
-		KeyValue:   kv,
-		Signatures: sigs,
-	}, nil
+	skv.Signatures = sigs
+	return skv, nil
 }

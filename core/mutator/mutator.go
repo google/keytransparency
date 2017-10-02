@@ -54,7 +54,7 @@ var (
 type Mutator interface {
 	// Mutate verifies that this is a valid mutation for this item and
 	// applies mutation to value.
-	Mutate(value, mutation proto.Message) ([]byte, error)
+	Mutate(value, mutation proto.Message) (proto.Message, error)
 }
 
 // Mutation reads and writes mutations to the database.

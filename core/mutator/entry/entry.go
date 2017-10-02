@@ -16,6 +16,8 @@
 package entry
 
 import (
+	"fmt"
+
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
@@ -41,6 +43,17 @@ func FromLeafValue(value []byte) (*tpb.Entry, error) {
 	// For the very first mutation we will have
 	// resp.LeafProof.MapLeaf.LeafValue=nil.
 	return nil, nil
+}
+
+// ToLeafValue converts the update object into a serialized object to store in the map.
+func ToLeafValue(update proto.Message) ([]byte, error) {
+	e, ok := update.(*tpb.Entry)
+	if !ok {
+		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
+		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
+	}
+
+	return proto.Marshal(e)
 }
 
 func verifiersFromKeys(keys []*keyspb.PublicKey) (map[string]signatures.Verifier, error) {
