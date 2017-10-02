@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
+	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
