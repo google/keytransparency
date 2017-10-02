@@ -16,4 +16,4 @@
 
 //go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. sequencer_v1_service.proto
 
-package sequencer_v1_service
+package sequencer_v1

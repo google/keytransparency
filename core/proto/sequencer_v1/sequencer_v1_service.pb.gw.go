@@ -7,7 +7,7 @@ Package sequencer_v1_service is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package sequencer_v1_service
+package sequencer_v1
 
 import (
 	"io"

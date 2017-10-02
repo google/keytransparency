@@ -32,7 +32,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/kr/pretty"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
