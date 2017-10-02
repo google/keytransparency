@@ -14,7 +14,7 @@ It is generated from these files:
 
 It has these top-level messages:
 */
-package mutation_v1_service
+package mutation_v1
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"

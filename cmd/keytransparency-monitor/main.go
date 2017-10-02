@@ -43,7 +43,7 @@ import (
 	cmon "github.com/google/keytransparency/core/monitor"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1"
-	mupb "github.com/google/keytransparency/core/proto/mutation_v1_service"
+	mupb "github.com/google/keytransparency/core/proto/mutation_v1"
 	tlogcli "github.com/google/trillian/client"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher

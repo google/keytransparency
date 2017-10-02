@@ -7,7 +7,7 @@ Package mutation_v1_service is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package mutation_v1_service
+package mutation_v1
 
 import (
 	"io"
