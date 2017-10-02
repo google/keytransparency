@@ -25,7 +25,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
 	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/crypto/sigpb"
 
 	"github.com/golang/protobuf/proto"
 
