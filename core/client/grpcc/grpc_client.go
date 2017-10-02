@@ -43,8 +43,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (

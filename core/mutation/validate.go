@@ -17,7 +17,7 @@ package mutation
 import (
 	"errors"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 const (

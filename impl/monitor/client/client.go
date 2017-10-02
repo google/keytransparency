@@ -26,7 +26,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 

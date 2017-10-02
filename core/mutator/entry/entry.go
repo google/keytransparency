@@ -26,7 +26,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated

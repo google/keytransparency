@@ -32,7 +32,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	authzpb "github.com/google/keytransparency/core/proto/authorization"
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	"github.com/google/trillian"
 )
 

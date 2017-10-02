@@ -14,7 +14,7 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/keytransparency_v1"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"golang.org/x/net/context"
@@ -33,7 +33,7 @@ var (
 )
 
 func request_MutationService_GetMutations_0(ctx context.Context, marshaler runtime.Marshaler, client MutationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.GetMutationsRequest
+	var protoReq keytransparency_v1.GetMutationsRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -68,7 +68,7 @@ var (
 )
 
 func request_MutationService_GetMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client MutationServiceClient, req *http.Request, pathParams map[string]string) (MutationService_GetMutationsStreamClient, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.GetMutationsRequest
+	var protoReq keytransparency_v1.GetMutationsRequest
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MutationService_GetMutationsStream_0); err != nil {

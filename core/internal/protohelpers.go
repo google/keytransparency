@@ -22,7 +22,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	"github.com/google/trillian"
 )
 

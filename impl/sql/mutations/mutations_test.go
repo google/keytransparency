@@ -25,7 +25,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/testutil"
 	_ "github.com/mattn/go-sqlite3"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 const mapID = 0

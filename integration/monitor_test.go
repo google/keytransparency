@@ -30,8 +30,8 @@ import (
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keyspb"
 
+	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
-	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 
