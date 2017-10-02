@@ -41,8 +41,8 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	cmon "github.com/google/keytransparency/core/monitor"
+	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	tlogcli "github.com/google/trillian/client"

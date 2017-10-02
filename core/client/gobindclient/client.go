@@ -35,8 +35,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
 )

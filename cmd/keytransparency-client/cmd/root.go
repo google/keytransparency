@@ -39,9 +39,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
+	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
-	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	_ "github.com/spf13/viper/remote"               // Enable remote configs
