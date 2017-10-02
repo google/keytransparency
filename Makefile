@@ -33,10 +33,10 @@ client:
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.
 test: main
-	govendor test +local
+	go test ./...
 
 coverage: main
-	govendor test +local -cover 
+	go test ./... -cover 
 
 check:
 	gometalinter --config=metalinter.json ./...

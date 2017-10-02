@@ -2,5 +2,5 @@
 
 set -e
 mkdir -p out
-go list ./... | grep -v vendor | parallel -k go test -coverprofile=out/{#} {}
+go list ./... | parallel -k go test -coverprofile=out/{#} {}
 cat out/* > coverage.txt
