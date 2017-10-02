@@ -38,7 +38,7 @@ type GetMonitoringRequest struct {
 	// epoch specifies the for which the monitoring results will
 	// be returned (epochs start at 1).
 	Epoch int64 `protobuf:"varint,1,opt,name=epoch" json:"epoch,omitempty"`
-	// ktURL is the URL of the keytransparency server for which the monitoring
+	// kt_URL is the URL of the keytransparency server for which the monitoring
 	// result will be returned.
 	Kt_URL string `protobuf:"bytes,2,opt,name=kt_URL,json=ktURL" json:"kt_URL,omitempty"`
 }

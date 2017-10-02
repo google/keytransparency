@@ -27,7 +27,7 @@ message GetMonitoringRequest {
   // be returned (epochs start at 1).
   int64 epoch = 1;
 
-  // ktURL is the URL of the keytransparency server for which the monitoring
+  // kt_URL is the URL of the keytransparency server for which the monitoring
   // result will be returned.
   string kt_URL = 2;
 }
