@@ -45,7 +45,7 @@ import (
 
 	cmutation "github.com/google/keytransparency/core/mutation"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	mpb "github.com/google/keytransparency/core/proto/mutation_v1_service"
 	stestonly "github.com/google/trillian/storage/testonly"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )

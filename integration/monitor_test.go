@@ -31,7 +31,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	mupb "github.com/google/keytransparency/core/proto/mutation_v1_service"
 )
 
 const (
