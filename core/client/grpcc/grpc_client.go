@@ -33,16 +33,18 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
+	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/hashers"
+
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-	"github.com/google/trillian"
 )
 
 const (
@@ -250,7 +252,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 	if err != nil {
 		return nil, fmt.Errorf("entry.FromLeafValue: %v", err)
 	}
-	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetUpdate()); err != nil {
+	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetMutation()); err != nil {
 		return nil, fmt.Errorf("Mutate: %v", err)
 	}
 
@@ -277,8 +279,16 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, opts ..
 		return fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
+	// Mutations are no longer stable serialized byte slices, so we need to use
+	// an equality operation on the proto itself.
+	leafValue, err := entry.FromLeafValue(
+		updateResp.GetProof().GetLeafProof().GetLeaf().GetLeafValue())
+	if err != nil {
+		return fmt.Errorf("failed to decode current entry: %v", err)
+	}
+
 	// Check if the response is a replay.
-	if got, want := updateResp.GetProof().GetLeafProof().Leaf.LeafValue, req.GetEntryUpdate().GetUpdate().GetKeyValue().GetValue(); !bytes.Equal(got, want) {
+	if got, want := leafValue, req.GetEntryUpdate().GetMutation().GetValue(); !proto.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

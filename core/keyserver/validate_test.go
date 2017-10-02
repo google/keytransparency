@@ -23,8 +23,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
-	"github.com/golang/protobuf/proto"
-
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
@@ -99,19 +97,17 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		{false, userID, index, commitment, nil}, // Incorrect key
 		{true, userID, index, commitment, nonce},
 	} {
-		entry := &tpb.Entry{
-			Commitment: tc.commitment,
-		}
-		entryData, _ := proto.Marshal(entry)
-		kv := &tpb.KeyValue{Key: tc.index[:], Value: entryData}
 		signedkv := &tpb.SignedKV{
-			KeyValue: kv,
+			Index: tc.index[:],
+			Value: &tpb.Entry{
+				Commitment: tc.commitment,
+			},
 		}
 		req := &tpb.UpdateEntryRequest{
 			UserId: tc.userID,
 			AppId:  appID,
 			EntryUpdate: &tpb.EntryUpdate{
-				Update: signedkv,
+				Mutation: signedkv,
 				Committed: &tpb.Committed{
 					Key:  tc.nonce,
 					Data: profileData,

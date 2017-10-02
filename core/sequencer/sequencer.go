@@ -232,7 +232,7 @@ func (s *Sequencer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian
 
 	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
-		index := m.GetKeyValue().GetKey()
+		index := m.GetIndex()
 		var oldValue *tpb.Entry // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
 			var err error
@@ -248,10 +248,15 @@ func (s *Sequencer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian
 			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.
 		}
+		leafValue, err := entry.ToLeafValue(newValue)
+		if err != nil {
+			glog.Warningf("ToLeafValue(): %v", err)
+			continue
+		}
 
 		retMap[toArray(index)] = &trillian.MapLeaf{
 			Index:     index,
-			LeafValue: newValue,
+			LeafValue: leafValue,
 		}
 	}
 	// Convert return map back into a list.
@@ -300,7 +305,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	// Get current leaf values.
 	indexes := make([][]byte, 0, len(mutations))
 	for _, m := range mutations {
-		indexes = append(indexes, m.KeyValue.Key)
+		indexes = append(indexes, m.Index)
 	}
 	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v",
 		len(mutations), len(indexes))
