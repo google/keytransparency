@@ -116,7 +116,7 @@ recipient has installed.
 
 ## API Reference 
 
-*   [Proto Definitions](../impl/proto/keytransparency_v1_service/keytransparency_v1_service.proto)
+*   [Proto Definitions](../core/proto/keytransparency_v1/keytransparency_v1.proto)
 *   [HTTP API](http_apis.md)
 
 ## Multiple Apps and Keys 

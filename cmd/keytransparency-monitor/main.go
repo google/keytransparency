@@ -41,8 +41,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	cmon "github.com/google/keytransparency/core/monitor"
-	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	mopb "github.com/google/keytransparency/impl/proto/monitor_v1_service"
 	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	tlogcli "github.com/google/trillian/client"
@@ -215,8 +214,8 @@ func transportCreds(ktURL string, ktCert string, insecure bool) (credentials.Tra
 
 // config selects a source for and returns the client configuration.
 func getTrees(ctx context.Context, cc *grpc.ClientConn) (logTree *trillian.Tree, mapTree *trillian.Tree, err error) {
-	ktClient := spb.NewKeyTransparencyServiceClient(cc)
-	resp, err2 := ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
+	ktClient := pb.NewKeyTransparencyServiceClient(cc)
+	resp, err2 := ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{})
 	if err2 != nil {
 		err = err2
 		return

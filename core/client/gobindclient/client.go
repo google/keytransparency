@@ -35,8 +35,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
 )
@@ -85,11 +84,11 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 		return fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
 
-	ktClient := spb.NewKeyTransparencyServiceClient(cc)
+	ktClient := pb.NewKeyTransparencyServiceClient(cc)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	config, err := ktClient.GetDomainInfo(ctx, &tpb.GetDomainInfoRequest{})
+	config, err := ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{})
 	if err != nil {
 		return fmt.Errorf("Error getting config: %v", err)
 	}

@@ -43,8 +43,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 const (
@@ -80,7 +79,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli        spb.KeyTransparencyServiceClient
+	cli        pb.KeyTransparencyServiceClient
 	vrf        vrf.PublicKey
 	kt         *kt.Verifier
 	mutator    mutator.Mutator
@@ -90,7 +89,7 @@ type Client struct {
 }
 
 // NewFromConfig creates a new client from a config
-func NewFromConfig(cc *grpc.ClientConn, config *tpb.GetDomainInfoResponse) (*Client, error) {
+func NewFromConfig(cc *grpc.ClientConn, config *pb.GetDomainInfoResponse) (*Client, error) {
 	// Log Hasher.
 	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
 	if err != nil {
@@ -132,7 +131,7 @@ func New(cc *grpc.ClientConn,
 	mapHasher hashers.MapHasher,
 	logVerifier client.LogVerifier) *Client {
 	return &Client{
-		cli:        spb.NewKeyTransparencyServiceClient(cc),
+		cli:        pb.NewKeyTransparencyServiceClient(cc),
 		vrf:        vrf,
 		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),
@@ -143,7 +142,7 @@ func New(cc *grpc.ClientConn,
 
 // GetEntry returns an entry if it exists, and nil if it does not.
 func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grpc.CallOption) ([]byte, *trillian.SignedMapRoot, error) {
-	e, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
+	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
 		UserId:        userID,
 		AppId:         appID,
 		FirstTreeSize: c.trusted.TreeSize,
@@ -182,7 +181,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 	epochsReceived := int64(0)
 	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
-		resp, err := c.cli.ListEntryHistory(ctx, &tpb.ListEntryHistoryRequest{
+		resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
 			UserId:   userID,
 			AppId:    appID,
 			Start:    start,
@@ -228,8 +227,8 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 // times depending on RetryCount.
 func (c *Client) Update(ctx context.Context, userID, appID string, profileData []byte,
 	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey,
-	opts ...grpc.CallOption) (*tpb.UpdateEntryRequest, error) {
-	getResp, err := c.cli.GetEntry(ctx, &tpb.GetEntryRequest{
+	opts ...grpc.CallOption) (*pb.UpdateEntryRequest, error) {
+	getResp, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
 		UserId:        userID,
 		AppId:         appID,
 		FirstTreeSize: c.trusted.TreeSize,
@@ -266,7 +265,7 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 }
 
 // Retry will take a pre-fabricated request and send it again.
-func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, opts ...grpc.CallOption) error {
+func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest, opts ...grpc.CallOption) error {
 	Vlog.Printf("Sending Update request...")
 	updateResp, err := c.cli.UpdateEntry(ctx, req, opts...)
 	if err != nil {
