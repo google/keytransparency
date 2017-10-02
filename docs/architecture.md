@@ -55,7 +55,7 @@ to active monitors over a streaming gRPC channel.
 
 # Mutation
 Mutations in Key Transparency are defined as a signed key-value object. 
-- The Key must the the valid index associated with the user's identifier. 
+- The Key must be the valid index associated with the user's identifier.
 - The Value is an object that contains 
    - A cryptographic commitment to the user's data.
    - The set of public keys that are allowed to update this account.

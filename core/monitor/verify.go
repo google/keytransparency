@@ -86,7 +86,7 @@ func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error
 		errList = append(errList, ErrInvalidLogInclusion)
 	}
 
-	// copy of singed map root
+	// copy of signed map root
 	smr := *in.GetSmr()
 	// reset to the state before it was signed:
 	smr.Signature = nil

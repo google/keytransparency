@@ -35,7 +35,7 @@ type MonitoringResult struct {
 	// Smr contains the map root signed by the monitor in case all verifications
 	// have passed.
 	Smr *trillian.SignedMapRoot
-	// Seen is the the unix timestamp at which the mutations response has been
+	// Seen is the unix timestamp at which the mutations response has been
 	// received.
 	Seen int64
 	// Errors contains a string representation of the verifications steps that
