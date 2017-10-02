@@ -32,6 +32,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/kr/pretty"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
@@ -151,6 +152,8 @@ func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grp
 		return nil, nil, err
 	}
 
+	// Generate test vectors by using the following line:
+	// fmt.Printf("%# v", pretty.Formatter(e))
 	if err := c.kt.VerifyGetEntryResponse(ctx, userID, appID, &c.trusted, e); err != nil {
 		return nil, nil, err
 	}
