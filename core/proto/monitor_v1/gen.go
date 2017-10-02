@@ -14,4 +14,4 @@
 
 //go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis --go_out=:. monitor_v1_types.proto
 
-package monitor_v1_types
+package monitor_v1

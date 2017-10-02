@@ -14,7 +14,7 @@ It has these top-level messages:
 	GetMonitoringRequest
 	GetMonitoringResponse
 */
-package monitor_v1_types
+package monitor_v1
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"

@@ -14,7 +14,7 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/proto/monitor_v1_types"
+	"github.com/google/keytransparency/core/proto/monitor_v1"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"golang.org/x/net/context"
@@ -33,7 +33,7 @@ var (
 )
 
 func request_MonitorService_GetSignedMapRoot_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq monitor_v1_types.GetMonitoringRequest
+	var protoReq monitor_v1.GetMonitoringRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -64,7 +64,7 @@ func request_MonitorService_GetSignedMapRoot_0(ctx context.Context, marshaler ru
 }
 
 func request_MonitorService_GetSignedMapRootByRevision_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq monitor_v1_types.GetMonitoringRequest
+	var protoReq monitor_v1.GetMonitoringRequest
 	var metadata runtime.ServerMetadata
 
 	var (
