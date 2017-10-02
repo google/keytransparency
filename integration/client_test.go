@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
+	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"

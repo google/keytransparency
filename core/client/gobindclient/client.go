@@ -27,7 +27,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
+	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/client/multiWriter"
 
