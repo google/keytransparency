@@ -100,11 +100,12 @@ func TestCheckMutation(t *testing.T) {
 		m.entry.Previous = tc.previous
 		mutation, err := m.sign(tc.signers)
 		if err != nil {
-			t.Fatalf("prepareMutation(%v, %v, %v)=%v", tc.key, tc.newEntry, tc.previous, err)
+			t.Errorf("mutation.sign(%v): %v", tc.signers, err)
+			continue
 		}
 
 		if _, got := New().Mutate(tc.oldEntry, mutation); got != tc.err {
-			t.Errorf("%d Mutate(%v, %v)=%v, want %v", i, tc.oldEntry, mutation, got, tc.err)
+			t.Errorf("%d Mutate(%v, %v): %v, want %v", i, tc.oldEntry, mutation, got, tc.err)
 		}
 	}
 }

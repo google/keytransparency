@@ -20,9 +20,10 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
+
+	"github.com/golang/protobuf/proto"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
