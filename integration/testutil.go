@@ -20,8 +20,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/google/keytransparency/cmd/keytransparency-client/grpcc"
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
