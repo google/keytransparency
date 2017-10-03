@@ -53,14 +53,12 @@ func TestCreateAndVerify(t *testing.T) {
 		pubKeys []*keyspb.PublicKey
 		signers []signatures.Signer
 		data    []byte
-		wantErr bool
 	}{
 		{
 			old:     nil,
-			pubKeys: []*keyspb.PublicKey{mustPublicKey(testPubKey1)},
+			pubKeys: mustPublicKeys([]string{testPubKey1}),
 			signers: []signatures.Signer{createSigner(t, testPrivKey1)},
 			data:    []byte("foo"),
-			wantErr: false,
 		},
 	} {
 		index := []byte{}
@@ -76,12 +74,12 @@ func TestCreateAndVerify(t *testing.T) {
 			t.Errorf("SetCommitment(%v): %v", tc.data, err)
 			continue
 		}
-		err = m.ReplaceAuthorizedKeys(tc.pubKeys)
-		if got, want := err != nil, tc.wantErr; got != want {
-			t.Errorf("ReplaceAuthorizedKeys(%v): %v, wantErr: %v", tc.pubKeys, got, want)
+		if err = m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
+			t.Errorf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
+			continue
 		}
 		update, err := m.SerializeAndSign(tc.signers)
-		if got, want := err != nil, tc.wantErr; got != want {
+		if err != nil {
 			t.Errorf("SerializeAndSign(%v): %v", tc.signers, err)
 			continue
 		}
@@ -95,9 +93,7 @@ func TestCreateAndVerify(t *testing.T) {
 		if _, err := f.Mutate(oldValue, update.GetEntryUpdate().GetMutation()); err != nil {
 			t.Errorf("Mutate(%v): %v", update.GetEntryUpdate().GetMutation(), err)
 		}
-
 	}
-
 }
 
 func createSigner(t *testing.T, privKey string) signatures.Signer {

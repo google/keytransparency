@@ -92,7 +92,8 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 	if err := verifyKeys(oldEntry.GetValue().GetAuthorizedKeys(),
 		newEntry.GetAuthorizedKeys(),
 		kv,
-		updated.GetSignatures()); err != nil {
+		updated.GetSignatures(),
+	); err != nil {
 		return nil, err
 	}
 
