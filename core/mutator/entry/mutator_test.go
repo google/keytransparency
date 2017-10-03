@@ -23,7 +23,7 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 func TestCheckMutation(t *testing.T) {
@@ -70,8 +70,8 @@ func TestCheckMutation(t *testing.T) {
 
 	for i, tc := range []struct {
 		key      []byte
-		oldEntry *tpb.Entry
-		newEntry *tpb.Entry
+		oldEntry *pb.Entry
+		newEntry *pb.Entry
 		previous []byte
 		signers  []signatures.Signer
 		err      error
@@ -80,7 +80,7 @@ func TestCheckMutation(t *testing.T) {
 		{largeKey, entryData1, entryData2, hashEntry1[:], nil, mutator.ErrSize}, // Large mutation
 		{key, entryData1, entryData2, nil, nil, mutator.ErrPreviousHash},        // Invalid previous entry hash
 		{key, nil, entryData1, nil, nil, mutator.ErrPreviousHash},               // Very first mutation, invalid previous entry hash
-		{key, nil, &tpb.Entry{}, nil, nil, mutator.ErrPreviousHash},             // Very first mutation, invalid previous entry hash
+		{key, nil, &pb.Entry{}, nil, nil, mutator.ErrPreviousHash},              // Very first mutation, invalid previous entry hash
 		{key, nil, emptyEntryData, nilHash[:], signers1, nil},                   // Very first mutation, empty commitment, working case
 		{key, nil, entryData1, nilHash[:], signers1, nil},                       // Very first mutation, working case
 		{key, entryData1, entryData2, hashEntry1[:], signers3, nil},             // Second mutation, working case

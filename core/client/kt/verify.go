@@ -33,7 +33,7 @@ import (
 	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 var (
@@ -73,9 +73,9 @@ func New(vrf vrf.PublicKey,
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID string,
-	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
+	trusted *trillian.SignedLogRoot, in *pb.GetEntryResponse) error {
 	// Unpack the merkle tree leaf value.
-	entry := new(tpb.Entry)
+	entry := new(pb.Entry)
 	if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
 		return err
 	}

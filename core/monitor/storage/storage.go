@@ -17,7 +17,7 @@ package storage
 import (
 	"errors"
 
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 	"github.com/google/trillian"
 )
 
@@ -43,7 +43,7 @@ type MonitoringResult struct {
 	Errors []error
 	// Response contains the original mutations API response from the server
 	// in case at least one verification step failed.
-	Response *ktpb.GetMutationsResponse
+	Response *pb.GetMutationsResponse
 }
 
 // Storage is an in-memory store for the monitoring results.
@@ -64,7 +64,7 @@ func New() *Storage {
 func (s *Storage) Set(epoch int64,
 	seenNanos int64,
 	smr *trillian.SignedMapRoot,
-	response *ktpb.GetMutationsResponse,
+	response *pb.GetMutationsResponse,
 	errorList []error) error {
 	// see if we already processed this epoch:
 	if _, ok := s.store[epoch]; ok {

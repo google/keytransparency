@@ -24,7 +24,7 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 // Mutation provides APIs for manipulating entries.
@@ -33,8 +33,8 @@ type Mutation struct {
 	index         []byte
 	data, nonce   []byte
 
-	prevEntry *tpb.Entry
-	entry     *tpb.Entry
+	prevEntry *pb.Entry
+	entry     *pb.Entry
 }
 
 // NewMutation creates a mutation object from a previous value which can be modified.
@@ -55,7 +55,7 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		appID:     appID,
 		index:     index,
 		prevEntry: prevEntry,
-		entry: &tpb.Entry{
+		entry: &pb.Entry{
 			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
 			Previous:       hash[:],
 			Commitment:     prevEntry.GetCommitment(),
@@ -87,7 +87,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntryRequest, error) {
 	signedkv, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -103,12 +103,12 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 		return nil, err
 	}
 
-	return &tpb.UpdateEntryRequest{
+	return &pb.UpdateEntryRequest{
 		UserId: m.userID,
 		AppId:  m.appID,
-		EntryUpdate: &tpb.EntryUpdate{
+		EntryUpdate: &pb.EntryUpdate{
 			Mutation: signedkv,
-			Committed: &tpb.Committed{
+			Committed: &pb.Committed{
 				Key:  m.nonce,
 				Data: m.data,
 			},
@@ -117,8 +117,8 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 }
 
 // Sign produces the SignedKV
-func (m *Mutation) sign(signers []signatures.Signer) (*tpb.SignedKV, error) {
-	skv := &tpb.SignedKV{
+func (m *Mutation) sign(signers []signatures.Signer) (*pb.SignedKV, error) {
+	skv := &pb.SignedKV{
 		Index: m.index,
 		Value: m.entry,
 	}

@@ -28,7 +28,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 const (
@@ -56,7 +56,7 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
+func createEntry(commitment []byte, pkeys []string) (*pb.Entry, error) {
 	authKeys := make([]*keyspb.PublicKey, len(pkeys))
 	for i, key := range pkeys {
 		p, _ := pem.Decode([]byte(key))
@@ -66,7 +66,7 @@ func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
 		authKeys[i] = &keyspb.PublicKey{Der: p.Bytes}
 	}
 
-	return &tpb.Entry{
+	return &pb.Entry{
 		Commitment:     commitment,
 		AuthorizedKeys: authKeys,
 		Previous:       nil,
@@ -87,14 +87,14 @@ func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
 }
 
 func TestFromLeafValue(t *testing.T) {
-	entry := &tpb.Entry{Commitment: []byte{1, 2}}
+	entry := &pb.Entry{Commitment: []byte{1, 2}}
 	entryB, _ := proto.Marshal(entry)
 	for i, tc := range []struct {
 		leafVal []byte
-		want    *tpb.Entry
+		want    *pb.Entry
 		wantErr bool
 	}{
-		{[]byte{}, &tpb.Entry{}, false},          // empty leaf bytes -> return 'empty' proto, no error
+		{[]byte{}, &pb.Entry{}, false},           // empty leaf bytes -> return 'empty' proto, no error
 		{nil, nil, false},                        // non-existing leaf -> return nil, no error
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
 		{entryB, entry, false},                   // valid leaf

@@ -14,12 +14,12 @@ It is generated from these files:
 
 It has these top-level messages:
 */
-package mutation_v1_service
+package mutation_v1
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import keytransparency_v1_types "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+import keytransparency_v1_types "github.com/google/keytransparency/core/proto/keytransparency_v1"
 import _ "google.golang.org/genproto/googleapis/api/annotations"
 
 import (

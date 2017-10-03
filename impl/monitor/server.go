@@ -29,7 +29,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/google/keytransparency/core/monitor/storage"
-	mopb "github.com/google/keytransparency/core/proto/monitor_v1_types"
+	mopb "github.com/google/keytransparency/core/proto/monitor_v1"
 )
 
 var (

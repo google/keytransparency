@@ -21,7 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 const (
@@ -80,7 +80,7 @@ func New(db *sql.DB, mapID int64) (*Commitments, error) {
 // WriteCommitment saves a commitment to the database.
 // Writes if the same commitment value succeeds.
 func (c *Commitments) Write(ctx context.Context, commitment, data, nonce []byte) (returnErr error) {
-	committed := &tpb.Committed{
+	committed := &pb.Committed{
 		Key:  nonce,
 		Data: data,
 	}
@@ -124,7 +124,7 @@ func (c *Commitments) Write(ctx context.Context, commitment, data, nonce []byte)
 	case switchErr != nil:
 		return switchErr
 	default: // switchErr == nil
-		var c tpb.Committed
+		var c pb.Committed
 		if err := proto.Unmarshal(value, &c); err != nil {
 			return err
 		}
@@ -151,7 +151,7 @@ func (c *Commitments) Read(ctx context.Context, commitment []byte) (data, nonce 
 		return nil, nil, err
 	}
 
-	var committed tpb.Committed
+	var committed pb.Committed
 	if err := proto.Unmarshal(value, &committed); err != nil {
 		return nil, nil, err
 	}
