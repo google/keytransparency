@@ -15,8 +15,6 @@
 package entry
 
 import (
-	"encoding/pem"
-	"errors"
 	"reflect"
 	"testing"
 
@@ -24,6 +22,8 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
+	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keyspb"
 
 	"github.com/golang/protobuf/proto"
@@ -56,21 +56,24 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func createEntry(commitment []byte, pkeys []string) (*pb.Entry, error) {
-	authKeys := make([]*keyspb.PublicKey, len(pkeys))
-	for i, key := range pkeys {
-		p, _ := pem.Decode([]byte(key))
-		if p == nil {
-			return nil, errors.New("no PEM block found")
-		}
-		authKeys[i] = &keyspb.PublicKey{Der: p.Bytes}
+func mustPublicKey(pubPEM string) *keyspb.PublicKey {
+	pubKey, err := pem.UnmarshalPublicKey(pubPEM)
+	if err != nil {
+		panic(err)
 	}
+	p, err := der.ToPublicProto(pubKey)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
 
-	return &pb.Entry{
-		Commitment:     commitment,
-		AuthorizedKeys: authKeys,
-		Previous:       nil,
-	}, nil
+func mustPublicKeys(pubPEMs []string) []*keyspb.PublicKey {
+	authKeys := make([]*keyspb.PublicKey, len(pubPEMs))
+	for i, key := range pubPEMs {
+		authKeys[i] = mustPublicKey(key)
+	}
+	return authKeys
 }
 
 func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
@@ -87,14 +90,14 @@ func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
 }
 
 func TestFromLeafValue(t *testing.T) {
-	entry := &pb.Entry{Commitment: []byte{1, 2}}
+	entry := &pb.SignedKV{Value: &pb.Entry{Commitment: []byte{1, 2}}}
 	entryB, _ := proto.Marshal(entry)
 	for i, tc := range []struct {
 		leafVal []byte
-		want    *pb.Entry
+		want    *pb.SignedKV
 		wantErr bool
 	}{
-		{[]byte{}, &pb.Entry{}, false},           // empty leaf bytes -> return 'empty' proto, no error
+		{[]byte{}, &pb.SignedKV{}, false},        // empty leaf bytes -> return 'empty' proto, no error
 		{nil, nil, false},                        // non-existing leaf -> return nil, no error
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
 		{entryB, entry, false},                   // valid leaf

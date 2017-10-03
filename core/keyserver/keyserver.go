@@ -25,7 +25,6 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/crypto/keys/der"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -139,19 +138,18 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 
 	var committed *pb.Committed
 	if leaf != nil {
-		entry := pb.Entry{}
-		if err := proto.Unmarshal(leaf, &entry); err != nil {
-			glog.Errorf("Error unmarshaling entry: %v", err)
-			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
+		e, err := entry.FromLeafValue(leaf)
+		if err != nil {
+			return nil, grpc.Errorf(codes.Internal, "Cannot decode leaf value")
 		}
 
-		data, nonce, err := s.committer.Read(ctx, entry.Commitment)
+		data, nonce, err := s.committer.Read(ctx, e.GetValue().GetCommitment())
 		if err != nil {
 			glog.Errorf("Cannot read committed value: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
 		}
 		if data == nil {
-			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", entry.Commitment)
+			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", e.GetValue().GetCommitment())
 		}
 		committed = &pb.Committed{
 			Key:  nonce,

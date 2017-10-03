@@ -233,7 +233,7 @@ func (s *Sequencer) applyMutations(mutations []*pb.SignedKV, leaves []*trillian.
 	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
 		index := m.GetIndex()
-		var oldValue *pb.Entry // If no map leaf was found, oldValue will be nil.
+		var oldValue *pb.SignedKV // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
 			var err error
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())

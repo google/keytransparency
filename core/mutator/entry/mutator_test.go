@@ -30,82 +30,155 @@ func TestCheckMutation(t *testing.T) {
 	// The passed commitment to createEntry is a dummy value. It is needed to
 	// make the two entries (entryData1 and entryData2) different, otherwise
 	// it is not possible to test all cases.
-	entryData1, err := createEntry([]byte{1}, []string{testPubKey1})
-	if err != nil {
-		t.Fatalf("createEntry()=%v", err)
-	}
-	missingKeyEntryData1, err := createEntry([]byte{1}, []string{})
-	if err != nil {
-		t.Fatalf("createEntry()=%v", err)
-	}
-	entryData2, err := createEntry([]byte{2}, []string{testPubKey2})
-	if err != nil {
-		t.Fatalf("createEntry()=%v", err)
-	}
-	emptyEntryData, err := createEntry([]byte{}, []string{testPubKey1})
-	if err != nil {
-		t.Fatalf("createEntry()=%v", err)
-	}
-	missingKeyEntryData2, err := createEntry([]byte{2}, []string{testPubKey1})
-	if err != nil {
-		t.Fatalf("createEntry()=%v", err)
-	}
 	key := []byte{0}
-	largeKey := bytes.Repeat(key, mutator.MaxMutationSize)
-
-	// Calculate hashes.
-	// nilHash is used as the previous hash value when submitting the very
-	// first mutation.
 	nilHash := objecthash.ObjectHash(nil)
-	// Set hash for first entries correctly, then hash it for the next entry:
-	entryData1.Previous = nilHash[:]
-	hashEntry1 := objecthash.ObjectHash(entryData1)
-	missingKeyEntryData1.Previous = nilHash[:]
-	hashMissingKeyEntry1 := objecthash.ObjectHash(missingKeyEntryData1)
 
-	// Create signers.
-	signers1 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)})
-	signers2 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey2)})
-	signers3 := signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)})
+	entryData1 := &pb.SignedKV{
+		Index: key,
+		Value: &pb.Entry{
+			Commitment:     []byte{1},
+			AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
+			Previous:       nilHash[:],
+		},
+	}
+	hashEntry1 := objecthash.ObjectHash(entryData1)
+
+	entryData2 := &pb.SignedKV{
+		Index: key,
+		Value: &pb.Entry{
+			Commitment:     []byte{2},
+			AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+			Previous:       hashEntry1[:],
+		},
+	}
 
 	for i, tc := range []struct {
-		key      []byte
-		oldEntry *pb.Entry
-		newEntry *pb.Entry
-		previous []byte
+		mutation *Mutation
 		signers  []signatures.Signer
+		old      *pb.SignedKV
 		err      error
 	}{
-		{key, entryData2, entryData2, hashEntry1[:], nil, mutator.ErrReplay},    // Replayed mutation
-		{largeKey, entryData1, entryData2, hashEntry1[:], nil, mutator.ErrSize}, // Large mutation
-		{key, entryData1, entryData2, nil, nil, mutator.ErrPreviousHash},        // Invalid previous entry hash
-		{key, nil, entryData1, nil, nil, mutator.ErrPreviousHash},               // Very first mutation, invalid previous entry hash
-		{key, nil, &pb.Entry{}, nil, nil, mutator.ErrPreviousHash},              // Very first mutation, invalid previous entry hash
-		{key, nil, emptyEntryData, nilHash[:], signers1, nil},                   // Very first mutation, empty commitment, working case
-		{key, nil, entryData1, nilHash[:], signers1, nil},                       // Very first mutation, working case
-		{key, entryData1, entryData2, hashEntry1[:], signers3, nil},             // Second mutation, working case
-		// Test missing keys and signature cases.
-		{key, nil, missingKeyEntryData1, nilHash[:], signers1, mutator.ErrMissingKey},                       // Very first mutation, missing current key
-		{key, nil, entryData1, nilHash[:], []signatures.Signer{}, mutator.ErrUnauthorized},                  // Very first mutation, missing current signature
-		{key, missingKeyEntryData1, entryData2, hashMissingKeyEntry1[:], signers3, mutator.ErrUnauthorized}, // Second mutation, Missing previous authorized key
-		{key, entryData1, entryData2, hashEntry1[:], signers2, mutator.ErrUnauthorized},                     // Second mutation, missing previous signature
-		{key, entryData1, missingKeyEntryData2, hashEntry1[:], signers3, nil},                               // Second mutation, missing current authorized key
-		{key, entryData1, entryData2, hashEntry1[:], signers1, nil},                                         // Second mutation, missing current signature, should work
+		{
+			old: nil,
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       nilHash[:],
+					AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
+				},
+			},
+			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
+		}, // Very first mutation, working case
+		{
+			old: entryData1,
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       hashEntry1[:],
+					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+				},
+			},
+			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)}),
+		}, // Second mutation, working case
+		{
+			old: entryData2,
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       hashEntry1[:],
+					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+				},
+			},
+			err: mutator.ErrReplay,
+		}, // Replayed mutation
+		{
+			old: entryData1,
+			mutation: &Mutation{
+				index: bytes.Repeat(key, mutator.MaxMutationSize),
+			},
+			err: mutator.ErrSize,
+		}, // Large mutation
+		{
+			old: entryData2,
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       nil,
+					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+				},
+			},
+			err: mutator.ErrPreviousHash,
+		}, // Invalid previous entry hash
+		{
+			mutation: &Mutation{
+				entry: &pb.Entry{
+					Previous: nil,
+				},
+			},
+			err: mutator.ErrPreviousHash,
+		}, // Very first mutation, invalid previous entry hash
+		{
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       nilHash[:],
+					AuthorizedKeys: mustPublicKeys([]string{}),
+				},
+			},
+			err:     mutator.ErrMissingKey,
+			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
+		}, // Very first mutation, missing current key
+		{
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       nilHash[:],
+					AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
+				},
+			},
+			signers: signersFromPEMs(t, [][]byte{}),
+			err:     mutator.ErrUnauthorized,
+		}, // Very first mutation, missing current signature
+		{
+			old: entryData1,
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       hashEntry1[:],
+					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+				},
+			},
+			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey2)}),
+			err:     mutator.ErrUnauthorized,
+		},
+		{
+			old: entryData1,
+			mutation: &Mutation{
+				index: key,
+				entry: &pb.Entry{
+					Commitment:     []byte{2},
+					Previous:       hashEntry1[:],
+					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+				},
+			},
+			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
+		},
 	} {
-		// Prepare mutations.
-		m := &Mutation{
-			index: tc.key,
-			entry: tc.newEntry,
-		}
-		m.entry.Previous = tc.previous
-		mutation, err := m.sign(tc.signers)
+		m, err := tc.mutation.sign(tc.signers)
 		if err != nil {
 			t.Errorf("mutation.sign(%v): %v", tc.signers, err)
 			continue
 		}
 
-		if _, got := New().Mutate(tc.oldEntry, mutation); got != tc.err {
-			t.Errorf("%d Mutate(%v, %v): %v, want %v", i, tc.oldEntry, mutation, got, tc.err)
+		if _, got := New().Mutate(tc.old, m); got != tc.err {
+			t.Errorf("%d Mutate(): %v, want %v", i, got, tc.err)
 		}
 	}
 }

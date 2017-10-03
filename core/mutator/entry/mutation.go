@@ -33,7 +33,7 @@ type Mutation struct {
 	index         []byte
 	data, nonce   []byte
 
-	prevEntry *pb.Entry
+	prevEntry *pb.SignedKV
 	entry     *pb.Entry
 }
 
@@ -48,7 +48,6 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		return nil, err
 	}
 
-	// TODO(ismail): Change this to plain sha256.
 	hash := objecthash.ObjectHash(prevEntry)
 	return &Mutation{
 		userID:    userID,
@@ -56,9 +55,9 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		index:     index,
 		prevEntry: prevEntry,
 		entry: &pb.Entry{
-			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
+			AuthorizedKeys: prevEntry.GetValue().GetAuthorizedKeys(),
 			Previous:       hash[:],
-			Commitment:     prevEntry.GetCommitment(),
+			Commitment:     prevEntry.GetValue().GetCommitment(),
 		},
 	}, nil
 }
@@ -96,7 +95,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 	// Check authorization.
 	skv := *signedkv
 	skv.Signatures = nil
-	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(),
+	if err := verifyKeys(m.prevEntry.GetValue().GetAuthorizedKeys(),
 		m.entry.GetAuthorizedKeys(),
 		skv,
 		signedkv.GetSignatures()); err != nil {

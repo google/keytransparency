@@ -18,6 +18,10 @@ import (
 	"testing"
 
 	"github.com/google/trillian/crypto/keyspb"
+
+	"github.com/google/keytransparency/core/crypto/dev"
+	"github.com/google/keytransparency/core/crypto/signatures"
+	"github.com/google/keytransparency/core/crypto/signatures/factory"
 )
 
 func TestReplaceAuthorizedKeys(t *testing.T) {
@@ -41,4 +45,66 @@ func TestReplaceAuthorizedKeys(t *testing.T) {
 			t.Errorf("ReplaceAuthorizedKeys(%v): %v, wantErr: %v", tc.pubKeys, got, want)
 		}
 	}
+}
+
+func TestCreateAndVerify(t *testing.T) {
+	for _, tc := range []struct {
+		old     []byte
+		pubKeys []*keyspb.PublicKey
+		signers []signatures.Signer
+		data    []byte
+		wantErr bool
+	}{
+		{
+			old:     nil,
+			pubKeys: []*keyspb.PublicKey{mustPublicKey(testPubKey1)},
+			signers: []signatures.Signer{createSigner(t, testPrivKey1)},
+			data:    []byte("foo"),
+			wantErr: false,
+		},
+	} {
+		index := []byte{}
+		userID := "alice"
+		appID := "app1"
+
+		m, err := NewMutation(tc.old, index, userID, appID)
+		if err != nil {
+			t.Errorf("NewMutation(%v): %v", tc.old, err)
+			continue
+		}
+		if err := m.SetCommitment(tc.data); err != nil {
+			t.Errorf("SetCommitment(%v): %v", tc.data, err)
+			continue
+		}
+		err = m.ReplaceAuthorizedKeys(tc.pubKeys)
+		if got, want := err != nil, tc.wantErr; got != want {
+			t.Errorf("ReplaceAuthorizedKeys(%v): %v, wantErr: %v", tc.pubKeys, got, want)
+		}
+		update, err := m.SerializeAndSign(tc.signers)
+		if got, want := err != nil, tc.wantErr; got != want {
+			t.Errorf("SerializeAndSign(%v): %v", tc.signers, err)
+			continue
+		}
+		// Verify mutation.
+		oldValue, err := FromLeafValue(tc.old)
+		if err != nil {
+			t.Errorf("FromLeafValue(%v): %v", tc.old, err)
+			continue
+		}
+		f := New()
+		if _, err := f.Mutate(oldValue, update.GetEntryUpdate().GetMutation()); err != nil {
+			t.Errorf("Mutate(%v): %v", update.GetEntryUpdate().GetMutation(), err)
+		}
+
+	}
+
+}
+
+func createSigner(t *testing.T, privKey string) signatures.Signer {
+	signatures.Rand = dev.Zeros
+	signer, err := factory.NewSignerFromPEM([]byte(privKey))
+	if err != nil {
+		t.Fatalf("factory.NewSigner failed: %v", err)
+	}
+	return signer
 }
