@@ -101,7 +101,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 			UserId: tc.userID,
 			AppId:  appID,
 			EntryUpdate: &pb.EntryUpdate{
-				Mutation: &pb.SignedKV{
+				Mutation: &pb.Entry{
 					Index:      tc.index[:],
 					Commitment: tc.commitment,
 				},

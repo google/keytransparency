@@ -40,39 +40,39 @@ func newDB(t testing.TB) *sql.DB {
 
 func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *testutil.FakeFactory) {
 	for _, mtn := range []struct {
-		mutation    *pb.SignedKV
+		mutation    *pb.Entry
 		outSequence uint64
 	}{
 		{
-			&pb.SignedKV{
+			&pb.Entry{
 				Index:      []byte("index1"),
 				Commitment: []byte("mutation1"),
 			},
 			1,
 		},
 		{
-			&pb.SignedKV{
+			&pb.Entry{
 				Index:      []byte("index2"),
 				Commitment: []byte("mutation2"),
 			},
 			2,
 		},
 		{
-			&pb.SignedKV{
+			&pb.Entry{
 				Index:      []byte("index3"),
 				Commitment: []byte("mutation3"),
 			},
 			3,
 		},
 		{
-			&pb.SignedKV{
+			&pb.Entry{
 				Index:      []byte("index4"),
 				Commitment: []byte("mutation4"),
 			},
 			4,
 		},
 		{
-			&pb.SignedKV{
+			&pb.Entry{
 				Index:      []byte("index5"),
 				Commitment: []byte("mutation5"),
 			},
@@ -85,7 +85,7 @@ func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *test
 	}
 }
 
-func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, mutation *pb.SignedKV, outSequence uint64) error {
+func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, mutation *pb.Entry, outSequence uint64) error {
 	wtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
@@ -104,7 +104,7 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 	return nil
 }
 
-func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.SignedKV, error) {
+func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.Entry, error) {
 	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
@@ -119,7 +119,7 @@ func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFa
 	return maxSequence, results, nil
 }
 
-func readAll(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64) (uint64, []*pb.SignedKV, error) {
+func readAll(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64) (uint64, []*pb.Entry, error) {
 	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
@@ -150,7 +150,7 @@ func TestReadRange(t *testing.T) {
 		endSequence   uint64
 		count         int32
 		maxSequence   uint64
-		mutations     []*pb.SignedKV
+		mutations     []*pb.Entry
 	}{
 		{
 			"read a single mutation",
@@ -158,7 +158,7 @@ func TestReadRange(t *testing.T) {
 			1,
 			1,
 			1,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index1"),
 					Commitment: []byte("mutation1"),
@@ -179,7 +179,7 @@ func TestReadRange(t *testing.T) {
 			5,
 			5,
 			5,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index1"),
 					Commitment: []byte("mutation1"),
@@ -208,7 +208,7 @@ func TestReadRange(t *testing.T) {
 			5,
 			3,
 			5,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index3"),
 					Commitment: []byte("mutation3"),
@@ -229,7 +229,7 @@ func TestReadRange(t *testing.T) {
 			5,
 			5,
 			5,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index3"),
 					Commitment: []byte("mutation3"),
@@ -250,7 +250,7 @@ func TestReadRange(t *testing.T) {
 			5,
 			3,
 			3,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index1"),
 					Commitment: []byte("mutation1"),
@@ -299,7 +299,7 @@ func TestReadAll(t *testing.T) {
 		description   string
 		startSequence uint64
 		maxSequence   uint64
-		mutations     []*pb.SignedKV
+		mutations     []*pb.Entry
 	}{
 		{
 			"empty mutations list",
@@ -311,7 +311,7 @@ func TestReadAll(t *testing.T) {
 			"read all mutations",
 			0,
 			5,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index1"),
 					Commitment: []byte("mutation1"),
@@ -338,7 +338,7 @@ func TestReadAll(t *testing.T) {
 			"read half of the mutations",
 			2,
 			5,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index3"),
 					Commitment: []byte("mutation3"),
@@ -357,7 +357,7 @@ func TestReadAll(t *testing.T) {
 			"read last mutation",
 			4,
 			5,
-			[]*pb.SignedKV{
+			[]*pb.Entry{
 				{
 					Index:      []byte("index5"),
 					Commitment: []byte("mutation5"),

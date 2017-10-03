@@ -33,7 +33,7 @@ func TestCheckMutation(t *testing.T) {
 	key := []byte{0}
 	nilHash := objecthash.ObjectHash(nil)
 
-	entryData1 := &pb.SignedKV{
+	entryData1 := &pb.Entry{
 		Index:          key,
 		Commitment:     []byte{1},
 		AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
@@ -41,7 +41,7 @@ func TestCheckMutation(t *testing.T) {
 	}
 	hashEntry1 := objecthash.ObjectHash(entryData1)
 
-	entryData2 := &pb.SignedKV{
+	entryData2 := &pb.Entry{
 		Index:          key,
 		Commitment:     []byte{2},
 		AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
@@ -52,13 +52,13 @@ func TestCheckMutation(t *testing.T) {
 		desc     string
 		mutation *Mutation
 		signers  []signatures.Signer
-		old      *pb.SignedKV
+		old      *pb.Entry
 		err      error
 	}{
 		{
 			old: nil,
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
@@ -71,7 +71,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
@@ -84,7 +84,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData2,
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
@@ -97,7 +97,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index: bytes.Repeat(key, mutator.MaxMutationSize),
 				},
 			},
@@ -107,7 +107,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData2,
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nil,
@@ -119,7 +119,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Previous: nil,
 				},
 			},
@@ -128,7 +128,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
@@ -141,7 +141,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
@@ -155,7 +155,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
@@ -169,7 +169,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				entry: &pb.SignedKV{
+				entry: &pb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],

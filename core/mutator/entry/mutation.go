@@ -32,8 +32,8 @@ type Mutation struct {
 	userID, appID string
 	data, nonce   []byte
 
-	prevEntry *pb.SignedKV
-	entry     *pb.SignedKV
+	prevEntry *pb.Entry
+	entry     *pb.Entry
 }
 
 // NewMutation creates a mutation object from a previous value which can be modified.
@@ -52,7 +52,7 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		userID:    userID,
 		appID:     appID,
 		prevEntry: prevEntry,
-		entry: &pb.SignedKV{
+		entry: &pb.Entry{
 			Index:          index,
 			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
 			Previous:       hash[:],
@@ -115,7 +115,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 }
 
 // Sign produces the SignedKV
-func (m *Mutation) sign(signers []signatures.Signer) (*pb.SignedKV, error) {
+func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
 	m.entry.Signatures = nil
 	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {

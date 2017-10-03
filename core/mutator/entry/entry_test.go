@@ -90,14 +90,14 @@ func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
 }
 
 func TestFromLeafValue(t *testing.T) {
-	entry := &pb.SignedKV{Commitment: []byte{1, 2}}
+	entry := &pb.Entry{Commitment: []byte{1, 2}}
 	entryB, _ := proto.Marshal(entry)
 	for i, tc := range []struct {
 		leafVal []byte
-		want    *pb.SignedKV
+		want    *pb.Entry
 		wantErr bool
 	}{
-		{[]byte{}, &pb.SignedKV{}, false},        // empty leaf bytes -> return 'empty' proto, no error
+		{[]byte{}, &pb.Entry{}, false},           // empty leaf bytes -> return 'empty' proto, no error
 		{nil, nil, false},                        // non-existing leaf -> return nil, no error
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
 		{entryB, entry, false},                   // valid leaf

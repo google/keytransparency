@@ -50,14 +50,14 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrSize
 	}
 
-	newEntry, ok := update.(*pb.SignedKV)
+	newEntry, ok := update.(*pb.Entry)
 	if !ok {
 		glog.Warning("received proto.Message is not of type *pb.SignedKV.")
 		return nil, fmt.Errorf("updateM.(*pb.SignedKV): _, %v", ok)
 	}
-	var oldEntry *pb.SignedKV
+	var oldEntry *pb.Entry
 	if oldValue != nil {
-		old, ok := oldValue.(*pb.SignedKV)
+		old, ok := oldValue.(*pb.Entry)
 		if !ok {
 			glog.Warning("received proto.Message is not of type *pb.Entry.")
 			return nil, fmt.Errorf("oldValueM.(*pb.Entry): _, %v", ok)

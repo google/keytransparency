@@ -43,7 +43,7 @@ message Committed {
 // EntryUpdate contains the user entry update(s).
 message EntryUpdate {
   // mutation authorizes the change to entry.
-  SignedKV mutation = 2;
+  Entry mutation = 2;
   // commitment contains the data committed to in update.commitment.
   Committed committed = 3;
 }
@@ -52,11 +52,10 @@ message EntryUpdate {
 // Verifiable Map Leaf Data and Mutation Data.
 //
 
-// SignedKV is a signed change to a map entry.
-// SignedKV contains a commitment to profile and a set of authorized update keys.
-// SignedKV is placed in the verifiable map as leaf data.
-// TODO(gbelvin) rename to Entry.
-message SignedKV {
+// Entry is a signed change to a map entry.
+// Entry contains a commitment to profile and a set of authorized update keys.
+// Entry is placed in the verifiable map as leaf data.
+message Entry {
   // index is the location of this leaf in the sparse merkle tree.
   bytes index = 3;
   // commitment is a cryptographic commitment to arbitrary data.
@@ -81,7 +80,7 @@ message SignedKV {
 message MutationProof {
   // mutation contains the information needed to modify the old leaf.
   // The format of a mutation is specific to the particular Mutate function being used.
-  SignedKV mutation = 1;
+  Entry mutation = 1;
   // leaf_proof contains the leaf and its inclusion proof for a particular map revision.
   trillian.MapLeafInclusion leaf_proof = 2;
 }
