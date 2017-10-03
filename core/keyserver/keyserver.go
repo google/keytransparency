@@ -143,13 +143,13 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 			return nil, grpc.Errorf(codes.Internal, "Cannot decode leaf value")
 		}
 
-		data, nonce, err := s.committer.Read(ctx, e.GetValue().GetCommitment())
+		data, nonce, err := s.committer.Read(ctx, e.GetCommitment())
 		if err != nil {
 			glog.Errorf("Cannot read committed value: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
 		}
 		if data == nil {
-			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", e.GetValue().GetCommitment())
+			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", e.GetCommitment())
 		}
 		committed = &pb.Committed{
 			Key:  nonce,
@@ -365,9 +365,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *pb.GetDomainInfoRequest)
 	}, nil
 }
 
-func (s *Server) saveCommitment(ctx context.Context, skv *pb.SignedKV, committed *pb.Committed) error {
-	entry := skv.Value
-
+func (s *Server) saveCommitment(ctx context.Context, entry *pb.SignedKV, committed *pb.Committed) error {
 	// Write the commitment.
 	if err := s.committer.Write(ctx, entry.Commitment, committed.Data, committed.Key); err != nil {
 		glog.Errorf("committer.Write failed: %v", err)

@@ -46,8 +46,8 @@ func signedKV(t *testing.T, start, end int) []*pb.SignedKV {
 	kvs := make([]*pb.SignedKV, 0, end-start)
 	for i := start; i <= end; i++ {
 		kvs = append(kvs, &pb.SignedKV{
-			Index: []byte(fmt.Sprintf("key_%v", i)),
-			Value: &pb.Entry{Commitment: []byte(fmt.Sprintf("value_%v", i))},
+			Index:      []byte(fmt.Sprintf("key_%v", i)),
+			Commitment: []byte(fmt.Sprintf("value_%v", i)),
 		})
 	}
 	return kvs

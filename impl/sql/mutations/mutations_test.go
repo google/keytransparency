@@ -14,18 +14,18 @@
 package mutations
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/impl/sql/testutil"
-	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const mapID = 0
@@ -45,36 +45,36 @@ func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *test
 	}{
 		{
 			&pb.SignedKV{
-				Index: []byte("index1"),
-				Value: &pb.Entry{Commitment: []byte("mutation1")},
+				Index:      []byte("index1"),
+				Commitment: []byte("mutation1"),
 			},
 			1,
 		},
 		{
 			&pb.SignedKV{
-				Index: []byte("index2"),
-				Value: &pb.Entry{Commitment: []byte("mutation2")},
+				Index:      []byte("index2"),
+				Commitment: []byte("mutation2"),
 			},
 			2,
 		},
 		{
 			&pb.SignedKV{
-				Index: []byte("index3"),
-				Value: &pb.Entry{Commitment: []byte("mutation3")},
+				Index:      []byte("index3"),
+				Commitment: []byte("mutation3"),
 			},
 			3,
 		},
 		{
 			&pb.SignedKV{
-				Index: []byte("index4"),
-				Value: &pb.Entry{Commitment: []byte("mutation4")},
+				Index:      []byte("index4"),
+				Commitment: []byte("mutation4"),
 			},
 			4,
 		},
 		{
 			&pb.SignedKV{
-				Index: []byte("index5"),
-				Value: &pb.Entry{Commitment: []byte("mutation5")},
+				Index:      []byte("index5"),
+				Commitment: []byte("mutation5"),
 			},
 			5,
 		},
@@ -160,8 +160,8 @@ func TestReadRange(t *testing.T) {
 			1,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index1"),
-					Value: &pb.Entry{Commitment: []byte("mutation1")},
+					Index:      []byte("index1"),
+					Commitment: []byte("mutation1"),
 				},
 			},
 		},
@@ -181,24 +181,24 @@ func TestReadRange(t *testing.T) {
 			5,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index1"),
-					Value: &pb.Entry{Commitment: []byte("mutation1")},
+					Index:      []byte("index1"),
+					Commitment: []byte("mutation1"),
 				},
 				{
-					Index: []byte("index2"),
-					Value: &pb.Entry{Commitment: []byte("mutation2")},
+					Index:      []byte("index2"),
+					Commitment: []byte("mutation2"),
 				},
 				{
-					Index: []byte("index3"),
-					Value: &pb.Entry{Commitment: []byte("mutation3")},
+					Index:      []byte("index3"),
+					Commitment: []byte("mutation3"),
 				},
 				{
-					Index: []byte("index4"),
-					Value: &pb.Entry{Commitment: []byte("mutation4")},
+					Index:      []byte("index4"),
+					Commitment: []byte("mutation4"),
 				},
 				{
-					Index: []byte("index5"),
-					Value: &pb.Entry{Commitment: []byte("mutation5")},
+					Index:      []byte("index5"),
+					Commitment: []byte("mutation5"),
 				},
 			},
 		},
@@ -210,16 +210,16 @@ func TestReadRange(t *testing.T) {
 			5,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index3"),
-					Value: &pb.Entry{Commitment: []byte("mutation3")},
+					Index:      []byte("index3"),
+					Commitment: []byte("mutation3"),
 				},
 				{
-					Index: []byte("index4"),
-					Value: &pb.Entry{Commitment: []byte("mutation4")},
+					Index:      []byte("index4"),
+					Commitment: []byte("mutation4"),
 				},
 				{
-					Index: []byte("index5"),
-					Value: &pb.Entry{Commitment: []byte("mutation5")},
+					Index:      []byte("index5"),
+					Commitment: []byte("mutation5"),
 				},
 			},
 		},
@@ -231,16 +231,16 @@ func TestReadRange(t *testing.T) {
 			5,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index3"),
-					Value: &pb.Entry{Commitment: []byte("mutation3")},
+					Index:      []byte("index3"),
+					Commitment: []byte("mutation3"),
 				},
 				{
-					Index: []byte("index4"),
-					Value: &pb.Entry{Commitment: []byte("mutation4")},
+					Index:      []byte("index4"),
+					Commitment: []byte("mutation4"),
 				},
 				{
-					Index: []byte("index5"),
-					Value: &pb.Entry{Commitment: []byte("mutation5")},
+					Index:      []byte("index5"),
+					Commitment: []byte("mutation5"),
 				},
 			},
 		},
@@ -252,16 +252,16 @@ func TestReadRange(t *testing.T) {
 			3,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index1"),
-					Value: &pb.Entry{Commitment: []byte("mutation1")},
+					Index:      []byte("index1"),
+					Commitment: []byte("mutation1"),
 				},
 				{
-					Index: []byte("index2"),
-					Value: &pb.Entry{Commitment: []byte("mutation2")},
+					Index:      []byte("index2"),
+					Commitment: []byte("mutation2"),
 				},
 				{
-					Index: []byte("index3"),
-					Value: &pb.Entry{Commitment: []byte("mutation3")},
+					Index:      []byte("index3"),
+					Commitment: []byte("mutation3"),
 				},
 			},
 		},
@@ -278,10 +278,7 @@ func TestReadRange(t *testing.T) {
 			continue
 		}
 		for i := range results {
-			if got, want := results[i].GetIndex(), tc.mutations[i].GetIndex(); !reflect.DeepEqual(got, want) {
-				t.Errorf("%v: results[%v] index=%v, want %v", tc.description, i, got, want)
-			}
-			if got, want := results[i].GetValue(), tc.mutations[i].GetValue(); !reflect.DeepEqual(got, want) {
+			if got, want := results[i], tc.mutations[i]; !proto.Equal(got, want) {
 				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
 			}
 		}
@@ -316,24 +313,24 @@ func TestReadAll(t *testing.T) {
 			5,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index1"),
-					Value: &pb.Entry{Commitment: []byte("mutation1")},
+					Index:      []byte("index1"),
+					Commitment: []byte("mutation1"),
 				},
 				{
-					Index: []byte("index2"),
-					Value: &pb.Entry{Commitment: []byte("mutation2")},
+					Index:      []byte("index2"),
+					Commitment: []byte("mutation2"),
 				},
 				{
-					Index: []byte("index3"),
-					Value: &pb.Entry{Commitment: []byte("mutation3")},
+					Index:      []byte("index3"),
+					Commitment: []byte("mutation3"),
 				},
 				{
-					Index: []byte("index4"),
-					Value: &pb.Entry{Commitment: []byte("mutation4")},
+					Index:      []byte("index4"),
+					Commitment: []byte("mutation4"),
 				},
 				{
-					Index: []byte("index5"),
-					Value: &pb.Entry{Commitment: []byte("mutation5")},
+					Index:      []byte("index5"),
+					Commitment: []byte("mutation5"),
 				},
 			},
 		},
@@ -343,16 +340,16 @@ func TestReadAll(t *testing.T) {
 			5,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index3"),
-					Value: &pb.Entry{Commitment: []byte("mutation3")},
+					Index:      []byte("index3"),
+					Commitment: []byte("mutation3"),
 				},
 				{
-					Index: []byte("index4"),
-					Value: &pb.Entry{Commitment: []byte("mutation4")},
+					Index:      []byte("index4"),
+					Commitment: []byte("mutation4"),
 				},
 				{
-					Index: []byte("index5"),
-					Value: &pb.Entry{Commitment: []byte("mutation5")},
+					Index:      []byte("index5"),
+					Commitment: []byte("mutation5"),
 				},
 			},
 		},
@@ -362,8 +359,8 @@ func TestReadAll(t *testing.T) {
 			5,
 			[]*pb.SignedKV{
 				{
-					Index: []byte("index5"),
-					Value: &pb.Entry{Commitment: []byte("mutation5")},
+					Index:      []byte("index5"),
+					Commitment: []byte("mutation5"),
 				},
 			},
 		},
@@ -380,10 +377,7 @@ func TestReadAll(t *testing.T) {
 			continue
 		}
 		for i := range results {
-			if got, want := results[i].GetIndex(), tc.mutations[i].GetIndex(); !bytes.Equal(got, want) {
-				t.Errorf("%v: results[%v] index=%v, want %v", tc.description, i, got, want)
-			}
-			if got, want := results[i].GetValue(), tc.mutations[i].GetValue(); !reflect.DeepEqual(got, want) {
+			if got, want := results[i], tc.mutations[i]; !proto.Equal(got, want) {
 				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
 			}
 		}

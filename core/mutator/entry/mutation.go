@@ -30,11 +30,10 @@ import (
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
 	userID, appID string
-	index         []byte
 	data, nonce   []byte
 
 	prevEntry *pb.SignedKV
-	entry     *pb.Entry
+	entry     *pb.SignedKV
 }
 
 // NewMutation creates a mutation object from a previous value which can be modified.
@@ -52,12 +51,12 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 	return &Mutation{
 		userID:    userID,
 		appID:     appID,
-		index:     index,
 		prevEntry: prevEntry,
-		entry: &pb.Entry{
-			AuthorizedKeys: prevEntry.GetValue().GetAuthorizedKeys(),
+		entry: &pb.SignedKV{
+			Index:          index,
+			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
 			Previous:       hash[:],
-			Commitment:     prevEntry.GetValue().GetCommitment(),
+			Commitment:     prevEntry.GetCommitment(),
 		},
 	}, nil
 }
@@ -95,7 +94,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 	// Check authorization.
 	skv := *signedkv
 	skv.Signatures = nil
-	if err := verifyKeys(m.prevEntry.GetValue().GetAuthorizedKeys(),
+	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(),
 		m.entry.GetAuthorizedKeys(),
 		skv,
 		signedkv.GetSignatures()); err != nil {
@@ -117,20 +116,16 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 
 // Sign produces the SignedKV
 func (m *Mutation) sign(signers []signatures.Signer) (*pb.SignedKV, error) {
-	skv := &pb.SignedKV{
-		Index: m.index,
-		Value: m.entry,
-	}
-
+	m.entry.Signatures = nil
 	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
-		sig, err := signer.Sign(skv)
+		sig, err := signer.Sign(m.entry)
 		if err != nil {
 			return nil, err
 		}
 		sigs[signer.KeyID()] = sig
 	}
 
-	skv.Signatures = sigs
-	return skv, nil
+	m.entry.Signatures = sigs
+	return m.entry, nil
 }

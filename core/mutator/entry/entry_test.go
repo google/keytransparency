@@ -90,7 +90,7 @@ func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
 }
 
 func TestFromLeafValue(t *testing.T) {
-	entry := &pb.SignedKV{Value: &pb.Entry{Commitment: []byte{1, 2}}}
+	entry := &pb.SignedKV{Commitment: []byte{1, 2}}
 	entryB, _ := proto.Marshal(entry)
 	for i, tc := range []struct {
 		leafVal []byte

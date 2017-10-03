@@ -34,22 +34,18 @@ func TestCheckMutation(t *testing.T) {
 	nilHash := objecthash.ObjectHash(nil)
 
 	entryData1 := &pb.SignedKV{
-		Index: key,
-		Value: &pb.Entry{
-			Commitment:     []byte{1},
-			AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
-			Previous:       nilHash[:],
-		},
+		Index:          key,
+		Commitment:     []byte{1},
+		AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
+		Previous:       nilHash[:],
 	}
 	hashEntry1 := objecthash.ObjectHash(entryData1)
 
 	entryData2 := &pb.SignedKV{
-		Index: key,
-		Value: &pb.Entry{
-			Commitment:     []byte{2},
-			AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
-			Previous:       hashEntry1[:],
-		},
+		Index:          key,
+		Commitment:     []byte{2},
+		AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+		Previous:       hashEntry1[:],
 	}
 
 	for _, tc := range []struct {
@@ -62,8 +58,8 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: nil,
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
@@ -75,8 +71,8 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
@@ -88,8 +84,8 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData2,
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
@@ -101,7 +97,9 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				index: bytes.Repeat(key, mutator.MaxMutationSize),
+				entry: &pb.SignedKV{
+					Index: bytes.Repeat(key, mutator.MaxMutationSize),
+				},
 			},
 			err:  mutator.ErrSize,
 			desc: "Large mutation",
@@ -109,8 +107,8 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData2,
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nil,
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
@@ -121,7 +119,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
 					Previous: nil,
 				},
 			},
@@ -130,8 +128,8 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
 					AuthorizedKeys: mustPublicKeys([]string{}),
@@ -143,8 +141,8 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
@@ -157,8 +155,8 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
@@ -171,8 +169,8 @@ func TestCheckMutation(t *testing.T) {
 		{
 			old: entryData1,
 			mutation: &Mutation{
-				index: key,
-				entry: &pb.Entry{
+				entry: &pb.SignedKV{
+					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),

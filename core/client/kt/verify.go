@@ -83,7 +83,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	// If this is not a proof of absence, verify the connection between
 	// profileData and the commitment in the merkle tree leaf.
 	if in.GetCommitted() != nil {
-		commitment := e.GetValue().GetCommitment()
+		commitment := e.GetCommitment()
 		data := in.GetCommitted().GetData()
 		nonce := in.GetCommitted().GetKey()
 		if err := commitments.Verify(userID, appID, commitment, data, nonce); err != nil {

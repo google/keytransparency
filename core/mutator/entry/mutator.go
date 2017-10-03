@@ -50,7 +50,7 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrSize
 	}
 
-	updated, ok := update.(*pb.SignedKV)
+	newEntry, ok := update.(*pb.SignedKV)
 	if !ok {
 		glog.Warning("received proto.Message is not of type *pb.SignedKV.")
 		return nil, fmt.Errorf("updateM.(*pb.SignedKV): _, %v", ok)
@@ -65,14 +65,12 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		oldEntry = old
 	}
 
-	newEntry := updated.Value
-
 	// Verify pointer to previous data.  The very first entry will have
 	// oldValue=nil, so its hash is the ObjectHash value of nil.
 	prevEntryHash := objecthash.ObjectHash(oldEntry)
 	if !bytes.Equal(prevEntryHash[:], newEntry.GetPrevious()) {
 		// Check if this mutation is a replay.
-		if oldEntry != nil && proto.Equal(oldEntry, updated) {
+		if oldEntry != nil && proto.Equal(oldEntry, newEntry) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
@@ -87,17 +85,17 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrMissingKey
 	}
 
-	kv := *updated
+	kv := *newEntry
 	kv.Signatures = nil
-	if err := verifyKeys(oldEntry.GetValue().GetAuthorizedKeys(),
+	if err := verifyKeys(oldEntry.GetAuthorizedKeys(),
 		newEntry.GetAuthorizedKeys(),
 		kv,
-		updated.GetSignatures(),
+		newEntry.GetSignatures(),
 	); err != nil {
 		return nil, err
 	}
 
-	return updated, nil
+	return newEntry, nil
 }
 
 // verifyKeys verifies both old and new authorized keys based on the following
