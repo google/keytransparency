@@ -32,7 +32,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 var (
@@ -191,7 +191,7 @@ func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, 
 
 // newMutations returns a list of mutations to process and highest sequence
 // number returned.
-func (s *Sequencer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.SignedKV, int64, error) {
+func (s *Sequencer) newMutations(ctx context.Context, startSequence int64) ([]*pb.SignedKV, int64, error) {
 	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("NewDBTxn(): %v", err)
@@ -223,7 +223,7 @@ func toArray(b []byte) [32]byte {
 // Multiple mutations for the same leaf will be applied to provided leaf.
 // The last valid mutation for each leaf is included in the output.
 // Returns a list of map leaves that should be updated.
-func (s *Sequencer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian.MapLeaf) ([]*trillian.MapLeaf, error) {
+func (s *Sequencer) applyMutations(mutations []*pb.SignedKV, leaves []*trillian.MapLeaf) ([]*trillian.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, l := range leaves {
@@ -233,7 +233,7 @@ func (s *Sequencer) applyMutations(mutations []*tpb.SignedKV, leaves []*trillian
 	retMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, m := range mutations {
 		index := m.GetIndex()
-		var oldValue *tpb.Entry // If no map leaf was found, oldValue will be nil.
+		var oldValue *pb.Entry // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
 			var err error
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
@@ -336,7 +336,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves",
 		len(mutations), len(leaves))
 
-	metaAny, err := internal.MetadataAsAny(&tpb.MapperMetadata{
+	metaAny, err := internal.MetadataAsAny(&pb.MapperMetadata{
 		HighestFullyCompletedSeq: seq,
 	})
 	if err != nil {

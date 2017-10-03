@@ -28,7 +28,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 // Mutator defines mutations to simply replace the current map value with the
@@ -50,17 +50,17 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrSize
 	}
 
-	updated, ok := update.(*tpb.SignedKV)
+	updated, ok := update.(*pb.SignedKV)
 	if !ok {
-		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
-		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
+		glog.Warning("received proto.Message is not of type *pb.SignedKV.")
+		return nil, fmt.Errorf("updateM.(*pb.SignedKV): _, %v", ok)
 	}
-	var oldEntry *tpb.Entry
+	var oldEntry *pb.Entry
 	if oldValue != nil {
-		old, ok := oldValue.(*tpb.Entry)
+		old, ok := oldValue.(*pb.Entry)
 		if !ok {
-			glog.Warning("received proto.Message is not of type *tpb.Entry.")
-			return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
+			glog.Warning("received proto.Message is not of type *pb.Entry.")
+			return nil, fmt.Errorf("oldValueM.(*pb.Entry): _, %v", ok)
 		}
 		oldEntry = old
 	}

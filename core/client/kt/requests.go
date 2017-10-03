@@ -24,15 +24,15 @@ import (
 
 	"github.com/google/trillian"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
 )
 
 // CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
 // user ID and a profile.
 func CreateUpdateEntryRequest(
-	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
+	trusted *trillian.SignedLogRoot, getResp *pb.GetEntryResponse,
 	vrfPub vrf.PublicKey, userID, appID string, profileData []byte,
-	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) (*tpb.UpdateEntryRequest, error) {
+	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) (*pb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index, err := vrfPub.ProofToHash(vrf.UniqueID(userID, appID), getResp.VrfProof)
 	if err != nil {
