@@ -30,7 +30,6 @@ import (
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
 	userID, appID string
-	index         []byte
 	data, nonce   []byte
 
 	prevEntry *tpb.Entry
@@ -48,14 +47,13 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		return nil, err
 	}
 
-	// TODO(ismail): Change this to plain sha256.
 	hash := objecthash.ObjectHash(prevEntry)
 	return &Mutation{
 		userID:    userID,
 		appID:     appID,
-		index:     index,
 		prevEntry: prevEntry,
 		entry: &tpb.Entry{
+			Index:          index,
 			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
 			Previous:       hash[:],
 			Commitment:     prevEntry.GetCommitment(),
@@ -117,21 +115,17 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 }
 
 // Sign produces the SignedKV
-func (m *Mutation) sign(signers []signatures.Signer) (*tpb.SignedKV, error) {
-	skv := &tpb.SignedKV{
-		Index: m.index,
-		Value: m.entry,
-	}
-
+func (m *Mutation) sign(signers []signatures.Signer) (*tpb.Entry, error) {
+	m.entry.Signatures = nil
 	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
-		sig, err := signer.Sign(skv)
+		sig, err := signer.Sign(m.entry)
 		if err != nil {
 			return nil, err
 		}
 		sigs[signer.KeyID()] = sig
 	}
 
-	skv.Signatures = sigs
-	return skv, nil
+	m.entry.Signatures = sigs
+	return m.entry, nil
 }

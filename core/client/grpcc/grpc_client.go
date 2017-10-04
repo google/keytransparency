@@ -288,7 +288,7 @@ func (c *Client) Retry(ctx context.Context, req *tpb.UpdateEntryRequest, opts ..
 	}
 
 	// Check if the response is a replay.
-	if got, want := leafValue, req.GetEntryUpdate().GetMutation().GetValue(); !proto.Equal(got, want) {
+	if got, want := leafValue, req.GetEntryUpdate().GetMutation(); !proto.Equal(got, want) {
 		return ErrRetry
 	}
 	return nil

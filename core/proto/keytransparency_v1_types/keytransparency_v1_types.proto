@@ -42,7 +42,7 @@ message Committed {
 // EntryUpdate contains the user entry update(s).
 message EntryUpdate {
   // mutation authorizes the change to entry.
-  SignedKV mutation = 2;
+  Entry mutation = 2;
   // commitment contains the data committed to in update.commitment.
   Committed committed = 3;
 }
@@ -51,27 +51,20 @@ message EntryUpdate {
 // Verifiable Map Leaf Data and Mutation Data.
 //
 
+// Entry is a signed change to a map entry.
 // Entry contains a commitment to profile and a set of authorized update keys.
 // Entry is placed in the verifiable map as leaf data.
 message Entry {
+  // index is the location of this leaf in the sparse merkle tree.
+  bytes index = 3;
   // commitment is a cryptographic commitment to arbitrary data.
-  bytes commitment = 1;
+  bytes commitment = 6;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
-  repeated keyspb.PublicKey authorized_keys = 2;
+  repeated keyspb.PublicKey authorized_keys = 7;
   // previous contains the hash of the previous entry that this mutation is
   // modifying creating a hash chain of all mutations. The hash used is
   // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
-  bytes previous = 3;
-}
-
-// SignedKV is a signed change to a map entry.
-// TODO(gbelvin) rename to Entry.
-message SignedKV {
-  // index is the location of this leaf in the sparse merkle tree.
-  bytes index = 3;
-  // value is an Entry.
-  // TODO(gbelvin): migrate the elements from Entry into SignedKV.
-  Entry value = 5;
+  bytes previous = 8;
 
   // signatures on key_value. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
@@ -86,7 +79,7 @@ message SignedKV {
 message MutationProof {
   // mutation contains the information needed to modify the old leaf.
   // The format of a mutation is specific to the particular Mutate function being used.
-  SignedKV mutation = 1;
+  Entry mutation = 1;
   // leaf_proof contains the leaf and its inclusion proof for a particular map revision.
   trillian.MapLeafInclusion leaf_proof = 2;
 }

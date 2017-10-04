@@ -15,8 +15,6 @@
 package entry
 
 import (
-	"encoding/pem"
-	"errors"
 	"reflect"
 	"testing"
 
@@ -24,6 +22,8 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
+	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keyspb"
 
 	"github.com/golang/protobuf/proto"
@@ -56,21 +56,24 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
-	authKeys := make([]*keyspb.PublicKey, len(pkeys))
-	for i, key := range pkeys {
-		p, _ := pem.Decode([]byte(key))
-		if p == nil {
-			return nil, errors.New("no PEM block found")
-		}
-		authKeys[i] = &keyspb.PublicKey{Der: p.Bytes}
+func mustPublicKey(pubPEM string) *keyspb.PublicKey {
+	pubKey, err := pem.UnmarshalPublicKey(pubPEM)
+	if err != nil {
+		panic(err)
 	}
+	p, err := der.ToPublicProto(pubKey)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
 
-	return &tpb.Entry{
-		Commitment:     commitment,
-		AuthorizedKeys: authKeys,
-		Previous:       nil,
-	}, nil
+func mustPublicKeys(pubPEMs []string) []*keyspb.PublicKey {
+	authKeys := make([]*keyspb.PublicKey, len(pubPEMs))
+	for i, key := range pubPEMs {
+		authKeys[i] = mustPublicKey(key)
+	}
+	return authKeys
 }
 
 func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
