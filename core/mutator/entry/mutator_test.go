@@ -56,7 +56,8 @@ func TestCheckMutation(t *testing.T) {
 		err      error
 	}{
 		{
-			old: nil,
+			desc: "Very first mutation, working case",
+			old:  nil,
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -66,10 +67,10 @@ func TestCheckMutation(t *testing.T) {
 				},
 			},
 			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
-			desc:    "Very first mutation, working case",
 		},
 		{
-			old: entryData1,
+			desc: "Second mutation, working case",
+			old:  entryData1,
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -79,10 +80,10 @@ func TestCheckMutation(t *testing.T) {
 				},
 			},
 			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)}),
-			desc:    "Second mutation, working case",
 		},
 		{
-			old: entryData2,
+			desc: "Replayed mutation",
+			old:  entryData2,
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -91,21 +92,21 @@ func TestCheckMutation(t *testing.T) {
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
 				},
 			},
-			err:  mutator.ErrReplay,
-			desc: "Replayed mutation",
+			err: mutator.ErrReplay,
 		},
 		{
-			old: entryData1,
+			desc: "Large mutation",
+			old:  entryData1,
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index: bytes.Repeat(key, mutator.MaxMutationSize),
 				},
 			},
-			err:  mutator.ErrSize,
-			desc: "Large mutation",
+			err: mutator.ErrSize,
 		},
 		{
-			old: entryData2,
+			desc: "Invalid previous entry hash",
+			old:  entryData2,
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -114,19 +115,19 @@ func TestCheckMutation(t *testing.T) {
 					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
 				},
 			},
-			err:  mutator.ErrPreviousHash,
-			desc: "Invalid previous entry hash",
+			err: mutator.ErrPreviousHash,
 		},
 		{
+			desc: "Very first mutation, invalid previous entry hash",
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Previous: nil,
 				},
 			},
-			err:  mutator.ErrPreviousHash,
-			desc: "Very first mutation, invalid previous entry hash",
+			err: mutator.ErrPreviousHash,
 		},
 		{
+			desc: "Very first mutation, missing current key",
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -137,9 +138,9 @@ func TestCheckMutation(t *testing.T) {
 			},
 			err:     mutator.ErrMissingKey,
 			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
-			desc:    "Very first mutation, missing current key",
 		},
 		{
+			desc: "Very first mutation, missing current signature",
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -150,10 +151,10 @@ func TestCheckMutation(t *testing.T) {
 			},
 			signers: signersFromPEMs(t, [][]byte{}),
 			err:     mutator.ErrUnauthorized,
-			desc:    "Very first mutation, missing current signature",
 		},
 		{
-			old: entryData1,
+			desc: "Very first mutation, missing previous signature",
+			old:  entryData1,
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -164,10 +165,10 @@ func TestCheckMutation(t *testing.T) {
 			},
 			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey2)}),
 			err:     mutator.ErrUnauthorized,
-			desc:    "Very first mutation, missing previous signature",
 		},
 		{
-			old: entryData1,
+			desc: "Very first mutation, successful key change",
+			old:  entryData1,
 			mutation: &Mutation{
 				entry: &pb.Entry{
 					Index:          key,
@@ -177,7 +178,6 @@ func TestCheckMutation(t *testing.T) {
 				},
 			},
 			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
-			desc:    "Very first mutation, successful key change",
 		},
 	} {
 		m, err := tc.mutation.sign(tc.signers)
