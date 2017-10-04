@@ -42,7 +42,7 @@ func New() *Mutator {
 
 // Mutate verifies that this is a valid mutation for this item and applies
 // mutation to value. Repeated applications of Mutate on the same input produce
-// the same output.
+// the same output. OldValue and update are both SignedKV protos.
 func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
@@ -50,7 +50,7 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrSize
 	}
 
-	updated, ok := update.(*pb.SignedKV)
+	newEntry, ok := update.(*pb.Entry)
 	if !ok {
 		glog.Warning("received proto.Message is not of type *pb.SignedKV.")
 		return nil, fmt.Errorf("updateM.(*pb.SignedKV): _, %v", ok)
@@ -65,11 +65,8 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		oldEntry = old
 	}
 
-	newEntry := updated.Value
-
-	// Verify pointer to previous data.
-	// The very first entry will have oldValue=nil, so its hash is the
-	// ObjectHash value of nil.
+	// Verify pointer to previous data.  The very first entry will have
+	// oldValue=nil, so its hash is the ObjectHash value of nil.
 	prevEntryHash := objecthash.ObjectHash(oldEntry)
 	if !bytes.Equal(prevEntryHash[:], newEntry.GetPrevious()) {
 		// Check if this mutation is a replay.
@@ -88,16 +85,17 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrMissingKey
 	}
 
-	kv := *updated
+	kv := *newEntry
 	kv.Signatures = nil
 	if err := verifyKeys(oldEntry.GetAuthorizedKeys(),
 		newEntry.GetAuthorizedKeys(),
 		kv,
-		updated.GetSignatures()); err != nil {
+		newEntry.GetSignatures(),
+	); err != nil {
 		return nil, err
 	}
 
-	return updated.GetValue(), nil
+	return newEntry, nil
 }
 
 // verifyKeys verifies both old and new authorized keys based on the following

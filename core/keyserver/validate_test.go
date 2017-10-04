@@ -97,17 +97,14 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		{false, userID, index, commitment, nil}, // Incorrect key
 		{true, userID, index, commitment, nonce},
 	} {
-		signedkv := &pb.SignedKV{
-			Index: tc.index[:],
-			Value: &pb.Entry{
-				Commitment: tc.commitment,
-			},
-		}
 		req := &pb.UpdateEntryRequest{
 			UserId: tc.userID,
 			AppId:  appID,
 			EntryUpdate: &pb.EntryUpdate{
-				Mutation: signedkv,
+				Mutation: &pb.Entry{
+					Index:      tc.index[:],
+					Commitment: tc.commitment,
+				},
 				Committed: &pb.Committed{
 					Key:  tc.nonce,
 					Data: profileData,
