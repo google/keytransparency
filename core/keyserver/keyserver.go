@@ -365,7 +365,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *pb.GetDomainInfoRequest)
 	}, nil
 }
 
-func (s *Server) saveCommitment(ctx context.Context, entry *pb.Entry, committed *pb.Committed) error {
+func (s *Server) saveCommitment(ctx context.Context, entry *tpb.Entry, committed *tpb.Committed) error {
 	// Write the commitment.
 	if err := s.committer.Write(ctx, entry.Commitment, committed.Data, committed.Key); err != nil {
 		glog.Errorf("committer.Write failed: %v", err)

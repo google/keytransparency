@@ -33,7 +33,7 @@ func TestCheckMutation(t *testing.T) {
 	key := []byte{0}
 	nilHash := objecthash.ObjectHash(nil)
 
-	entryData1 := &pb.Entry{
+	entryData1 := &tpb.Entry{
 		Index:          key,
 		Commitment:     []byte{1},
 		AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
@@ -41,7 +41,7 @@ func TestCheckMutation(t *testing.T) {
 	}
 	hashEntry1 := objecthash.ObjectHash(entryData1)
 
-	entryData2 := &pb.Entry{
+	entryData2 := &tpb.Entry{
 		Index:          key,
 		Commitment:     []byte{2},
 		AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
@@ -52,14 +52,14 @@ func TestCheckMutation(t *testing.T) {
 		desc     string
 		mutation *Mutation
 		signers  []signatures.Signer
-		old      *pb.Entry
+		old      *tpb.Entry
 		err      error
 	}{
 		{
 			desc: "Very first mutation, working case",
 			old:  nil,
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
@@ -72,7 +72,7 @@ func TestCheckMutation(t *testing.T) {
 			desc: "Second mutation, working case",
 			old:  entryData1,
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
@@ -85,7 +85,7 @@ func TestCheckMutation(t *testing.T) {
 			desc: "Replayed mutation",
 			old:  entryData2,
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
@@ -98,7 +98,7 @@ func TestCheckMutation(t *testing.T) {
 			desc: "Large mutation",
 			old:  entryData1,
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index: bytes.Repeat(key, mutator.MaxMutationSize),
 				},
 			},
@@ -108,7 +108,7 @@ func TestCheckMutation(t *testing.T) {
 			desc: "Invalid previous entry hash",
 			old:  entryData2,
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nil,
@@ -120,7 +120,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			desc: "Very first mutation, invalid previous entry hash",
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Previous: nil,
 				},
 			},
@@ -129,7 +129,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			desc: "Very first mutation, missing current key",
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
@@ -142,7 +142,7 @@ func TestCheckMutation(t *testing.T) {
 		{
 			desc: "Very first mutation, missing current signature",
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
@@ -156,7 +156,7 @@ func TestCheckMutation(t *testing.T) {
 			desc: "Very first mutation, missing previous signature",
 			old:  entryData1,
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
@@ -170,7 +170,7 @@ func TestCheckMutation(t *testing.T) {
 			desc: "Very first mutation, successful key change",
 			old:  entryData1,
 			mutation: &Mutation{
-				entry: &pb.Entry{
+				entry: &tpb.Entry{
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],

@@ -52,7 +52,7 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		userID:    userID,
 		appID:     appID,
 		prevEntry: prevEntry,
-		entry: &pb.Entry{
+		entry: &tpb.Entry{
 			Index:          index,
 			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
 			Previous:       hash[:],
@@ -115,7 +115,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 }
 
 // Sign produces the SignedKV
-func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
+func (m *Mutation) sign(signers []signatures.Signer) (*tpb.Entry, error) {
 	m.entry.Signatures = nil
 	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
