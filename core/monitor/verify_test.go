@@ -14,5 +14,11 @@
 
 package monitor
 
+import "testing"
+
 // TODO(ismail): write extensive tests for verification steps, where necessary
 // tests should go into integration tests
+
+// TestSomething is an empty test allows this file to compile.
+func TestSomething(*testing.T) {
+}
