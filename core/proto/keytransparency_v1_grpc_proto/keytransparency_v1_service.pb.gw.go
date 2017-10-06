@@ -7,14 +7,14 @@ Package keytransparency_v1_service is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package keytransparency_v1_service
+package keytransparency_v1_grpc_proto
 
 import (
 	"io"
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"golang.org/x/net/context"
@@ -33,7 +33,7 @@ var (
 )
 
 func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.GetEntryRequest
+	var protoReq keytransparency_v1_proto.GetEntryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -68,7 +68,7 @@ var (
 )
 
 func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.ListEntryHistoryRequest
+	var protoReq keytransparency_v1_proto.ListEntryHistoryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -103,7 +103,7 @@ var (
 )
 
 func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.UpdateEntryRequest
+	var protoReq keytransparency_v1_proto.UpdateEntryRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.EntryUpdate); err != nil {
@@ -138,7 +138,7 @@ func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler
 }
 
 func request_KeyTransparencyService_GetDomainInfo_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.GetDomainInfoRequest
+	var protoReq keytransparency_v1_proto.GetDomainInfoRequest
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetDomainInfo(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -151,7 +151,7 @@ var (
 )
 
 func request_KeyTransparencyAdminService_BatchUpdateEntries_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.BatchUpdateEntriesRequest
+	var protoReq keytransparency_v1_proto.BatchUpdateEntriesRequest
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdminService_BatchUpdateEntries_0); err != nil {

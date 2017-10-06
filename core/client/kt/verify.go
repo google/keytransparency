@@ -33,7 +33,7 @@ import (
 	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var (

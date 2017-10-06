@@ -19,9 +19,9 @@ syntax = "proto3";
 // The Key Transparency Service API consists of a map of user names to public
 // keys. Each user name also has a history of public keys that have been
 // associated with it.
-package keytransparency.v1.service;
+package keytransparency.v1.grpc.proto;
 
-import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
+import "github.com/google/keytransparency/core/proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "google/api/annotations.proto";
 
 
@@ -38,7 +38,7 @@ service KeyTransparencyService {
   // GetEntry returns a user's entry in the Merkle Tree.
   //
   // Entries contain signed commitments to a profile, which is also returned.
-  rpc GetEntry(keytransparency.v1.types.GetEntryRequest) returns (keytransparency.v1.types.GetEntryResponse) {
+  rpc GetEntry(keytransparency.v1.proto.GetEntryRequest) returns (keytransparency.v1.proto.GetEntryResponse) {
     option (google.api.http) = { get: "/v1/users/{user_id}" };
   }
 
@@ -46,7 +46,7 @@ service KeyTransparencyService {
   //
   // Clients verify their account history by observing correct values for their
   // account over time.
-  rpc ListEntryHistory(keytransparency.v1.types.ListEntryHistoryRequest) returns (keytransparency.v1.types.ListEntryHistoryResponse) {
+  rpc ListEntryHistory(keytransparency.v1.proto.ListEntryHistoryRequest) returns (keytransparency.v1.proto.ListEntryHistoryResponse) {
     option (google.api.http) = { get: "/v1/users/{user_id}/history" };
   }
 
@@ -54,7 +54,7 @@ service KeyTransparencyService {
   //
   // Returns the current user profile.
   // Clients must retry until this function returns a proof containing the desired value.
-  rpc UpdateEntry(keytransparency.v1.types.UpdateEntryRequest) returns (keytransparency.v1.types.UpdateEntryResponse) {
+  rpc UpdateEntry(keytransparency.v1.proto.UpdateEntryRequest) returns (keytransparency.v1.proto.UpdateEntryResponse) {
     option (google.api.http) = {
       put: "/v1/users/{user_id}"
       body: "entry_update"
@@ -66,7 +66,7 @@ service KeyTransparencyService {
   // This API to get all necessary data needed to verify a particular
   // key-server. Data contains for instance the tree-info, like for instance the
   // log-/map-id and the corresponding public-keys.
-  rpc GetDomainInfo(keytransparency.v1.types.GetDomainInfoRequest) returns (keytransparency.v1.types.GetDomainInfoResponse) {
+  rpc GetDomainInfo(keytransparency.v1.proto.GetDomainInfoRequest) returns (keytransparency.v1.proto.GetDomainInfoResponse) {
     option (google.api.http) = { get: "/v1/domain/info" };
   }
 }
@@ -74,7 +74,7 @@ service KeyTransparencyService {
 // The KeyTransparencyAdminService API provides batch access to the directory of public keys. 
 service KeyTransparencyAdminService {
   // BatchSetEntries uses an authorized_public key to perform a set request on multiple entries at once.  
-  rpc BatchUpdateEntries(keytransparency.v1.types.BatchUpdateEntriesRequest) returns (keytransparency.v1.types.BatchUpdateEntriesResponse) {
+  rpc BatchUpdateEntries(keytransparency.v1.proto.BatchUpdateEntriesRequest) returns (keytransparency.v1.proto.BatchUpdateEntriesResponse) {
     option (google.api.http) = {
       post: "/v1/users:batch"
       body: ""

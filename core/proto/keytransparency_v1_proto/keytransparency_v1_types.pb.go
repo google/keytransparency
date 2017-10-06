@@ -35,7 +35,7 @@ It has these top-level messages:
 	GetEpochsRequest
 	GetEpochsResponse
 */
-package keytransparency_v1_types
+package keytransparency_v1_proto
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"

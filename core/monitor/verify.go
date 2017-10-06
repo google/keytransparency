@@ -30,7 +30,7 @@ import (
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/storage"
 
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var (

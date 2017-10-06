@@ -17,7 +17,7 @@ package monitor
 import (
 	"fmt"
 
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 
 	"github.com/google/trillian"
 )
