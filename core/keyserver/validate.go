@@ -25,7 +25,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // Maximum period of time to allow between CreationTime and server time.
@@ -69,12 +69,13 @@ func validateKey(userID, appID string, key []byte) error {
 // validateUpdateEntryRequest verifies
 // - Commitment in SignedEntryUpdate matches the serialized profile.
 // - Profile is a valid.
-func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
-	entry := in.GetEntryUpdate().GetMutation()
+func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
+	skv := in.GetEntryUpdate().GetMutation()
+	entry := skv.GetValue()
 
 	// Verify Index / VRF
 	index, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId, in.AppId))
-	if got, want := entry.Index, index[:]; !bytes.Equal(got, want) {
+	if got, want := skv.Index, index[:]; !bytes.Equal(got, want) {
 		return ErrWrongIndex
 	}
 
@@ -99,7 +100,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 // validateListEntryHistoryRequest ensures that start epoch is in range [1,
 // currentEpoch] and sets the page size if it is 0 or larger than what the server
 // can return (due to reaching currentEpoch).
-func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentEpoch int64) error {
+func validateListEntryHistoryRequest(in *tpb.ListEntryHistoryRequest, currentEpoch int64) error {
 	if in.Start < 0 || in.Start > currentEpoch {
 		return ErrInvalidStart
 	}

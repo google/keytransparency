@@ -26,14 +26,14 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
 // Entry or nil if the passes LeafValue was nil.
-func FromLeafValue(value []byte) (*pb.Entry, error) {
+func FromLeafValue(value []byte) (*tpb.Entry, error) {
 	if value != nil {
-		entry := new(pb.Entry)
+		entry := new(tpb.Entry)
 		if err := proto.Unmarshal(value, entry); err != nil {
 			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)
 			return nil, err
@@ -47,10 +47,10 @@ func FromLeafValue(value []byte) (*pb.Entry, error) {
 
 // ToLeafValue converts the update object into a serialized object to store in the map.
 func ToLeafValue(update proto.Message) ([]byte, error) {
-	e, ok := update.(*pb.Entry)
+	e, ok := update.(*tpb.Entry)
 	if !ok {
-		glog.Warning("received proto.Message is not of type *pb.SignedKV.")
-		return nil, fmt.Errorf("updateM.(*pb.SignedKV): _, %v", ok)
+		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
+		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
 	}
 
 	return proto.Marshal(e)

@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/keytransparency/core/transaction"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -65,12 +65,12 @@ type Mutation interface {
 	// count. Note that startSequence is not included in the result.
 	// ReadRange stops when endSequence or count is reached, whichever comes
 	// first. ReadRange also returns the maximum sequence number read.
-	ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*pb.Entry, error)
+	ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error)
 	// ReadAll reads all mutations starting from the given sequence number.
 	// Note that startSequence is not included in the result. ReadAll also
 	// returns the maximum sequence number read.
-	ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*pb.Entry, error)
+	ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.SignedKV, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
-	Write(txn transaction.Txn, mutation *pb.Entry) (uint64, error)
+	Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error)
 }

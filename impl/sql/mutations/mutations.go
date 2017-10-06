@@ -25,7 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (
@@ -71,7 +71,7 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *mutations) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*pb.Entry, error) {
+func (m *mutations) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error) {
 	readStmt, err := txn.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
@@ -88,7 +88,7 @@ func (m *mutations) ReadRange(txn transaction.Txn, startSequence, endSequence ui
 // ReadAll reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *mutations) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*pb.Entry, error) {
+func (m *mutations) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.SignedKV, error) {
 	readStmt, err := txn.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
@@ -102,8 +102,8 @@ func (m *mutations) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, 
 	return readRows(rows)
 }
 
-func readRows(rows *sql.Rows) (uint64, []*pb.Entry, error) {
-	results := make([]*pb.Entry, 0)
+func readRows(rows *sql.Rows) (uint64, []*tpb.SignedKV, error) {
+	results := make([]*tpb.SignedKV, 0)
 	maxSequence := uint64(0)
 	for rows.Next() {
 		var sequence uint64
@@ -114,7 +114,7 @@ func readRows(rows *sql.Rows) (uint64, []*pb.Entry, error) {
 		if sequence > maxSequence {
 			maxSequence = sequence
 		}
-		mutation := new(pb.Entry)
+		mutation := new(tpb.SignedKV)
 		if err := proto.Unmarshal(mData, mutation); err != nil {
 			return 0, nil, err
 		}
@@ -128,7 +128,7 @@ func readRows(rows *sql.Rows) (uint64, []*pb.Entry, error) {
 
 // Write saves the mutation in the database. Write returns the auto-inserted
 // sequence number.
-func (m *mutations) Write(txn transaction.Txn, mutation *pb.Entry) (uint64, error) {
+func (m *mutations) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
 	index := mutation.GetIndex()
 	mData, err := proto.Marshal(mutation)
 	if err != nil {

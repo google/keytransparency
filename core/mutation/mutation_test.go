@@ -30,7 +30,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 )
 
@@ -39,15 +39,15 @@ const (
 	mapID = 0
 )
 
-func signedKV(t *testing.T, start, end int) []*pb.Entry {
+func signedKV(t *testing.T, start, end int) []*tpb.SignedKV {
 	if start > end {
 		t.Fatalf("start=%v > end=%v", start, end)
 	}
-	kvs := make([]*pb.Entry, 0, end-start)
+	kvs := make([]*tpb.SignedKV, 0, end-start)
 	for i := start; i <= end; i++ {
-		kvs = append(kvs, &pb.Entry{
-			Index:      []byte(fmt.Sprintf("key_%v", i)),
-			Commitment: []byte(fmt.Sprintf("value_%v", i)),
+		kvs = append(kvs, &tpb.SignedKV{
+			Index: []byte(fmt.Sprintf("key_%v", i)),
+			Value: &tpb.Entry{Commitment: []byte(fmt.Sprintf("value_%v", i))},
 		})
 	}
 	return kvs
@@ -66,14 +66,14 @@ func createEpoch(t *testing.T, mutations *fakeMutation, fakeMap *fakeTrillianMap
 		}
 	}
 	fakeMap.tmap[epoch] = &trillian.SignedMapRoot{
-		Metadata: mustMetadataAsAny(t, &pb.MapperMetadata{
+		Metadata: mustMetadataAsAny(t, &tpb.MapperMetadata{
 			HighestFullyCompletedSeq: int64(end),
 		}),
 		MapRevision: epoch,
 	}
 }
 
-func mustMetadataAsAny(t *testing.T, meta *pb.MapperMetadata) *any.Any {
+func mustMetadataAsAny(t *testing.T, meta *tpb.MapperMetadata) *any.Any {
 	m, err := internal.MetadataAsAny(meta)
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +92,7 @@ func TestGetMutations(t *testing.T) {
 		epoch       int64
 		token       string
 		pageSize    int32
-		mutations   []*pb.Entry
+		mutations   []*tpb.SignedKV
 		nextToken   string
 		success     bool
 	}{
@@ -107,7 +107,7 @@ func TestGetMutations(t *testing.T) {
 		{"invalid page token", 1, "some_token", 0, nil, "", false},
 	} {
 		srv := New(logID, mapID, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
-		resp, err := srv.GetMutations(ctx, &pb.GetMutationsRequest{
+		resp, err := srv.GetMutations(ctx, &tpb.GetMutationsRequest{
 			Epoch:     tc.epoch,
 			PageToken: tc.token,
 			PageSize:  tc.pageSize,
@@ -220,11 +220,11 @@ func (fakeFactory) NewTxn(ctx context.Context) (transaction.Txn, error) {
 
 // mutator.Mutation fake.
 type fakeMutation struct {
-	mtns []*pb.Entry
+	mtns []*tpb.SignedKV
 }
 
 // sequence numbers are 1-based.
-func (m *fakeMutation) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*pb.Entry, error) {
+func (m *fakeMutation) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.SignedKV, error) {
 	if startSequence > uint64(len(m.mtns)) {
 		panic("startSequence > len(m.mtns)")
 	}
@@ -238,11 +238,11 @@ func (m *fakeMutation) ReadRange(txn transaction.Txn, startSequence, endSequence
 	return endSequence, m.mtns[startSequence:endSequence], nil
 }
 
-func (m *fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*pb.Entry, error) {
+func (m *fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.SignedKV, error) {
 	return 0, nil, nil
 }
 
-func (m *fakeMutation) Write(txn transaction.Txn, mutation *pb.Entry) (uint64, error) {
+func (m *fakeMutation) Write(txn transaction.Txn, mutation *tpb.SignedKV) (uint64, error) {
 	m.mtns = append(m.mtns, mutation)
 	return uint64(len(m.mtns)), nil
 }

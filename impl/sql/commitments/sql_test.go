@@ -24,7 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	_ "github.com/mattn/go-sqlite3"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 func TestWriteRead(t *testing.T) {
@@ -58,7 +58,7 @@ func TestWriteRead(t *testing.T) {
 		{[]byte("committmentB"), []byte("key 2"), []byte("key2"), true},
 		{commitment, nonce, pdata, true},
 	} {
-		committed := &pb.Committed{Key: tc.key, Data: tc.value}
+		committed := &tpb.Committed{Key: tc.key, Data: tc.value}
 		err = c.Write(context.TODO(), tc.commitment, tc.value, tc.key)
 		if got := err == nil; got != tc.wantNoErr {
 			t.Errorf("WriteCommitment(%s, %v): %v, want %v", tc.commitment, committed, err, tc.wantNoErr)
@@ -68,7 +68,7 @@ func TestWriteRead(t *testing.T) {
 			if err != nil {
 				t.Errorf("Read(_, %v): %v", tc.commitment, err)
 			}
-			if got, want := (&pb.Committed{Key: nonce, Data: data}), committed; !proto.Equal(got, want) {
+			if got, want := (&tpb.Committed{Key: nonce, Data: data}), committed; !proto.Equal(got, want) {
 				t.Errorf("Read(%v): %v want %v", tc.commitment, got, want)
 			}
 		}

@@ -24,16 +24,17 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
 	userID, appID string
+	index         []byte
 	data, nonce   []byte
 
-	prevEntry *pb.Entry
-	entry     *pb.Entry
+	prevEntry *tpb.Entry
+	entry     *tpb.Entry
 }
 
 // NewMutation creates a mutation object from a previous value which can be modified.
@@ -47,13 +48,14 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		return nil, err
 	}
 
+	// TODO(ismail): Change this to plain sha256.
 	hash := objecthash.ObjectHash(prevEntry)
 	return &Mutation{
 		userID:    userID,
 		appID:     appID,
+		index:     index,
 		prevEntry: prevEntry,
-		entry: &pb.Entry{
-			Index:          index,
+		entry: &tpb.Entry{
 			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
 			Previous:       hash[:],
 			Commitment:     prevEntry.GetCommitment(),
@@ -85,7 +87,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEntryRequest, error) {
 	signedkv, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -101,12 +103,12 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 		return nil, err
 	}
 
-	return &pb.UpdateEntryRequest{
+	return &tpb.UpdateEntryRequest{
 		UserId: m.userID,
 		AppId:  m.appID,
-		EntryUpdate: &pb.EntryUpdate{
+		EntryUpdate: &tpb.EntryUpdate{
 			Mutation: signedkv,
-			Committed: &pb.Committed{
+			Committed: &tpb.Committed{
 				Key:  m.nonce,
 				Data: m.data,
 			},
@@ -115,17 +117,21 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 }
 
 // Sign produces the SignedKV
-func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
-	m.entry.Signatures = nil
+func (m *Mutation) sign(signers []signatures.Signer) (*tpb.SignedKV, error) {
+	skv := &tpb.SignedKV{
+		Index: m.index,
+		Value: m.entry,
+	}
+
 	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
-		sig, err := signer.Sign(m.entry)
+		sig, err := signer.Sign(skv)
 		if err != nil {
 			return nil, err
 		}
 		sigs[signer.KeyID()] = sig
 	}
 
-	m.entry.Signatures = sigs
-	return m.entry, nil
+	skv.Signatures = sigs
+	return skv, nil
 }
