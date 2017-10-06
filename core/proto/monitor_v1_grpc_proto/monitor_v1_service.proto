@@ -18,9 +18,9 @@ syntax = "proto3";
 //
 // The Key Transparency monitor server service consists of APIs to fetch
 // monitor results queried using the mutations API.
-package monitor.v1.service;
+package monitor.v1.grpc.proto;
 
-import "github.com/google/keytransparency/core/proto/monitor_v1_types/monitor_v1_types.proto";
+import "github.com/google/keytransparency/core/proto/monitor_v1_grpc_proto/monitor_v1_grpc_proto.proto";
 import "google/api/annotations.proto";
 
 // The Monitor Service API allows clients to query the monitors observed and
@@ -40,8 +40,8 @@ service MonitorService {
   // the monitor could not reconstruct the map root given the set of mutations
   // from the previous to the current epoch it won't sign the map root and
   // additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRoot(monitor.v1.types.GetMonitoringRequest)
-    returns (monitor.v1.types.GetMonitoringResponse) {
+  rpc GetSignedMapRoot(monitor.v1.grpc.proto.GetMonitoringRequest)
+    returns (monitor.v1.grpc.proto.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/monitor/{kt_URL}/map/results:latest" };
   }
 
@@ -52,8 +52,8 @@ service MonitorService {
   // If the monitor could not reconstruct the map root given the set of
   // mutations from the previous to the current epoch it won't sign the map root
   // and additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRootByRevision(monitor.v1.types.GetMonitoringRequest)
-    returns(monitor.v1.types.GetMonitoringResponse) {
+  rpc GetSignedMapRootByRevision(monitor.v1.grpc.proto.GetMonitoringRequest)
+    returns(monitor.v1.grpc.proto.GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/monitor/{kt_URL}/map/results/{epoch}" };
   }
 }

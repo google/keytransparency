@@ -7,14 +7,14 @@ Package sequencer_v1_service is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package sequencer_v1_service
+package sequencer_v1_grpc_proto
 
 import (
 	"io"
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	"github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"golang.org/x/net/context"
@@ -29,7 +29,7 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 func request_SequencerService_GetEpochs_0(ctx context.Context, marshaler runtime.Marshaler, client SequencerServiceClient, req *http.Request, pathParams map[string]string) (SequencerService_GetEpochsClient, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_types.GetEpochsRequest
+	var protoReq keytransparency_v1_proto.GetEpochsRequest
 	var metadata runtime.ServerMetadata
 
 	stream, err := client.GetEpochs(ctx, &protoReq)

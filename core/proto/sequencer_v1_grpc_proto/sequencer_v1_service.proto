@@ -14,9 +14,9 @@
 
 syntax = "proto3";
 
-package sequencer.v1.service;
+package sequencer.v1.grpc.proto;
 
-import "github.com/google/keytransparency/core/proto/keytransparency_v1_types/keytransparency_v1_types.proto";
+import "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc_proto/keytransparency_v1_grpc_proto.proto";
 import "google/api/annotations.proto";
 
 // SequencerService notifies its callers about created epochs and all their
@@ -25,8 +25,8 @@ service SequencerService {
   // GetEpochs is a streaming API that sends epoch mutations upon creation.
   //
   // Returns the mutations of a newly created epoch.
-  rpc GetEpochs(keytransparency.v1.types.GetEpochsRequest)
-      returns (stream keytransparency.v1.types.GetEpochsResponse) {
+  rpc GetEpochs(keytransparency.v1.proto.GetEpochsRequest)
+      returns (stream keytransparency.v1.proto.GetEpochsResponse) {
     option (google.api.http) = { get: "/v1/epochs:stream" };
   }
 }

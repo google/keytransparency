@@ -19,7 +19,7 @@ syntax = "proto3";
 // The Key Transparency Service API consists of a map of user names to public
 // keys. Each user name also has a history of public keys that have been
 // associated with it.
-package keytransparency.v1.types;
+package keytransparency.v1.proto;
 
 import "crypto/keyspb/keyspb.proto";
 import "crypto/sigpb/sigpb.proto";

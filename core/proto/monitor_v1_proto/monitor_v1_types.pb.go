@@ -14,12 +14,12 @@ It has these top-level messages:
 	GetMonitoringRequest
 	GetMonitoringResponse
 */
-package monitor_v1_types
+package monitor_v1_proto
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import keytransparency_v1_types "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+import keytransparency_v1_types "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 import trillian "github.com/google/trillian"
 
 // Reference imports to suppress errors if they are not otherwise used.
