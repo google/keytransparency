@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package sequencer.v1.grpc.proto;
 
-import "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc_proto/keytransparency_v1_grpc_proto.proto";
+import "github.com/google/keytransparency/core/proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "google/api/annotations.proto";
 
 // SequencerService notifies its callers about created epochs and all their
