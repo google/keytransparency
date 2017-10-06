@@ -45,9 +45,9 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	cmutation "github.com/google/keytransparency/core/mutation"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/core/proto/mutation_v1_service"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
-	ktpb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
-	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
