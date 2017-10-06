@@ -22,7 +22,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/google/keytransparency/core/monitor/storage"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
@@ -66,7 +66,7 @@ func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcry
 // Process processes a mutation response received from the keytransparency
 // server. Processing includes verifying, signing and storing the resulting
 // monitoring response.
-func (m *Monitor) Process(resp *pb.GetMutationsResponse) error {
+func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
 	var smr *trillian.SignedMapRoot
 	var err error
 	seen := time.Now().Unix()

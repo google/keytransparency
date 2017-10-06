@@ -19,7 +19,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/p256"
@@ -52,7 +51,7 @@ func NewSignerFromPEM(pemKey []byte) (signatures.Signer, error) {
 func NewVerifierFromBytes(b []byte) (signatures.Verifier, error) {
 	k, err := x509.ParsePKIXPublicKey(b)
 	if err != nil {
-		return nil, fmt.Errorf("factory: could not parse public key: %v", err)
+		return nil, err
 	}
 
 	switch pkType := k.(type) {

@@ -39,8 +39,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	_ "github.com/spf13/viper/remote"               // Enable remote configs
@@ -255,18 +256,18 @@ func GetClient(useClientSecret bool) (*grpcc.Client, error) {
 }
 
 // config selects a source for and returns the client configuration.
-func config(ctx context.Context, cc *grpc.ClientConn) (*pb.GetDomainInfoResponse, error) {
+func config(ctx context.Context, cc *grpc.ClientConn) (*kpb.GetDomainInfoResponse, error) {
 	autoConfig := viper.GetBool("autoconfig")
 	switch {
 	case autoConfig:
-		ktClient := pb.NewKeyTransparencyServiceClient(cc)
-		return ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{})
+		ktClient := spb.NewKeyTransparencyServiceClient(cc)
+		return ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
 	default:
 		return readConfigFromDisk()
 	}
 }
 
-func readConfigFromDisk() (*pb.GetDomainInfoResponse, error) {
+func readConfigFromDisk() (*kpb.GetDomainInfoResponse, error) {
 	vrfPubFile := viper.GetString("vrf")
 	logPEMFile := viper.GetString("log-key")
 	mapPEMFile := viper.GetString("map-key")
@@ -301,7 +302,7 @@ func readConfigFromDisk() (*pb.GetDomainInfoResponse, error) {
 		return nil, fmt.Errorf("error seralizeing map public key: %v", err)
 	}
 
-	return &pb.GetDomainInfoResponse{
+	return &kpb.GetDomainInfoResponse{
 		Log: &trillian.Tree{
 			HashStrategy: trillian.HashStrategy_OBJECT_RFC6962_SHA256,
 			PublicKey:    logPubPB,

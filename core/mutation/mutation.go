@@ -29,7 +29,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 )
 
@@ -61,7 +61,7 @@ func New(logID int64,
 }
 
 // GetMutations returns a list of mutations paged by epoch number.
-func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (*pb.GetMutationsResponse, error) {
+func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
 	if err := validateGetMutationsRequest(in); err != nil {
 		glog.Errorf("validateGetMutationsRequest(%v): %v", in, err)
 		return nil, status.Error(codes.InvalidArgument, "Invalid request")
@@ -105,9 +105,9 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 		return nil, fmt.Errorf("txn.Commit(): %v", err)
 	}
 	indexes := make([][]byte, 0, len(mRange))
-	mutations := make([]*pb.MutationProof, 0, len(mRange))
+	mutations := make([]*tpb.MutationProof, 0, len(mRange))
 	for _, m := range mRange {
-		mutations = append(mutations, &pb.MutationProof{Mutation: m})
+		mutations = append(mutations, &tpb.MutationProof{Mutation: m})
 		indexes = append(indexes, m.GetIndex())
 	}
 	// Get leaf proofs.
@@ -140,7 +140,7 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	if len(mutations) == int(in.PageSize) && maxSequence != highestSeq {
 		nextPageToken = fmt.Sprintf("%d", maxSequence)
 	}
-	return &pb.GetMutationsResponse{
+	return &tpb.GetMutationsResponse{
 		Epoch:          in.Epoch,
 		Smr:            resp.GetMapRoot(),
 		LogRoot:        logRoot.GetSignedLogRoot(),

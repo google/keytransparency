@@ -15,6 +15,8 @@
 package entry
 
 import (
+	"encoding/pem"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -22,13 +24,11 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
-	"github.com/google/trillian/crypto/keys/der"
-	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keyspb"
 
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (
@@ -56,24 +56,21 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func mustPublicKey(pubPEM string) *keyspb.PublicKey {
-	pubKey, err := pem.UnmarshalPublicKey(pubPEM)
-	if err != nil {
-		panic(err)
+func createEntry(commitment []byte, pkeys []string) (*tpb.Entry, error) {
+	authKeys := make([]*keyspb.PublicKey, len(pkeys))
+	for i, key := range pkeys {
+		p, _ := pem.Decode([]byte(key))
+		if p == nil {
+			return nil, errors.New("no PEM block found")
+		}
+		authKeys[i] = &keyspb.PublicKey{Der: p.Bytes}
 	}
-	p, err := der.ToPublicProto(pubKey)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
 
-func mustPublicKeys(pubPEMs []string) []*keyspb.PublicKey {
-	authKeys := make([]*keyspb.PublicKey, len(pubPEMs))
-	for i, key := range pubPEMs {
-		authKeys[i] = mustPublicKey(key)
-	}
-	return authKeys
+	return &tpb.Entry{
+		Commitment:     commitment,
+		AuthorizedKeys: authKeys,
+		Previous:       nil,
+	}, nil
 }
 
 func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
@@ -90,14 +87,14 @@ func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
 }
 
 func TestFromLeafValue(t *testing.T) {
-	entry := &pb.Entry{Commitment: []byte{1, 2}}
+	entry := &tpb.Entry{Commitment: []byte{1, 2}}
 	entryB, _ := proto.Marshal(entry)
 	for i, tc := range []struct {
 		leafVal []byte
-		want    *pb.Entry
+		want    *tpb.Entry
 		wantErr bool
 	}{
-		{[]byte{}, &pb.Entry{}, false},           // empty leaf bytes -> return 'empty' proto, no error
+		{[]byte{}, &tpb.Entry{}, false},          // empty leaf bytes -> return 'empty' proto, no error
 		{nil, nil, false},                        // non-existing leaf -> return nil, no error
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
 		{entryB, entry, false},                   // valid leaf

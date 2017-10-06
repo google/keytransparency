@@ -23,7 +23,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -97,15 +97,18 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		{false, userID, index, commitment, nil}, // Incorrect key
 		{true, userID, index, commitment, nonce},
 	} {
-		req := &pb.UpdateEntryRequest{
+		signedkv := &tpb.SignedKV{
+			Index: tc.index[:],
+			Value: &tpb.Entry{
+				Commitment: tc.commitment,
+			},
+		}
+		req := &tpb.UpdateEntryRequest{
 			UserId: tc.userID,
 			AppId:  appID,
-			EntryUpdate: &pb.EntryUpdate{
-				Mutation: &pb.Entry{
-					Index:      tc.index[:],
-					Commitment: tc.commitment,
-				},
-				Committed: &pb.Committed{
+			EntryUpdate: &tpb.EntryUpdate{
+				Mutation: signedkv,
+				Committed: &tpb.Committed{
 					Key:  tc.nonce,
 					Data: profileData,
 				},

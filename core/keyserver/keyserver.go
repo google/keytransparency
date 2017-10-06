@@ -25,13 +25,14 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/crypto/keys/der"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	authzpb "github.com/google/keytransparency/core/proto/authorization"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 	"github.com/google/trillian"
 )
 
@@ -92,11 +93,11 @@ func New(logID int64,
 // GetEntry returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
-func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
+func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
 	return s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
 }
 
-func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, revision int64) (*pb.GetEntryResponse, error) {
+func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, revision int64) (*tpb.GetEntryResponse, error) {
 	if revision == 0 {
 		return nil, grpc.Errorf(codes.InvalidArgument,
 			"Epoch 0 is inavlid. The first map revision is epoch 1.")
@@ -136,22 +137,23 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	neighbors := getResp.MapLeafInclusion[0].Inclusion
 	leaf := getResp.MapLeafInclusion[0].Leaf.LeafValue
 
-	var committed *pb.Committed
+	var committed *tpb.Committed
 	if leaf != nil {
-		e, err := entry.FromLeafValue(leaf)
-		if err != nil {
-			return nil, grpc.Errorf(codes.Internal, "Cannot decode leaf value")
+		entry := tpb.Entry{}
+		if err := proto.Unmarshal(leaf, &entry); err != nil {
+			glog.Errorf("Error unmarshaling entry: %v", err)
+			return nil, grpc.Errorf(codes.Internal, "Cannot unmarshal entry")
 		}
 
-		data, nonce, err := s.committer.Read(ctx, e.GetCommitment())
+		data, nonce, err := s.committer.Read(ctx, entry.Commitment)
 		if err != nil {
 			glog.Errorf("Cannot read committed value: %v", err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
 		}
 		if data == nil {
-			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", e.GetCommitment())
+			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", entry.Commitment)
 		}
-		committed = &pb.Committed{
+		committed = &tpb.Committed{
 			Key:  nonce,
 			Data: data,
 		}
@@ -191,7 +193,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
-	return &pb.GetEntryResponse{
+	return &tpb.GetEntryResponse{
 		VrfProof:  proof,
 		Committed: committed,
 		LeafProof: &trillian.MapLeafInclusion{
@@ -208,7 +210,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
-func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
+func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
 	// Get current epoch.
 	resp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
 		MapId: s.mapID,
@@ -226,7 +228,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 
 	// Get all GetEntryResponse for all epochs in the range [start, start +
 	// in.PageSize].
-	responses := make([]*pb.GetEntryResponse, in.PageSize)
+	responses := make([]*tpb.GetEntryResponse, in.PageSize)
 	for i := range responses {
 		resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
 		if err != nil {
@@ -241,7 +243,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 		nextStart = 0
 	}
 
-	return &pb.ListEntryHistoryResponse{
+	return &tpb.ListEntryHistoryResponse{
 		Values:    responses,
 		NextStart: nextStart,
 	}, nil
@@ -249,7 +251,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
-func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*tpb.UpdateEntryResponse, error) {
 	// Validate proper authentication.
 	sctx, err := s.auth.ValidateCreds(ctx)
 	switch err {
@@ -280,7 +282,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Query for the current epoch.
-	req := &pb.GetEntryRequest{
+	req := &tpb.GetEntryRequest{
 		UserId: in.UserId,
 		AppId:  in.AppId,
 		//EpochStart: in.GetEntryUpdate().EpochStart,
@@ -309,7 +311,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
 		// Retry() in client/client.go.
-		return &pb.UpdateEntryResponse{Proof: resp}, nil
+		return &tpb.UpdateEntryResponse{Proof: resp}, nil
 	} else if err != nil {
 		glog.Warningf("Invalid mutation: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
@@ -331,7 +333,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		glog.Errorf("Cannot commit transaction: %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
 	}
-	return &pb.UpdateEntryResponse{Proof: resp}, nil
+	return &tpb.UpdateEntryResponse{Proof: resp}, nil
 }
 
 // GetDomainInfo returns all info tied to the specified domain.
@@ -339,7 +341,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 // This API to get all necessary data needed to verify a particular
 // key-server. Data contains for instance the tree-info, like for instance the
 // log-/map-id and the corresponding public-keys.
-func (s *Server) GetDomainInfo(ctx context.Context, in *pb.GetDomainInfoRequest) (*pb.GetDomainInfoResponse, error) {
+func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest) (*tpb.GetDomainInfoResponse, error) {
 	logTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{
 		TreeId: s.logID,
 	})
@@ -358,14 +360,16 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *pb.GetDomainInfoRequest)
 		return nil, err
 	}
 
-	return &pb.GetDomainInfoResponse{
+	return &tpb.GetDomainInfoResponse{
 		Log: logTree,
 		Map: mapTree,
 		Vrf: vrfPubKeyPB,
 	}, nil
 }
 
-func (s *Server) saveCommitment(ctx context.Context, entry *pb.Entry, committed *pb.Committed) error {
+func (s *Server) saveCommitment(ctx context.Context, skv *tpb.SignedKV, committed *tpb.Committed) error {
+	entry := skv.Value
+
 	// Write the commitment.
 	if err := s.committer.Write(ctx, entry.Commitment, committed.Data, committed.Key); err != nil {
 		glog.Errorf("committer.Write failed: %v", err)

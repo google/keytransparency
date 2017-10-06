@@ -30,8 +30,9 @@ import (
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keyspb"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	mupb "github.com/google/keytransparency/core/proto/mutation_v1"
+	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mupb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 
 const (
@@ -47,9 +48,9 @@ func TestMonitor(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	c := pb.NewKeyTransparencyServiceClient(env.Conn)
+	c := spb.NewKeyTransparencyServiceClient(env.Conn)
 	// setup monitor:
-	resp, err := c.GetDomainInfo(bctx, &pb.GetDomainInfoRequest{})
+	resp, err := c.GetDomainInfo(bctx, &kpb.GetDomainInfoRequest{})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}

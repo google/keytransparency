@@ -30,7 +30,7 @@ import (
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/storage"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -59,7 +59,7 @@ var (
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
-func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
+func (m *Monitor) VerifyMutationsResponse(in *ktpb.GetMutationsResponse) []error {
 	errList := make([]error, 0)
 
 	if m.trusted == nil {
@@ -118,7 +118,7 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 	return errList
 }
 
-func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot []byte, mapID int64) []error {
+func (m *Monitor) verifyMutations(muts []*ktpb.MutationProof, oldRoot, expectedNewRoot []byte, mapID int64) []error {
 	errList := make([]error, 0)
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)

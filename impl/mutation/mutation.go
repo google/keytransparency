@@ -22,8 +22,8 @@ import (
 
 	cmutation "github.com/google/keytransparency/core/mutation"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	spb "github.com/google/keytransparency/core/proto/mutation_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
+	spb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
 )
 
 // Server holds internal state for the monitor server.

@@ -29,7 +29,6 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/mutation"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/transaction"
@@ -38,16 +37,17 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/testonly/integration"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	cmutation "github.com/google/keytransparency/core/mutation"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
-	mpb "github.com/google/keytransparency/core/proto/mutation_v1"
-	stestonly "github.com/google/trillian/storage/testonly"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+
+	cmutation "github.com/google/keytransparency/core/mutation"
+	"github.com/google/keytransparency/impl/mutation"
+	pb "github.com/google/keytransparency/impl/proto/keytransparency_v1_service"
+	mpb "github.com/google/keytransparency/impl/proto/mutation_v1_service"
+	stestonly "github.com/google/trillian/storage/testonly"
 )
 
 // NewDB creates a new in-memory database for testing.

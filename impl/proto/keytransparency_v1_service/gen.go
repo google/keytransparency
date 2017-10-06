@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package monitor
+//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:. keytransparency_v1_service.proto
 
-import (
-	"fmt"
+//go:generate protoc -I=. -I=$GOPATH/src/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. keytransparency_v1_service.proto
 
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
-
-	"github.com/google/trillian"
-)
-
-func (m *Monitor) signMapRoot(in *ktpb.GetMutationsResponse) (*trillian.SignedMapRoot, error) {
-	// copy of received SMR:
-	smr := *in.Smr
-	smr.Signature = nil
-
-	sig, err := m.signer.SignObject(smr)
-	if err != nil {
-		return nil, fmt.Errorf("SignObject(): %v", err)
-	}
-	smr.Signature = sig
-
-	return &smr, nil
-}
+package keytransparency_v1_service

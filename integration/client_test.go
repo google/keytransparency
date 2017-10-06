@@ -85,15 +85,15 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 
 	// Create lists of signers.
 	signer1 := createSigner(t, testPrivKey1)
-	signers1 := []signatures.Signer{signer1}
 	signer2 := createSigner(t, testPrivKey2)
+	signers1 := []signatures.Signer{signer1}
 	signers2 := []signatures.Signer{signer1, signer2}
 	signers3 := []signatures.Signer{signer2}
 
 	// Create lists of authorized keys
 	authorizedKey1 := getAuthorizedKey(testPubKey1)
-	authorizedKeys1 := []*keyspb.PublicKey{authorizedKey1}
 	authorizedKey2 := getAuthorizedKey(testPubKey2)
+	authorizedKeys1 := []*keyspb.PublicKey{authorizedKey1}
 	authorizedKeys2 := []*keyspb.PublicKey{authorizedKey1, authorizedKey2}
 	authorizedKeys3 := []*keyspb.PublicKey{authorizedKey2}
 

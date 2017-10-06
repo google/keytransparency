@@ -24,8 +24,8 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/mutator/entry"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
@@ -33,7 +33,7 @@ import (
 	"github.com/google/trillian/merkle/hashers"
 	"golang.org/x/net/context"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 var (
@@ -73,17 +73,17 @@ func New(vrf vrf.PublicKey,
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID string,
-	trusted *trillian.SignedLogRoot, in *pb.GetEntryResponse) error {
+	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
 	// Unpack the merkle tree leaf value.
-	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
-	if err != nil {
+	entry := new(tpb.Entry)
+	if err := proto.Unmarshal(in.GetLeafProof().GetLeaf().GetLeafValue(), entry); err != nil {
 		return err
 	}
 
 	// If this is not a proof of absence, verify the connection between
 	// profileData and the commitment in the merkle tree leaf.
 	if in.GetCommitted() != nil {
-		commitment := e.GetCommitment()
+		commitment := entry.GetCommitment()
 		data := in.GetCommitted().GetData()
 		nonce := in.GetCommitted().GetKey()
 		if err := commitments.Verify(userID, appID, commitment, data, nonce); err != nil {

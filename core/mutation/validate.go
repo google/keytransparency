@@ -17,7 +17,7 @@ package mutation
 import (
 	"errors"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 const (
@@ -39,7 +39,7 @@ var (
 
 // validateGetMutationsRequest ensures that start epoch starts with 1 and that
 // page size is > 0.
-func validateGetMutationsRequest(in *pb.GetMutationsRequest) error {
+func validateGetMutationsRequest(in *tpb.GetMutationsRequest) error {
 	if in.Epoch <= 0 {
 		return ErrInvalidStart
 	}

@@ -28,7 +28,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_types"
 )
 
 // Mutator defines mutations to simply replace the current map value with the
@@ -42,7 +42,7 @@ func New() *Mutator {
 
 // Mutate verifies that this is a valid mutation for this item and applies
 // mutation to value. Repeated applications of Mutate on the same input produce
-// the same output. OldValue and update are both SignedKV protos.
+// the same output.
 func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
@@ -50,23 +50,26 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrSize
 	}
 
-	newEntry, ok := update.(*pb.Entry)
+	updated, ok := update.(*tpb.SignedKV)
 	if !ok {
-		glog.Warning("received proto.Message is not of type *pb.SignedKV.")
-		return nil, fmt.Errorf("updateM.(*pb.SignedKV): _, %v", ok)
+		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
+		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
 	}
-	var oldEntry *pb.Entry
+	var oldEntry *tpb.Entry
 	if oldValue != nil {
-		old, ok := oldValue.(*pb.Entry)
+		old, ok := oldValue.(*tpb.Entry)
 		if !ok {
-			glog.Warning("received proto.Message is not of type *pb.Entry.")
-			return nil, fmt.Errorf("oldValueM.(*pb.Entry): _, %v", ok)
+			glog.Warning("received proto.Message is not of type *tpb.Entry.")
+			return nil, fmt.Errorf("oldValueM.(*tpb.Entry): _, %v", ok)
 		}
 		oldEntry = old
 	}
 
-	// Verify pointer to previous data.  The very first entry will have
-	// oldValue=nil, so its hash is the ObjectHash value of nil.
+	newEntry := updated.Value
+
+	// Verify pointer to previous data.
+	// The very first entry will have oldValue=nil, so its hash is the
+	// ObjectHash value of nil.
 	prevEntryHash := objecthash.ObjectHash(oldEntry)
 	if !bytes.Equal(prevEntryHash[:], newEntry.GetPrevious()) {
 		// Check if this mutation is a replay.
@@ -85,17 +88,16 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrMissingKey
 	}
 
-	kv := *newEntry
+	kv := *updated
 	kv.Signatures = nil
 	if err := verifyKeys(oldEntry.GetAuthorizedKeys(),
 		newEntry.GetAuthorizedKeys(),
 		kv,
-		newEntry.GetSignatures(),
-	); err != nil {
+		updated.GetSignatures()); err != nil {
 		return nil, err
 	}
 
-	return newEntry, nil
+	return updated.GetValue(), nil
 }
 
 // verifyKeys verifies both old and new authorized keys based on the following
