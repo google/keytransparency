@@ -97,15 +97,15 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		{false, userID, index, commitment, nil}, // Incorrect key
 		{true, userID, index, commitment, nonce},
 	} {
-		req := &pb.UpdateEntryRequest{
+		req := &tpb.UpdateEntryRequest{
 			UserId: tc.userID,
 			AppId:  appID,
-			EntryUpdate: &pb.EntryUpdate{
-				Mutation: &pb.Entry{
+			EntryUpdate: &tpb.EntryUpdate{
+				Mutation: &tpb.Entry{
 					Index:      tc.index[:],
 					Commitment: tc.commitment,
 				},
-				Committed: &pb.Committed{
+				Committed: &tpb.Committed{
 					Key:  tc.nonce,
 					Data: profileData,
 				},

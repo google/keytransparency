@@ -39,13 +39,13 @@ const (
 	mapID = 0
 )
 
-func signedKV(t *testing.T, start, end int) []*pb.Entry {
+func signedKV(t *testing.T, start, end int) []*tpb.Entry {
 	if start > end {
 		t.Fatalf("start=%v > end=%v", start, end)
 	}
-	kvs := make([]*pb.Entry, 0, end-start)
+	kvs := make([]*tpb.Entry, 0, end-start)
 	for i := start; i <= end; i++ {
-		kvs = append(kvs, &pb.Entry{
+		kvs = append(kvs, &tpb.Entry{
 			Index:      []byte(fmt.Sprintf("key_%v", i)),
 			Commitment: []byte(fmt.Sprintf("value_%v", i)),
 		})
@@ -92,7 +92,7 @@ func TestGetMutations(t *testing.T) {
 		epoch       int64
 		token       string
 		pageSize    int32
-		mutations   []*pb.Entry
+		mutations   []*tpb.Entry
 		nextToken   string
 		success     bool
 	}{
@@ -220,11 +220,11 @@ func (fakeFactory) NewTxn(ctx context.Context) (transaction.Txn, error) {
 
 // mutator.Mutation fake.
 type fakeMutation struct {
-	mtns []*pb.Entry
+	mtns []*tpb.Entry
 }
 
 // sequence numbers are 1-based.
-func (m *fakeMutation) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*pb.Entry, error) {
+func (m *fakeMutation) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
 	if startSequence > uint64(len(m.mtns)) {
 		panic("startSequence > len(m.mtns)")
 	}
@@ -238,11 +238,11 @@ func (m *fakeMutation) ReadRange(txn transaction.Txn, startSequence, endSequence
 	return endSequence, m.mtns[startSequence:endSequence], nil
 }
 
-func (m *fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*pb.Entry, error) {
+func (m *fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.Entry, error) {
 	return 0, nil, nil
 }
 
-func (m *fakeMutation) Write(txn transaction.Txn, mutation *pb.Entry) (uint64, error) {
+func (m *fakeMutation) Write(txn transaction.Txn, mutation *tpb.Entry) (uint64, error) {
 	m.mtns = append(m.mtns, mutation)
 	return uint64(len(m.mtns)), nil
 }
