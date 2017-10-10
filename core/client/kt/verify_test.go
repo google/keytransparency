@@ -15,6 +15,7 @@
 package kt
 
 import (
+	"crypto"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/any"
@@ -25,8 +26,8 @@ import (
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/google/trillian"
-	"github.com/google/trillian/crypto/keys/der"
-	"github.com/google/trillian/crypto/sigpb"
+	tcrypto "github.com/google/trillian/crypto"
+	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/merkle/hashers"
 
 	_ "github.com/google/trillian/merkle/coniks" // Register coniks
@@ -37,7 +38,17 @@ var (
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`)
-	MapPub = []byte{0x30, 0x59, 0x30, 0x13, 0x6, 0x7, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x2, 0x1, 0x6, 0x8, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x3, 0x1, 0x7, 0x3, 0x42, 0x0, 0x4, 0xb0, 0x5, 0x60, 0xdd, 0x80, 0x74, 0xb4, 0xe1, 0x5f, 0xdc, 0x37, 0x42, 0xd9, 0x81, 0xcf, 0x2f, 0x65, 0xa2, 0xb8, 0x23, 0x51, 0xd6, 0x2c, 0xb0, 0xa8, 0x68, 0xe3, 0xb6, 0xed, 0x9d, 0x1, 0xd5, 0xa4, 0xb5, 0x6a, 0xa0, 0x44, 0xee, 0xd, 0x4e, 0xa3, 0xc9, 0x5d, 0x48, 0x20, 0x49, 0x2, 0xf7, 0x9e, 0xf3, 0xae, 0xa4, 0x70, 0x78, 0x59, 0x91, 0x59, 0xe2, 0x3d, 0xd0, 0x86, 0xd9, 0x96, 0x46}
+	// openssl ecparam -name prime256v1 -genkey -out p256-key.pem
+	testPrivKey1 = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIBoLpoKGPbrFbEzF/ZktBSuGP+Llmx2wVKSkbdAdQ+3JoAoGCCqGSM49
+AwEHoUQDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4hnGbXDPbdFlL1nmayhnqyEfR
+dXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
+-----END EC PRIVATE KEY-----`
+	// openssl ec -in p256-key.pem -pubout -out p256-pubkey.pem
+	testPubKey1 = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4
+hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
+-----END PUBLIC KEY-----`
 )
 
 func mustMetadataAsAny(t *testing.T, meta *keytransparency_v1_proto.MapperMetadata) *any.Any {
@@ -46,6 +57,17 @@ func mustMetadataAsAny(t *testing.T, meta *keytransparency_v1_proto.MapperMetada
 		t.Fatal(err)
 	}
 	return m
+}
+
+// signs signs smr with s.
+func sign(s crypto.Signer, smr *trillian.SignedMapRoot) *trillian.SignedMapRoot {
+	signer := &tcrypto.Signer{Hash: crypto.SHA256, Signer: s}
+	sig, err := signer.SignObject(smr)
+	if err != nil {
+		panic(err)
+	}
+	smr.Signature = sig
+	return smr
 }
 
 // Test vectors were obtained by observing the integration tests, in particular by adding logging
@@ -58,11 +80,15 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mapPub, err := der.UnmarshalPublicKey(MapPub)
+	mapPub, err := pem.UnmarshalPublicKey(testPubKey1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mapHasher, err := hashers.NewMapHasher(trillian.HashStrategy_CONIKS_SHA512_256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer, err := pem.UnmarshalPrivateKey(testPrivKey1, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,18 +113,13 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 					Leaf:      &trillian.MapLeaf{},
 					Inclusion: make([][]byte, 256),
 				},
-				Smr: &trillian.SignedMapRoot{
+				Smr: sign(signer, &trillian.SignedMapRoot{
 					TimestampNanos: 1506524755543208185,
 					RootHash:       []byte{0x0e, 0xfc, 0x54, 0xad, 0xe0, 0xfc, 0xe8, 0x76, 0x55, 0x8c, 0x97, 0x38, 0xf5, 0xaa, 0x89, 0xe4, 0xd9, 0x9c, 0x0b, 0x8b, 0x6f, 0xe0, 0xb6, 0x2d, 0xbf, 0x63, 0x59, 0xcf, 0xc2, 0xad, 0xbb, 0xd7},
-					Signature: &sigpb.DigitallySigned{
-						HashAlgorithm:      sigpb.DigitallySigned_SHA256,
-						SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
-						Signature:          []byte{0x30, 0x44, 0x02, 0x20, 0x06, 0x6c, 0x8f, 0x6b, 0x46, 0xec, 0x3e, 0x11, 0x50, 0x5d, 0xf2, 0x0a, 0xa3, 0xa0, 0x21, 0x82, 0xbb, 0xc4, 0x72, 0xf1, 0xd6, 0xa4, 0x76, 0x40, 0x1d, 0x7a, 0x66, 0xbb, 0xe9, 0xb4, 0x83, 0x87, 0x02, 0x20, 0x65, 0x3c, 0xf8, 0x0e, 0x8d, 0x8a, 0xbf, 0x52, 0x1b, 0x84, 0x2d, 0x95, 0xba, 0x14, 0xc5, 0x98, 0x7b, 0xbd, 0xcb, 0xf2, 0xb8, 0x3c, 0xb6, 0x09, 0xb2, 0x5d, 0x47, 0x4c, 0x5b, 0x13, 0xfd, 0x0c},
-					},
-					MapId:       9175411803742040796,
-					MapRevision: 1,
-					Metadata:    mustMetadataAsAny(t, &keytransparency_v1_proto.MapperMetadata{}),
-				},
+					MapId:          9175411803742040796,
+					MapRevision:    1,
+					Metadata:       mustMetadataAsAny(t, &keytransparency_v1_proto.MapperMetadata{}),
+				}),
 			},
 			wantErr: false,
 		},
@@ -116,18 +137,13 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 						92, 215, 13, 113, 97, 138, 214, 158, 13, 29, 227, 67, 236, 34, 215, 4, 76, 188, 79, 247, 149, 223, 227, 147, 86, 214, 90, 126, 192, 212, 113, 64,
 					}),
 				},
-				Smr: &trillian.SignedMapRoot{
+				Smr: sign(signer, &trillian.SignedMapRoot{
 					TimestampNanos: 1506596629587264426,
 					RootHash:       []byte{0x2c, 0x27, 0x03, 0xe0, 0x34, 0xf4, 0x00, 0x2f, 0x94, 0x1d, 0xfc, 0xea, 0x7a, 0x4e, 0x16, 0x03, 0xee, 0x8b, 0x4e, 0xe3, 0x75, 0xbd, 0xf8, 0x72, 0x5e, 0xb8, 0xaf, 0x04, 0xbf, 0xa3, 0xd1, 0x56},
-					Signature: &sigpb.DigitallySigned{
-						HashAlgorithm:      sigpb.DigitallySigned_SHA256,
-						SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
-						Signature:          []byte{0x30, 0x44, 0x02, 0x20, 0x18, 0x1a, 0x30, 0x43, 0xf2, 0x9d, 0x2d, 0x43, 0x8b, 0x5a, 0x02, 0x46, 0xda, 0x44, 0x55, 0x83, 0xb7, 0xeb, 0x9f, 0xeb, 0xd2, 0xd6, 0x39, 0xd4, 0x88, 0xa4, 0x72, 0x85, 0x78, 0xf0, 0x5a, 0x05, 0x02, 0x20, 0x63, 0x06, 0x40, 0x57, 0x1f, 0xc6, 0x87, 0x99, 0x63, 0xc4, 0x74, 0x4c, 0x77, 0x0d, 0x85, 0x59, 0x86, 0x24, 0x32, 0xc5, 0xf8, 0x5e, 0xf9, 0x82, 0x70, 0x78, 0xf1, 0xf9, 0x04, 0x91, 0x22, 0x21},
-					},
-					MapId:       2595744899657020594,
-					MapRevision: 2,
-					Metadata:    mustMetadataAsAny(t, &keytransparency_v1_proto.MapperMetadata{HighestFullyCompletedSeq: 1}),
-				},
+					MapId:          2595744899657020594,
+					MapRevision:    2,
+					Metadata:       mustMetadataAsAny(t, &keytransparency_v1_proto.MapperMetadata{HighestFullyCompletedSeq: 1}),
+				}),
 			},
 		},
 	} {
