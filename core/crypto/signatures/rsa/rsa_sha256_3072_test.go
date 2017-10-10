@@ -20,10 +20,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"math"
-	"reflect"
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
+
+	"github.com/golang/protobuf/proto"
 )
 
 const (
@@ -225,7 +226,7 @@ func TestPublicKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("verifier.PublicKey() failed: %v", err)
 	}
-	if !reflect.DeepEqual(sPK, vPK) {
+	if !proto.Equal(sPK, vPK) {
 		t.Error("signer.PublicKey() and verifier.PublicKey() should be equal")
 	}
 

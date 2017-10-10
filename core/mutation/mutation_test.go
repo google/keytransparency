@@ -19,14 +19,14 @@ package mutation
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/transaction"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/any"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -125,7 +125,7 @@ func TestGetMutations(t *testing.T) {
 			t.Errorf("%v: len(resp.Mutations)=%v, want %v", tc.description, got, want)
 		}
 		for i := 0; i < len(resp.Mutations); i++ {
-			if got, want := resp.Mutations[i].Mutation, tc.mutations[i]; !reflect.DeepEqual(got, want) {
+			if got, want := resp.Mutations[i].Mutation, tc.mutations[i]; !proto.Equal(got, want) {
 				t.Errorf("%v: resp.Mutations[i].Update=%v, want %v", tc.description, got, want)
 			}
 		}
