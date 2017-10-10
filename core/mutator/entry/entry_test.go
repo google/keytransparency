@@ -15,7 +15,6 @@
 package entry
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/dev"
@@ -102,7 +101,7 @@ func TestFromLeafValue(t *testing.T) {
 		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
 		{entryB, entry, false},                   // valid leaf
 	} {
-		if got, _ := FromLeafValue(tc.leafVal); !reflect.DeepEqual(got, tc.want) {
+		if got, _ := FromLeafValue(tc.leafVal); !proto.Equal(got, tc.want) {
 			t.Errorf("FromLeafValue(%v)=%v, _ , want %v", tc.leafVal, got, tc.want)
 			t.Error(i)
 		}
