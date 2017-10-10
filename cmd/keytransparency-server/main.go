@@ -46,7 +46,7 @@ import (
 
 	cmutation "github.com/google/keytransparency/core/mutation"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	mpb "github.com/google/keytransparency/core/proto/mutation_v1_grpc_proto"
+	mpb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )

@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package sequencer.v1.grpc.proto;
+package sequencer.v1.grpc;
 
 import "github.com/google/keytransparency/core/proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "google/api/annotations.proto";

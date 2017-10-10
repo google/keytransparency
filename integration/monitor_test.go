@@ -32,7 +32,7 @@ import (
 
 	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc_proto"
+	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
 )
 
 const (
