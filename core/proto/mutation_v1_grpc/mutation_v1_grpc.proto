@@ -18,7 +18,7 @@ syntax = "proto3";
 //
 // The Key Transparency mutation server service consists of APIs to fetch
 // mutations.
-package mutation.v1.grpc.proto;
+package mutation.v1.grpc;
 
 import "github.com/google/keytransparency/core/proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "google/api/annotations.proto";

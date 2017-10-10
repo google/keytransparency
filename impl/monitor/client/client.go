@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc"
 
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc_proto"
+	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
 )
 
 // Each page contains pageSize profiles. Each profile contains multiple
