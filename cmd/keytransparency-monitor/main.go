@@ -41,7 +41,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	cmon "github.com/google/keytransparency/core/monitor"
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc_proto"
+	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_grpc_proto"
 	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc_proto"
