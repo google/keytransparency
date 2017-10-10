@@ -43,7 +43,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc_proto"
+	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 

@@ -39,7 +39,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc_proto"
+	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
