@@ -72,7 +72,8 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
-		ctx, _ := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
 		c.RetryCount = retryCount
 		c.RetryDelay = retryDelay
 

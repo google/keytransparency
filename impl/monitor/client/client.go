@@ -63,8 +63,9 @@ func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsRespon
 		for now := range t.C {
 			glog.Infof("Polling: %v", now)
 			// time out if we exceed the poll period:
-			ctx, _ := context.WithTimeout(context.Background(), c.pollPeriod)
+			ctx, cancel := context.WithTimeout(context.Background(), c.pollPeriod)
 			monitorResp, err := c.PollMutations(ctx, epoch)
+			cancel()
 			if err != nil {
 				glog.Infof("PollMutations(_): %v", err)
 				errChan <- err
