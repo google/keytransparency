@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Client for communicating with the Key Server.
-// Implements verification and convenience functions.
-
+// Package grpcc is a client for communicating with the Key Server.  It wraps
+// the gRPC apis in a rpc system neutral interface and verifies all responses.
 package grpcc
 
 import (

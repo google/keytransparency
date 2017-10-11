@@ -90,10 +90,7 @@ func validateUpdateEntryRequest(in *tpb.UpdateEntryRequest, vrfPriv vrf.PrivateK
 		return err
 	}
 
-	if err := validateKey(in.GetUserId(), in.GetAppId(), committed.GetData()); err != nil {
-		return err
-	}
-	return nil
+	return validateKey(in.GetUserId(), in.GetAppId(), committed.GetData())
 }
 
 // validateListEntryHistoryRequest ensures that start epoch is in range [1,

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package signatures signs and verifies data. This package will be deprecated soon.
 package signatures
 
 import (

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package kt holds Key Transparency message generation and verification routines.
 package kt
 
 import (

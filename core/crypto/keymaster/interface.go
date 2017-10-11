@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package keymaster supports the concept of keysets. A signature may be
+// verified by any one of many public keys, while only one active key is used
+// sign new messages.
 package keymaster
 
 import (
