@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc -I=. --go_out=:. authorization.proto
+//go:generate protoc -I=. --go_out=:. keymaster_proto.proto
 
-package authorization
+package keymaster_proto

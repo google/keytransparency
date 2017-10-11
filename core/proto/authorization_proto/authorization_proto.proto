@@ -13,7 +13,7 @@
 // limitations under the License.
 syntax = "proto3";
 
-package authorization;
+package authorization.proto;
 
 // Permission specifies the permission a role can take.
 enum Permission {

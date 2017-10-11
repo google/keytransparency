@@ -20,7 +20,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
-	kmpb "github.com/google/keytransparency/core/proto/keymaster"
+	kmpb "github.com/google/keytransparency/core/proto/keymaster_proto"
 )
 
 type signer struct {
