@@ -21,7 +21,7 @@ import (
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 
-	authzpb "github.com/google/keytransparency/core/proto/authorization"
+	authzpb "github.com/google/keytransparency/core/proto/authorization_proto"
 )
 
 type authz struct {

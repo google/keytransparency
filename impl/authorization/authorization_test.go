@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/keytransparency/core/authentication"
 
-	authzpb "github.com/google/keytransparency/core/proto/authorization"
+	authzpb "github.com/google/keytransparency/core/proto/authorization_proto"
 )
 
 const (
