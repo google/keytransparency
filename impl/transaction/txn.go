@@ -15,12 +15,11 @@
 package transaction
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
 	"github.com/google/keytransparency/core/transaction"
-
-	"golang.org/x/net/context"
 )
 
 // Factory represents a transaction factory for atomic database and queue ops.

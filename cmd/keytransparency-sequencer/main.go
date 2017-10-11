@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"net/http"
@@ -23,17 +24,16 @@ import (
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
-
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
-	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 )
 
 var (

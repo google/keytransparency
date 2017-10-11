@@ -16,6 +16,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/pem"
 	"fmt"
 	"reflect"
@@ -29,8 +30,6 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
-
-	"golang.org/x/net/context"
 )
 
 const (

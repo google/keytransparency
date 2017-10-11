@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net"
@@ -39,7 +40,6 @@ import (
 	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/testonly/integration"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 

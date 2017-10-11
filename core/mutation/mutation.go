@@ -17,15 +17,15 @@
 package mutation
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
-	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
-	"golang.org/x/net/context"
+	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

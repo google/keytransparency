@@ -15,6 +15,7 @@
 package kt
 
 import (
+	"context"
 	"crypto"
 	"encoding/json"
 	"errors"
@@ -28,12 +29,11 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
-	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	tcrypto "github.com/google/trillian/crypto"
 )
 
 var (

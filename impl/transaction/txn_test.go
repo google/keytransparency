@@ -15,11 +15,11 @@
 package transaction
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
-	"golang.org/x/net/context"
 )
 
 type env struct {

@@ -14,7 +14,7 @@
 
 package commitments
 
-import "golang.org/x/net/context"
+import "context"
 
 // Committer saves cryptographic commitments.
 type Committer interface {

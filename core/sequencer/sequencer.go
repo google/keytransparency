@@ -15,6 +15,7 @@
 package sequencer
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -30,7 +31,6 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/util"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/net/context"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )

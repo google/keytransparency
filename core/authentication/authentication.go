@@ -21,9 +21,8 @@
 package authentication
 
 import (
+	"context"
 	"errors"
-
-	"golang.org/x/net/context"
 )
 
 var (

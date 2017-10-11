@@ -20,10 +20,10 @@ package client
 //
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang/glog"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
