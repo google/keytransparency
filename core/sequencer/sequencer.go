@@ -238,7 +238,7 @@ func (s *Sequencer) applyMutations(mutations []*tpb.Entry, leaves []*trillian.Ma
 			var err error
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
 			if err != nil {
-				glog.Warningf("entry.FromLeafValue(%v): %v", err)
+				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
 				continue
 			}
 		}
