@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package sequencer reads mutations and applies them to the Trillian Map.
 package sequencer
 
 import (
@@ -36,11 +37,11 @@ import (
 )
 
 var (
-	mutationsCtr = prometheus.NewCounter(prometheus.CounterOpts{
+	mutationsCTR = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "kt_signer_mutations",
 		Help: "Number of mutations the signer has processed.",
 	})
-	indexCtr = prometheus.NewCounter(prometheus.CounterOpts{
+	indexCTR = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "kt_signer_mutations_unique",
 		Help: "Number of mutations the signer has processed post per epoch dedupe.",
 	})
@@ -57,8 +58,8 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(mutationsCtr)
-	prometheus.MustRegister(indexCtr)
+	prometheus.MustRegister(mutationsCTR)
+	prometheus.MustRegister(indexCTR)
 	prometheus.MustRegister(mapUpdateHist)
 	prometheus.MustRegister(createEpochHist)
 }
@@ -363,8 +364,8 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 		return err
 	}
 
-	mutationsCtr.Add(float64(len(mutations)))
-	indexCtr.Add(float64(len(indexes)))
+	mutationsCTR.Add(float64(len(mutations)))
+	indexCTR.Add(float64(len(indexes)))
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
