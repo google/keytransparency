@@ -15,8 +15,9 @@
 package fake
 
 import (
+	"context"
+
 	"github.com/google/trillian"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

@@ -15,9 +15,8 @@
 package transaction
 
 import (
+	"context"
 	"database/sql"
-
-	"golang.org/x/net/context"
 )
 
 // Factory represents a transaction factory object.

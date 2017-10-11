@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"io/ioutil"
@@ -27,7 +28,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
-
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/mutation"
 	"github.com/google/keytransparency/impl/sql/commitments"
@@ -39,7 +39,6 @@ import (
 	"github.com/google/trillian"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"

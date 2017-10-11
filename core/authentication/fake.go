@@ -15,11 +15,11 @@
 package authentication
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/golang/glog"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 )

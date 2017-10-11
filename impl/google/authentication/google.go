@@ -15,18 +15,18 @@
 package authentication
 
 import (
+	"context"
 	"errors"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/google/keytransparency/core/authentication"
 
-	"net/http"
-
-	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
-	gAPI "google.golang.org/api/oauth2/v2"
 	"google.golang.org/grpc/metadata"
+
+	gAPI "google.golang.org/api/oauth2/v2"
 )
 
 // GRPC stores authentication information in the "authorization" header.

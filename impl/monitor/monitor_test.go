@@ -19,9 +19,8 @@
 package monitor
 
 import (
+	"context"
 	"testing"
-
-	"golang.org/x/net/context"
 
 	"github.com/google/keytransparency/core/monitor/storage"
 )

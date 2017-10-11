@@ -16,11 +16,10 @@
 package testutil
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/google/keytransparency/core/transaction"
-
-	"golang.org/x/net/context"
 )
 
 // FakeFactory is a fake transaction factory

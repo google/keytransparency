@@ -15,21 +15,22 @@
 package kt
 
 import (
+	"context"
 	"crypto"
 	"testing"
-
-	"github.com/golang/protobuf/ptypes/any"
-	"golang.org/x/net/context"
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+
 	"github.com/google/trillian"
-	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/merkle/hashers"
 
+	"github.com/golang/protobuf/ptypes/any"
+
+	tcrypto "github.com/google/trillian/crypto"
 	_ "github.com/google/trillian/merkle/coniks" // Register coniks
 )
 

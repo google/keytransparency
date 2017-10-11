@@ -16,6 +16,8 @@
 package keyserver
 
 import (
+	"context"
+
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/commitments"
@@ -26,7 +28,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/trillian/crypto/keys/der"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 

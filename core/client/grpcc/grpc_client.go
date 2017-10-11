@@ -19,6 +19,7 @@ package grpcc
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"errors"
 	"fmt"
@@ -40,7 +41,6 @@ import (
 	"github.com/google/trillian/merkle/hashers"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"

@@ -17,6 +17,7 @@
 package mutation
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -27,7 +28,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
