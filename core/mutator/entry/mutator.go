@@ -119,10 +119,7 @@ func verifyKeys(prevAuthz, authz []*keyspb.PublicKey, data interface{}, sigs map
 		}
 	}
 
-	if err := verifyAuthorizedKeys(data, verifiers, sigs); err != nil {
-		return err
-	}
-	return nil
+	return verifyAuthorizedKeys(data, verifiers, sigs)
 }
 
 // verifyAuthorizedKeys requires AT LEAST one verifier to have a valid
