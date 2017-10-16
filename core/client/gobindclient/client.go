@@ -29,7 +29,7 @@ import (
 
 	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/client/kt"
-	"github.com/google/keytransparency/core/client/multiWriter"
+	"github.com/google/keytransparency/core/client/multi"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"google.golang.org/grpc"
@@ -46,7 +46,7 @@ var (
 
 	timeout = 500 * time.Millisecond
 
-	multiLogWriter = multiWriter.New(os.Stderr)
+	multiLogWriter = multi.NewWriter(os.Stderr)
 
 	// Vlog is the verbose logger. By default it outputs to stderr (logcat on Android), but other destination can be
 	// added through the AddVerboseLogsDestination method.
