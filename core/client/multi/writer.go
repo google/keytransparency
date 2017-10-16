@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package multiWriter implements a pub/sub system that meets the io.Writer interface.
-package multiWriter
+// Package multi contains utilities for multiplexing io operations.
+package multi
 
 import (
 	"errors"
@@ -21,23 +21,25 @@ import (
 	"io"
 )
 
-// MultiWriter contains a list of io.Writer objects. Its Write method tries to write to all of them, and aggregates
+// Writer contains a list of io.Writer objects. Its Write method tries to write to all of them, and aggregates
 // the errors (if any of the write call fails).
-type MultiWriter interface {
+type Writer interface {
 	AddWriter(w io.Writer)
 	Write(p []byte) (n int, err error)
 }
 
-// New returns an implementation of the MultiWriter interface
-func New(w io.Writer) MultiWriter {
-	return &multiIoWriter{[]io.Writer{w}}
+// NewWriter returns an implementation of the multi.Writer interface
+func NewWriter(w io.Writer) Writer {
+	return &writer{
+		writers: []io.Writer{w},
+	}
 }
 
-type multiIoWriter struct {
+type writer struct {
 	writers []io.Writer
 }
 
-func (m *multiIoWriter) Write(p []byte) (n int, err error) {
+func (m *writer) Write(p []byte) (n int, err error) {
 	if len(m.writers) == 0 {
 		return 0, fmt.Errorf("Tried to use a MultiIoWriter which does not contain any writers")
 	}
@@ -54,7 +56,7 @@ func (m *multiIoWriter) Write(p []byte) (n int, err error) {
 	return minBytesWritten, errors.New(multiError)
 }
 
-func (m *multiIoWriter) AddWriter(w io.Writer) {
+func (m *writer) AddWriter(w io.Writer) {
 	m.writers = append(m.writers, w)
 }
 
