@@ -72,14 +72,3 @@ service KeyTransparencyService {
   }
 }
 
-// The KeyTransparencyAdminService API provides batch access to the directory of public keys. 
-service KeyTransparencyAdminService {
-  // BatchSetEntries uses an authorized_public key to perform a set request on multiple entries at once.  
-  rpc BatchUpdateEntries(keytransparency.v1.proto.BatchUpdateEntriesRequest) returns (keytransparency.v1.proto.BatchUpdateEntriesResponse) {
-    option (google.api.http) = {
-      post: "/v1/users:batch"
-      body: ""
-    };
-  }
-}
-

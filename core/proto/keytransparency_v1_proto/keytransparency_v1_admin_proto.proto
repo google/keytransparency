@@ -1,0 +1,108 @@
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option go_package = "github.com/google/keytransparency/core/proto/keytransparency_v1_proto";
+
+package keytransparency.v1.proto;
+
+import "trillian.proto";
+import "crypto/keyspb/keyspb.proto";
+import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
+
+// SetEntriesRequest will update the accounts of the given user_ids to be set to
+// user data if those accounts have key_id in their set of authorized_keys.
+message BatchUpdateEntriesRequest {
+  // users is a map from user_ids to user data.
+  map<string,UserProfile> users = 1;
+
+  // app_id is the application to make this change for.
+  string app_id = 2;
+
+  // key_id is the id of the authorized_public key to use when updating accounts.
+  // This must be a key that this server has the private key for.
+  string key_id = 3;
+}
+
+// BatchUpdateEntriesResponse returns a list of users for which the set operation
+// was unsuccessful.
+message BatchUpdateEntriesResponse {
+  // errors is a map from user_ids to errors, if there was an error for that user.
+  map<string, string> errors = 1;
+}
+
+
+// Domain contains information on a single domain
+message Domain {
+  string domain_id = 1;
+  // Log contains the Log-Tree's info.
+  trillian.Tree log = 2;
+  // Map contains the Map-Tree's info.
+  trillian.Tree map = 3;
+  // Vrf contains the VRF public key.
+  keyspb.PublicKey vrf = 4;
+  // Deleted indicates whether the domain has been deleted. 
+  bool deleted = 5;
+}
+
+// ListDomains request.
+// No pagination options are provided.
+message ListDomainsRequest{
+  bool show_deleted = 1;
+}
+
+message ListDomainsResponse{
+  repeated Domain domains = 1;
+}
+
+// GetDomainRequest specifies the domain to retrieve information for.
+message GetDomainRequest {
+  string domain_id = 1;
+}
+
+// GetDomainResponse contains the configuration info for one domain.
+message GetDomainResponse {
+  Domain domain = 1;
+}
+
+// CreateDomainRequest creates a new domain
+message CreateDomainRequest {
+  string domain_id = 1;
+}
+
+// CreateDomainResponse contains the confiugration info for the new domain. 
+message CreateDomainResponse {
+  Domain domain = 1;
+}
+
+// DeleteDomainRequest deletes a domain
+message DeleteDomainRequest {
+  string domain_id = 1;
+}
+
+// DeleteDomainResponse contains the confiugration info for the new domain. 
+message DeleteDomainResponse {
+  Domain domain = 1;
+}
+
+// UndeleteDomainRequest deletes a domain
+message UndeleteDomainRequest {
+  string domain_id = 1;
+}
+
+// UndeleteDomainResponse contains the confiugration info for the new domain. 
+message UndeleteDomainResponse {
+  Domain domain = 1;
+}
