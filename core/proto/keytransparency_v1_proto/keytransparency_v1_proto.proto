@@ -14,6 +14,8 @@
 
 syntax = "proto3";
 
+option go_package = "github.com/google/keytransparency/core/proto/keytransparency_v1_proto";
+
 // Key Transparency Service
 //
 // The Key Transparency Service API consists of a map of user names to public

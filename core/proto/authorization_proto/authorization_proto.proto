@@ -13,6 +13,8 @@
 // limitations under the License.
 syntax = "proto3";
 
+option go_package = "github.com/google/keytransparency/core/proto/authorization_proto";
+
 package authorization.proto;
 
 // Permission specifies the permission a role can take.

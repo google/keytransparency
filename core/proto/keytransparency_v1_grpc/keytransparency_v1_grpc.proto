@@ -14,6 +14,8 @@
 
 syntax = "proto3";
 
+option go_package = "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc";
+
 // Key Transparency Service
 //
 // The Key Transparency Service API consists of a map of user names to public
@@ -21,7 +23,7 @@ syntax = "proto3";
 // associated with it.
 package keytransparency.v1.grpc;
 
-import "github.com/google/keytransparency/core/proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
+import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "google/api/annotations.proto";
 
 
