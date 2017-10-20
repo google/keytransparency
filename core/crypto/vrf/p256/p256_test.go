@@ -16,10 +16,18 @@ package p256
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"math"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian/crypto/keys"
+	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/crypto/keyspb"
+
+	_ "github.com/google/trillian/crypto/keys/der/proto"
 )
 
 const (
@@ -62,6 +70,60 @@ func TestH2(t *testing.T) {
 		x := H2(m)
 		if got := len(x.Bytes()); got < 1 || got > l {
 			t.Errorf("len(h2(%v)) = %v, want: 1 <= %v <= %v", m, got, got, l)
+		}
+	}
+}
+
+func TestFromWrappedKey(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		spec   *keyspb.Specification
+		keygen keys.ProtoGenerator
+	}{
+		{
+			spec: &keyspb.Specification{
+				Params: &keyspb.Specification_EcdsaParams{
+					EcdsaParams: &keyspb.Specification_ECDSA{
+						Curve: keyspb.Specification_ECDSA_P256,
+					},
+				},
+			},
+			keygen: func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
+				return der.NewProtoFromSpec(spec)
+			},
+		},
+	} {
+		// Generate VRF key.
+		wrapped, err := tc.keygen(ctx, tc.spec)
+		if err != nil {
+			t.Errorf("NewProtoFromSpec failed: %v", err)
+			continue
+		}
+		vrfPriv, err := NewFromWrappedKey(ctx, wrapped)
+		if err != nil {
+			t.Errorf("NewFromWrappedKey failed: %v", err)
+			continue
+		}
+		vrfPublicPB, err := der.ToPublicProto(vrfPriv.Public())
+		if err != nil {
+			t.Errorf("ToPublicProto failed: %v", err)
+			continue
+		}
+		vrfPub, err := NewVRFVerifierFromRawKey(vrfPublicPB.Der)
+		if err != nil {
+			t.Errorf("NewVRFVerifierFromRawKey failed: %v", err)
+			continue
+		}
+		// Test that the public and private components match.
+		m1 := []byte("foobar")
+		index1, proof1 := vrfPriv.Evaluate(m1)
+		index, err := vrfPub.ProofToHash(m1, proof1)
+		if err != nil {
+			t.Errorf("ProofToHash(): %v", err)
+			continue
+		}
+		if got, want := index, index1; got != want {
+			t.Errorf("ProofToInex(%s, %x): %x, want %x", m1, proof1, got, want)
 		}
 	}
 }
