@@ -44,7 +44,6 @@ import (
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
-	_ "github.com/spf13/viper/remote"               // Enable remote configs
 )
 
 var (
