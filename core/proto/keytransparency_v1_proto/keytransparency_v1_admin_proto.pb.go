@@ -82,7 +82,7 @@ type Domain struct {
 	// Vrf contains the VRF public key.
 	Vrf *keyspb.PublicKey `protobuf:"bytes,4,opt,name=vrf" json:"vrf,omitempty"`
 	// Deleted indicates whether the domain has been marked as deleted.
-	// By it's presence in a response, this domain has not been garbage collected.
+	// By its presence in a response, this domain has not been garbage collected.
 	Deleted bool `protobuf:"varint,5,opt,name=deleted" json:"deleted,omitempty"`
 }
 
@@ -224,7 +224,7 @@ func (m *CreateDomainRequest) GetDomainId() string {
 	return ""
 }
 
-// CreateDomainResponse contains the confiugration info for the new domain.
+// CreateDomainResponse contains the configuration info for the new domain.
 type CreateDomainResponse struct {
 	Domain *Domain `protobuf:"bytes,1,opt,name=domain" json:"domain,omitempty"`
 }

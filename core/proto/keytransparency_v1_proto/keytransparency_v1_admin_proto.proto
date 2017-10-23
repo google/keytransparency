@@ -55,7 +55,7 @@ message Domain {
   // Vrf contains the VRF public key.
   keyspb.PublicKey vrf = 4;
   // Deleted indicates whether the domain has been marked as deleted.
-  // By it's presence in a response, this domain has not been garbage collected.
+  // By its presence in a response, this domain has not been garbage collected.
   bool deleted = 5;
 }
 
@@ -90,7 +90,7 @@ message CreateDomainRequest {
   string domain_id = 1;
 }
 
-// CreateDomainResponse contains the confiugration info for the new domain. 
+// CreateDomainResponse contains the configuration info for the new domain.
 message CreateDomainResponse {
   Domain domain = 1;
 }
