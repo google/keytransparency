@@ -45,6 +45,10 @@ func request_KeyTransparencyAdminService_BatchUpdateEntries_0(ctx context.Contex
 
 }
 
+var (
+	filter_KeyTransparencyAdminService_GetDomain_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+)
+
 func request_KeyTransparencyAdminService_GetDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1_proto.GetDomainRequest
 	var metadata runtime.ServerMetadata
@@ -65,6 +69,10 @@ func request_KeyTransparencyAdminService_GetDomain_0(ctx context.Context, marsha
 
 	if err != nil {
 		return nil, metadata, err
+	}
+
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdminService_GetDomain_0); err != nil {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetDomain(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))

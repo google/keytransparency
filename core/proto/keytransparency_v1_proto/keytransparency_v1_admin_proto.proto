@@ -70,6 +70,7 @@ message ListDomainsResponse{
 // GetDomainRequest specifies the domain to retrieve information for.
 message GetDomainRequest {
   string domain_id = 1;
+  bool show_deleted = 2;
 }
 
 // GetDomainResponse contains the configuration info for one domain.
