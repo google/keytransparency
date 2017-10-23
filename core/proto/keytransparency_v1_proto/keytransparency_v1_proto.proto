@@ -244,27 +244,6 @@ message UserProfile {
   bytes data = 1;
 }
 
-// SetEntriesRequest will update the accounts of the given user_ids to be set to
-// user data if those accounts have key_id in their set of authorized_keys.
-message BatchUpdateEntriesRequest {
-  // users is a map from user_ids to user data.
-  map<string,UserProfile> users = 1;
-
-  // app_id is the application to make this change for.
-  string app_id = 2;
-
-  // key_id is the id of the authorized_public key to use when updating accounts.
-  // This must be a key that this server has the private key for.
-  string key_id = 3;
-}
-
-// BatchUpdateEntriesResponse returns a list of users for which the set operation
-// was unsuccessful.
-message BatchUpdateEntriesResponse {
-  // errors is a map from user_ids to errors, if there was an error for that user.
-  map<string, string> errors = 1;
-}
-
 // GetEpochsRequest is an empty proto message used as input to GetEpochs API.
 message GetEpochsRequest {}
 

@@ -1,0 +1,87 @@
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option go_package = "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc";
+
+// Key Transparency Administration Service
+//
+// The Key Transparency Service API consists of a map of user names to public
+// keys. Each user name also has a history of public keys that have been
+// associated with it.
+package keytransparency.v1.grpc;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "proto/keytransparency_v1_proto/keytransparency_v1_admin_proto.proto";
+
+// The KeyTransparencyAdminService API provides the following resources:
+// - Delegated Actor
+//   - Batch updates to the directory of public keys, where authorized by users. 
+// - Domains 
+//   Namespaces on which which Key Transparency operates. A domain determines a
+//   unique Trillian map to use. It also determines the authentication policies
+//   for users and apps within a domain.
+//   - /v1/domains
+service KeyTransparencyAdminService {
+  // BatchUpdateEntries uses an authorized_public key to perform a set request on multiple entries at once.  
+  rpc BatchUpdateEntries(keytransparency.v1.proto.BatchUpdateEntriesRequest) returns (keytransparency.v1.proto.BatchUpdateEntriesResponse) {
+    option (google.api.http) = {
+      post: "/v1/users:batch"
+      body: ""
+    };
+  }
+
+
+  //
+  // Domain Admin API
+  //
+
+  // ListDomains returns a list of all domains this Key Transparency server
+  // operates on.
+  rpc ListDomains(keytransparency.v1.proto.ListDomainsRequest) returns (keytransparency.v1.proto.ListDomainsResponse) {}
+
+  // GetDomain returns the confiuration information for a given domain.
+  rpc GetDomain(keytransparency.v1.proto.GetDomainRequest) returns (keytransparency.v1.proto.GetDomainResponse) {
+    option (google.api.http) = { get: "/v1/domains/{domain_id}" };
+  }
+
+  // CreateDomain creates a new Trillian log/map pair.  A unique domainId must
+  // be provided.  To create a new domain with the same name as a previously
+  // deleted domain, a user must wait X days until the domain is garbage
+  // collected.
+  rpc CreateDomain(keytransparency.v1.proto.CreateDomainRequest) returns (keytransparency.v1.proto.CreateDomainResponse) {
+    option (google.api.http) = {
+      post: "/v1/domains"
+      body: "*"
+    };
+  }
+
+  // DeleteDomain marks a domain as deleted.  Domains will be garbage collected
+  // after X days.
+  rpc DeleteDomain(keytransparency.v1.proto.DeleteDomainRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/domains/{domain_id}"
+    };
+  }
+
+  // UndeleteDomain marks a previously deleted domain as active if it has not
+  // already been garbage collected.
+  rpc UndeleteDomain(keytransparency.v1.proto.UndeleteDomainRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/domains/{domain_id}:undelete"
+    };
+  }
+}
