@@ -23,9 +23,8 @@ option go_package = "github.com/google/keytransparency/core/proto/keytransparenc
 // associated with it.
 package keytransparency.v1.grpc;
 
-import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "google/api/annotations.proto";
-
+import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 
 // The KeyTransparencyService API represents a directory of public keys.
 // The API defines the following resource model:

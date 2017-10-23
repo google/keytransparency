@@ -22,8 +22,8 @@ option go_package = "github.com/google/keytransparency/core/proto/mutation_v1_gr
 // mutations.
 package mutation.v1.grpc;
 
-import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "google/api/annotations.proto";
+import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 
 // The Mutation Service API represents a directory of mutations:
 //
