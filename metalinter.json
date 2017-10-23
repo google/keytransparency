@@ -1,7 +1,7 @@
 {
   "Linters": {
 	      "errcheck": "errcheck -abspath -ignore 'Close|Write|Serve' {path}:PATH:LINE:COL:MESSAGE",
-	      "license": "grep -rL 'Apache License' {path}:^(?P<path>.*?\\.go.*)"
+	      "license": "grep -rL 'Apache License' {path}:^(?P<path>.[^.]+\\.(go|proto))$"
              },
   "Severity": {"license": "error"},
   "Enable": ["license", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
@@ -9,5 +9,6 @@
   "VendoredLinters": true,
   "Skip": ["core/proto", "impl/proto"],
   "Deadline": "4m", 
-  "Cyclo": 18
+  "Cyclo": 18,
+  "Aggregate": true
 }

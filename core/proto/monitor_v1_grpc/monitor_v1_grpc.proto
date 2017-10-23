@@ -14,14 +14,16 @@
 
 syntax = "proto3";
 
+option go_package = "github.com/google/keytransparency/core/proto/monitor_v1_grpc";
+
 // Monitor Service
 //
 // The Key Transparency monitor server service consists of APIs to fetch
 // monitor results queried using the mutations API.
 package monitor.v1.grpc;
 
-import "github.com/google/keytransparency/core/proto/monitor_v1_proto/monitor_v1_proto.proto";
 import "google/api/annotations.proto";
+import "proto/monitor_v1_proto/monitor_v1_proto.proto";
 
 // The Monitor Service API allows clients to query the monitors observed and
 // validated signed map roots.
