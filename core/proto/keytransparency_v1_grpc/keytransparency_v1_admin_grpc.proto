@@ -23,12 +23,20 @@ option go_package = "github.com/google/keytransparency/core/proto/keytransparenc
 // associated with it.
 package keytransparency.v1.grpc;
 
-import "proto/keytransparency_v1_proto/keytransparency_v1_admin_proto.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "proto/keytransparency_v1_proto/keytransparency_v1_admin_proto.proto";
 
-// The KeyTransparencyAdminService API provides batch access to the directory of public keys. 
+// The KeyTransparencyAdminService API provides the following resources:
+// - Delegated Actor
+//   - Batch updates to the directory of public keys, where authorized by users. 
+// - Domains 
+//   Namespaces on which which Key Transparency operates. A domain determines a
+//   unique Trillian map to use. It also determines the authentication policies
+//   for users and apps within a domain.
+//   - /v1/domains
 service KeyTransparencyAdminService {
-  // BatchSetEntries uses an authorized_public key to perform a set request on multiple entries at once.  
+  // BatchUpdateEntries uses an authorized_public key to perform a set request on multiple entries at once.  
   rpc BatchUpdateEntries(keytransparency.v1.proto.BatchUpdateEntriesRequest) returns (keytransparency.v1.proto.BatchUpdateEntriesResponse) {
     option (google.api.http) = {
       post: "/v1/users:batch"
@@ -36,6 +44,13 @@ service KeyTransparencyAdminService {
     };
   }
 
+
+  //
+  // Domain Admin API
+  //
+
+  // ListDomains returns a list of all domains this Key Transparency server
+  // operates on.
   rpc ListDomains(keytransparency.v1.proto.ListDomainsRequest) returns (keytransparency.v1.proto.ListDomainsResponse) {}
 
   // GetDomain returns the confiuration information for a given domain.
@@ -43,6 +58,10 @@ service KeyTransparencyAdminService {
     option (google.api.http) = { get: "/v1/domains/{domain_id}" };
   }
 
+  // CreateDomain creates a new Trillian log/map pair.  A unique domainId must
+  // be provided.  To create a new domain with the same name as a previously
+  // deleted domain, a user must wait X days until the domain is garbage
+  // collected.
   rpc CreateDomain(keytransparency.v1.proto.CreateDomainRequest) returns (keytransparency.v1.proto.CreateDomainResponse) {
     option (google.api.http) = {
       post: "/v1/domains"
@@ -50,16 +69,17 @@ service KeyTransparencyAdminService {
     };
   }
 
-  rpc DeleteDomain(keytransparency.v1.proto.DeleteDomainRequest) returns (keytransparency.v1.proto.DeleteDomainResponse) {
+  // DeleteDomain marks a domain as deleted.  Domains will be garbage collected
+  // after X days.
+  rpc DeleteDomain(keytransparency.v1.proto.DeleteDomainRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/domains/{domain_id}"
     };
   }
 
-  // Undeletes a soft-deleted a tree.
-  // A soft-deleted tree may be undeleted for a certain period, after which
-  // it'll be permanently deleted.
-  rpc UndeleteDomain(keytransparency.v1.proto.UndeleteDomainRequest) returns(keytransparency.v1.proto.UndeleteDomainResponse) {
+  // UndeleteDomain marks a previously deleted domain as active if it has not
+  // already been garbage collected.
+  rpc UndeleteDomain(keytransparency.v1.proto.UndeleteDomainRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/domains/{domain_id}:undelete"
     };

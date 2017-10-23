@@ -43,9 +43,7 @@ It has these top-level messages:
 	CreateDomainRequest
 	CreateDomainResponse
 	DeleteDomainRequest
-	DeleteDomainResponse
 	UndeleteDomainRequest
-	UndeleteDomainResponse
 */
 package keytransparency_v1_proto
 

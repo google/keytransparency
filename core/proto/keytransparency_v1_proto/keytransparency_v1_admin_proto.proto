@@ -22,7 +22,7 @@ import "trillian.proto";
 import "crypto/keyspb/keyspb.proto";
 import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 
-// SetEntriesRequest will update the accounts of the given user_ids to be set to
+// BatchUpdateEntriesRequest will update the accounts of the given user_ids to be set to
 // user data if those accounts have key_id in their set of authorized_keys.
 message BatchUpdateEntriesRequest {
   // users is a map from user_ids to user data.
@@ -31,9 +31,9 @@ message BatchUpdateEntriesRequest {
   // app_id is the application to make this change for.
   string app_id = 2;
 
-  // key_id is the id of the authorized_public key to use when updating accounts.
+  // auth_pub_key_id is the id of the authorized_public key to use when updating accounts.
   // This must be a key that this server has the private key for.
-  string key_id = 3;
+  string auth_pub_key_id = 3;
 }
 
 // BatchUpdateEntriesResponse returns a list of users for which the set operation
@@ -46,6 +46,7 @@ message BatchUpdateEntriesResponse {
 
 // Domain contains information on a single domain
 message Domain {
+  // DomainId can be any URL safe string.
   string domain_id = 1;
   // Log contains the Log-Tree's info.
   trillian.Tree log = 2;
@@ -53,16 +54,20 @@ message Domain {
   trillian.Tree map = 3;
   // Vrf contains the VRF public key.
   keyspb.PublicKey vrf = 4;
-  // Deleted indicates whether the domain has been deleted. 
+  // Deleted indicates whether the domain has been marked as deleted.
+  // By it's presence in a response, this domain has not been garbage collected.
   bool deleted = 5;
 }
 
 // ListDomains request.
 // No pagination options are provided.
 message ListDomainsRequest{
+  // showDeleted requests domains that have been marked for deletion
+  // but have not been garbage collected.
   bool show_deleted = 1;
 }
 
+// ListDomains response contains domains.
 message ListDomainsResponse{
   repeated Domain domains = 1;
 }
@@ -70,6 +75,8 @@ message ListDomainsResponse{
 // GetDomainRequest specifies the domain to retrieve information for.
 message GetDomainRequest {
   string domain_id = 1;
+  // showDeleted requests domains that have been marked for deletion
+  // but have not been garbage collected.
   bool show_deleted = 2;
 }
 
@@ -93,17 +100,8 @@ message DeleteDomainRequest {
   string domain_id = 1;
 }
 
-// DeleteDomainResponse contains the confiugration info for the new domain. 
-message DeleteDomainResponse {
-  Domain domain = 1;
-}
-
 // UndeleteDomainRequest deletes a domain
 message UndeleteDomainRequest {
   string domain_id = 1;
 }
 
-// UndeleteDomainResponse contains the confiugration info for the new domain. 
-message UndeleteDomainResponse {
-  Domain domain = 1;
-}
