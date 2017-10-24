@@ -18,6 +18,7 @@ package keyserver
 import (
 	"context"
 
+	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/commitments"
@@ -47,7 +48,7 @@ const (
 
 // Server holds internal state for the key server.
 type Server struct {
-	logID     int64
+	admin     adminstorage.Storage
 	tlog      trillian.TrillianLogClient
 	mapID     int64
 	tmap      trillian.TrillianMapClient
@@ -62,9 +63,8 @@ type Server struct {
 }
 
 // New creates a new instance of the key server.
-func New(logID int64,
+func New(admin adminstorage.Storage,
 	tlog trillian.TrillianLogClient,
-	mapID int64,
 	tmap trillian.TrillianMapClient,
 	tadmin trillian.TrillianAdminClient,
 	committer commitments.Committer,
@@ -75,9 +75,7 @@ func New(logID int64,
 	factory transaction.Factory,
 	mutations mutator.Mutation) *Server {
 	return &Server{
-		logID:     logID,
 		tlog:      tlog,
-		mapID:     mapID,
 		tmap:      tmap,
 		tadmin:    tadmin,
 		committer: committer,
@@ -94,22 +92,29 @@ func New(logID int64,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.GetEntryResponse, error) {
-	return s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, -1)
+	return s.getEntry(ctx, in.DomainId, in.UserId, in.AppId, in.FirstTreeSize, -1)
 }
 
-func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSize, revision int64) (*tpb.GetEntryResponse, error) {
+func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, firstTreeSize, revision int64) (*tpb.GetEntryResponse, error) {
 	if revision == 0 {
 		return nil, grpc.Errorf(codes.InvalidArgument,
 			"Epoch 0 is inavlid. The first map revision is epoch 1.")
 	}
 
+	// Lookup log and map info.
+	domain, err := s.admin.Read(ctx, domainID, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
+
 	// Fresh Root.
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
 		&trillian.GetLatestSignedLogRootRequest{
-			LogId: s.logID,
+			LogId: domain.LogID,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", domain.LogID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	// Use the log as the athoritative source of the latest revision.
@@ -122,7 +127,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	index, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
 
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
-		MapId:    s.mapID,
+		MapId:    domain.MapID,
 		Index:    [][]byte{index[:]},
 		Revision: revision,
 	})
@@ -166,13 +171,13 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	if firstTreeSize != 0 {
 		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
 			&trillian.GetConsistencyProofRequest{
-				LogId:          s.logID,
+				LogId:          domain.LogID,
 				FirstTreeSize:  firstTreeSize,
 				SecondTreeSize: secondTreeSize,
 			})
 		if err != nil {
 			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v",
-				s.logID, firstTreeSize, secondTreeSize, err)
+				domain.LogID, firstTreeSize, secondTreeSize, err)
 			return nil, grpc.Errorf(codes.Internal, "Cannot fetch log consistency proof")
 		}
 	}
@@ -180,7 +185,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 	// Inclusion proof.
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&trillian.GetInclusionProofRequest{
-			LogId: s.logID,
+			LogId: domain.LogID,
 			// SignedMapRoot must be placed in the log at MapRevision.
 			// MapRevisions start at 1. Log leaves start at 1.
 			LeafIndex: getResp.GetMapRoot().GetMapRevision(),
@@ -188,7 +193,7 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 		})
 	if err != nil {
 		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v",
-			s.logID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
+			domain.LogID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
@@ -210,12 +215,16 @@ func (s *Server) getEntry(ctx context.Context, userID, appID string, firstTreeSi
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryRequest) (*tpb.ListEntryHistoryResponse, error) {
-	// Get current epoch.
-	resp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
-		MapId: s.mapID,
-	})
+	// Lookup log and map info.
+	domain, err := s.admin.Read(ctx, in.DomainId, false)
 	if err != nil {
-		glog.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
+		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
+	// Get current epoch.
+	resp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{MapId: domain.MapID})
+	if err != nil {
+		glog.Errorf("GetSignedMapRoot(%v): %v", domain.MapID, err)
 		return nil, grpc.Errorf(codes.Internal, "Fetching latest signed map root failed")
 	}
 
@@ -225,11 +234,11 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
-	// Get all GetEntryResponse for all epochs in the range [start, start +
-	// in.PageSize].
+	// TODO(gbelvin): fetch all history from trillian at once.
+	// Get all GetEntryResponse for all epochs in the range [start, start + in.PageSize].
 	responses := make([]*tpb.GetEntryResponse, in.PageSize)
 	for i := range responses {
-		resp, err := s.getEntry(ctx, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
+		resp, err := s.getEntry(ctx, in.DomainId, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
 		if err != nil {
 			glog.Errorf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
 			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
@@ -251,6 +260,13 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*tpb.UpdateEntryResponse, error) {
+	// Lookup log and map info.
+	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
+
 	// Validate proper authentication.
 	sctx, err := s.auth.ValidateCreds(ctx)
 	switch err {
@@ -263,7 +279,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.Unauthenticated, "Unauthenticated")
 	}
 	// Validate proper authorization.
-	if s.authz.IsAuthorized(sctx, s.mapID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
+	if s.authz.IsAuthorized(sctx, domain.MapID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
 		glog.Warningf("Authz failed: %v", err)
 		return nil, grpc.Errorf(codes.PermissionDenied, "Unauthorized")
 	}
@@ -341,15 +357,18 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 // key-server. Data contains for instance the tree-info, like for instance the
 // log-/map-id and the corresponding public-keys.
 func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest) (*tpb.GetDomainInfoResponse, error) {
-	logTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{
-		TreeId: s.logID,
-	})
+	// Lookup log and map info.
+	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
+
+	logTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{TreeId: domain.LogID})
 	if err != nil {
 		return nil, err
 	}
-	mapTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{
-		TreeId: s.mapID,
-	})
+	mapTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{TreeId: domain.MapID})
 	if err != nil {
 		return nil, err
 	}
