@@ -23,12 +23,12 @@ import (
 	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
-	"github.com/google/trillian/crypto/keys/der"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -50,13 +50,11 @@ const (
 type Server struct {
 	admin     adminstorage.Storage
 	tlog      trillian.TrillianLogClient
-	mapID     int64
 	tmap      trillian.TrillianMapClient
 	tadmin    trillian.TrillianAdminClient
 	committer commitments.Committer
 	auth      authentication.Authenticator
 	authz     authorization.Authorization
-	vrf       vrf.PrivateKey
 	mutator   mutator.Mutator
 	factory   transaction.Factory
 	mutations mutator.Mutation
@@ -68,7 +66,6 @@ func New(admin adminstorage.Storage,
 	tmap trillian.TrillianMapClient,
 	tadmin trillian.TrillianAdminClient,
 	committer commitments.Committer,
-	vrf vrf.PrivateKey,
 	mutator mutator.Mutator,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
@@ -79,7 +76,6 @@ func New(admin adminstorage.Storage,
 		tmap:      tmap,
 		tadmin:    tadmin,
 		committer: committer,
-		vrf:       vrf,
 		mutator:   mutator,
 		auth:      auth,
 		authz:     authz,
@@ -124,7 +120,11 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	}
 
 	// VRF.
-	index, proof := s.vrf.Evaluate(vrf.UniqueID(userID, appID))
+	vrfPriv, err := p256.NewFromWrappedKey(ctx, domain.VRFPriv)
+	if err != nil {
+		return nil, err
+	}
+	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
 
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    domain.MapID,
@@ -266,6 +266,10 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
+	vrfPriv, err := p256.NewFromWrappedKey(ctx, domain.VRFPriv)
+	if err != nil {
+		return nil, err
+	}
 
 	// Validate proper authentication.
 	sctx, err := s.auth.ValidateCreds(ctx)
@@ -287,7 +291,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	// - Index to Key equality in SignedKV.
 	// - Correct profile commitment.
 	// - Correct key formats.
-	if err := validateUpdateEntryRequest(in, s.vrf); err != nil {
+	if err := validateUpdateEntryRequest(in, vrfPriv); err != nil {
 		glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
@@ -355,7 +359,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 //
 // This API to get all necessary data needed to verify a particular
 // key-server. Data contains for instance the tree-info, like for instance the
-// log-/map-id and the corresponding public-keys.
+// log/map-id and the corresponding public-keys.
 func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest) (*tpb.GetDomainInfoResponse, error) {
 	// Lookup log and map info.
 	domain, err := s.admin.Read(ctx, in.DomainId, false)
@@ -373,15 +377,10 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 		return nil, err
 	}
 
-	vrfPubKeyPB, err := der.ToPublicProto(s.vrf.Public())
-	if err != nil {
-		return nil, err
-	}
-
 	return &tpb.GetDomainInfoResponse{
 		Log: logTree,
 		Map: mapTree,
-		Vrf: vrfPubKeyPB,
+		Vrf: domain.VRF,
 	}, nil
 }
 
