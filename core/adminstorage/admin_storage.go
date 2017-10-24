@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package admin stores multi-tennancy configuration information.
+// Package adminstorage stores multi-tennancy configuration information.
 package adminstorage
 
 import (
@@ -36,7 +36,7 @@ type Domain struct {
 // Storage is an interface for storing multi-tennant configuration information.
 type Storage interface {
 	// List returns the full list of domains.
-	List(ctx context.Context, deleted bool) ([]Domain, error)
+	List(ctx context.Context, deleted bool) ([]*Domain, error)
 	// Write stores a new instance to storage.
 	Write(ctx context.Context, ID string, mapID, LogID int64, vrfPublicDER []byte, wrappedVRF proto.Message) error
 	// Read a configuration from storage.

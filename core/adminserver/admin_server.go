@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package admin contains the KeyTransparencyAdminService implementation
+// Package adminserver contains the KeyTransparencyAdminService implementation
 package adminserver
 
 import (
