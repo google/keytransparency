@@ -13,13 +13,13 @@
 // limitations under the License.
 
 // Package admin contains the KeyTransparencyAdminService implementation
-package admin
+package adminserver
 
 import (
 	"context"
 
+	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/core/storage/admin"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/crypto/keys/der"
@@ -74,14 +74,14 @@ var (
 )
 
 type server struct {
-	storage admin.Storage
+	storage adminstorage.Storage
 	client  trillian.TrillianAdminClient
 	keygen  keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdminService implementation.
 func New(
-	storage admin.Storage,
+	storage adminstorage.Storage,
 	client trillian.TrillianAdminClient,
 	keygen keys.ProtoGenerator,
 ) gpb.KeyTransparencyAdminServiceServer {
@@ -92,6 +92,7 @@ func New(
 	}
 }
 
+// BatchUpdateEntries processes applies updates to multiple accounts, if authorized by authorized_keys.
 func (s *server) BatchUpdateEntries(ctx context.Context, in *pb.BatchUpdateEntriesRequest) (*pb.BatchUpdateEntriesResponse, error) {
 	panic("not implemented")
 }
@@ -118,7 +119,7 @@ func (s *server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 }
 
 // fetchDomainInfo converts an amdin.Domain object into a pb.Domain object by fetching the relevant info from Trillian.
-func (s *server) fetchDomainInfo(ctx context.Context, d *admin.Domain) (*pb.Domain, error) {
+func (s *server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
 	logTree, err := s.client.GetTree(ctx, &trillian.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
