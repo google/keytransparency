@@ -18,14 +18,11 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutationserver"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -53,7 +50,6 @@ var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath = flag.String("db", "test:zaphod@tcp(localhost:3306)/test", "Database connection string")
-	vrfPath      = flag.String("vrf", "genfiles/vrf-key.pem", "Path to VRF private key")
 	keyFile      = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
 	certFile     = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
@@ -76,18 +72,6 @@ func openDB() *sql.DB {
 		glog.Exitf("db.Ping(): %v", err)
 	}
 	return db
-}
-
-func openVRFKey() vrf.PrivateKey {
-	vrfBytes, err := ioutil.ReadFile(*vrfPath)
-	if err != nil {
-		glog.Exitf("Failed opening VRF private key: %v", err)
-	}
-	vrfPriv, err := p256.NewVRFSignerFromPEM(vrfBytes)
-	if err != nil {
-		glog.Exitf("Failed parsing VRF private key: %v", err)
-	}
-	return vrfPriv
 }
 
 func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
@@ -152,12 +136,11 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
-	admin, err := adminstorage.New(sqlDB)
+	admin, err := adminstorage.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create adminstorage object: %v", err)
 	}
 
-	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
 	// Connect to log and map server.
@@ -174,15 +157,15 @@ func main() {
 	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	svr := keyserver.New(admin, tlog, tmap, tadmin, commitments,
-		vrfPriv, mutator, auth, authz, factory, mutations)
+	ksvr := keyserver.New(admin, tlog, tmap, tadmin, commitments,
+		mutator, auth, authz, factory, mutations)
+	msrv := mutationserver.New(admin, tlog, tmap, mutations, factory)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	msrv := mutationserver.New(admin, tlog, tmap, mutations, factory)
-	gpb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	gpb.RegisterKeyTransparencyServiceServer(grpcServer, ksvr)
 	gpb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
