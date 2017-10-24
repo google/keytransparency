@@ -152,26 +152,29 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
+	admin, err := adminstorage.New(sqlDB)
+	if err != nil {
+		glog.Exitf("Failed to create adminstorage object: %v", err)
+	}
+
 	vrfPriv := openVRFKey()
 	mutator := entry.New()
 
-	// Connect to log server.
+	// Connect to log and map server.
 	tconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("grpc.Dial(%v): %v", *logURL, err)
 	}
-	tlog := trillian.NewTrillianLogClient(tconn)
-
-	// Connect to map server.
 	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 	}
+	tlog := trillian.NewTrillianLogClient(tconn)
 	tmap := trillian.NewTrillianMapClient(mconn)
 	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	svr := keyserver.New(*logID, tlog, *mapID, tmap, tadmin, commitments,
+	svr := keyserver.New(admin, tlog, tmap, tadmin, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
