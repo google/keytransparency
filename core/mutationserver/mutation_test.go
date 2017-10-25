@@ -24,28 +24,28 @@ import (
 
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/internal"
+	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/google/trillian"
 )
 
 const (
-	logID = 0
-	mapID = 0
+	domainID = "domain"
 )
 
-func signedKV(t *testing.T, start, end int) []*tpb.Entry {
+func signedKV(t *testing.T, start, end int) []*pb.Entry {
 	if start > end {
 		t.Fatalf("start=%v > end=%v", start, end)
 	}
-	kvs := make([]*tpb.Entry, 0, end-start)
+	kvs := make([]*pb.Entry, 0, end-start)
 	for i := start; i <= end; i++ {
-		kvs = append(kvs, &tpb.Entry{
+		kvs = append(kvs, &pb.Entry{
 			Index:      []byte(fmt.Sprintf("key_%v", i)),
 			Commitment: []byte(fmt.Sprintf("value_%v", i)),
 		})
@@ -53,27 +53,27 @@ func signedKV(t *testing.T, start, end int) []*tpb.Entry {
 	return kvs
 }
 
-func prepare(t *testing.T, mutations *fakeMutation, fakeMap *fakeTrillianMapClient) {
-	createEpoch(t, mutations, fakeMap, 1, 1, 6)
-	createEpoch(t, mutations, fakeMap, 2, 7, 10)
+func prepare(t *testing.T, mapID int64, mutations mutator.Mutation, fakeMap *fakeTrillianMapClient) {
+	createEpoch(t, mapID, mutations, fakeMap, 1, 1, 6)
+	createEpoch(t, mapID, mutations, fakeMap, 2, 7, 10)
 }
 
-func createEpoch(t *testing.T, mutations *fakeMutation, fakeMap *fakeTrillianMapClient, epoch int64, start, end int) {
+func createEpoch(t *testing.T, mapID int64, mutations mutator.Mutation, fakeMap *fakeTrillianMapClient, epoch int64, start, end int) {
 	kvs := signedKV(t, start, end)
 	for _, kv := range kvs {
-		if _, err := mutations.Write(nil, kv); err != nil {
+		if _, err := mutations.Write(nil, mapID, kv); err != nil {
 			t.Fatalf("mutations.Write failed: %v", err)
 		}
 	}
 	fakeMap.tmap[epoch] = &trillian.SignedMapRoot{
-		Metadata: mustMetadataAsAny(t, &tpb.MapperMetadata{
+		Metadata: mustMetadataAsAny(t, &pb.MapperMetadata{
 			HighestFullyCompletedSeq: int64(end),
 		}),
 		MapRevision: epoch,
 	}
 }
 
-func mustMetadataAsAny(t *testing.T, meta *tpb.MapperMetadata) *any.Any {
+func mustMetadataAsAny(t *testing.T, meta *pb.MapperMetadata) *any.Any {
 	m, err := internal.MetadataAsAny(meta)
 	if err != nil {
 		t.Fatal(err)
@@ -83,16 +83,21 @@ func mustMetadataAsAny(t *testing.T, meta *tpb.MapperMetadata) *any.Any {
 
 func TestGetMutations(t *testing.T) {
 	ctx := context.Background()
-	fakeMutations := &fakeMutation{}
+	mapID := int64(2)
+	fakeMutations := fake.NewMutationStorage()
+	fakeAdmin := fake.NewAdminStorage()
 	fakeMap := newFakeTrillianMapClient()
-	prepare(t, fakeMutations, fakeMap)
+	if err := fakeAdmin.Write(ctx, domainID, mapID, 0, nil, nil); err != nil {
+		t.Fatalf("admin.Write(): %v", err)
+	}
+	prepare(t, mapID, fakeMutations, fakeMap)
 
 	for _, tc := range []struct {
 		description string
 		epoch       int64
 		token       string
 		pageSize    int32
-		mutations   []*tpb.Entry
+		mutations   []*pb.Entry
 		nextToken   string
 		success     bool
 	}{
@@ -106,40 +111,46 @@ func TestGetMutations(t *testing.T) {
 		{"working case with page token and small page size", 1, "2", 2, signedKV(t, 3, 4), "4", true},
 		{"invalid page token", 1, "some_token", 0, nil, "", false},
 	} {
-		srv := New(logID, mapID, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
-		resp, err := srv.GetMutations(ctx, &tpb.GetMutationsRequest{
-			Epoch:     tc.epoch,
-			PageToken: tc.token,
-			PageSize:  tc.pageSize,
-		})
-		if got, want := err == nil, tc.success; got != want {
-			t.Fatalf("%v: GetMutations: err=%v, want %v", tc.description, got, want)
-		}
-		if err != nil {
-			continue
-		}
-		if got, want := resp.Epoch, tc.epoch; got != want {
-			t.Errorf("%v: resp.Epoch=%v, want %v", tc.description, got, want)
-		}
-		if got, want := len(resp.Mutations), len(tc.mutations); got != want {
-			t.Errorf("%v: len(resp.Mutations)=%v, want %v", tc.description, got, want)
-		}
-		for i := 0; i < len(resp.Mutations); i++ {
-			if got, want := resp.Mutations[i].Mutation, tc.mutations[i]; !proto.Equal(got, want) {
-				t.Errorf("%v: resp.Mutations[i].Update=%v, want %v", tc.description, got, want)
+		t.Run(tc.description, func(t *testing.T) {
+			srv := New(fakeAdmin, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
+			resp, err := srv.GetMutations(ctx, &pb.GetMutationsRequest{
+				DomainId:  domainID,
+				Epoch:     tc.epoch,
+				PageToken: tc.token,
+				PageSize:  tc.pageSize,
+			})
+			if got, want := err == nil, tc.success; got != want {
+				t.Errorf("GetMutations: %v, wantErr %v", err, want)
+				return
 			}
-		}
-		if got, want := resp.NextPageToken, tc.nextToken; got != want {
-			t.Errorf("%v: resp.NextPageToken=%v, %v", tc.description, got, want)
-		}
+			if err != nil {
+				return
+			}
+			if got, want := resp.Epoch, tc.epoch; got != want {
+				t.Errorf("resp.Epoch=%v, want %v", got, want)
+			}
+			if got, want := len(resp.Mutations), len(tc.mutations); got != want {
+				t.Errorf("len(resp.Mutations)=%v, want %v", got, want)
+			}
+			for i := 0; i < len(resp.Mutations); i++ {
+				if got, want := resp.Mutations[i].Mutation, tc.mutations[i]; !proto.Equal(got, want) {
+					t.Errorf("resp.Mutations[i].Update=%v, want %v", got, want)
+				}
+			}
+			if got, want := resp.NextPageToken, tc.nextToken; got != want {
+				t.Errorf("resp.NextPageToken=%v, %v", got, want)
+			}
+		})
 	}
 }
 
 func TestLowestSequenceNumber(t *testing.T) {
 	ctx := context.Background()
-	fakeMutations := &fakeMutation{}
+	fakeMutations := fake.NewMutationStorage()
 	fakeMap := newFakeTrillianMapClient()
-	prepare(t, fakeMutations, fakeMap)
+	fakeAdmin := &fake.AdminStorage{}
+	mapID := int64(1)
+	prepare(t, mapID, fakeMutations, fakeMap)
 
 	for _, tc := range []struct {
 		token     string
@@ -153,8 +164,8 @@ func TestLowestSequenceNumber(t *testing.T) {
 		{"some_token", 0, 0, false},
 		{"", 1, 6, true},
 	} {
-		srv := New(logID, mapID, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
-		seq, err := srv.lowestSequenceNumber(ctx, tc.token, tc.epoch)
+		srv := New(fakeAdmin, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
+		seq, err := srv.lowestSequenceNumber(ctx, mapID, tc.token, tc.epoch)
 		if got, want := err == nil, tc.success; got != want {
 			t.Errorf("lowestSequenceNumber(%v, %v): err=%v, want %v", tc.token, tc.epoch, got, want)
 		}
@@ -216,33 +227,4 @@ type fakeFactory struct{}
 
 func (fakeFactory) NewTxn(ctx context.Context) (transaction.Txn, error) {
 	return &fakeTxn{}, nil
-}
-
-// mutator.Mutation fake.
-type fakeMutation struct {
-	mtns []*tpb.Entry
-}
-
-// sequence numbers are 1-based.
-func (m *fakeMutation) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
-	if startSequence > uint64(len(m.mtns)) {
-		panic("startSequence > len(m.mtns)")
-	}
-	// Adjust endSequence.
-	if endSequence-startSequence > uint64(count) {
-		endSequence = startSequence + uint64(count)
-	}
-	if endSequence > uint64(len(m.mtns)) {
-		endSequence = uint64(len(m.mtns))
-	}
-	return endSequence, m.mtns[startSequence:endSequence], nil
-}
-
-func (m *fakeMutation) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.Entry, error) {
-	return 0, nil, nil
-}
-
-func (m *fakeMutation) Write(txn transaction.Txn, mutation *tpb.Entry) (uint64, error) {
-	m.mtns = append(m.mtns, mutation)
-	return uint64(len(m.mtns)), nil
 }
