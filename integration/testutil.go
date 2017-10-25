@@ -43,7 +43,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	cmutation "github.com/google/keytransparency/core/mutation"
+	cmutation "github.com/google/keytransparency/core/mutationserver"
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	stestonly "github.com/google/trillian/storage/testonly"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.

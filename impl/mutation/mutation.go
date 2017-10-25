@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	cmutation "github.com/google/keytransparency/core/mutation"
+	cmutation "github.com/google/keytransparency/core/mutationserver"
 
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
