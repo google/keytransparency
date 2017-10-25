@@ -217,7 +217,8 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 	return sha256.Sum256(vrf), nil
 }
 
-// NewFromWrappedKey creates a signer object from an encrypted private key.
+// NewFromWrappedKey creates a VRF signer object from an encrypted private key.
+// The opque private key must resolve to an `ecdsa.PrivateKey` in order to work.
 func NewFromWrappedKey(ctx context.Context, wrapped proto.Message) (vrf.PrivateKey, error) {
 	// Unwrap.
 	signer, err := keys.NewSigner(ctx, wrapped)
