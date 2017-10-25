@@ -29,7 +29,7 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_MutationService_GetMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"epoch": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_MutationService_GetMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_MutationService_GetMutations_0(ctx context.Context, marshaler runtime.Marshaler, client MutationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -42,6 +42,17 @@ func request_MutationService_GetMutations_0(ctx context.Context, marshaler runti
 		err error
 		_   = err
 	)
+
+	val, ok = pathParams["domain_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+	}
+
+	protoReq.DomainId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
 
 	val, ok = pathParams["epoch"]
 	if !ok {
@@ -64,12 +75,30 @@ func request_MutationService_GetMutations_0(ctx context.Context, marshaler runti
 }
 
 var (
-	filter_MutationService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_MutationService_GetMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_MutationService_GetMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client MutationServiceClient, req *http.Request, pathParams map[string]string) (MutationService_GetMutationsStreamClient, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1_proto.GetMutationsRequest
 	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["domain_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+	}
+
+	protoReq.DomainId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MutationService_GetMutationsStream_0); err != nil {
 		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "%v", err)
@@ -178,9 +207,9 @@ func RegisterMutationServiceHandler(ctx context.Context, mux *runtime.ServeMux, 
 }
 
 var (
-	pattern_MutationService_GetMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "epochs", "epoch"}, ""))
+	pattern_MutationService_GetMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "domains", "domain_id", "epochs", "epoch"}, ""))
 
-	pattern_MutationService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "epochs"}, "stream"))
+	pattern_MutationService_GetMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "domains", "domain_id", "epochs"}, "stream"))
 )
 
 var (

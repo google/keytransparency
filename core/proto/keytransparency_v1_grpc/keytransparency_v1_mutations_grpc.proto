@@ -37,7 +37,7 @@ service MutationService {
   // signed map root.
   rpc GetMutations(keytransparency.v1.proto.GetMutationsRequest)
       returns (keytransparency.v1.proto.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/epochs/{epoch}" };
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}" };
   }
 
   // GetMutationsStream is a streaming API similar to GetMutations.
@@ -46,6 +46,6 @@ service MutationService {
   // signed map root.
   rpc GetMutationsStream(keytransparency.v1.proto.GetMutationsRequest)
       returns (stream keytransparency.v1.proto.GetMutationsResponse) {
-    option (google.api.http) = { get: "/v1/epochs:stream" };
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:stream" };
   }
 }

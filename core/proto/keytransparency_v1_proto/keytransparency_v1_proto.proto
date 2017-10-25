@@ -196,6 +196,8 @@ message UpdateEntryResponse {
 
 // GetMutationsRequest contains the input parameters of the GetMutation APIs.
 message GetMutationsRequest {
+  // domain_id is the domain for which epochs are being requested.
+  string domain_id = 5;
   // epoch specifies the epoch number in which mutations will be returned.
   int64 epoch = 1;
   // first_tree_size is the tree_size of the currently trusted log root.
