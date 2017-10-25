@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -35,8 +37,7 @@ import (
 
 // Server holds internal state for the monitor server core functionality.
 type Server struct {
-	logID     int64
-	mapID     int64
+	admin     adminstorage.Storage
 	tlog      trillian.TrillianLogClient
 	tmap      trillian.TrillianMapClient
 	mutations mutator.Mutation
@@ -44,15 +45,13 @@ type Server struct {
 }
 
 // New creates a new instance of the monitor server.
-func New(logID int64,
-	mapID int64,
+func New(admin adminstorage.Storage,
 	tlog trillian.TrillianLogClient,
 	tmap trillian.TrillianMapClient,
 	mutations mutator.Mutation,
 	factory transaction.Factory) *Server {
 	return &Server{
-		logID:     logID,
-		mapID:     mapID,
+		admin:     admin,
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
@@ -66,13 +65,21 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 		glog.Errorf("validateGetMutationsRequest(%v): %v", in, err)
 		return nil, status.Error(codes.InvalidArgument, "Invalid request")
 	}
+
+	// Lookup log and map info.
+	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
+
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
-		MapId:    s.mapID,
+		MapId:    domain.MapID,
 		Revision: in.Epoch,
 	})
 	if err != nil {
-		glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, in.Epoch, err)
+		glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
 		return nil, status.Error(codes.Internal, "Get signed map root failed")
 	}
 
@@ -83,7 +90,7 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	}
 
 	highestSeq := uint64(meta.GetHighestFullyCompletedSeq())
-	lowestSeq, err := s.lowestSequenceNumber(ctx, in.PageToken, in.Epoch-1)
+	lowestSeq, err := s.lowestSequenceNumber(ctx, domain.MapID, in.PageToken, in.Epoch-1)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +100,7 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("NewDBTxn(): %v", err)
 	}
-	maxSequence, mRange, err := s.mutations.ReadRange(txn, lowestSeq, highestSeq, in.PageSize)
+	maxSequence, mRange, err := s.mutations.ReadRange(txn, domain.MapID, lowestSeq, highestSeq, in.PageSize)
 	if err != nil {
 		glog.Errorf("mutations.ReadRange(%v, %v, %v): %v", lowestSeq, highestSeq, in.PageSize, err)
 		if err := txn.Rollback(); err != nil {
@@ -118,7 +125,7 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	} else {
 		epoch = 1
 	}
-	proofs, err := s.inclusionProofs(ctx, indexes, epoch)
+	proofs, err := s.inclusionProofs(ctx, in.DomainId, indexes, epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +138,7 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	// supposed to create at least one revision on startup.
 	respEpoch := resp.GetMapRoot().GetMapRevision()
 	// Fetch log proofs.
-	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, in.GetFirstTreeSize(), respEpoch)
+	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, domain.LogID, in.GetFirstTreeSize(), respEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -151,13 +158,14 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	}, nil
 }
 
-func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, epoch int64) (*trillian.GetLatestSignedLogRootResponse, *trillian.GetConsistencyProofResponse, *trillian.GetInclusionProofResponse, error) {
+func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoch int64) (*trillian.GetLatestSignedLogRootResponse, *trillian.GetConsistencyProofResponse, *trillian.GetInclusionProofResponse, error) {
+	// Lookup log and map info.
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
 		&trillian.GetLatestSignedLogRootRequest{
-			LogId: s.logID,
+			LogId: logID,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", logID, err)
 		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
@@ -166,31 +174,31 @@ func (s *Server) logProofs(ctx context.Context, firstTreeSize int64, epoch int64
 	if firstTreeSize != 0 {
 		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
 			&trillian.GetConsistencyProofRequest{
-				LogId:          s.logID,
+				LogId:          logID,
 				FirstTreeSize:  firstTreeSize,
 				SecondTreeSize: secondTreeSize,
 			})
 		if err != nil {
-			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v", s.logID, firstTreeSize, secondTreeSize, err)
+			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v", logID, firstTreeSize, secondTreeSize, err)
 			return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log consistency proof")
 		}
 	}
 	// Inclusion proof.
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&trillian.GetInclusionProofRequest{
-			LogId: s.logID,
+			LogId: logID,
 			// SignedMapRoot must be in the log at MapRevision.
 			LeafIndex: epoch,
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", s.logID, epoch, secondTreeSize, err)
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", logID, epoch, secondTreeSize, err)
 		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 	return logRoot, logConsistency, logInclusion, nil
 }
 
-func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch int64) (uint64, error) {
+func (s *Server) lowestSequenceNumber(ctx context.Context, mapID int64, token string, epoch int64) (uint64, error) {
 	lowestSeq := int64(0)
 	if token != "" {
 		// A simple cast will panic if the underlying string is not a
@@ -202,11 +210,11 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 		}
 	} else if epoch != 0 {
 		resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
-			MapId:    s.mapID,
+			MapId:    mapID,
 			Revision: epoch,
 		})
 		if err != nil {
-			glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", s.mapID, epoch, err)
+			glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", mapID, epoch, err)
 			return 0, status.Error(codes.Internal, "Get previous signed map root failed")
 		}
 		meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
@@ -218,9 +226,15 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, token string, epoch i
 	return uint64(lowestSeq), nil
 }
 
-func (s *Server) inclusionProofs(ctx context.Context, indexes [][]byte, epoch int64) ([]*trillian.MapLeafInclusion, error) {
+func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [][]byte, epoch int64) ([]*trillian.MapLeafInclusion, error) {
+	// Lookup log and map info.
+	domain, err := s.admin.Read(ctx, domainID, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
-		MapId:    s.mapID,
+		MapId:    domain.MapID,
 		Index:    indexes,
 		Revision: epoch,
 	})
