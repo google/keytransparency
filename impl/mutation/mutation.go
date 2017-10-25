@@ -23,8 +23,8 @@ import (
 
 	cmutation "github.com/google/keytransparency/core/mutation"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-	spb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 // Server holds internal state for the monitor server.
@@ -38,11 +38,11 @@ func New(srv *cmutation.Server) *Server {
 }
 
 // GetMutations returns a list of mutations paged by epoch number.
-func (s *Server) GetMutations(ctx context.Context, in *tpb.GetMutationsRequest) (*tpb.GetMutationsResponse, error) {
+func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (*pb.GetMutationsResponse, error) {
 	return s.srv.GetMutations(ctx, in)
 }
 
 // GetMutationsStream is a streaming API similar to GetMutations.
-func (s *Server) GetMutationsStream(in *tpb.GetMutationsRequest, stream spb.MutationService_GetMutationsStreamServer) error {
+func (s *Server) GetMutationsStream(in *pb.GetMutationsRequest, stream gpb.MutationService_GetMutationsStreamServer) error {
 	return grpc.Errorf(codes.Unimplemented, "GetMutationsStream is unimplemented")
 }

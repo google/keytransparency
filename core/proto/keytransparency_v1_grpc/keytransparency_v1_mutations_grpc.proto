@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/proto/mutation_v1_grpc";
+option go_package = "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc";
 
 // Mutation Service
 //
 // The Key Transparency mutation server service consists of APIs to fetch
 // mutations.
-package mutation.v1.grpc;
+package keytransparency.v1.grpc;
 
 import "google/api/annotations.proto";
 import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";

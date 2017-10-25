@@ -44,8 +44,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	cmutation "github.com/google/keytransparency/core/mutation"
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	mpb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
@@ -101,10 +100,10 @@ func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	gwmux := runtime.NewServeMux()
-	if err := ktpb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+	if err := gpb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
-	if err := mpb.RegisterMutationServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
+	if err := gpb.RegisterMutationServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
 		return nil, err
 	}
 
@@ -176,8 +175,8 @@ func main() {
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 	msrv := mutation.New(cmutation.New(*logID, *mapID, tlog, tmap, mutations, factory))
-	ktpb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
-	mpb.RegisterMutationServiceServer(grpcServer, msrv)
+	gpb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
+	gpb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()

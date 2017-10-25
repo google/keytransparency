@@ -13,6 +13,7 @@ associated with it.
 It is generated from these files:
 	proto/keytransparency_v1_grpc/keytransparency_v1_grpc.proto
 	proto/keytransparency_v1_grpc/keytransparency_v1_admin_grpc.proto
+	proto/keytransparency_v1_grpc/keytransparency_v1_mutations_grpc.proto
 
 It has these top-level messages:
 */
