@@ -29,6 +29,7 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian"
 	"github.com/google/trillian/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -254,9 +255,17 @@ func (s *Sequencer) applyMutations(mutations []*tpb.EntryUpdate, leaves []*trill
 			continue
 		}
 
+		// Serialize commitment.
+		extraData, err := proto.Marshal(m.Committed)
+		if err != nil {
+			glog.Warningf("Marshal(committed proto): %v", err)
+			continue
+		}
+
 		retMap[toArray(index)] = &trillian.MapLeaf{
 			Index:     index,
 			LeafValue: leafValue,
+			ExtraData: extraData,
 		}
 	}
 	// Convert return map back into a list.

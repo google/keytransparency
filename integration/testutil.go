@@ -35,7 +35,6 @@ import (
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/adminstorage"
-	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
 
@@ -136,15 +135,11 @@ func NewEnv(t *testing.T) *Env {
 	}
 	mutator := entry.New()
 	auth := authentication.NewFake()
-	commitments, err := commitments.New(sqldb, mapID)
-	if err != nil {
-		t.Fatalf("Failed to create committer: %v", err)
-	}
 	authz := authorization.New()
 	tlog := fake.NewFakeTrillianLogClient()
 
 	factory := transaction.NewFactory(sqldb)
-	server := keyserver.New(adminStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient, commitments,
+	server := keyserver.New(adminStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
 		mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
 	msrv := mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory)

@@ -52,8 +52,8 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 
 	newEntry, ok := update.(*tpb.Entry)
 	if !ok {
-		glog.Warning("received proto.Message is not of type *tpb.SignedKV.")
-		return nil, fmt.Errorf("updateM.(*tpb.SignedKV): _, %v", ok)
+		glog.Warning("received proto.Message is not of type *tpb.Entry.")
+		return nil, fmt.Errorf("updateM.(*tpb.Entry): _, %v", ok)
 	}
 	var oldEntry *tpb.Entry
 	if oldValue != nil {

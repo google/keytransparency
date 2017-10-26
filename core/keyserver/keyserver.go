@@ -21,7 +21,6 @@ import (
 	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
-	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
@@ -29,6 +28,8 @@ import (
 	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian/crypto/keys/der"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -52,7 +53,6 @@ type Server struct {
 	tlog      trillian.TrillianLogClient
 	tmap      trillian.TrillianMapClient
 	tadmin    trillian.TrillianAdminClient
-	committer commitments.Committer
 	auth      authentication.Authenticator
 	authz     authorization.Authorization
 	mutator   mutator.Mutator
@@ -65,7 +65,6 @@ func New(admin adminstorage.Storage,
 	tlog trillian.TrillianLogClient,
 	tmap trillian.TrillianMapClient,
 	tadmin trillian.TrillianAdminClient,
-	committer commitments.Committer,
 	mutator mutator.Mutator,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
@@ -76,7 +75,6 @@ func New(admin adminstorage.Storage,
 		tlog:      tlog,
 		tmap:      tmap,
 		tadmin:    tadmin,
-		committer: committer,
 		mutator:   mutator,
 		auth:      auth,
 		authz:     authz,
@@ -145,25 +143,16 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	}
 	neighbors := getResp.MapLeafInclusion[0].Inclusion
 	leaf := getResp.MapLeafInclusion[0].Leaf.LeafValue
+	extraData := getResp.MapLeafInclusion[0].Leaf.ExtraData
 
 	var committed *tpb.Committed
 	if leaf != nil {
-		e, err := entry.FromLeafValue(leaf)
-		if err != nil {
-			return nil, grpc.Errorf(codes.Internal, "Cannot decode leaf value")
+		if extraData == nil {
+			return nil, grpc.Errorf(codes.Internal, "Missing commitment data")
 		}
-
-		data, nonce, err := s.committer.Read(ctx, e.GetCommitment())
-		if err != nil {
-			glog.Errorf("Cannot read committed value: %v", err)
+		committed = &tpb.Committed{}
+		if err := proto.Unmarshal(extraData, committed); err != nil {
 			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
-		}
-		if data == nil {
-			return nil, grpc.Errorf(codes.NotFound, "Commitment %v not found", e.GetCommitment())
-		}
-		committed = &tpb.Committed{
-			Key:  nonce,
-			Data: data,
 		}
 	}
 
@@ -303,10 +292,6 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
-	if err := s.saveCommitment(ctx, in.GetEntryUpdate().GetMutation(), in.GetEntryUpdate().Committed); err != nil {
-		return nil, err
-	}
-
 	// Query for the current epoch.
 	req := &tpb.GetEntryRequest{
 		DomainId: in.DomainId,
@@ -393,13 +378,4 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 		Map: mapTree,
 		Vrf: domain.VRF,
 	}, nil
-}
-
-func (s *Server) saveCommitment(ctx context.Context, entry *tpb.Entry, committed *tpb.Committed) error {
-	// Write the commitment.
-	if err := s.committer.Write(ctx, entry.Commitment, committed.Data, committed.Key); err != nil {
-		glog.Errorf("committer.Write failed: %v", err)
-		return grpc.Errorf(codes.Internal, "Write failed")
-	}
-	return nil
 }
