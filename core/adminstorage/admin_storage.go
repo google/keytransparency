@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package admin stores multi-tennancy configuration information.
+// Package adminstorage stores multi-tennancy configuration information.
 package adminstorage
 
 import (

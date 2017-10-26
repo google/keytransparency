@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package admin implementsi the admin.Storage interfaces.
+// Package adminstorage implements the admin.Storage interface.
 package adminstorage
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/trillian/crypto/keyspb"
 )
@@ -38,19 +41,19 @@ CREATE TABLE IF NOT EXISTS Domains(
   PRIMARY KEY(DomainId)
 );`
 	writeSQL = `INSERT INTO Domains 
-(DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted, DeleteTimeMillis) 
-VALUES (?, ?, ?, ?, ?, ?, ?);`
+(DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted) 
+VALUES (?, ?, ?, ?, ?, ?);`
 	readSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted, DeleteTimeMillis 
-FROM Domains WHERE DomainId = ? AND Deleted = FALSE;`
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
+FROM Domains WHERE DomainId = ? AND Deleted IS 0;`
 	readDeletedSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted, DeleteTimeMillis 
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
 FROM Domains WHERE DomainId = ?;`
 	listSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted, DeleteTimeMillis 
-FROM Domains WHERE Deleted = FALSE;`
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
+FROM Domains WHERE Deleted IS 0;`
 	listDeletedSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted, DeleteTimeMillis 
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
 FROM Domains;`
 	setDeletedSQL = `UPDATE Domains SET Deleted = ?, DeleteTimeMillis = ? WHERE DomainId = ?`
 )
@@ -100,23 +103,29 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*adminstorage.D
 
 	ret := []*adminstorage.Domain{}
 	for rows.Next() {
-		var pubkey, privkey []byte
+		var pubkey, anyData []byte
 		d := &adminstorage.Domain{}
-		if err := rows.Scan(&d.Domain, &d.MapID, &d.LogID, &pubkey, &privkey, d.Deleted); err != nil {
+		if err := rows.Scan(&d.Domain, &d.MapID, &d.LogID, &pubkey, &anyData, &d.Deleted); err != nil {
 			return nil, err
 		}
 		// Unwrap protos.
 		d.VRF = &keyspb.PublicKey{Der: pubkey}
-		if err = proto.Unmarshal(privkey, d.VRFPriv); err != nil {
+		d.VRFPriv, err = unwrapAnyProto(anyData)
+		if err != nil {
 			return nil, err
 		}
+		ret = append(ret, d)
 	}
 	return ret, nil
 }
 
-func (s *storage) Write(ctx context.Context, ID string, mapID int64, logID int64, vrfPublicDER []byte, wrappedVRF proto.Message) error {
+func (s *storage) Write(ctx context.Context, domainID string, mapID int64, logID int64, vrfPublicDER []byte, wrappedVRF proto.Message) error {
 	// Prepare data.
-	wrappedData, err := proto.Marshal(wrappedVRF)
+	anyPB, err := ptypes.MarshalAny(wrappedVRF)
+	if err != nil {
+		return err
+	}
+	anyData, err := proto.Marshal(anyPB)
 	if err != nil {
 		return err
 	}
@@ -126,11 +135,11 @@ func (s *storage) Write(ctx context.Context, ID string, mapID int64, logID int64
 		return err
 	}
 	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, ID, mapID, logID, vrfPublicDER, wrappedData, false, 0)
+	_, err = writeStmt.ExecContext(ctx, domainID, mapID, logID, vrfPublicDER, anyData, false)
 	return err
 }
 
-func (s *storage) Read(ctx context.Context, ID string, showDeleted bool) (*adminstorage.Domain, error) {
+func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (*adminstorage.Domain, error) {
 	var SQL string
 	if showDeleted {
 		SQL = readDeletedSQL
@@ -143,19 +152,33 @@ func (s *storage) Read(ctx context.Context, ID string, showDeleted bool) (*admin
 	}
 	defer readStmt.Close()
 	d := &adminstorage.Domain{}
-	var pubkey, privkey []byte
-	if err := readStmt.QueryRowContext(ctx, ID).Scan(&d.Domain, &d.MapID, &d.LogID, &pubkey, &privkey, d.Deleted); err != nil {
+	var pubkey, anyData []byte
+	if err := readStmt.QueryRowContext(ctx, domainID).Scan(&d.Domain, &d.MapID, &d.LogID, &pubkey, &anyData, &d.Deleted); err != nil {
 		return nil, err
 	}
 	// Unwrap protos.
 	d.VRF = &keyspb.PublicKey{Der: pubkey}
-	if err = proto.Unmarshal(privkey, d.VRFPriv); err != nil {
+	d.VRFPriv, err = unwrapAnyProto(anyData)
+	if err != nil {
 		return nil, err
 	}
 	return d, nil
 }
 
+// unwrapAnyProto returns the proto object seralized inside a serialized any.Any
+func unwrapAnyProto(anyData []byte) (proto.Message, error) {
+	var anyPB any.Any
+	if err := proto.Unmarshal(anyData, &anyPB); err != nil {
+		return nil, err
+	}
+	var privKey ptypes.DynamicAny
+	if err := ptypes.UnmarshalAny(&anyPB, &privKey); err != nil {
+		return nil, err
+	}
+	return privKey.Message, nil
+}
+
 func (s *storage) SetDelete(ctx context.Context, domainID string, isDeleted bool) error {
-	_, err := s.db.ExecContext(ctx, setDeletedSQL, domainID, isDeleted)
+	_, err := s.db.ExecContext(ctx, setDeletedSQL, isDeleted, time.Now().Unix(), domainID)
 	return err
 }
