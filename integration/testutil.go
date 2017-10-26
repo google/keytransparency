@@ -43,9 +43,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	cmutation "github.com/google/keytransparency/core/mutation"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	mpb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
+	cmutation "github.com/google/keytransparency/core/mutationserver"
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	stestonly "github.com/google/trillian/storage/testonly"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )
@@ -84,7 +83,7 @@ type Env struct {
 	db         *sql.DB
 	Factory    *transaction.Factory
 	VrfPriv    vrf.PrivateKey
-	Cli        pb.KeyTransparencyServiceClient
+	Cli        gpb.KeyTransparencyServiceClient
 }
 
 func staticVRF() (vrf.PrivateKey, vrf.PublicKey, error) {
@@ -166,8 +165,8 @@ func NewEnv(t *testing.T) *Env {
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
 	msrv := mutation.New(cmutation.New(logID, mapID, tlog, mapEnv.MapClient, mutations, factory))
-	pb.RegisterKeyTransparencyServiceServer(s, server)
-	mpb.RegisterMutationServiceServer(s, msrv)
+	gpb.RegisterKeyTransparencyServiceServer(s, server)
+	gpb.RegisterMutationServiceServer(s, msrv)
 
 	// Signer
 	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
@@ -201,7 +200,7 @@ func NewEnv(t *testing.T) *Env {
 		db:         sqldb,
 		Factory:    factory,
 		VrfPriv:    vrfPriv,
-		Cli:        pb.NewKeyTransparencyServiceClient(cc),
+		Cli:        gpb.NewKeyTransparencyServiceClient(cc),
 	}
 }
 

@@ -14,7 +14,7 @@
 
 // Package mutation implements the monitor service. This package contains the
 // core functionality.
-package mutation
+package mutationserver
 
 import (
 	"context"

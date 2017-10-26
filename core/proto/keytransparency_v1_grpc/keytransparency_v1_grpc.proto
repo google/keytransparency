@@ -40,7 +40,7 @@ service KeyTransparencyService {
   //
   // Entries contain signed commitments to a profile, which is also returned.
   rpc GetEntry(keytransparency.v1.proto.GetEntryRequest) returns (keytransparency.v1.proto.GetEntryResponse) {
-    option (google.api.http) = { get: "/v1/users/{user_id}" };
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/users/{user_id}" };
   }
 
   // ListEntryHistory returns a list of historic GetEntry values.
@@ -48,7 +48,7 @@ service KeyTransparencyService {
   // Clients verify their account history by observing correct values for their
   // account over time.
   rpc ListEntryHistory(keytransparency.v1.proto.ListEntryHistoryRequest) returns (keytransparency.v1.proto.ListEntryHistoryResponse) {
-    option (google.api.http) = { get: "/v1/users/{user_id}/history" };
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/users/{user_id}/history" };
   }
 
   // UpdateEntry updates a user's profile.
@@ -57,7 +57,7 @@ service KeyTransparencyService {
   // Clients must retry until this function returns a proof containing the desired value.
   rpc UpdateEntry(keytransparency.v1.proto.UpdateEntryRequest) returns (keytransparency.v1.proto.UpdateEntryResponse) {
     option (google.api.http) = {
-      put: "/v1/users/{user_id}"
+      put: "/v1/domains/{domain_id}/users/{user_id}"
       body: "entry_update"
     };
   }
@@ -68,7 +68,7 @@ service KeyTransparencyService {
   // key-server. Data contains for instance the tree-info, like for instance the
   // log-/map-id and the corresponding public-keys.
   rpc GetDomainInfo(keytransparency.v1.proto.GetDomainInfoRequest) returns (keytransparency.v1.proto.GetDomainInfoResponse) {
-    option (google.api.http) = { get: "/v1/domain/info" };
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/info" };
   }
 }
 

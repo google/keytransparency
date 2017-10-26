@@ -98,6 +98,8 @@ message MapperMetadata {
 
 // GetEntryRequest for a user object.
 message GetEntryRequest {
+  // domain_id identifies the domain in which the user and application live.
+  string domain_id = 4;
   // user_id is the user identifier. Most commonly an email address.
   string user_id = 1;
   // app_id is the identifier for the application.
@@ -146,6 +148,8 @@ message GetEntryResponse {
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
 message ListEntryHistoryRequest {
+  // domain_id identifies the domain in which the user and application live.
+  string domain_id = 6;
   // user_id is the user identifier.
   string user_id = 1;
   // start is the starting epoch.
@@ -170,6 +174,8 @@ message ListEntryHistoryResponse {
 
 // UpdateEntryRequest updates a user's profile.
 message UpdateEntryRequest {
+  // domain_id identifies the domain in which the user and application live.
+  string domain_id = 5;
   // user_id specifies the id for the user who's profile is being updated.
   string user_id = 1;
   // app_id is the identifier for the application.
@@ -190,6 +196,8 @@ message UpdateEntryResponse {
 
 // GetMutationsRequest contains the input parameters of the GetMutation APIs.
 message GetMutationsRequest {
+  // domain_id is the domain for which epochs are being requested.
+  string domain_id = 5;
   // epoch specifies the epoch number in which mutations will be returned.
   int64 epoch = 1;
   // first_tree_size is the tree_size of the currently trusted log root.
@@ -226,10 +234,15 @@ message GetMutationsResponse {
 
 // GetDomainInfoRequest contains an empty request to query the GetDomainInfo
 // APIs.
-message GetDomainInfoRequest {}
+message GetDomainInfoRequest {
+  // domain_id identifies the domain in which the user and application live.
+  string domain_id = 1;
+}
 
 // GetDomainInfoResponse contains the results of GetDomainInfo APIs.
 message GetDomainInfoResponse {
+  // domain_id identifies the domain in which the user and application live.
+  string domain_id = 4;
   // Log contains the Log-Tree's info.
   trillian.Tree log = 1;
   // Map contains the Map-Tree's info.

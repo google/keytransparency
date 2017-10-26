@@ -44,7 +44,6 @@ import (
 	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_grpc"
-	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
 	tlogcli "github.com/google/trillian/client"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
@@ -102,7 +101,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Error Dialing %v: %v", ktURL, err)
 	}
-	mcc := mupb.NewMutationServiceClient(grpcc)
+	mcc := spb.NewMutationServiceClient(grpcc)
 
 	// Read signing key:
 	key, err := pem.ReadPrivateKeyFile(*signingKey, *signingKeyPassword)
