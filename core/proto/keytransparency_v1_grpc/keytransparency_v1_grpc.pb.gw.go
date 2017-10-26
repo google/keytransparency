@@ -29,7 +29,7 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_KeyTransparencyService_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"user_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparencyService_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "user_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -42,6 +42,17 @@ func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler ru
 		err error
 		_   = err
 	)
+
+	val, ok = pathParams["domain_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+	}
+
+	protoReq.DomainId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
 
 	val, ok = pathParams["user_id"]
 	if !ok {
@@ -64,7 +75,7 @@ func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler ru
 }
 
 var (
-	filter_KeyTransparencyService_ListEntryHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{"user_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparencyService_ListEntryHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "user_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -77,6 +88,17 @@ func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, mars
 		err error
 		_   = err
 	)
+
+	val, ok = pathParams["domain_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+	}
+
+	protoReq.DomainId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
 
 	val, ok = pathParams["user_id"]
 	if !ok {
@@ -99,7 +121,7 @@ func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, mars
 }
 
 var (
-	filter_KeyTransparencyService_UpdateEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"entry_update": 0, "user_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparencyService_UpdateEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"entry_update": 0, "domain_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
 func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -116,6 +138,17 @@ func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler
 		err error
 		_   = err
 	)
+
+	val, ok = pathParams["domain_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+	}
+
+	protoReq.DomainId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
 
 	val, ok = pathParams["user_id"]
 	if !ok {
@@ -140,6 +173,24 @@ func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler
 func request_KeyTransparencyService_GetDomainInfo_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq keytransparency_v1_proto.GetDomainInfoRequest
 	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["domain_id"]
+	if !ok {
+		return nil, metadata, grpc.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+	}
+
+	protoReq.DomainId, err = runtime.String(val)
+
+	if err != nil {
+		return nil, metadata, err
+	}
 
 	msg, err := client.GetDomainInfo(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -292,13 +343,13 @@ func RegisterKeyTransparencyServiceHandler(ctx context.Context, mux *runtime.Ser
 }
 
 var (
-	pattern_KeyTransparencyService_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "users", "user_id"}, ""))
+	pattern_KeyTransparencyService_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "domains", "domain_id", "users", "user_id"}, ""))
 
-	pattern_KeyTransparencyService_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "users", "user_id", "history"}, ""))
+	pattern_KeyTransparencyService_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "domains", "domain_id", "users", "user_id", "history"}, ""))
 
-	pattern_KeyTransparencyService_UpdateEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "users", "user_id"}, ""))
+	pattern_KeyTransparencyService_UpdateEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "domains", "domain_id", "users", "user_id"}, ""))
 
-	pattern_KeyTransparencyService_GetDomainInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "domain", "info"}, ""))
+	pattern_KeyTransparencyService_GetDomainInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "domains", "domain_id", "info"}, ""))
 )
 
 var (

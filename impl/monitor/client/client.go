@@ -26,8 +26,8 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
 )
 
 // Each page contains pageSize profiles. Each profile contains multiple
@@ -37,12 +37,12 @@ const pageSize = 16
 
 // Client queries the server side mutations API.
 type Client struct {
-	client     mupb.MutationServiceClient
+	client     gpb.MutationServiceClient
 	pollPeriod time.Duration
 }
 
 // New initializes a new mutations API monitoring client.
-func New(client mupb.MutationServiceClient, pollPeriod time.Duration) *Client {
+func New(client gpb.MutationServiceClient, pollPeriod time.Duration) *Client {
 	return &Client{
 		client:     client,
 		pollPeriod: pollPeriod,

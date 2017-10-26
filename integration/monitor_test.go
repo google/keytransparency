@@ -30,9 +30,8 @@ import (
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keyspb"
 
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-	mupb "github.com/google/keytransparency/core/proto/mutation_v1_grpc"
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 const (
@@ -48,9 +47,9 @@ func TestMonitor(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	c := spb.NewKeyTransparencyServiceClient(env.Conn)
+	c := gpb.NewKeyTransparencyServiceClient(env.Conn)
 	// setup monitor:
-	resp, err := c.GetDomainInfo(bctx, &kpb.GetDomainInfoRequest{})
+	resp, err := c.GetDomainInfo(bctx, &pb.GetDomainInfoRequest{})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
@@ -67,7 +66,7 @@ func TestMonitor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
-	mcc := mupb.NewMutationServiceClient(env.Conn)
+	mcc := gpb.NewMutationServiceClient(env.Conn)
 	mutCli := client.New(mcc, time.Second)
 
 	for _, tc := range []struct {
