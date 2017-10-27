@@ -17,7 +17,9 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"testing"
 
@@ -54,8 +56,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"                 // Use sqlite database for testing.
 )
 
-const domainID = "testdomain"
-
 // NewDB creates a new in-memory database for testing.
 func NewDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", "file:dummy.db?mode=memory&cache=shared")
@@ -91,6 +91,7 @@ type Env struct {
 	Factory    *transaction.Factory
 	VrfPriv    vrf.PrivateKey
 	Cli        gpb.KeyTransparencyServiceClient
+	DomainID   string
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -100,6 +101,7 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
+	domainID := fmt.Sprintf("domain %d", rand.Int())
 	sqldb := NewDB(t)
 
 	// Map server
@@ -139,7 +141,7 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	mutations, err := mutations.New(sqldb, mapID)
+	mutations, err := mutations.New(sqldb)
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)
 	}
@@ -156,7 +158,7 @@ func NewEnv(t *testing.T) *Env {
 	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, mapEnv.AdminClient, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
-	msrv := mutation.New(mutationserver.New(logID, mapID, tlog, mapEnv.MapClient, mutations, factory))
+	msrv := mutation.New(mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory))
 	gpb.RegisterKeyTransparencyServiceServer(s, server)
 	gpb.RegisterMutationServiceServer(s, msrv)
 
@@ -193,6 +195,7 @@ func NewEnv(t *testing.T) *Env {
 		Factory:    factory,
 		VrfPriv:    vrfPriv,
 		Cli:        gpb.NewKeyTransparencyServiceClient(cc),
+		DomainID:   domainID,
 	}
 }
 

@@ -43,13 +43,13 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 )
 
 func TestMonitor(t *testing.T) {
-	bctx := context.Background()
+	ctx := context.Background()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
 	c := gpb.NewKeyTransparencyServiceClient(env.Conn)
 	// setup monitor:
-	resp, err := c.GetDomainInfo(bctx, &pb.GetDomainInfoRequest{})
+	resp, err := c.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: env.DomainID})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
@@ -94,11 +94,11 @@ func TestMonitor(t *testing.T) {
 			}
 		}
 
-		if err := env.Signer.CreateEpoch(bctx, false); err != nil {
+		if err := env.Signer.CreateEpoch(ctx, false); err != nil {
 			t.Fatalf("CreateEpoch(_): %v", err)
 		}
 
-		mutResp, err := mutCli.PollMutations(bctx, tc.queryEpoch)
+		mutResp, err := mutCli.PollMutations(ctx, env.DomainID, tc.queryEpoch)
 		if err != nil {
 			t.Fatalf("Could not query mutations: %v", err)
 		}

@@ -29,8 +29,7 @@ import (
 )
 
 const (
-	countMapRowExpr = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
-	insertExpr      = `
+	insertExpr = `
 	INSERT INTO Mutations (MapID, MIndex, Mutation)
 	VALUES (?, ?, ?);`
 	readRangeExpr = `
