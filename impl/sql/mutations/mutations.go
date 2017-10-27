@@ -29,9 +29,8 @@ import (
 )
 
 const (
-	insertMapRowExpr = `INSERT INTO Maps (MapID) VALUES (?);`
-	countMapRowExpr  = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
-	insertExpr       = `
+	countMapRowExpr = `SELECT COUNT(*) AS count FROM Maps WHERE MapID = ?;`
+	insertExpr      = `
 	INSERT INTO Mutations (MapID, MIndex, Mutation)
 	VALUES (?, ?, ?);`
 	readRangeExpr = `
@@ -45,22 +44,17 @@ const (
 )
 
 type mutations struct {
-	mapID int64
-	db    *sql.DB
+	db *sql.DB
 }
 
 // New creates a new mutations instance.
-func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
+func New(db *sql.DB) (mutator.Mutation, error) {
 	m := &mutations{
-		mapID: mapID,
-		db:    db,
+		db: db,
 	}
 
 	// Create tables and map entry.
 	if err := m.create(); err != nil {
-		return nil, err
-	}
-	if err := m.insertMapRow(); err != nil {
 		return nil, err
 	}
 	return m, nil
@@ -71,13 +65,13 @@ func New(db *sql.DB, mapID int64) (mutator.Mutation, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *mutations) ReadRange(txn transaction.Txn, startSequence, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
+func (m *mutations) ReadRange(txn transaction.Txn, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
 	readStmt, err := txn.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.Query(m.mapID, startSequence, endSequence, count)
+	rows, err := readStmt.Query(mapID, startSequence, endSequence, count)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -88,13 +82,13 @@ func (m *mutations) ReadRange(txn transaction.Txn, startSequence, endSequence ui
 // ReadAll reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *mutations) ReadAll(txn transaction.Txn, startSequence uint64) (uint64, []*tpb.Entry, error) {
+func (m *mutations) ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*tpb.Entry, error) {
 	readStmt, err := txn.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.Query(m.mapID, startSequence)
+	rows, err := readStmt.Query(mapID, startSequence)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -128,7 +122,7 @@ func readRows(rows *sql.Rows) (uint64, []*tpb.Entry, error) {
 
 // Write saves the mutation in the database. Write returns the auto-inserted
 // sequence number.
-func (m *mutations) Write(txn transaction.Txn, mutation *tpb.Entry) (uint64, error) {
+func (m *mutations) Write(txn transaction.Txn, mapID int64, mutation *tpb.Entry) (uint64, error) {
 	index := mutation.GetIndex()
 	mData, err := proto.Marshal(mutation)
 	if err != nil {
@@ -140,7 +134,7 @@ func (m *mutations) Write(txn transaction.Txn, mutation *tpb.Entry) (uint64, err
 		return 0, err
 	}
 	defer writeStmt.Close()
-	result, err := writeStmt.Exec(m.mapID, index, mData)
+	result, err := writeStmt.Exec(mapID, index, mData)
 	if err != nil {
 		return 0, err
 	}
@@ -158,34 +152,6 @@ func (m *mutations) create() error {
 		if err != nil {
 			return fmt.Errorf("Failed to create mutation tables: %v", err)
 		}
-	}
-	return nil
-}
-
-func (m *mutations) insertMapRow() error {
-	// Check if a map row does not exist for the same MapID.
-	countStmt, err := m.db.Prepare(countMapRowExpr)
-	if err != nil {
-		return fmt.Errorf("insertMapRow(): %v", err)
-	}
-	defer countStmt.Close()
-	var count int
-	if err := countStmt.QueryRow(m.mapID).Scan(&count); err != nil {
-		return fmt.Errorf("insertMapRow(): %v", err)
-	}
-	if count >= 1 {
-		return nil
-	}
-
-	// Insert a map row if it does not exist already.
-	insertStmt, err := m.db.Prepare(insertMapRowExpr)
-	if err != nil {
-		return fmt.Errorf("insertMapRow(): %v", err)
-	}
-	defer insertStmt.Close()
-	_, err = insertStmt.Exec(m.mapID)
-	if err != nil {
-		return fmt.Errorf("insertMapRow(): %v", err)
 	}
 	return nil
 }

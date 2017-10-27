@@ -90,7 +90,7 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
 	}
-	sequence, err := m.Write(wtxn, mutation)
+	sequence, err := m.Write(wtxn, mapID, mutation)
 	if err != nil {
 		return fmt.Errorf("Write(%v): %v, want nil", mutation, err)
 	}
@@ -109,7 +109,7 @@ func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFa
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
-	maxSequence, results, err := m.ReadRange(rtxn, startSequence, endSequence, count)
+	maxSequence, results, err := m.ReadRange(rtxn, mapID, startSequence, endSequence, count)
 	if err != nil {
 		return 0, nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
 	}
@@ -124,7 +124,7 @@ func readAll(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFact
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
 	}
-	maxSequence, results, err := m.ReadAll(rtxn, startSequence)
+	maxSequence, results, err := m.ReadAll(rtxn, mapID, startSequence)
 	if err != nil {
 		return 0, nil, fmt.Errorf("ReadRange(%v): %v, want nil", startSequence, err)
 	}
@@ -138,7 +138,7 @@ func TestReadRange(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	factory := testutil.NewFakeFactory(db)
-	m, err := New(db, mapID)
+	m, err := New(db)
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestReadAll(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	factory := testutil.NewFakeFactory(db)
-	m, err := New(db, mapID)
+	m, err := New(db)
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
