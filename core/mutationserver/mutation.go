@@ -41,7 +41,7 @@ type Server struct {
 	admin     adminstorage.Storage
 	tlog      trillian.TrillianLogClient
 	tmap      trillian.TrillianMapClient
-	mutations mutator.Mutation
+	mutations mutator.MutationStorage
 	factory   transaction.Factory
 }
 
@@ -49,8 +49,7 @@ type Server struct {
 func New(admin adminstorage.Storage,
 	tlog trillian.TrillianLogClient,
 	tmap trillian.TrillianMapClient,
-	mutations mutator.Mutation,
-	factory transaction.Factory) *Server {
+	mutations mutator.MutationStorage, factory transaction.Factory) *Server {
 	return &Server{
 		admin:     admin,
 		tlog:      tlog,

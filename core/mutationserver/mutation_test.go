@@ -54,12 +54,12 @@ func signedKV(t *testing.T, start, end int) []*pb.Entry {
 	return kvs
 }
 
-func prepare(t *testing.T, mapID int64, mutations mutator.Mutation, fakeMap *fakeTrillianMapClient) {
+func prepare(t *testing.T, mapID int64, mutations mutator.MutationStorage, fakeMap *fakeTrillianMapClient) {
 	createEpoch(t, mapID, mutations, fakeMap, 1, 1, 6)
 	createEpoch(t, mapID, mutations, fakeMap, 2, 7, 10)
 }
 
-func createEpoch(t *testing.T, mapID int64, mutations mutator.Mutation, fakeMap *fakeTrillianMapClient, epoch int64, start, end int) {
+func createEpoch(t *testing.T, mapID int64, mutations mutator.MutationStorage, fakeMap *fakeTrillianMapClient, epoch int64, start, end int) {
 	kvs := signedKV(t, start, end)
 	for _, kv := range kvs {
 		if _, err := mutations.Write(nil, mapID, kv); err != nil {

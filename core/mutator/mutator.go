@@ -57,8 +57,8 @@ type Mutator interface {
 	Mutate(value, mutation proto.Message) (proto.Message, error)
 }
 
-// Mutation reads and writes mutations to the database.
-type Mutation interface {
+// MutationStorage reads and writes mutations to the database.
+type MutationStorage interface {
 	// ReadRange reads all mutations for a specific given mapID and sequence
 	// range. The range is identified by a starting sequence number and a
 	// count. Note that startSequence is not included in the result.

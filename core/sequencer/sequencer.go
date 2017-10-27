@@ -71,7 +71,7 @@ type Sequencer struct {
 	logID     int64
 	tlog      trillian.TrillianLogClient
 	mutator   mutator.Mutator
-	mutations mutator.Mutation
+	mutations mutator.MutationStorage
 	factory   transaction.Factory
 }
 
@@ -81,8 +81,7 @@ func New(mapID int64,
 	logID int64,
 	tlog trillian.TrillianLogClient,
 	mutator mutator.Mutator,
-	mutations mutator.Mutation,
-	factory transaction.Factory) *Sequencer {
+	mutations mutator.MutationStorage, factory transaction.Factory) *Sequencer {
 	return &Sequencer{
 		mapID:     mapID,
 		tmap:      tmap,

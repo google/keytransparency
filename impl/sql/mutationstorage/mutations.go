@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mutations defines operations to write and read mutations to and from
-// the database.
+// Package mutationstorage defines operations to write and read mutations to
+// and from the database.
 package mutationstorage
 
 import (
@@ -47,7 +47,7 @@ type mutations struct {
 }
 
 // New creates a new mutations instance.
-func New(db *sql.DB) (mutator.Mutation, error) {
+func New(db *sql.DB) (mutator.MutationStorage, error) {
 	m := &mutations{
 		db: db,
 	}

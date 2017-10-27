@@ -57,7 +57,7 @@ type Server struct {
 	authz     authorization.Authorization
 	mutator   mutator.Mutator
 	factory   transaction.Factory
-	mutations mutator.Mutation
+	mutations mutator.MutationStorage
 }
 
 // New creates a new instance of the key server.
@@ -70,7 +70,7 @@ func New(admin adminstorage.Storage,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
 	factory transaction.Factory,
-	mutations mutator.Mutation) *Server {
+	mutations mutator.MutationStorage) *Server {
 	return &Server{
 		admin:     admin,
 		tlog:      tlog,

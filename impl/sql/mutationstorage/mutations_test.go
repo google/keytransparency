@@ -38,7 +38,7 @@ func newDB(t testing.TB) *sql.DB {
 	return db
 }
 
-func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *testutil.FakeFactory) {
+func fillDB(ctx context.Context, t *testing.T, m mutator.MutationStorage, factory *testutil.FakeFactory) {
 	for _, mtn := range []struct {
 		mutation    *tpb.Entry
 		outSequence uint64
@@ -85,7 +85,7 @@ func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *test
 	}
 }
 
-func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, mutation *tpb.Entry, outSequence uint64) error {
+func write(ctx context.Context, m mutator.MutationStorage, factory *testutil.FakeFactory, mutation *tpb.Entry, outSequence uint64) error {
 	wtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
@@ -104,7 +104,7 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 	return nil
 }
 
-func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
+func readRange(ctx context.Context, m mutator.MutationStorage, factory *testutil.FakeFactory, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
 	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
@@ -119,7 +119,7 @@ func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFa
 	return maxSequence, results, nil
 }
 
-func readAll(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64) (uint64, []*tpb.Entry, error) {
+func readAll(ctx context.Context, m mutator.MutationStorage, factory *testutil.FakeFactory, startSequence uint64) (uint64, []*tpb.Entry, error) {
 	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
