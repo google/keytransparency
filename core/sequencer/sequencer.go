@@ -198,7 +198,7 @@ func (s *Sequencer) newMutations(ctx context.Context, startSequence int64) ([]*t
 		return nil, 0, fmt.Errorf("NewDBTxn(): %v", err)
 	}
 
-	maxSequence, mutations, err := s.mutations.ReadAll(txn, uint64(startSequence))
+	maxSequence, mutations, err := s.mutations.ReadAll(txn, s.mapID, uint64(startSequence))
 	if err != nil {
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)

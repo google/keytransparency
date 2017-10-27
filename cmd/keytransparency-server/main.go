@@ -30,6 +30,7 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/mutation"
+	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -43,7 +44,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	cmutation "github.com/google/keytransparency/core/mutationserver"
+	"github.com/google/keytransparency/core/mutationserver"
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -140,11 +141,15 @@ func main() {
 	authz := authorization.New()
 
 	// Create database and helper objects.
+	admin, err := adminstorage.New(sqldb)
+	if err != nil {
+		glog.Exitf("Failed to create admin storage: %v", err)
+	}
 	commitments, err := commitments.New(sqldb, *mapID)
 	if err != nil {
 		glog.Exitf("Failed to create committer: %v", err)
 	}
-	mutations, err := mutations.New(sqldb, *mapID)
+	mutations, err := mutations.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
@@ -174,7 +179,7 @@ func main() {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	msrv := mutation.New(cmutation.New(*logID, *mapID, tlog, tmap, mutations, factory))
+	msrv := mutation.New(mutationserver.New(admin, tlog, tmap, mutations, factory))
 	gpb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
 	gpb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
