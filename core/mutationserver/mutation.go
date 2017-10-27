@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/google/trillian"
 )
@@ -247,4 +248,13 @@ func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [
 		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	return getResp.GetMapLeafInclusion(), nil
+}
+
+//
+// Streaming RPCs
+//
+
+// GetMutationsStream is a streaming API similar to GetMutations.
+func (s *Server) GetMutationsStream(in *pb.GetMutationsRequest, stream gpb.MutationService_GetMutationsStreamServer) error {
+	return grpc.Errorf(codes.Unimplemented, "GetMutationsStream is unimplemented")
 }

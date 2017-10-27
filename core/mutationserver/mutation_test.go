@@ -30,6 +30,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/google/trillian"
@@ -79,6 +80,14 @@ func mustMetadataAsAny(t *testing.T, meta *pb.MapperMetadata) *any.Any {
 		t.Fatal(err)
 	}
 	return m
+}
+
+func TestGetMutationsStream(t *testing.T) {
+	srv := &Server{}
+	err := srv.GetMutationsStream(nil, nil)
+	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+		t.Errorf("GetMutationsStream(_, _): %v, want %v", got, want)
+	}
 }
 
 func TestGetMutations(t *testing.T) {
