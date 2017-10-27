@@ -87,8 +87,7 @@ func main() {
 	defer sqldb.Close()
 	factory := transaction.NewFactory(sqldb)
 
-	// TODO: add mutations and mutator to admin.
-	mutations, err := mutations.New(sqldb, *mapID)
+	mutations, err := mutations.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
