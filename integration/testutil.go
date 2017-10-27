@@ -35,7 +35,6 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/mutation"
 	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
@@ -158,7 +157,7 @@ func NewEnv(t *testing.T) *Env {
 	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, mapEnv.AdminClient, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
-	msrv := mutation.New(mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory))
+	msrv := mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory)
 	gpb.RegisterKeyTransparencyServiceServer(s, server)
 	gpb.RegisterMutationServiceServer(s, msrv)
 

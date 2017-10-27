@@ -30,7 +30,6 @@ import (
 	"github.com/google/keytransparency/core/mutationserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/mutation"
 	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
@@ -179,7 +178,7 @@ func main() {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	msrv := mutation.New(mutationserver.New(admin, tlog, tmap, mutations, factory))
+	msrv := mutationserver.New(admin, tlog, tmap, mutations, factory)
 	gpb.RegisterKeyTransparencyServiceServer(grpcServer, svr)
 	gpb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
