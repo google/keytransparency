@@ -14,7 +14,7 @@
 
 // Package mutations defines operations to write and read mutations to and from
 // the database.
-package mutations
+package mutationstorage
 
 import (
 	"database/sql"

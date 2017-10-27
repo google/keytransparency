@@ -14,7 +14,7 @@
 
 // +build !mysql
 
-package mutations
+package mutationstorage
 
 import (
 	_ "github.com/mattn/go-sqlite3" // Set database engine.

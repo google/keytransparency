@@ -30,7 +30,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
-	"github.com/google/keytransparency/impl/sql/mutations"
+	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/golang/glog"
@@ -131,7 +131,7 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create committer: %v", err)
 	}
-	mutations, err := mutations.New(sqldb)
+	mutations, err := mutationstorage.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
