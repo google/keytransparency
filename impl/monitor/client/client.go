@@ -21,13 +21,14 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 // Each page contains pageSize profiles. Each profile contains multiple
@@ -54,8 +55,8 @@ func New(client gpb.MutationServiceClient, pollPeriod time.Duration) *Client {
 // The caller should listen on the channel to receiving the latest polled
 // mutations response including all paged mutations. If anything went wrong
 // while polling the response channel contains an error.
-func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsResponse, <-chan error) {
-	response := make(chan *ktpb.GetMutationsResponse)
+func (c *Client) StartPolling(domainID string, startEpoch int64) (<-chan *pb.GetMutationsResponse, <-chan error) {
+	response := make(chan *pb.GetMutationsResponse)
 	errChan := make(chan error)
 	go func() {
 		epoch := startEpoch
@@ -64,7 +65,7 @@ func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsRespon
 			glog.Infof("Polling: %v", now)
 			// time out if we exceed the poll period:
 			ctx, cancel := context.WithTimeout(context.Background(), c.pollPeriod)
-			monitorResp, err := c.PollMutations(ctx, epoch)
+			monitorResp, err := c.PollMutations(ctx, domainID, epoch)
 			cancel()
 			if err != nil {
 				glog.Infof("PollMutations(_): %v", err)
@@ -83,20 +84,22 @@ func (c *Client) StartPolling(startEpoch int64) (<-chan *ktpb.GetMutationsRespon
 
 // PollMutations polls GetMutationsResponses from the configured
 // key-transparency server's mutations API.
-func (c *Client) PollMutations(ctx context.Context,
-	queryEpoch int64,
-	opts ...grpc.CallOption) (*ktpb.GetMutationsResponse, error) {
-	response, err := c.client.GetMutations(ctx, &ktpb.GetMutationsRequest{
+func (c *Client) PollMutations(ctx context.Context, domainID string, queryEpoch int64, opts ...grpc.CallOption) (*pb.GetMutationsResponse, error) {
+	response, err := c.client.GetMutations(ctx, &pb.GetMutationsRequest{
+		DomainId: domainID,
 		PageSize: pageSize,
 		Epoch:    queryEpoch,
 	}, opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetMutations(%v, %v): %v", domainID, pageSize, err)
 	}
 
 	// Page if necessary: query all mutations in the current epoch
 	for response.GetNextPageToken() != "" {
-		req := &ktpb.GetMutationsRequest{PageSize: pageSize}
+		req := &pb.GetMutationsRequest{
+			DomainId: domainID,
+			PageSize: pageSize,
+		}
 		resp, err := c.client.GetMutations(ctx, req, opts...)
 		if err != nil {
 			return nil, err

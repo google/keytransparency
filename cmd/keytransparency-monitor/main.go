@@ -59,6 +59,7 @@ var (
 	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	ktCert             = flag.String("kt-cert", "genfiles/server.crt", "Path to kt-server's public key")
+	domainID           = flag.String("domainid", "", "KT Domain identifier to monitor")
 
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
 
@@ -147,7 +148,7 @@ func main() {
 	// initialize the mutations API client and feed the responses it got
 	// into the monitor:
 	mutCli := client.New(mcc, *pollPeriod)
-	responses, errs := mutCli.StartPolling(1)
+	responses, errs := mutCli.StartPolling(*domainID, 1)
 	go func() {
 		for {
 			select {
