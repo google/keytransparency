@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 	"github.com/google/trillian/crypto/sigpb"
 
 	"github.com/golang/protobuf/ptypes"
+
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
@@ -191,7 +192,7 @@ func (s *server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		return nil, fmt.Errorf("CreateTree(map): %v", err)
 	}
 
-	if err := s.storage.Write(ctx, in.GetDomainId(), logTree.TreeId, mapTree.TreeId, vrfPublicPB.Der, wrapped); err != nil {
+	if err := s.storage.Write(ctx, in.GetDomainId(), mapTree.TreeId, logTree.TreeId, vrfPublicPB.Der, wrapped); err != nil {
 		return nil, fmt.Errorf("adminstorage.Write(): %v", err)
 	}
 	return &pb.CreateDomainResponse{
