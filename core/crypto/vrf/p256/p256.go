@@ -22,6 +22,7 @@ package p256
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -33,9 +34,12 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/trillian/crypto/keys"
 )
 
 var (
@@ -211,6 +215,23 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 		return nilIndex, ErrInvalidVRF
 	}
 	return sha256.Sum256(vrf), nil
+}
+
+// NewFromWrappedKey creates a VRF signer object from an encrypted private key.
+// The opaque private key must resolve to an `ecdsa.PrivateKey` in order to work.
+func NewFromWrappedKey(ctx context.Context, wrapped proto.Message) (vrf.PrivateKey, error) {
+	// Unwrap.
+	signer, err := keys.NewSigner(ctx, wrapped)
+	if err != nil {
+		return nil, err
+	}
+
+	switch key := signer.(type) {
+	case *ecdsa.PrivateKey:
+		return NewVRFSigner(key)
+	default:
+		return nil, fmt.Errorf("NewSigner().type: %T, want ecdsa.PrivateKey", key)
+	}
 }
 
 // NewVRFSigner creates a signer object from a private key.
