@@ -17,6 +17,8 @@ package adminserver
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -26,6 +28,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
 
+	"github.com/golang/protobuf/ptypes"
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
@@ -41,11 +44,13 @@ var (
 	}
 	logArgs = &trillian.CreateTreeRequest{
 		Tree: &trillian.Tree{
+			DisplayName:        "KT SMH Log",
 			TreeState:          trillian.TreeState_ACTIVE,
 			TreeType:           trillian.TreeType_LOG,
 			HashStrategy:       trillian.HashStrategy_OBJECT_RFC6962_SHA256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
+			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
 		},
 		KeySpec: &keyspb.Specification{
 			Params: &keyspb.Specification_EcdsaParams{
@@ -57,11 +62,13 @@ var (
 	}
 	mapArgs = &trillian.CreateTreeRequest{
 		Tree: &trillian.Tree{
+			DisplayName:        "KT Map",
 			TreeState:          trillian.TreeState_ACTIVE,
 			TreeType:           trillian.TreeType_MAP,
 			HashStrategy:       trillian.HashStrategy_CONIKS_SHA512_256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
+			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
 		},
 		KeySpec: &keyspb.Specification{
 			Params: &keyspb.Specification_EcdsaParams{
@@ -159,11 +166,11 @@ func (s *server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	// Generate VRF key.
 	wrapped, err := s.keygen(ctx, vrfKeySpec)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("keygen: %v", err)
 	}
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, wrapped)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NewFromWrappedKey(): %v", err)
 	}
 	vrfPublicPB, err := der.ToPublicProto(vrfPriv.Public())
 	if err != nil {
@@ -171,17 +178,21 @@ func (s *server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}
 
 	// Create Trillian keys.
-	logTree, err := s.client.CreateTree(ctx, logArgs)
+	logTreeArgs := *logArgs
+	logTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's SMH Log", in.GetDomainId())
+	logTree, err := s.client.CreateTree(ctx, &logTreeArgs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreateTree(log): %v", err)
 	}
-	mapTree, err := s.client.CreateTree(ctx, mapArgs)
+	mapTreeArgs := *mapArgs
+	mapTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's Map", in.GetDomainId())
+	mapTree, err := s.client.CreateTree(ctx, &mapTreeArgs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreateTree(map): %v", err)
 	}
 
 	if err := s.storage.Write(ctx, in.GetDomainId(), logTree.TreeId, mapTree.TreeId, vrfPublicPB.Der, wrapped); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("adminstorage.Write(): %v", err)
 	}
 	return &pb.CreateDomainResponse{
 		Domain: &pb.Domain{
