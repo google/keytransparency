@@ -77,9 +77,10 @@ func TestH2(t *testing.T) {
 func TestNewFromWrappedKey(t *testing.T) {
 	ctx := context.Background()
 	for _, tc := range []struct {
-		desc   string
-		spec   *keyspb.Specification
-		keygen keys.ProtoGenerator
+		desc               string
+		wantFromWrappedErr bool
+		spec               *keyspb.Specification
+		keygen             keys.ProtoGenerator
 	}{
 		{
 			desc: "DER with ECDSA spec",
@@ -94,37 +95,47 @@ func TestNewFromWrappedKey(t *testing.T) {
 				return der.NewProtoFromSpec(spec)
 			},
 		},
+		{
+			desc:               "DER with Non-ECDSA spec",
+			wantFromWrappedErr: true,
+			spec: &keyspb.Specification{
+				Params: &keyspb.Specification_RsaParams{
+					RsaParams: &keyspb.Specification_RSA{Bits: 2048},
+				},
+			},
+			keygen: func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
+				return der.NewProtoFromSpec(spec)
+			},
+		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Generate VRF key.
 			wrapped, err := tc.keygen(ctx, tc.spec)
 			if err != nil {
-				t.Errorf("keygen failed: %v", err)
-				return
+				t.Fatalf("keygen failed: %v", err)
 			}
 			vrfPriv, err := NewFromWrappedKey(ctx, wrapped)
+			if got, want := err != nil, tc.wantFromWrappedErr; got != want {
+				t.Errorf("NewFromWrappedKey (): %v, want err: %v", err, want)
+			}
 			if err != nil {
-				t.Errorf("NewFromWrappedKey failed: %v", err)
 				return
 			}
 
 			vrfPubDER, err := der.MarshalPublicKey(vrfPriv.Public())
 			if err != nil {
-				t.Errorf("MarshalPublicKey failed: %v", err)
-				return
+				t.Fatalf("MarshalPublicKey failed: %v", err)
 			}
 			vrfPub, err := NewVRFVerifierFromRawKey(vrfPubDER)
 			if err != nil {
-				t.Errorf("NewVRFVerifierFromRawKey failed: %v", err)
-				return
+				t.Fatalf("NewVRFVerifierFromRawKey(): %v", err)
 			}
 			// Test that the public and private components match.
 			m := []byte("foobar")
 			indexA, proof := vrfPriv.Evaluate(m)
 			indexB, err := vrfPub.ProofToHash(m, proof)
 			if err != nil {
-				t.Errorf("ProofToHash(): %v", err)
-				return
+				t.Fatalf("ProofToHash(): %v", err)
 			}
 			if got, want := indexB, indexA; got != want {
 				t.Errorf("ProofToHash(%s, %x): %x, want %x", m, proof, got, want)
