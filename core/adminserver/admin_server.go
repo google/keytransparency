@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
@@ -33,6 +32,7 @@ import (
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	tpb "github.com/google/trillian"
 )
 
 var (
@@ -43,12 +43,12 @@ var (
 			},
 		},
 	}
-	logArgs = &trillian.CreateTreeRequest{
-		Tree: &trillian.Tree{
+	logArgs = &tpb.CreateTreeRequest{
+		Tree: &tpb.Tree{
 			DisplayName:        "KT SMH Log",
-			TreeState:          trillian.TreeState_ACTIVE,
-			TreeType:           trillian.TreeType_LOG,
-			HashStrategy:       trillian.HashStrategy_OBJECT_RFC6962_SHA256,
+			TreeState:          tpb.TreeState_ACTIVE,
+			TreeType:           tpb.TreeType_LOG,
+			HashStrategy:       tpb.HashStrategy_OBJECT_RFC6962_SHA256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
 			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
@@ -61,12 +61,12 @@ var (
 			},
 		},
 	}
-	mapArgs = &trillian.CreateTreeRequest{
-		Tree: &trillian.Tree{
+	mapArgs = &tpb.CreateTreeRequest{
+		Tree: &tpb.Tree{
 			DisplayName:        "KT Map",
-			TreeState:          trillian.TreeState_ACTIVE,
-			TreeType:           trillian.TreeType_MAP,
-			HashStrategy:       trillian.HashStrategy_CONIKS_SHA512_256,
+			TreeState:          tpb.TreeState_ACTIVE,
+			TreeType:           tpb.TreeType_MAP,
+			HashStrategy:       tpb.HashStrategy_CONIKS_SHA512_256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
 			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
@@ -83,16 +83,12 @@ var (
 
 type server struct {
 	storage adminstorage.Storage
-	client  trillian.TrillianAdminClient
+	client  tpb.TrillianAdminClient
 	keygen  keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdminService implementation.
-func New(
-	storage adminstorage.Storage,
-	client trillian.TrillianAdminClient,
-	keygen keys.ProtoGenerator,
-) gpb.KeyTransparencyAdminServiceServer {
+func New(storage adminstorage.Storage, client tpb.TrillianAdminClient, keygen keys.ProtoGenerator) gpb.KeyTransparencyAdminServiceServer {
 	return &server{
 		storage: storage,
 		client:  client,
@@ -128,11 +124,11 @@ func (s *server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 
 // fetchDomainInfo converts an amdin.Domain object into a pb.Domain object by fetching the relevant info from Trillian.
 func (s *server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
-	logTree, err := s.client.GetTree(ctx, &trillian.GetTreeRequest{TreeId: d.LogID})
+	logTree, err := s.client.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
 	}
-	mapTree, err := s.client.GetTree(ctx, &trillian.GetTreeRequest{TreeId: d.MapID})
+	mapTree, err := s.client.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.MapID})
 	if err != nil {
 		return nil, err
 	}
