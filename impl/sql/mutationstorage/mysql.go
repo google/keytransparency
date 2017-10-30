@@ -14,7 +14,7 @@
 
 // +build mysql
 
-package mutations
+package mutationstorage
 
 import (
 	_ "github.com/go-sql-driver/mysql" // Set database engine.

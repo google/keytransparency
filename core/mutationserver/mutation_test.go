@@ -40,15 +40,17 @@ const (
 	domainID = "domain"
 )
 
-func signedKV(t *testing.T, start, end int) []*pb.Entry {
+func updates(t *testing.T, start, end int) []*pb.EntryUpdate {
 	if start > end {
 		t.Fatalf("start=%v > end=%v", start, end)
 	}
-	kvs := make([]*pb.Entry, 0, end-start)
+	kvs := make([]*pb.EntryUpdate, 0, end-start)
 	for i := start; i <= end; i++ {
-		kvs = append(kvs, &pb.Entry{
-			Index:      []byte(fmt.Sprintf("key_%v", i)),
-			Commitment: []byte(fmt.Sprintf("value_%v", i)),
+		kvs = append(kvs, &pb.EntryUpdate{
+			Mutation: &pb.Entry{
+				Index:      []byte(fmt.Sprintf("key_%v", i)),
+				Commitment: []byte(fmt.Sprintf("value_%v", i)),
+			},
 		})
 	}
 	return kvs
@@ -60,7 +62,7 @@ func prepare(t *testing.T, mapID int64, mutations mutator.MutationStorage, fakeM
 }
 
 func createEpoch(t *testing.T, mapID int64, mutations mutator.MutationStorage, fakeMap *fakeTrillianMapClient, epoch int64, start, end int) {
-	kvs := signedKV(t, start, end)
+	kvs := updates(t, start, end)
 	for _, kv := range kvs {
 		if _, err := mutations.Write(nil, mapID, kv); err != nil {
 			t.Fatalf("mutations.Write failed: %v", err)
@@ -106,18 +108,18 @@ func TestGetMutations(t *testing.T) {
 		epoch       int64
 		token       string
 		pageSize    int32
-		mutations   []*pb.Entry
+		mutations   []*pb.EntryUpdate
 		nextToken   string
 		success     bool
 	}{
-		{"working case complete epoch 1", 1, "", 6, signedKV(t, 1, 6), "", true},
-		{"working case complete epoch 2", 2, "", 4, signedKV(t, 7, 10), "", true},
-		{"working case partial epoch 1", 1, "", 4, signedKV(t, 1, 4), "4", true},
-		{"working case partial epoch 2", 2, "", 3, signedKV(t, 7, 9), "9", true},
-		{"working case larger page size and no token", 1, "", 10, signedKV(t, 1, 6), "", true},
-		{"working case larger page size with token", 1, "2", 10, signedKV(t, 3, 6), "", true},
-		{"working case with page token", 1, "4", 2, signedKV(t, 5, 6), "", true},
-		{"working case with page token and small page size", 1, "2", 2, signedKV(t, 3, 4), "4", true},
+		{"working case complete epoch 1", 1, "", 6, updates(t, 1, 6), "", true},
+		{"working case complete epoch 2", 2, "", 4, updates(t, 7, 10), "", true},
+		{"working case partial epoch 1", 1, "", 4, updates(t, 1, 4), "4", true},
+		{"working case partial epoch 2", 2, "", 3, updates(t, 7, 9), "9", true},
+		{"working case larger page size and no token", 1, "", 10, updates(t, 1, 6), "", true},
+		{"working case larger page size with token", 1, "2", 10, updates(t, 3, 6), "", true},
+		{"working case with page token", 1, "4", 2, updates(t, 5, 6), "", true},
+		{"working case with page token and small page size", 1, "2", 2, updates(t, 3, 4), "4", true},
 		{"invalid page token", 1, "some_token", 0, nil, "", false},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
@@ -142,7 +144,7 @@ func TestGetMutations(t *testing.T) {
 				t.Errorf("len(resp.Mutations)=%v, want %v", got, want)
 			}
 			for i := 0; i < len(resp.Mutations); i++ {
-				if got, want := resp.Mutations[i].Mutation, tc.mutations[i]; !proto.Equal(got, want) {
+				if got, want := resp.Mutations[i].Mutation, tc.mutations[i].Mutation; !proto.Equal(got, want) {
 					t.Errorf("resp.Mutations[i].Update=%v, want %v", got, want)
 				}
 			}

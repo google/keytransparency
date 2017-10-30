@@ -349,7 +349,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
-	if _, err := s.mutations.Write(txn, domain.MapID, in.GetEntryUpdate().GetMutation()); err != nil {
+	if _, err := s.mutations.Write(txn, domain.MapID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)
