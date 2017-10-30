@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/keytransparency/core/transaction"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var (
@@ -57,19 +57,19 @@ type Mutator interface {
 	Mutate(value, mutation proto.Message) (proto.Message, error)
 }
 
-// Mutation reads and writes mutations to the database.
-type Mutation interface {
+// MutationStorage reads and writes mutations to the database.
+type MutationStorage interface {
 	// ReadRange reads all mutations for a specific given mapID and sequence
 	// range. The range is identified by a starting sequence number and a
 	// count. Note that startSequence is not included in the result.
 	// ReadRange stops when endSequence or count is reached, whichever comes
 	// first. ReadRange also returns the maximum sequence number read.
-	ReadRange(txn transaction.Txn, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*tpb.Entry, error)
+	ReadRange(txn transaction.Txn, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error)
 	// ReadAll reads all mutations starting from the given sequence number.
 	// Note that startSequence is not included in the result. ReadAll also
 	// returns the maximum sequence number read.
-	ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*tpb.Entry, error)
+	ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
-	Write(txn transaction.Txn, mapID int64, mutation *tpb.Entry) (uint64, error)
+	Write(txn transaction.Txn, mapID int64, mutation *pb.EntryUpdate) (uint64, error)
 }

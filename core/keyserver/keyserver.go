@@ -57,7 +57,7 @@ type Server struct {
 	authz     authorization.Authorization
 	mutator   mutator.Mutator
 	factory   transaction.Factory
-	mutations mutator.Mutation
+	mutations mutator.MutationStorage
 }
 
 // New creates a new instance of the key server.
@@ -70,7 +70,7 @@ func New(admin adminstorage.Storage,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
 	factory transaction.Factory,
-	mutations mutator.Mutation) *Server {
+	mutations mutator.MutationStorage) *Server {
 	return &Server{
 		admin:     admin,
 		tlog:      tlog,
@@ -349,7 +349,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
-	if _, err := s.mutations.Write(txn, domain.MapID, in.GetEntryUpdate().GetMutation()); err != nil {
+	if _, err := s.mutations.Write(txn, domain.MapID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)

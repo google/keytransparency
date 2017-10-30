@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mutations defines operations to write and read mutations to and from
-// the database.
-package mutations
+// Package mutationstorage defines operations to write and read mutations to
+// and from the database.
+package mutationstorage
 
 import (
 	"database/sql"
@@ -25,7 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 const (
@@ -47,7 +47,7 @@ type mutations struct {
 }
 
 // New creates a new mutations instance.
-func New(db *sql.DB) (mutator.Mutation, error) {
+func New(db *sql.DB) (mutator.MutationStorage, error) {
 	m := &mutations{
 		db: db,
 	}
@@ -64,7 +64,7 @@ func New(db *sql.DB) (mutator.Mutation, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *mutations) ReadRange(txn transaction.Txn, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
+func (m *mutations) ReadRange(txn transaction.Txn, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
 	readStmt, err := txn.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
@@ -81,7 +81,7 @@ func (m *mutations) ReadRange(txn transaction.Txn, mapID int64, startSequence, e
 // ReadAll reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *mutations) ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*tpb.Entry, error) {
+func (m *mutations) ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
 	readStmt, err := txn.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
@@ -95,8 +95,8 @@ func (m *mutations) ReadAll(txn transaction.Txn, mapID int64, startSequence uint
 	return readRows(rows)
 }
 
-func readRows(rows *sql.Rows) (uint64, []*tpb.Entry, error) {
-	results := make([]*tpb.Entry, 0)
+func readRows(rows *sql.Rows) (uint64, []*pb.EntryUpdate, error) {
+	results := make([]*pb.EntryUpdate, 0)
 	maxSequence := uint64(0)
 	for rows.Next() {
 		var sequence uint64
@@ -107,7 +107,7 @@ func readRows(rows *sql.Rows) (uint64, []*tpb.Entry, error) {
 		if sequence > maxSequence {
 			maxSequence = sequence
 		}
-		mutation := new(tpb.Entry)
+		mutation := new(pb.EntryUpdate)
 		if err := proto.Unmarshal(mData, mutation); err != nil {
 			return 0, nil, err
 		}
@@ -121,9 +121,9 @@ func readRows(rows *sql.Rows) (uint64, []*tpb.Entry, error) {
 
 // Write saves the mutation in the database. Write returns the auto-inserted
 // sequence number.
-func (m *mutations) Write(txn transaction.Txn, mapID int64, mutation *tpb.Entry) (uint64, error) {
-	index := mutation.GetIndex()
-	mData, err := proto.Marshal(mutation)
+func (m *mutations) Write(txn transaction.Txn, mapID int64, update *pb.EntryUpdate) (uint64, error) {
+	index := update.GetMutation().GetIndex()
+	mData, err := proto.Marshal(update)
 	if err != nil {
 		return 0, err
 	}

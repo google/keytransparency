@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !mysql
+// +build mysql
 
-package mutations
+package mutationstorage
 
 import (
-	_ "github.com/mattn/go-sqlite3" // Set database engine.
+	_ "github.com/go-sql-driver/mysql" // Set database engine.
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 		`
 	CREATE TABLE IF NOT EXISTS Mutations (
 		MapID    BIGINT        NOT NULL,
-		Sequence INTEGER       NOT NULL PRIMARY KEY AUTOINCREMENT,
+		Sequence INTEGER       NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 MIndex   VARBINARY(32) NOT NULL,
 		Mutation BLOB          NOT NULL
 	);`,

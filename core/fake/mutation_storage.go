@@ -15,24 +15,25 @@
 package fake
 
 import (
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/google/keytransparency/core/transaction"
+
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 // MutationStorage implements mutator.Mutation
 type MutationStorage struct {
-	mtns map[int64][]*pb.Entry
+	mtns map[int64][]*pb.EntryUpdate
 }
 
 // NewMutationStorage returns a fake mutator.Mutation
 func NewMutationStorage() *MutationStorage {
 	return &MutationStorage{
-		mtns: make(map[int64][]*pb.Entry),
+		mtns: make(map[int64][]*pb.EntryUpdate),
 	}
 }
 
 // ReadRange returns the list of mutations
-func (m *MutationStorage) ReadRange(txn transaction.Txn, mapID int64, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.Entry, error) {
+func (m *MutationStorage) ReadRange(txn transaction.Txn, mapID int64, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
 	if startSequence > uint64(len(m.mtns[mapID])) {
 		panic("startSequence > len(m.mtns[mapID])")
 	}
@@ -47,12 +48,12 @@ func (m *MutationStorage) ReadRange(txn transaction.Txn, mapID int64, startSeque
 }
 
 // ReadAll is unimplemented
-func (m *MutationStorage) ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*pb.Entry, error) {
+func (m *MutationStorage) ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
 	return 0, nil, nil
 }
 
 // Write stores a mutation
-func (m *MutationStorage) Write(txn transaction.Txn, mapID int64, mutation *pb.Entry) (uint64, error) {
+func (m *MutationStorage) Write(txn transaction.Txn, mapID int64, mutation *pb.EntryUpdate) (uint64, error) {
 	m.mtns[mapID] = append(m.mtns[mapID], mutation)
 	return uint64(len(m.mtns[mapID])), nil
 }

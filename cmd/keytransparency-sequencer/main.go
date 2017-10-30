@@ -25,7 +25,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/engine"
-	"github.com/google/keytransparency/impl/sql/mutations"
+	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/golang/glog"
@@ -87,7 +87,7 @@ func main() {
 	defer sqldb.Close()
 	factory := transaction.NewFactory(sqldb)
 
-	mutations, err := mutations.New(sqldb)
+	mutations, err := mutationstorage.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}

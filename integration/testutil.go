@@ -36,7 +36,7 @@ import (
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/commitments"
-	"github.com/google/keytransparency/impl/sql/mutations"
+	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/google/trillian/crypto/keys/der"
@@ -130,7 +130,7 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Common data structures.
-	mutations, err := mutations.New(sqldb)
+	mutations, err := mutationstorage.New(sqldb)
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)
 	}

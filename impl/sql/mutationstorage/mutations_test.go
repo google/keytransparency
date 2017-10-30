@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package mutations
+package mutationstorage
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -38,54 +38,37 @@ func newDB(t testing.TB) *sql.DB {
 	return db
 }
 
-func fillDB(ctx context.Context, t *testing.T, m mutator.Mutation, factory *testutil.FakeFactory) {
+func genUpdate(i int) *pb.EntryUpdate {
+	return &pb.EntryUpdate{
+		Mutation: &pb.Entry{
+			Index:      []byte(fmt.Sprintf("index%d", i)),
+			Commitment: []byte(fmt.Sprintf("mutation%d", i)),
+		},
+		Committed: &pb.Committed{
+			Key:  []byte(fmt.Sprintf("nonce%d", i)),
+			Data: []byte(fmt.Sprintf("data%d", i)),
+		},
+	}
+}
+
+func fillDB(ctx context.Context, t *testing.T, m mutator.MutationStorage, factory *testutil.FakeFactory) {
 	for _, mtn := range []struct {
-		mutation    *tpb.Entry
+		update      *pb.EntryUpdate
 		outSequence uint64
 	}{
-		{
-			&tpb.Entry{
-				Index:      []byte("index1"),
-				Commitment: []byte("mutation1"),
-			},
-			1,
-		},
-		{
-			&tpb.Entry{
-				Index:      []byte("index2"),
-				Commitment: []byte("mutation2"),
-			},
-			2,
-		},
-		{
-			&tpb.Entry{
-				Index:      []byte("index3"),
-				Commitment: []byte("mutation3"),
-			},
-			3,
-		},
-		{
-			&tpb.Entry{
-				Index:      []byte("index4"),
-				Commitment: []byte("mutation4"),
-			},
-			4,
-		},
-		{
-			&tpb.Entry{
-				Index:      []byte("index5"),
-				Commitment: []byte("mutation5"),
-			},
-			5,
-		},
+		{update: genUpdate(1), outSequence: 1},
+		{update: genUpdate(2), outSequence: 2},
+		{update: genUpdate(3), outSequence: 3},
+		{update: genUpdate(4), outSequence: 4},
+		{update: genUpdate(5), outSequence: 5},
 	} {
-		if err := write(ctx, m, factory, mtn.mutation, mtn.outSequence); err != nil {
-			t.Errorf("failed to write mutation to database, mutation=%v: %v", mtn.mutation, err)
+		if err := write(ctx, m, factory, mtn.update, mtn.outSequence); err != nil {
+			t.Errorf("failed to write mutation to database, mutation=%v: %v", mtn.update, err)
 		}
 	}
 }
 
-func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, mutation *tpb.Entry, outSequence uint64) error {
+func write(ctx context.Context, m mutator.MutationStorage, factory *testutil.FakeFactory, mutation *pb.EntryUpdate, outSequence uint64) error {
 	wtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create write transaction: %v", err)
@@ -104,7 +87,7 @@ func write(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactor
 	return nil
 }
 
-func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64, endSequence uint64, count int32) (uint64, []*tpb.Entry, error) {
+func readRange(ctx context.Context, m mutator.MutationStorage, factory *testutil.FakeFactory, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
 	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
@@ -119,7 +102,7 @@ func readRange(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFa
 	return maxSequence, results, nil
 }
 
-func readAll(ctx context.Context, m mutator.Mutation, factory *testutil.FakeFactory, startSequence uint64) (uint64, []*tpb.Entry, error) {
+func readAll(ctx context.Context, m mutator.MutationStorage, factory *testutil.FakeFactory, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
 	rtxn, err := factory.NewTxn(ctx)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to create read transaction: %v", err)
@@ -150,119 +133,72 @@ func TestReadRange(t *testing.T) {
 		endSequence   uint64
 		count         int32
 		maxSequence   uint64
-		mutations     []*tpb.Entry
+		mutations     []*pb.EntryUpdate
 	}{
 		{
-			"read a single mutation",
-			0,
-			1,
-			1,
-			1,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index1"),
-					Commitment: []byte("mutation1"),
-				},
+			description:   "read a single mutation",
+			startSequence: 0,
+			endSequence:   1,
+			count:         1,
+			maxSequence:   1,
+			mutations:     []*pb.EntryUpdate{genUpdate(1)},
+		},
+		{
+			description:   "empty mutations list",
+			startSequence: 100,
+			endSequence:   110,
+			count:         10,
+			maxSequence:   0,
+			mutations:     nil,
+		},
+		{
+			description:   "full mutations range size",
+			startSequence: 0,
+			endSequence:   5,
+			count:         5,
+			maxSequence:   5,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(1),
+				genUpdate(2),
+				genUpdate(3),
+				genUpdate(4),
+				genUpdate(5),
 			},
 		},
 		{
-			"empty mutations list",
-			100,
-			110,
-			10,
-			0,
-			nil,
-		},
-		{
-			"full mutations range size",
-			0,
-			5,
-			5,
-			5,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index1"),
-					Commitment: []byte("mutation1"),
-				},
-				{
-					Index:      []byte("index2"),
-					Commitment: []byte("mutation2"),
-				},
-				{
-					Index:      []byte("index3"),
-					Commitment: []byte("mutation3"),
-				},
-				{
-					Index:      []byte("index4"),
-					Commitment: []byte("mutation4"),
-				},
-				{
-					Index:      []byte("index5"),
-					Commitment: []byte("mutation5"),
-				},
+			description:   "incomplete mutations range",
+			startSequence: 2,
+			endSequence:   5,
+			count:         3,
+			maxSequence:   5,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(3),
+				genUpdate(4),
+				genUpdate(5),
 			},
 		},
 		{
-			"incomplete mutations range",
-			2,
-			5,
-			3,
-			5,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index3"),
-					Commitment: []byte("mutation3"),
-				},
-				{
-					Index:      []byte("index4"),
-					Commitment: []byte("mutation4"),
-				},
-				{
-					Index:      []byte("index5"),
-					Commitment: []byte("mutation5"),
-				},
+			description:   "end sequence less than count",
+			startSequence: 2,
+			endSequence:   5,
+			count:         5,
+			maxSequence:   5,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(3),
+				genUpdate(4),
+				genUpdate(5),
 			},
 		},
 		{
-			"end sequence less than count",
-			2,
-			5,
-			5,
-			5,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index3"),
-					Commitment: []byte("mutation3"),
-				},
-				{
-					Index:      []byte("index4"),
-					Commitment: []byte("mutation4"),
-				},
-				{
-					Index:      []byte("index5"),
-					Commitment: []byte("mutation5"),
-				},
-			},
-		},
-		{
-			"count less than end sequence",
-			0,
-			5,
-			3,
-			3,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index1"),
-					Commitment: []byte("mutation1"),
-				},
-				{
-					Index:      []byte("index2"),
-					Commitment: []byte("mutation2"),
-				},
-				{
-					Index:      []byte("index3"),
-					Commitment: []byte("mutation3"),
-				},
+			description:   "count less than end sequence",
+			startSequence: 0,
+			endSequence:   5,
+			count:         3,
+			maxSequence:   3,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(1),
+				genUpdate(2),
+				genUpdate(3),
 			},
 		},
 	} {
@@ -299,69 +235,42 @@ func TestReadAll(t *testing.T) {
 		description   string
 		startSequence uint64
 		maxSequence   uint64
-		mutations     []*tpb.Entry
+		mutations     []*pb.EntryUpdate
 	}{
 		{
-			"empty mutations list",
-			100,
-			0,
-			nil,
+			description:   "empty mutations list",
+			startSequence: 100,
+			maxSequence:   0,
+			mutations:     nil,
 		},
 		{
-			"read all mutations",
-			0,
-			5,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index1"),
-					Commitment: []byte("mutation1"),
-				},
-				{
-					Index:      []byte("index2"),
-					Commitment: []byte("mutation2"),
-				},
-				{
-					Index:      []byte("index3"),
-					Commitment: []byte("mutation3"),
-				},
-				{
-					Index:      []byte("index4"),
-					Commitment: []byte("mutation4"),
-				},
-				{
-					Index:      []byte("index5"),
-					Commitment: []byte("mutation5"),
-				},
+			description:   "read all mutations",
+			startSequence: 0,
+			maxSequence:   5,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(1),
+				genUpdate(2),
+				genUpdate(3),
+				genUpdate(4),
+				genUpdate(5),
 			},
 		},
 		{
-			"read half of the mutations",
-			2,
-			5,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index3"),
-					Commitment: []byte("mutation3"),
-				},
-				{
-					Index:      []byte("index4"),
-					Commitment: []byte("mutation4"),
-				},
-				{
-					Index:      []byte("index5"),
-					Commitment: []byte("mutation5"),
-				},
+			description:   "read half of the mutations",
+			startSequence: 2,
+			maxSequence:   5,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(3),
+				genUpdate(4),
+				genUpdate(5),
 			},
 		},
 		{
-			"read last mutation",
-			4,
-			5,
-			[]*tpb.Entry{
-				{
-					Index:      []byte("index5"),
-					Commitment: []byte("mutation5"),
-				},
+			description:   "read last mutation",
+			startSequence: 4,
+			maxSequence:   5,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(5),
 			},
 		},
 	} {
