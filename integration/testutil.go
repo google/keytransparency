@@ -27,7 +27,6 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/grpcc"
-	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
@@ -88,7 +87,6 @@ type Env struct {
 	Signer     *sequencer.Sequencer
 	db         *sql.DB
 	Factory    *transaction.Factory
-	VrfPriv    vrf.PrivateKey
 	Cli        gpb.KeyTransparencyServiceClient
 	DomainID   string
 }
@@ -130,14 +128,6 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to load vrf pubkey: %v", err)
 	}
-	domain, err := adminStorage.Read(ctx, domainID, false)
-	if err != nil {
-		t.Fatalf("Domain %v not found: %v", domainID, err)
-	}
-	vrfPriv, err := p256.NewFromWrappedKey(ctx, domain.VRFPriv)
-	if err != nil {
-		t.Fatalf("Could not unrwap vrf priv: %v", err)
-	}
 
 	// Common data structures.
 	mutations, err := mutations.New(sqldb)
@@ -154,8 +144,8 @@ func NewEnv(t *testing.T) *Env {
 	tlog := fake.NewFakeTrillianLogClient()
 
 	factory := transaction.NewFactory(sqldb)
-	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, mapEnv.AdminClient, commitments,
-		vrfPriv, mutator, auth, authz, factory, mutations)
+	server := keyserver.New(adminStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient, commitments,
+		mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
 	msrv := mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory)
 	gpb.RegisterKeyTransparencyServiceServer(s, server)
@@ -172,7 +162,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	client := grpcc.New(cc, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
+	client := grpcc.New(cc, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 
 	// Mimic first sequence event
@@ -192,7 +182,6 @@ func NewEnv(t *testing.T) *Env {
 		Signer:     signer,
 		db:         sqldb,
 		Factory:    factory,
-		VrfPriv:    vrfPriv,
 		Cli:        gpb.NewKeyTransparencyServiceClient(cc),
 		DomainID:   domainID,
 	}

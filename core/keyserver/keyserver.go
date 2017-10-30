@@ -72,6 +72,7 @@ func New(admin adminstorage.Storage,
 	factory transaction.Factory,
 	mutations mutator.Mutation) *Server {
 	return &Server{
+		admin:     admin,
 		tlog:      tlog,
 		tmap:      tmap,
 		tadmin:    tadmin,
@@ -95,6 +96,9 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	if revision == 0 {
 		return nil, grpc.Errorf(codes.InvalidArgument,
 			"Epoch 0 is inavlid. The first map revision is epoch 1.")
+	}
+	if domainID == "" {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 
 	// Lookup log and map info.
@@ -260,6 +264,9 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *tpb.ListEntryHistoryR
 // UpdateEntry updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*tpb.UpdateEntryResponse, error) {
+	if in.DomainId == "" {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+	}
 	// Lookup log and map info.
 	domain, err := s.admin.Read(ctx, in.DomainId, false)
 	if err != nil {
@@ -302,8 +309,9 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 
 	// Query for the current epoch.
 	req := &tpb.GetEntryRequest{
-		UserId: in.UserId,
-		AppId:  in.AppId,
+		DomainId: in.DomainId,
+		UserId:   in.UserId,
+		AppId:    in.AppId,
 		//EpochStart: in.GetEntryUpdate().EpochStart,
 	}
 	resp, err := s.GetEntry(ctx, req)
@@ -341,7 +349,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 	if err != nil {
 		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
 	}
-	if _, err := s.mutations.Write(txn, s.mapID, in.GetEntryUpdate().GetMutation()); err != nil {
+	if _, err := s.mutations.Write(txn, domain.MapID, in.GetEntryUpdate().GetMutation()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)
@@ -362,6 +370,9 @@ func (s *Server) UpdateEntry(ctx context.Context, in *tpb.UpdateEntryRequest) (*
 // log/map-id and the corresponding public-keys.
 func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest) (*tpb.GetDomainInfoResponse, error) {
 	// Lookup log and map info.
+	if in.DomainId == "" {
+		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+	}
 	domain, err := s.admin.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)

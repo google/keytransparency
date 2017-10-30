@@ -79,6 +79,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
 
+	RootCmd.PersistentFlags().String("domain", "google.com", "Domain within the KT server")
 	RootCmd.PersistentFlags().String("kt-url", "35.184.134.53:8080", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().Bool("autoconfig", true, "Fetch config info from the server's /v1/domain/info")
@@ -257,10 +258,13 @@ func GetClient(useClientSecret bool) (*grpcc.Client, error) {
 // config selects a source for and returns the client configuration.
 func config(ctx context.Context, cc *grpc.ClientConn) (*kpb.GetDomainInfoResponse, error) {
 	autoConfig := viper.GetBool("autoconfig")
+	domain := viper.GetString("domain")
 	switch {
 	case autoConfig:
 		ktClient := spb.NewKeyTransparencyServiceClient(cc)
-		return ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
+		return ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{
+			DomainId: domain,
+		})
 	default:
 		return readConfigFromDisk()
 	}

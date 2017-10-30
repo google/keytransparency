@@ -59,7 +59,6 @@ var (
 	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
 
 	// Info to send Signed Map Heads to a Trillian Log.
-	logID  = flag.Int64("log-id", 0, "Trillian Log ID")
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 )
 
@@ -135,10 +134,6 @@ func main() {
 	mutations, err := mutations.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
-	}
-	admin, err := adminstorage.New(sqldb)
-	if err != nil {
-		glog.Exitf("Failed to create adminstorage object: %v", err)
 	}
 
 	mutator := entry.New()
