@@ -21,33 +21,40 @@ import (
 	"net"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/mutationserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/mutation"
+	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/transaction"
 
-	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/testonly/integration"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	cmutation "github.com/google/keytransparency/core/mutationserver"
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	stestonly "github.com/google/trillian/storage/testonly"
-	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
+	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
+	_ "github.com/mattn/go-sqlite3"                 // Use sqlite database for testing.
 )
+
+const domainID = "testdomain"
 
 // NewDB creates a new in-memory database for testing.
 func NewDB(t testing.TB) *sql.DB {
@@ -86,25 +93,8 @@ type Env struct {
 	Cli        gpb.KeyTransparencyServiceClient
 }
 
-func staticVRF() (vrf.PrivateKey, vrf.PublicKey, error) {
-	priv := `-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIHgSC8WzQK0bxSmfJWUeMP5GdndqUw8zS1dCHQ+3otj/oAoGCCqGSM49
-AwEHoUQDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhWf5JqSoyp0uiL8LeNYyj5vgkl
-K8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
------END EC PRIVATE KEY-----`
-	pub := `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
-f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
------END PUBLIC KEY-----`
-	vrf, err := p256.NewVRFSignerFromPEM([]byte(priv))
-	if err != nil {
-		return nil, nil, err
-	}
-	verfier, err := p256.NewVRFVerifierFromPEM([]byte(pub))
-	if err != nil {
-		return nil, nil, err
-	}
-	return vrf, verfier, nil
+func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
+	return der.NewProtoFromSpec(spec)
 }
 
 // NewEnv sets up common resources for tests.
@@ -118,38 +108,40 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Failed to create trillian map server: %v", err)
 	}
 
-	// Configure map.
-	treeParams := stestonly.MapTree
-	treeParams.HashStrategy = trillian.HashStrategy_CONIKS_SHA512_256
-	tree, err := mapEnv.AdminClient.CreateTree(ctx, &trillian.CreateTreeRequest{
-		Tree: treeParams,
-	})
+	// Configure domain, which creates new map and log trees.
+	adminStorage, err := adminstorage.New(sqldb)
 	if err != nil {
-		t.Fatalf("CreateTree(): %v", err)
+		t.Fatalf("Failed to create admin storage: %v", err)
 	}
-	mapID := tree.TreeId
-	mapPubKey, err := der.UnmarshalPublicKey(tree.GetPublicKey().GetDer())
+	adminSvr := adminserver.New(adminStorage, mapEnv.AdminClient, vrfKeyGen)
+	resp, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{DomainId: domainID})
+	if err != nil {
+		t.Fatalf("CreateDomain(): %v", err)
+	}
+
+	mapID := resp.Domain.Map.TreeId
+	logID := resp.Domain.Log.TreeId
+	mapPubKey, err := der.UnmarshalPublicKey(resp.Domain.Map.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
-
-	// Configure log.
-	logTree, err := mapEnv.AdminClient.CreateTree(ctx, &trillian.CreateTreeRequest{
-		Tree: stestonly.LogTree,
-	})
+	vrfPub, err := p256.NewVRFVerifierFromRawKey(resp.Domain.Vrf.GetDer())
 	if err != nil {
-		t.Fatalf("CreateTree(): %v", err)
+		t.Fatalf("Failed to load vrf pubkey: %v", err)
 	}
-	logID := logTree.GetTreeId()
+	domain, err := adminStorage.Read(ctx, domainID, false)
+	if err != nil {
+		t.Fatalf("Domain %v not found: %v", domainID, err)
+	}
+	vrfPriv, err := p256.NewFromWrappedKey(ctx, domain.VRFPriv)
+	if err != nil {
+		t.Fatalf("Could not unrwap vrf priv: %v", err)
+	}
 
 	// Common data structures.
 	mutations, err := mutations.New(sqldb, mapID)
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)
-	}
-	vrfPriv, vrfPub, err := staticVRF()
-	if err != nil {
-		t.Fatalf("Failed to load vrf keypair: %v", err)
 	}
 	mutator := entry.New()
 	auth := authentication.NewFake()
@@ -164,7 +156,7 @@ func NewEnv(t *testing.T) *Env {
 	server := keyserver.New(logID, tlog, mapID, mapEnv.MapClient, mapEnv.AdminClient, commitments,
 		vrfPriv, mutator, auth, authz, factory, mutations)
 	s := grpc.NewServer()
-	msrv := mutation.New(cmutation.New(logID, mapID, tlog, mapEnv.MapClient, mutations, factory))
+	msrv := mutation.New(mutationserver.New(logID, mapID, tlog, mapEnv.MapClient, mutations, factory))
 	gpb.RegisterKeyTransparencyServiceServer(s, server)
 	gpb.RegisterMutationServiceServer(s, msrv)
 

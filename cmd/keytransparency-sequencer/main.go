@@ -18,29 +18,27 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"net/http"
 	"time"
 
-	"github.com/google/keytransparency/cmd/serverutil"
+	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/impl/sql/adminstorage"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutations"
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 
+	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/crypto/keyspb"
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 )
 
 var (
-	addr     = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
-	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
-
 	serverDBPath     = flag.String("db", "db", "Database connection string")
 	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations). Expected to be smaller than max-period.")
 	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations). This value should about half the time guaranteed by the policy.")
@@ -71,44 +69,45 @@ func main() {
 		glog.Exitf("maxEpochDuration < minEpochDuration: %v < %v, want maxEpochDuration >= minEpochDuration")
 	}
 
-	sqldb := openDB()
-	defer sqldb.Close()
-	factory := transaction.NewFactory(sqldb)
-
-	// Connect to map server.
+	// Connect to trillian log and map backends.
 	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 	}
-	tmap := trillian.NewTrillianMapClient(mconn)
-
-	// Connection to append only log
 	lconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("Failed to connect to %v: %v", *logURL, err)
 	}
 	tlog := trillian.NewTrillianLogClient(lconn)
+	tmap := trillian.NewTrillianMapClient(mconn)
+	tadmin := trillian.NewTrillianAdminClient(mconn)
+
+	// Database tables
+	sqldb := openDB()
+	defer sqldb.Close()
+	factory := transaction.NewFactory(sqldb)
 
 	// TODO: add mutations and mutator to admin.
 	mutations, err := mutations.New(sqldb, *mapID)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
-	mutator := entry.New()
-
-	grpcServer := grpc.NewServer()
-
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-
-	signer := sequencer.New(*mapID, tmap, *logID, tlog, mutator, mutations, factory)
-	glog.Infof("Signer starting")
-	go signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
-
-	glog.Infof("Listening on %v", *addr)
-	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
-		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
-		glog.Errorf("ListenAndServeTLS: %v", err)
+	adminStorage, err := adminstorage.New(sqldb)
+	if err != nil {
+		glog.Exitf("Failed to create adminstorage object: %v", err)
 	}
+
+	// Create servers
+	signer := sequencer.New(*mapID, tmap, *logID, tlog, entry.New(), mutations, factory)
+	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
+		return der.NewProtoFromSpec(spec)
+	}
+	adminServer := adminserver.New(adminStorage, tadmin, keygen)
+	glog.Infof("Signer starting")
+
+	// Run servers
+	go signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
+	run(adminServer)
+
 	glog.Errorf("Signer exiting")
 }

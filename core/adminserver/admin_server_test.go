@@ -1,0 +1,70 @@
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package adminserver
+
+import (
+	"context"
+	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/fake"
+	"github.com/google/trillian"
+	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/testonly/integration"
+
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
+	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
+)
+
+func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
+	return der.NewProtoFromSpec(spec)
+}
+
+func TestCreateRead(t *testing.T) {
+	ctx := context.Background()
+	storage := fake.NewAdminStorage()
+
+	// Map server
+	mapEnv, err := integration.NewMapEnv(ctx, "keytransparency")
+	if err != nil {
+		t.Fatalf("Failed to create trillian map server: %v", err)
+	}
+	svr := New(storage, mapEnv.AdminClient, vrfKeyGen)
+
+	for _, tc := range []struct {
+		domainID string
+	}{
+		{
+			domainID: "testdomain",
+		},
+	} {
+		_, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{DomainId: tc.domainID})
+		if err != nil {
+			t.Fatalf("CreateDomain(): %v", err)
+		}
+		getResp, err := svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID})
+		if err != nil {
+			t.Fatalf("GetDomain(): %v", err)
+		}
+		if got, want := getResp.Domain.Log.TreeType, trillian.TreeType_LOG; got != want {
+			t.Errorf("Log.TreeType: %v, want %v", got, want)
+		}
+		if got, want := getResp.Domain.Map.TreeType, trillian.TreeType_MAP; got != want {
+			t.Errorf("Map.TreeType: %v, want %v", got, want)
+		}
+	}
+}
