@@ -29,7 +29,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/trillian/crypto/keys/der"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
