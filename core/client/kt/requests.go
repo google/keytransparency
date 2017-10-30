@@ -32,7 +32,7 @@ import (
 // user ID and a profile.
 func CreateUpdateEntryRequest(
 	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
-	vrfPub vrf.PublicKey, userID, appID string, profileData []byte,
+	vrfPub vrf.PublicKey, domainID, userID, appID string, profileData []byte,
 	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) (*tpb.UpdateEntryRequest, error) {
 	// Extract index from a prior GetEntry call.
 	index, err := vrfPub.ProofToHash(vrf.UniqueID(userID, appID), getResp.VrfProof)
@@ -63,6 +63,7 @@ func CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, err
 	}
+	updateRequest.DomainId = domainID
 	updateRequest.FirstTreeSize = trusted.TreeSize
 	return updateRequest, nil
 }
