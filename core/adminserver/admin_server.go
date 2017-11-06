@@ -187,8 +187,20 @@ func (s *server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("CreateTree(map): %v", err)
 	}
+	minInterval, err := ptypes.Duration(in.MinInterval)
+	if err != nil {
+		return nil, fmt.Errorf("Duration(%v): %v", in.MinInterval, err)
+	}
+	maxInterval, err := ptypes.Duration(in.MaxInterval)
+	if err != nil {
+		return nil, fmt.Errorf("Duration(%v): %v", in.MaxInterval, err)
+	}
 
-	if err := s.storage.Write(ctx, in.GetDomainId(), mapTree.TreeId, logTree.TreeId, vrfPublicPB.Der, wrapped); err != nil {
+	if err := s.storage.Write(ctx,
+		in.GetDomainId(),
+		mapTree.TreeId, logTree.TreeId,
+		vrfPublicPB.Der, wrapped,
+		minInterval, maxInterval); err != nil {
 		return nil, fmt.Errorf("adminstorage.Write(): %v", err)
 	}
 	return &pb.CreateDomainResponse{

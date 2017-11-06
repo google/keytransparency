@@ -130,8 +130,7 @@ func (s *storage) Write(ctx context.Context,
 	domainID string,
 	mapID int64, logID int64,
 	vrfPublicDER []byte, wrappedVRF proto.Message,
-	minInterval, maxInterval time.Duration,
-) error {
+	minInterval, maxInterval time.Duration) error {
 	// Prepare data.
 	anyPB, err := ptypes.MarshalAny(wrappedVRF)
 	if err != nil {

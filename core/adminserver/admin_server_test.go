@@ -17,8 +17,10 @@ package adminserver
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
@@ -46,13 +48,20 @@ func TestCreateRead(t *testing.T) {
 	svr := New(storage, mapEnv.AdminClient, vrfKeyGen)
 
 	for _, tc := range []struct {
-		domainID string
+		domainID                 string
+		minInterval, maxInterval time.Duration
 	}{
 		{
-			domainID: "testdomain",
+			domainID:    "testdomain",
+			minInterval: 1 * time.Second,
+			maxInterval: 5 * time.Second,
 		},
 	} {
-		_, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{DomainId: tc.domainID})
+		_, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
+			DomainId:    tc.domainID,
+			MinInterval: ptypes.DurationProto(tc.minInterval),
+			MaxInterval: ptypes.DurationProto(tc.maxInterval),
+		})
 		if err != nil {
 			t.Fatalf("CreateDomain(): %v", err)
 		}
