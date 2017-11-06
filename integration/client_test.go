@@ -30,6 +30,8 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
+
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 const (
@@ -122,7 +124,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			if err := env.Signer.CreateEpoch(bctx, true); err != nil {
+			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, true); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
@@ -182,7 +184,7 @@ func TestUpdateValidation(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			if err := env.Signer.CreateEpoch(bctx, true); err != nil {
+			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, true); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
@@ -208,7 +210,7 @@ func TestListHistory(t *testing.T) {
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
 	authorizedKeys := []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}
 
-	if err := env.setupHistory(ctx, userID, signers, authorizedKeys); err != nil {
+	if err := env.setupHistory(ctx, env.Domain, userID, signers, authorizedKeys); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
 	}
 
@@ -249,7 +251,7 @@ func TestListHistory(t *testing.T) {
 	}
 }
 
-func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) error {
+func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -272,7 +274,7 @@ func (e *Env) setupHistory(ctx context.Context, userID string, signers []signatu
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}
-		if err := e.Signer.CreateEpoch(ctx, true); err != nil {
+		if err := e.Signer.CreateEpoch(ctx, domain.Log.TreeId, domain.Map.TreeId, true); err != nil {
 			return fmt.Errorf("CreateEpoch(_): %v", err)
 		}
 	}

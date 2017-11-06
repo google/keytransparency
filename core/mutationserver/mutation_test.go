@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/internal"
@@ -98,7 +99,7 @@ func TestGetMutations(t *testing.T) {
 	fakeMutations := fake.NewMutationStorage()
 	fakeAdmin := fake.NewAdminStorage()
 	fakeMap := newFakeTrillianMapClient()
-	if err := fakeAdmin.Write(ctx, domainID, mapID, 0, nil, nil); err != nil {
+	if err := fakeAdmin.Write(ctx, domainID, mapID, 0, nil, nil, 1*time.Second, 5*time.Second); err != nil {
 		t.Fatalf("admin.Write(): %v", err)
 	}
 	prepare(t, mapID, fakeMutations, fakeMap)

@@ -18,7 +18,6 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"time"
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -39,14 +38,10 @@ import (
 )
 
 var (
-	serverDBPath     = flag.String("db", "db", "Database connection string")
-	minEpochDuration = flag.Duration("min-period", time.Second*60, "Minimum time between epoch creation (create epochs only if there where mutations). Expected to be smaller than max-period.")
-	maxEpochDuration = flag.Duration("max-period", time.Hour*12, "Maximum time between epoch creation (independent from mutations). This value should about half the time guaranteed by the policy.")
+	serverDBPath = flag.String("db", "db", "Database connection string")
 
 	// Info to connect to the trillian map and log.
-	mapID  = flag.Int64("map-id", 0, "ID for backend map")
 	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
-	logID  = flag.Int64("log-id", 0, "Trillian Log ID")
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 )
 
@@ -63,11 +58,6 @@ func openDB() *sql.DB {
 
 func main() {
 	flag.Parse()
-
-	// Flag validation.
-	if *maxEpochDuration < *minEpochDuration {
-		glog.Exitf("maxEpochDuration < minEpochDuration: %v < %v, want maxEpochDuration >= minEpochDuration")
-	}
 
 	// Connect to trillian log and map backends.
 	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
@@ -97,7 +87,7 @@ func main() {
 	}
 
 	// Create servers
-	signer := sequencer.New(*mapID, tmap, *logID, tlog, entry.New(), mutations, factory)
+	signer := sequencer.New(adminStorage, tmap, tlog, entry.New(), mutations, factory)
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
@@ -105,7 +95,8 @@ func main() {
 	glog.Infof("Signer starting")
 
 	// Run servers
-	go signer.StartSigning(context.Background(), *minEpochDuration, *maxEpochDuration)
+	ctx := context.Background()
+	signer.StartSequencingAll(ctx)
 	run(adminServer)
 
 	glog.Errorf("Signer exiting")

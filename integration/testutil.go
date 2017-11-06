@@ -22,8 +22,10 @@ import (
 	"math/rand"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/grpcc"
@@ -87,7 +89,7 @@ type Env struct {
 	db         *sql.DB
 	Factory    *transaction.Factory
 	Cli        gpb.KeyTransparencyServiceClient
-	DomainID   string
+	Domain     *pb.Domain
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -112,7 +114,11 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Failed to create admin storage: %v", err)
 	}
 	adminSvr := adminserver.New(adminStorage, mapEnv.AdminClient, vrfKeyGen)
-	resp, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{DomainId: domainID})
+	resp, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
+		DomainId:    domainID,
+		MinInterval: ptypes.DurationProto(1 * time.Second),
+		MaxInterval: ptypes.DurationProto(5 * time.Second),
+	})
 	if err != nil {
 		t.Fatalf("CreateDomain(): %v", err)
 	}
@@ -141,16 +147,16 @@ func NewEnv(t *testing.T) *Env {
 	factory := transaction.NewFactory(sqldb)
 	server := keyserver.New(adminStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
 		mutator, auth, authz, factory, mutations)
-	s := grpc.NewServer()
+	gsvr := grpc.NewServer()
 	msrv := mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory)
-	gpb.RegisterKeyTransparencyServiceServer(s, server)
-	gpb.RegisterMutationServiceServer(s, msrv)
+	gpb.RegisterKeyTransparencyServiceServer(gsvr, server)
+	gpb.RegisterMutationServiceServer(gsvr, msrv)
 
-	// Signer
-	signer := sequencer.New(mapID, mapEnv.MapClient, logID, tlog, mutator, mutations, factory)
+	// Sequencer
+	seq := sequencer.New(adminStorage, mapEnv.MapClient, tlog, mutator, mutations, factory)
 
 	addr, lis := Listen(t)
-	go s.Serve(lis)
+	go gsvr.Serve(lis)
 
 	// Client
 	cc, err := grpc.Dial(addr, grpc.WithInsecure())
@@ -161,24 +167,24 @@ func NewEnv(t *testing.T) *Env {
 	client.RetryCount = 0
 
 	// Mimic first sequence event
-	if err := signer.Initialize(ctx); err != nil {
-		t.Fatalf("signer.Initialize() = %v", err)
+	if err := seq.Initialize(ctx, logID, mapID); err != nil {
+		t.Fatalf("seq.Initialize() = %v", err)
 	}
-	if err := signer.CreateEpoch(ctx, true); err != nil {
+	if err := seq.CreateEpoch(ctx, logID, mapID, true); err != nil {
 		t.Fatalf("CreateEpoch(_): %v", err)
 	}
 
 	return &Env{
 		mapEnv:     mapEnv,
-		GRPCServer: s,
+		GRPCServer: gsvr,
 		V2Server:   server,
 		Conn:       cc,
 		Client:     client,
-		Signer:     signer,
+		Signer:     seq,
 		db:         sqldb,
 		Factory:    factory,
 		Cli:        gpb.NewKeyTransparencyServiceClient(cc),
-		DomainID:   domainID,
+		Domain:     resp.Domain,
 	}
 }
 
