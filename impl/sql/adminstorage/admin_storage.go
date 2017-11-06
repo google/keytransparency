@@ -36,24 +36,26 @@ CREATE TABLE IF NOT EXISTS Domains(
   LogId                 BIGINT NOT NULL,
   VRFPublicKey          MEDIUMBLOB NOT NULL,
   VRFPrivateKey         MEDIUMBLOB NOT NULL,
+  MinInterval		BIGINT NOT NULL,
+  MaxInterval		BIGINT NOT NULL,
   Deleted               BOOLEAN,
   DeleteTimeMillis      BIGINT,
   PRIMARY KEY(DomainId)
 );`
 	writeSQL = `INSERT INTO Domains 
-(DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted) 
-VALUES (?, ?, ?, ?, ?, ?);`
+(DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted) 
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
 	readSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains WHERE DomainId = ? AND Deleted IS 0;`
 	readDeletedSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains WHERE DomainId = ?;`
 	listSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains WHERE Deleted IS 0;`
 	listDeletedSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, Deleted
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains;`
 	setDeletedSQL = `UPDATE Domains SET Deleted = ?, DeleteTimeMillis = ? WHERE DomainId = ?`
 )
@@ -105,7 +107,12 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*adminstorage.D
 	for rows.Next() {
 		var pubkey, anyData []byte
 		d := &adminstorage.Domain{}
-		if err := rows.Scan(&d.Domain, &d.MapID, &d.LogID, &pubkey, &anyData, &d.Deleted); err != nil {
+		if err := rows.Scan(
+			&d.Domain,
+			&d.MapID, &d.LogID,
+			&pubkey, &anyData,
+			&d.MinInterval, &d.MaxInterval,
+			&d.Deleted); err != nil {
 			return nil, err
 		}
 		// Unwrap protos.
@@ -119,7 +126,12 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*adminstorage.D
 	return ret, nil
 }
 
-func (s *storage) Write(ctx context.Context, domainID string, mapID int64, logID int64, vrfPublicDER []byte, wrappedVRF proto.Message) error {
+func (s *storage) Write(ctx context.Context,
+	domainID string,
+	mapID int64, logID int64,
+	vrfPublicDER []byte, wrappedVRF proto.Message,
+	minInterval, maxInterval time.Duration,
+) error {
 	// Prepare data.
 	anyPB, err := ptypes.MarshalAny(wrappedVRF)
 	if err != nil {
@@ -135,7 +147,12 @@ func (s *storage) Write(ctx context.Context, domainID string, mapID int64, logID
 		return err
 	}
 	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, domainID, mapID, logID, vrfPublicDER, anyData, false)
+	_, err = writeStmt.ExecContext(ctx,
+		domainID,
+		mapID, logID,
+		vrfPublicDER, anyData,
+		minInterval.Nanoseconds(), maxInterval.Nanoseconds(),
+		false)
 	return err
 }
 
@@ -153,7 +170,12 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 	defer readStmt.Close()
 	d := &adminstorage.Domain{}
 	var pubkey, anyData []byte
-	if err := readStmt.QueryRowContext(ctx, domainID).Scan(&d.Domain, &d.MapID, &d.LogID, &pubkey, &anyData, &d.Deleted); err != nil {
+	if err := readStmt.QueryRowContext(ctx, domainID).Scan(
+		&d.Domain,
+		&d.MapID, &d.LogID,
+		&pubkey, &anyData,
+		&d.MinInterval, &d.MaxInterval,
+		&d.Deleted); err != nil {
 		return nil, err
 	}
 	// Unwrap protos.

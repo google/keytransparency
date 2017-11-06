@@ -17,6 +17,7 @@ package adminstorage
 
 import (
 	"context"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/crypto/keyspb"
@@ -27,9 +28,11 @@ type Domain struct {
 	Domain string
 	MapID  int64
 	LogID  int64
+	VRF    *keyspb.PublicKey
 
-	VRF     *keyspb.PublicKey
-	VRFPriv proto.Message
+	VRFPriv                  proto.Message
+	MinInterval, MaxInterval time.Duration
+	// TODO(gbelvin): specify mutation function
 	Deleted bool
 }
 
@@ -38,7 +41,12 @@ type Storage interface {
 	// List returns the full list of domains.
 	List(ctx context.Context, deleted bool) ([]*Domain, error)
 	// Write stores a new instance to storage.
-	Write(ctx context.Context, ID string, mapID, LogID int64, vrfPublicDER []byte, wrappedVRF proto.Message) error
+	Write(ctx context.Context,
+		domainID string,
+		mapID, LogID int64,
+		vrfPublicDER []byte, wrappedVRF proto.Message,
+		minInterval, maxInterval time.Duration,
+	) error
 	// Read a configuration from storage.
 	Read(ctx context.Context, ID string, showDeleted bool) (*Domain, error)
 	// Delete and undelete.
