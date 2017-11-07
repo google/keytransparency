@@ -32,7 +32,7 @@ that need to be ordered relative to other sets.
 
 # Trillian Map
 The Trillian Map stores the sparse merkle tree and is designed to scale to
-extremely large trees. The Trilian Map is updated in batches.
+extremely large trees. The Trillian Map is updated in batches.
 
 # Trillian Log
 The Trillian Log stores a dense merkle tree in the style of Ceritificate 

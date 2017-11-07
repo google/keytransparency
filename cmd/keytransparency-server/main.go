@@ -54,7 +54,7 @@ var (
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
 	// Info to connect to sparse merkle tree database.
-	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
+	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
 
 	// Info to send Signed Map Heads to a Trillian Log.
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")

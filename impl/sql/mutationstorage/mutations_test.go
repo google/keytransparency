@@ -136,20 +136,17 @@ func TestReadRange(t *testing.T) {
 		mutations     []*pb.EntryUpdate
 	}{
 		{
-			description:   "read a single mutation",
-			startSequence: 0,
-			endSequence:   1,
-			count:         1,
-			maxSequence:   1,
-			mutations:     []*pb.EntryUpdate{genUpdate(1)},
+			description: "read a single mutation",
+			endSequence: 1,
+			count:       1,
+			maxSequence: 1,
+			mutations:   []*pb.EntryUpdate{genUpdate(1)},
 		},
 		{
 			description:   "empty mutations list",
 			startSequence: 100,
 			endSequence:   110,
 			count:         10,
-			maxSequence:   0,
-			mutations:     nil,
 		},
 		{
 			description:   "full mutations range size",
@@ -190,11 +187,10 @@ func TestReadRange(t *testing.T) {
 			},
 		},
 		{
-			description:   "count less than end sequence",
-			startSequence: 0,
-			endSequence:   5,
-			count:         3,
-			maxSequence:   3,
+			description: "count less than end sequence",
+			endSequence: 5,
+			count:       3,
+			maxSequence: 3,
 			mutations: []*pb.EntryUpdate{
 				genUpdate(1),
 				genUpdate(2),
