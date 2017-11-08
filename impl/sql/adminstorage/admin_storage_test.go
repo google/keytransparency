@@ -19,6 +19,7 @@ import (
 	"database/sql"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/trillian/crypto/keyspb"
@@ -44,24 +45,32 @@ func TestList(t *testing.T) {
 		{
 			domains: []*adminstorage.Domain{
 				{
-					Domain:  "domain1",
-					MapID:   1,
-					LogID:   2,
-					VRF:     &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-					VRFPriv: &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+					Domain:      "domain1",
+					MapID:       1,
+					LogID:       2,
+					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+					VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+					MinInterval: 1 * time.Second,
+					MaxInterval: 5 * time.Second,
 				},
 				{
-					Domain:  "domain2",
-					MapID:   1,
-					LogID:   2,
-					VRF:     &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-					VRFPriv: &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+					Domain:      "domain2",
+					MapID:       1,
+					LogID:       2,
+					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+					VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+					MinInterval: 5 * time.Hour,
+					MaxInterval: 500 * time.Hour,
 				},
 			},
 		},
 	} {
 		for _, d := range tc.domains {
-			if err := admin.Write(ctx, d.Domain, d.MapID, d.LogID, d.VRF.Der, d.VRFPriv); err != nil {
+			if err := admin.Write(ctx,
+				d.Domain,
+				d.MapID, d.LogID,
+				d.VRF.Der, d.VRFPriv,
+				d.MinInterval, d.MaxInterval); err != nil {
 				t.Errorf("Write(): %v", err)
 				continue
 			}
@@ -103,33 +112,39 @@ func TestWriteReadDelete(t *testing.T) {
 			desc:  "Success",
 			write: true,
 			d: adminstorage.Domain{
-				Domain:  "testdomain",
-				MapID:   1,
-				LogID:   2,
-				VRF:     &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-				VRFPriv: &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				Domain:      "testdomain",
+				MapID:       1,
+				LogID:       2,
+				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				MinInterval: 1 * time.Second,
+				MaxInterval: 5 * time.Second,
 			},
 		},
 		{
 			desc:  "Duplicate DomainID",
 			write: true,
 			d: adminstorage.Domain{
-				Domain:  "testdomain",
-				MapID:   1,
-				LogID:   2,
-				VRF:     &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-				VRFPriv: &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				Domain:      "testdomain",
+				MapID:       1,
+				LogID:       2,
+				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				MinInterval: 1 * time.Second,
+				MaxInterval: 5 * time.Second,
 			},
 			wantWriteErr: true,
 		},
 		{
 			desc: "Delete",
 			d: adminstorage.Domain{
-				Domain:  "testdomain",
-				MapID:   1,
-				LogID:   2,
-				VRF:     &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-				VRFPriv: &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				Domain:      "testdomain",
+				MapID:       1,
+				LogID:       2,
+				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				MinInterval: 1 * time.Second,
+				MaxInterval: 5 * time.Second,
 			},
 			setDelete:   true,
 			isDeleted:   true,
@@ -139,11 +154,13 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc: "Read deleted",
 			d: adminstorage.Domain{
-				Domain:  "testdomain",
-				MapID:   1,
-				LogID:   2,
-				VRF:     &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-				VRFPriv: &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				Domain:      "testdomain",
+				MapID:       1,
+				LogID:       2,
+				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				MinInterval: 1 * time.Second,
+				MaxInterval: 5 * time.Second,
 			},
 			setDelete:   true,
 			isDeleted:   true,
@@ -153,11 +170,13 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc: "Undelete",
 			d: adminstorage.Domain{
-				Domain:  "testdomain",
-				MapID:   1,
-				LogID:   2,
-				VRF:     &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-				VRFPriv: &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				Domain:      "testdomain",
+				MapID:       1,
+				LogID:       2,
+				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+				MinInterval: 1 * time.Second,
+				MaxInterval: 5 * time.Second,
 			},
 			setDelete:   true,
 			isDeleted:   false,
@@ -167,7 +186,11 @@ func TestWriteReadDelete(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			if tc.write {
-				err := admin.Write(ctx, tc.d.Domain, tc.d.MapID, tc.d.LogID, tc.d.VRF.Der, tc.d.VRFPriv)
+				err := admin.Write(ctx,
+					tc.d.Domain,
+					tc.d.MapID, tc.d.LogID,
+					tc.d.VRF.Der, tc.d.VRFPriv,
+					tc.d.MinInterval, tc.d.MaxInterval)
 				if got, want := err != nil, tc.wantWriteErr; got != want {
 					t.Errorf("Write(): %v, want err: %v", err, want)
 					return

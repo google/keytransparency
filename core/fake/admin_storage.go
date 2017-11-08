@@ -17,6 +17,7 @@ package fake
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/adminstorage"
@@ -45,14 +46,21 @@ func (a *AdminStorage) List(ctx context.Context, deleted bool) ([]*adminstorage.
 }
 
 // Write adds a new domain.
-func (a *AdminStorage) Write(ctx context.Context, ID string, mapID int64, LogID int64, vrfPublicDER []byte, wrappedVRF proto.Message) error {
-	a.domains[ID] = &adminstorage.Domain{
-		Domain:  ID,
-		MapID:   mapID,
-		LogID:   LogID,
-		VRF:     &keyspb.PublicKey{Der: vrfPublicDER},
-		VRFPriv: wrappedVRF,
-		Deleted: false,
+func (a *AdminStorage) Write(ctx context.Context,
+	domainID string,
+	mapID int64, logID int64,
+	vrfPublicDER []byte, wrappedVRF proto.Message,
+	minInterval, maxInterval time.Duration,
+) error {
+	a.domains[domainID] = &adminstorage.Domain{
+		Domain:      domainID,
+		MapID:       mapID,
+		LogID:       logID,
+		VRF:         &keyspb.PublicKey{Der: vrfPublicDER},
+		VRFPriv:     wrappedVRF,
+		MinInterval: minInterval,
+		MaxInterval: maxInterval,
+		Deleted:     false,
 	}
 	return nil
 }

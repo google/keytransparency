@@ -21,6 +21,7 @@ package keytransparency.v1.proto;
 import "trillian.proto";
 import "crypto/keyspb/keyspb.proto";
 import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
+import "google/protobuf/duration.proto";
 
 // BatchUpdateEntriesRequest will update the accounts of the given user_ids to be set to
 // user data if those accounts have key_id in their set of authorized_keys.
@@ -54,9 +55,13 @@ message Domain {
   trillian.Tree map = 3;
   // Vrf contains the VRF public key.
   keyspb.PublicKey vrf = 4;
+  // min_interval is the minimum time between epochs. 
+  google.protobuf.Duration min_interval = 5;
+  // max_interval is the maximum time between epochs. 
+  google.protobuf.Duration max_interval = 6;
   // Deleted indicates whether the domain has been marked as deleted.
   // By its presence in a response, this domain has not been garbage collected.
-  bool deleted = 5;
+  bool deleted = 7;
 }
 
 // ListDomains request.
@@ -88,6 +93,8 @@ message GetDomainResponse {
 // CreateDomainRequest creates a new domain
 message CreateDomainRequest {
   string domain_id = 1;
+  google.protobuf.Duration min_interval = 2;
+  google.protobuf.Duration max_interval = 3;
 }
 
 // CreateDomainResponse contains the configuration info for the new domain.

@@ -24,6 +24,7 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/monitor/client"
 
 	"github.com/google/trillian/crypto"
@@ -49,7 +50,7 @@ func TestMonitor(t *testing.T) {
 	env.Client.RetryCount = 0
 	c := gpb.NewKeyTransparencyServiceClient(env.Conn)
 	// setup monitor:
-	resp, err := c.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: env.DomainID})
+	resp, err := c.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
@@ -94,11 +95,11 @@ func TestMonitor(t *testing.T) {
 			}
 		}
 
-		if err := env.Signer.CreateEpoch(ctx, false); err != nil {
+		if err := env.Signer.CreateEpoch(ctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(false)); err != nil {
 			t.Fatalf("CreateEpoch(_): %v", err)
 		}
 
-		mutResp, err := mutCli.PollMutations(ctx, env.DomainID, tc.queryEpoch)
+		mutResp, err := mutCli.PollMutations(ctx, env.Domain.DomainId, tc.queryEpoch)
 		if err != nil {
 			t.Fatalf("Could not query mutations: %v", err)
 		}

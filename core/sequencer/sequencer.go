@@ -23,6 +23,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -67,9 +68,8 @@ func init() {
 
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
-	mapID     int64
+	admin     adminstorage.Storage
 	tmap      trillian.TrillianMapClient
-	logID     int64
 	tlog      trillian.TrillianLogClient
 	mutator   mutator.Mutator
 	mutations mutator.MutationStorage
@@ -77,16 +77,14 @@ type Sequencer struct {
 }
 
 // New creates a new instance of the signer.
-func New(mapID int64,
+func New(admin adminstorage.Storage,
 	tmap trillian.TrillianMapClient,
-	logID int64,
 	tlog trillian.TrillianLogClient,
 	mutator mutator.Mutator,
 	mutations mutator.MutationStorage, factory transaction.Factory) *Sequencer {
 	return &Sequencer{
-		mapID:     mapID,
+		admin:     admin,
 		tmap:      tmap,
-		logID:     logID,
 		tlog:      tlog,
 		mutator:   mutator,
 		mutations: mutations,
@@ -97,18 +95,18 @@ func New(mapID int64,
 // Initialize inserts the object hash of an empty struct into the log if it is empty.
 // This keeps the log leaves in-sync with the map which starts off with an
 // empty log root at map revision 0.
-func (s *Sequencer) Initialize(ctx context.Context) error {
+func (s *Sequencer) Initialize(ctx context.Context, logID, mapID int64) error {
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx, &trillian.GetLatestSignedLogRootRequest{
-		LogId: s.logID,
+		LogId: logID,
 	})
 	if err != nil {
-		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", s.logID, err)
+		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", logID, err)
 	}
 	mapRoot, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
-		MapId: s.mapID,
+		MapId: mapID,
 	})
 	if err != nil {
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", mapID, err)
 	}
 
 	// If the tree is empty and the map is empty,
@@ -116,33 +114,51 @@ func (s *Sequencer) Initialize(ctx context.Context) error {
 	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
 		mapRoot.GetMapRoot().GetMapRevision() == 0 {
 		glog.Infof("Initializing Trillian Log with empty map root")
-		if err := queueLogLeaf(ctx, s.tlog, s.logID, mapRoot.GetMapRoot()); err != nil {
+		if err := queueLogLeaf(ctx, s.tlog, logID, mapRoot.GetMapRoot()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// StartSequencingAll starts sequencing processes for all domains.
+func (s *Sequencer) StartSequencingAll(ctx context.Context) error {
+	domains, err := s.admin.List(ctx, false)
+	if err != nil {
+		return fmt.Errorf("admin.List(): %v", err)
+	}
+	for _, d := range domains {
+		go s.StartSigning(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
+	}
+	// TODO(gbelvin): should we block until we return?
+	return nil
+}
+
 // StartSigning advance epochs once per minInterval, if there were mutations,
 // and at least once per maxElapsed minIntervals.
-func (s *Sequencer) StartSigning(ctx context.Context, minInterval, maxInterval time.Duration) {
-	if err := s.Initialize(ctx); err != nil {
+func (s *Sequencer) StartSigning(ctx context.Context, logID, mapID int64, minInterval, maxInterval time.Duration) {
+	if minInterval > maxInterval {
+		glog.Errorf("maxInterval: %v, want < minInterval: %v", maxInterval, minInterval)
+		return
+	}
+
+	if err := s.Initialize(ctx, logID, mapID); err != nil {
 		glog.Errorf("Initialize() failed: %v", err)
 	}
 	var rootResp *trillian.GetSignedMapRootResponse
 	ctxTime, cancel := context.WithTimeout(ctx, minInterval)
 	rootResp, err := s.tmap.GetSignedMapRoot(ctxTime, &trillian.GetSignedMapRootRequest{
-		MapId: s.mapID,
+		MapId: mapID,
 	})
 	if err != nil {
 		glog.Infof("GetSignedMapRoot failed: %v", err)
 		// Immediately create new epoch and write new sth:
-		if err := s.CreateEpoch(ctxTime, true); err != nil {
+		if err := s.CreateEpoch(ctxTime, logID, mapID, ForceNewEpoch(true)); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		// Request map head again to get the exact time it was created:
 		rootResp, err = s.tmap.GetSignedMapRoot(ctxTime, &trillian.GetSignedMapRootRequest{
-			MapId: s.mapID,
+			MapId: mapID,
 		})
 		if err != nil {
 			glog.Errorf("GetSignedMapRoot failed after CreateEpoch: %v", err)
@@ -157,7 +173,7 @@ func (s *Sequencer) StartSigning(ctx context.Context, minInterval, maxInterval t
 	tc := time.NewTicker(minInterval).C
 	for f := range genEpochTicks(clock, last, tc, minInterval, maxInterval) {
 		ctxTime, cancel := context.WithTimeout(ctx, minInterval)
-		if err := s.CreateEpoch(ctxTime, f); err != nil {
+		if err := s.CreateEpoch(ctxTime, logID, mapID, f); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		cancel()
@@ -167,8 +183,8 @@ func (s *Sequencer) StartSigning(ctx context.Context, minInterval, maxInterval t
 // genEpochTicks returns and sends to a bool channel every time an epoch should
 // be created. If the boolean value is true this indicates that the epoch should
 // be created regardless of whether mutations exist.
-func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
-	enforce := make(chan bool)
+func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan ForceNewEpoch {
+	enforce := make(chan ForceNewEpoch)
 	go func() {
 		// Do not wait for the first minDuration to pass but directly resume from
 		// last
@@ -192,13 +208,13 @@ func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, 
 
 // newMutations returns a list of mutations to process and highest sequence
 // number returned.
-func (s *Sequencer) newMutations(ctx context.Context, startSequence int64) ([]*tpb.EntryUpdate, int64, error) {
+func (s *Sequencer) newMutations(ctx context.Context, mapID, startSequence int64) ([]*tpb.EntryUpdate, int64, error) {
 	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("NewDBTxn(): %v", err)
 	}
 
-	maxSequence, mutations, err := s.mutations.ReadAll(txn, s.mapID, uint64(startSequence))
+	maxSequence, mutations, err := s.mutations.ReadAll(txn, mapID, uint64(startSequence))
 	if err != nil {
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)
@@ -276,16 +292,19 @@ func (s *Sequencer) applyMutations(mutations []*tpb.EntryUpdate, leaves []*trill
 	return ret, nil
 }
 
+// ForceNewEpoch determines whether an epoch should be created, even if there are no mutation to process.
+type ForceNewEpoch bool
+
 // CreateEpoch signs the current map head.
-func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
+func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNewEpoch ForceNewEpoch) error {
 	glog.V(2).Infof("CreateEpoch: starting sequencing run")
 	start := time.Now()
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
-		MapId: s.mapID,
+		MapId: mapID,
 	})
 	if err != nil {
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", s.mapID, err)
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", mapID, err)
 	}
 	meta, err := internal.MetadataFromMapRoot(rootResp.GetMapRoot())
 	if err != nil {
@@ -299,7 +318,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSequence)
 
 	// Get the list of new mutations to process.
-	mutations, seq, err := s.newMutations(ctx, startSequence)
+	mutations, seq, err := s.newMutations(ctx, mapID, startSequence)
 	if err != nil {
 		return fmt.Errorf("newMutations(%v): %v", startSequence, err)
 	}
@@ -319,7 +338,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v",
 		len(mutations), len(indexes))
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
-		MapId:    s.mapID,
+		MapId:    mapID,
 		Index:    indexes,
 		Revision: -1, // Get the latest version.
 	})
@@ -355,7 +374,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	// Set new leaf values.
 	mapSetStart := time.Now()
 	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
-		MapId:    s.mapID,
+		MapId:    mapID,
 		Leaves:   newLeaves,
 		Metadata: metaAny,
 	})
@@ -367,7 +386,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, forceNewEpoch bool) error {
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, seq)
 
 	// Put SignedMapHead in an append only log.
-	if err := queueLogLeaf(ctx, s.tlog, s.logID, setResp.GetMapRoot()); err != nil {
+	if err := queueLogLeaf(ctx, s.tlog, logID, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
