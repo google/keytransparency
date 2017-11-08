@@ -156,7 +156,10 @@ func (m *Monitor) verifyMutations(muts []*ktpb.MutationProof, oldRoot, expectedN
 		// BUG(gdbelvin): Proto serializations are not idempotent.
 		// - Upgrade the hasher to use ObjectHash.
 		// - Use deep compare between the tree and the computed value.
-		newLeafHash := m.mapHasher.HashLeaf(mapID, index, newLeaf)
+		newLeafHash, err := m.mapHasher.HashLeaf(mapID, index, newLeaf)
+		if err != nil {
+			errList = append(errList, err)
+		}
 		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
 			Index:    newLeafnID.BigInt(),
 			LeafHash: newLeafHash,

@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2016 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package commitments
+// +build mysql
 
-import "context"
+package mutationstorage
 
-// Committer saves cryptographic commitments.
-type Committer interface {
-	// Write saves a cryptographic commitment and associated data.
-	Write(ctx context.Context, commitment, data, nonce []byte) error
-	// Read looks up a cryptograpic commitment and returns associated data.
-	Read(ctx context.Context, commitment []byte) (data, nonce []byte, err error)
-}
+import (
+	_ "github.com/go-sql-driver/mysql" // Set database engine.
+)
+
+var (
+	createStmt = []string{
+		`
+	CREATE TABLE IF NOT EXISTS Mutations (
+		MapID    BIGINT        NOT NULL,
+		Sequence INTEGER       NOT NULL PRIMARY KEY AUTO_INCREMENT,
+                MIndex   VARBINARY(32) NOT NULL,
+		Mutation BLOB          NOT NULL
+	);`,
+	}
+)

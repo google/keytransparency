@@ -28,9 +28,8 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/adminstorage"
-	"github.com/google/keytransparency/impl/sql/commitments"
 	"github.com/google/keytransparency/impl/sql/engine"
-	"github.com/google/keytransparency/impl/sql/mutations"
+	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/golang/glog"
@@ -55,8 +54,7 @@ var (
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
 	// Info to connect to sparse merkle tree database.
-	mapID  = flag.Int64("map-id", 0, "ID for backend map")
-	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
+	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
 
 	// Info to send Signed Map Heads to a Trillian Log.
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
@@ -127,11 +125,7 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create admin storage: %v", err)
 	}
-	commitments, err := commitments.New(sqldb, *mapID)
-	if err != nil {
-		glog.Exitf("Failed to create committer: %v", err)
-	}
-	mutations, err := mutations.New(sqldb)
+	mutations, err := mutationstorage.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
@@ -152,7 +146,7 @@ func main() {
 	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(admin, tlog, tmap, tadmin, commitments,
+	ksvr := keyserver.New(admin, tlog, tmap, tadmin,
 		mutator, auth, authz, factory, mutations)
 	msrv := mutationserver.New(admin, tlog, tmap, mutations, factory)
 	grpcServer := grpc.NewServer(

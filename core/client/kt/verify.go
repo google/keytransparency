@@ -88,7 +88,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 		nonce := in.GetCommitted().GetKey()
 		if err := commitments.Verify(userID, appID, commitment, data, nonce); err != nil {
 			Vlog.Printf("✗ Commitment verification failed.")
-			return fmt.Errorf("commitments.Verify(): %v", err)
+			return fmt.Errorf("commitments.Verify(%v, %v, %v, %v, %v): %v", userID, appID, commitment, data, nonce, err)
 		}
 	}
 	Vlog.Printf("✓ Commitment verified.")

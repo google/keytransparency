@@ -41,7 +41,7 @@ type Server struct {
 	admin     adminstorage.Storage
 	tlog      trillian.TrillianLogClient
 	tmap      trillian.TrillianMapClient
-	mutations mutator.Mutation
+	mutations mutator.MutationStorage
 	factory   transaction.Factory
 }
 
@@ -49,8 +49,7 @@ type Server struct {
 func New(admin adminstorage.Storage,
 	tlog trillian.TrillianLogClient,
 	tmap trillian.TrillianMapClient,
-	mutations mutator.Mutation,
-	factory transaction.Factory) *Server {
+	mutations mutator.MutationStorage, factory transaction.Factory) *Server {
 	return &Server{
 		admin:     admin,
 		tlog:      tlog,
@@ -115,8 +114,8 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	indexes := make([][]byte, 0, len(mRange))
 	mutations := make([]*pb.MutationProof, 0, len(mRange))
 	for _, m := range mRange {
-		mutations = append(mutations, &pb.MutationProof{Mutation: m})
-		indexes = append(indexes, m.GetIndex())
+		mutations = append(mutations, &pb.MutationProof{Mutation: m.Mutation})
+		indexes = append(indexes, m.Mutation.GetIndex())
 	}
 	// Get leaf proofs.
 	// TODO: allow leaf proofs to be optional.
