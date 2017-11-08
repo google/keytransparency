@@ -121,7 +121,7 @@ func (s *Sequencer) Initialize(ctx context.Context, logID, mapID int64) error {
 	return nil
 }
 
-// StartSequencingAll startes sequencing processes for all domains.
+// StartSequencingAll starts sequencing processes for all domains.
 func (s *Sequencer) StartSequencingAll(ctx context.Context) error {
 	domains, err := s.admin.List(ctx, false)
 	if err != nil {
@@ -137,7 +137,7 @@ func (s *Sequencer) StartSequencingAll(ctx context.Context) error {
 // StartSigning advance epochs once per minInterval, if there were mutations,
 // and at least once per maxElapsed minIntervals.
 func (s *Sequencer) StartSigning(ctx context.Context, logID, mapID int64, minInterval, maxInterval time.Duration) {
-	if minInterval < maxInterval {
+	if minInterval > maxInterval {
 		glog.Errorf("maxInterval: %v, want < minInterval: %v", maxInterval, minInterval)
 		return
 	}
@@ -153,7 +153,7 @@ func (s *Sequencer) StartSigning(ctx context.Context, logID, mapID int64, minInt
 	if err != nil {
 		glog.Infof("GetSignedMapRoot failed: %v", err)
 		// Immediately create new epoch and write new sth:
-		if err := s.CreateEpoch(ctxTime, logID, mapID, true); err != nil {
+		if err := s.CreateEpoch(ctxTime, logID, mapID, ForceNewEpoch(true)); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		// Request map head again to get the exact time it was created:
@@ -183,8 +183,8 @@ func (s *Sequencer) StartSigning(ctx context.Context, logID, mapID int64, minInt
 // genEpochTicks returns and sends to a bool channel every time an epoch should
 // be created. If the boolean value is true this indicates that the epoch should
 // be created regardless of whether mutations exist.
-func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan bool {
-	enforce := make(chan bool)
+func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, minElapsed, maxElapsed time.Duration) <-chan ForceNewEpoch {
+	enforce := make(chan ForceNewEpoch)
 	go func() {
 		// Do not wait for the first minDuration to pass but directly resume from
 		// last
@@ -208,7 +208,7 @@ func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, 
 
 // newMutations returns a list of mutations to process and highest sequence
 // number returned.
-func (s *Sequencer) newMutations(ctx context.Context, mapID int64, startSequence int64) ([]*tpb.EntryUpdate, int64, error) {
+func (s *Sequencer) newMutations(ctx context.Context, mapID, startSequence int64) ([]*tpb.EntryUpdate, int64, error) {
 	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("NewDBTxn(): %v", err)
@@ -292,8 +292,11 @@ func (s *Sequencer) applyMutations(mutations []*tpb.EntryUpdate, leaves []*trill
 	return ret, nil
 }
 
+// ForceNewEpoch determines whether an epoch should be created, even if there are no mutation to process.
+type ForceNewEpoch bool
+
 // CreateEpoch signs the current map head.
-func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNewEpoch bool) error {
+func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNewEpoch ForceNewEpoch) error {
 	glog.V(2).Infof("CreateEpoch: starting sequencing run")
 	start := time.Now()
 	// Get the current root.

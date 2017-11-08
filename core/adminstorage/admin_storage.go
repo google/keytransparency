@@ -43,12 +43,12 @@ type Storage interface {
 	// Write stores a new instance to storage.
 	Write(ctx context.Context,
 		domainID string,
-		mapID, LogID int64,
+		mapID, logID int64,
 		vrfPublicDER []byte, wrappedVRF proto.Message,
 		minInterval, maxInterval time.Duration,
 	) error
 	// Read a configuration from storage.
-	Read(ctx context.Context, ID string, showDeleted bool) (*Domain, error)
+	Read(ctx context.Context, domainID string, showDeleted bool) (*Domain, error)
 	// Delete and undelete.
-	SetDelete(ctx context.Context, ID string, isDeleted bool) error
+	SetDelete(ctx context.Context, domainID string, isDeleted bool) error
 }

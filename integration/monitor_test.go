@@ -24,6 +24,7 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/monitor/client"
 
 	"github.com/google/trillian/crypto"
@@ -94,7 +95,7 @@ func TestMonitor(t *testing.T) {
 			}
 		}
 
-		if err := env.Signer.CreateEpoch(ctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, false); err != nil {
+		if err := env.Signer.CreateEpoch(ctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(false)); err != nil {
 			t.Fatalf("CreateEpoch(_): %v", err)
 		}
 

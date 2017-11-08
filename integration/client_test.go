@@ -27,6 +27,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
+	"github.com/google/keytransparency/core/sequencer"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
@@ -124,7 +125,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, true); err != nil {
+			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(true)); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
@@ -184,7 +185,7 @@ func TestUpdateValidation(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, true); err != nil {
+			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(true)); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
 			if err := env.Client.Retry(tc.ctx, req); err != nil {
@@ -274,7 +275,7 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}
-		if err := e.Signer.CreateEpoch(ctx, domain.Log.TreeId, domain.Map.TreeId, true); err != nil {
+		if err := e.Signer.CreateEpoch(ctx, domain.Log.TreeId, domain.Map.TreeId, sequencer.ForceNewEpoch(true)); err != nil {
 			return fmt.Errorf("CreateEpoch(_): %v", err)
 		}
 	}

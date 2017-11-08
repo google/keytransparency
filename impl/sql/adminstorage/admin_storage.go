@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS Domains(
   LogId                 BIGINT NOT NULL,
   VRFPublicKey          MEDIUMBLOB NOT NULL,
   VRFPrivateKey         MEDIUMBLOB NOT NULL,
-  MinInterval		BIGINT NOT NULL,
-  MaxInterval		BIGINT NOT NULL,
+  MinInterval           BIGINT NOT NULL,
+  MaxInterval           BIGINT NOT NULL,
   Deleted               BOOLEAN,
   DeleteTimeMillis      BIGINT,
   PRIMARY KEY(DomainId)

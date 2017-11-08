@@ -170,7 +170,7 @@ func NewEnv(t *testing.T) *Env {
 	if err := seq.Initialize(ctx, logID, mapID); err != nil {
 		t.Fatalf("seq.Initialize() = %v", err)
 	}
-	if err := seq.CreateEpoch(ctx, logID, mapID, true); err != nil {
+	if err := seq.CreateEpoch(ctx, logID, mapID, sequencer.ForceNewEpoch(true)); err != nil {
 		t.Fatalf("CreateEpoch(_): %v", err)
 	}
 
