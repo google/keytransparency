@@ -171,7 +171,7 @@ o   o o   o o   o o   o
 ```
 
 To prove that a specific key is part of the root hash, verifiers should be able
-to calculated the same root hash. This can be achieved given the key (k)
+to calculate the same root hash. This can be achieved given the key (k)
 (located at a leaf node) and all neighboring nodes (n) up the tree all the way
 to the root. Verifiers can then calculate the path from (k) to the root
 (the nodes marked with (x) in the following tree). If the calculated root value
