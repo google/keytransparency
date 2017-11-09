@@ -304,7 +304,7 @@ update the account. Otherwise, perform an account reset.
 
 #### The server doesn’t add or revoke a key for the user?
 
-The server can either 404 the user, in which case, the user may phone a
+The server can 404 the user, in which case, the user may phone a
 journalist with an HTTPS transcript of the request. 
 
 #### Equivocates (Answers the same query in different ways for different users) 
