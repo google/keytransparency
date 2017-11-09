@@ -16,6 +16,7 @@
 #                                                                              #
 ################################################################################
 
+set -ex
 PROJECT_NAME=key-transparency
 
 MAX_RETRY=30
@@ -31,23 +32,16 @@ function main()
   ./scripts/prepare_server.sh -f
   prepareSecrets
   buildDockerImgs
-  pushTrillianImgs
 
   # Deploy all trillian related services.
   # the following line only restarts the DB if its config changed:
   kubectl apply -f deploy/kubernetes/db-deployment.yml
   kubectl apply -f deploy/kubernetes/trillian-deployment.yml
-
-  pushKTImgs
-  waitForTrillian
-  createTreeIfNeccessaryAndSetIDs
-
-  # Need to (re)build kt-signer after writing the public-keys
-  docker-compose build kt-signer
-  gcloud docker -- push us.gcr.io/key-transparency/keytransparency-sequencer
-
   # Deploy all keytransparency related services (server and signer):
   kubectl apply -f deploy/kubernetes/keytransparency-deployment.yml
+
+  waitForTrillian
+  createTreeIfNeccessaryAndSetIDs
 }
 
 
@@ -58,27 +52,7 @@ function buildDockerImgs()
 
   # Build all images defined in the docker-compose.yml:
   docker-compose build
-}
-
-function pushTrillianImgs()
-{
-  gcloud docker -- push us.gcr.io/${PROJECT_NAME}/db
-  images=("db" "trillian_log_server" "trillian_map_server" "trillian_log_signer")
-  for DOCKER_IMAGE_NAME in "${images[@]}"
-  do
-    # Push the images as we refer to them in the kubernetes config files:
-    gcloud docker -- push us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
-  done
-}
-
-function pushKTImgs()
-{
-  images=("keytransparency-server" "keytransparency-monitor" "prometheus")
-  for DOCKER_IMAGE_NAME in "${images[@]}"
-  do
-    # Push the images as we refer to them in the kubernetes config files:
-    gcloud docker -- push us.gcr.io/${PROJECT_NAME}/${DOCKER_IMAGE_NAME}
-  done
+  docker-compose push
 }
 
 function waitForTrillian()
@@ -92,7 +66,7 @@ function waitForTrillian()
     # Service wasn't up yet:
     sleep 10;
     let COUNTER+=1
-    MAPSRV=$(kubectl get pods --selector=run=trillian-map -o jsonpath={.items[*].metadata.name});
+    MAPSRV=$(kubectl get pods --selector=run=map_server -o jsonpath={.items[*].metadata.name});
   done
 
   if [ -n "$MAPSRV" ]; then
@@ -150,7 +124,7 @@ function prepareSecrets()
   kubectl get secret kt-secrets
   # kubectl exits with 1 if kt-secret does not exist
   if [ $? -ne 0 ]; then
-    kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key --from-file=genfiles/vrf-key.pem
+    kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key 
   fi
 }
 

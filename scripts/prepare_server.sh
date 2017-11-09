@@ -135,28 +135,3 @@ fi
 if ((MONITOR == 1)); then
     ./scripts/gen_monitor_keys.sh -f
 fi
-
-# Generating .env file
-ENV="SIGN_PERIOD=5"
-
-if [[ -n "${CERTDOMAIN}" ]]; then
-    ENV="${ENV}
-DOMAIN=\"${CERTDOMAIN}\""
-else
-    ENV="${ENV}
-DOMAIN=\"example.com\""
-fi
-
-ENV="${ENV}
-MAPID=\"0\""
-
-if ((FRONTEND == 1)); then
-    ENV="${ENV}
-LISTEN_IP=\"${LISTENADDR}\"  # To listen on all IPs, use empty string.
-KEY=\"genfiles/server.key\"
-CERT=\"genfiles/server.crt\"
-VRF_PRIV=\"genfiles/vrf-key.pem\"
-VRF_PUB=\"genfiles/vrf-pubkey.pem\""
-fi
-
-printf "%s\n" "${ENV}" > .env

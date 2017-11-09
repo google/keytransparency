@@ -1,4 +1,4 @@
-FROM golang
+FROM golang:1.9
 
 ADD ./keytransparency /go/src/github.com/google/keytransparency
 ADD ./trillian /go/src/github.com/google/trillian
