@@ -41,7 +41,7 @@ func TestCreateRead(t *testing.T) {
 	storage := fake.NewAdminStorage()
 
 	// Map server
-	mapEnv, err := integration.NewMapEnv(ctx, "keytransparency")
+	mapEnv, err := integration.NewMapEnv(ctx)
 	if err != nil {
 		t.Fatalf("Failed to create trillian map server: %v", err)
 	}
