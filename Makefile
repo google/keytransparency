@@ -33,10 +33,10 @@ client:
 # The list of returned packages might not be unique. Fortunately go test gets
 # rid of duplicates.
 test: main
-	go test ./...
+	TRILLIAN_SQL_DRIVER=mysql go test ./...
 
 coverage: main
-	go test ./... -cover 
+	TRILLIAN_SQL_DRIVER=mysql go test ./... -cover 
 
 check:
 	gometalinter --config=metalinter.json ./...
