@@ -43,6 +43,7 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/coniks"
+	"github.com/google/trillian/storage/testdb"
 	"github.com/google/trillian/testonly/integration"
 
 	"google.golang.org/grpc"
@@ -101,6 +102,11 @@ func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
 	domainID := fmt.Sprintf("domain %d", rand.Int())
 	sqldb := NewDB(t)
+
+	// We can only run the integration tests if there is a MySQL instance available.
+	if provider := testdb.Default(); !provider.IsMySQL() {
+		t.Skipf("Skipping map integration test, SQL driver is %v", provider.Driver)
+	}
 
 	// Map server
 	mapEnv, err := integration.NewMapEnv(ctx)
