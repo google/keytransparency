@@ -21,7 +21,7 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/monitorstorage"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 
 	"github.com/google/trillian"
@@ -40,11 +40,11 @@ type Monitor struct {
 	logVerifier client.LogVerifier
 	signer      *tcrypto.Signer
 	trusted     *trillian.SignedLogRoot
-	store       *storage.Storage
+	store       *monitorstorage.Storage
 }
 
 // New creates a new instance of the monitor.
-func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcrypto.Signer, store *storage.Storage) (*Monitor, error) {
+func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcrypto.Signer, store *monitorstorage.Storage) (*Monitor, error) {
 	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)

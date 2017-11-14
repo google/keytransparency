@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package storage holds data produced by the monitor
-package storage
+package monitorstorage
 
 import (
 	"errors"

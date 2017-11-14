@@ -24,7 +24,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
-	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/monitorstorage"
 	"github.com/google/keytransparency/core/sequencer"
 
 	"github.com/google/trillian/crypto"
@@ -61,7 +61,7 @@ func TestMonitor(t *testing.T) {
 	logTree := resp.Log
 	mapTree := resp.Map
 	_ = logTree
-	store := storage.New()
+	store := monitorstorage.New()
 	// TODO(ismail): setup and use a real logVerifier instead:
 	mon, err := monitor.New(fake.NewFakeTrillianLogVerifier(), mapTree, crypto.NewSHA256Signer(signer), store)
 	if err != nil {

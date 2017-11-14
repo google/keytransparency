@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/monitorstorage"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_proto"
 )
 
@@ -41,11 +41,11 @@ var (
 // Server holds internal state for the monitor server. It serves monitoring
 // responses via a grpc and HTTP API.
 type Server struct {
-	storage *storage.Storage
+	storage *monitorstorage.Storage
 }
 
 // New creates a new instance of the monitor server.
-func New(storage *storage.Storage) *Server {
+func New(storage *monitorstorage.Storage) *Server {
 	return &Server{
 		storage: storage,
 	}
@@ -80,7 +80,7 @@ func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *mopb.GetMon
 
 func (s *Server) getResponseByRevision(epoch int64) (*mopb.GetMonitoringResponse, error) {
 	res, err := s.storage.Get(epoch)
-	if err == storage.ErrNotFound {
+	if err == monitorstorage.ErrNotFound {
 		return nil, grpc.Errorf(codes.NotFound,
 			"Could not find monitoring response for epoch %d", epoch)
 	}

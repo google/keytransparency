@@ -22,11 +22,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/monitorstorage"
 )
 
 func TestGetSignedMapRoot(t *testing.T) {
-	srv := New(storage.New())
+	srv := New(monitorstorage.New())
 	_, err := srv.GetSignedMapRoot(context.TODO(), nil)
 	if got, want := err, ErrNothingProcessed; got != want {
 		t.Errorf("GetSignedMapRoot(_, _): %v, want %v", got, want)
