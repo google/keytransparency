@@ -20,12 +20,12 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client/grpcc"
+	"github.com/google/keytransparency/core/client/mutationclient"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitor/storage"
 	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/impl/monitor/client"
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
@@ -68,7 +68,7 @@ func TestMonitor(t *testing.T) {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
 	mcc := gpb.NewMutationServiceClient(env.Conn)
-	mutCli := client.New(mcc, time.Second)
+	mutCli := mutationclient.New(mcc, time.Second)
 
 	for _, tc := range []struct {
 		// the userIDs to update, if no userIDs are provided, no update request

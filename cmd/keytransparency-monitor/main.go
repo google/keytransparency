@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/cmd/serverutil"
+	"github.com/google/keytransparency/core/client/mutationclient"
 	"github.com/google/keytransparency/core/monitor/storage"
 	"github.com/google/keytransparency/impl/monitor"
-	"github.com/google/keytransparency/impl/monitor/client"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto"
@@ -136,7 +136,7 @@ func main() {
 	}
 	// initialize the mutations API client and feed the responses it got
 	// into the monitor:
-	mutCli := client.New(mcc, *pollPeriod)
+	mutCli := mutationclient.New(mcc, *pollPeriod)
 	responses, errs := mutCli.StartPolling(*domainID, 1)
 	go func() {
 		for {
