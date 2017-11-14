@@ -27,6 +27,7 @@ install:
   - go get ./...
 
 script:
+  - export TRILLIAN_SQL_DRIVER=mysql
   - make
   - gometalinter --config=metalinter.json ./...
   - ./coverage.sh
