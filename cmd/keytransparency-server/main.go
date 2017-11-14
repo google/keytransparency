@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"flag"
 	"log"
@@ -34,7 +33,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -53,10 +51,7 @@ var (
 	certFile     = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
-	// Info to connect to sparse merkle tree database.
 	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
-
-	// Info to send Signed Map Heads to a Trillian Log.
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 )
 
@@ -69,26 +64,6 @@ func openDB() *sql.DB {
 		glog.Exitf("db.Ping(): %v", err)
 	}
 	return db
-}
-
-func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
-	ctx := context.Background()
-
-	creds, err := credentials.NewClientTLSFromFile(*certFile, "")
-	if err != nil {
-		return nil, err
-	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
-
-	gwmux := runtime.NewServeMux()
-	if err := gpb.RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
-		return nil, err
-	}
-	if err := gpb.RegisterMutationServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
-		return nil, err
-	}
-
-	return gwmux, nil
 }
 
 func main() {
@@ -161,7 +136,13 @@ func main() {
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	// Create HTTP handlers and gRPC gateway.
-	gwmux, err := grpcGatewayMux(*addr)
+	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	if err != nil {
+		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+	}
+	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
+		gpb.RegisterKeyTransparencyServiceHandlerFromEndpoint,
+		gpb.RegisterMutationServiceHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}

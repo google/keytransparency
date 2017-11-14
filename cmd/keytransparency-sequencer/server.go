@@ -15,12 +15,10 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"net/http"
 
 	"github.com/golang/glog"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -37,23 +35,6 @@ var (
 	certFile = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 )
 
-func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
-	ctx := context.Background()
-
-	creds, err := credentials.NewClientTLSFromFile(*certFile, "")
-	if err != nil {
-		return nil, err
-	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
-
-	gwmux := runtime.NewServeMux()
-	if err := ktpb.RegisterKeyTransparencyAdminServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
-		return nil, err
-	}
-
-	return gwmux, nil
-}
-
 func run(svr ktpb.KeyTransparencyAdminServiceServer) {
 	// Wire up gRPC and HTTP servers.
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
@@ -65,7 +46,12 @@ func run(svr ktpb.KeyTransparencyAdminServiceServer) {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	gwmux, err := grpcGatewayMux(*addr)
+	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	if err != nil {
+		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+	}
+	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
+		ktpb.RegisterKeyTransparencyAdminServiceHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}

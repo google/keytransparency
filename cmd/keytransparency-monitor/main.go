@@ -35,7 +35,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -66,21 +65,6 @@ var (
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
 	// metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 )
-
-func grpcGatewayMux(addr string) (*runtime.ServeMux, error) {
-	ctx := context.Background()
-	creds, err := credentials.NewClientTLSFromFile(*certFile, "")
-	if err != nil {
-		return nil, err
-	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
-	gwmux := runtime.NewServeMux()
-	if err := mopb.RegisterMonitorServiceHandlerFromEndpoint(ctx, gwmux, addr, dopts); err != nil {
-		return nil, err
-	}
-
-	return gwmux, nil
-}
 
 func main() {
 	flag.Parse()
@@ -123,7 +107,12 @@ func main() {
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	// Create HTTP handlers and gRPC gateway.
-	gwmux, err := grpcGatewayMux(*addr)
+	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	if err != nil {
+		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+	}
+	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
+		mopb.RegisterMonitorServiceHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}

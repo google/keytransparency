@@ -15,8 +15,13 @@
 package serverutil
 
 import (
+	"context"
 	"net/http"
 	"strings"
+
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // GrpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
@@ -31,4 +36,24 @@ func GrpcHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	})
+}
+
+// RegisterServiceFromEndpoint registers services with a grpc server's ServeMux
+type RegisterServiceFromEndpoint func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
+
+// GrpcGatewayMux registers multiple gRPC services with a gRPC ServeMux
+func GrpcGatewayMux(addr string, transportCreds credentials.TransportCredentials,
+	services ...RegisterServiceFromEndpoint) (*runtime.ServeMux, error) {
+	ctx := context.Background()
+
+	dopts := []grpc.DialOption{grpc.WithTransportCredentials(transportCreds)}
+
+	gwmux := runtime.NewServeMux()
+	for _, s := range services {
+		if err := s(ctx, gwmux, addr, dopts); err != nil {
+			return nil, err
+		}
+	}
+
+	return gwmux, nil
 }
