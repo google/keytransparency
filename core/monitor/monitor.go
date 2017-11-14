@@ -40,11 +40,11 @@ type Monitor struct {
 	logVerifier client.LogVerifier
 	signer      *tcrypto.Signer
 	trusted     *trillian.SignedLogRoot
-	store       *monitorstorage.Storage
+	store       monitorstorage.Interface
 }
 
 // New creates a new instance of the monitor.
-func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcrypto.Signer, store *monitorstorage.Storage) (*Monitor, error) {
+func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcrypto.Signer, store monitorstorage.Interface) (*Monitor, error) {
 	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)

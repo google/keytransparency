@@ -24,8 +24,8 @@ import (
 
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/client/mutationclient"
+	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitorserver"
-	"github.com/google/keytransparency/core/monitorstorage"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto"
@@ -99,7 +99,7 @@ func main() {
 		glog.Fatalf("Could not read domain info %v:", err)
 	}
 
-	store := monitorstorage.New()
+	store := fake.NewMonitorStorage()
 	srv := monitorserver.New(store)
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)

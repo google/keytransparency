@@ -18,8 +18,9 @@ package monitorstorage
 import (
 	"errors"
 
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/google/trillian"
+
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var (
@@ -31,8 +32,8 @@ var (
 	ErrNotFound = errors.New("data for epoch not found")
 )
 
-// MonitoringResult stores all data
-type MonitoringResult struct {
+// Result stores all data
+type Result struct {
 	// Smr contains the map root signed by the monitor in case all verifications
 	// have passed.
 	Smr *trillian.SignedMapRoot
@@ -44,54 +45,15 @@ type MonitoringResult struct {
 	Errors []error
 	// Response contains the original mutations API response from the server
 	// in case at least one verification step failed.
-	Response *ktpb.GetMutationsResponse
+	Response *pb.GetMutationsResponse
 }
 
-// Storage is an in-memory store for the monitoring results.
-type Storage struct {
-	store  map[int64]*MonitoringResult
-	latest int64
-}
-
-// New initializes a
-func New() *Storage {
-	return &Storage{
-		store: make(map[int64]*MonitoringResult),
-	}
-}
-
-// Set internally stores the given data as a MonitoringResult which can be
-// retrieved by Get.
-func (s *Storage) Set(epoch int64,
-	seenNanos int64,
-	smr *trillian.SignedMapRoot,
-	response *ktpb.GetMutationsResponse,
-	errorList []error) error {
-	// see if we already processed this epoch:
-	if _, ok := s.store[epoch]; ok {
-		return ErrAlreadyStored
-	}
-	// if not we just store the value:
-	s.store[epoch] = &MonitoringResult{
-		Smr:      smr,
-		Seen:     seenNanos,
-		Response: response,
-		Errors:   errorList,
-	}
-	s.latest = epoch
-	return nil
-}
-
-// Get returns the MonitoringResult for the given epoch. It returns an error
-// if the result does not exist.
-func (s *Storage) Get(epoch int64) (*MonitoringResult, error) {
-	if result, ok := s.store[epoch]; ok {
-		return result, nil
-	}
-	return nil, ErrNotFound
-}
-
-// LatestEpoch is a convenience method to retrieve the latest stored epoch.
-func (s *Storage) LatestEpoch() int64 {
-	return s.latest
+// Interface is the interface for storing monitoring results.
+type Interface interface {
+	// Set stores the monitoring result for a specific epoch.
+	Set(epoch int64, seenNanos int64, smr *trillian.SignedMapRoot, response *pb.GetMutationsResponse, errorList []error) error
+	// Get retrieves the monitoring result for a specific epoch.
+	Get(epoch int64) (*Result, error)
+	// LatestEpoch returns the highest numbered epoch that has been processed.
+	LatestEpoch() int64
 }

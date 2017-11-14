@@ -17,7 +17,7 @@
 // reconstruct
 // clients can query.
 
-// Package monitor contains an implementation of a Monitor server which can be
+// Package monitorserver contains an implementation of a Monitor server which can be
 // queried for monitoring results.
 package monitorserver
 
@@ -41,11 +41,11 @@ var (
 // Server holds internal state for the monitor server. It serves monitoring
 // responses via a grpc and HTTP API.
 type Server struct {
-	storage *monitorstorage.Storage
+	storage monitorstorage.Interface
 }
 
 // New creates a new instance of the monitor server.
-func New(storage *monitorstorage.Storage) *Server {
+func New(storage monitorstorage.Interface) *Server {
 	return &Server{
 		storage: storage,
 	}
