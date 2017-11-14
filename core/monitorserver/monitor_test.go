@@ -16,7 +16,7 @@
 // key-transparency server's Mutations API and signs Map Roots if it could
 // reconstruct
 // clients can query.
-package monitor
+package monitorserver
 
 import (
 	"context"

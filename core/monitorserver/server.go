@@ -19,7 +19,7 @@
 
 // Package monitor contains an implementation of a Monitor server which can be
 // queried for monitoring results.
-package monitor
+package monitorserver
 
 import (
 	"context"

@@ -25,7 +25,7 @@ import (
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/client/mutationclient"
 	"github.com/google/keytransparency/core/monitor/storage"
-	"github.com/google/keytransparency/impl/monitor"
+	"github.com/google/keytransparency/core/monitorserver"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto"
@@ -100,7 +100,7 @@ func main() {
 	}
 
 	store := storage.New()
-	srv := monitor.New(store)
+	srv := monitorserver.New(store)
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
