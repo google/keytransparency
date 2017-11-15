@@ -41,7 +41,7 @@ func (s *MonitorStorage) Set(epoch int64, r *monitorstorage.Result) error {
 	return nil
 }
 
-// Get returns the Result for the given epoch. It returns ErrNotFound if the epoch do not exist.
+// Get returns the Result for the given epoch. It returns ErrNotFound if the epoch does not exist.
 func (s *MonitorStorage) Get(epoch int64) (*monitorstorage.Result, error) {
 	if result, ok := s.store[epoch]; ok {
 		return result, nil
