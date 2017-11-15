@@ -82,17 +82,19 @@ var (
 )
 
 type server struct {
-	storage adminstorage.Storage
-	client  tpb.TrillianAdminClient
-	keygen  keys.ProtoGenerator
+	storage   adminstorage.Storage
+	logClient tpb.TrillianAdminClient
+	mapClient tpb.TrillianAdminClient
+	keygen    keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdminService implementation.
-func New(storage adminstorage.Storage, client tpb.TrillianAdminClient, keygen keys.ProtoGenerator) gpb.KeyTransparencyAdminServiceServer {
+func New(storage adminstorage.Storage, logClient, mapClient tpb.TrillianAdminClient, keygen keys.ProtoGenerator) gpb.KeyTransparencyAdminServiceServer {
 	return &server{
-		storage: storage,
-		client:  client,
-		keygen:  keygen,
+		storage:   storage,
+		logClient: logClient,
+		mapClient: mapClient,
+		keygen:    keygen,
 	}
 }
 
@@ -124,11 +126,11 @@ func (s *server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 
 // fetchDomainInfo converts an amdin.Domain object into a pb.Domain object by fetching the relevant info from Trillian.
 func (s *server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
-	logTree, err := s.client.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
+	logTree, err := s.logClient.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
 	}
-	mapTree, err := s.client.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.MapID})
+	mapTree, err := s.mapClient.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.MapID})
 	if err != nil {
 		return nil, err
 	}
@@ -177,13 +179,13 @@ func (s *server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	// Create Trillian keys.
 	logTreeArgs := *logArgs
 	logTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's SMH Log", in.GetDomainId())
-	logTree, err := s.client.CreateTree(ctx, &logTreeArgs)
+	logTree, err := s.logClient.CreateTree(ctx, &logTreeArgs)
 	if err != nil {
 		return nil, fmt.Errorf("CreateTree(log): %v", err)
 	}
 	mapTreeArgs := *mapArgs
 	mapTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's Map", in.GetDomainId())
-	mapTree, err := s.client.CreateTree(ctx, &mapTreeArgs)
+	mapTree, err := s.mapClient.CreateTree(ctx, &mapTreeArgs)
 	if err != nil {
 		return nil, fmt.Errorf("CreateTree(map): %v", err)
 	}
