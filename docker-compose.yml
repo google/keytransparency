@@ -32,9 +32,6 @@ services:
       context: ../trillian
       dockerfile: server/trillian_log_server/Dockerfile
     restart: always
-    ports:
-      - "8090:8090" # gRPC
-      - "8091:8091" # HTTP & Metrics
     entrypoint:
       - /go/bin/trillian_log_server
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -47,7 +44,7 @@ services:
       timeout: 30s
       retries: 3
 
-  trillian-log-signer:
+  log_signer:
     depends_on:
       - db
     image: us.gcr.io/key-transparency/log_signer
@@ -55,8 +52,6 @@ services:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
     restart: always
-    ports:
-      - "8092:8091" # HTTP & Metrics
     entrypoint: 
       - /go/bin/trillian_log_signer
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -81,9 +76,6 @@ services:
       context: ../trillian
       dockerfile: server/trillian_map_server/Dockerfile
     restart: always
-    ports:
-      - "8093:8090" # gRPC
-      - "8094:8091" # HTTP & Metrics
     entrypoint:
       - /go/bin/trillian_map_server
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -113,8 +105,8 @@ services:
       - /go/bin/keytransparency-server
       - --addr=0.0.0.0:8080
       - --db=test:zaphod@tcp(db:3306)/test
-      - --log-url=trillian-log:8090
-      - --map-url=trillian-map:8090
+      - --log-url=log_server:8090
+      - --map-url=map_server:8090
       - --tls-key=/kt/server.key
       - --tls-cert=/kt/server.crt
       - --alsologtostderr
@@ -138,16 +130,19 @@ services:
     entrypoint:
       - /go/bin/keytransparency-sequencer
       - --db=test:zaphod@tcp(db:3306)/test
-      - --log-url=trillian-log:8090
-      - --map-url=trillian-map:8090
+      - --addr=0.0.0.0:8080
+      - --log-url=log_server:8090
+      - --map-url=map_server:8090
       - --alsologtostderr
       - --v=5
 
   init:
-    build: .
+    build: 
+      context: .
+      dockerfile: ./deploy/docker/init/Dockerfile 
     depends_on: 
-      - server
-    command: ["./scripts/wait-for-it.sh", "server:8080", "--", ]
+      - sequencer
+    command:  sequencer:8080 -- curl -k https://sequencer:8080/v1/domains -d'{"domain_id":"default","min_interval":"1s","max_interval":"60s"}'
 
   monitor:
     depends_on:
