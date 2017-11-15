@@ -143,6 +143,12 @@ services:
       - --alsologtostderr
       - --v=5
 
+  init:
+    build: .
+    depends_on: 
+      - server
+    command: ["./scripts/wait-for-it.sh", "server:8080", "--", ]
+
   monitor:
     depends_on:
       - server
