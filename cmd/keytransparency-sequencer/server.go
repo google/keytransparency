@@ -18,24 +18,26 @@ import (
 	"flag"
 	"net/http"
 
+	"github.com/google/keytransparency/cmd/serverutil"
+
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/google/keytransparency/cmd/serverutil"
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	_ "github.com/google/trillian/crypto/keys/der/proto"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
-	addr     = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+	addr     = flag.String("addr", ":8080", "The ip:port to serve on")
 	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
 	certFile = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 )
 
-func run(svr ktpb.KeyTransparencyAdminServiceServer) {
+func run(svr gpb.KeyTransparencyAdminServiceServer) {
 	// Wire up gRPC and HTTP servers.
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {
@@ -51,7 +53,7 @@ func run(svr ktpb.KeyTransparencyAdminServiceServer) {
 		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
 	}
 	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
-		ktpb.RegisterKeyTransparencyAdminServiceHandlerFromEndpoint)
+		gpb.RegisterKeyTransparencyAdminServiceHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
@@ -59,7 +61,7 @@ func run(svr ktpb.KeyTransparencyAdminServiceServer) {
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", gwmux)
 
-	ktpb.RegisterKeyTransparencyAdminServiceServer(grpcServer, svr)
+	gpb.RegisterKeyTransparencyAdminServiceServer(grpcServer, svr)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()

@@ -70,7 +70,8 @@ func main() {
 	}
 	tlog := trillian.NewTrillianLogClient(lconn)
 	tmap := trillian.NewTrillianMapClient(mconn)
-	tadmin := trillian.NewTrillianAdminClient(mconn)
+	logadmin := trillian.NewTrillianAdminClient(lconn)
+	mapadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Database tables
 	sqldb := openDB()
@@ -91,7 +92,7 @@ func main() {
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
-	adminServer := adminserver.New(adminStorage, tadmin, keygen)
+	adminServer := adminserver.New(adminStorage, logadmin, mapadmin, keygen)
 	glog.Infof("Signer starting")
 
 	// Run servers
