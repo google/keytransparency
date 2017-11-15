@@ -19,32 +19,50 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
-
+	"github.com/google/keytransparency/core/client/mutationclient"
 	"github.com/google/keytransparency/core/monitorstorage"
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/merkle/hashers"
+
+	"github.com/golang/glog"
+
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	tcrypto "github.com/google/trillian/crypto"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
+	mclient gpb.MutationServiceClient
+	signer  *tcrypto.Signer
+	trusted *trillian.SignedLogRoot
+
 	mapID       int64
+	logVerifier client.LogVerifier
+	store       monitorstorage.Interface
 	mapHasher   hashers.MapHasher
 	mapPubKey   crypto.PublicKey
-	logVerifier client.LogVerifier
-	signer      *tcrypto.Signer
-	trusted     *trillian.SignedLogRoot
-	store       monitorstorage.Interface
 }
 
-// New creates a new instance of the monitor.
-func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcrypto.Signer, store monitorstorage.Interface) (*Monitor, error) {
+// NewFromConfig produces a new monitor from a DomainInfo object.
+func NewFromConfig(mclient gpb.MutationServiceClient,
+	config *pb.GetDomainInfoResponse,
+	signer *tcrypto.Signer,
+	store monitorstorage.Interface) (*Monitor, error) {
+	logTree := config.GetLog()
+	mapTree := config.GetMap()
+	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
+	if err != nil {
+		glog.Fatalf("Could not initialize log hasher: %v", err)
+	}
+	logPubKey, err := der.UnmarshalPublicKey(logTree.GetPublicKey().GetDer())
+	if err != nil {
+		glog.Fatalf("Failed parsing Log public key: %v", err)
+	}
 	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
@@ -53,9 +71,22 @@ func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcry
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal map public key: %v", err)
 	}
+	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
+	return New(mclient, logVerifier,
+		mapTree.TreeId, mapHasher, mapPubKey,
+		signer, store)
+}
+
+// New creates a new instance of the monitor.
+func New(mclient gpb.MutationServiceClient,
+	logVerifier client.LogVerifier,
+	mapID int64, mapHasher hashers.MapHasher, mapPubKey crypto.PublicKey,
+	signer *tcrypto.Signer,
+	store monitorstorage.Interface) (*Monitor, error) {
 	return &Monitor{
-		logVerifier: logverifierCli,
-		mapID:       mapTree.TreeId,
+		mclient:     mclient,
+		logVerifier: logVerifier,
+		mapID:       mapID,
 		mapHasher:   mapHasher,
 		mapPubKey:   mapPubKey,
 		signer:      signer,
@@ -63,10 +94,31 @@ func New(logverifierCli client.LogVerifier, mapTree *trillian.Tree, signer *tcry
 	}, nil
 }
 
+// ProcessLoop continuously fetches mutations and processes them.
+func (m *Monitor) ProcessLoop(domainID string, period time.Duration) {
+	mutCli := mutationclient.New(m.mclient, period)
+	responses, errs := mutCli.StartPolling(domainID, 1)
+	for {
+		select {
+		case mutResp := <-responses:
+			glog.Infof("Received mutations response: %v", mutResp.Epoch)
+			if err := m.Process(mutResp); err != nil {
+				glog.Infof("Error processing mutations response: %v", err)
+			}
+		case err := <-errs:
+			// this is OK if there were no mutations in  between:
+			// TODO(ismail): handle the case when the known maxDuration has
+			// passed and no epoch was issued?
+			glog.Infof("Could not retrieve mutations API response %v", err)
+		}
+	}
+
+}
+
 // Process processes a mutation response received from the keytransparency
 // server. Processing includes verifying, signing and storing the resulting
 // monitoring response.
-func (m *Monitor) Process(resp *ktpb.GetMutationsResponse) error {
+func (m *Monitor) Process(resp *pb.GetMutationsResponse) error {
 	var smr *trillian.SignedMapRoot
 	var err error
 	seen := time.Now().Unix()

@@ -23,15 +23,13 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/cmd/serverutil"
-	"github.com/google/keytransparency/core/client/mutationclient"
 	"github.com/google/keytransparency/core/fake"
+	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorserver"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/google/trillian"
 	"github.com/google/trillian/crypto"
-	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/merkle/hashers"
 
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -39,11 +37,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	cmon "github.com/google/keytransparency/core/monitor"
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_grpc"
-	tlogcli "github.com/google/trillian/client"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 )
@@ -68,39 +64,50 @@ var (
 
 func main() {
 	flag.Parse()
+	ctx := context.Background()
 
-	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-	if err != nil {
-		glog.Exitf("Failed to load server credentials %v", err)
-	}
-
-	// Create gRPC server.
-	grpcServer := grpc.NewServer(
-		grpc.Creds(creds),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-	)
-
-	// Connect to the kt-server's mutation API:
-	grpcc, err := dial()
+	// Connect to Key Transparency
+	cc, err := dial()
 	if err != nil {
 		glog.Fatalf("Error Dialing %v: %v", ktURL, err)
 	}
-	mcc := spb.NewMutationServiceClient(grpcc)
+	ktclient := gpb.NewKeyTransparencyServiceClient(cc)
+	mcc := gpb.NewMutationServiceClient(cc)
+
+	// Get domain info
+	config, err := ktclient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: *domainID})
+	if err != nil {
+		glog.Fatalf("Could not read domain info %v:", err)
+	}
 
 	// Read signing key:
 	key, err := pem.ReadPrivateKeyFile(*signingKey, *signingKeyPassword)
 	if err != nil {
 		glog.Fatalf("Could not create signer from %v: %v", *signingKey, err)
 	}
-	ctx := context.Background()
-	logTree, mapTree, err := getTrees(ctx, grpcc)
-	if err != nil {
-		glog.Fatalf("Could not read domain info %v:", err)
-	}
-
+	signer := crypto.NewSHA256Signer(key)
 	store := fake.NewMonitorStorage()
+
+	// Create monitoring background process.
+	mon, err := monitor.NewFromConfig(mcc, config, signer, store)
+	if err != nil {
+		glog.Exitf("Failed to initialize monitor: %v", err)
+	}
+	go mon.ProcessLoop(*domainID, *pollPeriod)
+
+	// Monitor Server.
 	srv := monitorserver.New(store)
+
+	// Create gRPC server.
+	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
+	if err != nil {
+		glog.Exitf("Failed to load server credentials %v", err)
+	}
+	grpcServer := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
 	mopb.RegisterMonitorServiceServer(grpcServer, srv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
@@ -119,41 +126,8 @@ func main() {
 
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", gwmux)
-	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
-	if err != nil {
-		glog.Fatalf("Could not initialize log hasher: %v", err)
-	}
-	logPubKey, err := der.UnmarshalPublicKey(logTree.GetPublicKey().GetDer())
-	if err != nil {
-		glog.Fatalf("Failed parsing Log public key: %v", err)
-	}
-	logVerifier := tlogcli.NewLogVerifier(logHasher, logPubKey)
-
-	mon, err := cmon.New(logVerifier, mapTree, crypto.NewSHA256Signer(key), store)
-	if err != nil {
-		glog.Exitf("Failed to initialize monitor: %v", err)
-	}
-	// initialize the mutations API client and feed the responses it got
-	// into the monitor:
-	mutCli := mutationclient.New(mcc, *pollPeriod)
-	responses, errs := mutCli.StartPolling(*domainID, 1)
-	go func() {
-		for {
-			select {
-			case mutResp := <-responses:
-				glog.Infof("Received mutations response: %v", mutResp.Epoch)
-				if err := mon.Process(mutResp); err != nil {
-					glog.Infof("Error processing mutations response: %v", err)
-				}
-			case err := <-errs:
-				// this is OK if there were no mutations in  between:
-				// TODO(ismail): handle the case when the known maxDuration has
-				// passed and no epoch was issued?
-				glog.Infof("Could not retrieve mutations API response %v", err)
-			}
-		}
-	}()
 
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)
@@ -200,17 +174,4 @@ func transportCreds(ktURL string, ktCert string, insecure bool) (credentials.Tra
 	default: // Use the local set of root certs.
 		return credentials.NewClientTLSFromCert(nil, host), nil
 	}
-}
-
-// config selects a source for and returns the client configuration.
-func getTrees(ctx context.Context, cc *grpc.ClientConn) (logTree *trillian.Tree, mapTree *trillian.Tree, err error) {
-	ktClient := spb.NewKeyTransparencyServiceClient(cc)
-	resp, err2 := ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{})
-	if err2 != nil {
-		err = err2
-		return
-	}
-	logTree = resp.GetLog()
-	mapTree = resp.GetMap()
-	return
 }
