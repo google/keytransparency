@@ -53,7 +53,6 @@ var (
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
 	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
-	ktCert             = flag.String("kt-cert", "genfiles/server.crt", "Path to kt-server's public key")
 	domainID           = flag.String("domainid", "", "KT Domain identifier to monitor")
 
 	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
@@ -67,7 +66,7 @@ func main() {
 	ctx := context.Background()
 
 	// Connect to Key Transparency
-	cc, err := dial()
+	cc, err := dial(*ktURL, *insecure)
 	if err != nil {
 		glog.Exitf("Error Dialing %v: %v", ktURL, err)
 	}
@@ -136,41 +135,19 @@ func main() {
 	}
 }
 
-func dial() (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-
-	transportCreds, err := transportCreds(*ktURL, *ktCert, *insecure)
+func dial(url string, insecure bool) (*grpc.ClientConn, error) {
+	host, _, err := net.SplitHostPort(url)
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, grpc.WithTransportCredentials(transportCreds))
+
+	var tcreds credentials.TransportCredentials
+	if insecure {
+		tcreds = credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
+	} else {
+		tcreds = credentials.NewClientTLSFromCert(nil, host)
+	}
 
 	// TODO(ismail): authenticate the monitor to the kt-server:
-	cc, err := grpc.Dial(*ktURL, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return cc, nil
-}
-
-// TODO(ismail): refactor client and monitor to use the same methods
-func transportCreds(ktURL string, ktCert string, insecure bool) (credentials.TransportCredentials, error) {
-	// copied from keytransparency-client/cmd/root.go: transportCreds
-	host, _, err := net.SplitHostPort(ktURL)
-	if err != nil {
-		return nil, err
-	}
-
-	switch {
-	case insecure: // Impatient insecure.
-		return credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true,
-		}), nil
-
-	case ktCert != "": // Custom CA Cert.
-		return credentials.NewClientTLSFromFile(ktCert, host)
-
-	default: // Use the local set of root certs.
-		return credentials.NewClientTLSFromCert(nil, host), nil
-	}
+	return grpc.Dial(url, grpc.WithTransportCredentials(tcreds))
 }
