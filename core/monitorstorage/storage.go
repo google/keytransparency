@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package storage holds data produced by the monitor
+// Package monitorstorage holds data produced by the monitor
 package monitorstorage
 
 import (

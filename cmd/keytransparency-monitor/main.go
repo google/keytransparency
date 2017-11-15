@@ -69,7 +69,7 @@ func main() {
 	// Connect to Key Transparency
 	cc, err := dial()
 	if err != nil {
-		glog.Fatalf("Error Dialing %v: %v", ktURL, err)
+		glog.Exitf("Error Dialing %v: %v", ktURL, err)
 	}
 	ktclient := gpb.NewKeyTransparencyServiceClient(cc)
 	mcc := gpb.NewMutationServiceClient(cc)
@@ -77,13 +77,13 @@ func main() {
 	// Get domain info
 	config, err := ktclient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: *domainID})
 	if err != nil {
-		glog.Fatalf("Could not read domain info %v:", err)
+		glog.Exitf("Could not read domain info %v:", err)
 	}
 
 	// Read signing key:
 	key, err := pem.ReadPrivateKeyFile(*signingKey, *signingKeyPassword)
 	if err != nil {
-		glog.Fatalf("Could not create signer from %v: %v", *signingKey, err)
+		glog.Exitf("Could not create signer from %v: %v", *signingKey, err)
 	}
 	signer := crypto.NewSHA256Signer(key)
 	store := fake.NewMonitorStorage()
