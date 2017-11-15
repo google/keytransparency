@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS Domains(
   VRFPrivateKey         MEDIUMBLOB NOT NULL,
   MinInterval           BIGINT NOT NULL,
   MaxInterval           BIGINT NOT NULL,
-  Deleted               BOOLEAN,
+  Deleted               INTEGER,
   DeleteTimeMillis      BIGINT,
   PRIMARY KEY(DomainId)
 );`
@@ -47,13 +47,13 @@ CREATE TABLE IF NOT EXISTS Domains(
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
 	readSQL = `
 SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
-FROM Domains WHERE DomainId = ? AND Deleted IS 0;`
+FROM Domains WHERE DomainId = ? AND Deleted = 0;`
 	readDeletedSQL = `
 SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains WHERE DomainId = ?;`
 	listSQL = `
 SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
-FROM Domains WHERE Deleted IS 0;`
+FROM Domains WHERE Deleted = 0;`
 	listDeletedSQL = `
 SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains;`
@@ -177,6 +177,7 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 		&d.Deleted); err != nil {
 		return nil, err
 	}
+
 	// Unwrap protos.
 	d.VRF = &keyspb.PublicKey{Der: pubkey}
 	d.VRFPriv, err = unwrapAnyProto(anyData)
