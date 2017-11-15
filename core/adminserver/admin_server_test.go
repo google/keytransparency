@@ -25,6 +25,7 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/storage/testdb"
 	"github.com/google/trillian/testonly/integration"
 
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
@@ -37,6 +38,10 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 }
 
 func TestCreateRead(t *testing.T) {
+	// We can only run the integration tests if there is a MySQL instance available.
+	if provider := testdb.Default(); !provider.IsMySQL() {
+		t.Skipf("Skipping map integration test, SQL driver is %v", provider.Driver)
+	}
 	ctx := context.Background()
 	storage := fake.NewAdminStorage()
 
