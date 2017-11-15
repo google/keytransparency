@@ -79,23 +79,22 @@ func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *mopb.GetMon
 }
 
 func (s *Server) getResponseByRevision(epoch int64) (*mopb.GetMonitoringResponse, error) {
-	res, err := s.storage.Get(epoch)
+	r, err := s.storage.Get(epoch)
 	if err == monitorstorage.ErrNotFound {
-		return nil, grpc.Errorf(codes.NotFound,
-			"Could not find monitoring response for epoch %d", epoch)
+		return nil, grpc.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
 	}
 
 	resp := &mopb.GetMonitoringResponse{
-		Smr:                res.Smr,
-		SeenTimestampNanos: res.Seen,
+		Smr:                r.Smr,
+		SeenTimestampNanos: r.Seen.UnixNano(),
 	}
 
-	if len(res.Errors) > 0 {
-		for _, err := range res.Errors {
-			resp.Errors = append(resp.Errors, err.Error())
-		}
+	for _, err := range r.Errors {
+		resp.Errors = append(resp.Errors, err.Error())
+	}
+	if len(r.Errors) > 0 {
 		// data to replay the verification steps:
-		resp.ErrorData = res.Response
+		resp.ErrorData = r.Response
 	}
 
 	return resp, nil

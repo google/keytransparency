@@ -15,11 +15,7 @@
 package fake
 
 import (
-	"github.com/google/trillian"
-
 	"github.com/google/keytransparency/core/monitorstorage"
-
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 // MonitorStorage is an in-memory store for the monitoring results.
@@ -28,37 +24,24 @@ type MonitorStorage struct {
 	latest int64
 }
 
-// NewMonitorStorage returns an in-memory place store monitoring results.
+// NewMonitorStorage returns an in-memory implementation of monitorstorage.Interface.
 func NewMonitorStorage() *MonitorStorage {
 	return &MonitorStorage{
 		store: make(map[int64]*monitorstorage.Result),
 	}
 }
 
-// Set internally stores the given data as a MonitoringResult which can be
-// retrieved by Get.
-func (s *MonitorStorage) Set(epoch int64,
-	seenNanos int64,
-	smr *trillian.SignedMapRoot,
-	response *pb.GetMutationsResponse,
-	errorList []error) error {
-	// see if we already processed this epoch:
+// Set stores the given data as a MonitoringResult which can be retrieved by Get.
+func (s *MonitorStorage) Set(epoch int64, r *monitorstorage.Result) error {
 	if _, ok := s.store[epoch]; ok {
 		return monitorstorage.ErrAlreadyStored
 	}
-	// if not we just store the value:
-	s.store[epoch] = &monitorstorage.Result{
-		Smr:      smr,
-		Seen:     seenNanos,
-		Response: response,
-		Errors:   errorList,
-	}
+	s.store[epoch] = r
 	s.latest = epoch
 	return nil
 }
 
-// Get returns the MonitoringResult for the given epoch. It returns an error
-// if the result does not exist.
+// Get returns the Result for the given epoch. It returns ErrNotFound if the epoch do not exist.
 func (s *MonitorStorage) Get(epoch int64) (*monitorstorage.Result, error) {
 	if result, ok := s.store[epoch]; ok {
 		return result, nil

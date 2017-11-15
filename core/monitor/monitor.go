@@ -37,10 +37,9 @@ import (
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
-	mclient gpb.MutationServiceClient
-	signer  *tcrypto.Signer
-	trusted *trillian.SignedLogRoot
-
+	mClient     gpb.MutationServiceClient
+	signer      *tcrypto.Signer
+	trusted     *trillian.SignedLogRoot
 	mapID       int64
 	logVerifier client.LogVerifier
 	store       monitorstorage.Interface
@@ -57,19 +56,19 @@ func NewFromConfig(mclient gpb.MutationServiceClient,
 	mapTree := config.GetMap()
 	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
 	if err != nil {
-		glog.Fatalf("Could not initialize log hasher: %v", err)
+		return nil, fmt.Errorf("could not initialize log hasher: %v", err)
 	}
 	logPubKey, err := der.UnmarshalPublicKey(logTree.GetPublicKey().GetDer())
 	if err != nil {
-		glog.Fatalf("Failed parsing Log public key: %v", err)
+		return nil, fmt.Errorf("failed parsing log public key: %v", err)
 	}
 	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
 	if err != nil {
-		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
+		return nil, fmt.Errorf("failed creating map hasher: %v", err)
 	}
 	mapPubKey, err := der.UnmarshalPublicKey(mapTree.GetPublicKey().GetDer())
 	if err != nil {
-		return nil, fmt.Errorf("Could not unmarshal map public key: %v", err)
+		return nil, fmt.Errorf("could not unmarshal map public key: %v", err)
 	}
 	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
 	return New(mclient, logVerifier,
@@ -84,7 +83,7 @@ func New(mclient gpb.MutationServiceClient,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	return &Monitor{
-		mclient:     mclient,
+		mClient:     mclient,
 		logVerifier: logVerifier,
 		mapID:       mapID,
 		mapHasher:   mapHasher,
@@ -96,7 +95,7 @@ func New(mclient gpb.MutationServiceClient,
 
 // ProcessLoop continuously fetches mutations and processes them.
 func (m *Monitor) ProcessLoop(domainID string, period time.Duration) {
-	mutCli := mutationclient.New(m.mclient, period)
+	mutCli := mutationclient.New(m.mClient, period)
 	responses, errs := mutCli.StartPolling(domainID, 1)
 	for {
 		select {
@@ -121,7 +120,6 @@ func (m *Monitor) ProcessLoop(domainID string, period time.Duration) {
 func (m *Monitor) Process(resp *pb.GetMutationsResponse) error {
 	var smr *trillian.SignedMapRoot
 	var err error
-	seen := time.Now().Unix()
 	errs := m.VerifyMutationsResponse(resp)
 	if len(errs) == 0 {
 		glog.Infof("Successfully verified mutations response for epoch: %v", resp.Epoch)
@@ -131,9 +129,13 @@ func (m *Monitor) Process(resp *pb.GetMutationsResponse) error {
 			return fmt.Errorf("m.signMapRoot(_): %v", err)
 		}
 	}
-	if err := m.store.Set(resp.Epoch, seen, smr, resp, errs); err != nil {
-		glog.Errorf("m.store.Set(%v, %v, _, _, %v): %v", resp.Epoch, seen, errs, err)
-		return err
+	if err := m.store.Set(resp.Epoch, &monitorstorage.Result{
+		Smr:      smr,
+		Seen:     time.Now(),
+		Errors:   errs,
+		Response: resp,
+	}); err != nil {
+		return fmt.Errorf("monitorstorage.Set(%v, _): %v", resp.Epoch, err)
 	}
 	return nil
 }
