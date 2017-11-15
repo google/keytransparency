@@ -17,6 +17,7 @@ package keyserver
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/authentication"
@@ -31,6 +32,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	authzpb "github.com/google/keytransparency/core/proto/authorization_proto"
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
@@ -358,7 +360,10 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 	domain, err := s.admin.Read(ctx, in.DomainId, false)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		return nil, status.Errorf(codes.NotFound, "Domain %v not found", in.DomainId)
+	} else if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
