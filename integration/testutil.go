@@ -119,7 +119,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Failed to create admin storage: %v", err)
 	}
-	adminSvr := adminserver.New(adminStorage, mapEnv.AdminClient, vrfKeyGen)
+	adminSvr := adminserver.New(adminStorage, mapEnv.AdminClient, mapEnv.AdminClient, vrfKeyGen)
 	resp, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
 		DomainId:    domainID,
 		MinInterval: ptypes.DurationProto(1 * time.Second),
