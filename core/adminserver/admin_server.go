@@ -135,11 +135,13 @@ func (s *server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*
 		return nil, err
 	}
 	return &pb.Domain{
-		DomainId: d.Domain,
-		Log:      logTree,
-		Map:      mapTree,
-		Vrf:      d.VRF,
-		Deleted:  d.Deleted,
+		DomainId:    d.Domain,
+		Log:         logTree,
+		Map:         mapTree,
+		Vrf:         d.VRF,
+		MinInterval: ptypes.DurationProto(d.MinInterval),
+		MaxInterval: ptypes.DurationProto(d.MaxInterval),
+		Deleted:     d.Deleted,
 	}, nil
 }
 
