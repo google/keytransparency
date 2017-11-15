@@ -17,9 +17,9 @@
 // reconstruct
 // clients can query.
 
-// Package monitor contains an implementation of a Monitor server which can be
+// Package monitorserver contains an implementation of a Monitor server which can be
 // queried for monitoring results.
-package monitor
+package monitorserver
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/monitorstorage"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_proto"
 )
 
@@ -41,11 +41,11 @@ var (
 // Server holds internal state for the monitor server. It serves monitoring
 // responses via a grpc and HTTP API.
 type Server struct {
-	storage *storage.Storage
+	storage monitorstorage.Interface
 }
 
 // New creates a new instance of the monitor server.
-func New(storage *storage.Storage) *Server {
+func New(storage monitorstorage.Interface) *Server {
 	return &Server{
 		storage: storage,
 	}
@@ -79,23 +79,22 @@ func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *mopb.GetMon
 }
 
 func (s *Server) getResponseByRevision(epoch int64) (*mopb.GetMonitoringResponse, error) {
-	res, err := s.storage.Get(epoch)
-	if err == storage.ErrNotFound {
-		return nil, grpc.Errorf(codes.NotFound,
-			"Could not find monitoring response for epoch %d", epoch)
+	r, err := s.storage.Get(epoch)
+	if err == monitorstorage.ErrNotFound {
+		return nil, grpc.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
 	}
 
 	resp := &mopb.GetMonitoringResponse{
-		Smr:                res.Smr,
-		SeenTimestampNanos: res.Seen,
+		Smr:                r.Smr,
+		SeenTimestampNanos: r.Seen.UnixNano(),
 	}
 
-	if len(res.Errors) > 0 {
-		for _, err := range res.Errors {
-			resp.Errors = append(resp.Errors, err.Error())
-		}
+	for _, err := range r.Errors {
+		resp.Errors = append(resp.Errors, err.Error())
+	}
+	if len(r.Errors) > 0 {
 		// data to replay the verification steps:
-		resp.ErrorData = res.Response
+		resp.ErrorData = r.Response
 	}
 
 	return resp, nil

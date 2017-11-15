@@ -16,17 +16,17 @@
 // key-transparency server's Mutations API and signs Map Roots if it could
 // reconstruct
 // clients can query.
-package monitor
+package monitorserver
 
 import (
 	"context"
 	"testing"
 
-	"github.com/google/keytransparency/core/monitor/storage"
+	"github.com/google/keytransparency/core/fake"
 )
 
 func TestGetSignedMapRoot(t *testing.T) {
-	srv := New(storage.New())
+	srv := New(fake.NewMonitorStorage())
 	_, err := srv.GetSignedMapRoot(context.TODO(), nil)
 	if got, want := err, ErrNothingProcessed; got != want {
 		t.Errorf("GetSignedMapRoot(_, _): %v, want %v", got, want)
