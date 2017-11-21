@@ -1,0 +1,48 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -v --file ../../docker-compose.yml
+    kompose.service.type: LoadBalancer
+    kompose.version: 1.4.0 (HEAD)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: server
+  name: server
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: server
+    spec:
+      containers:
+      - command:
+        - /go/bin/keytransparency-server
+        - --addr=0.0.0.0:8080
+        - --db=test:zaphod@tcp(db:3306)/test
+        - --log-url=log-server:8090
+        - --map-url=map-server:8090
+        - --tls-key=/kt/server.key
+        - --tls-cert=/kt/server.crt
+        - --alsologtostderr
+        - --v=5
+        image: us.gcr.io/key-transparency/keytransparency-server
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - -f
+            - http://localhost:8081/metrics
+          failureThreshold: 5
+          periodSeconds: 30
+          timeoutSeconds: 10
+        name: server
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        resources: {}
+      restartPolicy: Always
+status: {}

@@ -1,0 +1,35 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -v --file ../../docker-compose.yml
+    kompose.version: 1.4.0 (HEAD)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: sequencer
+  name: sequencer
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: sequencer
+    spec:
+      containers:
+      - command:
+        - /go/bin/keytransparency-sequencer
+        - --db=test:zaphod@tcp(db:3306)/test
+        - --addr=0.0.0.0:8080
+        - --log-url=log-server:8090
+        - --map-url=map-server:8090
+        - --alsologtostderr
+        - --v=5
+        image: us.gcr.io/key-transparency/keytransparency-sequencer
+        name: sequencer
+        ports:
+        - containerPort: 8080
+        resources: {}
+      restartPolicy: Always
+status: {}

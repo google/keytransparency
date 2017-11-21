@@ -18,16 +18,18 @@ services:
       context: ../trillian
       dockerfile: examples/deployment/docker/db_server/Dockerfile
     restart: always
+    ports:
+      - "3306"
     environment:
       MYSQL_PASSWORD: zaphod
       MYSQL_USER: test
       MYSQL_DATABASE: test
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
 
-  log_server:
+  log-server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/log_server
+    image: us.gcr.io/key-transparency/log-server
     build: 
       context: ../trillian
       dockerfile: server/trillian_log_server/Dockerfile
@@ -38,16 +40,19 @@ services:
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
       - --alsologtostderr 
+    ports:
+      - "8090"
+      - "8091"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
       interval: 30s
       timeout: 30s
       retries: 3
 
-  log_signer:
+  log-signer:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/log_signer
+    image: us.gcr.io/key-transparency/log-signer
     build:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
@@ -62,16 +67,18 @@ services:
       - --batch_size=50
       - --force_master=true
       - --alsologtostderr
+    ports:
+      - "8091"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
       interval: 30s
       timeout: 30s
       retries: 3
 
-  map_server:
+  map-server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/map_server
+    image: us.gcr.io/key-transparency/map-server
     build: 
       context: ../trillian
       dockerfile: server/trillian_map_server/Dockerfile
@@ -82,6 +89,9 @@ services:
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
       - --alsologtostderr 
+    ports:
+      - "8090"
+      - "8091"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
       interval: 30s
@@ -91,8 +101,8 @@ services:
   server:
     depends_on:
       - db
-      - log_server
-      - map_server
+      - log-server
+      - map-server
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
@@ -105,14 +115,16 @@ services:
       - /go/bin/keytransparency-server
       - --addr=0.0.0.0:8080
       - --db=test:zaphod@tcp(db:3306)/test
-      - --log-url=log_server:8090
-      - --map-url=map_server:8090
+      - --log-url=log-server:8090
+      - --map-url=map-server:8090
       - --tls-key=/kt/server.key
       - --tls-cert=/kt/server.crt
       - --alsologtostderr
       - --v=5
+    labels:
+      kompose.service.type: LoadBalancer 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/debug/var"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/metrics"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -120,8 +132,8 @@ services:
   sequencer:
     depends_on:
       - db
-      - log_server
-      - map_server
+      - log-server
+      - map-server
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
@@ -131,12 +143,19 @@ services:
       - /go/bin/keytransparency-sequencer
       - --db=test:zaphod@tcp(db:3306)/test
       - --addr=0.0.0.0:8080
-      - --log-url=log_server:8090
-      - --map-url=map_server:8090
+      - --log-url=log-server:8090
+      - --map-url=map-server:8090
       - --alsologtostderr
       - --v=5
+    ports:
+      - "8080"
 
   init:
+    image: us.gcr.io/key-transparency/init
+    restart: "on-failure"
+    deploy:
+      restart_policy:
+        condition: on-failure
     build: 
       context: .
       dockerfile: ./deploy/docker/init/Dockerfile 

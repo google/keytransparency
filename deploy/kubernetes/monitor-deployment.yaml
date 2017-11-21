@@ -1,0 +1,40 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -v --file ../../docker-compose.yml
+    kompose.version: 1.4.0 (HEAD)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: monitor
+  name: monitor
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: monitor
+    spec:
+      containers:
+      - command:
+        - /go/bin/keytransparency-monitor
+        - --addr=0.0.0.0:8099
+        - --kt-url=server:8080
+        - --insecure
+        - --poll-period=5s
+        - --domainid=default
+        - --tls-key=/kt/server.key
+        - --tls-cert=/kt/server.crt
+        - --sign-key=/kt/monitor_sign-key.pem
+        - --password=towel
+        - --alsologtostderr
+        - --v=3
+        image: us.gcr.io/key-transparency/keytransparency-monitor
+        name: monitor
+        ports:
+        - containerPort: 8099
+        resources: {}
+      restartPolicy: Always
+status: {}
