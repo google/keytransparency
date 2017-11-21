@@ -2,8 +2,8 @@ version: "3"
 services:
   prometheus:
     depends_on:
-      - kt-server
-      - kt-signer
+      - server
+      - sequencer
     image: us.gcr.io/key-transparency/prometheus
     build:
       context: .
@@ -15,8 +15,8 @@ services:
   db:
     image: us.gcr.io/key-transparency/db
     build:
-      context: ../.
-      dockerfile: keytransparency/deploy/mysql-trillian/Dockerfile
+      context: ../trillian
+      dockerfile: examples/deployment/docker/db_server/Dockerfile
     restart: always
     environment:
       MYSQL_PASSWORD: zaphod
@@ -24,17 +24,14 @@ services:
       MYSQL_DATABASE: test
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
 
-  trillian-log:
+  log_server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/trillian_log_server
+    image: us.gcr.io/key-transparency/log_server
     build: 
       context: ../trillian
       dockerfile: server/trillian_log_server/Dockerfile
     restart: always
-    ports:
-      - "8090:8090" # gRPC
-      - "8091:8091" # HTTP & Metrics
     entrypoint:
       - /go/bin/trillian_log_server
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -47,16 +44,14 @@ services:
       timeout: 30s
       retries: 3
 
-  trillian-log-signer:
+  log_signer:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/trillian_log_signer
+    image: us.gcr.io/key-transparency/log_signer
     build:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
     restart: always
-    ports:
-      - "8092:8091" # HTTP & Metrics
     entrypoint: 
       - /go/bin/trillian_log_signer
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -73,17 +68,14 @@ services:
       timeout: 30s
       retries: 3
 
-  trillian-map:
+  map_server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/trillian_map_server
+    image: us.gcr.io/key-transparency/map_server
     build: 
       context: ../trillian
       dockerfile: server/trillian_map_server/Dockerfile
     restart: always
-    ports:
-      - "8093:8090" # gRPC
-      - "8094:8091" # HTTP & Metrics
     entrypoint:
       - /go/bin/trillian_map_server
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -96,11 +88,11 @@ services:
       timeout: 30s
       retries: 3
 
-  kt-server:
+  server:
     depends_on:
       - db
-      - trillian-log
-      - trillian-map
+      - log_server
+      - map_server
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
@@ -113,11 +105,8 @@ services:
       - /go/bin/keytransparency-server
       - --addr=0.0.0.0:8080
       - --db=test:zaphod@tcp(db:3306)/test
-      - --log-id=$LOG_ID
-      - --log-url=trillian-log:8090
-      - --map-id=$MAP_ID
-      - --map-url=trillian-map:8090
-      - --vrf=/kt/vrf-key.pem
+      - --log-url=log_server:8090
+      - --map-url=map_server:8090
       - --tls-key=/kt/server.key
       - --tls-cert=/kt/server.crt
       - --alsologtostderr
@@ -128,11 +117,11 @@ services:
       timeout: 10s
       retries: 5
 
-  kt-signer:
+  sequencer:
     depends_on:
       - db
-      - trillian-log
-      - trillian-map
+      - log_server
+      - map_server
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
@@ -141,29 +130,36 @@ services:
     entrypoint:
       - /go/bin/keytransparency-sequencer
       - --db=test:zaphod@tcp(db:3306)/test
-      - --log-id=$LOG_ID
-      - --log-url=trillian-log:8090
-      - --map-id=$MAP_ID
-      - --map-url=trillian-map:8090
-      - --min-period=5s
-      - --max-period=5m
+      - --addr=0.0.0.0:8080
+      - --log-url=log_server:8090
+      - --map-url=map_server:8090
       - --alsologtostderr
       - --v=5
 
-  kt-monitor:
+  init:
+    build: 
+      context: .
+      dockerfile: ./deploy/docker/init/Dockerfile 
+    depends_on: 
+      - sequencer
+    command:  sequencer:8080 -- curl -k https://sequencer:8080/v1/domains -d'{"domain_id":"default","min_interval":"1s","max_interval":"60s"}'
+
+  monitor:
     depends_on:
-      - kt-server
-      - kt-signer
+      - server
+      - sequencer
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile
     entrypoint:
       - /go/bin/keytransparency-monitor
       - --addr=0.0.0.0:8099
-      - --kt-url=kt-server:8080
+      - --kt-url=server:8080
+      - --insecure
       - --poll-period=5s
-      - --tls-key=genfiles/server.key
-      - --tls-cert=genfiles/server.crt
+      - --domainid=default
+      - --tls-key=/kt/server.key
+      - --tls-cert=/kt/server.crt
       - --sign-key=/kt/monitor_sign-key.pem
       - --password=towel
       - --alsologtostderr
