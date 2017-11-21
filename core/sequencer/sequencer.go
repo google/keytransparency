@@ -122,15 +122,23 @@ func (s *Sequencer) Initialize(ctx context.Context, logID, mapID int64) error {
 }
 
 // StartSequencingAll starts sequencing processes for all domains.
-func (s *Sequencer) StartSequencingAll(ctx context.Context) error {
-	domains, err := s.admin.List(ctx, false)
-	if err != nil {
-		return fmt.Errorf("admin.List(): %v", err)
+func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duration) error {
+	started := make(map[string]bool)
+	ticker := time.NewTicker(refresh)
+
+	for range ticker.C {
+		domains, err := s.admin.List(ctx, false)
+		if err != nil {
+			return fmt.Errorf("admin.List(): %v", err)
+		}
+		for _, d := range domains {
+			if _, ok := started[d.Domain]; !ok {
+				glog.Infof("StartSigning domain: %v", d.Domain)
+				started[d.Domain] = true
+				go s.StartSigning(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
+			}
+		}
 	}
-	for _, d := range domains {
-		go s.StartSigning(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
-	}
-	// TODO(gbelvin): should we block until we return?
 	return nil
 }
 

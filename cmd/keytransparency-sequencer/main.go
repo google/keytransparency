@@ -18,6 +18,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"time"
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -41,8 +42,9 @@ var (
 	serverDBPath = flag.String("db", "db", "Database connection string")
 
 	// Info to connect to the trillian map and log.
-	mapURL = flag.String("map-url", "", "URL of Trilian Map Server")
-	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	mapURL  = flag.String("map-url", "", "URL of Trilian Map Server")
+	logURL  = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	refresh = flag.Duration("domain-refresh", 5*time.Second, "Time to detect new domain")
 )
 
 func openDB() *sql.DB {
@@ -97,7 +99,7 @@ func main() {
 
 	// Run servers
 	ctx := context.Background()
-	signer.StartSequencingAll(ctx)
+	signer.StartSequencingAll(ctx, *refresh)
 	run(adminServer)
 
 	glog.Errorf("Signer exiting")
