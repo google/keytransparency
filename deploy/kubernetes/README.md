@@ -21,4 +21,4 @@ Alternatively, you use the kubernetes HTTP user interface:
  1) Start a proxy to the kubernetes api by running `kubectl proxy --port=8080`.
  2) Find and delete the mysql pod/deployment on the 
  [user interface](http://localhost:8080/ui).
- 
+

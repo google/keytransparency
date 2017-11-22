@@ -31,7 +31,7 @@ development.
 ## Key Transparency Client
 
 ### Setup
-1. Install [Go 1.7](https://golang.org/doc/install).
+1. Install [Go 1.9](https://golang.org/doc/install).
 2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
 3. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
 
@@ -97,10 +97,10 @@ Creating keytransparency_prometheus_1 ... done
 Creating keytransparency_monitor_1 ... done
   ```
 
-3. Run Key Transparency
+2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1](https://localhost:8080/v1/users/foo@bar.com?app_id=app1)
-- [https://localhost:8080/v1/domains/default/info](https://localhost:8080/v1/domain/info)
+- [https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1](https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1)
+- [https://localhost:8080/v1/domains/default/info](https://localhost:8080/v1/domains/default/info)
 - [Prometheus graphs](http://localhost:9090/graph)
 
 ## Development and Testing
