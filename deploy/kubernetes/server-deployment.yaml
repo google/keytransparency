@@ -29,7 +29,7 @@ spec:
         - --tls-cert=/kt/server.crt
         - --alsologtostderr
         - --v=5
-        image: us.gcr.io/key-transparency/keytransparency-server
+        image: us.gcr.io/key-transparency/keytransparency-server:latest
         livenessProbe:
           exec:
             command:

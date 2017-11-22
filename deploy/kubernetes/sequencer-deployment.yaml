@@ -26,7 +26,7 @@ spec:
         - --map-url=map-server:8090
         - --alsologtostderr
         - --v=5
-        image: us.gcr.io/key-transparency/keytransparency-sequencer
+        image: us.gcr.io/key-transparency/keytransparency-sequencer:latest
         name: sequencer
         ports:
         - containerPort: 8080
