@@ -365,7 +365,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *tpb.GetDomainInfoRequest
 		return nil, status.Errorf(codes.NotFound, "Domain %v not found", in.DomainId)
 	} else if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info for %v", in.DomainId)
 	}
 
 	logTree, err := s.tadmin.GetTree(ctx, &trillian.GetTreeRequest{TreeId: domain.LogID})

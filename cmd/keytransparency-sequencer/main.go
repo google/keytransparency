@@ -42,7 +42,7 @@ var (
 	serverDBPath = flag.String("db", "db", "Database connection string")
 
 	// Info to connect to the trillian map and log.
-	mapURL  = flag.String("map-url", "", "URL of Trilian Map Server")
+	mapURL  = flag.String("map-url", "", "URL of Trillian Map Server")
 	logURL  = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 	refresh = flag.Duration("domain-refresh", 5*time.Second, "Time to detect new domain")
 )
@@ -72,8 +72,8 @@ func main() {
 	}
 	tlog := trillian.NewTrillianLogClient(lconn)
 	tmap := trillian.NewTrillianMapClient(mconn)
-	logadmin := trillian.NewTrillianAdminClient(lconn)
-	mapadmin := trillian.NewTrillianAdminClient(mconn)
+	logAdmin := trillian.NewTrillianAdminClient(lconn)
+	mapAdmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Database tables
 	sqldb := openDB()
@@ -94,7 +94,7 @@ func main() {
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
-	adminServer := adminserver.New(adminStorage, logadmin, mapadmin, keygen)
+	adminServer := adminserver.New(adminStorage, logAdmin, mapAdmin, keygen)
 	glog.Infof("Signer starting")
 
 	// Run servers

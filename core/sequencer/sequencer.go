@@ -125,6 +125,7 @@ func (s *Sequencer) Initialize(ctx context.Context, logID, mapID int64) error {
 func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duration) error {
 	started := make(map[string]bool)
 	ticker := time.NewTicker(refresh)
+	defer func() { ticker.Stop() }()
 
 	for range ticker.C {
 		domains, err := s.admin.List(ctx, false)
@@ -132,7 +133,7 @@ func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duratio
 			return fmt.Errorf("admin.List(): %v", err)
 		}
 		for _, d := range domains {
-			if _, ok := started[d.Domain]; !ok {
+			if !started[d.Domain] {
 				glog.Infof("StartSigning domain: %v", d.Domain)
 				started[d.Domain] = true
 				go s.StartSigning(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
@@ -178,14 +179,15 @@ func (s *Sequencer) StartSigning(ctx context.Context, logID, mapID int64, minInt
 	last := time.Unix(0, mapRoot.GetTimestampNanos())
 	// Start issuing epochs:
 	clock := util.SystemTimeSource{}
-	tc := time.NewTicker(minInterval).C
-	for f := range genEpochTicks(clock, last, tc, minInterval, maxInterval) {
+	ticker := time.NewTicker(minInterval)
+	for f := range genEpochTicks(clock, last, ticker.C, minInterval, maxInterval) {
 		ctxTime, cancel := context.WithTimeout(ctx, minInterval)
 		if err := s.CreateEpoch(ctxTime, logID, mapID, f); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		cancel()
 	}
+	ticker.Stop()
 }
 
 // genEpochTicks returns and sends to a bool channel every time an epoch should
