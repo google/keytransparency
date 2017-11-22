@@ -70,10 +70,10 @@ func main() {
 	if err != nil {
 		glog.Exitf("Error Dialing %v: %v", ktURL, err)
 	}
-	ktclient := gpb.NewKeyTransparencyServiceClient(cc)
-	mcc := gpb.NewMutationServiceClient(cc)
+	ktClient := gpb.NewKeyTransparencyServiceClient(cc)
+	mClient := gpb.NewMutationServiceClient(cc)
 
-	config, err := ktclient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: *domainID})
+	config, err := ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: *domainID})
 	if err != nil {
 		glog.Exitf("Could not read domain info %v:", err)
 	}
@@ -87,7 +87,7 @@ func main() {
 	store := fake.NewMonitorStorage()
 
 	// Create monitoring background process.
-	mon, err := monitor.NewFromConfig(mcc, config, signer, store)
+	mon, err := monitor.NewFromConfig(mClient, config, signer, store)
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}

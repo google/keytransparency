@@ -51,7 +51,9 @@ service KeyTransparencyAdminService {
 
   // ListDomains returns a list of all domains this Key Transparency server
   // operates on.
-  rpc ListDomains(keytransparency.v1.proto.ListDomainsRequest) returns (keytransparency.v1.proto.ListDomainsResponse) {}
+  rpc ListDomains(keytransparency.v1.proto.ListDomainsRequest) returns (keytransparency.v1.proto.ListDomainsResponse) {
+    option (google.api.http) = { get: "/v1/domains" };
+  }
 
   // GetDomain returns the confiuration information for a given domain.
   rpc GetDomain(keytransparency.v1.proto.GetDomainRequest) returns (keytransparency.v1.proto.GetDomainResponse) {
