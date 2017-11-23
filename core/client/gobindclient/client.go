@@ -97,7 +97,15 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 	if len(domainInfoHash) == 0 {
 		Vlog.Print("Warning: no domainInfoHash provided. Key material from the server will be trusted.")
 	} else {
-		if got := objecthash.ObjectHash(config); !bytes.Equal(got[:], domainInfoHash) {
+		cj, err := objecthash.CommonJSONify(config)
+		if err != nil {
+			return fmt.Errorf("CommonJSONify(): %v", err)
+		}
+		got, err := objecthash.ObjectHash(cj)
+		if err != nil {
+			return fmt.Errorf("ObjectHash(): %v", err)
+		}
+		if !bytes.Equal(got[:], domainInfoHash) {
 			return fmt.Errorf("The KtServer %v returned a domainInfoResponse inconsistent with the provided domainInfoHash", ktURL)
 		}
 	}

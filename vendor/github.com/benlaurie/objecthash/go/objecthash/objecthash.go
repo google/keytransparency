@@ -1,18 +1,23 @@
 package objecthash
 
-import "bytes"
-import "crypto/sha256"
-import "encoding/json"
-import "fmt"
-import "sort"
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"sort"
+)
 
 const hashLength int = sha256.Size
 
 func hash(t string, b []byte) [hashLength]byte {
-	var buf bytes.Buffer
-	buf.WriteString(t)
-	buf.Write(b)
-	return sha256.Sum256(buf.Bytes())
+	h := sha256.New()
+	h.Write([]byte(t))
+	h.Write(b)
+
+	var r [hashLength]byte
+	copy(r[:], h.Sum(nil))
+	return r
 }
 
 // Set represents an unordered, unduplicated list of objects.
@@ -26,11 +31,16 @@ func (h sortableHashes) Len() int           { return len(h) }
 func (h sortableHashes) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 func (h sortableHashes) Less(i, j int) bool { return bytes.Compare(h[i][:], h[j][:]) < 0 }
 
-func hashSet(s Set) [hashLength]byte {
+func hashSet(s Set) ([hashLength]byte, error) {
 	h := make([][hashLength]byte, len(s))
 	for n, e := range s {
-		h[n] = objectHash(e)
+		hn, err := ObjectHash(e)
+		if err != nil {
+			return [hashLength]byte{}, err
+		}
+		h[n] = hn
 	}
+
 	sort.Sort(sortableHashes(h))
 	b := new(bytes.Buffer)
 	var prev [hashLength]byte
@@ -40,16 +50,19 @@ func hashSet(s Set) [hashLength]byte {
 		}
 		prev = hh
 	}
-	return hash(`s`, b.Bytes())
+	return hash(`s`, b.Bytes()), nil
 }
 
-func hashList(l []interface{}) [hashLength]byte {
+func hashList(l []interface{}) ([hashLength]byte, error) {
 	h := new(bytes.Buffer)
 	for _, o := range l {
-		b := objectHash(o)
+		b, err := ObjectHash(o)
+		if err != nil {
+			return [hashLength]byte{}, err
+		}
 		h.Write(b[:])
 	}
-	return hash(`l`, h.Bytes())
+	return hash(`l`, h.Bytes()), nil
 }
 
 func hashUnicode(s string) [hashLength]byte {
@@ -70,12 +83,22 @@ func (h byKHash) Less(i, j int) bool {
 		h[j].khash[:]) < 0
 }
 
-func hashDict(d map[string]interface{}) [hashLength]byte {
+func hashDict(d map[string]interface{}) ([hashLength]byte, error) {
 	e := make([]hashEntry, len(d))
 	n := 0
 	for k, v := range d {
-		e[n].khash = objectHash(k)
-		e[n].vhash = objectHash(v)
+		khash, err := ObjectHash(k)
+		if err != nil {
+			return [hashLength]byte{}, err
+		}
+		e[n].khash = khash
+
+		vhash, err := ObjectHash(v)
+		if err != nil {
+			return [hashLength]byte{}, err
+		}
+		e[n].vhash = vhash
+
 		n++
 	}
 	sort.Sort(byKHash(e))
@@ -84,11 +107,12 @@ func hashDict(d map[string]interface{}) [hashLength]byte {
 		h.Write(ee.khash[:])
 		h.Write(ee.vhash[:])
 	}
-	return hash(`d`, h.Bytes())
+	return hash(`d`, h.Bytes()), nil
 }
 
-func floatNormalize(f float64) (s string) {
+func floatNormalize(originalFloat float64) (s string, err error) {
 	// sign
+	f := originalFloat
 	s = `+`
 	if f < 0 {
 		s = `-`
@@ -107,7 +131,7 @@ func floatNormalize(f float64) (s string) {
 	s += fmt.Sprintf("%d:", e)
 	// mantissa
 	if f > 1 || f <= .5 {
-		panic(f)
+		return "", fmt.Errorf("Could not normalize float: %f", originalFloat)
 	}
 	for f != 0 {
 		if f >= 1 {
@@ -117,18 +141,22 @@ func floatNormalize(f float64) (s string) {
 			s += `0`
 		}
 		if f >= 1 {
-			panic(f)
+			return "", fmt.Errorf("Could not normalize float: %f", originalFloat)
 		}
 		if len(s) >= 1000 {
-			panic(s)
+			return "", fmt.Errorf("Could not normalize float: %f", originalFloat)
 		}
 		f *= 2
 	}
 	return
 }
 
-func hashFloat(f float64) [hashLength]byte {
-	return hash(`f`, []byte(floatNormalize(f)))
+func hashFloat(f float64) ([hashLength]byte, error) {
+	normalizedFloat, err := floatNormalize(f)
+	if err != nil {
+		return [hashLength]byte{}, err
+	}
+	return hash(`f`, []byte(normalizedFloat)), nil
 }
 
 func hashInt(i int) [hashLength]byte {
@@ -143,45 +171,51 @@ func hashBool(b bool) [hashLength]byte {
 	return hash(`b`, bb)
 }
 
-// objectHash computes the ObjectHash of a unmarshaled JSON object.
-// This is a specific subset of allowed Go objects.
-func objectHash(o interface{}) [hashLength]byte {
+// ObjectHash returns the hash of a subset of allowed Go objects.
+func ObjectHash(o interface{}) ([hashLength]byte, error) {
 	switch v := o.(type) {
 	case []interface{}:
 		return hashList(v)
 	case string:
-		return hashUnicode(v)
+		return hashUnicode(v), nil
 	case map[string]interface{}:
 		return hashDict(v)
 	case float64:
 		return hashFloat(v)
 	case nil:
-		return hash(`n`, []byte(``))
+		return hash(`n`, []byte(``)), nil
 	case int:
-		return hashInt(v)
+		return hashInt(v), nil
 	case Set:
 		return hashSet(v)
 	case bool:
-		return hashBool(v)
+		return hashBool(v), nil
 	default:
-		panic(fmt.Sprintf("Unsupported type: %T", o))
+		return [hashLength]byte{}, fmt.Errorf("Unsupported type: %T", o)
 	}
 }
 
-// ObjectHash returns the hash of an arbirary Go object.
-func ObjectHash(obj interface{}) [hashLength]byte {
-	jsonObj, err := json.Marshal(obj)
-	if err != nil {
-		panic(fmt.Sprintf("Marshaling error: %v", err))
-	}
-	return CommonJSONHash(string(jsonObj))
-}
-
-// CommonJSONHash computes the ObjectHash of a JSON object.
-func CommonJSONHash(j string) [hashLength]byte {
+// CommonJSONHash computes the ObjectHash of a Common JSON object.
+func CommonJSONHash(j string) ([hashLength]byte, error) {
 	var f interface{}
 	if err := json.Unmarshal([]byte(j), &f); err != nil {
-		panic(err)
+		return [hashLength]byte{}, err
 	}
-	return objectHash(f)
+	return ObjectHash(f)
+}
+
+// Convert an object to the Common JSON equivalent
+func CommonJSONify(o interface{}) (interface{}, error) {
+	j, err := json.Marshal(o)
+	if err != nil {
+		return nil, err
+	}
+
+	var c interface{}
+	err = json.Unmarshal([]byte(j), &c)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }

@@ -67,7 +67,15 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 
 	// Verify pointer to previous data.  The very first entry will have
 	// oldValue=nil, so its hash is the ObjectHash value of nil.
-	prevEntryHash := objecthash.ObjectHash(oldEntry)
+	oej, err := objecthash.CommonJSONify(oldEntry)
+	if err != nil {
+		return nil, fmt.Errorf("CommonJSONify: %v", err)
+	}
+	prevEntryHash, err := objecthash.ObjectHash(oej)
+	if err != nil {
+		return nil, fmt.Errorf("ObjectHash: %v", err)
+	}
+
 	if !bytes.Equal(prevEntryHash[:], newEntry.GetPrevious()) {
 		// Check if this mutation is a replay.
 		if oldEntry != nil && proto.Equal(oldEntry, newEntry) {
