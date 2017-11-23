@@ -114,7 +114,11 @@ func (s *signer) Sign(data interface{}) (*sigpb.DigitallySigned, error) {
 	if err != nil {
 		return nil, err
 	}
-	hash := objecthash.CommonJSONHash(string(j))
+
+	hash, err := objecthash.CommonJSONHash(string(j))
+	if err != nil {
+		return nil, err
+	}
 
 	var ecSig struct {
 		R, S *big.Int
@@ -227,7 +231,10 @@ func (s *verifier) Verify(data interface{}, sig *sigpb.DigitallySigned) error {
 		log.Print("json.Marshal failed")
 		return signatures.ErrVerify
 	}
-	hash := objecthash.CommonJSONHash(string(j))
+	hash, err := objecthash.CommonJSONHash(string(j))
+	if err != nil {
+		return signatures.ErrVerify
+	}
 
 	var ecdsaSig struct {
 		R, S *big.Int

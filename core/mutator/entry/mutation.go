@@ -47,7 +47,15 @@ func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error
 		return nil, err
 	}
 
-	hash := objecthash.ObjectHash(prevEntry)
+	pej, err := objecthash.CommonJSONify(prevEntry)
+	if err != nil {
+		return nil, err
+	}
+	hash, err := objecthash.ObjectHash(pej)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Mutation{
 		userID:    userID,
 		appID:     appID,

@@ -16,6 +16,7 @@ package entry
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
@@ -26,12 +27,25 @@ import (
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
+func mustObjectHash(t *testing.T, val interface{}) [sha256.Size]byte {
+	t.Helper()
+	j, err := objecthash.CommonJSONify(val)
+	if err != nil {
+		t.Fatalf("CommonJSONify() err=%v", err)
+	}
+	h, err := objecthash.ObjectHash(j)
+	if err != nil {
+		t.Fatalf("ObjectHash() err=%v", err)
+	}
+	return h
+}
+
 func TestCheckMutation(t *testing.T) {
 	// The passed commitment to createEntry is a dummy value. It is needed to
 	// make the two entries (entryData1 and entryData2) different, otherwise
 	// it is not possible to test all cases.
 	key := []byte{0}
-	nilHash := objecthash.ObjectHash(nil)
+	nilHash := mustObjectHash(t, nil)
 
 	entryData1 := &tpb.Entry{
 		Index:          key,
@@ -39,7 +53,7 @@ func TestCheckMutation(t *testing.T) {
 		AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
 		Previous:       nilHash[:],
 	}
-	hashEntry1 := objecthash.ObjectHash(entryData1)
+	hashEntry1 := mustObjectHash(t, *entryData1)
 
 	entryData2 := &tpb.Entry{
 		Index:          key,
