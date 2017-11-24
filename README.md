@@ -85,22 +85,22 @@ development.
 
   ```sh
 $ docker-compose up -d 
-Creating keytransparency_db_1 ... done
+Creating keytransparency_db_1 ...         done
 Creating keytransparency_map_server_1 ... done
 Creating keytransparency_log_server_1 ... done
 Creating keytransparency_log_server_1 ... done
-Creating keytransparency_server_1 ... done
-Creating keytransparency_sequencer_1 ... done
-Creating keytransparency_monitor_1 ... done
-Creating keytransparency_init_1 ... done
+Creating keytransparency_server_1 ...     done
+Creating keytransparency_sequencer_1 ...  done
+Creating keytransparency_monitor_1 ...    done
+Creating keytransparency_init_1 ...       done
 Creating keytransparency_prometheus_1 ... done
-Creating keytransparency_monitor_1 ... done
+Creating keytransparency_monitor_1 ...    done
   ```
 
 2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1](https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1)
-- [https://localhost:8080/v1/domains/default/info](https://localhost:8080/v1/domains/default/info)
+- [Proof for app1/foo@bar.com](https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1)
+- [Server configuration info](https://localhost:8080/v1/domains/default/info)
 - [Prometheus graphs](http://localhost:9090/graph)
 
 ## Development and Testing
