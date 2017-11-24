@@ -57,6 +57,7 @@ before_deploy:
   - go get github.com/google/trillian/server/trillian_log_server
   - go get github.com/google/trillian/server/trillian_log_signer
   - go get github.com/google/trillian/server/trillian_map_server
+  - gcloud docker --authorize-only 
 
 deploy:
   skip_cleanup: true
