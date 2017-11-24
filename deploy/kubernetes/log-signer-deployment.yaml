@@ -1,0 +1,46 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --file ../../docker-compose.yml
+    kompose.version: 1.4.0 (HEAD)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: log-signer
+  name: log-signer
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: log-signer
+    spec:
+      containers:
+      - command:
+        - /go/bin/trillian_log_signer
+        - --mysql_uri=test:zaphod@tcp(db:3306)/test
+        - --http_endpoint=0.0.0.0:8091
+        - --sequencer_guard_window=0s
+        - --sequencer_interval=1s
+        - --num_sequencers=1
+        - --batch_size=50
+        - --force_master=true
+        - --alsologtostderr
+        image: us.gcr.io/key-transparency/log-signer
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - -f
+            - http://localhost:8091/metrics
+          failureThreshold: 3
+          periodSeconds: 30
+          timeoutSeconds: 30
+        name: log-signer
+        ports:
+        - containerPort: 8091
+        resources: {}
+      restartPolicy: Always
+status: {}

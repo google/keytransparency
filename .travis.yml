@@ -49,15 +49,14 @@ before_deploy:
   - tar -xzf travis_secrets.tar.gz
   - gcloud auth activate-service-account --key-file service_key.json
   - rm -f service_key.json
-  - gcloud --quiet version
   - gcloud --quiet components update kubectl
+  - gcloud --quiet version
   - gcloud config set project key-transparency
   - gcloud config set compute/zone us-central1-a
   - gcloud container clusters get-credentials ci-cluster
   - go get github.com/google/trillian/server/trillian_log_server
   - go get github.com/google/trillian/server/trillian_log_signer
   - go get github.com/google/trillian/server/trillian_map_server
-  - go get github.com/google/trillian/cmd/createtree
 
 deploy:
   skip_cleanup: true

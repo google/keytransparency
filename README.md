@@ -31,7 +31,7 @@ development.
 ## Key Transparency Client
 
 ### Setup
-1. Install [Go 1.7](https://golang.org/doc/install).
+1. Install [Go 1.9](https://golang.org/doc/install).
 2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
 3. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
 
@@ -81,25 +81,26 @@ development.
 1. `./scripts/prepare_server.sh -f` 
 
 ### Run
-1. Start Trillian
+1. Run Key Transparency
 
   ```sh
-$ docker-compose up -d trillian-map trillian-log
-Creating keytransparency_db_1
-Creating  keytransparency_trillian-map_1
-Creating  keytransparency_trillian-log_1
+$ docker-compose up -d 
+Creating keytransparency_db_1 ...         done
+Creating keytransparency_map_server_1 ... done
+Creating keytransparency_log_server_1 ... done
+Creating keytransparency_log_server_1 ... done
+Creating keytransparency_server_1 ...     done
+Creating keytransparency_sequencer_1 ...  done
+Creating keytransparency_monitor_1 ...    done
+Creating keytransparency_init_1 ...       done
+Creating keytransparency_prometheus_1 ... done
+Creating keytransparency_monitor_1 ...    done
   ```
 
-2. Provision a log and a map 
-```sh
-source scripts/configure_trillian.sh && createLog && createMap
-```
-
-3. Run Key Transparency
-- `docker-compose up -d`
+2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [https://localhost:8080/v1/users/foo@bar.com?app_id=app1](https://localhost:8080/v1/users/foo@bar.com?app_id=app1)
-- [https://localhost:8080/v1/domain/info](https://localhost:8080/v1/domain/info)
+- [Proof for app1/foo@bar.com](https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1)
+- [Server configuration info](https://localhost:8080/v1/domains/default/info)
 - [Prometheus graphs](http://localhost:9090/graph)
 
 ## Development and Testing
