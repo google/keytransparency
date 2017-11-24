@@ -28,26 +28,12 @@ import "google/protobuf/empty.proto";
 import "proto/keytransparency_v1_proto/keytransparency_v1_admin_proto.proto";
 
 // The KeyTransparencyAdminService API provides the following resources:
-// - Delegated Actor
-//   - Batch updates to the directory of public keys, where authorized by users. 
 // - Domains 
 //   Namespaces on which which Key Transparency operates. A domain determines a
 //   unique Trillian map to use. It also determines the authentication policies
 //   for users and apps within a domain.
 //   - /v1/domains
 service KeyTransparencyAdminService {
-  // BatchUpdateEntries uses an authorized_public key to perform a set request on multiple entries at once.  
-  rpc BatchUpdateEntries(keytransparency.v1.proto.BatchUpdateEntriesRequest) returns (keytransparency.v1.proto.BatchUpdateEntriesResponse) {
-    option (google.api.http) = {
-      post: "/v1/users:batch"
-      body: ""
-    };
-  }
-
-
-  //
-  // Domain Admin API
-  //
 
   // ListDomains returns a list of all domains this Key Transparency server
   // operates on.
