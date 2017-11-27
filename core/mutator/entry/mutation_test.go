@@ -35,12 +35,8 @@ func TestReplaceAuthorizedKeys(t *testing.T) {
 		index := []byte("index")
 		userID := "bob"
 		appID := "app1"
-		m, err := NewMutation(nil, index, userID, appID)
-		if err != nil {
-			t.Errorf("NewMutation(): %v", err)
-		}
-
-		err = m.ReplaceAuthorizedKeys(tc.pubKeys)
+		m := NewMutation(index, userID, appID)
+		err := m.ReplaceAuthorizedKeys(tc.pubKeys)
 		if got, want := err != nil, tc.wantErr; got != want {
 			t.Errorf("ReplaceAuthorizedKeys(%v): %v, wantErr: %v", tc.pubKeys, got, want)
 		}
@@ -65,8 +61,8 @@ func TestCreateAndVerify(t *testing.T) {
 		userID := "alice"
 		appID := "app1"
 
-		m, err := NewMutation(tc.old, index, userID, appID)
-		if err != nil {
+		m := NewMutation(index, userID, appID)
+		if err := m.SetPrevious(tc.old); err != nil {
 			t.Errorf("NewMutation(%v): %v", tc.old, err)
 			continue
 		}
@@ -74,7 +70,7 @@ func TestCreateAndVerify(t *testing.T) {
 			t.Errorf("SetCommitment(%v): %v", tc.data, err)
 			continue
 		}
-		if err = m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
+		if err := m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
 			t.Errorf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			continue
 		}

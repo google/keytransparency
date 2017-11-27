@@ -27,6 +27,8 @@ import (
 	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
+var nilHash, _ = objecthash.ObjectHash(nil)
+
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
 	userID, appID string
@@ -41,32 +43,39 @@ type Mutation struct {
 // - Create a new mutation for a user starting with the previous value with NewMutation.
 // - Change the value with SetCommitment and ReplaceAuthorizedKeys.
 // - Finalize the changes and create the mutation with SerializeAndSign.
-func NewMutation(oldValue, index []byte, userID, appID string) (*Mutation, error) {
+func NewMutation(index []byte, userID, appID string) *Mutation {
+	return &Mutation{
+		userID: userID,
+		appID:  appID,
+		entry: &tpb.Entry{
+			Index:    index,
+			Previous: nilHash[:],
+		},
+	}
+}
+
+// SetPrevious sets the previous hash.
+// Also sets AuthorizedKeys and Commitment.
+func (m *Mutation) SetPrevious(oldValue []byte) error {
 	prevEntry, err := FromLeafValue(oldValue)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	pej, err := objecthash.CommonJSONify(prevEntry)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	hash, err := objecthash.ObjectHash(pej)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &Mutation{
-		userID:    userID,
-		appID:     appID,
-		prevEntry: prevEntry,
-		entry: &tpb.Entry{
-			Index:          index,
-			AuthorizedKeys: prevEntry.GetAuthorizedKeys(),
-			Previous:       hash[:],
-			Commitment:     prevEntry.GetCommitment(),
-		},
-	}, nil
+	m.prevEntry = prevEntry
+	m.entry.Previous = hash[:]
+	m.entry.AuthorizedKeys = prevEntry.GetAuthorizedKeys()
+	m.entry.Commitment = prevEntry.GetCommitment()
+	return nil
 }
 
 // SetCommitment updates entry to be a commitment to data.
