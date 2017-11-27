@@ -41,8 +41,8 @@ func CreateUpdateEntryRequest(
 	}
 
 	oldLeaf := getResp.GetLeafProof().GetLeaf().GetLeafValue()
-	mutation, err := entry.NewMutation(oldLeaf, index[:], userID, appID)
-	if err != nil {
+	mutation := entry.NewMutation(index[:], userID, appID)
+	if err := mutation.SetPrevious(oldLeaf); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
 	}
 
