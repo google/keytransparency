@@ -179,7 +179,7 @@ func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
 	switch {
 	case insecure: // Impatient insecure.
 		return credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // nolint: gas
 		}), nil
 
 	case ktCert != "": // Custom CA Cert.
