@@ -10,5 +10,6 @@
   "Skip": ["core/proto", "impl/proto"],
   "Deadline": "4m", 
   "Cyclo": 18,
-  "Aggregate": true
+  "Aggregate": true,
+  "Exclude": ["Errors unhandled.,LOW,HIGH \\(gas\\)"]
 }

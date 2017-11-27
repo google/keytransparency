@@ -67,7 +67,7 @@ func NewDB(t testing.TB) *sql.DB {
 
 // Listen opens a random local port and listens on it.
 func Listen(t testing.TB) (string, net.Listener) {
-	lis, err := net.Listen("tcp", ":0")
+	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatalf("Failed to listen: %v", err)
 	}
@@ -100,7 +100,7 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 // NewEnv sets up common resources for tests.
 func NewEnv(t *testing.T) *Env {
 	ctx := context.Background()
-	domainID := fmt.Sprintf("domain %d", rand.Int())
+	domainID := fmt.Sprintf("domain %d", rand.Int()) // nolint: gas
 	sqldb := NewDB(t)
 
 	// We can only run the integration tests if there is a MySQL instance available.

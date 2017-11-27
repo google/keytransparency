@@ -136,18 +136,25 @@ func main() {
 }
 
 func dial(url string, insecure bool) (*grpc.ClientConn, error) {
-	host, _, err := net.SplitHostPort(url)
+	tcreds, err := transportCreds(url, insecure)
 	if err != nil {
 		return nil, err
 	}
 
-	var tcreds credentials.TransportCredentials
-	if insecure {
-		tcreds = credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-	} else {
-		tcreds = credentials.NewClientTLSFromCert(nil, host)
-	}
-
 	// TODO(ismail): authenticate the monitor to the kt-server:
 	return grpc.Dial(url, grpc.WithTransportCredentials(tcreds))
+}
+
+func transportCreds(ktURL string, insecure bool) (credentials.TransportCredentials, error) {
+	host, _, err := net.SplitHostPort(ktURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if insecure {
+		return credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true, // nolint: gas
+		}), nil
+	}
+	return credentials.NewClientTLSFromCert(nil, host), nil
 }
