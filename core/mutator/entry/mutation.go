@@ -15,6 +15,10 @@
 package entry
 
 import (
+	"errors"
+	"fmt"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
@@ -103,7 +107,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize int64) (*pb.UpdateEntryRequest, error) {
 	signedkv, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -120,9 +124,10 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntr
 	}
 
 	return &pb.UpdateEntryRequest{
-		DomainId: m.domainID,
-		UserId:   m.userID,
-		AppId:    m.appID,
+		DomainId:      m.domainID,
+		UserId:        m.userID,
+		AppId:         m.appID,
+		FirstTreeSize: trustedTreeSize,
 		EntryUpdate: &pb.EntryUpdate{
 			Mutation: signedkv,
 			Committed: &pb.Committed{
@@ -147,4 +152,20 @@ func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
 
 	m.entry.Signatures = sigs
 	return m.entry, nil
+}
+
+// Check verifies that an update was successfully applied.
+// Returns nil if newLeaf is equal to the entry in this mutation.
+func (m *Mutation) Check(newLeaf []byte) error {
+	// XXX Mutations are no longer stable serialized byte slices, so we need to use
+	// an equality operation on the proto itself.
+	leafValue, err := FromLeafValue(newLeaf)
+	if err != nil {
+		return fmt.Errorf("failed to decode current entry: %v", err)
+	}
+
+	if got, want := leafValue, m.entry; !proto.Equal(got, want) {
+		return errors.New("newLeaf does not match expected value")
+	}
+	return nil
 }
