@@ -41,7 +41,7 @@ func CreateUpdateEntryRequest(
 	}
 
 	oldLeaf := getResp.GetLeafProof().GetLeaf().GetLeafValue()
-	mutation := entry.NewMutation(index[:], userID, appID)
+	mutation := entry.NewMutation(index[:], domainID, appID, userID)
 	if err := mutation.SetPrevious(oldLeaf); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
 	}
@@ -63,7 +63,6 @@ func CreateUpdateEntryRequest(
 	if err != nil {
 		return nil, err
 	}
-	updateRequest.DomainId = domainID
 	updateRequest.FirstTreeSize = trusted.TreeSize
 	return updateRequest, nil
 }

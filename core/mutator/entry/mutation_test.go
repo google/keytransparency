@@ -24,6 +24,8 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 )
 
+const domainID = "default"
+
 func TestReplaceAuthorizedKeys(t *testing.T) {
 	for _, tc := range []struct {
 		pubKeys []*keyspb.PublicKey
@@ -35,7 +37,7 @@ func TestReplaceAuthorizedKeys(t *testing.T) {
 		index := []byte("index")
 		userID := "bob"
 		appID := "app1"
-		m := NewMutation(index, userID, appID)
+		m := NewMutation(index, domainID, appID, userID)
 		err := m.ReplaceAuthorizedKeys(tc.pubKeys)
 		if got, want := err != nil, tc.wantErr; got != want {
 			t.Errorf("ReplaceAuthorizedKeys(%v): %v, wantErr: %v", tc.pubKeys, got, want)
@@ -61,7 +63,7 @@ func TestCreateAndVerify(t *testing.T) {
 		userID := "alice"
 		appID := "app1"
 
-		m := NewMutation(index, userID, appID)
+		m := NewMutation(index, domainID, appID, userID)
 		if err := m.SetPrevious(tc.old); err != nil {
 			t.Errorf("NewMutation(%v): %v", tc.old, err)
 			continue
