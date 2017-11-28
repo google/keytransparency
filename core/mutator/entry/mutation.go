@@ -24,18 +24,18 @@ import (
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var nilHash, _ = objecthash.ObjectHash(nil)
 
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
-	userID, appID string
-	data, nonce   []byte
+	domainID, appID, userID string
+	data, nonce             []byte
 
-	prevEntry *tpb.Entry
-	entry     *tpb.Entry
+	prevEntry *pb.Entry
+	entry     *pb.Entry
 }
 
 // NewMutation creates a mutation object from a previous value which can be modified.
@@ -43,11 +43,12 @@ type Mutation struct {
 // - Create a new mutation for a user starting with the previous value with NewMutation.
 // - Change the value with SetCommitment and ReplaceAuthorizedKeys.
 // - Finalize the changes and create the mutation with SerializeAndSign.
-func NewMutation(index []byte, userID, appID string) *Mutation {
+func NewMutation(index []byte, domainID, appID, userID string) *Mutation {
 	return &Mutation{
-		userID: userID,
-		appID:  appID,
-		entry: &tpb.Entry{
+		domainID: domainID,
+		appID:    appID,
+		userID:   userID,
+		entry: &pb.Entry{
 			Index:    index,
 			Previous: nilHash[:],
 		},
@@ -102,7 +103,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*pb.UpdateEntryRequest, error) {
 	signedkv, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -118,12 +119,13 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 		return nil, err
 	}
 
-	return &tpb.UpdateEntryRequest{
-		UserId: m.userID,
-		AppId:  m.appID,
-		EntryUpdate: &tpb.EntryUpdate{
+	return &pb.UpdateEntryRequest{
+		DomainId: m.domainID,
+		UserId:   m.userID,
+		AppId:    m.appID,
+		EntryUpdate: &pb.EntryUpdate{
 			Mutation: signedkv,
-			Committed: &tpb.Committed{
+			Committed: &pb.Committed{
 				Key:  m.nonce,
 				Data: m.data,
 			},
@@ -132,7 +134,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer) (*tpb.UpdateEnt
 }
 
 // Sign produces the SignedKV
-func (m *Mutation) sign(signers []signatures.Signer) (*tpb.Entry, error) {
+func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
 	m.entry.Signatures = nil
 	sigs := make(map[string]*sigpb.DigitallySigned)
 	for _, signer := range signers {
