@@ -64,7 +64,7 @@ func TestCreateAndVerify(t *testing.T) {
 		appID := "app1"
 
 		m := NewMutation(index, domainID, appID, userID)
-		if err := m.SetPrevious(tc.old); err != nil {
+		if err := m.SetPrevious(tc.old, CopyPrevious(true)); err != nil {
 			t.Errorf("NewMutation(%v): %v", tc.old, err)
 			continue
 		}
@@ -99,8 +99,8 @@ func TestCreateAndVerify(t *testing.T) {
 			t.Errorf("ToLeafValue(): %v", err)
 			continue
 		}
-		if err := m.Check(newLeaf); err != nil {
-			t.Errorf("Check(): %v", err)
+		if equal, err := m.Check(newLeaf); err != nil || !equal {
+			t.Errorf("Check(): %v, %v", equal, err)
 		}
 	}
 }

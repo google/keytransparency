@@ -15,7 +15,6 @@
 package entry
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -59,9 +58,13 @@ func NewMutation(index []byte, domainID, appID, userID string) *Mutation {
 	}
 }
 
+// CopyPrevious indicates whether to overwrite all values in the current entry with
+// the previous entry's values.
+type CopyPrevious bool
+
 // SetPrevious sets the previous hash.
-// Also sets AuthorizedKeys and Commitment.
-func (m *Mutation) SetPrevious(oldValue []byte) error {
+// If copyPrevious is true, AuthorizedKeys and Commitment are also copied.
+func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious CopyPrevious) error {
 	prevEntry, err := FromLeafValue(oldValue)
 	if err != nil {
 		return err
@@ -78,8 +81,10 @@ func (m *Mutation) SetPrevious(oldValue []byte) error {
 
 	m.prevEntry = prevEntry
 	m.entry.Previous = hash[:]
-	m.entry.AuthorizedKeys = prevEntry.GetAuthorizedKeys()
-	m.entry.Commitment = prevEntry.GetCommitment()
+	if copyPrevious {
+		m.entry.AuthorizedKeys = prevEntry.GetAuthorizedKeys()
+		m.entry.Commitment = prevEntry.GetCommitment()
+	}
 	return nil
 }
 
@@ -108,19 +113,25 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
 
 // SerializeAndSign produces the mutation.
 func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize int64) (*pb.UpdateEntryRequest, error) {
-	signedkv, err := m.sign(signers)
+	mutation, err := m.sign(signers)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check authorization.
-	skv := *signedkv
+	skv := *mutation
 	skv.Signatures = nil
 	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(),
 		m.entry.GetAuthorizedKeys(),
 		skv,
-		signedkv.GetSignatures()); err != nil {
-		return nil, err
+		mutation.GetSignatures()); err != nil {
+		return nil, fmt.Errorf("verifyKeys(prevauth: %v, newauth: %v, sig: %v): %v",
+			len(m.prevEntry.GetAuthorizedKeys()), len(m.entry.GetAuthorizedKeys()), len(mutation.GetSignatures()), err)
+	}
+
+	// Sanity check the mutation's correctness.
+	if _, err := New().Mutate(m.prevEntry, mutation); err != nil {
+		return nil, fmt.Errorf("presign mutation check: %v", err)
 	}
 
 	return &pb.UpdateEntryRequest{
@@ -129,7 +140,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize
 		AppId:         m.appID,
 		FirstTreeSize: trustedTreeSize,
 		EntryUpdate: &pb.EntryUpdate{
-			Mutation: signedkv,
+			Mutation: mutation,
 			Committed: &pb.Committed{
 				Key:  m.nonce,
 				Data: m.data,
@@ -138,7 +149,7 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize
 	}, nil
 }
 
-// Sign produces the SignedKV
+// Sign produces the mutation
 func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
 	m.entry.Signatures = nil
 	sigs := make(map[string]*sigpb.DigitallySigned)
@@ -156,16 +167,13 @@ func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
 
 // Check verifies that an update was successfully applied.
 // Returns nil if newLeaf is equal to the entry in this mutation.
-func (m *Mutation) Check(newLeaf []byte) error {
+func (m *Mutation) Check(newLeaf []byte) (bool, error) {
 	// XXX Mutations are no longer stable serialized byte slices, so we need to use
 	// an equality operation on the proto itself.
 	leafValue, err := FromLeafValue(newLeaf)
 	if err != nil {
-		return fmt.Errorf("failed to decode current entry: %v", err)
+		return false, fmt.Errorf("failed to decode current entry: %v", err)
 	}
 
-	if got, want := leafValue, m.entry; !proto.Equal(got, want) {
-		return errors.New("newLeaf does not match expected value")
-	}
-	return nil
+	return proto.Equal(leafValue, m.entry), nil
 }
