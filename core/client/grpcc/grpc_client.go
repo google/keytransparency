@@ -285,7 +285,7 @@ func (c *Client) Retry(ctx context.Context, m *entry.Mutation, signers []signatu
 	if err != nil {
 		return fmt.Errorf("mutation.Check(): %v", err)
 	}
-	if err := m.SetPrevious(cntLeaf, entry.CopyPrevious(false)); err != nil {
+	if err := m.SetPrevious(cntLeaf, false); err != nil {
 		return fmt.Errorf("mutation.SetPrevious(): %v", err)
 	}
 	if !equal {

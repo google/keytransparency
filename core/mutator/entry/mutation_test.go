@@ -64,7 +64,7 @@ func TestCreateAndVerify(t *testing.T) {
 		appID := "app1"
 
 		m := NewMutation(index, domainID, appID, userID)
-		if err := m.SetPrevious(tc.old, CopyPrevious(true)); err != nil {
+		if err := m.SetPrevious(tc.old, true); err != nil {
 			t.Errorf("NewMutation(%v): %v", tc.old, err)
 			continue
 		}

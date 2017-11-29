@@ -44,7 +44,7 @@ func (v *Verifier) NewMutation(
 		return nil, err
 	}
 	mutation := entry.NewMutation(index, domainID, appID, userID)
-	if err := mutation.SetPrevious(oldLeaf, entry.CopyPrevious(true)); err != nil {
+	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
 		return nil, err
 	}
 
