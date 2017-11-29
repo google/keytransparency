@@ -18,51 +18,45 @@ package kt
 import (
 	"fmt"
 
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian/crypto/keyspb"
-
-	"github.com/google/trillian"
-
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
-// CreateUpdateEntryRequest creates UpdateEntryRequest given GetEntryResponse,
-// user ID and a profile.
-func CreateUpdateEntryRequest(
-	trusted *trillian.SignedLogRoot, getResp *tpb.GetEntryResponse,
-	vrfPub vrf.PublicKey, domainID, userID, appID string, profileData []byte,
-	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) (*tpb.UpdateEntryRequest, error) {
-	// Extract index from a prior GetEntry call.
-	index, err := vrfPub.ProofToHash(vrf.UniqueID(userID, appID), getResp.VrfProof)
+func (v *Verifier) index(vrfProof []byte, domainID, appID, userID string) ([]byte, error) {
+	uid := vrf.UniqueID(userID, appID)
+	index, err := v.vrf.ProofToHash(uid, vrfProof)
 	if err != nil {
-		return nil, fmt.Errorf("ProofToHash(): %v", err)
+		return nil, fmt.Errorf("vrf.ProofToHash(%v, %v): %v", appID, userID, err)
+	}
+	return index[:], nil
+}
+
+// NewMutation creates a Mutation given the userID, desired state, and previous entry.
+func (v *Verifier) NewMutation(
+	domainID, appID, userID string,
+	profileData []byte, authorizedKeys []*keyspb.PublicKey,
+	vrfProof, oldLeaf []byte) (
+	*entry.Mutation, error) {
+
+	index, err := v.index(vrfProof, domainID, appID, userID)
+	if err != nil {
+		return nil, err
+	}
+	mutation := entry.NewMutation(index, domainID, appID, userID)
+	if err := mutation.SetPrevious(oldLeaf, entry.CopyPrevious(true)); err != nil {
+		return nil, err
 	}
 
-	oldLeaf := getResp.GetLeafProof().GetLeaf().GetLeafValue()
-	mutation := entry.NewMutation(index[:], domainID, appID, userID)
-	if err := mutation.SetPrevious(oldLeaf); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling Entry from leaf proof: %v", err)
-	}
-
-	// Update Commitment.
 	if err := mutation.SetCommitment(profileData); err != nil {
 		return nil, err
 	}
 
-	// Update Authorization.
 	if len(authorizedKeys) != 0 {
 		if err := mutation.ReplaceAuthorizedKeys(authorizedKeys); err != nil {
 			return nil, err
 		}
 	}
 
-	// Sign Entry
-	updateRequest, err := mutation.SerializeAndSign(signers)
-	if err != nil {
-		return nil, err
-	}
-	updateRequest.FirstTreeSize = trusted.TreeSize
-	return updateRequest, nil
+	return mutation, nil
 }

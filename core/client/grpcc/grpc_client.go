@@ -39,7 +39,6 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/hashers"
 
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 
 	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
@@ -81,7 +80,6 @@ var (
 type Client struct {
 	cli        gpb.KeyTransparencyServiceClient
 	domainID   string
-	vrf        vrf.PublicKey
 	kt         *kt.Verifier
 	mutator    mutator.Mutator
 	RetryCount int
@@ -121,6 +119,7 @@ func NewFromConfig(cc *grpc.ClientConn, config *pb.GetDomainInfoResponse) (*Clie
 		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
 	}
 
+	// TODO(gbelvin): set retry delay.
 	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
 	return New(cc, config.DomainId, vrfPubKey, mapPubKey, mapHasher, logVerifier), nil
 }
@@ -135,7 +134,6 @@ func New(cc *grpc.ClientConn,
 	return &Client{
 		cli:        gpb.NewKeyTransparencyServiceClient(cc),
 		domainID:   domainID,
-		vrf:        vrf,
 		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),
 		RetryCount: 1,
@@ -155,7 +153,7 @@ func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grp
 		return nil, nil, err
 	}
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, userID, appID, &c.trusted, e); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, &c.trusted, e); err != nil {
 		return nil, nil, err
 	}
 
@@ -199,7 +197,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.kt.VerifyGetEntryResponse(ctx, userID, appID, &c.trusted, v)
+			err = c.kt.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, &c.trusted, v)
 			if err != nil {
 				return nil, err
 			}
@@ -230,9 +228,9 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 
 // Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
 // times depending on RetryCount.
-func (c *Client) Update(ctx context.Context, userID, appID string, profileData []byte,
+func (c *Client) Update(ctx context.Context, appID, userID string, profileData []byte,
 	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey,
-	opts ...grpc.CallOption) (*pb.UpdateEntryRequest, error) {
+	opts ...grpc.CallOption) (*entry.Mutation, error) {
 	getResp, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
 		DomainId:      c.domainID,
 		UserId:        userID,
@@ -244,58 +242,54 @@ func (c *Client) Update(ctx context.Context, userID, appID string, profileData [
 	}
 	Vlog.Printf("Got current entry...")
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, userID, appID, &c.trusted, getResp); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, &c.trusted, getResp); err != nil {
 		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
-	req, err := kt.CreateUpdateEntryRequest(&c.trusted, getResp, c.vrf, c.domainID, userID, appID, profileData, signers, authorizedKeys)
+	m, err := c.kt.NewMutation(c.domainID, appID, userID, profileData, authorizedKeys,
+		getResp.GetVrfProof(), getResp.GetLeafProof().GetLeaf().GetLeafValue())
 	if err != nil {
 		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
 	}
-	oldLeafB := getResp.GetLeafProof().GetLeaf().GetLeafValue()
-	oldLeaf, err := entry.FromLeafValue(oldLeafB)
-	if err != nil {
-		return nil, fmt.Errorf("entry.FromLeafValue: %v", err)
-	}
-	if _, err := c.mutator.Mutate(oldLeaf, req.GetEntryUpdate().GetMutation()); err != nil {
-		return nil, fmt.Errorf("Mutate: %v", err)
-	}
 
-	err = c.Retry(ctx, req, opts...)
+	err = c.Retry(ctx, m, signers, opts...)
 	// Retry submitting until an inclusion proof is returned.
 	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
 		time.Sleep(c.RetryDelay)
-		err = c.Retry(ctx, req, opts...)
+		err = c.Retry(ctx, m, signers, opts...)
 	}
-	return req, err
+	return m, err
 }
 
-// Retry will take a pre-fabricated request and send it again.
-func (c *Client) Retry(ctx context.Context, req *pb.UpdateEntryRequest, opts ...grpc.CallOption) error {
+// Retry will take a mutation and send it again.
+func (c *Client) Retry(ctx context.Context, m *entry.Mutation, signers []signatures.Signer, opts ...grpc.CallOption) error {
+	req, err := m.SerializeAndSign(signers, c.trusted.TreeSize)
+	if err != nil {
+		return fmt.Errorf("SerializeAndSign(): %v", err)
+	}
+
 	Vlog.Printf("Sending Update request...")
 	updateResp, err := c.cli.UpdateEntry(ctx, req, opts...)
 	if err != nil {
-		return err
+		return fmt.Errorf("cli.UpdateEntry(): %v", err)
 	}
 	Vlog.Printf("Got current entry...")
 
 	// Validate response.
-	if err := c.kt.VerifyGetEntryResponse(ctx, req.UserId, req.AppId, &c.trusted, updateResp.GetProof()); err != nil {
+	if err := c.kt.VerifyGetEntryResponse(ctx, c.domainID, req.AppId, req.UserId, &c.trusted, updateResp.GetProof()); err != nil {
 		return fmt.Errorf("VerifyGetEntryResponse(): %v", err)
 	}
 
-	// Mutations are no longer stable serialized byte slices, so we need to use
-	// an equality operation on the proto itself.
-	leafValue, err := entry.FromLeafValue(
-		updateResp.GetProof().GetLeafProof().GetLeaf().GetLeafValue())
+	cntLeaf := updateResp.GetProof().GetLeafProof().GetLeaf().GetLeafValue()
+	equal, err := m.Check(cntLeaf)
 	if err != nil {
-		return fmt.Errorf("failed to decode current entry: %v", err)
+		return fmt.Errorf("mutation.Check(): %v", err)
 	}
-
-	// Check if the response is a replay.
-	if got, want := leafValue, req.GetEntryUpdate().GetMutation(); !proto.Equal(got, want) {
+	if err := m.SetPrevious(cntLeaf, entry.CopyPrevious(false)); err != nil {
+		return fmt.Errorf("mutation.SetPrevious(): %v", err)
+	}
+	if !equal {
 		return ErrRetry
 	}
 	return nil
-	// TODO: Update previous entry pointer
 }

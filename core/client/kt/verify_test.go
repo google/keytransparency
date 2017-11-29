@@ -35,7 +35,8 @@ import (
 )
 
 var (
-	VRFPub = []byte(`-----BEGIN PUBLIC KEY-----
+	domainID = "default"
+	VRFPub   = []byte(`-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5AV2WCmStBt4N2Dx+7BrycJFbxhW
 f5JqSoyp0uiL8LeNYyj5vgklK8pLcyDbRqch9Az8jXVAmcBAkvaSrLW8wQ==
 -----END PUBLIC KEY-----`)
@@ -148,7 +149,7 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 			},
 		},
 	} {
-		err := v.VerifyGetEntryResponse(ctx, tc.userID, tc.appID, tc.trusted, tc.in)
+		err := v.VerifyGetEntryResponse(ctx, domainID, tc.appID, tc.userID, tc.trusted, tc.in)
 		if got, want := err != nil, tc.wantErr; got != want {
 			t.Errorf("VerifyGetEntryResponse(%v, %v, %v, %v): %t, wantErr %t (err=%v)",
 				tc.userID, tc.appID, tc.trusted, tc.in, got, want, err)
