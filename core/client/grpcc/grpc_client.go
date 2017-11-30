@@ -261,7 +261,7 @@ func (c *Client) Update(ctx context.Context, appID, userID string, profileData [
 	return m, err
 }
 
-// Retry will take a mutation and send it again.
+// Retry takes take a mutation, signs, and sends it again, and updates the back pointer with the current leaf value.
 func (c *Client) Retry(ctx context.Context, m *entry.Mutation, signers []signatures.Signer, opts ...grpc.CallOption) error {
 	req, err := m.SerializeAndSign(signers, c.trusted.TreeSize)
 	if err != nil {
