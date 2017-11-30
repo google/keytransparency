@@ -64,7 +64,7 @@ func TestCreateAndVerify(t *testing.T) {
 		appID := "app1"
 
 		m := NewMutation(index, domainID, appID, userID)
-		if err := m.SetPrevious(tc.old); err != nil {
+		if err := m.SetPrevious(tc.old, true); err != nil {
 			t.Errorf("NewMutation(%v): %v", tc.old, err)
 			continue
 		}
@@ -76,7 +76,7 @@ func TestCreateAndVerify(t *testing.T) {
 			t.Errorf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			continue
 		}
-		update, err := m.SerializeAndSign(tc.signers)
+		update, err := m.SerializeAndSign(tc.signers, 0)
 		if err != nil {
 			t.Errorf("SerializeAndSign(%v): %v", tc.signers, err)
 			continue
@@ -88,8 +88,19 @@ func TestCreateAndVerify(t *testing.T) {
 			continue
 		}
 		f := New()
-		if _, err := f.Mutate(oldValue, update.GetEntryUpdate().GetMutation()); err != nil {
+		newEntry, err := f.Mutate(oldValue, update.GetEntryUpdate().GetMutation())
+		if err != nil {
 			t.Errorf("Mutate(%v): %v", update.GetEntryUpdate().GetMutation(), err)
+			continue
+		}
+
+		newLeaf, err := ToLeafValue(newEntry)
+		if err != nil {
+			t.Errorf("ToLeafValue(): %v", err)
+			continue
+		}
+		if equal, err := m.Check(newLeaf); err != nil || !equal {
+			t.Errorf("Check(): %v, %v", equal, err)
 		}
 	}
 }

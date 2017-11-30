@@ -98,7 +98,7 @@ func TestMonitor(t *testing.T) {
 	} {
 		for _, userID := range tc.userIDs {
 			_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth(userID),
-				userID, appID, tc.updateData, tc.signers, tc.authorizedKeys)
+				appID, userID, tc.updateData, tc.signers, tc.authorizedKeys)
 			if err != grpcc.ErrRetry {
 				t.Fatalf("Could not send update request: %v", err)
 			}

@@ -100,6 +100,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 	authorizedKeys3 := []*keyspb.PublicKey{authorizedKey2}
 
 	for _, tc := range []struct {
+		desc           string
 		want           bool
 		insert         bool
 		ctx            context.Context
@@ -107,31 +108,89 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 		signers        []signatures.Signer
 		authorizedKeys []*keyspb.PublicKey
 	}{
-		{false, false, context.Background(), "noalice", signers1, authorizedKeys1},                // Empty
-		{false, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1}, // Insert
-		{false, false, context.Background(), "nocarol", signers1, authorizedKeys1},                // Empty
-		{true, false, context.Background(), "bob", signers1, authorizedKeys1},                     // Not Empty
-		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers1, authorizedKeys1},  // Update
-		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers2, authorizedKeys2},  // Update, changing keys
-		{true, true, GetNewOutgoingContextWithFakeAuth("bob"), "bob", signers3, authorizedKeys3},  // Update, using new keys
+		{
+			desc:           "Empty",
+			want:           false,
+			insert:         false,
+			ctx:            context.Background(),
+			userID:         "noalice",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "Insert",
+			want:           false,
+			insert:         true,
+			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			userID:         "bob",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "Empty2",
+			want:           false,
+			insert:         false,
+			ctx:            context.Background(),
+			userID:         "nocarol",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "Not Empty",
+			want:           true,
+			insert:         false,
+			ctx:            context.Background(),
+			userID:         "bob",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "Update",
+			want:           true,
+			insert:         true,
+			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			userID:         "bob",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "Update, changing keys",
+			want:           true,
+			insert:         true,
+			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			userID:         "bob",
+			signers:        signers2,
+			authorizedKeys: authorizedKeys2,
+		},
+		{
+			desc:           "Update, using new keys",
+			want:           true,
+			insert:         true,
+			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			userID:         "bob",
+			signers:        signers3,
+			authorizedKeys: authorizedKeys3,
+		},
 	} {
-		// Check profile.
-		if err := env.checkProfile(tc.userID, appID, tc.want); err != nil {
-			t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
-		}
-		// Update profile.
-		if tc.insert {
-			req, err := env.Client.Update(tc.ctx, tc.userID, appID, primaryKey, tc.signers, tc.authorizedKeys)
-			if got, want := err, grpcc.ErrRetry; got != want {
-				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
+		t.Run(tc.desc, func(t *testing.T) {
+			// Check profile.
+			if err := env.checkProfile(tc.userID, appID, tc.want); err != nil {
+				t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
 			}
-			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(true)); err != nil {
-				t.Errorf("CreateEpoch(_): %v", err)
+			// Update profile.
+			if tc.insert {
+				m, err := env.Client.Update(tc.ctx, appID, tc.userID, primaryKey, tc.signers, tc.authorizedKeys)
+				if got, want := err, grpcc.ErrRetry; got != want {
+					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
+				}
+				if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(true)); err != nil {
+					t.Errorf("CreateEpoch(_): %v", err)
+				}
+				if err := env.Client.Retry(tc.ctx, m, tc.signers); err != nil {
+					t.Errorf("Retry(%v): %v, want nil", m, err)
+				}
 			}
-			if err := env.Client.Retry(tc.ctx, req); err != nil {
-				t.Errorf("Retry(%v): %v, want nil", req, err)
-			}
-		}
+		})
 	}
 }
 
@@ -178,7 +237,7 @@ func TestUpdateValidation(t *testing.T) {
 		{true, GetNewOutgoingContextWithFakeAuth("dave"), "dave", profile, signers, authorizedKeys},
 		{true, GetNewOutgoingContextWithFakeAuth("eve"), "eve", profile, signers, authorizedKeys},
 	} {
-		req, err := env.Client.Update(tc.ctx, tc.userID, appID, tc.profile, tc.signers, tc.authorizedKeys)
+		m, err := env.Client.Update(tc.ctx, appID, tc.userID, tc.profile, tc.signers, tc.authorizedKeys)
 
 		if tc.want {
 			// The first update response is always a retry.
@@ -188,8 +247,8 @@ func TestUpdateValidation(t *testing.T) {
 			if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(true)); err != nil {
 				t.Errorf("CreateEpoch(_): %v", err)
 			}
-			if err := env.Client.Retry(tc.ctx, req); err != nil {
-				t.Errorf("Retry(%v): %v, want nil", req, err)
+			if err := env.Client.Retry(tc.ctx, m, signers); err != nil {
+				t.Errorf("Retry(%v): %v, want nil", m, err)
 			}
 		} else {
 			if got, want := err, grpcc.ErrRetry; got == want {
@@ -269,7 +328,7 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 		nil, cp(5), cp(7), nil,
 	} {
 		if p != nil {
-			_, err := e.Client.Update(ctx, userID, appID, p, signers, authorizedKeys)
+			_, err := e.Client.Update(ctx, appID, userID, p, signers, authorizedKeys)
 			// The first update response is always a retry.
 			if got, want := err, grpcc.ErrRetry; got != want {
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)

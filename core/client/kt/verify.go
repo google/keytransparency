@@ -72,7 +72,7 @@ func New(vrf vrf.PublicKey,
 //  - Verify signature.
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
-func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID string,
+func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
 	trusted *trillian.SignedLogRoot, in *tpb.GetEntryResponse) error {
 	// Unpack the merkle tree leaf value.
 	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
@@ -93,10 +93,10 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, userID, appID str
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), in.GetVrfProof())
+	index, err := v.index(in.GetVrfProof(), domainID, appID, userID)
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
-		return fmt.Errorf("vrf.ProofToHash(%v, %v): %v", userID, appID, err)
+		return err
 	}
 	Vlog.Printf("✓ VRF verified.")
 
