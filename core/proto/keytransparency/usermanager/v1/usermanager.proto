@@ -14,9 +14,9 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/proto/usermanager/v1;usermanager_proto";
+option go_package = "github.com/google/keytransparency/core/proto/keytransparency/usermanager/v1;usermanager_proto";
 
-package usermanager.v1;
+package keytransparency.usermanager.v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
