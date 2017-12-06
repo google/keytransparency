@@ -18,8 +18,8 @@ package managementserver
 import (
 	"context"
 
+	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto"
 	keypb "github.com/google/keytransparency/core/proto/keymaster_proto"
-	pb "github.com/google/keytransparency/core/proto/keytransparency/usermanager/v1/usermanager_proto"
 	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 

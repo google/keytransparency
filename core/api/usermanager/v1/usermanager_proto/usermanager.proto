@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/proto/keytransparency/usermanager/v1/usermanager_proto";
+option go_package = "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto";
 
 package keytransparency.usermanager.v1;
 
