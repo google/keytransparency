@@ -23,7 +23,7 @@ import "google/protobuf/field_mask.proto";
 import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "proto/keymaster_proto/keymaster_proto.proto";
 
-// GetKeySetsRequest requests the keyset of a domain_id/app_id 
+// GetKeySetsRequest requests the keyset of a domain_id/app_id
 message GetKeySetRequest {
    // domain_id identifies the domain.
    string domain_id = 1;
@@ -38,7 +38,7 @@ message CreateUserRequest {
   // user is the user to create.
   keytransparency.v1.proto.User user = 2;
   // add_signing_keys specifies whether to add this service's signing keys to the set of authorized_keys.
-  // This must be set to true if any further operations from this API are meant to succeed. 
+  // This must be set to true if any further operations from this API are meant to succeed.
   // If set to false, there must be at least one key in authorized_keys.
   bool add_signing_keys = 7;
 }
@@ -63,16 +63,16 @@ message BatchCreateUserRequest {
   // users is the set of users to create.
   repeated keytransparency.v1.proto.User users = 3;
   // add_signing_keys specifies whether to add this service's signing_keys to the set of authorized_keys.
-  // This must be set to true if any further operations from this API are meant to succeed. 
+  // This must be set to true if any further operations from this API are meant to succeed.
   // If set to false, there must be at least one key in authorized_keys.
   bool add_signing_keys = 4;
 }
 
 // BatchCreateUserRequest creates multiple users at once.
 message BatchCreateUserResponse {
-  // users returns the list of created users. 
+  // users returns the list of created users.
   repeated keytransparency.v1.proto.User users = 2;
-} 
+}
 
 // BatchUpdateUserRequest creates multiple users all at once.
 message BatchUpdateUserRequest {
@@ -89,22 +89,22 @@ message BatchUpdateUserRequest {
 
 // BatchUpdateUserRequest creates multiple users at once.
 message BatchUpdateUserResponse {
-  // users returns the list of created users. 
+  // users returns the list of created users.
   repeated keytransparency.v1.proto.User users = 2;
-} 
+}
 
 
-// The UserManagerService holds a set of signing keys which can be used to 
-// sign user updates. 
-// - This service must be registered with the server in order to submit user 
-// create or update requests. 
+// The UserManagerService holds a set of signing keys which can be used to
+// sign user updates.
+// - This service must be registered with the server in order to submit user
+// create or update requests.
 // - The update requests this service generates will only be valid for users
-// that have added this service's signing keys to their list of authorized_keys. 
+// that have added this service's signing keys to their list of authorized_keys.
 // - This service should carefully controll and log access to it's APIs.
 // - This service should rotate its signing keys periodically.
 //   New signing keys should be published far enough in advance that they can be added
-//   by everyone before they are used to avoid service disruption. 
-// 
+//   by everyone before they are used to avoid service disruption.
+//
 // Resources:
 // - domains/apps/keyset
 //   Each combination of domain_id and app_id has it's own keyset.
@@ -129,7 +129,7 @@ service UserManagerService {
     };
   }
 
-  // UpdateUserData sets the public key for an user. 
+  // UpdateUserData sets the public key for an user.
   rpc UpdateUser(UpdateUserRequest) returns (keytransparency.v1.proto.User) {
     option (google.api.http) = {
       patch: "/usermanager/v1/domains/{user.domain_id}/apps/{user.app_id}/users/{user.user_id}"
@@ -137,7 +137,7 @@ service UserManagerService {
     };
   }
 
-  // BatchCreateUser creates a set of new users. 
+  // BatchCreateUser creates a set of new users.
   rpc BatchCreateUser(BatchCreateUserRequest) returns (keytransparency.v1.proto.User) {
     option (google.api.http) = {
       post: "/usermanager/v1/domains/{domain_id}/apps/{app_id}:BatchCreate"
@@ -145,7 +145,7 @@ service UserManagerService {
     };
   }
 
-  // BatchUpdateUser updates a set of users. 
+  // BatchUpdateUser updates a set of users.
   rpc BatchUpdateUser(BatchUpdateUserRequest) returns (keytransparency.v1.proto.User) {
     option (google.api.http) = {
       patch: "/usermanager/v1/domains/{domain_id}/apps/{app_id}:BatchUpdate"
