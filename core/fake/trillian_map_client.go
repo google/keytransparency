@@ -46,7 +46,7 @@ func (m *mapServer) GetLeaves(ctx context.Context, in *tpb.GetMapLeavesRequest, 
 		MapId:    in.MapId,
 		Index:    in.Index,
 		Revision: m.revision,
-	})
+	}, opts...)
 }
 
 // GetLeavesByRevision just returns the indexes requested. No leaf data, no inclusion proofs.
@@ -78,7 +78,7 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *tpb.SetMapLeavesRequest, 
 func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *tpb.GetSignedMapRootRequest, opts ...grpc.CallOption) (*tpb.GetSignedMapRootResponse, error) {
 	return m.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
 		Revision: m.revision,
-	})
+	}, opts...)
 }
 
 // GetSignedMapRootByRevision returns the saved map root.
