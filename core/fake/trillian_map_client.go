@@ -22,18 +22,18 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-type mapServer struct {
+// MapServer only stores tpb.MapperMetadata in roots. It does not store
+// leaves compute inclusion proofs, or sign roots.  This client is not
+// threadsafe.
+type MapServer struct {
 	// roots by revision number
 	roots    map[int64]*tpb.SignedMapRoot
 	revision int64
 }
 
 // NewTrillianMapClient returns a fake tpb.TrillianMapClient
-// This client only stores tpb.MapperMetadata in roots. It does not store
-// leaves compute inclusion proofs, or sign roots.  This client is not
-// threadsafe.
-func NewTrillianMapClient() tpb.TrillianMapClient {
-	m := &mapServer{
+func NewTrillianMapClient() *MapServer {
+	m := &MapServer{
 		roots: make(map[int64]*tpb.SignedMapRoot),
 	}
 	m.roots[0] = &tpb.SignedMapRoot{} // Set the initial root
@@ -41,7 +41,7 @@ func NewTrillianMapClient() tpb.TrillianMapClient {
 }
 
 // GetLeaves just returns the indexes requested. No leaf data, no inclusion proofs.
-func (m *mapServer) GetLeaves(ctx context.Context, in *tpb.GetMapLeavesRequest, opts ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
+func (m *MapServer) GetLeaves(ctx context.Context, in *tpb.GetMapLeavesRequest, opts ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
 	return m.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    in.MapId,
 		Index:    in.Index,
@@ -50,7 +50,7 @@ func (m *mapServer) GetLeaves(ctx context.Context, in *tpb.GetMapLeavesRequest, 
 }
 
 // GetLeavesByRevision just returns the indexes requested. No leaf data, no inclusion proofs.
-func (m *mapServer) GetLeavesByRevision(ctx context.Context, in *tpb.GetMapLeavesByRevisionRequest, opts ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
+func (m *MapServer) GetLeavesByRevision(ctx context.Context, in *tpb.GetMapLeavesByRevisionRequest, opts ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
 	leaves := make([]*tpb.MapLeafInclusion, 0, len(in.Index))
 	for _, index := range in.Index {
 		leaves = append(leaves, &tpb.MapLeafInclusion{
@@ -65,7 +65,7 @@ func (m *mapServer) GetLeavesByRevision(ctx context.Context, in *tpb.GetMapLeave
 }
 
 // SetLeaves is not thread safe. It will store the root metadata.
-func (m *mapServer) SetLeaves(ctx context.Context, in *tpb.SetMapLeavesRequest, opts ...grpc.CallOption) (*tpb.SetMapLeavesResponse, error) {
+func (m *MapServer) SetLeaves(ctx context.Context, in *tpb.SetMapLeavesRequest, opts ...grpc.CallOption) (*tpb.SetMapLeavesResponse, error) {
 	m.revision++
 	m.roots[m.revision] = &tpb.SignedMapRoot{
 		Metadata:    in.Metadata,
@@ -74,15 +74,15 @@ func (m *mapServer) SetLeaves(ctx context.Context, in *tpb.SetMapLeavesRequest, 
 	return nil, nil
 }
 
-// GetSignedMapRootByRevision returns the current map root.
-func (m *mapServer) GetSignedMapRoot(ctx context.Context, in *tpb.GetSignedMapRootRequest, opts ...grpc.CallOption) (*tpb.GetSignedMapRootResponse, error) {
+// GetSignedMapRoot returns the current map root.
+func (m *MapServer) GetSignedMapRoot(ctx context.Context, in *tpb.GetSignedMapRootRequest, opts ...grpc.CallOption) (*tpb.GetSignedMapRootResponse, error) {
 	return m.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
 		Revision: m.revision,
 	}, opts...)
 }
 
 // GetSignedMapRootByRevision returns the saved map root.
-func (m *mapServer) GetSignedMapRootByRevision(ctx context.Context, in *tpb.GetSignedMapRootByRevisionRequest, opts ...grpc.CallOption) (*tpb.GetSignedMapRootResponse, error) {
+func (m *MapServer) GetSignedMapRootByRevision(ctx context.Context, in *tpb.GetSignedMapRootByRevisionRequest, opts ...grpc.CallOption) (*tpb.GetSignedMapRootResponse, error) {
 	return &tpb.GetSignedMapRootResponse{
 		MapRoot: m.roots[in.Revision],
 	}, nil

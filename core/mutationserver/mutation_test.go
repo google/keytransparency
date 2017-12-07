@@ -57,12 +57,12 @@ func updates(t *testing.T, start, end int) []*pb.EntryUpdate {
 	return kvs
 }
 
-func prepare(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap tpb.TrillianMapClient) {
+func prepare(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap *fake.MapServer) {
 	createEpoch(ctx, t, mapID, mutations, tmap, 1, 1, 6)
 	createEpoch(ctx, t, mapID, mutations, tmap, 2, 7, 10)
 }
 
-func createEpoch(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap tpb.TrillianMapClient, epoch int64, start, end int) {
+func createEpoch(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap *fake.MapServer, epoch int64, start, end int) {
 	kvs := updates(t, start, end)
 	for _, kv := range kvs {
 		if _, err := mutations.Write(nil, mapID, kv); err != nil {
@@ -123,7 +123,7 @@ func TestGetMutations(t *testing.T) {
 		{"invalid page token", 1, "some_token", 0, nil, "", false},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			srv := New(fakeAdmin, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
+			srv := New(fakeAdmin, fake.NewTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
 			resp, err := srv.GetMutations(ctx, &pb.GetMutationsRequest{
 				DomainId:  domainID,
 				Epoch:     tc.epoch,
@@ -175,7 +175,7 @@ func TestLowestSequenceNumber(t *testing.T) {
 		{"some_token", 0, 0, false},
 		{"", 1, 6, true},
 	} {
-		srv := New(fakeAdmin, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
+		srv := New(fakeAdmin, fake.NewTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
 		seq, err := srv.lowestSequenceNumber(ctx, mapID, tc.token, tc.epoch)
 		if got, want := err == nil, tc.success; got != want {
 			t.Errorf("lowestSequenceNumber(%v, %v): err=%v, want %v", tc.token, tc.epoch, got, want)
