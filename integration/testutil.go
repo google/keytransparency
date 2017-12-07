@@ -148,7 +148,7 @@ func NewEnv(t *testing.T) *Env {
 	mutator := entry.New()
 	auth := authentication.NewFake()
 	authz := authorization.New()
-	tlog := fake.NewFakeTrillianLogClient()
+	tlog := fake.NewTrillianLogClient()
 
 	factory := transaction.NewFactory(sqldb)
 	server := keyserver.New(adminStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
