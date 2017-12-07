@@ -91,6 +91,7 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 	return s.getEntry(ctx, in.DomainId, in.UserId, in.AppId, in.FirstTreeSize, -1)
 }
 
+// TODO(gdbelvin): add a GetEntryByRevision endpoint too.
 func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, firstTreeSize, revision int64) (*tpb.GetEntryResponse, error) {
 	if revision == 0 {
 		return nil, grpc.Errorf(codes.InvalidArgument,
@@ -116,7 +117,7 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", domain.LogID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
-	// Use the log as the athoritative source of the latest revision.
+	// Use the log as the authoritative source of the latest revision.
 	if revision < 0 {
 		// The maximum index in the log is one minus the number of items in the log.
 		revision = logRoot.GetSignedLogRoot().GetTreeSize() - 1
@@ -129,17 +130,17 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	}
 	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
 
-	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
+	getResp, err := s.tmap.GetLeavesByRevision(ctx, &trillian.GetMapLeavesByRevisionRequest{
 		MapId:    domain.MapID,
 		Index:    [][]byte{index[:]},
 		Revision: revision,
 	})
 	if err != nil {
-		glog.Errorf("GetLeaves(): %v", err)
+		glog.Errorf("GetLeavesByRevision(): %v", err)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
-		glog.Errorf("GetLeaves() len: %v, want %v", got, want)
+		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
 		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	neighbors := getResp.MapLeafInclusion[0].Inclusion
