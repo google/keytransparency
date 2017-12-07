@@ -7,9 +7,15 @@
   "Enable": ["license", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
   "Vendor": true,
   "VendoredLinters": true,
-  "Skip": ["core/proto", "impl/proto"],
+  "Exclude": [
+  ],
   "Deadline": "4m", 
   "Cyclo": 18,
   "Aggregate": true,
-  "Exclude": ["Errors unhandled.,LOW,HIGH \\(gas\\)"]
+  "Exclude": [
+    ".+\\.pb\\.go",
+    ".+\\.pb\\.gw\\.go",
+    "mock_.+\\.go",
+    "Errors unhandled.,LOW,HIGH \\(gas\\)"
+  ]
 }

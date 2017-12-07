@@ -98,11 +98,6 @@ func New(storage adminstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClien
 	}
 }
 
-// BatchUpdateEntries processes applies updates to multiple accounts, if authorized by authorized_keys.
-func (s *server) BatchUpdateEntries(ctx context.Context, in *pb.BatchUpdateEntriesRequest) (*pb.BatchUpdateEntriesResponse, error) {
-	panic("not implemented")
-}
-
 // ListDomains produces a list of the configured domains
 func (s *server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*pb.ListDomainsResponse, error) {
 	domains, err := s.storage.List(ctx, in.GetShowDeleted())

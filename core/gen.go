@@ -25,5 +25,9 @@ package core
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src proto/monitor_v1_grpc/monitor_v1_grpc.proto
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. proto/monitor_v1_grpc/monitor_v1_grpc.proto
 
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis --go_out=:$GOPATH/src api/usermanager/v1/usermanager_proto/usermanager.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src api/usermanager/v1/usermanager_proto/usermanager.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. api/usermanager/v1/usermanager_proto/usermanager.proto
+
 //go:generate protoc -I=. --go_out=:$GOPATH/src proto/authorization_proto/authorization_proto.proto
 //go:generate protoc -I=. --go_out=:$GOPATH/src proto/keymaster_proto/keymaster_proto.proto
