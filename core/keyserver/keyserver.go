@@ -91,6 +91,7 @@ func (s *Server) GetEntry(ctx context.Context, in *tpb.GetEntryRequest) (*tpb.Ge
 	return s.getEntry(ctx, in.DomainId, in.UserId, in.AppId, in.FirstTreeSize, -1)
 }
 
+// TODO(gdbelvin): add a GetEntryByRevision endpoint too.
 func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, firstTreeSize, revision int64) (*tpb.GetEntryResponse, error) {
 	if revision == 0 {
 		return nil, grpc.Errorf(codes.InvalidArgument,
@@ -119,7 +120,6 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	// Use the log as the authoritative source of the latest revision.
 	if revision < 0 {
 		// The maximum index in the log is one minus the number of items in the log.
-		// TODO(phad): could GetTreeSize() return 0?
 		revision = logRoot.GetSignedLogRoot().GetTreeSize() - 1
 	}
 
