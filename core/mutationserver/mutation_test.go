@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-	"github.com/google/trillian"
+	tpb "github.com/google/trillian"
 )
 
 const (
@@ -57,24 +57,23 @@ func updates(t *testing.T, start, end int) []*pb.EntryUpdate {
 	return kvs
 }
 
-func prepare(t *testing.T, mapID int64, mutations mutator.MutationStorage, fakeMap *fakeTrillianMapClient) {
-	createEpoch(t, mapID, mutations, fakeMap, 1, 1, 6)
-	createEpoch(t, mapID, mutations, fakeMap, 2, 7, 10)
+func prepare(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap tpb.TrillianMapClient) {
+	createEpoch(ctx, t, mapID, mutations, tmap, 1, 1, 6)
+	createEpoch(ctx, t, mapID, mutations, tmap, 2, 7, 10)
 }
 
-func createEpoch(t *testing.T, mapID int64, mutations mutator.MutationStorage, fakeMap *fakeTrillianMapClient, epoch int64, start, end int) {
+func createEpoch(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap tpb.TrillianMapClient, epoch int64, start, end int) {
 	kvs := updates(t, start, end)
 	for _, kv := range kvs {
 		if _, err := mutations.Write(nil, mapID, kv); err != nil {
 			t.Fatalf("mutations.Write failed: %v", err)
 		}
 	}
-	fakeMap.tmap[epoch] = &trillian.SignedMapRoot{
+	tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
 		Metadata: mustMetadataAsAny(t, &pb.MapperMetadata{
 			HighestFullyCompletedSeq: int64(end),
 		}),
-		MapRevision: epoch,
-	}
+	})
 }
 
 func mustMetadataAsAny(t *testing.T, meta *pb.MapperMetadata) *any.Any {
@@ -98,11 +97,11 @@ func TestGetMutations(t *testing.T) {
 	mapID := int64(2)
 	fakeMutations := fake.NewMutationStorage()
 	fakeAdmin := fake.NewAdminStorage()
-	fakeMap := newFakeTrillianMapClient()
+	fakeMap := fake.NewTrillianMapClient()
 	if err := fakeAdmin.Write(ctx, domainID, mapID, 0, nil, nil, 1*time.Second, 5*time.Second); err != nil {
 		t.Fatalf("admin.Write(): %v", err)
 	}
-	prepare(t, mapID, fakeMutations, fakeMap)
+	prepare(ctx, t, mapID, fakeMutations, fakeMap)
 
 	for _, tc := range []struct {
 		description string
@@ -159,10 +158,10 @@ func TestGetMutations(t *testing.T) {
 func TestLowestSequenceNumber(t *testing.T) {
 	ctx := context.Background()
 	fakeMutations := fake.NewMutationStorage()
-	fakeMap := newFakeTrillianMapClient()
+	fakeMap := fake.NewTrillianMapClient()
 	fakeAdmin := &fake.AdminStorage{}
 	mapID := int64(1)
-	prepare(t, mapID, fakeMutations, fakeMap)
+	prepare(ctx, t, mapID, fakeMutations, fakeMap)
 
 	for _, tc := range []struct {
 		token     string
@@ -185,46 +184,6 @@ func TestLowestSequenceNumber(t *testing.T) {
 			t.Errorf("lowestSequenceNumber(%v, %v)=%v, want %v", tc.token, tc.epoch, got, want)
 		}
 	}
-}
-
-// trillian.TrillianMapClient fake.
-type fakeTrillianMapClient struct {
-	tmap map[int64]*trillian.SignedMapRoot
-}
-
-func newFakeTrillianMapClient() *fakeTrillianMapClient {
-	return &fakeTrillianMapClient{
-		tmap: make(map[int64]*trillian.SignedMapRoot),
-	}
-}
-
-func (*fakeTrillianMapClient) GetLeaves(ctx context.Context, in *trillian.GetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.GetMapLeavesResponse, error) {
-	leaves := make([]*trillian.MapLeafInclusion, 0, len(in.Index))
-	for _, index := range in.Index {
-		leaves = append(leaves, &trillian.MapLeafInclusion{
-			Leaf: &trillian.MapLeaf{
-				Index: index,
-			},
-		})
-	}
-	return &trillian.GetMapLeavesResponse{
-		MapLeafInclusion: leaves,
-	}, nil
-}
-
-func (*fakeTrillianMapClient) SetLeaves(ctx context.Context, in *trillian.SetMapLeavesRequest, opts ...grpc.CallOption) (*trillian.SetMapLeavesResponse, error) {
-	return nil, nil
-}
-
-func (*fakeTrillianMapClient) GetSignedMapRoot(ctx context.Context, in *trillian.GetSignedMapRootRequest, opts ...grpc.CallOption) (*trillian.GetSignedMapRootResponse, error) {
-	return nil, nil
-}
-
-// GetSignedMapRootByRevision echos in.MapId in HighestFullyCompletedSeq.
-func (m *fakeTrillianMapClient) GetSignedMapRootByRevision(ctx context.Context, in *trillian.GetSignedMapRootByRevisionRequest, opts ...grpc.CallOption) (*trillian.GetSignedMapRootResponse, error) {
-	return &trillian.GetSignedMapRootResponse{
-		MapRoot: m.tmap[in.Revision],
-	}, nil
 }
 
 // transaction.Txn fake.
