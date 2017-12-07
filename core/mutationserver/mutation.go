@@ -233,17 +233,17 @@ func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [
 		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
-	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
+	getResp, err := s.tmap.GetLeavesByRevision(ctx, &trillian.GetMapLeavesByRevisionRequest{
 		MapId:    domain.MapID,
 		Index:    indexes,
 		Revision: epoch,
 	})
 	if err != nil {
-		glog.Errorf("GetLeaves(): %v", err)
+		glog.Errorf("GetLeavesByRevision(): %v", err)
 		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.GetMapLeafInclusion()), len(indexes); got != want {
-		glog.Errorf("GetLeaves() len: %v, want %v", got, want)
+		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
 		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	return getResp.GetMapLeafInclusion(), nil
