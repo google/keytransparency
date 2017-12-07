@@ -51,6 +51,8 @@ func TestGoogleValidateCreds(t *testing.T) {
 		t.Fatalf("Failed to create GoogleAuth: %v", err)
 	}
 
+	mux := runtime.NewServeMux()
+
 	// Insert token into http request
 	r, err := http.NewRequest("", "", bytes.NewBufferString(""))
 	if err != nil {
@@ -61,7 +63,7 @@ func TestGoogleValidateCreds(t *testing.T) {
 
 	// Convert http request into grpc header.
 	ctx := context.Background()
-	ctx, err = runtime.AnnotateContext(ctx, r)
+	ctx, err = runtime.AnnotateContext(ctx, mux, r)
 	if err != nil {
 		t.Errorf("Error annotating context: %v", err)
 	}
