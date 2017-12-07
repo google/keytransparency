@@ -57,12 +57,12 @@ func updates(t *testing.T, start, end int) []*pb.EntryUpdate {
 	return kvs
 }
 
-func prepare(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap tpb.TrillianMapClient) {
+func prepare(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap *fake.MapServer) {
 	createEpoch(ctx, t, mapID, mutations, tmap, 1, 1, 6)
 	createEpoch(ctx, t, mapID, mutations, tmap, 2, 7, 10)
 }
 
-func createEpoch(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap tpb.TrillianMapClient, epoch int64, start, end int) {
+func createEpoch(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap *fake.MapServer, epoch int64, start, end int) {
 	kvs := updates(t, start, end)
 	for _, kv := range kvs {
 		if _, err := mutations.Write(nil, mapID, kv); err != nil {
