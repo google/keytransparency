@@ -74,26 +74,6 @@ message BatchCreateUserResponse {
   repeated keytransparency.v1.proto.User users = 2;
 }
 
-// BatchUpdateUserRequest updates multiple users at once.
-message BatchUpdateUserRequest {
-   // domain_id identifies the domain.
-   string domain_id = 1;
-   // app_id identifies the application.
-   string app_id = 2;
-  // users is the set of users to create.
-  repeated keytransparency.v1.proto.User users = 3;
-  // update_mask specifies which fields of user to update.
-  // For example: "data" or "authorized_keys"
-  google.protobuf.FieldMask update_mask = 4;
-}
-
-// BatchUpdateUserRequest creates multiple users at once.
-message BatchUpdateUserResponse {
-  // users returns the list of created users.
-  repeated keytransparency.v1.proto.User users = 2;
-}
-
-
 // The UserManagerService holds a set of signing keys which can be used to
 // sign user updates.
 // - This service must be registered with the server in order to submit user
@@ -122,6 +102,14 @@ service UserManagerService {
     };
   }
 
+  // Key Rotation Operations
+  // TODO(gdbelvin): CreateKey API for a particular keyset. 
+  // TODO(gdbelvin): RotateKey API to mark the next key in the keyset as active.
+  // TODO(gdbelvin): BatchAddAuthorizedKeys to add all the active keys to users created through this API.
+  // TODO(gdbelvin): BatchRemoveAuthorizedKeys to remove old keys from users created through this API.
+  // TODO(gdbelvin): RegisterUser ask this service to keep it's list of authorized_keys up-to-date. 
+  // TODO(gdbelvin): UnregustreUser have this service revoke it's access to a user's account. 
+
   // CreateUser creates a new user and initializes it.
   // If the user already exists, this operation will fail.
   rpc CreateUser(CreateUserRequest) returns (keytransparency.v1.proto.User) {
@@ -143,14 +131,6 @@ service UserManagerService {
   rpc BatchCreateUser(BatchCreateUserRequest) returns (keytransparency.v1.proto.User) {
     option (google.api.http) = {
       post: "/usermanager/v1/domains/{domain_id}/apps/{app_id}:BatchCreate"
-      body: "*"
-    };
-  }
-
-  // BatchUpdateUser updates a set of users.
-  rpc BatchUpdateUser(BatchUpdateUserRequest) returns (keytransparency.v1.proto.User) {
-    option (google.api.http) = {
-      patch: "/usermanager/v1/domains/{domain_id}/apps/{app_id}:BatchUpdate"
       body: "*"
     };
   }

@@ -55,8 +55,3 @@ func (s *Server) UpdateUser(context.Context, *pb.UpdateUserRequest) (*ktpb.User,
 func (s *Server) BatchCreateUser(context.Context, *pb.BatchCreateUserRequest) (*ktpb.User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
 }
-
-// BatchUpdateUser updates a set of users.
-func (s *Server) BatchUpdateUser(context.Context, *pb.BatchUpdateUserRequest) (*ktpb.User, error) {
-	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
-}
