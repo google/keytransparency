@@ -123,7 +123,7 @@ func TestGetMutations(t *testing.T) {
 		{"invalid page token", 1, "some_token", 0, nil, "", false},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			srv := New(fakeAdmin, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
+			srv := New(fakeAdmin, fake.NewTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
 			resp, err := srv.GetMutations(ctx, &pb.GetMutationsRequest{
 				DomainId:  domainID,
 				Epoch:     tc.epoch,
@@ -175,7 +175,7 @@ func TestLowestSequenceNumber(t *testing.T) {
 		{"some_token", 0, 0, false},
 		{"", 1, 6, true},
 	} {
-		srv := New(fakeAdmin, fake.NewFakeTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
+		srv := New(fakeAdmin, fake.NewTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
 		seq, err := srv.lowestSequenceNumber(ctx, mapID, tc.token, tc.epoch)
 		if got, want := err == nil, tc.success; got != want {
 			t.Errorf("lowestSequenceNumber(%v, %v): err=%v, want %v", tc.token, tc.epoch, got, want)
