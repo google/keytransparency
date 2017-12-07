@@ -68,13 +68,13 @@ message BatchCreateUserRequest {
   bool add_signing_keys = 4;
 }
 
-// BatchCreateUserRequest creates multiple users at once.
+// BatchCreateUserResponse creates multiple users at once.
 message BatchCreateUserResponse {
   // users returns the list of created users.
   repeated keytransparency.v1.proto.User users = 2;
 }
 
-// BatchUpdateUserRequest creates multiple users all at once.
+// BatchUpdateUserRequest updates multiple users at once.
 message BatchUpdateUserRequest {
    // domain_id identifies the domain.
    string domain_id = 1;
@@ -100,7 +100,7 @@ message BatchUpdateUserResponse {
 // create or update requests.
 // - The update requests this service generates will only be valid for users
 // that have added this service's signing keys to their list of authorized_keys.
-// - This service should carefully controll and log access to it's APIs.
+// - This service should carefully control and log access to it's APIs.
 // - This service should rotate its signing keys periodically.
 //   New signing keys should be published far enough in advance that they can be added
 //   by everyone before they are used to avoid service disruption.
@@ -108,6 +108,8 @@ message BatchUpdateUserResponse {
 // Resources:
 // - domains/apps/keyset
 //   Each combination of domain_id and app_id has it's own keyset.
+//   New domain and app combinations must be manually created and authorized with the
+//   appropriate Key Transparency server.
 // - domains/apps/users
 //   Users can be created and updated through this endpoint.
 service UserManagerService {
