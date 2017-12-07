@@ -21,37 +21,44 @@ import (
 	"google.golang.org/grpc"
 )
 
-type logServer struct {
+// LogServer only stores tree size.
+type LogServer struct {
 	treeSize int64
 }
 
 // NewFakeTrillianLogClient returns a fake trillian log client.
-func NewFakeTrillianLogClient() trillian.TrillianLogClient {
-	return &logServer{}
+func NewFakeTrillianLogClient() *LogServer {
+	return &LogServer{}
 }
 
-func (l *logServer) QueueLeaf(ctx context.Context, in *trillian.QueueLeafRequest, opts ...grpc.CallOption) (*trillian.QueueLeafResponse, error) {
+// QueueLeaf increments the size of the tree.
+func (l *LogServer) QueueLeaf(ctx context.Context, in *trillian.QueueLeafRequest, opts ...grpc.CallOption) (*trillian.QueueLeafResponse, error) {
 	l.treeSize++
 	return nil, nil
 }
 
-func (l *logServer) QueueLeaves(ctx context.Context, in *trillian.QueueLeavesRequest, opts ...grpc.CallOption) (*trillian.QueueLeavesResponse, error) {
+// QueueLeaves is not implemented.
+func (l *LogServer) QueueLeaves(ctx context.Context, in *trillian.QueueLeavesRequest, opts ...grpc.CallOption) (*trillian.QueueLeavesResponse, error) {
 	panic("not implemented")
 }
 
-func (l *logServer) GetInclusionProof(ctx context.Context, in *trillian.GetInclusionProofRequest, opts ...grpc.CallOption) (*trillian.GetInclusionProofResponse, error) {
+// GetInclusionProof returns an empty proof.
+func (l *LogServer) GetInclusionProof(ctx context.Context, in *trillian.GetInclusionProofRequest, opts ...grpc.CallOption) (*trillian.GetInclusionProofResponse, error) {
 	return &trillian.GetInclusionProofResponse{}, nil
 }
 
-func (l *logServer) GetInclusionProofByHash(ctx context.Context, in *trillian.GetInclusionProofByHashRequest, opts ...grpc.CallOption) (*trillian.GetInclusionProofByHashResponse, error) {
+// GetInclusionProofByHash is not implemented.
+func (l *LogServer) GetInclusionProofByHash(ctx context.Context, in *trillian.GetInclusionProofByHashRequest, opts ...grpc.CallOption) (*trillian.GetInclusionProofByHashResponse, error) {
 	panic("not implemented")
 }
 
-func (l *logServer) GetConsistencyProof(ctx context.Context, in *trillian.GetConsistencyProofRequest, opts ...grpc.CallOption) (*trillian.GetConsistencyProofResponse, error) {
+// GetConsistencyProof returns an empty proof.
+func (l *LogServer) GetConsistencyProof(ctx context.Context, in *trillian.GetConsistencyProofRequest, opts ...grpc.CallOption) (*trillian.GetConsistencyProofResponse, error) {
 	return &trillian.GetConsistencyProofResponse{}, nil
 }
 
-func (l *logServer) GetLatestSignedLogRoot(ctx context.Context, in *trillian.GetLatestSignedLogRootRequest, opts ...grpc.CallOption) (*trillian.GetLatestSignedLogRootResponse, error) {
+// GetLatestSignedLogRoot returns the current tree size.
+func (l *LogServer) GetLatestSignedLogRoot(ctx context.Context, in *trillian.GetLatestSignedLogRootRequest, opts ...grpc.CallOption) (*trillian.GetLatestSignedLogRootResponse, error) {
 	return &trillian.GetLatestSignedLogRootResponse{
 		SignedLogRoot: &trillian.SignedLogRoot{
 			TreeSize: l.treeSize,
@@ -59,18 +66,22 @@ func (l *logServer) GetLatestSignedLogRoot(ctx context.Context, in *trillian.Get
 	}, nil
 }
 
-func (l *logServer) GetSequencedLeafCount(ctx context.Context, in *trillian.GetSequencedLeafCountRequest, opts ...grpc.CallOption) (*trillian.GetSequencedLeafCountResponse, error) {
+// GetSequencedLeafCount is not implemented.
+func (l *LogServer) GetSequencedLeafCount(ctx context.Context, in *trillian.GetSequencedLeafCountRequest, opts ...grpc.CallOption) (*trillian.GetSequencedLeafCountResponse, error) {
 	panic("not implemented")
 }
 
-func (l *logServer) GetLeavesByIndex(ctx context.Context, in *trillian.GetLeavesByIndexRequest, opts ...grpc.CallOption) (*trillian.GetLeavesByIndexResponse, error) {
+// GetLeavesByIndex is not implemented.
+func (l *LogServer) GetLeavesByIndex(ctx context.Context, in *trillian.GetLeavesByIndexRequest, opts ...grpc.CallOption) (*trillian.GetLeavesByIndexResponse, error) {
 	panic("not implemented")
 }
 
-func (l *logServer) GetLeavesByHash(ctx context.Context, in *trillian.GetLeavesByHashRequest, opts ...grpc.CallOption) (*trillian.GetLeavesByHashResponse, error) {
+// GetLeavesByHash is not implemented.
+func (l *LogServer) GetLeavesByHash(ctx context.Context, in *trillian.GetLeavesByHashRequest, opts ...grpc.CallOption) (*trillian.GetLeavesByHashResponse, error) {
 	panic("not implemented")
 }
 
-func (l *logServer) GetEntryAndProof(ctx context.Context, in *trillian.GetEntryAndProofRequest, opts ...grpc.CallOption) (*trillian.GetEntryAndProofResponse, error) {
+// GetEntryAndProof is not implemented.
+func (l *LogServer) GetEntryAndProof(ctx context.Context, in *trillian.GetEntryAndProofRequest, opts ...grpc.CallOption) (*trillian.GetEntryAndProofResponse, error) {
 	panic("not implemented")
 }
