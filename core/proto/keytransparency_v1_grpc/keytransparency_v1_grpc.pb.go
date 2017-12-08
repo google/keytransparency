@@ -16,6 +16,15 @@ It is generated from these files:
 	proto/keytransparency_v1_grpc/keytransparency_v1_mutations_grpc.proto
 
 It has these top-level messages:
+	Domain
+	ListDomainsRequest
+	ListDomainsResponse
+	GetDomainRequest
+	GetDomainResponse
+	CreateDomainRequest
+	CreateDomainResponse
+	DeleteDomainRequest
+	UndeleteDomainRequest
 */
 package keytransparency_v1_grpc
 

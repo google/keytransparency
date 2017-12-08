@@ -21,11 +21,82 @@ option go_package = "github.com/google/keytransparency/core/proto/keytransparenc
 // The Key Transparency Service API consists of a map of user names to public
 // keys. Each user name also has a history of public keys that have been
 // associated with it.
-package keytransparency.v1.grpc;
+package google.keytransparency.v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "proto/keytransparency_v1_proto/keytransparency_v1_admin_proto.proto";
+import "google/protobuf/duration.proto";
+import "trillian.proto";
+import "crypto/keyspb/keyspb.proto";
+
+
+// Domain contains information on a single domain
+message Domain {
+  // DomainId can be any URL safe string.
+  string domain_id = 1;
+  // Log contains the Log-Tree's info.
+  trillian.Tree log = 2;
+  // Map contains the Map-Tree's info.
+  trillian.Tree map = 3;
+  // Vrf contains the VRF public key.
+  keyspb.PublicKey vrf = 4;
+  // min_interval is the minimum time between epochs. 
+  google.protobuf.Duration min_interval = 5;
+  // max_interval is the maximum time between epochs. 
+  google.protobuf.Duration max_interval = 6;
+  // Deleted indicates whether the domain has been marked as deleted.
+  // By its presence in a response, this domain has not been garbage collected.
+  bool deleted = 7;
+}
+
+// ListDomains request.
+// No pagination options are provided.
+message ListDomainsRequest{
+  // showDeleted requests domains that have been marked for deletion
+  // but have not been garbage collected.
+  bool show_deleted = 1;
+}
+
+// ListDomains response contains domains.
+message ListDomainsResponse{
+  repeated Domain domains = 1;
+}
+
+// GetDomainRequest specifies the domain to retrieve information for.
+message GetDomainRequest {
+  string domain_id = 1;
+  // showDeleted requests domains that have been marked for deletion
+  // but have not been garbage collected.
+  bool show_deleted = 2;
+}
+
+// GetDomainResponse contains the configuration info for one domain.
+message GetDomainResponse {
+  Domain domain = 1;
+}
+
+// CreateDomainRequest creates a new domain
+message CreateDomainRequest {
+  string domain_id = 1;
+  google.protobuf.Duration min_interval = 2;
+  google.protobuf.Duration max_interval = 3;
+}
+
+// CreateDomainResponse contains the configuration info for the new domain.
+message CreateDomainResponse {
+  Domain domain = 1;
+}
+
+// DeleteDomainRequest deletes a domain
+message DeleteDomainRequest {
+  string domain_id = 1;
+}
+
+// UndeleteDomainRequest deletes a domain
+message UndeleteDomainRequest {
+  string domain_id = 1;
+}
+
 
 // The KeyTransparencyAdminService API provides the following resources:
 // - Domains 
@@ -37,12 +108,12 @@ service KeyTransparencyAdminService {
 
   // ListDomains returns a list of all domains this Key Transparency server
   // operates on.
-  rpc ListDomains(keytransparency.v1.proto.ListDomainsRequest) returns (keytransparency.v1.proto.ListDomainsResponse) {
+  rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse) {
     option (google.api.http) = { get: "/v1/domains" };
   }
 
   // GetDomain returns the confiuration information for a given domain.
-  rpc GetDomain(keytransparency.v1.proto.GetDomainRequest) returns (keytransparency.v1.proto.GetDomainResponse) {
+  rpc GetDomain(GetDomainRequest) returns (GetDomainResponse) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}" };
   }
 
@@ -50,7 +121,7 @@ service KeyTransparencyAdminService {
   // be provided.  To create a new domain with the same name as a previously
   // deleted domain, a user must wait X days until the domain is garbage
   // collected.
-  rpc CreateDomain(keytransparency.v1.proto.CreateDomainRequest) returns (keytransparency.v1.proto.CreateDomainResponse) {
+  rpc CreateDomain(CreateDomainRequest) returns (CreateDomainResponse) {
     option (google.api.http) = {
       post: "/v1/domains"
       body: "*"
@@ -59,7 +130,7 @@ service KeyTransparencyAdminService {
 
   // DeleteDomain marks a domain as deleted.  Domains will be garbage collected
   // after X days.
-  rpc DeleteDomain(keytransparency.v1.proto.DeleteDomainRequest) returns (google.protobuf.Empty) {
+  rpc DeleteDomain(DeleteDomainRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/domains/{domain_id}"
     };
@@ -67,7 +138,7 @@ service KeyTransparencyAdminService {
 
   // UndeleteDomain marks a previously deleted domain as active if it has not
   // already been garbage collected.
-  rpc UndeleteDomain(keytransparency.v1.proto.UndeleteDomainRequest) returns (google.protobuf.Empty) {
+  rpc UndeleteDomain(UndeleteDomainRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/domains/{domain_id}:undelete"
     };

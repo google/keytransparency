@@ -8,7 +8,9 @@ import fmt "fmt"
 import math "math"
 import _ "google.golang.org/genproto/googleapis/api/annotations"
 import google_protobuf4 "github.com/golang/protobuf/ptypes/empty"
-import keytransparency_v1_proto1 "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+import google_protobuf2 "github.com/golang/protobuf/ptypes/duration"
+import trillian "github.com/google/trillian"
+import keyspb "github.com/google/trillian/crypto/keyspb"
 
 import (
 	context "golang.org/x/net/context"
@@ -19,6 +21,256 @@ import (
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// Domain contains information on a single domain
+type Domain struct {
+	// DomainId can be any URL safe string.
+	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
+	// Log contains the Log-Tree's info.
+	Log *trillian.Tree `protobuf:"bytes,2,opt,name=log" json:"log,omitempty"`
+	// Map contains the Map-Tree's info.
+	Map *trillian.Tree `protobuf:"bytes,3,opt,name=map" json:"map,omitempty"`
+	// Vrf contains the VRF public key.
+	Vrf *keyspb.PublicKey `protobuf:"bytes,4,opt,name=vrf" json:"vrf,omitempty"`
+	// min_interval is the minimum time between epochs.
+	MinInterval *google_protobuf2.Duration `protobuf:"bytes,5,opt,name=min_interval,json=minInterval" json:"min_interval,omitempty"`
+	// max_interval is the maximum time between epochs.
+	MaxInterval *google_protobuf2.Duration `protobuf:"bytes,6,opt,name=max_interval,json=maxInterval" json:"max_interval,omitempty"`
+	// Deleted indicates whether the domain has been marked as deleted.
+	// By its presence in a response, this domain has not been garbage collected.
+	Deleted bool `protobuf:"varint,7,opt,name=deleted" json:"deleted,omitempty"`
+}
+
+func (m *Domain) Reset()                    { *m = Domain{} }
+func (m *Domain) String() string            { return proto.CompactTextString(m) }
+func (*Domain) ProtoMessage()               {}
+func (*Domain) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+
+func (m *Domain) GetDomainId() string {
+	if m != nil {
+		return m.DomainId
+	}
+	return ""
+}
+
+func (m *Domain) GetLog() *trillian.Tree {
+	if m != nil {
+		return m.Log
+	}
+	return nil
+}
+
+func (m *Domain) GetMap() *trillian.Tree {
+	if m != nil {
+		return m.Map
+	}
+	return nil
+}
+
+func (m *Domain) GetVrf() *keyspb.PublicKey {
+	if m != nil {
+		return m.Vrf
+	}
+	return nil
+}
+
+func (m *Domain) GetMinInterval() *google_protobuf2.Duration {
+	if m != nil {
+		return m.MinInterval
+	}
+	return nil
+}
+
+func (m *Domain) GetMaxInterval() *google_protobuf2.Duration {
+	if m != nil {
+		return m.MaxInterval
+	}
+	return nil
+}
+
+func (m *Domain) GetDeleted() bool {
+	if m != nil {
+		return m.Deleted
+	}
+	return false
+}
+
+// ListDomains request.
+// No pagination options are provided.
+type ListDomainsRequest struct {
+	// showDeleted requests domains that have been marked for deletion
+	// but have not been garbage collected.
+	ShowDeleted bool `protobuf:"varint,1,opt,name=show_deleted,json=showDeleted" json:"show_deleted,omitempty"`
+}
+
+func (m *ListDomainsRequest) Reset()                    { *m = ListDomainsRequest{} }
+func (m *ListDomainsRequest) String() string            { return proto.CompactTextString(m) }
+func (*ListDomainsRequest) ProtoMessage()               {}
+func (*ListDomainsRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+
+func (m *ListDomainsRequest) GetShowDeleted() bool {
+	if m != nil {
+		return m.ShowDeleted
+	}
+	return false
+}
+
+// ListDomains response contains domains.
+type ListDomainsResponse struct {
+	Domains []*Domain `protobuf:"bytes,1,rep,name=domains" json:"domains,omitempty"`
+}
+
+func (m *ListDomainsResponse) Reset()                    { *m = ListDomainsResponse{} }
+func (m *ListDomainsResponse) String() string            { return proto.CompactTextString(m) }
+func (*ListDomainsResponse) ProtoMessage()               {}
+func (*ListDomainsResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+
+func (m *ListDomainsResponse) GetDomains() []*Domain {
+	if m != nil {
+		return m.Domains
+	}
+	return nil
+}
+
+// GetDomainRequest specifies the domain to retrieve information for.
+type GetDomainRequest struct {
+	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
+	// showDeleted requests domains that have been marked for deletion
+	// but have not been garbage collected.
+	ShowDeleted bool `protobuf:"varint,2,opt,name=show_deleted,json=showDeleted" json:"show_deleted,omitempty"`
+}
+
+func (m *GetDomainRequest) Reset()                    { *m = GetDomainRequest{} }
+func (m *GetDomainRequest) String() string            { return proto.CompactTextString(m) }
+func (*GetDomainRequest) ProtoMessage()               {}
+func (*GetDomainRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
+
+func (m *GetDomainRequest) GetDomainId() string {
+	if m != nil {
+		return m.DomainId
+	}
+	return ""
+}
+
+func (m *GetDomainRequest) GetShowDeleted() bool {
+	if m != nil {
+		return m.ShowDeleted
+	}
+	return false
+}
+
+// GetDomainResponse contains the configuration info for one domain.
+type GetDomainResponse struct {
+	Domain *Domain `protobuf:"bytes,1,opt,name=domain" json:"domain,omitempty"`
+}
+
+func (m *GetDomainResponse) Reset()                    { *m = GetDomainResponse{} }
+func (m *GetDomainResponse) String() string            { return proto.CompactTextString(m) }
+func (*GetDomainResponse) ProtoMessage()               {}
+func (*GetDomainResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
+
+func (m *GetDomainResponse) GetDomain() *Domain {
+	if m != nil {
+		return m.Domain
+	}
+	return nil
+}
+
+// CreateDomainRequest creates a new domain
+type CreateDomainRequest struct {
+	DomainId    string                     `protobuf:"bytes,1,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
+	MinInterval *google_protobuf2.Duration `protobuf:"bytes,2,opt,name=min_interval,json=minInterval" json:"min_interval,omitempty"`
+	MaxInterval *google_protobuf2.Duration `protobuf:"bytes,3,opt,name=max_interval,json=maxInterval" json:"max_interval,omitempty"`
+}
+
+func (m *CreateDomainRequest) Reset()                    { *m = CreateDomainRequest{} }
+func (m *CreateDomainRequest) String() string            { return proto.CompactTextString(m) }
+func (*CreateDomainRequest) ProtoMessage()               {}
+func (*CreateDomainRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
+
+func (m *CreateDomainRequest) GetDomainId() string {
+	if m != nil {
+		return m.DomainId
+	}
+	return ""
+}
+
+func (m *CreateDomainRequest) GetMinInterval() *google_protobuf2.Duration {
+	if m != nil {
+		return m.MinInterval
+	}
+	return nil
+}
+
+func (m *CreateDomainRequest) GetMaxInterval() *google_protobuf2.Duration {
+	if m != nil {
+		return m.MaxInterval
+	}
+	return nil
+}
+
+// CreateDomainResponse contains the configuration info for the new domain.
+type CreateDomainResponse struct {
+	Domain *Domain `protobuf:"bytes,1,opt,name=domain" json:"domain,omitempty"`
+}
+
+func (m *CreateDomainResponse) Reset()                    { *m = CreateDomainResponse{} }
+func (m *CreateDomainResponse) String() string            { return proto.CompactTextString(m) }
+func (*CreateDomainResponse) ProtoMessage()               {}
+func (*CreateDomainResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{6} }
+
+func (m *CreateDomainResponse) GetDomain() *Domain {
+	if m != nil {
+		return m.Domain
+	}
+	return nil
+}
+
+// DeleteDomainRequest deletes a domain
+type DeleteDomainRequest struct {
+	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
+}
+
+func (m *DeleteDomainRequest) Reset()                    { *m = DeleteDomainRequest{} }
+func (m *DeleteDomainRequest) String() string            { return proto.CompactTextString(m) }
+func (*DeleteDomainRequest) ProtoMessage()               {}
+func (*DeleteDomainRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{7} }
+
+func (m *DeleteDomainRequest) GetDomainId() string {
+	if m != nil {
+		return m.DomainId
+	}
+	return ""
+}
+
+// UndeleteDomainRequest deletes a domain
+type UndeleteDomainRequest struct {
+	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
+}
+
+func (m *UndeleteDomainRequest) Reset()                    { *m = UndeleteDomainRequest{} }
+func (m *UndeleteDomainRequest) String() string            { return proto.CompactTextString(m) }
+func (*UndeleteDomainRequest) ProtoMessage()               {}
+func (*UndeleteDomainRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
+
+func (m *UndeleteDomainRequest) GetDomainId() string {
+	if m != nil {
+		return m.DomainId
+	}
+	return ""
+}
+
+func init() {
+	proto.RegisterType((*Domain)(nil), "google.keytransparency.v1.Domain")
+	proto.RegisterType((*ListDomainsRequest)(nil), "google.keytransparency.v1.ListDomainsRequest")
+	proto.RegisterType((*ListDomainsResponse)(nil), "google.keytransparency.v1.ListDomainsResponse")
+	proto.RegisterType((*GetDomainRequest)(nil), "google.keytransparency.v1.GetDomainRequest")
+	proto.RegisterType((*GetDomainResponse)(nil), "google.keytransparency.v1.GetDomainResponse")
+	proto.RegisterType((*CreateDomainRequest)(nil), "google.keytransparency.v1.CreateDomainRequest")
+	proto.RegisterType((*CreateDomainResponse)(nil), "google.keytransparency.v1.CreateDomainResponse")
+	proto.RegisterType((*DeleteDomainRequest)(nil), "google.keytransparency.v1.DeleteDomainRequest")
+	proto.RegisterType((*UndeleteDomainRequest)(nil), "google.keytransparency.v1.UndeleteDomainRequest")
+}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
@@ -33,20 +285,20 @@ const _ = grpc.SupportPackageIsVersion4
 type KeyTransparencyAdminServiceClient interface {
 	// ListDomains returns a list of all domains this Key Transparency server
 	// operates on.
-	ListDomains(ctx context.Context, in *keytransparency_v1_proto1.ListDomainsRequest, opts ...grpc.CallOption) (*keytransparency_v1_proto1.ListDomainsResponse, error)
+	ListDomains(ctx context.Context, in *ListDomainsRequest, opts ...grpc.CallOption) (*ListDomainsResponse, error)
 	// GetDomain returns the confiuration information for a given domain.
-	GetDomain(ctx context.Context, in *keytransparency_v1_proto1.GetDomainRequest, opts ...grpc.CallOption) (*keytransparency_v1_proto1.GetDomainResponse, error)
+	GetDomain(ctx context.Context, in *GetDomainRequest, opts ...grpc.CallOption) (*GetDomainResponse, error)
 	// CreateDomain creates a new Trillian log/map pair.  A unique domainId must
 	// be provided.  To create a new domain with the same name as a previously
 	// deleted domain, a user must wait X days until the domain is garbage
 	// collected.
-	CreateDomain(ctx context.Context, in *keytransparency_v1_proto1.CreateDomainRequest, opts ...grpc.CallOption) (*keytransparency_v1_proto1.CreateDomainResponse, error)
+	CreateDomain(ctx context.Context, in *CreateDomainRequest, opts ...grpc.CallOption) (*CreateDomainResponse, error)
 	// DeleteDomain marks a domain as deleted.  Domains will be garbage collected
 	// after X days.
-	DeleteDomain(ctx context.Context, in *keytransparency_v1_proto1.DeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error)
+	DeleteDomain(ctx context.Context, in *DeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error)
 	// UndeleteDomain marks a previously deleted domain as active if it has not
 	// already been garbage collected.
-	UndeleteDomain(ctx context.Context, in *keytransparency_v1_proto1.UndeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error)
+	UndeleteDomain(ctx context.Context, in *UndeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error)
 }
 
 type keyTransparencyAdminServiceClient struct {
@@ -57,45 +309,45 @@ func NewKeyTransparencyAdminServiceClient(cc *grpc.ClientConn) KeyTransparencyAd
 	return &keyTransparencyAdminServiceClient{cc}
 }
 
-func (c *keyTransparencyAdminServiceClient) ListDomains(ctx context.Context, in *keytransparency_v1_proto1.ListDomainsRequest, opts ...grpc.CallOption) (*keytransparency_v1_proto1.ListDomainsResponse, error) {
-	out := new(keytransparency_v1_proto1.ListDomainsResponse)
-	err := grpc.Invoke(ctx, "/keytransparency.v1.grpc.KeyTransparencyAdminService/ListDomains", in, out, c.cc, opts...)
+func (c *keyTransparencyAdminServiceClient) ListDomains(ctx context.Context, in *ListDomainsRequest, opts ...grpc.CallOption) (*ListDomainsResponse, error) {
+	out := new(ListDomainsResponse)
+	err := grpc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparencyAdminService/ListDomains", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencyAdminServiceClient) GetDomain(ctx context.Context, in *keytransparency_v1_proto1.GetDomainRequest, opts ...grpc.CallOption) (*keytransparency_v1_proto1.GetDomainResponse, error) {
-	out := new(keytransparency_v1_proto1.GetDomainResponse)
-	err := grpc.Invoke(ctx, "/keytransparency.v1.grpc.KeyTransparencyAdminService/GetDomain", in, out, c.cc, opts...)
+func (c *keyTransparencyAdminServiceClient) GetDomain(ctx context.Context, in *GetDomainRequest, opts ...grpc.CallOption) (*GetDomainResponse, error) {
+	out := new(GetDomainResponse)
+	err := grpc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparencyAdminService/GetDomain", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencyAdminServiceClient) CreateDomain(ctx context.Context, in *keytransparency_v1_proto1.CreateDomainRequest, opts ...grpc.CallOption) (*keytransparency_v1_proto1.CreateDomainResponse, error) {
-	out := new(keytransparency_v1_proto1.CreateDomainResponse)
-	err := grpc.Invoke(ctx, "/keytransparency.v1.grpc.KeyTransparencyAdminService/CreateDomain", in, out, c.cc, opts...)
+func (c *keyTransparencyAdminServiceClient) CreateDomain(ctx context.Context, in *CreateDomainRequest, opts ...grpc.CallOption) (*CreateDomainResponse, error) {
+	out := new(CreateDomainResponse)
+	err := grpc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparencyAdminService/CreateDomain", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencyAdminServiceClient) DeleteDomain(ctx context.Context, in *keytransparency_v1_proto1.DeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error) {
+func (c *keyTransparencyAdminServiceClient) DeleteDomain(ctx context.Context, in *DeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error) {
 	out := new(google_protobuf4.Empty)
-	err := grpc.Invoke(ctx, "/keytransparency.v1.grpc.KeyTransparencyAdminService/DeleteDomain", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparencyAdminService/DeleteDomain", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencyAdminServiceClient) UndeleteDomain(ctx context.Context, in *keytransparency_v1_proto1.UndeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error) {
+func (c *keyTransparencyAdminServiceClient) UndeleteDomain(ctx context.Context, in *UndeleteDomainRequest, opts ...grpc.CallOption) (*google_protobuf4.Empty, error) {
 	out := new(google_protobuf4.Empty)
-	err := grpc.Invoke(ctx, "/keytransparency.v1.grpc.KeyTransparencyAdminService/UndeleteDomain", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparencyAdminService/UndeleteDomain", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,20 +359,20 @@ func (c *keyTransparencyAdminServiceClient) UndeleteDomain(ctx context.Context, 
 type KeyTransparencyAdminServiceServer interface {
 	// ListDomains returns a list of all domains this Key Transparency server
 	// operates on.
-	ListDomains(context.Context, *keytransparency_v1_proto1.ListDomainsRequest) (*keytransparency_v1_proto1.ListDomainsResponse, error)
+	ListDomains(context.Context, *ListDomainsRequest) (*ListDomainsResponse, error)
 	// GetDomain returns the confiuration information for a given domain.
-	GetDomain(context.Context, *keytransparency_v1_proto1.GetDomainRequest) (*keytransparency_v1_proto1.GetDomainResponse, error)
+	GetDomain(context.Context, *GetDomainRequest) (*GetDomainResponse, error)
 	// CreateDomain creates a new Trillian log/map pair.  A unique domainId must
 	// be provided.  To create a new domain with the same name as a previously
 	// deleted domain, a user must wait X days until the domain is garbage
 	// collected.
-	CreateDomain(context.Context, *keytransparency_v1_proto1.CreateDomainRequest) (*keytransparency_v1_proto1.CreateDomainResponse, error)
+	CreateDomain(context.Context, *CreateDomainRequest) (*CreateDomainResponse, error)
 	// DeleteDomain marks a domain as deleted.  Domains will be garbage collected
 	// after X days.
-	DeleteDomain(context.Context, *keytransparency_v1_proto1.DeleteDomainRequest) (*google_protobuf4.Empty, error)
+	DeleteDomain(context.Context, *DeleteDomainRequest) (*google_protobuf4.Empty, error)
 	// UndeleteDomain marks a previously deleted domain as active if it has not
 	// already been garbage collected.
-	UndeleteDomain(context.Context, *keytransparency_v1_proto1.UndeleteDomainRequest) (*google_protobuf4.Empty, error)
+	UndeleteDomain(context.Context, *UndeleteDomainRequest) (*google_protobuf4.Empty, error)
 }
 
 func RegisterKeyTransparencyAdminServiceServer(s *grpc.Server, srv KeyTransparencyAdminServiceServer) {
@@ -128,7 +380,7 @@ func RegisterKeyTransparencyAdminServiceServer(s *grpc.Server, srv KeyTransparen
 }
 
 func _KeyTransparencyAdminService_ListDomains_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(keytransparency_v1_proto1.ListDomainsRequest)
+	in := new(ListDomainsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -137,16 +389,16 @@ func _KeyTransparencyAdminService_ListDomains_Handler(srv interface{}, ctx conte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/keytransparency.v1.grpc.KeyTransparencyAdminService/ListDomains",
+		FullMethod: "/google.keytransparency.v1.KeyTransparencyAdminService/ListDomains",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyAdminServiceServer).ListDomains(ctx, req.(*keytransparency_v1_proto1.ListDomainsRequest))
+		return srv.(KeyTransparencyAdminServiceServer).ListDomains(ctx, req.(*ListDomainsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _KeyTransparencyAdminService_GetDomain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(keytransparency_v1_proto1.GetDomainRequest)
+	in := new(GetDomainRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -155,16 +407,16 @@ func _KeyTransparencyAdminService_GetDomain_Handler(srv interface{}, ctx context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/keytransparency.v1.grpc.KeyTransparencyAdminService/GetDomain",
+		FullMethod: "/google.keytransparency.v1.KeyTransparencyAdminService/GetDomain",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyAdminServiceServer).GetDomain(ctx, req.(*keytransparency_v1_proto1.GetDomainRequest))
+		return srv.(KeyTransparencyAdminServiceServer).GetDomain(ctx, req.(*GetDomainRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _KeyTransparencyAdminService_CreateDomain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(keytransparency_v1_proto1.CreateDomainRequest)
+	in := new(CreateDomainRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -173,16 +425,16 @@ func _KeyTransparencyAdminService_CreateDomain_Handler(srv interface{}, ctx cont
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/keytransparency.v1.grpc.KeyTransparencyAdminService/CreateDomain",
+		FullMethod: "/google.keytransparency.v1.KeyTransparencyAdminService/CreateDomain",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyAdminServiceServer).CreateDomain(ctx, req.(*keytransparency_v1_proto1.CreateDomainRequest))
+		return srv.(KeyTransparencyAdminServiceServer).CreateDomain(ctx, req.(*CreateDomainRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _KeyTransparencyAdminService_DeleteDomain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(keytransparency_v1_proto1.DeleteDomainRequest)
+	in := new(DeleteDomainRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -191,16 +443,16 @@ func _KeyTransparencyAdminService_DeleteDomain_Handler(srv interface{}, ctx cont
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/keytransparency.v1.grpc.KeyTransparencyAdminService/DeleteDomain",
+		FullMethod: "/google.keytransparency.v1.KeyTransparencyAdminService/DeleteDomain",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyAdminServiceServer).DeleteDomain(ctx, req.(*keytransparency_v1_proto1.DeleteDomainRequest))
+		return srv.(KeyTransparencyAdminServiceServer).DeleteDomain(ctx, req.(*DeleteDomainRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _KeyTransparencyAdminService_UndeleteDomain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(keytransparency_v1_proto1.UndeleteDomainRequest)
+	in := new(UndeleteDomainRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -209,16 +461,16 @@ func _KeyTransparencyAdminService_UndeleteDomain_Handler(srv interface{}, ctx co
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/keytransparency.v1.grpc.KeyTransparencyAdminService/UndeleteDomain",
+		FullMethod: "/google.keytransparency.v1.KeyTransparencyAdminService/UndeleteDomain",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyAdminServiceServer).UndeleteDomain(ctx, req.(*keytransparency_v1_proto1.UndeleteDomainRequest))
+		return srv.(KeyTransparencyAdminServiceServer).UndeleteDomain(ctx, req.(*UndeleteDomainRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 var _KeyTransparencyAdminService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "keytransparency.v1.grpc.KeyTransparencyAdminService",
+	ServiceName: "google.keytransparency.v1.KeyTransparencyAdminService",
 	HandlerType: (*KeyTransparencyAdminServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -251,29 +503,47 @@ func init() {
 }
 
 var fileDescriptor1 = []byte{
-	// 375 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x93, 0xcf, 0x4a, 0xc3, 0x40,
-	0x10, 0xc6, 0xa9, 0xa0, 0x60, 0x5a, 0x45, 0x22, 0xb4, 0xd8, 0x0a, 0x4a, 0x4f, 0x12, 0x75, 0x97,
-	0xea, 0xad, 0xb7, 0xda, 0xaa, 0x07, 0x3d, 0xf9, 0xe7, 0xe2, 0xa5, 0x6c, 0x93, 0x31, 0x2e, 0x36,
-	0xbb, 0x31, 0xd9, 0x04, 0x82, 0x88, 0xa0, 0xf8, 0x04, 0xbe, 0x86, 0x6f, 0xe3, 0x2b, 0xf8, 0x20,
-	0x92, 0xcd, 0x46, 0xd6, 0xd2, 0xd5, 0xdc, 0x92, 0x7c, 0xbf, 0x99, 0xef, 0x9b, 0x30, 0x63, 0x0d,
-	0xc2, 0x88, 0x0b, 0x8e, 0xef, 0x21, 0x13, 0x11, 0x61, 0x71, 0x48, 0x22, 0x60, 0x6e, 0x36, 0x4e,
-	0x7b, 0x63, 0x3f, 0x0a, 0xdd, 0x79, 0xdf, 0x89, 0x17, 0x50, 0x26, 0x55, 0x24, 0x6b, 0xed, 0xd6,
-	0x0c, 0x84, 0xd2, 0x1e, 0xca, 0xe5, 0xf6, 0xa6, 0xcf, 0xb9, 0x3f, 0x05, 0x4c, 0x42, 0x8a, 0x09,
-	0x63, 0x5c, 0x10, 0x41, 0x39, 0x8b, 0x8b, 0xb2, 0x76, 0x47, 0xa9, 0xf2, 0x6d, 0x92, 0xdc, 0x62,
-	0x08, 0x42, 0x91, 0x29, 0x71, 0x68, 0x8c, 0x65, 0x14, 0x8a, 0x5c, 0x52, 0x2e, 0x9a, 0x1c, 0x7c,
-	0x2c, 0x5a, 0x9d, 0x33, 0xc8, 0xae, 0x34, 0x70, 0x90, 0x43, 0x97, 0x10, 0xa5, 0xd4, 0x05, 0xfb,
-	0xd9, 0xaa, 0x9f, 0xd3, 0x58, 0x8c, 0x78, 0x40, 0x28, 0x8b, 0xed, 0x3d, 0x34, 0x67, 0x90, 0xa2,
-	0x9f, 0x86, 0x5d, 0xc0, 0x43, 0x02, 0xb1, 0x68, 0xef, 0x57, 0xa4, 0xe3, 0x90, 0xb3, 0x18, 0xba,
-	0xeb, 0x2f, 0x9f, 0x5f, 0xef, 0x0b, 0x2b, 0x76, 0x1d, 0xa7, 0x3d, 0xec, 0x29, 0xc7, 0xb7, 0x9a,
-	0xb5, 0x7c, 0x0a, 0x8a, 0xb5, 0x1d, 0x73, 0xc7, 0x1f, 0xa8, 0x74, 0xdf, 0xad, 0xc4, 0x2a, 0xef,
-	0x2d, 0xe9, 0xbd, 0x61, 0xb7, 0x34, 0x6f, 0xfc, 0x58, 0x3c, 0x8c, 0xa9, 0xf7, 0x94, 0xe7, 0x68,
-	0x0c, 0x23, 0x20, 0x02, 0x54, 0x94, 0x3f, 0x86, 0xd3, 0xb9, 0x32, 0x0d, 0xaa, 0x8a, 0xab, 0x40,
-	0x4d, 0x19, 0x68, 0xad, 0xab, 0xff, 0x8c, 0x7e, 0xcd, 0xb1, 0x53, 0xab, 0x31, 0x82, 0x29, 0x54,
-	0x89, 0xa1, 0x73, 0x65, 0x8c, 0x26, 0x2a, 0x56, 0x0a, 0x95, 0x2b, 0x85, 0x8e, 0xf3, 0x95, 0x2a,
-	0xe7, 0x77, 0x8c, 0xf3, 0xbf, 0xd6, 0xac, 0xd5, 0x6b, 0xe6, 0xe9, 0xd6, 0xd8, 0x6c, 0xfd, 0x9b,
-	0xfc, 0xcf, 0x7c, 0x47, 0x9a, 0x77, 0x9d, 0x6d, 0x83, 0x79, 0x3f, 0x51, 0xed, 0x8e, 0x4e, 0x6e,
-	0x46, 0x3e, 0x15, 0x77, 0xc9, 0x04, 0xb9, 0x3c, 0xc0, 0xea, 0x3a, 0x66, 0x52, 0x60, 0x97, 0x47,
-	0xea, 0x64, 0x4c, 0x37, 0x3b, 0x59, 0x92, 0xf2, 0xe1, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff, 0x83,
-	0x31, 0xf4, 0x5f, 0xdb, 0x03, 0x00, 0x00,
+	// 661 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x55, 0xc1, 0x6e, 0xd3, 0x30,
+	0x18, 0x56, 0x5a, 0xd6, 0x6d, 0x6e, 0x99, 0x36, 0x17, 0x46, 0x96, 0x21, 0xe8, 0xc2, 0xa5, 0x1a,
+	0x90, 0xb0, 0x82, 0x84, 0x18, 0x5c, 0x06, 0x05, 0x34, 0x0d, 0x21, 0x08, 0xe3, 0xc2, 0xa5, 0x72,
+	0x13, 0xaf, 0xb3, 0x48, 0xe2, 0xe0, 0x38, 0xd9, 0x22, 0xc4, 0x01, 0x84, 0xc4, 0x03, 0xf0, 0x0a,
+	0x9c, 0xb9, 0xf1, 0x24, 0xbc, 0x02, 0x0f, 0x82, 0xe2, 0x38, 0x25, 0xcb, 0xda, 0xd0, 0x69, 0xa7,
+	0xd6, 0xfe, 0xfe, 0xef, 0xff, 0x3f, 0x7f, 0xfe, 0x14, 0x83, 0x9d, 0x80, 0x51, 0x4e, 0xcd, 0xf7,
+	0x38, 0xe1, 0x0c, 0xf9, 0x61, 0x80, 0x18, 0xf6, 0xed, 0x64, 0x10, 0x6f, 0x0d, 0x46, 0x2c, 0xb0,
+	0x27, 0xed, 0x23, 0xc7, 0x23, 0xbe, 0x40, 0x0d, 0xc1, 0x85, 0x6b, 0x23, 0x4a, 0x47, 0x2e, 0x36,
+	0x4a, 0xb5, 0x46, 0xbc, 0xa5, 0x5d, 0xcd, 0x20, 0x13, 0x05, 0xc4, 0x44, 0xbe, 0x4f, 0x39, 0xe2,
+	0x84, 0xfa, 0x61, 0x46, 0xd4, 0xd6, 0x25, 0x2a, 0x56, 0xc3, 0xe8, 0xc0, 0xc4, 0x5e, 0xc0, 0x13,
+	0x09, 0x5e, 0x2b, 0x83, 0x4e, 0xc4, 0x04, 0x5b, 0xe2, 0x4b, 0x9c, 0x11, 0xd7, 0x25, 0x28, 0x5f,
+	0x6b, 0x36, 0x4b, 0x82, 0xec, 0x24, 0x61, 0x30, 0x94, 0x3f, 0x19, 0xa6, 0xff, 0xa8, 0x81, 0x46,
+	0x9f, 0x7a, 0x88, 0xf8, 0x70, 0x1d, 0x2c, 0x3a, 0xe2, 0xdf, 0x80, 0x38, 0xaa, 0xd2, 0x51, 0xba,
+	0x8b, 0xd6, 0x42, 0xb6, 0xb1, 0xeb, 0xc0, 0x0e, 0xa8, 0xbb, 0x74, 0xa4, 0xd6, 0x3a, 0x4a, 0xb7,
+	0xd9, 0x5b, 0x32, 0xc6, 0x13, 0xf6, 0x19, 0xc6, 0x56, 0x0a, 0xa5, 0x15, 0x1e, 0x0a, 0xd4, 0xfa,
+	0xe4, 0x0a, 0x0f, 0x05, 0xf0, 0x06, 0xa8, 0xc7, 0xec, 0x40, 0xbd, 0x20, 0x2a, 0x56, 0x0c, 0xa9,
+	0xe3, 0x55, 0x34, 0x74, 0x89, 0xbd, 0x87, 0x13, 0x2b, 0x45, 0xe1, 0x23, 0xd0, 0x4a, 0x4d, 0x24,
+	0x3e, 0xc7, 0x2c, 0x46, 0xae, 0x3a, 0x27, 0xaa, 0xd7, 0x0c, 0xe9, 0x64, 0x7e, 0x66, 0xa3, 0x2f,
+	0xcf, 0x6c, 0x35, 0x3d, 0xe2, 0xef, 0xca, 0x6a, 0xc1, 0x46, 0xc7, 0xff, 0xd8, 0x8d, 0xff, 0xb3,
+	0xd1, 0xf1, 0x98, 0xad, 0x82, 0x79, 0x07, 0xbb, 0x98, 0x63, 0x47, 0x9d, 0xef, 0x28, 0xdd, 0x05,
+	0x2b, 0x5f, 0xea, 0xf7, 0x01, 0x7c, 0x41, 0x42, 0x9e, 0x39, 0x15, 0x5a, 0xf8, 0x43, 0x84, 0x43,
+	0x0e, 0x37, 0x40, 0x2b, 0x3c, 0xa4, 0x47, 0x83, 0x9c, 0xa4, 0x08, 0x52, 0x33, 0xdd, 0xeb, 0x4b,
+	0xa2, 0x05, 0xda, 0x27, 0x88, 0x61, 0x40, 0xfd, 0x10, 0xc3, 0x87, 0x60, 0x3e, 0xb3, 0x36, 0x54,
+	0x95, 0x4e, 0xbd, 0xdb, 0xec, 0x6d, 0x18, 0x53, 0xa3, 0x62, 0x64, 0x64, 0x2b, 0x67, 0xe8, 0x16,
+	0x58, 0x7e, 0x8e, 0x65, 0xcb, 0x5c, 0x4a, 0xe5, 0xe5, 0x95, 0x75, 0xd6, 0x4e, 0xeb, 0x7c, 0x09,
+	0x56, 0x0a, 0x3d, 0xa5, 0xca, 0x07, 0xa0, 0x91, 0xf5, 0x10, 0x1d, 0x67, 0x12, 0x29, 0x09, 0xfa,
+	0x4f, 0x05, 0xb4, 0x9f, 0x30, 0x8c, 0x38, 0x3e, 0x83, 0xce, 0xf2, 0xdd, 0xd7, 0xce, 0x75, 0xf7,
+	0xf5, 0xb3, 0xdc, 0xbd, 0xfe, 0x1a, 0x5c, 0x3a, 0xa9, 0xf7, 0xfc, 0x1e, 0xf4, 0x40, 0x3b, 0xb3,
+	0x77, 0x76, 0x0b, 0xf4, 0x7b, 0xe0, 0xf2, 0x5b, 0xdf, 0x39, 0x23, 0xab, 0xf7, 0x6b, 0x0e, 0xac,
+	0xef, 0xe1, 0x64, 0xbf, 0xa0, 0x67, 0x27, 0xfd, 0x16, 0xbd, 0xc1, 0x2c, 0x26, 0x36, 0x86, 0x9f,
+	0x15, 0xd0, 0x2c, 0xc4, 0x10, 0xde, 0xae, 0x38, 0xc4, 0xe9, 0x9c, 0x6b, 0xc6, 0xac, 0xe5, 0x99,
+	0x67, 0x7a, 0xfb, 0xcb, 0xef, 0x3f, 0xdf, 0x6b, 0x17, 0x61, 0xd3, 0x8c, 0xb7, 0x4c, 0x99, 0x5a,
+	0xf8, 0x4d, 0x01, 0x8b, 0xe3, 0x88, 0xc1, 0x9b, 0x15, 0x2d, 0xcb, 0xe1, 0xd6, 0x6e, 0xcd, 0x56,
+	0x2c, 0xa7, 0x5f, 0x17, 0xd3, 0xd7, 0xe0, 0x95, 0xc2, 0x74, 0xf3, 0xe3, 0xd8, 0xbc, 0x4f, 0xa9,
+	0x92, 0x56, 0xf1, 0xae, 0x61, 0xd5, 0xf9, 0x26, 0x84, 0x58, 0x33, 0x67, 0xae, 0x97, 0x92, 0x56,
+	0x85, 0xa4, 0x65, 0xbd, 0x68, 0xc8, 0xb6, 0xb2, 0x09, 0x8f, 0x40, 0xab, 0x98, 0x90, 0x4a, 0x21,
+	0x13, 0xa2, 0xa4, 0xad, 0x9e, 0x0a, 0xf7, 0xd3, 0xf4, 0x9d, 0xc8, 0x2d, 0xd8, 0x9c, 0x6a, 0xc1,
+	0x57, 0x05, 0x2c, 0x9d, 0xcc, 0x19, 0xbc, 0x53, 0x31, 0x7b, 0x62, 0x24, 0xa7, 0x4e, 0xef, 0x8a,
+	0xe9, 0xfa, 0x66, 0x67, 0xca, 0xf4, 0xed, 0x48, 0xb6, 0x7b, 0xfc, 0xec, 0x5d, 0x7f, 0x44, 0xf8,
+	0x61, 0x34, 0x34, 0x6c, 0xea, 0x99, 0xf2, 0x59, 0x2b, 0xcd, 0x37, 0x6d, 0xca, 0xe4, 0x5b, 0x37,
+	0xed, 0x2d, 0x1e, 0x36, 0x04, 0x7c, 0xf7, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x53, 0xd5, 0x55,
+	0xf4, 0xb3, 0x07, 0x00, 0x00,
 }
