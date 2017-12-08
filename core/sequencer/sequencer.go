@@ -350,7 +350,6 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNe
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId:    mapID,
 		Index:    indexes,
-		Revision: -1, // Get the latest version.
 	})
 	if err != nil {
 		return err
