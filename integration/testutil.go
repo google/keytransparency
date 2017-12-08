@@ -49,7 +49,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 	_ "github.com/mattn/go-sqlite3"                 // Use sqlite database for testing.

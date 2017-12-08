@@ -38,7 +38,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -130,8 +130,8 @@ func main() {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	gpb.RegisterKeyTransparencyServiceServer(grpcServer, ksvr)
-	gpb.RegisterMutationServiceServer(grpcServer, msrv)
+	pb.RegisterKeyTransparencyServiceServer(grpcServer, ksvr)
+	pb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
@@ -142,8 +142,8 @@ func main() {
 		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
 	}
 	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
-		gpb.RegisterKeyTransparencyServiceHandlerFromEndpoint,
-		gpb.RegisterMutationServiceHandlerFromEndpoint)
+		pb.RegisterKeyTransparencyServiceHandlerFromEndpoint,
+		pb.RegisterMutationServiceHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
