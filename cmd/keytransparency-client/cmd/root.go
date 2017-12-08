@@ -252,7 +252,7 @@ func GetClient(useClientSecret bool) (*grpcc.Client, error) {
 		return nil, fmt.Errorf("Error reading config: %v", err)
 	}
 
-	return grpcc.NewFromConfig(cc, config)
+	return grpcc.NewFromConfig(spb.NewKeyTransparencyServiceClient(cc), config)
 }
 
 // config selects a source for and returns the client configuration.

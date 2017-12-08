@@ -88,7 +88,7 @@ type Client struct {
 }
 
 // NewFromConfig creates a new client from a config
-func NewFromConfig(cc *grpc.ClientConn, config *pb.GetDomainInfoResponse) (*Client, error) {
+func NewFromConfig(ktClient gpb.KeyTransparencyServiceClient, config *pb.GetDomainInfoResponse) (*Client, error) {
 	// Log Hasher.
 	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
 	if err != nil {
@@ -121,18 +121,18 @@ func NewFromConfig(cc *grpc.ClientConn, config *pb.GetDomainInfoResponse) (*Clie
 
 	// TODO(gbelvin): set retry delay.
 	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
-	return New(cc, config.DomainId, vrfPubKey, mapPubKey, mapHasher, logVerifier), nil
+	return New(ktClient, config.DomainId, vrfPubKey, mapPubKey, mapHasher, logVerifier), nil
 }
 
 // New creates a new client.
-func New(cc *grpc.ClientConn,
+func New(ktClient gpb.KeyTransparencyServiceClient,
 	domainID string,
 	vrf vrf.PublicKey,
 	mapPubKey crypto.PublicKey,
 	mapHasher hashers.MapHasher,
 	logVerifier client.LogVerifier) *Client {
 	return &Client{
-		cli:        gpb.NewKeyTransparencyServiceClient(cc),
+		cli:        ktClient,
 		domainID:   domainID,
 		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),

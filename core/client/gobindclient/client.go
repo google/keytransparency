@@ -110,7 +110,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 		}
 	}
 
-	client, err := grpcc.NewFromConfig(cc, config)
+	client, err := grpcc.NewFromConfig(ktClient, config)
 	if err != nil {
 		return fmt.Errorf("Error adding the KtServer: %v", err)
 	}
