@@ -21,9 +21,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto"
 	keypb "github.com/google/keytransparency/core/proto/keymaster_proto"
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 // Server implements pb.UserManagerServiceServer
@@ -42,16 +42,16 @@ func (s *Server) GetKeySet(context.Context, *pb.GetKeySetRequest) (*keypb.KeySet
 
 // CreateUser creates a new user and initializes it.
 // If the user already exists, this operation will fail.
-func (s *Server) CreateUser(context.Context, *pb.CreateUserRequest) (*ktpb.User, error) {
+func (s *Server) CreateUser(context.Context, *pb.CreateUserRequest) (*tpb.User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
 }
 
 // UpdateUser sets the public key for an user.
-func (s *Server) UpdateUser(context.Context, *pb.UpdateUserRequest) (*ktpb.User, error) {
+func (s *Server) UpdateUser(context.Context, *pb.UpdateUserRequest) (*tpb.User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
 }
 
 // BatchCreateUser creates a set of new users.
-func (s *Server) BatchCreateUser(context.Context, *pb.BatchCreateUserRequest) (*ktpb.User, error) {
+func (s *Server) BatchCreateUser(context.Context, *pb.BatchCreateUserRequest) (*tpb.User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
 }
