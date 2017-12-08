@@ -29,7 +29,7 @@ import (
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/storage"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	tcrypto "github.com/google/trillian/crypto"
 )
 

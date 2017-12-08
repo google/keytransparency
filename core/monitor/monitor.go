@@ -29,15 +29,14 @@ import (
 
 	"github.com/golang/glog"
 
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	tcrypto "github.com/google/trillian/crypto"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
-	mClient     gpb.MutationServiceClient
+	mClient     pb.MutationServiceClient
 	signer      *tcrypto.Signer
 	trusted     *trillian.SignedLogRoot
 	mapID       int64
@@ -48,7 +47,7 @@ type Monitor struct {
 }
 
 // NewFromConfig produces a new monitor from a DomainInfo object.
-func NewFromConfig(mclient gpb.MutationServiceClient,
+func NewFromConfig(mclient pb.MutationServiceClient,
 	config *pb.GetDomainInfoResponse,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
@@ -77,7 +76,7 @@ func NewFromConfig(mclient gpb.MutationServiceClient,
 }
 
 // New creates a new instance of the monitor.
-func New(mclient gpb.MutationServiceClient,
+func New(mclient pb.MutationServiceClient,
 	logVerifier client.LogVerifier,
 	mapID int64, mapHasher hashers.MapHasher, mapPubKey crypto.PublicKey,
 	signer *tcrypto.Signer,

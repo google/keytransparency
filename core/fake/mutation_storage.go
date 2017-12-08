@@ -17,7 +17,7 @@ package fake
 import (
 	"github.com/google/keytransparency/core/transaction"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 )
 
 // MutationStorage implements mutator.Mutation

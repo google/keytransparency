@@ -39,8 +39,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 
-	spb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	kpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
@@ -252,17 +251,17 @@ func GetClient(useClientSecret bool) (*grpcc.Client, error) {
 		return nil, fmt.Errorf("Error reading config: %v", err)
 	}
 
-	return grpcc.NewFromConfig(spb.NewKeyTransparencyServiceClient(cc), config)
+	return grpcc.NewFromConfig(pb.NewKeyTransparencyServiceClient(cc), config)
 }
 
 // config selects a source for and returns the client configuration.
-func config(ctx context.Context, cc *grpc.ClientConn) (*kpb.GetDomainInfoResponse, error) {
+func config(ctx context.Context, cc *grpc.ClientConn) (*pb.GetDomainInfoResponse, error) {
 	autoConfig := viper.GetBool("autoconfig")
 	domain := viper.GetString("domain")
 	switch {
 	case autoConfig:
-		ktClient := spb.NewKeyTransparencyServiceClient(cc)
-		return ktClient.GetDomainInfo(ctx, &kpb.GetDomainInfoRequest{
+		ktClient := pb.NewKeyTransparencyServiceClient(cc)
+		return ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{
 			DomainId: domain,
 		})
 	default:
@@ -270,7 +269,7 @@ func config(ctx context.Context, cc *grpc.ClientConn) (*kpb.GetDomainInfoRespons
 	}
 }
 
-func readConfigFromDisk() (*kpb.GetDomainInfoResponse, error) {
+func readConfigFromDisk() (*pb.GetDomainInfoResponse, error) {
 	vrfPubFile := viper.GetString("vrf")
 	logPEMFile := viper.GetString("log-key")
 	mapPEMFile := viper.GetString("map-key")
@@ -305,7 +304,7 @@ func readConfigFromDisk() (*kpb.GetDomainInfoResponse, error) {
 		return nil, fmt.Errorf("error seralizeing map public key: %v", err)
 	}
 
-	return &kpb.GetDomainInfoResponse{
+	return &pb.GetDomainInfoResponse{
 		Log: &trillian.Tree{
 			HashStrategy: trillian.HashStrategy_OBJECT_RFC6962_SHA256,
 			PublicKey:    logPubPB,

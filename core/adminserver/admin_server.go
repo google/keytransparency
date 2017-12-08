@@ -30,8 +30,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	tpb "github.com/google/trillian"
 )
 
@@ -89,7 +88,7 @@ type server struct {
 }
 
 // New returns a KeyTransparencyAdminService implementation.
-func New(storage adminstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) gpb.KeyTransparencyAdminServiceServer {
+func New(storage adminstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) pb.KeyTransparencyAdminServiceServer {
 	return &server{
 		storage:  storage,
 		logAdmin: logAdmin,

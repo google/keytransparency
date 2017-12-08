@@ -31,24 +31,23 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-	"github.com/google/trillian"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	tpb "github.com/google/trillian"
 )
 
 // Server holds internal state for the monitor server core functionality.
 type Server struct {
 	admin     adminstorage.Storage
-	tlog      trillian.TrillianLogClient
-	tmap      trillian.TrillianMapClient
+	tlog      tpb.TrillianLogClient
+	tmap      tpb.TrillianMapClient
 	mutations mutator.MutationStorage
 	factory   transaction.Factory
 }
 
 // New creates a new instance of the monitor server.
 func New(admin adminstorage.Storage,
-	tlog trillian.TrillianLogClient,
-	tmap trillian.TrillianMapClient,
+	tlog tpb.TrillianLogClient,
+	tmap tpb.TrillianMapClient,
 	mutations mutator.MutationStorage, factory transaction.Factory) *Server {
 	return &Server{
 		admin:     admin,
@@ -74,7 +73,7 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	}
 
 	// Get signed map root by revision.
-	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
+	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
 		MapId:    domain.MapID,
 		Revision: in.Epoch,
 	})
@@ -158,10 +157,10 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 	}, nil
 }
 
-func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoch int64) (*trillian.GetLatestSignedLogRootResponse, *trillian.GetConsistencyProofResponse, *trillian.GetInclusionProofResponse, error) {
+func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoch int64) (*tpb.GetLatestSignedLogRootResponse, *tpb.GetConsistencyProofResponse, *tpb.GetInclusionProofResponse, error) {
 	// Lookup log and map info.
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
-		&trillian.GetLatestSignedLogRootRequest{
+		&tpb.GetLatestSignedLogRootRequest{
 			LogId: logID,
 		})
 	if err != nil {
@@ -170,10 +169,10 @@ func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoc
 	}
 	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
 	// Consistency proof.
-	var logConsistency *trillian.GetConsistencyProofResponse
+	var logConsistency *tpb.GetConsistencyProofResponse
 	if firstTreeSize != 0 {
 		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
-			&trillian.GetConsistencyProofRequest{
+			&tpb.GetConsistencyProofRequest{
 				LogId:          logID,
 				FirstTreeSize:  firstTreeSize,
 				SecondTreeSize: secondTreeSize,
@@ -185,7 +184,7 @@ func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoc
 	}
 	// Inclusion proof.
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
-		&trillian.GetInclusionProofRequest{
+		&tpb.GetInclusionProofRequest{
 			LogId: logID,
 			// SignedMapRoot must be in the log at MapRevision.
 			LeafIndex: epoch,
@@ -209,7 +208,7 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, mapID int64, token st
 			return 0, status.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
 		}
 	} else if epoch != 0 {
-		resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &trillian.GetSignedMapRootByRevisionRequest{
+		resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
 			MapId:    mapID,
 			Revision: epoch,
 		})
@@ -226,14 +225,14 @@ func (s *Server) lowestSequenceNumber(ctx context.Context, mapID int64, token st
 	return uint64(lowestSeq), nil
 }
 
-func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [][]byte, epoch int64) ([]*trillian.MapLeafInclusion, error) {
+func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {
 	// Lookup log and map info.
 	domain, err := s.admin.Read(ctx, domainID, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
-	getResp, err := s.tmap.GetLeavesByRevision(ctx, &trillian.GetMapLeavesByRevisionRequest{
+	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    domain.MapID,
 		Index:    indexes,
 		Revision: epoch,
@@ -254,6 +253,6 @@ func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [
 //
 
 // GetMutationsStream is a streaming API similar to GetMutations.
-func (s *Server) GetMutationsStream(in *pb.GetMutationsRequest, stream gpb.MutationService_GetMutationsStreamServer) error {
+func (s *Server) GetMutationsStream(in *pb.GetMutationsRequest, stream pb.MutationService_GetMutationsStreamServer) error {
 	return grpc.Errorf(codes.Unimplemented, "GetMutationsStream is unimplemented")
 }

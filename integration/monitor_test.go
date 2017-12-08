@@ -32,8 +32,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/hashers"
 
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 )
 
 const (
@@ -49,7 +48,7 @@ func TestMonitor(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	c := gpb.NewKeyTransparencyServiceClient(env.Conn)
+	c := pb.NewKeyTransparencyServiceClient(env.Conn)
 	// setup monitor:
 	resp, err := c.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
@@ -70,7 +69,7 @@ func TestMonitor(t *testing.T) {
 	}
 	store := fake.NewMonitorStorage()
 	// TODO(ismail): setup and use a real logVerifier instead:
-	mcc := gpb.NewMutationServiceClient(env.Conn)
+	mcc := pb.NewMutationServiceClient(env.Conn)
 	mon, err := monitor.New(mcc, fake.NewFakeTrillianLogVerifier(),
 		mapTree.TreeId, mapHasher, mapPubKey,
 		crypto.NewSHA256Signer(signer), store)

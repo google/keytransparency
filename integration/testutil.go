@@ -49,8 +49,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 	_ "github.com/mattn/go-sqlite3"                 // Use sqlite database for testing.
@@ -89,7 +88,7 @@ type Env struct {
 	Signer     *sequencer.Sequencer
 	db         *sql.DB
 	Factory    *transaction.Factory
-	Cli        gpb.KeyTransparencyServiceClient
+	Cli        pb.KeyTransparencyServiceClient
 	Domain     *pb.Domain
 }
 
@@ -155,8 +154,8 @@ func NewEnv(t *testing.T) *Env {
 		mutator, auth, authz, factory, mutations)
 	gsvr := grpc.NewServer()
 	msrv := mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory)
-	gpb.RegisterKeyTransparencyServiceServer(gsvr, server)
-	gpb.RegisterMutationServiceServer(gsvr, msrv)
+	pb.RegisterKeyTransparencyServiceServer(gsvr, server)
+	pb.RegisterMutationServiceServer(gsvr, msrv)
 
 	// Sequencer
 	seq := sequencer.New(adminStorage, mapEnv.MapClient, tlog, mutator, mutations, factory)
@@ -169,7 +168,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	ktClient := gpb.NewKeyTransparencyServiceClient(cc)
+	ktClient := pb.NewKeyTransparencyServiceClient(cc)
 	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 

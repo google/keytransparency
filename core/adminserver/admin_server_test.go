@@ -28,7 +28,7 @@ import (
 	"github.com/google/trillian/storage/testdb"
 	"github.com/google/trillian/testonly/integration"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 )
