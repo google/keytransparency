@@ -13,7 +13,6 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"golang.org/x/net/context"
@@ -34,7 +33,7 @@ var (
 )
 
 func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_proto.GetEntryRequest
+	var protoReq GetEntryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -80,7 +79,7 @@ var (
 )
 
 func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_proto.ListEntryHistoryRequest
+	var protoReq ListEntryHistoryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -126,7 +125,7 @@ var (
 )
 
 func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_proto.UpdateEntryRequest
+	var protoReq UpdateEntryRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.EntryUpdate); err != nil {
@@ -172,7 +171,7 @@ func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler
 }
 
 func request_KeyTransparencyService_GetDomainInfo_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq keytransparency_v1_proto.GetDomainInfoRequest
+	var protoReq GetDomainInfoRequest
 	var metadata runtime.ServerMetadata
 
 	var (
