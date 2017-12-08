@@ -20,10 +20,10 @@ option go_package = "github.com/google/keytransparency/core/proto/keytransparenc
 //
 // The Key Transparency mutation server service consists of APIs to fetch
 // mutations.
-package keytransparency.v1.grpc;
+package google.keytransparency.v1;
 
 import "google/api/annotations.proto";
-import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
+import "proto/keytransparency_v1_grpc/keytransparency_v1_grpc.proto";
 
 // The Mutation Service API represents a directory of mutations:
 //
@@ -35,8 +35,8 @@ service MutationService {
   //
   // Returns a list of mutations and their inclusion proofs along with the epoch
   // signed map root.
-  rpc GetMutations(keytransparency.v1.proto.GetMutationsRequest)
-      returns (keytransparency.v1.proto.GetMutationsResponse) {
+  rpc GetMutations(GetMutationsRequest)
+      returns (GetMutationsResponse) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}" };
   }
 
@@ -44,8 +44,8 @@ service MutationService {
   //
   // Returns a list of mutations and their inclusion proofs along with the epoch
   // signed map root.
-  rpc GetMutationsStream(keytransparency.v1.proto.GetMutationsRequest)
-      returns (stream keytransparency.v1.proto.GetMutationsResponse) {
+  rpc GetMutationsStream(GetMutationsRequest)
+      returns (stream GetMutationsResponse) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:stream" };
   }
 }

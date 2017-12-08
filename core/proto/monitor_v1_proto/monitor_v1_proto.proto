@@ -20,7 +20,7 @@ option go_package = "github.com/google/keytransparency/core/proto/monitor_v1_pro
 //
 package monitor.v1.proto;
 
-import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
+import "proto/keytransparency_v1_grpc/keytransparency_v1_grpc.proto";
 import "trillian.proto";
 
 // GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
@@ -57,5 +57,5 @@ message GetMonitoringResponse {
   // error_data contains the original response from the mutations API if and
   // only if at least one verification step failed. It can be used to re-run the
   // verification steps.
-  keytransparency.v1.proto.GetMutationsResponse error_data = 4;
+  google.keytransparency.v1.GetMutationsResponse error_data = 4;
  }
