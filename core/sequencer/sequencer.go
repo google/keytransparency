@@ -348,8 +348,8 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNe
 	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v",
 		len(mutations), len(indexes))
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
-		MapId:    mapID,
-		Index:    indexes,
+		MapId: mapID,
+		Index: indexes,
 	})
 	if err != nil {
 		return err
