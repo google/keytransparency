@@ -16,11 +16,11 @@ syntax = "proto3";
 
 option go_package = "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto";
 
-package keytransparency.usermanager.v1;
+package google.keytransparency.usermanager.v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
+import "api/type/type_proto/type.proto";
 import "proto/keymaster_proto/keymaster_proto.proto";
 
 // GetKeySetsRequest requests the keyset of a domain_id/app_id
@@ -36,7 +36,7 @@ message GetKeySetRequest {
 // It is the responsibility of authorized callers to verify that domain_id/app_id/user_id is correct.
 message CreateUserRequest {
   // user is the user to create.
-  keytransparency.v1.proto.User user = 2;
+  type.User user = 2;
   // add_signing_keys specifies whether to add this service's signing keys to the set of authorized_keys.
   // This must be set to true if any further operations from this API are meant to succeed.
   // If set to false, there must be at least one key in authorized_keys.
@@ -48,7 +48,7 @@ message CreateUserRequest {
 // authorized_keys in order to succeed.
 message UpdateUserRequest {
   // user contains data which will be applied to the user.
-  keytransparency.v1.proto.User user = 2;
+  type.User user = 2;
   // update_mask specifies which fields of user to update.
   // For example: "data" or "authorized_keys"
   google.protobuf.FieldMask update_mask = 3;
@@ -61,7 +61,7 @@ message BatchCreateUserRequest {
    // app_id identifies the application.
    string app_id = 2;
   // users is the set of users to create.
-  repeated keytransparency.v1.proto.User users = 3;
+  repeated type.User users = 3;
   // add_signing_keys specifies whether to add this service's signing_keys to the set of authorized_keys.
   // This must be set to true if any further operations from this API are meant to succeed.
   // If set to false, there must be at least one key in authorized_keys.
@@ -71,7 +71,7 @@ message BatchCreateUserRequest {
 // BatchCreateUserResponse creates multiple users at once.
 message BatchCreateUserResponse {
   // users returns the list of created users.
-  repeated keytransparency.v1.proto.User users = 2;
+  repeated type.User users = 2;
 }
 
 // The UserManagerService holds a set of signing keys which can be used to
@@ -112,7 +112,7 @@ service UserManagerService {
 
   // CreateUser creates a new user and initializes it.
   // If the user already exists, this operation will fail.
-  rpc CreateUser(CreateUserRequest) returns (keytransparency.v1.proto.User) {
+  rpc CreateUser(CreateUserRequest) returns (type.User) {
     option (google.api.http) = {
       post: "/usermanager/v1/domains/{user.domain_id}/apps/{user.app_id}/users/{user.user_id}"
       body: "user"
@@ -120,7 +120,7 @@ service UserManagerService {
   }
 
   // UpdateUserData sets the public key for an user.
-  rpc UpdateUser(UpdateUserRequest) returns (keytransparency.v1.proto.User) {
+  rpc UpdateUser(UpdateUserRequest) returns (type.User) {
     option (google.api.http) = {
       patch: "/usermanager/v1/domains/{user.domain_id}/apps/{user.app_id}/users/{user.user_id}"
       body: "user"
@@ -128,7 +128,7 @@ service UserManagerService {
   }
 
   // BatchCreateUser creates a set of new users.
-  rpc BatchCreateUser(BatchCreateUserRequest) returns (keytransparency.v1.proto.User) {
+  rpc BatchCreateUser(BatchCreateUserRequest) returns (type.User) {
     option (google.api.http) = {
       post: "/usermanager/v1/domains/{domain_id}/apps/{app_id}:BatchCreate"
       body: "*"

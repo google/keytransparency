@@ -27,28 +27,11 @@ import "crypto/keyspb/keyspb.proto";
 import "crypto/sigpb/sigpb.proto";
 import "trillian.proto";
 import "trillian_map_api.proto";
-import "google/rpc/status.proto";
 
 //
 // Data types.
 //
 
-// User represents plain account information that gets committed to and obfuscated in Entry.
-message User {
-  // domain_id specifies the domain.
-  string domain_id = 1;
-  // app_id specifies that application.
-  string app_id = 2;
-  // user_id specifies the user.
-  string user_id = 3;
-  // public_key_data is the public key material for this account.
-  bytes public_key_data = 4;
-  // authorized_keys is the set of keys allowed to sign updates for this entry.
-  repeated keyspb.PublicKey authorized_keys = 5;
-  // status is set when account is part of a batch operation.
-  google.rpc.Status status = 6;
-  // TODO(gbelvin): Include UserProof and UserCommitment
-}
 
 // Committed represents the data committed to in a cryptographic commitment.
 // commitment = HMAC_SHA512_256(key, data)
