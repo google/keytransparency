@@ -169,7 +169,8 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	client := grpcc.New(cc, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
+	ktClient := gpb.NewKeyTransparencyServiceClient(cc)
+	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 
 	// Mimic first sequence event
@@ -189,7 +190,7 @@ func NewEnv(t *testing.T) *Env {
 		Signer:     seq,
 		db:         sqldb,
 		Factory:    factory,
-		Cli:        gpb.NewKeyTransparencyServiceClient(cc),
+		Cli:        ktClient,
 		Domain:     resp.Domain,
 	}
 }
