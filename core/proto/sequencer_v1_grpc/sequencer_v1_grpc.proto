@@ -19,7 +19,7 @@ option go_package = "github.com/google/keytransparency/core/proto/sequencer_v1_g
 package google.keytransparency.sequencer.v1;
 
 import "google/api/annotations.proto";
-import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
+import "proto/keytransparency_v1_proto/keytransparency_v1_grpc.proto";
 
 // SequencerService notifies its callers about created epochs and all their
 // mutations.
