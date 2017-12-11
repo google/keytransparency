@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc";
+option go_package = "github.com/google/keytransparency/core/proto/keytransparency_v1_proto";
 
 // Key Transparency Service
 //
