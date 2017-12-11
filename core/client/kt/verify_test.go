@@ -29,7 +29,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/any"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	tcrypto "github.com/google/trillian/crypto"
 	_ "github.com/google/trillian/merkle/coniks" // Register coniks
 )

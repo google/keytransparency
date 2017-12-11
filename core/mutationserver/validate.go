@@ -17,7 +17,7 @@ package mutationserver
 import (
 	"errors"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 const (

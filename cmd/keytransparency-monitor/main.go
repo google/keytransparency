@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_grpc"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
 	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher

@@ -30,7 +30,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	tpb "github.com/google/trillian"
 )
 

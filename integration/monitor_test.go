@@ -32,7 +32,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/hashers"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 const (

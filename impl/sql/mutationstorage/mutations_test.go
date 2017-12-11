@@ -24,7 +24,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
 

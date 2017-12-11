@@ -23,7 +23,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var (

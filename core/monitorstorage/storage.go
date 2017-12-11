@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/trillian"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var (

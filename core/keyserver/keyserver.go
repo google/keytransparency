@@ -35,7 +35,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	authzpb "github.com/google/keytransparency/core/proto/authorization_proto"
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	"github.com/google/trillian"
 )
 

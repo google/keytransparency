@@ -35,7 +35,7 @@ import (
 	"github.com/google/trillian/util"
 	"github.com/prometheus/client_golang/prometheus"
 
-	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
+	tpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
 var (

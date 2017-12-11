@@ -20,7 +20,7 @@ option go_package = "github.com/google/keytransparency/core/proto/monitor_v1_pro
 //
 package monitor.v1.proto;
 
-import "proto/keytransparency_v1_proto/keytransparency_v1_grpc.proto";
+import "proto/keytransparency_v1_proto/keytransparency_v1_proto.proto";
 import "trillian.proto";
 
 // GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
