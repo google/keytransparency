@@ -28,7 +28,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
 // Mutator defines mutations to simply replace the current map value with the

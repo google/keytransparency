@@ -32,7 +32,7 @@ import (
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/hashers"
 
-	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tcrypto "github.com/google/trillian/crypto"
 )
 
