@@ -17,12 +17,11 @@ package monitor
 import (
 	"fmt"
 
-	ktpb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
-
-	"github.com/google/trillian"
+	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
+	tpb "github.com/google/trillian"
 )
 
-func (m *Monitor) signMapRoot(in *ktpb.GetMutationsResponse) (*trillian.SignedMapRoot, error) {
+func (m *Monitor) signMapRoot(in *pb.GetMutationsResponse) (*tpb.SignedMapRoot, error) {
 	// copy of received SMR:
 	smr := *in.Smr
 	smr.Signature = nil

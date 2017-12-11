@@ -14,9 +14,8 @@
 
 package core
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=:$GOPATH/src proto/keytransparency_v1_proto/keytransparency_v1_proto.proto proto/keytransparency_v1_proto/keytransparency_v1_admin_proto.proto
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src proto/keytransparency_v1_grpc/keytransparency_v1_grpc.proto proto/keytransparency_v1_grpc/keytransparency_v1_admin_grpc.proto proto/keytransparency_v1_grpc/keytransparency_v1_mutations_grpc.proto
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. proto/keytransparency_v1_grpc/keytransparency_v1_grpc.proto proto/keytransparency_v1_grpc/keytransparency_v1_admin_grpc.proto proto/keytransparency_v1_grpc/keytransparency_v1_mutations_grpc.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src proto/keytransparency_v1_proto/keytransparency_v1_grpc.proto proto/keytransparency_v1_proto/keytransparency_v1_admin_grpc.proto proto/keytransparency_v1_proto/keytransparency_v1_mutations_grpc.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. proto/keytransparency_v1_proto/keytransparency_v1_grpc.proto proto/keytransparency_v1_proto/keytransparency_v1_admin_grpc.proto proto/keytransparency_v1_proto/keytransparency_v1_mutations_grpc.proto
 
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src proto/sequencer_v1_grpc/sequencer_v1_grpc.proto
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. proto/sequencer_v1_grpc/sequencer_v1_grpc.proto

@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	mopb "github.com/google/keytransparency/core/proto/monitor_v1_grpc"
 	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
@@ -70,8 +69,8 @@ func main() {
 	if err != nil {
 		glog.Exitf("Error Dialing %v: %v", ktURL, err)
 	}
-	ktClient := gpb.NewKeyTransparencyServiceClient(cc)
-	mClient := gpb.NewMutationServiceClient(cc)
+	ktClient := pb.NewKeyTransparencyServiceClient(cc)
+	mClient := pb.NewMutationServiceClient(cc)
 
 	config, err := ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: *domainID})
 	if err != nil {

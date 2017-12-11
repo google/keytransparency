@@ -41,7 +41,6 @@ import (
 
 	"google.golang.org/grpc"
 
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 )
 
@@ -78,7 +77,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli        gpb.KeyTransparencyServiceClient
+	cli        pb.KeyTransparencyServiceClient
 	domainID   string
 	kt         *kt.Verifier
 	mutator    mutator.Mutator
@@ -88,7 +87,7 @@ type Client struct {
 }
 
 // NewFromConfig creates a new client from a config
-func NewFromConfig(ktClient gpb.KeyTransparencyServiceClient, config *pb.GetDomainInfoResponse) (*Client, error) {
+func NewFromConfig(ktClient pb.KeyTransparencyServiceClient, config *pb.GetDomainInfoResponse) (*Client, error) {
 	// Log Hasher.
 	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
 	if err != nil {
@@ -125,7 +124,7 @@ func NewFromConfig(ktClient gpb.KeyTransparencyServiceClient, config *pb.GetDoma
 }
 
 // New creates a new client.
-func New(ktClient gpb.KeyTransparencyServiceClient,
+func New(ktClient pb.KeyTransparencyServiceClient,
 	domainID string,
 	vrf vrf.PublicKey,
 	mapPubKey crypto.PublicKey,

@@ -30,7 +30,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
-	gpb "github.com/google/keytransparency/core/proto/keytransparency_v1_grpc"
 	pb "github.com/google/keytransparency/core/proto/keytransparency_v1_proto"
 	tpb "github.com/google/trillian"
 )
@@ -81,7 +80,8 @@ var (
 	}
 )
 
-type server struct {
+// Server implements pb.KeyTransparencyAdminServiceServer
+type Server struct {
 	storage  adminstorage.Storage
 	logAdmin tpb.TrillianAdminClient
 	mapAdmin tpb.TrillianAdminClient
@@ -89,8 +89,8 @@ type server struct {
 }
 
 // New returns a KeyTransparencyAdminService implementation.
-func New(storage adminstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) gpb.KeyTransparencyAdminServiceServer {
-	return &server{
+func New(storage adminstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
+	return &Server{
 		storage:  storage,
 		logAdmin: logAdmin,
 		mapAdmin: mapAdmin,
@@ -99,7 +99,7 @@ func New(storage adminstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClien
 }
 
 // ListDomains produces a list of the configured domains
-func (s *server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*pb.ListDomainsResponse, error) {
+func (s *Server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*pb.ListDomainsResponse, error) {
 	domains, err := s.storage.List(ctx, in.GetShowDeleted())
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (s *server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 }
 
 // fetchDomainInfo converts an amdin.Domain object into a pb.Domain object by fetching the relevant info from Trillian.
-func (s *server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
+func (s *Server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
 	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (s *server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*
 }
 
 // GetDomain retrieves the domain info for a given domain.
-func (s *server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.GetDomainResponse, error) {
+func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.GetDomainResponse, error) {
 	domain, err := s.storage.Read(ctx, in.GetDomainId(), in.GetShowDeleted())
 	if err != nil {
 		return nil, err
@@ -156,7 +156,7 @@ func (s *server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Ge
 }
 
 // CreateDomain reachs out to Trillian to produce new trees.
-func (s *server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (*pb.CreateDomainResponse, error) {
+func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (*pb.CreateDomainResponse, error) {
 	// TODO(gbelvin): Test whether the domain exists before creating trees.
 
 	// Generate VRF key.
@@ -212,14 +212,16 @@ func (s *server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}, nil
 }
 
-func (s *server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (*google_protobuf.Empty, error) {
+// DeleteDomain marks a domain as deleted, but does not immediately delete it.
+func (s *Server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (*google_protobuf.Empty, error) {
 	if err := s.storage.SetDelete(ctx, in.GetDomainId(), true); err != nil {
 		return nil, err
 	}
 	return &google_protobuf.Empty{}, nil
 }
 
-func (s *server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainRequest) (*google_protobuf.Empty, error) {
+// UndeleteDomain reactivates a deleted domain - provided that UndeleteDomain is called sufficiently soon after DeleteDomain.
+func (s *Server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainRequest) (*google_protobuf.Empty, error) {
 	if err := s.storage.SetDelete(ctx, in.GetDomainId(), false); err != nil {
 		return nil, err
 	}
