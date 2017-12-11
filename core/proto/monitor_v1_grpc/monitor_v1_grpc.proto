@@ -20,10 +20,48 @@ option go_package = "github.com/google/keytransparency/core/proto/monitor_v1_grp
 //
 // The Key Transparency monitor server service consists of APIs to fetch
 // monitor results queried using the mutations API.
-package monitor.v1.grpc;
+package google.keytransparency.monitor.v1;
 
 import "google/api/annotations.proto";
-import "proto/monitor_v1_proto/monitor_v1_proto.proto";
+import "api/v1/keytransparency_proto/keytransparency.proto";
+import "trillian.proto";
+
+// GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
+message GetMonitoringRequest {
+  // epoch specifies the for which the monitoring results will
+  // be returned (epochs start at 1).
+  int64 epoch = 1;
+
+  // kt_URL is the URL of the keytransparency server for which the monitoring
+  // result will be returned.
+  string kt_URL = 2;
+}
+
+message GetMonitoringResponse {
+  // smr contains the map root for the sparse Merkle Tree signed with the
+  // monitor's key on success. If the checks were not successful the
+  // smr will be empty. The epochs are encoded into the smr map_revision.
+  trillian.SignedMapRoot smr = 1;
+
+  // seen_timestamp_nanos contains the time in nanoseconds where this particular
+  // signed map root was retrieved and processed. The actual timestamp of the
+  // smr returned by the server is contained in above smr field.
+  int64 seen_timestamp_nanos = 2;
+
+  //
+  // The following fields provide more information about each failure in this
+  // response, if any.
+  //
+
+  // errors contains a list of error string representing the verification checks
+  // that failed while monitoring the key-transparency server.
+  repeated string errors = 3;
+
+  // error_data contains the original response from the mutations API if and
+  // only if at least one verification step failed. It can be used to re-run the
+  // verification steps.
+  google.keytransparency.v1.GetMutationsResponse error_data = 4;
+ }
 
 // The Monitor Service API allows clients to query the monitors observed and
 // validated signed map roots.
@@ -42,8 +80,7 @@ service MonitorService {
   // the monitor could not reconstruct the map root given the set of mutations
   // from the previous to the current epoch it won't sign the map root and
   // additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRoot(monitor.v1.proto.GetMonitoringRequest)
-    returns (monitor.v1.proto.GetMonitoringResponse) {
+  rpc GetSignedMapRoot(GetMonitoringRequest) returns (GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/monitor/{kt_URL}/map/results:latest" };
   }
 
@@ -54,8 +91,7 @@ service MonitorService {
   // If the monitor could not reconstruct the map root given the set of
   // mutations from the previous to the current epoch it won't sign the map root
   // and additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRootByRevision(monitor.v1.proto.GetMonitoringRequest)
-    returns(monitor.v1.proto.GetMonitoringResponse) {
+  rpc GetSignedMapRootByRevision(GetMonitoringRequest) returns(GetMonitoringResponse) {
     option (google.api.http) = { get: "/v1/monitor/{kt_URL}/map/results/{epoch}" };
   }
 }
