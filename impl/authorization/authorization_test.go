@@ -20,7 +20,8 @@ import (
 
 	"github.com/google/keytransparency/core/authentication"
 
-	authzpb "github.com/google/keytransparency/core/proto/authorization_proto"
+	authzpb "github.com/google/keytransparency/core/api/type/type_proto"
+	pb "github.com/google/keytransparency/impl/authorization/authz_proto"
 )
 
 const (
@@ -42,8 +43,8 @@ const (
 
 func setup() *authz {
 	a := &authz{}
-	a.policy = &authzpb.AuthorizationPolicy{
-		Roles: map[string]*authzpb.AuthorizationPolicy_Role{
+	a.policy = &pb.AuthorizationPolicy{
+		Roles: map[string]*pb.AuthorizationPolicy_Role{
 			l1: {
 				Principals: []string{admin1},
 				Permissions: []authzpb.Permission{
@@ -65,7 +66,7 @@ func setup() *authz {
 			},
 			l4: {},
 		},
-		ResourceToRoleLabels: map[string]*authzpb.AuthorizationPolicy_RoleLabels{
+		ResourceToRoleLabels: map[string]*pb.AuthorizationPolicy_RoleLabels{
 			res1: {
 				Labels: []string{l1, l2},
 			},
@@ -205,13 +206,13 @@ func TestIsPermisionInRole(t *testing.T) {
 	// AuthorizationPolicy_Role.Principals is not relevant in this test.
 	for _, tc := range []struct {
 		description string
-		role        *authzpb.AuthorizationPolicy_Role
+		role        *pb.AuthorizationPolicy_Role
 		permission  authzpb.Permission
 		out         bool
 	}{
 		{
 			"permission is not in role, empty permissions list",
-			&authzpb.AuthorizationPolicy_Role{
+			&pb.AuthorizationPolicy_Role{
 				Principals:  []string{},
 				Permissions: []authzpb.Permission{},
 			},
@@ -220,7 +221,7 @@ func TestIsPermisionInRole(t *testing.T) {
 		},
 		{
 			"permission is not in role, permission not found",
-			&authzpb.AuthorizationPolicy_Role{
+			&pb.AuthorizationPolicy_Role{
 				Principals: []string{},
 				Permissions: []authzpb.Permission{
 					authzpb.Permission_LOG,
@@ -232,7 +233,7 @@ func TestIsPermisionInRole(t *testing.T) {
 		},
 		{
 			"permission is in role, one permission in the list",
-			&authzpb.AuthorizationPolicy_Role{
+			&pb.AuthorizationPolicy_Role{
 				Principals: []string{},
 				Permissions: []authzpb.Permission{
 					authzpb.Permission_LOG,
@@ -244,7 +245,7 @@ func TestIsPermisionInRole(t *testing.T) {
 		},
 		{
 			"permission is in role, multiple permissions in the list",
-			&authzpb.AuthorizationPolicy_Role{
+			&pb.AuthorizationPolicy_Role{
 				Principals: []string{},
 				Permissions: []authzpb.Permission{
 					authzpb.Permission_LOG,

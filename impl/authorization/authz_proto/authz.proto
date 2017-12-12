@@ -13,17 +13,11 @@
 // limitations under the License.
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/proto/authorization_proto";
+option go_package = "github.com/google/keytransparency/impl/authorization/authz_proto";
 
-package authorization.proto;
+package google.keytransparency.impl;
 
-// Permission specifies the permission a role can take.
-enum Permission {
-  // LOG indicates whether access to resources will be logged.
-  LOG = 0;
-  READ = 1;
-  WRITE = 2;
-}
+import "core/api/type/type_proto/authz.proto";
 
 // AuthorizationPolicy contains an authorization policy.
 message AuthorizationPolicy {
@@ -40,7 +34,7 @@ message AuthorizationPolicy {
     // principals contains an application specific identifier for this entry.
     repeated string principals = 1;
     // permissions contains the set of permissions this role is granted.
-    repeated Permission permissions = 2;
+    repeated type.Permission permissions = 2;
   }
 
   // RoleLabels contains a lot of role labels identifying each role.
@@ -54,3 +48,4 @@ message AuthorizationPolicy {
   // map_id|app_id concatenation as a string.
   map<string, RoleLabels> resource_to_role_labels = 3;
 }
+

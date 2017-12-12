@@ -11,20 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+syntax = "proto3";
 
-// Package authorization defines the authorization interface of Key Transparency.
-package authorization
+option go_package = "github.com/google/keytransparency/core/api/type/type_proto";
 
-import (
-	"github.com/google/keytransparency/core/authentication"
+package google.keytransparency.type;
 
-	authzpb "github.com/google/keytransparency/core/api/type/type_proto"
-)
-
-// Authorization authorizes access to RPCs.
-type Authorization interface {
-	// IsAuthorized verifies that the identity issuing the call
-	// (from ctx) is authorized to carry the given permission.
-	IsAuthorized(ctx *authentication.SecurityContext, mapID int64,
-		appID, userID string, permission authzpb.Permission) error
+// Permission specifies the permission a role can take.
+enum Permission {
+  // LOG indicates whether access to resources will be logged.
+  LOG = 0;
+  READ = 1;
+  WRITE = 2;
 }
