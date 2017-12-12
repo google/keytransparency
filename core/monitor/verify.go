@@ -57,13 +57,14 @@ var (
 	ErrNotMatchingMapRoot = errors.New("recreated root does not match")
 )
 
-func appendErr(errList []error, s *status.Status, err error) []error {
+type errList []error
+
+func (e *errList) append(s *status.Status, err error) {
 	if err != nil {
-		errList = append(errList, err)
+		*e = append(*e, err)
 	} else {
-		errList = append(errList, s.Err())
+		*e = append(*e, s.Err())
 	}
-	return errList
 }
 
 // VerifyMutationsResponse verifies a response received by the GetMutations API.
@@ -71,7 +72,7 @@ func appendErr(errList []error, s *status.Status, err error) []error {
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
 func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
-	errList := make([]error, 0)
+	errs := errList{}
 
 	if m.trusted == nil {
 		m.trusted = in.GetLogRoot()
@@ -79,8 +80,7 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 
 	if err := m.logVerifier.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		s, err := status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, in)
-		errList = appendErr(errList, s, err)
+		errs.append(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, in))
 	}
 	// updated trusted log root
 	m.trusted = in.GetLogRoot()
@@ -88,16 +88,14 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
 		glog.Errorf("json.Marshal(): %v", err)
-		s, err := status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(in.GetSmr())
-		errList = appendErr(errList, s, err)
+		errs.append(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(in.GetSmr()))
 	}
 	leafIndex := in.GetSmr().GetMapRevision()
 	treeSize := in.GetLogRoot().GetTreeSize()
 	err = m.logVerifier.VerifyInclusionAtIndex(in.GetLogRoot(), b, leafIndex, in.GetLogInclusion())
 	if err != nil {
 		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
-		s, err := status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(in)
-		errList = appendErr(errList, s, err)
+		errs.append(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(in))
 	}
 
 	// copy of signed map root
@@ -107,8 +105,7 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 	// verify signature on map root:
 	if err := tcrypto.VerifyObject(m.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
 		glog.Infof("couldn't verify signature on map root: %v", err)
-		s, err := status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(&smr, in.GetSmr().GetSignature())
-		errList = appendErr(errList, s, err)
+		errs.append(status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(&smr, in.GetSmr().GetSignature()))
 	}
 
 	// we need the old root for verifying the inclusion of the old leafs in the
@@ -126,15 +123,15 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 
 		if err := m.verifyMutations(in.GetMutations(), oldRoot,
 			in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
-			errList = append(errList, err...)
+			errs = append(errs, err...)
 		}
 	}
 
-	return errList
+	return errs
 }
 
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot []byte, mapID int64) []error {
-	errList := make([]error, 0)
+	errs := errList{}
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
 	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
@@ -143,8 +140,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 	for _, mut := range muts {
 		oldLeaf, err := entry.FromLeafValue(mut.GetLeafProof().GetLeaf().GetLeafValue())
 		if err != nil {
-			s, err := status.Newf(codes.DataLoss, "could not decode leaf: %v", err).WithDetails(mut.GetLeafProof().GetLeaf())
-			errList = appendErr(errList, s, err)
+			errs.append(status.Newf(codes.DataLoss, "could not decode leaf: %v", err).WithDetails(mut.GetLeafProof().GetLeaf()))
 		}
 
 		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
@@ -153,23 +149,20 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 		if err := merkle.VerifyMapInclusionProof(mapID, index,
 			leaf, oldRoot, mut.GetLeafProof().GetInclusion(), m.mapHasher); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
-			s, err := status.Newf(codes.DataLoss, "invalid  map inclusion proof: %v", err).WithDetails(mut.GetLeafProof())
-			errList = appendErr(errList, s, err)
+			errs.append(status.Newf(codes.DataLoss, "invalid  map inclusion proof: %v", err).WithDetails(mut.GetLeafProof()))
 		}
 
 		// compute the new leaf
 		newValue, err := mutator.Mutate(oldLeaf, mut.GetMutation())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
-			s, err := status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation())
-			errList = appendErr(errList, s, err)
+			errs.append(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))
 		}
 		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapHasher.BitLen())
 		newLeaf, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Infof("Failed to serialize: %v", err)
-			s, err := status.Newf(codes.DataLoss, "failed to serialize: %v", err).WithDetails(newValue)
-			errList = appendErr(errList, s, err)
+			errs.append(status.Newf(codes.DataLoss, "failed to serialize: %v", err).WithDetails(newValue))
 		}
 
 		// BUG(gdbelvin): Proto serializations are not idempotent.
@@ -177,7 +170,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 		// - Use deep compare between the tree and the computed value.
 		newLeafHash, err := m.mapHasher.HashLeaf(mapID, index, newLeaf)
 		if err != nil {
-			errList = append(errList, err)
+			errs = append(errs, err)
 		}
 		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
 			Index:    newLeafnID.BigInt(),
@@ -194,7 +187,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 				// equal:
 				if !bytes.Equal(p, proof) {
 					// this is really odd and should never happen
-					errList = append(errList, ErrInconsistentProofs)
+					errs = append(errs, ErrInconsistentProofs)
 				}
 			} else {
 				if len(proof) > 0 {
@@ -205,10 +198,10 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 	}
 
 	if err := m.validateMapRoot(expectedNewRoot, mapID, newLeaves, oldProofNodes); err != nil {
-		errList = append(errList, err)
+		errs = append(errs, err)
 	}
 
-	return errList
+	return errs
 }
 
 func (m *Monitor) validateMapRoot(expectedRoot []byte, mapID int64, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {

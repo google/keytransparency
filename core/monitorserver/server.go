@@ -32,6 +32,7 @@ import (
 	"github.com/google/keytransparency/core/monitorstorage"
 
 	pb "github.com/google/keytransparency/core/api/monitor/v1/monitor_proto"
+	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 )
 
 var (
@@ -86,19 +87,19 @@ func (s *Server) getResponseByRevision(epoch int64) (*pb.State, error) {
 		return nil, grpc.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
 	}
 
-	resp := &pb.State{
+	// Convert errors into rpc.Status
+	errs := make([]*statuspb.Status, 0, len(r.Errors))
+	for _, err := range r.Errors {
+		if s, ok := status.FromError(err); ok {
+			errs = append(errs, s.Proto())
+			continue
+		}
+		errs = append(errs, status.Newf(codes.Unknown, "%v", err).Proto())
+	}
+
+	return &pb.State{
 		Smr:                r.Smr,
 		SeenTimestampNanos: r.Seen.UnixNano(),
-	}
-
-	for _, err := range r.Errors {
-		s, ok := status.FromError(err)
-		if !ok {
-			resp.Errors = append(resp.Errors, status.New(codes.Unknown, err.Error()).Proto())
-		} else {
-			resp.Errors = append(resp.Errors, s.Proto())
-		}
-	}
-
-	return resp, nil
+		Errors:             errs,
+	}, nil
 }
