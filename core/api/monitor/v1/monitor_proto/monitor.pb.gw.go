@@ -29,11 +29,11 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_MonitorService_GetSignedMapRoot_0 = &utilities.DoubleArray{Encoding: map[string]int{"kt_url": 0, "domain_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_Monitor_GetState_0 = &utilities.DoubleArray{Encoding: map[string]int{"kt_url": 0, "domain_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
-func request_MonitorService_GetSignedMapRoot_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetMonitoringRequest
+func request_Monitor_GetState_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetStateRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -65,17 +65,17 @@ func request_MonitorService_GetSignedMapRoot_0(ctx context.Context, marshaler ru
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MonitorService_GetSignedMapRoot_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_Monitor_GetState_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetSignedMapRoot(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetState(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func request_MonitorService_GetSignedMapRootByRevision_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetMonitoringRequest
+func request_Monitor_GetStateByRevision_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetStateRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -118,14 +118,14 @@ func request_MonitorService_GetSignedMapRootByRevision_0(ctx context.Context, ma
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
 	}
 
-	msg, err := client.GetSignedMapRootByRevision(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetStateByRevision(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-// RegisterMonitorServiceHandlerFromEndpoint is same as RegisterMonitorServiceHandler but
+// RegisterMonitorHandlerFromEndpoint is same as RegisterMonitorHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterMonitorServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterMonitorHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -145,23 +145,23 @@ func RegisterMonitorServiceHandlerFromEndpoint(ctx context.Context, mux *runtime
 		}()
 	}()
 
-	return RegisterMonitorServiceHandler(ctx, mux, conn)
+	return RegisterMonitorHandler(ctx, mux, conn)
 }
 
-// RegisterMonitorServiceHandler registers the http handlers for service MonitorService to "mux".
+// RegisterMonitorHandler registers the http handlers for service Monitor to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterMonitorServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterMonitorServiceHandlerClient(ctx, mux, NewMonitorServiceClient(conn))
+func RegisterMonitorHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterMonitorHandlerClient(ctx, mux, NewMonitorClient(conn))
 }
 
-// RegisterMonitorServiceHandler registers the http handlers for service MonitorService to "mux".
-// The handlers forward requests to the grpc endpoint over the given implementation of "MonitorServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "MonitorServiceClient"
+// RegisterMonitorHandler registers the http handlers for service Monitor to "mux".
+// The handlers forward requests to the grpc endpoint over the given implementation of "MonitorClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "MonitorClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "MonitorServiceClient" to call the correct interceptors.
-func RegisterMonitorServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client MonitorServiceClient) error {
+// "MonitorClient" to call the correct interceptors.
+func RegisterMonitorHandlerClient(ctx context.Context, mux *runtime.ServeMux, client MonitorClient) error {
 
-	mux.Handle("GET", pattern_MonitorService_GetSignedMapRoot_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_Monitor_GetState_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -179,18 +179,18 @@ func RegisterMonitorServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_MonitorService_GetSignedMapRoot_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Monitor_GetState_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_MonitorService_GetSignedMapRoot_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Monitor_GetState_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_MonitorService_GetSignedMapRootByRevision_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_Monitor_GetStateByRevision_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -208,14 +208,14 @@ func RegisterMonitorServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_MonitorService_GetSignedMapRootByRevision_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Monitor_GetStateByRevision_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_MonitorService_GetSignedMapRootByRevision_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Monitor_GetStateByRevision_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -223,13 +223,13 @@ func RegisterMonitorServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_MonitorService_GetSignedMapRoot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"monitor", "v1", "kt_url", "domains", "domain_id", "revisions"}, "latest"))
+	pattern_Monitor_GetState_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"monitor", "v1", "servers", "kt_url", "domains", "domain_id", "states"}, "latest"))
 
-	pattern_MonitorService_GetSignedMapRootByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"monitor", "v1", "kt_url", "domains", "domain_id", "revisions", "epoch"}, ""))
+	pattern_Monitor_GetStateByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"monitor", "v1", "servers", "kt_url", "domains", "domain_id", "states", "epoch"}, ""))
 )
 
 var (
-	forward_MonitorService_GetSignedMapRoot_0 = runtime.ForwardResponseMessage
+	forward_Monitor_GetState_0 = runtime.ForwardResponseMessage
 
-	forward_MonitorService_GetSignedMapRootByRevision_0 = runtime.ForwardResponseMessage
+	forward_Monitor_GetStateByRevision_0 = runtime.ForwardResponseMessage
 )
