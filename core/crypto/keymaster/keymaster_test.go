@@ -26,7 +26,8 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
-	kmpb "github.com/google/keytransparency/core/proto/keymaster_proto"
+
+	kmpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 type testKey struct {

@@ -27,7 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 
-	kmpb "github.com/google/keytransparency/core/proto/keymaster_proto"
+	kmpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 var (

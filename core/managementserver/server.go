@@ -23,7 +23,6 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto"
-	keypb "github.com/google/keytransparency/core/proto/keymaster_proto"
 )
 
 // Server implements pb.UserManagerServiceServer
@@ -36,7 +35,7 @@ func New() *Server {
 
 // GetKeySet returns a list of public keys (a keyset) that corresponds to the signing keys
 // this service has for a given domain and app.
-func (s *Server) GetKeySet(context.Context, *pb.GetKeySetRequest) (*keypb.KeySet, error) {
+func (s *Server) GetKeySet(context.Context, *pb.GetKeySetRequest) (*tpb.KeySet, error) {
 	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
 }
 
