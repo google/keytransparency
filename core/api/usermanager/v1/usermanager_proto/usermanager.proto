@@ -21,7 +21,7 @@ package google.keytransparency.usermanager.v1;
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "api/type/type_proto/type.proto";
-import "proto/keymaster_proto/keymaster_proto.proto";
+import "api/type/type_proto/keymaster.proto";
 
 // GetKeySetsRequest requests the keyset of a domain_id/app_id
 message GetKeySetRequest {
@@ -96,7 +96,7 @@ service UserManagerService {
 
   // GetKeySet returns a list of public keys (a keyset) that corresponds to the signing keys
   // this service has for a given domain and app.
-  rpc GetKeySet (GetKeySetRequest) returns (keymaster.proto.KeySet) {
+  rpc GetKeySet (GetKeySetRequest) returns (type.KeySet) {
     option (google.api.http) = {
       get: "/usermanager/v1/domains/{domain_id}/apps/{app_id}/keyset"
     };
