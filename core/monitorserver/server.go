@@ -27,12 +27,11 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
+	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorstorage"
 
 	pb "github.com/google/keytransparency/core/api/monitor/v1/monitor_proto"
-	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 )
 
 var (
@@ -87,19 +86,11 @@ func (s *Server) getResponseByRevision(epoch int64) (*pb.State, error) {
 		return nil, grpc.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
 	}
 
+	errs := monitor.ErrList(r.Errors)
 	// Convert errors into rpc.Status
-	errs := make([]*statuspb.Status, 0, len(r.Errors))
-	for _, err := range r.Errors {
-		if s, ok := status.FromError(err); ok {
-			errs = append(errs, s.Proto())
-			continue
-		}
-		errs = append(errs, status.Newf(codes.Unknown, "%v", err).Proto())
-	}
-
 	return &pb.State{
 		Smr:                r.Smr,
 		SeenTimestampNanos: r.Seen.UnixNano(),
-		Errors:             errs,
+		Errors:             errs.Proto(),
 	}, nil
 }

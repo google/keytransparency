@@ -33,6 +33,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tcrypto "github.com/google/trillian/crypto"
+	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 )
 
 var (
@@ -57,9 +58,12 @@ var (
 	ErrNotMatchingMapRoot = errors.New("recreated root does not match")
 )
 
-type errList []error
+// ErrList is a list of errors.
+type ErrList []error
 
-func (e *errList) appendStatus(s *status.Status, err error) {
+// AppendStatus adds a status errord, or the error about adding
+// the status if the latter is not nil.
+func (e *ErrList) AppendStatus(s *status.Status, err error) {
 	if err != nil {
 		*e = append(*e, err)
 	} else {
@@ -67,8 +71,23 @@ func (e *errList) appendStatus(s *status.Status, err error) {
 	}
 }
 
-func (e *errList) appendErr(err ...error) {
+// AppendErr adds a generic error to the list.
+func (e *ErrList) appendErr(err ...error) {
 	*e = append(*e, err...)
+}
+
+// Proto converts all the errors to statuspb.Status.
+// If the original error was not a status.Status, we use codes.Unknown.
+func (e *ErrList) Proto() []*statuspb.Status {
+	errs := make([]*statuspb.Status, 0, len(*e))
+	for _, err := range *e {
+		if s, ok := status.FromError(err); ok {
+			errs = append(errs, s.Proto())
+			continue
+		}
+		errs = append(errs, status.Newf(codes.Unknown, "%v", err).Proto())
+	}
+	return errs
 }
 
 // VerifyMutationsResponse verifies a response received by the GetMutations API.
@@ -76,7 +95,7 @@ func (e *errList) appendErr(err ...error) {
 // of received mutations may differ from those included in the initial response
 // because of the max. page size.
 func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
-	errs := errList{}
+	errs := ErrList{}
 
 	if m.trusted == nil {
 		m.trusted = in.GetLogRoot()
@@ -84,7 +103,7 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 
 	if err := m.logVerifier.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		errs.appendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, in))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, in))
 	}
 	// updated trusted log root
 	m.trusted = in.GetLogRoot()
@@ -92,14 +111,14 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
 		glog.Errorf("json.Marshal(): %v", err)
-		errs.appendStatus(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(in.GetSmr()))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(in.GetSmr()))
 	}
 	leafIndex := in.GetSmr().GetMapRevision()
 	treeSize := in.GetLogRoot().GetTreeSize()
 	err = m.logVerifier.VerifyInclusionAtIndex(in.GetLogRoot(), b, leafIndex, in.GetLogInclusion())
 	if err != nil {
 		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
-		errs.appendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(in))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(in))
 	}
 
 	// copy of signed map root
@@ -109,7 +128,7 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 	// verify signature on map root:
 	if err := tcrypto.VerifyObject(m.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
 		glog.Infof("couldn't verify signature on map root: %v", err)
-		errs.appendStatus(status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(&smr, in.GetSmr().GetSignature()))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(&smr, in.GetSmr().GetSignature()))
 	}
 
 	// we need the old root for verifying the inclusion of the old leafs in the
@@ -135,7 +154,7 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 }
 
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot []byte, mapID int64) []error {
-	errs := errList{}
+	errs := ErrList{}
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
 	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
@@ -144,7 +163,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 	for _, mut := range muts {
 		oldLeaf, err := entry.FromLeafValue(mut.GetLeafProof().GetLeaf().GetLeafValue())
 		if err != nil {
-			errs.appendStatus(status.Newf(codes.DataLoss, "could not decode leaf: %v", err).WithDetails(mut.GetLeafProof().GetLeaf()))
+			errs.AppendStatus(status.Newf(codes.DataLoss, "could not decode leaf: %v", err).WithDetails(mut.GetLeafProof().GetLeaf()))
 		}
 
 		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
@@ -153,20 +172,20 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 		if err := merkle.VerifyMapInclusionProof(mapID, index,
 			leaf, oldRoot, mut.GetLeafProof().GetInclusion(), m.mapHasher); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
-			errs.appendStatus(status.Newf(codes.DataLoss, "invalid  map inclusion proof: %v", err).WithDetails(mut.GetLeafProof()))
+			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid  map inclusion proof: %v", err).WithDetails(mut.GetLeafProof()))
 		}
 
 		// compute the new leaf
 		newValue, err := mutator.Mutate(oldLeaf, mut.GetMutation())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
-			errs.appendStatus(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))
+			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))
 		}
 		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapHasher.BitLen())
 		newLeaf, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Infof("Failed to serialize: %v", err)
-			errs.appendStatus(status.Newf(codes.DataLoss, "failed to serialize: %v", err).WithDetails(newValue))
+			errs.AppendStatus(status.Newf(codes.DataLoss, "failed to serialize: %v", err).WithDetails(newValue))
 		}
 
 		// BUG(gdbelvin): Proto serializations are not idempotent.
