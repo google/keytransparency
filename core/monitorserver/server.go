@@ -53,7 +53,7 @@ func New(storage monitorstorage.Interface) *Server {
 	}
 }
 
-// GetSignedMapRoot returns the latest valid signed map root the monitor
+// GetState returns the latest valid signed map root the monitor
 // observed. Additionally, the response contains additional data necessary to
 // reproduce errors on failure.
 //
@@ -61,7 +61,7 @@ func New(storage monitorstorage.Interface) *Server {
 // the monitor could not reconstruct the map root given the set of mutations
 // from the previous to the current epoch it won't sign the map root and
 // additional data will be provided to reproduce the failure.
-func (s *Server) GetSignedMapRoot(ctx context.Context, in *pb.GetMonitoringRequest) (*pb.GetMonitoringResponse, error) {
+func (s *Server) GetState(ctx context.Context, in *pb.GetStateRequest) (*pb.State, error) {
 	latestEpoch := s.storage.LatestEpoch()
 	if latestEpoch == 0 {
 		return nil, ErrNothingProcessed
@@ -69,24 +69,24 @@ func (s *Server) GetSignedMapRoot(ctx context.Context, in *pb.GetMonitoringReque
 	return s.getResponseByRevision(latestEpoch)
 }
 
-// GetSignedMapRootByRevision works similar to GetSignedMapRoot but returns
+// GetStateByRevision works similar to GetSignedMapRoot but returns
 // the monitor's result for a specific map revision.
 //
 // Returns the signed map root for the specified epoch the monitor observed.
 // If the monitor could not reconstruct the map root given the set of
 // mutations from the previous to the current epoch it won't sign the map root
 // and additional data will be provided to reproduce the failure.
-func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *pb.GetMonitoringRequest) (*pb.GetMonitoringResponse, error) {
+func (s *Server) GetStateByRevision(ctx context.Context, in *pb.GetStateRequest) (*pb.State, error) {
 	return s.getResponseByRevision(in.GetEpoch())
 }
 
-func (s *Server) getResponseByRevision(epoch int64) (*pb.GetMonitoringResponse, error) {
+func (s *Server) getResponseByRevision(epoch int64) (*pb.State, error) {
 	r, err := s.storage.Get(epoch)
 	if err == monitorstorage.ErrNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
 	}
 
-	resp := &pb.GetMonitoringResponse{
+	resp := &pb.State{
 		Smr:                r.Smr,
 		SeenTimestampNanos: r.Seen.UnixNano(),
 	}

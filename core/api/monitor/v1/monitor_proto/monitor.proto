@@ -26,8 +26,9 @@ import "google/api/annotations.proto";
 import "trillian.proto";
 import "google/rpc/status.proto";
 
-// GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
-message GetMonitoringRequest {
+// GetStateRequest requests the state of a keytransparency domain for a particular
+// point in time.
+message GetStateRequest {
   // kt_url is the URL of the keytransparency server for which the monitoring
   // result will be returned.
   string kt_url = 2;
@@ -40,7 +41,9 @@ message GetMonitoringRequest {
   int64 epoch = 1;
 }
 
-message GetMonitoringResponse {
+// State represents the monitor's evaluation of a Key Transparency domain
+// at a particular epoch.
+message State {
   // smr contains the map root for the sparse Merkle Tree signed with the
   // monitor's key on success. If the checks were not successful the
   // smr will be empty. The epochs are encoded into the smr map_revision.
@@ -51,12 +54,7 @@ message GetMonitoringResponse {
   // smr returned by the server is contained in above smr field.
   int64 seen_timestamp_nanos = 2;
 
-  //
-  // The following fields provide more information about each failure in this
-  // response, if any.
-  //
-
-  // errors contains a list of error string representing the verification checks
+  // errors contains a list of errors representing the verification checks
   // that failed while monitoring the key-transparency server.
   repeated google.rpc.Status errors = 3;
  }
@@ -66,10 +64,10 @@ message GetMonitoringResponse {
 //
 // - Signed Map Roots can be collected using the GetSignedMapRoot APIs.
 // - Monitor resources are named:
-//   - /monitor/v1/{kt-url}/domains/{domain_id}/revisions/{epoch}
-//   - /monitor/v1/{kt-url}/domains/{domain_id}/revision:latest
+//   - /monitor/v1/servers/{kt_url}/domains/{domain_id}/states/{epoch}
+//   - /monitor/v1/servers/{kt_url}/domains/{domain_id}/states:latest
 //
-service MonitorService {
+service Monitor {
   // GetSignedMapRoot returns the latest valid signed map root the monitor
   // observed. Additionally, the response contains additional data necessary to
   // reproduce errors on failure.
@@ -78,8 +76,8 @@ service MonitorService {
   // the monitor could not reconstruct the map root given the set of mutations
   // from the previous to the current epoch it won't sign the map root and
   // additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRoot(GetMonitoringRequest) returns (GetMonitoringResponse) {
-    option (google.api.http) = { get: "/monitor/v1/{kt_url}/domains/{domain_id}/revisions:latest" };
+  rpc GetState(GetStateRequest) returns (State) {
+    option (google.api.http) = { get: "/monitor/v1/servers/{kt_url}/domains/{domain_id}/states:latest" };
   }
 
   // GetSignedMapRootByRevision works similar to GetSignedMapRoot but returns
@@ -89,8 +87,8 @@ service MonitorService {
   // If the monitor could not reconstruct the map root given the set of
   // mutations from the previous to the current epoch it won't sign the map root
   // and additional data will be provided to reproduce the failure.
-  rpc GetSignedMapRootByRevision(GetMonitoringRequest) returns(GetMonitoringResponse) {
-    option (google.api.http) = { get: "/monitor/v1/{kt_url}/domains/{domain_id}/revisions/{epoch}" };
+  rpc GetStateByRevision(GetStateRequest) returns(State) {
+    option (google.api.http) = { get: "/monitor/v1/servers/{kt_url}/domains/{domain_id}/states/{epoch}" };
   }
 }
 

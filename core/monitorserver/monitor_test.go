@@ -26,8 +26,9 @@ import (
 )
 
 func TestGetSignedMapRoot(t *testing.T) {
+	ctx := context.Background()
 	srv := New(fake.NewMonitorStorage())
-	_, err := srv.GetSignedMapRoot(context.TODO(), nil)
+	_, err := srv.GetState(ctx, nil)
 	if got, want := err, ErrNothingProcessed; got != want {
 		t.Errorf("GetSignedMapRoot(_, _): %v, want %v", got, want)
 	}
