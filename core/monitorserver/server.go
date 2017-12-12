@@ -27,6 +27,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/monitorstorage"
 
@@ -91,11 +92,12 @@ func (s *Server) getResponseByRevision(epoch int64) (*pb.GetMonitoringResponse, 
 	}
 
 	for _, err := range r.Errors {
-		resp.Errors = append(resp.Errors, err.Error())
-	}
-	if len(r.Errors) > 0 {
-		// data to replay the verification steps:
-		resp.ErrorData = r.Response
+		s, ok := status.FromError(err)
+		if !ok {
+			resp.Errors = append(resp.Errors, status.New(codes.Unknown, err.Error()).Proto())
+		} else {
+			resp.Errors = append(resp.Errors, s.Proto())
+		}
 	}
 
 	return resp, nil

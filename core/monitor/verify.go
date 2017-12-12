@@ -24,6 +24,8 @@ import (
 	"math/big"
 
 	"github.com/google/keytransparency/core/mutator/entry"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian/merkle"
@@ -55,6 +57,15 @@ var (
 	ErrNotMatchingMapRoot = errors.New("recreated root does not match")
 )
 
+func appendErr(errList []error, s *status.Status, err error) []error {
+	if err != nil {
+		errList = append(errList, err)
+	} else {
+		errList = append(errList, s.Err())
+	}
+	return errList
+}
+
 // VerifyMutationsResponse verifies a response received by the GetMutations API.
 // Additionally to the response it takes a complete list of mutations. The list
 // of received mutations may differ from those included in the initial response
@@ -68,7 +79,8 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 
 	if err := m.logVerifier.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		errList = append(errList, err)
+		s, err := status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, in)
+		errList = appendErr(errList, s, err)
 	}
 	// updated trusted log root
 	m.trusted = in.GetLogRoot()
@@ -76,14 +88,16 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
 		glog.Errorf("json.Marshal(): %v", err)
-		errList = append(errList, ErrInvalidMapSignature)
+		s, err := status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(in.GetSmr())
+		errList = appendErr(errList, s, err)
 	}
 	leafIndex := in.GetSmr().GetMapRevision()
 	treeSize := in.GetLogRoot().GetTreeSize()
 	err = m.logVerifier.VerifyInclusionAtIndex(in.GetLogRoot(), b, leafIndex, in.GetLogInclusion())
 	if err != nil {
 		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
-		errList = append(errList, ErrInvalidLogInclusion)
+		s, err := status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(in)
+		errList = appendErr(errList, s, err)
 	}
 
 	// copy of signed map root
@@ -93,7 +107,8 @@ func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
 	// verify signature on map root:
 	if err := tcrypto.VerifyObject(m.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
 		glog.Infof("couldn't verify signature on map root: %v", err)
-		errList = append(errList, ErrInvalidMapSignature)
+		s, err := status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(&smr, in.GetSmr().GetSignature())
+		errList = appendErr(errList, s, err)
 	}
 
 	// we need the old root for verifying the inclusion of the old leafs in the
@@ -128,7 +143,8 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 	for _, mut := range muts {
 		oldLeaf, err := entry.FromLeafValue(mut.GetLeafProof().GetLeaf().GetLeafValue())
 		if err != nil {
-			errList = append(errList, ErrInvalidMutation)
+			s, err := status.Newf(codes.DataLoss, "could not decode leaf: %v", err).WithDetails(mut.GetLeafProof().GetLeaf())
+			errList = appendErr(errList, s, err)
 		}
 
 		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
@@ -137,20 +153,23 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 		if err := merkle.VerifyMapInclusionProof(mapID, index,
 			leaf, oldRoot, mut.GetLeafProof().GetInclusion(), m.mapHasher); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
-			errList = append(errList, ErrInvalidMutation)
+			s, err := status.Newf(codes.DataLoss, "invalid  map inclusion proof: %v", err).WithDetails(mut.GetLeafProof())
+			errList = appendErr(errList, s, err)
 		}
 
 		// compute the new leaf
 		newValue, err := mutator.Mutate(oldLeaf, mut.GetMutation())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
-			errList = append(errList, ErrInvalidMutation)
+			s, err := status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation())
+			errList = appendErr(errList, s, err)
 		}
 		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapHasher.BitLen())
 		newLeaf, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Infof("Failed to serialize: %v", err)
-			errList = append(errList, err)
+			s, err := status.Newf(codes.DataLoss, "failed to serialize: %v", err).WithDetails(newValue)
+			errList = appendErr(errList, s, err)
 		}
 
 		// BUG(gdbelvin): Proto serializations are not idempotent.
