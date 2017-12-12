@@ -21,11 +21,12 @@ import (
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 
-	authzpb "github.com/google/keytransparency/core/proto/authorization_proto"
+	authzpb "github.com/google/keytransparency/core/api/type/type_proto"
+	pb "github.com/google/keytransparency/impl/authorization/authz_proto"
 )
 
 type authz struct {
-	policy *authzpb.AuthorizationPolicy
+	policy *pb.AuthorizationPolicy
 }
 
 // New creates a new instance of the authorization module.
@@ -63,7 +64,7 @@ func resourceLabel(mapID int64, appID string) string {
 	return fmt.Sprintf("%d|%s", mapID, appID)
 }
 
-func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string) bool {
+func isPrincipalInRole(role *pb.AuthorizationPolicy_Role, identity string) bool {
 	for _, p := range role.GetPrincipals() {
 		if p == identity {
 			return true
@@ -72,7 +73,7 @@ func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string) 
 	return false
 }
 
-func isPermisionInRole(role *authzpb.AuthorizationPolicy_Role, permission authzpb.Permission) bool {
+func isPermisionInRole(role *pb.AuthorizationPolicy_Role, permission authzpb.Permission) bool {
 	for _, p := range role.GetPermissions() {
 		if p == permission {
 			return true
