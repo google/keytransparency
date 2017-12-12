@@ -20,7 +20,7 @@ package keymaster
 import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 
-	kmpb "github.com/google/keytransparency/core/proto/keymaster_proto"
+	kmpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 // Signer represents an object that can generate signatures with a single key.

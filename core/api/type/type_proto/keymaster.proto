@@ -13,9 +13,9 @@
 // limitations under the License.
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/proto/keymaster_proto";
+option go_package = "github.com/google/keytransparency/core/api/type/type_proto";
 
-package keymaster.proto;
+package google.keytransparency.type;
 
 import "google/protobuf/timestamp.proto";
 

@@ -23,7 +23,7 @@ import (
 
 	"github.com/google/trillian/crypto/keyspb"
 
-	kmpb "github.com/google/keytransparency/core/proto/keymaster_proto"
+	kmpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 type verifier struct {

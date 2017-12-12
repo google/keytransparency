@@ -29,7 +29,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/cobra"
 
-	kmpb "github.com/google/keytransparency/core/proto/keymaster_proto"
+	kmpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 const (
