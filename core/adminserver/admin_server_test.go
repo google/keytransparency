@@ -70,14 +70,14 @@ func TestCreateRead(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreateDomain(): %v", err)
 		}
-		getResp, err := svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID})
+		domain, err := svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID})
 		if err != nil {
 			t.Fatalf("GetDomain(): %v", err)
 		}
-		if got, want := getResp.Domain.Log.TreeType, trillian.TreeType_LOG; got != want {
+		if got, want := domain.Log.TreeType, trillian.TreeType_LOG; got != want {
 			t.Errorf("Log.TreeType: %v, want %v", got, want)
 		}
-		if got, want := getResp.Domain.Map.TreeType, trillian.TreeType_MAP; got != want {
+		if got, want := domain.Map.TreeType, trillian.TreeType_MAP; got != want {
 			t.Errorf("Map.TreeType: %v, want %v", got, want)
 		}
 	}

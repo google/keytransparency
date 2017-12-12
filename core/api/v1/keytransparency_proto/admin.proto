@@ -70,21 +70,11 @@ message GetDomainRequest {
   bool show_deleted = 2;
 }
 
-// GetDomainResponse contains the configuration info for one domain.
-message GetDomainResponse {
-  Domain domain = 1;
-}
-
 // CreateDomainRequest creates a new domain
 message CreateDomainRequest {
   string domain_id = 1;
   google.protobuf.Duration min_interval = 2;
   google.protobuf.Duration max_interval = 3;
-}
-
-// CreateDomainResponse contains the configuration info for the new domain.
-message CreateDomainResponse {
-  Domain domain = 1;
 }
 
 // DeleteDomainRequest deletes a domain
@@ -113,7 +103,7 @@ service KeyTransparencyAdminService {
   }
 
   // GetDomain returns the confiuration information for a given domain.
-  rpc GetDomain(GetDomainRequest) returns (GetDomainResponse) {
+  rpc GetDomain(GetDomainRequest) returns (Domain) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}" };
   }
 
@@ -121,7 +111,7 @@ service KeyTransparencyAdminService {
   // be provided.  To create a new domain with the same name as a previously
   // deleted domain, a user must wait X days until the domain is garbage
   // collected.
-  rpc CreateDomain(CreateDomainRequest) returns (CreateDomainResponse) {
+  rpc CreateDomain(CreateDomainRequest) returns (Domain) {
     option (google.api.http) = {
       post: "/v1/domains"
       body: "*"

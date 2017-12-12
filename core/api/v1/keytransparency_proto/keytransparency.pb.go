@@ -38,9 +38,7 @@ It has these top-level messages:
 	ListDomainsRequest
 	ListDomainsResponse
 	GetDomainRequest
-	GetDomainResponse
 	CreateDomainRequest
-	CreateDomainResponse
 	DeleteDomainRequest
 	UndeleteDomainRequest
 */

@@ -141,7 +141,7 @@ func (s *Server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*
 }
 
 // GetDomain retrieves the domain info for a given domain.
-func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.GetDomainResponse, error) {
+func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Domain, error) {
 	domain, err := s.storage.Read(ctx, in.GetDomainId(), in.GetShowDeleted())
 	if err != nil {
 		return nil, err
@@ -150,13 +150,11 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Ge
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetDomainResponse{
-		Domain: info,
-	}, nil
+	return info, nil
 }
 
 // CreateDomain reachs out to Trillian to produce new trees.
-func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (*pb.CreateDomainResponse, error) {
+func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (*pb.Domain, error) {
 	// TODO(gbelvin): Test whether the domain exists before creating trees.
 
 	// Generate VRF key.
@@ -202,13 +200,11 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		minInterval, maxInterval); err != nil {
 		return nil, fmt.Errorf("adminstorage.Write(): %v", err)
 	}
-	return &pb.CreateDomainResponse{
-		Domain: &pb.Domain{
-			DomainId: in.GetDomainId(),
-			Log:      logTree,
-			Map:      mapTree,
-			Vrf:      vrfPublicPB,
-		},
+	return &pb.Domain{
+		DomainId: in.GetDomainId(),
+		Log:      logTree,
+		Map:      mapTree,
+		Vrf:      vrfPublicPB,
 	}, nil
 }
 

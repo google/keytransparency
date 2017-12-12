@@ -119,7 +119,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Failed to create admin storage: %v", err)
 	}
 	adminSvr := adminserver.New(adminStorage, mapEnv.AdminClient, mapEnv.AdminClient, vrfKeyGen)
-	resp, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
+	domain, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
 		DomainId:    domainID,
 		MinInterval: ptypes.DurationProto(1 * time.Second),
 		MaxInterval: ptypes.DurationProto(5 * time.Second),
@@ -128,13 +128,13 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("CreateDomain(): %v", err)
 	}
 
-	mapID := resp.Domain.Map.TreeId
-	logID := resp.Domain.Log.TreeId
-	mapPubKey, err := der.UnmarshalPublicKey(resp.Domain.Map.GetPublicKey().GetDer())
+	mapID := domain.Map.TreeId
+	logID := domain.Log.TreeId
+	mapPubKey, err := der.UnmarshalPublicKey(domain.Map.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
-	vrfPub, err := p256.NewVRFVerifierFromRawKey(resp.Domain.Vrf.GetDer())
+	vrfPub, err := p256.NewVRFVerifierFromRawKey(domain.Vrf.GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load vrf pubkey: %v", err)
 	}
@@ -190,7 +190,7 @@ func NewEnv(t *testing.T) *Env {
 		db:         sqldb,
 		Factory:    factory,
 		Cli:        ktClient,
-		Domain:     resp.Domain,
+		Domain:     domain,
 	}
 }
 
