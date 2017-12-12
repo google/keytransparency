@@ -23,8 +23,8 @@ option go_package = "github.com/google/keytransparency/core/api/monitor/v1/monit
 package google.keytransparency.monitor.v1;
 
 import "google/api/annotations.proto";
-import "api/v1/keytransparency_proto/keytransparency.proto";
 import "trillian.proto";
+import "google/rpc/status.proto";
 
 // GetMonitoringRequest contains the input parameters of the GetMonitoring APIs.
 message GetMonitoringRequest {
@@ -58,12 +58,7 @@ message GetMonitoringResponse {
 
   // errors contains a list of error string representing the verification checks
   // that failed while monitoring the key-transparency server.
-  repeated string errors = 3;
-
-  // error_data contains the original response from the mutations API if and
-  // only if at least one verification step failed. It can be used to re-run the
-  // verification steps.
-  keytransparency.v1.GetMutationsResponse error_data = 4;
+  repeated google.rpc.Status errors = 3;
  }
 
 // The Monitor Service API allows clients to query the monitors observed and
