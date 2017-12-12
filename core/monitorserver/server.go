@@ -29,7 +29,8 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/google/keytransparency/core/monitorstorage"
-	mopb "github.com/google/keytransparency/core/proto/monitor_v1_proto"
+
+	pb "github.com/google/keytransparency/core/api/monitor/v1/monitor_proto"
 )
 
 var (
@@ -59,7 +60,7 @@ func New(storage monitorstorage.Interface) *Server {
 // the monitor could not reconstruct the map root given the set of mutations
 // from the previous to the current epoch it won't sign the map root and
 // additional data will be provided to reproduce the failure.
-func (s *Server) GetSignedMapRoot(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
+func (s *Server) GetSignedMapRoot(ctx context.Context, in *pb.GetMonitoringRequest) (*pb.GetMonitoringResponse, error) {
 	latestEpoch := s.storage.LatestEpoch()
 	if latestEpoch == 0 {
 		return nil, ErrNothingProcessed
@@ -74,17 +75,17 @@ func (s *Server) GetSignedMapRoot(ctx context.Context, in *mopb.GetMonitoringReq
 // If the monitor could not reconstruct the map root given the set of
 // mutations from the previous to the current epoch it won't sign the map root
 // and additional data will be provided to reproduce the failure.
-func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *mopb.GetMonitoringRequest) (*mopb.GetMonitoringResponse, error) {
+func (s *Server) GetSignedMapRootByRevision(ctx context.Context, in *pb.GetMonitoringRequest) (*pb.GetMonitoringResponse, error) {
 	return s.getResponseByRevision(in.GetEpoch())
 }
 
-func (s *Server) getResponseByRevision(epoch int64) (*mopb.GetMonitoringResponse, error) {
+func (s *Server) getResponseByRevision(epoch int64) (*pb.GetMonitoringResponse, error) {
 	r, err := s.storage.Get(epoch)
 	if err == monitorstorage.ErrNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
 	}
 
-	resp := &mopb.GetMonitoringResponse{
+	resp := &pb.GetMonitoringResponse{
 		Smr:                r.Smr,
 		SeenTimestampNanos: r.Seen.UnixNano(),
 	}
