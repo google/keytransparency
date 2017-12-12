@@ -7,7 +7,7 @@ Package type_proto is a generated protocol buffer package.
 It is generated from these files:
 	api/type/type_proto/type.proto
 	api/type/type_proto/keymaster.proto
-	api/type/type_proto/authorization.proto
+	api/type/type_proto/authz.proto
 
 It has these top-level messages:
 	User
@@ -15,7 +15,6 @@ It has these top-level messages:
 	SigningKey
 	VerifyingKey
 	KeySet
-	AuthorizationPolicy
 */
 package type_proto
 

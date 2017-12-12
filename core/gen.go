@@ -27,4 +27,4 @@ package core
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src api/usermanager/v1/usermanager_proto/usermanager.proto
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. api/usermanager/v1/usermanager_proto/usermanager.proto
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis --go_out=:$GOPATH/src api/type/type_proto/type.proto api/type/type_proto/keymaster.proto api/type/type_proto/authorization.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis --go_out=:$GOPATH/src api/type/type_proto/type.proto api/type/type_proto/keymaster.proto api/type/type_proto/authz.proto
