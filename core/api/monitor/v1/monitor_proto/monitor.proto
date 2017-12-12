@@ -23,8 +23,8 @@ option go_package = "github.com/google/keytransparency/core/api/monitor/v1/monit
 package google.keytransparency.monitor.v1;
 
 import "google/api/annotations.proto";
-import "trillian.proto";
 import "google/rpc/status.proto";
+import "trillian.proto";
 
 // GetStateRequest requests the state of a keytransparency domain for a particular
 // point in time.
