@@ -20,8 +20,8 @@ package google.keytransparency.usermanager.v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "api/type/type_proto/type.proto";
-import "api/type/type_proto/keymaster.proto";
+import "type/type_proto/type.proto";
+import "type/type_proto/keymaster.proto";
 
 // GetKeySetsRequest requests the keyset of a domain_id/app_id
 message GetKeySetRequest {
