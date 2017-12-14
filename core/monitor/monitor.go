@@ -46,9 +46,9 @@ type Monitor struct {
 	mapPubKey   crypto.PublicKey
 }
 
-// NewFromConfig produces a new monitor from a DomainInfo object.
+// NewFromConfig produces a new monitor from a Domain object.
 func NewFromConfig(mclient pb.MutationServiceClient,
-	config *pb.GetDomainInfoResponse,
+	config *pb.Domain,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	logTree := config.GetLog()

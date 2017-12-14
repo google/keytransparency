@@ -107,7 +107,7 @@ func (s *Server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 
 	resp := make([]*pb.Domain, 0, len(domains))
 	for _, d := range domains {
-		info, err := s.fetchDomainInfo(ctx, d)
+		info, err := s.fetchDomain(ctx, d)
 		if err != nil {
 			return nil, err
 		}
@@ -119,8 +119,9 @@ func (s *Server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 	}, nil
 }
 
-// fetchDomainInfo converts an amdin.Domain object into a pb.Domain object by fetching the relevant info from Trillian.
-func (s *Server) fetchDomainInfo(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
+// fetchDomain converts an adminstorage.Domain object into a pb.Domain object
+// by fetching the relevant info from Trillian.
+func (s *Server) fetchDomain(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
 	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
@@ -146,7 +147,7 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 	if err != nil {
 		return nil, err
 	}
-	info, err := s.fetchDomainInfo(ctx, domain)
+	info, err := s.fetchDomain(ctx, domain)
 	if err != nil {
 		return nil, err
 	}

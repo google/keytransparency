@@ -50,7 +50,7 @@ func TestMonitor(t *testing.T) {
 	env.Client.RetryCount = 0
 	c := pb.NewKeyTransparencyServiceClient(env.Conn)
 	// setup monitor:
-	resp, err := c.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: env.Domain.DomainId})
+	resp, err := c.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}

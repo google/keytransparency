@@ -72,7 +72,7 @@ func main() {
 	ktClient := pb.NewKeyTransparencyServiceClient(cc)
 	mClient := pb.NewMutationServiceClient(cc)
 
-	config, err := ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{DomainId: *domainID})
+	config, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: *domainID})
 	if err != nil {
 		glog.Exitf("Could not read domain info %v:", err)
 	}
