@@ -13,7 +13,6 @@ associated with it.
 It is generated from these files:
 	v1/keytransparency_proto/keytransparency.proto
 	v1/keytransparency_proto/admin.proto
-	v1/keytransparency_proto/mutations.proto
 
 It has these top-level messages:
 	Committed
