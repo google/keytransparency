@@ -23,6 +23,7 @@ option go_package = "github.com/google/keytransparency/core/api/monitor/v1/monit
 package google.keytransparency.monitor.v1;
 
 import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 import "trillian.proto";
 
@@ -49,10 +50,9 @@ message State {
   // smr will be empty. The epochs are encoded into the smr map_revision.
   trillian.SignedMapRoot smr = 1;
 
-  // seen_timestamp_nanos contains the time in nanoseconds where this particular
-  // signed map root was retrieved and processed. The actual timestamp of the
-  // smr returned by the server is contained in above smr field.
-  int64 seen_timestamp_nanos = 2;
+  // seen_time contains the time when this particular signed map root was
+  // retrieved and processed.
+  google.protobuf.Timestamp seen_time = 2;
 
   // errors contains a list of errors representing the verification checks
   // that failed while monitoring the key-transparency server.

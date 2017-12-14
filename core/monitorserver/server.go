@@ -25,9 +25,10 @@ import (
 	"context"
 	"errors"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorstorage"
 
@@ -83,14 +84,18 @@ func (s *Server) GetStateByRevision(ctx context.Context, in *pb.GetStateRequest)
 func (s *Server) getResponseByRevision(epoch int64) (*pb.State, error) {
 	r, err := s.storage.Get(epoch)
 	if err == monitorstorage.ErrNotFound {
-		return nil, grpc.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
+		return nil, status.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
 	}
 
 	errs := monitor.ErrList(r.Errors)
+	seen, err := ptypes.TimestampProto(r.Seen)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "invalid timestamp: %v", err)
+	}
 	// Convert errors into rpc.Status
 	return &pb.State{
-		Smr:                r.Smr,
-		SeenTimestampNanos: r.Seen.UnixNano(),
-		Errors:             errs.Proto(),
+		Smr:      r.Smr,
+		SeenTime: seen,
+		Errors:   errs.Proto(),
 	}, nil
 }
