@@ -52,6 +52,7 @@ type Result struct {
 }
 
 // Interface is the interface that stores and retrieves monitoring results.
+// TODO(gbelvin): make multi-tennent.
 type Interface interface {
 	// Set stores the monitoring result for a specific epoch.
 	Set(epoch int64, r *Result) error

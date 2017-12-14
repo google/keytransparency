@@ -70,7 +70,6 @@ func main() {
 		glog.Exitf("Error Dialing %v: %v", ktURL, err)
 	}
 	ktClient := pb.NewKeyTransparencyServiceClient(cc)
-	mClient := pb.NewMutationServiceClient(cc)
 
 	config, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: *domainID})
 	if err != nil {
@@ -86,11 +85,11 @@ func main() {
 	store := fake.NewMonitorStorage()
 
 	// Create monitoring background process.
-	mon, err := monitor.NewFromConfig(mClient, config, signer, store)
+	mon, err := monitor.NewFromConfig(ktClient, config, signer, store)
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}
-	go mon.ProcessLoop(*domainID, *pollPeriod)
+	go mon.ProcessLoop(ctx, *domainID, *pollPeriod)
 
 	// Monitor Server.
 	srv := monitorserver.New(store)
