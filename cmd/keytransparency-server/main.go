@@ -23,7 +23,6 @@ import (
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/keyserver"
-	"github.com/google/keytransparency/core/mutationserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/adminstorage"
@@ -124,14 +123,12 @@ func main() {
 	// Create gRPC server.
 	ksvr := keyserver.New(admin, tlog, tmap, tadmin,
 		mutator, auth, authz, factory, mutations)
-	msrv := mutationserver.New(admin, tlog, tmap, mutations, factory)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 	pb.RegisterKeyTransparencyServiceServer(grpcServer, ksvr)
-	pb.RegisterMutationServiceServer(grpcServer, msrv)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
@@ -142,8 +139,7 @@ func main() {
 		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
 	}
 	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
-		pb.RegisterKeyTransparencyServiceHandlerFromEndpoint,
-		pb.RegisterMutationServiceHandlerFromEndpoint)
+		pb.RegisterKeyTransparencyServiceHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
