@@ -41,13 +41,13 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// GetStateRequest requests the state of a keytransparency domain for a particular
-// point in time.
+// GetStateRequest requests the verification state of a keytransparency domain
+// for a particular point in time.
 type GetStateRequest struct {
 	// kt_url is the URL of the keytransparency server for which the monitoring
 	// result will be returned.
 	KtUrl string `protobuf:"bytes,2,opt,name=kt_url,json=ktUrl" json:"kt_url,omitempty"`
-	// domain_id identifies the merkel tree being monitored.
+	// domain_id identifies the merkle tree being monitored.
 	DomainId string `protobuf:"bytes,3,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
 	// epoch specifies the revision for which the monitoring results will
 	// be returned (epochs start at 0).
@@ -139,7 +139,7 @@ const _ = grpc.SupportPackageIsVersion4
 
 type MonitorClient interface {
 	// GetSignedMapRoot returns the latest valid signed map root the monitor
-	// observed. Additionally, the response contains additional data necessary to
+	// observed. Additionally, the response contains extra data necessary to
 	// reproduce errors on failure.
 	//
 	// Returns the signed map root for the latest epoch the monitor observed. If
@@ -147,8 +147,8 @@ type MonitorClient interface {
 	// from the previous to the current epoch it won't sign the map root and
 	// additional data will be provided to reproduce the failure.
 	GetState(ctx context.Context, in *GetStateRequest, opts ...grpc.CallOption) (*State, error)
-	// GetSignedMapRootByRevision works similar to GetSignedMapRoot but returns
-	// the monitor's result for a specific map revision.
+	// GetSignedMapRootByRevision returns the monitor's result for a specific map
+	// revision.
 	//
 	// Returns the signed map root for the specified epoch the monitor observed.
 	// If the monitor could not reconstruct the map root given the set of
@@ -187,7 +187,7 @@ func (c *monitorClient) GetStateByRevision(ctx context.Context, in *GetStateRequ
 
 type MonitorServer interface {
 	// GetSignedMapRoot returns the latest valid signed map root the monitor
-	// observed. Additionally, the response contains additional data necessary to
+	// observed. Additionally, the response contains extra data necessary to
 	// reproduce errors on failure.
 	//
 	// Returns the signed map root for the latest epoch the monitor observed. If
@@ -195,8 +195,8 @@ type MonitorServer interface {
 	// from the previous to the current epoch it won't sign the map root and
 	// additional data will be provided to reproduce the failure.
 	GetState(context.Context, *GetStateRequest) (*State, error)
-	// GetSignedMapRootByRevision works similar to GetSignedMapRoot but returns
-	// the monitor's result for a specific map revision.
+	// GetSignedMapRootByRevision returns the monitor's result for a specific map
+	// revision.
 	//
 	// Returns the signed map root for the specified epoch the monitor observed.
 	// If the monitor could not reconstruct the map root given the set of
