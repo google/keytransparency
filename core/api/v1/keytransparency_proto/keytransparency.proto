@@ -238,6 +238,19 @@ message Epoch {
 //  * Each Epoch contains the root of the sparse merkle tree and the changes that
 //    occured that epoch and the previous.
 //
+// Each Domain has a collection of applications:
+// `/v1/domains/*/apps/`
+//  * Each Application has distinct users and permissions, but are indistinguishable
+//    from each other just by looking at the tree.
+//
+// Each Application has a collection of Users:
+// `/v1/domains/*/apps/*/users`
+//  * Each User contains public key material, permissions for who is allowed to change
+//    that user, and signatures indicating who made the last change.
+//
+// Each User also has a collection of historical values for user:
+// `/v1/domains/*/apps/*/users/*/history`
+//
 service KeyTransparencyService {
   // GetDomain returns the information needed to verify the specified domain.
   rpc GetDomain(GetDomainRequest) returns (Domain) {
@@ -265,7 +278,7 @@ service KeyTransparencyService {
   // Entries contain signed commitments to a profile, which is also returned.
   // TODO(gbelvin): Replace with GetUser
   rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/users/{user_id}" };
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}" };
   }
 
   // ListEntryHistory returns a list of historic GetEntry values.
@@ -273,7 +286,7 @@ service KeyTransparencyService {
   // Clients verify their account history by observing correct values for their
   // account over time.
   rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/users/{user_id}/history" };
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}/history" };
   }
 
   // UpdateEntry updates a user's profile.
@@ -282,7 +295,7 @@ service KeyTransparencyService {
   // Clients must retry until this function returns a proof containing the desired value.
   rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {
     option (google.api.http) = {
-      put: "/v1/domains/{domain_id}/users/{user_id}"
+      put: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}"
       body: "entry_update"
     };
   }
