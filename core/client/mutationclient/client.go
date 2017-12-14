@@ -61,21 +61,20 @@ func New(client pb.KeyTransparencyServiceClient, pollPeriod time.Duration) *Clie
 // returns an error other than NotFound or until ctx.Done is closed.  When
 // GetEpoch returns NotFound, it waits one pollPeriod before trying again.
 func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch int64, out chan<- *pb.Epoch) error {
+	defer close(out)
 	wait := time.NewTicker(c.pollPeriod).C
 	for i := startEpoch; ; {
 		// time out if we exceed the poll period:
-		cctx, cancel := context.WithTimeout(ctx, c.pollPeriod)
-		epoch, err := c.client.GetEpoch(cctx, &pb.GetEpochRequest{
-			DomainId: domainID,
-			Epoch:    i,
+		epoch, err := c.client.GetEpoch(ctx, &pb.GetEpochRequest{
+			DomainId:      domainID,
+			Epoch:         i,
+			FirstTreeSize: startEpoch,
 		})
-		cancel()
 		// If this epoch was not found, wait and retry.
 		if s, _ := status.FromError(err); s.Code() == codes.NotFound {
 			glog.Infof("Waiting for a new epoch to appear")
 			select {
 			case <-ctx.Done():
-				close(out)
 				return ctx.Err()
 			case <-wait:
 				continue
@@ -87,7 +86,6 @@ func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch i
 
 		select {
 		case <-ctx.Done():
-			close(out)
 			return ctx.Err()
 		case out <- epoch:
 			i++

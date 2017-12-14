@@ -89,7 +89,7 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}
-	go mon.ProcessLoop(ctx, *domainID, *pollPeriod)
+	go mon.ProcessLoop(ctx, *domainID, store.LatestEpoch(), *pollPeriod)
 
 	// Monitor Server.
 	srv := monitorserver.New(store)

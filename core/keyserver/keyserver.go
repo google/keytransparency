@@ -84,9 +84,9 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 
 // TODO(gdbelvin): add a GetEntryByRevision endpoint too.
 func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, firstTreeSize, revision int64) (*pb.GetEntryResponse, error) {
-	if revision == 0 {
+	if got, want := revision, int64(0); got != -1 && got < want {
 		return nil, grpc.Errorf(codes.InvalidArgument,
-			"Epoch 0 is inavlid. The first map revision is epoch 1.")
+			"Epoch %v is inavlid. The first map revision is epoch %v.", got, want)
 	}
 	if domainID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")

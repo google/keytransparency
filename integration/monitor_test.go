@@ -76,6 +76,7 @@ func TestMonitor(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
+		desc string
 		// the userIDs to update, if no userIDs are provided, no update request
 		// will be send before querying
 		userIDs        []string
@@ -85,12 +86,26 @@ func TestMonitor(t *testing.T) {
 		// the epoch to query after sending potential updates
 		queryEpoch int64
 	}{
-		// query first epoch, don't update
-		{[]string{}, nil, nil, nil, 1},
-		// create one mutation and new epoch (not forced like in sequencer):
-		{[]string{"test@test.com"}, []byte("testData"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}, 2},
-		// create several mutations and new epoch
-		{[]string{"test@test.com", "test2@test2.com"}, []byte("more update data"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}, 3},
+		{
+			desc:       "Query first epoch, don't update",
+			queryEpoch: 1,
+		},
+		{
+			desc:           "create one mutation and new epoch (not forced like in sequencer)",
+			userIDs:        []string{"test@test.com"},
+			updateData:     []byte("testData"),
+			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
+			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
+			queryEpoch:     2,
+		},
+		{
+			desc:           "create several mutations and new epoch",
+			userIDs:        []string{"test@test.com", "test2@test2.com"},
+			updateData:     []byte("more update data"),
+			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
+			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
+			queryEpoch:     3,
+		},
 	} {
 		for _, userID := range tc.userIDs {
 			_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth(userID),
@@ -105,15 +120,16 @@ func TestMonitor(t *testing.T) {
 		}
 
 		domainID := env.Domain.DomainId
-		cctx, cancel := context.WithTimeout(ctx, 30*time.Millisecond)
-		if err := mon.ProcessLoop(cctx, domainID, 10*time.Millisecond); err != nil {
+		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+		if err := mon.ProcessLoop(cctx, domainID, tc.queryEpoch-1, 40*time.Millisecond); err != context.DeadlineExceeded {
 			t.Errorf("Monitor could not process mutations: %v", err)
 		}
 		cancel()
 
 		mresp, err := store.Get(tc.queryEpoch)
 		if err != nil {
-			t.Fatalf("Could not read monitoring response: %v", err)
+			t.Errorf("Could not read monitoring response: %v", err)
+			continue
 		}
 		for _, err := range mresp.Errors {
 			t.Errorf("Got error: %v", err)

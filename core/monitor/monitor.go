@@ -100,6 +100,7 @@ type EpochPair struct {
 
 // EpochPairs consumes epochs (0, 1, 2) and produces pairs (0,1), (1,2).
 func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- EpochPair) error {
+	defer close(pairs)
 	var epochA *pb.Epoch
 	for epoch := range epochs {
 		if epochA == nil {
@@ -112,7 +113,6 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 		}
 		select {
 		case <-ctx.Done():
-			close(pairs)
 			return ctx.Err()
 		case pairs <- pair:
 		}
@@ -122,7 +122,7 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 }
 
 // ProcessLoop continuously fetches mutations and processes them.
-func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, period time.Duration) error {
+func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, startEpoch int64, period time.Duration) error {
 	mutCli := mutationclient.New(m.mClient, period)
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
@@ -130,7 +130,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, period time.
 	pairs := make(chan EpochPair)
 
 	go func(ctx context.Context, domainID string, epochs chan<- *pb.Epoch) {
-		errc <- mutCli.StreamEpochs(ctx, domainID, 0, epochs)
+		errc <- mutCli.StreamEpochs(ctx, domainID, startEpoch, epochs)
 	}(cctx, domainID, epochs)
 	go func(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- EpochPair) {
 		errc <- EpochPairs(ctx, epochs, pairs)
@@ -165,15 +165,13 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, period time.
 		}); err != nil {
 			return fmt.Errorf("monitorstorage.Set(%v, _): %v", revision, err)
 		}
-		return nil
-
 	}
 	errA := <-errc
 	errB := <-errc
-	if errA != nil || errB != nil {
-		return fmt.Errorf("failed fetching epochs: (fetch: %v, pair: %v)", errA, errB)
+	if err := errA; err != nil {
+		return err
 	}
-	return nil
+	return errB
 }
 
 // VerifyEpochMutations validates that epochA + mutations = epochB.

@@ -57,8 +57,8 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		Revision: in.Epoch,
 	})
 	if err != nil {
-		glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
-		return nil, status.Error(codes.Internal, "Get signed map root failed")
+		glog.Warningf("GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
+		return nil, err
 	}
 
 	// MapRevisions start at 0. Log leaf indices starts at 0.
@@ -71,6 +71,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		return nil, err
 	}
 	return &pb.Epoch{
+		DomainId:       in.DomainId,
 		Smr:            resp.GetMapRoot(),
 		LogRoot:        logRoot.GetSignedLogRoot(),
 		LogConsistency: logConsistency.GetProof().GetHashes(),
