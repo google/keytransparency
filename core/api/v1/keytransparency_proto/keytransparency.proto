@@ -194,8 +194,8 @@ message UpdateEntryResponse {
   GetEntryResponse proof = 1;
 }
 
-// GetMutationsRequest contains the input parameters of the GetMutation APIs.
-message GetMutationsRequest {
+// GetEpochRequest identifies a particular epoch.
+message GetEpochRequest {
   // domain_id is the domain for which epochs are being requested.
   string domain_id = 5;
   // epoch specifies the epoch number in which mutations will be returned.
@@ -203,18 +203,12 @@ message GetMutationsRequest {
   // first_tree_size is the tree_size of the currently trusted log root.
   // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 2;
-  // page_token defines the starting point for pagination. An empty
-  // value means start from the beginning. A non-empty value requests the next
-  // page of values.
-  string page_token = 3;
-  // page_size is the maximum number of epochs to return.
-  int32 page_size = 4;
 }
 
-// GetMutationsResponse contains the results of GetMutation APIs.
-message GetMutationsResponse {
-  // epoch specifies the epoch number of the returned mutations.
-  int64 epoch = 1;
+// Epoch represents a snapshot of the entire key directory and
+// a diff of what changed between this revision and the previous revision.
+message Epoch {
+  string domain_id = 1;
   // smr contains the signed map root for the sparse Merkle Tree.
   trillian.SignedMapRoot smr = 2;
   // log_root is the latest globally consistent log root.
@@ -232,31 +226,38 @@ message GetMutationsResponse {
   string next_page_token = 7;
 }
 
-
-// GetEpochsRequest is an empty proto message used as input to GetEpochs API.
-message GetEpochsRequest {}
-
-// GetEpochsResponse contains mutations of a newly created epoch.
-message GetEpochsResponse {
-  // mutations contains all mutations information of a newly created epoch.
-  GetMutationsResponse mutations = 1;
-}
-
 // The KeyTransparencyService API represents a directory of public keys.
-// The API defines the following resource model:
 //
 // The API has a collection of domains:
 // `/v1/domains/`
 //  * Each domain has a single sparse merkle tree, append only log,
 //    and other public key material that is needed to verify server responses.
 //
-// - Entries have a collection of historical
-//   [Entry][keytransparency.Entry] resources named `/users/*/history`.
+//  Each Domain has a collection of snapshots called epochs:
+// `/v1/domains/*/epochs/`
+//  * Each Epoch contains the root of the sparse merkle tree and the changes that
+//    occured that epoch and the previous.
 //
 service KeyTransparencyService {
   // GetDomain returns the information needed to verify the specified domain.
   rpc GetDomain(GetDomainRequest) returns (Domain) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}" };
+  }
+
+  // GetEpoch returns a list of mutations between an epoch and its predecessor.
+  //
+  // Returns a list of mutations and their inclusion proofs along with the epoch
+  // signed map root.
+  rpc GetEpoch(GetEpochRequest) returns (Epoch) {
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}" };
+  }
+
+  // GetEpochStream streams new epochs as they are created.
+  //
+  // Returns a list of mutations and their inclusion proofs along with the epoch
+  // signed map root.
+  rpc GetEpochStream(GetEpochRequest) returns (stream Epoch) {
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:stream" };
   }
 
   // GetEntry returns a user's entry in the Merkle Tree.
