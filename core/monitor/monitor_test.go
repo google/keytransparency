@@ -32,11 +32,9 @@ func TestEpochPairs(t *testing.T) {
 	}{
 		{in: []int64{0, 1, 2}, out: []struct{ a, b int64 }{{0, 1}, {1, 2}}},
 	} {
-		t.Log("begin")
 		epochs := make(chan *pb.Epoch, len(tc.in)+1)
 		pairs := make(chan EpochPair, len(tc.out)+1)
 		for _, i := range tc.in {
-			t.Logf("put: %v", i)
 			epochs <- &pb.Epoch{Smr: &tpb.SignedMapRoot{MapRevision: i}}
 		}
 		close(epochs)
@@ -45,7 +43,6 @@ func TestEpochPairs(t *testing.T) {
 		}
 		for i, p := range tc.out {
 			pair := <-pairs
-			t.Logf("read pair: %v, %v", pair.A.Smr.MapRevision, pair.B.Smr.MapRevision)
 			if got, want := pair.A.Smr.MapRevision, p.a; got != want {
 				t.Errorf("pairs[%v].A.Revision %v, want %v", i, got, want)
 			}

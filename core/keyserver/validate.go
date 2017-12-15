@@ -48,7 +48,7 @@ var (
 	// ErrInvalidStart occurs when the start epoch of ListEntryHistoryRequest
 	// is not valid (not in [1, currentEpoch]).
 	ErrInvalidStart = errors.New("invalid start epoch")
-	// ErrInvalidPageSize occurs when the page size is > 0.
+	// ErrInvalidPageSize occurs when the page size is < 0.
 	ErrInvalidPageSize = errors.New("Invalid page size")
 )
 
