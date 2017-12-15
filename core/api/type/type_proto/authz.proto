@@ -19,8 +19,9 @@ package google.keytransparency.type;
 
 // Permission specifies the permission a role can take.
 enum Permission {
+  UNKNOWN = 0;
   // LOG indicates whether access to resources will be logged.
-  LOG = 0;
-  READ = 1;
-  WRITE = 2;
+  LOG = 1;
+  READ = 2;
+  WRITE = 3;
 }
