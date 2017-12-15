@@ -87,7 +87,7 @@ type Client struct {
 }
 
 // NewFromConfig creates a new client from a config
-func NewFromConfig(ktClient pb.KeyTransparencyServiceClient, config *pb.GetDomainInfoResponse) (*Client, error) {
+func NewFromConfig(ktClient pb.KeyTransparencyServiceClient, config *pb.Domain) (*Client, error) {
 	// Log Hasher.
 	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
 	if err != nil {

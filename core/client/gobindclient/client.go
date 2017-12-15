@@ -88,7 +88,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	config, err := ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{})
+	config, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{})
 	if err != nil {
 		return fmt.Errorf("Error getting config: %v", err)
 	}

@@ -350,12 +350,12 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	return &pb.UpdateEntryResponse{Proof: resp}, nil
 }
 
-// GetDomainInfo returns all info tied to the specified domain.
+// GetDomain returns all info tied to the specified domain.
 //
 // This API to get all necessary data needed to verify a particular
 // key-server. Data contains for instance the tree-info, like for instance the
 // log/map-id and the corresponding public-keys.
-func (s *Server) GetDomainInfo(ctx context.Context, in *pb.GetDomainInfoRequest) (*pb.GetDomainInfoResponse, error) {
+func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Domain, error) {
 	// Lookup log and map info.
 	if in.DomainId == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
@@ -378,7 +378,7 @@ func (s *Server) GetDomainInfo(ctx context.Context, in *pb.GetDomainInfoRequest)
 		return nil, err
 	}
 
-	return &pb.GetDomainInfoResponse{
+	return &pb.Domain{
 		Log: logTree,
 		Map: mapTree,
 		Vrf: domain.VRF,

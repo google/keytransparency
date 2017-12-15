@@ -28,11 +28,7 @@ import "crypto/keyspb/keyspb.proto";
 import "crypto/sigpb/sigpb.proto";
 import "trillian.proto";
 import "trillian_map_api.proto";
-
-//
-// Data types.
-//
-
+import "api/v1/keytransparency_proto/admin.proto";
 
 // Committed represents the data committed to in a cryptographic commitment.
 // commitment = HMAC_SHA512_256(key, data)
@@ -236,24 +232,6 @@ message GetMutationsResponse {
   string next_page_token = 7;
 }
 
-// GetDomainInfoRequest contains an empty request to query the GetDomainInfo
-// APIs.
-message GetDomainInfoRequest {
-  // domain_id identifies the domain in which the user and application live.
-  string domain_id = 1;
-}
-
-// GetDomainInfoResponse contains the results of GetDomainInfo APIs.
-message GetDomainInfoResponse {
-  // domain_id identifies the domain in which the user and application live.
-  string domain_id = 4;
-  // Log contains the Log-Tree's info.
-  trillian.Tree log = 1;
-  // Map contains the Map-Tree's info.
-  trillian.Tree map = 2;
-  // Vrf contains the VRF public key.
-  keyspb.PublicKey vrf = 3;
-}
 
 // GetEpochsRequest is an empty proto message used as input to GetEpochs API.
 message GetEpochsRequest {}
@@ -267,16 +245,24 @@ message GetEpochsResponse {
 // The KeyTransparencyService API represents a directory of public keys.
 // The API defines the following resource model:
 //
-// - The API has a collection of [Entry][keytransparency.Entry]
-//   resources named `/user/*`.
+// The API has a collection of domains:
+// `/v1/domains/`
+//  * Each domain has a single sparse merkle tree, append only log,
+//    and other public key material that is needed to verify server responses.
 //
 // - Entries have a collection of historical
 //   [Entry][keytransparency.Entry] resources named `/users/*/history`.
 //
 service KeyTransparencyService {
+  // GetDomain returns the information needed to verify the specified domain.
+  rpc GetDomain(GetDomainRequest) returns (Domain) {
+    option (google.api.http) = { get: "/v1/domains/{domain_id}" };
+  }
+
   // GetEntry returns a user's entry in the Merkle Tree.
   //
   // Entries contain signed commitments to a profile, which is also returned.
+  // TODO(gbelvin): Replace with GetUser
   rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/users/{user_id}" };
   }
@@ -300,13 +286,5 @@ service KeyTransparencyService {
     };
   }
 
-  // GetDomainInfo returns all info tied to the specified domain.
-  //
-  // This API to get all necessary data needed to verify a particular
-  // key-server. Data contains for instance the tree-info, like for instance the
-  // log-/map-id and the corresponding public-keys.
-  rpc GetDomainInfo(GetDomainInfoRequest) returns (GetDomainInfoResponse) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/info" };
-  }
 }
 

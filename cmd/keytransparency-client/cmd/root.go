@@ -255,13 +255,13 @@ func GetClient(useClientSecret bool) (*grpcc.Client, error) {
 }
 
 // config selects a source for and returns the client configuration.
-func config(ctx context.Context, cc *grpc.ClientConn) (*pb.GetDomainInfoResponse, error) {
+func config(ctx context.Context, cc *grpc.ClientConn) (*pb.Domain, error) {
 	autoConfig := viper.GetBool("autoconfig")
 	domain := viper.GetString("domain")
 	switch {
 	case autoConfig:
 		ktClient := pb.NewKeyTransparencyServiceClient(cc)
-		return ktClient.GetDomainInfo(ctx, &pb.GetDomainInfoRequest{
+		return ktClient.GetDomain(ctx, &pb.GetDomainRequest{
 			DomainId: domain,
 		})
 	default:
@@ -269,7 +269,7 @@ func config(ctx context.Context, cc *grpc.ClientConn) (*pb.GetDomainInfoResponse
 	}
 }
 
-func readConfigFromDisk() (*pb.GetDomainInfoResponse, error) {
+func readConfigFromDisk() (*pb.Domain, error) {
 	vrfPubFile := viper.GetString("vrf")
 	logPEMFile := viper.GetString("log-key")
 	mapPEMFile := viper.GetString("map-key")
@@ -304,7 +304,7 @@ func readConfigFromDisk() (*pb.GetDomainInfoResponse, error) {
 		return nil, fmt.Errorf("error seralizeing map public key: %v", err)
 	}
 
-	return &pb.GetDomainInfoResponse{
+	return &pb.Domain{
 		Log: &trillian.Tree{
 			HashStrategy: trillian.HashStrategy_OBJECT_RFC6962_SHA256,
 			PublicKey:    logPubPB,
