@@ -48,6 +48,8 @@ var (
 	// ErrInvalidStart occurs when the start epoch of ListEntryHistoryRequest
 	// is not valid (not in [1, currentEpoch]).
 	ErrInvalidStart = errors.New("invalid start epoch")
+	// ErrInvalidPageSize occurs when the page size is < 0.
+	ErrInvalidPageSize = errors.New("Invalid page size")
 )
 
 // validateKey verifies:
@@ -112,6 +114,29 @@ func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentEpoc
 	// Ensure in.PageSize does not exceed currentEpoch.
 	if in.Start+int64(in.PageSize) > currentEpoch {
 		in.PageSize = int32(currentEpoch - in.Start + 1)
+	}
+	return nil
+}
+
+// validateGetEpochRequest ensures that start epoch starts with 1
+func validateGetEpochRequest(in *pb.GetEpochRequest) error {
+	if in.Epoch < 0 {
+		return ErrInvalidStart
+	}
+	return nil
+}
+
+func validateListMutationsRequest(in *pb.ListMutationsRequest) error {
+	if in.Epoch < 1 {
+		return ErrInvalidStart
+	}
+	switch {
+	case in.PageSize < 0:
+		return ErrInvalidPageSize
+	case in.PageSize == 0:
+		in.PageSize = defaultPageSize
+	case in.PageSize > maxPageSize:
+		in.PageSize = maxPageSize
 	}
 	return nil
 }

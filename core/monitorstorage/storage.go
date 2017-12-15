@@ -20,8 +20,6 @@ import (
 	"time"
 
 	"github.com/google/trillian"
-
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
 var (
@@ -51,12 +49,10 @@ type Result struct {
 	// Errors contains a string representation of the verifications steps that
 	// failed.
 	Errors []error
-	// Response contains the original mutations API response from the server
-	// in case at least one verification step failed.
-	Response *pb.GetMutationsResponse
 }
 
 // Interface is the interface that stores and retrieves monitoring results.
+// TODO(gbelvin): make multi-tenant.
 type Interface interface {
 	// Set stores the monitoring result for a specific epoch.
 	Set(epoch int64, r *Result) error

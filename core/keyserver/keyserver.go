@@ -39,15 +39,6 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-const (
-	// Each page contains pageSize profiles. Each profile contains multiple
-	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
-	// size 16 will contain about 8KB of data.
-	defaultPageSize = 16
-	// Maximum allowed requested page size to prevent DOS.
-	maxPageSize = 16
-)
-
 // Server holds internal state for the key server.
 type Server struct {
 	admin     adminstorage.Storage
@@ -93,9 +84,9 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 
 // TODO(gdbelvin): add a GetEntryByRevision endpoint too.
 func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, firstTreeSize, revision int64) (*pb.GetEntryResponse, error) {
-	if revision == 0 {
+	if got, want := revision, int64(0); got != -1 && got < want {
 		return nil, grpc.Errorf(codes.InvalidArgument,
-			"Epoch 0 is inavlid. The first map revision is epoch 1.")
+			"Epoch %v is inavlid. The first map revision is epoch %v.", got, want)
 	}
 	if domainID == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")

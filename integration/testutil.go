@@ -32,7 +32,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
-	"github.com/google/keytransparency/core/mutationserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authorization"
@@ -153,9 +152,7 @@ func NewEnv(t *testing.T) *Env {
 	server := keyserver.New(adminStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
 		mutator, auth, authz, factory, mutations)
 	gsvr := grpc.NewServer()
-	msrv := mutationserver.New(adminStorage, tlog, mapEnv.MapClient, mutations, factory)
 	pb.RegisterKeyTransparencyServiceServer(gsvr, server)
-	pb.RegisterMutationServiceServer(gsvr, msrv)
 
 	// Sequencer
 	seq := sequencer.New(adminStorage, mapEnv.MapClient, tlog, mutator, mutations, factory)

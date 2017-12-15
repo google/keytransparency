@@ -25,7 +25,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
@@ -37,74 +38,80 @@ const pageSize = 16
 
 // Client queries the server side mutations API.
 type Client struct {
-	client     pb.MutationServiceClient
+	client     pb.KeyTransparencyServiceClient
 	pollPeriod time.Duration
 }
 
+// EpochMutations contains all the mutations needed to advance
+// the map from epoch-1 to epoch.
+type EpochMutations struct {
+	Epoch     *pb.Epoch
+	Mutations []*pb.MutationProof
+}
+
 // New initializes a new mutations API monitoring client.
-func New(client pb.MutationServiceClient, pollPeriod time.Duration) *Client {
+func New(client pb.KeyTransparencyServiceClient, pollPeriod time.Duration) *Client {
 	return &Client{
 		client:     client,
 		pollPeriod: pollPeriod,
 	}
 }
 
-// StartPolling initiates polling the server side mutations API. It does not
-// block returns a channel.
-// The caller should listen on the channel to receiving the latest polled
-// mutations response including all paged mutations. If anything went wrong
-// while polling the response channel contains an error.
-func (c *Client) StartPolling(domainID string, startEpoch int64) (<-chan *pb.GetMutationsResponse, <-chan error) {
-	response := make(chan *pb.GetMutationsResponse)
-	errChan := make(chan error)
-	go func() {
-		epoch := startEpoch
-		t := time.NewTicker(c.pollPeriod)
-		for now := range t.C {
-			glog.Infof("Polling: %v", now)
-			// time out if we exceed the poll period:
-			ctx, cancel := context.WithTimeout(context.Background(), c.pollPeriod)
-			monitorResp, err := c.PollMutations(ctx, domainID, epoch)
-			cancel()
-			if err != nil {
-				glog.Infof("PollMutations(_): %v", err)
-				errChan <- err
-			} else {
-				// only write to results channel and increment epoch
-				// if there was no error:
-				glog.Infof("Got response %v at %v", monitorResp.Epoch, now)
-				response <- monitorResp
-				epoch++
+// StreamEpochs repeatedly fetches epochs and sends them to out until GetEpoch
+// returns an error other than NotFound or until ctx.Done is closed.  When
+// GetEpoch returns NotFound, it waits one pollPeriod before trying again.
+func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch int64, out chan<- *pb.Epoch) error {
+	defer close(out)
+	wait := time.NewTicker(c.pollPeriod).C
+	for i := startEpoch; ; {
+		// time out if we exceed the poll period:
+		epoch, err := c.client.GetEpoch(ctx, &pb.GetEpochRequest{
+			DomainId:      domainID,
+			Epoch:         i,
+			FirstTreeSize: startEpoch,
+		})
+		// If this epoch was not found, wait and retry.
+		if s, _ := status.FromError(err); s.Code() == codes.NotFound {
+			glog.Infof("Waiting for a new epoch to appear")
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-wait:
+				continue
 			}
+		} else if err != nil {
+			glog.Warningf("GetEpoch(%v,%v): %v", domainID, i, err)
+			return err
 		}
-	}()
-	return response, errChan
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case out <- epoch:
+			i++
+		}
+	}
 }
 
-// PollMutations polls GetMutationsResponses from the configured
-// key-transparency server's mutations API.
-func (c *Client) PollMutations(ctx context.Context, domainID string, queryEpoch int64, opts ...grpc.CallOption) (*pb.GetMutationsResponse, error) {
-	response, err := c.client.GetMutations(ctx, &pb.GetMutationsRequest{
-		DomainId: domainID,
-		PageSize: pageSize,
-		Epoch:    queryEpoch,
-	}, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("GetMutations(%v, %v): %v", domainID, pageSize, err)
-	}
-
-	// Page if necessary: query all mutations in the current epoch
-	for response.GetNextPageToken() != "" {
-		req := &pb.GetMutationsRequest{
-			DomainId: domainID,
-			PageSize: pageSize,
-		}
-		resp, err := c.client.GetMutations(ctx, req, opts...)
+// EpochMutations fetches all the mutations in an epoch
+func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.MutationProof, error) {
+	mutations := []*pb.MutationProof{}
+	token := ""
+	for {
+		resp, err := c.client.ListMutations(ctx, &pb.ListMutationsRequest{
+			DomainId:  epoch.GetDomainId(),
+			Epoch:     epoch.GetSmr().GetMapRevision(),
+			PageSize:  pageSize,
+			PageToken: token,
+		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetMutations(%v, %v): %v", epoch.GetDomainId(), pageSize, err)
 		}
-		response.Mutations = append(response.Mutations, resp.GetMutations()...)
+		mutations = append(mutations, resp.GetMutations()...)
+		token = resp.GetNextPageToken()
+		if token == "" {
+			break
+		}
 	}
-
-	return response, nil
+	return mutations, nil
 }

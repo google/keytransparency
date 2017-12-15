@@ -90,64 +90,42 @@ func (e *ErrList) Proto() []*statuspb.Status {
 	return errs
 }
 
-// VerifyMutationsResponse verifies a response received by the GetMutations API.
-// Additionally to the response it takes a complete list of mutations. The list
-// of received mutations may differ from those included in the initial response
-// because of the max. page size.
-func (m *Monitor) VerifyMutationsResponse(in *pb.GetMutationsResponse) []error {
+// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
+func (m *Monitor) VerifyEpoch(epoch *pb.Epoch) []error {
 	errs := ErrList{}
 
 	if m.trusted == nil {
-		m.trusted = in.GetLogRoot()
+		m.trusted = epoch.GetLogRoot()
 	}
 
-	if err := m.logVerifier.VerifyRoot(m.trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
+	if err := m.logVerifier.VerifyRoot(m.trusted, epoch.GetLogRoot(), epoch.GetLogConsistency()); err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, in))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, epoch))
 	}
 	// updated trusted log root
-	m.trusted = in.GetLogRoot()
+	m.trusted = epoch.GetLogRoot()
 
-	b, err := json.Marshal(in.GetSmr())
+	b, err := json.Marshal(epoch.GetSmr())
 	if err != nil {
 		glog.Errorf("json.Marshal(): %v", err)
-		errs.AppendStatus(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(in.GetSmr()))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(epoch.GetSmr()))
 	}
-	leafIndex := in.GetSmr().GetMapRevision()
-	treeSize := in.GetLogRoot().GetTreeSize()
-	err = m.logVerifier.VerifyInclusionAtIndex(in.GetLogRoot(), b, leafIndex, in.GetLogInclusion())
+	leafIndex := epoch.GetSmr().GetMapRevision()
+	treeSize := epoch.GetLogRoot().GetTreeSize()
+	err = m.logVerifier.VerifyInclusionAtIndex(epoch.GetLogRoot(), b, leafIndex, epoch.GetLogInclusion())
 	if err != nil {
 		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
-		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(in))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(epoch))
 	}
 
 	// copy of signed map root
-	smr := *in.GetSmr()
+	smr := *epoch.GetSmr()
 	// reset to the state before it was signed:
 	smr.Signature = nil
 	// verify signature on map root:
-	if err := tcrypto.VerifyObject(m.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
+	if err := tcrypto.VerifyObject(m.mapPubKey, smr, epoch.GetSmr().GetSignature()); err != nil {
 		glog.Infof("couldn't verify signature on map root: %v", err)
-		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(&smr, in.GetSmr().GetSignature()))
-	}
-
-	// we need the old root for verifying the inclusion of the old leafs in the
-	// previous epoch. Storage always stores the mutations response independent
-	// from if the checks succeeded or not.
-	var oldRoot []byte
-	// mutations happen after epoch 1 which is stored in storage:
-	if m.store.LatestEpoch() > 0 {
-		// retrieve the old root hash from storage
-		monRes, err := m.store.Get(in.Epoch - 1)
-		if err != nil {
-			glog.Infof("Could not retrieve previous monitoring result: %v", err)
-		}
-		oldRoot = monRes.Response.GetSmr().GetRootHash()
-
-		if err := m.verifyMutations(in.GetMutations(), oldRoot,
-			in.GetSmr().GetRootHash(), in.GetSmr().GetMapId()); len(err) > 0 {
-			errs.appendErr(err...)
-		}
+		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(&smr, epoch.GetSmr().GetSignature()))
 	}
 
 	return errs

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client/grpcc"
-	"github.com/google/keytransparency/core/client/mutationclient"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
@@ -48,9 +47,9 @@ func TestMonitor(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	c := pb.NewKeyTransparencyServiceClient(env.Conn)
+	ktClient := pb.NewKeyTransparencyServiceClient(env.Conn)
 	// setup monitor:
-	resp, err := c.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
+	resp, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
@@ -69,16 +68,15 @@ func TestMonitor(t *testing.T) {
 	}
 	store := fake.NewMonitorStorage()
 	// TODO(ismail): setup and use a real logVerifier instead:
-	mcc := pb.NewMutationServiceClient(env.Conn)
-	mon, err := monitor.New(mcc, fake.NewFakeTrillianLogVerifier(),
+	mon, err := monitor.New(ktClient, fake.NewFakeTrillianLogVerifier(),
 		mapTree.TreeId, mapHasher, mapPubKey,
 		crypto.NewSHA256Signer(signer), store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
-	mutCli := mutationclient.New(mcc, time.Second)
 
 	for _, tc := range []struct {
+		desc string
 		// the userIDs to update, if no userIDs are provided, no update request
 		// will be send before querying
 		userIDs        []string
@@ -88,12 +86,26 @@ func TestMonitor(t *testing.T) {
 		// the epoch to query after sending potential updates
 		queryEpoch int64
 	}{
-		// query first epoch, don't update
-		{[]string{}, nil, nil, nil, 1},
-		// create one mutation and new epoch (not forced like in sequencer):
-		{[]string{"test@test.com"}, []byte("testData"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}, 2},
-		// create several mutations and new epoch
-		{[]string{"test@test.com", "test2@test2.com"}, []byte("more update data"), []signatures.Signer{createSigner(t, testPrivKey1)}, []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}, 3},
+		{
+			desc:       "Query first epoch, don't update",
+			queryEpoch: 1,
+		},
+		{
+			desc:           "create one mutation and new epoch (not forced like in sequencer)",
+			userIDs:        []string{"test@test.com"},
+			updateData:     []byte("testData"),
+			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
+			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
+			queryEpoch:     2,
+		},
+		{
+			desc:           "create several mutations and new epoch",
+			userIDs:        []string{"test@test.com", "test2@test2.com"},
+			updateData:     []byte("more update data"),
+			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
+			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
+			queryEpoch:     3,
+		},
 	} {
 		for _, userID := range tc.userIDs {
 			_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth(userID),
@@ -107,20 +119,18 @@ func TestMonitor(t *testing.T) {
 			t.Fatalf("CreateEpoch(_): %v", err)
 		}
 
-		mutResp, err := mutCli.PollMutations(ctx, env.Domain.DomainId, tc.queryEpoch)
-		if err != nil {
-			t.Fatalf("Could not query mutations: %v", err)
+		domainID := env.Domain.DomainId
+		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+		if err := mon.ProcessLoop(cctx, domainID, tc.queryEpoch-1, 40*time.Millisecond); err != context.DeadlineExceeded {
+			t.Errorf("Monitor could not process mutations: %v", err)
 		}
-
-		if err := mon.Process(mutResp); err != nil {
-			t.Fatalf("Monitor could not process mutations: %v", err)
-		}
+		cancel()
 
 		mresp, err := store.Get(tc.queryEpoch)
 		if err != nil {
-			t.Fatalf("Could not read monitoring response: %v", err)
+			t.Errorf("Could not read monitoring response: %v", err)
+			continue
 		}
-
 		for _, err := range mresp.Errors {
 			t.Errorf("Got error: %v", err)
 		}

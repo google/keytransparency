@@ -14,8 +14,8 @@
 
 package api
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto v1/keytransparency_proto/mutations.proto
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto v1/keytransparency_proto/mutations.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto
 
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src monitor/v1/monitor_proto/monitor.proto
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. monitor/v1/monitor_proto/monitor.proto
