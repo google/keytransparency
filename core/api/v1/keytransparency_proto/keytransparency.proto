@@ -208,6 +208,7 @@ message GetEpochRequest {
 // Epoch represents a snapshot of the entire key directory and
 // a diff of what changed between this revision and the previous revision.
 message Epoch {
+  // domain_id is the domain identifier.
   string domain_id = 1;
   // smr contains the signed map root for the sparse Merkle Tree.
   trillian.SignedMapRoot smr = 2;
@@ -217,12 +218,30 @@ message Epoch {
   repeated bytes log_consistency = 4;
   // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
   repeated bytes log_inclusion = 5;
-  // mutation contains mutation information.
+}
+
+// ListMutationsRequest requests the mutations that created a given epoch.
+message ListMutationsRequest {
+  // domain_id is the domain identifier.
+  string domain_id = 5;
+  // epoch specifies the epoch number.
+  int64 epoch = 1;
+  // page_token defines the starting point for pagination. 
+  // To request the next page, pass next_page_token from the previous response.
+  // To start at the beginning, simply omit page_token from the request.
+  string page_token = 3;
+  // page_size is the maximum number of mutations to return in a single request.
+  // The server may choose a smaller page_size than the one requested.
+  int32 page_size = 4;
+  // TODO(gbelvin): Add field mask.
+}
+
+// ListMutationsResponse contains the mutations that produced an epoch.
+message ListMutationsResponse {
+  // mutations contains the the mutation object and the leaf value it operated on.
   repeated MutationProof mutations = 6;
   // next_page_token is the next page token to query for pagination.
   // An empty value means there are no more results to fetch.
-  // A non-zero value may be used by the client to fetch the next page of
-  // results.
   string next_page_token = 7;
 }
 
@@ -233,10 +252,16 @@ message Epoch {
 //  * Each domain has a single sparse merkle tree, append only log,
 //    and other public key material that is needed to verify server responses.
 //
-//  Each Domain has a collection of snapshots called epochs:
+// Each Domain has a collection of snapshots called epochs:
 // `/v1/domains/*/epochs/`
 //  * Each Epoch contains the root of the sparse merkle tree and the changes that
 //    occured that epoch and the previous.
+//
+// Each Epoch has a collection of mutations:
+// `/v1/domains/*/epochs/*/mutations/`.
+//  * Each mutation contains the leafvalue of the previous epoch that it operated on.
+//  * The full set of mutations for an epoch allows the reciever to compute the
+//     Merkle Tree Root of this epoch from the previous epoch.
 //
 // Each Domain has a collection of applications:
 // `/v1/domains/*/apps/`
@@ -271,6 +296,16 @@ service KeyTransparencyService {
   // signed map root.
   rpc GetEpochStream(GetEpochRequest) returns (stream Epoch) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:stream" };
+  }
+
+  // ListMutations returns a list of mutations in a specific epoch.
+  rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse) {
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}/mutations" };
+  }
+
+  // ListMutationsStream is a streaming list of mutations in a specific epoch.
+  rpc ListMutationsStream(ListMutationsRequest) returns (stream MutationProof) {
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}/mutations:stream" };
   }
 
   // GetEntry returns a user's entry in the Merkle Tree.
