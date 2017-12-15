@@ -90,10 +90,7 @@ func (e *ErrList) Proto() []*statuspb.Status {
 	return errs
 }
 
-// VerifyEpoch verifies a response received by the GetMutations API.
-// Additionally to the response it takes a complete list of mutations. The list
-// of received mutations may differ from those included in the initial response
-// because of the max. page size.
+// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 func (m *Monitor) VerifyEpoch(epoch *pb.Epoch) []error {
 	errs := ErrList{}
 

@@ -45,11 +45,11 @@ func TestEpochPairs(t *testing.T) {
 		}
 		for i, p := range tc.out {
 			pair := <-pairs
-			t.Logf("read pair: %v, %v", pair.EpochA.Smr.MapRevision, pair.EpochB.Smr.MapRevision)
-			if got, want := pair.EpochA.Smr.MapRevision, p.a; got != want {
+			t.Logf("read pair: %v, %v", pair.A.Smr.MapRevision, pair.B.Smr.MapRevision)
+			if got, want := pair.A.Smr.MapRevision, p.a; got != want {
 				t.Errorf("pairs[%v].A.Revision %v, want %v", i, got, want)
 			}
-			if got, want := pair.EpochB.Smr.MapRevision, p.b; got != want {
+			if got, want := pair.B.Smr.MapRevision, p.b; got != want {
 				t.Errorf("pairs[%v].B.Revision %v, want %v", i, got, want)
 			}
 		}

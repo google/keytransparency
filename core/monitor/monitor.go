@@ -95,7 +95,7 @@ func New(mclient pb.KeyTransparencyServiceClient,
 
 // EpochPair is two adjacent epochs.
 type EpochPair struct {
-	EpochA, EpochB *pb.Epoch
+	A, B *pb.Epoch
 }
 
 // EpochPairs consumes epochs (0, 1, 2) and produces pairs (0,1), (1,2).
@@ -108,8 +108,8 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 			continue
 		}
 		pair := EpochPair{
-			EpochA: epochA,
-			EpochB: epoch,
+			A: epochA,
+			B: epoch,
 		}
 		select {
 		case <-ctx.Done():
@@ -129,29 +129,29 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, startEpoch i
 	epochs := make(chan *pb.Epoch)
 	pairs := make(chan EpochPair)
 
-	go func(ctx context.Context, domainID string, epochs chan<- *pb.Epoch) {
+	go func(ctx context.Context) {
 		errc <- mutCli.StreamEpochs(ctx, domainID, startEpoch, epochs)
-	}(cctx, domainID, epochs)
-	go func(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- EpochPair) {
+	}(cctx)
+	go func(ctx context.Context) {
 		errc <- EpochPairs(ctx, epochs, pairs)
-	}(cctx, epochs, pairs)
+	}(cctx)
 	defer cancel()
 
 	for pair := range pairs {
-		revision := pair.EpochB.GetSmr().GetMapRevision()
-		mutations, err := mutCli.EpochMutations(ctx, pair.EpochB)
+		revision := pair.B.GetSmr().GetMapRevision()
+		mutations, err := mutCli.EpochMutations(ctx, pair.B)
 		if err != nil {
 			return err
 		}
 
 		var smr *trillian.SignedMapRoot
 		var errList []error
-		if errs := m.VerifyEpochMutations(pair.EpochA, pair.EpochB, mutations); len(errs) > 0 {
+		if errs := m.VerifyEpochMutations(pair.A, pair.B, mutations); len(errs) > 0 {
 			glog.Infof("Epoch %v did not verify: %v", revision, errs)
 			errList = errs
 		} else {
 			// Sign if successful.
-			smr, err = m.signMapRoot(pair.EpochB.GetSmr())
+			smr, err = m.signMapRoot(pair.B.GetSmr())
 			if err != nil {
 				return err
 			}
@@ -183,9 +183,9 @@ func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, mutations []*pb
 	}
 
 	// Fetch Previous root.
-	SMRA := epochA.GetSmr()
-	SMRB := epochB.GetSmr()
-	if errs := m.verifyMutations(mutations, SMRA.GetRootHash(), SMRB.GetRootHash(), SMRB.GetMapId()); len(errs) > 0 {
+	smrA := epochA.GetSmr()
+	smrB := epochB.GetSmr()
+	if errs := m.verifyMutations(mutations, smrA.GetRootHash(), smrB.GetRootHash(), smrB.GetMapId()); len(errs) > 0 {
 		glog.Errorf("Invalid Epoch %v Mutations: %v", revision, errs)
 		return errs
 	}
