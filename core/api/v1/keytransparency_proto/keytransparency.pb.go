@@ -682,8 +682,6 @@ type ListMutationsResponse struct {
 	Mutations []*MutationProof `protobuf:"bytes,6,rep,name=mutations" json:"mutations,omitempty"`
 	// next_page_token is the next page token to query for pagination.
 	// An empty value means there are no more results to fetch.
-	// A non-zero value may be used by the client to fetch the next page of
-	// results.
 	NextPageToken string `protobuf:"bytes,7,opt,name=next_page_token,json=nextPageToken" json:"next_page_token,omitempty"`
 }
 
