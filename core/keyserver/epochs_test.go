@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mutation implements the monitor service. This package contains the
-// core functionality.
-package mutationserver
+package keyserver
 
 import (
 	"context"
@@ -84,9 +82,9 @@ func mustMetadataAsAny(t *testing.T, meta *pb.MapperMetadata) *any.Any {
 	return m
 }
 
-func TestGetMutationsStream(t *testing.T) {
+func TestGetEpochStream(t *testing.T) {
 	srv := &Server{}
-	err := srv.GetMutationsStream(nil, nil)
+	err := srv.GetEpochStream(nil, nil)
 	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
 		t.Errorf("GetMutationsStream(_, _): %v, want %v", got, want)
 	}
@@ -98,6 +96,8 @@ func TestGetMutations(t *testing.T) {
 	fakeMutations := fake.NewMutationStorage()
 	fakeAdmin := fake.NewAdminStorage()
 	fakeMap := fake.NewTrillianMapClient()
+	fakeLog := fake.NewTrillianLogClient()
+	fakeTx := &fakeFactory{}
 	if err := fakeAdmin.Write(ctx, domainID, mapID, 0, nil, nil, 1*time.Second, 5*time.Second); err != nil {
 		t.Fatalf("admin.Write(): %v", err)
 	}
@@ -123,8 +123,14 @@ func TestGetMutations(t *testing.T) {
 		{"invalid page token", 1, "some_token", 0, nil, "", false},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			srv := New(fakeAdmin, fake.NewTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
-			resp, err := srv.GetMutations(ctx, &pb.GetMutationsRequest{
+			srv := &Server{
+				admin:     fakeAdmin,
+				tlog:      fakeLog,
+				tmap:      fakeMap,
+				factory:   fakeTx,
+				mutations: fakeMutations,
+			}
+			resp, err := srv.ListMutations(ctx, &pb.ListMutationsRequest{
 				DomainId:  domainID,
 				Epoch:     tc.epoch,
 				PageToken: tc.token,
@@ -136,9 +142,6 @@ func TestGetMutations(t *testing.T) {
 			}
 			if err != nil {
 				return
-			}
-			if got, want := resp.Epoch, tc.epoch; got != want {
-				t.Errorf("resp.Epoch=%v, want %v", got, want)
 			}
 			if got, want := len(resp.Mutations), len(tc.mutations); got != want {
 				t.Errorf("len(resp.Mutations)=%v, want %v", got, want)
@@ -158,8 +161,10 @@ func TestGetMutations(t *testing.T) {
 func TestLowestSequenceNumber(t *testing.T) {
 	ctx := context.Background()
 	fakeMutations := fake.NewMutationStorage()
+	fakeLog := fake.NewTrillianLogClient()
 	fakeMap := fake.NewTrillianMapClient()
 	fakeAdmin := &fake.AdminStorage{}
+	fakeTx := &fakeFactory{}
 	mapID := int64(1)
 	prepare(ctx, t, mapID, fakeMutations, fakeMap)
 
@@ -173,15 +178,21 @@ func TestLowestSequenceNumber(t *testing.T) {
 		{"4", 0, 4, true},
 		{"4", 1, 4, true},
 		{"some_token", 0, 0, false},
-		{"", 1, 6, true},
+		{"", 2, 6, true},
 	} {
-		srv := New(fakeAdmin, fake.NewTrillianLogClient(), fakeMap, fakeMutations, &fakeFactory{})
-		seq, err := srv.lowestSequenceNumber(ctx, mapID, tc.token, tc.epoch)
+		srv := &Server{
+			admin:     fakeAdmin,
+			tlog:      fakeLog,
+			tmap:      fakeMap,
+			factory:   fakeTx,
+			mutations: fakeMutations,
+		}
+		seq, err := srv.lowestSequenceNumber(ctx, mapID, tc.epoch, tc.token)
 		if got, want := err == nil, tc.success; got != want {
-			t.Errorf("lowestSequenceNumber(%v, %v): err=%v, want %v", tc.token, tc.epoch, got, want)
+			t.Errorf("lowestSequenceNumber(%v, %v): err=%v, want %v", tc.epoch, tc.token, got, want)
 		}
 		if got, want := seq, tc.lowestSeq; got != want {
-			t.Errorf("lowestSequenceNumber(%v, %v)=%v, want %v", tc.token, tc.epoch, got, want)
+			t.Errorf("lowestSequenceNumber(%v, %v)=%v, want %v", tc.epoch, tc.token, got, want)
 		}
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mutationserver implements a service that provides batches and
-// streams of mutations to monitors for verification.
-package mutationserver
+package keyserver
 
 import (
 	"context"
 	"fmt"
 	"strconv"
 
-	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/internal"
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
@@ -35,33 +30,17 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-// Server holds internal state for the monitor server core functionality.
-type Server struct {
-	admin     adminstorage.Storage
-	tlog      tpb.TrillianLogClient
-	tmap      tpb.TrillianMapClient
-	mutations mutator.MutationStorage
-	factory   transaction.Factory
-}
+var (
+	// Size of MutationProof: 2*log_2(accounts) * hash size + account_data ~= 2Kb
+	defaultPageSize = int32(16) //32KB
+	// Maximum allowed requested page size to prevent DOS.
+	maxPageSize = int32(2048) // 8MB
+)
 
-// New creates a new instance of the monitor server.
-func New(admin adminstorage.Storage,
-	tlog tpb.TrillianLogClient,
-	tmap tpb.TrillianMapClient,
-	mutations mutator.MutationStorage, factory transaction.Factory) *Server {
-	return &Server{
-		admin:     admin,
-		tlog:      tlog,
-		tmap:      tmap,
-		mutations: mutations,
-		factory:   factory,
-	}
-}
-
-// GetMutations returns a list of mutations paged by epoch number.
-func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (*pb.GetMutationsResponse, error) {
-	if err := validateGetMutationsRequest(in); err != nil {
-		glog.Errorf("validateGetMutationsRequest(%v): %v", in, err)
+// GetEpoch returns a list of mutations paged by epoch number.
+func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoch, error) {
+	if err := validateGetEpochRequest(in); err != nil {
+		glog.Errorf("validateGetEpochRequest(%v): %v", in, err)
 		return nil, status.Error(codes.InvalidArgument, "Invalid request")
 	}
 
@@ -82,18 +61,49 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 		return nil, status.Error(codes.Internal, "Get signed map root failed")
 	}
 
-	// Get highest and lowest sequence number.
-	meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	highestSeq := uint64(meta.GetHighestFullyCompletedSeq())
-	lowestSeq, err := s.lowestSequenceNumber(ctx, domain.MapID, in.PageToken, in.Epoch-1)
+	// MapRevisions start at 0. Log leaf indices starts at 0.
+	// MapRevision should be at least 1 since the Signer is
+	// supposed to create at least one revision on startup.
+	respEpoch := resp.GetMapRoot().GetMapRevision()
+	// Fetch log proofs.
+	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, domain.LogID, in.GetFirstTreeSize(), respEpoch)
 	if err != nil {
 		return nil, err
 	}
+	return &pb.Epoch{
+		Smr:            resp.GetMapRoot(),
+		LogRoot:        logRoot.GetSignedLogRoot(),
+		LogConsistency: logConsistency.GetProof().GetHashes(),
+		LogInclusion:   logInclusion.GetProof().GetHashes(),
+	}, nil
+}
 
+// GetEpochStream is a streaming API similar to GetMutations.
+func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparencyService_GetEpochStreamServer) error {
+	return grpc.Errorf(codes.Unimplemented, "GetEpochStream is unimplemented")
+}
+
+// ListMutations returns the mutations that created an epoch.
+func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest) (*pb.ListMutationsResponse, error) {
+	if err := validateListMutationsRequest(in); err != nil {
+		glog.Errorf("validateGetMutationsRequest(%v): %v", in, err)
+		return nil, status.Error(codes.InvalidArgument, "Invalid request")
+	}
+	// Lookup log and map info.
+	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
+
+	lowestSeq, err := s.lowestSequenceNumber(ctx, domain.MapID, in.Epoch, in.PageToken)
+	if err != nil {
+		return nil, err
+	}
+	highestSeq, err := s.getHighestFullyCompletedSeq(ctx, domain.MapID, in.Epoch)
+	if err != nil {
+		return nil, err
+	}
 	// Read mutations from the database.
 	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
@@ -117,14 +127,7 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 		indexes = append(indexes, m.Mutation.GetIndex())
 	}
 	// Get leaf proofs.
-	// TODO: allow leaf proofs to be optional.
-	var epoch int64
-	if in.Epoch > 1 {
-		epoch = in.Epoch - 1
-	} else {
-		epoch = 1
-	}
-	proofs, err := s.inclusionProofs(ctx, in.DomainId, indexes, epoch)
+	proofs, err := s.inclusionProofs(ctx, in.DomainId, indexes, in.Epoch-1)
 	if err != nil {
 		return nil, err
 	}
@@ -132,32 +135,26 @@ func (s *Server) GetMutations(ctx context.Context, in *pb.GetMutationsRequest) (
 		mutations[i].LeafProof = p
 	}
 
-	// MapRevisions start at 1. Log leave's index starts at 1.
-	// MapRevision should be at least 1 since the Signer is
-	// supposed to create at least one revision on startup.
-	respEpoch := resp.GetMapRoot().GetMapRevision()
-	// Fetch log proofs.
-	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, domain.LogID, in.GetFirstTreeSize(), respEpoch)
-	if err != nil {
-		return nil, err
-	}
-
 	nextPageToken := ""
 	if len(mutations) == int(in.PageSize) && maxSequence != highestSeq {
 		nextPageToken = fmt.Sprintf("%d", maxSequence)
 	}
-	return &pb.GetMutationsResponse{
-		Epoch:          in.Epoch,
-		Smr:            resp.GetMapRoot(),
-		LogRoot:        logRoot.GetSignedLogRoot(),
-		LogConsistency: logConsistency.GetProof().GetHashes(),
-		LogInclusion:   logInclusion.GetProof().GetHashes(),
-		Mutations:      mutations,
-		NextPageToken:  nextPageToken,
+	return &pb.ListMutationsResponse{
+		Mutations:     mutations,
+		NextPageToken: nextPageToken,
 	}, nil
 }
 
-func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoch int64) (*tpb.GetLatestSignedLogRootResponse, *tpb.GetConsistencyProofResponse, *tpb.GetInclusionProofResponse, error) {
+// ListMutationsStream is a streaming list of mutations in a specific epoch.
+func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTransparencyService_ListMutationsStreamServer) error {
+	return grpc.Errorf(codes.Unimplemented, "ListMutationStream is unimplemented")
+}
+
+func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoch int64) (
+	*tpb.GetLatestSignedLogRootResponse,
+	*tpb.GetConsistencyProofResponse,
+	*tpb.GetInclusionProofResponse,
+	error) {
 	// Lookup log and map info.
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
 		&tpb.GetLatestSignedLogRootRequest{
@@ -197,32 +194,62 @@ func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoc
 	return logRoot, logConsistency, logInclusion, nil
 }
 
-func (s *Server) lowestSequenceNumber(ctx context.Context, mapID int64, token string, epoch int64) (uint64, error) {
-	lowestSeq := int64(0)
-	if token != "" {
-		// A simple cast will panic if the underlying string is not a
-		// string. To avoid this, strconv is used.
-		var err error
-		if lowestSeq, err = strconv.ParseInt(token, 10, 64); err != nil {
-			glog.Errorf("strconv.ParseInt(%v, 10, 64): %v", token, err)
-			return 0, status.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
-		}
-	} else if epoch != 0 {
-		resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
-			MapId:    mapID,
-			Revision: epoch,
-		})
-		if err != nil {
-			glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", mapID, epoch, err)
-			return 0, status.Error(codes.Internal, "Get previous signed map root failed")
-		}
-		meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
-		if err != nil {
-			return 0, status.Error(codes.Internal, err.Error())
-		}
-		lowestSeq = meta.GetHighestFullyCompletedSeq()
+// lowestSequenceNumber picks a lower bound on sequence number.
+// It returns the max between token and the high water mark of the previous epoch.
+func (s *Server) lowestSequenceNumber(ctx context.Context, mapID, epoch int64, token string) (uint64, error) {
+	// Pick starting location from token or the last epoch.
+	lastSeq, err := s.getHighestFullyCompletedSeq(ctx, mapID, epoch-1)
+	if err != nil {
+		return 0, err
 	}
-	return uint64(lowestSeq), nil
+	tokenSeq, err := s.parseToken(token)
+	if err != nil {
+		return 0, err
+	}
+	return max(lastSeq, tokenSeq), nil
+}
+
+// getHighestFullyCompletedSeq fetches the map root at epoch and returns
+// the highest fully completed sequence number.
+func (s *Server) getHighestFullyCompletedSeq(ctx context.Context, mapID, epoch int64) (uint64, error) {
+	// Get signed map root by revision.
+	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
+		MapId:    mapID,
+		Revision: epoch,
+	})
+	if err != nil {
+		glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", mapID, epoch, err)
+		return 0, status.Error(codes.Internal, "Get signed map root failed")
+	}
+
+	// Get highest and lowest sequence number.
+	meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
+	if err != nil {
+		return 0, status.Error(codes.Internal, err.Error())
+	}
+
+	return uint64(meta.GetHighestFullyCompletedSeq()), nil
+}
+
+// parseToken returns the sequence number in token.
+// If token is unset, return 0.
+func (s *Server) parseToken(token string) (uint64, error) {
+	if token == "" {
+		return 0, nil
+	}
+	seq, err := strconv.ParseInt(token, 10, 64)
+	if err != nil {
+		glog.Errorf("strconv.ParseInt(%v, 10, 64): %v", token, err)
+		return 0, status.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
+	}
+	return uint64(seq), nil
+}
+
+func max(a, b uint64) uint64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {
@@ -246,13 +273,4 @@ func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [
 		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	return getResp.GetMapLeafInclusion(), nil
-}
-
-//
-// Streaming RPCs
-//
-
-// GetMutationsStream is a streaming API similar to GetMutations.
-func (s *Server) GetMutationsStream(in *pb.GetMutationsRequest, stream pb.MutationService_GetMutationsStreamServer) error {
-	return grpc.Errorf(codes.Unimplemented, "GetMutationsStream is unimplemented")
 }

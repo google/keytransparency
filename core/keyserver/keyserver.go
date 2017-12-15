@@ -39,15 +39,6 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-const (
-	// Each page contains pageSize profiles. Each profile contains multiple
-	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
-	// size 16 will contain about 8KB of data.
-	defaultPageSize = 16
-	// Maximum allowed requested page size to prevent DOS.
-	maxPageSize = 16
-)
-
 // Server holds internal state for the key server.
 type Server struct {
 	admin     adminstorage.Storage

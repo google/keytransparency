@@ -20,8 +20,6 @@ import (
 	"time"
 
 	"github.com/google/trillian"
-
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
 var (
@@ -51,9 +49,6 @@ type Result struct {
 	// Errors contains a string representation of the verifications steps that
 	// failed.
 	Errors []error
-	// Response contains the original mutations API response from the server
-	// in case at least one verification step failed.
-	Response *pb.GetMutationsResponse
 }
 
 // Interface is the interface that stores and retrieves monitoring results.
