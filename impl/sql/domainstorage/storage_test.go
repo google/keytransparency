@@ -21,7 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/domainstorage"
+	"github.com/google/keytransparency/core/domain"
+
 	"github.com/google/trillian/crypto/keyspb"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -39,11 +40,11 @@ func TestList(t *testing.T) {
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}
 	for _, tc := range []struct {
-		domains     []*domainstorage.Domain
+		domains     []*domain.Domain
 		readDeleted bool
 	}{
 		{
-			domains: []*domainstorage.Domain{
+			domains: []*domain.Domain{
 				{
 					Domain:      "domain1",
 					MapID:       1,
@@ -97,7 +98,7 @@ func TestWriteReadDelete(t *testing.T) {
 
 	for _, tc := range []struct {
 		desc                 string
-		d                    domainstorage.Domain
+		d                    domain.Domain
 		write                bool
 		wantWriteErr         bool
 		setDelete, isDeleted bool
@@ -107,7 +108,7 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc:  "Success",
 			write: true,
-			d: domainstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -120,7 +121,7 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc:  "Duplicate DomainID",
 			write: true,
-			d: domainstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -133,7 +134,7 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Delete",
-			d: domainstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -149,7 +150,7 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Read deleted",
-			d: domainstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -165,7 +166,7 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Undelete",
-			d: domainstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,

@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/core/domainstorage"
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
@@ -82,16 +82,16 @@ var (
 
 // Server implements pb.KeyTransparencyAdminServiceServer
 type Server struct {
-	storage  domainstorage.Storage
+	domains  domain.Storage
 	logAdmin tpb.TrillianAdminClient
 	mapAdmin tpb.TrillianAdminClient
 	keygen   keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdminService implementation.
-func New(storage domainstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
+func New(domains domain.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
 	return &Server{
-		storage:  storage,
+		domains:  domains,
 		logAdmin: logAdmin,
 		mapAdmin: mapAdmin,
 		keygen:   keygen,
@@ -100,7 +100,7 @@ func New(storage domainstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClie
 
 // ListDomains produces a list of the configured domains
 func (s *Server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*pb.ListDomainsResponse, error) {
-	domains, err := s.storage.List(ctx, in.GetShowDeleted())
+	domains, err := s.domains.List(ctx, in.GetShowDeleted())
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (s *Server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 
 // fetchDomain converts an adminstorage.Domain object into a pb.Domain object
 // by fetching the relevant info from Trillian.
-func (s *Server) fetchDomain(ctx context.Context, d *domainstorage.Domain) (*pb.Domain, error) {
+func (s *Server) fetchDomain(ctx context.Context, d *domain.Domain) (*pb.Domain, error) {
 	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (s *Server) fetchDomain(ctx context.Context, d *domainstorage.Domain) (*pb.
 
 // GetDomain retrieves the domain info for a given domain.
 func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Domain, error) {
-	domain, err := s.storage.Read(ctx, in.GetDomainId(), in.GetShowDeleted())
+	domain, err := s.domains.Read(ctx, in.GetDomainId(), in.GetShowDeleted())
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		return nil, fmt.Errorf("Duration(%v): %v", in.MaxInterval, err)
 	}
 
-	if err := s.storage.Write(ctx, &domainstorage.Domain{
+	if err := s.domains.Write(ctx, &domain.Domain{
 		Domain:      in.GetDomainId(),
 		MapID:       mapTree.TreeId,
 		LogID:       logTree.TreeId,
@@ -215,7 +215,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 
 // DeleteDomain marks a domain as deleted, but does not immediately delete it.
 func (s *Server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (*google_protobuf.Empty, error) {
-	if err := s.storage.SetDelete(ctx, in.GetDomainId(), true); err != nil {
+	if err := s.domains.SetDelete(ctx, in.GetDomainId(), true); err != nil {
 		return nil, err
 	}
 	return &google_protobuf.Empty{}, nil
@@ -223,7 +223,7 @@ func (s *Server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (
 
 // UndeleteDomain reactivates a deleted domain - provided that UndeleteDomain is called sufficiently soon after DeleteDomain.
 func (s *Server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainRequest) (*google_protobuf.Empty, error) {
-	if err := s.storage.SetDelete(ctx, in.GetDomainId(), false); err != nil {
+	if err := s.domains.SetDelete(ctx, in.GetDomainId(), false); err != nil {
 		return nil, err
 	}
 	return &google_protobuf.Empty{}, nil

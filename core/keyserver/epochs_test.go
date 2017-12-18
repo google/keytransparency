@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/domainstorage"
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
@@ -99,7 +99,7 @@ func TestGetMutations(t *testing.T) {
 	fakeMap := fake.NewTrillianMapClient()
 	fakeLog := fake.NewTrillianLogClient()
 	fakeTx := &fakeFactory{}
-	if err := fakeAdmin.Write(ctx, &domainstorage.Domain{
+	if err := fakeAdmin.Write(ctx, &domain.Domain{
 		Domain:      domainID,
 		MapID:       mapID,
 		MinInterval: 1 * time.Second,

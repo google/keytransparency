@@ -18,24 +18,24 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/keytransparency/core/domainstorage"
+	"github.com/google/keytransparency/core/domain"
 )
 
-// DomainStorage implements domainstorage.Storage
+// DomainStorage implements domain.Storage
 type DomainStorage struct {
-	domains map[string]*domainstorage.Domain
+	domains map[string]*domain.Domain
 }
 
 // NewDomainStorage returns a fake dominstorage.Storage
 func NewDomainStorage() *DomainStorage {
 	return &DomainStorage{
-		domains: make(map[string]*domainstorage.Domain),
+		domains: make(map[string]*domain.Domain),
 	}
 }
 
 // List returns a list of active domains
-func (a *DomainStorage) List(ctx context.Context, deleted bool) ([]*domainstorage.Domain, error) {
-	ret := make([]*domainstorage.Domain, 0, len(a.domains))
+func (a *DomainStorage) List(ctx context.Context, deleted bool) ([]*domain.Domain, error) {
+	ret := make([]*domain.Domain, 0, len(a.domains))
 	for _, d := range a.domains {
 		ret = append(ret, d)
 	}
@@ -43,13 +43,13 @@ func (a *DomainStorage) List(ctx context.Context, deleted bool) ([]*domainstorag
 }
 
 // Write adds a new domain.
-func (a *DomainStorage) Write(ctx context.Context, d *domainstorage.Domain) error {
+func (a *DomainStorage) Write(ctx context.Context, d *domain.Domain) error {
 	a.domains[d.Domain] = d
 	return nil
 }
 
 // Read returns existing domains.
-func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domainstorage.Domain, error) {
+func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domain.Domain, error) {
 	d, ok := a.domains[ID]
 	if !ok {
 		return nil, fmt.Errorf("Domain %v not found", ID)
