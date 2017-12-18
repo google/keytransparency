@@ -25,7 +25,7 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/sql/adminstorage"
+	"github.com/google/keytransparency/impl/sql/domainstorage"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
@@ -96,7 +96,7 @@ func main() {
 	authz := authorization.New()
 
 	// Create database and helper objects.
-	admin, err := adminstorage.New(sqldb)
+	admin, err := domainstorage.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create admin storage: %v", err)
 	}

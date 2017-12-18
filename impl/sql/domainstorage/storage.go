@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package adminstorage implements the admin.Storage interface.
-package adminstorage
+// Package domainstorage implements the admin.Storage interface.
+package domainstorage
 
 import (
 	"context"

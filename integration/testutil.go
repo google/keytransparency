@@ -35,7 +35,7 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/sql/adminstorage"
+	"github.com/google/keytransparency/impl/sql/domainstorage"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
 
@@ -113,7 +113,7 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Configure domain, which creates new map and log trees.
-	adminStorage, err := adminstorage.New(sqldb)
+	adminStorage, err := domainstorage.New(sqldb)
 	if err != nil {
 		t.Fatalf("Failed to create admin storage: %v", err)
 	}
