@@ -113,11 +113,11 @@ func NewEnv(t *testing.T) *Env {
 	}
 
 	// Configure domain, which creates new map and log trees.
-	adminStorage, err := domainstorage.New(sqldb)
+	domainStorage, err := domainstorage.New(sqldb)
 	if err != nil {
-		t.Fatalf("Failed to create admin storage: %v", err)
+		t.Fatalf("Failed to create domain storage: %v", err)
 	}
-	adminSvr := adminserver.New(adminStorage, mapEnv.AdminClient, mapEnv.AdminClient, vrfKeyGen)
+	adminSvr := adminserver.New(domainStorage, mapEnv.AdminClient, mapEnv.AdminClient, vrfKeyGen)
 	domain, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
 		DomainId:    domainID,
 		MinInterval: ptypes.DurationProto(1 * time.Second),
@@ -149,13 +149,13 @@ func NewEnv(t *testing.T) *Env {
 	tlog := fake.NewTrillianLogClient()
 
 	factory := transaction.NewFactory(sqldb)
-	server := keyserver.New(adminStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
+	server := keyserver.New(domainStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
 		mutator, auth, authz, factory, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(adminStorage, mapEnv.MapClient, tlog, mutator, mutations, factory)
+	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, mutator, mutations, factory)
 
 	addr, lis := Listen(t)
 	go gsvr.Serve(lis)
