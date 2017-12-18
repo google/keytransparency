@@ -95,7 +95,7 @@ func TestGetMutations(t *testing.T) {
 	ctx := context.Background()
 	mapID := int64(2)
 	fakeMutations := fake.NewMutationStorage()
-	fakeAdmin := fake.NewAdminStorage()
+	fakeAdmin := fake.NewDomainStorage()
 	fakeMap := fake.NewTrillianMapClient()
 	fakeLog := fake.NewTrillianLogClient()
 	fakeTx := &fakeFactory{}
@@ -130,7 +130,7 @@ func TestGetMutations(t *testing.T) {
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			srv := &Server{
-				admin:     fakeAdmin,
+				domains:   fakeAdmin,
 				tlog:      fakeLog,
 				tmap:      fakeMap,
 				factory:   fakeTx,
@@ -169,7 +169,7 @@ func TestLowestSequenceNumber(t *testing.T) {
 	fakeMutations := fake.NewMutationStorage()
 	fakeLog := fake.NewTrillianLogClient()
 	fakeMap := fake.NewTrillianMapClient()
-	fakeAdmin := &fake.AdminStorage{}
+	fakeAdmin := &fake.DomainStorage{}
 	fakeTx := &fakeFactory{}
 	mapID := int64(1)
 	prepare(ctx, t, mapID, fakeMutations, fakeMap)
@@ -187,7 +187,7 @@ func TestLowestSequenceNumber(t *testing.T) {
 		{"", 2, 6, true},
 	} {
 		srv := &Server{
-			admin:     fakeAdmin,
+			domains:   fakeAdmin,
 			tlog:      fakeLog,
 			tmap:      fakeMap,
 			factory:   fakeTx,

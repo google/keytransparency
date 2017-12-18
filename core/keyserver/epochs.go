@@ -45,7 +45,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	}
 
 	// Lookup log and map info.
-	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
@@ -91,7 +91,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, status.Error(codes.InvalidArgument, "Invalid request")
 	}
 	// Lookup log and map info.
-	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
@@ -255,7 +255,7 @@ func max(a, b uint64) uint64 {
 
 func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {
 	// Lookup log and map info.
-	domain, err := s.admin.Read(ctx, domainID, false)
+	domain, err := s.domains.Read(ctx, domainID, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")

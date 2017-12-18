@@ -21,20 +21,20 @@ import (
 	"github.com/google/keytransparency/core/domainstorage"
 )
 
-// AdminStorage implements adminstorage.Storage
-type AdminStorage struct {
+// DomainStorage implements domainstorage.Storage
+type DomainStorage struct {
 	domains map[string]*domainstorage.Domain
 }
 
-// NewAdminStorage returns a fake adminstorage.Storage
-func NewAdminStorage() *AdminStorage {
-	return &AdminStorage{
+// NewDomainStorage returns a fake dominstorage.Storage
+func NewDomainStorage() *DomainStorage {
+	return &DomainStorage{
 		domains: make(map[string]*domainstorage.Domain),
 	}
 }
 
 // List returns a list of active domains
-func (a *AdminStorage) List(ctx context.Context, deleted bool) ([]*domainstorage.Domain, error) {
+func (a *DomainStorage) List(ctx context.Context, deleted bool) ([]*domainstorage.Domain, error) {
 	ret := make([]*domainstorage.Domain, 0, len(a.domains))
 	for _, d := range a.domains {
 		ret = append(ret, d)
@@ -43,13 +43,13 @@ func (a *AdminStorage) List(ctx context.Context, deleted bool) ([]*domainstorage
 }
 
 // Write adds a new domain.
-func (a *AdminStorage) Write(ctx context.Context, d *domainstorage.Domain) error {
+func (a *DomainStorage) Write(ctx context.Context, d *domainstorage.Domain) error {
 	a.domains[d.Domain] = d
 	return nil
 }
 
 // Read returns existing domains.
-func (a *AdminStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domainstorage.Domain, error) {
+func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domainstorage.Domain, error) {
 	d, ok := a.domains[ID]
 	if !ok {
 		return nil, fmt.Errorf("Domain %v not found", ID)
@@ -58,7 +58,7 @@ func (a *AdminStorage) Read(ctx context.Context, ID string, showDeleted bool) (*
 }
 
 // SetDelete deletes or undeletes a domain.
-func (a *AdminStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
+func (a *DomainStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
 	_, ok := a.domains[ID]
 	if !ok {
 		return fmt.Errorf("Domain %v not found", ID)
