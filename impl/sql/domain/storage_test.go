@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domainstorage
+package domain
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func TestList(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	admin, err := New(db)
+	admin, err := NewStorage(db)
 	if err != nil {
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestWriteReadDelete(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	admin, err := New(db)
+	admin, err := NewStorage(db)
 	if err != nil {
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}

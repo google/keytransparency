@@ -23,7 +23,7 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/impl/sql/domainstorage"
+	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
@@ -84,9 +84,9 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
-	domainStorage, err := domainstorage.New(sqldb)
+	domainStorage, err := domain.NewStorage(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create domainstorage object: %v", err)
+		glog.Exitf("Failed to create domain storage object: %v", err)
 	}
 
 	// Create servers

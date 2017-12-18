@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package domainstorage implements the domain.Storage interface.
-package domainstorage
+// Package domain implements the domain.Storage interface.
+package domain
 
 import (
 	"context"
@@ -64,8 +64,8 @@ type storage struct {
 	db *sql.DB
 }
 
-// New returns a admin.Storage client backed by and SQL table.
-func New(db *sql.DB) (domain.Storage, error) {
+// NewStorage returns a domain.Storage client backed by an SQL table.
+func NewStorage(db *sql.DB) (domain.Storage, error) {
 	s := &storage{
 		db: db,
 	}
