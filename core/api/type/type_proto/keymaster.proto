@@ -50,7 +50,7 @@ message VerifyingKey {
   // KeyStatus defines a key status.
   enum KeyStatus {
     UKNOWN = 0;
-    ACTIVE = 2;      // indicates a key that is currently being used.
+    ACTIVE = 1;      // indicates a key that is currently being used.
     DEPRECATED = 3;  // indicates a key that is not in use.
   }
   // metadata contains information about this key..
