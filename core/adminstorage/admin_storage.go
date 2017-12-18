@@ -41,12 +41,7 @@ type Storage interface {
 	// List returns the full list of domains.
 	List(ctx context.Context, deleted bool) ([]*Domain, error)
 	// Write stores a new instance to storage.
-	Write(ctx context.Context,
-		domainID string,
-		mapID, logID int64,
-		vrfPublicDER []byte, wrappedVRF proto.Message,
-		minInterval, maxInterval time.Duration,
-	) error
+	Write(ctx context.Context, d *Domain) error
 	// Read a configuration from storage.
 	Read(ctx context.Context, domainID string, showDeleted bool) (*Domain, error)
 	// Delete and undelete.

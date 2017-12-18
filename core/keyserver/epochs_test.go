@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
@@ -98,7 +99,12 @@ func TestGetMutations(t *testing.T) {
 	fakeMap := fake.NewTrillianMapClient()
 	fakeLog := fake.NewTrillianLogClient()
 	fakeTx := &fakeFactory{}
-	if err := fakeAdmin.Write(ctx, domainID, mapID, 0, nil, nil, 1*time.Second, 5*time.Second); err != nil {
+	if err := fakeAdmin.Write(ctx, &adminstorage.Domain{
+		Domain:      domainID,
+		MapID:       mapID,
+		MinInterval: 1 * time.Second,
+		MaxInterval: 5 * time.Second,
+	}); err != nil {
 		t.Fatalf("admin.Write(): %v", err)
 	}
 	prepare(ctx, t, mapID, fakeMutations, fakeMap)

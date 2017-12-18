@@ -126,13 +126,9 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*adminstorage.D
 	return ret, nil
 }
 
-func (s *storage) Write(ctx context.Context,
-	domainID string,
-	mapID int64, logID int64,
-	vrfPublicDER []byte, wrappedVRF proto.Message,
-	minInterval, maxInterval time.Duration) error {
+func (s *storage) Write(ctx context.Context, d *adminstorage.Domain) error {
 	// Prepare data.
-	anyPB, err := ptypes.MarshalAny(wrappedVRF)
+	anyPB, err := ptypes.MarshalAny(d.VRFPriv)
 	if err != nil {
 		return err
 	}
@@ -147,10 +143,10 @@ func (s *storage) Write(ctx context.Context,
 	}
 	defer writeStmt.Close()
 	_, err = writeStmt.ExecContext(ctx,
-		domainID,
-		mapID, logID,
-		vrfPublicDER, anyData,
-		minInterval.Nanoseconds(), maxInterval.Nanoseconds(),
+		d.Domain,
+		d.MapID, d.LogID,
+		d.VRF.Der, anyData,
+		d.MinInterval.Nanoseconds(), d.MaxInterval.Nanoseconds(),
 		false)
 	return err
 }
