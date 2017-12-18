@@ -66,11 +66,7 @@ func TestList(t *testing.T) {
 		},
 	} {
 		for _, d := range tc.domains {
-			if err := admin.Write(ctx,
-				d.Domain,
-				d.MapID, d.LogID,
-				d.VRF.Der, d.VRFPriv,
-				d.MinInterval, d.MaxInterval); err != nil {
+			if err := admin.Write(ctx, d); err != nil {
 				t.Errorf("Write(): %v", err)
 				continue
 			}
@@ -186,11 +182,7 @@ func TestWriteReadDelete(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			if tc.write {
-				err := admin.Write(ctx,
-					tc.d.Domain,
-					tc.d.MapID, tc.d.LogID,
-					tc.d.VRF.Der, tc.d.VRFPriv,
-					tc.d.MinInterval, tc.d.MaxInterval)
+				err := admin.Write(ctx, &tc.d)
 				if got, want := err != nil, tc.wantWriteErr; got != want {
 					t.Errorf("Write(): %v, want err: %v", err, want)
 					return

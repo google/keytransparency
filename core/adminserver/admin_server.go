@@ -194,11 +194,15 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		return nil, fmt.Errorf("Duration(%v): %v", in.MaxInterval, err)
 	}
 
-	if err := s.storage.Write(ctx,
-		in.GetDomainId(),
-		mapTree.TreeId, logTree.TreeId,
-		vrfPublicPB.Der, wrapped,
-		minInterval, maxInterval); err != nil {
+	if err := s.storage.Write(ctx, &adminstorage.Domain{
+		Domain:      in.GetDomainId(),
+		MapID:       mapTree.TreeId,
+		LogID:       logTree.TreeId,
+		VRF:         vrfPublicPB,
+		VRFPriv:     wrapped,
+		MinInterval: minInterval,
+		MaxInterval: maxInterval,
+	}); err != nil {
 		return nil, fmt.Errorf("adminstorage.Write(): %v", err)
 	}
 	return &pb.Domain{
