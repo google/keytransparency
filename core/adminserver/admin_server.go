@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
+	"github.com/google/keytransparency/core/domainstorage"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
@@ -82,14 +82,14 @@ var (
 
 // Server implements pb.KeyTransparencyAdminServiceServer
 type Server struct {
-	storage  adminstorage.Storage
+	storage  domainstorage.Storage
 	logAdmin tpb.TrillianAdminClient
 	mapAdmin tpb.TrillianAdminClient
 	keygen   keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdminService implementation.
-func New(storage adminstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
+func New(storage domainstorage.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
 	return &Server{
 		storage:  storage,
 		logAdmin: logAdmin,
@@ -121,7 +121,7 @@ func (s *Server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*p
 
 // fetchDomain converts an adminstorage.Domain object into a pb.Domain object
 // by fetching the relevant info from Trillian.
-func (s *Server) fetchDomain(ctx context.Context, d *adminstorage.Domain) (*pb.Domain, error) {
+func (s *Server) fetchDomain(ctx context.Context, d *domainstorage.Domain) (*pb.Domain, error) {
 	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
@@ -194,7 +194,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		return nil, fmt.Errorf("Duration(%v): %v", in.MaxInterval, err)
 	}
 
-	if err := s.storage.Write(ctx, &adminstorage.Domain{
+	if err := s.storage.Write(ctx, &domainstorage.Domain{
 		Domain:      in.GetDomainId(),
 		MapID:       mapTree.TreeId,
 		LogID:       logTree.TreeId,

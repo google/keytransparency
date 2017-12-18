@@ -19,11 +19,11 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
+	"github.com/google/keytransparency/core/domainstorage"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
@@ -41,7 +41,7 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	admin     adminstorage.Storage
+	admin     domainstorage.Storage
 	tlog      tpb.TrillianLogClient
 	tmap      tpb.TrillianMapClient
 	tadmin    tpb.TrillianAdminClient
@@ -53,7 +53,7 @@ type Server struct {
 }
 
 // New creates a new instance of the key server.
-func New(admin adminstorage.Storage,
+func New(admin domainstorage.Storage,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	tadmin tpb.TrillianAdminClient,

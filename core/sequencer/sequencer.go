@@ -23,7 +23,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/google/keytransparency/core/adminstorage"
+	"github.com/google/keytransparency/core/domainstorage"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -68,7 +68,7 @@ func init() {
 
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
-	admin     adminstorage.Storage
+	admin     domainstorage.Storage
 	tmap      trillian.TrillianMapClient
 	tlog      trillian.TrillianLogClient
 	mutator   mutator.Mutator
@@ -77,7 +77,7 @@ type Sequencer struct {
 }
 
 // New creates a new instance of the signer.
-func New(admin adminstorage.Storage,
+func New(admin domainstorage.Storage,
 	tmap trillian.TrillianMapClient,
 	tlog trillian.TrillianLogClient,
 	mutator mutator.Mutator,

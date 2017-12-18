@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package adminstorage stores multi-tennancy configuration information.
-package adminstorage
+// Package domainstorage stores multi-tennancy configuration information.
+package domainstorage
 
 import (
 	"context"
