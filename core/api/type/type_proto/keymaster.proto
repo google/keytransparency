@@ -32,9 +32,10 @@ message Metadata {
 message SigningKey {
   // KeyStatus defines a key status.
   enum KeyStatus {
-    ACTIVE = 0;      // indicates a key that is currently being used.
-    INACTIVE = 1;    // indicates a key status that is not active.
-    DEPRECATED = 2;  // indicates a key that is not in use.
+    UNKNOWN = 0;
+    ACTIVE = 1;      // indicates a key that is currently being used.
+    INACTIVE = 2;    // indicates a key status that is not active.
+    DEPRECATED = 3;  // indicates a key that is not in use.
   }
   // metadata contains information about this key..
   Metadata metadata = 1;
@@ -48,8 +49,9 @@ message SigningKey {
 message VerifyingKey {
   // KeyStatus defines a key status.
   enum KeyStatus {
-    ACTIVE = 0;      // indicates a key that is currently being used.
-    DEPRECATED = 1;  // indicates a key that is not in use.
+    UNKNOWN  = 0;
+    ACTIVE = 1;      // indicates a key that is currently being used.
+    DEPRECATED = 2;  // indicates a key that is not in use.
   }
   // metadata contains information about this key..
   Metadata metadata = 1;
