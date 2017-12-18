@@ -43,7 +43,7 @@ func TestCreateRead(t *testing.T) {
 		t.Skipf("Skipping map integration test, SQL driver is %v", provider.Driver)
 	}
 	ctx := context.Background()
-	storage := fake.NewAdminStorage()
+	storage := fake.NewDomainStorage()
 
 	// Map server
 	mapEnv, err := integration.NewMapEnv(ctx)

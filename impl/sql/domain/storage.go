@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package adminstorage implements the admin.Storage interface.
-package adminstorage
+// Package domain implements the domain.Storage interface.
+package domain
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/google/keytransparency/core/adminstorage"
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/trillian/crypto/keyspb"
 )
 
@@ -64,8 +64,8 @@ type storage struct {
 	db *sql.DB
 }
 
-// New returns a admin.Storage client backed by and SQL table.
-func New(db *sql.DB) (adminstorage.Storage, error) {
+// NewStorage returns a domain.Storage client backed by an SQL table.
+func NewStorage(db *sql.DB) (domain.Storage, error) {
 	s := &storage{
 		db: db,
 	}
@@ -84,7 +84,7 @@ func (s *storage) create() error {
 	return nil
 }
 
-func (s *storage) List(ctx context.Context, showDeleted bool) ([]*adminstorage.Domain, error) {
+func (s *storage) List(ctx context.Context, showDeleted bool) ([]*domain.Domain, error) {
 	var query string
 	if showDeleted {
 		query = listDeletedSQL
@@ -103,10 +103,10 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*adminstorage.D
 	}
 	defer rows.Close()
 
-	ret := []*adminstorage.Domain{}
+	ret := []*domain.Domain{}
 	for rows.Next() {
 		var pubkey, anyData []byte
-		d := &adminstorage.Domain{}
+		d := &domain.Domain{}
 		if err := rows.Scan(
 			&d.Domain,
 			&d.MapID, &d.LogID,
@@ -126,7 +126,7 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*adminstorage.D
 	return ret, nil
 }
 
-func (s *storage) Write(ctx context.Context, d *adminstorage.Domain) error {
+func (s *storage) Write(ctx context.Context, d *domain.Domain) error {
 	// Prepare data.
 	anyPB, err := ptypes.MarshalAny(d.VRFPriv)
 	if err != nil {
@@ -151,7 +151,7 @@ func (s *storage) Write(ctx context.Context, d *adminstorage.Domain) error {
 	return err
 }
 
-func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (*adminstorage.Domain, error) {
+func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (*domain.Domain, error) {
 	var SQL string
 	if showDeleted {
 		SQL = readDeletedSQL
@@ -163,7 +163,7 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 		return nil, err
 	}
 	defer readStmt.Close()
-	d := &adminstorage.Domain{}
+	d := &domain.Domain{}
 	var pubkey, anyData []byte
 	if err := readStmt.QueryRowContext(ctx, domainID).Scan(
 		&d.Domain,

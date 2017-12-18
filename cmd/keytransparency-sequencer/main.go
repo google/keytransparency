@@ -23,7 +23,7 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/impl/sql/adminstorage"
+	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/keytransparency/impl/transaction"
@@ -84,17 +84,17 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
-	adminStorage, err := adminstorage.New(sqldb)
+	domainStorage, err := domain.NewStorage(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create adminstorage object: %v", err)
+		glog.Exitf("Failed to create domain storage object: %v", err)
 	}
 
 	// Create servers
-	signer := sequencer.New(adminStorage, tmap, tlog, entry.New(), mutations, factory)
+	signer := sequencer.New(domainStorage, tmap, tlog, entry.New(), mutations, factory)
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
-	adminServer := adminserver.New(adminStorage, logAdmin, mapAdmin, keygen)
+	adminServer := adminserver.New(domainStorage, logAdmin, mapAdmin, keygen)
 	glog.Infof("Signer starting")
 
 	// Run servers

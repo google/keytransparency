@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package adminstorage
+package domain
 
 import (
 	"context"
@@ -21,7 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/adminstorage"
+	"github.com/google/keytransparency/core/domain"
+
 	"github.com/google/trillian/crypto/keyspb"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -34,16 +35,16 @@ func TestList(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	admin, err := New(db)
+	admin, err := NewStorage(db)
 	if err != nil {
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}
 	for _, tc := range []struct {
-		domains     []*adminstorage.Domain
+		domains     []*domain.Domain
 		readDeleted bool
 	}{
 		{
-			domains: []*adminstorage.Domain{
+			domains: []*domain.Domain{
 				{
 					Domain:      "domain1",
 					MapID:       1,
@@ -90,14 +91,14 @@ func TestWriteReadDelete(t *testing.T) {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	defer db.Close()
-	admin, err := New(db)
+	admin, err := NewStorage(db)
 	if err != nil {
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}
 
 	for _, tc := range []struct {
 		desc                 string
-		d                    adminstorage.Domain
+		d                    domain.Domain
 		write                bool
 		wantWriteErr         bool
 		setDelete, isDeleted bool
@@ -107,7 +108,7 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc:  "Success",
 			write: true,
-			d: adminstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -120,7 +121,7 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc:  "Duplicate DomainID",
 			write: true,
-			d: adminstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -133,7 +134,7 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Delete",
-			d: adminstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -149,7 +150,7 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Read deleted",
-			d: adminstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,
@@ -165,7 +166,7 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Undelete",
-			d: adminstorage.Domain{
+			d: domain.Domain{
 				Domain:      "testdomain",
 				MapID:       1,
 				LogID:       2,

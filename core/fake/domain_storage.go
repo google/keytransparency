@@ -18,24 +18,24 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/keytransparency/core/adminstorage"
+	"github.com/google/keytransparency/core/domain"
 )
 
-// AdminStorage implements adminstorage.Storage
-type AdminStorage struct {
-	domains map[string]*adminstorage.Domain
+// DomainStorage implements domain.Storage
+type DomainStorage struct {
+	domains map[string]*domain.Domain
 }
 
-// NewAdminStorage returns a fake adminstorage.Storage
-func NewAdminStorage() *AdminStorage {
-	return &AdminStorage{
-		domains: make(map[string]*adminstorage.Domain),
+// NewDomainStorage returns a fake dominstorage.Storage
+func NewDomainStorage() *DomainStorage {
+	return &DomainStorage{
+		domains: make(map[string]*domain.Domain),
 	}
 }
 
 // List returns a list of active domains
-func (a *AdminStorage) List(ctx context.Context, deleted bool) ([]*adminstorage.Domain, error) {
-	ret := make([]*adminstorage.Domain, 0, len(a.domains))
+func (a *DomainStorage) List(ctx context.Context, deleted bool) ([]*domain.Domain, error) {
+	ret := make([]*domain.Domain, 0, len(a.domains))
 	for _, d := range a.domains {
 		ret = append(ret, d)
 	}
@@ -43,13 +43,13 @@ func (a *AdminStorage) List(ctx context.Context, deleted bool) ([]*adminstorage.
 }
 
 // Write adds a new domain.
-func (a *AdminStorage) Write(ctx context.Context, d *adminstorage.Domain) error {
+func (a *DomainStorage) Write(ctx context.Context, d *domain.Domain) error {
 	a.domains[d.Domain] = d
 	return nil
 }
 
 // Read returns existing domains.
-func (a *AdminStorage) Read(ctx context.Context, ID string, showDeleted bool) (*adminstorage.Domain, error) {
+func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domain.Domain, error) {
 	d, ok := a.domains[ID]
 	if !ok {
 		return nil, fmt.Errorf("Domain %v not found", ID)
@@ -58,7 +58,7 @@ func (a *AdminStorage) Read(ctx context.Context, ID string, showDeleted bool) (*
 }
 
 // SetDelete deletes or undeletes a domain.
-func (a *AdminStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
+func (a *DomainStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
 	_, ok := a.domains[ID]
 	if !ok {
 		return fmt.Errorf("Domain %v not found", ID)

@@ -19,11 +19,11 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/google/keytransparency/core/adminstorage"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/transaction"
@@ -41,7 +41,7 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	admin     adminstorage.Storage
+	domains   domain.Storage
 	tlog      tpb.TrillianLogClient
 	tmap      tpb.TrillianMapClient
 	tadmin    tpb.TrillianAdminClient
@@ -53,7 +53,7 @@ type Server struct {
 }
 
 // New creates a new instance of the key server.
-func New(admin adminstorage.Storage,
+func New(domains domain.Storage,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	tadmin tpb.TrillianAdminClient,
@@ -63,7 +63,7 @@ func New(admin adminstorage.Storage,
 	factory transaction.Factory,
 	mutations mutator.MutationStorage) *Server {
 	return &Server{
-		admin:     admin,
+		domains:   domains,
 		tlog:      tlog,
 		tmap:      tmap,
 		tadmin:    tadmin,
@@ -93,7 +93,7 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	}
 
 	// Lookup log and map info.
-	domain, err := s.admin.Read(ctx, domainID, false)
+	domain, err := s.domains.Read(ctx, domainID, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
@@ -202,7 +202,7 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
 	// Lookup log and map info.
-	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
@@ -250,7 +250,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 	// Lookup log and map info.
-	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
@@ -351,7 +351,7 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 	if in.DomainId == "" {
 		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
-	domain, err := s.admin.Read(ctx, in.DomainId, false)
+	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err == sql.ErrNoRows {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, status.Errorf(codes.NotFound, "Domain %v not found", in.DomainId)
