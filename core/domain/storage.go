@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package domain stores multi-tennancy configuration information.
+// Package domain stores multi-tenancy configuration information.
 package domain
 
 import (
@@ -36,7 +36,7 @@ type Domain struct {
 	Deleted bool
 }
 
-// Storage is an interface for storing multi-tennant configuration information.
+// Storage is an interface for storing multi-tenant configuration information.
 type Storage interface {
 	// List returns the full list of domains.
 	List(ctx context.Context, deleted bool) ([]*Domain, error)
