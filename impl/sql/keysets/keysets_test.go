@@ -53,7 +53,7 @@ func TestWriteRead(t *testing.T) {
 			domainID:   "domain",
 			appID:      "app",
 			ks: &tpb.KeySet{VerifyingKeys: map[string]*tpb.VerifyingKey{
-				"1": &tpb.VerifyingKey{KeyMaterial: []byte("keydata")},
+				"1": {KeyMaterial: []byte("keydata")},
 			}},
 			write: true,
 			read:  true,
