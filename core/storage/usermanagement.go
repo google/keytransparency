@@ -23,6 +23,8 @@ import (
 
 // KeySets represents the interface for the usermanager.
 type KeySets interface {
-	// Getreturns the keyset for a given domain and app.
+	// Get returns the keyset for a given domain and app.
 	Get(ctx context.Context, instance int64, domainID, appID string) (*tpb.KeySet, error)
+	// Set saves a keyset.
+	Set(ctx context.Context, instance int64, domainID, appID string, k *tpb.KeySet) error
 }

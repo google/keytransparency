@@ -22,7 +22,7 @@
 # TODO: Makefile will be deleted once the repo is public. Check issue #411.
 
 main: 
-	go build ./cmd/keytransparency-server ./cmd/keytransparency-sequencer ./cmd/keytransparency-client
+	go build ./cmd/keytransparency-server ./cmd/keytransparency-sequencer ./cmd/keytransparency-client ./cmd/keytransparency-delegate
 
 mysql: 
 	go build -tags mysql ./cmd/keytransparency-server ./cmd/keytransparency-sequencer ./cmd/keytransparency-client

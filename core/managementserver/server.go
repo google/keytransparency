@@ -33,8 +33,11 @@ type Server struct {
 }
 
 // New creates a new managementserver
-func New() *Server {
-	return &Server{}
+func New(instance int64, keysets storage.KeySets) *Server {
+	return &Server{
+		instance: instance,
+		keysets:  keysets,
+	}
 }
 
 // GetKeySet returns a list of public keys (a keyset) that corresponds to the signing keys
