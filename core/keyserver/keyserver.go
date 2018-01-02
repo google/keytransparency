@@ -30,7 +30,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -85,18 +84,18 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 // TODO(gdbelvin): add a GetEntryByRevision endpoint too.
 func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, firstTreeSize, revision int64) (*pb.GetEntryResponse, error) {
 	if got, want := revision, int64(0); got != -1 && got < want {
-		return nil, grpc.Errorf(codes.InvalidArgument,
+		return nil, status.Errorf(codes.InvalidArgument,
 			"Epoch %v is inavlid. The first map revision is epoch %v.", got, want)
 	}
 	if domainID == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 
 	// Lookup log and map info.
 	domain, err := s.domains.Read(ctx, domainID, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
 	// Fresh Root.
@@ -106,7 +105,7 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 		})
 	if err != nil {
 		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", domain.LogID, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	// Use the log as the authoritative source of the latest revision.
 	if revision < 0 {
@@ -128,11 +127,11 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	})
 	if err != nil {
 		glog.Errorf("GetLeavesByRevision(): %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
+		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
 		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
-		return nil, grpc.Errorf(codes.Internal, "Failed fetching map leaf")
+		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	neighbors := getResp.MapLeafInclusion[0].Inclusion
 	leaf := getResp.MapLeafInclusion[0].Leaf.LeafValue
@@ -141,11 +140,11 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	var committed *pb.Committed
 	if leaf != nil {
 		if extraData == nil {
-			return nil, grpc.Errorf(codes.Internal, "Missing commitment data")
+			return nil, status.Errorf(codes.Internal, "Missing commitment data")
 		}
 		committed = &pb.Committed{}
 		if err := proto.Unmarshal(extraData, committed); err != nil {
-			return nil, grpc.Errorf(codes.Internal, "Cannot read committed value")
+			return nil, status.Errorf(codes.Internal, "Cannot read committed value")
 		}
 	}
 
@@ -164,7 +163,7 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 		if err != nil {
 			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v",
 				domain.LogID, firstTreeSize, secondTreeSize, err)
-			return nil, grpc.Errorf(codes.Internal, "Cannot fetch log consistency proof")
+			return nil, status.Errorf(codes.Internal, "Cannot fetch log consistency proof")
 		}
 	}
 
@@ -180,7 +179,7 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 	if err != nil {
 		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v",
 			domain.LogID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
 	return &pb.GetEntryResponse{
@@ -205,19 +204,19 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 	// Get current epoch.
 	resp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: domain.MapID})
 	if err != nil {
 		glog.Errorf("GetSignedMapRoot(%v): %v", domain.MapID, err)
-		return nil, grpc.Errorf(codes.Internal, "Fetching latest signed map root failed")
+		return nil, status.Errorf(codes.Internal, "Fetching latest signed map root failed")
 	}
 
 	currentEpoch := resp.GetMapRoot().GetMapRevision()
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
 		glog.Errorf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
 	// TODO(gbelvin): fetch all history from trillian at once.
@@ -227,7 +226,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 		resp, err := s.getEntry(ctx, in.DomainId, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
 		if err != nil {
 			glog.Errorf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
-			return nil, grpc.Errorf(codes.Internal, "GetEntry failed")
+			return nil, status.Errorf(codes.Internal, "GetEntry failed")
 		}
 		responses[i] = resp
 	}
@@ -247,13 +246,13 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 // profile will be created.
 func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
 	if in.DomainId == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 	// Lookup log and map info.
 	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, domain.VRFPriv)
 	if err != nil {
@@ -266,15 +265,15 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	case nil:
 		break // Authentication succeeded.
 	case authentication.ErrMissingAuth:
-		return nil, grpc.Errorf(codes.Unauthenticated, "Missing authentication header")
+		return nil, status.Errorf(codes.Unauthenticated, "Missing authentication header")
 	default:
 		glog.Warningf("Auth failed: %v", err)
-		return nil, grpc.Errorf(codes.Unauthenticated, "Unauthenticated")
+		return nil, status.Errorf(codes.Unauthenticated, "Unauthenticated")
 	}
 	// Validate proper authorization.
 	if s.authz.IsAuthorized(sctx, domain.MapID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
 		glog.Warningf("Authz failed: %v", err)
-		return nil, grpc.Errorf(codes.PermissionDenied, "Unauthorized")
+		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized")
 	}
 	// Verify:
 	// - Index to Key equality in SignedKV.
@@ -282,7 +281,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	// - Correct key formats.
 	if err := validateUpdateEntryRequest(in, vrfPriv); err != nil {
 		glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid request")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
 	// Query for the current epoch.
@@ -295,7 +294,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	resp, err := s.GetEntry(ctx, req)
 	if err != nil {
 		glog.Errorf("GetEntry failed: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Read failed")
+		return nil, status.Errorf(codes.Internal, "Read failed")
 	}
 
 	// Catch errors early. Perform mutation verification.
@@ -309,7 +308,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	oldEntry, err := entry.FromLeafValue(oldLeafB)
 	if err != nil {
 		glog.Errorf("entry.FromLeafValue: %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid previous leaf value")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid previous leaf value")
 	}
 	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetMutation()); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
@@ -319,24 +318,24 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return &pb.UpdateEntryResponse{Proof: resp}, nil
 	} else if err != nil {
 		glog.Warningf("Invalid mutation: %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid mutation")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
 	}
 
 	// Save mutation to the database.
 	txn, err := s.factory.NewTxn(ctx)
 	if err != nil {
-		return nil, grpc.Errorf(codes.Internal, "Cannot create transaction")
+		return nil, status.Errorf(codes.Internal, "Cannot create transaction")
 	}
 	if _, err := s.mutations.Write(txn, domain.MapID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		if err := txn.Rollback(); err != nil {
 			glog.Errorf("Cannot rollback the transaction: %v", err)
 		}
-		return nil, grpc.Errorf(codes.Internal, "Mutation write error")
+		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}
 	if err := txn.Commit(); err != nil {
 		glog.Errorf("Cannot commit transaction: %v", err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot commit transaction")
+		return nil, status.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 	return &pb.UpdateEntryResponse{Proof: resp}, nil
 }
@@ -349,7 +348,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Domain, error) {
 	// Lookup log and map info.
 	if in.DomainId == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err == sql.ErrNoRows {
@@ -357,7 +356,7 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 		return nil, status.Errorf(codes.NotFound, "Domain %v not found", in.DomainId)
 	} else if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info for %v", in.DomainId)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info for %v", in.DomainId)
 	}
 
 	logTree, err := s.tadmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: domain.LogID})

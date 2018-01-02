@@ -22,7 +22,6 @@ import (
 	"github.com/google/keytransparency/core/internal"
 
 	"github.com/golang/glog"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -48,7 +47,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
 	// Get signed map root by revision.
@@ -81,7 +80,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 
 // GetEpochStream is a streaming API similar to GetMutations.
 func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparencyService_GetEpochStreamServer) error {
-	return grpc.Errorf(codes.Unimplemented, "GetEpochStream is unimplemented")
+	return status.Errorf(codes.Unimplemented, "GetEpochStream is unimplemented")
 }
 
 // ListMutations returns the mutations that created an epoch.
@@ -94,7 +93,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
 	lowestSeq, err := s.lowestSequenceNumber(ctx, domain.MapID, in.Epoch, in.PageToken)
@@ -148,7 +147,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 
 // ListMutationsStream is a streaming list of mutations in a specific epoch.
 func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTransparencyService_ListMutationsStreamServer) error {
-	return grpc.Errorf(codes.Unimplemented, "ListMutationStream is unimplemented")
+	return status.Errorf(codes.Unimplemented, "ListMutationStream is unimplemented")
 }
 
 func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoch int64) (
@@ -258,7 +257,7 @@ func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [
 	domain, err := s.domains.Read(ctx, domainID, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
-		return nil, grpc.Errorf(codes.Internal, "Cannot fetch domain info")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    domain.MapID,

@@ -29,8 +29,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tpb "github.com/google/trillian"
@@ -86,7 +86,7 @@ func mustMetadataAsAny(t *testing.T, meta *pb.MapperMetadata) *any.Any {
 func TestGetEpochStream(t *testing.T) {
 	srv := &Server{}
 	err := srv.GetEpochStream(nil, nil)
-	if got, want := grpc.Code(err), codes.Unimplemented; got != want {
+	if got, want := status.Code(err), codes.Unimplemented; got != want {
 		t.Errorf("GetMutationsStream(_, _): %v, want %v", got, want)
 	}
 }
