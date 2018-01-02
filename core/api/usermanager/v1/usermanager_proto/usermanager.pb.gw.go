@@ -28,7 +28,7 @@ var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
-func request_UserManagerService_GetKeySet_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_UserManager_GetKeySet_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetKeySetRequest
 	var metadata runtime.ServerMetadata
 
@@ -67,10 +67,10 @@ func request_UserManagerService_GetKeySet_0(ctx context.Context, marshaler runti
 }
 
 var (
-	filter_UserManagerService_CreateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
+	filter_UserManager_CreateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
 )
 
-func request_UserManagerService_CreateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_UserManager_CreateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateUserRequest
 	var metadata runtime.ServerMetadata
 
@@ -118,7 +118,7 @@ func request_UserManagerService_CreateUser_0(ctx context.Context, marshaler runt
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user.user_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_UserManagerService_CreateUser_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_UserManager_CreateUser_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -128,10 +128,10 @@ func request_UserManagerService_CreateUser_0(ctx context.Context, marshaler runt
 }
 
 var (
-	filter_UserManagerService_UpdateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
+	filter_UserManager_UpdateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
 )
 
-func request_UserManagerService_UpdateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_UserManager_UpdateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateUserRequest
 	var metadata runtime.ServerMetadata
 
@@ -179,7 +179,7 @@ func request_UserManagerService_UpdateUser_0(ctx context.Context, marshaler runt
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user.user_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_UserManagerService_UpdateUser_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_UserManager_UpdateUser_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -188,7 +188,7 @@ func request_UserManagerService_UpdateUser_0(ctx context.Context, marshaler runt
 
 }
 
-func request_UserManagerService_BatchCreateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_UserManager_BatchCreateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq BatchCreateUserRequest
 	var metadata runtime.ServerMetadata
 
@@ -230,9 +230,9 @@ func request_UserManagerService_BatchCreateUser_0(ctx context.Context, marshaler
 
 }
 
-// RegisterUserManagerServiceHandlerFromEndpoint is same as RegisterUserManagerServiceHandler but
+// RegisterUserManagerHandlerFromEndpoint is same as RegisterUserManagerHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterUserManagerServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterUserManagerHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -252,23 +252,23 @@ func RegisterUserManagerServiceHandlerFromEndpoint(ctx context.Context, mux *run
 		}()
 	}()
 
-	return RegisterUserManagerServiceHandler(ctx, mux, conn)
+	return RegisterUserManagerHandler(ctx, mux, conn)
 }
 
-// RegisterUserManagerServiceHandler registers the http handlers for service UserManagerService to "mux".
+// RegisterUserManagerHandler registers the http handlers for service UserManager to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterUserManagerServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterUserManagerServiceHandlerClient(ctx, mux, NewUserManagerServiceClient(conn))
+func RegisterUserManagerHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterUserManagerHandlerClient(ctx, mux, NewUserManagerClient(conn))
 }
 
-// RegisterUserManagerServiceHandler registers the http handlers for service UserManagerService to "mux".
-// The handlers forward requests to the grpc endpoint over the given implementation of "UserManagerServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "UserManagerServiceClient"
+// RegisterUserManagerHandler registers the http handlers for service UserManager to "mux".
+// The handlers forward requests to the grpc endpoint over the given implementation of "UserManagerClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "UserManagerClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "UserManagerServiceClient" to call the correct interceptors.
-func RegisterUserManagerServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client UserManagerServiceClient) error {
+// "UserManagerClient" to call the correct interceptors.
+func RegisterUserManagerHandlerClient(ctx context.Context, mux *runtime.ServeMux, client UserManagerClient) error {
 
-	mux.Handle("GET", pattern_UserManagerService_GetKeySet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_UserManager_GetKeySet_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -286,18 +286,18 @@ func RegisterUserManagerServiceHandlerClient(ctx context.Context, mux *runtime.S
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UserManagerService_GetKeySet_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UserManager_GetKeySet_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UserManagerService_GetKeySet_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UserManager_GetKeySet_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UserManagerService_CreateUser_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UserManager_CreateUser_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -315,18 +315,18 @@ func RegisterUserManagerServiceHandlerClient(ctx context.Context, mux *runtime.S
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UserManagerService_CreateUser_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UserManager_CreateUser_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UserManagerService_CreateUser_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UserManager_CreateUser_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PATCH", pattern_UserManagerService_UpdateUser_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_UserManager_UpdateUser_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -344,18 +344,18 @@ func RegisterUserManagerServiceHandlerClient(ctx context.Context, mux *runtime.S
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UserManagerService_UpdateUser_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UserManager_UpdateUser_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UserManagerService_UpdateUser_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UserManager_UpdateUser_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UserManagerService_BatchCreateUser_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UserManager_BatchCreateUser_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -373,14 +373,14 @@ func RegisterUserManagerServiceHandlerClient(ctx context.Context, mux *runtime.S
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UserManagerService_BatchCreateUser_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UserManager_BatchCreateUser_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UserManagerService_BatchCreateUser_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UserManager_BatchCreateUser_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -388,21 +388,21 @@ func RegisterUserManagerServiceHandlerClient(ctx context.Context, mux *runtime.S
 }
 
 var (
-	pattern_UserManagerService_GetKeySet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"usermanager", "v1", "domains", "domain_id", "apps", "app_id", "keyset"}, ""))
+	pattern_UserManager_GetKeySet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"usermanager", "v1", "domains", "domain_id", "apps", "app_id", "keyset"}, ""))
 
-	pattern_UserManagerService_CreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "domains", "user.domain_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
+	pattern_UserManager_CreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "domains", "user.domain_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
 
-	pattern_UserManagerService_UpdateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "domains", "user.domain_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
+	pattern_UserManager_UpdateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "domains", "user.domain_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
 
-	pattern_UserManagerService_BatchCreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"usermanager", "v1", "domains", "domain_id", "apps", "app_id"}, "BatchCreate"))
+	pattern_UserManager_BatchCreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"usermanager", "v1", "domains", "domain_id", "apps", "app_id"}, "BatchCreate"))
 )
 
 var (
-	forward_UserManagerService_GetKeySet_0 = runtime.ForwardResponseMessage
+	forward_UserManager_GetKeySet_0 = runtime.ForwardResponseMessage
 
-	forward_UserManagerService_CreateUser_0 = runtime.ForwardResponseMessage
+	forward_UserManager_CreateUser_0 = runtime.ForwardResponseMessage
 
-	forward_UserManagerService_UpdateUser_0 = runtime.ForwardResponseMessage
+	forward_UserManager_UpdateUser_0 = runtime.ForwardResponseMessage
 
-	forward_UserManagerService_BatchCreateUser_0 = runtime.ForwardResponseMessage
+	forward_UserManager_BatchCreateUser_0 = runtime.ForwardResponseMessage
 )

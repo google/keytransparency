@@ -74,7 +74,7 @@ message BatchCreateUserResponse {
   repeated type.User users = 2;
 }
 
-// The UserManagerService holds a set of signing keys which can be used to
+// The UserManager holds a set of signing keys which can be used to
 // sign user updates.
 // - This service must be registered with the server in order to submit user
 // create or update requests.
@@ -92,7 +92,7 @@ message BatchCreateUserResponse {
 //   appropriate Key Transparency server.
 // - domains/apps/users
 //   Users can be created and updated through this endpoint.
-service UserManagerService {
+service UserManager {
 
   // GetKeySet returns a list of public keys (a keyset) that corresponds to the signing keys
   // this service has for a given domain and app.

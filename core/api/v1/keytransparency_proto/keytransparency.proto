@@ -16,9 +16,9 @@ syntax = "proto3";
 
 option go_package = "github.com/google/keytransparency/core/api/v1/keytransparency_proto";
 
-// Key Transparency Service
+// Key Transparency 
 //
-// The Key Transparency Service API consists of a map of user names to public
+// The Key Transparency API consists of a map of user names to public
 // keys. Each user name also has a history of public keys that have been
 // associated with it.
 package google.keytransparency.v1;
@@ -245,7 +245,7 @@ message ListMutationsResponse {
   string next_page_token = 7;
 }
 
-// The KeyTransparencyService API represents a directory of public keys.
+// The KeyTransparency API represents a directory of public keys.
 //
 // The API has a collection of domains:
 // `/v1/domains/`
@@ -276,7 +276,7 @@ message ListMutationsResponse {
 // Each User also has a collection of historical values for user:
 // `/v1/domains/*/apps/*/users/*/history`
 //
-service KeyTransparencyService {
+service KeyTransparency {
   // GetDomain returns the information needed to verify the specified domain.
   rpc GetDomain(GetDomainRequest) returns (Domain) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}" };
@@ -334,6 +334,5 @@ service KeyTransparencyService {
       body: "entry_update"
     };
   }
-
 }
 

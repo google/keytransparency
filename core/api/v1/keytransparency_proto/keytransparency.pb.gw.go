@@ -29,10 +29,10 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_KeyTransparencyService_GetDomain_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparency_GetDomain_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_KeyTransparencyService_GetDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparency_GetDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetDomainRequest
 	var metadata runtime.ServerMetadata
 
@@ -54,7 +54,7 @@ func request_KeyTransparencyService_GetDomain_0(ctx context.Context, marshaler r
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_GetDomain_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetDomain_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -64,10 +64,10 @@ func request_KeyTransparencyService_GetDomain_0(ctx context.Context, marshaler r
 }
 
 var (
-	filter_KeyTransparencyService_GetEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_GetEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
-func request_KeyTransparencyService_GetEpoch_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparency_GetEpoch_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetEpochRequest
 	var metadata runtime.ServerMetadata
 
@@ -100,7 +100,7 @@ func request_KeyTransparencyService_GetEpoch_0(ctx context.Context, marshaler ru
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_GetEpoch_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetEpoch_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -110,10 +110,10 @@ func request_KeyTransparencyService_GetEpoch_0(ctx context.Context, marshaler ru
 }
 
 var (
-	filter_KeyTransparencyService_GetEpochStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparency_GetEpochStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_KeyTransparencyService_GetEpochStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (KeyTransparencyService_GetEpochStreamClient, runtime.ServerMetadata, error) {
+func request_KeyTransparency_GetEpochStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (KeyTransparency_GetEpochStreamClient, runtime.ServerMetadata, error) {
 	var protoReq GetEpochRequest
 	var metadata runtime.ServerMetadata
 
@@ -135,7 +135,7 @@ func request_KeyTransparencyService_GetEpochStream_0(ctx context.Context, marsha
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_GetEpochStream_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetEpochStream_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -153,10 +153,10 @@ func request_KeyTransparencyService_GetEpochStream_0(ctx context.Context, marsha
 }
 
 var (
-	filter_KeyTransparencyService_ListMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_ListMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
-func request_KeyTransparencyService_ListMutations_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparency_ListMutations_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListMutationsRequest
 	var metadata runtime.ServerMetadata
 
@@ -189,7 +189,7 @@ func request_KeyTransparencyService_ListMutations_0(ctx context.Context, marshal
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_ListMutations_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_ListMutations_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -199,10 +199,10 @@ func request_KeyTransparencyService_ListMutations_0(ctx context.Context, marshal
 }
 
 var (
-	filter_KeyTransparencyService_ListMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_ListMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
-func request_KeyTransparencyService_ListMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (KeyTransparencyService_ListMutationsStreamClient, runtime.ServerMetadata, error) {
+func request_KeyTransparency_ListMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (KeyTransparency_ListMutationsStreamClient, runtime.ServerMetadata, error) {
 	var protoReq ListMutationsRequest
 	var metadata runtime.ServerMetadata
 
@@ -235,7 +235,7 @@ func request_KeyTransparencyService_ListMutationsStream_0(ctx context.Context, m
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_ListMutationsStream_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_ListMutationsStream_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -253,10 +253,10 @@ func request_KeyTransparencyService_ListMutationsStream_0(ctx context.Context, m
 }
 
 var (
-	filter_KeyTransparencyService_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_KeyTransparency_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
-func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparency_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetEntryRequest
 	var metadata runtime.ServerMetadata
 
@@ -300,7 +300,7 @@ func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler ru
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_GetEntry_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetEntry_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -310,10 +310,10 @@ func request_KeyTransparencyService_GetEntry_0(ctx context.Context, marshaler ru
 }
 
 var (
-	filter_KeyTransparencyService_ListEntryHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_KeyTransparency_ListEntryHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
-func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparency_ListEntryHistory_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListEntryHistoryRequest
 	var metadata runtime.ServerMetadata
 
@@ -357,7 +357,7 @@ func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, mars
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_ListEntryHistory_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_ListEntryHistory_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -367,10 +367,10 @@ func request_KeyTransparencyService_ListEntryHistory_0(ctx context.Context, mars
 }
 
 var (
-	filter_KeyTransparencyService_UpdateEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"entry_update": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
+	filter_KeyTransparency_UpdateEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"entry_update": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
 )
 
-func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparency_UpdateEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateEntryRequest
 	var metadata runtime.ServerMetadata
 
@@ -418,7 +418,7 @@ func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyService_UpdateEntry_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_UpdateEntry_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -427,9 +427,9 @@ func request_KeyTransparencyService_UpdateEntry_0(ctx context.Context, marshaler
 
 }
 
-// RegisterKeyTransparencyServiceHandlerFromEndpoint is same as RegisterKeyTransparencyServiceHandler but
+// RegisterKeyTransparencyHandlerFromEndpoint is same as RegisterKeyTransparencyHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterKeyTransparencyHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -449,23 +449,23 @@ func RegisterKeyTransparencyServiceHandlerFromEndpoint(ctx context.Context, mux 
 		}()
 	}()
 
-	return RegisterKeyTransparencyServiceHandler(ctx, mux, conn)
+	return RegisterKeyTransparencyHandler(ctx, mux, conn)
 }
 
-// RegisterKeyTransparencyServiceHandler registers the http handlers for service KeyTransparencyService to "mux".
+// RegisterKeyTransparencyHandler registers the http handlers for service KeyTransparency to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterKeyTransparencyServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterKeyTransparencyServiceHandlerClient(ctx, mux, NewKeyTransparencyServiceClient(conn))
+func RegisterKeyTransparencyHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterKeyTransparencyHandlerClient(ctx, mux, NewKeyTransparencyClient(conn))
 }
 
-// RegisterKeyTransparencyServiceHandler registers the http handlers for service KeyTransparencyService to "mux".
-// The handlers forward requests to the grpc endpoint over the given implementation of "KeyTransparencyServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KeyTransparencyServiceClient"
+// RegisterKeyTransparencyHandler registers the http handlers for service KeyTransparency to "mux".
+// The handlers forward requests to the grpc endpoint over the given implementation of "KeyTransparencyClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KeyTransparencyClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "KeyTransparencyServiceClient" to call the correct interceptors.
-func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client KeyTransparencyServiceClient) error {
+// "KeyTransparencyClient" to call the correct interceptors.
+func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.ServeMux, client KeyTransparencyClient) error {
 
-	mux.Handle("GET", pattern_KeyTransparencyService_GetDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -483,18 +483,18 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_GetDomain_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetDomain_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_GetDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparencyService_GetEpoch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetEpoch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -512,18 +512,18 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_GetEpoch_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetEpoch_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_GetEpoch_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetEpoch_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparencyService_GetEpochStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetEpochStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -541,18 +541,18 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_GetEpochStream_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetEpochStream_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_GetEpochStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetEpochStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparencyService_ListMutations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_ListMutations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -570,18 +570,18 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_ListMutations_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_ListMutations_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_ListMutations_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_ListMutations_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparencyService_ListMutationsStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_ListMutationsStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -599,18 +599,18 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_ListMutationsStream_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_ListMutationsStream_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_ListMutationsStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_ListMutationsStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparencyService_GetEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -628,18 +628,18 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_GetEntry_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetEntry_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_GetEntry_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetEntry_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparencyService_ListEntryHistory_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_ListEntryHistory_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -657,18 +657,18 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_ListEntryHistory_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_ListEntryHistory_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_ListEntryHistory_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_ListEntryHistory_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PUT", pattern_KeyTransparencyService_UpdateEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_KeyTransparency_UpdateEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -686,14 +686,14 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyService_UpdateEntry_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_UpdateEntry_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyService_UpdateEntry_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_UpdateEntry_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -701,37 +701,37 @@ func RegisterKeyTransparencyServiceHandlerClient(ctx context.Context, mux *runti
 }
 
 var (
-	pattern_KeyTransparencyService_GetDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, ""))
+	pattern_KeyTransparency_GetDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, ""))
 
-	pattern_KeyTransparencyService_GetEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "domains", "domain_id", "epochs", "epoch"}, ""))
+	pattern_KeyTransparency_GetEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "domains", "domain_id", "epochs", "epoch"}, ""))
 
-	pattern_KeyTransparencyService_GetEpochStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "domains", "domain_id", "epochs"}, "stream"))
+	pattern_KeyTransparency_GetEpochStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "domains", "domain_id", "epochs"}, "stream"))
 
-	pattern_KeyTransparencyService_ListMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "domains", "domain_id", "epochs", "epoch", "mutations"}, ""))
+	pattern_KeyTransparency_ListMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "domains", "domain_id", "epochs", "epoch", "mutations"}, ""))
 
-	pattern_KeyTransparencyService_ListMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "domains", "domain_id", "epochs", "epoch", "mutations"}, "stream"))
+	pattern_KeyTransparency_ListMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "domains", "domain_id", "epochs", "epoch", "mutations"}, "stream"))
 
-	pattern_KeyTransparencyService_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, ""))
+	pattern_KeyTransparency_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, ""))
 
-	pattern_KeyTransparencyService_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id", "history"}, ""))
+	pattern_KeyTransparency_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id", "history"}, ""))
 
-	pattern_KeyTransparencyService_UpdateEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, ""))
+	pattern_KeyTransparency_UpdateEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, ""))
 )
 
 var (
-	forward_KeyTransparencyService_GetDomain_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_GetDomain_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyService_GetEpoch_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_GetEpoch_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyService_GetEpochStream_0 = runtime.ForwardResponseStream
+	forward_KeyTransparency_GetEpochStream_0 = runtime.ForwardResponseStream
 
-	forward_KeyTransparencyService_ListMutations_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_ListMutations_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyService_ListMutationsStream_0 = runtime.ForwardResponseStream
+	forward_KeyTransparency_ListMutationsStream_0 = runtime.ForwardResponseStream
 
-	forward_KeyTransparencyService_GetEntry_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_GetEntry_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyService_ListEntryHistory_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_ListEntryHistory_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyService_UpdateEntry_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_UpdateEntry_0 = runtime.ForwardResponseMessage
 )
