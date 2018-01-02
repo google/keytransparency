@@ -37,7 +37,7 @@ import (
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
-	mClient     pb.KeyTransparencyServiceClient
+	mClient     pb.KeyTransparencyClient
 	signer      *tcrypto.Signer
 	trusted     *trillian.SignedLogRoot
 	mapID       int64
@@ -48,7 +48,7 @@ type Monitor struct {
 }
 
 // NewFromConfig produces a new monitor from a Domain object.
-func NewFromConfig(mclient pb.KeyTransparencyServiceClient,
+func NewFromConfig(mclient pb.KeyTransparencyClient,
 	config *pb.Domain,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
@@ -77,7 +77,7 @@ func NewFromConfig(mclient pb.KeyTransparencyServiceClient,
 }
 
 // New creates a new instance of the monitor.
-func New(mclient pb.KeyTransparencyServiceClient,
+func New(mclient pb.KeyTransparencyClient,
 	logVerifier client.LogVerifier,
 	mapID int64, mapHasher hashers.MapHasher, mapPubKey crypto.PublicKey,
 	signer *tcrypto.Signer,

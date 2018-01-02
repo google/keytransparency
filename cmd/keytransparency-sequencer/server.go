@@ -37,7 +37,7 @@ var (
 	certFile = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 )
 
-func run(svr pb.KeyTransparencyAdminServiceServer) {
+func run(svr pb.KeyTransparencyAdminServer) {
 	// Wire up gRPC and HTTP servers.
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {
@@ -53,7 +53,7 @@ func run(svr pb.KeyTransparencyAdminServiceServer) {
 		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
 	}
 	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
-		pb.RegisterKeyTransparencyAdminServiceHandlerFromEndpoint)
+		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
@@ -61,7 +61,7 @@ func run(svr pb.KeyTransparencyAdminServiceServer) {
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", gwmux)
 
-	pb.RegisterKeyTransparencyAdminServiceServer(grpcServer, svr)
+	pb.RegisterKeyTransparencyAdminServer(grpcServer, svr)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()

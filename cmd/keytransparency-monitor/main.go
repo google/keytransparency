@@ -69,7 +69,7 @@ func main() {
 	if err != nil {
 		glog.Exitf("Error Dialing %v: %v", ktURL, err)
 	}
-	ktClient := pb.NewKeyTransparencyServiceClient(cc)
+	ktClient := pb.NewKeyTransparencyClient(cc)
 
 	config, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: *domainID})
 	if err != nil {

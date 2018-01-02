@@ -47,7 +47,7 @@ func TestMonitor(t *testing.T) {
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
-	ktClient := pb.NewKeyTransparencyServiceClient(env.Conn)
+	ktClient := pb.NewKeyTransparencyClient(env.Conn)
 	// setup monitor:
 	resp, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {

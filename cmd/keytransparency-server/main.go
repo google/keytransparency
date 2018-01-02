@@ -126,7 +126,7 @@ func main() {
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
-	pb.RegisterKeyTransparencyServiceServer(grpcServer, ksvr)
+	pb.RegisterKeyTransparencyServer(grpcServer, ksvr)
 	reflection.Register(grpcServer)
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
@@ -137,7 +137,7 @@ func main() {
 		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
 	}
 	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
-		pb.RegisterKeyTransparencyServiceHandlerFromEndpoint)
+		pb.RegisterKeyTransparencyHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}

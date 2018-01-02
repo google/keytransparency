@@ -251,7 +251,7 @@ func GetClient(useClientSecret bool) (*grpcc.Client, error) {
 		return nil, fmt.Errorf("Error reading config: %v", err)
 	}
 
-	return grpcc.NewFromConfig(pb.NewKeyTransparencyServiceClient(cc), config)
+	return grpcc.NewFromConfig(pb.NewKeyTransparencyClient(cc), config)
 }
 
 // config selects a source for and returns the client configuration.
@@ -260,7 +260,7 @@ func config(ctx context.Context, cc *grpc.ClientConn) (*pb.Domain, error) {
 	domain := viper.GetString("domain")
 	switch {
 	case autoConfig:
-		ktClient := pb.NewKeyTransparencyServiceClient(cc)
+		ktClient := pb.NewKeyTransparencyClient(cc)
 		return ktClient.GetDomain(ctx, &pb.GetDomainRequest{
 			DomainId: domain,
 		})

@@ -38,7 +38,7 @@ const pageSize = 16
 
 // Client queries the server side mutations API.
 type Client struct {
-	client     pb.KeyTransparencyServiceClient
+	client     pb.KeyTransparencyClient
 	pollPeriod time.Duration
 }
 
@@ -50,7 +50,7 @@ type EpochMutations struct {
 }
 
 // New initializes a new mutations API monitoring client.
-func New(client pb.KeyTransparencyServiceClient, pollPeriod time.Duration) *Client {
+func New(client pb.KeyTransparencyClient, pollPeriod time.Duration) *Client {
 	return &Client{
 		client:     client,
 		pollPeriod: pollPeriod,
