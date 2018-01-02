@@ -18,11 +18,10 @@
 package mutator
 
 import (
+	"context"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-
-	"github.com/google/keytransparency/core/transaction"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
@@ -64,12 +63,12 @@ type MutationStorage interface {
 	// count. Note that startSequence is not included in the result.
 	// ReadRange stops when endSequence or count is reached, whichever comes
 	// first. ReadRange also returns the maximum sequence number read.
-	ReadRange(txn transaction.Txn, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error)
+	ReadRange(ctx context.Context, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error)
 	// ReadAll reads all mutations starting from the given sequence number.
 	// Note that startSequence is not included in the result. ReadAll also
 	// returns the maximum sequence number read.
-	ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error)
+	ReadAll(ctx context.Context, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
-	Write(txn transaction.Txn, mapID int64, mutation *pb.EntryUpdate) (uint64, error)
+	Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (uint64, error)
 }

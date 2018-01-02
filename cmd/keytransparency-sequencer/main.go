@@ -26,7 +26,6 @@ import (
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
-	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -78,7 +77,6 @@ func main() {
 	// Database tables
 	sqldb := openDB()
 	defer sqldb.Close()
-	factory := transaction.NewFactory(sqldb)
 
 	mutations, err := mutationstorage.New(sqldb)
 	if err != nil {
@@ -90,7 +88,7 @@ func main() {
 	}
 
 	// Create servers
-	signer := sequencer.New(domainStorage, tmap, tlog, entry.New(), mutations, factory)
+	signer := sequencer.New(domainStorage, tmap, tlog, entry.New(), mutations)
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}

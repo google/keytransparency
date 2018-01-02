@@ -27,7 +27,6 @@ import (
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -73,7 +72,6 @@ type Sequencer struct {
 	tlog      trillian.TrillianLogClient
 	mutator   mutator.Mutator
 	mutations mutator.MutationStorage
-	factory   transaction.Factory
 }
 
 // New creates a new instance of the signer.
@@ -81,14 +79,13 @@ func New(domains domain.Storage,
 	tmap trillian.TrillianMapClient,
 	tlog trillian.TrillianLogClient,
 	mutator mutator.Mutator,
-	mutations mutator.MutationStorage, factory transaction.Factory) *Sequencer {
+	mutations mutator.MutationStorage) *Sequencer {
 	return &Sequencer{
 		domains:   domains,
 		tmap:      tmap,
 		tlog:      tlog,
 		mutator:   mutator,
 		mutations: mutations,
-		factory:   factory,
 	}
 }
 
@@ -219,21 +216,9 @@ func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, 
 // newMutations returns a list of mutations to process and highest sequence
 // number returned.
 func (s *Sequencer) newMutations(ctx context.Context, mapID, startSequence int64) ([]*tpb.EntryUpdate, int64, error) {
-	txn, err := s.factory.NewTxn(ctx)
+	maxSequence, mutations, err := s.mutations.ReadAll(ctx, mapID, uint64(startSequence))
 	if err != nil {
-		return nil, 0, fmt.Errorf("NewDBTxn(): %v", err)
-	}
-
-	maxSequence, mutations, err := s.mutations.ReadAll(txn, mapID, uint64(startSequence))
-	if err != nil {
-		if err := txn.Rollback(); err != nil {
-			glog.Errorf("Cannot rollback the transaction: %v", err)
-		}
 		return nil, 0, fmt.Errorf("ReadAll(%v): %v", startSequence, err)
-	}
-
-	if err := txn.Commit(); err != nil {
-		return nil, 0, fmt.Errorf("txn.Commit(): %v", err)
 	}
 	return mutations, int64(maxSequence), nil
 }
