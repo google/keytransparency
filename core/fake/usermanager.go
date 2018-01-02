@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// keysetID uniquely identifies a keyset.
-type keysetID struct {
+// kID uniquely identifies a keyset.
+type kID struct {
 	instance int64
 	domainID string
 	appID    string
@@ -31,19 +31,19 @@ type keysetID struct {
 
 // KeySets implements storage.UserManagerTable in memory.
 type KeySets struct {
-	keysets map[keysetID]*tpb.KeySet
+	keysets map[kID]*tpb.KeySet
 }
 
-// NewKeySets produces a fake implemenation of storage.UserManagerTable.
+// NewKeySets produces a fake implementation of storage.UserManagerTable.
 func NewKeySets() *KeySets {
 	return &KeySets{
-		keysets: make(map[keysetID]*tpb.KeySet),
+		keysets: make(map[kID]*tpb.KeySet),
 	}
 }
 
-// Get returns the requestsed keyset.
+// Get returns the requested keyset.
 func (k *KeySets) Get(ctx context.Context, instance int64, domainID, appID string) (*tpb.KeySet, error) {
-	ks, ok := k.keysets[keysetID{
+	ks, ok := k.keysets[kID{
 		instance: instance,
 		domainID: domainID,
 		appID:    appID,

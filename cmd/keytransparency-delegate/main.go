@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package main is a delegate server that can be used to
+// (a) create user accounts.
+// (b) update user accounts (that this server has created).
+//
+// The delegate server is desiged to be used by app operators
+// to provision and update users before users take control over
+// their own key management.
+//
+// The delegeate server may also be used to implement a third_party account
+// reset provider service, should users wish to trust these providers will the
+// ability to control and update thier accounts.
 package main
 
 import (
 	"database/sql"
 	"flag"
-	"log"
 	"net/http"
 
 	"github.com/google/keytransparency/cmd/serverutil"
@@ -46,22 +56,25 @@ var (
 	instance = flag.Int64("instance", 0, "Instance number. Typically 0.")
 )
 
-func openDB() *sql.DB {
+func openDB() (*sql.DB, error) {
 	db, err := sql.Open(engine.DriverName, *serverDBPath)
 	if err != nil {
-		glog.Exitf("sql.Open(): %v", err)
+		return nil, err
 	}
 	if err := db.Ping(); err != nil {
-		glog.Exitf("db.Ping(): %v", err)
+		return nil, err
 	}
-	return db
+	return db, nil
 }
 
 func main() {
 	flag.Parse()
 
-	// Open Resources.
-	sqldb := openDB()
+	// Connect to database.
+	sqldb, err := openDB()
+	if err != nil {
+		glog.Exitf("Failed opening database: %v", err)
+	}
 	defer sqldb.Close()
 
 	keysetdb, err := keysets.New(sqldb)
@@ -103,12 +116,12 @@ func main() {
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
-		log.Printf("Hosting metrics on %v", *metricsAddr)
+		glog.Infof("Hosting metrics on %v", *metricsAddr)
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			log.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
+			glog.Exitf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
 		}
 	}()
-	// Serve HTTP2 server over TLS.
+	// Serve HTTP over TLS.
 	glog.Infof("Listening on %v", *addr)
 	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
 		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {

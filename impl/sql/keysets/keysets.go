@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,18 +30,18 @@ import (
 const (
 	schema = `
 CREATE TABLE IF NOT EXISTS KeySets(
-	InstanceID            BIGINT NOT NULL,
-        DomainID              VARCHAR(40) NOT NULL,
-        AppID                 VARCHAR(40) NOT NULL,
-        KeySet                MEDIUMBLOB NOT NULL,
-        PRIMARY KEY(InstanceID,DomainID,AppID)
+InstanceID            BIGINT NOT NULL,
+DomainID              VARCHAR(40) NOT NULL,
+AppID                 VARCHAR(40) NOT NULL,
+KeySet                MEDIUMBLOB NOT NULL,
+PRIMARY KEY(InstanceID,DomainID,AppID)
 );`
 
 	getSQL = `SELECT * FROM KeySets WHERE InstanceID = ? AND DomainID = ? AND AppID = ?`
 	setSQL = `INSERT INTO KeySets (InstanceID, DomainID, AppID, KeySet) VALUES (?, ?, ?, ?);`
 )
 
-// Storage stores keysets.
+// Storage stores keysets, backed by an SQL database.
 type Storage struct {
 	db *sql.DB
 }
@@ -78,9 +78,7 @@ func (k *keyset) Proto() (*tpb.KeySet, error) {
 
 // New returns a storage.KeySets client backed by an SQL table.
 func New(db *sql.DB) (storage.KeySets, error) {
-	s := &Storage{
-		db: db,
-	}
+	s := &Storage{db: db}
 	// Create schema.
 	if _, err := s.db.Exec(schema); err != nil {
 		return nil, fmt.Errorf("failed to create keyset table: %v", err)

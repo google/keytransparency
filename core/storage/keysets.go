@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,10 @@ import (
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
-// KeySets represents the interface for the usermanager.
+// KeySets gets and sets keysets.
 type KeySets interface {
 	// Get returns the keyset for a given domain and app.
+	// instance supports hosting multiple usermanager servers on the same infrastructure.
 	Get(ctx context.Context, instance int64, domainID, appID string) (*tpb.KeySet, error)
 	// Set saves a keyset.
 	Set(ctx context.Context, instance int64, domainID, appID string, k *tpb.KeySet) error

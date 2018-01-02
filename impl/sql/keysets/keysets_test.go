@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,39 +38,56 @@ func TestWriteRead(t *testing.T) {
 		t.Fatalf("Failed to create keysets.Storage")
 	}
 
+	ks := &tpb.KeySet{VerifyingKeys: map[string]*tpb.VerifyingKey{
+		"1": {KeyMaterial: []byte("keydata")},
+	}}
 	for _, tc := range []struct {
-		instanceID int64
-		domainID   string
-		appID      string
-		ks         *tpb.KeySet
-		write      bool
-		writeErr   bool
-		read       bool
-		readErr    bool
+		desc         string
+		instanceID   int64
+		domainID     string
+		appID        string
+		write        bool
+		wantWriteErr bool
+		read         bool
+		wantReadErr  bool
 	}{
 		{
+			desc:       "write,read",
 			instanceID: 0,
 			domainID:   "domain",
 			appID:      "app",
-			ks: &tpb.KeySet{VerifyingKeys: map[string]*tpb.VerifyingKey{
-				"1": {KeyMaterial: []byte("keydata")},
-			}},
-			write: true,
-			read:  true,
+			write:      true,
+			read:       true,
+		},
+		{
+			desc:         "double write",
+			instanceID:   0,
+			domainID:     "domain",
+			appID:        "app",
+			write:        true,
+			wantWriteErr: true,
+		},
+		{
+			desc:        "notfound",
+			instanceID:  1,
+			domainID:    "domain",
+			appID:       "app",
+			read:        true,
+			wantReadErr: true,
 		},
 	} {
 		if tc.write {
-			err := keysets.Set(ctx, tc.instanceID, tc.domainID, tc.appID, tc.ks)
-			if got, want := err != nil, tc.writeErr; got != want {
+			err := keysets.Set(ctx, tc.instanceID, tc.domainID, tc.appID, ks)
+			if got, want := err != nil, tc.wantWriteErr; got != want {
 				t.Errorf("Set(%v): %v, wantErr %v", tc.instanceID, err, want)
 			}
 		}
 		if tc.read {
 			ks, err := keysets.Get(ctx, tc.instanceID, tc.domainID, tc.appID)
-			if got, want := err != nil, tc.readErr; got != want {
+			if got, want := err != nil, tc.wantReadErr; got != want {
 				t.Errorf("Read(%v): %v, wantErr %v", tc.instanceID, err, want)
 			}
-			if got, want := ks, tc.ks; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
+			if got, want := ks, ks; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
 				t.Errorf("Read(%v): %v, want %v", tc.instanceID, got, want)
 			}
 		}
