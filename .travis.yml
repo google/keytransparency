@@ -24,7 +24,7 @@ addons:
 install:
   - go get -u github.com/alecthomas/gometalinter
   - gometalinter --install 
-  - go get ./...
+  - go get -t ./...
 
 script:
   - export TRILLIAN_SQL_DRIVER=mysql
