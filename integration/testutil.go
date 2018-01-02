@@ -148,8 +148,8 @@ func NewEnv(t *testing.T) *Env {
 	authz := authorization.New()
 	tlog := fake.NewTrillianLogClient()
 
-	server := keyserver.New(domainStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
-		mutator, auth, authz, mutations)
+	server := keyserver.New(tlog, mapEnv.MapClient, mapEnv.AdminClient,
+		mutator, auth, authz, domainStorage, mutations, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 

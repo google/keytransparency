@@ -21,8 +21,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/google/keytransparency/core/mutator"
-
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -42,13 +40,14 @@ const (
 	ORDER BY Sequence ASC LIMIT ?;`
 )
 
-type mutations struct {
+// Mutations implements mutator.MutationStorage and mutator.MutationQueue.
+type Mutations struct {
 	db *sql.DB
 }
 
-// New creates a new mutations instance.
-func New(db *sql.DB) (mutator.MutationStorage, error) {
-	m := &mutations{
+// New creates a new Mutations instance.
+func New(db *sql.DB) (*Mutations, error) {
+	m := &Mutations{
 		db: db,
 	}
 
@@ -64,7 +63,7 @@ func New(db *sql.DB) (mutator.MutationStorage, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
+func (m *Mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
 	readStmt, err := m.db.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
@@ -86,7 +85,7 @@ func (m *mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageS
 // ReadAll reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *mutations) ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*mutator.QueueMessage, error) {
+func (m *Mutations) ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*mutator.QueueMessage, error) {
 	readStmt, err := m.db.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
@@ -128,9 +127,24 @@ func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
 	return maxSequence, results, nil
 }
 
-// Write saves the update in the database. Write returns the auto-inserted
-// sequence number.
-func (m *mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpdate) (int64, error) {
+// Send writes mutations to the leading edge (by sequence number) of the mutations table.
+func (m *mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdate) error {
+	index := update.GetMutation().GetIndex()
+	mData, err := proto.Marshal(update)
+	if err != nil {
+		return err
+	}
+	writeStmt, err := m.db.Prepare(insertExpr)
+	if err != nil {
+		return err
+	}
+	defer writeStmt.Close()
+	_, err = writeStmt.ExecContext(ctx, mapID, index, mData)
+	return err
+}
+
+// Write saves the update in the database. Write returns the auto-inserted sequence number.
+func (m *Mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpdate) (int64, error) {
 	index := update.GetMutation().GetIndex()
 	mData, err := proto.Marshal(update)
 	if err != nil {
@@ -154,7 +168,7 @@ func (m *mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpda
 }
 
 // Create creates new database tables.
-func (m *mutations) create() error {
+func (m *Mutations) create() error {
 	for _, stmt := range createStmt {
 		_, err := m.db.Exec(stmt)
 		if err != nil {

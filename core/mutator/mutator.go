@@ -20,6 +20,7 @@ package mutator
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -62,6 +63,40 @@ type QueueMessage struct {
 	Mutation  *pb.Entry
 	ExtraData *pb.Committed
 }
+
+// MutationQueue provides (at least) a roughly time ordered queue that can support
+// multiple writers.  Replays, drops, and duplicate delivery must be supported by
+// recievers.
+type MutationQueue interface {
+	// Send submits an item to the queue
+	Send(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) error
+}
+
+// Reciever recieves messages from a queue.
+type Reciever interface {
+	// Close stops the reciever and returns only when all callbacks are complete.
+	Close()
+}
+
+// RecieverOptions holds options for setting up a reciever.
+type RecieverOptions struct {
+	// MaxBatchSize is the maximum number of items allowed in a batch.
+	MaxBatchSize int
+	// Period is the typical amount of type between batches.
+	// This time will decrease under load and increase to MaxPeriod without load.
+	Period time.Duration
+	// MaxPeriod is the maximum allowed time between batches.
+	// If no data has been recieved in this period, an empty batch will be sent.
+	MaxPeriod time.Duration
+}
+
+// MutationReciever creates new recievers.
+type MutationReciever interface {
+	// NewReciever starts recieving messages sent to the queue. As batches become ready, recieveFunc will be called.
+	NewReciever(ctx context.Context, last time.Time, start int64, recieveFunc func([]*pb.EntryUpdate) error, ropts RecieverOptions) Reciever
+}
+
+// TODO: find a way to return the mutation ids along with the mutation itself.
 
 // MutationStorage reads and writes mutations to the database.
 type MutationStorage interface {

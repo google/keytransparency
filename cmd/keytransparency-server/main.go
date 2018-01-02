@@ -94,9 +94,9 @@ func main() {
 	authz := authorization.New()
 
 	// Create database and helper objects.
-	admin, err := domain.NewStorage(sqldb)
+	domains, err := domain.NewStorage(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create admin storage: %v", err)
+		glog.Exitf("Failed to create domain storage: %v", err)
 	}
 	mutations, err := mutationstorage.New(sqldb)
 	if err != nil {
@@ -119,8 +119,8 @@ func main() {
 	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(admin, tlog, tmap, tadmin,
-		mutator, auth, authz, mutations)
+	ksvr := keyserver.New(tlog, tmap, tadmin,
+		mutator, auth, authz, domains, mutations, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
