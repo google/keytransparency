@@ -81,7 +81,7 @@ type Reciever interface {
 // RecieverOptions holds options for setting up a reciever.
 type RecieverOptions struct {
 	// MaxBatchSize is the maximum number of items allowed in a batch.
-	MaxBatchSize int
+	MaxBatchSize int32
 	// Period is the typical amount of type between batches.
 	// This time will decrease under load and increase to MaxPeriod without load.
 	Period time.Duration
@@ -93,10 +93,8 @@ type RecieverOptions struct {
 // MutationReciever creates new recievers.
 type MutationReciever interface {
 	// NewReciever starts recieving messages sent to the queue. As batches become ready, recieveFunc will be called.
-	NewReciever(ctx context.Context, last time.Time, start int64, recieveFunc func([]*pb.EntryUpdate) error, ropts RecieverOptions) Reciever
+	NewReciever(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*QueueMessage) error, ropts RecieverOptions) Reciever
 }
-
-// TODO: find a way to return the mutation ids along with the mutation itself.
 
 // MutationStorage reads and writes mutations to the database.
 type MutationStorage interface {

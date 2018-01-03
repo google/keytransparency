@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/adminserver"
+	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/sql/domain"
@@ -86,9 +87,10 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create domain storage object: %v", err)
 	}
+	queue := mutator.MutationReciever(mutations)
 
 	// Create servers
-	signer := sequencer.New(domainStorage, tmap, tlog, entry.New(), mutations)
+	signer := sequencer.New(domainStorage, tmap, tlog, entry.New(), mutations, queue)
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}

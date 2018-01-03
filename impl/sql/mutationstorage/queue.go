@@ -16,6 +16,7 @@ package mutationstorage
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -42,14 +43,14 @@ func (m *Mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdat
 }
 
 // NewReciever starts recieving messages sent to the queue. As batches become ready, recieveFunc will be called.
-func (m *Mutations) NewReciever(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*pb.EntryUpdate) error, ropts mutator.RecieverOptions) *Reciever {
+func (m *Mutations) NewReciever(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*mutator.QueueMessage) error, ropts mutator.RecieverOptions) mutator.Reciever {
 	r := &Reciever{
 		m:           m,
 		mapID:       mapID,
 		opts:        ropts,
 		ticker:      time.NewTicker(ropts.Period),
 		maxTicker:   time.NewTicker(ropts.MaxPeriod),
-		done:        make(chan bool),
+		done:        make(chan interface{}),
 		recieveFunc: recieveFunc,
 	}
 
@@ -61,9 +62,9 @@ func (m *Mutations) NewReciever(ctx context.Context, last time.Time, mapID, star
 // Reciever recieves messages from a queue.
 type Reciever struct {
 	m           mutator.MutationStorage
-	start       uint64
+	start       int64
 	mapID       int64
-	recieveFunc func([]*pb.EntryUpdate) error
+	recieveFunc func([]*mutator.QueueMessage) error
 	opts        mutator.RecieverOptions
 	ticker      *time.Ticker
 	maxTicker   *time.Ticker
@@ -81,37 +82,43 @@ func (r *Reciever) run(ctx context.Context, last time.Time) {
 	r.finished.Add(1)
 	defer r.finished.Done()
 
+	var count int32
 	more := make(chan bool, 1)
 	if time.Since(last) > (r.opts.MaxPeriod - r.opts.Period) {
-		more <- true // We will be over due for an epoch soon.
+		count = r.sendBatch(ctx, true) // We will be over due for an epoch soon.
 	}
 
 	for {
 		select {
 		case <-more:
+			count = r.sendBatch(ctx, false)
 		case <-r.ticker.C:
+			count = r.sendBatch(ctx, false)
 		case <-r.maxTicker.C:
-			if count := r.sendBatch(ctx); count > r.opts.MaxBatchSize {
-				// Continue sending until we drop below batch size.
-				more <- true
-			}
+			count = r.sendBatch(ctx, true)
 		case <-ctx.Done():
+			return
 		case <-r.done:
-			break
+			return
+		}
+		if count > r.opts.MaxBatchSize {
+			// Continue sending until we drop below batch size.
+			more <- true
 		}
 	}
 }
 
 // sendBatch sends up to batchSize items to the reciever. Returns the number of sent items.
-func (r *Reciever) sendBatch(ctx context.Context) int {
-	max, ms, err := r.m.ReadAll(ctx, r.mapID, r.start)
+func (r *Reciever) sendBatch(ctx context.Context, sendEmpty bool) int32 {
+	max, ms, err := r.m.ReadBatch(ctx, r.mapID, r.start, r.opts.MaxBatchSize)
 	if err != nil {
 		glog.Infof("ReadAll(%v): %v", r.start, err)
 		return 0
 	}
+	if len(ms) == 0 && !sendEmpty {
+		return 0
+	}
 
-	// TODO: find a way to send mutation ids so the reciever can determine
-	// the high water mark.
 	if err := r.recieveFunc(ms); err != nil {
 		glog.Infof("queue.SendBatch failed: %v", err)
 		return 0
@@ -122,5 +129,5 @@ func (r *Reciever) sendBatch(ctx context.Context) int {
 
 	// Update our own high water mark.
 	r.start = max
-	return len(ms)
+	return int32(len(ms))
 }

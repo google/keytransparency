@@ -21,6 +21,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/google/keytransparency/core/mutator"
+
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -58,7 +60,7 @@ func New(db *sql.DB) (*Mutations, error) {
 	return m, nil
 }
 
-// ReadRange reads all mutations for a specific given mapID and sequence range.
+// ReadPage reads all mutations for a specific given mapID and sequence range.
 // The range is identified by a starting sequence number and a count. Note that
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
@@ -82,7 +84,7 @@ func (m *Mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageS
 	return max, mutations, err
 }
 
-// ReadAll reads all mutations starting from the given sequence number. Note that
+// ReadBatch reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
 func (m *Mutations) ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*mutator.QueueMessage, error) {
