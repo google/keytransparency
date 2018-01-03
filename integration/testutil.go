@@ -148,14 +148,13 @@ func NewEnv(t *testing.T) *Env {
 	authz := authorization.New()
 	tlog := fake.NewTrillianLogClient()
 
-	factory := transaction.NewFactory(sqldb)
 	server := keyserver.New(domainStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
-		mutator, auth, authz, factory, mutations)
+		mutator, auth, authz, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServiceServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, mutator, mutations, factory)
+	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, mutator, mutations)
 
 	addr, lis := Listen(t)
 	go gsvr.Serve(lis)
@@ -185,7 +184,6 @@ func NewEnv(t *testing.T) *Env {
 		Client:     client,
 		Signer:     seq,
 		db:         sqldb,
-		Factory:    factory,
 		Cli:        ktClient,
 		Domain:     domain,
 	}

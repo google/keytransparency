@@ -105,20 +105,10 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, err
 	}
 	// Read mutations from the database.
-	txn, err := s.factory.NewTxn(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("NewDBTxn(): %v", err)
-	}
-	maxSequence, mRange, err := s.mutations.ReadRange(txn, domain.MapID, lowestSeq, highestSeq, in.PageSize)
+	maxSequence, mRange, err := s.mutations.ReadRange(ctx, domain.MapID, lowestSeq, highestSeq, in.PageSize)
 	if err != nil {
 		glog.Errorf("mutations.ReadRange(%v, %v, %v): %v", lowestSeq, highestSeq, in.PageSize, err)
-		if err := txn.Rollback(); err != nil {
-			glog.Errorf("Cannot rollback the transaction: %v", err)
-		}
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
-	}
-	if err := txn.Commit(); err != nil {
-		return nil, fmt.Errorf("txn.Commit(): %v", err)
 	}
 	indexes := make([][]byte, 0, len(mRange))
 	mutations := make([]*pb.MutationProof, 0, len(mRange))

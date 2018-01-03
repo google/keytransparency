@@ -28,7 +28,6 @@ import (
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
-	"github.com/google/keytransparency/impl/transaction"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
@@ -72,7 +71,6 @@ func main() {
 	// Open Resources.
 	sqldb := openDB()
 	defer sqldb.Close()
-	factory := transaction.NewFactory(sqldb)
 
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {
@@ -122,7 +120,7 @@ func main() {
 
 	// Create gRPC server.
 	ksvr := keyserver.New(admin, tlog, tmap, tadmin,
-		mutator, auth, authz, factory, mutations)
+		mutator, auth, authz, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
