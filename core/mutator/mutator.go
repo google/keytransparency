@@ -72,7 +72,7 @@ type MutationStorage interface {
 	// ReadBatch returns mutations in the interval (start, ∞] for mapID.
 	// ReadBatch will not return more than batchSize entries.
 	// Returns the maximum sequence number returned.
-	ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*pb.EntryUpdate, error)
+	ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*Mutation, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
 	Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (int64, error)

@@ -18,6 +18,7 @@ import (
 	"context"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	"github.com/google/keytransparency/core/mutator"
 )
 
 // MutationStorage implements mutator.Mutation
@@ -53,7 +54,7 @@ func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, p
 }
 
 // ReadBatch is unimplemented
-func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*pb.EntryUpdate, error) {
+func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*mutator.Mutation, error) {
 	return 0, nil, nil
 }
 
