@@ -32,28 +32,28 @@ func NewMutationStorage() *MutationStorage {
 	}
 }
 
-// ReadRange returns the list of mutations
-func (m *MutationStorage) ReadRange(ctx context.Context, mapID int64, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
-	if startSequence > uint64(len(m.mtns[mapID])) {
-		panic("startSequence > len(m.mtns[mapID])")
+// ReadPage paginates through the list of mutations
+func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.EntryUpdate, error) {
+	if start > int64(len(m.mtns[mapID])) {
+		panic("start > len(m.mtns[mapID])")
 	}
-	// Adjust endSequence.
-	if endSequence-startSequence > uint64(count) {
-		endSequence = startSequence + uint64(count)
+	// Adjust end.
+	if end-start > int64(pageSize) {
+		end = start + int64(pageSize)
 	}
-	if endSequence > uint64(len(m.mtns[mapID])) {
-		endSequence = uint64(len(m.mtns[mapID]))
+	if end > int64(len(m.mtns[mapID])) {
+		end = int64(len(m.mtns[mapID]))
 	}
-	return endSequence, m.mtns[mapID][startSequence:endSequence], nil
+	return end, m.mtns[mapID][start:end], nil
 }
 
-// ReadAll is unimplemented
-func (m *MutationStorage) ReadAll(ctx context.Context, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
+// ReadBatch is unimplemented
+func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*pb.EntryUpdate, error) {
 	return 0, nil, nil
 }
 
 // Write stores a mutation
-func (m *MutationStorage) Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (uint64, error) {
+func (m *MutationStorage) Write(_ context.Context, mapID int64, mutation *pb.EntryUpdate) (int64, error) {
 	m.mtns[mapID] = append(m.mtns[mapID], mutation)
-	return uint64(len(m.mtns[mapID])), nil
+	return int64(len(m.mtns[mapID])), nil
 }

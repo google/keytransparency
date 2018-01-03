@@ -53,7 +53,7 @@ func genUpdate(i int) *pb.EntryUpdate {
 func fillDB(ctx context.Context, t *testing.T, m mutator.MutationStorage) {
 	for _, mtn := range []struct {
 		update      *pb.EntryUpdate
-		outSequence uint64
+		outSequence int64
 	}{
 		{update: genUpdate(1), outSequence: 1},
 		{update: genUpdate(2), outSequence: 2},
@@ -67,7 +67,7 @@ func fillDB(ctx context.Context, t *testing.T, m mutator.MutationStorage) {
 	}
 }
 
-func write(ctx context.Context, m mutator.MutationStorage, mutation *pb.EntryUpdate, outSequence uint64) error {
+func write(ctx context.Context, m mutator.MutationStorage, mutation *pb.EntryUpdate, outSequence int64) error {
 	sequence, err := m.Write(ctx, mapID, mutation)
 	if err != nil {
 		return fmt.Errorf("Write(%v): %v, want nil", mutation, err)
@@ -79,23 +79,7 @@ func write(ctx context.Context, m mutator.MutationStorage, mutation *pb.EntryUpd
 	return nil
 }
 
-func readRange(ctx context.Context, m mutator.MutationStorage, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
-	maxSequence, results, err := m.ReadRange(ctx, mapID, startSequence, endSequence, count)
-	if err != nil {
-		return 0, nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
-	}
-	return maxSequence, results, nil
-}
-
-func readAll(ctx context.Context, m mutator.MutationStorage, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
-	maxSequence, results, err := m.ReadAll(ctx, mapID, startSequence)
-	if err != nil {
-		return 0, nil, fmt.Errorf("ReadRange(%v): %v, want nil", startSequence, err)
-	}
-	return maxSequence, results, nil
-}
-
-func TestReadRange(t *testing.T) {
+func TestReadPage(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	m, err := New(db)
@@ -106,10 +90,10 @@ func TestReadRange(t *testing.T) {
 
 	for _, tc := range []struct {
 		description   string
-		startSequence uint64
-		endSequence   uint64
+		startSequence int64
+		endSequence   int64
 		count         int32
-		maxSequence   uint64
+		maxSequence   int64
 		mutations     []*pb.EntryUpdate
 	}{
 		{
@@ -175,7 +159,7 @@ func TestReadRange(t *testing.T) {
 			},
 		},
 	} {
-		maxSequence, results, err := readRange(ctx, m, tc.startSequence, tc.endSequence, tc.count)
+		maxSequence, results, err := m.ReadPage(ctx, mapID, tc.startSequence, tc.endSequence, tc.count)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
@@ -194,7 +178,7 @@ func TestReadRange(t *testing.T) {
 	}
 }
 
-func TestReadAll(t *testing.T) {
+func TestReadBatch(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	m, err := New(db)
@@ -205,15 +189,17 @@ func TestReadAll(t *testing.T) {
 
 	for _, tc := range []struct {
 		description   string
-		startSequence uint64
-		maxSequence   uint64
+		startSequence int64
+		maxSequence   int64
 		mutations     []*pb.EntryUpdate
+		batchSize     int32
 	}{
 		{
 			description:   "empty mutations list",
 			startSequence: 100,
 			maxSequence:   0,
 			mutations:     nil,
+			batchSize:     10,
 		},
 		{
 			description:   "read all mutations",
@@ -226,6 +212,7 @@ func TestReadAll(t *testing.T) {
 				genUpdate(4),
 				genUpdate(5),
 			},
+			batchSize: 10,
 		},
 		{
 			description:   "read half of the mutations",
@@ -236,6 +223,16 @@ func TestReadAll(t *testing.T) {
 				genUpdate(4),
 				genUpdate(5),
 			},
+			batchSize: 10,
+		},
+		{
+			description:   "limit by batch",
+			startSequence: 2,
+			maxSequence:   3,
+			mutations: []*pb.EntryUpdate{
+				genUpdate(3),
+			},
+			batchSize: 1,
 		},
 		{
 			description:   "read last mutation",
@@ -244,9 +241,10 @@ func TestReadAll(t *testing.T) {
 			mutations: []*pb.EntryUpdate{
 				genUpdate(5),
 			},
+			batchSize: 10,
 		},
 	} {
-		maxSequence, results, err := readAll(ctx, m, tc.startSequence)
+		maxSequence, results, err := m.ReadBatch(ctx, mapID, tc.startSequence, tc.batchSize)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
