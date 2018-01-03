@@ -86,7 +86,7 @@ func (m *mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageS
 // ReadAll reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *mutations) ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*mutator.Mutation, error) {
+func (m *mutations) ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*mutator.QueueMessage, error) {
 	readStmt, err := m.db.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
@@ -100,8 +100,8 @@ func (m *mutations) ReadBatch(ctx context.Context, mapID, start int64, batchSize
 	return readRows(rows)
 }
 
-func readRows(rows *sql.Rows) (int64, []*mutator.Mutation, error) {
-	results := make([]*mutator.Mutation, 0)
+func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
+	results := make([]*mutator.QueueMessage, 0)
 	maxSequence := int64(0)
 	for rows.Next() {
 		var sequence int64
@@ -116,7 +116,7 @@ func readRows(rows *sql.Rows) (int64, []*mutator.Mutation, error) {
 		if err := proto.Unmarshal(mData, mutation); err != nil {
 			return 0, nil, err
 		}
-		results = append(results, &mutator.Mutation{
+		results = append(results, &mutator.QueueMessage{
 			ID:        sequence,
 			Mutation:  mutation.Mutation,
 			ExtraData: mutation.Committed,

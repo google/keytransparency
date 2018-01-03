@@ -38,8 +38,8 @@ func newDB(t testing.TB) *sql.DB {
 	return db
 }
 
-func genUpdate(i int) *mutator.Mutation {
-	return &mutator.Mutation{
+func genUpdate(i int) *mutator.QueueMessage {
+	return &mutator.QueueMessage{
 		ID: int64(i),
 		Mutation: &pb.Entry{
 			Index:      []byte(fmt.Sprintf("index%d", i)),
@@ -54,7 +54,7 @@ func genUpdate(i int) *mutator.Mutation {
 
 func fillDB(ctx context.Context, t *testing.T, m mutator.MutationStorage) {
 	for _, mtn := range []struct {
-		update      *mutator.Mutation
+		update      *mutator.QueueMessage
 		outSequence int64
 	}{
 		{update: genUpdate(1), outSequence: 1},
@@ -196,7 +196,7 @@ func TestReadBatch(t *testing.T) {
 		description   string
 		startSequence int64
 		maxSequence   int64
-		mutations     []*mutator.Mutation
+		mutations     []*mutator.QueueMessage
 		batchSize     int32
 	}{
 		{
@@ -210,7 +210,7 @@ func TestReadBatch(t *testing.T) {
 			description:   "read all mutations",
 			startSequence: 0,
 			maxSequence:   5,
-			mutations: []*mutator.Mutation{
+			mutations: []*mutator.QueueMessage{
 				genUpdate(1),
 				genUpdate(2),
 				genUpdate(3),
@@ -223,7 +223,7 @@ func TestReadBatch(t *testing.T) {
 			description:   "read half of the mutations",
 			startSequence: 2,
 			maxSequence:   5,
-			mutations: []*mutator.Mutation{
+			mutations: []*mutator.QueueMessage{
 				genUpdate(3),
 				genUpdate(4),
 				genUpdate(5),
@@ -234,7 +234,7 @@ func TestReadBatch(t *testing.T) {
 			description:   "limit by batch",
 			startSequence: 2,
 			maxSequence:   3,
-			mutations: []*mutator.Mutation{
+			mutations: []*mutator.QueueMessage{
 				genUpdate(3),
 			},
 			batchSize: 1,
@@ -243,7 +243,7 @@ func TestReadBatch(t *testing.T) {
 			description:   "read last mutation",
 			startSequence: 4,
 			maxSequence:   5,
-			mutations: []*mutator.Mutation{
+			mutations: []*mutator.QueueMessage{
 				genUpdate(5),
 			},
 			batchSize: 10,

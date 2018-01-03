@@ -228,7 +228,7 @@ func toArray(b []byte) [32]byte {
 // Multiple mutations for the same leaf will be applied to provided leaf.
 // The last valid mutation for each leaf is included in the output.
 // Returns a list of map leaves that should be updated.
-func (s *Sequencer) applyMutations(mutations []*mutator.Mutation, leaves []*trillian.MapLeaf) ([]*trillian.MapLeaf, error) {
+func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*trillian.MapLeaf) ([]*trillian.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[[32]byte]*trillian.MapLeaf)
 	for _, l := range leaves {

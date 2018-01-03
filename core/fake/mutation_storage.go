@@ -54,7 +54,7 @@ func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, p
 }
 
 // ReadBatch is unimplemented
-func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*mutator.Mutation, error) {
+func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*mutator.QueueMessage, error) {
 	return 0, nil, nil
 }
 
