@@ -23,20 +23,32 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto"
+	"github.com/google/keytransparency/core/storage"
 )
 
 // Server implements pb.UserManagerServiceServer
-type Server struct{}
+type Server struct {
+	instance int64
+	keysets  storage.KeySets
+}
 
 // New creates a new managementserver
-func New() *Server {
-	return &Server{}
+func New(instance int64, keysets storage.KeySets) *Server {
+	return &Server{
+		instance: instance,
+		keysets:  keysets,
+	}
 }
 
 // GetKeySet returns a list of public keys (a keyset) that corresponds to the signing keys
 // this service has for a given domain and app.
-func (s *Server) GetKeySet(context.Context, *pb.GetKeySetRequest) (*tpb.KeySet, error) {
-	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
+func (s *Server) GetKeySet(ctx context.Context, in *pb.GetKeySetRequest) (*tpb.KeySet, error) {
+	ks, err := s.keysets.Get(ctx, s.instance, in.GetDomainId(), in.GetAppId())
+	if err != nil {
+		return nil, err
+	}
+	ks.SigningKeys = nil // DON'T LEAK PRIVATE KEYS!!
+	return ks, nil
 }
 
 // CreateUser creates a new user and initializes it.
