@@ -53,8 +53,8 @@ type keyset struct {
 	KeySet     []byte
 }
 
-// newkeyset converts a tpb.KeySet to keyset.
-func newkeyset(instance int64, domainID, appID string, k *tpb.KeySet) (*keyset, error) {
+// newKeyset converts a tpb.KeySet to keyset.
+func newKeyset(instance int64, domainID, appID string, k *tpb.KeySet) (*keyset, error) {
 	data, err := proto.Marshal(k)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *Storage) Get(ctx context.Context, instance int64, domainID, appID strin
 
 // Set saves a keyset.
 func (s *Storage) Set(ctx context.Context, instance int64, domainID, appID string, k *tpb.KeySet) error {
-	r, err := newkeyset(instance, domainID, appID, k)
+	r, err := newKeyset(instance, domainID, appID, k)
 	if err != nil {
 		return err
 	}

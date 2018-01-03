@@ -22,7 +22,7 @@
 //
 // The delegeate server may also be used to implement a third_party account
 // reset provider service, should users wish to trust these providers will the
-// ability to control and update thier accounts.
+// ability to control and update their accounts.
 package main
 
 import (

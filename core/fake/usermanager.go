@@ -22,8 +22,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// kID uniquely identifies a keyset.
-type kID struct {
+// keyID uniquely identifies a keyset.
+type keyID struct {
 	instance int64
 	domainID string
 	appID    string
@@ -31,19 +31,19 @@ type kID struct {
 
 // KeySets implements storage.UserManagerTable in memory.
 type KeySets struct {
-	keysets map[kID]*tpb.KeySet
+	keysets map[keyID]*tpb.KeySet
 }
 
 // NewKeySets produces a fake implementation of storage.UserManagerTable.
 func NewKeySets() *KeySets {
 	return &KeySets{
-		keysets: make(map[kID]*tpb.KeySet),
+		keysets: make(map[keyID]*tpb.KeySet),
 	}
 }
 
 // Get returns the requested keyset.
 func (k *KeySets) Get(ctx context.Context, instance int64, domainID, appID string) (*tpb.KeySet, error) {
-	ks, ok := k.keysets[kID{
+	ks, ok := k.keysets[keyID{
 		instance: instance,
 		domainID: domainID,
 		appID:    appID,
