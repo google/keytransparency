@@ -87,7 +87,7 @@ type Env struct {
 	Signer     *sequencer.Sequencer
 	db         *sql.DB
 	Factory    *transaction.Factory
-	Cli        pb.KeyTransparencyServiceClient
+	Cli        pb.KeyTransparencyClient
 	Domain     *pb.Domain
 }
 
@@ -151,7 +151,7 @@ func NewEnv(t *testing.T) *Env {
 	server := keyserver.New(domainStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
 		mutator, auth, authz, mutations)
 	gsvr := grpc.NewServer()
-	pb.RegisterKeyTransparencyServiceServer(gsvr, server)
+	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
 	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, mutator, mutations)
@@ -164,7 +164,7 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("Dial(%v) = %v", addr, err)
 	}
-	ktClient := pb.NewKeyTransparencyServiceClient(cc)
+	ktClient := pb.NewKeyTransparencyClient(cc)
 	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 

@@ -79,7 +79,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 }
 
 // GetEpochStream is a streaming API similar to GetMutations.
-func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparencyService_GetEpochStreamServer) error {
+func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparency_GetEpochStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "GetEpochStream is unimplemented")
 }
 
@@ -136,7 +136,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 }
 
 // ListMutationsStream is a streaming list of mutations in a specific epoch.
-func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTransparencyService_ListMutationsStreamServer) error {
+func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTransparency_ListMutationsStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "ListMutationStream is unimplemented")
 }
 

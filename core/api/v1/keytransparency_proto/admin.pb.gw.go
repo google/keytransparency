@@ -29,14 +29,14 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_KeyTransparencyAdminService_ListDomains_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_KeyTransparencyAdmin_ListDomains_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_KeyTransparencyAdminService_ListDomains_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparencyAdmin_ListDomains_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListDomainsRequest
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdminService_ListDomains_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdmin_ListDomains_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -46,10 +46,10 @@ func request_KeyTransparencyAdminService_ListDomains_0(ctx context.Context, mars
 }
 
 var (
-	filter_KeyTransparencyAdminService_GetDomain_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparencyAdmin_GetDomain_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_KeyTransparencyAdminService_GetDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparencyAdmin_GetDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq GetDomainRequest
 	var metadata runtime.ServerMetadata
 
@@ -71,7 +71,7 @@ func request_KeyTransparencyAdminService_GetDomain_0(ctx context.Context, marsha
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdminService_GetDomain_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdmin_GetDomain_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -80,7 +80,7 @@ func request_KeyTransparencyAdminService_GetDomain_0(ctx context.Context, marsha
 
 }
 
-func request_KeyTransparencyAdminService_CreateDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparencyAdmin_CreateDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateDomainRequest
 	var metadata runtime.ServerMetadata
 
@@ -93,7 +93,7 @@ func request_KeyTransparencyAdminService_CreateDomain_0(ctx context.Context, mar
 
 }
 
-func request_KeyTransparencyAdminService_DeleteDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparencyAdmin_DeleteDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteDomainRequest
 	var metadata runtime.ServerMetadata
 
@@ -120,7 +120,7 @@ func request_KeyTransparencyAdminService_DeleteDomain_0(ctx context.Context, mar
 
 }
 
-func request_KeyTransparencyAdminService_UndeleteDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparencyAdmin_UndeleteDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyAdminClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UndeleteDomainRequest
 	var metadata runtime.ServerMetadata
 
@@ -147,9 +147,9 @@ func request_KeyTransparencyAdminService_UndeleteDomain_0(ctx context.Context, m
 
 }
 
-// RegisterKeyTransparencyAdminServiceHandlerFromEndpoint is same as RegisterKeyTransparencyAdminServiceHandler but
+// RegisterKeyTransparencyAdminHandlerFromEndpoint is same as RegisterKeyTransparencyAdminHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterKeyTransparencyAdminServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterKeyTransparencyAdminHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -169,23 +169,23 @@ func RegisterKeyTransparencyAdminServiceHandlerFromEndpoint(ctx context.Context,
 		}()
 	}()
 
-	return RegisterKeyTransparencyAdminServiceHandler(ctx, mux, conn)
+	return RegisterKeyTransparencyAdminHandler(ctx, mux, conn)
 }
 
-// RegisterKeyTransparencyAdminServiceHandler registers the http handlers for service KeyTransparencyAdminService to "mux".
+// RegisterKeyTransparencyAdminHandler registers the http handlers for service KeyTransparencyAdmin to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterKeyTransparencyAdminServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterKeyTransparencyAdminServiceHandlerClient(ctx, mux, NewKeyTransparencyAdminServiceClient(conn))
+func RegisterKeyTransparencyAdminHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterKeyTransparencyAdminHandlerClient(ctx, mux, NewKeyTransparencyAdminClient(conn))
 }
 
-// RegisterKeyTransparencyAdminServiceHandler registers the http handlers for service KeyTransparencyAdminService to "mux".
-// The handlers forward requests to the grpc endpoint over the given implementation of "KeyTransparencyAdminServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KeyTransparencyAdminServiceClient"
+// RegisterKeyTransparencyAdminHandler registers the http handlers for service KeyTransparencyAdmin to "mux".
+// The handlers forward requests to the grpc endpoint over the given implementation of "KeyTransparencyAdminClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KeyTransparencyAdminClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "KeyTransparencyAdminServiceClient" to call the correct interceptors.
-func RegisterKeyTransparencyAdminServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client KeyTransparencyAdminServiceClient) error {
+// "KeyTransparencyAdminClient" to call the correct interceptors.
+func RegisterKeyTransparencyAdminHandlerClient(ctx context.Context, mux *runtime.ServeMux, client KeyTransparencyAdminClient) error {
 
-	mux.Handle("GET", pattern_KeyTransparencyAdminService_ListDomains_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparencyAdmin_ListDomains_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -203,18 +203,18 @@ func RegisterKeyTransparencyAdminServiceHandlerClient(ctx context.Context, mux *
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyAdminService_ListDomains_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparencyAdmin_ListDomains_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyAdminService_ListDomains_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparencyAdmin_ListDomains_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparencyAdminService_GetDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparencyAdmin_GetDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -232,18 +232,18 @@ func RegisterKeyTransparencyAdminServiceHandlerClient(ctx context.Context, mux *
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyAdminService_GetDomain_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparencyAdmin_GetDomain_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyAdminService_GetDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparencyAdmin_GetDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_KeyTransparencyAdminService_CreateDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_KeyTransparencyAdmin_CreateDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -261,18 +261,18 @@ func RegisterKeyTransparencyAdminServiceHandlerClient(ctx context.Context, mux *
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyAdminService_CreateDomain_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparencyAdmin_CreateDomain_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyAdminService_CreateDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparencyAdmin_CreateDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_KeyTransparencyAdminService_DeleteDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_KeyTransparencyAdmin_DeleteDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -290,18 +290,18 @@ func RegisterKeyTransparencyAdminServiceHandlerClient(ctx context.Context, mux *
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyAdminService_DeleteDomain_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparencyAdmin_DeleteDomain_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyAdminService_DeleteDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparencyAdmin_DeleteDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_KeyTransparencyAdminService_UndeleteDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_KeyTransparencyAdmin_UndeleteDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -319,14 +319,14 @@ func RegisterKeyTransparencyAdminServiceHandlerClient(ctx context.Context, mux *
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparencyAdminService_UndeleteDomain_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparencyAdmin_UndeleteDomain_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparencyAdminService_UndeleteDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparencyAdmin_UndeleteDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -334,25 +334,25 @@ func RegisterKeyTransparencyAdminServiceHandlerClient(ctx context.Context, mux *
 }
 
 var (
-	pattern_KeyTransparencyAdminService_ListDomains_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "domains"}, ""))
+	pattern_KeyTransparencyAdmin_ListDomains_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "domains"}, ""))
 
-	pattern_KeyTransparencyAdminService_GetDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, ""))
+	pattern_KeyTransparencyAdmin_GetDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, ""))
 
-	pattern_KeyTransparencyAdminService_CreateDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "domains"}, ""))
+	pattern_KeyTransparencyAdmin_CreateDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "domains"}, ""))
 
-	pattern_KeyTransparencyAdminService_DeleteDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, ""))
+	pattern_KeyTransparencyAdmin_DeleteDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, ""))
 
-	pattern_KeyTransparencyAdminService_UndeleteDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, "undelete"))
+	pattern_KeyTransparencyAdmin_UndeleteDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, "undelete"))
 )
 
 var (
-	forward_KeyTransparencyAdminService_ListDomains_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparencyAdmin_ListDomains_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyAdminService_GetDomain_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparencyAdmin_GetDomain_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyAdminService_CreateDomain_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparencyAdmin_CreateDomain_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyAdminService_DeleteDomain_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparencyAdmin_DeleteDomain_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparencyAdminService_UndeleteDomain_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparencyAdmin_UndeleteDomain_0 = runtime.ForwardResponseMessage
 )

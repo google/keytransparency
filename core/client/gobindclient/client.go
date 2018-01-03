@@ -84,7 +84,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 		return fmt.Errorf("Error Dialing %v: %v", ktURL, err)
 	}
 
-	ktClient := pb.NewKeyTransparencyServiceClient(cc)
+	ktClient := pb.NewKeyTransparencyClient(cc)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()

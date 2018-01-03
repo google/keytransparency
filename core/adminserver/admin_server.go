@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package adminserver contains the KeyTransparencyAdminService implementation
+// Package adminserver contains the KeyTransparencyAdmin implementation
 package adminserver
 
 import (
@@ -80,7 +80,7 @@ var (
 	}
 )
 
-// Server implements pb.KeyTransparencyAdminServiceServer
+// Server implements pb.KeyTransparencyAdminServer
 type Server struct {
 	domains  domain.Storage
 	logAdmin tpb.TrillianAdminClient
@@ -88,7 +88,7 @@ type Server struct {
 	keygen   keys.ProtoGenerator
 }
 
-// New returns a KeyTransparencyAdminService implementation.
+// New returns a KeyTransparencyAdmin implementation.
 func New(domains domain.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
 	return &Server{
 		domains:  domains,

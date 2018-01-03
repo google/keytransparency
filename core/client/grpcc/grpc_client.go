@@ -77,7 +77,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	cli        pb.KeyTransparencyServiceClient
+	cli        pb.KeyTransparencyClient
 	domainID   string
 	kt         *kt.Verifier
 	mutator    mutator.Mutator
@@ -87,7 +87,7 @@ type Client struct {
 }
 
 // NewFromConfig creates a new client from a config
-func NewFromConfig(ktClient pb.KeyTransparencyServiceClient, config *pb.Domain) (*Client, error) {
+func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Client, error) {
 	// Log Hasher.
 	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
 	if err != nil {
@@ -124,7 +124,7 @@ func NewFromConfig(ktClient pb.KeyTransparencyServiceClient, config *pb.Domain) 
 }
 
 // New creates a new client.
-func New(ktClient pb.KeyTransparencyServiceClient,
+func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
 	vrf vrf.PublicKey,
 	mapPubKey crypto.PublicKey,

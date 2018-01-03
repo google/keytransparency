@@ -26,7 +26,7 @@ import (
 	"github.com/google/keytransparency/core/storage"
 )
 
-// Server implements pb.UserManagerServiceServer
+// Server implements pb.UserManagerServer
 type Server struct {
 	instance int64
 	keysets  storage.KeySets
