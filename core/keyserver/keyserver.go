@@ -26,7 +26,6 @@ import (
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -47,7 +46,6 @@ type Server struct {
 	auth      authentication.Authenticator
 	authz     authorization.Authorization
 	mutator   mutator.Mutator
-	factory   transaction.Factory
 	mutations mutator.MutationStorage
 }
 
@@ -59,7 +57,6 @@ func New(domains domain.Storage,
 	mutator mutator.Mutator,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
-	factory transaction.Factory,
 	mutations mutator.MutationStorage) *Server {
 	return &Server{
 		domains:   domains,
@@ -69,7 +66,6 @@ func New(domains domain.Storage,
 		mutator:   mutator,
 		auth:      auth,
 		authz:     authz,
-		factory:   factory,
 		mutations: mutations,
 	}
 }
@@ -322,20 +318,9 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Save mutation to the database.
-	txn, err := s.factory.NewTxn(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Cannot create transaction")
-	}
-	if _, err := s.mutations.Write(txn, domain.MapID, in.GetEntryUpdate()); err != nil {
+	if _, err := s.mutations.Write(ctx, domain.MapID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
-		if err := txn.Rollback(); err != nil {
-			glog.Errorf("Cannot rollback the transaction: %v", err)
-		}
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
-	}
-	if err := txn.Commit(); err != nil {
-		glog.Errorf("Cannot commit transaction: %v", err)
-		return nil, status.Errorf(codes.Internal, "Cannot commit transaction")
 	}
 	return &pb.UpdateEntryResponse{Proof: resp}, nil
 }

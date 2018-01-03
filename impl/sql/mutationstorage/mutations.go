@@ -17,11 +17,11 @@
 package mutationstorage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/protobuf/proto"
 
@@ -64,13 +64,13 @@ func New(db *sql.DB) (mutator.MutationStorage, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *mutations) ReadRange(txn transaction.Txn, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
-	readStmt, err := txn.Prepare(readRangeExpr)
+func (m *mutations) ReadRange(ctx context.Context, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
+	readStmt, err := m.db.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.Query(mapID, startSequence, endSequence, count)
+	rows, err := readStmt.QueryContext(ctx, mapID, startSequence, endSequence, count)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -81,13 +81,13 @@ func (m *mutations) ReadRange(txn transaction.Txn, mapID int64, startSequence, e
 // ReadAll reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *mutations) ReadAll(txn transaction.Txn, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
-	readStmt, err := txn.Prepare(readAllExpr)
+func (m *mutations) ReadAll(ctx context.Context, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
+	readStmt, err := m.db.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.Query(mapID, startSequence)
+	rows, err := readStmt.QueryContext(ctx, mapID, startSequence)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -121,19 +121,19 @@ func readRows(rows *sql.Rows) (uint64, []*pb.EntryUpdate, error) {
 
 // Write saves the mutation in the database. Write returns the auto-inserted
 // sequence number.
-func (m *mutations) Write(txn transaction.Txn, mapID int64, update *pb.EntryUpdate) (uint64, error) {
+func (m *mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpdate) (uint64, error) {
 	index := update.GetMutation().GetIndex()
 	mData, err := proto.Marshal(update)
 	if err != nil {
 		return 0, err
 	}
 
-	writeStmt, err := txn.Prepare(insertExpr)
+	writeStmt, err := m.db.Prepare(insertExpr)
 	if err != nil {
 		return 0, err
 	}
 	defer writeStmt.Close()
-	result, err := writeStmt.Exec(mapID, index, mData)
+	result, err := writeStmt.ExecContext(ctx, mapID, index, mData)
 	if err != nil {
 		return 0, err
 	}

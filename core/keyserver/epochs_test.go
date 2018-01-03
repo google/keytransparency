@@ -16,7 +16,6 @@ package keyserver
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -25,7 +24,6 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/transaction"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
@@ -64,7 +62,7 @@ func prepare(ctx context.Context, t *testing.T, mapID int64, mutations mutator.M
 func createEpoch(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap *fake.MapServer, epoch int64, start, end int) {
 	kvs := updates(t, start, end)
 	for _, kv := range kvs {
-		if _, err := mutations.Write(nil, mapID, kv); err != nil {
+		if _, err := mutations.Write(ctx, mapID, kv); err != nil {
 			t.Fatalf("mutations.Write failed: %v", err)
 		}
 	}
@@ -98,7 +96,6 @@ func TestGetMutations(t *testing.T) {
 	fakeAdmin := fake.NewDomainStorage()
 	fakeMap := fake.NewTrillianMapClient()
 	fakeLog := fake.NewTrillianLogClient()
-	fakeTx := &fakeFactory{}
 	if err := fakeAdmin.Write(ctx, &domain.Domain{
 		Domain:      domainID,
 		MapID:       mapID,
@@ -133,7 +130,6 @@ func TestGetMutations(t *testing.T) {
 				domains:   fakeAdmin,
 				tlog:      fakeLog,
 				tmap:      fakeMap,
-				factory:   fakeTx,
 				mutations: fakeMutations,
 			}
 			resp, err := srv.ListMutations(ctx, &pb.ListMutationsRequest{
@@ -170,7 +166,6 @@ func TestLowestSequenceNumber(t *testing.T) {
 	fakeLog := fake.NewTrillianLogClient()
 	fakeMap := fake.NewTrillianMapClient()
 	fakeAdmin := &fake.DomainStorage{}
-	fakeTx := &fakeFactory{}
 	mapID := int64(1)
 	prepare(ctx, t, mapID, fakeMutations, fakeMap)
 
@@ -190,7 +185,6 @@ func TestLowestSequenceNumber(t *testing.T) {
 			domains:   fakeAdmin,
 			tlog:      fakeLog,
 			tmap:      fakeMap,
-			factory:   fakeTx,
 			mutations: fakeMutations,
 		}
 		seq, err := srv.lowestSequenceNumber(ctx, mapID, tc.epoch, tc.token)
@@ -201,18 +195,4 @@ func TestLowestSequenceNumber(t *testing.T) {
 			t.Errorf("lowestSequenceNumber(%v, %v)=%v, want %v", tc.epoch, tc.token, got, want)
 		}
 	}
-}
-
-// transaction.Txn fake.
-type fakeTxn struct{}
-
-func (*fakeTxn) Prepare(query string) (*sql.Stmt, error) { return nil, nil }
-func (*fakeTxn) Commit() error                           { return nil }
-func (*fakeTxn) Rollback() error                         { return nil }
-
-// transaction.Factory fake.
-type fakeFactory struct{}
-
-func (fakeFactory) NewTxn(ctx context.Context) (transaction.Txn, error) {
-	return &fakeTxn{}, nil
 }
