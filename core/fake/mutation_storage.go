@@ -33,7 +33,7 @@ func NewMutationStorage() *MutationStorage {
 }
 
 // ReadPage paginates through the list of mutations
-func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.EntryUpdate, error) {
+func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
 	if start > int64(len(m.mtns[mapID])) {
 		panic("start > len(m.mtns[mapID])")
 	}
@@ -44,7 +44,12 @@ func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, p
 	if end > int64(len(m.mtns[mapID])) {
 		end = int64(len(m.mtns[mapID]))
 	}
-	return end, m.mtns[mapID][start:end], nil
+	entryupdates := m.mtns[mapID][start:end]
+	entries := make([]*pb.Entry, 0, len(entryupdates))
+	for _, e := range entryupdates {
+		entries = append(entries, e.Mutation)
+	}
+	return end, entries, nil
 }
 
 // ReadBatch is unimplemented

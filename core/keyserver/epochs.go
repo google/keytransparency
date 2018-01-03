@@ -105,16 +105,16 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, err
 	}
 	// Read mutations from the database.
-	maxSequence, mRange, err := s.mutations.ReadPage(ctx, domain.MapID, lowestSeq, highestSeq, in.PageSize)
+	maxSequence, entries, err := s.mutations.ReadPage(ctx, domain.MapID, lowestSeq, highestSeq, in.PageSize)
 	if err != nil {
 		glog.Errorf("mutations.ReadRange(%v, %v, %v): %v", lowestSeq, highestSeq, in.PageSize, err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
 	}
-	indexes := make([][]byte, 0, len(mRange))
-	mutations := make([]*pb.MutationProof, 0, len(mRange))
-	for _, m := range mRange {
-		mutations = append(mutations, &pb.MutationProof{Mutation: m.Mutation})
-		indexes = append(indexes, m.Mutation.GetIndex())
+	indexes := make([][]byte, 0, len(entries))
+	mutations := make([]*pb.MutationProof, 0, len(entries))
+	for _, e := range entries {
+		mutations = append(mutations, &pb.MutationProof{Mutation: e})
+		indexes = append(indexes, e.GetIndex())
 	}
 	// Get leaf proofs.
 	proofs, err := s.inclusionProofs(ctx, in.DomainId, indexes, in.Epoch-1)

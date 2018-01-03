@@ -64,7 +64,7 @@ func New(db *sql.DB) (mutator.MutationStorage, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.EntryUpdate, error) {
+func (m *mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
 	readStmt, err := m.db.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
@@ -75,7 +75,12 @@ func (m *mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageS
 		return 0, nil, err
 	}
 	defer rows.Close()
-	return readRows(rows)
+	max, entryupdates, err := readRows(rows)
+	entries := make([]*pb.Entry, 0, len(entryupdates))
+	for _, e := range entryupdates {
+		entries = append(entries, e.Mutation)
+	}
+	return max, entries, err
 }
 
 // ReadAll reads all mutations starting from the given sequence number. Note that

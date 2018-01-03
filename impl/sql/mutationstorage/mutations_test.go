@@ -94,14 +94,14 @@ func TestReadPage(t *testing.T) {
 		endSequence   int64
 		count         int32
 		maxSequence   int64
-		mutations     []*pb.EntryUpdate
+		mutations     []*pb.Entry
 	}{
 		{
 			description: "read a single mutation",
 			endSequence: 1,
 			count:       1,
 			maxSequence: 1,
-			mutations:   []*pb.EntryUpdate{genUpdate(1)},
+			mutations:   []*pb.Entry{genUpdate(1).Mutation},
 		},
 		{
 			description:   "empty mutations list",
@@ -115,12 +115,12 @@ func TestReadPage(t *testing.T) {
 			endSequence:   5,
 			count:         5,
 			maxSequence:   5,
-			mutations: []*pb.EntryUpdate{
-				genUpdate(1),
-				genUpdate(2),
-				genUpdate(3),
-				genUpdate(4),
-				genUpdate(5),
+			mutations: []*pb.Entry{
+				genUpdate(1).Mutation,
+				genUpdate(2).Mutation,
+				genUpdate(3).Mutation,
+				genUpdate(4).Mutation,
+				genUpdate(5).Mutation,
 			},
 		},
 		{
@@ -129,10 +129,10 @@ func TestReadPage(t *testing.T) {
 			endSequence:   5,
 			count:         3,
 			maxSequence:   5,
-			mutations: []*pb.EntryUpdate{
-				genUpdate(3),
-				genUpdate(4),
-				genUpdate(5),
+			mutations: []*pb.Entry{
+				genUpdate(3).Mutation,
+				genUpdate(4).Mutation,
+				genUpdate(5).Mutation,
 			},
 		},
 		{
@@ -141,10 +141,10 @@ func TestReadPage(t *testing.T) {
 			endSequence:   5,
 			count:         5,
 			maxSequence:   5,
-			mutations: []*pb.EntryUpdate{
-				genUpdate(3),
-				genUpdate(4),
-				genUpdate(5),
+			mutations: []*pb.Entry{
+				genUpdate(3).Mutation,
+				genUpdate(4).Mutation,
+				genUpdate(5).Mutation,
 			},
 		},
 		{
@@ -152,10 +152,10 @@ func TestReadPage(t *testing.T) {
 			endSequence: 5,
 			count:       3,
 			maxSequence: 3,
-			mutations: []*pb.EntryUpdate{
-				genUpdate(1),
-				genUpdate(2),
-				genUpdate(3),
+			mutations: []*pb.Entry{
+				genUpdate(1).Mutation,
+				genUpdate(2).Mutation,
+				genUpdate(3).Mutation,
 			},
 		},
 	} {

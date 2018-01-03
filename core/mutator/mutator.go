@@ -60,7 +60,7 @@ type Mutator interface {
 type Mutation struct {
 	ID        int64
 	Mutation  *pb.Entry
-	ExtraData *pb.Comitted
+	ExtraData *pb.Committed
 }
 
 // MutationStorage reads and writes mutations to the database.
@@ -68,7 +68,7 @@ type MutationStorage interface {
 	// ReadPage returns mutations in the interval (start, end] for mapID.
 	// pageSize specifies the maximum number of items to return.
 	// Returns the maximum sequence number returned.
-	ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.EntryUpdate, error)
+	ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error)
 	// ReadBatch returns mutations in the interval (start, ∞] for mapID.
 	// ReadBatch will not return more than batchSize entries.
 	// Returns the maximum sequence number returned.
