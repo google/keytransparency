@@ -172,7 +172,7 @@ func TestLowestSequenceNumber(t *testing.T) {
 	for _, tc := range []struct {
 		token     string
 		epoch     int64
-		lowestSeq uint64
+		lowestSeq int64
 		success   bool
 	}{
 		{"", 0, 0, true},

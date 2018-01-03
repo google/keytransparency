@@ -59,7 +59,7 @@ var (
 )
 
 // MaxBatchSize limits the number of mutations that will be processed per epoch.
-var MaxBatchSize = 1000
+const MaxBatchSize = int32(1000)
 
 func init() {
 	prometheus.MustRegister(mutationsCTR)
@@ -301,14 +301,14 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNe
 	if meta.GetHighestFullyCompletedSeq() == 0 {
 		glog.Infof("Sequencer.CreateEpoch: Map Root probably has no metadata yet")
 	}
-	startSequence := meta.GetHighestFullyCompletedSeq()
+	startSeq := meta.GetHighestFullyCompletedSeq()
 	revision := rootResp.GetMapRoot().GetMapRevision()
-	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSequence)
+	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSeq)
 
 	// Get the list of new mutations to process.
-	seq, mutations, err := s.mutations.ReadAll(ctx, mapID, uint64(startSequence), MaxBatchSize)
+	seq, mutations, err := s.mutations.ReadBatch(ctx, mapID, startSeq, MaxBatchSize)
 	if err != nil {
-		return fmt.Errorf("ReadAll(%v): %v", startSequence, err)
+		return fmt.Errorf("ReadBatch(%v): %v", startSeq, err)
 	}
 
 	// Don't create epoch if there is nothing to process unless explicitly
@@ -352,7 +352,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNe
 		len(mutations), len(leaves))
 
 	metaAny, err := internal.MetadataAsAny(&tpb.MapperMetadata{
-		HighestFullyCompletedSeq: int64(seq),
+		HighestFullyCompletedSeq: seq,
 	})
 	if err != nil {
 		return err

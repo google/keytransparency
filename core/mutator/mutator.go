@@ -58,18 +58,15 @@ type Mutator interface {
 
 // MutationStorage reads and writes mutations to the database.
 type MutationStorage interface {
-	// ReadRange reads all mutations for a specific given mapID and sequence
-	// range. The range is identified by a starting sequence number and a
-	// count. Note that startSequence is not included in the result.
-	// ReadRange stops when endSequence or count is reached, whichever comes
-	// first. ReadRange also returns the maximum sequence number read.
-	ReadRange(ctx context.Context, mapID int64, startSequence, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error)
-	// ReadAll reads all mutations starting from the given sequence number.
-	// Note that startSequence is not included in the result. ReadAll also
-	// returns the maximum sequence number read.
-	// ReadAll will not return more than count entries.
-	ReadAll(ctx context.Context, mapID int64, startSequence uint64, count int) (uint64, []*pb.EntryUpdate, error)
+	// ReadPage returns mutations in the interval (start, end] for mapID.
+	// pageSize specifies the maximum number of items to return.
+	// Returns the maximum sequence number returned.
+	ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.EntryUpdate, error)
+	// ReadBatch returns mutations in the interval (start, ∞] for mapID.
+	// ReadBatch will not return more than batchSize entries.
+	// Returns the maximum sequence number returned.
+	ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*pb.EntryUpdate, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
-	Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (uint64, error)
+	Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (int64, error)
 }
