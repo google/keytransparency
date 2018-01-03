@@ -16,12 +16,12 @@
 // (a) create user accounts.
 // (b) update user accounts (that this server has created).
 //
-// The delegate server is desiged to be used by app operators
+// The delegate server is designed to be used by app operators
 // to provision and update users before users take control over
 // their own key management.
 //
-// The delegeate server may also be used to implement a third_party account
-// reset provider service, should users wish to trust these providers will the
+// The delegate server may also be used to implement a third party account
+// reset provider service, should users wish to trust these providers with the
 // ability to control and update their accounts.
 package main
 
