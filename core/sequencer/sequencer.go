@@ -58,6 +58,9 @@ var (
 	})
 )
 
+// MaxBatchSize limits the number of mutations that will be processed per epoch.
+var MaxBatchSize = 1000
+
 func init() {
 	prometheus.MustRegister(mutationsCTR)
 	prometheus.MustRegister(indexCTR)
@@ -213,16 +216,6 @@ func genEpochTicks(t util.TimeSource, last time.Time, minTick <-chan time.Time, 
 	return enforce
 }
 
-// newMutations returns a list of mutations to process and highest sequence
-// number returned.
-func (s *Sequencer) newMutations(ctx context.Context, mapID, startSequence int64) ([]*tpb.EntryUpdate, int64, error) {
-	maxSequence, mutations, err := s.mutations.ReadAll(ctx, mapID, uint64(startSequence))
-	if err != nil {
-		return nil, 0, fmt.Errorf("ReadAll(%v): %v", startSequence, err)
-	}
-	return mutations, int64(maxSequence), nil
-}
-
 // toArray returns the first 32 bytes from b.
 // If b is less than 32 bytes long, the output is zero padded.
 func toArray(b []byte) [32]byte {
@@ -313,9 +306,9 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNe
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSequence)
 
 	// Get the list of new mutations to process.
-	mutations, seq, err := s.newMutations(ctx, mapID, startSequence)
+	seq, mutations, err := s.mutations.ReadAll(ctx, mapID, uint64(startSequence), MaxBatchSize)
 	if err != nil {
-		return fmt.Errorf("newMutations(%v): %v", startSequence, err)
+		return fmt.Errorf("ReadAll(%v): %v", startSequence, err)
 	}
 
 	// Don't create epoch if there is nothing to process unless explicitly
@@ -359,7 +352,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, forceNe
 		len(mutations), len(leaves))
 
 	metaAny, err := internal.MetadataAsAny(&tpb.MapperMetadata{
-		HighestFullyCompletedSeq: seq,
+		HighestFullyCompletedSeq: int64(seq),
 	})
 	if err != nil {
 		return err

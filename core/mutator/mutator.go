@@ -67,7 +67,8 @@ type MutationStorage interface {
 	// ReadAll reads all mutations starting from the given sequence number.
 	// Note that startSequence is not included in the result. ReadAll also
 	// returns the maximum sequence number read.
-	ReadAll(ctx context.Context, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error)
+	// ReadAll will not return more than count entries.
+	ReadAll(ctx context.Context, mapID int64, startSequence uint64, count int) (uint64, []*pb.EntryUpdate, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
 	Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (uint64, error)

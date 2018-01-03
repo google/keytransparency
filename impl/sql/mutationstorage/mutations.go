@@ -39,7 +39,7 @@ const (
 	readAllExpr = `
  	SELECT Sequence, Mutation FROM Mutations
  	WHERE MapID = ? AND Sequence > ?
-	ORDER BY Sequence ASC;`
+	ORDER BY Sequence ASC LIMIT ?;`
 )
 
 type mutations struct {
@@ -81,13 +81,13 @@ func (m *mutations) ReadRange(ctx context.Context, mapID int64, startSequence, e
 // ReadAll reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *mutations) ReadAll(ctx context.Context, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
+func (m *mutations) ReadAll(ctx context.Context, mapID int64, startSequence uint64, count int) (uint64, []*pb.EntryUpdate, error) {
 	readStmt, err := m.db.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, mapID, startSequence)
+	rows, err := readStmt.QueryContext(ctx, mapID, startSequence, count)
 	if err != nil {
 		return 0, nil, err
 	}

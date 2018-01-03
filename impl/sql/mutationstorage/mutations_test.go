@@ -79,22 +79,6 @@ func write(ctx context.Context, m mutator.MutationStorage, mutation *pb.EntryUpd
 	return nil
 }
 
-func readRange(ctx context.Context, m mutator.MutationStorage, startSequence uint64, endSequence uint64, count int32) (uint64, []*pb.EntryUpdate, error) {
-	maxSequence, results, err := m.ReadRange(ctx, mapID, startSequence, endSequence, count)
-	if err != nil {
-		return 0, nil, fmt.Errorf("ReadRange(%v, %v): %v, want nil", startSequence, count, err)
-	}
-	return maxSequence, results, nil
-}
-
-func readAll(ctx context.Context, m mutator.MutationStorage, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
-	maxSequence, results, err := m.ReadAll(ctx, mapID, startSequence)
-	if err != nil {
-		return 0, nil, fmt.Errorf("ReadRange(%v): %v, want nil", startSequence, err)
-	}
-	return maxSequence, results, nil
-}
-
 func TestReadRange(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
@@ -175,7 +159,7 @@ func TestReadRange(t *testing.T) {
 			},
 		},
 	} {
-		maxSequence, results, err := readRange(ctx, m, tc.startSequence, tc.endSequence, tc.count)
+		maxSequence, results, err := m.ReadRange(ctx, mapID, tc.startSequence, tc.endSequence, tc.count)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
@@ -246,7 +230,8 @@ func TestReadAll(t *testing.T) {
 			},
 		},
 	} {
-		maxSequence, results, err := readAll(ctx, m, tc.startSequence)
+		maxcount := 1000
+		maxSequence, results, err := m.ReadAll(ctx, mapID, tc.startSequence, maxcount)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}

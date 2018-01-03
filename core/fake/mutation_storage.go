@@ -48,7 +48,7 @@ func (m *MutationStorage) ReadRange(ctx context.Context, mapID int64, startSeque
 }
 
 // ReadAll is unimplemented
-func (m *MutationStorage) ReadAll(ctx context.Context, mapID int64, startSequence uint64) (uint64, []*pb.EntryUpdate, error) {
+func (m *MutationStorage) ReadAll(ctx context.Context, mapID int64, start uint64, count int) (uint64, []*pb.EntryUpdate, error) {
 	return 0, nil, nil
 }
 
