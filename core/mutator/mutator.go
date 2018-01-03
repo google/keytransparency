@@ -56,6 +56,13 @@ type Mutator interface {
 	Mutate(value, mutation proto.Message) (proto.Message, error)
 }
 
+// Mutation represents a change to a user, and associated data.
+type Mutation struct {
+	ID        int64
+	Mutation  *pb.Entry
+	ExtraData *pb.Comitted
+}
+
 // MutationStorage reads and writes mutations to the database.
 type MutationStorage interface {
 	// ReadPage returns mutations in the interval (start, end] for mapID.
