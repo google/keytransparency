@@ -29,5 +29,12 @@ var (
                 MIndex   VARBINARY(32) NOT NULL,
 		Mutation BLOB          NOT NULL
 	);`,
+		`CREATE TABLE IF NOT EXISTS SequencedMutations (
+		MapID    BIGINT        NOT NULL,
+		Revision BIGINT        NOT NULL,
+		Sequence INTEGER       NOT NULL,
+		Mutation BLOB          NOT NULL
+		PRIMARY KEY(MapID, Revision, Sequence)
+	);`,
 	}
 )

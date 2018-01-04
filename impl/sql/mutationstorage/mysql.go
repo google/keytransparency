@@ -22,12 +22,18 @@ import (
 
 var (
 	createStmt = []string{
-		`
-	CREATE TABLE IF NOT EXISTS Mutations (
+		`CREATE TABLE IF NOT EXISTS Mutations (
 		DomainID VARCHAR(30)   NOT NULL,
 		Sequence INTEGER       NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 MIndex   VARBINARY(32) NOT NULL,
 		Mutation BLOB          NOT NULL
+	);`,
+		`CREATE TABLE IF NOT EXISTS SequencedMutations (
+		DomainID VARCHAR(30)   NOT NULL,
+		Revision BIGINT        NOT NULL,
+		Sequence INTEGER       NOT NULL,
+		Mutation BLOB          NOT NULL
+		PRIMARY KEY(MapID, Revision, Sequence)
 	);`,
 	}
 )
