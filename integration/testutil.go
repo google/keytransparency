@@ -160,9 +160,9 @@ func NewEnv(t *testing.T) *Env {
 	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, entry.New(), mutations, queue)
 	// Only sequence when explicitly asked with receiver.Flush()
 	d := &domaindef.Domain{
-		Domain: domainID,
-		LogID:  logID,
-		MapID:  mapID,
+		DomainID: domainID,
+		LogID:    logID,
+		MapID:    mapID,
 	}
 	receiver := seq.NewReceiver(ctx, d, 60*time.Hour, 60*time.Hour)
 	receiver.Flush(ctx)

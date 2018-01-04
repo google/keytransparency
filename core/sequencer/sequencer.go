@@ -144,9 +144,9 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 				return fmt.Errorf("admin.List(): %v", err)
 			}
 			for _, d := range domains {
-				if _, ok := s.receivers[d.Domain]; !ok {
-					glog.Infof("StartSigning domain: %v", d.Domain)
-					s.receivers[d.Domain] = s.NewReceiver(ctx, d, d.MinInterval, d.MaxInterval)
+				if _, ok := s.receivers[d.DomainID]; !ok {
+					glog.Infof("StartSigning domain: %v", d.DomainID)
+					s.receivers[d.DomainID] = s.NewReceiver(ctx, d, d.MinInterval, d.MaxInterval)
 				}
 			}
 		case <-ctx.Done():
@@ -192,7 +192,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minI
 	}
 	start := meta.GetHighestFullyCompletedSeq()
 
-	return s.queue.NewReceiver(ctx, last, domain.Domain, start, func(mutations []*mutator.QueueMessage) error {
+	return s.queue.NewReceiver(ctx, last, domain.DomainID, start, func(mutations []*mutator.QueueMessage) error {
 		return s.createEpoch(ctx, domain, mutations)
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: MaxBatchSize,

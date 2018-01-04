@@ -97,7 +97,7 @@ func TestGetMutations(t *testing.T) {
 	fakeMap := fake.NewTrillianMapClient()
 	fakeLog := fake.NewTrillianLogClient()
 	if err := fakeAdmin.Write(ctx, &domain.Domain{
-		Domain:      domainID,
+		DomainID:    domainID,
 		MapID:       mapID,
 		MinInterval: 1 * time.Second,
 		MaxInterval: 5 * time.Second,

@@ -108,7 +108,7 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*domain.Domain,
 		var pubkey, anyData []byte
 		d := &domain.Domain{}
 		if err := rows.Scan(
-			&d.Domain,
+			&d.DomainID,
 			&d.MapID, &d.LogID,
 			&pubkey, &anyData,
 			&d.MinInterval, &d.MaxInterval,
@@ -143,7 +143,7 @@ func (s *storage) Write(ctx context.Context, d *domain.Domain) error {
 	}
 	defer writeStmt.Close()
 	_, err = writeStmt.ExecContext(ctx,
-		d.Domain,
+		d.DomainID,
 		d.MapID, d.LogID,
 		d.VRF.Der, anyData,
 		d.MinInterval.Nanoseconds(), d.MaxInterval.Nanoseconds(),
@@ -166,7 +166,7 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 	d := &domain.Domain{}
 	var pubkey, anyData []byte
 	if err := readStmt.QueryRowContext(ctx, domainID).Scan(
-		&d.Domain,
+		&d.DomainID,
 		&d.MapID, &d.LogID,
 		&pubkey, &anyData,
 		&d.MinInterval, &d.MaxInterval,

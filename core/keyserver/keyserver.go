@@ -321,7 +321,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Save mutation to the database.
-	if err := s.queue.Send(ctx, domain.Domain, in.GetEntryUpdate()); err != nil {
+	if err := s.queue.Send(ctx, domain.DomainID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}
