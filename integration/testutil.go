@@ -157,6 +157,9 @@ func NewEnv(t *testing.T) *Env {
 	// Sequencer
 	queue := mutator.MutationReceiver(mutations)
 	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, entry.New(), mutations, queue)
+	// Only sequence when explicitly asked with receiver.Flush()
+	receiver := seq.NewReceiver(ctx, logID, mapID, 60*time.Hour, 60*time.Hour)
+	receiver.Flush()
 
 	addr, lis := Listen(t)
 	go gsvr.Serve(lis)
@@ -169,10 +172,6 @@ func NewEnv(t *testing.T) *Env {
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
-
-	// Mimic first sequence event
-	receiver := seq.NewReceiver(ctx, logID, mapID, 60*time.Hour, 60*time.Hour)
-	receiver.Flush()
 
 	return &Env{
 		mapEnv:     mapEnv,

@@ -91,6 +91,7 @@ func New(domains domain.Storage,
 		tlog:      tlog,
 		mutator:   mutatorF,
 		mutations: mutations,
+		queue:     queue,
 		receivers: make(map[string]mutator.Receiver),
 	}
 }
@@ -193,7 +194,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, logID, mapID int64, minInte
 	return s.queue.NewReceiver(ctx, last, mapID, start, func(mutations []*mutator.QueueMessage) error {
 		return s.CreateEpoch(ctx, logID, mapID, mutations)
 	}, mutator.ReceiverOptions{
-		MaxBatchSize: 1000,
+		MaxBatchSize: MaxBatchSize,
 		Period:       minInterval,
 		MaxPeriod:    maxInterval,
 	})
@@ -265,7 +266,7 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 
 // CreateEpoch signs the current map head.
 func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, mutations []*mutator.QueueMessage) error {
-	glog.V(2).Infof("CreateEpoch: starting sequencing run")
+	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(mutations))
 	start := time.Now()
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
@@ -279,7 +280,7 @@ func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, mutatio
 		return err
 	}
 	if meta.GetHighestFullyCompletedSeq() == 0 {
-		glog.Infof("Sequencer.CreateEpoch: Map Root probably has no metadata yet")
+		glog.V(2).Infof("Sequencer.CreateEpoch: Map Root probably has no metadata yet")
 	}
 	startSeq := meta.GetHighestFullyCompletedSeq()
 	revision := rootResp.GetMapRoot().GetMapRevision()

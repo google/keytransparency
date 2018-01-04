@@ -86,7 +86,7 @@ func TestMonitor(t *testing.T) {
 		queryEpoch int64
 	}{
 		{
-			desc:       "Query first epoch, don't update",
+			desc:       "Query first epoch",
 			queryEpoch: 1,
 		},
 		{
@@ -95,7 +95,7 @@ func TestMonitor(t *testing.T) {
 			updateData:     []byte("testData"),
 			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
 			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
-			queryEpoch:     2,
+			queryEpoch:     3,
 		},
 		{
 			desc:           "create several mutations and new epoch",
@@ -103,7 +103,7 @@ func TestMonitor(t *testing.T) {
 			updateData:     []byte("more update data"),
 			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
 			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
-			queryEpoch:     3,
+			queryEpoch:     4,
 		},
 	} {
 		for _, userID := range tc.userIDs {

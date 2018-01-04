@@ -79,7 +79,6 @@ func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
 }
 
 func TestEmptyGetAndUpdate(t *testing.T) {
-	bctx := context.Background()
 	env := NewEnv(t)
 	defer env.Close(t)
 	env.Client.RetryCount = 0
@@ -182,9 +181,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 				if got, want := err, grpcc.ErrRetry; got != want {
 					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 				}
-				if err := env.Signer.CreateEpoch(bctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, nil); err != nil {
-					t.Errorf("CreateEpoch(_): %v", err)
-				}
+				env.Receiver.Flush()
 				if err := env.Client.Retry(tc.ctx, m, tc.signers); err != nil {
 					t.Errorf("Retry(%v): %v, want nil", m, err)
 				}
@@ -310,10 +307,10 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
 	// following profiles:
-	// Profile Value: err  err nil 1  2  2  2  3  3  4  5  5 5 5 5 5 6 6 5 7 7
-	// Map Revision:  err 0  1  2  3  4  5  6  7  8  9  10 ...
-	// Log Max Index: err 0  1  2  3  4  5  6  7  8  9  10 ...
-	// Log TreeSize:    0 1  2  3  4  5  6  7  8  9  10 11 ...
+	// Profile Value: err nil 1  2  2  2  3  3  4  5  5 5 5 5 5 6 6 5 7 7
+	// Map Revision:  0  1  2  3  4  5  6  7  8  9  10 ...
+	// Log Max Index: 0  1  2  3  4  5  6  7  8  9  10 ...
+	// Log TreeSize:  0  1  2  3  4  5  6  7  8  9  10 ...
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
 	for i, p := range [][]byte{

@@ -129,22 +129,6 @@ func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
 	return maxSequence, results, nil
 }
 
-// Send writes mutations to the leading edge (by sequence number) of the mutations table.
-func (m *mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdate) error {
-	index := update.GetMutation().GetIndex()
-	mData, err := proto.Marshal(update)
-	if err != nil {
-		return err
-	}
-	writeStmt, err := m.db.Prepare(insertExpr)
-	if err != nil {
-		return err
-	}
-	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, mapID, index, mData)
-	return err
-}
-
 // Write saves the update in the database. Write returns the auto-inserted sequence number.
 func (m *Mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpdate) (int64, error) {
 	index := update.GetMutation().GetIndex()

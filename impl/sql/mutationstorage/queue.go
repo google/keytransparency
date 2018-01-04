@@ -28,6 +28,7 @@ import (
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdate) error {
+	glog.Infof("queue.Send(%v, <mutation>)", mapID)
 	index := update.GetMutation().GetIndex()
 	mData, err := proto.Marshal(update)
 	if err != nil {
@@ -82,7 +83,7 @@ func (r *Receiver) Close() {
 
 // Flush sends any waiting queue items.
 func (r *Receiver) Flush() {
-	r.more <- true
+	r.sendBatch(context.Background(), true)
 }
 
 func (r *Receiver) run(ctx context.Context, last time.Time) {
@@ -118,7 +119,7 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 func (r *Receiver) sendBatch(ctx context.Context, sendEmpty bool) int32 {
 	max, ms, err := r.m.ReadBatch(ctx, r.mapID, r.start, r.opts.MaxBatchSize)
 	if err != nil {
-		glog.Infof("ReadAll(%v): %v", r.start, err)
+		glog.Errorf("ReadBatch(%v): %v", r.start, err)
 		return 0
 	}
 	if len(ms) == 0 && !sendEmpty {
