@@ -51,10 +51,10 @@ func TestRecieverTime(t *testing.T) {
 	} {
 		var count int
 		start := int64(0)
-		r := m.NewReciever(ctx, tc.last, mapID, start, func([]*mutator.QueueMessage) error {
+		r := m.NewReceiver(ctx, tc.last, mapID, start, func([]*mutator.QueueMessage) error {
 			count++
 			return nil
-		}, mutator.RecieverOptions{
+		}, mutator.ReceiverOptions{
 			MaxBatchSize: 1,
 			Period:       min,
 			MaxPeriod:    max,
@@ -65,13 +65,4 @@ func TestRecieverTime(t *testing.T) {
 			t.Errorf("test: %d: recieveFunc called %d times, want %v", i, got, want)
 		}
 	}
-}
-
-// parseTime creates a time.Time from a time.RFC3339 formatted string.
-func parseTime(ts string) time.Time {
-	ti, err := time.Parse(time.RFC3339, ts)
-	if err != nil {
-		panic("parseTime(_) expects time.RFC3339 formatted time strings, got: " + ts)
-	}
-	return ti
 }

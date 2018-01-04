@@ -87,7 +87,7 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create domain storage object: %v", err)
 	}
-	queue := mutator.MutationReciever(mutations)
+	queue := mutator.MutationReceiver(mutations)
 
 	// Create servers
 	signer := sequencer.New(domainStorage, tmap, tlog, entry.New(), mutations, queue)

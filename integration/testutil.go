@@ -90,7 +90,7 @@ type Env struct {
 	Factory    *transaction.Factory
 	Cli        pb.KeyTransparencyClient
 	Domain     *pb.Domain
-	Receiver   mutator.Reciever
+	Receiver   mutator.Receiver
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -155,7 +155,7 @@ func NewEnv(t *testing.T) *Env {
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	queue := mutator.MutationReciever(mutations)
+	queue := mutator.MutationReceiver(mutations)
 	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, entry.New(), mutations, queue)
 
 	addr, lis := Listen(t)
@@ -171,7 +171,7 @@ func NewEnv(t *testing.T) *Env {
 	client.RetryCount = 0
 
 	// Mimic first sequence event
-	receiver := seq.NewReciever(ctx, logID, mapID, 60*time.Hour, 60*time.Hour)
+	receiver := seq.NewReceiver(ctx, logID, mapID, 60*time.Hour, 60*time.Hour)
 	receiver.Flush()
 
 	return &Env{

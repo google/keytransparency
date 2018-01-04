@@ -66,36 +66,36 @@ type QueueMessage struct {
 
 // MutationQueue provides (at least) a roughly time ordered queue that can support
 // multiple writers.  Replays, drops, and duplicate delivery must be supported by
-// recievers.
+// receivers.
 type MutationQueue interface {
 	// Send submits an item to the queue
 	Send(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) error
 }
 
-// Reciever recieves messages from a queue.
-type Reciever interface {
-	// Close stops the reciever and returns only when all callbacks are complete.
+// Receiver receives messages from a queue.
+type Receiver interface {
+	// Close stops the receiver and returns only when all callbacks are complete.
 	Close()
 	// Flush sends any waiting queue items.
 	Flush()
 }
 
-// RecieverOptions holds options for setting up a reciever.
-type RecieverOptions struct {
+// ReceiverOptions holds options for setting up a receiver.
+type ReceiverOptions struct {
 	// MaxBatchSize is the maximum number of items allowed in a batch.
 	MaxBatchSize int32
 	// Period is the typical amount of type between batches.
 	// This time will decrease under load and increase to MaxPeriod without load.
 	Period time.Duration
 	// MaxPeriod is the maximum allowed time between batches.
-	// If no data has been recieved in this period, an empty batch will be sent.
+	// If no data has been received in this period, an empty batch will be sent.
 	MaxPeriod time.Duration
 }
 
-// MutationReciever creates new recievers.
-type MutationReciever interface {
-	// NewReciever starts recieving messages sent to the queue. As batches become ready, recieveFunc will be called.
-	NewReciever(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*QueueMessage) error, ropts RecieverOptions) Reciever
+// MutationReceiver creates new receiver.
+type MutationReceiver interface {
+	// NewReceiver starts receiving messages sent to the queue. As batches become ready, recieveFunc will be called.
+	NewReceiver(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*QueueMessage) error, ropts ReceiverOptions) Receiver
 }
 
 // MutationStorage reads and writes mutations to the database.

@@ -74,8 +74,8 @@ type Sequencer struct {
 	tlog      trillian.TrillianLogClient
 	mutator   mutator.Mutator
 	mutations mutator.MutationStorage
-	queue     mutator.MutationReciever
-	recievers map[string]mutator.Reciever
+	queue     mutator.MutationReceiver
+	receivers map[string]mutator.Receiver
 }
 
 // New creates a new instance of the signer.
@@ -84,20 +84,20 @@ func New(domains domain.Storage,
 	tlog trillian.TrillianLogClient,
 	mutatorF mutator.Mutator,
 	mutations mutator.MutationStorage,
-	queue mutator.MutationReciever) *Sequencer {
+	queue mutator.MutationReceiver) *Sequencer {
 	return &Sequencer{
 		domains:   domains,
 		tmap:      tmap,
 		tlog:      tlog,
 		mutator:   mutatorF,
 		mutations: mutations,
-		recievers: make(map[string]mutator.Reciever),
+		receivers: make(map[string]mutator.Receiver),
 	}
 }
 
-// Close stops all recievers and releases resources.
+// Close stops all receivers and releases resources.
 func (s *Sequencer) Close() {
-	for _, r := range s.recievers {
+	for _, r := range s.receivers {
 		r.Close()
 	}
 }
@@ -144,9 +144,9 @@ func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duratio
 				return fmt.Errorf("admin.List(): %v", err)
 			}
 			for _, d := range domains {
-				if _, ok := s.recievers[d.Domain]; !ok {
+				if _, ok := s.receivers[d.Domain]; !ok {
 					glog.Infof("StartSigning domain: %v", d.Domain)
-					s.recievers[d.Domain] = s.NewReciever(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
+					s.receivers[d.Domain] = s.NewReceiver(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
 				}
 			}
 		case <-ctx.Done():
@@ -155,9 +155,9 @@ func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duratio
 	}
 }
 
-// NewReciever creates a new reciever for mapID.
+// NewReceiver creates a new receiver for mapID.
 // New epochs will be created at least once per maxInterval and as often as minInterval.
-func (s *Sequencer) NewReciever(ctx context.Context, logID, mapID int64, minInterval, maxInterval time.Duration) mutator.Reciever {
+func (s *Sequencer) NewReceiver(ctx context.Context, logID, mapID int64, minInterval, maxInterval time.Duration) mutator.Receiver {
 	if err := s.Initialize(ctx, logID, mapID); err != nil {
 		glog.Errorf("Initialize() failed: %v", err)
 	}
@@ -190,9 +190,9 @@ func (s *Sequencer) NewReciever(ctx context.Context, logID, mapID int64, minInte
 	}
 	start := meta.GetHighestFullyCompletedSeq()
 
-	return s.queue.NewReciever(ctx, last, mapID, start, func(mutations []*mutator.QueueMessage) error {
+	return s.queue.NewReceiver(ctx, last, mapID, start, func(mutations []*mutator.QueueMessage) error {
 		return s.CreateEpoch(ctx, logID, mapID, mutations)
-	}, mutator.RecieverOptions{
+	}, mutator.ReceiverOptions{
 		MaxBatchSize: 1000,
 		Period:       minInterval,
 		MaxPeriod:    maxInterval,

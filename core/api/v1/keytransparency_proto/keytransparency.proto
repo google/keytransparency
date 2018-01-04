@@ -260,7 +260,7 @@ message ListMutationsResponse {
 // Each Epoch has a collection of mutations:
 // `/v1/domains/*/epochs/*/mutations/`.
 //  * Each mutation contains the leafvalue of the previous epoch that it operated on.
-//  * The full set of mutations for an epoch allows the reciever to compute the
+//  * The full set of mutations for an epoch allows the receiver to compute the
 //     Merkle Tree Root of this epoch from the previous epoch.
 //
 // Each Domain has a collection of applications:
