@@ -56,16 +56,23 @@ type Mutator interface {
 	Mutate(value, mutation proto.Message) (proto.Message, error)
 }
 
+// QueueMessage represents a change to a user, and associated data.
+type QueueMessage struct {
+	ID        int64
+	Mutation  *pb.Entry
+	ExtraData *pb.Committed
+}
+
 // MutationStorage reads and writes mutations to the database.
 type MutationStorage interface {
 	// ReadPage returns mutations in the interval (start, end] for mapID.
 	// pageSize specifies the maximum number of items to return.
 	// Returns the maximum sequence number returned.
-	ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.EntryUpdate, error)
+	ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error)
 	// ReadBatch returns mutations in the interval (start, ∞] for mapID.
 	// ReadBatch will not return more than batchSize entries.
 	// Returns the maximum sequence number returned.
-	ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*pb.EntryUpdate, error)
+	ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*QueueMessage, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
 	Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (int64, error)

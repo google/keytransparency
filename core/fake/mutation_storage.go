@@ -18,6 +18,7 @@ import (
 	"context"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	"github.com/google/keytransparency/core/mutator"
 )
 
 // MutationStorage implements mutator.Mutation
@@ -33,7 +34,7 @@ func NewMutationStorage() *MutationStorage {
 }
 
 // ReadPage paginates through the list of mutations
-func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.EntryUpdate, error) {
+func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
 	if start > int64(len(m.mtns[mapID])) {
 		panic("start > len(m.mtns[mapID])")
 	}
@@ -44,11 +45,16 @@ func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, p
 	if end > int64(len(m.mtns[mapID])) {
 		end = int64(len(m.mtns[mapID]))
 	}
-	return end, m.mtns[mapID][start:end], nil
+	entryUpdates := m.mtns[mapID][start:end]
+	mutations := make([]*pb.Entry, 0, len(entryUpdates))
+	for _, e := range entryUpdates {
+		mutations = append(mutations, e.Mutation)
+	}
+	return end, mutations, nil
 }
 
 // ReadBatch is unimplemented
-func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*pb.EntryUpdate, error) {
+func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*mutator.QueueMessage, error) {
 	return 0, nil, nil
 }
 
