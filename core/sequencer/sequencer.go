@@ -75,21 +75,30 @@ type Sequencer struct {
 	mutator   mutator.Mutator
 	mutations mutator.MutationStorage
 	queue     mutator.MutationReciever
+	recievers map[string]mutator.Reciever
 }
 
 // New creates a new instance of the signer.
 func New(domains domain.Storage,
 	tmap trillian.TrillianMapClient,
 	tlog trillian.TrillianLogClient,
-	mutator mutator.Mutator,
+	mutatorF mutator.Mutator,
 	mutations mutator.MutationStorage,
 	queue mutator.MutationReciever) *Sequencer {
 	return &Sequencer{
 		domains:   domains,
 		tmap:      tmap,
 		tlog:      tlog,
-		mutator:   mutator,
+		mutator:   mutatorF,
 		mutations: mutations,
+		recievers: make(map[string]mutator.Reciever),
+	}
+}
+
+// Close stops all recievers and releases resources.
+func (s *Sequencer) Close() {
+	for _, r := range s.recievers {
+		r.Close()
 	}
 }
 
@@ -124,8 +133,6 @@ func (s *Sequencer) Initialize(ctx context.Context, logID, mapID int64) error {
 
 // StartSequencingAll starts sequencing processes for all domains.
 func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duration) error {
-	started := make(map[string]bool)
-	recievers := make(map[string]mutator.Reciever)
 	ticker := time.NewTicker(refresh)
 	defer func() { ticker.Stop() }()
 
@@ -137,16 +144,12 @@ func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duratio
 				return fmt.Errorf("admin.List(): %v", err)
 			}
 			for _, d := range domains {
-				if !started[d.Domain] {
+				if _, ok := s.recievers[d.Domain]; !ok {
 					glog.Infof("StartSigning domain: %v", d.Domain)
-					started[d.Domain] = true
-					recievers[d.Domain] = s.NewReciever(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
+					s.recievers[d.Domain] = s.NewReciever(ctx, d.LogID, d.MapID, d.MinInterval, d.MaxInterval)
 				}
 			}
 		case <-ctx.Done():
-			for _, r := range recievers {
-				r.Close()
-			}
 			return ctx.Err()
 		}
 	}

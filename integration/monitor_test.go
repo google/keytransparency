@@ -23,7 +23,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
-	"github.com/google/keytransparency/core/sequencer"
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/der"
@@ -115,9 +114,7 @@ func TestMonitor(t *testing.T) {
 			}
 		}
 
-		if err := env.Signer.CreateEpoch(ctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(false)); err != nil {
-			t.Fatalf("CreateEpoch(_): %v", err)
-		}
+		env.Receiver.Flush()
 
 		domainID := env.Domain.DomainId
 		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)

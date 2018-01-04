@@ -76,6 +76,8 @@ type MutationQueue interface {
 type Reciever interface {
 	// Close stops the reciever and returns only when all callbacks are complete.
 	Close()
+	// Flush sends any waiting queue items.
+	Flush()
 }
 
 // RecieverOptions holds options for setting up a reciever.

@@ -51,6 +51,7 @@ func (m *Mutations) NewReciever(ctx context.Context, last time.Time, mapID, star
 		ticker:      time.NewTicker(ropts.Period),
 		maxTicker:   time.NewTicker(ropts.MaxPeriod),
 		done:        make(chan interface{}),
+		more:        make(chan bool, 1),
 		recieveFunc: recieveFunc,
 	}
 
@@ -69,6 +70,7 @@ type Reciever struct {
 	ticker      *time.Ticker
 	maxTicker   *time.Ticker
 	done        chan interface{}
+	more        chan bool
 	finished    sync.WaitGroup
 }
 
@@ -78,19 +80,23 @@ func (r *Reciever) Close() {
 	r.finished.Wait()
 }
 
+// Flush sends any waiting queue items.
+func (r *Reciever) Flush() {
+	r.more <- true
+}
+
 func (r *Reciever) run(ctx context.Context, last time.Time) {
 	r.finished.Add(1)
 	defer r.finished.Done()
 
 	var count int32
-	more := make(chan bool, 1)
 	if time.Since(last) > (r.opts.MaxPeriod - r.opts.Period) {
 		count = r.sendBatch(ctx, true) // We will be over due for an epoch soon.
 	}
 
 	for {
 		select {
-		case <-more:
+		case <-r.more:
 			count = r.sendBatch(ctx, false)
 		case <-r.ticker.C:
 			count = r.sendBatch(ctx, false)
@@ -103,7 +109,7 @@ func (r *Reciever) run(ctx context.Context, last time.Time) {
 		}
 		if count > r.opts.MaxBatchSize {
 			// Continue sending until we drop below batch size.
-			more <- true
+			r.more <- true
 		}
 	}
 }
