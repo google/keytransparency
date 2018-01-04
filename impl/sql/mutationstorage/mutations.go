@@ -75,12 +75,12 @@ func (m *mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageS
 		return 0, nil, err
 	}
 	defer rows.Close()
-	max, entryupdates, err := readRows(rows)
-	entries := make([]*pb.Entry, 0, len(entryupdates))
-	for _, e := range entryupdates {
-		entries = append(entries, e.Mutation)
+	max, queueMsgs, err := readRows(rows)
+	mutations := make([]*pb.Entry, 0, len(queueMsgs))
+	for _, e := range queueMsgs {
+		mutations = append(mutations, e.Mutation)
 	}
-	return max, entries, err
+	return max, mutations, err
 }
 
 // ReadAll reads all mutations starting from the given sequence number. Note that
@@ -112,14 +112,14 @@ func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
 		if sequence > maxSequence {
 			maxSequence = sequence
 		}
-		mutation := new(pb.EntryUpdate)
-		if err := proto.Unmarshal(mData, mutation); err != nil {
+		entryUpdate := new(pb.EntryUpdate)
+		if err := proto.Unmarshal(mData, entryUpdate); err != nil {
 			return 0, nil, err
 		}
 		results = append(results, &mutator.QueueMessage{
 			ID:        sequence,
-			Mutation:  mutation.Mutation,
-			ExtraData: mutation.Committed,
+			Mutation:  entryUpdate.Mutation,
+			ExtraData: entryUpdate.Committed,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -128,7 +128,7 @@ func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
 	return maxSequence, results, nil
 }
 
-// Write saves the mutation in the database. Write returns the auto-inserted
+// Write saves the update in the database. Write returns the auto-inserted
 // sequence number.
 func (m *mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpdate) (int64, error) {
 	index := update.GetMutation().GetIndex()

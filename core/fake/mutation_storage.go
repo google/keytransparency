@@ -45,12 +45,12 @@ func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, p
 	if end > int64(len(m.mtns[mapID])) {
 		end = int64(len(m.mtns[mapID]))
 	}
-	entryupdates := m.mtns[mapID][start:end]
-	entries := make([]*pb.Entry, 0, len(entryupdates))
-	for _, e := range entryupdates {
-		entries = append(entries, e.Mutation)
+	entryUpdates := m.mtns[mapID][start:end]
+	mutations := make([]*pb.Entry, 0, len(entryUpdates))
+	for _, e := range entryUpdates {
+		mutations = append(mutations, e.Mutation)
 	}
-	return end, entries, nil
+	return end, mutations, nil
 }
 
 // ReadBatch is unimplemented
