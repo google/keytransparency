@@ -23,29 +23,29 @@ import (
 
 // MutationStorage implements mutator.Mutation
 type MutationStorage struct {
-	mtns map[int64][]*pb.EntryUpdate
+	mtns map[string][]*pb.EntryUpdate
 }
 
 // NewMutationStorage returns a fake mutator.Mutation
 func NewMutationStorage() *MutationStorage {
 	return &MutationStorage{
-		mtns: make(map[int64][]*pb.EntryUpdate),
+		mtns: make(map[string][]*pb.EntryUpdate),
 	}
 }
 
 // ReadPage paginates through the list of mutations
-func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
-	if start > int64(len(m.mtns[mapID])) {
-		panic("start > len(m.mtns[mapID])")
+func (m *MutationStorage) ReadPage(_ context.Context, domainID string, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
+	if start > int64(len(m.mtns[domainID])) {
+		panic("start > len(m.mtns[domainID])")
 	}
 	// Adjust end.
 	if end-start > int64(pageSize) {
 		end = start + int64(pageSize)
 	}
-	if end > int64(len(m.mtns[mapID])) {
-		end = int64(len(m.mtns[mapID]))
+	if end > int64(len(m.mtns[domainID])) {
+		end = int64(len(m.mtns[domainID]))
 	}
-	entryUpdates := m.mtns[mapID][start:end]
+	entryUpdates := m.mtns[domainID][start:end]
 	mutations := make([]*pb.Entry, 0, len(entryUpdates))
 	for _, e := range entryUpdates {
 		mutations = append(mutations, e.Mutation)
@@ -54,12 +54,12 @@ func (m *MutationStorage) ReadPage(_ context.Context, mapID, start, end int64, p
 }
 
 // ReadBatch is unimplemented
-func (m *MutationStorage) ReadBatch(context.Context, int64, int64, int32) (int64, []*mutator.QueueMessage, error) {
+func (m *MutationStorage) ReadBatch(context.Context, string, int64, int32) (int64, []*mutator.QueueMessage, error) {
 	return 0, nil, nil
 }
 
 // Write stores a mutation
-func (m *MutationStorage) Write(_ context.Context, mapID int64, mutation *pb.EntryUpdate) (int64, error) {
-	m.mtns[mapID] = append(m.mtns[mapID], mutation)
-	return int64(len(m.mtns[mapID])), nil
+func (m *MutationStorage) Write(_ context.Context, domainID string, mutation *pb.EntryUpdate) (int64, error) {
+	m.mtns[domainID] = append(m.mtns[domainID], mutation)
+	return int64(len(m.mtns[domainID])), nil
 }

@@ -69,9 +69,9 @@ type QueueMessage struct {
 // receivers.
 type MutationQueue interface {
 	// Send submits an item to the queue
-	Send(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) error
+	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
 	// NewReceiver starts receiving messages sent to the queue. As batches become ready, receiveFunc will be called.
-	NewReceiver(ctx context.Context, last time.Time, mapID, start int64, receiveFunc ReceiveFunc, rOpts ReceiverOptions) Receiver
+	NewReceiver(ctx context.Context, last time.Time, domainID string, start int64, receiveFunc ReceiveFunc, ropts ReceiverOptions) Receiver
 }
 
 // ReceiveFunc receives updates from the queue.
@@ -103,12 +103,12 @@ type MutationStorage interface {
 	// ReadPage returns mutations in the interval (start, end] for mapID.
 	// pageSize specifies the maximum number of items to return.
 	// Returns the maximum sequence number returned.
-	ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error)
+	ReadPage(ctx context.Context, domainID string, start, end int64, pageSize int32) (int64, []*pb.Entry, error)
 	// ReadBatch returns mutations in the interval (start, ∞] for mapID.
 	// ReadBatch will not return more than batchSize entries.
 	// Returns the maximum sequence number returned.
-	ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*QueueMessage, error)
+	ReadBatch(ctx context.Context, domainID string, start int64, batchSize int32) (int64, []*QueueMessage, error)
 	// Write saves the mutation in the database. Write returns the sequence
 	// number that is written.
-	Write(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) (int64, error)
+	Write(ctx context.Context, domainID string, mutation *pb.EntryUpdate) (int64, error)
 }

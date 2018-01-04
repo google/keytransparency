@@ -50,6 +50,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	domaindef "github.com/google/keytransparency/core/domain"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 	_ "github.com/mattn/go-sqlite3"                 // Use sqlite database for testing.
@@ -120,7 +121,7 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("Failed to create domain storage: %v", err)
 	}
 	adminSvr := adminserver.New(domainStorage, mapEnv.AdminClient, mapEnv.AdminClient, vrfKeyGen)
-	domain, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
+	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
 		DomainId:    domainID,
 		MinInterval: ptypes.DurationProto(1 * time.Second),
 		MaxInterval: ptypes.DurationProto(5 * time.Second),
@@ -129,13 +130,13 @@ func NewEnv(t *testing.T) *Env {
 		t.Fatalf("CreateDomain(): %v", err)
 	}
 
-	mapID := domain.Map.TreeId
-	logID := domain.Log.TreeId
-	mapPubKey, err := der.UnmarshalPublicKey(domain.Map.GetPublicKey().GetDer())
+	mapID := domainPB.Map.TreeId
+	logID := domainPB.Log.TreeId
+	mapPubKey, err := der.UnmarshalPublicKey(domainPB.Map.GetPublicKey().GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load signing keypair: %v", err)
 	}
-	vrfPub, err := p256.NewVRFVerifierFromRawKey(domain.Vrf.GetDer())
+	vrfPub, err := p256.NewVRFVerifierFromRawKey(domainPB.Vrf.GetDer())
 	if err != nil {
 		t.Fatalf("Failed to load vrf pubkey: %v", err)
 	}
@@ -149,16 +150,21 @@ func NewEnv(t *testing.T) *Env {
 	authz := authorization.New()
 	tlog := fake.NewTrillianLogClient()
 
+	queue := mutator.MutationQueue(mutations)
 	server := keyserver.New(tlog, mapEnv.MapClient, mapEnv.AdminClient,
-		entry.New(), auth, authz, domainStorage, mutations, mutations)
+		entry.New(), auth, authz, domainStorage, queue, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	queue := mutator.MutationQueue(mutations)
 	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, entry.New(), mutations, queue)
 	// Only sequence when explicitly asked with receiver.Flush()
-	receiver := seq.NewReceiver(ctx, logID, mapID, 60*time.Hour, 60*time.Hour)
+	d := &domaindef.Domain{
+		Domain: domainID,
+		LogID:  logID,
+		MapID:  mapID,
+	}
+	receiver := seq.NewReceiver(ctx, d, 60*time.Hour, 60*time.Hour)
 	receiver.Flush(ctx)
 
 	addr, lis := Listen(t)
@@ -182,7 +188,7 @@ func NewEnv(t *testing.T) *Env {
 		Signer:     seq,
 		db:         sqldb,
 		Cli:        ktClient,
-		Domain:     domain,
+		Domain:     domainPB,
 		Receiver:   receiver,
 	}
 }
