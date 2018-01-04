@@ -132,8 +132,8 @@ func (s *Sequencer) Initialize(ctx context.Context, logID, mapID int64) error {
 	return nil
 }
 
-// StartSequencingAll starts sequencing processes for all domains.
-func (s *Sequencer) StartSequencingAll(ctx context.Context, refresh time.Duration) error {
+// ListenForNewDomains starts receivers for all domains and periodically checks for new domains.
+func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Duration) error {
 	ticker := time.NewTicker(refresh)
 	defer func() { ticker.Stop() }()
 
@@ -168,9 +168,10 @@ func (s *Sequencer) NewReceiver(ctx context.Context, logID, mapID int64, minInte
 		MapId: mapID,
 	})
 	if err != nil {
+		// TODO(gbelvin): I don't think this initialization block is needed anymore.
 		glog.Infof("GetSignedMapRoot failed: %v", err)
 		// Immediately create new epoch and write new sth:
-		if err := s.CreateEpoch(cctx, logID, mapID, nil); err != nil {
+		if err := s.createEpoch(cctx, logID, mapID, nil); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		// Request map head again to get the exact time it was created:
@@ -192,7 +193,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, logID, mapID int64, minInte
 	start := meta.GetHighestFullyCompletedSeq()
 
 	return s.queue.NewReceiver(ctx, last, mapID, start, func(mutations []*mutator.QueueMessage) error {
-		return s.CreateEpoch(ctx, logID, mapID, mutations)
+		return s.createEpoch(ctx, logID, mapID, mutations)
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: MaxBatchSize,
 		Period:       minInterval,
@@ -264,8 +265,8 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 	return ret, nil
 }
 
-// CreateEpoch signs the current map head.
-func (s *Sequencer) CreateEpoch(ctx context.Context, logID, mapID int64, mutations []*mutator.QueueMessage) error {
+// createEpoch signs the current map head.
+func (s *Sequencer) createEpoch(ctx context.Context, logID, mapID int64, mutations []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(mutations))
 	start := time.Now()
 	// Get the current root.

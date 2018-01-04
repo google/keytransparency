@@ -99,7 +99,7 @@ func main() {
 
 	// Run servers
 	ctx := context.Background()
-	signer.StartSequencingAll(ctx, *refresh)
+	signer.ListenForNewDomains(ctx, *refresh)
 	run(adminServer)
 
 	glog.Errorf("Signer exiting")
