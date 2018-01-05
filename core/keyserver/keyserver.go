@@ -44,7 +44,7 @@ type Server struct {
 	tadmin    tpb.TrillianAdminClient
 	auth      authentication.Authenticator
 	authz     authorization.Authorization
-	mutator   mutator.Mutator
+	mutator   mutator.Func
 	domains   domain.Storage
 	queue     mutator.MutationQueue
 	mutations mutator.MutationStorage
@@ -54,7 +54,7 @@ type Server struct {
 func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	tadmin tpb.TrillianAdminClient,
-	mutator mutator.Mutator,
+	mutator mutator.Func,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
 	domains domain.Storage,

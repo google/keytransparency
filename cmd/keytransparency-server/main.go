@@ -23,6 +23,7 @@ import (
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/domain"
@@ -103,8 +104,6 @@ func main() {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
 
-	mutator := entry.New()
-
 	// Connect to log and map server.
 	tconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
 	if err != nil {
@@ -119,8 +118,9 @@ func main() {
 	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
+	queue := mutator.MutationQueue(mutations)
 	ksvr := keyserver.New(tlog, tmap, tadmin,
-		mutator, auth, authz, domains, mutations, mutations)
+		entry.New(), auth, authz, domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),

@@ -39,19 +39,19 @@ func TestRecieverChan(t *testing.T) {
 	fake := make(chan time.Time, 10)
 	now := time.Now()
 	for _, tc := range []struct {
-		desc  string
-		send  int
-		start int64
-		last  time.Time
-		C     chan time.Time
-		want  int
+		desc      string
+		send      int
+		start     int64
+		last      time.Time
+		C         chan time.Time
+		wantCalls int
 	}{
-		{desc: "Do nothing", want: 0, last: now, C: fake},
-		{desc: "About to blow MMD", want: 1, last: now.Add(max * -2), C: fake},
-		{desc: "Max tick", want: 1, last: now, C: maxC},
-		{desc: "Min tick, no data", want: 0, last: now, C: minC},
-		{desc: "Min tick, some data", want: 1, send: 1, last: now, C: minC},
-		{desc: "Min tick, multiple batches", want: 2, send: 2, start: 1, last: now, C: minC},
+		{desc: "Do nothing", wantCalls: 0, last: now, C: fake},
+		{desc: "About to blow MMD", wantCalls: 1, last: now.Add(max * -2), C: fake},
+		{desc: "Max tick", wantCalls: 1, last: now, C: maxC},
+		{desc: "Min tick, no data", wantCalls: 0, last: now, C: minC},
+		{desc: "Min tick, some data", wantCalls: 1, send: 1, last: now, C: minC},
+		{desc: "Min tick, multiple batches", wantCalls: 2, send: 2, start: 1, last: now, C: minC},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			for i := 0; i < tc.send; i++ {
@@ -61,9 +61,9 @@ func TestRecieverChan(t *testing.T) {
 			}
 
 			var wg sync.WaitGroup
-			wg.Add(tc.want)
+			wg.Add(tc.wantCalls)
 			count := 0
-			receiver := m.NewReceiver(ctx, tc.last, mapID, tc.start, func(msgs []*mutator.QueueMessage) error {
+			r, ok := m.NewReceiver(ctx, tc.last, mapID, tc.start, func(msgs []*mutator.QueueMessage) error {
 				count++
 				wg.Done()
 				t.Logf("Callback %v", count)
@@ -75,11 +75,9 @@ func TestRecieverChan(t *testing.T) {
 				MaxBatchSize: 1,
 				Period:       min,
 				MaxPeriod:    max,
-			})
-			// Take control of channels.
-			r, ok := (receiver).(*Receiver)
+			}).(*Receiver)
 			if !ok {
-				t.Fatalf("reciever is type %T", receiver)
+				t.Fatalf("receiver is: %T", r)
 			}
 			r.ticker.C = minC
 			r.maxTicker.C = maxC
@@ -88,8 +86,8 @@ func TestRecieverChan(t *testing.T) {
 			wg.Wait()
 			r.Close()
 
-			if got, want := count, tc.want; got != want {
-				t.Errorf("recieveFunc called %d times, want %v", got, want)
+			if got, want := count, tc.wantCalls; got != want {
+				t.Errorf("receiveFunc called %d times, want %v", got, want)
 			}
 		})
 	}

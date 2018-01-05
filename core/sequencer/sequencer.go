@@ -69,30 +69,29 @@ func init() {
 
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
-	domains   domain.Storage
-	tmap      trillian.TrillianMapClient
-	tlog      trillian.TrillianLogClient
-	mutator   mutator.Mutator
-	mutations mutator.MutationStorage
-	queue     mutator.MutationReceiver
-	receivers map[string]mutator.Receiver
+	domains     domain.Storage
+	tmap        trillian.TrillianMapClient
+	tlog        trillian.TrillianLogClient
+	mutatorFunc mutator.Func
+	mutations   mutator.MutationStorage
+	queue       mutator.MutationQueue
+	receivers   map[string]mutator.Receiver
 }
 
 // New creates a new instance of the signer.
 func New(domains domain.Storage,
 	tmap trillian.TrillianMapClient,
 	tlog trillian.TrillianLogClient,
-	mutatorF mutator.Mutator,
-	mutations mutator.MutationStorage,
-	queue mutator.MutationReceiver) *Sequencer {
+	mutatorFunc mutator.Func, mutations mutator.MutationStorage,
+	queue mutator.MutationQueue) *Sequencer {
 	return &Sequencer{
-		domains:   domains,
-		tmap:      tmap,
-		tlog:      tlog,
-		mutator:   mutatorF,
-		mutations: mutations,
-		queue:     queue,
-		receivers: make(map[string]mutator.Receiver),
+		domains:     domains,
+		tmap:        tmap,
+		tlog:        tlog,
+		mutatorFunc: mutatorFunc,
+		mutations:   mutations,
+		queue:       queue,
+		receivers:   make(map[string]mutator.Receiver),
 	}
 }
 
@@ -159,11 +158,11 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 // NewReceiver creates a new receiver for mapID.
 // New epochs will be created at least once per maxInterval and as often as minInterval.
 func (s *Sequencer) NewReceiver(ctx context.Context, logID, mapID int64, minInterval, maxInterval time.Duration) mutator.Receiver {
-	if err := s.Initialize(ctx, logID, mapID); err != nil {
+	cctx, cancel := context.WithTimeout(ctx, minInterval)
+	if err := s.Initialize(cctx, logID, mapID); err != nil {
 		glog.Errorf("Initialize() failed: %v", err)
 	}
 	var rootResp *trillian.GetSignedMapRootResponse
-	cctx, cancel := context.WithTimeout(ctx, minInterval)
 	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &trillian.GetSignedMapRootRequest{
 		MapId: mapID,
 	})
@@ -171,7 +170,8 @@ func (s *Sequencer) NewReceiver(ctx context.Context, logID, mapID int64, minInte
 		// TODO(gbelvin): I don't think this initialization block is needed anymore.
 		glog.Infof("GetSignedMapRoot failed: %v", err)
 		// Immediately create new epoch and write new sth:
-		if err := s.createEpoch(cctx, logID, mapID, nil); err != nil {
+		empty := []*mutator.QueueMessage{}
+		if err := s.createEpoch(cctx, logID, mapID, empty); err != nil {
 			glog.Errorf("CreateEpoch failed: %v", err)
 		}
 		// Request map head again to get the exact time it was created:
@@ -233,7 +233,7 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 			}
 		}
 
-		newValue, err := s.mutator.Mutate(oldValue, m.Mutation)
+		newValue, err := s.mutatorFunc.Mutate(oldValue, m.Mutation)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
 			continue // A bad mutation should not make the whole batch fail.
@@ -320,15 +320,15 @@ func (s *Sequencer) createEpoch(ctx context.Context, logID, mapID int64, mutatio
 	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves",
 		len(mutations), len(leaves))
 
-	var max int64
+	var maxID int64
 	for _, m := range mutations {
-		if m.ID > max {
-			max = m.ID
+		if m.ID > maxID {
+			maxID = m.ID
 		}
 	}
 
 	metaAny, err := internal.MetadataAsAny(&pb.MapperMetadata{
-		HighestFullyCompletedSeq: max,
+		HighestFullyCompletedSeq: maxID,
 	})
 	if err != nil {
 		return err
@@ -346,7 +346,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, logID, mapID int64, mutatio
 		return err
 	}
 	revision = setResp.GetMapRoot().GetMapRevision()
-	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, max)
+	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, maxID)
 
 	// Put SignedMapHead in an append only log.
 	if err := queueLogLeaf(ctx, s.tlog, logID, setResp.GetMapRoot()); err != nil {

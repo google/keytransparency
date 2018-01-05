@@ -50,8 +50,8 @@ var (
 	ErrUnauthorized = errors.New("mutation: unauthorized")
 )
 
-// Mutator verifies mutations and transforms values in the map.
-type Mutator interface {
+// Func verifies mutations and transforms values in the map.
+type Func interface {
 	// Mutate verifies that this is a valid mutation for this item and
 	// applies mutation to value.
 	Mutate(value, mutation proto.Message) (proto.Message, error)
@@ -64,38 +64,38 @@ type QueueMessage struct {
 	ExtraData *pb.Committed
 }
 
-// MutationQueue provides (at least) a roughly time ordered queue that can support
-// multiple writers.  Replays, drops, and duplicate delivery must be supported by
+// MutationQueue provides (at minimum) a roughly time ordered queue that can support
+// multiple writers.  Replays, drops, and duplicate delivery must be tolerated by
 // receivers.
 type MutationQueue interface {
 	// Send submits an item to the queue
 	Send(ctx context.Context, mapID int64, mutation *pb.EntryUpdate) error
+	// NewReceiver starts receiving messages sent to the queue. As batches become ready, receiveFunc will be called.
+	NewReceiver(ctx context.Context, last time.Time, mapID, start int64, receiveFunc ReceiveFunc, rOpts ReceiverOptions) Receiver
 }
+
+// ReceiveFunc receives updates from the queue.
+type ReceiveFunc func([]*QueueMessage) error
 
 // Receiver receives messages from a queue.
 type Receiver interface {
 	// Close stops the receiver and returns only when all callbacks are complete.
 	Close()
 	// Flush sends any waiting queue items.
-	Flush()
+	Flush(context.Context)
 }
 
 // ReceiverOptions holds options for setting up a receiver.
 type ReceiverOptions struct {
 	// MaxBatchSize is the maximum number of items allowed in a batch.
 	MaxBatchSize int32
-	// Period is the typical amount of type between batches.
-	// This time will decrease under load and increase to MaxPeriod without load.
+	// Period is the typical amount of time between batches.
+	// If there are more than MaxBatchSize items, receiveFunc will be called
+	// repeatedly with no delay until the load decreases under MaxBatchSize.
 	Period time.Duration
 	// MaxPeriod is the maximum allowed time between batches.
 	// If no data has been received in this period, an empty batch will be sent.
 	MaxPeriod time.Duration
-}
-
-// MutationReceiver creates new receiver.
-type MutationReceiver interface {
-	// NewReceiver starts receiving messages sent to the queue. As batches become ready, recieveFunc will be called.
-	NewReceiver(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*QueueMessage) error, ropts ReceiverOptions) Receiver
 }
 
 // MutationStorage reads and writes mutations to the database.

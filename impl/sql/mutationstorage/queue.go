@@ -45,58 +45,58 @@ func (m *Mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdat
 }
 
 // NewReceiver starts receiving messages sent to the queue. As batches become ready, recieveFunc will be called.
-func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*mutator.QueueMessage) error, ropts mutator.ReceiverOptions) mutator.Receiver {
+func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, mapID, start int64, recieveFunc mutator.ReceiveFunc, rOpts mutator.ReceiverOptions) mutator.Receiver {
 	r := &Receiver{
-		m:           m,
+		store:       m,
 		start:       start,
 		mapID:       mapID,
-		opts:        ropts,
-		ticker:      time.NewTicker(ropts.Period),
-		maxTicker:   time.NewTicker(ropts.MaxPeriod),
-		done:        make(chan interface{}),
+		opts:        rOpts,
 		more:        make(chan time.Time, 1),
+		ticker:      time.NewTicker(rOpts.Period),
+		maxTicker:   time.NewTicker(rOpts.MaxPeriod),
+		done:        make(chan interface{}),
 		recieveFunc: recieveFunc,
 	}
 
 	go r.run(ctx, last)
-	r.finished.Add(1)
+	r.running.Add(1)
 	return r
 }
 
 // Receiver receives messages from a queue.
 type Receiver struct {
-	m           mutator.MutationStorage
+	store       mutator.MutationStorage
 	start       int64
 	mapID       int64
-	recieveFunc func([]*mutator.QueueMessage) error
+	recieveFunc mutator.ReceiveFunc
 	opts        mutator.ReceiverOptions
+	more        chan time.Time
 	ticker      *time.Ticker
 	maxTicker   *time.Ticker
 	done        chan interface{}
-	more        chan time.Time
-	finished    sync.WaitGroup
+	running     sync.WaitGroup
 }
 
 // Close stops the receiver and returns only when all callbacks are complete.
 func (r *Receiver) Close() {
 	close(r.done)
-	r.finished.Wait()
+	r.running.Wait()
 }
 
 // Flush sends any waiting queue items.
-func (r *Receiver) Flush() {
-	r.sendBatch(context.Background(), true)
+func (r *Receiver) Flush(ctx context.Context) {
+	r.sendBatch(ctx, true)
 }
 
 func (r *Receiver) run(ctx context.Context, last time.Time) {
-	defer r.finished.Done()
+	defer r.running.Done()
 
 	if got, want := time.Since(last), r.opts.MaxPeriod; got > want {
 		glog.Warningf("MMD Blown: Time since last revision: %v, want < %v", got, want)
 	}
 
 	if time.Since(last) > (r.opts.MaxPeriod - r.opts.Period) {
-		r.sendBatch(ctx, true) // We will be over due for an epoch soon.
+		r.sendBatch(ctx, true) // We will be overdue for an epoch soon.
 	}
 
 	for {
@@ -122,7 +122,7 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 
 // sendBatch sends up to batchSize items to the receiver. Returns the number of sent items.
 func (r *Receiver) sendBatch(ctx context.Context, sendEmpty bool) int32 {
-	max, ms, err := r.m.ReadBatch(ctx, r.mapID, r.start, r.opts.MaxBatchSize)
+	max, ms, err := r.store.ReadBatch(ctx, r.mapID, r.start, r.opts.MaxBatchSize)
 	if err != nil {
 		glog.Errorf("ReadBatch(%v): %v", r.start, err)
 		return 0

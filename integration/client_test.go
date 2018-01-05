@@ -181,7 +181,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 				if got, want := err, grpcc.ErrRetry; got != want {
 					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 				}
-				env.Receiver.Flush()
+				env.Receiver.Flush(tc.ctx)
 				if err := env.Client.Retry(tc.ctx, m, tc.signers); err != nil {
 					t.Errorf("Retry(%v): %v, want nil", m, err)
 				}
@@ -239,7 +239,7 @@ func TestUpdateValidation(t *testing.T) {
 			if got, want := err, grpcc.ErrRetry; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			env.Receiver.Flush()
+			env.Receiver.Flush(tc.ctx)
 			if err := env.Client.Retry(tc.ctx, m, signers); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", m, err)
 			}
@@ -325,7 +325,7 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}
-		e.Receiver.Flush()
+		e.Receiver.Flush(ctx)
 	}
 	return nil
 }

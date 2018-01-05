@@ -155,11 +155,11 @@ func NewEnv(t *testing.T) *Env {
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	queue := mutator.MutationReceiver(mutations)
+	queue := mutator.MutationQueue(mutations)
 	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, entry.New(), mutations, queue)
 	// Only sequence when explicitly asked with receiver.Flush()
 	receiver := seq.NewReceiver(ctx, logID, mapID, 60*time.Hour, 60*time.Hour)
-	receiver.Flush()
+	receiver.Flush(ctx)
 
 	addr, lis := Listen(t)
 	go gsvr.Serve(lis)

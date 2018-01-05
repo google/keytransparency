@@ -114,7 +114,7 @@ func TestMonitor(t *testing.T) {
 			}
 		}
 
-		env.Receiver.Flush()
+		env.Receiver.Flush(ctx)
 
 		domainID := env.Domain.DomainId
 		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)

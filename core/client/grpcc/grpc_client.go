@@ -80,7 +80,7 @@ type Client struct {
 	cli        pb.KeyTransparencyClient
 	domainID   string
 	kt         *kt.Verifier
-	mutator    mutator.Mutator
+	mutator    mutator.Func
 	RetryCount int
 	RetryDelay time.Duration
 	trusted    trillian.SignedLogRoot
