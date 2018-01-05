@@ -16,7 +16,7 @@ syntax = "proto3";
 
 option go_package = "github.com/google/keytransparency/core/api/v1/keytransparency_proto";
 
-// Key Transparency 
+// Key Transparency
 //
 // The Key Transparency API consists of a map of user names to public
 // keys. Each user name also has a history of public keys that have been
