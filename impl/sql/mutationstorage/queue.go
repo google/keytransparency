@@ -19,11 +19,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/keytransparency/core/mutator"
+
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	"github.com/google/keytransparency/core/mutator"
 )
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
@@ -47,17 +48,18 @@ func (m *Mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdat
 func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, mapID, start int64, recieveFunc func([]*mutator.QueueMessage) error, ropts mutator.ReceiverOptions) mutator.Receiver {
 	r := &Receiver{
 		m:           m,
+		start:       start,
 		mapID:       mapID,
 		opts:        ropts,
 		ticker:      time.NewTicker(ropts.Period),
 		maxTicker:   time.NewTicker(ropts.MaxPeriod),
 		done:        make(chan interface{}),
-		more:        make(chan bool, 1),
+		more:        make(chan time.Time, 1),
 		recieveFunc: recieveFunc,
 	}
 
 	go r.run(ctx, last)
-
+	r.finished.Add(1)
 	return r
 }
 
@@ -71,7 +73,7 @@ type Receiver struct {
 	ticker      *time.Ticker
 	maxTicker   *time.Ticker
 	done        chan interface{}
-	more        chan bool
+	more        chan time.Time
 	finished    sync.WaitGroup
 }
 
@@ -87,8 +89,11 @@ func (r *Receiver) Flush() {
 }
 
 func (r *Receiver) run(ctx context.Context, last time.Time) {
-	r.finished.Add(1)
 	defer r.finished.Done()
+
+	if got, want := time.Since(last), r.opts.MaxPeriod; got > want {
+		glog.Warningf("MMD Blown: Time since last revision: %v, want < %v", got, want)
+	}
 
 	if time.Since(last) > (r.opts.MaxPeriod - r.opts.Period) {
 		r.sendBatch(ctx, true) // We will be over due for an epoch soon.
@@ -108,9 +113,9 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 		case <-r.done:
 			return
 		}
-		if count > r.opts.MaxBatchSize {
+		if count >= r.opts.MaxBatchSize {
 			// Continue sending until we drop below batch size.
-			r.more <- true
+			r.more <- time.Now()
 		}
 	}
 }

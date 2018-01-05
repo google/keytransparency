@@ -16,53 +16,81 @@ package mutationstorage
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
+
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
-var (
-	min = time.Millisecond * 2
-	max = time.Millisecond * 10
-)
-
-func TestRecieverTime(t *testing.T) {
+func TestRecieverChan(t *testing.T) {
 	ctx := context.Background()
 	m, err := New(newDB(t))
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
 
+	min := 10 * time.Hour
+	max := 60 * time.Hour
+	minC := make(chan time.Time)
+	maxC := make(chan time.Time)
+	fake := make(chan time.Time, 10)
 	now := time.Now()
-	for i, tc := range []struct {
-		want int
-		last time.Time
-		wait time.Duration
+	for _, tc := range []struct {
+		desc  string
+		send  int
+		start int64
+		last  time.Time
+		C     chan time.Time
+		want  int
 	}{
-		// Fresh start (last successful epoch not yet created):
-		{want: 0, last: now, wait: min * 2},
-		{want: 1, last: now, wait: max + min},
-		{want: 2, last: now, wait: max*2 - min},
-		{want: 4, last: now, wait: max*3 + min},
-		// Resume from last epoch in the past:
-		{want: 1, last: now.Add(-max), wait: max / 2},
-		{want: 1, last: now.Add(max * -6), wait: max / 2},
+		{desc: "Do nothing", want: 0, last: now, C: fake},
+		{desc: "About to blow MMD", want: 1, last: now.Add(max * -2), C: fake},
+		{desc: "Max tick", want: 1, last: now, C: maxC},
+		{desc: "Min tick, no data", want: 0, last: now, C: minC},
+		{desc: "Min tick, some data", want: 1, send: 1, last: now, C: minC},
+		{desc: "Min tick, multiple batches", want: 2, send: 2, start: 1, last: now, C: minC},
 	} {
-		var count int
-		start := int64(0)
-		r := m.NewReceiver(ctx, tc.last, mapID, start, func([]*mutator.QueueMessage) error {
-			count++
-			return nil
-		}, mutator.ReceiverOptions{
-			MaxBatchSize: 1,
-			Period:       min,
-			MaxPeriod:    max,
+		t.Run(tc.desc, func(t *testing.T) {
+			for i := 0; i < tc.send; i++ {
+				if err := m.Send(ctx, mapID, &pb.EntryUpdate{}); err != nil {
+					t.Fatalf("Could not fill queue: %v", err)
+				}
+			}
+
+			var wg sync.WaitGroup
+			wg.Add(tc.want)
+			count := 0
+			receiver := m.NewReceiver(ctx, tc.last, mapID, tc.start, func(msgs []*mutator.QueueMessage) error {
+				count++
+				wg.Done()
+				t.Logf("Callback %v", count)
+				for _, i := range msgs {
+					t.Logf("   with item %v", i.ID)
+				}
+				return nil
+			}, mutator.ReceiverOptions{
+				MaxBatchSize: 1,
+				Period:       min,
+				MaxPeriod:    max,
+			})
+			// Take control of channels.
+			r, ok := (receiver).(*Receiver)
+			if !ok {
+				t.Fatalf("reciever is type %T", receiver)
+			}
+			r.ticker.C = minC
+			r.maxTicker.C = maxC
+
+			tc.C <- time.Now()
+			wg.Wait()
+			r.Close()
+
+			if got, want := count, tc.want; got != want {
+				t.Errorf("recieveFunc called %d times, want %v", got, want)
+			}
 		})
-		time.Sleep(tc.wait)
-		r.Close()
-		if got, want := count, tc.want; got != want {
-			t.Errorf("test: %d: recieveFunc called %d times, want %v", i, got, want)
-		}
 	}
 }
