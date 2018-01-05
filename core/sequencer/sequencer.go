@@ -348,6 +348,8 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, muta
 	revision = setResp.GetMapRoot().GetMapRevision()
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, maxID)
 
+	// Write mutations associated with this epoch.
+
 	// Put SignedMapHead in an append only log.
 	if err := queueLogLeaf(ctx, s.tlog, domain.LogID, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
