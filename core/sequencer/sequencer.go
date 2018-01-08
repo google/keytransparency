@@ -349,6 +349,13 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, muta
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, maxID)
 
 	// Write mutations associated with this epoch.
+	msgs := make([]*pb.Entry, 0, len(mutations))
+	for _, m := range mutations {
+		msgs = append(msgs, m.Mutation)
+	}
+	if err := mutations.WriteBatch(ctx, mapID, revision, msgs); err != nil {
+		return err
+	}
 
 	// Put SignedMapHead in an append only log.
 	if err := queueLogLeaf(ctx, s.tlog, domain.LogID, setResp.GetMapRoot()); err != nil {

@@ -21,25 +21,47 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/google/keytransparency/core/mutator"
-
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
 const (
-	insertExpr = `
-	INSERT INTO Mutations (DomainID, MIndex, Mutation)
-	VALUES (?, ?, ?);`
-	readRangeExpr = `
+	insertMutationsExpr = `
+	INSERT INTO Mutations (DomainID, Revision, Sequence, Mutation)
+	VALUES (?, ?, ?, ?);`
+	readMutationsExpr = `
   	SELECT Sequence, Mutation FROM Mutations
-  	WHERE DomainID = ? AND Sequence > ? AND Sequence <= ?
+  	WHERE DomainID = ? AND Revision = ? AND Sequence >= ?
   	ORDER BY Sequence ASC LIMIT ?;`
-	readAllExpr = `
- 	SELECT Sequence, Mutation FROM Mutations
- 	WHERE DomainID = ? AND Sequence > ?
-	ORDER BY Sequence ASC LIMIT ?;`
+	insertQueueExpr = `
+	INSERT INTO Queue (DomainID, Time, Mutation)
+	VALUES (?, ?, ?);`
+	readQueueExpr = `
+ 	SELECT Time, Mutation FROM Queue
+ 	WHERE DomainID = ?
+	ORDER BY Time ASC LIMIT ?;`
+	deleteQueueExpr = `
+	DELETE FROM Queue
+	WHERE DomainID = ? AND Time = ?;`
+)
+
+var (
+	createStmt = []string{
+		`CREATE TABLE IF NOT EXISTS Mutations (
+		DomainID VARCHAR(30)   NOT NULL,
+		Revision BIGINT        NOT NULL,
+		Sequence INTEGER       NOT NULL,
+		Mutation BLOB          NOT NULL,
+		PRIMARY KEY(DomainID, Revision, Sequence)
+	);`,
+		`CREATE TABLE IF NOT EXISTS Queue (
+		DomainID VARCHAR(30)   NOT NULL,
+		Time     BIGINT        NOT NULL,
+		Mutation BLOB          NOT NULL,
+		PRIMARY KEY(DomainID, Time)
+	);`,
+	}
 )
 
 // Mutations implements mutator.MutationStorage and mutator.MutationQueue.
@@ -53,11 +75,22 @@ func New(db *sql.DB) (*Mutations, error) {
 		db: db,
 	}
 
-	// Create tables and map entry.
-	if err := m.create(); err != nil {
+	// Create tables.
+	if err := m.createTables(); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+// createTables creates new database tables.
+func (m *Mutations) createTables() error {
+	for _, stmt := range createStmt {
+		_, err := m.db.Exec(stmt)
+		if err != nil {
+			return fmt.Errorf("Failed to create mutation tables: %v", err)
+		}
+	}
+	return nil
 }
 
 // ReadPage reads all mutations for a specific given domainID and sequence range.
@@ -65,44 +98,41 @@ func New(db *sql.DB) (*Mutations, error) {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *Mutations) ReadPage(ctx context.Context, domainID string, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
-	readStmt, err := m.db.Prepare(readRangeExpr)
+func (m *Mutations) ReadPage(ctx context.Context, domainID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error) {
+	readStmt, err := m.db.Prepare(readMutationsExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, domainID, start, end, pageSize)
+	rows, err := readStmt.QueryContext(ctx, domainID, revision, start, pageSize)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer rows.Close()
-	max, queueMsgs, err := readRows(rows)
-	mutations := make([]*pb.Entry, 0, len(queueMsgs))
-	for _, e := range queueMsgs {
-		mutations = append(mutations, e.Mutation)
-	}
-	return max, mutations, err
+	return readMutations(rows)
 }
 
-// ReadBatch reads all mutations starting from the given sequence number. Note that
-// startSequence is not included in the result. ReadAll also returns the maximum
-// sequence number read.
-func (m *Mutations) ReadBatch(ctx context.Context, domainID string, start int64, batchSize int32) (int64, []*mutator.QueueMessage, error) {
-	readStmt, err := m.db.Prepare(readAllExpr)
+// WriteBatch saves the mutations in the database.
+func (m *Mutations) WriteBatch(ctx context.Context, domainID string, revision int64, mutations []*pb.Entry) error {
+	writeStmt, err := m.db.Prepare(insertMutationsExpr)
 	if err != nil {
-		return 0, nil, err
+		return err
 	}
-	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, domainID, start, batchSize)
-	if err != nil {
-		return 0, nil, err
+	defer writeStmt.Close()
+	for i, m := range mutations {
+		mData, err := proto.Marshal(m)
+		if err != nil {
+			return err
+		}
+		if _, err := writeStmt.ExecContext(ctx, domainID, revision, i, mData); err != nil {
+			return err
+		}
 	}
-	defer rows.Close()
-	return readRows(rows)
+	return nil
 }
 
-func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
-	results := make([]*mutator.QueueMessage, 0)
+func readMutations(rows *sql.Rows) (int64, []*pb.Entry, error) {
+	results := make([]*pb.Entry, 0)
 	maxSequence := int64(0)
 	for rows.Next() {
 		var sequence int64
@@ -113,53 +143,14 @@ func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
 		if sequence > maxSequence {
 			maxSequence = sequence
 		}
-		entryUpdate := new(pb.EntryUpdate)
-		if err := proto.Unmarshal(mData, entryUpdate); err != nil {
+		entry := new(pb.Entry)
+		if err := proto.Unmarshal(mData, entry); err != nil {
 			return 0, nil, err
 		}
-		results = append(results, &mutator.QueueMessage{
-			ID:        sequence,
-			Mutation:  entryUpdate.Mutation,
-			ExtraData: entryUpdate.Committed,
-		})
+		results = append(results, entry)
 	}
 	if err := rows.Err(); err != nil {
 		return 0, nil, err
 	}
 	return maxSequence, results, nil
-}
-
-// Write saves the update in the database. Write returns the auto-inserted sequence number.
-func (m *Mutations) Write(ctx context.Context, domainID string, update *pb.EntryUpdate) (int64, error) {
-	index := update.GetMutation().GetIndex()
-	mData, err := proto.Marshal(update)
-	if err != nil {
-		return 0, err
-	}
-
-	writeStmt, err := m.db.Prepare(insertExpr)
-	if err != nil {
-		return 0, err
-	}
-	defer writeStmt.Close()
-	result, err := writeStmt.ExecContext(ctx, domainID, index, mData)
-	if err != nil {
-		return 0, err
-	}
-	sequence, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return sequence, nil
-}
-
-// Create creates new database tables.
-func (m *Mutations) create() error {
-	for _, stmt := range createStmt {
-		_, err := m.db.Exec(stmt)
-		if err != nil {
-			return fmt.Errorf("Failed to create mutation tables: %v", err)
-		}
-	}
-	return nil
 }

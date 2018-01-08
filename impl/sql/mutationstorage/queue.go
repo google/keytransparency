@@ -16,6 +16,7 @@ package mutationstorage
 
 import (
 	"context"
+	"database/sql"
 	"sync"
 	"time"
 
@@ -30,25 +31,23 @@ import (
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
 	glog.Infof("queue.Send(%v, <mutation>)", domainID)
-	index := update.GetMutation().GetIndex()
 	mData, err := proto.Marshal(update)
 	if err != nil {
 		return err
 	}
-	writeStmt, err := m.db.Prepare(insertExpr)
+	writeStmt, err := m.db.Prepare(insertQueueExpr)
 	if err != nil {
 		return err
 	}
 	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, domainID, index, mData)
+	_, err = writeStmt.ExecContext(ctx, domainID, time.Now().UnixNano(), mData)
 	return err
 }
 
 // NewReceiver starts receiving messages sent to the queue. As batches become ready, recieveFunc will be called.
-func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, domainID string, start int64, recieveFunc mutator.ReceiveFunc, rOpts mutator.ReceiverOptions) mutator.Receiver {
+func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, domainID string, recieveFunc mutator.ReceiveFunc, rOpts mutator.ReceiverOptions) mutator.Receiver {
 	r := &Receiver{
 		store:       m,
-		start:       start,
 		domainID:    domainID,
 		opts:        rOpts,
 		more:        make(chan time.Time, 1),
@@ -65,8 +64,7 @@ func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, domainID st
 
 // Receiver receives messages from a queue.
 type Receiver struct {
-	store       mutator.MutationStorage
-	start       int64
+	store       *Mutations
 	domainID    string
 	recieveFunc mutator.ReceiveFunc
 	opts        mutator.ReceiverOptions
@@ -122,9 +120,9 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 
 // sendBatch sends up to batchSize items to the receiver. Returns the number of sent items.
 func (r *Receiver) sendBatch(ctx context.Context, sendEmpty bool) int32 {
-	max, ms, err := r.store.ReadBatch(ctx, r.domainID, r.start, r.opts.MaxBatchSize)
+	ms, err := r.store.readQueue(ctx, r.domainID, r.opts.MaxBatchSize)
 	if err != nil {
-		glog.Errorf("ReadBatch(%v): %v", r.start, err)
+		glog.Errorf("readQueue(): %v", err)
 		return 0
 	}
 	if len(ms) == 0 && !sendEmpty {
@@ -139,7 +137,67 @@ func (r *Receiver) sendBatch(ctx context.Context, sendEmpty bool) int32 {
 	// We could put an ack'ed field in a QueueMessage object.
 	// But I don't think we need that level of granularity -- yet?
 
-	// Update our own high water mark.
-	r.start = max
+	// Delete old messages.
+	if err := r.store.deleteMessages(ctx, r.domainID, ms); err != nil {
+		glog.Errorf("deleteQueueMessages(%v, len(ms): %v): %v", r.domainID, len(ms), err)
+	}
+
 	return int32(len(ms))
+}
+
+// readQueue reads all mutations that are still in the queue up to batchSize.
+func (m *Mutations) readQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error) {
+	readStmt, err := m.db.Prepare(readQueueExpr)
+	if err != nil {
+		return nil, err
+	}
+	defer readStmt.Close()
+	rows, err := readStmt.QueryContext(ctx, domainID, batchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return readQueueMessages(rows)
+}
+
+func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
+	results := make([]*mutator.QueueMessage, 0)
+	for rows.Next() {
+		var timestamp int64
+		var mData []byte
+		if err := rows.Scan(&timestamp, &mData); err != nil {
+			return nil, err
+		}
+		entryUpdate := new(pb.EntryUpdate)
+		if err := proto.Unmarshal(mData, entryUpdate); err != nil {
+			return nil, err
+		}
+		results = append(results, &mutator.QueueMessage{
+			ID:        timestamp,
+			Mutation:  entryUpdate.Mutation,
+			ExtraData: entryUpdate.Committed,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func (m *Mutations) deleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error {
+	glog.Infof("queue.Delete(%v, <mutation>)", domainID)
+	delStmt, err := m.db.Prepare(deleteQueueExpr)
+	if err != nil {
+		return err
+	}
+	defer delStmt.Close()
+	var retErr error
+	for _, mutation := range mutations {
+		if _, err = delStmt.ExecContext(ctx, domainID, mutation.ID); err != nil {
+			// If an error occurs, take note, but continue deleting
+			// the other referenced mutations.
+			retErr = err
+		}
+	}
+	return retErr
 }
