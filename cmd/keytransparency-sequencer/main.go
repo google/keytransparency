@@ -98,9 +98,14 @@ func main() {
 	glog.Infof("Signer starting")
 
 	// Run servers
-	ctx := context.Background()
-	signer.ListenForNewDomains(ctx, *refresh)
+	cctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		if err := signer.ListenForNewDomains(cctx, *refresh); err != nil {
+			glog.Errorf("StartSequencingAll(): %v", err)
+		}
+	}()
 	run(adminServer)
+	cancel()
 
 	glog.Errorf("Signer exiting")
 }
