@@ -21,12 +21,12 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
-	"github.com/google/keytransparency/core/internal"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/merkle/hashers"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -54,11 +54,14 @@ hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
 )
 
 func mustMetadataAsAny(t *testing.T, meta *pb.MapperMetadata) *any.Any {
-	m, err := internal.MetadataAsAny(meta)
+	if meta == nil {
+		meta = &pb.MapperMetadata{}
+	}
+	metaAny, err := ptypes.MarshalAny(meta)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return m
+	return metaAny
 }
 
 // signs signs smr with s.

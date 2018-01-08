@@ -70,8 +70,8 @@ type QueueMessage struct {
 type MutationQueue interface {
 	// Send submits an item to the queue
 	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
-	// NewReceiver starts receiving messages sent to the queue. As batches become ready, recieveFunc will be called.
-	NewReceiver(ctx context.Context, last time.Time, domainID string, recieveFunc ReceiveFunc, ropts ReceiverOptions) Receiver
+	// NewReceiver starts receiving messages sent to the queue. As batches become ready, receiveFunc will be called.
+	NewReceiver(ctx context.Context, last time.Time, domainID string, receiveFunc ReceiveFunc, ropts ReceiverOptions) Receiver
 }
 
 // ReceiveFunc receives updates from the queue.
@@ -104,6 +104,6 @@ type MutationStorage interface {
 	// pageSize specifies the maximum number of items to return.
 	// Returns the maximum sequence number returned.
 	ReadPage(ctx context.Context, domainID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error)
-	// WriteBatch saves the mutations in the database.
+	// WriteBatch saves the mutations in the database under domainID/revision.
 	WriteBatch(ctx context.Context, domainID string, revision int64, mutation []*pb.Entry) error
 }

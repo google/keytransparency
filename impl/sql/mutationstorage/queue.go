@@ -185,7 +185,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
 }
 
 func (m *Mutations) deleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error {
-	glog.Infof("queue.Delete(%v, <mutation>)", domainID)
+	glog.V(4).Infof("queue.Delete(%v, <mutation>)", domainID)
 	delStmt, err := m.db.Prepare(deleteQueueExpr)
 	if err != nil {
 		return err

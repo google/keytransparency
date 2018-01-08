@@ -81,7 +81,8 @@ type Sequencer struct {
 func New(domains domain.Storage,
 	tmap trillian.TrillianMapClient,
 	tlog trillian.TrillianLogClient,
-	mutatorFunc mutator.Func, mutations mutator.MutationStorage,
+	mutatorFunc mutator.Func,
+	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue) *Sequencer {
 	return &Sequencer{
 		domains:     domains,
