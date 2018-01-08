@@ -105,7 +105,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, err
 	}
 	// Read mutations from the database.
-	maxSequence, entries, err := s.mutations.ReadPage(ctx, domain.MapID, lowestSeq, highestSeq, in.PageSize)
+	maxSequence, entries, err := s.mutations.ReadPage(ctx, domain.DomainID, lowestSeq, highestSeq, in.PageSize)
 	if err != nil {
 		glog.Errorf("mutations.ReadRange(%v, %v, %v): %v", lowestSeq, highestSeq, in.PageSize, err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")

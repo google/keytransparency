@@ -28,8 +28,8 @@ import (
 )
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
-func (m *Mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdate) error {
-	glog.Infof("queue.Send(%v, <mutation>)", mapID)
+func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
+	glog.Infof("queue.Send(%v, <mutation>)", domainID)
 	index := update.GetMutation().GetIndex()
 	mData, err := proto.Marshal(update)
 	if err != nil {
@@ -40,16 +40,16 @@ func (m *Mutations) Send(ctx context.Context, mapID int64, update *pb.EntryUpdat
 		return err
 	}
 	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, mapID, index, mData)
+	_, err = writeStmt.ExecContext(ctx, domainID, index, mData)
 	return err
 }
 
 // NewReceiver starts receiving messages sent to the queue. As batches become ready, recieveFunc will be called.
-func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, mapID, start int64, recieveFunc mutator.ReceiveFunc, rOpts mutator.ReceiverOptions) mutator.Receiver {
+func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, domainID string, start int64, recieveFunc mutator.ReceiveFunc, rOpts mutator.ReceiverOptions) mutator.Receiver {
 	r := &Receiver{
 		store:       m,
 		start:       start,
-		mapID:       mapID,
+		domainID:    domainID,
 		opts:        rOpts,
 		more:        make(chan time.Time, 1),
 		ticker:      time.NewTicker(rOpts.Period),
@@ -67,7 +67,7 @@ func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, mapID, star
 type Receiver struct {
 	store       mutator.MutationStorage
 	start       int64
-	mapID       int64
+	domainID    string
 	recieveFunc mutator.ReceiveFunc
 	opts        mutator.ReceiverOptions
 	more        chan time.Time
@@ -122,7 +122,7 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 
 // sendBatch sends up to batchSize items to the receiver. Returns the number of sent items.
 func (r *Receiver) sendBatch(ctx context.Context, sendEmpty bool) int32 {
-	max, ms, err := r.store.ReadBatch(ctx, r.mapID, r.start, r.opts.MaxBatchSize)
+	max, ms, err := r.store.ReadBatch(ctx, r.domainID, r.start, r.opts.MaxBatchSize)
 	if err != nil {
 		glog.Errorf("ReadBatch(%v): %v", r.start, err)
 		return 0

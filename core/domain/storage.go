@@ -25,10 +25,10 @@ import (
 
 // Domain stores configuration information for a single Key Transparency instance.
 type Domain struct {
-	Domain string
-	MapID  int64
-	LogID  int64
-	VRF    *keyspb.PublicKey
+	DomainID string
+	MapID    int64
+	LogID    int64
+	VRF      *keyspb.PublicKey
 
 	VRFPriv                  proto.Message
 	MinInterval, MaxInterval time.Duration

@@ -131,7 +131,7 @@ func (s *Server) fetchDomain(ctx context.Context, d *domain.Domain) (*pb.Domain,
 		return nil, err
 	}
 	return &pb.Domain{
-		DomainId:    d.Domain,
+		DomainId:    d.DomainID,
 		Log:         logTree,
 		Map:         mapTree,
 		Vrf:         d.VRF,
@@ -195,7 +195,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}
 
 	if err := s.domains.Write(ctx, &domain.Domain{
-		Domain:      in.GetDomainId(),
+		DomainID:    in.GetDomainId(),
 		MapID:       mapTree.TreeId,
 		LogID:       logTree.TreeId,
 		VRF:         vrfPublicPB,

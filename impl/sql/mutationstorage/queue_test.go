@@ -55,7 +55,7 @@ func TestRecieverChan(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			for i := 0; i < tc.send; i++ {
-				if err := m.Send(ctx, mapID, &pb.EntryUpdate{}); err != nil {
+				if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
 					t.Fatalf("Could not fill queue: %v", err)
 				}
 			}
@@ -63,13 +63,9 @@ func TestRecieverChan(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(tc.wantCalls)
 			count := 0
-			r, ok := m.NewReceiver(ctx, tc.last, mapID, tc.start, func(msgs []*mutator.QueueMessage) error {
+			r, ok := m.NewReceiver(ctx, tc.last, domainID, tc.start, func([]*mutator.QueueMessage) error {
 				count++
 				wg.Done()
-				t.Logf("Callback %v", count)
-				for _, i := range msgs {
-					t.Logf("   with item %v", i.ID)
-				}
 				return nil
 			}, mutator.ReceiverOptions{
 				MaxBatchSize: 1,

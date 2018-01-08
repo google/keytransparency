@@ -30,15 +30,15 @@ import (
 
 const (
 	insertExpr = `
-	INSERT INTO Mutations (MapID, MIndex, Mutation)
+	INSERT INTO Mutations (DomainID, MIndex, Mutation)
 	VALUES (?, ?, ?);`
 	readRangeExpr = `
   	SELECT Sequence, Mutation FROM Mutations
-  	WHERE MapID = ? AND Sequence > ? AND Sequence <= ?
+  	WHERE DomainID = ? AND Sequence > ? AND Sequence <= ?
   	ORDER BY Sequence ASC LIMIT ?;`
 	readAllExpr = `
  	SELECT Sequence, Mutation FROM Mutations
- 	WHERE MapID = ? AND Sequence > ?
+ 	WHERE DomainID = ? AND Sequence > ?
 	ORDER BY Sequence ASC LIMIT ?;`
 )
 
@@ -60,18 +60,18 @@ func New(db *sql.DB) (*Mutations, error) {
 	return m, nil
 }
 
-// ReadPage reads all mutations for a specific given mapID and sequence range.
+// ReadPage reads all mutations for a specific given domainID and sequence range.
 // The range is identified by a starting sequence number and a count. Note that
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *Mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
+func (m *Mutations) ReadPage(ctx context.Context, domainID string, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
 	readStmt, err := m.db.Prepare(readRangeExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, mapID, start, end, pageSize)
+	rows, err := readStmt.QueryContext(ctx, domainID, start, end, pageSize)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -87,13 +87,13 @@ func (m *Mutations) ReadPage(ctx context.Context, mapID, start, end int64, pageS
 // ReadBatch reads all mutations starting from the given sequence number. Note that
 // startSequence is not included in the result. ReadAll also returns the maximum
 // sequence number read.
-func (m *Mutations) ReadBatch(ctx context.Context, mapID, start int64, batchSize int32) (int64, []*mutator.QueueMessage, error) {
+func (m *Mutations) ReadBatch(ctx context.Context, domainID string, start int64, batchSize int32) (int64, []*mutator.QueueMessage, error) {
 	readStmt, err := m.db.Prepare(readAllExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, mapID, start, batchSize)
+	rows, err := readStmt.QueryContext(ctx, domainID, start, batchSize)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -130,7 +130,7 @@ func readRows(rows *sql.Rows) (int64, []*mutator.QueueMessage, error) {
 }
 
 // Write saves the update in the database. Write returns the auto-inserted sequence number.
-func (m *Mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpdate) (int64, error) {
+func (m *Mutations) Write(ctx context.Context, domainID string, update *pb.EntryUpdate) (int64, error) {
 	index := update.GetMutation().GetIndex()
 	mData, err := proto.Marshal(update)
 	if err != nil {
@@ -142,7 +142,7 @@ func (m *Mutations) Write(ctx context.Context, mapID int64, update *pb.EntryUpda
 		return 0, err
 	}
 	defer writeStmt.Close()
-	result, err := writeStmt.ExecContext(ctx, mapID, index, mData)
+	result, err := writeStmt.ExecContext(ctx, domainID, index, mData)
 	if err != nil {
 		return 0, err
 	}
