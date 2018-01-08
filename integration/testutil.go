@@ -32,6 +32,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authorization"
@@ -89,6 +90,7 @@ type Env struct {
 	Factory    *transaction.Factory
 	Cli        pb.KeyTransparencyClient
 	Domain     *pb.Domain
+	Receiver   mutator.Receiver
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -143,18 +145,21 @@ func NewEnv(t *testing.T) *Env {
 	if err != nil {
 		log.Fatalf("Failed to create mutations object: %v", err)
 	}
-	mutator := entry.New()
 	auth := authentication.NewFake()
 	authz := authorization.New()
 	tlog := fake.NewTrillianLogClient()
 
-	server := keyserver.New(domainStorage, tlog, mapEnv.MapClient, mapEnv.AdminClient,
-		mutator, auth, authz, mutations)
+	server := keyserver.New(tlog, mapEnv.MapClient, mapEnv.AdminClient,
+		entry.New(), auth, authz, domainStorage, mutations, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, mutator, mutations)
+	queue := mutator.MutationQueue(mutations)
+	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, entry.New(), mutations, queue)
+	// Only sequence when explicitly asked with receiver.Flush()
+	receiver := seq.NewReceiver(ctx, logID, mapID, 60*time.Hour, 60*time.Hour)
+	receiver.Flush(ctx)
 
 	addr, lis := Listen(t)
 	go gsvr.Serve(lis)
@@ -168,14 +173,6 @@ func NewEnv(t *testing.T) *Env {
 	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
 	client.RetryCount = 0
 
-	// Mimic first sequence event
-	if err := seq.Initialize(ctx, logID, mapID); err != nil {
-		t.Fatalf("seq.Initialize() = %v", err)
-	}
-	if err := seq.CreateEpoch(ctx, logID, mapID, sequencer.ForceNewEpoch(true)); err != nil {
-		t.Fatalf("CreateEpoch(_): %v", err)
-	}
-
 	return &Env{
 		mapEnv:     mapEnv,
 		GRPCServer: gsvr,
@@ -186,6 +183,7 @@ func NewEnv(t *testing.T) *Env {
 		db:         sqldb,
 		Cli:        ktClient,
 		Domain:     domain,
+		Receiver:   receiver,
 	}
 }
 

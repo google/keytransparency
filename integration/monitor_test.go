@@ -23,7 +23,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
-	"github.com/google/keytransparency/core/sequencer"
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/der"
@@ -87,7 +86,7 @@ func TestMonitor(t *testing.T) {
 		queryEpoch int64
 	}{
 		{
-			desc:       "Query first epoch, don't update",
+			desc:       "Query first epoch",
 			queryEpoch: 1,
 		},
 		{
@@ -96,7 +95,7 @@ func TestMonitor(t *testing.T) {
 			updateData:     []byte("testData"),
 			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
 			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
-			queryEpoch:     2,
+			queryEpoch:     3,
 		},
 		{
 			desc:           "create several mutations and new epoch",
@@ -104,7 +103,7 @@ func TestMonitor(t *testing.T) {
 			updateData:     []byte("more update data"),
 			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
 			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
-			queryEpoch:     3,
+			queryEpoch:     4,
 		},
 	} {
 		for _, userID := range tc.userIDs {
@@ -115,9 +114,7 @@ func TestMonitor(t *testing.T) {
 			}
 		}
 
-		if err := env.Signer.CreateEpoch(ctx, env.Domain.Log.TreeId, env.Domain.Map.TreeId, sequencer.ForceNewEpoch(false)); err != nil {
-			t.Fatalf("CreateEpoch(_): %v", err)
-		}
+		env.Receiver.Flush(ctx)
 
 		domainID := env.Domain.DomainId
 		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)

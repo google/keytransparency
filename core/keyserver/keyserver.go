@@ -39,33 +39,36 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	domains   domain.Storage
 	tlog      tpb.TrillianLogClient
 	tmap      tpb.TrillianMapClient
 	tadmin    tpb.TrillianAdminClient
 	auth      authentication.Authenticator
 	authz     authorization.Authorization
-	mutator   mutator.Mutator
+	mutator   mutator.Func
+	domains   domain.Storage
+	queue     mutator.MutationQueue
 	mutations mutator.MutationStorage
 }
 
 // New creates a new instance of the key server.
-func New(domains domain.Storage,
-	tlog tpb.TrillianLogClient,
+func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	tadmin tpb.TrillianAdminClient,
-	mutator mutator.Mutator,
+	mutator mutator.Func,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
+	domains domain.Storage,
+	queue mutator.MutationQueue,
 	mutations mutator.MutationStorage) *Server {
 	return &Server{
-		domains:   domains,
 		tlog:      tlog,
 		tmap:      tmap,
 		tadmin:    tadmin,
 		mutator:   mutator,
 		auth:      auth,
 		authz:     authz,
+		domains:   domains,
+		queue:     queue,
 		mutations: mutations,
 	}
 }
@@ -318,7 +321,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Save mutation to the database.
-	if _, err := s.mutations.Write(ctx, domain.MapID, in.GetEntryUpdate()); err != nil {
+	if err := s.queue.Send(ctx, domain.MapID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}

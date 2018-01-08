@@ -23,6 +23,7 @@ import (
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/domain"
@@ -94,16 +95,14 @@ func main() {
 	authz := authorization.New()
 
 	// Create database and helper objects.
-	admin, err := domain.NewStorage(sqldb)
+	domains, err := domain.NewStorage(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create admin storage: %v", err)
+		glog.Exitf("Failed to create domain storage: %v", err)
 	}
 	mutations, err := mutationstorage.New(sqldb)
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
-
-	mutator := entry.New()
 
 	// Connect to log and map server.
 	tconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
@@ -119,8 +118,9 @@ func main() {
 	tadmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(admin, tlog, tmap, tadmin,
-		mutator, auth, authz, mutations)
+	queue := mutator.MutationQueue(mutations)
+	ksvr := keyserver.New(tlog, tmap, tadmin,
+		entry.New(), auth, authz, domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
