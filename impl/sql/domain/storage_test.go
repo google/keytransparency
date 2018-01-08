@@ -46,7 +46,7 @@ func TestList(t *testing.T) {
 		{
 			domains: []*domain.Domain{
 				{
-					Domain:      "domain1",
+					DomainID:    "domain1",
 					MapID:       1,
 					LogID:       2,
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -55,7 +55,7 @@ func TestList(t *testing.T) {
 					MaxInterval: 5 * time.Second,
 				},
 				{
-					Domain:      "domain2",
+					DomainID:    "domain2",
 					MapID:       1,
 					LogID:       2,
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -109,7 +109,7 @@ func TestWriteReadDelete(t *testing.T) {
 			desc:  "Success",
 			write: true,
 			d: domain.Domain{
-				Domain:      "testdomain",
+				DomainID:    "testdomain",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -122,7 +122,7 @@ func TestWriteReadDelete(t *testing.T) {
 			desc:  "Duplicate DomainID",
 			write: true,
 			d: domain.Domain{
-				Domain:      "testdomain",
+				DomainID:    "testdomain",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -135,7 +135,7 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc: "Delete",
 			d: domain.Domain{
-				Domain:      "testdomain",
+				DomainID:    "testdomain",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -151,7 +151,7 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc: "Read deleted",
 			d: domain.Domain{
-				Domain:      "testdomain",
+				DomainID:    "testdomain",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -167,7 +167,7 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc: "Undelete",
 			d: domain.Domain{
-				Domain:      "testdomain",
+				DomainID:    "testdomain",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -193,13 +193,13 @@ func TestWriteReadDelete(t *testing.T) {
 				}
 			}
 			if tc.setDelete {
-				if err := admin.SetDelete(ctx, tc.d.Domain, tc.isDeleted); err != nil {
-					t.Errorf("SetDelete(%v, %v): %v", tc.d.Domain, tc.isDeleted, err)
+				if err := admin.SetDelete(ctx, tc.d.DomainID, tc.isDeleted); err != nil {
+					t.Errorf("SetDelete(%v, %v): %v", tc.d.DomainID, tc.isDeleted, err)
 					return
 				}
 			}
 
-			domain, err := admin.Read(ctx, tc.d.Domain, tc.readDeleted)
+			domain, err := admin.Read(ctx, tc.d.DomainID, tc.readDeleted)
 			if got, want := err != nil, tc.wantReadErr; got != want {
 				t.Errorf("Read(): %v, want err: %v", err, want)
 			}

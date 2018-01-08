@@ -44,7 +44,7 @@ func (a *DomainStorage) List(ctx context.Context, deleted bool) ([]*domain.Domai
 
 // Write adds a new domain.
 func (a *DomainStorage) Write(ctx context.Context, d *domain.Domain) error {
-	a.domains[d.Domain] = d
+	a.domains[d.DomainID] = d
 	return nil
 }
 

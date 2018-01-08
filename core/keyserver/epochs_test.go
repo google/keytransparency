@@ -54,15 +54,15 @@ func updates(t *testing.T, start, end int) []*pb.EntryUpdate {
 	return kvs
 }
 
-func prepare(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap *fake.MapServer) {
-	createEpoch(ctx, t, mapID, mutations, tmap, 1, 1, 6)
-	createEpoch(ctx, t, mapID, mutations, tmap, 2, 7, 10)
+func prepare(ctx context.Context, t *testing.T, domainID string, mutations mutator.MutationStorage, tmap *fake.MapServer) {
+	createEpoch(ctx, t, domainID, mutations, tmap, 1, 1, 6)
+	createEpoch(ctx, t, domainID, mutations, tmap, 2, 7, 10)
 }
 
-func createEpoch(ctx context.Context, t *testing.T, mapID int64, mutations mutator.MutationStorage, tmap *fake.MapServer, epoch int64, start, end int) {
+func createEpoch(ctx context.Context, t *testing.T, domainID string, mutations mutator.MutationStorage, tmap *fake.MapServer, epoch int64, start, end int) {
 	kvs := updates(t, start, end)
 	for _, kv := range kvs {
-		if _, err := mutations.Write(ctx, mapID, kv); err != nil {
+		if _, err := mutations.Write(ctx, domainID, kv); err != nil {
 			t.Fatalf("mutations.Write failed: %v", err)
 		}
 	}
@@ -97,14 +97,14 @@ func TestGetMutations(t *testing.T) {
 	fakeMap := fake.NewTrillianMapClient()
 	fakeLog := fake.NewTrillianLogClient()
 	if err := fakeAdmin.Write(ctx, &domain.Domain{
-		Domain:      domainID,
+		DomainID:    domainID,
 		MapID:       mapID,
 		MinInterval: 1 * time.Second,
 		MaxInterval: 5 * time.Second,
 	}); err != nil {
 		t.Fatalf("admin.Write(): %v", err)
 	}
-	prepare(ctx, t, mapID, fakeMutations, fakeMap)
+	prepare(ctx, t, domainID, fakeMutations, fakeMap)
 
 	for _, tc := range []struct {
 		description string
@@ -167,7 +167,7 @@ func TestLowestSequenceNumber(t *testing.T) {
 	fakeMap := fake.NewTrillianMapClient()
 	fakeAdmin := &fake.DomainStorage{}
 	mapID := int64(1)
-	prepare(ctx, t, mapID, fakeMutations, fakeMap)
+	prepare(ctx, t, domainID, fakeMutations, fakeMap)
 
 	for _, tc := range []struct {
 		token     string

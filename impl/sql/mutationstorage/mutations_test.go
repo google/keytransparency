@@ -28,7 +28,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const mapID = 0
+const domainID = "default"
 
 func newDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
@@ -73,7 +73,7 @@ func fillDB(ctx context.Context, t *testing.T, m mutator.MutationStorage) {
 }
 
 func write(ctx context.Context, m mutator.MutationStorage, mutation *pb.EntryUpdate, outSequence int64) error {
-	sequence, err := m.Write(ctx, mapID, mutation)
+	sequence, err := m.Write(ctx, domainID, mutation)
 	if err != nil {
 		return fmt.Errorf("Write(%v): %v, want nil", mutation, err)
 	}
@@ -164,7 +164,7 @@ func TestReadPage(t *testing.T) {
 			},
 		},
 	} {
-		maxSequence, results, err := m.ReadPage(ctx, mapID, tc.startSequence, tc.endSequence, tc.count)
+		maxSequence, results, err := m.ReadPage(ctx, domainID, tc.startSequence, tc.endSequence, tc.count)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
@@ -249,7 +249,7 @@ func TestReadBatch(t *testing.T) {
 			batchSize: 10,
 		},
 	} {
-		maxSequence, results, err := m.ReadBatch(ctx, mapID, tc.startSequence, tc.batchSize)
+		maxSequence, results, err := m.ReadBatch(ctx, domainID, tc.startSequence, tc.batchSize)
 		if err != nil {
 			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
 		}
