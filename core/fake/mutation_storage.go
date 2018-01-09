@@ -23,7 +23,7 @@ import (
 
 // MutationStorage implements mutator.Mutation
 type MutationStorage struct {
-	// mtns[DomainID][Epoch]
+	// mtns is a map of domains to epoch numbers to a list of mutations.
 	mtns map[string]map[int64][]*pb.Entry
 }
 
@@ -44,15 +44,14 @@ func (m *MutationStorage) ReadPage(_ context.Context, domainID string, revision,
 	if !ok {
 		return 0, nil, fmt.Errorf("DomainID: %v, revision %v not found", domainID, revision)
 	}
-	if got, want := int(start), len(mutationList); got >= want {
+	if int(start) > len(mutationList) {
 		return start, nil, nil
 	}
 	end := int(start) + int(pageSize)
 	if end > len(mutationList) {
 		end = len(mutationList)
 	}
-	mutations := mutationList[int(start):end]
-	return start + int64(len(mutations)), mutations, nil
+	return int64(end), mutationList[int(start):end], nil
 }
 
 // WriteBatch stores a set of mutations that are associated with a revision.

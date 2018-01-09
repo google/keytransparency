@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
-	"github.com/google/keytransparency/core/mutator"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
@@ -45,23 +44,6 @@ func genMutations(start, end int) []*pb.Entry {
 		})
 	}
 	return mutations
-}
-
-func prepare(ctx context.Context, domainID string, m mutator.MutationStorage, tmap *fake.MapServer) error {
-	for _, rev := range []struct {
-		epoch      int64
-		start, end int
-	}{
-		{epoch: 1, start: 1, end: 6},
-		{epoch: 2, start: 7, end: 10},
-	} {
-		if err := m.WriteBatch(ctx, domainID, rev.epoch, genMutations(rev.start, rev.end)); err != nil {
-			return err
-		}
-		tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{})
-
-	}
-	return nil
 }
 
 func TestGetEpochStream(t *testing.T) {
@@ -87,8 +69,21 @@ func TestListMutations(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("admin.Write(): %v", err)
 	}
-	if err := prepare(ctx, domainID, fakeMutations, fakeMap); err != nil {
-		t.Fatalf("Test setup failed: %v", err)
+
+	// Test setup.
+	for _, rev := range []struct {
+		epoch      int64
+		start, end int
+	}{
+		{epoch: 1, start: 1, end: 6},
+		{epoch: 2, start: 7, end: 10},
+	} {
+		if err := fakeMutations.WriteBatch(ctx, domainID, rev.epoch, genMutations(rev.start, rev.end)); err != nil {
+			t.Fatalf("Test setup failed: %v", err)
+		}
+		// Advance the map's revision number.
+		fakeMap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{})
+
 	}
 
 	for _, tc := range []struct {
