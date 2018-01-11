@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/domain"
-	"github.com/google/keytransparency/core/internal"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
@@ -82,7 +81,8 @@ type Sequencer struct {
 func New(domains domain.Storage,
 	tmap trillian.TrillianMapClient,
 	tlog trillian.TrillianLogClient,
-	mutatorFunc mutator.Func, mutations mutator.MutationStorage,
+	mutatorFunc mutator.Func,
+	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue) *Sequencer {
 	return &Sequencer{
 		domains:     domains,
@@ -186,13 +186,8 @@ func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minI
 	// Fetch last time from previous map head (as stored in the map server)
 	mapRoot := rootResp.GetMapRoot()
 	last := time.Unix(0, mapRoot.GetTimestampNanos())
-	meta, err := internal.MetadataFromMapRoot(rootResp.GetMapRoot())
-	if err != nil {
-		glog.Errorf("MeatadataFromMapRoot() failed: %v", err)
-	}
-	start := meta.GetHighestFullyCompletedSeq()
 
-	return s.queue.NewReceiver(ctx, last, domain.DomainID, start, func(mutations []*mutator.QueueMessage) error {
+	return s.queue.NewReceiver(ctx, last, domain.DomainID, func(mutations []*mutator.QueueMessage) error {
 		return s.createEpoch(ctx, domain, mutations)
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: MaxBatchSize,
@@ -266,8 +261,8 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 }
 
 // createEpoch signs the current map head.
-func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, mutations []*mutator.QueueMessage) error {
-	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(mutations))
+func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs []*mutator.QueueMessage) error {
+	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
@@ -276,24 +271,15 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, muta
 	if err != nil {
 		return fmt.Errorf("GetSignedMapRoot(%v): %v", domain.MapID, err)
 	}
-	meta, err := internal.MetadataFromMapRoot(rootResp.GetMapRoot())
-	if err != nil {
-		return err
-	}
-	if meta.GetHighestFullyCompletedSeq() == 0 {
-		glog.V(2).Infof("Sequencer.CreateEpoch: Map Root probably has no metadata yet")
-	}
-	startSeq := meta.GetHighestFullyCompletedSeq()
 	revision := rootResp.GetMapRoot().GetMapRevision()
-	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v, HighestFullyCompletedSeq: %v}", revision, startSeq)
+	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", revision)
 
 	// Get current leaf values.
-	indexes := make([][]byte, 0, len(mutations))
-	for _, m := range mutations {
+	indexes := make([][]byte, 0, len(msgs))
+	for _, m := range msgs {
 		indexes = append(indexes, m.Mutation.Index)
 	}
-	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v",
-		len(mutations), len(indexes))
+	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v", len(msgs), len(indexes))
 	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
 		MapId: domain.MapID,
 		Index: indexes,
@@ -313,40 +299,33 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, muta
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(mutations, leaves)
+	newLeaves, err := s.applyMutations(msgs, leaves)
 	if err != nil {
 		return err
 	}
-	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves",
-		len(mutations), len(leaves))
-
-	var maxID int64
-	for _, m := range mutations {
-		if m.ID > maxID {
-			maxID = m.ID
-		}
-	}
-
-	metaAny, err := internal.MetadataAsAny(&pb.MapperMetadata{
-		HighestFullyCompletedSeq: maxID,
-	})
-	if err != nil {
-		return err
-	}
+	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves", len(msgs), len(leaves))
 
 	// Set new leaf values.
 	mapSetStart := time.Now()
 	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
-		MapId:    domain.MapID,
-		Leaves:   newLeaves,
-		Metadata: metaAny,
+		MapId:  domain.MapID,
+		Leaves: newLeaves,
 	})
 	mapSetEnd := time.Now()
 	if err != nil {
 		return err
 	}
 	revision = setResp.GetMapRoot().GetMapRevision()
-	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v, HighestFullyCompletedSeq: %v}", revision, maxID)
+	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", revision)
+
+	// Write mutations associated with this epoch.
+	mutations := make([]*pb.Entry, 0, len(msgs))
+	for _, msg := range msgs {
+		mutations = append(mutations, msg.Mutation)
+	}
+	if err := s.mutations.WriteBatch(ctx, domain.DomainID, revision, mutations); err != nil {
+		return err
+	}
 
 	// Put SignedMapHead in an append only log.
 	if err := queueLogLeaf(ctx, s.tlog, domain.LogID, setResp.GetMapRoot()); err != nil {
@@ -354,7 +333,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, muta
 		return err
 	}
 
-	mutationsCTR.Add(float64(len(mutations)))
+	mutationsCTR.Add(float64(len(msgs)))
 	indexCTR.Add(float64(len(indexes)))
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())

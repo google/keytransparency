@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/google/keytransparency/core/internal"
-
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -78,7 +76,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	}, nil
 }
 
-// GetEpochStream is a streaming API similar to GetMutations.
+// GetEpochStream is a streaming API similar to ListMutations.
 func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparency_GetEpochStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "GetEpochStream is unimplemented")
 }
@@ -96,18 +94,14 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
-	lowestSeq, err := s.lowestSequenceNumber(ctx, domain.MapID, in.Epoch, in.PageToken)
-	if err != nil {
-		return nil, err
-	}
-	highestSeq, err := s.getHighestFullyCompletedSeq(ctx, domain.MapID, in.Epoch)
+	start, err := parseToken(in.PageToken)
 	if err != nil {
 		return nil, err
 	}
 	// Read mutations from the database.
-	maxSequence, entries, err := s.mutations.ReadPage(ctx, domain.DomainID, lowestSeq, highestSeq, in.PageSize)
+	max, entries, err := s.mutations.ReadPage(ctx, domain.DomainID, in.GetEpoch(), start, in.GetPageSize())
 	if err != nil {
-		glog.Errorf("mutations.ReadRange(%v, %v, %v): %v", lowestSeq, highestSeq, in.PageSize, err)
+		glog.Errorf("mutations.ReadRange(%v, %v, %v, %v): %v", domain.MapID, in.GetEpoch(), start, in.GetPageSize(), err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
 	}
 	indexes := make([][]byte, 0, len(entries))
@@ -126,8 +120,8 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 
 	nextPageToken := ""
-	if len(mutations) == int(in.PageSize) && maxSequence != highestSeq {
-		nextPageToken = fmt.Sprintf("%d", maxSequence)
+	if len(mutations) == int(in.PageSize) {
+		nextPageToken = fmt.Sprintf("%d", max+1)
 	}
 	return &pb.ListMutationsResponse{
 		Mutations:     mutations,
@@ -184,46 +178,9 @@ func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoc
 	return logRoot, logConsistency, logInclusion, nil
 }
 
-// lowestSequenceNumber picks a lower bound on sequence number.
-// It returns the max between token and the high water mark of the previous epoch.
-func (s *Server) lowestSequenceNumber(ctx context.Context, mapID, epoch int64, token string) (int64, error) {
-	// Pick starting location from token or the last epoch.
-	lastSeq, err := s.getHighestFullyCompletedSeq(ctx, mapID, epoch-1)
-	if err != nil {
-		return 0, err
-	}
-	tokenSeq, err := s.parseToken(token)
-	if err != nil {
-		return 0, err
-	}
-	return max(lastSeq, tokenSeq), nil
-}
-
-// getHighestFullyCompletedSeq fetches the map root at epoch and returns
-// the highest fully completed sequence number.
-func (s *Server) getHighestFullyCompletedSeq(ctx context.Context, mapID, epoch int64) (int64, error) {
-	// Get signed map root by revision.
-	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
-		MapId:    mapID,
-		Revision: epoch,
-	})
-	if err != nil {
-		glog.Errorf("GetSignedMapRootByRevision(%v, %v): %v", mapID, epoch, err)
-		return 0, status.Error(codes.Internal, "Get signed map root failed")
-	}
-
-	// Get highest and lowest sequence number.
-	meta, err := internal.MetadataFromMapRoot(resp.GetMapRoot())
-	if err != nil {
-		return 0, status.Error(codes.Internal, err.Error())
-	}
-
-	return meta.GetHighestFullyCompletedSeq(), nil
-}
-
 // parseToken returns the sequence number in token.
 // If token is unset, return 0.
-func (s *Server) parseToken(token string) (int64, error) {
+func parseToken(token string) (int64, error) {
 	if token == "" {
 		return 0, nil
 	}
@@ -233,13 +190,6 @@ func (s *Server) parseToken(token string) (int64, error) {
 		return 0, status.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
 	}
 	return seq, nil
-}
-
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {

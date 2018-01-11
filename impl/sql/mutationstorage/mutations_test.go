@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/mutator"
 
 	"github.com/golang/protobuf/proto"
@@ -38,49 +37,38 @@ func newDB(t testing.TB) *sql.DB {
 	return db
 }
 
-func genUpdate(i int) *mutator.QueueMessage {
-	return &mutator.QueueMessage{
-		ID: int64(i),
-		Mutation: &pb.Entry{
-			Index:      []byte(fmt.Sprintf("index%d", i)),
-			Commitment: []byte(fmt.Sprintf("mutation%d", i)),
-		},
-		ExtraData: &pb.Committed{
-			Key:  []byte(fmt.Sprintf("nonce%d", i)),
-			Data: []byte(fmt.Sprintf("data%d", i)),
-		},
+func genMutation(i int) *pb.Entry {
+	return &pb.Entry{
+		Index:      []byte(fmt.Sprintf("index%d", i)),
+		Commitment: []byte(fmt.Sprintf("mutation%d", i)),
 	}
 }
 
-func fillDB(ctx context.Context, t *testing.T, m mutator.MutationStorage) {
-	for _, mtn := range []struct {
-		update      *mutator.QueueMessage
-		outSequence int64
+func fillDB(ctx context.Context, m mutator.MutationStorage) error {
+	for _, tc := range []struct {
+		revision  int64
+		mutations []*pb.Entry
 	}{
-		{update: genUpdate(1), outSequence: 1},
-		{update: genUpdate(2), outSequence: 2},
-		{update: genUpdate(3), outSequence: 3},
-		{update: genUpdate(4), outSequence: 4},
-		{update: genUpdate(5), outSequence: 5},
+		{
+			revision: 0,
+			mutations: []*pb.Entry{
+				genMutation(1),
+				genMutation(2),
+			},
+		},
+		{
+			revision: 1,
+			mutations: []*pb.Entry{
+				genMutation(3),
+				genMutation(4),
+				genMutation(5),
+			},
+		},
 	} {
-		if err := write(ctx, m, &pb.EntryUpdate{
-			Mutation:  mtn.update.Mutation,
-			Committed: mtn.update.ExtraData,
-		}, mtn.outSequence); err != nil {
-			t.Errorf("failed to write mutation to database, mutation=%v: %v", mtn.update, err)
+		if err := m.WriteBatch(ctx, domainID, tc.revision, tc.mutations); err != nil {
+			return err
 		}
 	}
-}
-
-func write(ctx context.Context, m mutator.MutationStorage, mutation *pb.EntryUpdate, outSequence int64) error {
-	sequence, err := m.Write(ctx, domainID, mutation)
-	if err != nil {
-		return fmt.Errorf("Write(%v): %v, want nil", mutation, err)
-	}
-	if got, want := sequence, outSequence; got != want {
-		return fmt.Errorf("Write(%v)=%v, want %v", mutation, got, want)
-	}
-
 	return nil
 }
 
@@ -91,179 +79,81 @@ func TestReadPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
-	fillDB(ctx, t, m)
+	if err := fillDB(ctx, m); err != nil {
+		t.Fatalf("Failed to write mutations: %v", err)
+	}
 
 	for _, tc := range []struct {
-		description   string
-		startSequence int64
-		endSequence   int64
-		count         int32
-		maxSequence   int64
-		mutations     []*pb.Entry
+		description string
+		revision    int64
+		start       int64
+		count       int32
+		wantMax     int64
+		mutations   []*pb.Entry
 	}{
 		{
 			description: "read a single mutation",
-			endSequence: 1,
+			start:       0,
 			count:       1,
-			maxSequence: 1,
-			mutations:   []*pb.Entry{genUpdate(1).Mutation},
+			wantMax:     0,
+			mutations:   []*pb.Entry{genMutation(1)},
 		},
 		{
-			description:   "empty mutations list",
-			startSequence: 100,
-			endSequence:   110,
-			count:         10,
+			description: "empty mutations list",
+			revision:    100,
+			start:       0,
+			count:       10,
 		},
 		{
-			description:   "full mutations range size",
-			startSequence: 0,
-			endSequence:   5,
-			count:         5,
-			maxSequence:   5,
+			description: "full mutations range size",
+			revision:    0,
+			start:       0,
+			count:       5,
+			wantMax:     1,
 			mutations: []*pb.Entry{
-				genUpdate(1).Mutation,
-				genUpdate(2).Mutation,
-				genUpdate(3).Mutation,
-				genUpdate(4).Mutation,
-				genUpdate(5).Mutation,
+				genMutation(1),
+				genMutation(2),
 			},
 		},
 		{
-			description:   "incomplete mutations range",
-			startSequence: 2,
-			endSequence:   5,
-			count:         3,
-			maxSequence:   5,
+			description: "non-zero start",
+			revision:    1,
+			start:       1,
+			count:       2,
+			wantMax:     2,
 			mutations: []*pb.Entry{
-				genUpdate(3).Mutation,
-				genUpdate(4).Mutation,
-				genUpdate(5).Mutation,
+				genMutation(4),
+				genMutation(5),
 			},
 		},
 		{
-			description:   "end sequence less than count",
-			startSequence: 2,
-			endSequence:   5,
-			count:         5,
-			maxSequence:   5,
+			description: "limit by count",
+			revision:    1,
+			start:       0,
+			count:       2,
+			wantMax:     1,
 			mutations: []*pb.Entry{
-				genUpdate(3).Mutation,
-				genUpdate(4).Mutation,
-				genUpdate(5).Mutation,
-			},
-		},
-		{
-			description: "count less than end sequence",
-			endSequence: 5,
-			count:       3,
-			maxSequence: 3,
-			mutations: []*pb.Entry{
-				genUpdate(1).Mutation,
-				genUpdate(2).Mutation,
-				genUpdate(3).Mutation,
+				genMutation(3),
+				genMutation(4),
 			},
 		},
 	} {
-		maxSequence, results, err := m.ReadPage(ctx, domainID, tc.startSequence, tc.endSequence, tc.count)
-		if err != nil {
-			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
-		}
-		if got, want := maxSequence, tc.maxSequence; got != want {
-			t.Errorf("%v: maxSequence=%v, want %v", tc.description, got, want)
-		}
-		if got, want := len(results), len(tc.mutations); got != want {
-			t.Errorf("%v: len(results)=%v, want %v", tc.description, got, want)
-			continue
-		}
-		for i := range results {
-			if got, want := results[i], tc.mutations[i]; !proto.Equal(got, want) {
-				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
+		t.Run(tc.description, func(t *testing.T) {
+			max, results, err := m.ReadPage(ctx, domainID, tc.revision, tc.start, tc.count)
+			if err != nil {
+				t.Errorf("failed to read mutations: %v", err)
 			}
-		}
-	}
-}
-
-func TestReadBatch(t *testing.T) {
-	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create mutations: %v", err)
-	}
-	fillDB(ctx, t, m)
-
-	for _, tc := range []struct {
-		description   string
-		startSequence int64
-		maxSequence   int64
-		mutations     []*mutator.QueueMessage
-		batchSize     int32
-	}{
-		{
-			description:   "empty mutations list",
-			startSequence: 100,
-			maxSequence:   0,
-			mutations:     nil,
-			batchSize:     10,
-		},
-		{
-			description:   "read all mutations",
-			startSequence: 0,
-			maxSequence:   5,
-			mutations: []*mutator.QueueMessage{
-				genUpdate(1),
-				genUpdate(2),
-				genUpdate(3),
-				genUpdate(4),
-				genUpdate(5),
-			},
-			batchSize: 10,
-		},
-		{
-			description:   "read half of the mutations",
-			startSequence: 2,
-			maxSequence:   5,
-			mutations: []*mutator.QueueMessage{
-				genUpdate(3),
-				genUpdate(4),
-				genUpdate(5),
-			},
-			batchSize: 10,
-		},
-		{
-			description:   "limit by batch",
-			startSequence: 2,
-			maxSequence:   3,
-			mutations: []*mutator.QueueMessage{
-				genUpdate(3),
-			},
-			batchSize: 1,
-		},
-		{
-			description:   "read last mutation",
-			startSequence: 4,
-			maxSequence:   5,
-			mutations: []*mutator.QueueMessage{
-				genUpdate(5),
-			},
-			batchSize: 10,
-		},
-	} {
-		maxSequence, results, err := m.ReadBatch(ctx, domainID, tc.startSequence, tc.batchSize)
-		if err != nil {
-			t.Errorf("%v: failed to read mutations: %v", tc.description, err)
-		}
-		if got, want := maxSequence, tc.maxSequence; got != want {
-			t.Errorf("%v: maxSequence=%v, want %v", tc.description, got, want)
-		}
-		if got, want := len(results), len(tc.mutations); got != want {
-			t.Errorf("%v: len(results)=%v, want %v", tc.description, got, want)
-			continue
-		}
-		for i := range results {
-			if got, want := results[i], tc.mutations[i]; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
-				t.Errorf("%v: results[%v] data=%v, want %v", tc.description, i, got, want)
+			if got, want := max, tc.wantMax; got != want {
+				t.Errorf("ReadPage(%v,%v,%v).max:%v, want %v", tc.revision, tc.start, tc.count, got, want)
 			}
-		}
+			if got, want := len(results), len(tc.mutations); got != want {
+				t.Fatalf("len(results)=%v, want %v", got, want)
+			}
+			for i := range results {
+				if got, want := results[i], tc.mutations[i]; !proto.Equal(got, want) {
+					t.Errorf("results[%v] data=%v, want %v", i, got, want)
+				}
+			}
+		})
 	}
 }

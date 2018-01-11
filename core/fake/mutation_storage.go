@@ -16,50 +16,49 @@ package fake
 
 import (
 	"context"
+	"fmt"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	"github.com/google/keytransparency/core/mutator"
 )
 
 // MutationStorage implements mutator.Mutation
 type MutationStorage struct {
-	mtns map[string][]*pb.EntryUpdate
+	// mtns is a map of domains to epoch numbers to a list of mutations.
+	mtns map[string]map[int64][]*pb.Entry
 }
 
 // NewMutationStorage returns a fake mutator.Mutation
 func NewMutationStorage() *MutationStorage {
 	return &MutationStorage{
-		mtns: make(map[string][]*pb.EntryUpdate),
+		mtns: make(map[string]map[int64][]*pb.Entry),
 	}
 }
 
 // ReadPage paginates through the list of mutations
-func (m *MutationStorage) ReadPage(_ context.Context, domainID string, start, end int64, pageSize int32) (int64, []*pb.Entry, error) {
-	if start > int64(len(m.mtns[domainID])) {
-		panic("start > len(m.mtns[domainID])")
+func (m *MutationStorage) ReadPage(_ context.Context, domainID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error) {
+	domain, ok := m.mtns[domainID]
+	if !ok {
+		return 0, nil, fmt.Errorf("DomainID %v not found", domainID)
 	}
-	// Adjust end.
-	if end-start > int64(pageSize) {
-		end = start + int64(pageSize)
+	mutationList, ok := domain[revision]
+	if !ok {
+		return 0, nil, fmt.Errorf("DomainID: %v, revision %v not found", domainID, revision)
 	}
-	if end > int64(len(m.mtns[domainID])) {
-		end = int64(len(m.mtns[domainID]))
+	if int(start) > len(mutationList) {
+		return start, nil, nil
 	}
-	entryUpdates := m.mtns[domainID][start:end]
-	mutations := make([]*pb.Entry, 0, len(entryUpdates))
-	for _, e := range entryUpdates {
-		mutations = append(mutations, e.Mutation)
+	end := int(start) + int(pageSize)
+	if end > len(mutationList) {
+		end = len(mutationList)
 	}
-	return end, mutations, nil
+	return int64(end), mutationList[int(start):end], nil
 }
 
-// ReadBatch is unimplemented
-func (m *MutationStorage) ReadBatch(context.Context, string, int64, int32) (int64, []*mutator.QueueMessage, error) {
-	return 0, nil, nil
-}
-
-// Write stores a mutation
-func (m *MutationStorage) Write(_ context.Context, domainID string, mutation *pb.EntryUpdate) (int64, error) {
-	m.mtns[domainID] = append(m.mtns[domainID], mutation)
-	return int64(len(m.mtns[domainID])), nil
+// WriteBatch stores a set of mutations that are associated with a revision.
+func (m *MutationStorage) WriteBatch(_ context.Context, domainID string, revision int64, mutations []*pb.Entry) error {
+	if _, ok := m.mtns[domainID]; !ok {
+		m.mtns[domainID] = make(map[int64][]*pb.Entry)
+	}
+	m.mtns[domainID][revision] = mutations
+	return nil
 }
