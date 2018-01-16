@@ -27,3 +27,13 @@ ALERT HighErrorRate
   ANNOTATIONS {
     summary = "High Error rate",
   }
+
+ALERT NoDomains
+  IF domain_count < 1
+  FOR 5m
+  LABELS {
+    severity = page
+  }
+  ANNOTATIONS {
+    summary = "Startup failure"
+  }

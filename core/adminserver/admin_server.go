@@ -28,6 +28,7 @@ import (
 	"github.com/google/trillian/crypto/sigpb"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/prometheus/client_golang/prometheus"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -80,6 +81,11 @@ var (
 	}
 )
 
+var ()
+
+func init() {
+}
+
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
 	domains  domain.Storage
@@ -90,12 +96,26 @@ type Server struct {
 
 // New returns a KeyTransparencyAdmin implementation.
 func New(domains domain.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
-	return &Server{
+	s := &Server{
 		domains:  domains,
 		logAdmin: logAdmin,
 		mapAdmin: mapAdmin,
 		keygen:   keygen,
 	}
+	prometheus.MustRegister(
+		prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+			Name: "domain_count",
+			Help: "Number of active (not deleted) domains.",
+		},
+			func() float64 {
+				ctx := context.Background()
+				showDeleted := false
+				domains, _ := s.domains.List(ctx, showDeleted)
+				return float64(len(domains))
+			},
+		),
+	)
+	return s
 }
 
 // ListDomains produces a list of the configured domains
