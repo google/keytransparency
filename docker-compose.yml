@@ -1,5 +1,10 @@
 version: "3"
 services:
+  alertmanager:
+    depends_on:
+      - prometheus
+    image: prom/alertmanager
+
   prometheus:
     depends_on:
       - server
