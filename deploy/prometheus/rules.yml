@@ -1,0 +1,24 @@
+groups:
+  - name: grpc
+    rules:
+    - record: grpc_latency
+      expr: histogram_quantile(0.95, sum(rate(grpc_server_handling_seconds_bucket{grpc_type="unary"}[1m])) by (grpc_service, grpc_method,le))
+    - record: grpc_rate
+      expr: rate(grpc_server_handled_total{grpc_type="unary"}[15m])
+    - record: grpc_rate:errors
+      expr: rate(grpc_server_handled_total{grpc_type="unary", grpc_code!="OK"}[15m])
+    - alert: HighErrorRate
+      expr: gprc_rate:errors > 5
+      for: 5m
+      labels:
+        severity: "warning"
+      annotations:
+        summary: "High Error rate"
+    - alert: NoDomains
+      expr: domain_count < 1
+      for: 5m
+      labels:
+        severity: page
+      annotations:
+        summary: "Startup failure"
+

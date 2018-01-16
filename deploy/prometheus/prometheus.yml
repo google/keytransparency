@@ -7,7 +7,7 @@ global:
     monitor: 'keytransparency-monitor'
 
 rule_files:
-  - './prometheus.rules'
+  - 'rules.yml'
 
 # A scrape configuration containing exactly one endpoint to scrape:
 scrape_configs:
@@ -17,4 +17,3 @@ scrape_configs:
   - job_name: 'sequencer'
     static_configs:
         - targets: ['sequencer:8081']
-
