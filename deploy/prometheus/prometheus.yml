@@ -11,9 +11,10 @@ rule_files:
 
 # A scrape configuration containing exactly one endpoint to scrape:
 scrape_configs:
-  - job_name: 'kt-server'
+  - job_name: 'server'
     static_configs:
-        - targets: ['kt-server:8081']
-  - job_name: 'kt-signer'
+        - targets: ['server:8081']
+  - job_name: 'sequencer'
     static_configs:
-        - targets: ['kt-signer:8081']
+        - targets: ['sequencer:8081']
+
