@@ -23,7 +23,7 @@ spec:
         resources: {}
         volumeMounts:
           - name: config-mount
-            mountPath "/etc/alertmanager"
+            mountPath: "/etc/alertmanager"
             readOnly: true
       volumes:
         - name: config-mount

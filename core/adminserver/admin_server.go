@@ -18,6 +18,7 @@ package adminserver
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -81,11 +82,6 @@ var (
 	}
 )
 
-var ()
-
-func init() {
-}
-
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
 	domains  domain.Storage
@@ -102,7 +98,7 @@ func New(domains domain.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, key
 		mapAdmin: mapAdmin,
 		keygen:   keygen,
 	}
-	prometheus.MustRegister(
+	if err := prometheus.Register(
 		prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 			Name: "domain_count",
 			Help: "Number of active (not deleted) domains.",
@@ -114,7 +110,11 @@ func New(domains domain.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, key
 				return float64(len(domains))
 			},
 		),
-	)
+	); err != nil {
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			log.Fatalf("Could not register domain_count gauge: %v", err)
+		}
+	}
 	return s
 }
 
