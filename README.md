@@ -108,3 +108,8 @@ Key Transparency and its [Trillian](https://github.com/google/trillian) backend
 use a [MySQL database](https://github.com/google/trillian/blob/master/README.md#mysql-setup),
 which must be setup in order for the Key Transparency tests to work.
 
+Support
+------
+
+- [Mailing list](https://groups.google.com/forum/#!forum/keytransparency).
+
