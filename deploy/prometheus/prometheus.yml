@@ -15,5 +15,8 @@ scrape_configs:
     static_configs:
         - targets: ['server:8081']
   - job_name: 'sequencer'
+    scheme: 'https'
+    tls_config:
+      insecure_skip_verify: true
     static_configs:
-        - targets: ['sequencer:8081']
+        - targets: ['sequencer:8080']
