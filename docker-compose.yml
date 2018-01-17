@@ -4,6 +4,8 @@ services:
     depends_on:
       - prometheus
     image: prom/alertmanager
+    ports:
+      - "9093"
 
   prometheus:
     depends_on:
@@ -157,7 +159,7 @@ services:
     ports:
       - "8080"
     healthcheck:
-      test: ["CMD", "curl", "-k", "-f", "http://localhost:8080/metrics"]
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8080/metrics"]
       interval: 30s
       timeout: 10s
       retries: 5

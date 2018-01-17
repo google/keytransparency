@@ -9,11 +9,10 @@ metadata:
     io.kompose.service: alertmanager
   name: alertmanager
 spec:
-  clusterIP: None
   ports:
-  - name: headless
-    port: 55555
-    targetPort: 0
+  - name: "9093"
+    port: 9093
+    targetPort: 9093
   selector:
     io.kompose.service: alertmanager
 status:

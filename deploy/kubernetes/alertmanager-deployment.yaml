@@ -20,6 +20,8 @@ spec:
       containers:
       - image: prom/alertmanager
         name: alertmanager
+        ports:
+        - containerPort: 9093
         resources: {}
         volumeMounts:
           - name: config-mount
