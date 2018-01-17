@@ -15,7 +15,7 @@ groups:
       annotations:
         summary: "High Error rate"
     - alert: NoDomains
-      expr: domain_count < 1
+      expr: domain_count < 2
       for: 5m
       labels:
         severity: page
