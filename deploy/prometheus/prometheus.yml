@@ -20,3 +20,9 @@ scrape_configs:
       insecure_skip_verify: true
     static_configs:
         - targets: ['sequencer:8080']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
