@@ -1,0 +1,55 @@
+version: "3"
+services:
+  prometheus:
+    image: us.gcr.io/key-transparency/prometheus:latest
+    build:
+      context: .
+      dockerfile: deploy/prometheus/Dockerfile
+
+  db:
+    image: us.gcr.io/key-transparency/db
+    build:
+      context: ../trillian
+      dockerfile: examples/deployment/docker/db_server/Dockerfile
+
+  log-server:
+    image: us.gcr.io/key-transparency/log-server
+    build: 
+      context: ../trillian
+      dockerfile: server/trillian_log_server/Dockerfile
+
+  log-signer:
+    image: us.gcr.io/key-transparency/log-signer
+    build:
+      context: ../trillian
+      dockerfile: server/trillian_log_signer/Dockerfile
+
+  map-server:
+    image: us.gcr.io/key-transparency/map-server:latest
+    build: 
+      context: ../trillian
+      dockerfile: server/trillian_map_server/Dockerfile
+
+  server:
+    image: us.gcr.io/key-transparency/keytransparency-server:latest
+    build:
+      context: ..
+      dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
+
+  sequencer:
+    image: us.gcr.io/key-transparency/keytransparency-sequencer:latest
+    build:
+      context: ..
+      dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
+
+  init:
+    image: us.gcr.io/key-transparency/init:latest
+    build: 
+      context: .
+      dockerfile: ./deploy/docker/init/Dockerfile 
+
+  monitor:
+    image: us.gcr.io/key-transparency/keytransparency-monitor:latest
+    build:
+      context: ..
+      dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile

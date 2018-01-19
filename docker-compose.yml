@@ -5,18 +5,12 @@ services:
       - server
       - sequencer
     image: us.gcr.io/key-transparency/prometheus:latest
-    build:
-      context: .
-      dockerfile: deploy/prometheus/Dockerfile
     restart: always
     ports:
       - 9090:9090
 
   db:
     image: us.gcr.io/key-transparency/db
-    build:
-      context: ../trillian
-      dockerfile: examples/deployment/docker/db_server/Dockerfile
     restart: always
     ports:
       - "3306"
@@ -30,9 +24,6 @@ services:
     depends_on:
       - db
     image: us.gcr.io/key-transparency/log-server
-    build: 
-      context: ../trillian
-      dockerfile: server/trillian_log_server/Dockerfile
     restart: always
     entrypoint:
       - /go/bin/trillian_log_server
@@ -53,9 +44,6 @@ services:
     depends_on:
       - db
     image: us.gcr.io/key-transparency/log-signer
-    build:
-      context: ../trillian
-      dockerfile: server/trillian_log_signer/Dockerfile
     restart: always
     entrypoint: 
       - /go/bin/trillian_log_signer
@@ -79,9 +67,6 @@ services:
     depends_on:
       - db
     image: us.gcr.io/key-transparency/map-server:latest
-    build: 
-      context: ../trillian
-      dockerfile: server/trillian_map_server/Dockerfile
     restart: always
     entrypoint:
       - /go/bin/trillian_map_server
@@ -104,9 +89,6 @@ services:
       - log-server
       - map-server
     image: us.gcr.io/key-transparency/keytransparency-server:latest
-    build:
-      context: ..
-      dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
     restart: always
     ports:
       - "8080:8080" # json & grpc
@@ -135,9 +117,6 @@ services:
       - log-server
       - map-server
     image: us.gcr.io/key-transparency/keytransparency-sequencer:latest
-    build:
-      context: ..
-      dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
     restart: always
     entrypoint:
       - /go/bin/keytransparency-sequencer
@@ -156,9 +135,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-    build: 
-      context: .
-      dockerfile: ./deploy/docker/init/Dockerfile 
     depends_on: 
       - sequencer
     command:  sequencer:8080 -- curl -k https://sequencer:8080/v1/domains -d'{"domain_id":"default","min_interval":"1s","max_interval":"60s"}'
@@ -168,9 +144,6 @@ services:
       - server
       - sequencer
     image: us.gcr.io/key-transparency/keytransparency-monitor:latest
-    build:
-      context: ..
-      dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile
     entrypoint:
       - /go/bin/keytransparency-monitor
       - --addr=0.0.0.0:8099

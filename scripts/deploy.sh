@@ -23,8 +23,8 @@ function main()
   # create key-pairs:
   ./scripts/prepare_server.sh -f
   #prepareSecrets # TODO(gbelvin): Use secrets volume.
-  docker-compose build
-  docker-compose push
+  docker-compose -f docker-compose.build.yml build
+  docker-compose -f docker-compose.build.yml push
 
   # Deploy all trillian related services.
   kubectl apply -f deploy/kubernetes/.
