@@ -357,8 +357,9 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 	}
 
 	return &pb.Domain{
-		Log: logTree,
-		Map: mapTree,
-		Vrf: domain.VRF,
+		DomainId: domain.DomainID,
+		Log:      logTree,
+		Map:      mapTree,
+		Vrf:      domain.VRF,
 	}, nil
 }
