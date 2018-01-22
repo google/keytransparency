@@ -23,6 +23,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
+	"google.golang.org/grpc/metadata"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
@@ -78,9 +80,14 @@ func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
 	return &keyspb.PublicKey{Der: pk.Bytes}
 }
 
-func TestEmptyGetAndUpdate(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close(t)
+// WithOutgoingFakeAuth returns a ctx with FakeAuth information for userID.
+func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
+	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(ctx)
+	return metadata.NewOutgoingContext(ctx, metadata.New(md))
+}
+
+// TestEmptyGetAndUpdate verifies set/get semantics.
+func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	env.Client.RetryCount = 0
 
 	// Create lists of signers.
@@ -119,7 +126,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			desc:           "Insert",
 			want:           false,
 			insert:         true,
-			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -146,7 +153,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			desc:           "Update",
 			want:           true,
 			insert:         true,
-			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -155,7 +162,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			desc:           "Update, changing keys",
 			want:           true,
 			insert:         true,
-			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers2,
 			authorizedKeys: authorizedKeys2,
@@ -164,7 +171,7 @@ func TestEmptyGetAndUpdate(t *testing.T) {
 			desc:           "Update, using new keys",
 			want:           true,
 			insert:         true,
-			ctx:            GetNewOutgoingContextWithFakeAuth("bob"),
+			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers3,
 			authorizedKeys: authorizedKeys3,
@@ -208,9 +215,8 @@ func (e *Env) checkProfile(userID, appID string, want bool) error {
 	return nil
 }
 
-func TestUpdateValidation(t *testing.T) {
-	env := NewEnv(t)
-	defer env.Close(t)
+// TestUpdateValidation verifies the correctness of updates submitted by the client.
+func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 	env.Client.RetryCount = 0
 
 	profile := []byte("bar")
@@ -228,9 +234,9 @@ func TestUpdateValidation(t *testing.T) {
 		authorizedKeys []*keyspb.PublicKey
 	}{
 		{false, context.Background(), "alice", profile, signers, authorizedKeys},
-		{false, GetNewOutgoingContextWithFakeAuth("carol"), "bob", profile, signers, authorizedKeys},
-		{true, GetNewOutgoingContextWithFakeAuth("dave"), "dave", profile, signers, authorizedKeys},
-		{true, GetNewOutgoingContextWithFakeAuth("eve"), "eve", profile, signers, authorizedKeys},
+		{false, WithOutgoingFakeAuth(ctx, "carol"), "bob", profile, signers, authorizedKeys},
+		{true, WithOutgoingFakeAuth(ctx, "dave"), "dave", profile, signers, authorizedKeys},
+		{true, WithOutgoingFakeAuth(ctx, "eve"), "eve", profile, signers, authorizedKeys},
 	} {
 		m, err := env.Client.Update(tc.ctx, appID, tc.userID, tc.profile, tc.signers, tc.authorizedKeys)
 
@@ -251,12 +257,10 @@ func TestUpdateValidation(t *testing.T) {
 	}
 }
 
-func TestListHistory(t *testing.T) {
+// TestListHistory verifies that repeated history values get collapsed properly.
+func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	userID := "bob"
-	ctx := GetNewOutgoingContextWithFakeAuth(userID)
-
-	env := NewEnv(t)
-	defer env.Close(t)
+	ctx = WithOutgoingFakeAuth(ctx, userID)
 	env.Client.RetryCount = 0
 
 	// Create lists of signers and authorized keys

@@ -21,7 +21,6 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -46,7 +45,6 @@ import (
 	"github.com/google/trillian/testonly/integration"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	domaindef "github.com/google/keytransparency/core/domain"
@@ -55,27 +53,18 @@ import (
 	_ "github.com/mattn/go-sqlite3"                 // Use sqlite database for testing.
 )
 
-// NewDB creates a new in-memory database for testing.
-func NewDB(t testing.TB) *sql.DB {
-	db, err := sql.Open("sqlite3", "file:dummy.db?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("sql.Open(): %v", err)
-	}
-	return db
-}
-
 // Listen opens a random local port and listens on it.
-func Listen(t testing.TB) (string, net.Listener) {
+func Listen() (string, net.Listener, error) {
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		t.Fatalf("Failed to listen: %v", err)
+		return "", nil, fmt.Errorf("failed to listen: %v", err)
 	}
 	_, port, err := net.SplitHostPort(lis.Addr().String())
 	if err != nil {
-		t.Fatalf("Failed to parse listener address: %v", err)
+		return "", nil, fmt.Errorf("Failed to parse listener address: %v", err)
 	}
 	addr := "localhost:" + port
-	return addr, lis
+	return addr, lis, nil
 }
 
 // Env holds a complete testing environment for end-to-end tests.
@@ -97,26 +86,24 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 }
 
 // NewEnv sets up common resources for tests.
-func NewEnv(t *testing.T) *Env {
+func NewEnv() (*Env, error) {
 	ctx := context.Background()
 	domainID := fmt.Sprintf("domain %d", rand.Int()) // nolint: gas
-	sqldb := NewDB(t)
-
-	// We can only run the integration tests if there is a MySQL instance available.
-	if provider := testdb.Default(); !provider.IsMySQL() {
-		t.Skipf("Skipping map integration test, SQL driver is %v", provider.Driver)
+	db, err := testdb.New(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("env: failed to open database: %v", err)
 	}
 
 	// Map server
 	mapEnv, err := integration.NewMapEnv(ctx)
 	if err != nil {
-		t.Fatalf("Failed to create trillian map server: %v", err)
+		return nil, fmt.Errorf("env: failed to create trillian map server: %v", err)
 	}
 
 	// Configure domain, which creates new map and log trees.
-	domainStorage, err := domain.NewStorage(sqldb)
+	domainStorage, err := domain.NewStorage(db)
 	if err != nil {
-		t.Fatalf("Failed to create domain storage: %v", err)
+		return nil, fmt.Errorf("env: failed to create domain storage: %v", err)
 	}
 	adminSvr := adminserver.New(domainStorage, mapEnv.AdminClient, mapEnv.AdminClient, vrfKeyGen)
 	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
@@ -125,24 +112,24 @@ func NewEnv(t *testing.T) *Env {
 		MaxInterval: ptypes.DurationProto(5 * time.Second),
 	})
 	if err != nil {
-		t.Fatalf("CreateDomain(): %v", err)
+		return nil, fmt.Errorf("env: CreateDomain(): %v", err)
 	}
 
 	mapID := domainPB.Map.TreeId
 	logID := domainPB.Log.TreeId
 	mapPubKey, err := der.UnmarshalPublicKey(domainPB.Map.GetPublicKey().GetDer())
 	if err != nil {
-		t.Fatalf("Failed to load signing keypair: %v", err)
+		return nil, fmt.Errorf("env: Failed to load signing keypair: %v", err)
 	}
 	vrfPub, err := p256.NewVRFVerifierFromRawKey(domainPB.Vrf.GetDer())
 	if err != nil {
-		t.Fatalf("Failed to load vrf pubkey: %v", err)
+		return nil, fmt.Errorf("env: Failed to load vrf pubkey: %v", err)
 	}
 
 	// Common data structures.
-	mutations, err := mutationstorage.New(sqldb)
+	mutations, err := mutationstorage.New(db)
 	if err != nil {
-		log.Fatalf("Failed to create mutations object: %v", err)
+		log.Fatalf("env: Failed to create mutations object: %v", err)
 	}
 	auth := authentication.NewFake()
 	authz := authorization.New()
@@ -165,13 +152,16 @@ func NewEnv(t *testing.T) *Env {
 	receiver := seq.NewReceiver(ctx, d, 60*time.Hour, 60*time.Hour)
 	receiver.Flush(ctx)
 
-	addr, lis := Listen(t)
+	addr, lis, err := Listen()
+	if err != nil {
+		return nil, err
+	}
 	go gsvr.Serve(lis)
 
 	// Client
 	cc, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
-		t.Fatalf("Dial(%v) = %v", addr, err)
+		return nil, fmt.Errorf("Dial(%v) = %v", addr, err)
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
@@ -184,23 +174,17 @@ func NewEnv(t *testing.T) *Env {
 		Conn:       cc,
 		Client:     client,
 		Signer:     seq,
-		db:         sqldb,
+		db:         db,
 		Cli:        ktClient,
 		Domain:     domainPB,
 		Receiver:   receiver,
-	}
+	}, nil
 }
 
 // Close releases resources allocated by NewEnv.
-func (env *Env) Close(t *testing.T) {
+func (env *Env) Close() {
 	env.Conn.Close()
 	env.GRPCServer.Stop()
 	env.mapEnv.Close()
 	env.db.Close()
-}
-
-// GetNewOutgoingContextWithFakeAuth returns a new context containing FakeAuth information to authenticate userID
-func GetNewOutgoingContextWithFakeAuth(userID string) context.Context {
-	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(context.Background())
-	return metadata.NewOutgoingContext(context.Background(), metadata.New(md))
 }

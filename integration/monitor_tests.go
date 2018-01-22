@@ -41,10 +41,8 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 -----END EC PRIVATE KEY-----`
 )
 
-func TestMonitor(t *testing.T) {
-	ctx := context.Background()
-	env := NewEnv(t)
-	defer env.Close(t)
+// TestMonitor verifies that the monitor correctly verifies transitions between epochs.
+func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	env.Client.RetryCount = 0
 	ktClient := pb.NewKeyTransparencyClient(env.Conn)
 	// setup monitor:
@@ -107,7 +105,7 @@ func TestMonitor(t *testing.T) {
 		},
 	} {
 		for _, userID := range tc.userIDs {
-			_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth(userID),
+			_, err = env.Client.Update(WithOutgoingFakeAuth(ctx, userID),
 				appID, userID, tc.updateData, tc.signers, tc.authorizedKeys)
 			if err != grpcc.ErrRetry {
 				t.Fatalf("Could not send update request: %v", err)
