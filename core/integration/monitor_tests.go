@@ -44,9 +44,8 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 // TestMonitor verifies that the monitor correctly verifies transitions between epochs.
 func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	env.Client.RetryCount = 0
-	ktClient := pb.NewKeyTransparencyClient(env.Conn)
 	// setup monitor:
-	resp, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
+	resp, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
@@ -65,7 +64,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	}
 	store := fake.NewMonitorStorage()
 	// TODO(ismail): setup and use a real logVerifier instead:
-	mon, err := monitor.New(ktClient, fake.NewFakeTrillianLogVerifier(),
+	mon, err := monitor.New(env.Cli, fake.NewFakeTrillianLogVerifier(),
 		mapTree.TreeId, mapHasher, mapPubKey,
 		crypto.NewSHA256Signer(signer), store)
 	if err != nil {

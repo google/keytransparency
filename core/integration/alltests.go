@@ -17,7 +17,20 @@ package integration
 import (
 	"context"
 	"testing"
+
+	"github.com/google/keytransparency/core/client/grpcc"
+	"github.com/google/keytransparency/core/mutator"
+
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
+
+// Env holds a complete testing environment for end-to-end tests.
+type Env struct {
+	Client   *grpcc.Client
+	Cli      pb.KeyTransparencyClient
+	Domain   *pb.Domain
+	Receiver mutator.Receiver
+}
 
 // NamedTestFn is a binding between a readable test name (used for a Go subtest)
 // and a function that performs the test, given a test environment.

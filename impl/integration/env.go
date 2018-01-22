@@ -30,10 +30,12 @@ import (
 	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
+	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
+
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
@@ -42,7 +44,6 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/storage/testdb"
-	"github.com/google/trillian/testonly/integration"
 
 	"google.golang.org/grpc"
 
@@ -50,7 +51,8 @@ import (
 	domaindef "github.com/google/keytransparency/core/domain"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
-	_ "github.com/mattn/go-sqlite3"                 // Use sqlite database for testing.
+	maptest "github.com/google/trillian/testonly/integration"
+	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )
 
 // Listen opens a random local port and listens on it.
@@ -69,16 +71,11 @@ func Listen() (string, net.Listener, error) {
 
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
-	mapEnv     *integration.MapEnv
-	GRPCServer *grpc.Server
-	V2Server   *keyserver.Server
-	Conn       *grpc.ClientConn
-	Client     *grpcc.Client
-	Signer     *sequencer.Sequencer
+	*integration.Env
+	mapEnv     *maptest.MapEnv
+	grpcServer *grpc.Server
+	grpcCC     *grpc.ClientConn
 	db         *sql.DB
-	Cli        pb.KeyTransparencyClient
-	Domain     *pb.Domain
-	Receiver   mutator.Receiver
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -95,7 +92,7 @@ func NewEnv() (*Env, error) {
 	}
 
 	// Map server
-	mapEnv, err := integration.NewMapEnv(ctx)
+	mapEnv, err := maptest.NewMapEnv(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to create trillian map server: %v", err)
 	}
@@ -168,23 +165,23 @@ func NewEnv() (*Env, error) {
 	client.RetryCount = 0
 
 	return &Env{
+		Env: &integration.Env{
+			Client:   client,
+			Cli:      ktClient,
+			Domain:   domainPB,
+			Receiver: receiver,
+		},
 		mapEnv:     mapEnv,
-		GRPCServer: gsvr,
-		V2Server:   server,
-		Conn:       cc,
-		Client:     client,
-		Signer:     seq,
+		grpcServer: gsvr,
+		grpcCC:     cc,
 		db:         db,
-		Cli:        ktClient,
-		Domain:     domainPB,
-		Receiver:   receiver,
 	}, nil
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
-	env.Conn.Close()
-	env.GRPCServer.Stop()
+	env.grpcCC.Close()
+	env.grpcServer.Stop()
 	env.mapEnv.Close()
 	env.db.Close()
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/keytransparency/core/integration"
 	"github.com/google/trillian/storage/testdb"
 )
 
@@ -30,14 +31,14 @@ func TestIntegration(t *testing.T) {
 
 	ctx := context.Background()
 
-	for _, test := range AllTests {
+	for _, test := range integration.AllTests {
 		t.Run(test.Name, func(t *testing.T) {
 			env, err := NewEnv()
 			if err != nil {
 				t.Fatalf("Could not create Env: %v", err)
 			}
 			defer env.Close()
-			test.Fn(ctx, env, t)
+			test.Fn(ctx, env.Env, t)
 		})
 	}
 }
