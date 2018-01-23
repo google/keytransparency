@@ -126,7 +126,7 @@ func NewEnv() (*Env, error) {
 	// Common data structures.
 	mutations, err := mutationstorage.New(db)
 	if err != nil {
-		log.Fatalf("env: Failed to create mutations object: %v", err)
+		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
 	}
 	auth := authentication.NewFake()
 	authz := authorization.New()

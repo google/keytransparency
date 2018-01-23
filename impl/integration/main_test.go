@@ -26,7 +26,7 @@ import (
 func TestIntegration(t *testing.T) {
 	// We can only run the integration tests if there is a MySQL instance available.
 	if provider := testdb.Default(); !provider.IsMySQL() {
-		t.Skipf("Skipping map integration test, SQL driver is %v", provider.Driver)
+		t.Skipf("Skipping KT integration test, SQL driver is %v", provider.Driver)
 	}
 
 	ctx := context.Background()
