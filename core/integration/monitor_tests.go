@@ -41,14 +41,11 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 -----END EC PRIVATE KEY-----`
 )
 
-func TestMonitor(t *testing.T) {
-	ctx := context.Background()
-	env := NewEnv(t)
-	defer env.Close(t)
+// TestMonitor verifies that the monitor correctly verifies transitions between epochs.
+func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	env.Client.RetryCount = 0
-	ktClient := pb.NewKeyTransparencyClient(env.Conn)
 	// setup monitor:
-	resp, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
+	resp, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
@@ -67,7 +64,7 @@ func TestMonitor(t *testing.T) {
 	}
 	store := fake.NewMonitorStorage()
 	// TODO(ismail): setup and use a real logVerifier instead:
-	mon, err := monitor.New(ktClient, fake.NewFakeTrillianLogVerifier(),
+	mon, err := monitor.New(env.Cli, fake.NewFakeTrillianLogVerifier(),
 		mapTree.TreeId, mapHasher, mapPubKey,
 		crypto.NewSHA256Signer(signer), store)
 	if err != nil {
@@ -107,7 +104,7 @@ func TestMonitor(t *testing.T) {
 		},
 	} {
 		for _, userID := range tc.userIDs {
-			_, err = env.Client.Update(GetNewOutgoingContextWithFakeAuth(userID),
+			_, err = env.Client.Update(WithOutgoingFakeAuth(ctx, userID),
 				appID, userID, tc.updateData, tc.signers, tc.authorizedKeys)
 			if err != grpcc.ErrRetry {
 				t.Fatalf("Could not send update request: %v", err)
