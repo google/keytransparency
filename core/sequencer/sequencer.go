@@ -78,10 +78,10 @@ type Sequencer struct {
 }
 
 // New creates a new instance of the signer.
-func New(domains domain.Storage,
+func New(tlog trillian.TrillianLogClient,
 	tmap trillian.TrillianMapClient,
-	tlog trillian.TrillianLogClient,
 	mutatorFunc mutator.Func,
+	domains domain.Storage,
 	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue) *Sequencer {
 	return &Sequencer{
