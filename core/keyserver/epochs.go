@@ -23,6 +23,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/google/keytransparency/core/domain"
+
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tpb "github.com/google/trillian"
 )
@@ -63,16 +65,16 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	// supposed to create at least one revision on startup.
 	respEpoch := resp.GetMapRoot().GetMapRevision()
 	// Fetch log proofs.
-	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, domain.LogID, in.GetFirstTreeSize(), respEpoch)
+	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, domain, in.GetFirstTreeSize(), respEpoch)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.Epoch{
-		DomainId:       in.DomainId,
+		DomainId:       domain.DomainID,
 		Smr:            resp.GetMapRoot(),
-		LogRoot:        logRoot.GetSignedLogRoot(),
-		LogConsistency: logConsistency.GetProof().GetHashes(),
-		LogInclusion:   logInclusion.GetProof().GetHashes(),
+		LogRoot:        logRoot,
+		LogConsistency: logConsistency.GetHashes(),
+		LogInclusion:   logInclusion.GetHashes(),
 	}, nil
 }
 
@@ -134,48 +136,28 @@ func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTra
 	return status.Errorf(codes.Unimplemented, "ListMutationStream is unimplemented")
 }
 
-func (s *Server) logProofs(ctx context.Context, logID, firstTreeSize int64, epoch int64) (
-	*tpb.GetLatestSignedLogRootResponse,
-	*tpb.GetConsistencyProofResponse,
-	*tpb.GetInclusionProofResponse,
-	error) {
-	// Lookup log and map info.
-	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
-		&tpb.GetLatestSignedLogRootRequest{
-			LogId: logID,
-		})
+// logProofs returns the proofs for a given epoch.
+func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize int64, epoch int64) (*tpb.SignedLogRoot, *tpb.Proof, *tpb.Proof, error) {
+
+	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, firstTreeSize)
 	if err != nil {
-		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", logID, err)
-		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch SignedLogRoot")
+		return nil, nil, nil, err
 	}
-	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
-	// Consistency proof.
-	var logConsistency *tpb.GetConsistencyProofResponse
-	if firstTreeSize != 0 {
-		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
-			&tpb.GetConsistencyProofRequest{
-				LogId:          logID,
-				FirstTreeSize:  firstTreeSize,
-				SecondTreeSize: secondTreeSize,
-			})
-		if err != nil {
-			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v", logID, firstTreeSize, secondTreeSize, err)
-			return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log consistency proof")
-		}
-	}
+
 	// Inclusion proof.
+	secondTreeSize := logRoot.GetTreeSize()
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&tpb.GetInclusionProofRequest{
-			LogId: logID,
+			LogId: d.LogID,
 			// SignedMapRoot must be in the log at MapRevision.
 			LeafIndex: epoch,
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", logID, epoch, secondTreeSize, err)
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
 		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log inclusion proof")
 	}
-	return logRoot, logConsistency, logInclusion, nil
+	return logRoot, logConsistency, logInclusion.GetProof(), nil
 }
 
 // parseToken returns the sequence number in token.

@@ -77,55 +77,66 @@ func New(tlog tpb.TrillianLogClient,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
-	return s.getEntry(ctx, in.DomainId, in.UserId, in.AppId, in.FirstTreeSize, -1)
-}
-
-// TODO(gdbelvin): add a GetEntryByRevision endpoint too.
-func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, firstTreeSize, revision int64) (*pb.GetEntryResponse, error) {
-	if got, want := revision, int64(0); got != -1 && got < want {
-		return nil, status.Errorf(codes.InvalidArgument,
-			"Epoch %v is inavlid. The first map revision is epoch %v.", got, want)
-	}
+	domainID := in.GetDomainId()
 	if domainID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 
 	// Lookup log and map info.
-	domain, err := s.domains.Read(ctx, domainID, false)
+	d, err := s.domains.Read(ctx, domainID, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
-	// Fresh Root.
-	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
-		&tpb.GetLatestSignedLogRootRequest{
-			LogId: domain.LogID,
-		})
+	// Fetch latest revision.
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
 	if err != nil {
-		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", domain.LogID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+		return nil, err
 	}
-	// Use the log as the authoritative source of the latest revision.
-	if revision < 0 {
-		// The maximum index in the log is one minus the number of items in the log.
-		revision = logRoot.GetSignedLogRoot().GetTreeSize() - 1
+	revision, err := latestRevision(sth)
+	if err != nil {
+		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
+		return nil, err
+	}
+
+	entryProof, err := s.getEntryByRevision(ctx, sth, d, in.UserId, in.AppId, revision)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &pb.GetEntryResponse{
+		LogRoot:        sth,
+		LogConsistency: consistencyProof.GetHashes(),
+	}
+	proto.Merge(resp, entryProof)
+	return resp, nil
+}
+
+// getEntryByRevision returns an entry and its proofs.
+// getEntryByRevision does NOT populate the following fields:
+// - LogRoot
+// - LogConsistency
+func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *domain.Domain, userID, appID string, revision int64) (*pb.GetEntryResponse, error) {
+	if revision < int64(0) {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"Revision is %v, want >= 0", revision)
 	}
 
 	// VRF.
-	vrfPriv, err := p256.NewFromWrappedKey(ctx, domain.VRFPriv)
+	vrfPriv, err := p256.NewFromWrappedKey(ctx, d.VRFPriv)
 	if err != nil {
 		return nil, err
 	}
 	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
 
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
-		MapId:    domain.MapID,
+		MapId:    d.MapID,
 		Index:    [][]byte{index[:]},
 		Revision: revision,
 	})
 	if err != nil {
-		glog.Errorf("GetLeavesByRevision(): %v", err)
+		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.MapID, revision, err)
 		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
@@ -147,29 +158,11 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 		}
 	}
 
-	// Fetch log proofs.
-	secondTreeSize := logRoot.GetSignedLogRoot().GetTreeSize()
-
-	// Consistency proof.
-	var logConsistency *tpb.GetConsistencyProofResponse
-	if firstTreeSize != 0 {
-		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
-			&tpb.GetConsistencyProofRequest{
-				LogId:          domain.LogID,
-				FirstTreeSize:  firstTreeSize,
-				SecondTreeSize: secondTreeSize,
-			})
-		if err != nil {
-			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v",
-				domain.LogID, firstTreeSize, secondTreeSize, err)
-			return nil, status.Errorf(codes.Internal, "Cannot fetch log consistency proof")
-		}
-	}
-
-	// Inclusion proof.
+	// SignedMapHead to SignedLogRoot inclusion proof.
+	secondTreeSize := sth.GetTreeSize()
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&tpb.GetInclusionProofRequest{
-			LogId: domain.LogID,
+			LogId: d.LogID,
 			// SignedMapRoot must be placed in the log at MapRevision.
 			// MapRevisions start at 1. Log leaves start at 1.
 			LeafIndex: getResp.GetMapRoot().GetMapRevision(),
@@ -177,7 +170,7 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 		})
 	if err != nil {
 		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v",
-			domain.LogID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
+			d.LogID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
@@ -190,29 +183,35 @@ func (s *Server) getEntry(ctx context.Context, domainID, userID, appID string, f
 				LeafValue: leaf,
 			},
 		},
-		Smr:            getResp.GetMapRoot(),
-		LogRoot:        logRoot.GetSignedLogRoot(),
-		LogConsistency: logConsistency.GetProof().GetHashes(),
-		LogInclusion:   logInclusion.GetProof().GetHashes(),
+		Smr:          getResp.GetMapRoot(),
+		LogInclusion: logInclusion.GetProof().GetHashes(),
 	}, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
 	// Lookup log and map info.
-	domain, err := s.domains.Read(ctx, in.DomainId, false)
+	domainID := in.GetDomainId()
+	if domainID == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+	}
+	d, err := s.domains.Read(ctx, domainID, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
-	// Get current epoch.
-	resp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: domain.MapID})
+
+	// Fetch latest revision.
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
 	if err != nil {
-		glog.Errorf("GetSignedMapRoot(%v): %v", domain.MapID, err)
-		return nil, status.Errorf(codes.Internal, "Fetching latest signed map root failed")
+		return nil, err
+	}
+	currentEpoch, err := latestRevision(sth)
+	if err != nil {
+		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
+		return nil, err
 	}
 
-	currentEpoch := resp.GetMapRoot().GetMapRevision()
 	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
 		glog.Errorf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
@@ -222,11 +221,16 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	// Get all GetEntryResponse for all epochs in the range [start, start + in.PageSize].
 	responses := make([]*pb.GetEntryResponse, in.PageSize)
 	for i := range responses {
-		resp, err := s.getEntry(ctx, in.DomainId, in.UserId, in.AppId, in.FirstTreeSize, in.Start+int64(i))
+		resp, err := s.getEntryByRevision(ctx, sth, d, in.UserId, in.AppId, in.Start+int64(i))
 		if err != nil {
 			glog.Errorf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
 			return nil, status.Errorf(codes.Internal, "GetEntry failed")
 		}
+		proto.Merge(resp, &pb.GetEntryResponse{
+			LogRoot: sth,
+			// TODO(gbelvin): This is redundant and wasteful. Refactor response API.
+			LogConsistency: consistencyProof.GetHashes(),
+		})
 		responses[i] = resp
 	}
 
@@ -362,4 +366,58 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 		Map:      mapTree,
 		Vrf:      domain.VRF,
 	}, nil
+}
+
+func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.SignedLogRoot, error) {
+	// Fresh Root.
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
+		&tpb.GetLatestSignedLogRootRequest{
+			LogId: d.LogID,
+		})
+	if err != nil {
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", d.LogID, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+	}
+	sth := logRoot.GetSignedLogRoot()
+	return sth, nil
+}
+
+// latestLogRootProof returns the lastest SignedLogRoot and it's consistency proof.
+func (s *Server) latestLogRootProof(ctx context.Context, d *domain.Domain, firstTreeSize int64) (*tpb.SignedLogRoot, *tpb.Proof, error) {
+
+	sth, err := s.latestLogRoot(ctx, d)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Consistency proof.
+	secondTreeSize := sth.GetTreeSize()
+	var logConsistency *tpb.GetConsistencyProofResponse
+	if firstTreeSize != 0 {
+		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
+			&tpb.GetConsistencyProofRequest{
+				LogId:          d.LogID,
+				FirstTreeSize:  firstTreeSize,
+				SecondTreeSize: secondTreeSize,
+			})
+		if err != nil {
+			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v",
+				d.LogID, firstTreeSize, secondTreeSize, err)
+			return nil, nil, status.Errorf(codes.Internal, "Cannot fetch log consistency proof")
+		}
+	}
+	return sth, logConsistency.GetProof(), nil
+}
+
+// latestRevision returns the latest map revision, given the latest sth.
+// The log is the authoritative source of the latest revision.
+func latestRevision(sth *tpb.SignedLogRoot) (int64, error) {
+	treeSize := sth.GetTreeSize()
+	// TreeSize = max_index + 1 because the log starts at index 0.
+	maxIndex := treeSize - 1
+
+	// The revision of the map is its index in the log.
+	if maxIndex < 0 {
+		return 0, status.Errorf(codes.Internal, "log is uninitialized")
+	}
+	return maxIndex, nil
 }
