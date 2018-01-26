@@ -106,11 +106,11 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 	if err != nil {
 		return nil, err
 	}
-
 	resp := &pb.GetEntryResponse{
 		LogRoot:        sth,
 		LogConsistency: consistencyProof.GetHashes(),
 	}
+
 	proto.Merge(resp, entryProof)
 	return resp, nil
 }
