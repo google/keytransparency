@@ -61,6 +61,9 @@ func (m *MapServer) GetLeavesByRevision(ctx context.Context, in *tpb.GetMapLeave
 	}
 	return &tpb.GetMapLeavesResponse{
 		MapLeafInclusion: leaves,
+		MapRoot: &tpb.SignedMapRoot{
+			MapRevision: in.GetRevision(),
+		},
 	}, nil
 }
 
@@ -68,7 +71,7 @@ func (m *MapServer) GetLeavesByRevision(ctx context.Context, in *tpb.GetMapLeave
 func (m *MapServer) SetLeaves(ctx context.Context, in *tpb.SetMapLeavesRequest, opts ...grpc.CallOption) (*tpb.SetMapLeavesResponse, error) {
 	m.revision++
 	m.roots[m.revision] = &tpb.SignedMapRoot{
-		Metadata:    in.Metadata,
+		Metadata:    in.GetMetadata(),
 		MapRevision: m.revision,
 	}
 	return nil, nil
