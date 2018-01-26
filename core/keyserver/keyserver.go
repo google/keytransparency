@@ -382,42 +382,4 @@ func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.Sign
 	return sth, nil
 }
 
-// latestLogRootProof returns the lastest SignedLogRoot and it's consistency proof.
-func (s *Server) latestLogRootProof(ctx context.Context, d *domain.Domain, firstTreeSize int64) (*tpb.SignedLogRoot, *tpb.Proof, error) {
-
-	sth, err := s.latestLogRoot(ctx, d)
-	if err != nil {
-		return nil, nil, err
-	}
-	// Consistency proof.
-	secondTreeSize := sth.GetTreeSize()
-	var logConsistency *tpb.GetConsistencyProofResponse
-	if firstTreeSize != 0 {
-		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
-			&tpb.GetConsistencyProofRequest{
-				LogId:          d.LogID,
-				FirstTreeSize:  firstTreeSize,
-				SecondTreeSize: secondTreeSize,
-			})
-		if err != nil {
-			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v",
-				d.LogID, firstTreeSize, secondTreeSize, err)
-			return nil, nil, status.Errorf(codes.Internal, "Cannot fetch log consistency proof")
-		}
-	}
-	return sth, logConsistency.GetProof(), nil
-}
-
-// latestRevision returns the latest map revision, given the latest sth.
-// The log is the authoritative source of the latest revision.
-func latestRevision(sth *tpb.SignedLogRoot) (int64, error) {
-	treeSize := sth.GetTreeSize()
-	// TreeSize = max_index + 1 because the log starts at index 0.
-	maxIndex := treeSize - 1
-
-	// The revision of the map is its index in the log.
-	if maxIndex < 0 {
-		return 0, status.Errorf(codes.Internal, "log is uninitialized")
-	}
-	return maxIndex, nil
-}
+		return [32]byte{}, nil, err
