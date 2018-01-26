@@ -48,6 +48,7 @@ type Server struct {
 	domains   domain.Storage
 	queue     mutator.MutationQueue
 	mutations mutator.MutationStorage
+	indexFunc indexFunc
 }
 
 // New creates a new instance of the key server.
@@ -70,6 +71,7 @@ func New(tlog tpb.TrillianLogClient,
 		domains:   domains,
 		queue:     queue,
 		mutations: mutations,
+		indexFunc: indexFromVRF,
 	}
 }
 
@@ -123,12 +125,10 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 			"Revision is %v, want >= 0", revision)
 	}
 
-	// VRF.
-	vrfPriv, err := p256.NewFromWrappedKey(ctx, d.VRFPriv)
+	index, proof, err := s.indexFunc(ctx, d, appID, userID)
 	if err != nil {
 		return nil, err
 	}
-	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
 
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    d.MapID,
@@ -382,4 +382,15 @@ func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.Sign
 	return sth, nil
 }
 
+// indexFunc computes an index and proof for domain/app/user
+type indexFunc func(ctx context.Context, d *domain.Domain, appID, userID string) ([32]byte, []byte, error)
+
+// index returns the index and proof for domain/app/user
+func indexFromVRF(ctx context.Context, d *domain.Domain, appID, userID string) ([32]byte, []byte, error) {
+	vrfPriv, err := p256.NewFromWrappedKey(ctx, d.VRFPriv)
+	if err != nil {
 		return [32]byte{}, nil, err
+	}
+	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
+	return index, proof, nil
+}
