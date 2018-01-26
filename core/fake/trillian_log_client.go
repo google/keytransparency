@@ -33,33 +33,33 @@ func NewTrillianLogClient() *LogServer {
 }
 
 // QueueLeaf increments the size of the tree.
-func (l *LogServer) QueueLeaf(ctx context.Context, in *tpb.QueueLeafRequest, opts ...grpc.CallOption) (*tpb.QueueLeafResponse, error) {
+func (l *LogServer) QueueLeaf(context.Context, *tpb.QueueLeafRequest, ...grpc.CallOption) (*tpb.QueueLeafResponse, error) {
 	l.treeSize++
 	return nil, nil
 }
 
 // QueueLeaves is not implemented.
-func (l *LogServer) QueueLeaves(ctx context.Context, in *tpb.QueueLeavesRequest, opts ...grpc.CallOption) (*tpb.QueueLeavesResponse, error) {
+func (*LogServer) QueueLeaves(context.Context, *tpb.QueueLeavesRequest, ...grpc.CallOption) (*tpb.QueueLeavesResponse, error) {
 	panic("not implemented")
 }
 
 // GetInclusionProof returns an empty proof.
-func (l *LogServer) GetInclusionProof(ctx context.Context, in *tpb.GetInclusionProofRequest, opts ...grpc.CallOption) (*tpb.GetInclusionProofResponse, error) {
+func (*LogServer) GetInclusionProof(context.Context, *tpb.GetInclusionProofRequest, ...grpc.CallOption) (*tpb.GetInclusionProofResponse, error) {
 	return &tpb.GetInclusionProofResponse{}, nil
 }
 
 // GetInclusionProofByHash is not implemented.
-func (l *LogServer) GetInclusionProofByHash(ctx context.Context, in *tpb.GetInclusionProofByHashRequest, opts ...grpc.CallOption) (*tpb.GetInclusionProofByHashResponse, error) {
+func (*LogServer) GetInclusionProofByHash(context.Context, *tpb.GetInclusionProofByHashRequest, ...grpc.CallOption) (*tpb.GetInclusionProofByHashResponse, error) {
 	panic("not implemented")
 }
 
 // GetConsistencyProof returns an empty proof.
-func (l *LogServer) GetConsistencyProof(ctx context.Context, in *tpb.GetConsistencyProofRequest, opts ...grpc.CallOption) (*tpb.GetConsistencyProofResponse, error) {
+func (*LogServer) GetConsistencyProof(context.Context, *tpb.GetConsistencyProofRequest, ...grpc.CallOption) (*tpb.GetConsistencyProofResponse, error) {
 	return &tpb.GetConsistencyProofResponse{}, nil
 }
 
 // GetLatestSignedLogRoot returns the current tree size.
-func (l *LogServer) GetLatestSignedLogRoot(ctx context.Context, in *tpb.GetLatestSignedLogRootRequest, opts ...grpc.CallOption) (*tpb.GetLatestSignedLogRootResponse, error) {
+func (l *LogServer) GetLatestSignedLogRoot(context.Context, *tpb.GetLatestSignedLogRootRequest, ...grpc.CallOption) (*tpb.GetLatestSignedLogRootResponse, error) {
 	return &tpb.GetLatestSignedLogRootResponse{
 		SignedLogRoot: &tpb.SignedLogRoot{
 			TreeSize: l.treeSize,
@@ -68,21 +68,26 @@ func (l *LogServer) GetLatestSignedLogRoot(ctx context.Context, in *tpb.GetLates
 }
 
 // GetSequencedLeafCount is not implemented.
-func (l *LogServer) GetSequencedLeafCount(ctx context.Context, in *tpb.GetSequencedLeafCountRequest, opts ...grpc.CallOption) (*tpb.GetSequencedLeafCountResponse, error) {
+func (*LogServer) GetSequencedLeafCount(context.Context, *tpb.GetSequencedLeafCountRequest, ...grpc.CallOption) (*tpb.GetSequencedLeafCountResponse, error) {
 	panic("not implemented")
 }
 
 // GetLeavesByIndex is not implemented.
-func (l *LogServer) GetLeavesByIndex(ctx context.Context, in *tpb.GetLeavesByIndexRequest, opts ...grpc.CallOption) (*tpb.GetLeavesByIndexResponse, error) {
+func (*LogServer) GetLeavesByIndex(context.Context, *tpb.GetLeavesByIndexRequest, ...grpc.CallOption) (*tpb.GetLeavesByIndexResponse, error) {
 	panic("not implemented")
 }
 
 // GetLeavesByHash is not implemented.
-func (l *LogServer) GetLeavesByHash(ctx context.Context, in *tpb.GetLeavesByHashRequest, opts ...grpc.CallOption) (*tpb.GetLeavesByHashResponse, error) {
+func (*LogServer) GetLeavesByHash(context.Context, *tpb.GetLeavesByHashRequest, ...grpc.CallOption) (*tpb.GetLeavesByHashResponse, error) {
 	panic("not implemented")
 }
 
 // GetEntryAndProof is not implemented.
-func (l *LogServer) GetEntryAndProof(ctx context.Context, in *tpb.GetEntryAndProofRequest, opts ...grpc.CallOption) (*tpb.GetEntryAndProofResponse, error) {
+func (*LogServer) GetEntryAndProof(context.Context, *tpb.GetEntryAndProofRequest, ...grpc.CallOption) (*tpb.GetEntryAndProofResponse, error) {
+	panic("not implemented")
+}
+
+// GetLeavesByRange is not implemented.
+func (*LogServer) GetLeavesByRange(context.Context, *tpb.GetLeavesByRangeRequest, ...grpc.CallOption) (*tpb.GetLeavesByRangeResponse, error) {
 	panic("not implemented")
 }
