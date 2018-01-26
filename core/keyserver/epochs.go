@@ -46,7 +46,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	// Lookup log and map info.
 	domain, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		glog.Errorf("GetEpoch(): adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
@@ -56,7 +56,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		Revision: in.Epoch,
 	})
 	if err != nil {
-		glog.Warningf("GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
+		glog.Errorf("GetEpoch(); GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
 		return nil, err
 	}
 
@@ -86,13 +86,13 @@ func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparency_
 // ListMutations returns the mutations that created an epoch.
 func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest) (*pb.ListMutationsResponse, error) {
 	if err := validateListMutationsRequest(in); err != nil {
-		glog.Errorf("validateGetMutationsRequest(%v): %v", in, err)
+		glog.Errorf("validateListMutationsRequest(%v): %v", in, err)
 		return nil, status.Error(codes.InvalidArgument, "Invalid request")
 	}
 	// Lookup log and map info.
-	domain, err := s.domains.Read(ctx, in.DomainId, false)
+	d, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		glog.Errorf("ListMutations(): adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
@@ -101,9 +101,9 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, err
 	}
 	// Read mutations from the database.
-	max, entries, err := s.mutations.ReadPage(ctx, domain.DomainID, in.GetEpoch(), start, in.GetPageSize())
+	max, entries, err := s.mutations.ReadPage(ctx, d.DomainID, in.GetEpoch(), start, in.GetPageSize())
 	if err != nil {
-		glog.Errorf("mutations.ReadRange(%v, %v, %v, %v): %v", domain.MapID, in.GetEpoch(), start, in.GetPageSize(), err)
+		glog.Errorf("ListMutations(): mutations.ReadRange(%v, %v, %v, %v): %v", d.MapID, in.GetEpoch(), start, in.GetPageSize(), err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
 	}
 	indexes := make([][]byte, 0, len(entries))
@@ -113,7 +113,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		indexes = append(indexes, e.GetIndex())
 	}
 	// Get leaf proofs.
-	proofs, err := s.inclusionProofs(ctx, in.DomainId, indexes, in.Epoch-1)
+	proofs, err := s.inclusionProofs(ctx, d, indexes, in.Epoch-1)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,6 @@ func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTra
 
 // logProofs returns the proofs for a given epoch.
 func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize int64, epoch int64) (*tpb.SignedLogRoot, *tpb.Proof, *tpb.Proof, error) {
-
 	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, firstTreeSize)
 	if err != nil {
 		return nil, nil, nil, err
@@ -154,7 +153,7 @@ func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize 
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
+		glog.Errorf("logProofs(): log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
 		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 	return logRoot, logConsistency, logInclusion.GetProof(), nil
@@ -178,7 +177,7 @@ func (s *Server) latestLogRootProof(ctx context.Context, d *domain.Domain, first
 				SecondTreeSize: secondTreeSize,
 			})
 		if err != nil {
-			glog.Errorf("tlog.GetConsistency(%v, %v, %v): %v",
+			glog.Errorf("latestLogRootProof(): log.GetConsistency(%v, %v, %v): %v",
 				d.LogID, firstTreeSize, secondTreeSize, err)
 			return nil, nil, status.Errorf(codes.Internal, "Cannot fetch log consistency proof")
 		}
@@ -208,30 +207,24 @@ func parseToken(token string) (int64, error) {
 	}
 	seq, err := strconv.ParseInt(token, 10, 64)
 	if err != nil {
-		glog.Errorf("strconv.ParseInt(%v, 10, 64): %v", token, err)
+		glog.Errorf("parseToken(%v): strconv.ParseInt(): %v", token, err)
 		return 0, status.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
 	}
 	return seq, nil
 }
 
-func (s *Server) inclusionProofs(ctx context.Context, domainID string, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {
-	// Lookup log and map info.
-	domain, err := s.domains.Read(ctx, domainID, false)
-	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
-	}
+func (s *Server) inclusionProofs(ctx context.Context, d *domain.Domain, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
-		MapId:    domain.MapID,
+		MapId:    d.MapID,
 		Index:    indexes,
 		Revision: epoch,
 	})
 	if err != nil {
-		glog.Errorf("GetLeavesByRevision(): %v", err)
+		glog.Errorf("inclusionProofs(): GetLeavesByRevision(): %v", err)
 		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.GetMapLeafInclusion()), len(indexes); got != want {
-		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
+		glog.Errorf("inclusionProofs(): GetLeavesByRevision() len: %v, want %v", got, want)
 		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
 	}
 	return getResp.GetMapLeafInclusion(), nil
