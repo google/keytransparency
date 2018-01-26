@@ -96,7 +96,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 	if err != nil {
 		return nil, err
 	}
-	revision, err := latestRevision(sth)
+	revision, err := mapRevisionFor(sth)
 	if err != nil {
 		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
 		return nil, err
@@ -120,7 +120,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 // - LogRoot
 // - LogConsistency
 func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *domain.Domain, userID, appID string, revision int64) (*pb.GetEntryResponse, error) {
-	if revision < int64(0) {
+	if revision < 0 {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"Revision is %v, want >= 0", revision)
 	}
@@ -164,7 +164,7 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 		&tpb.GetInclusionProofRequest{
 			LogId: d.LogID,
 			// SignedMapRoot must be placed in the log at MapRevision.
-			// MapRevisions start at 1. Log leaves start at 1.
+			// MapRevisions start at 0. Log leaves start at 0.
 			LeafIndex: getResp.GetMapRoot().GetMapRevision(),
 			TreeSize:  secondTreeSize,
 		})
@@ -206,7 +206,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	if err != nil {
 		return nil, err
 	}
-	currentEpoch, err := latestRevision(sth)
+	currentEpoch, err := mapRevisionFor(sth)
 	if err != nil {
 		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
 		return nil, err

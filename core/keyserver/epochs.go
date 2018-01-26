@@ -65,16 +65,16 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	// supposed to create at least one revision on startup.
 	respEpoch := resp.GetMapRoot().GetMapRevision()
 	// Fetch log proofs.
-	logRoot, logConsistency, logInclusion, err := s.logProofs(ctx, domain, in.GetFirstTreeSize(), respEpoch)
+	logProof, err := s.logProofs(ctx, domain, in.GetFirstTreeSize(), respEpoch)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.Epoch{
 		DomainId:       domain.DomainID,
 		Smr:            resp.GetMapRoot(),
-		LogRoot:        logRoot,
-		LogConsistency: logConsistency.GetHashes(),
-		LogInclusion:   logInclusion.GetHashes(),
+		LogRoot:        logProof.LogRoot,
+		LogConsistency: logProof.LogConsistency.GetHashes(),
+		LogInclusion:   logProof.LogInclusion.GetHashes(),
 	}, nil
 }
 
@@ -136,11 +136,18 @@ func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTra
 	return status.Errorf(codes.Unimplemented, "ListMutationStream is unimplemented")
 }
 
+// logProof holds the proof for a signed map root up to signed log root.
+type logProof struct {
+	LogRoot        *tpb.SignedLogRoot
+	LogConsistency *tpb.Proof
+	LogInclusion   *tpb.Proof
+}
+
 // logProofs returns the proofs for a given epoch.
-func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize int64, epoch int64) (*tpb.SignedLogRoot, *tpb.Proof, *tpb.Proof, error) {
+func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize int64, epoch int64) (*logProof, error) {
 	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, firstTreeSize)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	// Inclusion proof.
@@ -154,9 +161,13 @@ func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize 
 		})
 	if err != nil {
 		glog.Errorf("logProofs(): log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
-		return nil, nil, nil, status.Error(codes.Internal, "Cannot fetch log inclusion proof")
+		return nil, status.Error(codes.Internal, "Cannot fetch log inclusion proof")
 	}
-	return logRoot, logConsistency, logInclusion.GetProof(), nil
+	return &logProof{
+		LogRoot:        logRoot,
+		LogConsistency: logConsistency,
+		LogInclusion:   logInclusion.GetProof(),
+	}, nil
 }
 
 // latestLogRootProof returns the lastest SignedLogRoot and it's consistency proof.
@@ -185,9 +196,9 @@ func (s *Server) latestLogRootProof(ctx context.Context, d *domain.Domain, first
 	return sth, logConsistency.GetProof(), nil
 }
 
-// latestRevision returns the latest map revision, given the latest sth.
+// mapRevisionFor returns the latest map revision, given the latest sth.
 // The log is the authoritative source of the latest revision.
-func latestRevision(sth *tpb.SignedLogRoot) (int64, error) {
+func mapRevisionFor(sth *tpb.SignedLogRoot) (int64, error) {
 	treeSize := sth.GetTreeSize()
 	// TreeSize = max_index + 1 because the log starts at index 0.
 	maxIndex := treeSize - 1
