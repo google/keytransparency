@@ -282,18 +282,13 @@ service KeyTransparency {
     option (google.api.http) = { get: "/v1/domains/{domain_id}" };
   }
 
-  // GetEpoch returns a list of mutations between an epoch and its predecessor.
-  //
-  // Returns a list of mutations and their inclusion proofs along with the epoch
-  // signed map root.
+  // GetEpoch returns a SignedMapRoot by the by the requested revision number 
+  // along with its inclusion proof in the log and the log's consistency proofs. 
   rpc GetEpoch(GetEpochRequest) returns (Epoch) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}" };
   }
 
   // GetEpochStream streams new epochs as they are created.
-  //
-  // Returns a list of mutations and their inclusion proofs along with the epoch
-  // signed map root.
   rpc GetEpochStream(GetEpochRequest) returns (stream Epoch) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:stream" };
   }
