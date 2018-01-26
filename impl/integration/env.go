@@ -18,7 +18,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -102,7 +101,7 @@ func NewEnv() (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to create domain storage: %v", err)
 	}
-	adminSvr := adminserver.New(domainStorage, mapEnv.AdminClient, mapEnv.AdminClient, vrfKeyGen)
+	adminSvr := adminserver.New(domainStorage, mapEnv.Admin, mapEnv.Admin, vrfKeyGen)
 	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
 		DomainId:    domainID,
 		MinInterval: ptypes.DurationProto(1 * time.Second),
@@ -133,13 +132,13 @@ func NewEnv() (*Env, error) {
 	tlog := fake.NewTrillianLogClient()
 
 	queue := mutator.MutationQueue(mutations)
-	server := keyserver.New(tlog, mapEnv.MapClient, mapEnv.AdminClient,
+	server := keyserver.New(tlog, mapEnv.Map, mapEnv.Admin,
 		entry.New(), auth, authz, domainStorage, queue, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(domainStorage, mapEnv.MapClient, tlog, entry.New(), mutations, queue)
+	seq := sequencer.New(domainStorage, mapEnv.Map, tlog, entry.New(), mutations, queue)
 	// Only sequence when explicitly asked with receiver.Flush()
 	d := &domaindef.Domain{
 		DomainID: domainID,
