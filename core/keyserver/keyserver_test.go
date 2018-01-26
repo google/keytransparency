@@ -67,32 +67,35 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "not initialized", treeSize: 0, wantErr: codes.Internal},
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
-		t.Run(tc.desc, func(t *testing.T) {
+		t.Run(tc.desc+" GetEntry", func(t *testing.T) {
 			fakeLog.TreeSize = tc.treeSize
-			// Test GetEntry
 			resp, err := srv.GetEntry(ctx, &pb.GetEntryRequest{
 				DomainId: domainID,
 			})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("GetEntry(): %v, want %v", err, want)
 			}
-			if err == nil {
-				if got, want := resp.Smr.MapRevision, tc.wantRev; got != want {
-					t.Errorf("GetEntry().Rev: %v, want %v", got, want)
-				}
+			if err != nil {
+				return
 			}
-
-			// Test GetEntryHistory
+			if got, want := resp.Smr.MapRevision, tc.wantRev; got != want {
+				t.Errorf("GetEntry().Rev: %v, want %v", got, want)
+			}
+		})
+		t.Run(tc.desc+" GetEntryHistory", func(t *testing.T) {
+			fakeLog.TreeSize = tc.treeSize
 			resp2, err := srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
 				DomainId: domainID,
 			})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListEntryHistory(): %v, want %v", err, tc.wantErr)
 			}
-			if err == nil {
-				if got, want := resp2.Values[0].Smr.MapRevision, tc.wantRev; got != want {
-					t.Errorf("ListEntryHistory().Rev: %v, want %v", got, want)
-				}
+			if err != nil {
+				return
+			}
+			i := len(resp2.Values) - 1 // Get last value.
+			if got, want := resp2.Values[i].Smr.MapRevision, tc.wantRev; got != want {
+				t.Errorf("ListEntryHistory().Rev: %v, want %v", got, want)
 			}
 		})
 	}
