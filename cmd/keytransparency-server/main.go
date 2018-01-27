@@ -115,11 +115,12 @@ func main() {
 	}
 	tlog := trillian.NewTrillianLogClient(tconn)
 	tmap := trillian.NewTrillianMapClient(mconn)
-	tadmin := trillian.NewTrillianAdminClient(mconn)
+	logAdmin := trillian.NewTrillianAdminClient(tconn)
+	mapAdmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
 	queue := mutator.MutationQueue(mutations)
-	ksvr := keyserver.New(tlog, tmap, tadmin,
+	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
 		entry.New(), auth, authz, domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
