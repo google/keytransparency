@@ -218,7 +218,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.S
 	}
 
 	// 3. Wait for update.
-	m, err = c.WaitForUserUpdate(ctx, m)
+	m, err = c.waitOnceForUserUpdate(ctx, m)
 	for {
 		switch {
 		case err == ErrWait:
@@ -234,7 +234,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.S
 		default:
 			return m, err
 		}
-		m, err = c.WaitForUserUpdate(ctx, m)
+		m, err = c.waitOnceForUserUpdate(ctx, m)
 	}
 }
 
@@ -284,19 +284,35 @@ func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation,
 	return mutation, nil
 }
 
-// WaitForUserUpdate waits for the STH to be updated, indicating the next epoch has been created,
+// WaitForUserUpdate repeately waits for the mutation to be applied.
+func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*entry.Mutation, error) {
+	for {
+		m, err := c.waitOnceForUserUpdate(ctx, m)
+		switch {
+		case err == ErrWait:
+			// Try again.
+		case status.Code(err) == codes.DeadlineExceeded:
+			// Sometimes the timeout occurs during an rpc.
+			// Convert to a standard context.DeadlineExceeded for consistent error handling.
+			return m, context.DeadlineExceeded
+		default:
+			return m, err
+		}
+	}
+}
+
+// waitOnceForUserUpdate waits for the STH to be updated, indicating the next epoch has been created,
 // it then queries the current value for the user and checks it against the requested mutation.
 // If the current value has not changed, WaitForUpdate returns ErrWait.
 // If the current value has changed, but does not match the requested mutation,
 // WaitForUpdate returns a new mutation, built with the current value and ErrRetry.
 // If the current value matches the request, no mutation and no error are returned.
-func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*entry.Mutation, error) {
+func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (*entry.Mutation, error) {
 	if m == nil {
 		return nil, fmt.Errorf("nil mutation")
 	}
-	sth := &c.trusted
 	// Wait for STH to change.
-	if err := c.WaitForSTHUpdate(ctx, sth); err != nil {
+	if err := c.WaitForSTHUpdate(ctx, c.trusted.TreeSize+1); err != nil {
 		return m, err
 	}
 
@@ -333,9 +349,14 @@ func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*ent
 	}
 }
 
+// WaitForRevision waits until a given map revision is available.
+func (c *Client) WaitForRevision(ctx context.Context, revision int64) error {
+	return c.WaitForSTHUpdate(ctx, revision+1)
+}
+
 // WaitForSTHUpdate blocks until the log root reported by the server has moved
-// beyond sth or times out.
-func (c *Client) WaitForSTHUpdate(ctx context.Context, sth *trillian.SignedLogRoot) error {
+// to at least treeSize or times out.
+func (c *Client) WaitForSTHUpdate(ctx context.Context, treeSize int64) error {
 	b := &backoff.Backoff{
 		Min:    100 * time.Millisecond,
 		Max:    10 * time.Second,
@@ -347,18 +368,17 @@ func (c *Client) WaitForSTHUpdate(ctx context.Context, sth *trillian.SignedLogRo
 		select {
 		case <-time.After(b.Duration()):
 			resp, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
-				DomainId:      c.domainID,
-				FirstTreeSize: sth.TreeSize,
+				DomainId: c.domainID,
 			})
 			if err != nil {
 				return err
 			}
-			if resp.GetLogRoot().TreeSize <= sth.TreeSize {
-				// The LogRoot is not updated yet.
-				// Wait some more.
-				continue
+			if resp.GetLogRoot().TreeSize >= treeSize {
+				return nil // We're done!
 			}
-			return nil // We're done!
+			// The LogRoot is not updated yet.
+			// Wait some more.
+			continue
 
 		case <-ctx.Done():
 			return ctx.Err()
