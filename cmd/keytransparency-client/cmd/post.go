@@ -23,6 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 var (
@@ -87,7 +89,14 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
 		// TODO: fill signers and authorizedKeys.
-		if _, err := c.Update(ctx, userID, appID, profileData, signers, authorizedKeys); err != nil {
+		u := &tpb.User{
+			DomainId:       viper.GetString("domain"),
+			AppId:          appID,
+			UserId:         userID,
+			PublicKeyData:  profileData,
+			AuthorizedKeys: authorizedKeys,
+		}
+		if _, err := c.Update(ctx, u, signers); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}
 		fmt.Printf("New key for %v: %x\n", userID, data)

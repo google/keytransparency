@@ -33,6 +33,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/metadata"
 
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
@@ -184,12 +185,19 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			}
 			// Update profile.
 			if tc.insert {
-				m, err := env.Client.Update(tc.ctx, appID, tc.userID, primaryKey, tc.signers, tc.authorizedKeys)
-				if got, want := err, grpcc.ErrRetry; got != want {
+				u := &tpb.User{
+					DomainId:       env.Domain.DomainId,
+					AppId:          appID,
+					UserId:         tc.userID,
+					PublicKeyData:  primaryKey,
+					AuthorizedKeys: tc.authorizedKeys,
+				}
+				m, err := env.Client.Update(tc.ctx, u, tc.signers)
+				if got, want := err, grpcc.ErrWait; got != want {
 					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 				}
 				env.Receiver.Flush(tc.ctx)
-				if err := env.Client.Retry(tc.ctx, m, tc.signers); err != nil {
+				if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
 					t.Errorf("Retry(%v): %v, want nil", m, err)
 				}
 			}
@@ -238,19 +246,26 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 		{true, WithOutgoingFakeAuth(ctx, "dave"), "dave", profile, signers, authorizedKeys},
 		{true, WithOutgoingFakeAuth(ctx, "eve"), "eve", profile, signers, authorizedKeys},
 	} {
-		m, err := env.Client.Update(tc.ctx, appID, tc.userID, tc.profile, tc.signers, tc.authorizedKeys)
+		u := &tpb.User{
+			DomainId:       env.Domain.DomainId,
+			AppId:          appID,
+			UserId:         tc.userID,
+			PublicKeyData:  tc.profile,
+			AuthorizedKeys: tc.authorizedKeys,
+		}
+		m, err := env.Client.Update(tc.ctx, u, tc.signers)
 
 		if tc.want {
 			// The first update response is always a retry.
-			if got, want := err, grpcc.ErrRetry; got != want {
+			if got, want := err, grpcc.ErrWait; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
 			env.Receiver.Flush(tc.ctx)
-			if err := env.Client.Retry(tc.ctx, m, signers); err != nil {
+			if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", m, err)
 			}
 		} else {
-			if got, want := err, grpcc.ErrRetry; got == want {
+			if got, want := err, grpcc.ErrWait; got == want {
 				t.Fatalf("Update(%v): %v, don't want %v", tc.userID, got, want)
 			}
 		}
@@ -323,9 +338,16 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 		nil, cp(5), cp(7), nil,
 	} {
 		if p != nil {
-			_, err := e.Client.Update(ctx, appID, userID, p, signers, authorizedKeys)
+			u := &tpb.User{
+				DomainId:       domain.DomainId,
+				AppId:          appID,
+				UserId:         userID,
+				PublicKeyData:  p,
+				AuthorizedKeys: authorizedKeys,
+			}
+			_, err := e.Client.Update(ctx, u, signers)
 			// The first update response is always a retry.
-			if got, want := err, grpcc.ErrRetry; got != want {
+			if got, want := err, grpcc.ErrWait; got != want {
 				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
 			}
 		}

@@ -30,6 +30,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/hashers"
 
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
@@ -104,9 +105,16 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		},
 	} {
 		for _, userID := range tc.userIDs {
-			_, err = env.Client.Update(WithOutgoingFakeAuth(ctx, userID),
-				appID, userID, tc.updateData, tc.signers, tc.authorizedKeys)
-			if err != grpcc.ErrRetry {
+			u := &tpb.User{
+				DomainId:       env.Domain.DomainId,
+				AppId:          appID,
+				UserId:         userID,
+				PublicKeyData:  tc.updateData,
+				AuthorizedKeys: tc.authorizedKeys,
+			}
+			actx := WithOutgoingFakeAuth(ctx, userID)
+			_, err = env.Client.Update(actx, u, tc.signers)
+			if err != grpcc.ErrWait {
 				t.Fatalf("Could not send update request: %v", err)
 			}
 		}
