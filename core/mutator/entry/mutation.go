@@ -34,7 +34,7 @@ var nilHash, _ = objecthash.ObjectHash(nil)
 
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
-	domainID, appID, userID string
+	DomainID, AppID, UserID string
 	data, nonce             []byte
 
 	prevEntry *pb.Entry
@@ -48,9 +48,9 @@ type Mutation struct {
 // - Finalize the changes and create the mutation with SerializeAndSign.
 func NewMutation(index []byte, domainID, appID, userID string) *Mutation {
 	return &Mutation{
-		domainID: domainID,
-		appID:    appID,
-		userID:   userID,
+		DomainID: domainID,
+		AppID:    appID,
+		UserID:   userID,
 		entry: &pb.Entry{
 			Index:    index,
 			Previous: nilHash[:],
@@ -93,7 +93,7 @@ func (m *Mutation) SetCommitment(data []byte) error {
 	}
 	m.data = data
 	m.nonce = commitmentNonce
-	m.entry.Commitment = commitments.Commit(m.userID, m.appID, data, commitmentNonce)
+	m.entry.Commitment = commitments.Commit(m.UserID, m.AppID, data, commitmentNonce)
 	return nil
 }
 
@@ -131,9 +131,9 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize
 	}
 
 	return &pb.UpdateEntryRequest{
-		DomainId:      m.domainID,
-		UserId:        m.userID,
-		AppId:         m.appID,
+		DomainId:      m.DomainID,
+		UserId:        m.UserID,
+		AppId:         m.AppID,
 		FirstTreeSize: trustedTreeSize,
 		EntryUpdate: &pb.EntryUpdate{
 			Mutation: mutation,
@@ -161,16 +161,17 @@ func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
 	return m.entry, nil
 }
 
-// Check verifies that an update was successfully applied.
+// EqualsRequested verifies that an update was successfully applied.
 // Returns nil if newLeaf is equal to the entry in this mutation.
-func (m *Mutation) Check(newLeaf []byte) (bool, error) {
+func (m *Mutation) EqualsRequested(leafValue proto.Message) bool {
 	// TODO(gbelvin): Figure out reliable object comparison.
 	// Mutations are no longer stable serialized byte slices, so we need to
 	// use an equality operation on the proto itself.
-	leafValue, err := FromLeafValue(newLeaf)
-	if err != nil {
-		return false, fmt.Errorf("failed to decode current entry: %v", err)
-	}
+	return proto.Equal(leafValue, m.entry)
+}
 
-	return proto.Equal(leafValue, m.entry), nil
+// EqualsPrevious returns true if the leafValue is equal to
+// the value of entry at the time this mutation was made.
+func (m *Mutation) EqualsPrevious(leafValue proto.Message) bool {
+	return proto.Equal(leafValue, m.prevEntry)
 }
