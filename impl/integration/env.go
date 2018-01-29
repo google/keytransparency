@@ -83,7 +83,7 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 // NewEnv sets up common resources for tests.
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
-	domainID := fmt.Sprintf("domain %d", rand.Int()) // nolint: gas
+	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
 	db, err := testdb.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to open database: %v", err)

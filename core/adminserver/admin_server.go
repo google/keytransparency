@@ -240,11 +240,18 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	logID := logTree.GetTreeId()
 	mapID := mapTree.GetTreeId()
 
-	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
-		&tpb.GetLatestSignedLogRootRequest{LogId: logID})
+	logClient, err := client.NewFromTree(s.tlog, logTree)
 	if err != nil {
-		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", logID, err)
+		return fmt.Errorf("could not create log client: %v", err)
 	}
+
+	// Wait for the latest log root to become available.
+	logRoot, err := logClient.UpdateRoot(ctx)
+	if err != nil {
+		return fmt.Errorf("adminserver: UpdateRoot(): %v", err)
+	}
+
+	// TODO(gbelvin): does this need to be in a retry loop?
 	mapRoot, err := s.tmap.GetSignedMapRoot(ctx,
 		&tpb.GetSignedMapRootRequest{MapId: mapID})
 	if err != nil {
@@ -253,7 +260,7 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 
 	// If the tree is empty and the map is empty,
 	// add the empty map root to the log.
-	if logRoot.GetSignedLogRoot().GetTreeSize() != 0 ||
+	if logRoot.GetTreeSize() != 0 ||
 		mapRoot.GetMapRoot().GetMapRevision() != 0 {
 		return nil // Init not needed.
 	}
@@ -265,13 +272,8 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 		return err
 	}
 
-	logClient, err := client.NewFromTree(s.tlog, logTree)
-	if err != nil {
-		return fmt.Errorf("could not create log client: %v", err)
-	}
-	if err := logClient.QueueLeaf(ctx, smrJSON); err != nil {
-		return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
-			logID, smrJSON, err)
+	if err := logClient.AddLeaf(ctx, smrJSON); err != nil {
+		return fmt.Errorf("trillianLog.AddLeaf(): %v", err)
 	}
 	return nil
 }
