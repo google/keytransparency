@@ -7,13 +7,22 @@ global:
     monitor: 'keytransparency-monitor'
 
 rule_files:
-  - './prometheus.rules'
+  - 'rules.yml'
 
 # A scrape configuration containing exactly one endpoint to scrape:
 scrape_configs:
-  - job_name: 'kt-server'
+  - job_name: 'server'
     static_configs:
-        - targets: ['kt-server:8081']
-  - job_name: 'kt-signer'
+        - targets: ['server:8081']
+  - job_name: 'sequencer'
+    scheme: 'https'
+    tls_config:
+      insecure_skip_verify: true
     static_configs:
-        - targets: ['kt-signer:8081']
+        - targets: ['sequencer:8080']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+

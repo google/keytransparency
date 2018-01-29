@@ -3,7 +3,8 @@ kind: Service
 metadata:
   annotations:
     kompose.cmd: kompose convert --file ../../docker-compose.yml
-    kompose.version: 1.4.0 (HEAD)
+    kompose.service.type: LoadBalancer
+    kompose.version: 1.7.0 ()
   creationTimestamp: null
   labels:
     io.kompose.service: prometheus
@@ -15,5 +16,6 @@ spec:
     targetPort: 9090
   selector:
     io.kompose.service: prometheus
+  type: LoadBalancer
 status:
   loadBalancer: {}

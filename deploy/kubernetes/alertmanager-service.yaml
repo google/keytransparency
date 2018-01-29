@@ -6,14 +6,14 @@ metadata:
     kompose.version: 1.7.0 ()
   creationTimestamp: null
   labels:
-    io.kompose.service: monitor
-  name: monitor
+    io.kompose.service: alertmanager
+  name: alertmanager
 spec:
   ports:
-  - name: "8099"
-    port: 8099
-    targetPort: 8099
+  - name: "9093"
+    port: 9093
+    targetPort: 9093
   selector:
-    io.kompose.service: monitor
+    io.kompose.service: alertmanager
 status:
   loadBalancer: {}

@@ -1,0 +1,35 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --file ../../docker-compose.yml
+    kompose.version: 1.7.0 ()
+  creationTimestamp: null
+  labels:
+    io.kompose.service: alertmanager
+  name: alertmanager
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: alertmanager
+    spec:
+      containers:
+      - image: prom/alertmanager
+        name: alertmanager
+        ports:
+        - containerPort: 9093
+        resources: {}
+        volumeMounts:
+          - name: config-mount
+            mountPath: "/etc/alertmanager"
+            readOnly: true
+      volumes:
+        - name: config-mount
+          secret:
+            secretName: alertmanager-config
+      restartPolicy: Always
+status: {}
