@@ -56,7 +56,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		Revision: in.Epoch,
 	})
 	if err != nil {
-		glog.Errorf("GetEpoch(); GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
+		glog.Errorf("GetEpoch(): GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
 		return nil, err
 	}
 
@@ -80,7 +80,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 
 // GetEpochStream is a streaming API similar to ListMutations.
 func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparency_GetEpochStreamServer) error {
-	return status.Errorf(codes.Unimplemented, "GetEpochStream is unimplemented")
+	return status.Error(codes.Unimplemented, "GetEpochStream is unimplemented")
 }
 
 // ListMutations returns the mutations that created an epoch.
@@ -133,7 +133,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 
 // ListMutationsStream is a streaming list of mutations in a specific epoch.
 func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTransparency_ListMutationsStreamServer) error {
-	return status.Errorf(codes.Unimplemented, "ListMutationStream is unimplemented")
+	return status.Error(codes.Unimplemented, "ListMutationStream is unimplemented")
 }
 
 // logProof holds the proof for a signed map root up to signed log root.
@@ -161,7 +161,7 @@ func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize 
 		})
 	if err != nil {
 		glog.Errorf("logProofs(): log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
-		return nil, status.Error(codes.Internal, "Cannot fetch log inclusion proof")
+		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof: %v", err)
 	}
 	return &logProof{
 		LogRoot:        logRoot,
