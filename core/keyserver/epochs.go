@@ -41,7 +41,7 @@ func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochReques
 	// Lookup log and map info.
 	d, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
+		glog.Errorf("GetLatestEpoch(): adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
@@ -59,7 +59,7 @@ func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochReques
 	return s.getEpochByRevision(ctx, d, in.GetFirstTreeSize(), currentEpoch)
 }
 
-// GetEpoch returns a the requested epoch.
+// GetEpoch returns the requested epoch.
 func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoch, error) {
 	if err := validateGetEpochRequest(in); err != nil {
 		glog.Errorf("validateGetEpochRequest(%v): %v", in, err)
