@@ -24,7 +24,7 @@ import (
 
 // LogServer only stores tree size.
 type LogServer struct {
-	treeSize int64
+	TreeSize int64
 }
 
 // NewTrillianLogClient returns a fake trillian log client.
@@ -34,7 +34,7 @@ func NewTrillianLogClient() *LogServer {
 
 // QueueLeaf increments the size of the tree.
 func (l *LogServer) QueueLeaf(context.Context, *tpb.QueueLeafRequest, ...grpc.CallOption) (*tpb.QueueLeafResponse, error) {
-	l.treeSize++
+	l.TreeSize++
 	return nil, nil
 }
 
@@ -62,7 +62,7 @@ func (*LogServer) GetConsistencyProof(context.Context, *tpb.GetConsistencyProofR
 func (l *LogServer) GetLatestSignedLogRoot(context.Context, *tpb.GetLatestSignedLogRootRequest, ...grpc.CallOption) (*tpb.GetLatestSignedLogRootResponse, error) {
 	return &tpb.GetLatestSignedLogRootResponse{
 		SignedLogRoot: &tpb.SignedLogRoot{
-			TreeSize: l.treeSize,
+			TreeSize: l.TreeSize,
 		},
 	}, nil
 }
