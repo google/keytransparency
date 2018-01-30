@@ -110,7 +110,6 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		LogRoot:        sth,
 		LogConsistency: consistencyProof.GetHashes(),
 	}
-
 	proto.Merge(resp, entryProof)
 	return resp, nil
 }
@@ -366,20 +365,6 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 		Map:      mapTree,
 		Vrf:      domain.VRF,
 	}, nil
-}
-
-func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.SignedLogRoot, error) {
-	// Fresh Root.
-	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
-		&tpb.GetLatestSignedLogRootRequest{
-			LogId: d.LogID,
-		})
-	if err != nil {
-		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", d.LogID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
-	}
-	sth := logRoot.GetSignedLogRoot()
-	return sth, nil
 }
 
 // indexFunc computes an index and proof for domain/app/user

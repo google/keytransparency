@@ -36,7 +36,30 @@ var (
 	maxPageSize = int32(2048) // 8MB
 )
 
-// GetEpoch returns a list of mutations paged by epoch number.
+// GetLatestEpoch returns the latest epoch. The current epoch tracks the SignedLogRoot.
+func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochRequest) (*pb.Epoch, error) {
+	// Lookup log and map info.
+	d, err := s.domains.Read(ctx, in.DomainId, false)
+	if err != nil {
+		glog.Errorf("GetLatestEpoch(): adminstorage.Read(%v): %v", in.DomainId, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
+	}
+
+	// Fetch latest revision.
+	sth, err := s.latestLogRoot(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	currentEpoch, err := mapRevisionFor(sth)
+	if err != nil {
+		glog.Errorf("mapRevisionFor(log %v, sth%v): %v", d.LogID, sth, err)
+		return nil, err
+	}
+
+	return s.getEpochByRevision(ctx, d, in.GetFirstTreeSize(), currentEpoch)
+}
+
+// GetEpoch returns the requested epoch.
 func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoch, error) {
 	if err := validateGetEpochRequest(in); err != nil {
 		glog.Errorf("validateGetEpochRequest(%v): %v", in, err)
@@ -44,19 +67,24 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	}
 
 	// Lookup log and map info.
-	domain, err := s.domains.Read(ctx, in.DomainId, false)
+	d, err := s.domains.Read(ctx, in.DomainId, false)
 	if err != nil {
 		glog.Errorf("GetEpoch(): adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
+	return s.getEpochByRevision(ctx, d, in.GetFirstTreeSize(), in.GetEpoch())
+
+}
+
+func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain, firstTreeSize, revision int64) (*pb.Epoch, error) {
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
-		MapId:    domain.MapID,
-		Revision: in.Epoch,
+		MapId:    d.MapID,
+		Revision: revision,
 	})
 	if err != nil {
-		glog.Errorf("GetEpoch(): GetSignedMapRootByRevision(%v, %v): %v", domain.MapID, in.Epoch, err)
+		glog.Errorf("GetEpoch(): GetSignedMapRootByRevision(%v, %v): %v", d.MapID, revision, err)
 		return nil, err
 	}
 
@@ -65,12 +93,12 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	// supposed to create at least one revision on startup.
 	respEpoch := resp.GetMapRoot().GetMapRevision()
 	// Fetch log proofs.
-	logProof, err := s.logProofs(ctx, domain, in.GetFirstTreeSize(), respEpoch)
+	logProof, err := s.logProofs(ctx, d, firstTreeSize, respEpoch)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.Epoch{
-		DomainId:       domain.DomainID,
+		DomainId:       d.DomainID,
 		Smr:            resp.GetMapRoot(),
 		LogRoot:        logProof.LogRoot,
 		LogConsistency: logProof.LogConsistency.GetHashes(),
@@ -168,6 +196,20 @@ func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize 
 		LogConsistency: logConsistency,
 		LogInclusion:   logInclusion.GetProof(),
 	}, nil
+}
+
+func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.SignedLogRoot, error) {
+	// Fresh Root.
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
+		&tpb.GetLatestSignedLogRootRequest{
+			LogId: d.LogID,
+		})
+	if err != nil {
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", d.LogID, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+	}
+	sth := logRoot.GetSignedLogRoot()
+	return sth, nil
 }
 
 // latestLogRootProof returns the lastest SignedLogRoot and it's consistency proof.

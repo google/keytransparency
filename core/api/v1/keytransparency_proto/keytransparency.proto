@@ -205,6 +205,15 @@ message GetEpochRequest {
   int64 first_tree_size = 2;
 }
 
+// GetLatestEpochRequest identifies a particular epoch.
+message GetLatestEpochRequest {
+  // domain_id is the domain for which epochs are being requested.
+  string domain_id = 1;
+  // first_tree_size is the tree_size of the currently trusted log root.
+  // Omitting this field will omit the log consistency proof from the response.
+  int64 first_tree_size = 2;
+}
+
 // Epoch represents a snapshot of the entire key directory and
 // a diff of what changed between this revision and the previous revision.
 message Epoch {
@@ -282,18 +291,20 @@ service KeyTransparency {
     option (google.api.http) = { get: "/v1/domains/{domain_id}" };
   }
 
-  // GetEpoch returns a list of mutations between an epoch and its predecessor.
-  //
-  // Returns a list of mutations and their inclusion proofs along with the epoch
-  // signed map root.
+  // GetEpoch returns a SignedMapRoot by the by the requested revision number
+  // along with its inclusion proof in the log and the log's consistency proofs.
   rpc GetEpoch(GetEpochRequest) returns (Epoch) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}" };
   }
 
-  // GetEpochStream streams new epochs as they are created.
-  //
-  // Returns a list of mutations and their inclusion proofs along with the epoch
-  // signed map root.
+  // GetLatestEpoch returns the latest SignedMapRoot along with its inclusion
+  // proof in the log and the log's consistency proofs.
+  rpc GetLatestEpoch(GetLatestEpochRequest) returns (Epoch) {
+    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:latest" };
+  }
+
+  // GetEpochStream streams new epochs from a requested starting point
+  // and continues as new epochs are created.
   rpc GetEpochStream(GetEpochRequest) returns (stream Epoch) {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:stream" };
   }
