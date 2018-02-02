@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package integration exports a set of unit tests that can be run by impl/integration
+// or any other specific instantiation of KeyTransparency.
 package integration
 
 import (
