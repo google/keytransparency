@@ -36,7 +36,6 @@ func NewTrillianMapClient() *MapServer {
 	m := &MapServer{
 		roots: make(map[int64]*tpb.SignedMapRoot),
 	}
-	m.roots[0] = &tpb.SignedMapRoot{} // Set the initial root
 	return m
 }
 
@@ -88,5 +87,13 @@ func (m *MapServer) GetSignedMapRoot(ctx context.Context, in *tpb.GetSignedMapRo
 func (m *MapServer) GetSignedMapRootByRevision(ctx context.Context, in *tpb.GetSignedMapRootByRevisionRequest, opts ...grpc.CallOption) (*tpb.GetSignedMapRootResponse, error) {
 	return &tpb.GetSignedMapRootResponse{
 		MapRoot: m.roots[in.Revision],
+	}, nil
+}
+
+// InitMap creates the first tree head.
+func (m *MapServer) InitMap(ctx context.Context, in *tpb.InitMapRequest, opts ...grpc.CallOption) (*tpb.InitMapResponse, error) {
+	m.roots[0] = &tpb.SignedMapRoot{} // Set the initial root
+	return &tpb.InitMapResponse{
+		Created: m.roots[0],
 	}, nil
 }
