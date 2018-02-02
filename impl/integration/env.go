@@ -132,7 +132,7 @@ func NewEnv() (*Env, error) {
 	tlog := fake.NewTrillianLogClient()
 
 	queue := mutator.MutationQueue(mutations)
-	server := keyserver.New(tlog, mapEnv.Map, mapEnv.Admin,
+	server := keyserver.New(tlog, mapEnv.Map, mapEnv.Admin, mapEnv.Admin,
 		entry.New(), auth, authz, domainStorage, queue, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServer(gsvr, server)

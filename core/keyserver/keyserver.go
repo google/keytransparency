@@ -41,7 +41,8 @@ import (
 type Server struct {
 	tlog      tpb.TrillianLogClient
 	tmap      tpb.TrillianMapClient
-	tadmin    tpb.TrillianAdminClient
+	logAdmin  tpb.TrillianAdminClient
+	mapAdmin  tpb.TrillianAdminClient
 	auth      authentication.Authenticator
 	authz     authorization.Authorization
 	mutator   mutator.Func
@@ -54,7 +55,8 @@ type Server struct {
 // New creates a new instance of the key server.
 func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
-	tadmin tpb.TrillianAdminClient,
+	logAdmin tpb.TrillianAdminClient,
+	mapAdmin tpb.TrillianAdminClient,
 	mutator mutator.Func,
 	auth authentication.Authenticator,
 	authz authorization.Authorization,
@@ -64,7 +66,8 @@ func New(tlog tpb.TrillianLogClient,
 	return &Server{
 		tlog:      tlog,
 		tmap:      tmap,
-		tadmin:    tadmin,
+		logAdmin:  logAdmin,
+		mapAdmin:  mapAdmin,
 		mutator:   mutator,
 		auth:      auth,
 		authz:     authz,
@@ -350,13 +353,15 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info for %v", in.DomainId)
 	}
 
-	logTree, err := s.tadmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: domain.LogID})
+	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: domain.LogID})
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal,
+			"Cannot fetch log info for %v: %v", in.DomainId, err)
 	}
-	mapTree, err := s.tadmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: domain.MapID})
+	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: domain.MapID})
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal,
+			"Cannot fetch map info for %v: %v", in.DomainId, err)
 	}
 
 	return &pb.Domain{
