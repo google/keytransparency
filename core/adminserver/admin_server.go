@@ -17,8 +17,13 @@ package adminserver
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/domain"
@@ -27,8 +32,6 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
-
-	"github.com/golang/protobuf/ptypes"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -83,20 +86,26 @@ var (
 
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
-	domains  domain.Storage
+	tlog     tpb.TrillianLogClient
 	tmap     tpb.TrillianMapClient
 	logAdmin tpb.TrillianAdminClient
 	mapAdmin tpb.TrillianAdminClient
+	domains  domain.Storage
 	keygen   keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdmin implementation.
-func New(domains domain.Storage, tmap tpb.TrillianMapClient, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
+func New(tlog tpb.TrillianLogClient,
+	tmap tpb.TrillianMapClient,
+	logAdmin, mapAdmin tpb.TrillianAdminClient,
+	domains domain.Storage,
+	keygen keys.ProtoGenerator) *Server {
 	return &Server{
-		domains:  domains,
+		tlog:     tlog,
 		tmap:     tmap,
 		logAdmin: logAdmin,
 		mapAdmin: mapAdmin,
+		domains:  domains,
 		keygen:   keygen,
 	}
 }
@@ -197,6 +206,12 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		return nil, fmt.Errorf("Duration(%v): %v", in.MaxInterval, err)
 	}
 
+	// Initialize log with first map root.
+	if err := s.initialize(ctx, logTree, mapTree); err != nil {
+		return nil, fmt.Errorf("initialize of log %v and map %v failed: %v",
+			logTree.TreeId, mapTree.TreeId, err)
+	}
+
 	if err := s.domains.Write(ctx, &domain.Domain{
 		DomainID:    in.GetDomainId(),
 		MapID:       mapTree.TreeId,
@@ -208,12 +223,57 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}); err != nil {
 		return nil, fmt.Errorf("adminstorage.Write(): %v", err)
 	}
+	glog.Infof("Created domain %v", in.GetDomainId())
 	return &pb.Domain{
 		DomainId: in.GetDomainId(),
 		Log:      logTree,
 		Map:      mapTree,
 		Vrf:      vrfPublicPB,
 	}, nil
+}
+
+// initialize inserts the first (empty) SignedMapRoot into the log if it is empty.
+// This keeps the log leaves in-sync with the map which starts off with an
+// empty log root at map revision 0.
+func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) error {
+	logID := logTree.GetTreeId()
+	mapID := mapTree.GetTreeId()
+
+	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
+		&tpb.GetLatestSignedLogRootRequest{LogId: logID})
+	if err != nil {
+		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", logID, err)
+	}
+	mapRoot, err := s.tmap.GetSignedMapRoot(ctx,
+		&tpb.GetSignedMapRootRequest{MapId: mapID})
+	if err != nil {
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", mapID, err)
+	}
+
+	// If the tree is empty and the map is empty,
+	// add the empty map root to the log.
+	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
+		mapRoot.GetMapRoot().GetMapRevision() == 0 {
+		glog.Infof("Initializing Trillian Log %v with empty map root", logID)
+
+		// Non-blocking add leaf
+		smrJSON, err := json.Marshal(mapRoot.GetMapRoot())
+		if err != nil {
+			return err
+		}
+		idHash := sha256.Sum256(smrJSON)
+		if _, err := s.tlog.QueueLeaf(ctx, &tpb.QueueLeafRequest{
+			LogId: logID,
+			Leaf: &tpb.LogLeaf{
+				LeafValue:        smrJSON,
+				LeafIdentityHash: idHash[:],
+			},
+		}); err != nil {
+			return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
+				logID, smrJSON, err)
+		}
+	}
+	return nil
 }
 
 // DeleteDomain marks a domain as deleted, but does not immediately delete it.

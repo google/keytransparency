@@ -96,12 +96,14 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: failed to create trillian map server: %v", err)
 	}
 
+	tlog := fake.NewTrillianLogClient()
+
 	// Configure domain, which creates new map and log trees.
 	domainStorage, err := domain.NewStorage(db)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to create domain storage: %v", err)
 	}
-	adminSvr := adminserver.New(domainStorage, mapEnv.Map, mapEnv.Admin, mapEnv.Admin, vrfKeyGen)
+	adminSvr := adminserver.New(tlog, mapEnv.Map, mapEnv.Admin, mapEnv.Admin, domainStorage, vrfKeyGen)
 	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
 		DomainId:    domainID,
 		MinInterval: ptypes.DurationProto(1 * time.Second),
@@ -129,7 +131,6 @@ func NewEnv() (*Env, error) {
 	}
 	auth := authentication.NewFake()
 	authz := authorization.New()
-	tlog := fake.NewTrillianLogClient()
 
 	queue := mutator.MutationQueue(mutations)
 	server := keyserver.New(tlog, mapEnv.Map, mapEnv.Admin, mapEnv.Admin,
