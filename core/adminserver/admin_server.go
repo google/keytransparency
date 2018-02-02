@@ -17,7 +17,6 @@ package adminserver
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -95,11 +94,13 @@ type Server struct {
 }
 
 // New returns a KeyTransparencyAdmin implementation.
-func New(tlog tpb.TrillianLogClient,
+func New(
+	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	logAdmin, mapAdmin tpb.TrillianAdminClient,
 	domains domain.Storage,
-	keygen keys.ProtoGenerator) *Server {
+	keygen keys.ProtoGenerator,
+) *Server {
 	return &Server{
 		tlog:     tlog,
 		tmap:     tmap,
@@ -252,26 +253,25 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 
 	// If the tree is empty and the map is empty,
 	// add the empty map root to the log.
-	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
-		mapRoot.GetMapRoot().GetMapRevision() == 0 {
-		glog.Infof("Initializing Trillian Log %v with empty map root", logID)
+	if logRoot.GetSignedLogRoot().GetTreeSize() != 0 ||
+		mapRoot.GetMapRoot().GetMapRevision() != 0 {
+		return nil // Init not needed.
+	}
 
-		// Non-blocking add leaf
-		smrJSON, err := json.Marshal(mapRoot.GetMapRoot())
-		if err != nil {
-			return err
-		}
-		idHash := sha256.Sum256(smrJSON)
-		if _, err := s.tlog.QueueLeaf(ctx, &tpb.QueueLeafRequest{
-			LogId: logID,
-			Leaf: &tpb.LogLeaf{
-				LeafValue:        smrJSON,
-				LeafIdentityHash: idHash[:],
-			},
-		}); err != nil {
-			return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
-				logID, smrJSON, err)
-		}
+	glog.Infof("Initializing Trillian Log %v with empty map root", logID)
+	// Non-blocking add leaf
+	smrJSON, err := json.Marshal(mapRoot.GetMapRoot())
+	if err != nil {
+		return err
+	}
+
+	logClient, err := client.NewFromTree(s.tlog, logTree)
+	if err != nil {
+		return fmt.Errorf("could not create log client: %v", err)
+	}
+	if err := logClient.QueueLeaf(ctx, smrJSON); err != nil {
+		return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
+			logID, smrJSON, err)
 	}
 	return nil
 }
