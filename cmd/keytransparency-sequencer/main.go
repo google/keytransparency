@@ -94,7 +94,7 @@ func main() {
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
-	adminServer := adminserver.New(domainStorage, logAdmin, mapAdmin, keygen)
+	adminServer := adminserver.New(domainStorage, tmap, logAdmin, mapAdmin, keygen)
 	glog.Infof("Signer starting")
 
 	// Run servers
