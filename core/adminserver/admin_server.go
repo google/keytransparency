@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/domain"
+	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
@@ -83,15 +84,17 @@ var (
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
 	domains  domain.Storage
+	tmap     tpb.TrillianMapClient
 	logAdmin tpb.TrillianAdminClient
 	mapAdmin tpb.TrillianAdminClient
 	keygen   keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdmin implementation.
-func New(domains domain.Storage, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
+func New(domains domain.Storage, tmap tpb.TrillianMapClient, logAdmin, mapAdmin tpb.TrillianAdminClient, keygen keys.ProtoGenerator) *Server {
 	return &Server{
 		domains:  domains,
+		tmap:     tmap,
 		logAdmin: logAdmin,
 		mapAdmin: mapAdmin,
 		keygen:   keygen,
@@ -181,9 +184,9 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}
 	mapTreeArgs := *mapArgs
 	mapTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's Map", in.GetDomainId())
-	mapTree, err := s.mapAdmin.CreateTree(ctx, &mapTreeArgs)
+	mapTree, err := client.CreateAndInitTree(ctx, &mapTreeArgs, s.mapAdmin, s.tmap)
 	if err != nil {
-		return nil, fmt.Errorf("CreateTree(map): %v", err)
+		return nil, fmt.Errorf("CreateAndInitTree(map): %v", err)
 	}
 	minInterval, err := ptypes.Duration(in.MinInterval)
 	if err != nil {
