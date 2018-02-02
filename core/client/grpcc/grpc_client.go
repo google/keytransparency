@@ -229,17 +229,18 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.S
 	if got, want := u.DomainId, c.domainID; got != want {
 		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
 	}
-	// 1. pb.User + ExistingEntry -> Mutation
+	// 1. pb.User + ExistingEntry -> Mutation.
 	m, err := c.newMutation(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 
+	// 2. Queue Mutation.
 	if err := c.QueueMutation(ctx, m, signers); err != nil {
 		return nil, err
 	}
 
-	// 3. Wait for update
+	// 3. Wait for update.
 	m, err = c.WaitForUserUpdate(ctx, m)
 	for i := 0; i < c.RetryCount; i++ {
 		switch err {

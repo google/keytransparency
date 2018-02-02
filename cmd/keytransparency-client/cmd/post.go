@@ -88,7 +88,6 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
-		// TODO: fill signers and authorizedKeys.
 		u := &tpb.User{
 			DomainId:       viper.GetString("domain"),
 			AppId:          appID,
