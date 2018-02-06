@@ -188,13 +188,13 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	// Create Trillian keys.
 	logTreeArgs := *logArgs
 	logTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's SMH Log", in.GetDomainId())
-	logTree, err := s.logAdmin.CreateTree(ctx, &logTreeArgs)
+	logTree, err := client.CreateAndInitTree(ctx, &logTreeArgs, s.logAdmin, s.tmap, s.tlog)
 	if err != nil {
 		return nil, fmt.Errorf("CreateTree(log): %v", err)
 	}
 	mapTreeArgs := *mapArgs
 	mapTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's Map", in.GetDomainId())
-	mapTree, err := client.CreateAndInitTree(ctx, &mapTreeArgs, s.mapAdmin, s.tmap)
+	mapTree, err := client.CreateAndInitTree(ctx, &mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
 	if err != nil {
 		return nil, fmt.Errorf("CreateAndInitTree(map): %v", err)
 	}
