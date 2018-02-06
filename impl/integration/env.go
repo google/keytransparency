@@ -162,7 +162,6 @@ func NewEnv() (*Env, error) {
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
-	client.RetryCount = 0
 
 	return &Env{
 		Env: &integration.Env{

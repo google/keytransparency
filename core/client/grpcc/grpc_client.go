@@ -89,7 +89,6 @@ type Client struct {
 	domainID   string
 	kt         *kt.Verifier
 	mutator    mutator.Func
-	RetryCount int
 	RetryDelay time.Duration
 	trusted    trillian.SignedLogRoot
 }
@@ -143,7 +142,6 @@ func New(ktClient pb.KeyTransparencyClient,
 		domainID:   domainID,
 		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),
-		RetryCount: 1,
 		RetryDelay: 3 * time.Second,
 	}
 }
@@ -224,7 +222,8 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 }
 
 // Update creates an UpdateEntryRequest for a user,
-// attempt to submit it multiple times depending on RetryCount.
+// attempt to submit it multiple times depending until ctx times out.
+// Returns context.DeadlineExceeded if ctx times out.
 func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.Signer) (*entry.Mutation, error) {
 	if got, want := u.DomainId, c.domainID; got != want {
 		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
@@ -242,20 +241,23 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.S
 
 	// 3. Wait for update.
 	m, err = c.WaitForUserUpdate(ctx, m)
-	for i := 0; i < c.RetryCount; i++ {
-		switch err {
-		case ErrWait:
+	for {
+		switch {
+		case err == ErrWait:
 			// Try again.
-		case ErrRetry:
+		case err == ErrRetry:
 			if err := c.QueueMutation(ctx, m, signers); err != nil {
 				return nil, err
 			}
+		case status.Code(err) == codes.DeadlineExceeded:
+			// Sometimes the timeout occurs during an rpc.
+			// Convert to a standard context.DeadlineExceeded for consistent error handling.
+			return m, context.DeadlineExceeded
 		default:
 			return m, err
 		}
 		m, err = c.WaitForUserUpdate(ctx, m)
 	}
-	return m, err
 }
 
 // QueueMutation signs m and sends it to the server.
@@ -311,16 +313,19 @@ func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation,
 // WaitForUpdate returns a new mutation, built with the current value and ErrRetry.
 // If the current value matches the request, no mutation and no error are returned.
 func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*entry.Mutation, error) {
+	if m == nil {
+		return nil, fmt.Errorf("nil mutation")
+	}
 	sth := &c.trusted
 	// Wait for STH to change.
 	if err := c.WaitForSTHUpdate(ctx, sth); err != nil {
-		return nil, err
+		return m, err
 	}
 
 	// GetEntry.
 	e, err := c.VerifiedGetEntry(ctx, m.AppID, m.UserID)
 	if err != nil {
-		return nil, err
+		return m, err
 	}
 	Vlog.Printf("Got current entry...")
 
@@ -328,7 +333,7 @@ func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*ent
 	cntLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
 	cntValue, err := entry.FromLeafValue(cntLeaf)
 	if err != nil {
-		return nil, err
+		return m, err
 	}
 	switch {
 	case m.EqualsRequested(cntValue):
@@ -378,8 +383,7 @@ func (c *Client) WaitForSTHUpdate(ctx context.Context, sth *trillian.SignedLogRo
 			return nil // We're done!
 
 		case <-ctx.Done():
-			return status.Errorf(codes.DeadlineExceeded,
-				"Timed out waiting for sth update: %v", ctx.Err())
+			return ctx.Err()
 		}
 	}
 }

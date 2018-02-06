@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
@@ -44,7 +43,6 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 
 // TestMonitor verifies that the monitor correctly verifies transitions between epochs.
 func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
-	env.Client.RetryCount = 0
 	// setup monitor:
 	resp, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
@@ -113,8 +111,9 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 				AuthorizedKeys: tc.authorizedKeys,
 			}
 			actx := WithOutgoingFakeAuth(ctx, userID)
-			_, err = env.Client.Update(actx, u, tc.signers)
-			if err != grpcc.ErrWait {
+			cctx, cancel := context.WithTimeout(actx, 500*time.Millisecond)
+			defer cancel()
+			if _, err = env.Client.Update(cctx, u, tc.signers); err != context.DeadlineExceeded {
 				t.Fatalf("Could not send update request: %v", err)
 			}
 		}
