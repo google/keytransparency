@@ -260,7 +260,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.S
 	}
 }
 
-// QueueMutation signs m and sends it to the server.
+// QueueMutation signs an entry.Mutation and sends it to the server.
 func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []signatures.Signer) error {
 	req, err := m.SerializeAndSign(signers, c.trusted.GetTreeSize())
 	if err != nil {
@@ -268,7 +268,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 	}
 
 	Vlog.Printf("Sending Update request...")
-	// 2. Queue Mutation
+	// TODO(gdbelvin): Change name from UpdateEntry to QueueUpdate.
 	_, err = c.cli.UpdateEntry(ctx, req)
 	return err
 }
@@ -308,7 +308,7 @@ func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation,
 
 // WaitForUserUpdate waits for the STH to be updated, indicating the next epoch has been created,
 // it then queries the current value for the user and checks it against the requested mutation.
-// If the current value has not changed, WaitForUpdate returns ErrWaitSomeMore.
+// If the current value has not changed, WaitForUpdate returns ErrWait.
 // If the current value has changed, but does not match the requested mutation,
 // WaitForUpdate returns a new mutation, built with the current value and ErrRetry.
 // If the current value matches the request, no mutation and no error are returned.
@@ -343,10 +343,10 @@ func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*ent
 	default:
 		// Race condition: some change got in first.
 		// Value has changed, but it's not what we asked for.
-		// Retry based on new cnt value.
+		// Retry based on new cntValue.
 
 		// To break the tie between two devices that are fighting
-		// each other, this error should be propogated back to the user.
+		// each other, this error should be propagated back to the user.
 		copyPreviousLeafData := false
 		if err := m.SetPrevious(cntLeaf, copyPreviousLeafData); err != nil {
 			return nil, fmt.Errorf("waitforupdate: SetPrevious(): %v", err)
