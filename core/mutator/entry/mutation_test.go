@@ -94,13 +94,8 @@ func TestCreateAndVerify(t *testing.T) {
 			continue
 		}
 
-		newLeaf, err := ToLeafValue(newEntry)
-		if err != nil {
-			t.Errorf("ToLeafValue(): %v", err)
-			continue
-		}
-		if equal, err := m.Check(newLeaf); err != nil || !equal {
-			t.Errorf("Check(): %v, %v", equal, err)
+		if !m.EqualsRequested(newEntry) {
+			t.Errorf("EqualsRequested(): false")
 		}
 	}
 }

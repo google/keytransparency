@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/grpcc"
@@ -33,6 +34,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/metadata"
 
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
@@ -66,6 +68,8 @@ var (
 	appID      = "app"
 )
 
+const updateTimeout = 500 * time.Millisecond
+
 func createSigner(t *testing.T, privKey string) signatures.Signer {
 	signatures.Rand = dev.Zeros
 	signer, err := factory.NewSignerFromPEM([]byte(privKey))
@@ -88,8 +92,6 @@ func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
 
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
-	env.Client.RetryCount = 0
-
 	// Create lists of signers.
 	signer1 := createSigner(t, testPrivKey1)
 	signers1 := []signatures.Signer{signer1}
@@ -184,12 +186,21 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			}
 			// Update profile.
 			if tc.insert {
-				m, err := env.Client.Update(tc.ctx, appID, tc.userID, primaryKey, tc.signers, tc.authorizedKeys)
-				if got, want := err, grpcc.ErrRetry; got != want {
+				u := &tpb.User{
+					DomainId:       env.Domain.DomainId,
+					AppId:          appID,
+					UserId:         tc.userID,
+					PublicKeyData:  primaryKey,
+					AuthorizedKeys: tc.authorizedKeys,
+				}
+				cctx, cancel := context.WithTimeout(tc.ctx, updateTimeout)
+				defer cancel()
+				m, err := env.Client.Update(cctx, u, tc.signers)
+				if got, want := err, context.DeadlineExceeded; got != want {
 					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 				}
 				env.Receiver.Flush(tc.ctx)
-				if err := env.Client.Retry(tc.ctx, m, tc.signers); err != nil {
+				if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
 					t.Errorf("Retry(%v): %v, want nil", m, err)
 				}
 			}
@@ -217,8 +228,6 @@ func (e *Env) checkProfile(userID, appID string, want bool) error {
 
 // TestUpdateValidation verifies the correctness of updates submitted by the client.
 func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
-	env.Client.RetryCount = 0
-
 	profile := []byte("bar")
 
 	// Create lists of signers and authorized keys
@@ -238,19 +247,28 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 		{true, WithOutgoingFakeAuth(ctx, "dave"), "dave", profile, signers, authorizedKeys},
 		{true, WithOutgoingFakeAuth(ctx, "eve"), "eve", profile, signers, authorizedKeys},
 	} {
-		m, err := env.Client.Update(tc.ctx, appID, tc.userID, tc.profile, tc.signers, tc.authorizedKeys)
+		u := &tpb.User{
+			DomainId:       env.Domain.DomainId,
+			AppId:          appID,
+			UserId:         tc.userID,
+			PublicKeyData:  tc.profile,
+			AuthorizedKeys: tc.authorizedKeys,
+		}
+		cctx, cancel := context.WithTimeout(tc.ctx, updateTimeout)
+		defer cancel()
+		m, err := env.Client.Update(cctx, u, tc.signers)
 
 		if tc.want {
 			// The first update response is always a retry.
-			if got, want := err, grpcc.ErrRetry; got != want {
+			if got, want := err, context.DeadlineExceeded; got != want {
 				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
 			env.Receiver.Flush(tc.ctx)
-			if err := env.Client.Retry(tc.ctx, m, signers); err != nil {
+			if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
 				t.Errorf("Retry(%v): %v, want nil", m, err)
 			}
 		} else {
-			if got, want := err, grpcc.ErrRetry; got == want {
+			if got, want := err, grpcc.ErrWait; got == want {
 				t.Fatalf("Update(%v): %v, don't want %v", tc.userID, got, want)
 			}
 		}
@@ -261,7 +279,6 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	userID := "bob"
 	ctx = WithOutgoingFakeAuth(ctx, userID)
-	env.Client.RetryCount = 0
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
@@ -323,10 +340,18 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 		nil, cp(5), cp(7), nil,
 	} {
 		if p != nil {
-			_, err := e.Client.Update(ctx, appID, userID, p, signers, authorizedKeys)
+			u := &tpb.User{
+				DomainId:       domain.DomainId,
+				AppId:          appID,
+				UserId:         userID,
+				PublicKeyData:  p,
+				AuthorizedKeys: authorizedKeys,
+			}
+			cctx, cancel := context.WithTimeout(ctx, updateTimeout)
+			defer cancel()
 			// The first update response is always a retry.
-			if got, want := err, grpcc.ErrRetry; got != want {
-				return fmt.Errorf("Update(%v, %v)=(_, %v), want (_, %v)", userID, i, got, want)
+			if _, err := e.Client.Update(cctx, u, signers); err != context.DeadlineExceeded {
+				return fmt.Errorf("Update(%v, %v): %v, want %v", userID, i, err, context.DeadlineExceeded)
 			}
 		}
 		e.Receiver.Flush(ctx)

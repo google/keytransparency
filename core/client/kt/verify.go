@@ -93,7 +93,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	index, err := v.index(in.GetVrfProof(), domainID, appID, userID)
+	index, err := v.Index(in.GetVrfProof(), domainID, appID, userID)
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
 		return err

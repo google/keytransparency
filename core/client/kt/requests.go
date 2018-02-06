@@ -19,44 +19,14 @@ import (
 	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/vrf"
-	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/trillian/crypto/keyspb"
 )
 
-func (v *Verifier) index(vrfProof []byte, domainID, appID, userID string) ([]byte, error) {
+// Index computes the index from a VRF proof.
+func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error) {
 	uid := vrf.UniqueID(userID, appID)
 	index, err := v.vrf.ProofToHash(uid, vrfProof)
 	if err != nil {
 		return nil, fmt.Errorf("vrf.ProofToHash(%v, %v): %v", appID, userID, err)
 	}
 	return index[:], nil
-}
-
-// NewMutation creates a Mutation given the userID, desired state, and previous entry.
-func (v *Verifier) NewMutation(
-	domainID, appID, userID string,
-	profileData []byte, authorizedKeys []*keyspb.PublicKey,
-	vrfProof, oldLeaf []byte) (
-	*entry.Mutation, error) {
-
-	index, err := v.index(vrfProof, domainID, appID, userID)
-	if err != nil {
-		return nil, err
-	}
-	mutation := entry.NewMutation(index, domainID, appID, userID)
-	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
-		return nil, err
-	}
-
-	if err := mutation.SetCommitment(profileData); err != nil {
-		return nil, err
-	}
-
-	if len(authorizedKeys) != 0 {
-		if err := mutation.ReplaceAuthorizedKeys(authorizedKeys); err != nil {
-			return nil, err
-		}
-	}
-
-	return mutation, nil
 }

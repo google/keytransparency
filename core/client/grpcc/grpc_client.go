@@ -35,12 +35,15 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/crypto/keys/der"
-	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/hashers"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
@@ -53,10 +56,15 @@ const (
 )
 
 var (
-	// ErrRetry occurs when an update request has been submitted, but the
-	// results of the update are not visible on the server yet. The client
-	// must retry until the request is visible.
-	ErrRetry = errors.New("update not present on server yet")
+	// ErrRetry occurs when an update has been queued, but the
+	// results of the update differ from the one requested.
+	// This indicates that a separate update was in-flight while
+	// this update was being submitted. To continue, the client
+	// should make a fresh update and try again.
+	ErrRetry = errors.New("client: update race condition - try again")
+	// ErrWait occurs when an update has been queued, but no change has been
+	// observed in the user's account yet.
+	ErrWait = errors.New("client: update not present yet - wait some more")
 	// ErrIncomplete occurs when the server indicates that requested epochs
 	// are not available.
 	ErrIncomplete = errors.New("incomplete account history")
@@ -81,7 +89,6 @@ type Client struct {
 	domainID   string
 	kt         *kt.Verifier
 	mutator    mutator.Func
-	RetryCount int
 	RetryDelay time.Duration
 	trusted    trillian.SignedLogRoot
 }
@@ -135,27 +142,16 @@ func New(ktClient pb.KeyTransparencyClient,
 		domainID:   domainID,
 		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),
-		RetryCount: 1,
 		RetryDelay: 3 * time.Second,
 	}
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
 func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grpc.CallOption) ([]byte, *trillian.SignedMapRoot, error) {
-	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
-		DomainId:      c.domainID,
-		UserId:        userID,
-		AppId:         appID,
-		FirstTreeSize: c.trusted.TreeSize,
-	}, opts...)
+	e, err := c.VerifiedGetEntry(ctx, appID, userID)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if err := c.kt.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, &c.trusted, e); err != nil {
-		return nil, nil, err
-	}
-
 	// Empty case.
 	if e.GetCommitted() == nil {
 		return nil, e.GetSmr(), nil
@@ -225,70 +221,169 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 	return profiles, nil
 }
 
-// Update creates an UpdateEntryRequest for a user, attempt to submit it multiple
-// times depending on RetryCount.
-func (c *Client) Update(ctx context.Context, appID, userID string, profileData []byte,
-	signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey,
-	opts ...grpc.CallOption) (*entry.Mutation, error) {
-	getResp, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
-		DomainId:      c.domainID,
-		UserId:        userID,
-		AppId:         appID,
-		FirstTreeSize: c.trusted.TreeSize,
-	}, opts...)
+// Update creates an UpdateEntryRequest for a user,
+// attempt to submit it multiple times depending until ctx times out.
+// Returns context.DeadlineExceeded if ctx times out.
+func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.Signer) (*entry.Mutation, error) {
+	if got, want := u.DomainId, c.domainID; got != want {
+		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
+	}
+	// 1. pb.User + ExistingEntry -> Mutation.
+	m, err := c.newMutation(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("GetEntry(%v): %v", userID, err)
-	}
-	Vlog.Printf("Got current entry...")
-
-	if err := c.kt.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, &c.trusted, getResp); err != nil {
-		return nil, fmt.Errorf("VerifyGetEntryResponse(): %v", err)
+		return nil, err
 	}
 
-	m, err := c.kt.NewMutation(c.domainID, appID, userID, profileData, authorizedKeys,
-		getResp.GetVrfProof(), getResp.GetLeafProof().GetLeaf().GetLeafValue())
-	if err != nil {
-		return nil, fmt.Errorf("CreateUpdateEntryRequest: %v", err)
+	// 2. Queue Mutation.
+	if err := c.QueueMutation(ctx, m, signers); err != nil {
+		return nil, err
 	}
 
-	err = c.Retry(ctx, m, signers, opts...)
-	// Retry submitting until an inclusion proof is returned.
-	for i := 0; err == ErrRetry && i < c.RetryCount; i++ {
-		time.Sleep(c.RetryDelay)
-		err = c.Retry(ctx, m, signers, opts...)
+	// 3. Wait for update.
+	m, err = c.WaitForUserUpdate(ctx, m)
+	for {
+		switch {
+		case err == ErrWait:
+			// Try again.
+		case err == ErrRetry:
+			if err := c.QueueMutation(ctx, m, signers); err != nil {
+				return nil, err
+			}
+		case status.Code(err) == codes.DeadlineExceeded:
+			// Sometimes the timeout occurs during an rpc.
+			// Convert to a standard context.DeadlineExceeded for consistent error handling.
+			return m, context.DeadlineExceeded
+		default:
+			return m, err
+		}
+		m, err = c.WaitForUserUpdate(ctx, m)
 	}
-	return m, err
 }
 
-// Retry takes take a mutation, signs, and sends it again, and updates the back pointer with the current leaf value.
-func (c *Client) Retry(ctx context.Context, m *entry.Mutation, signers []signatures.Signer, opts ...grpc.CallOption) error {
-	req, err := m.SerializeAndSign(signers, c.trusted.TreeSize)
+// QueueMutation signs an entry.Mutation and sends it to the server.
+func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []signatures.Signer) error {
+	req, err := m.SerializeAndSign(signers, c.trusted.GetTreeSize())
 	if err != nil {
 		return fmt.Errorf("SerializeAndSign(): %v", err)
 	}
 
 	Vlog.Printf("Sending Update request...")
-	updateResp, err := c.cli.UpdateEntry(ctx, req, opts...)
+	// TODO(gdbelvin): Change name from UpdateEntry to QueueUpdate.
+	_, err = c.cli.UpdateEntry(ctx, req)
+	return err
+}
+
+// newMutation fetches the current index and value for a user and prepares a mutation.
+func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
+	e, err := c.VerifiedGetEntry(ctx, u.AppId, u.UserId)
 	if err != nil {
-		return fmt.Errorf("cli.UpdateEntry(): %v", err)
+		return nil, err
+	}
+	oldLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
+	Vlog.Printf("Got current entry...")
+
+	index, err := c.kt.Index(e.GetVrfProof(), u.DomainId, u.AppId, u.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	mutation := entry.NewMutation(index, u.DomainId, u.AppId, u.UserId)
+
+	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
+		return nil, err
+	}
+
+	if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
+		return nil, err
+	}
+
+	if len(u.AuthorizedKeys) != 0 {
+		if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
+			return nil, err
+		}
+	}
+
+	return mutation, nil
+}
+
+// WaitForUserUpdate waits for the STH to be updated, indicating the next epoch has been created,
+// it then queries the current value for the user and checks it against the requested mutation.
+// If the current value has not changed, WaitForUpdate returns ErrWait.
+// If the current value has changed, but does not match the requested mutation,
+// WaitForUpdate returns a new mutation, built with the current value and ErrRetry.
+// If the current value matches the request, no mutation and no error are returned.
+func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*entry.Mutation, error) {
+	if m == nil {
+		return nil, fmt.Errorf("nil mutation")
+	}
+	sth := &c.trusted
+	// Wait for STH to change.
+	if err := c.WaitForSTHUpdate(ctx, sth); err != nil {
+		return m, err
+	}
+
+	// GetEntry.
+	e, err := c.VerifiedGetEntry(ctx, m.AppID, m.UserID)
+	if err != nil {
+		return m, err
 	}
 	Vlog.Printf("Got current entry...")
 
-	// Validate response.
-	if err := c.kt.VerifyGetEntryResponse(ctx, c.domainID, req.AppId, req.UserId, &c.trusted, updateResp.GetProof()); err != nil {
-		return fmt.Errorf("VerifyGetEntryResponse(): %v", err)
+	// Verify.
+	cntLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
+	cntValue, err := entry.FromLeafValue(cntLeaf)
+	if err != nil {
+		return m, err
+	}
+	switch {
+	case m.EqualsRequested(cntValue):
+		return nil, nil
+	case m.EqualsPrevious(cntValue):
+		return m, ErrWait
+	default:
+		// Race condition: some change got in first.
+		// Value has changed, but it's not what we asked for.
+		// Retry based on new cntValue.
+
+		// To break the tie between two devices that are fighting
+		// each other, this error should be propagated back to the user.
+		copyPreviousLeafData := false
+		if err := m.SetPrevious(cntLeaf, copyPreviousLeafData); err != nil {
+			return nil, fmt.Errorf("waitforupdate: SetPrevious(): %v", err)
+		}
+		return m, errors.New("client: update race condition - try again")
+	}
+}
+
+// WaitForSTHUpdate blocks until the log root reported by the server has moved
+// beyond sth or times out.
+func (c *Client) WaitForSTHUpdate(ctx context.Context, sth *trillian.SignedLogRoot) error {
+	b := &backoff.Backoff{
+		Min:    100 * time.Millisecond,
+		Max:    10 * time.Second,
+		Factor: 1.2,
+		Jitter: true,
 	}
 
-	cntLeaf := updateResp.GetProof().GetLeafProof().GetLeaf().GetLeafValue()
-	equal, err := m.Check(cntLeaf)
-	if err != nil {
-		return fmt.Errorf("mutation.Check(): %v", err)
+	for {
+		select {
+		case <-time.After(b.Duration()):
+			resp, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
+				DomainId:      c.domainID,
+				FirstTreeSize: sth.TreeSize,
+			})
+			if err != nil {
+				return err
+			}
+			if resp.GetLogRoot().TreeSize <= sth.TreeSize {
+				// The LogRoot is not updated yet.
+				// Wait some more.
+				continue
+			}
+			return nil // We're done!
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
-	if err := m.SetPrevious(cntLeaf, false); err != nil {
-		return fmt.Errorf("mutation.SetPrevious(): %v", err)
-	}
-	if !equal {
-		return ErrRetry
-	}
-	return nil
 }
