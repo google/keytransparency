@@ -181,7 +181,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			if err := env.checkProfile(tc.userID, appID, tc.want); err != nil {
+			if err := env.checkProfile(ctx, tc.userID, appID, tc.want); err != nil {
 				t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
 			}
 			// Update profile.
@@ -210,8 +210,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 
 // checkProfile ensures that the returned profile is as expected along with the
 // keys it carries.
-func (e *Env) checkProfile(userID, appID string, want bool) error {
-	profile, _, err := e.Client.GetEntry(context.Background(), userID, appID)
+func (e *Env) checkProfile(ctx context.Context, userID, appID string, want bool) error {
+	profile, _, err := e.Client.GetEntry(ctx, userID, appID)
 	if err != nil {
 		return fmt.Errorf("GetEntry(%v): %v, want nil", userID, err)
 	}
