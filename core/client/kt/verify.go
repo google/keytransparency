@@ -73,7 +73,7 @@ func New(vrf vrf.PublicKey,
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
-	trusted *trillian.SignedLogRoot, in *pb.GetEntryResponse) error {
+	trusted trillian.SignedLogRoot, in *pb.GetEntryResponse) error {
 	// Unpack the merkle tree leaf value.
 	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
 	if err != nil {
@@ -128,11 +128,9 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	if err := v.logVerifier.VerifyRoot(trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
+	if err := v.logVerifier.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
 		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
-	Vlog.Printf("✓ Log root updated.")
-	trusted = in.GetLogRoot()
 
 	// Verify inclusion proof.
 	b, err := json.Marshal(in.GetSmr())
@@ -140,7 +138,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
 	logLeafIndex := in.GetSmr().GetMapRevision()
-	if err := v.logVerifier.VerifyInclusionAtIndex(trusted, b, logLeafIndex,
+	if err := v.logVerifier.VerifyInclusionAtIndex(&trusted, b, logLeafIndex,
 		in.GetLogInclusion()); err != nil {
 		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
 			b, in.GetSmr().GetMapRevision(), err)
