@@ -27,6 +27,7 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client/grpcc"
+	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/integration"
@@ -39,9 +40,9 @@ import (
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
+	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/storage/testdb"
 
 	"google.golang.org/grpc"
@@ -115,10 +116,6 @@ func NewEnv() (*Env, error) {
 
 	mapID := domainPB.Map.TreeId
 	logID := domainPB.Log.TreeId
-	mapPubKey, err := der.UnmarshalPublicKey(domainPB.Map.GetPublicKey().GetDer())
-	if err != nil {
-		return nil, fmt.Errorf("env: Failed to load signing keypair: %v", err)
-	}
 	vrfPub, err := p256.NewVRFVerifierFromRawKey(domainPB.Vrf.GetDer())
 	if err != nil {
 		return nil, fmt.Errorf("env: Failed to load vrf pubkey: %v", err)
@@ -161,7 +158,12 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("Dial(%v) = %v", addr, err)
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
-	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
+	mapVerifier, err := client.NewMapVerifierFromTree(domainPB.Map)
+	if err != nil {
+		return nil, err
+	}
+	ktVerifier := kt.New(vrfPub, mapVerifier, fake.NewTrillianLogVerifier())
+	client := grpcc.New(ktClient, domainID, ktVerifier)
 
 	return &Env{
 		Env: &integration.Env{

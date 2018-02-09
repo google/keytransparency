@@ -16,7 +16,6 @@ package kt
 
 import (
 	"context"
-	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,14 +25,10 @@ import (
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator/entry"
-
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/merkle"
-	"github.com/google/trillian/merkle/hashers"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tcrypto "github.com/google/trillian/crypto"
 )
 
 var (
@@ -47,20 +42,17 @@ var (
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
 	vrf         vrf.PublicKey
-	hasher      hashers.MapHasher
-	mapPubKey   crypto.PublicKey
+	mapVerifier *client.MapVerifier
 	logVerifier client.LogVerifier
 }
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
-	hasher hashers.MapHasher,
-	mapPubKey crypto.PublicKey,
+	mapVerifier *client.MapVerifier,
 	logVerifier client.LogVerifier) *Verifier {
 	return &Verifier{
 		vrf:         vrf,
-		hasher:      hasher,
-		mapPubKey:   mapPubKey,
+		mapVerifier: mapVerifier,
 		logVerifier: logVerifier,
 	}
 }
@@ -104,25 +96,18 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	if leafProof == nil {
 		return ErrNilProof
 	}
+	// TODO(gbelvin): what if Leaf is nil?
+	leafProof.Leaf.Index = index[:]
 
-	leaf := leafProof.GetLeaf().GetLeafValue()
-	proof := leafProof.GetInclusion()
-	expectedRoot := in.GetSmr().GetRootHash()
-	mapID := in.GetSmr().GetMapId()
-	if err := merkle.VerifyMapInclusionProof(mapID, index[:], leaf, expectedRoot, proof, v.hasher); err != nil {
+	if err := v.mapVerifier.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return fmt.Errorf("VerifyMapInclusionProof(): %v", err)
+		return err
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
-	// SignedMapRoot contains its own signature. To verify, we need to create a local
-	// copy of the object and return the object to the state it was in when signed
-	// by removing the signature from the object.
-	smr := *in.GetSmr()
-	smr.Signature = nil // Remove the signature from the object to be verified.
-	if err := tcrypto.VerifyObject(v.mapPubKey, smr, in.GetSmr().GetSignature()); err != nil {
+	if err := v.mapVerifier.VerifySignedMapRoot(in.GetSmr()); err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
-		return fmt.Errorf("sig.Verify(SMR): %v", err)
+		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
 	}
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 

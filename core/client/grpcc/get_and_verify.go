@@ -32,10 +32,10 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 		return nil, err
 	}
 
-	if err := c.kt.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, e); err != nil {
+	if err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, e); err != nil {
 		return nil, err
 	}
-	trusted = *in.GetLogRoot()
+	c.trusted = *e.GetLogRoot()
 	Vlog.Printf("✓ Log root updated.")
 
 	return e, nil

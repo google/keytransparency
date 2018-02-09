@@ -63,7 +63,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	}
 	store := fake.NewMonitorStorage()
 	// TODO(ismail): setup and use a real logVerifier instead:
-	mon, err := monitor.New(env.Cli, fake.NewFakeTrillianLogVerifier(),
+	mon, err := monitor.New(env.Cli, fake.NewTrillianLogVerifier(),
 		mapTree.TreeId, mapHasher, mapPubKey,
 		crypto.NewSHA256Signer(signer), store)
 	if err != nil {
