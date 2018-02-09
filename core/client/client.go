@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package grpcc is a client for communicating with the Key Server.  It wraps
-// the gRPC apis in a rpc system neutral interface and verifies all responses.
-package grpcc
+// Package client is a client for communicating with the Key Server.
+// It wraps the gRPC apis and verifies all responses.
+package client
 
 import (
 	"bytes"
@@ -25,7 +25,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
@@ -81,7 +80,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	*kt.Verifier
+	*Verifier
 	cli        pb.KeyTransparencyClient
 	domainID   string
 	mutator    mutator.Func
@@ -107,7 +106,7 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
 	}
 
-	ktVerifier := kt.New(vrfPubKey, mapVerifier, logVerifier)
+	ktVerifier := NewVerifier(vrfPubKey, mapVerifier, logVerifier)
 	return New(ktClient, config.DomainId, ktVerifier), nil
 }
 
@@ -115,7 +114,7 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 // TODO(gbelvin): set retry delay.
 func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
-	ktVerifier *kt.Verifier) *Client {
+	ktVerifier *Verifier) *Client {
 	return &Client{
 		Verifier:   ktVerifier,
 		cli:        ktClient,

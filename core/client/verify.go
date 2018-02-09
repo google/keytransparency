@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kt
+package client
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
@@ -34,9 +32,6 @@ import (
 var (
 	// ErrNilProof occurs when the provided GetEntryResponse contains a nil proof.
 	ErrNilProof = errors.New("nil proof")
-
-	// Vlog is the verbose logger. By default it outputs to /dev/null.
-	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
 // Verifier is a client helper library for verifying request and responses.
@@ -46,8 +41,8 @@ type Verifier struct {
 	logVerifier client.LogVerifier
 }
 
-// New creates a new instance of the client verifier.
-func New(vrf vrf.PublicKey,
+// NewVerifier creates a new instance of the client verifier.
+func NewVerifier(vrf vrf.PublicKey,
 	mapVerifier *client.MapVerifier,
 	logVerifier client.LogVerifier) *Verifier {
 	return &Verifier{
@@ -55,6 +50,16 @@ func New(vrf vrf.PublicKey,
 		mapVerifier: mapVerifier,
 		logVerifier: logVerifier,
 	}
+}
+
+// Index computes the index from a VRF proof.
+func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error) {
+	uid := vrf.UniqueID(userID, appID)
+	index, err := v.vrf.ProofToHash(uid, vrfProof)
+	if err != nil {
+		return nil, fmt.Errorf("vrf.ProofToHash(%v, %v): %v", appID, userID, err)
+	}
+	return index[:], nil
 }
 
 // VerifyGetEntryResponse verifies GetEntryResponse:
@@ -93,10 +98,9 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	Vlog.Printf("✓ VRF verified.")
 
 	leafProof := in.GetLeafProof()
-	if leafProof == nil {
+	if leafProof.GetLeaf() == nil {
 		return ErrNilProof
 	}
-	// TODO(gbelvin): what if Leaf is nil?
 	leafProof.Leaf.Index = index[:]
 
 	if err := v.mapVerifier.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {

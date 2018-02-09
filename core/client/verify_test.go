@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kt
+package client
 
 import (
 	"context"
@@ -103,7 +103,7 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 		Hasher: mapHasher,
 	}
 
-	v := New(vrfPub, mapVerifier, fake.NewTrillianLogVerifier())
+	v := NewVerifier(vrfPub, mapVerifier, fake.NewTrillianLogVerifier())
 
 	for _, tc := range []struct {
 		desc          string

@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/keytransparency/core/client/grpcc"
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -28,7 +28,7 @@ import (
 
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
-	Client   *grpcc.Client
+	Client   *client.Client
 	Cli      pb.KeyTransparencyClient
 	Domain   *pb.Domain
 	Receiver mutator.Receiver

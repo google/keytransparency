@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/client/grpcc"
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
@@ -268,7 +268,7 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 				t.Errorf("Retry(%v): %v, want nil", m, err)
 			}
 		} else {
-			if got, want := err, grpcc.ErrWait; got == want {
+			if got, want := err, client.ErrWait; got == want {
 				t.Fatalf("Update(%v): %v, don't want %v", tc.userID, got, want)
 			}
 		}
