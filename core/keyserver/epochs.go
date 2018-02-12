@@ -212,7 +212,7 @@ func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.Sign
 	return sth, nil
 }
 
-// latestLogRootProof returns the lastest SignedLogRoot and it's consistency proof.
+// latestLogRootProof returns the latest SignedLogRoot and it's consistency proof.
 func (s *Server) latestLogRootProof(ctx context.Context, d *domain.Domain, firstTreeSize int64) (*tpb.SignedLogRoot, *tpb.Proof, error) {
 
 	sth, err := s.latestLogRoot(ctx, d)
