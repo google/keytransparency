@@ -54,10 +54,9 @@ func NewVerifier(vrf vrf.PublicKey,
 
 // Index computes the index from a VRF proof.
 func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error) {
-	uid := vrf.UniqueID(userID, appID)
-	index, err := v.vrf.ProofToHash(uid, vrfProof)
+	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), vrfProof)
 	if err != nil {
-		return nil, fmt.Errorf("vrf.ProofToHash(%v, %v): %v", appID, userID, err)
+		return nil, fmt.Errorf("vrf.ProofToHash(): %v", err)
 	}
 	return index[:], nil
 }

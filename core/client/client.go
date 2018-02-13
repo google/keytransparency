@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package client is a client for communicating with the Key Server.
-// It wraps the gRPC apis and verifies all responses.
+// It wraps the gRPC APIs and verifies all responses.
 package client
 
 import (
@@ -31,7 +31,6 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	"github.com/google/trillian"
-	"github.com/google/trillian/client"
 	"github.com/google/trillian/client/backoff"
 
 	"google.golang.org/grpc"
@@ -40,6 +39,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 const (
@@ -90,12 +90,12 @@ type Client struct {
 
 // NewFromConfig creates a new client from a config
 func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Client, error) {
-	logVerifier, err := client.NewLogVerifierFromTree(config.GetLog())
+	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
 		return nil, err
 	}
 
-	mapVerifier, err := client.NewMapVerifierFromTree(config.GetMap())
+	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
 	if err != nil {
 		return nil, err
 	}
