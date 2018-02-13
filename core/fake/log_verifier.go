@@ -22,8 +22,8 @@ import (
 
 type logVerifier struct{}
 
-// NewFakeTrillianLogVerifier returns a verifier that passes all checks.
-func NewFakeTrillianLogVerifier() client.LogVerifier {
+// NewTrillianLogVerifier returns a verifier that passes all checks.
+func NewTrillianLogVerifier() client.LogVerifier {
 	return &logVerifier{}
 }
 
@@ -39,6 +39,6 @@ func (l *logVerifier) VerifyInclusionByHash(trusted *trillian.SignedLogRoot, lea
 	return nil
 }
 
-func (l *logVerifier) BuildLeaf(data []byte) (*trillian.LogLeaf, error) {
+func (l *logVerifier) BuildLeaf([]byte) (*trillian.LogLeaf, error) {
 	return nil, nil
 }

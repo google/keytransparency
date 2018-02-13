@@ -26,7 +26,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/client/grpcc"
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/integration"
@@ -41,13 +41,13 @@ import (
 
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/merkle/coniks"
 	"github.com/google/trillian/storage/testdb"
 
 	"google.golang.org/grpc"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	domaindef "github.com/google/keytransparency/core/domain"
+	tclient "github.com/google/trillian/client"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 	maptest "github.com/google/trillian/testonly/integration"
@@ -115,10 +115,6 @@ func NewEnv() (*Env, error) {
 
 	mapID := domainPB.Map.TreeId
 	logID := domainPB.Log.TreeId
-	mapPubKey, err := der.UnmarshalPublicKey(domainPB.Map.GetPublicKey().GetDer())
-	if err != nil {
-		return nil, fmt.Errorf("env: Failed to load signing keypair: %v", err)
-	}
 	vrfPub, err := p256.NewVRFVerifierFromRawKey(domainPB.Vrf.GetDer())
 	if err != nil {
 		return nil, fmt.Errorf("env: Failed to load vrf pubkey: %v", err)
@@ -161,7 +157,12 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("Dial(%v) = %v", addr, err)
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
-	client := grpcc.New(ktClient, domainID, vrfPub, mapPubKey, coniks.Default, fake.NewFakeTrillianLogVerifier())
+	mapVerifier, err := tclient.NewMapVerifierFromTree(domainPB.Map)
+	if err != nil {
+		return nil, err
+	}
+	ktVerifier := client.NewVerifier(vrfPub, mapVerifier, fake.NewTrillianLogVerifier())
+	client := client.New(ktClient, domainID, ktVerifier)
 
 	return &Env{
 		Env: &integration.Env{

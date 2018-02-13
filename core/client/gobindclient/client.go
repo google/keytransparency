@@ -27,8 +27,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/keytransparency/core/client/grpcc"
-	"github.com/google/keytransparency/core/client/kt"
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/client/multi"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
@@ -41,7 +40,7 @@ import (
 )
 
 var (
-	clients = make(map[string]*grpcc.Client)
+	clients = make(map[string]*client.Client)
 
 	timeout = 500 * time.Millisecond
 
@@ -53,7 +52,7 @@ var (
 )
 
 func init() {
-	kt.Vlog = log.New(multiLogWriter, "", log.LstdFlags)
+	client.Vlog = log.New(multiLogWriter, "", log.LstdFlags)
 }
 
 // AddVerboseLogsDestination instructs the logger of the gobindclient package to also write all log statements to the provided writer.
@@ -109,7 +108,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 		}
 	}
 
-	client, err := grpcc.NewFromConfig(ktClient, config)
+	client, err := client.NewFromConfig(ktClient, config)
 	if err != nil {
 		return fmt.Errorf("Error adding the KtServer: %v", err)
 	}

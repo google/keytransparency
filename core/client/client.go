@@ -12,32 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package grpcc is a client for communicating with the Key Server.  It wraps
-// the gRPC apis in a rpc system neutral interface and verifies all responses.
-package grpcc
+// Package client is a client for communicating with the Key Server.
+// It wraps the gRPC APIs and verifies all responses.
+package client
 
 import (
 	"bytes"
 	"context"
-	"crypto"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
 
-	"github.com/google/keytransparency/core/client/kt"
 	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	"github.com/google/trillian"
-	"github.com/google/trillian/client"
 	"github.com/google/trillian/client/backoff"
-	"github.com/google/trillian/crypto/keys/der"
-	"github.com/google/trillian/merkle/hashers"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -45,6 +39,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 const (
@@ -85,9 +80,9 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
+	*Verifier
 	cli        pb.KeyTransparencyClient
 	domainID   string
-	kt         *kt.Verifier
 	mutator    mutator.Func
 	RetryDelay time.Duration
 	trusted    trillian.SignedLogRoot
@@ -95,28 +90,14 @@ type Client struct {
 
 // NewFromConfig creates a new client from a config
 func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Client, error) {
-	// Log Hasher.
-	logHasher, err := hashers.NewLogHasher(config.GetLog().GetHashStrategy())
+	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
-		return nil, fmt.Errorf("Failed creating LogHasher: %v", err)
+		return nil, err
 	}
 
-	// Log Key
-	logPubKey, err := der.UnmarshalPublicKey(config.GetLog().GetPublicKey().GetDer())
+	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
 	if err != nil {
-		return nil, fmt.Errorf("Failed parsing Log public key: %v", err)
-	}
-
-	// Map Hasher
-	mapHasher, err := hashers.NewMapHasher(config.GetMap().GetHashStrategy())
-	if err != nil {
-		return nil, fmt.Errorf("Failed creating MapHasher: %v", err)
-	}
-
-	// Map Key
-	mapPubKey, err := der.UnmarshalPublicKey(config.GetMap().GetPublicKey().GetDer())
-	if err != nil {
-		return nil, fmt.Errorf("Failed parsing Map public key: %v", err)
+		return nil, err
 	}
 
 	// VRF key
@@ -125,22 +106,19 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
 	}
 
-	// TODO(gbelvin): set retry delay.
-	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
-	return New(ktClient, config.DomainId, vrfPubKey, mapPubKey, mapHasher, logVerifier), nil
+	ktVerifier := NewVerifier(vrfPubKey, mapVerifier, logVerifier)
+	return New(ktClient, config.DomainId, ktVerifier), nil
 }
 
 // New creates a new client.
+// TODO(gbelvin): set retry delay.
 func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
-	vrf vrf.PublicKey,
-	mapPubKey crypto.PublicKey,
-	mapHasher hashers.MapHasher,
-	logVerifier client.LogVerifier) *Client {
+	ktVerifier *Verifier) *Client {
 	return &Client{
+		Verifier:   ktVerifier,
 		cli:        ktClient,
 		domainID:   domainID,
-		kt:         kt.New(vrf, mapHasher, mapPubKey, logVerifier),
 		mutator:    entry.New(),
 		RetryDelay: 3 * time.Second,
 	}
@@ -192,7 +170,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.kt.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, &c.trusted, v)
+			err = c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, v)
 			if err != nil {
 				return nil, err
 			}
@@ -282,7 +260,7 @@ func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation,
 	oldLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.kt.Index(e.GetVrfProof(), u.DomainId, u.AppId, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), u.DomainId, u.AppId, u.UserId)
 	if err != nil {
 		return nil, err
 	}
