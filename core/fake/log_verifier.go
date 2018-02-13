@@ -38,3 +38,7 @@ func (l *logVerifier) VerifyInclusionAtIndex(trusted *trillian.SignedLogRoot, da
 func (l *logVerifier) VerifyInclusionByHash(trusted *trillian.SignedLogRoot, leafHash []byte, proof *trillian.Proof) error {
 	return nil
 }
+
+func (l *logVerifier) BuildLeaf(data []byte) (*trillian.LogLeaf, error) {
+	return nil, nil
+}
