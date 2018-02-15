@@ -16,6 +16,7 @@ package keyserver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -31,9 +32,16 @@ import (
 	tfake "github.com/google/trillian/testonly/fake"
 )
 
-func TestLatestRevision(t *testing.T) {
-	ctx := context.Background()
-	mapID := int64(2)
+const mapID = int64(2)
+
+type miniEnv struct {
+	s              *tfake.Server
+	srv            *Server
+	stopFakeServer func()
+	stopController func()
+}
+
+func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	fakeAdmin := fake.NewDomainStorage()
 	if err := fakeAdmin.Write(ctx, &domain.Domain{
 		DomainID:    domainID,
@@ -41,11 +49,10 @@ func TestLatestRevision(t *testing.T) {
 		MinInterval: 1 * time.Second,
 		MaxInterval: 5 * time.Second,
 	}); err != nil {
-		t.Fatalf("admin.Write(): %v", err)
+		return nil, fmt.Errorf("admin.Write(): %v", err)
 	}
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	s := &tfake.Server{
 		MockTrillianMapServer:   tpb.NewMockTrillianMapServer(ctrl),
 		MockTrillianLogServer:   tpb.NewMockTrillianLogServer(ctrl),
@@ -53,14 +60,12 @@ func TestLatestRevision(t *testing.T) {
 	}
 	lis, stopFakeServer, err := tfake.StartServer(s)
 	if err != nil {
-		t.Fatalf("Error starting fake server: %v", err)
+		return nil, fmt.Errorf("Error starting fake server: %v", err)
 	}
-	defer stopFakeServer()
 	cc, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	if err != nil {
-		t.Fatalf("Dial(%v): %v", lis.Addr().String(), err)
+		return nil, fmt.Errorf("Dial(%v): %v", lis.Addr().String(), err)
 	}
-
 	srv := &Server{
 		domains: fakeAdmin,
 		tlog:    tpb.NewTrillianLogClient(cc),
@@ -69,6 +74,21 @@ func TestLatestRevision(t *testing.T) {
 			return [32]byte{}, []byte(""), nil
 		},
 	}
+	return &miniEnv{
+		s:              s,
+		srv:            srv,
+		stopController: ctrl.Finish,
+		stopFakeServer: stopFakeServer,
+	}, nil
+}
+
+func (e *miniEnv) Close() {
+	e.stopController()
+	e.stopFakeServer()
+}
+
+func TestLatestRevision(t *testing.T) {
+	ctx := context.Background()
 
 	for _, tc := range []struct {
 		desc     string
@@ -79,33 +99,64 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "not initialized", treeSize: 0, wantErr: codes.Internal},
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
+		ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		defer cancel()
 		t.Run(tc.desc+" GetEntry", func(t *testing.T) {
-			resp, err := srv.GetEntry(ctx, &pb.GetEntryRequest{
-				DomainId: domainID,
-			})
+			e, err := newMiniEnv(ctx, t)
+			if err != nil {
+				t.Fatalf("newMiniEnv(): %v", err)
+			}
+			defer e.Close()
+			e.s.MockTrillianLogServer.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
+				Return(&tpb.GetLatestSignedLogRootResponse{
+					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+				}, err)
+			if tc.wantErr == codes.OK {
+				e.s.MockTrillianMapServer.EXPECT().GetLeavesByRevision(gomock.Any(),
+					&tpb.GetMapLeavesByRevisionRequest{
+						MapId:    mapID,
+						Index:    [][]byte{make([]byte, 32)},
+						Revision: tc.treeSize - 1,
+					}).
+					Return(&tpb.GetMapLeavesResponse{
+						MapLeafInclusion: []*tpb.MapLeafInclusion{&tpb.MapLeafInclusion{}},
+					}, nil)
+				e.s.MockTrillianLogServer.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetInclusionProofResponse{}, nil)
+			}
+
+			_, err = e.srv.GetEntry(ctx, &pb.GetEntryRequest{DomainId: domainID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("GetEntry(): %v, want %v", err, want)
 			}
-			if err != nil {
-				return
-			}
-			if got, want := resp.Smr.MapRevision, tc.wantRev; got != want {
-				t.Errorf("GetEntry().Rev: %v, want %v", got, want)
-			}
 		})
 		t.Run(tc.desc+" GetEntryHistory", func(t *testing.T) {
-			resp2, err := srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-				DomainId: domainID,
-			})
+			e, err := newMiniEnv(ctx, t)
+			if err != nil {
+				t.Fatalf("newMiniEnv(): %v", err)
+			}
+			defer e.Close()
+			e.s.MockTrillianLogServer.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
+				Return(&tpb.GetLatestSignedLogRootResponse{
+					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+				}, err)
+			for i := int64(0); i < tc.treeSize; i++ {
+				e.s.MockTrillianMapServer.EXPECT().GetLeavesByRevision(gomock.Any(),
+					&tpb.GetMapLeavesByRevisionRequest{
+						MapId:    mapID,
+						Index:    [][]byte{make([]byte, 32)},
+						Revision: i,
+					}).
+					Return(&tpb.GetMapLeavesResponse{
+						MapLeafInclusion: []*tpb.MapLeafInclusion{&tpb.MapLeafInclusion{}},
+					}, nil)
+				e.s.MockTrillianLogServer.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetInclusionProofResponse{}, nil)
+			}
+
+			_, err = e.srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{DomainId: domainID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListEntryHistory(): %v, want %v", err, tc.wantErr)
-			}
-			if err != nil {
-				return
-			}
-			i := len(resp2.Values) - 1 // Get last value.
-			if got, want := resp2.Values[i].Smr.MapRevision, tc.wantRev; got != want {
-				t.Errorf("ListEntryHistory().Rev: %v, want %v", got, want)
 			}
 		})
 	}

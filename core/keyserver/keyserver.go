@@ -145,9 +145,9 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
 		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-	neighbors := getResp.MapLeafInclusion[0].Inclusion
-	leaf := getResp.MapLeafInclusion[0].Leaf.LeafValue
-	extraData := getResp.MapLeafInclusion[0].Leaf.ExtraData
+	neighbors := getResp.MapLeafInclusion[0].GetInclusion()
+	leaf := getResp.MapLeafInclusion[0].GetLeaf().GetLeafValue()
+	extraData := getResp.MapLeafInclusion[0].GetLeaf().GetExtraData()
 
 	var committed *pb.Committed
 	if leaf != nil {
