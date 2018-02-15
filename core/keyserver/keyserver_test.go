@@ -19,21 +19,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tpb "github.com/google/trillian"
+	tfake "github.com/google/trillian/testonly/fake"
 )
 
 func TestLatestRevision(t *testing.T) {
 	ctx := context.Background()
 	mapID := int64(2)
 	fakeAdmin := fake.NewDomainStorage()
-	fakeMap := fake.NewTrillianMapClient()
-	fakeLog := fake.NewTrillianLogClient()
-
 	if err := fakeAdmin.Write(ctx, &domain.Domain{
 		DomainID:    domainID,
 		MapID:       mapID,
@@ -43,16 +44,27 @@ func TestLatestRevision(t *testing.T) {
 		t.Fatalf("admin.Write(): %v", err)
 	}
 
-	// Advance the Map's revision without touching the log.
-	fakeMap.SetLeaves(ctx, nil) // Revision 1
-	fakeMap.SetLeaves(ctx, nil) // Revision 2
-	fakeMap.SetLeaves(ctx, nil) // Revision 3
-	fakeMap.SetLeaves(ctx, nil) // Revision 4
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	s := &tfake.Server{
+		MockTrillianMapServer:   tpb.NewMockTrillianMapServer(ctrl),
+		MockTrillianLogServer:   tpb.NewMockTrillianLogServer(ctrl),
+		MockTrillianAdminServer: tpb.NewMockTrillianAdminServer(ctrl),
+	}
+	lis, stopFakeServer, err := tfake.StartServer(s)
+	if err != nil {
+		t.Fatalf("Error starting fake server: %v", err)
+	}
+	defer stopFakeServer()
+	cc, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Dial(%v): %v", lis.Addr().String(), err)
+	}
 
 	srv := &Server{
 		domains: fakeAdmin,
-		tlog:    fakeLog,
-		tmap:    fakeMap,
+		tlog:    tpb.NewTrillianLogClient(cc),
+		tmap:    tpb.NewTrillianMapClient(cc),
 		indexFunc: func(context.Context, *domain.Domain, string, string) ([32]byte, []byte, error) {
 			return [32]byte{}, []byte(""), nil
 		},
@@ -68,7 +80,6 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
 		t.Run(tc.desc+" GetEntry", func(t *testing.T) {
-			fakeLog.TreeSize = tc.treeSize
 			resp, err := srv.GetEntry(ctx, &pb.GetEntryRequest{
 				DomainId: domainID,
 			})
@@ -83,7 +94,6 @@ func TestLatestRevision(t *testing.T) {
 			}
 		})
 		t.Run(tc.desc+" GetEntryHistory", func(t *testing.T) {
-			fakeLog.TreeSize = tc.treeSize
 			resp2, err := srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
 				DomainId: domainID,
 			})
