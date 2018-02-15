@@ -284,7 +284,7 @@ func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation,
 	return mutation, nil
 }
 
-// WaitForUserUpdate repeately waits for the mutation to be applied.
+// WaitForUserUpdate waits for the mutation to be applied or the context to timeout or cancel.
 func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*entry.Mutation, error) {
 	for {
 		m, err := c.waitOnceForUserUpdate(ctx, m)
@@ -349,9 +349,15 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 	}
 }
 
+// sthForRevision returns the minimum STH.TreeSize that will contain the map revision.
+// Map revision N is stored at Log index N, the minimum TreeSize will be N+1.
+func sthForRevision(revision int64) int64 {
+	return revision + 1
+}
+
 // WaitForRevision waits until a given map revision is available.
 func (c *Client) WaitForRevision(ctx context.Context, revision int64) error {
-	return c.WaitForSTHUpdate(ctx, revision+1)
+	return c.WaitForSTHUpdate(ctx, sthForRevision(revision))
 }
 
 // WaitForSTHUpdate blocks until the log root reported by the server has moved

@@ -174,11 +174,11 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	// Generate VRF key.
 	wrapped, err := s.keygen(ctx, vrfKeySpec)
 	if err != nil {
-		return nil, fmt.Errorf("keygen: %v", err)
+		return nil, fmt.Errorf("adminserver: keygen(): %v", err)
 	}
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, wrapped)
 	if err != nil {
-		return nil, fmt.Errorf("NewFromWrappedKey(): %v", err)
+		return nil, fmt.Errorf("adminserver: NewFromWrappedKey(): %v", err)
 	}
 	vrfPublicPB, err := der.ToPublicProto(vrfPriv.Public())
 	if err != nil {
@@ -190,26 +190,26 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	logTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's SMH Log", in.GetDomainId())
 	logTree, err := client.CreateAndInitTree(ctx, &logTreeArgs, s.logAdmin, s.tmap, s.tlog)
 	if err != nil {
-		return nil, fmt.Errorf("CreateTree(log): %v", err)
+		return nil, fmt.Errorf("adminserver: CreateTree(log): %v", err)
 	}
 	mapTreeArgs := *mapArgs
 	mapTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's Map", in.GetDomainId())
 	mapTree, err := client.CreateAndInitTree(ctx, &mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
 	if err != nil {
-		return nil, fmt.Errorf("CreateAndInitTree(map): %v", err)
+		return nil, fmt.Errorf("adminserver: CreateAndInitTree(map): %v", err)
 	}
 	minInterval, err := ptypes.Duration(in.MinInterval)
 	if err != nil {
-		return nil, fmt.Errorf("Duration(%v): %v", in.MinInterval, err)
+		return nil, fmt.Errorf("adminserver: Duration(%v): %v", in.MinInterval, err)
 	}
 	maxInterval, err := ptypes.Duration(in.MaxInterval)
 	if err != nil {
-		return nil, fmt.Errorf("Duration(%v): %v", in.MaxInterval, err)
+		return nil, fmt.Errorf("adminserver: Duration(%v): %v", in.MaxInterval, err)
 	}
 
 	// Initialize log with first map root.
 	if err := s.initialize(ctx, logTree, mapTree); err != nil {
-		return nil, fmt.Errorf("initialize of log %v and map %v failed: %v",
+		return nil, fmt.Errorf("adminserver: initialize of log %v and map %v failed: %v",
 			logTree.TreeId, mapTree.TreeId, err)
 	}
 
@@ -222,7 +222,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		MinInterval: minInterval,
 		MaxInterval: maxInterval,
 	}); err != nil {
-		return nil, fmt.Errorf("adminstorage.Write(): %v", err)
+		return nil, fmt.Errorf("adminserver: domains.Write(): %v", err)
 	}
 	glog.Infof("Created domain %v", in.GetDomainId())
 	return &pb.Domain{
@@ -242,7 +242,7 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 
 	logClient, err := client.NewFromTree(s.tlog, logTree)
 	if err != nil {
-		return fmt.Errorf("could not create log client: %v", err)
+		return fmt.Errorf("adminserver: could not create log client: %v", err)
 	}
 
 	// Wait for the latest log root to become available.
@@ -255,7 +255,7 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	mapRoot, err := s.tmap.GetSignedMapRoot(ctx,
 		&tpb.GetSignedMapRootRequest{MapId: mapID})
 	if err != nil {
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", mapID, err)
+		return fmt.Errorf("adminserver: GetSignedMapRoot(%v): %v", mapID, err)
 	}
 
 	// If the tree is empty and the map is empty,
@@ -273,7 +273,7 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	}
 
 	if err := logClient.AddLeaf(ctx, smrJSON); err != nil {
-		return fmt.Errorf("trillianLog.AddLeaf(): %v", err)
+		return fmt.Errorf("adminserver: log.AddLeaf(): %v", err)
 	}
 	return nil
 }
