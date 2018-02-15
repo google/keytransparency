@@ -19,16 +19,15 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 var (
-	data       string
-	retryCount int
-	retryDelay time.Duration
+	data string
 )
 
 // postCmd represents the post command
@@ -49,6 +48,7 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
 		// Validate input.
 		if len(args) < 2 {
 			return fmt.Errorf("user email and app-id need to be provided")
@@ -72,10 +72,8 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		cctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		c.RetryCount = retryCount
-		c.RetryDelay = retryDelay
 
 		// Update.
 		signers := store.Signers()
@@ -86,8 +84,14 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
-		// TODO: fill signers and authorizedKeys.
-		if _, err := c.Update(ctx, userID, appID, profileData, signers, authorizedKeys); err != nil {
+		u := &tpb.User{
+			DomainId:       viper.GetString("domain"),
+			AppId:          appID,
+			UserId:         userID,
+			PublicKeyData:  profileData,
+			AuthorizedKeys: authorizedKeys,
+		}
+		if _, err := c.Update(cctx, u, signers); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}
 		fmt.Printf("New key for %v: %x\n", userID, data)
@@ -104,6 +108,4 @@ func init() {
 	}
 
 	postCmd.PersistentFlags().StringVarP(&data, "data", "d", "", "hex encoded key data")
-	postCmd.PersistentFlags().IntVar(&retryCount, "retries", 3, "Number of times to retry the update before failing")
-	postCmd.PersistentFlags().DurationVar(&retryDelay, "retry-delay", 5*time.Second, "Time to wait before retries. Set to server's signing period.")
 }

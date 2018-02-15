@@ -25,8 +25,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/client/grpcc"
-	"github.com/google/keytransparency/core/client/kt"
+	"github.com/google/keytransparency/core/client"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
@@ -59,8 +58,7 @@ key transparency server.  The client verifies all cryptographic proofs the
 server provides to ensure that account data is accurate.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if verbose {
-			grpcc.Vlog = log.New(os.Stdout, "", log.LstdFlags)
-			kt.Vlog = log.New(os.Stdout, "", log.LstdFlags)
+			client.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 		}
 	},
 	SilenceUsage: true,
@@ -238,7 +236,7 @@ func dial(ctx context.Context, ktURL string, useClientSecret bool) (*grpc.Client
 
 // GetClient connects to the server and returns a key transparency verification
 // client.
-func GetClient(useClientSecret bool) (*grpcc.Client, error) {
+func GetClient(useClientSecret bool) (*client.Client, error) {
 	ctx := context.Background()
 	ktURL := viper.GetString("kt-url")
 	cc, err := dial(ctx, ktURL, useClientSecret)
@@ -251,7 +249,7 @@ func GetClient(useClientSecret bool) (*grpcc.Client, error) {
 		return nil, fmt.Errorf("Error reading config: %v", err)
 	}
 
-	return grpcc.NewFromConfig(pb.NewKeyTransparencyClient(cc), config)
+	return client.NewFromConfig(pb.NewKeyTransparencyClient(cc), config)
 }
 
 // config selects a source for and returns the client configuration.

@@ -235,7 +235,7 @@ message ListMutationsRequest {
   string domain_id = 5;
   // epoch specifies the epoch number.
   int64 epoch = 1;
-  // page_token defines the starting point for pagination. 
+  // page_token defines the starting point for pagination.
   // To request the next page, pass next_page_token from the previous response.
   // To start at the beginning, simply omit page_token from the request.
   string page_token = 3;
@@ -264,7 +264,7 @@ message ListMutationsResponse {
 // Each Domain has a collection of snapshots called epochs:
 // `/v1/domains/*/epochs/`
 //  * Each Epoch contains the root of the sparse merkle tree and the changes that
-//    occured that epoch and the previous.
+//    occurred that epoch and the previous.
 //
 // Each Epoch has a collection of mutations:
 // `/v1/domains/*/epochs/*/mutations/`.

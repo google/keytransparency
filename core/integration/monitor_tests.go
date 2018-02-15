@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/client/grpcc"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
@@ -30,6 +29,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/merkle/hashers"
 
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
@@ -43,7 +43,6 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 
 // TestMonitor verifies that the monitor correctly verifies transitions between epochs.
 func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
-	env.Client.RetryCount = 0
 	// setup monitor:
 	resp, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
@@ -64,7 +63,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	}
 	store := fake.NewMonitorStorage()
 	// TODO(ismail): setup and use a real logVerifier instead:
-	mon, err := monitor.New(env.Cli, fake.NewFakeTrillianLogVerifier(),
+	mon, err := monitor.New(env.Cli, fake.NewTrillianLogVerifier(),
 		mapTree.TreeId, mapHasher, mapPubKey,
 		crypto.NewSHA256Signer(signer), store)
 	if err != nil {
@@ -104,9 +103,17 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		},
 	} {
 		for _, userID := range tc.userIDs {
-			_, err = env.Client.Update(WithOutgoingFakeAuth(ctx, userID),
-				appID, userID, tc.updateData, tc.signers, tc.authorizedKeys)
-			if err != grpcc.ErrRetry {
+			u := &tpb.User{
+				DomainId:       env.Domain.DomainId,
+				AppId:          appID,
+				UserId:         userID,
+				PublicKeyData:  tc.updateData,
+				AuthorizedKeys: tc.authorizedKeys,
+			}
+			actx := WithOutgoingFakeAuth(ctx, userID)
+			cctx, cancel := context.WithTimeout(actx, 500*time.Millisecond)
+			defer cancel()
+			if _, err = env.Client.Update(cctx, u, tc.signers); err != context.DeadlineExceeded {
 				t.Fatalf("Could not send update request: %v", err)
 			}
 		}

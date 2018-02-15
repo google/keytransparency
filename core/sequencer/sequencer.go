@@ -78,10 +78,10 @@ type Sequencer struct {
 }
 
 // New creates a new instance of the signer.
-func New(domains domain.Storage,
+func New(tlog trillian.TrillianLogClient,
 	tmap trillian.TrillianMapClient,
-	tlog trillian.TrillianLogClient,
 	mutatorFunc mutator.Func,
+	domains domain.Storage,
 	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue) *Sequencer {
 	return &Sequencer{
@@ -100,35 +100,6 @@ func (s *Sequencer) Close() {
 	for _, r := range s.receivers {
 		r.Close()
 	}
-}
-
-// Initialize inserts the object hash of an empty struct into the log if it is empty.
-// This keeps the log leaves in-sync with the map which starts off with an
-// empty log root at map revision 0.
-func (s *Sequencer) Initialize(ctx context.Context, logID, mapID int64) error {
-	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx, &trillian.GetLatestSignedLogRootRequest{
-		LogId: logID,
-	})
-	if err != nil {
-		return fmt.Errorf("GetLatestSignedLogRoot(%v): %v", logID, err)
-	}
-	mapRoot, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
-		MapId: mapID,
-	})
-	if err != nil {
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", mapID, err)
-	}
-
-	// If the tree is empty and the map is empty,
-	// add the empty map root to the log.
-	if logRoot.GetSignedLogRoot().GetTreeSize() == 0 &&
-		mapRoot.GetMapRoot().GetMapRevision() == 0 {
-		glog.Infof("Initializing Trillian Log with empty map root")
-		if err := queueLogLeaf(ctx, s.tlog, logID, mapRoot.GetMapRoot()); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // ListenForNewDomains starts receivers for all domains and periodically checks for new domains.
@@ -159,10 +130,7 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 // New epochs will be created at least once per maxInterval and as often as minInterval.
 func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minInterval, maxInterval time.Duration) mutator.Receiver {
 	cctx, cancel := context.WithTimeout(ctx, minInterval)
-	if err := s.Initialize(cctx, domain.LogID, domain.MapID); err != nil {
-		glog.Errorf("Initialize() failed: %v", err)
-	}
-	var rootResp *trillian.GetSignedMapRootResponse
+	defer cancel()
 	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &trillian.GetSignedMapRootRequest{
 		MapId: domain.MapID,
 	})

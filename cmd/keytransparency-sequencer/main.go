@@ -90,11 +90,11 @@ func main() {
 	queue := mutator.MutationQueue(mutations)
 
 	// Create servers
-	signer := sequencer.New(domainStorage, tmap, tlog, entry.New(), mutations, queue)
+	signer := sequencer.New(tlog, tmap, entry.New(), domainStorage, mutations, queue)
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
-	adminServer := adminserver.New(domainStorage, tmap, logAdmin, mapAdmin, keygen)
+	adminServer := adminserver.New(tlog, tmap, logAdmin, mapAdmin, domainStorage, keygen)
 	glog.Infof("Signer starting")
 
 	// Run servers

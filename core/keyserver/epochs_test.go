@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
+	"github.com/google/trillian/testonly/integration"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
@@ -60,7 +61,6 @@ func TestListMutations(t *testing.T) {
 	fakeMutations := fake.NewMutationStorage()
 	fakeAdmin := fake.NewDomainStorage()
 	fakeMap := fake.NewTrillianMapClient()
-	fakeLog := fake.NewTrillianLogClient()
 	if err := fakeAdmin.Write(ctx, &domain.Domain{
 		DomainID:    domainID,
 		MapID:       mapID,
@@ -69,6 +69,15 @@ func TestListMutations(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("admin.Write(): %v", err)
 	}
+
+	// Log server
+	numSequencers := 1
+	unused := ""
+	logEnv, err := integration.NewLogEnv(ctx, numSequencers, unused)
+	if err != nil {
+		t.Fatalf("Failed to create trillian log server: %v", err)
+	}
+	defer logEnv.Close()
 
 	// Test setup.
 	for _, rev := range []struct {
@@ -105,7 +114,7 @@ func TestListMutations(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			srv := &Server{
 				domains:   fakeAdmin,
-				tlog:      fakeLog,
+				tlog:      logEnv.Log,
 				tmap:      fakeMap,
 				mutations: fakeMutations,
 			}
