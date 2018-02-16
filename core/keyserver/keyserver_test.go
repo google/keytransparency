@@ -23,19 +23,18 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
-	"google.golang.org/grpc"
+	"github.com/google/trillian/testonly"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tpb "github.com/google/trillian"
-	tfake "github.com/google/trillian/testonly/fake"
 )
 
 const mapID = int64(2)
 
 type miniEnv struct {
-	s              *tfake.Server
+	s              *testonly.MockServer
 	srv            *Server
 	stopFakeServer func()
 	stopController func()
@@ -53,23 +52,14 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	}
 
 	ctrl := gomock.NewController(t)
-	s := &tfake.Server{
-		MockTrillianMapServer:   tpb.NewMockTrillianMapServer(ctrl),
-		MockTrillianLogServer:   tpb.NewMockTrillianLogServer(ctrl),
-		MockTrillianAdminServer: tpb.NewMockTrillianAdminServer(ctrl),
-	}
-	lis, stopFakeServer, err := tfake.StartServer(s)
+	s, stopFakeServer, err := testonly.NewMockServer(ctrl)
 	if err != nil {
 		return nil, fmt.Errorf("Error starting fake server: %v", err)
 	}
-	cc, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("Dial(%v): %v", lis.Addr().String(), err)
-	}
 	srv := &Server{
 		domains: fakeAdmin,
-		tlog:    tpb.NewTrillianLogClient(cc),
-		tmap:    tpb.NewTrillianMapClient(cc),
+		tlog:    s.LogClient,
+		tmap:    s.MapClient,
 		indexFunc: func(context.Context, *domain.Domain, string, string) ([32]byte, []byte, error) {
 			return [32]byte{}, []byte(""), nil
 		},
@@ -99,29 +89,29 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "not initialized", treeSize: 0, wantErr: codes.Internal},
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
-		ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
-		defer cancel()
 		t.Run(tc.desc+" GetEntry", func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer cancel()
 			e, err := newMiniEnv(ctx, t)
 			if err != nil {
 				t.Fatalf("newMiniEnv(): %v", err)
 			}
 			defer e.Close()
-			e.s.MockTrillianLogServer.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
+			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
 				Return(&tpb.GetLatestSignedLogRootResponse{
 					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
 				}, err)
 			if tc.wantErr == codes.OK {
-				e.s.MockTrillianMapServer.EXPECT().GetLeavesByRevision(gomock.Any(),
+				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
 					&tpb.GetMapLeavesByRevisionRequest{
 						MapId:    mapID,
 						Index:    [][]byte{make([]byte, 32)},
 						Revision: tc.treeSize - 1,
 					}).
 					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{&tpb.MapLeafInclusion{}},
+						MapLeafInclusion: []*tpb.MapLeafInclusion{{}},
 					}, nil)
-				e.s.MockTrillianLogServer.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
+				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil)
 			}
 
@@ -136,21 +126,21 @@ func TestLatestRevision(t *testing.T) {
 				t.Fatalf("newMiniEnv(): %v", err)
 			}
 			defer e.Close()
-			e.s.MockTrillianLogServer.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
+			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
 				Return(&tpb.GetLatestSignedLogRootResponse{
 					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
 				}, err)
 			for i := int64(0); i < tc.treeSize; i++ {
-				e.s.MockTrillianMapServer.EXPECT().GetLeavesByRevision(gomock.Any(),
+				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
 					&tpb.GetMapLeavesByRevisionRequest{
 						MapId:    mapID,
 						Index:    [][]byte{make([]byte, 32)},
 						Revision: i,
 					}).
 					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{&tpb.MapLeafInclusion{}},
+						MapLeafInclusion: []*tpb.MapLeafInclusion{{}},
 					}, nil)
-				e.s.MockTrillianLogServer.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
+				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil)
 			}
 
