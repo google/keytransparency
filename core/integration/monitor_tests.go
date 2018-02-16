@@ -119,6 +119,9 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		}
 
 		env.Receiver.Flush(ctx)
+		if err := env.Client.WaitForRevision(ctx, tc.queryEpoch); err != nil {
+			t.Fatalf("WaitForRevision(): %v", err)
+		}
 
 		domainID := env.Domain.DomainId
 		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
