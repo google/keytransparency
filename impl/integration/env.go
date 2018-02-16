@@ -24,6 +24,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/grpc"
+
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client"
@@ -34,23 +36,19 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
-
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
-
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/storage/testdb"
-
-	"google.golang.org/grpc"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	domaindef "github.com/google/keytransparency/core/domain"
 	tclient "github.com/google/trillian/client"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
-	maptest "github.com/google/trillian/testonly/integration"
+	ttest "github.com/google/trillian/testonly/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )
 
@@ -71,7 +69,8 @@ func Listen() (string, net.Listener, error) {
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
 	*integration.Env
-	mapEnv     *maptest.MapEnv
+	mapEnv     *ttest.MapEnv
+	logEnv     *ttest.LogEnv
 	grpcServer *grpc.Server
 	grpcCC     *grpc.ClientConn
 	db         *sql.DB
@@ -84,26 +83,32 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 // NewEnv sets up common resources for tests.
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
-	domainID := fmt.Sprintf("domain %d", rand.Int()) // nolint: gas
+	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
 	db, err := testdb.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to open database: %v", err)
 	}
 
 	// Map server
-	mapEnv, err := maptest.NewMapEnv(ctx)
+	mapEnv, err := ttest.NewMapEnv(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to create trillian map server: %v", err)
 	}
 
-	tlog := fake.NewTrillianLogClient()
+	// Log server
+	numSequencers := 1
+	unused := ""
+	logEnv, err := ttest.NewLogEnv(ctx, numSequencers, unused)
+	if err != nil {
+		return nil, fmt.Errorf("env: failed to create trillian log server: %v", err)
+	}
 
 	// Configure domain, which creates new map and log trees.
 	domainStorage, err := domain.NewStorage(db)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to create domain storage: %v", err)
 	}
-	adminSvr := adminserver.New(tlog, mapEnv.Map, mapEnv.Admin, mapEnv.Admin, domainStorage, vrfKeyGen)
+	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, domainStorage, vrfKeyGen)
 	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
 		DomainId:    domainID,
 		MinInterval: ptypes.DurationProto(1 * time.Second),
@@ -113,8 +118,6 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: CreateDomain(): %v", err)
 	}
 
-	mapID := domainPB.Map.TreeId
-	logID := domainPB.Log.TreeId
 	vrfPub, err := p256.NewVRFVerifierFromRawKey(domainPB.Vrf.GetDer())
 	if err != nil {
 		return nil, fmt.Errorf("env: Failed to load vrf pubkey: %v", err)
@@ -129,18 +132,18 @@ func NewEnv() (*Env, error) {
 	authz := authorization.New()
 
 	queue := mutator.MutationQueue(mutations)
-	server := keyserver.New(tlog, mapEnv.Map, mapEnv.Admin, mapEnv.Admin,
+	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
 		entry.New(), auth, authz, domainStorage, queue, mutations)
 	gsvr := grpc.NewServer()
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(tlog, mapEnv.Map, entry.New(), domainStorage, mutations, queue)
+	seq := sequencer.New(logEnv.Log, mapEnv.Map, entry.New(), domainStorage, mutations, queue)
 	// Only sequence when explicitly asked with receiver.Flush()
 	d := &domaindef.Domain{
-		DomainID: domainID,
-		LogID:    logID,
-		MapID:    mapID,
+		DomainID: domainPB.DomainId,
+		LogID:    domainPB.Log.TreeId,
+		MapID:    domainPB.Map.TreeId,
 	}
 	receiver := seq.NewReceiver(ctx, d, 60*time.Hour, 60*time.Hour)
 	receiver.Flush(ctx)
@@ -172,6 +175,7 @@ func NewEnv() (*Env, error) {
 			Receiver: receiver,
 		},
 		mapEnv:     mapEnv,
+		logEnv:     logEnv,
 		grpcServer: gsvr,
 		grpcCC:     cc,
 		db:         db,
@@ -183,5 +187,6 @@ func (env *Env) Close() {
 	env.grpcCC.Close()
 	env.grpcServer.Stop()
 	env.mapEnv.Close()
+	env.logEnv.Close()
 	env.db.Close()
 }

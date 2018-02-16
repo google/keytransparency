@@ -101,3 +101,13 @@ func (l *LogServer) InitLog(ctx context.Context, in *tpb.InitLogRequest, opts ..
 	l.TreeSize = 0
 	return &tpb.InitLogResponse{}, nil
 }
+
+// AddSequencedLeaf adds a single leaf with an assigned sequence number.
+func (l *LogServer) AddSequencedLeaf(ctx context.Context, in *tpb.AddSequencedLeafRequest, opts ...grpc.CallOption) (*tpb.AddSequencedLeafResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "")
+}
+
+// AddSequencedLeaves Adds a batch of leaves with assigned sequence numbers to the tree.
+func (l *LogServer) AddSequencedLeaves(ctx context.Context, in *tpb.AddSequencedLeavesRequest, opts ...grpc.CallOption) (*tpb.AddSequencedLeavesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "")
+}

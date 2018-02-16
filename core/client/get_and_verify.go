@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 
+	"github.com/golang/glog"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
@@ -36,6 +37,7 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 		return nil, err
 	}
 	c.trusted = *e.GetLogRoot()
+	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
 	Vlog.Printf("✓ Log root updated.")
 
 	return e, nil

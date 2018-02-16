@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
@@ -181,7 +180,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			if err := env.checkProfile(tc.userID, appID, tc.want); err != nil {
+			if err := env.checkProfile(ctx, tc.userID, appID, tc.want); err != nil {
 				t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
 			}
 			// Update profile.
@@ -201,7 +200,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 				}
 				env.Receiver.Flush(tc.ctx)
 				if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
-					t.Errorf("Retry(%v): %v, want nil", m, err)
+					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 				}
 			}
 		})
@@ -210,8 +209,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 
 // checkProfile ensures that the returned profile is as expected along with the
 // keys it carries.
-func (e *Env) checkProfile(userID, appID string, want bool) error {
-	profile, _, err := e.Client.GetEntry(context.Background(), userID, appID)
+func (e *Env) checkProfile(ctx context.Context, userID, appID string, want bool) error {
+	profile, _, err := e.Client.GetEntry(ctx, userID, appID)
 	if err != nil {
 		return fmt.Errorf("GetEntry(%v): %v, want nil", userID, err)
 	}
@@ -265,10 +264,10 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 			}
 			env.Receiver.Flush(tc.ctx)
 			if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
-				t.Errorf("Retry(%v): %v, want nil", m, err)
+				t.Errorf("WaitForUserUpdate(): %v, want nil", err)
 			}
 		} else {
-			if got, want := err, client.ErrWait; got == want {
+			if got, want := err, context.DeadlineExceeded; got == want {
 				t.Fatalf("Update(%v): %v, don't want %v", tc.userID, got, want)
 			}
 		}
@@ -329,9 +328,9 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 	// that the user is submitting. The user profile history contains the
 	// following profiles:
 	// Profile Value: err nil 1  2  2  2  3  3  4  5  5 5 5 5 5 6 6 5 7 7
-	// Map Revision:  0  1  2  3  4  5  6  7  8  9  10 ...
-	// Log Max Index: 0  1  2  3  4  5  6  7  8  9  10 ...
-	// Log TreeSize:  0  1  2  3  4  5  6  7  8  9  10 ...
+	// Map Revision:  1  2  3  4  5  6  7  8  9  10 ...
+	// Log Max Index: 1  2  3  4  5  6  7  8  9  10 ...
+	// Log TreeSize:  2  3  4  5  6  7  8  9  10 11 ...
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
 	for i, p := range [][]byte{
@@ -350,11 +349,18 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 			cctx, cancel := context.WithTimeout(ctx, updateTimeout)
 			defer cancel()
 			// The first update response is always a retry.
-			if _, err := e.Client.Update(cctx, u, signers); err != context.DeadlineExceeded {
+			m, err := e.Client.Update(cctx, u, signers)
+			if err != context.DeadlineExceeded {
 				return fmt.Errorf("Update(%v, %v): %v, want %v", userID, i, err, context.DeadlineExceeded)
 			}
+			e.Receiver.Flush(ctx)
+			if _, err := e.Client.WaitForUserUpdate(ctx, m); err != nil {
+				return fmt.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
+			}
+		} else {
+			// Create an empty epoch.
+			e.Receiver.Flush(ctx)
 		}
-		e.Receiver.Flush(ctx)
 	}
 	return nil
 }

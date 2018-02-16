@@ -180,6 +180,9 @@ func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize 
 
 	// Inclusion proof.
 	secondTreeSize := logRoot.GetTreeSize()
+	if epoch >= secondTreeSize {
+		return nil, status.Errorf(codes.NotFound, "keyserver: Epoch %v has not been released yet", epoch)
+	}
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&tpb.GetInclusionProofRequest{
 			LogId: d.LogID,
