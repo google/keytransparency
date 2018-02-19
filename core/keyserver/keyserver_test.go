@@ -16,47 +16,69 @@ package keyserver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
+	"github.com/google/trillian/testonly"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tpb "github.com/google/trillian"
 )
 
-func TestLatestRevision(t *testing.T) {
-	ctx := context.Background()
-	mapID := int64(2)
-	fakeAdmin := fake.NewDomainStorage()
-	fakeMap := fake.NewTrillianMapClient()
-	fakeLog := fake.NewTrillianLogClient()
+const mapID = int64(2)
 
+type miniEnv struct {
+	s              *testonly.MockServer
+	srv            *Server
+	stopFakeServer func()
+	stopController func()
+}
+
+func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
+	fakeAdmin := fake.NewDomainStorage()
 	if err := fakeAdmin.Write(ctx, &domain.Domain{
 		DomainID:    domainID,
 		MapID:       mapID,
 		MinInterval: 1 * time.Second,
 		MaxInterval: 5 * time.Second,
 	}); err != nil {
-		t.Fatalf("admin.Write(): %v", err)
+		return nil, fmt.Errorf("admin.Write(): %v", err)
 	}
 
-	// Advance the Map's revision without touching the log.
-	fakeMap.SetLeaves(ctx, nil) // Revision 1
-	fakeMap.SetLeaves(ctx, nil) // Revision 2
-	fakeMap.SetLeaves(ctx, nil) // Revision 3
-	fakeMap.SetLeaves(ctx, nil) // Revision 4
-
+	ctrl := gomock.NewController(t)
+	s, stopFakeServer, err := testonly.NewMockServer(ctrl)
+	if err != nil {
+		return nil, fmt.Errorf("Error starting fake server: %v", err)
+	}
 	srv := &Server{
 		domains: fakeAdmin,
-		tlog:    fakeLog,
-		tmap:    fakeMap,
+		tlog:    s.LogClient,
+		tmap:    s.MapClient,
 		indexFunc: func(context.Context, *domain.Domain, string, string) ([32]byte, []byte, error) {
 			return [32]byte{}, []byte(""), nil
 		},
 	}
+	return &miniEnv{
+		s:              s,
+		srv:            srv,
+		stopController: ctrl.Finish,
+		stopFakeServer: stopFakeServer,
+	}, nil
+}
+
+func (e *miniEnv) Close() {
+	e.stopController()
+	e.stopFakeServer()
+}
+
+func TestLatestRevision(t *testing.T) {
+	ctx := context.Background()
 
 	for _, tc := range []struct {
 		desc     string
@@ -68,34 +90,63 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
 		t.Run(tc.desc+" GetEntry", func(t *testing.T) {
-			fakeLog.TreeSize = tc.treeSize
-			resp, err := srv.GetEntry(ctx, &pb.GetEntryRequest{
-				DomainId: domainID,
-			})
+			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer cancel()
+			e, err := newMiniEnv(ctx, t)
+			if err != nil {
+				t.Fatalf("newMiniEnv(): %v", err)
+			}
+			defer e.Close()
+			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
+				Return(&tpb.GetLatestSignedLogRootResponse{
+					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+				}, err)
+			if tc.wantErr == codes.OK {
+				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
+					&tpb.GetMapLeavesByRevisionRequest{
+						MapId:    mapID,
+						Index:    [][]byte{make([]byte, 32)},
+						Revision: tc.treeSize - 1,
+					}).
+					Return(&tpb.GetMapLeavesResponse{
+						MapLeafInclusion: []*tpb.MapLeafInclusion{{}},
+					}, nil)
+				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetInclusionProofResponse{}, nil)
+			}
+
+			_, err = e.srv.GetEntry(ctx, &pb.GetEntryRequest{DomainId: domainID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("GetEntry(): %v, want %v", err, want)
 			}
-			if err != nil {
-				return
-			}
-			if got, want := resp.Smr.MapRevision, tc.wantRev; got != want {
-				t.Errorf("GetEntry().Rev: %v, want %v", got, want)
-			}
 		})
 		t.Run(tc.desc+" GetEntryHistory", func(t *testing.T) {
-			fakeLog.TreeSize = tc.treeSize
-			resp2, err := srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-				DomainId: domainID,
-			})
+			e, err := newMiniEnv(ctx, t)
+			if err != nil {
+				t.Fatalf("newMiniEnv(): %v", err)
+			}
+			defer e.Close()
+			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
+				Return(&tpb.GetLatestSignedLogRootResponse{
+					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+				}, err)
+			for i := int64(0); i < tc.treeSize; i++ {
+				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
+					&tpb.GetMapLeavesByRevisionRequest{
+						MapId:    mapID,
+						Index:    [][]byte{make([]byte, 32)},
+						Revision: i,
+					}).
+					Return(&tpb.GetMapLeavesResponse{
+						MapLeafInclusion: []*tpb.MapLeafInclusion{{}},
+					}, nil)
+				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetInclusionProofResponse{}, nil)
+			}
+
+			_, err = e.srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{DomainId: domainID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListEntryHistory(): %v, want %v", err, tc.wantErr)
-			}
-			if err != nil {
-				return
-			}
-			i := len(resp2.Values) - 1 // Get last value.
-			if got, want := resp2.Values[i].Smr.MapRevision, tc.wantRev; got != want {
-				t.Errorf("ListEntryHistory().Rev: %v, want %v", got, want)
 			}
 		})
 	}

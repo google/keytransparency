@@ -20,10 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
-	"github.com/google/trillian/testonly/integration"
 
+	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,6 +34,22 @@ import (
 const (
 	domainID = "domain"
 )
+
+func genInclusions(start, end int) []*tpb.MapLeafInclusion {
+	ret := make([]*tpb.MapLeafInclusion, end-start+1)
+	for i := range ret {
+		ret[i] = &tpb.MapLeafInclusion{}
+	}
+	return ret
+}
+
+func genIndexes(start, end int) [][]byte {
+	indexes := make([][]byte, 0, end-start)
+	for i := start; i <= end; i++ {
+		indexes = append(indexes, []byte(fmt.Sprintf("key_%v", i)))
+	}
+	return indexes
+}
 
 func genMutations(start, end int) []*pb.Entry {
 	mutations := make([]*pb.Entry, 0, end-start)
@@ -57,27 +72,7 @@ func TestGetEpochStream(t *testing.T) {
 
 func TestListMutations(t *testing.T) {
 	ctx := context.Background()
-	mapID := int64(2)
 	fakeMutations := fake.NewMutationStorage()
-	fakeAdmin := fake.NewDomainStorage()
-	fakeMap := fake.NewTrillianMapClient()
-	if err := fakeAdmin.Write(ctx, &domain.Domain{
-		DomainID:    domainID,
-		MapID:       mapID,
-		MinInterval: 1 * time.Second,
-		MaxInterval: 5 * time.Second,
-	}); err != nil {
-		t.Fatalf("admin.Write(): %v", err)
-	}
-
-	// Log server
-	numSequencers := 1
-	unused := ""
-	logEnv, err := integration.NewLogEnv(ctx, numSequencers, unused)
-	if err != nil {
-		t.Fatalf("Failed to create trillian log server: %v", err)
-	}
-	defer logEnv.Close()
 
 	// Test setup.
 	for _, rev := range []struct {
@@ -90,35 +85,45 @@ func TestListMutations(t *testing.T) {
 		if err := fakeMutations.WriteBatch(ctx, domainID, rev.epoch, genMutations(rev.start, rev.end)); err != nil {
 			t.Fatalf("Test setup failed: %v", err)
 		}
-		// Advance the map's revision number.
-		fakeMap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{})
-
 	}
 
 	for _, tc := range []struct {
-		desc     string
-		epoch    int64
-		token    string
-		pageSize int32
-		mtns     []*pb.Entry
-		wantNext string
-		wantErr  bool
+		desc       string
+		epoch      int64
+		token      string
+		pageSize   int32
+		start, end int
+		wantNext   string
+		wantErr    bool
 	}{
-		{desc: "exact page", epoch: 1, token: "", pageSize: 6, mtns: genMutations(1, 6), wantNext: "7"},
-		{desc: "large page", epoch: 1, token: "", pageSize: 10, mtns: genMutations(1, 6), wantNext: ""},
-		{desc: "partial epoch 1", epoch: 1, token: "", pageSize: 4, mtns: genMutations(1, 4), wantNext: "5"},
-		{desc: "large page with token", epoch: 1, token: "2", pageSize: 10, mtns: genMutations(3, 6), wantNext: ""},
-		{desc: "smal page with token", epoch: 1, token: "2", pageSize: 2, mtns: genMutations(3, 4), wantNext: "5"},
-		{desc: "invalid page token", epoch: 1, token: "some_token", pageSize: 0, mtns: nil, wantNext: "", wantErr: true},
+		{desc: "exact page", epoch: 1, token: "", pageSize: 6, start: 1, end: 6, wantNext: "7"},
+		{desc: "large page", epoch: 1, token: "", pageSize: 10, start: 1, end: 6, wantNext: ""},
+		{desc: "partial epoch 1", epoch: 1, token: "", pageSize: 4, start: 1, end: 4, wantNext: "5"},
+		{desc: "large page with token", epoch: 1, token: "2", pageSize: 10, start: 3, end: 6, wantNext: ""},
+		{desc: "smal page with token", epoch: 1, token: "2", pageSize: 2, start: 3, end: 4, wantNext: "5"},
+		{desc: "invalid page token", epoch: 1, token: "some_token", pageSize: 0, wantNext: "", wantErr: true},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			srv := &Server{
-				domains:   fakeAdmin,
-				tlog:      logEnv.Log,
-				tmap:      fakeMap,
-				mutations: fakeMutations,
+			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer cancel()
+			e, err := newMiniEnv(ctx, t)
+			if err != nil {
+				t.Fatalf("newMiniEnv(): %v", err)
 			}
-			resp, err := srv.ListMutations(ctx, &pb.ListMutationsRequest{
+			defer e.Close()
+			e.srv.mutations = fakeMutations
+
+			if !tc.wantErr {
+				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
+					&tpb.GetMapLeavesByRevisionRequest{
+						MapId: mapID,
+						Index: genIndexes(tc.start, tc.end),
+					}).Return(&tpb.GetMapLeavesResponse{
+					MapLeafInclusion: genInclusions(tc.start, tc.end),
+				}, nil)
+			}
+
+			resp, err := e.srv.ListMutations(ctx, &pb.ListMutationsRequest{
 				DomainId:  domainID,
 				Epoch:     tc.epoch,
 				PageToken: tc.token,
@@ -130,11 +135,12 @@ func TestListMutations(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if got, want := len(resp.Mutations), len(tc.mtns); got != want {
+			mtns := genMutations(tc.start, tc.end)
+			if got, want := len(resp.Mutations), len(mtns); got != want {
 				t.Fatalf("len(resp.Mutations):%v, want %v", got, want)
 			}
 			for i, mut := range resp.Mutations {
-				if got, want := mut.Mutation, tc.mtns[i]; !proto.Equal(got, want) {
+				if got, want := mut.Mutation, mtns[i]; !proto.Equal(got, want) {
 					t.Errorf("resp.Mutations[i].Update:%v, want %v", got, want)
 				}
 			}
