@@ -23,12 +23,13 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian"
-	"github.com/google/trillian/client"
 	"github.com/kr/pretty"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 var (
@@ -39,19 +40,40 @@ var (
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
 	vrf         vrf.PublicKey
-	mapVerifier *client.MapVerifier
-	logVerifier client.LogVerifier
+	mapVerifier *tclient.MapVerifier
+	logVerifier tclient.LogVerifier
 }
 
 // NewVerifier creates a new instance of the client verifier.
 func NewVerifier(vrf vrf.PublicKey,
-	mapVerifier *client.MapVerifier,
-	logVerifier client.LogVerifier) *Verifier {
+	mapVerifier *tclient.MapVerifier,
+	logVerifier tclient.LogVerifier) *Verifier {
 	return &Verifier{
 		vrf:         vrf,
 		mapVerifier: mapVerifier,
 		logVerifier: logVerifier,
 	}
+}
+
+// NewVerifierFromConfig creates a new instance of the client verifier from a config.
+func NewVerifierFromConfig(config *pb.Domain) (*Verifier, error) {
+	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
+	if err != nil {
+		return nil, err
+	}
+
+	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
+	if err != nil {
+		return nil, err
+	}
+
+	// VRF key
+	vrfPubKey, err := p256.NewVRFVerifierFromRawKey(config.GetVrf().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
+	}
+
+	return NewVerifier(vrfPubKey, mapVerifier, logVerifier), nil
 }
 
 // Index computes the index from a VRF proof.
