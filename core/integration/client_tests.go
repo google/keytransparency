@@ -114,16 +114,16 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		authorizedKeys []*keyspb.PublicKey
 	}{
 		{
-			desc:           "Empty",
+			desc:           "empty_alice",
 			wantProfile:    nil,
 			setProfile:     nil,
 			ctx:            context.Background(),
-			userID:         "noalice",
+			userID:         "alice",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
 		},
 		{
-			desc:           "Insert",
+			desc:           "bob0_set",
 			wantProfile:    nil,
 			setProfile:     []byte("bob-key1"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
@@ -132,16 +132,16 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			authorizedKeys: authorizedKeys1,
 		},
 		{
-			desc:           "Empty2",
+			desc:           "empty_carol",
 			wantProfile:    nil,
 			setProfile:     nil,
 			ctx:            context.Background(),
-			userID:         "nocarol",
+			userID:         "carol",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
 		},
 		{
-			desc:           "Not Empty",
+			desc:           "bob1_get",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     nil,
 			ctx:            context.Background(),
@@ -150,7 +150,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			authorizedKeys: authorizedKeys1,
 		},
 		{
-			desc:           "Update",
+			desc:           "bob1_set",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     []byte("bob-key2"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
@@ -159,7 +159,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			authorizedKeys: authorizedKeys1,
 		},
 		{
-			desc:           "Update, changing keys",
+			desc:           "bob2_setkeys",
 			wantProfile:    []byte("bob-key2"),
 			setProfile:     []byte("bob-key3"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
@@ -168,7 +168,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			authorizedKeys: authorizedKeys2,
 		},
 		{
-			desc:           "Update, using new keys",
+			desc:           "bob3_setnewkeys",
 			wantProfile:    []byte("bob-key3"),
 			setProfile:     []byte("bob-key4"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
@@ -179,12 +179,12 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			profile, _, err := env.Client.GetEntry(ctx, tc.userID, appID)
+			e, err := env.Client.VerifiedGetEntry(ctx, appID, tc.userID)
 			if err != nil {
-				t.Errorf("GetEntry(%v): %v, want nil", tc.userID, err)
+				t.Errorf("VerifiedGetEntry(%v): %v, want nil", tc.userID, err)
 			}
-			if got, want := profile, tc.wantProfile; !bytes.Equal(got, want) {
-				t.Errorf("GetEntry(%v): %v, want %v", tc.userID, got, want)
+			if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
+				t.Errorf("VerifiedGetEntry(%v): %s, want %s", tc.userID, got, want)
 			}
 
 			// Update profile.
