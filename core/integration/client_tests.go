@@ -63,8 +63,7 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 )
 
 var (
-	primaryKey = []byte("bar")
-	appID      = "app"
+	appID = "app"
 )
 
 const updateTimeout = 500 * time.Millisecond
@@ -107,8 +106,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 
 	for _, tc := range []struct {
 		desc           string
-		want           bool
-		insert         bool
+		wantProfile    []byte
+		setProfile     []byte
 		ctx            context.Context
 		userID         string
 		signers        []signatures.Signer
@@ -116,8 +115,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	}{
 		{
 			desc:           "Empty",
-			want:           false,
-			insert:         false,
+			wantProfile:    nil,
+			setProfile:     nil,
 			ctx:            context.Background(),
 			userID:         "noalice",
 			signers:        signers1,
@@ -125,8 +124,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		},
 		{
 			desc:           "Insert",
-			want:           false,
-			insert:         true,
+			wantProfile:    nil,
+			setProfile:     []byte("bob-key1"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
@@ -134,8 +133,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		},
 		{
 			desc:           "Empty2",
-			want:           false,
-			insert:         false,
+			wantProfile:    nil,
+			setProfile:     nil,
 			ctx:            context.Background(),
 			userID:         "nocarol",
 			signers:        signers1,
@@ -143,8 +142,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		},
 		{
 			desc:           "Not Empty",
-			want:           true,
-			insert:         false,
+			wantProfile:    []byte("bob-key1"),
+			setProfile:     nil,
 			ctx:            context.Background(),
 			userID:         "bob",
 			signers:        signers1,
@@ -152,8 +151,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		},
 		{
 			desc:           "Update",
-			want:           true,
-			insert:         true,
+			wantProfile:    []byte("bob-key1"),
+			setProfile:     []byte("bob-key2"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
@@ -161,8 +160,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		},
 		{
 			desc:           "Update, changing keys",
-			want:           true,
-			insert:         true,
+			wantProfile:    []byte("bob-key2"),
+			setProfile:     []byte("bob-key3"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers2,
@@ -170,8 +169,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		},
 		{
 			desc:           "Update, using new keys",
-			want:           true,
-			insert:         true,
+			wantProfile:    []byte("bob-key3"),
+			setProfile:     []byte("bob-key4"),
 			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers3,
@@ -180,16 +179,21 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			if err := env.checkProfile(ctx, tc.userID, appID, tc.want); err != nil {
-				t.Errorf("checkProfile(%v, %v) failed: %v", tc.userID, tc.want, err)
+			profile, _, err := env.Client.GetEntry(ctx, tc.userID, appID)
+			if err != nil {
+				t.Errorf("GetEntry(%v): %v, want nil", tc.userID, err)
 			}
+			if got, want := profile, tc.wantProfile; !bytes.Equal(got, want) {
+				t.Errorf("GetEntry(%v): %v, want %v", tc.userID, got, want)
+			}
+
 			// Update profile.
-			if tc.insert {
+			if tc.setProfile != nil {
 				u := &tpb.User{
 					DomainId:       env.Domain.DomainId,
 					AppId:          appID,
 					UserId:         tc.userID,
-					PublicKeyData:  primaryKey,
+					PublicKeyData:  tc.setProfile,
 					AuthorizedKeys: tc.authorizedKeys,
 				}
 				cctx, cancel := context.WithTimeout(tc.ctx, updateTimeout)
@@ -207,28 +211,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	}
 }
 
-// checkProfile ensures that the returned profile is as expected along with the
-// keys it carries.
-func (e *Env) checkProfile(ctx context.Context, userID, appID string, want bool) error {
-	profile, _, err := e.Client.GetEntry(ctx, userID, appID)
-	if err != nil {
-		return fmt.Errorf("GetEntry(%v): %v, want nil", userID, err)
-	}
-	if got := profile != nil; got != want {
-		return fmt.Errorf("GetEntry(%v): %v, want %v", userID, profile, want)
-	}
-	if want {
-		if got, want := profile, primaryKey; !bytes.Equal(got, want) {
-			return fmt.Errorf("profile = %x, want: %x", got, want)
-		}
-	}
-	return nil
-}
-
 // TestUpdateValidation verifies the correctness of updates submitted by the client.
 func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
-	profile := []byte("bar")
-
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
 	authorizedKeys := []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}
@@ -241,10 +225,10 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 		signers        []signatures.Signer
 		authorizedKeys []*keyspb.PublicKey
 	}{
-		{false, context.Background(), "alice", profile, signers, authorizedKeys},
-		{false, WithOutgoingFakeAuth(ctx, "carol"), "bob", profile, signers, authorizedKeys},
-		{true, WithOutgoingFakeAuth(ctx, "dave"), "dave", profile, signers, authorizedKeys},
-		{true, WithOutgoingFakeAuth(ctx, "eve"), "eve", profile, signers, authorizedKeys},
+		{false, context.Background(), "alice", []byte("alice-key1"), signers, authorizedKeys},
+		{false, WithOutgoingFakeAuth(ctx, "carol"), "bob", []byte("bob-key1"), signers, authorizedKeys},
+		{true, WithOutgoingFakeAuth(ctx, "dave"), "dave", []byte("dave-key1"), signers, authorizedKeys},
+		{true, WithOutgoingFakeAuth(ctx, "eve"), "eve", []byte("eve-key1"), signers, authorizedKeys},
 	} {
 		u := &tpb.User{
 			DomainId:       env.Domain.DomainId,
