@@ -20,11 +20,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
+	"github.com/kr/pretty"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
@@ -70,6 +72,8 @@ func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byt
 //  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
 	trusted trillian.SignedLogRoot, in *pb.GetEntryResponse) error {
+	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", domainID, appID, userID, pretty.Formatter(in))
+
 	// Unpack the merkle tree leaf value.
 	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
 	if err != nil {
