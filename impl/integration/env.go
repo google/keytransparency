@@ -29,8 +29,6 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client"
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
@@ -45,7 +43,6 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	domaindef "github.com/google/keytransparency/core/domain"
-	tclient "github.com/google/trillian/client"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
@@ -118,11 +115,6 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: CreateDomain(): %v", err)
 	}
 
-	vrfPub, err := p256.NewVRFVerifierFromRawKey(domainPB.Vrf.GetDer())
-	if err != nil {
-		return nil, fmt.Errorf("env: Failed to load vrf pubkey: %v", err)
-	}
-
 	// Common data structures.
 	mutations, err := mutationstorage.New(db)
 	if err != nil {
@@ -157,15 +149,13 @@ func NewEnv() (*Env, error) {
 	// Client
 	cc, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("Dial(%v) = %v", addr, err)
+		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
-	mapVerifier, err := tclient.NewMapVerifierFromTree(domainPB.Map)
+	client, err := client.NewFromConfig(ktClient, domainPB)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NewFromConfig(): %v", err)
 	}
-	ktVerifier := client.NewVerifier(vrfPub, mapVerifier, fake.NewTrillianLogVerifier())
-	client := client.New(ktClient, domainID, ktVerifier)
 
 	return &Env{
 		Env: &integration.Env{

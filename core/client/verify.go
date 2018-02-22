@@ -117,7 +117,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
 	if err := v.logVerifier.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
-		return fmt.Errorf("VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
+		return fmt.Errorf("logVerifier: VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
 
 	// Verify inclusion proof.
@@ -126,9 +126,9 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
 	logLeafIndex := in.GetSmr().GetMapRevision()
-	if err := v.logVerifier.VerifyInclusionAtIndex(&trusted, b, logLeafIndex,
+	if err := v.logVerifier.VerifyInclusionAtIndex(in.GetLogRoot(), b, logLeafIndex,
 		in.GetLogInclusion()); err != nil {
-		return fmt.Errorf("VerifyInclusionAtIndex(%s, %v, _): %v",
+		return fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v",
 			b, in.GetSmr().GetMapRevision(), err)
 	}
 	Vlog.Printf("✓ Log inclusion proof verified.")
