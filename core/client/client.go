@@ -124,6 +124,13 @@ func New(ktClient pb.KeyTransparencyClient,
 	}
 }
 
+func (c *Client) updateTrusted(newTrusted *trillian.SignedLogRoot) {
+	if newTrusted.TimestampNanos > c.trusted.TimestampNanos &&
+		newTrusted.TreeSize >= c.trusted.TreeSize {
+		c.trusted = *newTrusted
+	}
+}
+
 // GetEntry returns an entry if it exists, and nil if it does not.
 func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grpc.CallOption) ([]byte, *trillian.SignedMapRoot, error) {
 	e, err := c.VerifiedGetEntry(ctx, appID, userID)
@@ -156,12 +163,14 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 	epochsReceived := int64(0)
 	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
+		trustedSnapshot := c.trusted
 		resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-			DomainId: c.domainID,
-			UserId:   userID,
-			AppId:    appID,
-			Start:    start,
-			PageSize: min(int32((end-start)+1), pageSize),
+			DomainId:      c.domainID,
+			UserId:        userID,
+			AppId:         appID,
+			FirstTreeSize: trustedSnapshot.TreeSize,
+			Start:         start,
+			PageSize:      min(int32((end-start)+1), pageSize),
 		}, opts...)
 		if err != nil {
 			return nil, err
@@ -170,10 +179,11 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, v)
+			err = c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, trustedSnapshot, v)
 			if err != nil {
 				return nil, err
 			}
+			c.updateTrusted(v.GetLogRoot())
 
 			// Compress profiles that are equal through time.  All
 			// nil profiles before the first profile are ignored.
