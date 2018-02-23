@@ -22,7 +22,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/domain"
@@ -38,13 +40,6 @@ import (
 )
 
 var (
-	vrfKeySpec = &keyspb.Specification{
-		Params: &keyspb.Specification_EcdsaParams{
-			EcdsaParams: &keyspb.Specification_ECDSA{
-				Curve: keyspb.Specification_ECDSA_P256,
-			},
-		},
-	}
 	logArgs = &tpb.CreateTreeRequest{
 		Tree: &tpb.Tree{
 			DisplayName:        "KT SMH Log",
@@ -54,13 +49,6 @@ var (
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
 			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
-		},
-		KeySpec: &keyspb.Specification{
-			Params: &keyspb.Specification_EcdsaParams{
-				EcdsaParams: &keyspb.Specification_ECDSA{
-					Curve: keyspb.Specification_ECDSA_P256,
-				},
-			},
 		},
 	}
 	mapArgs = &tpb.CreateTreeRequest{
@@ -72,13 +60,6 @@ var (
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
 			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
-		},
-		KeySpec: &keyspb.Specification{
-			Params: &keyspb.Specification_EcdsaParams{
-				EcdsaParams: &keyspb.Specification_ECDSA{
-					Curve: keyspb.Specification_ECDSA_P256,
-				},
-			},
 		},
 	}
 )
@@ -167,12 +148,53 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 	return info, nil
 }
 
+// privKeyOrGen returns the message inside privKey if privKey is not nil,
+// otherwise, it generates a new key with keygen.
+func privKeyOrGen(ctx context.Context, privKey *any.Any, keygen keys.ProtoGenerator) (proto.Message, error) {
+	if privKey != nil {
+		var keyProto ptypes.DynamicAny
+		if err := ptypes.UnmarshalAny(privKey, &keyProto); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal privatekey: %v", err)
+		}
+		return keyProto.Message, nil
+	}
+	return keygen(ctx, &keyspb.Specification{
+		Params: &keyspb.Specification_EcdsaParams{
+			EcdsaParams: &keyspb.Specification_ECDSA{
+				Curve: keyspb.Specification_ECDSA_P256,
+			},
+		},
+	})
+}
+
+// treeConfig returns a CreateTreeRequest
+// - with a set PrivateKey is not nil, otherwise KeySpec is set.
+// - with a tree description of "KT domain %v"
+func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, domainID string) *tpb.CreateTreeRequest {
+	config := *treeTemplate
+
+	if privKey != nil {
+		config.Tree.PrivateKey = privKey
+	} else {
+		config.KeySpec = &keyspb.Specification{
+			Params: &keyspb.Specification_EcdsaParams{
+				EcdsaParams: &keyspb.Specification_ECDSA{
+					Curve: keyspb.Specification_ECDSA_P256,
+				},
+			},
+		}
+	}
+
+	config.Tree.Description = fmt.Sprintf("KT domain %s", domainID)
+	return &config
+}
+
 // CreateDomain reachs out to Trillian to produce new trees.
 func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (*pb.Domain, error) {
 	// TODO(gbelvin): Test whether the domain exists before creating trees.
 
 	// Generate VRF key.
-	wrapped, err := s.keygen(ctx, vrfKeySpec)
+	wrapped, err := privKeyOrGen(ctx, in.GetVrfPrivateKey(), s.keygen)
 	if err != nil {
 		return nil, fmt.Errorf("adminserver: keygen(): %v", err)
 	}
@@ -186,15 +208,13 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}
 
 	// Create Trillian keys.
-	logTreeArgs := *logArgs
-	logTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's SMH Log", in.GetDomainId())
-	logTree, err := client.CreateAndInitTree(ctx, &logTreeArgs, s.logAdmin, s.tmap, s.tlog)
+	logTreeArgs := treeConfig(logArgs, in.GetLogPrivateKey(), in.GetDomainId())
+	logTree, err := client.CreateAndInitTree(ctx, logTreeArgs, s.logAdmin, s.tmap, s.tlog)
 	if err != nil {
 		return nil, fmt.Errorf("adminserver: CreateTree(log): %v", err)
 	}
-	mapTreeArgs := *mapArgs
-	mapTreeArgs.Tree.Description = fmt.Sprintf("KT domain %s's Map", in.GetDomainId())
-	mapTree, err := client.CreateAndInitTree(ctx, &mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
+	mapTreeArgs := treeConfig(mapArgs, in.GetMapPrivateKey(), in.GetDomainId())
+	mapTree, err := client.CreateAndInitTree(ctx, mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
 	if err != nil {
 		return nil, fmt.Errorf("adminserver: CreateAndInitTree(map): %v", err)
 	}
