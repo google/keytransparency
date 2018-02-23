@@ -91,19 +91,15 @@ func (e *ErrList) Proto() []*statuspb.Status {
 }
 
 // VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
-func (m *Monitor) VerifyEpoch(epoch *pb.Epoch) []error {
+func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted *trillian.SignedLogRoot) []error {
 	errs := ErrList{}
 
-	if m.trusted == nil {
-		m.trusted = epoch.GetLogRoot()
-	}
-
-	if err := m.logVerifier.VerifyRoot(m.trusted, epoch.GetLogRoot(), epoch.GetLogConsistency()); err != nil {
+	if err := m.logVerifier.VerifyRoot(trusted, epoch.GetLogRoot(), epoch.GetLogConsistency()); err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(m.trusted, epoch))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(epoch, trusted))
 	}
 	// updated trusted log root
-	m.trusted = epoch.GetLogRoot()
+	m.updateTrusted(epoch.GetLogRoot())
 
 	b, err := json.Marshal(epoch.GetSmr())
 	if err != nil {
@@ -123,6 +119,13 @@ func (m *Monitor) VerifyEpoch(epoch *pb.Epoch) []error {
 	}
 
 	return errs
+}
+
+func (m *Monitor) updateTrusted(newTrusted *trillian.SignedLogRoot) {
+	if newTrusted.TimestampNanos > m.trusted.TimestampNanos &&
+		newTrusted.TreeSize >= m.trusted.TreeSize {
+		m.trusted = *newTrusted
+	}
 }
 
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot *trillian.SignedMapRoot) []error {

@@ -29,7 +29,6 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tclient "github.com/google/trillian/client"
 )
 
 const (
@@ -43,30 +42,65 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 // TestMonitor verifies that the monitor correctly verifies transitions between epochs.
 func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	// setup monitor:
-	resp, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
-	if err != nil {
-		t.Fatalf("Couldn't retrieve domain info: %v", err)
-	}
-	signer, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
+	privKey, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	mapVerifier, err := tclient.NewMapVerifierFromTree(resp.GetMap())
+	signer := crypto.NewSHA256Signer(privKey)
+	config, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
-		t.Fatalf("Failed creating MapVerifier: %v", err)
+		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
 	store := fake.NewMonitorStorage()
-	// TODO(ismail): setup and use a real logVerifier instead:
-	mon, err := monitor.New(env.Cli, fake.NewTrillianLogVerifier(),
-		mapVerifier, crypto.NewSHA256Signer(signer), store)
+	mon, err := monitor.NewFromConfig(env.Cli, config, signer, store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
+	}
+
+	// Setup a bunch of epochs with data to verify.
+	for _, e := range []struct {
+		userUpdates []*tpb.User
+		epoch       int64
+	}{
+		{
+			epoch: 1,
+			userUpdates: []*tpb.User{
+				{
+					DomainId:       env.Domain.DomainId,
+					AppId:          "app1",
+					UserId:         "alice@test.com",
+					PublicKeyData:  []byte("alice-key1"),
+					AuthorizedKeys: tc.authorizedKeys,
+				},
+			},
+		},
+	} {
+		for _, userID := range tc.userIDs {
+			u := &tpb.User{
+				DomainId:       env.Domain.DomainId,
+				AppId:          appID,
+				UserId:         userID,
+				PublicKeyData:  tc.updateData,
+				AuthorizedKeys: tc.authorizedKeys,
+			}
+			actx := WithOutgoingFakeAuth(ctx, userID)
+			cctx, cancel := context.WithTimeout(actx, 500*time.Millisecond)
+			defer cancel()
+			if _, err = env.Client.Update(cctx, u, tc.signers); err != context.DeadlineExceeded {
+				t.Fatalf("Could not send update request: %v", err)
+			}
+		}
+
+		env.Receiver.Flush(ctx)
+		if err := env.Client.WaitForRevision(ctx, tc.queryEpoch); err != nil {
+			t.Fatalf("WaitForRevision(): %v", err)
+		}
 	}
 
 	for _, tc := range []struct {
 		desc string
 		// the userIDs to update, if no userIDs are provided, no update request
-		// will be send before querying
+		// will be sent before querying
 		userIDs        []string
 		updateData     []byte
 		signers        []signatures.Signer
@@ -95,26 +129,6 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			queryEpoch:     4,
 		},
 	} {
-		for _, userID := range tc.userIDs {
-			u := &tpb.User{
-				DomainId:       env.Domain.DomainId,
-				AppId:          appID,
-				UserId:         userID,
-				PublicKeyData:  tc.updateData,
-				AuthorizedKeys: tc.authorizedKeys,
-			}
-			actx := WithOutgoingFakeAuth(ctx, userID)
-			cctx, cancel := context.WithTimeout(actx, 500*time.Millisecond)
-			defer cancel()
-			if _, err = env.Client.Update(cctx, u, tc.signers); err != context.DeadlineExceeded {
-				t.Fatalf("Could not send update request: %v", err)
-			}
-		}
-
-		env.Receiver.Flush(ctx)
-		if err := env.Client.WaitForRevision(ctx, tc.queryEpoch); err != nil {
-			t.Fatalf("WaitForRevision(): %v", err)
-		}
 
 		domainID := env.Domain.DomainId
 		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)

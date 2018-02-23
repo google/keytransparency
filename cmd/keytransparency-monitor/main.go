@@ -26,6 +26,7 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorserver"
+	"github.com/google/trillian"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/google/trillian/crypto"
@@ -89,7 +90,10 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}
-	go mon.ProcessLoop(ctx, *domainID, store.LatestEpoch(), *pollPeriod)
+
+	// TODO(gbelvin): persist trusted roots
+	trusted := trillian.SignedLogRoot{}
+	go mon.ProcessLoop(ctx, *domainID, trusted, *pollPeriod)
 
 	// Monitor Server.
 	srv := monitorserver.New(store)
