@@ -62,6 +62,13 @@ var (
 			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
 		},
 	}
+	keyspec = &keyspb.Specification{
+		Params: &keyspb.Specification_EcdsaParams{
+			EcdsaParams: &keyspb.Specification_ECDSA{
+				Curve: keyspb.Specification_ECDSA_P256,
+			},
+		},
+	}
 )
 
 // Server implements pb.KeyTransparencyAdminServer
@@ -158,13 +165,7 @@ func privKeyOrGen(ctx context.Context, privKey *any.Any, keygen keys.ProtoGenera
 		}
 		return keyProto.Message, nil
 	}
-	return keygen(ctx, &keyspb.Specification{
-		Params: &keyspb.Specification_EcdsaParams{
-			EcdsaParams: &keyspb.Specification_ECDSA{
-				Curve: keyspb.Specification_ECDSA_P256,
-			},
-		},
-	})
+	return keygen(ctx, keyspec)
 }
 
 // treeConfig returns a CreateTreeRequest
@@ -176,13 +177,7 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, domainID 
 	if privKey != nil {
 		config.Tree.PrivateKey = privKey
 	} else {
-		config.KeySpec = &keyspb.Specification{
-			Params: &keyspb.Specification_EcdsaParams{
-				EcdsaParams: &keyspb.Specification_ECDSA{
-					Curve: keyspb.Specification_ECDSA_P256,
-				},
-			},
-		}
+		config.KeySpec = keyspec
 	}
 
 	config.Tree.Description = fmt.Sprintf("KT domain %s", domainID)
