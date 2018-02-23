@@ -88,7 +88,7 @@ type Client struct {
 
 // NewFromConfig creates a new client from a config
 func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Client, error) {
-	ktVerifier, err := NewVerifierFromConfig(config)
+	ktVerifier, err := NewVerifierFromDomain(config)
 	if err != nil {
 		return nil, err
 	}

@@ -16,16 +16,8 @@ package client
 
 import (
 	"context"
-	"crypto"
 	"testing"
 
-	"github.com/google/trillian"
-
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/any"
-
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tcrypto "github.com/google/trillian/crypto"
 	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 )
@@ -36,7 +28,7 @@ import (
 func TestVerifyGetEntryResponse(t *testing.T) {
 	ctx := context.Background()
 
-	v, err := NewVerifierFromConfig(domainPB)
+	v, err := NewVerifierFromDomain(domainPB)
 	if err != nil {
 		t.Fatal(err)
 	}

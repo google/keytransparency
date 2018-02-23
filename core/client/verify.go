@@ -55,8 +55,8 @@ func NewVerifier(vrf vrf.PublicKey,
 	}
 }
 
-// NewVerifierFromConfig creates a new instance of the client verifier from a config.
-func NewVerifierFromConfig(config *pb.Domain) (*Verifier, error) {
+// NewVerifierFromDomain creates a new instance of the client verifier from a config.
+func NewVerifierFromDomain(config *pb.Domain) (*Verifier, error) {
 	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func NewVerifierFromConfig(config *pb.Domain) (*Verifier, error) {
 	// VRF key
 	vrfPubKey, err := p256.NewVRFVerifierFromRawKey(config.GetVrf().GetDer())
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
+		return nil, fmt.Errorf("error parsing vrf public key: %v", err)
 	}
 
 	return NewVerifier(vrfPubKey, mapVerifier, logVerifier), nil
