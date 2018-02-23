@@ -43,11 +43,10 @@ type Monitor struct {
 }
 
 // NewFromConfig produces a new monitor from a Domain object.
-func NewFromConfig(mclient pb.KeyTransparencyClient,
+func NewFromConfig(mClient pb.KeyTransparencyClient,
 	config *pb.Domain,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
-
 	logVerifier, err := client.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize log verifier: %v", err)
@@ -56,17 +55,17 @@ func NewFromConfig(mclient pb.KeyTransparencyClient,
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize map verifier: %v", err)
 	}
-	return New(mclient, logVerifier, mapVerifier, signer, store)
+	return New(mClient, logVerifier, mapVerifier, signer, store)
 }
 
 // New creates a new instance of the monitor.
-func New(mclient pb.KeyTransparencyClient,
+func New(mClient pb.KeyTransparencyClient,
 	logVerifier client.LogVerifier,
 	mapVerifier *client.MapVerifier,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	return &Monitor{
-		mClient:     mclient,
+		mClient:     mClient,
 		logVerifier: logVerifier,
 		mapVerifier: mapVerifier,
 		signer:      signer,

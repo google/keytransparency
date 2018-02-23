@@ -152,8 +152,8 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 			glog.Infof("Mutation did not verify: %v", err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))
 		}
-		newLeafnID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapVerifier.Hasher.BitLen())
-		newLeaf, err := entry.ToLeafValue(newValue)
+		leafNodeID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapVerifier.Hasher.BitLen())
+		leaf, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Infof("Failed to serialize: %v", err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "failed to serialize: %v", err).WithDetails(newValue))
@@ -162,17 +162,17 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 		// BUG(gdbelvin): Proto serializations are not idempotent.
 		// - Upgrade the hasher to use ObjectHash.
 		// - Use deep compare between the tree and the computed value.
-		newLeafHash, err := m.mapVerifier.Hasher.HashLeaf(mapID, index, newLeaf)
+		leafHash, err := m.mapVerifier.Hasher.HashLeaf(mapID, index, leaf)
 		if err != nil {
 			errs.appendErr(err)
 		}
 		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
-			Index:    newLeafnID.BigInt(),
-			LeafHash: newLeafHash,
+			Index:    leafNodeID.BigInt(),
+			LeafHash: leafHash,
 		})
 
 		// store the proof hashes locally to recompute the tree below:
-		sibIDs := newLeafnID.Siblings()
+		sibIDs := leafNodeID.Siblings()
 		proofs := mut.GetLeafProof().GetInclusion()
 		for level, sibID := range sibIDs {
 			proof := proofs[level]
