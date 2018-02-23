@@ -117,7 +117,11 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 			for _, d := range domains {
 				if _, ok := s.receivers[d.DomainID]; !ok {
 					glog.Infof("StartSigning domain: %v", d.DomainID)
-					s.receivers[d.DomainID] = s.NewReceiver(ctx, d, d.MinInterval, d.MaxInterval)
+					r, err := s.NewReceiver(ctx, d, d.MinInterval, d.MaxInterval)
+					if err != nil {
+						return err
+					}
+					s.receivers[d.DomainID] = r
 				}
 			}
 		case <-ctx.Done():
@@ -128,27 +132,14 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 
 // NewReceiver creates a new receiver for a domain.
 // New epochs will be created at least once per maxInterval and as often as minInterval.
-func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minInterval, maxInterval time.Duration) mutator.Receiver {
+func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minInterval, maxInterval time.Duration) (mutator.Receiver, error) {
 	cctx, cancel := context.WithTimeout(ctx, minInterval)
 	defer cancel()
 	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{
 		MapId: domain.MapID,
 	})
 	if err != nil {
-		// TODO(gbelvin): I don't think this initialization block is needed anymore.
-		glog.Infof("GetSignedMapRoot failed: %v", err)
-		// Immediately create new epoch and write new sth:
-		empty := []*mutator.QueueMessage{}
-		if err := s.createEpoch(cctx, domain, empty); err != nil {
-			glog.Errorf("CreateEpoch failed: %v", err)
-		}
-		// Request map head again to get the exact time it was created:
-		rootResp, err = s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{
-			MapId: domain.MapID,
-		})
-		if err != nil {
-			glog.Errorf("GetSignedMapRoot failed after CreateEpoch: %v", err)
-		}
+		return nil, err
 	}
 	cancel()
 	// Fetch last time from previous map head (as stored in the map server)
@@ -161,7 +152,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minI
 		MaxBatchSize: MaxBatchSize,
 		Period:       minInterval,
 		MaxPeriod:    maxInterval,
-	})
+	}), nil
 }
 
 // toArray returns the first 32 bytes from b.
