@@ -241,10 +241,12 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}
 	glog.Infof("Created domain %v", in.GetDomainId())
 	return &pb.Domain{
-		DomainId: in.GetDomainId(),
-		Log:      logTree,
-		Map:      mapTree,
-		Vrf:      vrfPublicPB,
+		DomainId:    in.GetDomainId(),
+		Log:         logTree,
+		Map:         mapTree,
+		Vrf:         vrfPublicPB,
+		MinInterval: in.MinInterval,
+		MaxInterval: in.MaxInterval,
 	}, nil
 }
 
