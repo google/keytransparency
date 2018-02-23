@@ -138,9 +138,10 @@ func NewEnv() (*Env, error) {
 	}
 	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, domainStorage, vrfKeyGen)
 	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
-		DomainId:      domainID,
-		MinInterval:   ptypes.DurationProto(1 * time.Second),
-		MaxInterval:   ptypes.DurationProto(5 * time.Second),
+		DomainId: domainID,
+		// Only sequence when explicitly asked with receiver.Flush()
+		MinInterval:   ptypes.DurationProto(60 * time.Hour),
+		MaxInterval:   ptypes.DurationProto(60 * time.Hour),
 		VrfPrivateKey: keyFromPEM(vrfPriv),
 		LogPrivateKey: keyFromPEM(logPriv),
 		MapPrivateKey: keyFromPEM(mapPriv),
@@ -164,14 +165,13 @@ func NewEnv() (*Env, error) {
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(logEnv.Log, mapEnv.Map, entry.New(), domainStorage, mutations, queue)
-	// Only sequence when explicitly asked with receiver.Flush()
+	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, entry.New(), domainStorage, mutations, queue)
 	d := &domaindef.Domain{
 		DomainID:    domainPB.DomainId,
 		LogID:       domainPB.Log.TreeId,
 		MapID:       domainPB.Map.TreeId,
-		MinInterval: 60 * time.Hour,
-		MaxInterval: 60 * time.Hour,
+		MinInterval: time.Duration(domainPB.MinInterval.Seconds) * time.Second,
+		MaxInterval: time.Duration(domainPB.MaxInterval.Seconds) * time.Second,
 	}
 	receiver, err := seq.NewReceiver(ctx, d)
 	if err != nil {
