@@ -77,6 +77,14 @@ func createSigner(t *testing.T, privKey string) signatures.Signer {
 	return signer
 }
 
+func getAuthorizedKeys(pubKeys ...string) []*keyspb.PublicKey {
+	ret := make([]*keyspb.PublicKey, 0, len(pubKeys))
+	for _, pubKey := range pubKeys {
+		ret = append(ret, getAuthorizedKey(pubKey))
+	}
+	return ret
+}
+
 func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
 	pk, _ := pem.Decode([]byte(pubKey))
 	return &keyspb.PublicKey{Der: pk.Bytes}
