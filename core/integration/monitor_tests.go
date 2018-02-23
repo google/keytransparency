@@ -24,13 +24,12 @@ import (
 	"github.com/google/keytransparency/core/monitor"
 
 	"github.com/google/trillian/crypto"
-	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/merkle/hashers"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 const (
@@ -52,20 +51,14 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	mapTree := resp.GetMap()
-	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
+	mapVerifier, err := tclient.NewMapVerifierFromTree(resp.GetMap())
 	if err != nil {
-		t.Fatalf("Failed creating MapHasher: %v", err)
-	}
-	mapPubKey, err := der.UnmarshalPublicKey(mapTree.GetPublicKey().GetDer())
-	if err != nil {
-		t.Fatalf("Could not unmarshal map public key: %v", err)
+		t.Fatalf("Failed creating MapVerifier: %v", err)
 	}
 	store := fake.NewMonitorStorage()
 	// TODO(ismail): setup and use a real logVerifier instead:
 	mon, err := monitor.New(env.Cli, fake.NewTrillianLogVerifier(),
-		mapTree.TreeId, mapHasher, mapPubKey,
-		crypto.NewSHA256Signer(signer), store)
+		mapVerifier, crypto.NewSHA256Signer(signer), store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}

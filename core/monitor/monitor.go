@@ -16,7 +16,6 @@ package monitor
 
 import (
 	"context"
-	"crypto"
 	"fmt"
 	"time"
 
@@ -25,8 +24,6 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
-	"github.com/google/trillian/crypto/keys/der"
-	"github.com/google/trillian/merkle/hashers"
 
 	"github.com/golang/glog"
 
@@ -40,11 +37,9 @@ type Monitor struct {
 	mClient     pb.KeyTransparencyClient
 	signer      *tcrypto.Signer
 	trusted     *trillian.SignedLogRoot
-	mapID       int64
 	logVerifier client.LogVerifier
+	mapVerifier *client.MapVerifier
 	store       monitorstorage.Interface
-	mapHasher   hashers.MapHasher
-	mapPubKey   crypto.PublicKey
 }
 
 // NewFromConfig produces a new monitor from a Domain object.
@@ -52,42 +47,28 @@ func NewFromConfig(mclient pb.KeyTransparencyClient,
 	config *pb.Domain,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
-	logTree := config.GetLog()
-	mapTree := config.GetMap()
-	logHasher, err := hashers.NewLogHasher(logTree.GetHashStrategy())
+
+	logVerifier, err := client.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
-		return nil, fmt.Errorf("could not initialize log hasher: %v", err)
+		return nil, fmt.Errorf("could not initialize log verifier: %v", err)
 	}
-	logPubKey, err := der.UnmarshalPublicKey(logTree.GetPublicKey().GetDer())
+	mapVerifier, err := client.NewMapVerifierFromTree(config.GetMap())
 	if err != nil {
-		return nil, fmt.Errorf("failed parsing log public key: %v", err)
+		return nil, fmt.Errorf("could not initialize map verifier: %v", err)
 	}
-	mapHasher, err := hashers.NewMapHasher(mapTree.GetHashStrategy())
-	if err != nil {
-		return nil, fmt.Errorf("failed creating map hasher: %v", err)
-	}
-	mapPubKey, err := der.UnmarshalPublicKey(mapTree.GetPublicKey().GetDer())
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal map public key: %v", err)
-	}
-	logVerifier := client.NewLogVerifier(logHasher, logPubKey)
-	return New(mclient, logVerifier,
-		mapTree.TreeId, mapHasher, mapPubKey,
-		signer, store)
+	return New(mclient, logVerifier, mapVerifier, signer, store)
 }
 
 // New creates a new instance of the monitor.
 func New(mclient pb.KeyTransparencyClient,
 	logVerifier client.LogVerifier,
-	mapID int64, mapHasher hashers.MapHasher, mapPubKey crypto.PublicKey,
+	mapVerifier *client.MapVerifier,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	return &Monitor{
 		mClient:     mclient,
 		logVerifier: logVerifier,
-		mapID:       mapID,
-		mapHasher:   mapHasher,
-		mapPubKey:   mapPubKey,
+		mapVerifier: mapVerifier,
 		signer:      signer,
 		store:       store,
 	}, nil
@@ -185,7 +166,7 @@ func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, mutations []*pb
 	// Fetch Previous root.
 	smrA := epochA.GetSmr()
 	smrB := epochB.GetSmr()
-	if errs := m.verifyMutations(mutations, smrA.GetRootHash(), smrB.GetRootHash(), smrB.GetMapId()); len(errs) > 0 {
+	if errs := m.verifyMutations(mutations, smrA, smrB); len(errs) > 0 {
 		glog.Errorf("Invalid Epoch %v Mutations: %v", revision, errs)
 		return errs
 	}
