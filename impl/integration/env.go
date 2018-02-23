@@ -17,6 +17,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"encoding/pem"
 	"fmt"
 	"math/rand"
 	"net"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/adminserver"
@@ -47,6 +49,25 @@ import (
 	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+)
+
+var (
+	// openssl ecparam -name prime256v1 -genkey
+	vrfPriv = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEINS30QIDiMV1Npc8/J4OVGcHdSJTsiHhUx9rsK+OdLh2oAoGCCqGSM49
+AwEHoUQDQgAEF2Pm2kKya+JBun1QRmKQMcoMOIBNWp8fjECkJX+/hNWdV1UKb12W
++yXcX2MqN7ZMX77hS9mLus/WaE0NS370mA==
+-----END EC PRIVATE KEY-----`
+	logPriv = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIH7vjXeafneG0+7UxF1YGi4Env2L5LLnhqhfcwZafirMoAoGCCqGSM49
+AwEHoUQDQgAEqGXPnhMIclRmYHSmAnCMmfDUJ9iNBMmFxR/wHJdL12AuVUkgcuhb
+Ep2hy5ETs7bfFc2P95IYFlmbiuHMq3UY/A==
+-----END EC PRIVATE KEY-----`
+	mapPriv = `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIC4FhRijqobFJXcyojcPZX88sDtHgzp5ydmSgv1PqIlvoAoGCCqGSM49
+AwEHoUQDQgAEWLHm0TLYaTzENpPkBl2E79ySqJI+EW51VpoWh7wqY3OjSJcft4zg
+EeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA==
+-----END EC PRIVATE KEY-----`
 )
 
 // Listen opens a random local port and listens on it.
@@ -75,6 +96,16 @@ type Env struct {
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 	return der.NewProtoFromSpec(spec)
+}
+
+func keyFromPEM(p string) *any.Any {
+	block, _ := pem.Decode([]byte(p))
+	k := &keyspb.PrivateKey{Der: block.Bytes}
+	a, err := ptypes.MarshalAny(k)
+	if err != nil {
+		panic("MarshalAny failed")
+	}
+	return a
 }
 
 // NewEnv sets up common resources for tests.
@@ -107,9 +138,12 @@ func NewEnv() (*Env, error) {
 	}
 	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, domainStorage, vrfKeyGen)
 	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
-		DomainId:    domainID,
-		MinInterval: ptypes.DurationProto(1 * time.Second),
-		MaxInterval: ptypes.DurationProto(5 * time.Second),
+		DomainId:      domainID,
+		MinInterval:   ptypes.DurationProto(1 * time.Second),
+		MaxInterval:   ptypes.DurationProto(5 * time.Second),
+		VrfPrivateKey: keyFromPEM(vrfPriv),
+		LogPrivateKey: keyFromPEM(logPriv),
+		MapPrivateKey: keyFromPEM(mapPriv),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("env: CreateDomain(): %v", err)
