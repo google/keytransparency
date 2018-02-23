@@ -167,11 +167,13 @@ func NewEnv() (*Env, error) {
 	seq := sequencer.New(logEnv.Log, mapEnv.Map, entry.New(), domainStorage, mutations, queue)
 	// Only sequence when explicitly asked with receiver.Flush()
 	d := &domaindef.Domain{
-		DomainID: domainPB.DomainId,
-		LogID:    domainPB.Log.TreeId,
-		MapID:    domainPB.Map.TreeId,
+		DomainID:    domainPB.DomainId,
+		LogID:       domainPB.Log.TreeId,
+		MapID:       domainPB.Map.TreeId,
+		MinInterval: 60 * time.Hour,
+		MaxInterval: 60 * time.Hour,
 	}
-	receiver, err := seq.NewReceiver(ctx, d, 60*time.Hour, 60*time.Hour)
+	receiver, err := seq.NewReceiver(ctx, d)
 	if err != nil {
 		return nil, err
 	}

@@ -117,7 +117,7 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 			for _, d := range domains {
 				if _, ok := s.receivers[d.DomainID]; !ok {
 					glog.Infof("StartSigning domain: %v", d.DomainID)
-					r, err := s.NewReceiver(ctx, d, d.MinInterval, d.MaxInterval)
+					r, err := s.NewReceiver(ctx, d)
 					if err != nil {
 						return err
 					}
@@ -132,12 +132,10 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 
 // NewReceiver creates a new receiver for a domain.
 // New epochs will be created at least once per maxInterval and as often as minInterval.
-func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minInterval, maxInterval time.Duration) (mutator.Receiver, error) {
-	cctx, cancel := context.WithTimeout(ctx, minInterval)
+func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.Receiver, error) {
+	cctx, cancel := context.WithTimeout(ctx, d.MinInterval)
 	defer cancel()
-	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{
-		MapId: domain.MapID,
-	})
+	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +144,12 @@ func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minI
 	mapRoot := rootResp.GetMapRoot()
 	last := time.Unix(0, mapRoot.GetTimestampNanos())
 
-	return s.queue.NewReceiver(ctx, last, domain.DomainID, func(mutations []*mutator.QueueMessage) error {
-		return s.createEpoch(ctx, domain, mutations)
+	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
+		return s.createEpoch(ctx, d, mutations)
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: MaxBatchSize,
-		Period:       minInterval,
-		MaxPeriod:    maxInterval,
+		Period:       d.MinInterval,
+		MaxPeriod:    d.MaxInterval,
 	}), nil
 }
 
@@ -220,15 +218,13 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 }
 
 // createEpoch signs the current map head.
-func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs []*mutator.QueueMessage) error {
+func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
 	// Get the current root.
-	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{
-		MapId: domain.MapID,
-	})
+	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", domain.MapID, err)
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", d.MapID, err)
 	}
 	revision := rootResp.GetMapRoot().GetMapRevision()
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", revision)
@@ -240,7 +236,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 	}
 	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v", len(msgs), len(indexes))
 	getResp, err := s.tmap.GetLeaves(ctx, &tpb.GetMapLeavesRequest{
-		MapId: domain.MapID,
+		MapId: d.MapID,
 		Index: indexes,
 	})
 	if err != nil {
@@ -267,7 +263,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 	// Set new leaf values.
 	mapSetStart := time.Now()
 	setResp, err := s.tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
-		MapId:  domain.MapID,
+		MapId:  d.MapID,
 		Leaves: newLeaves,
 	})
 	mapSetEnd := time.Now()
@@ -282,12 +278,12 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 	for _, msg := range msgs {
 		mutations = append(mutations, msg.Mutation)
 	}
-	if err := s.mutations.WriteBatch(ctx, domain.DomainID, revision, mutations); err != nil {
+	if err := s.mutations.WriteBatch(ctx, d.DomainID, revision, mutations); err != nil {
 		return err
 	}
 
 	// Put SignedMapHead in an append only log.
-	if err := queueLogLeaf(ctx, s.tlog, domain.LogID, setResp.GetMapRoot()); err != nil {
+	if err := queueLogLeaf(ctx, s.tlog, d.LogID, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
