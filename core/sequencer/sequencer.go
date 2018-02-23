@@ -29,10 +29,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/trillian"
 	"github.com/prometheus/client_golang/prometheus"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tpb "github.com/google/trillian"
 )
 
 var (
@@ -69,8 +69,8 @@ func init() {
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
 	domains     domain.Storage
-	tmap        trillian.TrillianMapClient
-	tlog        trillian.TrillianLogClient
+	tmap        tpb.TrillianMapClient
+	tlog        tpb.TrillianLogClient
 	mutatorFunc mutator.Func
 	mutations   mutator.MutationStorage
 	queue       mutator.MutationQueue
@@ -78,8 +78,8 @@ type Sequencer struct {
 }
 
 // New creates a new instance of the signer.
-func New(tlog trillian.TrillianLogClient,
-	tmap trillian.TrillianMapClient,
+func New(tlog tpb.TrillianLogClient,
+	tmap tpb.TrillianMapClient,
 	mutatorFunc mutator.Func,
 	domains domain.Storage,
 	mutations mutator.MutationStorage,
@@ -117,7 +117,11 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 			for _, d := range domains {
 				if _, ok := s.receivers[d.DomainID]; !ok {
 					glog.Infof("StartSigning domain: %v", d.DomainID)
-					s.receivers[d.DomainID] = s.NewReceiver(ctx, d, d.MinInterval, d.MaxInterval)
+					r, err := s.NewReceiver(ctx, d)
+					if err != nil {
+						return err
+					}
+					s.receivers[d.DomainID] = r
 				}
 			}
 		case <-ctx.Done():
@@ -128,40 +132,25 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 
 // NewReceiver creates a new receiver for a domain.
 // New epochs will be created at least once per maxInterval and as often as minInterval.
-func (s *Sequencer) NewReceiver(ctx context.Context, domain *domain.Domain, minInterval, maxInterval time.Duration) mutator.Receiver {
-	cctx, cancel := context.WithTimeout(ctx, minInterval)
+func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.Receiver, error) {
+	cctx, cancel := context.WithTimeout(ctx, d.MinInterval)
 	defer cancel()
-	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &trillian.GetSignedMapRootRequest{
-		MapId: domain.MapID,
-	})
+	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
-		// TODO(gbelvin): I don't think this initialization block is needed anymore.
-		glog.Infof("GetSignedMapRoot failed: %v", err)
-		// Immediately create new epoch and write new sth:
-		empty := []*mutator.QueueMessage{}
-		if err := s.createEpoch(cctx, domain, empty); err != nil {
-			glog.Errorf("CreateEpoch failed: %v", err)
-		}
-		// Request map head again to get the exact time it was created:
-		rootResp, err = s.tmap.GetSignedMapRoot(cctx, &trillian.GetSignedMapRootRequest{
-			MapId: domain.MapID,
-		})
-		if err != nil {
-			glog.Errorf("GetSignedMapRoot failed after CreateEpoch: %v", err)
-		}
+		return nil, err
 	}
 	cancel()
 	// Fetch last time from previous map head (as stored in the map server)
 	mapRoot := rootResp.GetMapRoot()
 	last := time.Unix(0, mapRoot.GetTimestampNanos())
 
-	return s.queue.NewReceiver(ctx, last, domain.DomainID, func(mutations []*mutator.QueueMessage) error {
-		return s.createEpoch(ctx, domain, mutations)
+	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
+		return s.createEpoch(ctx, d, mutations)
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: MaxBatchSize,
-		Period:       minInterval,
-		MaxPeriod:    maxInterval,
-	})
+		Period:       d.MinInterval,
+		MaxPeriod:    d.MaxInterval,
+	}), nil
 }
 
 // toArray returns the first 32 bytes from b.
@@ -176,14 +165,14 @@ func toArray(b []byte) [32]byte {
 // Multiple mutations for the same leaf will be applied to provided leaf.
 // The last valid mutation for each leaf is included in the output.
 // Returns a list of map leaves that should be updated.
-func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*trillian.MapLeaf) ([]*trillian.MapLeaf, error) {
+func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
-	leafMap := make(map[[32]byte]*trillian.MapLeaf)
+	leafMap := make(map[[32]byte]*tpb.MapLeaf)
 	for _, l := range leaves {
 		leafMap[toArray(l.Index)] = l
 	}
 
-	retMap := make(map[[32]byte]*trillian.MapLeaf)
+	retMap := make(map[[32]byte]*tpb.MapLeaf)
 	for _, m := range mutations {
 		index := m.Mutation.GetIndex()
 		var oldValue *pb.Entry // If no map leaf was found, oldValue will be nil.
@@ -214,14 +203,14 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 			continue
 		}
 
-		retMap[toArray(index)] = &trillian.MapLeaf{
+		retMap[toArray(index)] = &tpb.MapLeaf{
 			Index:     index,
 			LeafValue: leafValue,
 			ExtraData: extraData,
 		}
 	}
 	// Convert return map back into a list.
-	ret := make([]*trillian.MapLeaf, 0, len(retMap))
+	ret := make([]*tpb.MapLeaf, 0, len(retMap))
 	for _, v := range retMap {
 		ret = append(ret, v)
 	}
@@ -229,15 +218,13 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 }
 
 // createEpoch signs the current map head.
-func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs []*mutator.QueueMessage) error {
+func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
 	// Get the current root.
-	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &trillian.GetSignedMapRootRequest{
-		MapId: domain.MapID,
-	})
+	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", domain.MapID, err)
+		return fmt.Errorf("GetSignedMapRoot(%v): %v", d.MapID, err)
 	}
 	revision := rootResp.GetMapRoot().GetMapRevision()
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", revision)
@@ -248,8 +235,8 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 		indexes = append(indexes, m.Mutation.Index)
 	}
 	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v", len(msgs), len(indexes))
-	getResp, err := s.tmap.GetLeaves(ctx, &trillian.GetMapLeavesRequest{
-		MapId: domain.MapID,
+	getResp, err := s.tmap.GetLeaves(ctx, &tpb.GetMapLeavesRequest{
+		MapId: d.MapID,
 		Index: indexes,
 	})
 	if err != nil {
@@ -261,7 +248,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 	// Trust the leaf values provided by the map server.
 	// If the map server is run by an untrusted entity, perform inclusion
 	// and signature verification here.
-	leaves := make([]*trillian.MapLeaf, 0, len(getResp.MapLeafInclusion))
+	leaves := make([]*tpb.MapLeaf, 0, len(getResp.MapLeafInclusion))
 	for _, m := range getResp.MapLeafInclusion {
 		leaves = append(leaves, m.Leaf)
 	}
@@ -275,8 +262,8 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 
 	// Set new leaf values.
 	mapSetStart := time.Now()
-	setResp, err := s.tmap.SetLeaves(ctx, &trillian.SetMapLeavesRequest{
-		MapId:  domain.MapID,
+	setResp, err := s.tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
+		MapId:  d.MapID,
 		Leaves: newLeaves,
 	})
 	mapSetEnd := time.Now()
@@ -291,12 +278,12 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 	for _, msg := range msgs {
 		mutations = append(mutations, msg.Mutation)
 	}
-	if err := s.mutations.WriteBatch(ctx, domain.DomainID, revision, mutations); err != nil {
+	if err := s.mutations.WriteBatch(ctx, d.DomainID, revision, mutations); err != nil {
 		return err
 	}
 
 	// Put SignedMapHead in an append only log.
-	if err := queueLogLeaf(ctx, s.tlog, domain.LogID, setResp.GetMapRoot()); err != nil {
+	if err := queueLogLeaf(ctx, s.tlog, d.LogID, setResp.GetMapRoot()); err != nil {
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
@@ -310,16 +297,16 @@ func (s *Sequencer) createEpoch(ctx context.Context, domain *domain.Domain, msgs
 }
 
 // TODO(gdbelvin): Add leaf at a specific index. trillian#423
-func queueLogLeaf(ctx context.Context, tlog trillian.TrillianLogClient, logID int64, smr *trillian.SignedMapRoot) error {
+func queueLogLeaf(ctx context.Context, tlog tpb.TrillianLogClient, logID int64, smr *tpb.SignedMapRoot) error {
 	smrJSON, err := json.Marshal(smr)
 	if err != nil {
 		return err
 	}
 	idHash := sha256.Sum256(smrJSON)
 
-	if _, err := tlog.QueueLeaf(ctx, &trillian.QueueLeafRequest{
+	if _, err := tlog.QueueLeaf(ctx, &tpb.QueueLeafRequest{
 		LogId: logID,
-		Leaf: &trillian.LogLeaf{
+		Leaf: &tpb.LogLeaf{
 			LeafValue:        smrJSON,
 			LeafIdentityHash: idHash[:],
 		},
