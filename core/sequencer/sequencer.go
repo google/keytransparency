@@ -17,7 +17,6 @@ package sequencer
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -33,6 +32,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tpb "github.com/google/trillian"
+	tclient "github.com/google/trillian/client"
 )
 
 var (
@@ -70,6 +70,7 @@ func init() {
 type Sequencer struct {
 	domains     domain.Storage
 	tmap        tpb.TrillianMapClient
+	logAdmin    tpb.TrillianAdminClient
 	tlog        tpb.TrillianLogClient
 	mutatorFunc mutator.Func
 	mutations   mutator.MutationStorage
@@ -79,6 +80,7 @@ type Sequencer struct {
 
 // New creates a new instance of the signer.
 func New(tlog tpb.TrillianLogClient,
+	logAdmin tpb.TrillianAdminClient,
 	tmap tpb.TrillianMapClient,
 	mutatorFunc mutator.Func,
 	domains domain.Storage,
@@ -86,8 +88,9 @@ func New(tlog tpb.TrillianLogClient,
 	queue mutator.MutationQueue) *Sequencer {
 	return &Sequencer{
 		domains:     domains,
-		tmap:        tmap,
 		tlog:        tlog,
+		logAdmin:    logAdmin,
+		tmap:        tmap,
 		mutatorFunc: mutatorFunc,
 		mutations:   mutations,
 		queue:       queue,
@@ -144,8 +147,17 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	mapRoot := rootResp.GetMapRoot()
 	last := time.Unix(0, mapRoot.GetTimestampNanos())
 
+	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
+	if err != nil {
+		return nil, err
+	}
+	logClient, err := tclient.NewFromTree(s.tlog, logTree)
+	if err != nil {
+		return nil, err
+	}
+
 	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
-		return s.createEpoch(ctx, d, mutations)
+		return s.createEpoch(ctx, d, logClient, mutations)
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: MaxBatchSize,
 		Period:       d.MinInterval,
@@ -218,7 +230,7 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 }
 
 // createEpoch signs the current map head.
-func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, msgs []*mutator.QueueMessage) error {
+func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
 	// Get the current root.
@@ -283,7 +295,8 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, msgs []*m
 	}
 
 	// Put SignedMapHead in an append only log.
-	if err := queueLogLeaf(ctx, s.tlog, d.LogID, setResp.GetMapRoot()); err != nil {
+	if err := queueLogLeaf(ctx, logClient, setResp.GetMapRoot()); err != nil {
+		glog.Errorf("queueLogLeaf(logID: %v, rev: %v): %v", d.LogID, setResp.GetMapRoot().GetMapRevision(), err)
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
@@ -297,22 +310,11 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, msgs []*m
 }
 
 // TODO(gdbelvin): Add leaf at a specific index. trillian#423
-func queueLogLeaf(ctx context.Context, tlog tpb.TrillianLogClient, logID int64, smr *tpb.SignedMapRoot) error {
+func queueLogLeaf(ctx context.Context, logClient *tclient.LogClient, smr *tpb.SignedMapRoot) error {
 	smrJSON, err := json.Marshal(smr)
 	if err != nil {
 		return err
 	}
-	idHash := sha256.Sum256(smrJSON)
 
-	if _, err := tlog.QueueLeaf(ctx, &tpb.QueueLeafRequest{
-		LogId: logID,
-		Leaf: &tpb.LogLeaf{
-			LeafValue:        smrJSON,
-			LeafIdentityHash: idHash[:],
-		},
-	}); err != nil {
-		return fmt.Errorf("trillianLog.QueueLeaf(logID: %v, leaf: %v): %v",
-			logID, smrJSON, err)
-	}
-	return nil
+	return logClient.AddLeaf(ctx, smrJSON)
 }
