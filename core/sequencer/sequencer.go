@@ -316,5 +316,6 @@ func queueLogLeaf(ctx context.Context, logClient *tclient.LogClient, smr *tpb.Si
 		return err
 	}
 
+	// Queue the leaf and then wait until it has been sequenced and verified.
 	return logClient.AddLeaf(ctx, smrJSON)
 }
