@@ -42,8 +42,8 @@ type Monitor struct {
 	store       monitorstorage.Interface
 }
 
-// NewFromConfig produces a new monitor from a Domain object.
-func NewFromConfig(mClient pb.KeyTransparencyClient,
+// NewFromDomain produces a new monitor from a Domain object.
+func NewFromDomain(mClient pb.KeyTransparencyClient,
 	config *pb.Domain,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {

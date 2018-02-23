@@ -52,7 +52,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
 	store := fake.NewMonitorStorage()
-	mon, err := monitor.NewFromConfig(env.Cli, config, signer, store)
+	mon, err := monitor.NewFromDomain(env.Cli, config, signer, store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}

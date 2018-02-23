@@ -86,7 +86,7 @@ func main() {
 	store := fake.NewMonitorStorage()
 
 	// Create monitoring background process.
-	mon, err := monitor.NewFromConfig(ktClient, config, signer, store)
+	mon, err := monitor.NewFromDomain(ktClient, config, signer, store)
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}
