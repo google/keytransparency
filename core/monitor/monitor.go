@@ -36,14 +36,14 @@ import (
 type Monitor struct {
 	mClient     pb.KeyTransparencyClient
 	signer      *tcrypto.Signer
-	trusted     *trillian.SignedLogRoot
+	trusted     trillian.SignedLogRoot
 	logVerifier client.LogVerifier
 	mapVerifier *client.MapVerifier
 	store       monitorstorage.Interface
 }
 
-// NewFromConfig produces a new monitor from a Domain object.
-func NewFromConfig(mClient pb.KeyTransparencyClient,
+// NewFromDomain produces a new monitor from a Domain object.
+func NewFromDomain(mClient pb.KeyTransparencyClient,
 	config *pb.Domain,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
@@ -102,7 +102,7 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 }
 
 // ProcessLoop continuously fetches mutations and processes them.
-func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, startEpoch int64, period time.Duration) error {
+func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted trillian.SignedLogRoot, period time.Duration) error {
 	mutCli := mutationclient.New(m.mClient, period)
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
@@ -110,7 +110,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, startEpoch i
 	pairs := make(chan EpochPair)
 
 	go func(ctx context.Context) {
-		errc <- mutCli.StreamEpochs(ctx, domainID, startEpoch, epochs)
+		errc <- mutCli.StreamEpochs(ctx, domainID, trusted.TreeSize, epochs)
 	}(cctx)
 	go func(ctx context.Context) {
 		errc <- EpochPairs(ctx, epochs, pairs)
@@ -126,7 +126,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, startEpoch i
 
 		var smr *trillian.SignedMapRoot
 		var errList []error
-		if errs := m.VerifyEpochMutations(pair.A, pair.B, mutations); len(errs) > 0 {
+		if errs := m.VerifyEpochMutations(pair.A, pair.B, &trusted, mutations); len(errs) > 0 {
 			glog.Infof("Epoch %v did not verify: %v", revision, errs)
 			errList = errs
 		} else {
@@ -155,17 +155,15 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, startEpoch i
 }
 
 // VerifyEpochMutations validates that epochA + mutations = epochB.
-func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, mutations []*pb.MutationProof) []error {
+func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, trusted *trillian.SignedLogRoot, mutations []*pb.MutationProof) []error {
 	revision := epochB.GetSmr().GetMapRevision()
-	if errs := m.VerifyEpoch(epochB); len(errs) > 0 {
+	if errs := m.VerifyEpoch(epochB, trusted); len(errs) > 0 {
 		glog.Errorf("Invalid Epoch %v: %v", revision, errs)
 		return errs
 	}
 
 	// Fetch Previous root.
-	smrA := epochA.GetSmr()
-	smrB := epochB.GetSmr()
-	if errs := m.verifyMutations(mutations, smrA, smrB); len(errs) > 0 {
+	if errs := m.verifyMutations(mutations, epochA.GetSmr(), epochB.GetSmr()); len(errs) > 0 {
 		glog.Errorf("Invalid Epoch %v Mutations: %v", revision, errs)
 		return errs
 	}

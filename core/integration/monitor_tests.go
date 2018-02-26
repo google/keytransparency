@@ -22,14 +22,15 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
+	"github.com/google/trillian"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/crypto/keyspb"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tclient "github.com/google/trillian/client"
 )
 
 const (
@@ -43,89 +44,91 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 // TestMonitor verifies that the monitor correctly verifies transitions between epochs.
 func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	// setup monitor:
-	resp, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
-	if err != nil {
-		t.Fatalf("Couldn't retrieve domain info: %v", err)
-	}
-	signer, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
+	privKey, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	mapVerifier, err := tclient.NewMapVerifierFromTree(resp.GetMap())
+	config, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
-		t.Fatalf("Failed creating MapVerifier: %v", err)
+		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
+	signer := crypto.NewSHA256Signer(privKey)
 	store := fake.NewMonitorStorage()
-	// TODO(ismail): setup and use a real logVerifier instead:
-	mon, err := monitor.New(env.Cli, fake.NewTrillianLogVerifier(),
-		mapVerifier, crypto.NewSHA256Signer(signer), store)
+	mon, err := monitor.NewFromDomain(env.Cli, config, signer, store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
 
-	for _, tc := range []struct {
-		desc string
-		// the userIDs to update, if no userIDs are provided, no update request
-		// will be send before querying
-		userIDs        []string
-		updateData     []byte
-		signers        []signatures.Signer
-		authorizedKeys []*keyspb.PublicKey
-		// the epoch to query after sending potential updates
-		queryEpoch int64
+	// Setup a bunch of epochs with data to verify.
+	for _, e := range []struct {
+		epoch       int64
+		signers     []signatures.Signer
+		userUpdates []*tpb.User
 	}{
 		{
-			desc:       "Query first epoch",
-			queryEpoch: 1,
+			epoch: 1,
 		},
 		{
-			desc:           "create one mutation and new epoch (not forced like in sequencer)",
-			userIDs:        []string{"test@test.com"},
-			updateData:     []byte("testData"),
-			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
-			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
-			queryEpoch:     3,
+			epoch:   2,
+			signers: []signatures.Signer{createSigner(t, testPrivKey1)},
+			userUpdates: []*tpb.User{
+				{
+					DomainId:       env.Domain.DomainId,
+					AppId:          "app1",
+					UserId:         "alice@test.com",
+					PublicKeyData:  []byte("alice-key1"),
+					AuthorizedKeys: getAuthorizedKeys(testPubKey1),
+				},
+			},
 		},
 		{
-			desc:           "create several mutations and new epoch",
-			userIDs:        []string{"test@test.com", "test2@test2.com"},
-			updateData:     []byte("more update data"),
-			signers:        []signatures.Signer{createSigner(t, testPrivKey1)},
-			authorizedKeys: []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)},
-			queryEpoch:     4,
+			epoch:   3,
+			signers: []signatures.Signer{createSigner(t, testPrivKey1)},
+			userUpdates: []*tpb.User{
+				{
+					DomainId:       env.Domain.DomainId,
+					AppId:          "app1",
+					UserId:         "bob@test.com",
+					PublicKeyData:  []byte("bob-key1"),
+					AuthorizedKeys: getAuthorizedKeys(testPubKey1),
+				},
+				{
+					DomainId:       env.Domain.DomainId,
+					AppId:          "app1",
+					UserId:         "carol@test.com",
+					PublicKeyData:  []byte("carol-key1"),
+					AuthorizedKeys: getAuthorizedKeys(testPubKey1),
+				},
+			},
 		},
 	} {
-		for _, userID := range tc.userIDs {
-			u := &tpb.User{
-				DomainId:       env.Domain.DomainId,
-				AppId:          appID,
-				UserId:         userID,
-				PublicKeyData:  tc.updateData,
-				AuthorizedKeys: tc.authorizedKeys,
-			}
-			actx := WithOutgoingFakeAuth(ctx, userID)
+		for _, u := range e.userUpdates {
+			actx := WithOutgoingFakeAuth(ctx, u.UserId)
 			cctx, cancel := context.WithTimeout(actx, 500*time.Millisecond)
 			defer cancel()
-			if _, err = env.Client.Update(cctx, u, tc.signers); err != context.DeadlineExceeded {
+			if _, err = env.Client.Update(cctx, u, e.signers); err != context.DeadlineExceeded {
 				t.Fatalf("Could not send update request: %v", err)
 			}
 		}
 
 		env.Receiver.Flush(ctx)
-		if err := env.Client.WaitForRevision(ctx, tc.queryEpoch); err != nil {
+		if err := env.Client.WaitForRevision(ctx, e.epoch); err != nil {
 			t.Fatalf("WaitForRevision(): %v", err)
 		}
+	}
 
-		domainID := env.Domain.DomainId
-		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
-		if err := mon.ProcessLoop(cctx, domainID, tc.queryEpoch-1, 40*time.Millisecond); err != context.DeadlineExceeded {
-			t.Errorf("Monitor could not process mutations: %v", err)
-		}
-		cancel()
+	trusted := trillian.SignedLogRoot{}
+	cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	pollPeriod := 100 * time.Millisecond
+	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted, pollPeriod); err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
+		t.Errorf("Monitor could not process mutations: %v", err)
+	}
+	cancel()
 
-		mresp, err := store.Get(tc.queryEpoch)
+	for i := int64(1); i < 4; i++ {
+		mresp, err := store.Get(i)
 		if err != nil {
-			t.Errorf("Could not read monitoring response: %v", err)
+			t.Errorf("Could not read monitoring response for epoch %v: %v", i, err)
 			continue
 		}
 		for _, err := range mresp.Errors {
