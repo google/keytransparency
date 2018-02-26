@@ -46,11 +46,11 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	signer := crypto.NewSHA256Signer(privKey)
 	config, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
 	if err != nil {
 		t.Fatalf("Couldn't retrieve domain info: %v", err)
 	}
+	signer := crypto.NewSHA256Signer(privKey)
 	store := fake.NewMonitorStorage()
 	mon, err := monitor.NewFromDomain(env.Cli, config, signer, store)
 	if err != nil {

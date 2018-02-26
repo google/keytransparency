@@ -91,12 +91,13 @@ func (e *ErrList) Proto() []*statuspb.Status {
 }
 
 // VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
+// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
 func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted *trillian.SignedLogRoot) []error {
 	errs := ErrList{}
 
 	if err := m.logVerifier.VerifyRoot(trusted, epoch.GetLogRoot(), epoch.GetLogConsistency()); err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(epoch, trusted))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(trusted, epoch))
 	}
 	// updated trusted log root
 	m.updateTrusted(epoch.GetLogRoot())
