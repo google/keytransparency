@@ -23,9 +23,11 @@ import (
 	"net"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/kr/pretty"
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/adminserver"
@@ -149,6 +151,7 @@ func NewEnv() (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("env: CreateDomain(): %v", err)
 	}
+	glog.V(5).Infof("Domain: %# v", pretty.Formatter(domainPB))
 
 	// Common data structures.
 	mutations, err := mutationstorage.New(db)

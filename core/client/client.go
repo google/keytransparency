@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
@@ -39,7 +38,6 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tclient "github.com/google/trillian/client"
 )
 
 const (
@@ -90,23 +88,10 @@ type Client struct {
 
 // NewFromConfig creates a new client from a config
 func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Client, error) {
-	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
+	ktVerifier, err := NewVerifierFromDomain(config)
 	if err != nil {
 		return nil, err
 	}
-
-	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
-	if err != nil {
-		return nil, err
-	}
-
-	// VRF key
-	vrfPubKey, err := p256.NewVRFVerifierFromRawKey(config.GetVrf().GetDer())
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing vrf public key: %v", err)
-	}
-
-	ktVerifier := NewVerifier(vrfPubKey, mapVerifier, logVerifier)
 	return New(ktClient, config.DomainId, ktVerifier), nil
 }
 

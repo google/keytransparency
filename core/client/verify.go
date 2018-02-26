@@ -20,13 +20,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian"
-	"github.com/google/trillian/client"
+	"github.com/kr/pretty"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 var (
@@ -37,19 +40,40 @@ var (
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
 	vrf         vrf.PublicKey
-	mapVerifier *client.MapVerifier
-	logVerifier client.LogVerifier
+	mapVerifier *tclient.MapVerifier
+	logVerifier tclient.LogVerifier
 }
 
 // NewVerifier creates a new instance of the client verifier.
 func NewVerifier(vrf vrf.PublicKey,
-	mapVerifier *client.MapVerifier,
-	logVerifier client.LogVerifier) *Verifier {
+	mapVerifier *tclient.MapVerifier,
+	logVerifier tclient.LogVerifier) *Verifier {
 	return &Verifier{
 		vrf:         vrf,
 		mapVerifier: mapVerifier,
 		logVerifier: logVerifier,
 	}
+}
+
+// NewVerifierFromDomain creates a new instance of the client verifier from a config.
+func NewVerifierFromDomain(config *pb.Domain) (*Verifier, error) {
+	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
+	if err != nil {
+		return nil, err
+	}
+
+	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
+	if err != nil {
+		return nil, err
+	}
+
+	// VRF key
+	vrfPubKey, err := p256.NewVRFVerifierFromRawKey(config.GetVrf().GetDer())
+	if err != nil {
+		return nil, fmt.Errorf("error parsing vrf public key: %v", err)
+	}
+
+	return NewVerifier(vrfPubKey, mapVerifier, logVerifier), nil
 }
 
 // Index computes the index from a VRF proof.
@@ -70,6 +94,8 @@ func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byt
 //  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
 	trusted trillian.SignedLogRoot, in *pb.GetEntryResponse) error {
+	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", domainID, appID, userID, pretty.Formatter(in))
+
 	// Unpack the merkle tree leaf value.
 	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
 	if err != nil {
