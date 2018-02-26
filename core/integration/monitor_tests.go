@@ -23,6 +23,8 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/trillian"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
@@ -118,7 +120,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	trusted := trillian.SignedLogRoot{}
 	cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	pollPeriod := 100 * time.Millisecond
-	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted, pollPeriod); err != context.DeadlineExceeded {
+	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted, pollPeriod); err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
 		t.Errorf("Monitor could not process mutations: %v", err)
 	}
 	cancel()
