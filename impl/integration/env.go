@@ -180,7 +180,6 @@ func NewEnv() (*Env, error) {
 	if err != nil {
 		return nil, err
 	}
-	receiver.Flush(ctx)
 
 	addr, lis, err := Listen()
 	if err != nil {
