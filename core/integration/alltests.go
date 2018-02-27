@@ -19,6 +19,7 @@ package integration
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/mutator"
@@ -32,6 +33,7 @@ type Env struct {
 	Cli      pb.KeyTransparencyClient
 	Domain   *pb.Domain
 	Receiver mutator.Receiver
+	Timeout  time.Duration
 }
 
 // NamedTestFn is a binding between a readable test name (used for a Go subtest)

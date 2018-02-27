@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/dev"
@@ -65,8 +64,6 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 var (
 	appID = "app"
 )
-
-const updateTimeout = 500 * time.Millisecond
 
 func createSigner(t *testing.T, privKey string) signatures.Signer {
 	signatures.Rand = dev.Zeros
@@ -204,14 +201,18 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 					PublicKeyData:  tc.setProfile,
 					AuthorizedKeys: tc.authorizedKeys,
 				}
-				cctx, cancel := context.WithTimeout(tc.ctx, updateTimeout)
+				cctx, cancel := context.WithTimeout(tc.ctx, env.Timeout)
 				defer cancel()
 				m, err := env.Client.Update(cctx, u, tc.signers)
 				if got, want := err, context.DeadlineExceeded; got != want {
 					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 				}
-				env.Receiver.Flush(tc.ctx)
-				if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
+				cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
+				defer cancel()
+				env.Receiver.Flush(cctx)
+				cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
+				defer cancel()
+				if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 				}
 			}
@@ -245,7 +246,7 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 			PublicKeyData:  tc.profile,
 			AuthorizedKeys: tc.authorizedKeys,
 		}
-		cctx, cancel := context.WithTimeout(tc.ctx, updateTimeout)
+		cctx, cancel := context.WithTimeout(tc.ctx, env.Timeout)
 		defer cancel()
 		m, err := env.Client.Update(cctx, u, tc.signers)
 
@@ -314,7 +315,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	}
 }
 
-func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) error {
+func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -338,20 +339,24 @@ func (e *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string
 				PublicKeyData:  p,
 				AuthorizedKeys: authorizedKeys,
 			}
-			cctx, cancel := context.WithTimeout(ctx, updateTimeout)
+			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
 			// The first update response is always a retry.
-			m, err := e.Client.Update(cctx, u, signers)
+			m, err := env.Client.Update(cctx, u, signers)
 			if err != context.DeadlineExceeded {
 				return fmt.Errorf("Update(%v, %v): %v, want %v", userID, i, err, context.DeadlineExceeded)
 			}
-			e.Receiver.Flush(ctx)
-			if _, err := e.Client.WaitForUserUpdate(ctx, m); err != nil {
+			cctx, cancel = context.WithTimeout(ctx, env.Timeout)
+			defer cancel()
+			env.Receiver.Flush(cctx)
+			cctx, cancel = context.WithTimeout(ctx, env.Timeout)
+			defer cancel()
+			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 				return fmt.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 			}
 		} else {
 			// Create an empty epoch.
-			e.Receiver.Flush(ctx)
+			env.Receiver.Flush(ctx)
 		}
 	}
 	return nil

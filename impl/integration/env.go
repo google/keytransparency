@@ -204,6 +204,7 @@ func NewEnv() (*Env, error) {
 			Cli:      ktClient,
 			Domain:   domainPB,
 			Receiver: receiver,
+			Timeout:  500 * time.Millisecond,
 		},
 		mapEnv:     mapEnv,
 		logEnv:     logEnv,
