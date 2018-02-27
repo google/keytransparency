@@ -291,12 +291,13 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 		mutations = append(mutations, msg.Mutation)
 	}
 	if err := s.mutations.WriteBatch(ctx, d.DomainID, revision, mutations); err != nil {
+		glog.Fatalf("Could not write mutations for revision %v: %v", revision, err)
 		return err
 	}
 
 	// Put SignedMapHead in an append only log.
 	if err := queueLogLeaf(ctx, logClient, setResp.GetMapRoot()); err != nil {
-		glog.Errorf("queueLogLeaf(logID: %v, rev: %v): %v", d.LogID, setResp.GetMapRoot().GetMapRevision(), err)
+		glog.Fatalf("queueLogLeaf(logID: %v, rev: %v): %v", d.LogID, setResp.GetMapRoot().GetMapRevision(), err)
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
