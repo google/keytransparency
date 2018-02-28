@@ -15,171 +15,55 @@
 package cmd
 
 import (
-	"errors"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"text/tabwriter"
-	"time"
 
-	"github.com/google/keytransparency/core/crypto/keymaster"
-	"github.com/google/keytransparency/core/crypto/signatures/p256"
+	"github.com/gogo/protobuf/proto"
+	"github.com/google/tink/go/subtle/aead"
+	"github.com/google/tink/go/tink"
+	"golang.org/x/crypto/pbkdf2"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/cobra"
-
-	kmpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 const (
-	keyStoreFile      = ".keystore"
-	keyIDTruncatedLen = 8
+	keysetFile          = ".keystore"
+	masterKeyLen        = 32
+	masterKeyIterations = 4096
 )
 
 var (
-	pubKey      string
-	privKey     string
-	description string
-	activate    bool
-	keyType     string
-	generate    bool
+	// openssl rand -hex 32
+	salt, _           = hex.DecodeString("00afc05d5b131a1dfd140a146b87f2f07826a8d4576cb4feef43f80f0c9b1c2f")
+	masterKeyHashFunc = sha256.New
+	keyType           string
+	masterPassword    string
 )
 
-var store *keymaster.KeyMaster
+var (
+	keyset *tink.KeysetHandle
+)
 
 // keysCmd represents the authorized-keys command.
 var keysCmd = &cobra.Command{
 	Use:   "authorized-keys",
 	Short: "Manage authorized keys",
-	Long: `Manage keys authorized to sign updates, and select the active signing key.
-
-Verifying always happens using the keys listed in the previous epoch.`,
+	Long: `Manage the authorized-keys list with tinkey
+	https://github.com/google/tink/blob/master/doc/TINKEY.md`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if err := readKeyStoreFile(); err != nil {
+		handle, err := readKeysetFile(keysetFile, masterPassword)
+		if err != nil {
 			log.Fatal(err)
 		}
+		keyset = handle
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		buf, err := store.Marshal()
-		if err != nil {
-			return err
-		}
-		if err := ioutil.WriteFile(keyStoreFile, buf, 0600); err != nil {
-			return err
-		}
-		return nil
-	},
-}
-
-// addCmd represents the authorized-keys add command.
-var addCmd = &cobra.Command{
-	Use:   "add [ --privkey=[path] --activate | --pubkey=[path] | --generate --type=[key_type] --activate ] --description=[comment]",
-	Short: "Add a key to the list of authorized keys",
-	Long: `Provide a pair of public and private keys, already existing on disk, to be added to the list of authorized keys. The --generate flag can be used to generate a random key pair.
-
-./keytransparency-client authorized-keys add --pubkey=/path/to/PEM/pubkey --description=[comment]
-./keytransparency-client authorized-keys add --privkey=/path/to/PEM/privkey --activate --description=[comment]
-./keytransparency-client authorized-keys add --generate --type=[key_type] --activate --description=[comment]
-`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Validate input.
-		if generate {
-			if pubKey != "" || privKey != "" {
-				return fmt.Errorf("cannot provide public or private key with generate")
-			}
-			if keyType == "" {
-				return fmt.Errorf("must provide key type")
-			}
-		} else {
-			if pubKey == "" && privKey == "" {
-				return fmt.Errorf("should provide private or public key")
-			}
-			if pubKey != "" && privKey != "" {
-				return fmt.Errorf("cannot provide public and private key at the same time")
-			}
-		}
-
-		// Add either a private key, or a public key.
-		switch {
-		case generate:
-			switch keyType {
-			case "ecdsa":
-				skPEM, _, err := p256.GeneratePEMs()
-				if err != nil {
-					return err
-				}
-				if err := addPrivateKey(skPEM, description, activate); err == nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("unrecognized key type %v", keyType)
-			}
-		case privKey != "":
-			skPEM, err := ioutil.ReadFile(privKey)
-			if err != nil {
-				return err
-			}
-			if err := addPrivateKey(skPEM, description, activate); err == nil {
-				return err
-			}
-		case pubKey != "":
-			pkPEM, err := ioutil.ReadFile(pubKey)
-			if err != nil {
-				return err
-			}
-			if err := addPublicKey(pkPEM, description); err == nil {
-				return err
-			}
-		}
-		return nil
-	},
-}
-
-// removeCmd represents the authorized-keys remove command.
-var removeCmd = &cobra.Command{
-	Use:   "remove [keyid]",
-	Short: "Remove a key from the list of authorized keys",
-	Long: `Remove a key based on its key ID from the list of authorized keys. e.g.:
-
-./keytransparency-client authorized-keys remove [keyid]
-
-If the list contains a single key, it cannot be removed.
-`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Validate input.
-		if len(args) < 1 {
-			return fmt.Errorf("key ID needs to be provided")
-		}
-
-		// First remove verifying key with matching ID then attempt to
-		// remove signing key if exist.
-		keyID := keyID(args[0])
-		if err := store.RemoveVerifyingKey(keyID); err != nil {
-			return err
-		}
-		if err := store.RemoveSigningKey(keyID); err != nil && err != keymaster.ErrKeyNotExist {
-			return err
-		}
-		return nil
-	},
-}
-
-// activateCmd represents the authorized-keys activate command.
-var activateCmd = &cobra.Command{
-	Use:   "activate [keyid]",
-	Short: "Activate a key in the list of authorized keys",
-	Long: `Activate a key based on its key ID in the list of authorized keys. e.g.:
-
-./keytransparency-client authorized-keys activate [keyid]
-`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Validate input.
-		if len(args) < 1 {
-			return fmt.Errorf("key ID needs to be provided")
-		}
-		keyID := keyID(args[0])
-		return store.Activate(keyID)
+		return writeKeysetFile(keyset, keysetFile, masterPassword)
 	},
 }
 
@@ -194,7 +78,7 @@ var listCmd = &cobra.Command{
 The actual keys are not listed, only their corresponding metadata.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		signingInfo, verifyingInfo, err := store.Info()
+		keysetInfo, err := keyset.KeysetInfo()
 		if err != nil {
 			return err
 		}
@@ -202,26 +86,13 @@ The actual keys are not listed, only their corresponding metadata.
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
 
 		// List signing keys.
-		fmt.Fprintln(w, "Signing Keys:")
-		fmt.Fprintln(w, "  ID\tAdded At\tStatus\tDescription")
-		for _, info := range signingInfo {
-			timestamp, err := ptypes.Timestamp(info.Metadata.AddedAt)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(w, "  %v\t%v\t%v\t%v\n", info.Metadata.KeyId[:keyIDTruncatedLen], timestamp.Format(time.ANSIC), info.Status, info.Metadata.Description)
+		fmt.Fprintln(w, "My Keys:")
+		fmt.Fprintln(w, "  ID\tStatus\tType")
+		for _, info := range keysetInfo.GetKeyInfo() {
+			fmt.Fprintf(w, "  %v\t%v\t%v\n", info.KeyId, info.Status, info.TypeUrl)
 		}
 
-		// List verifying keys.
-		fmt.Fprintln(w, "\nVerifying Keys:")
-		fmt.Fprintln(w, "  ID\tAdded At\tStatus\tDescription")
-		for _, info := range verifyingInfo {
-			timestamp, err := ptypes.Timestamp(info.Metadata.AddedAt)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(w, "  %v\t%v\t%v\t%v\n", info.Metadata.KeyId[:keyIDTruncatedLen], timestamp.Format(time.ANSIC), info.Status, info.Metadata.Description)
-		}
+		fmt.Fprintln(w, "\nOther Authorized Keys: none")
 
 		if err := w.Flush(); err != nil {
 			return nil
@@ -230,79 +101,49 @@ The actual keys are not listed, only their corresponding metadata.
 	},
 }
 
-func readKeyStoreFile() error {
-	store = keymaster.New()
-	// Authorized keys file might not exist.
-	if _, err := os.Stat(keyStoreFile); err == nil {
-		data, err := ioutil.ReadFile(keyStoreFile)
-		if err != nil {
-			return fmt.Errorf("reading keystore file failed: %v", err)
-		}
-		if err = keymaster.Unmarshal(data, store); err != nil {
-			return fmt.Errorf("keystore.Unmarshak() failed: %v", err)
-		}
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("error checking if keystore file exists: %v", err)
+// masterPBKDF converts the master password into the master key.
+func masterPBKDF(masterPassword string) (tink.Aead, error) {
+	if masterPassword == "" {
+		return nil, fmt.Errorf("please provide a master password")
 	}
-	return nil
+	dk := pbkdf2.Key([]byte(masterPassword), salt,
+		masterKeyIterations, masterKeyLen, masterKeyHashFunc)
+	return aead.NewAesGcm(dk)
 }
 
-func addPublicKey(pkPEM []byte, description string) error {
-	if activate {
-		return errors.New("--activate requires a private key")
+func readKeysetFile(file, password string) (*tink.KeysetHandle, error) {
+	masterKey, err := masterPBKDF(password)
+	if err != nil {
+		return nil, err
 	}
-	if _, err := store.AddVerifyingKey(description, pkPEM); err != nil {
-		return err
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("reading keystore file %v failed: %v", file, err)
 	}
-	return nil
+
+	return tink.EncryptedKeysetHandle().ParseSerializedKeyset(data, masterKey)
 }
 
-func addPrivateKey(skPEM []byte, description string, activate bool) error {
-	status := kmpb.SigningKey_INACTIVE
-	if activate {
-		status = kmpb.SigningKey_ACTIVE
-	}
-	keyID, err := store.AddSigningKey(status, description, skPEM)
+func writeKeysetFile(keyset *tink.KeysetHandle, file, password string) error {
+	masterKey, err := masterPBKDF(password)
 	if err != nil {
 		return err
 	}
-
-	// Add the corresponding verifying key.
-	signer, err := store.Signer(keyID)
+	encryptedKeyset, err := tink.EncryptKeyset(keyset.Keyset(), masterKey)
 	if err != nil {
 		return err
 	}
-	pkPEM, err := signer.PublicKeyPEM()
+	serialized, err := proto.Marshal(encryptedKeyset)
 	if err != nil {
 		return err
 	}
-	if _, err := store.AddVerifyingKey(description, pkPEM); err != nil {
-		return err
-	}
-	return nil
-}
-
-func keyID(hint string) string {
-	ids := store.KeyIDs()
-	for _, id := range ids {
-		if id[:len(hint)] == hint {
-			return id
-		}
-	}
-	return ""
+	return ioutil.WriteFile(file, serialized, 0600)
 }
 
 func init() {
 	RootCmd.AddCommand(keysCmd)
-	keysCmd.AddCommand(addCmd)
-	keysCmd.AddCommand(removeCmd)
-	keysCmd.AddCommand(activateCmd)
 	keysCmd.AddCommand(listCmd)
 
-	addCmd.PersistentFlags().StringVar(&pubKey, "pubkey", "", "Path to a public key file")
-	addCmd.PersistentFlags().StringVar(&privKey, "privkey", "", "Path to a private key file")
-	addCmd.PersistentFlags().StringVar(&description, "description", "", "(Optional) Description of the added authorized key")
-	addCmd.PersistentFlags().BoolVar(&activate, "activate", false, "(Optional) Activate the added signing key")
-	addCmd.PersistentFlags().BoolVar(&generate, "generate", false, "Generate a random public and private key pair")
-	addCmd.PersistentFlags().StringVar(&keyType, "type", "", "The key type to be generated, e.g., ecdsa")
+	keysCmd.PersistentFlags().StringVarP(&masterPassword, "master-password", "p", "", "The master key to the local keyset")
+	keysCmd.PersistentFlags().StringVar(&keyType, "type", "P256", "Type of keys to generate: [P256, P384, P21]")
 }
