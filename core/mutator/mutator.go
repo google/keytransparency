@@ -40,8 +40,6 @@ var (
 	// entry provided in the mutation does not match the previous entry
 	// itself.
 	ErrPreviousHash = errors.New("mutation: previous entry hash does not match the hash provided in the mutation")
-	// ErrMissingKey occurs when a mutation does not have authorized keys.
-	ErrMissingKey = errors.New("mutation: missing authorized key(s)")
 	// ErrInvalidSig occurs when either the current or previous update entry
 	// signature verification fails.
 	ErrInvalidSig = errors.New("mutation: invalid signature")

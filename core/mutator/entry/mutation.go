@@ -15,19 +15,18 @@
 package entry
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/crypto/commitments"
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/mutator"
-
-	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/crypto/sigpb"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tinkpb "github.com/google/tink/proto/tink_proto"
 )
 
 var nilHash, _ = objecthash.ObjectHash(nil)
@@ -99,16 +98,17 @@ func (m *Mutation) SetCommitment(data []byte) error {
 
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
-func (m *Mutation) ReplaceAuthorizedKeys(pubkeys []*keyspb.PublicKey) error {
-	if got, want := len(pubkeys), 1; got < want {
-		return mutator.ErrMissingKey
+func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
+	if _, err := tink.CleartextKeysetHandle().ParseKeyset(pubkeys); err != nil {
+		return err
 	}
+
 	m.entry.AuthorizedKeys = pubkeys
 	return nil
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize int64) (*pb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle, trustedTreeSize int64) (*pb.UpdateEntryRequest, error) {
 	mutation, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -117,12 +117,10 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize
 	// Check authorization.
 	skv := *mutation
 	skv.Signatures = nil
-	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(),
-		m.entry.GetAuthorizedKeys(),
-		skv,
-		mutation.GetSignatures()); err != nil {
-		return nil, fmt.Errorf("verifyKeys(prevauth: %v, newauth: %v, sig: %v): %v",
-			len(m.prevEntry.GetAuthorizedKeys()), len(m.entry.GetAuthorizedKeys()), len(mutation.GetSignatures()), err)
+
+	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(), m.entry.GetAuthorizedKeys(),
+		skv, mutation.GetSignatures()); err != nil {
+		return nil, fmt.Errorf("verifyKeys(sig: %v): %v", len(mutation.GetSignatures()), err)
 	}
 
 	// Sanity check the mutation's correctness.
@@ -146,15 +144,29 @@ func (m *Mutation) SerializeAndSign(signers []signatures.Signer, trustedTreeSize
 }
 
 // Sign produces the mutation
-func (m *Mutation) sign(signers []signatures.Signer) (*pb.Entry, error) {
+func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.Entry, error) {
 	m.entry.Signatures = nil
-	sigs := make(map[string]*sigpb.DigitallySigned)
-	for _, signer := range signers {
-		sig, err := signer.Sign(m.entry)
+	sigs := make([][]byte, 0, len(signers))
+	for _, handle := range signers {
+		signer, err := signature.PublicKeySignFactory().GetPrimitive(handle)
 		if err != nil {
 			return nil, err
 		}
-		sigs[signer.KeyID()] = sig
+
+		j, err := json.Marshal(m.entry)
+		if err != nil {
+			return nil, err
+		}
+		hash, err := objecthash.CommonJSONHash(string(j))
+		if err != nil {
+			return nil, err
+		}
+
+		sig, err := signer.Sign(hash[:])
+		if err != nil {
+			return nil, err
+		}
+		sigs = append(sigs, sig)
 	}
 
 	m.entry.Signatures = sigs

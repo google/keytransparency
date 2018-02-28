@@ -18,11 +18,6 @@ package entry
 import (
 	"fmt"
 
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
-
-	"github.com/google/trillian/crypto/keyspb"
-
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
@@ -54,16 +49,4 @@ func ToLeafValue(update proto.Message) ([]byte, error) {
 	}
 
 	return proto.Marshal(e)
-}
-
-func verifiersFromKeys(keys []*keyspb.PublicKey) (map[string]signatures.Verifier, error) {
-	verifiers := make(map[string]signatures.Verifier)
-	for _, key := range keys {
-		verifier, err := factory.NewVerifierFromKey(key)
-		if err != nil {
-			return nil, err
-		}
-		verifiers[verifier.KeyID()] = verifier
-	}
-	return verifiers, nil
 }

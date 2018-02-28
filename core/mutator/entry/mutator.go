@@ -16,19 +16,20 @@ package entry
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"log"
 
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
-
-	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/crypto/sigpb"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tinkpb "github.com/google/tink/proto/tink_proto"
 )
 
 // Mutator defines mutations to simply replace the current map value with the
@@ -86,20 +87,11 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, mutator.ErrPreviousHash
 	}
 
-	// Ensure that the mutation has at least one authorized key to prevent
-	// account lockout.
-	if len(newEntry.GetAuthorizedKeys()) == 0 {
-		glog.Warningf("mutation should contain at least one authorized key")
-		return nil, mutator.ErrMissingKey
-	}
-
 	kv := *newEntry
 	kv.Signatures = nil
-	if err := verifyKeys(oldEntry.GetAuthorizedKeys(),
-		newEntry.GetAuthorizedKeys(),
-		kv,
-		newEntry.GetSignatures(),
-	); err != nil {
+
+	if err := verifyKeys(oldEntry.GetAuthorizedKeys(), newEntry.GetAuthorizedKeys(),
+		kv, newEntry.GetSignatures()); err != nil {
 		return nil, err
 	}
 
@@ -112,32 +104,41 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 //   2. If prevAuthz is nil, at least one signature with a key from the new
 //   authorized_key set should exist.
 //   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(prevAuthz, authz []*keyspb.PublicKey, data interface{}, sigs map[string]*sigpb.DigitallySigned) error {
-	var verifiers map[string]signatures.Verifier
-	var err error
+func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data interface{}, sigs [][]byte) error {
+	keyset := prevAuthz
 	if prevAuthz == nil {
-		verifiers, err = verifiersFromKeys(authz)
-		if err != nil {
-			return err
-		}
-	} else {
-		verifiers, err = verifiersFromKeys(prevAuthz)
-		if err != nil {
-			return err
-		}
+		keyset = authz
 	}
 
-	return verifyAuthorizedKeys(data, verifiers, sigs)
+	verifier, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
+	if err != nil {
+		return err
+	}
+
+	return verifyAuthorizedKeys(data, verifier, sigs)
 }
 
 // verifyAuthorizedKeys requires AT LEAST one verifier to have a valid
 // corresponding signature.
-func verifyAuthorizedKeys(data interface{}, verifiers map[string]signatures.Verifier, sigs map[string]*sigpb.DigitallySigned) error {
-	for _, verifier := range verifiers {
-		if sig, ok := sigs[verifier.KeyID()]; ok {
-			if err := verifier.Verify(data, sig); err == nil {
-				return nil
-			}
+func verifyAuthorizedKeys(data interface{}, handle *tink.KeysetHandle, sigs [][]byte) error {
+	verifier, err := signature.PublicKeyVerifyFactory().GetPrimitive(handle)
+	if err != nil {
+		return err
+	}
+
+	j, err := json.Marshal(data)
+	if err != nil {
+		log.Print("json.Marshal failed")
+		return err
+	}
+	hash, err := objecthash.CommonJSONHash(string(j))
+	if err != nil {
+		return err
+	}
+
+	for _, sig := range sigs {
+		if err := verifier.Verify(sig, hash[:]); err == nil {
+			return nil
 		}
 	}
 	return mutator.ErrUnauthorized
