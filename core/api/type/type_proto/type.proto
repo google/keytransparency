@@ -17,7 +17,7 @@ syntax = "proto3";
 option go_package = "github.com/google/keytransparency/core/api/type/type_proto";
 
 import "google/rpc/status.proto";
-import "crypto/keyspb/keyspb.proto";
+import "tink.proto";
 
 package google.keytransparency.type;
 
@@ -32,7 +32,7 @@ message User {
   // public_key_data is the public key material for this account.
   bytes public_key_data = 4;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
-  repeated keyspb.PublicKey authorized_keys = 5;
+  crypto.tink.Keyset authorized_keys = 5;
   // status is set when account is part of a batch operation.
   google.rpc.Status status = 6;
   // TODO(gbelvin): Include UserProof and UserCommitment
