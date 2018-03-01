@@ -15,19 +15,12 @@
 package entry
 
 import (
-	"crypto/ecdsa"
-	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
-	"github.com/google/trillian/crypto/keys/pem"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	commonpb "github.com/google/tink/proto/common_proto"
-	ecdsapb "github.com/google/tink/proto/ecdsa_proto"
-	tinkpb "github.com/google/tink/proto/tink_proto"
 )
 
 const (
@@ -54,87 +47,6 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJKDbR4uyhSMXW80x02NtYRUFlMQb
 LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
-
-func mustPrivateKey(privPEM string, keyID uint32) *tinkpb.Keyset_Key {
-	signer, err := pem.UnmarshalPrivateKey(privPEM, "")
-	if err != nil {
-		panic(err)
-	}
-
-	priv, ok := signer.(*ecdsa.PrivateKey)
-	if !ok {
-		panic("not ecdsa private key")
-	}
-
-	params := signature.NewEcdsaParams(
-		commonpb.HashType_SHA256,
-		commonpb.EllipticCurveType_NIST_P256,
-		ecdsapb.EcdsaSignatureEncoding_DER)
-
-	publicKey := signature.NewEcdsaPublicKey(
-		signature.ECDSA_VERIFY_KEY_VERSION,
-		params, priv.X.Bytes(), priv.Y.Bytes())
-	privKey := signature.NewEcdsaPrivateKey(
-		signature.ECDSA_SIGN_KEY_VERSION,
-		publicKey, priv.D.Bytes())
-	serializedKey, _ := proto.Marshal(privKey)
-	keyData := tink.NewKeyData(signature.ECDSA_SIGN_TYPE_URL,
-		serializedKey,
-		tinkpb.KeyData_ASYMMETRIC_PRIVATE)
-	return tink.NewKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
-}
-
-func mustPublicKey(pubPEM string, keyID uint32) *tinkpb.Keyset_Key {
-	pubKey, err := pem.UnmarshalPublicKey(pubPEM)
-	if err != nil {
-		panic(err)
-	}
-	pub, ok := pubKey.(*ecdsa.PublicKey)
-	if !ok {
-		panic(fmt.Sprintf("not ecdsa public key: %T", pubKey))
-	}
-
-	params := signature.NewEcdsaParams(
-		commonpb.HashType_SHA256,
-		commonpb.EllipticCurveType_NIST_P256,
-		ecdsapb.EcdsaSignatureEncoding_DER)
-	publicKey := signature.NewEcdsaPublicKey(
-		signature.ECDSA_VERIFY_KEY_VERSION,
-		params, pub.X.Bytes(), pub.Y.Bytes())
-	serializedKey, _ := proto.Marshal(publicKey)
-	keyData := tink.NewKeyData(signature.ECDSA_VERIFY_TYPE_URL,
-		serializedKey,
-		tinkpb.KeyData_ASYMMETRIC_PUBLIC)
-	return tink.NewKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
-}
-
-func mustPublicKeys(pubPEMs []string) *tink.KeysetHandle {
-	keys := make([]*tinkpb.Keyset_Key, 0, len(pubPEMs))
-	for i, pem := range pubPEMs {
-		keysetKey := mustPublicKey(pem, uint32(i+1))
-		keys = append(keys, keysetKey)
-	}
-	keyset := tink.NewKeyset(1, keys)
-	parsedHandle, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
-	if err != nil {
-		panic(fmt.Sprintf("ParseKeyset(): %v", err))
-	}
-	return parsedHandle
-}
-
-func mustPrivateKeys(privPEMs []string) []*tink.KeysetHandle {
-	handles := make([]*tink.KeysetHandle, 0, len(privPEMs))
-	for _, pem := range privPEMs {
-		keysetKey := mustPrivateKey(pem, 1)
-		keyset := tink.NewKeyset(1, []*tinkpb.Keyset_Key{keysetKey})
-		parsedHandle, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
-		if err != nil {
-			panic(fmt.Sprintf("ParseKeyset(): %v", err))
-		}
-		handles = append(handles, parsedHandle)
-	}
-	return handles
-}
 
 func TestFromLeafValue(t *testing.T) {
 	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()

@@ -17,6 +17,7 @@ package entry
 import (
 	"testing"
 
+	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 )

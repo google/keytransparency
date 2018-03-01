@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/testutil"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/google/tink/go/tink"
