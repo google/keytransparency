@@ -78,12 +78,12 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	signers2 := testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2)
-	signers3 := testutil.SignKeysetsFromPEMs(testPrivKey2)
+	signers3 := testutil.SignKeysetsFromPEMs("", testPrivKey2)
 
 	// Create lists of authorized keys
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 	authorizedKeys2 := testutil.VerifyKeysetFromPEMs(testPubKey1, testPubKey2).Keyset()
-	authorizedKeys3 := testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset()
+	authorizedKeys3 := testutil.VerifyKeysetFromPEMs("", testPubKey2).Keyset()
 
 	for _, tc := range []struct {
 		desc           string

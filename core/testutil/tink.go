@@ -87,6 +87,9 @@ func PublicKeyFromPEM(pubPEM string, keyID uint32) *tinkpb.Keyset_Key {
 func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
 	keys := make([]*tinkpb.Keyset_Key, 0, len(pubPEMs))
 	for i, pem := range pubPEMs {
+		if pem == "" {
+			continue
+		}
 		keysetKey := PublicKeyFromPEM(pem, uint32(i+1))
 		keys = append(keys, keysetKey)
 	}
@@ -101,9 +104,12 @@ func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
 // SignKeysetsFromPEMs produces a slice of keysets, each with one private key.
 func SignKeysetsFromPEMs(privPEMs ...string) []*tink.KeysetHandle {
 	handles := make([]*tink.KeysetHandle, 0, len(privPEMs))
-	for _, pem := range privPEMs {
-		keysetKey := PrivateKeyFromPEM(pem, 1)
-		keyset := tink.NewKeyset(1, []*tinkpb.Keyset_Key{keysetKey})
+	for i, pem := range privPEMs {
+		if pem == "" {
+			continue
+		}
+		keysetKey := PrivateKeyFromPEM(pem, uint32(i+1))
+		keyset := tink.NewKeyset(uint32(i+1), []*tinkpb.Keyset_Key{keysetKey})
 		parsedHandle, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
 		if err != nil {
 			panic(fmt.Sprintf("ParseKeyset(): %v", err))
