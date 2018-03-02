@@ -23,11 +23,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/keytransparency/core/authentication"
+
 	"github.com/aybabtme/uniplot/histogram"
+	"github.com/golang/glog"
 	"github.com/paulbellamy/ratecounter"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 
 	tm "github.com/buger/goterm"
+	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 )
 
 var (
@@ -45,6 +51,7 @@ func init() {
 	RootCmd.AddCommand(hammerCmd)
 
 	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1, "Number of parallel workers")
+	hammerCmd.Flags().DurationVar(&ramp, "ramp", 1*time.Second, "Time to spend ramping up")
 }
 
 // hammerCmd represents the post command
@@ -64,10 +71,6 @@ var hammerCmd = &cobra.Command{
 		return nil
 	},
 }
-
-var (
-	qps = make([][2]float64, 0, 1000)
-)
 
 func parallel(ctx context.Context, maxWorkers int) {
 	times := make(chan time.Duration)
@@ -90,12 +93,22 @@ func parallel(ctx context.Context, maxWorkers int) {
 type job func() error
 
 func generateJobs(ctx context.Context, jobs chan<- job) {
+	i := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case jobs <- bindJob(ctx, i):
 			i++
+		}
+	}
+}
+
+func bindJob(ctx context.Context, i int) func() {
+	userID := fmt.Sprintf("user_%v", i)
+	return func() {
+		if err := writeOp(ctx, "app1", userID); err != nil {
+			glog.Errorf("write(%v): %v", userID, err)
 		}
 	}
 }
@@ -160,7 +173,7 @@ func draw(latencies []float64, data *tm.DataTable, qps int64) {
 	tm.Printf("Total Requests: %v\n", len(latencies))
 	tm.Printf("Recent QPS:    %v\n", qps)
 
-	// QPS Chart
+	// Threads per QPS graph
 	tm.Printf("QPS Chart:\n")
 	chart := tm.NewLineChart(100, 20)
 	tm.Println(chart.Draw(data))
@@ -178,7 +191,6 @@ func draw(latencies []float64, data *tm.DataTable, qps int64) {
 	box.Write(memLog.Bytes())
 	tm.Println(box)
 
-	// Threads per QPS graph
 	tm.Flush()
 }
 
