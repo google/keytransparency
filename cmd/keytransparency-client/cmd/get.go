@@ -35,13 +35,17 @@ results are consistent.`,
 		userID := args[0]
 		appID := args[1]
 		timeout := viper.GetDuration("timeout")
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
 
-		c, err := GetClient(false)
+		userCreds, err := userCreds(ctx, false)
+		if err != nil {
+			return err
+		}
+		c, err := GetClient(userCreds)
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
 		profile, _, err := c.GetEntry(ctx, userID, appID)
 		if err != nil {
 			return fmt.Errorf("GetEntry failed: %v", err)
