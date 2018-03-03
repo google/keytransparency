@@ -233,8 +233,7 @@ func dial(ctx context.Context, ktURL string, userCreds credentials.PerRPCCredent
 
 // GetClient connects to the server and returns a key transparency verification
 // client.
-func GetClient(userCreds credentials.PerRPCCredentials) (*client.Client, error) {
-	ctx := context.Background()
+func GetClient(ctx context.Context, userCreds credentials.PerRPCCredentials) (*client.Client, error) {
 	ktURL := viper.GetString("kt-url")
 
 	cc, err := dial(ctx, ktURL, userCreds)

@@ -42,7 +42,7 @@ results are consistent.`,
 		if err != nil {
 			return err
 		}
-		c, err := GetClient(userCreds)
+		c, err := GetClient(ctx, userCreds)
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
