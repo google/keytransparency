@@ -26,7 +26,6 @@ import (
 	"github.com/google/keytransparency/core/authentication"
 
 	"github.com/aybabtme/uniplot/histogram"
-	"github.com/golang/glog"
 	"github.com/paulbellamy/ratecounter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -100,15 +99,6 @@ func generateJobs(ctx context.Context, jobs chan<- job) {
 			return
 		case jobs <- bindJob(ctx, i):
 			i++
-		}
-	}
-}
-
-func bindJob(ctx context.Context, i int) func() {
-	userID := fmt.Sprintf("user_%v", i)
-	return func() {
-		if err := writeOp(ctx, "app1", userID); err != nil {
-			glog.Errorf("write(%v): %v", userID, err)
 		}
 	}
 }
