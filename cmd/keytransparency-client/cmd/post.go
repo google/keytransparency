@@ -48,7 +48,6 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
 		// Validate input.
 		if len(args) < 2 {
 			return fmt.Errorf("user email and app-id need to be provided")
@@ -66,7 +65,7 @@ User email MUST match the OAuth account used to authorize the update.
 		userID := args[0]
 		appID := args[1]
 		timeout := viper.GetDuration("timeout")
-		cctx, cancel := context.WithTimeout(ctx, timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
 		// Create client.
@@ -74,7 +73,7 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return err
 		}
-		c, err := GetClient(userCreds)
+		c, err := GetClient(ctx, userCreds)
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
@@ -95,7 +94,7 @@ User email MUST match the OAuth account used to authorize the update.
 			PublicKeyData:  profileData,
 			AuthorizedKeys: authorizedKeys,
 		}
-		if _, err := c.Update(cctx, u, signers); err != nil {
+		if _, err := c.Update(ctx, u, signers); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}
 		fmt.Printf("New key for %v: %x\n", userID, data)
