@@ -76,11 +76,11 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
 
-	RootCmd.PersistentFlags().String("domain", "google.com", "Domain within the KT server")
-	RootCmd.PersistentFlags().String("kt-url", "35.184.134.53:8080", "URL of Key Transparency server")
+	RootCmd.PersistentFlags().String("domain", "default", "Domain within the KT server")
+	RootCmd.PersistentFlags().String("kt-url", "35.225.194.168:8080", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().Bool("autoconfig", true, "Fetch config info from the server's /v1/domain/info")
-	RootCmd.PersistentFlags().Bool("insecure", false, "Skip TLS checks")
+	RootCmd.PersistentFlags().Bool("insecure", true, "Skip TLS checks")
 
 	RootCmd.PersistentFlags().String("vrf", "genfiles/vrf-pubkey.pem", "path to vrf public key")
 
@@ -92,8 +92,8 @@ func init() {
 	RootCmd.PersistentFlags().String("fake-auth-userid", "", "userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
 
 	// Global flags for use by subcommands.
-	RootCmd.PersistentFlags().DurationP("timeout", "t", 3*time.Minute, "Time to wait before operations timeout")
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print in/out and verification steps")
+	RootCmd.PersistentFlags().DurationP("timeout", "t", 15*time.Second, "Time to wait before operations timeout")
+	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Print in/out and verification steps")
 	if err := viper.BindPFlags(RootCmd.PersistentFlags()); err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -237,27 +237,25 @@ func GetClient(ctx context.Context, userCreds credentials.PerRPCCredentials) (*c
 
 	cc, err := dial(ctx, ktURL, userCreds)
 	if err != nil {
-		return nil, fmt.Errorf("Error Dialing: %v", err)
+		return nil, fmt.Errorf("dial %v: %v", ktURL, err)
 	}
+	ktCli := pb.NewKeyTransparencyClient(cc)
 
-	config, err := config(ctx, cc)
+	config, err := config(ctx, ktCli)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading config: %v", err)
+		return nil, fmt.Errorf("config: %v", err)
 	}
 
-	return client.NewFromConfig(pb.NewKeyTransparencyClient(cc), config)
+	return client.NewFromConfig(ktCli, config)
 }
 
 // config selects a source for and returns the client configuration.
-func config(ctx context.Context, cc *grpc.ClientConn) (*pb.Domain, error) {
+func config(ctx context.Context, client pb.KeyTransparencyClient) (*pb.Domain, error) {
 	autoConfig := viper.GetBool("autoconfig")
 	domain := viper.GetString("domain")
 	switch {
 	case autoConfig:
-		ktClient := pb.NewKeyTransparencyClient(cc)
-		return ktClient.GetDomain(ctx, &pb.GetDomainRequest{
-			DomainId: domain,
-		})
+		return client.GetDomain(ctx, &pb.GetDomainRequest{DomainId: domain})
 	default:
 		return readConfigFromDisk()
 	}
