@@ -45,13 +45,17 @@ and verify that the results are consistent.`,
 		userID := args[0]
 		appID := args[1]
 		timeout := viper.GetDuration("timeout")
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
 
-		c, err := GetClient(false)
+		userCreds, err := userCreds(ctx, false)
+		if err != nil {
+			return err
+		}
+		c, err := GetClient(userCreds)
 		if err != nil {
 			return fmt.Errorf("Error connecting: %v", err)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
 		if end == 0 {
 			// Get the current epoch.
 			_, smh, err := c.GetEntry(ctx, userID, appID)

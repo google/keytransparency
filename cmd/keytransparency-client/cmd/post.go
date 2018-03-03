@@ -66,14 +66,18 @@ User email MUST match the OAuth account used to authorize the update.
 		userID := args[0]
 		appID := args[1]
 		timeout := viper.GetDuration("timeout")
+		cctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
 
 		// Create client.
-		c, err := GetClient(true)
+		userCreds, err := userCreds(ctx, false)
+		if err != nil {
+			return err
+		}
+		c, err := GetClient(userCreds)
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
-		cctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
 
 		// Update.
 		signers := store.Signers()

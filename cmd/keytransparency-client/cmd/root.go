@@ -45,8 +45,9 @@ import (
 )
 
 var (
-	cfgFile string
-	verbose bool
+	cfgFile  string
+	verbose  bool
+	authType string
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -210,7 +211,7 @@ func userCreds(ctx context.Context, useClientSecret bool) (credentials.PerRPCCre
 	}
 }
 
-func dial(ctx context.Context, ktURL string, useClientSecret bool) (*grpc.ClientConn, error) {
+func dial(ctx context.Context, ktURL string, userCreds credentials.PerRPCCredentials) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 
 	transportCreds, err := transportCreds(ktURL)
@@ -219,10 +220,6 @@ func dial(ctx context.Context, ktURL string, useClientSecret bool) (*grpc.Client
 	}
 	opts = append(opts, grpc.WithTransportCredentials(transportCreds))
 
-	userCreds, err := userCreds(ctx, useClientSecret)
-	if err != nil {
-		return nil, err
-	}
 	if userCreds != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(userCreds))
 	}
@@ -236,10 +233,11 @@ func dial(ctx context.Context, ktURL string, useClientSecret bool) (*grpc.Client
 
 // GetClient connects to the server and returns a key transparency verification
 // client.
-func GetClient(useClientSecret bool) (*client.Client, error) {
+func GetClient(userCreds credentials.PerRPCCredentials) (*client.Client, error) {
 	ctx := context.Background()
 	ktURL := viper.GetString("kt-url")
-	cc, err := dial(ctx, ktURL, useClientSecret)
+
+	cc, err := dial(ctx, ktURL, userCreds)
 	if err != nil {
 		return nil, fmt.Errorf("Error Dialing: %v", err)
 	}
