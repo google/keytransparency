@@ -43,9 +43,11 @@ var (
 )
 
 func init() {
-	log.SetOutput(memLog)
-
+	// Silence "logging before flag.Parse"
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	flag.CommandLine.Parse([]string{})
+
+	log.SetOutput(memLog)
 
 	RootCmd.AddCommand(hammerCmd)
 
@@ -168,18 +170,19 @@ func draw(latencies []float64, data *tm.DataTable, qps int64) {
 	chart := tm.NewLineChart(100, 20)
 	tm.Println(chart.Draw(data))
 
-	// Latency Hist
-	tm.Printf("Latency Histogram:\n")
-	width := 50
-	height := 10
-
-	hist := histogram.Hist(height, latencies)
-	histogram.Fprint(tm.Output, hist, histogram.Linear(width))
-
 	// Console output
+	tm.Printf("Debug Output:\n")
 	box := tm.NewBox(180, 10, 0)
 	box.Write(memLog.Bytes())
 	tm.Println(box)
+
+	// Latency Hist
+	width := 50
+	height := 10
+
+	tm.Printf("Latency Histogram:\n")
+	hist := histogram.Hist(height, latencies)
+	histogram.Fprint(tm.Output, hist, histogram.Linear(width))
 
 	tm.Flush()
 }
