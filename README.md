@@ -72,18 +72,17 @@ development.
 ## Running the server
 
 ### Install 
-1. [OpenSSL](https://www.openssl.org/community/binaries.html)
 1. [Docker](https://docs.docker.com/engine/installation/) 
    - Docker Engine 1.13.0+ `docker version -f '{{.Server.APIVersion}}'`
+1. [Docker Compose](https://docs.docker.com/compose/install/) 
    - Docker Compose 1.11.0+ `docker-compose --version`
-1. `go get -u github.com/google/keytransparency/...`
-1. `go get -u github.com/google/trillian/...`
-1. `./scripts/prepare_server.sh -f` 
 
 ### Run
 1. Run Key Transparency
 
   ```sh
+$ wget https://raw.githubusercontent.com/google/keytransparency/master/docker-compose.yml
+$ docker-compose pull
 $ docker-compose up -d 
 Creating keytransparency_db_1 ...         done
 Creating keytransparency_map_server_1 ... done
@@ -99,14 +98,26 @@ Creating keytransparency_monitor_1 ...    done
 
 2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [Proof for app1/foo@bar.com](https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1)
+- [Proof for app1/foo@bar.com](https://localhost:8080/v1/domains/default/apps/app1/users/foo@bar.com)
+- [Proof for app1/foo@bar.com](https://localhost:8080/v1/domains/default/apps/app1/users/foo@bar.com)
 - [Server configuration info](https://localhost:8080/v1/domains/default/info)
 - [Prometheus graphs](http://localhost:9090/graph)
 
 ## Development and Testing
-Key Transparency and its [Trillian](https://github.com/google/trillian) backend
-use a [MySQL database](https://github.com/google/trillian/blob/master/README.md#mysql-setup),
-which must be setup in order for the Key Transparency tests to work.
+### Install 
+1. [Go](https://golang.org/doc/install)
+   - Set the `$GOPATH` environment variable. `export GOPATH=$(go env GOPATH)`
+1. [Docker](https://docs.docker.com/engine/installation/) 
+   - Docker Engine 1.13.0+ `docker version -f '{{.Server.APIVersion}}'`
+   - Docker Compose 1.11.0+ `docker-compose --version`
+1. [MySQL](https://github.com/google/trillian/blob/master/README.md#mysql-setup)
+   Key Transparency and its [Trillian](https://github.com/google/trillian) backend
+   need a local MySQL instance to be setup in order for the tests to work.
+1. `go get -u github.com/google/keytransparency/...`
+1. `go get -u github.com/google/trillian/...`
+1. `./scripts/prepare_server.sh -f` 
+1. `make presubmit`
+
 
 Support
 ------
