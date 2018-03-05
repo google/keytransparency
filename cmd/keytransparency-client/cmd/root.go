@@ -45,9 +45,8 @@ import (
 )
 
 var (
-	cfgFile  string
-	verbose  bool
-	authType string
+	cfgFile string
+	verbose bool
 )
 
 // RootCmd represents the base command when called without any subcommands
