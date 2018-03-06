@@ -36,8 +36,8 @@ import (
 )
 
 var (
-	maxWorkers int
-	workers    int
+	maxWorkers uint
+	workers    uint
 	memLog     = new(bytes.Buffer)
 	ramp       time.Duration
 )
@@ -51,7 +51,7 @@ func init() {
 
 	RootCmd.AddCommand(hammerCmd)
 
-	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1, "Number of parallel workers")
+	hammerCmd.Flags().UintVar(&maxWorkers, "workers", 1, "Number of parallel workers")
 	hammerCmd.Flags().DurationVar(&ramp, "ramp", 1*time.Second, "Time to spend ramping up")
 }
 
@@ -59,7 +59,7 @@ func init() {
 var hammerCmd = &cobra.Command{
 	Use:   "hammer",
 	Short: "Loadtest the server",
-	Long:  ``,
+	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if err := readKeyStoreFile(); err != nil {
@@ -68,26 +68,28 @@ var hammerCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		parallel(ctx, maxWorkers)
+		runHammer(ctx, maxWorkers, ramp)
 		return nil
 	},
 }
 
-func parallel(ctx context.Context, maxWorkers int) {
+// runHammer adds workers up to maxWorkers over the ramp time.
+func runHammer(ctx context.Context, maxWorkers uint, ramp time.Duration) {
+	rampDelta := ramp / time.Duration(maxWorkers)
 	times := make(chan time.Duration)
 	jobs := make(chan job)
 	var wg sync.WaitGroup
-	go recordLatencies(ctx, times)
+	go recordLatencies(ctx, times, rampDelta)
 	go generateJobs(ctx, jobs)
 
 	// Slowly add workers up to maxWorkers
-	ramp := time.NewTicker(time.Duration(ramp.Nanoseconds() / int64(maxWorkers)))
-	for ; workers < maxWorkers && ctx.Err() == nil; <-ramp.C {
+	rampTicker := time.NewTicker(rampDelta)
+	for ; workers < maxWorkers && ctx.Err() == nil; <-rampTicker.C {
 		workers++
 		wg.Add(1)
-		go runJobsInThread(ctx, workers, jobs, times, &wg)
+		go worker(ctx, workers, jobs, times, &wg)
 	}
-	ramp.Stop()
+	rampTicker.Stop()
 	wg.Wait()
 }
 
@@ -112,7 +114,7 @@ func bindJob(ctx context.Context, i int) func() error {
 	}
 }
 
-func runJobsInThread(ctx context.Context, id int, jobs <-chan job, times chan<- time.Duration, wg *sync.WaitGroup) {
+func worker(ctx context.Context, id uint, jobs <-chan job, times chan<- time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
@@ -129,12 +131,11 @@ func runJobsInThread(ctx context.Context, id int, jobs <-chan job, times chan<- 
 	}
 }
 
-func recordLatencies(ctx context.Context, times <-chan time.Duration) {
-	//start := time.Now()
+func recordLatencies(ctx context.Context, times <-chan time.Duration, rampDelta time.Duration) {
 	latencies := make([]float64, 0, 1000)
 	refresh := time.NewTicker(250 * time.Millisecond)
-	newworker := time.NewTicker(time.Duration(ramp.Nanoseconds() / int64(maxWorkers)))
-	qps := ratecounter.NewRateCounter(5 * time.Second)
+	newWorker := time.NewTicker(rampDelta)
+	qps := ratecounter.NewRateCounter(rampDelta)
 
 	qpsData := new(tm.DataTable)
 	qpsData.AddColumn("Workers")
@@ -150,7 +151,7 @@ func recordLatencies(ctx context.Context, times <-chan time.Duration) {
 			qps.Incr(1)
 		case <-refresh.C:
 			draw(latencies, qpsData, qps.Rate())
-		case <-newworker.C:
+		case <-newWorker.C:
 			qpsData.AddRow(float64(workers), float64(qps.Rate()))
 		}
 	}
@@ -199,7 +200,6 @@ func writeOp(ctx context.Context, appID, userID string) error {
 		return fmt.Errorf("error connecting: %v", err)
 	}
 
-	// Update.
 	signers := store.Signers()
 	authorizedKeys, err := store.PublicKeys()
 	if err != nil {
@@ -215,8 +215,6 @@ func writeOp(ctx context.Context, appID, userID string) error {
 		PublicKeyData:  []byte("publickey"),
 		AuthorizedKeys: authorizedKeys,
 	}
-	if _, err := c.Update(ctx, u, signers); err != nil {
-		return fmt.Errorf("update failed: %v", err)
-	}
-	return nil
+	_, err = c.Update(ctx, u, signers)
+	return err
 }
