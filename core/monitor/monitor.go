@@ -37,7 +37,7 @@ type Monitor struct {
 	mClient     pb.KeyTransparencyClient
 	signer      *tcrypto.Signer
 	trusted     trillian.SignedLogRoot
-	logVerifier client.LogVerifier
+	logVerifier *client.LogVerifier
 	mapVerifier *client.MapVerifier
 	store       monitorstorage.Interface
 }
@@ -60,7 +60,7 @@ func NewFromDomain(mClient pb.KeyTransparencyClient,
 
 // New creates a new instance of the monitor.
 func New(mClient pb.KeyTransparencyClient,
-	logVerifier client.LogVerifier,
+	logVerifier *client.LogVerifier,
 	mapVerifier *client.MapVerifier,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
