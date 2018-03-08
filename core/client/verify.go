@@ -41,13 +41,13 @@ var (
 type Verifier struct {
 	vrf         vrf.PublicKey
 	mapVerifier *tclient.MapVerifier
-	logVerifier tclient.LogVerifier
+	logVerifier *tclient.LogVerifier
 }
 
 // NewVerifier creates a new instance of the client verifier.
 func NewVerifier(vrf vrf.PublicKey,
 	mapVerifier *tclient.MapVerifier,
-	logVerifier tclient.LogVerifier) *Verifier {
+	logVerifier *tclient.LogVerifier) *Verifier {
 	return &Verifier{
 		vrf:         vrf,
 		mapVerifier: mapVerifier,
