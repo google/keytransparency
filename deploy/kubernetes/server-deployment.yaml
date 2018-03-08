@@ -27,6 +27,7 @@ spec:
         - --map-url=map-server:8090
         - --tls-key=/kt/server.key
         - --tls-cert=/kt/server.crt
+        - --auth-type=insecure-fake
         - --alsologtostderr
         - --v=5
         image: us.gcr.io/key-transparency/keytransparency-server:latest
