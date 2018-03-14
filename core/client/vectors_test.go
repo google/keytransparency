@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
+	"github.com/google/trillian/types"
 
 	"github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	"github.com/google/trillian"
@@ -29,7 +30,7 @@ import (
 type GetEntryResponseVector struct {
 	desc          string
 	appID, userID string
-	trusted       trillian.SignedLogRoot
+	trusted       types.LogRootV1
 	resp          *keytransparency_proto.GetEntryResponse
 }
 

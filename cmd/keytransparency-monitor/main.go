@@ -26,11 +26,11 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorserver"
-	"github.com/google/trillian"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
+	"github.com/google/trillian/types"
 
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -92,7 +92,7 @@ func main() {
 	}
 
 	// TODO(gbelvin): persist trusted roots
-	trusted := trillian.SignedLogRoot{}
+	trusted := types.LogRootV1{}
 	go mon.ProcessLoop(ctx, *domainID, trusted, *pollPeriod)
 
 	// Monitor Server.

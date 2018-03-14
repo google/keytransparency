@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client"
+	"github.com/google/trillian/types"
 
 	"github.com/golang/glog"
 
@@ -36,7 +37,7 @@ import (
 type Monitor struct {
 	mClient     pb.KeyTransparencyClient
 	signer      *tcrypto.Signer
-	trusted     trillian.SignedLogRoot
+	trusted     types.LogRootV1
 	logVerifier *client.LogVerifier
 	mapVerifier *client.MapVerifier
 	store       monitorstorage.Interface
@@ -102,7 +103,7 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 }
 
 // ProcessLoop continuously fetches mutations and processes them.
-func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted trillian.SignedLogRoot, period time.Duration) error {
+func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted types.LogRootV1, period time.Duration) error {
 	mutCli := mutationclient.New(m.mClient, period)
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
@@ -110,7 +111,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted tril
 	pairs := make(chan EpochPair)
 
 	go func(ctx context.Context) {
-		errc <- mutCli.StreamEpochs(ctx, domainID, trusted.TreeSize, epochs)
+		errc <- mutCli.StreamEpochs(ctx, domainID, int64(trusted.TreeSize), epochs)
 	}(cctx)
 	go func(ctx context.Context) {
 		errc <- EpochPairs(ctx, epochs, pairs)
@@ -126,7 +127,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted tril
 
 		var smr *trillian.SignedMapRoot
 		var errList []error
-		if errs := m.VerifyEpochMutations(pair.A, pair.B, &trusted, mutations); len(errs) > 0 {
+		if errs := m.VerifyEpochMutations(pair.A, pair.B, trusted, mutations); len(errs) > 0 {
 			glog.Infof("Epoch %v did not verify: %v", revision, errs)
 			errList = errs
 		} else {
@@ -155,7 +156,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted tril
 }
 
 // VerifyEpochMutations validates that epochA + mutations = epochB.
-func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, trusted *trillian.SignedLogRoot, mutations []*pb.MutationProof) []error {
+func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, trusted types.LogRootV1, mutations []*pb.MutationProof) []error {
 	revision := epochB.GetSmr().GetMapRevision()
 	if errs := m.VerifyEpoch(epochB, trusted); len(errs) > 0 {
 		glog.Errorf("Invalid Epoch %v: %v", revision, errs)

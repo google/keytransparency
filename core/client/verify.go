@@ -25,11 +25,11 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/trillian"
 	"github.com/kr/pretty"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tclient "github.com/google/trillian/client"
+	"github.com/google/trillian/types"
 )
 
 var (
@@ -93,7 +93,7 @@ func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byt
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
-	trusted trillian.SignedLogRoot, in *pb.GetEntryResponse) error {
+	trusted types.LogRootV1, in *pb.GetEntryResponse) error {
 	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", domainID, appID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
@@ -142,7 +142,8 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	if err := v.logVerifier.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency()); err != nil {
+	logRoot, err := v.logVerifier.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency())
+	if err != nil {
 		return fmt.Errorf("logVerifier: VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
 
@@ -152,8 +153,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
 	logLeafIndex := in.GetSmr().GetMapRevision()
-	if err := v.logVerifier.VerifyInclusionAtIndex(in.GetLogRoot(), b, logLeafIndex,
-		in.GetLogInclusion()); err != nil {
+	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, logLeafIndex, in.GetLogInclusion()); err != nil {
 		return fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v",
 			b, in.GetSmr().GetMapRevision(), err)
 	}

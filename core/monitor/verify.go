@@ -23,16 +23,17 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian"
+	"github.com/google/trillian/merkle"
+	"github.com/google/trillian/storage"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/golang/glog"
-	"github.com/google/trillian/merkle"
-	"github.com/google/trillian/storage"
-
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tcrypto "github.com/google/trillian/crypto"
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 )
 
@@ -92,12 +93,13 @@ func (e *ErrList) Proto() []*statuspb.Status {
 
 // VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 // VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
-func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted *trillian.SignedLogRoot) []error {
+func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) []error {
 	errs := ErrList{}
 
-	if err := m.logVerifier.VerifyRoot(trusted, epoch.GetLogRoot(), epoch.GetLogConsistency()); err != nil {
+	logRoot, err := m.logVerifier.VerifyRoot(&trusted, epoch.GetLogRoot(), epoch.GetLogConsistency())
+	if err != nil {
 		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(trusted, epoch))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(epoch))
 	}
 	// updated trusted log root
 	m.updateTrusted(epoch.GetLogRoot())
@@ -109,7 +111,7 @@ func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted *trillian.SignedLogRoot) 
 	}
 	leafIndex := epoch.GetSmr().GetMapRevision()
 	treeSize := epoch.GetLogRoot().GetTreeSize()
-	if err := m.logVerifier.VerifyInclusionAtIndex(epoch.GetLogRoot(), b, leafIndex, epoch.GetLogInclusion()); err != nil {
+	if err := m.logVerifier.VerifyInclusionAtIndex(logRoot, b, leafIndex, epoch.GetLogInclusion()); err != nil {
 		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
 		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(epoch))
 	}
@@ -122,11 +124,21 @@ func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted *trillian.SignedLogRoot) 
 	return errs
 }
 
-func (m *Monitor) updateTrusted(newTrusted *trillian.SignedLogRoot) {
-	if newTrusted.TimestampNanos > m.trusted.TimestampNanos &&
-		newTrusted.TreeSize >= m.trusted.TreeSize {
-		m.trusted = *newTrusted
+// updateTrusted sets the local reference for the latest SignedLogRoot if
+// newTrusted is correctly signed and newer than the current stored root.
+func (m *Monitor) updateTrusted(newTrusted *trillian.SignedLogRoot) error {
+	r, err := tcrypto.VerifySignedLogRoot(m.logVerifier.PubKey, newTrusted)
+	if err != nil {
+		return err
 	}
+
+	if r.TimestampNanos <= m.trusted.TimestampNanos ||
+		r.TreeSize < m.trusted.TreeSize {
+		// Valid root, but it's older than the one we currently have.
+		return nil
+	}
+	m.trusted = *r
+	return nil
 }
 
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot *trillian.SignedMapRoot) []error {

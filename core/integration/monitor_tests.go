@@ -22,12 +22,12 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
-	"github.com/google/trillian"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
+	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -117,7 +117,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		}
 	}
 
-	trusted := trillian.SignedLogRoot{}
+	trusted := types.LogRootV1{}
 	cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	pollPeriod := 100 * time.Millisecond
 	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted, pollPeriod); err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {

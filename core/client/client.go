@@ -31,6 +31,7 @@ import (
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/client/backoff"
+	"github.com/google/trillian/types"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,6 +39,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tcrypto "github.com/google/trillian/crypto"
 )
 
 const (
@@ -83,7 +85,7 @@ type Client struct {
 	domainID   string
 	mutator    mutator.Func
 	RetryDelay time.Duration
-	trusted    trillian.SignedLogRoot
+	trusted    types.LogRootV1
 }
 
 // NewFromConfig creates a new client from a config
@@ -109,11 +111,21 @@ func New(ktClient pb.KeyTransparencyClient,
 	}
 }
 
-func (c *Client) updateTrusted(newTrusted *trillian.SignedLogRoot) {
-	if newTrusted.TimestampNanos > c.trusted.TimestampNanos &&
-		newTrusted.TreeSize >= c.trusted.TreeSize {
-		c.trusted = *newTrusted
+// updateTrusted sets the local reference for the latest SignedLogRoot if
+// newTrusted is correctly signed and newer than the current stored root.
+func (c *Client) updateTrusted(newTrusted *trillian.SignedLogRoot) error {
+	r, err := tcrypto.VerifySignedLogRoot(c.logVerifier.PubKey, newTrusted)
+	if err != nil {
+		return err
 	}
+
+	if r.TimestampNanos <= c.trusted.TimestampNanos ||
+		r.TreeSize < c.trusted.TreeSize {
+		// Valid root, but it's older than the one we currently have.
+		return nil
+	}
+	c.trusted = *r
+	return nil
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
@@ -153,7 +165,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 			DomainId:      c.domainID,
 			UserId:        userID,
 			AppId:         appID,
-			FirstTreeSize: trustedSnapshot.TreeSize,
+			FirstTreeSize: int64(trustedSnapshot.TreeSize),
 			Start:         start,
 			PageSize:      min(int32((end-start)+1), pageSize),
 		}, opts...)
@@ -235,7 +247,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.S
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
 func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []signatures.Signer) error {
-	req, err := m.SerializeAndSign(signers, c.trusted.GetTreeSize())
+	req, err := m.SerializeAndSign(signers, int64(c.trusted.TreeSize))
 	if err != nil {
 		return fmt.Errorf("SerializeAndSign(): %v", err)
 	}
@@ -307,7 +319,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		return nil, fmt.Errorf("nil mutation")
 	}
 	// Wait for STH to change.
-	if err := c.WaitForSTHUpdate(ctx, c.trusted.TreeSize+1); err != nil {
+	if err := c.WaitForSTHUpdate(ctx, int64(c.trusted.TreeSize)+1); err != nil {
 		return m, err
 	}
 
