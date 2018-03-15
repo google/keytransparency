@@ -277,7 +277,7 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 
 	// If the tree is empty and the map is empty,
 	// add the empty map root to the log.
-	if logRoot.GetTreeSize() != 0 ||
+	if logRoot.TreeSize != 0 ||
 		mapRoot.GetMapRoot().GetMapRevision() != 0 {
 		return nil // Init not needed.
 	}

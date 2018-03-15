@@ -27,7 +27,7 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 		DomainId:      c.domainID,
 		UserId:        userID,
 		AppId:         appID,
-		FirstTreeSize: c.trusted.TreeSize,
+		FirstTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
 		return nil, err
@@ -36,7 +36,9 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 	if err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, e); err != nil {
 		return nil, err
 	}
-	c.trusted = *e.GetLogRoot()
+	if err := c.updateTrusted(e.GetLogRoot()); err != nil {
+		return nil, err
+	}
 	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
 	Vlog.Printf("✓ Log root updated.")
 
