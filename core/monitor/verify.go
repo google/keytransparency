@@ -127,7 +127,7 @@ func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) []error 
 // updateTrusted sets the local reference for the latest SignedLogRoot if
 // newTrusted is correctly signed and newer than the current stored root.
 func (m *Monitor) updateTrusted(newTrusted *trillian.SignedLogRoot) error {
-	r, err := tcrypto.VerifySignedLogRoot(m.logVerifier.PubKey, newTrusted)
+	r, err := tcrypto.VerifySignedLogRoot(m.logVerifier.PubKey, m.logVerifier.SigHash, newTrusted)
 	if err != nil {
 		return err
 	}
