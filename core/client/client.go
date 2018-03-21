@@ -114,7 +114,7 @@ func New(ktClient pb.KeyTransparencyClient,
 // updateTrusted sets the local reference for the latest SignedLogRoot if
 // newTrusted is correctly signed and newer than the current stored root.
 func (c *Client) updateTrusted(newTrusted *trillian.SignedLogRoot) error {
-	r, err := tcrypto.VerifySignedLogRoot(c.logVerifier.PubKey, newTrusted)
+	r, err := tcrypto.VerifySignedLogRoot(c.logVerifier.PubKey, c.logVerifier.SigHash, newTrusted)
 	if err != nil {
 		return err
 	}
