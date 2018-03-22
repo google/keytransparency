@@ -178,12 +178,12 @@ func NewEnv() (*Env, error) {
 	}
 	receiver, err := seq.NewReceiver(ctx, d)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
 	}
 
 	addr, lis, err := Listen()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("env: Listne(): %v", err)
 	}
 	go gsvr.Serve(lis)
 
