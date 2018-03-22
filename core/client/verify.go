@@ -129,18 +129,18 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	}
 	leafProof.Leaf.Index = index[:]
 
-	if err := v.mapVerifier.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {
-		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return nil, nil, err
-	}
-	Vlog.Printf("✓ Sparse tree proof verified.")
-
 	mapRoot, err := v.mapVerifier.VerifySignedMapRoot(in.GetSmr())
 	if err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return nil, nil, fmt.Errorf("VerifySignedMapRoot(): %v", err)
 	}
+
 	Vlog.Printf("✓ Signed Map Head signature verified.")
+	if err := v.mapVerifier.VerifyMapLeafInclusion(mapRoot, leafProof); err != nil {
+		Vlog.Printf("✗ Sparse tree proof verification failed.")
+		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
+	}
+	Vlog.Printf("✓ Sparse tree proof verified.")
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
