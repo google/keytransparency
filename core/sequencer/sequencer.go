@@ -138,14 +138,25 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.Receiver, error) {
 	cctx, cancel := context.WithTimeout(ctx, d.MinInterval)
 	defer cancel()
+	mapTree, err := s.logAdmin.GetTree(cctx, &tpb.GetTreeRequest{TreeId: d.MapID})
+	if err != nil {
+		return nil, err
+	}
+	mapVerifier, err := tclient.NewMapVerifierFromTree(mapTree)
+	if err != nil {
+		return nil, err
+	}
 	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
 		return nil, err
 	}
 	cancel()
 	// Fetch last time from previous map head (as stored in the map server)
-	mapRoot := rootResp.GetMapRoot()
-	last := time.Unix(0, mapRoot.GetTimestampNanos())
+	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
+	if err != nil {
+		return nil, err
+	}
+	last := time.Unix(0, int64(mapRoot.TimestampNanos))
 
 	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
@@ -157,7 +168,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	}
 
 	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
-		return s.createEpoch(ctx, d, logClient, mutations)
+		return s.createEpoch(ctx, d, logClient, mapVerifier, mutations)
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: MaxBatchSize,
 		Period:       d.MinInterval,
@@ -230,7 +241,7 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 }
 
 // createEpoch signs the current map head.
-func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, msgs []*mutator.QueueMessage) error {
+func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, mapVerifier *tclient.MapVerifier, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
 	// Get the current root.
@@ -238,8 +249,11 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	if err != nil {
 		return fmt.Errorf("GetSignedMapRoot(%v): %v", d.MapID, err)
 	}
-	revision := rootResp.GetMapRoot().GetMapRevision()
-	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", revision)
+	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
+	if err != nil {
+		return err
+	}
+	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", mapRoot.Revision)
 
 	// Get current leaf values.
 	indexes := make([][]byte, 0, len(msgs))
@@ -282,22 +296,25 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	if err != nil {
 		return err
 	}
-	revision = setResp.GetMapRoot().GetMapRevision()
-	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", revision)
+	mapRoot, err = mapVerifier.VerifySignedMapRoot(setResp.GetMapRoot())
+	if err != nil {
+		return err
+	}
+	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	// Write mutations associated with this epoch.
 	mutations := make([]*pb.Entry, 0, len(msgs))
 	for _, msg := range msgs {
 		mutations = append(mutations, msg.Mutation)
 	}
-	if err := s.mutations.WriteBatch(ctx, d.DomainID, revision, mutations); err != nil {
-		glog.Fatalf("Could not write mutations for revision %v: %v", revision, err)
+	if err := s.mutations.WriteBatch(ctx, d.DomainID, int64(mapRoot.Revision), mutations); err != nil {
+		glog.Fatalf("Could not write mutations for revision %v: %v", mapRoot.Revision, err)
 		return err
 	}
 
 	// Put SignedMapHead in an append only log.
 	if err := queueLogLeaf(ctx, logClient, setResp.GetMapRoot()); err != nil {
-		glog.Fatalf("queueLogLeaf(logID: %v, rev: %v): %v", d.LogID, setResp.GetMapRoot().GetMapRevision(), err)
+		glog.Fatalf("queueLogLeaf(logID: %v, rev: %v): %v", d.LogID, mapRoot.Revision, err)
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
@@ -306,7 +323,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	indexCTR.Add(float64(len(indexes)))
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())
-	glog.Infof("CreatedEpoch: rev: %v, root: %x", revision, setResp.GetMapRoot().GetRootHash())
+	glog.Infof("CreatedEpoch: rev: %v, root: %x", mapRoot.Revision, mapRoot.RootHash)
 	return nil
 }
 

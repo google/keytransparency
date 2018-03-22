@@ -19,10 +19,11 @@ import (
 
 	"github.com/golang/glog"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	"github.com/google/trillian/types"
 )
 
 // VerifiedGetEntry fetches and verifies the results of GetEntry.
-func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*pb.GetEntryResponse, error) {
+func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*pb.GetEntryResponse, *types.LogRootV1, error) {
 	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
 		DomainId:      c.domainID,
 		UserId:        userID,
@@ -30,17 +31,16 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 		FirstTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, e); err != nil {
-		return nil, err
+	_, slr, err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, e)
+	if err != nil {
+		return nil, nil, err
 	}
-	if err := c.updateTrusted(e.GetLogRoot()); err != nil {
-		return nil, err
-	}
+	c.updateTrusted(slr)
 	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
 	Vlog.Printf("✓ Log root updated.")
 
-	return e, nil
+	return e, slr, nil
 }

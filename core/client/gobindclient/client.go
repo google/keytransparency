@@ -126,16 +126,11 @@ func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	entry, smr, err := client.GetEntry(ctx, userID, appID)
+	entry, _, err := client.GetEntry(ctx, userID, appID)
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: %v", err)
 	}
-	// TODO(amarcedone): Consider returning or persisting smr it to verify consistency over time
-	_ = smr
-	//encodedSmr, err := proto.Marshal(smr)
-	//if err != nil {
-	//	return nil, fmt.Errorf("GetEntry failed: error serializing smr: %v", err)
-	//}
+	// TODO(amarcedone): Consider returning or persisting slr it to verify consistency over time
 
 	return entry, nil
 }

@@ -77,23 +77,21 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 
 }
 
-func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain, firstTreeSize, revision int64) (*pb.Epoch, error) {
+func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain, firstTreeSize, mapRevision int64) (*pb.Epoch, error) {
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
 		MapId:    d.MapID,
-		Revision: revision,
+		Revision: mapRevision,
 	})
 	if err != nil {
-		glog.Errorf("GetEpoch(): GetSignedMapRootByRevision(%v, %v): %v", d.MapID, revision, err)
+		glog.Errorf("GetEpoch(): GetSignedMapRootByRevision(%v, %v): %v", d.MapID, mapRevision, err)
 		return nil, err
 	}
 
 	// MapRevisions start at 0. Log leaf indices starts at 0.
 	// MapRevision should be at least 1 since the Signer is
 	// supposed to create at least one revision on startup.
-	respEpoch := resp.GetMapRoot().GetMapRevision()
-	// Fetch log proofs.
-	logProof, err := s.logProofs(ctx, d, firstTreeSize, respEpoch)
+	logProof, err := s.logProofs(ctx, d, firstTreeSize, mapRevision)
 	if err != nil {
 		return nil, err
 	}

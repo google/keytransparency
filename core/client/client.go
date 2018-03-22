@@ -29,7 +29,6 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
-	"github.com/google/trillian"
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
 
@@ -39,7 +38,6 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tcrypto "github.com/google/trillian/crypto"
 )
 
 const (
@@ -113,33 +111,19 @@ func New(ktClient pb.KeyTransparencyClient,
 
 // updateTrusted sets the local reference for the latest SignedLogRoot if
 // newTrusted is correctly signed and newer than the current stored root.
-func (c *Client) updateTrusted(newTrusted *trillian.SignedLogRoot) error {
-	r, err := tcrypto.VerifySignedLogRoot(c.logVerifier.PubKey, c.logVerifier.SigHash, newTrusted)
-	if err != nil {
-		return err
-	}
-
-	if r.TimestampNanos <= c.trusted.TimestampNanos ||
-		r.TreeSize < c.trusted.TreeSize {
+func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
+	if newTrusted.TimestampNanos <= c.trusted.TimestampNanos ||
+		newTrusted.TreeSize < c.trusted.TreeSize {
 		// Valid root, but it's older than the one we currently have.
-		return nil
+		return
 	}
-	c.trusted = *r
-	return nil
+	c.trusted = *newTrusted
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grpc.CallOption) ([]byte, *trillian.SignedMapRoot, error) {
-	e, err := c.VerifiedGetEntry(ctx, appID, userID)
-	if err != nil {
-		return nil, nil, err
-	}
-	// Empty case.
-	if e.GetCommitted() == nil {
-		return nil, e.GetSmr(), nil
-	}
-
-	return e.GetCommitted().GetData(), e.GetSmr(), nil
+func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grpc.CallOption) ([]byte, *types.LogRootV1, error) {
+	e, slr, err := c.VerifiedGetEntry(ctx, appID, userID)
+	return e.GetCommitted().GetData(), slr, err
 }
 
 func min(x, y int32) int32 {
@@ -151,12 +135,12 @@ func min(x, y int32) int32 {
 
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*trillian.SignedMapRoot][]byte, error) {
+func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*types.MapRootV1][]byte, error) {
 	if start < 0 {
 		return nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
 	var currentProfile []byte
-	profiles := make(map[*trillian.SignedMapRoot][]byte)
+	profiles := make(map[*types.MapRootV1][]byte)
 	epochsReceived := int64(0)
 	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
@@ -176,11 +160,11 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 
 		for i, v := range resp.GetValues() {
 			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			err = c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, trustedSnapshot, v)
+			smr, slr, err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, trustedSnapshot, v)
 			if err != nil {
 				return nil, err
 			}
-			c.updateTrusted(v.GetLogRoot())
+			c.updateTrusted(slr)
 
 			// Compress profiles that are equal through time.  All
 			// nil profiles before the first profile are ignored.
@@ -190,7 +174,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 			}
 
 			// Append the slice and update currentProfile.
-			profiles[v.GetSmr()] = profile
+			profiles[smr] = profile
 			currentProfile = profile
 		}
 		if resp.NextStart == 0 {
@@ -260,7 +244,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 
 // newMutation fetches the current index and value for a user and prepares a mutation.
 func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
-	e, err := c.VerifiedGetEntry(ctx, u.AppId, u.UserId)
+	e, _, err := c.VerifiedGetEntry(ctx, u.AppId, u.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +308,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 	}
 
 	// GetEntry.
-	e, err := c.VerifiedGetEntry(ctx, m.AppID, m.UserID)
+	e, _, err := c.VerifiedGetEntry(ctx, m.AppID, m.UserID)
 	if err != nil {
 		return m, err
 	}
@@ -362,6 +346,20 @@ func sthForRevision(revision int64) int64 {
 	return revision + 1
 }
 
+// LatestSTH retrieves and verifies the latest epoch.
+func (c *Client) LatestSTH(ctx context.Context) (*types.LogRootV1, error) {
+	resp, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{DomainId: c.domainID})
+	if err != nil {
+		return nil, err
+	}
+	root, err := c.logVerifier.VerifyRoot(&c.trusted, resp.GetLogRoot(), resp.GetLogConsistency())
+	if err != nil {
+		return nil, err
+	}
+	c.updateTrusted(root)
+	return root, nil
+}
+
 // WaitForRevision waits until a given map revision is available.
 func (c *Client) WaitForRevision(ctx context.Context, revision int64) error {
 	return c.WaitForSTHUpdate(ctx, sthForRevision(revision))
@@ -380,13 +378,11 @@ func (c *Client) WaitForSTHUpdate(ctx context.Context, treeSize int64) error {
 	for {
 		select {
 		case <-time.After(b.Duration()):
-			resp, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
-				DomainId: c.domainID,
-			})
+			logRoot, err := c.LatestSTH(ctx)
 			if err != nil {
 				return err
 			}
-			if resp.GetLogRoot().TreeSize >= treeSize {
+			if int64(logRoot.TreeSize) >= treeSize {
 				return nil // We're done!
 			}
 			// The LogRoot is not updated yet.

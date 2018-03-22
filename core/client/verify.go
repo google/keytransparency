@@ -92,14 +92,15 @@ func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byt
 //  - Verify signature.
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
+// Returns the new trusted log root.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
-	trusted types.LogRootV1, in *pb.GetEntryResponse) error {
+	trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
 	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", domainID, appID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
 	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// If this is not a proof of absence, verify the connection between
@@ -110,7 +111,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 		nonce := in.GetCommitted().GetKey()
 		if err := commitments.Verify(userID, appID, commitment, data, nonce); err != nil {
 			Vlog.Printf("✗ Commitment verification failed.")
-			return fmt.Errorf("commitments.Verify(%v, %v, %v, %v, %v): %v", userID, appID, commitment, data, nonce, err)
+			return nil, nil, fmt.Errorf("commitments.Verify(%v, %v, %v, %v, %v): %v", userID, appID, commitment, data, nonce, err)
 		}
 	}
 	Vlog.Printf("✓ Commitment verified.")
@@ -118,25 +119,26 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	index, err := v.Index(in.GetVrfProof(), domainID, appID, userID)
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
-		return err
+		return nil, nil, err
 	}
 	Vlog.Printf("✓ VRF verified.")
 
 	leafProof := in.GetLeafProof()
 	if leafProof.GetLeaf() == nil {
-		return ErrNilProof
+		return nil, nil, ErrNilProof
 	}
 	leafProof.Leaf.Index = index[:]
 
 	if err := v.mapVerifier.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return err
+		return nil, nil, err
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
-	if err := v.mapVerifier.VerifySignedMapRoot(in.GetSmr()); err != nil {
+	mapRoot, err := v.mapVerifier.VerifySignedMapRoot(in.GetSmr())
+	if err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
-		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
+		return nil, nil, fmt.Errorf("VerifySignedMapRoot(): %v", err)
 	}
 	Vlog.Printf("✓ Signed Map Head signature verified.")
 
@@ -144,19 +146,18 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	// TODO(gdbelvin): Gossip root.
 	logRoot, err := v.logVerifier.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency())
 	if err != nil {
-		return fmt.Errorf("logVerifier: VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
+		return nil, nil, fmt.Errorf("logVerifier: VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
 
 	// Verify inclusion proof.
 	b, err := json.Marshal(in.GetSmr())
 	if err != nil {
-		return fmt.Errorf("json.Marshal(): %v", err)
+		return nil, nil, fmt.Errorf("json.Marshal(): %v", err)
 	}
-	logLeafIndex := in.GetSmr().GetMapRevision()
+	logLeafIndex := int64(mapRoot.Revision)
 	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, logLeafIndex, in.GetLogInclusion()); err != nil {
-		return fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v",
-			b, in.GetSmr().GetMapRevision(), err)
+		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, mapRoot.Revision, err)
 	}
 	Vlog.Printf("✓ Log inclusion proof verified.")
-	return nil
+	return mapRoot, logRoot, nil
 }

@@ -269,22 +269,28 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	}
 
 	// TODO(gbelvin): does this need to be in a retry loop?
-	mapRoot, err := s.tmap.GetSignedMapRoot(ctx,
-		&tpb.GetSignedMapRootRequest{MapId: mapID})
+	resp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: mapID})
 	if err != nil {
 		return fmt.Errorf("adminserver: GetSignedMapRoot(%v): %v", mapID, err)
+	}
+	mapVerifier, err := client.NewMapVerifierFromTree(mapTree)
+	if err != nil {
+		return fmt.Errorf("adminserver: NewMapVerifierFromTree(): %v", err)
+	}
+	mapRoot, err := mapVerifier.VerifySignedMapRoot(resp.GetMapRoot())
+	if err != nil {
+		return fmt.Errorf("adminserver: VerifySignedMapRoot(): %v", err)
 	}
 
 	// If the tree is empty and the map is empty,
 	// add the empty map root to the log.
-	if logRoot.TreeSize != 0 ||
-		mapRoot.GetMapRoot().GetMapRevision() != 0 {
+	if logRoot.TreeSize != 0 || mapRoot.Revision != 0 {
 		return nil // Init not needed.
 	}
 
 	glog.Infof("Initializing Trillian Log %v with empty map root", logID)
 	// Non-blocking add leaf
-	smrJSON, err := json.Marshal(mapRoot.GetMapRoot())
+	smrJSON, err := json.Marshal(resp.GetMapRoot())
 	if err != nil {
 		return err
 	}
