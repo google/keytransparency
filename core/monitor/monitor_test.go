@@ -25,17 +25,17 @@ import (
 func TestEpochPairs(t *testing.T) {
 	ctx := context.Background()
 	for _, tc := range []struct {
-		in  []int64
+		in  []byte
 		out []struct {
-			a, b int64
+			a, b byte
 		}
 	}{
-		{in: []int64{0, 1, 2}, out: []struct{ a, b int64 }{{0, 1}, {1, 2}}},
+		{in: []byte{0, 1, 2}, out: []struct{ a, b byte }{{0, 1}, {1, 2}}},
 	} {
 		epochs := make(chan *pb.Epoch, len(tc.in)+1)
 		pairs := make(chan EpochPair, len(tc.out)+1)
 		for _, i := range tc.in {
-			epochs <- &pb.Epoch{Smr: &tpb.SignedMapRoot{MapRevision: i}}
+			epochs <- &pb.Epoch{Smr: &tpb.SignedMapRoot{MapRoot: []byte{i}}}
 		}
 		close(epochs)
 		if err := EpochPairs(ctx, epochs, pairs); err != nil {
@@ -43,10 +43,10 @@ func TestEpochPairs(t *testing.T) {
 		}
 		for i, p := range tc.out {
 			pair := <-pairs
-			if got, want := pair.A.Smr.MapRevision, p.a; got != want {
+			if got, want := pair.A.Smr.MapRoot[0], p.a; got != want {
 				t.Errorf("pairs[%v].A.Revision %v, want %v", i, got, want)
 			}
-			if got, want := pair.B.Smr.MapRevision, p.b; got != want {
+			if got, want := pair.B.Smr.MapRoot[0], p.b; got != want {
 				t.Errorf("pairs[%v].B.Revision %v, want %v", i, got, want)
 			}
 		}

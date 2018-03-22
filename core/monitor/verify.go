@@ -33,7 +33,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tcrypto "github.com/google/trillian/crypto"
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 )
 
@@ -98,51 +97,41 @@ func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) []error 
 
 	logRoot, err := m.logVerifier.VerifyRoot(&trusted, epoch.GetLogRoot(), epoch.GetLogConsistency())
 	if err != nil {
-		// this could be one of ErrInvalidLogSignature, ErrInvalidLogConsistencyProof
-		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyRoot: %v", err).WithDetails(epoch))
+		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyLogRoot: %v", err).WithDetails(epoch.GetLogRoot()))
 	}
-	// updated trusted log root
-	m.updateTrusted(epoch.GetLogRoot())
+	m.updateTrusted(logRoot)
+	mapRoot, err := m.mapVerifier.VerifySignedMapRoot(epoch.GetSmr())
+	if err != nil {
+		glog.Infof("couldn't verify signature on map root: %v", err)
+		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyMapRoot: %v", err).WithDetails(epoch.GetSmr()))
+	}
 
 	b, err := json.Marshal(epoch.GetSmr())
 	if err != nil {
 		glog.Errorf("json.Marshal(): %v", err)
 		errs.AppendStatus(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(epoch.GetSmr()))
 	}
-	leafIndex := epoch.GetSmr().GetMapRevision()
+	leafIndex := int64(mapRoot.Revision)
 	treeSize := epoch.GetLogRoot().GetTreeSize()
 	if err := m.logVerifier.VerifyInclusionAtIndex(logRoot, b, leafIndex, epoch.GetLogInclusion()); err != nil {
 		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
 		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(epoch))
 	}
-
-	if err := m.mapVerifier.VerifySignedMapRoot(epoch.GetSmr()); err != nil {
-		glog.Infof("couldn't verify signature on map root: %v", err)
-		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid map signature: %v", err).WithDetails(epoch.GetSmr()))
-	}
-
 	return errs
 }
 
 // updateTrusted sets the local reference for the latest SignedLogRoot if
 // newTrusted is correctly signed and newer than the current stored root.
-func (m *Monitor) updateTrusted(newTrusted *trillian.SignedLogRoot) error {
-	r, err := tcrypto.VerifySignedLogRoot(m.logVerifier.PubKey, m.logVerifier.SigHash, newTrusted)
-	if err != nil {
-		return err
-	}
-
-	if r.TimestampNanos <= m.trusted.TimestampNanos ||
-		r.TreeSize < m.trusted.TreeSize {
+func (m *Monitor) updateTrusted(newTrusted *types.LogRootV1) {
+	if newTrusted.TimestampNanos <= m.trusted.TimestampNanos ||
+		newTrusted.TreeSize < m.trusted.TreeSize {
 		// Valid root, but it's older than the one we currently have.
-		return nil
+		return
 	}
-	m.trusted = *r
-	return nil
+	m.trusted = *newTrusted
 }
 
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot *trillian.SignedMapRoot) []error {
-	mapID := oldRoot.GetMapId()
 	errs := ErrList{}
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
@@ -178,7 +167,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 		// BUG(gdbelvin): Proto serializations are not idempotent.
 		// - Upgrade the hasher to use ObjectHash.
 		// - Use deep compare between the tree and the computed value.
-		leafHash, err := m.mapVerifier.Hasher.HashLeaf(mapID, index, leaf)
+		leafHash, err := m.mapVerifier.Hasher.HashLeaf(m.mapVerifier.MapID, index, leaf)
 		if err != nil {
 			errs.appendErr(err)
 		}
@@ -215,10 +204,15 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 }
 
 func (m *Monitor) validateMapRoot(expectedRoot *trillian.SignedMapRoot, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
+	newRoot, err := m.mapVerifier.VerifySignedMapRoot(expectedRoot)
+	if err != nil {
+		return err
+	}
+
 	// compute the new root using local intermediate hashes from epoch e
 	// (above proof hashes):
-	hs2 := merkle.NewHStar2(expectedRoot.GetMapId(), m.mapVerifier.Hasher)
-	newRoot, err := hs2.HStar2Nodes([]byte{}, m.mapVerifier.Hasher.BitLen(), mutatedLeaves,
+	hs2 := merkle.NewHStar2(m.mapVerifier.MapID, m.mapVerifier.Hasher)
+	rootHash, err := hs2.HStar2Nodes([]byte{}, m.mapVerifier.Hasher.BitLen(), mutatedLeaves,
 		func(depth int, index *big.Int) ([]byte, error) {
 			nID := storage.NewNodeIDFromBigInt(depth, index, m.mapVerifier.Hasher.BitLen())
 			if p, ok := oldProofNodes[nID.String()]; ok {
@@ -233,7 +227,7 @@ func (m *Monitor) validateMapRoot(expectedRoot *trillian.SignedMapRoot, mutatedL
 	}
 
 	// verify rootHash
-	if !bytes.Equal(newRoot, expectedRoot.GetRootHash()) {
+	if !bytes.Equal(rootHash, newRoot.RootHash) {
 		return ErrNotMatchingMapRoot
 	}
 

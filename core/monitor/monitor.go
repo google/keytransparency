@@ -19,54 +19,60 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/keytransparency/core/client/mutationclient"
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/monitorstorage"
 
 	"github.com/google/trillian"
-	"github.com/google/trillian/client"
 	"github.com/google/trillian/types"
 
 	"github.com/golang/glog"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tclient "github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
 )
 
 // Monitor holds the internal state for a monitor accessing the mutations API
 // and for verifying its responses.
 type Monitor struct {
-	mClient     pb.KeyTransparencyClient
+	cli         *client.Client
 	signer      *tcrypto.Signer
 	trusted     types.LogRootV1
-	logVerifier *client.LogVerifier
-	mapVerifier *client.MapVerifier
+	logVerifier *tclient.LogVerifier
+	mapVerifier *tclient.MapVerifier
 	store       monitorstorage.Interface
 }
 
 // NewFromDomain produces a new monitor from a Domain object.
-func NewFromDomain(mClient pb.KeyTransparencyClient,
+func NewFromDomain(cli pb.KeyTransparencyClient,
 	config *pb.Domain,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
-	logVerifier, err := client.NewLogVerifierFromTree(config.GetLog())
+	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize log verifier: %v", err)
 	}
-	mapVerifier, err := client.NewMapVerifierFromTree(config.GetMap())
+	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize map verifier: %v", err)
 	}
-	return New(mClient, logVerifier, mapVerifier, signer, store)
+
+	ktClient, err := client.NewFromConfig(cli, config)
+	if err != nil {
+		return nil, fmt.Errorf("could not create kt client: %v", err)
+	}
+
+	return New(ktClient, logVerifier, mapVerifier, signer, store)
 }
 
 // New creates a new instance of the monitor.
-func New(mClient pb.KeyTransparencyClient,
-	logVerifier *client.LogVerifier,
-	mapVerifier *client.MapVerifier,
+func New(cli *client.Client,
+	logVerifier *tclient.LogVerifier,
+	mapVerifier *tclient.MapVerifier,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	return &Monitor{
-		mClient:     mClient,
+		cli:         cli,
 		logVerifier: logVerifier,
 		mapVerifier: mapVerifier,
 		signer:      signer,
@@ -103,15 +109,14 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 }
 
 // ProcessLoop continuously fetches mutations and processes them.
-func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted types.LogRootV1, period time.Duration) error {
-	mutCli := mutationclient.New(m.mClient, period)
+func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted types.LogRootV1) error {
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
 	epochs := make(chan *pb.Epoch)
 	pairs := make(chan EpochPair)
 
 	go func(ctx context.Context) {
-		errc <- mutCli.StreamEpochs(ctx, domainID, int64(trusted.TreeSize), epochs)
+		errc <- m.cli.StreamEpochs(ctx, domainID, int64(trusted.TreeSize), epochs)
 	}(cctx)
 	go func(ctx context.Context) {
 		errc <- EpochPairs(ctx, epochs, pairs)
@@ -119,8 +124,12 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 	defer cancel()
 
 	for pair := range pairs {
-		revision := pair.B.GetSmr().GetMapRevision()
-		mutations, err := mutCli.EpochMutations(ctx, pair.B)
+		mapRoot, err := m.mapVerifier.VerifySignedMapRoot(pair.B.GetSmr())
+		if err != nil {
+			return err
+		}
+		revision := int64(mapRoot.Revision)
+		mutations, err := m.cli.EpochMutations(ctx, pair.B)
 		if err != nil {
 			return err
 		}
@@ -132,7 +141,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 			errList = errs
 		} else {
 			// Sign if successful.
-			smr, err = m.signMapRoot(pair.B.GetSmr())
+			smr, err = m.signer.SignMapRoot(mapRoot)
 			if err != nil {
 				return err
 			}
@@ -157,7 +166,11 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 
 // VerifyEpochMutations validates that epochA + mutations = epochB.
 func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, trusted types.LogRootV1, mutations []*pb.MutationProof) []error {
-	revision := epochB.GetSmr().GetMapRevision()
+	mapRoot, err := m.mapVerifier.VerifySignedMapRoot(epochB.GetSmr())
+	if err != nil {
+		return []error{err}
+	}
+	revision := int64(mapRoot.Revision)
 	if errs := m.VerifyEpoch(epochB, trusted); len(errs) > 0 {
 		glog.Errorf("Invalid Epoch %v: %v", revision, errs)
 		return errs
