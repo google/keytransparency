@@ -25,6 +25,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -84,6 +85,7 @@ type Client struct {
 	mutator    mutator.Func
 	RetryDelay time.Duration
 	trusted    types.LogRootV1
+	pollPeriod time.Duration
 }
 
 // NewFromConfig creates a new client from a config
@@ -92,20 +94,26 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 	if err != nil {
 		return nil, err
 	}
-	return New(ktClient, config.DomainId, ktVerifier), nil
+	minInterval, err := ptypes.Duration(config.MinInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(ktClient, config.DomainId, minInterval, ktVerifier), nil
 }
 
 // New creates a new client.
 // TODO(gbelvin): set retry delay.
 func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
+	retryDelay time.Duration,
 	ktVerifier *Verifier) *Client {
 	return &Client{
 		Verifier:   ktVerifier,
 		cli:        ktClient,
 		domainID:   domainID,
 		mutator:    entry.New(),
-		RetryDelay: 3 * time.Second,
+		RetryDelay: retryDelay,
 	}
 }
 

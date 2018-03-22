@@ -25,11 +25,11 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/trillian/types"
 	"github.com/kr/pretty"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 	tclient "github.com/google/trillian/client"
-	"github.com/google/trillian/types"
 )
 
 var (
@@ -154,8 +154,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("json.Marshal(): %v", err)
 	}
-	logLeafIndex := int64(mapRoot.Revision)
-	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, logLeafIndex, in.GetLogInclusion()); err != nil {
+	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, int64(mapRoot.Revision), in.GetLogInclusion()); err != nil {
 		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, mapRoot.Revision, err)
 	}
 	Vlog.Printf("✓ Log inclusion proof verified.")

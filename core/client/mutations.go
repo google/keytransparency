@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mutationclient
+package client
 
-//
-// This file contains Monitor'c grpc client logic: poll mutations from the
-// kt-server mutations API and page if necessary.
-//
+// This file contains functions that download epochs and mutations
 
 import (
 	"context"
@@ -31,30 +28,11 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
-// Each page contains pageSize profiles. Each profile contains multiple
-// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
-// size 16 will contain about 8KB of data.
-const pageSize = 16
-
-// Client queries the server side mutations API.
-type Client struct {
-	client     pb.KeyTransparencyClient
-	pollPeriod time.Duration
-}
-
 // EpochMutations contains all the mutations needed to advance
 // the map from epoch-1 to epoch.
 type EpochMutations struct {
 	Epoch     *pb.Epoch
 	Mutations []*pb.MutationProof
-}
-
-// New initializes a new mutations API monitoring client.
-func New(client pb.KeyTransparencyClient, pollPeriod time.Duration) *Client {
-	return &Client{
-		client:     client,
-		pollPeriod: pollPeriod,
-	}
 }
 
 // StreamEpochs repeatedly fetches epochs and sends them to out until GetEpoch
@@ -65,7 +43,7 @@ func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch i
 	wait := time.NewTicker(c.pollPeriod).C
 	for i := startEpoch; ; {
 		// time out if we exceed the poll period:
-		epoch, err := c.client.GetEpoch(ctx, &pb.GetEpochRequest{
+		epoch, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
 			DomainId:      domainID,
 			Epoch:         i,
 			FirstTreeSize: startEpoch,
@@ -95,12 +73,16 @@ func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch i
 
 // EpochMutations fetches all the mutations in an epoch
 func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.MutationProof, error) {
+	mapRoot, err := c.mapVerifier.VerifySignedMapRoot(epoch.GetSmr())
+	if err != nil {
+		return nil, err
+	}
 	mutations := []*pb.MutationProof{}
 	token := ""
 	for {
-		resp, err := c.client.ListMutations(ctx, &pb.ListMutationsRequest{
+		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
 			DomainId:  epoch.GetDomainId(),
-			Epoch:     epoch.GetSmr().GetMapRevision(),
+			Epoch:     int64(mapRoot.Revision),
 			PageSize:  pageSize,
 			PageToken: token,
 		})
