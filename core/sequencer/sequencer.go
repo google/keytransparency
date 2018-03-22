@@ -71,6 +71,7 @@ type Sequencer struct {
 	domains     domain.Storage
 	tmap        tpb.TrillianMapClient
 	logAdmin    tpb.TrillianAdminClient
+	mapAdmin    tpb.TrillianAdminClient
 	tlog        tpb.TrillianLogClient
 	mutatorFunc mutator.Func
 	mutations   mutator.MutationStorage
@@ -81,6 +82,7 @@ type Sequencer struct {
 // New creates a new instance of the signer.
 func New(tlog tpb.TrillianLogClient,
 	logAdmin tpb.TrillianAdminClient,
+	mapAdmin tpb.TrillianAdminClient,
 	tmap tpb.TrillianMapClient,
 	mutatorFunc mutator.Func,
 	domains domain.Storage,
@@ -90,6 +92,7 @@ func New(tlog tpb.TrillianLogClient,
 		domains:     domains,
 		tlog:        tlog,
 		logAdmin:    logAdmin,
+		mapAdmin:    mapAdmin,
 		tmap:        tmap,
 		mutatorFunc: mutatorFunc,
 		mutations:   mutations,
@@ -138,7 +141,7 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.Receiver, error) {
 	cctx, cancel := context.WithTimeout(ctx, d.MinInterval)
 	defer cancel()
-	mapTree, err := s.logAdmin.GetTree(cctx, &tpb.GetTreeRequest{TreeId: d.MapID})
+	mapTree, err := s.mapAdmin.GetTree(cctx, &tpb.GetTreeRequest{TreeId: d.MapID})
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +149,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	if err != nil {
 		return nil, err
 	}
+
 	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
 		return nil, err
