@@ -85,7 +85,6 @@ type Client struct {
 	mutator    mutator.Func
 	RetryDelay time.Duration
 	trusted    types.LogRootV1
-	pollPeriod time.Duration
 }
 
 // NewFromConfig creates a new client from a config

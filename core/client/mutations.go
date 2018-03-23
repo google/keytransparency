@@ -40,7 +40,7 @@ type EpochMutations struct {
 // GetEpoch returns NotFound, it waits one pollPeriod before trying again.
 func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch int64, out chan<- *pb.Epoch) error {
 	defer close(out)
-	wait := time.NewTicker(c.pollPeriod).C
+	wait := time.NewTicker(c.RetryDelay).C
 	for i := startEpoch; ; {
 		// time out if we exceed the poll period:
 		epoch, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
