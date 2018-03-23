@@ -29,6 +29,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -364,10 +365,12 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 	}
 
 	return &pb.Domain{
-		DomainId: domain.DomainID,
-		Log:      logTree,
-		Map:      mapTree,
-		Vrf:      domain.VRF,
+		DomainId:    domain.DomainID,
+		Log:         logTree,
+		Map:         mapTree,
+		Vrf:         domain.VRF,
+		MinInterval: ptypes.DurationProto(domain.MinInterval),
+		MaxInterval: ptypes.DurationProto(domain.MaxInterval),
 	}, nil
 }
 
