@@ -36,11 +36,11 @@ import (
 // and for verifying its responses.
 type Monitor struct {
 	cli         *client.Client
-	signer      *tcrypto.Signer
-	trusted     types.LogRootV1
 	logVerifier *tclient.LogVerifier
 	mapVerifier *tclient.MapVerifier
+	signer      *tcrypto.Signer
 	store       monitorstorage.Interface
+	trusted     types.LogRootV1
 }
 
 // NewFromDomain produces a new monitor from a Domain object.

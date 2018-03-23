@@ -14,7 +14,7 @@
 
 package client
 
-// This file contains functions that download epochs and mutations
+// This file contains functions that download epochs and mutations.
 
 import (
 	"context"

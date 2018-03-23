@@ -92,7 +92,7 @@ func (v *Verifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byt
 //  - Verify signature.
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
-// Returns the new trusted log root.
+// Returns the verified map root and log root.
 func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
 	trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
 	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", domainID, appID, userID, pretty.Formatter(in))

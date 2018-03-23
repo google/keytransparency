@@ -103,7 +103,6 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 }
 
 // New creates a new client.
-// TODO(gbelvin): set retry delay.
 func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
 	retryDelay time.Duration,

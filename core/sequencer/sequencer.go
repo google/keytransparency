@@ -69,10 +69,10 @@ func init() {
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
 	domains     domain.Storage
-	tmap        tpb.TrillianMapClient
 	logAdmin    tpb.TrillianAdminClient
-	mapAdmin    tpb.TrillianAdminClient
 	tlog        tpb.TrillianLogClient
+	mapAdmin    tpb.TrillianAdminClient
+	tmap        tpb.TrillianMapClient
 	mutatorFunc mutator.Func
 	mutations   mutator.MutationStorage
 	queue       mutator.MutationQueue
@@ -82,8 +82,8 @@ type Sequencer struct {
 // New creates a new instance of the signer.
 func New(tlog tpb.TrillianLogClient,
 	logAdmin tpb.TrillianAdminClient,
-	mapAdmin tpb.TrillianAdminClient,
 	tmap tpb.TrillianMapClient,
+	mapAdmin tpb.TrillianAdminClient,
 	mutatorFunc mutator.Func,
 	domains domain.Storage,
 	mutations mutator.MutationStorage,
@@ -92,8 +92,8 @@ func New(tlog tpb.TrillianLogClient,
 		domains:     domains,
 		tlog:        tlog,
 		logAdmin:    logAdmin,
-		mapAdmin:    mapAdmin,
 		tmap:        tmap,
+		mapAdmin:    mapAdmin,
 		mutatorFunc: mutatorFunc,
 		mutations:   mutations,
 		queue:       queue,

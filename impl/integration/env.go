@@ -169,7 +169,7 @@ func NewEnv() (*Env, error) {
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Admin, mapEnv.Map, entry.New(), domainStorage, mutations, queue)
+	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, mapEnv.Admin, entry.New(), domainStorage, mutations, queue)
 	d := &domaindef.Domain{
 		DomainID:    domainPB.DomainId,
 		LogID:       domainPB.Log.TreeId,
@@ -184,7 +184,7 @@ func NewEnv() (*Env, error) {
 
 	addr, lis, err := Listen()
 	if err != nil {
-		return nil, fmt.Errorf("env: Listne(): %v", err)
+		return nil, fmt.Errorf("env: Listen(): %v", err)
 	}
 	go gsvr.Serve(lis)
 

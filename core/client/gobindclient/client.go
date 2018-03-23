@@ -130,8 +130,7 @@ func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: %v", err)
 	}
-	// TODO(amarcedone): Consider returning or persisting slr it to verify consistency over time
-
+	// TODO(amarcedone): Consider returning or persisting slr to verify consistency over time.
 	return entry, nil
 }
 
