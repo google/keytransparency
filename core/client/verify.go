@@ -136,7 +136,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	}
 
 	Vlog.Printf("✓ Signed Map Head signature verified.")
-	if err := v.mapVerifier.VerifyMapLeafInclusion(mapRoot, leafProof); err != nil {
+	if err := v.mapVerifier.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
 	}

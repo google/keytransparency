@@ -166,11 +166,11 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 
 // VerifyEpochMutations validates that epochA + mutations = epochB.
 func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, trusted types.LogRootV1, mutations []*pb.MutationProof) []error {
-	mapRoot, err := m.mapVerifier.VerifySignedMapRoot(epochB.GetSmr())
+	mapRootB, err := m.mapVerifier.VerifySignedMapRoot(epochB.GetSmr())
 	if err != nil {
 		return []error{err}
 	}
-	revision := int64(mapRoot.Revision)
+	revision := int64(mapRootB.Revision)
 	if errs := m.VerifyEpoch(epochB, trusted); len(errs) > 0 {
 		glog.Errorf("Invalid Epoch %v: %v", revision, errs)
 		return errs

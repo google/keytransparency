@@ -112,7 +112,7 @@ func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) []error 
 		errs.AppendStatus(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(epoch.GetSmr()))
 	}
 	leafIndex := int64(mapRoot.Revision)
-	treeSize := epoch.GetLogRoot().GetTreeSize()
+	treeSize := int64(logRoot.TreeSize)
 	if err := m.logVerifier.VerifyInclusionAtIndex(logRoot, b, leafIndex, epoch.GetLogInclusion()); err != nil {
 		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
 		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(epoch))

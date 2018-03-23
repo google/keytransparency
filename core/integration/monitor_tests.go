@@ -30,7 +30,6 @@ import (
 	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
 const (
