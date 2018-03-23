@@ -25,10 +25,7 @@ import (
 // TestIntegration runs all KeyTransparency integration tests.
 func TestIntegration(t *testing.T) {
 	// We can only run the integration tests if there is a MySQL instance available.
-	if provider := testdb.Default(); !provider.IsMySQL() {
-		t.Skipf("Skipping KT integration test, SQL driver is %v", provider.Driver)
-	}
-
+	testdb.SkipIfNoMySQL(t)
 	ctx := context.Background()
 
 	for _, test := range integration.AllTests {

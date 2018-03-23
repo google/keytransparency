@@ -114,7 +114,8 @@ func keyFromPEM(p string) *any.Any {
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
 	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
-	db, err := testdb.New(ctx)
+
+	db, err := testdb.NewTrillianDB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to open database: %v", err)
 	}
