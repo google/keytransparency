@@ -356,13 +356,18 @@ func sthForRevision(revision int64) int64 {
 
 // LatestSTH retrieves and verifies the latest epoch.
 func (c *Client) LatestSTH(ctx context.Context) (*types.LogRootV1, error) {
-	resp, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{DomainId: c.domainID})
+	// Make a copy of trusted for concurrency safety.
+	trusted := c.trusted
+	resp, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
+		DomainId:      c.domainID,
+		FirstTreeSize: int64(trusted.TreeSize),
+	})
 	if err != nil {
 		return nil, err
 	}
-	root, err := c.logVerifier.VerifyRoot(&c.trusted, resp.GetLogRoot(), resp.GetLogConsistency())
+	root, err := c.logVerifier.VerifyRoot(&trusted, resp.GetLogRoot(), resp.GetLogConsistency())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("LatestSTH(): %v", err)
 	}
 	c.updateTrusted(root)
 	return root, nil
