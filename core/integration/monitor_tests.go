@@ -30,7 +30,6 @@ import (
 	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
 
 const (
@@ -48,13 +47,9 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	config, err := env.Cli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: env.Domain.DomainId})
-	if err != nil {
-		t.Fatalf("Couldn't retrieve domain info: %v", err)
-	}
 	signer := crypto.NewSHA256Signer(privKey)
 	store := fake.NewMonitorStorage()
-	mon, err := monitor.NewFromDomain(env.Cli, config, signer, store)
+	mon, err := monitor.NewFromDomain(env.Cli, env.Domain, signer, store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
@@ -119,8 +114,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 
 	trusted := types.LogRootV1{}
 	cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	pollPeriod := 100 * time.Millisecond
-	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted, pollPeriod); err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
+	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted); err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
 		t.Errorf("Monitor could not process mutations: %v", err)
 	}
 	cancel()

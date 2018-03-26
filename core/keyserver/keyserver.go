@@ -29,6 +29,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -121,10 +122,10 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 // getEntryByRevision does NOT populate the following fields:
 // - LogRoot
 // - LogConsistency
-func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *domain.Domain, userID, appID string, revision int64) (*pb.GetEntryResponse, error) {
-	if revision < 0 {
+func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *domain.Domain, userID, appID string, mapRevision int64) (*pb.GetEntryResponse, error) {
+	if mapRevision < 0 {
 		return nil, status.Errorf(codes.InvalidArgument,
-			"Revision is %v, want >= 0", revision)
+			"Revision is %v, want >= 0", mapRevision)
 	}
 
 	index, proof, err := s.indexFunc(ctx, d, appID, userID)
@@ -135,10 +136,10 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    d.MapID,
 		Index:    [][]byte{index[:]},
-		Revision: revision,
+		Revision: mapRevision,
 	})
 	if err != nil {
-		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.MapID, revision, err)
+		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.MapID, mapRevision, err)
 		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
@@ -167,12 +168,11 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 			LogId: d.LogID,
 			// SignedMapRoot must be placed in the log at MapRevision.
 			// MapRevisions start at 0. Log leaves start at 0.
-			LeafIndex: getResp.GetMapRoot().GetMapRevision(),
+			LeafIndex: mapRevision,
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v",
-			d.LogID, getResp.GetMapRoot().GetMapRevision(), secondTreeSize, err)
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", d.LogID, mapRevision, secondTreeSize, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
@@ -365,10 +365,12 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 	}
 
 	return &pb.Domain{
-		DomainId: domain.DomainID,
-		Log:      logTree,
-		Map:      mapTree,
-		Vrf:      domain.VRF,
+		DomainId:    domain.DomainID,
+		Log:         logTree,
+		Map:         mapTree,
+		Vrf:         domain.VRF,
+		MinInterval: ptypes.DurationProto(domain.MinInterval),
+		MaxInterval: ptypes.DurationProto(domain.MaxInterval),
 	}, nil
 }
 

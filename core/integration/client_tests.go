@@ -28,8 +28,8 @@ import (
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
 
-	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc/metadata"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
@@ -184,7 +184,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			e, err := env.Client.VerifiedGetEntry(ctx, appID, tc.userID)
+			e, _, err := env.Client.VerifiedGetEntry(ctx, appID, tc.userID)
 			if err != nil {
 				t.Errorf("VerifiedGetEntry(%v): %v, want nil", tc.userID, err)
 			}
@@ -362,8 +362,8 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 	return nil
 }
 
-func sortHistory(history map[*trillian.SignedMapRoot][]byte) [][]byte {
-	keys := make([]*trillian.SignedMapRoot, 0, len(history))
+func sortHistory(history map[*types.MapRootV1][]byte) [][]byte {
+	keys := make([]*types.MapRootV1, 0, len(history))
 	for k := range history {
 		keys = append(keys, k)
 	}
@@ -376,11 +376,11 @@ func sortHistory(history map[*trillian.SignedMapRoot][]byte) [][]byte {
 }
 
 // MapHead sorter.
-type mapHeads []*trillian.SignedMapRoot
+type mapHeads []*types.MapRootV1
 
 func (m mapHeads) Len() int           { return len(m) }
 func (m mapHeads) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m mapHeads) Less(i, j int) bool { return m[i].MapRevision < m[j].MapRevision }
+func (m mapHeads) Less(i, j int) bool { return m[i].Revision < m[j].Revision }
 
 // cp creates a dummy profile using the passed tag.
 func cp(tag int) []byte {

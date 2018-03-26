@@ -22,10 +22,9 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/google/trillian/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/google/trillian"
 )
 
 var (
@@ -58,14 +57,18 @@ and verify that the results are consistent.`,
 		}
 		if end == 0 {
 			// Get the current epoch.
-			_, smh, err := c.GetEntry(ctx, userID, appID)
+			slr, err := c.LatestSTH(ctx)
 			if err != nil {
 				return fmt.Errorf("GetEntry failed: %v", err)
 			}
-			if verbose {
-				fmt.Printf("Got current epoch: %v\n", smh.MapRevision)
+			revision, err := mapRevisionFor(slr)
+			if err != nil {
+				return err
 			}
-			end = smh.MapRevision
+			if verbose {
+				fmt.Printf("Got current epoch: %v\n", slr.TreeSize-1)
+			}
+			end = revision
 		}
 
 		profiles, err := c.ListHistory(ctx, userID, appID, start, end)
@@ -74,7 +77,7 @@ and verify that the results are consistent.`,
 		}
 
 		// Sort map heads.
-		keys := make([]*trillian.SignedMapRoot, 0, len(profiles))
+		keys := make([]*types.MapRootV1, 0, len(profiles))
 		for k := range profiles {
 			keys = append(keys, k)
 		}
@@ -82,8 +85,8 @@ and verify that the results are consistent.`,
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
 		fmt.Fprintln(w, "Epoch\tTimestamp\tProfile")
 		for _, m := range keys {
-			t := time.Unix(0, m.TimestampNanos)
-			fmt.Fprintf(w, "%v\t%v\t%v\n", m.MapRevision, t.Format(time.UnixDate), profiles[m])
+			t := time.Unix(0, int64(m.TimestampNanos))
+			fmt.Fprintf(w, "%v\t%v\t%v\n", m.Revision, t.Format(time.UnixDate), profiles[m])
 		}
 		if err := w.Flush(); err != nil {
 			return nil
@@ -92,12 +95,26 @@ and verify that the results are consistent.`,
 	},
 }
 
+// mapRevisionFor returns the latest map revision, given the latest sth.
+// The log is the authoritative source of the latest revision.
+func mapRevisionFor(sth *types.LogRootV1) (int64, error) {
+	treeSize := int64(sth.TreeSize)
+	// TreeSize = max_index + 1 because the log starts at index 0.
+	maxIndex := treeSize - 1
+
+	// The revision of the map is its index in the log.
+	if maxIndex < 0 {
+		return 0, fmt.Errorf("log is uninitialized")
+	}
+	return maxIndex, nil
+}
+
 // mapHeads satisfies sort.Interface to allow sorting []MapHead by epoch.
-type mapHeads []*trillian.SignedMapRoot
+type mapHeads []*types.MapRootV1
 
 func (m mapHeads) Len() int           { return len(m) }
 func (m mapHeads) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m mapHeads) Less(i, j int) bool { return m[i].MapRevision < m[j].MapRevision }
+func (m mapHeads) Less(i, j int) bool { return m[i].Revision < m[j].Revision }
 
 func init() {
 	RootCmd.AddCommand(histCmd)

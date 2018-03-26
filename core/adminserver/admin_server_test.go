@@ -38,10 +38,7 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 }
 
 func TestCreateRead(t *testing.T) {
-	// We can only run the integration tests if there is a MySQL instance available.
-	if provider := testdb.Default(); !provider.IsMySQL() {
-		t.Skipf("Skipping map integration test, SQL driver is %v", provider.Driver)
-	}
+	testdb.SkipIfNoMySQL(t)
 	ctx := context.Background()
 	storage := fake.NewDomainStorage()
 

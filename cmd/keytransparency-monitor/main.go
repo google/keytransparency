@@ -20,7 +20,6 @@ import (
 	"flag"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/fake"
@@ -54,8 +53,6 @@ var (
 	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	domainID           = flag.String("domainid", "", "KT Domain identifier to monitor")
-
-	pollPeriod = flag.Duration("poll-period", time.Second*5, "Maximum time between polling the key-server. Ideally, this is equal to the min-period of paramerter of the keyserver.")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
 	// metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
@@ -93,7 +90,7 @@ func main() {
 
 	// TODO(gbelvin): persist trusted roots
 	trusted := types.LogRootV1{}
-	go mon.ProcessLoop(ctx, *domainID, trusted, *pollPeriod)
+	go mon.ProcessLoop(ctx, *domainID, trusted)
 
 	// Monitor Server.
 	srv := monitorserver.New(store)

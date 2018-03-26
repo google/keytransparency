@@ -35,7 +35,7 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 
 	for _, tc := range getEntryResponses {
 		t.Run(tc.desc, func(t *testing.T) {
-			if err := v.VerifyGetEntryResponse(ctx, domainPB.DomainId, tc.appID, tc.userID, tc.trusted, tc.resp); err != nil {
+			if _, _, err := v.VerifyGetEntryResponse(ctx, domainPB.DomainId, tc.appID, tc.userID, tc.trusted, tc.resp); err != nil {
 				t.Errorf("VerifyGetEntryResponse(): %v)", err)
 			}
 		})

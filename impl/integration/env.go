@@ -114,7 +114,8 @@ func keyFromPEM(p string) *any.Any {
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
 	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
-	db, err := testdb.New(ctx)
+
+	db, err := testdb.NewTrillianDB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to open database: %v", err)
 	}
@@ -168,7 +169,7 @@ func NewEnv() (*Env, error) {
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, entry.New(), domainStorage, mutations, queue)
+	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, mapEnv.Admin, entry.New(), domainStorage, mutations, queue)
 	d := &domaindef.Domain{
 		DomainID:    domainPB.DomainId,
 		LogID:       domainPB.Log.TreeId,
@@ -178,12 +179,12 @@ func NewEnv() (*Env, error) {
 	}
 	receiver, err := seq.NewReceiver(ctx, d)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
 	}
 
 	addr, lis, err := Listen()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("env: Listen(): %v", err)
 	}
 	go gsvr.Serve(lis)
 
