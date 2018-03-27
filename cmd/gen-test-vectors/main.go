@@ -34,7 +34,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	iintegration "github.com/google/keytransparency/impl/integration"
+	"github.com/google/keytransparency/impl/integration"
 )
 
 var (
@@ -61,7 +61,7 @@ func main() {
 	ctx := context.Background()
 	signatures.Rand = dev.Zeros // Generate the same signatures every time.
 
-	env, err := iintegration.NewEnv()
+	env, err := integration.NewEnv()
 	if err != nil {
 		glog.Fatalf("Could not create Env: %v", err)
 	}
@@ -84,7 +84,7 @@ func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
 }
 
 // GenerateTestVectors verifies set/get semantics.
-func GenerateTestVectors(ctx context.Context, env *iintegration.Env) error {
+func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	// Create lists of signers.
 	signer1, err := factory.NewSignerFromPEM([]byte(testPrivKey1))
 	if err != nil {
@@ -208,7 +208,7 @@ func GenerateTestVectors(ctx context.Context, env *iintegration.Env) error {
 }
 
 // SaveTestVectors generates test vectors for interoprability testing.
-func SaveTestVectors(env *iintegration.Env, resps []testdata.GetEntryResponseVector) error {
+func SaveTestVectors(env *integration.Env, resps []testdata.GetEntryResponseVector) error {
 	// Output all key material needed to verify the test vectors.
 	domainFile := *testdataDir + "/domain.json"
 	b, err := json.Marshal(env.Domain)
