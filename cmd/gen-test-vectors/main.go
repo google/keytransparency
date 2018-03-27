@@ -193,7 +193,7 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 				return fmt.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 			}
 		}
-		if err := SaveTestVectors(env, getEntryResps); err != nil {
+		if err := SaveTestVectors(*testdataDir, env, getEntryResps); err != nil {
 			return fmt.Errorf("SaveTestVectors(): %v", err)
 		}
 	}
@@ -201,9 +201,9 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 }
 
 // SaveTestVectors generates test vectors for interoprability testing.
-func SaveTestVectors(env *integration.Env, resps []testdata.GetEntryResponseVector) error {
+func SaveTestVectors(dir string, env *integration.Env, resps []testdata.GetEntryResponseVector) error {
 	// Output all key material needed to verify the test vectors.
-	domainFile := *testdataDir + "/domain.json"
+	domainFile := dir + "/domain.json"
 	b, err := json.Marshal(env.Domain)
 	if err != nil {
 		return fmt.Errorf("json.Marshal(): %v", err)
@@ -216,7 +216,7 @@ func SaveTestVectors(env *integration.Env, resps []testdata.GetEntryResponseVect
 	out.Reset()
 
 	// Save list of responses
-	respFile := *testdataDir + "/getentryresponse.json"
+	respFile := dir + "/getentryresponse.json"
 	b, err = json.Marshal(resps)
 	if err != nil {
 		return fmt.Errorf("json.Marshal(): %v", err)
