@@ -77,3 +77,9 @@ func (c fakeCredential) GetRequestMetadata(ctx context.Context, uri ...string) (
 func (c fakeCredential) RequireTransportSecurity() bool {
 	return true
 }
+
+// WithOutgoingFakeAuth returns a ctx with FakeAuth information for userID.
+func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
+	md, _ := GetFakeCredential(userID).GetRequestMetadata(ctx)
+	return metadata.NewOutgoingContext(ctx, metadata.New(md))
+}

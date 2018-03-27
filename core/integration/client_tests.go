@@ -30,7 +30,6 @@ import (
 
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/types"
-	"google.golang.org/grpc/metadata"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -87,12 +86,6 @@ func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
 	return &keyspb.PublicKey{Der: pk.Bytes}
 }
 
-// WithOutgoingFakeAuth returns a ctx with FakeAuth information for userID.
-func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
-	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(ctx)
-	return metadata.NewOutgoingContext(ctx, metadata.New(md))
-}
-
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	// Create lists of signers.
@@ -122,7 +115,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "empty_alice",
 			wantProfile:    nil,
 			setProfile:     []byte("alice-key1"),
-			ctx:            WithOutgoingFakeAuth(ctx, "alice"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "alice"),
 			userID:         "alice",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -131,7 +124,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob0_set",
 			wantProfile:    nil,
 			setProfile:     []byte("bob-key1"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -140,7 +133,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "set_carol",
 			wantProfile:    nil,
 			setProfile:     []byte("carol-key1"),
-			ctx:            WithOutgoingFakeAuth(ctx, "carol"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "carol"),
 			userID:         "carol",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -158,7 +151,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob1_set",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     []byte("bob-key2"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -167,7 +160,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob2_setkeys",
 			wantProfile:    []byte("bob-key2"),
 			setProfile:     []byte("bob-key3"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers2,
 			authorizedKeys: authorizedKeys2,
@@ -176,7 +169,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob3_setnewkeys",
 			wantProfile:    []byte("bob-key3"),
 			setProfile:     []byte("bob-key4"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers3,
 			authorizedKeys: authorizedKeys3,
@@ -235,9 +228,9 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 		authorizedKeys []*keyspb.PublicKey
 	}{
 		{false, context.Background(), "alice", []byte("alice-key1"), signers, authorizedKeys},
-		{false, WithOutgoingFakeAuth(ctx, "carol"), "bob", []byte("bob-key1"), signers, authorizedKeys},
-		{true, WithOutgoingFakeAuth(ctx, "dave"), "dave", []byte("dave-key1"), signers, authorizedKeys},
-		{true, WithOutgoingFakeAuth(ctx, "eve"), "eve", []byte("eve-key1"), signers, authorizedKeys},
+		{false, authentication.WithOutgoingFakeAuth(ctx, "carol"), "bob", []byte("bob-key1"), signers, authorizedKeys},
+		{true, authentication.WithOutgoingFakeAuth(ctx, "dave"), "dave", []byte("dave-key1"), signers, authorizedKeys},
+		{true, authentication.WithOutgoingFakeAuth(ctx, "eve"), "eve", []byte("eve-key1"), signers, authorizedKeys},
 	} {
 		u := &tpb.User{
 			DomainId:       env.Domain.DomainId,
@@ -270,7 +263,7 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 // TestListHistory verifies that repeated history values get collapsed properly.
 func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	userID := "bob"
-	ctx = WithOutgoingFakeAuth(ctx, userID)
+	ctx = authentication.WithOutgoingFakeAuth(ctx, userID)
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}

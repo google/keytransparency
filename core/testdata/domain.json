@@ -1,0 +1,56 @@
+{
+	"domain_id": "domain_5577006791947779410",
+	"log": {
+		"tree_id": 2207501212239345681,
+		"tree_state": 1,
+		"tree_type": 1,
+		"hash_strategy": 3,
+		"hash_algorithm": 4,
+		"signature_algorithm": 3,
+		"display_name": "KT SMH Log",
+		"description": "KT domain domain_5577006791947779410",
+		"public_key": {
+			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqGXPnhMIclRmYHSmAnCMmfDUJ9iNBMmFxR/wHJdL12AuVUkgcuhbEp2hy5ETs7bfFc2P95IYFlmbiuHMq3UY/A=="
+		},
+		"max_root_duration": {},
+		"create_time": {
+			"seconds": 1522159762,
+			"nanos": 764000000
+		},
+		"update_time": {
+			"seconds": 1522159762,
+			"nanos": 764000000
+		}
+	},
+	"map": {
+		"tree_id": 4190538157379198967,
+		"tree_state": 1,
+		"tree_type": 2,
+		"hash_strategy": 4,
+		"hash_algorithm": 4,
+		"signature_algorithm": 3,
+		"display_name": "KT Map",
+		"description": "KT domain domain_5577006791947779410",
+		"public_key": {
+			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWLHm0TLYaTzENpPkBl2E79ySqJI+EW51VpoWh7wqY3OjSJcft4zgEeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA=="
+		},
+		"max_root_duration": {},
+		"create_time": {
+			"seconds": 1522159762,
+			"nanos": 770000000
+		},
+		"update_time": {
+			"seconds": 1522159762,
+			"nanos": 770000000
+		}
+	},
+	"vrf": {
+		"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF2Pm2kKya+JBun1QRmKQMcoMOIBNWp8fjECkJX+/hNWdV1UKb12W+yXcX2MqN7ZMX77hS9mLus/WaE0NS370mA=="
+	},
+	"min_interval": {
+		"seconds": 216000
+	},
+	"max_interval": {
+		"seconds": 216000
+	}
+}
