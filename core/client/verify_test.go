@@ -47,7 +47,7 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	respFile := "../../core/testdata/getentryresponse.json"
+	respFile := "../testdata/getentryresponse.json"
 	b, err = ioutil.ReadFile(respFile)
 	if err != nil {
 		t.Fatalf("ReadFile(%v): %v", respFile, err)

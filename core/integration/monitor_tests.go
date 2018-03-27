@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
@@ -98,7 +99,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		},
 	} {
 		for _, u := range e.userUpdates {
-			actx := WithOutgoingFakeAuth(ctx, u.UserId)
+			actx := authentication.WithOutgoingFakeAuth(ctx, u.UserId)
 			cctx, cancel := context.WithTimeout(actx, 500*time.Millisecond)
 			defer cancel()
 			if _, err = env.Client.Update(cctx, u, e.signers); err != context.DeadlineExceeded {

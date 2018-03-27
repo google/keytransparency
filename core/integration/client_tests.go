@@ -17,10 +17,8 @@ package integration
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"reflect"
 	"sort"
 	"testing"
@@ -29,11 +27,9 @@ import (
 	"github.com/google/keytransparency/core/crypto/dev"
 	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/crypto/signatures/factory"
-	"github.com/google/keytransparency/core/testdata"
 
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/types"
-	"google.golang.org/grpc/metadata"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
@@ -90,40 +86,6 @@ func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
 	return &keyspb.PublicKey{Der: pk.Bytes}
 }
 
-// WithOutgoingFakeAuth returns a ctx with FakeAuth information for userID.
-func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
-	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(ctx)
-	return metadata.NewOutgoingContext(ctx, metadata.New(md))
-}
-
-// SaveTestVectors generates test vectors for interoprability testing.
-func SaveTestVectors(env *Env, resps []testdata.GetEntryResponseVector) error {
-	// Output all key material needed to verify the test vectors.
-	domainFile := "../../core/testdata/domain.json"
-	b, err := json.Marshal(env.Domain)
-	if err != nil {
-		return fmt.Errorf("json.Marshal(): %v", err)
-	}
-	var out bytes.Buffer
-	json.Indent(&out, b, "", "\t")
-	if err := ioutil.WriteFile(domainFile, out.Bytes(), 0666); err != nil {
-		return fmt.Errorf("WriteFile(%v): %v", domainFile, err)
-	}
-	out.Reset()
-
-	// Save list of responses
-	respFile := "../../core/testdata/getentryresponse.json"
-	b, err = json.Marshal(resps)
-	if err != nil {
-		return fmt.Errorf("json.Marshal(): %v", err)
-	}
-	json.Indent(&out, b, "", "\t")
-	if err := ioutil.WriteFile(respFile, out.Bytes(), 0666); err != nil {
-		return fmt.Errorf("WriteFile(%v): %v", respFile, err)
-	}
-	return nil
-}
-
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	// Create lists of signers.
@@ -140,9 +102,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	authorizedKeys2 := []*keyspb.PublicKey{authorizedKey1, authorizedKey2}
 	authorizedKeys3 := []*keyspb.PublicKey{authorizedKey2}
 
-	// Collect a list of valid GetEntryResponses
-	getEntryResps := make([]testdata.GetEntryResponseVector, 0)
-
 	for _, tc := range []struct {
 		desc           string
 		wantProfile    []byte
@@ -156,7 +115,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "empty_alice",
 			wantProfile:    nil,
 			setProfile:     []byte("alice-key1"),
-			ctx:            WithOutgoingFakeAuth(ctx, "alice"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "alice"),
 			userID:         "alice",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -165,7 +124,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob0_set",
 			wantProfile:    nil,
 			setProfile:     []byte("bob-key1"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -174,7 +133,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "set_carol",
 			wantProfile:    nil,
 			setProfile:     []byte("carol-key1"),
-			ctx:            WithOutgoingFakeAuth(ctx, "carol"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "carol"),
 			userID:         "carol",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -192,7 +151,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob1_set",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     []byte("bob-key2"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -201,7 +160,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob2_setkeys",
 			wantProfile:    []byte("bob-key2"),
 			setProfile:     []byte("bob-key3"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers2,
 			authorizedKeys: authorizedKeys2,
@@ -210,7 +169,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob3_setnewkeys",
 			wantProfile:    []byte("bob-key3"),
 			setProfile:     []byte("bob-key4"),
-			ctx:            WithOutgoingFakeAuth(ctx, "bob"),
+			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
 			userID:         "bob",
 			signers:        signers3,
 			authorizedKeys: authorizedKeys3,
@@ -218,26 +177,13 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			e, err := env.Cli.GetEntry(ctx, &pb.GetEntryRequest{
-				DomainId: env.Domain.DomainId,
-				UserId:   tc.userID,
-				AppId:    appID,
-			})
+			e, _, err := env.Client.VerifiedGetEntry(ctx, appID, tc.userID)
 			if err != nil {
-				t.Fatalf("GetEntry(): %v", err)
-			}
-			if _, _, err := env.Client.VerifyGetEntryResponse(ctx, env.Domain.DomainId, appID, tc.userID, types.LogRootV1{}, e); err != nil {
-				t.Fatalf("VerifyGetEntryResponse(): %v", err)
+				t.Errorf("VerifiedGetEntry(%v): %v, want nil", tc.userID, err)
 			}
 			if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
 				t.Errorf("VerifiedGetEntry(%v): %s, want %s", tc.userID, got, want)
 			}
-			getEntryResps = append(getEntryResps, testdata.GetEntryResponseVector{
-				Desc:   tc.desc,
-				AppID:  appID,
-				UserID: tc.userID,
-				Resp:   e,
-			})
 
 			// Update profile.
 			if tc.setProfile != nil {
@@ -264,9 +210,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 				}
 			}
 		})
-		if err := SaveTestVectors(env, getEntryResps); err != nil {
-			t.Fatalf("SaveTestVectors(): %v", err)
-		}
 	}
 }
 
@@ -285,9 +228,9 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 		authorizedKeys []*keyspb.PublicKey
 	}{
 		{false, context.Background(), "alice", []byte("alice-key1"), signers, authorizedKeys},
-		{false, WithOutgoingFakeAuth(ctx, "carol"), "bob", []byte("bob-key1"), signers, authorizedKeys},
-		{true, WithOutgoingFakeAuth(ctx, "dave"), "dave", []byte("dave-key1"), signers, authorizedKeys},
-		{true, WithOutgoingFakeAuth(ctx, "eve"), "eve", []byte("eve-key1"), signers, authorizedKeys},
+		{false, authentication.WithOutgoingFakeAuth(ctx, "carol"), "bob", []byte("bob-key1"), signers, authorizedKeys},
+		{true, authentication.WithOutgoingFakeAuth(ctx, "dave"), "dave", []byte("dave-key1"), signers, authorizedKeys},
+		{true, authentication.WithOutgoingFakeAuth(ctx, "eve"), "eve", []byte("eve-key1"), signers, authorizedKeys},
 	} {
 		u := &tpb.User{
 			DomainId:       env.Domain.DomainId,
@@ -320,7 +263,7 @@ func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 // TestListHistory verifies that repeated history values get collapsed properly.
 func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	userID := "bob"
-	ctx = WithOutgoingFakeAuth(ctx, userID)
+	ctx = authentication.WithOutgoingFakeAuth(ctx, userID)
 
 	// Create lists of signers and authorized keys
 	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
