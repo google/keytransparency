@@ -66,16 +66,9 @@ func main() {
 		glog.Fatalf("Could not create Env: %v", err)
 	}
 	defer env.Close()
-	GenerateTestVectors(ctx, env)
-
-}
-
-func getAuthorizedKeys(pubKeys ...string) []*keyspb.PublicKey {
-	ret := make([]*keyspb.PublicKey, 0, len(pubKeys))
-	for _, pubKey := range pubKeys {
-		ret = append(ret, getAuthorizedKey(pubKey))
+	if err := GenerateTestVectors(ctx, env); err != nil {
+		glog.Fatalf("GenerateTestVectors(): %v", err)
 	}
-	return ret
 }
 
 func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
