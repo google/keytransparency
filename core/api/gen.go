@@ -14,13 +14,13 @@
 
 package api
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --go_out=,plugins=grpc:$GOPATH/src v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --grpc-gateway_out=logtostderr=true:. v1/keytransparency_proto/keytransparency.proto v1/keytransparency_proto/admin.proto
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src monitor/v1/monitor_proto/monitor.proto
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. monitor/v1/monitor_proto/monitor.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --go_out=,plugins=grpc:$GOPATH/src monitor/v1/monitor_proto/monitor.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --grpc-gateway_out=logtostderr=true:. monitor/v1/monitor_proto/monitor.proto
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=,plugins=grpc:$GOPATH/src usermanager/v1/usermanager_proto/usermanager.proto
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ --grpc-gateway_out=logtostderr=true:. usermanager/v1/usermanager_proto/usermanager.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --go_out=,plugins=grpc:$GOPATH/src usermanager/v1/usermanager_proto/usermanager.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --grpc-gateway_out=logtostderr=true:. usermanager/v1/usermanager_proto/usermanager.proto
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis --go_out=:$GOPATH/src type/type_proto/type.proto type/type_proto/keymaster.proto type/type_proto/authz.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis -I=$GOPATH/src/github.com/google/tink/proto --go_out=:$GOPATH/src type/type_proto/type.proto type/type_proto/keymaster.proto type/type_proto/authz.proto

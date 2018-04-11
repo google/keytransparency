@@ -25,14 +25,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -199,7 +199,7 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 // Update creates an UpdateEntryRequest for a user,
 // attempt to submit it multiple times depending until ctx times out.
 // Returns context.DeadlineExceeded if ctx times out.
-func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.Signer) (*entry.Mutation, error) {
+func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle) (*entry.Mutation, error) {
 	if got, want := u.DomainId, c.domainID; got != want {
 		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
 	}
@@ -236,7 +236,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []signatures.S
 }
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
-func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []signatures.Signer) error {
+func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle) error {
 	req, err := m.SerializeAndSign(signers, int64(c.trusted.TreeSize))
 	if err != nil {
 		return fmt.Errorf("SerializeAndSign(): %v", err)
@@ -272,7 +272,7 @@ func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation,
 		return nil, err
 	}
 
-	if len(u.AuthorizedKeys) != 0 {
+	if len(u.AuthorizedKeys.Key) != 0 {
 		if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
 			return nil, err
 		}

@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/viper"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
+	"github.com/google/tink/go/tink"
 )
 
 var (
@@ -43,9 +44,11 @@ User email MUST match the OAuth account used to authorize the update.
 `,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
-		if err := readKeyStoreFile(); err != nil {
+		handle, err := readKeysetFile(keysetFile, masterPassword)
+		if err != nil {
 			log.Fatal(err)
 		}
+		keyset = handle
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate input.
@@ -79,8 +82,7 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 
 		// Update.
-		signers := store.Signers()
-		authorizedKeys, err := store.PublicKeys()
+		authorizedKeys, err := keyset.GetPublicKeysetHandle()
 		if err != nil {
 			return fmt.Errorf("store.PublicKeys() failed: %v", err)
 		}
@@ -92,9 +94,9 @@ User email MUST match the OAuth account used to authorize the update.
 			AppId:          appID,
 			UserId:         userID,
 			PublicKeyData:  profileData,
-			AuthorizedKeys: authorizedKeys,
+			AuthorizedKeys: authorizedKeys.Keyset(),
 		}
-		if _, err := c.Update(ctx, u, signers); err != nil {
+		if _, err := c.Update(ctx, u, []*tink.KeysetHandle{keyset}); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}
 		fmt.Printf("New key for %v: %x\n", userID, data)

@@ -17,45 +17,26 @@ package entry
 import (
 	"testing"
 
-	"github.com/google/trillian/crypto/keyspb"
-
-	"github.com/google/keytransparency/core/crypto/dev"
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
+	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 )
 
 const domainID = "default"
 
-func TestReplaceAuthorizedKeys(t *testing.T) {
-	for _, tc := range []struct {
-		pubKeys []*keyspb.PublicKey
-		wantErr bool
-	}{
-		{pubKeys: nil, wantErr: true},
-		{pubKeys: []*keyspb.PublicKey{{}}, wantErr: false},
-	} {
-		index := []byte("index")
-		userID := "bob"
-		appID := "app1"
-		m := NewMutation(index, domainID, appID, userID)
-		err := m.ReplaceAuthorizedKeys(tc.pubKeys)
-		if got, want := err != nil, tc.wantErr; got != want {
-			t.Errorf("ReplaceAuthorizedKeys(%v): %v, wantErr: %v", tc.pubKeys, got, want)
-		}
-	}
-}
-
 func TestCreateAndVerify(t *testing.T) {
+	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
+	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
 	for _, tc := range []struct {
 		old     []byte
-		pubKeys []*keyspb.PublicKey
-		signers []signatures.Signer
+		pubKeys *tink.KeysetHandle
+		signers []*tink.KeysetHandle
 		data    []byte
 	}{
 		{
 			old:     nil,
-			pubKeys: mustPublicKeys([]string{testPubKey1}),
-			signers: []signatures.Signer{createSigner(t, testPrivKey1)},
+			pubKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 			data:    []byte("foo"),
 		},
 	} {
@@ -72,7 +53,7 @@ func TestCreateAndVerify(t *testing.T) {
 			t.Errorf("SetCommitment(%v): %v", tc.data, err)
 			continue
 		}
-		if err := m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
+		if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
 			t.Errorf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			continue
 		}
@@ -98,13 +79,4 @@ func TestCreateAndVerify(t *testing.T) {
 			t.Errorf("EqualsRequested(): false")
 		}
 	}
-}
-
-func createSigner(t *testing.T, privKey string) signatures.Signer {
-	signatures.Rand = dev.Zeros
-	signer, err := factory.NewSignerFromPEM([]byte(privKey))
-	if err != nil {
-		t.Fatalf("factory.NewSigner failed: %v", err)
-	}
-	return signer
 }

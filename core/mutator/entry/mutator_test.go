@@ -19,10 +19,11 @@ import (
 	"crypto/sha256"
 	"testing"
 
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/testutil"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
+	"github.com/google/tink/go/tink"
 
 	tpb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
@@ -50,7 +51,7 @@ func TestCheckMutation(t *testing.T) {
 	entryData1 := &tpb.Entry{
 		Index:          key,
 		Commitment:     []byte{1},
-		AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
+		AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 		Previous:       nilHash[:],
 	}
 	hashEntry1 := mustObjectHash(t, *entryData1)
@@ -58,14 +59,14 @@ func TestCheckMutation(t *testing.T) {
 	entryData2 := &tpb.Entry{
 		Index:          key,
 		Commitment:     []byte{2},
-		AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+		AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 		Previous:       hashEntry1[:],
 	}
 
 	for _, tc := range []struct {
 		desc     string
 		mutation *Mutation
-		signers  []signatures.Signer
+		signers  []*tink.KeysetHandle
 		old      *tpb.Entry
 		err      error
 	}{
@@ -77,10 +78,10 @@ func TestCheckMutation(t *testing.T) {
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nilHash[:],
-					AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 				},
 			},
-			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 		},
 		{
 			desc: "Second mutation, working case",
@@ -90,10 +91,10 @@ func TestCheckMutation(t *testing.T) {
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
-					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
-			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1), []byte(testPrivKey2)}),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2),
 		},
 		{
 			desc: "Replayed mutation",
@@ -103,7 +104,7 @@ func TestCheckMutation(t *testing.T) {
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
-					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
 			err: mutator.ErrReplay,
@@ -126,7 +127,7 @@ func TestCheckMutation(t *testing.T) {
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       nil,
-					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
 			err: mutator.ErrPreviousHash,
@@ -141,32 +142,6 @@ func TestCheckMutation(t *testing.T) {
 			err: mutator.ErrPreviousHash,
 		},
 		{
-			desc: "Very first mutation, missing current key",
-			mutation: &Mutation{
-				entry: &tpb.Entry{
-					Index:          key,
-					Commitment:     []byte{2},
-					Previous:       nilHash[:],
-					AuthorizedKeys: mustPublicKeys([]string{}),
-				},
-			},
-			err:     mutator.ErrMissingKey,
-			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
-		},
-		{
-			desc: "Very first mutation, missing current signature",
-			mutation: &Mutation{
-				entry: &tpb.Entry{
-					Index:          key,
-					Commitment:     []byte{2},
-					Previous:       nilHash[:],
-					AuthorizedKeys: mustPublicKeys([]string{testPubKey1}),
-				},
-			},
-			signers: signersFromPEMs(t, [][]byte{}),
-			err:     mutator.ErrUnauthorized,
-		},
-		{
 			desc: "Very first mutation, missing previous signature",
 			old:  entryData1,
 			mutation: &Mutation{
@@ -174,10 +149,10 @@ func TestCheckMutation(t *testing.T) {
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
-					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
-			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey2)}),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey2),
 			err:     mutator.ErrUnauthorized,
 		},
 		{
@@ -188,10 +163,10 @@ func TestCheckMutation(t *testing.T) {
 					Index:          key,
 					Commitment:     []byte{2},
 					Previous:       hashEntry1[:],
-					AuthorizedKeys: mustPublicKeys([]string{testPubKey2}),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
-			signers: signersFromPEMs(t, [][]byte{[]byte(testPrivKey1)}),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 		},
 	} {
 		m, err := tc.mutation.sign(tc.signers)

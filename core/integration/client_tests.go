@@ -17,22 +17,22 @@ package integration
 import (
 	"bytes"
 	"context"
-	"encoding/pem"
 	"fmt"
 	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/crypto/dev"
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
-
-	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian/types"
+
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
+	"google.golang.org/grpc/metadata"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 const (
@@ -64,43 +64,26 @@ var (
 	appID = "app"
 )
 
-func createSigner(t *testing.T, privKey string) signatures.Signer {
-	signatures.Rand = dev.Zeros
-	signer, err := factory.NewSignerFromPEM([]byte(privKey))
-	if err != nil {
-		t.Fatalf("factory.NewSigner failed: %v", err)
-	}
-	return signer
-}
-
-func getAuthorizedKeys(pubKeys ...string) []*keyspb.PublicKey {
-	ret := make([]*keyspb.PublicKey, 0, len(pubKeys))
-	for _, pubKey := range pubKeys {
-		ret = append(ret, getAuthorizedKey(pubKey))
-	}
-	return ret
-}
-
-func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
-	pk, _ := pem.Decode([]byte(pubKey))
-	return &keyspb.PublicKey{Der: pk.Bytes}
+// WithOutgoingFakeAuth returns a ctx with FakeAuth information for userID.
+func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
+	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(ctx)
+	return metadata.NewOutgoingContext(ctx, metadata.New(md))
 }
 
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
+	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
+	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
+
 	// Create lists of signers.
-	signer1 := createSigner(t, testPrivKey1)
-	signers1 := []signatures.Signer{signer1}
-	signer2 := createSigner(t, testPrivKey2)
-	signers2 := []signatures.Signer{signer1, signer2}
-	signers3 := []signatures.Signer{signer2}
+	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	signers2 := testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2)
+	signers3 := testutil.SignKeysetsFromPEMs("", testPrivKey2)
 
 	// Create lists of authorized keys
-	authorizedKey1 := getAuthorizedKey(testPubKey1)
-	authorizedKeys1 := []*keyspb.PublicKey{authorizedKey1}
-	authorizedKey2 := getAuthorizedKey(testPubKey2)
-	authorizedKeys2 := []*keyspb.PublicKey{authorizedKey1, authorizedKey2}
-	authorizedKeys3 := []*keyspb.PublicKey{authorizedKey2}
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys2 := testutil.VerifyKeysetFromPEMs(testPubKey1, testPubKey2).Keyset()
+	authorizedKeys3 := testutil.VerifyKeysetFromPEMs("", testPubKey2).Keyset()
 
 	for _, tc := range []struct {
 		desc           string
@@ -108,8 +91,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		setProfile     []byte
 		ctx            context.Context
 		userID         string
-		signers        []signatures.Signer
-		authorizedKeys []*keyspb.PublicKey
+		signers        []*tink.KeysetHandle
+		authorizedKeys *tinkpb.Keyset
 	}{
 		{
 			desc:           "empty_alice",
@@ -216,16 +199,16 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 // TestUpdateValidation verifies the correctness of updates submitted by the client.
 func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
 	// Create lists of signers and authorized keys
-	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
-	authorizedKeys := []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}
+	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 
 	for _, tc := range []struct {
 		want           bool
 		ctx            context.Context
 		userID         string
 		profile        []byte
-		signers        []signatures.Signer
-		authorizedKeys []*keyspb.PublicKey
+		signers        []*tink.KeysetHandle
+		authorizedKeys *tinkpb.Keyset
 	}{
 		{false, context.Background(), "alice", []byte("alice-key1"), signers, authorizedKeys},
 		{false, authentication.WithOutgoingFakeAuth(ctx, "carol"), "bob", []byte("bob-key1"), signers, authorizedKeys},
@@ -266,8 +249,8 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	ctx = authentication.WithOutgoingFakeAuth(ctx, userID)
 
 	// Create lists of signers and authorized keys
-	signers := []signatures.Signer{createSigner(t, testPrivKey1)}
-	authorizedKeys := []*keyspb.PublicKey{getAuthorizedKey(testPubKey1)}
+	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 
 	if err := env.setupHistory(ctx, env.Domain, userID, signers, authorizedKeys); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
@@ -308,7 +291,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	}
 }
 
-func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []signatures.Signer, authorizedKeys []*keyspb.PublicKey) error {
+func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []*tink.KeysetHandle, authorizedKeys *tinkpb.Keyset) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the

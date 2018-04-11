@@ -18,23 +18,22 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
 
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/crypto/dev"
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
 	"github.com/google/keytransparency/core/testdata"
-	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/keytransparency/impl/integration"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	"github.com/google/keytransparency/impl/integration"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 var (
@@ -59,7 +58,6 @@ hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
 func main() {
 	flag.Parse()
 	ctx := context.Background()
-	signatures.Rand = dev.Zeros // Generate the same signatures every time.
 
 	env, err := integration.NewEnv()
 	if err != nil {
@@ -71,23 +69,15 @@ func main() {
 	}
 }
 
-func getAuthorizedKey(pubKey string) *keyspb.PublicKey {
-	pk, _ := pem.Decode([]byte(pubKey))
-	return &keyspb.PublicKey{Der: pk.Bytes}
-}
-
 // GenerateTestVectors verifies set/get semantics.
 func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
+	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
+	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
 	// Create lists of signers.
-	signer1, err := factory.NewSignerFromPEM([]byte(testPrivKey1))
-	if err != nil {
-		return err
-	}
-	signers1 := []signatures.Signer{signer1}
+	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 
 	// Create lists of authorized keys
-	authorizedKey1 := getAuthorizedKey(testPubKey1)
-	authorizedKeys1 := []*keyspb.PublicKey{authorizedKey1}
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 
 	// Collect a list of valid GetEntryResponses
 	getEntryResps := make([]testdata.GetEntryResponseVector, 0)
@@ -98,8 +88,8 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		setProfile     []byte
 		ctx            context.Context
 		userID         string
-		signers        []signatures.Signer
-		authorizedKeys []*keyspb.PublicKey
+		signers        []*tink.KeysetHandle
+		authorizedKeys *tinkpb.Keyset
 	}{
 		{
 			desc:           "empty_alice",

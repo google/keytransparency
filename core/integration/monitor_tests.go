@@ -20,9 +20,10 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/authentication"
-	"github.com/google/keytransparency/core/crypto/signatures"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
+	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -58,7 +59,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	// Setup a bunch of epochs with data to verify.
 	for _, e := range []struct {
 		epoch       int64
-		signers     []signatures.Signer
+		signers     []*tink.KeysetHandle
 		userUpdates []*tpb.User
 	}{
 		{
@@ -66,34 +67,34 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		},
 		{
 			epoch:   2,
-			signers: []signatures.Signer{createSigner(t, testPrivKey1)},
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
 					DomainId:       env.Domain.DomainId,
 					AppId:          "app1",
 					UserId:         "alice@test.com",
 					PublicKeyData:  []byte("alice-key1"),
-					AuthorizedKeys: getAuthorizedKeys(testPubKey1),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 				},
 			},
 		},
 		{
 			epoch:   3,
-			signers: []signatures.Signer{createSigner(t, testPrivKey1)},
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
 					DomainId:       env.Domain.DomainId,
 					AppId:          "app1",
 					UserId:         "bob@test.com",
 					PublicKeyData:  []byte("bob-key1"),
-					AuthorizedKeys: getAuthorizedKeys(testPubKey1),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 				},
 				{
 					DomainId:       env.Domain.DomainId,
 					AppId:          "app1",
 					UserId:         "carol@test.com",
 					PublicKeyData:  []byte("carol-key1"),
-					AuthorizedKeys: getAuthorizedKeys(testPubKey1),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 				},
 			},
 		},

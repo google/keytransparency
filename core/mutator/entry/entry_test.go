@@ -17,15 +17,8 @@ package entry
 import (
 	"testing"
 
-	"github.com/google/keytransparency/core/crypto/dev"
-	"github.com/google/keytransparency/core/crypto/signatures"
-	"github.com/google/keytransparency/core/crypto/signatures/factory"
-
-	"github.com/google/trillian/crypto/keys/der"
-	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/crypto/keyspb"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/signature"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
 )
@@ -55,40 +48,8 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func mustPublicKey(pubPEM string) *keyspb.PublicKey {
-	pubKey, err := pem.UnmarshalPublicKey(pubPEM)
-	if err != nil {
-		panic(err)
-	}
-	p, err := der.ToPublicProto(pubKey)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func mustPublicKeys(pubPEMs []string) []*keyspb.PublicKey {
-	authKeys := make([]*keyspb.PublicKey, len(pubPEMs))
-	for i, key := range pubPEMs {
-		authKeys[i] = mustPublicKey(key)
-	}
-	return authKeys
-}
-
-func signersFromPEMs(t *testing.T, keys [][]byte) []signatures.Signer {
-	signatures.Rand = dev.Zeros
-	signers := make([]signatures.Signer, 0, len(keys))
-	for _, key := range keys {
-		signer, err := factory.NewSignerFromPEM(key)
-		if err != nil {
-			t.Fatalf("NewSigner(): %v", err)
-		}
-		signers = append(signers, signer)
-	}
-	return signers
-}
-
 func TestFromLeafValue(t *testing.T) {
+	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
 	entry := &pb.Entry{Commitment: []byte{1, 2}}
 	entryB, _ := proto.Marshal(entry)
 	for i, tc := range []struct {

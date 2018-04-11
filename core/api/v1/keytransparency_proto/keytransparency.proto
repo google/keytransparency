@@ -24,10 +24,9 @@ option go_package = "github.com/google/keytransparency/core/api/v1/keytransparen
 package google.keytransparency.v1;
 
 import "google/api/annotations.proto";
-import "crypto/keyspb/keyspb.proto";
-import "crypto/sigpb/sigpb.proto";
 import "trillian.proto";
 import "trillian_map_api.proto";
+import "tink.proto";
 import "v1/keytransparency_proto/admin.proto";
 
 // Committed represents the data committed to in a cryptographic commitment.
@@ -60,16 +59,16 @@ message Entry {
   // commitment is a cryptographic commitment to arbitrary data.
   bytes commitment = 6;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
-  repeated keyspb.PublicKey authorized_keys = 7;
+  crypto.tink.Keyset authorized_keys = 7;
   // previous contains the hash of the previous entry that this mutation is
   // modifying creating a hash chain of all mutations. The hash used is
   // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
   bytes previous = 8;
 
-  // signatures on key_value. Must be signed by keys from both previous and
+  // signatures on entry. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.
-  map<string, sigpb.DigitallySigned> signatures = 2;
+  repeated bytes signatures = 2;
 }
 
 // MutationProof contains the information necessary to compute the new leaf value.
