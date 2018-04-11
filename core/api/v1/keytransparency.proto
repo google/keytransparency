@@ -27,7 +27,7 @@ import "google/api/annotations.proto";
 import "trillian.proto";
 import "trillian_map_api.proto";
 import "tink.proto";
-import "v1/keytransparency_proto/admin.proto";
+import "v1/admin.proto";
 
 // Committed represents the data committed to in a cryptographic commitment.
 // commitment = HMAC_SHA512_256(key, data)
