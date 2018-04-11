@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // EpochMutations contains all the mutations needed to advance

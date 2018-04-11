@@ -17,7 +17,7 @@ package fake
 import (
 	"context"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_proto"
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -28,7 +28,7 @@ import (
 	"github.com/google/trillian/types"
 	"github.com/kr/pretty"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tclient "github.com/google/trillian/client"
 )
 

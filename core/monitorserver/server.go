@@ -32,7 +32,7 @@ import (
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorstorage"
 
-	pb "github.com/google/keytransparency/core/api/monitor/v1/monitor_proto"
+	pb "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto"
 )
 
 var (

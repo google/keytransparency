@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/golang/glog"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/trillian/types"
 )
 

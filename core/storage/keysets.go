@@ -18,7 +18,7 @@ package storage
 import (
 	"context"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_proto"
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 // KeySets gets and sets keysets.

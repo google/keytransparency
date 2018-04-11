@@ -33,7 +33,7 @@ import (
 	"github.com/spf13/viper"
 
 	tm "github.com/buger/goterm"
-	tpb "github.com/google/keytransparency/core/api/type/type_proto"
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 var (

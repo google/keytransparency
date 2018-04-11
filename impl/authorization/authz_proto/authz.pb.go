@@ -15,7 +15,7 @@ package authz_proto
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_keytransparency_type "github.com/google/keytransparency/core/api/type/type_proto"
+import google_keytransparency_type "github.com/google/keytransparency/core/api/type/type_go_proto"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal

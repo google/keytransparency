@@ -27,7 +27,7 @@ import (
 
 	"github.com/golang/glog"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tclient "github.com/google/trillian/client"
 	tcrypto "github.com/google/trillian/crypto"
 )

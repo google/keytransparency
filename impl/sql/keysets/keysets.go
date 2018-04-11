@@ -24,7 +24,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_proto"
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 const (

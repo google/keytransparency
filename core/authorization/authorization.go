@@ -18,7 +18,7 @@ package authorization
 import (
 	"github.com/google/keytransparency/core/authentication"
 
-	authzpb "github.com/google/keytransparency/core/api/type/type_proto"
+	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 // Authorization authorizes access to RPCs.

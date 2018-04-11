@@ -25,7 +25,7 @@ import (
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/google/tink/go/tink"
 
-	tpb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 func mustObjectHash(t *testing.T, val interface{}) [sha256.Size]byte {

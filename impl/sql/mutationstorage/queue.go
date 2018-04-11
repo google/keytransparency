@@ -25,7 +25,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.

@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/api/monitor/v1/monitor_proto";
+option go_package = "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto";
 
 // Monitor Service
 //
