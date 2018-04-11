@@ -2,7 +2,7 @@
 // source: usermanager/v1/usermanager.proto
 
 /*
-Package usermanager_proto is a reverse proxy.
+Package usermanager_go_proto is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */

@@ -2,7 +2,7 @@
 // source: v1/keytransparency.proto
 
 /*
-Package keytransparency_proto is a reverse proxy.
+Package keytransparency_go_proto is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */

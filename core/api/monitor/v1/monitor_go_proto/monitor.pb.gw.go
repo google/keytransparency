@@ -2,7 +2,7 @@
 // source: monitor/v1/monitor.proto
 
 /*
-Package monitor_proto is a reverse proxy.
+Package monitor_go_proto is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */

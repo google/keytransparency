@@ -13,7 +13,7 @@
 // limitations under the License.
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/api/type/type_proto";
+option go_package = "github.com/google/keytransparency/core/api/type/type_go_proto";
 
 package google.keytransparency.type;
 
