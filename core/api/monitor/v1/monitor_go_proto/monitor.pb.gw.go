@@ -6,7 +6,7 @@ Package monitor_proto is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package monitor_proto
+package monitor_go_proto
 
 import (
 	"io"

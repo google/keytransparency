@@ -33,8 +33,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	authzpb "github.com/google/keytransparency/core/api/type/type_proto"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
 

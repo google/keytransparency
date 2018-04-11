@@ -25,7 +25,7 @@ import (
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 

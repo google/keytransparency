@@ -6,7 +6,7 @@ Package keytransparency_proto is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package keytransparency_proto
+package keytransparency_go_proto
 
 import (
 	"io"

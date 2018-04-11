@@ -16,7 +16,7 @@
 package testdata
 
 import (
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // GetEntryResponseVector is a captured GetEntryResponse that should verify without errors.

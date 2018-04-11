@@ -41,7 +41,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto"
+	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_go_proto"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )

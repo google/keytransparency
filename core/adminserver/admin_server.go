@@ -35,7 +35,7 @@ import (
 	"github.com/google/trillian/crypto/sigpb"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
 

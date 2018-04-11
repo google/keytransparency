@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // MutationStorage implements mutator.Mutation

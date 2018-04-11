@@ -37,8 +37,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_proto"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 const (

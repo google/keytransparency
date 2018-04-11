@@ -21,8 +21,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_proto"
-	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_proto"
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_go_proto"
 	"github.com/google/keytransparency/core/storage"
 )
 

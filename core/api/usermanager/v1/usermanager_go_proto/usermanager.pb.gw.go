@@ -6,7 +6,7 @@ Package usermanager_proto is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package usermanager_proto
+package usermanager_go_proto
 
 import (
 	"io"

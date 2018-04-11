@@ -16,7 +16,7 @@ It has these top-level messages:
 	VerifyingKey
 	KeySet
 */
-package type_proto
+package type_go_proto
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"

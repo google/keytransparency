@@ -14,15 +14,15 @@ It has these top-level messages:
 	BatchCreateUserRequest
 	BatchCreateUserResponse
 */
-package usermanager_proto
+package usermanager_go_proto
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "google.golang.org/genproto/googleapis/api/annotations"
 import google_protobuf1 "google.golang.org/genproto/protobuf/field_mask"
-import google_keytransparency_type "github.com/google/keytransparency/core/api/type/type_proto"
-import google_keytransparency_type1 "github.com/google/keytransparency/core/api/type/type_proto"
+import google_keytransparency_type "github.com/google/keytransparency/core/api/type/type_go_proto"
+import google_keytransparency_type1 "github.com/google/keytransparency/core/api/type/type_go_proto"
 
 import (
 	context "golang.org/x/net/context"

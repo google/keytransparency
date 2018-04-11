@@ -24,7 +24,7 @@ import (
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/mutator"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // Env holds a complete testing environment for end-to-end tests.

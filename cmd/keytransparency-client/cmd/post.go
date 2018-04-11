@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_proto"
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	"github.com/google/tink/go/tink"
 )
 

@@ -16,7 +16,7 @@ It has these top-level messages:
 	GetStateRequest
 	State
 */
-package monitor_proto
+package monitor_go_proto
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
