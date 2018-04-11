@@ -29,7 +29,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tinkpb "github.com/google/tink/proto/tink_proto"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 // Mutator defines mutations to simply replace the current map value with the

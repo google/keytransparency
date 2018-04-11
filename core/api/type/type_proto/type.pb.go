@@ -22,7 +22,7 @@ import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import google_rpc "google.golang.org/genproto/googleapis/rpc/status"
-import google_crypto_tink "github.com/google/tink/proto/tink_proto"
+import google_crypto_tink "github.com/google/tink/proto/tink_go_proto"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal

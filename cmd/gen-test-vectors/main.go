@@ -33,7 +33,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tinkpb "github.com/google/tink/proto/tink_proto"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 var (

@@ -26,7 +26,7 @@ import (
 	"github.com/google/tink/go/tink"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_proto"
-	tinkpb "github.com/google/tink/proto/tink_proto"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 var nilHash, _ = objecthash.ObjectHash(nil)

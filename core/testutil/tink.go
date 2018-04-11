@@ -23,9 +23,9 @@ import (
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/crypto/keys/pem"
 
-	commonpb "github.com/google/tink/proto/common_proto"
-	ecdsapb "github.com/google/tink/proto/ecdsa_proto"
-	tinkpb "github.com/google/tink/proto/tink_proto"
+	commonpb "github.com/google/tink/proto/common_go_proto"
+	ecdsapb "github.com/google/tink/proto/ecdsa_go_proto"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 // PrivateKeyFromPEM produces a Keyset_Key from privatePEM.
@@ -46,13 +46,13 @@ func PrivateKeyFromPEM(privPEM string, keyID uint32) *tinkpb.Keyset_Key {
 		ecdsapb.EcdsaSignatureEncoding_DER)
 
 	publicKey := signature.NewEcdsaPublicKey(
-		signature.ECDSA_VERIFY_KEY_VERSION,
+		signature.EcdsaVerifyKeyVersion,
 		params, priv.X.Bytes(), priv.Y.Bytes())
 	privKey := signature.NewEcdsaPrivateKey(
-		signature.ECDSA_SIGN_KEY_VERSION,
+		signature.EcdsaSignKeyVersion,
 		publicKey, priv.D.Bytes())
 	serializedKey, _ := proto.Marshal(privKey)
-	keyData := tink.NewKeyData(signature.ECDSA_SIGN_TYPE_URL,
+	keyData := tink.NewKeyData(signature.EcdsaSignTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PRIVATE)
 	return tink.NewKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
@@ -74,10 +74,10 @@ func PublicKeyFromPEM(pubPEM string, keyID uint32) *tinkpb.Keyset_Key {
 		commonpb.EllipticCurveType_NIST_P256,
 		ecdsapb.EcdsaSignatureEncoding_DER)
 	publicKey := signature.NewEcdsaPublicKey(
-		signature.ECDSA_VERIFY_KEY_VERSION,
+		signature.EcdsaVerifyKeyVersion,
 		params, pub.X.Bytes(), pub.Y.Bytes())
 	serializedKey, _ := proto.Marshal(publicKey)
-	keyData := tink.NewKeyData(signature.ECDSA_VERIFY_TYPE_URL,
+	keyData := tink.NewKeyData(signature.EcdsaVerifyTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PUBLIC)
 	return tink.NewKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)

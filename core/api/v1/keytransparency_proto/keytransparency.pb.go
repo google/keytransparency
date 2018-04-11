@@ -48,7 +48,7 @@ import math "math"
 import _ "google.golang.org/genproto/googleapis/api/annotations"
 import trillian "github.com/google/trillian"
 import trillian1 "github.com/google/trillian"
-import google_crypto_tink "github.com/google/tink/proto/tink_proto"
+import google_crypto_tink "github.com/google/tink/proto/tink_go_proto"
 
 import (
 	context "golang.org/x/net/context"
@@ -135,7 +135,7 @@ type Entry struct {
 	// modifying creating a hash chain of all mutations. The hash used is
 	// CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
 	Previous []byte `protobuf:"bytes,8,opt,name=previous,proto3" json:"previous,omitempty"`
-	// signatures on key_value. Must be signed by keys from both previous and
+	// signatures on entry. Must be signed by keys from both previous and
 	// current epochs. The first proves ownership of new epoch key, and the
 	// second proves that the correct owner is making this change.
 	Signatures [][]byte `protobuf:"bytes,2,rep,name=signatures,proto3" json:"signatures,omitempty"`
