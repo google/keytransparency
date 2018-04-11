@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/tink/go/tink"
 
 	"github.com/aybabtme/uniplot/histogram"
 	"github.com/paulbellamy/ratecounter"
@@ -62,9 +63,11 @@ var hammerCmd = &cobra.Command{
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
-		if err := readKeyStoreFile(); err != nil {
+		handle, err := readKeysetFile(keysetFile, masterPassword)
+		if err != nil {
 			log.Fatal(err)
 		}
+		keyset = handle
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
@@ -200,8 +203,10 @@ func writeOp(ctx context.Context, appID, userID string) error {
 		return fmt.Errorf("error connecting: %v", err)
 	}
 
-	signers := store.Signers()
-	authorizedKeys, err := store.PublicKeys()
+	authorizedKeys, err := keyset.GetPublicKeysetHandle()
+	if err != nil {
+		return fmt.Errorf("store.PublicKeys() failed: %v", err)
+	}
 	if err != nil {
 		return fmt.Errorf("store.PublicKeys() failed: %v", err)
 	}
@@ -213,8 +218,8 @@ func writeOp(ctx context.Context, appID, userID string) error {
 		AppId:          appID,
 		UserId:         userID,
 		PublicKeyData:  []byte("publickey"),
-		AuthorizedKeys: authorizedKeys,
+		AuthorizedKeys: authorizedKeys.Keyset(),
 	}
-	_, err = c.Update(ctx, u, signers)
+	_, err = c.Update(ctx, u, []*tink.KeysetHandle{keyset})
 	return err
 }
