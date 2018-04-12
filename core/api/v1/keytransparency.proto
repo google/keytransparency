@@ -246,7 +246,7 @@ message ListMutationsRequest {
 
 // ListMutationsResponse contains the mutations that produced an epoch.
 message ListMutationsResponse {
-  // mutations contains the the mutation object and the leaf value it operated on.
+  // mutations contains the mutation object and the leaf value it operated on.
   repeated MutationProof mutations = 6;
   // next_page_token is the next page token to query for pagination.
   // An empty value means there are no more results to fetch.
