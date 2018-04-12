@@ -51,7 +51,10 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 func TestFromLeafValue(t *testing.T) {
 	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
 	entry := &pb.Entry{Commitment: []byte{1, 2}}
-	entryB, _ := proto.Marshal(entry)
+	entryB, err := proto.Marshal(entry)
+	if err != nil {
+		t.Fatalf("proto.Marshal(): %v", err)
+	}
 	for i, tc := range []struct {
 		leafVal []byte
 		want    *pb.Entry

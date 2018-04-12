@@ -89,9 +89,10 @@ The actual keys are not listed, only their corresponding metadata.
 		fmt.Fprintln(w, "My Keys:")
 		fmt.Fprintln(w, "  ID\tStatus\tType")
 		for _, info := range keysetInfo.GetKeyInfo() {
-			fmt.Fprintf(w, "  %v\t%v\t%v\n", info.KeyId, info.Status, info.TypeUrl)
+			fmt.Fprintf(w, "  %v\t%v\t%v\t\n", info.KeyId, info.Status, info.TypeUrl)
 		}
 
+		// Tink keysets do not currently support adding public keys without also having the private key.
 		fmt.Fprintln(w, "\nOther Authorized Keys: none")
 
 		if err := w.Flush(); err != nil {
@@ -118,7 +119,7 @@ func readKeysetFile(file, password string) (*tink.KeysetHandle, error) {
 	}
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("reading keystore file %v failed: %v", file, err)
+		return nil, fmt.Errorf("reading keystore file %q failed: %v", file, err)
 	}
 
 	return tink.EncryptedKeysetHandle().ParseSerializedKeyset(data, masterKey)

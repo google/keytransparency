@@ -99,6 +99,7 @@ func (m *Mutation) SetCommitment(data []byte) error {
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
 func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
+	// Make sure that pubkeys is a valid keyset.
 	if _, err := tink.CleartextKeysetHandle().ParseKeyset(pubkeys); err != nil {
 		return err
 	}
