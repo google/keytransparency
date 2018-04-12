@@ -103,12 +103,12 @@ service UserManager {
   }
 
   // Key Rotation Operations
-  // TODO(gdbelvin): CreateKey API for a particular keyset. 
+  // TODO(gdbelvin): CreateKey API for a particular keyset.
   // TODO(gdbelvin): RotateKey API to mark the next key in the keyset as active.
   // TODO(gdbelvin): BatchAddAuthorizedKeys to add all the active keys to users created through this API.
   // TODO(gdbelvin): BatchRemoveAuthorizedKeys to remove old keys from users created through this API.
-  // TODO(gdbelvin): RegisterUser ask this service to keep it's list of authorized_keys up-to-date. 
-  // TODO(gdbelvin): UnregustreUser have this service revoke it's access to a user's account. 
+  // TODO(gdbelvin): RegisterUser ask this service to keep it's list of authorized_keys up-to-date.
+  // TODO(gdbelvin): UnregisterUser have this service revoke it's access to a user's account.
 
   // CreateUser creates a new user and initializes it.
   // If the user already exists, this operation will fail.
