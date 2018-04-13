@@ -112,15 +112,14 @@ func (h *Hammer) launchWorkers(ctx context.Context, jobs <-chan int, workers int
 func gen(ctx context.Context, count int) <-chan int {
 	jobs := make(chan int)
 	go func() {
+		defer close(jobs)
 		for i := 0; i < count; i++ {
 			select {
 			case <-ctx.Done():
-				close(jobs)
 				return
 			case jobs <- i:
 			}
 		}
-		close(jobs)
 	}()
 	return jobs
 }
@@ -132,10 +131,17 @@ func (h *Hammer) printStats(period time.Duration, outputs <-chan error) {
 
 	// Print stats asyncronously until refresh closes.
 	refresh := time.NewTicker(period)
+	stop := make(chan struct{})
 	go func() {
-		for range refresh.C {
-			rate := totalRequests / time.Since(startTime).Seconds()
-			glog.Infof("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
+		for {
+			select {
+			case <-refresh.C:
+				rate := totalRequests / time.Since(startTime).Seconds()
+				glog.Infof("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
+			case <-stop:
+				refresh.Stop()
+				return
+			}
 		}
 	}()
 
@@ -143,7 +149,7 @@ func (h *Hammer) printStats(period time.Duration, outputs <-chan error) {
 	for range outputs {
 		totalRequests++
 	}
-	refresh.Stop()
+	close(stop)
 }
 
 func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- error) {
