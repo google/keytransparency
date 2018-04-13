@@ -210,24 +210,18 @@ func userCreds(ctx context.Context, useClientSecret bool) (credentials.PerRPCCre
 	}
 }
 
-func dial(ctx context.Context, ktURL string, userCreds credentials.PerRPCCredentials) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-
-	transportCreds, err := transportCreds(ktURL)
+func dial(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTransparencyClient, error) {
+	transportCreds, err := transportCreds(addr)
 	if err != nil {
 		return nil, err
 	}
+
 	opts = append(opts, grpc.WithTransportCredentials(transportCreds))
-
-	if userCreds != nil {
-		opts = append(opts, grpc.WithPerRPCCredentials(userCreds))
-	}
-
-	cc, err := grpc.Dial(ktURL, opts...)
+	cc, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return cc, nil
+	return pb.NewKeyTransparencyClient(cc), nil
 }
 
 // GetClient connects to the server and returns a key transparency verification
@@ -235,11 +229,10 @@ func dial(ctx context.Context, ktURL string, userCreds credentials.PerRPCCredent
 func GetClient(ctx context.Context, userCreds credentials.PerRPCCredentials) (*client.Client, error) {
 	ktURL := viper.GetString("kt-url")
 
-	cc, err := dial(ctx, ktURL, userCreds)
+	ktCli, err := dial(ctx, ktURL, grpc.WithPerRPCCredentials(userCreds))
 	if err != nil {
 		return nil, fmt.Errorf("dial %v: %v", ktURL, err)
 	}
-	ktCli := pb.NewKeyTransparencyClient(cc)
 
 	config, err := config(ctx, ktCli)
 	if err != nil {
