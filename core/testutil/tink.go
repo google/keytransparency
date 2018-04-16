@@ -38,7 +38,7 @@ func PrivateKeyFromPEM(privPEM string, keyID uint32) *tinkpb.Keyset_Key {
 
 	priv, ok := signer.(*ecdsa.PrivateKey)
 	if !ok {
-		panic("not ecdsa private key")
+		panic(fmt.Sprintf("not ecdsa private key: %T", signer))
 	}
 
 	params := signature.NewEcdsaParams(
@@ -52,7 +52,10 @@ func PrivateKeyFromPEM(privPEM string, keyID uint32) *tinkpb.Keyset_Key {
 	privKey := signature.NewEcdsaPrivateKey(
 		signature.EcdsaSignKeyVersion,
 		publicKey, priv.D.Bytes())
-	serializedKey, _ := proto.Marshal(privKey)
+	serializedKey, err := proto.Marshal(privKey)
+	if err != nil {
+		panic(fmt.Sprintf("proto.Marshal(): %v", err))
+	}
 	keyData := tink.NewKeyData(signature.EcdsaSignTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PRIVATE)
@@ -77,7 +80,10 @@ func PublicKeyFromPEM(pubPEM string, keyID uint32) *tinkpb.Keyset_Key {
 	publicKey := signature.NewEcdsaPublicKey(
 		signature.EcdsaVerifyKeyVersion,
 		params, pub.X.Bytes(), pub.Y.Bytes())
-	serializedKey, _ := proto.Marshal(publicKey)
+	serializedKey, err := proto.Marshal(publicKey)
+	if err != nil {
+		panic(fmt.Sprintf("proto.Marshal(): %v", err))
+	}
 	keyData := tink.NewKeyData(signature.EcdsaVerifyTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PUBLIC)
