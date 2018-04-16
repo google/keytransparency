@@ -58,20 +58,15 @@ var keysCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		signature.PublicKeySignConfig().RegisterStandardKeyTypes()
 	},
-	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		return writeKeysetFile(keyset, keysetFile, masterPassword)
-	},
 }
 
 // createCmd creates a new keyset
 var createCmd = &cobra.Command{
 	Use:   "create-keyset",
 	Short: "Creates a new keyset",
-	Long: `List metadata about all authorized keys. e.g.:
+	Long: `Creates a new keyset and generates the first key:
 
 ./keytransparency-client authorized-keys create-keyset
-
-The actual keys are not listed, only their corresponding metadata.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		template, err := keyTemplate(keyType)
@@ -80,7 +75,11 @@ The actual keys are not listed, only their corresponding metadata.
 		}
 
 		keyset, err = tink.CleartextKeysetHandle().GenerateNew(template)
-		return err
+		if err != nil {
+			return err
+		}
+
+		return writeKeysetFile(keyset, keysetFile, masterPassword)
 	},
 }
 
