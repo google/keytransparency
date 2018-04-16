@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client/hammer"
+	"github.com/google/tink/go/signature"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -52,6 +53,8 @@ var hammerCmd = &cobra.Command{
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
+		signature.PublicKeySignConfig().RegisterStandardKeyTypes()
+		signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
 		handle, err := readKeysetFile(keysetFile, masterPassword)
 		if err != nil {
 			log.Fatal(err)
@@ -62,6 +65,8 @@ var hammerCmd = &cobra.Command{
 		ktURL := viper.GetString("kt-url")
 		domainID := viper.GetString("domain")
 		timeout := viper.GetDuration("timeout")
+
+		log.Printf("Hammering %v/domains/%v: with %v timeout", ktURL, domainID, timeout)
 
 		hammer.CustomDial = dial
 

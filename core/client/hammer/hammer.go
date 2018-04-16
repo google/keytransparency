@@ -18,10 +18,10 @@ package hammer
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 
@@ -60,6 +60,8 @@ func New(ctx context.Context, ktAddr, domainID string, timeout time.Duration, ke
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("config: %#v", config)
 
 	authorizedKeys, err := keyset.GetPublicKeysetHandle()
 	if err != nil {
@@ -137,7 +139,7 @@ func (h *Hammer) printStats(period time.Duration, outputs <-chan error) {
 			select {
 			case <-refresh.C:
 				rate := totalRequests / time.Since(startTime).Seconds()
-				glog.Infof("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
+				log.Printf("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
 			case <-stop:
 				refresh.Stop()
 				return
@@ -157,7 +159,7 @@ func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- err
 		userID := fmt.Sprintf("user_%v", i)
 		err := h.writeOp(ctx, userID)
 		if err != nil {
-			glog.Infof("writeOp(): %v", err)
+			log.Printf("writeOp(): %v", err)
 		}
 		outputs <- err
 	}
@@ -165,7 +167,7 @@ func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- err
 
 // writeOp performs one write command.
 func (h *Hammer) writeOp(ctx context.Context, userID string) error {
-	ctx, cancel := context.WithTimeout(ctx, h.timeout)
+	cctx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
 
 	u := &tpb.User{
@@ -175,12 +177,12 @@ func (h *Hammer) writeOp(ctx context.Context, userID string) error {
 		PublicKeyData:  []byte("publickey"),
 		AuthorizedKeys: h.authorizedKeys,
 	}
-	c, err := h.getClientWithUser(ctx, userID)
+	c, err := h.getClientWithUser(cctx, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getClient(): %v", err)
 	}
-	_, err = c.Update(ctx, u, h.signers)
-	return err
+	_, err = c.Update(cctx, u, h.signers)
+	return fmt.Errorf("Update(): %v", err)
 }
 
 // getClient connects to the server and returns a key transparency verification client.
@@ -189,7 +191,7 @@ func (h *Hammer) getClientWithUser(ctx context.Context, userID string) (*client.
 
 	ktCli, err := CustomDial(ctx, h.ktAddr, grpc.WithPerRPCCredentials(userCreds))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Dial(): %v", err)
 	}
 
 	return client.NewFromConfig(ktCli, h.config)

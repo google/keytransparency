@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	keysetFile          = ".keystore"
+	keysetFile          = ".keyset"
 	masterKeyLen        = 32
 	masterKeyIterations = 4096
 )
