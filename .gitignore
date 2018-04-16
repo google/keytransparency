@@ -10,6 +10,7 @@ infra*.etcd
 genfiles/*
 .keytransparency-scts.dat
 .keystore
+.keyset
 travis_secrets.tar.gz
 service_key.json
 client_secret*.json

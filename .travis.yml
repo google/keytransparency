@@ -13,7 +13,6 @@ env:
   - DOCKER_COMPOSE_VERSION="1.13.0"
   - PATH=$PATH:${HOME}/google-cloud-sdk/bin
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-  - PROJECT_NAME=key-transparency
 
 addons:
   apt:
@@ -51,13 +50,9 @@ before_deploy:
   - rm -f service_key.json
   - gcloud --quiet components update kubectl
   - gcloud --quiet version
-  - gcloud config set project key-transparency
-  - gcloud config set compute/zone us-central1-a
-  - gcloud container clusters get-credentials ci-cluster
   - go get github.com/google/trillian/server/trillian_log_server
   - go get github.com/google/trillian/server/trillian_log_signer
   - go get github.com/google/trillian/server/trillian_map_server
-  - gcloud docker --authorize-only 
 
 deploy:
   skip_cleanup: true
