@@ -4,7 +4,7 @@ services:
     depends_on:
       - server
       - sequencer
-    image: us.gcr.io/key-transparency/prometheus:latest
+    image: us.gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
     build:
       context: .
       dockerfile: deploy/prometheus/Dockerfile
@@ -29,7 +29,7 @@ services:
   log-server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/log-server
+    image: us.gcr.io/key-transparency/log-server:${TRAVIS_COMMIT}
     build: 
       context: ../trillian
       dockerfile: server/trillian_log_server/Dockerfile
@@ -52,7 +52,7 @@ services:
   log-signer:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/log-signer
+    image: us.gcr.io/key-transparency/log-signer:${TRAVIS_COMMIT}
     build:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
@@ -78,7 +78,7 @@ services:
   map-server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/map-server:latest
+    image: us.gcr.io/key-transparency/map-server:${TRAVIS_COMMIT}
     build: 
       context: ../trillian
       dockerfile: server/trillian_map_server/Dockerfile
@@ -103,7 +103,7 @@ services:
       - db
       - log-server
       - map-server
-    image: us.gcr.io/key-transparency/keytransparency-server:latest
+    image: us.gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
@@ -134,7 +134,7 @@ services:
       - db
       - log-server
       - map-server
-    image: us.gcr.io/key-transparency/keytransparency-sequencer:latest
+    image: us.gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
@@ -167,7 +167,7 @@ services:
     depends_on:
       - server
       - sequencer
-    image: us.gcr.io/key-transparency/keytransparency-monitor:latest
+    image: us.gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile

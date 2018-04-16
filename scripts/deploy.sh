@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+#set -o pipefail
+#set -o errexit
+#set -o nounset
+#set -o xtrace
+set -eufx
 
 ################################################################################
 # Following assumptions are made by this script:                               #
@@ -16,31 +21,41 @@
 #                                                                              #
 ################################################################################
 
-set -ex
 
-function main()
-{
-  # create key-pairs:
-  ./scripts/prepare_server.sh -f
-  #prepareSecrets # TODO(gbelvin): Use secrets volume.
-  docker-compose build
-  docker-compose push
-
-  # Deploy all trillian related services.
-  kubectl apply -f deploy/kubernetes/.
-}
+export PROJECT_NAME_CI=key-transparency
+export CLOUDSDK_COMPUTE_ZONE=us-central1-a
+export CLUSTER_NAME_CI=ci-cluster
 
 
-function prepareSecrets()
-{
-  local EXISTS=0
-  # if kt-secrets does not exist, create it:
-  kubectl get secret kt-secrets
-  # kubectl exits with 1 if kt-secret does not exist
-  if [ $? -ne 0 ]; then
-    kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key 
-  fi
-}
+gcloud --quiet config set project ${PROJECT_NAME_CI}
+gcloud --quiet config set compute/zone ${CLOUDSDK_COMPUTE_ZONE}
+gcloud --quiet config set container/cluster ${CLUSTER_NAME_CI}
+gcloud --quiet container clusters get-credentials ${CLUSTER_NAME_CI}
+gcloud --quiet docker --authorize-only
 
-# Run everything:
-main
+
+echo "Generating keys..."
+./scripts/prepare_server.sh -f
+# kubectl exits with 1 if kt-secret does not exist
+kubectl get secret kt-secrets
+if [ $? -ne 0 ]; then
+  kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key
+fi
+
+echo "Building docker images..."
+docker-compose build
+
+
+echo "Pushing docker images..."
+docker-compose push
+
+
+echo "Updating jobs..."
+kubectl apply -f deploy/kubernetes/.
+kubectl set image deploy/prometheus prometheus=us.gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT}
+kubectl set image deploy/log-server log-server=us.gcr.io/${PROJECT_NAME_CI}/log-server:${TRAVIS_COMMIT}
+kubectl set image deploy/log-signer log-signer=us.gcr.io/${PROJECT_NAME_CI}/log-signer:${TRAVIS_COMMIT}
+kubectl set image deploy/map-server map-server=us.gcr.io/${PROJECT_NAME_CI}/map-server:${TRAVIS_COMMIT}
+kubectl set image deploy/server server=us.gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT}
+kubectl set image deploy/sequencer sequencer=us.gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT}
+kubectl set image deploy/monitor monitor=us.gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT}
