@@ -61,8 +61,6 @@ func New(ctx context.Context, ktAddr, domainID string, timeout time.Duration, ke
 		return nil, err
 	}
 
-	log.Printf("config: %#v", config)
-
 	authorizedKeys, err := keyset.GetPublicKeysetHandle()
 	if err != nil {
 		return nil, fmt.Errorf("keyset.GetPublicKeysetHandle() failed: %v", err)
@@ -134,13 +132,18 @@ func (h *Hammer) printStats(period time.Duration, outputs <-chan error) {
 	// Print stats asyncronously until refresh closes.
 	refresh := time.NewTicker(period)
 	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case <-refresh.C:
 				rate := totalRequests / time.Since(startTime).Seconds()
 				log.Printf("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
 			case <-stop:
+				rate := totalRequests / time.Since(startTime).Seconds()
+				log.Printf("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
 				refresh.Stop()
 				return
 			}
@@ -148,20 +151,20 @@ func (h *Hammer) printStats(period time.Duration, outputs <-chan error) {
 	}()
 
 	// Collect outputs until output closes.
-	for range outputs {
+	for err := range outputs {
 		totalRequests++
+		if err != nil {
+			log.Printf("writeOp(): %v", err)
+		}
 	}
 	close(stop)
+	wg.Wait()
 }
 
 func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- error) {
 	for i := range jobs {
 		userID := fmt.Sprintf("user_%v", i)
-		err := h.writeOp(ctx, userID)
-		if err != nil {
-			log.Printf("writeOp(): %v", err)
-		}
-		outputs <- err
+		outputs <- h.writeOp(ctx, userID)
 	}
 }
 
