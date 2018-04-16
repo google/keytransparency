@@ -59,7 +59,6 @@ gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/map-server:
 gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT} us.gcr.io/${PROJECT_NAME_CI}/keytransparency-server:latest
 gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT} us.gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:latest
 gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT} us.gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:latest
-gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT} us.gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:latest
 
 
 echo "Updating jobs..."
