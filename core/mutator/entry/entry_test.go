@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/tink/go/signature"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -49,7 +48,6 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 )
 
 func TestFromLeafValue(t *testing.T) {
-	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
 	entry := &pb.Entry{Commitment: []byte{1, 2}}
 	entryB, err := proto.Marshal(entry)
 	if err != nil {

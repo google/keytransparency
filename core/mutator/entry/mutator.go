@@ -32,6 +32,11 @@ import (
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
+func init() {
+	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
+	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
+}
+
 // Mutator defines mutations to simply replace the current map value with the
 // contents of the mutation.
 type Mutator struct{}
