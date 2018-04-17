@@ -37,7 +37,7 @@ var (
 	certFile = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 )
 
-func run(svr pb.KeyTransparencyAdminServer) {
+func startHTTPServer(svr pb.KeyTransparencyAdminServer) *http.Server {
 	// Wire up gRPC and HTTP servers.
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 	if err != nil {
@@ -66,9 +66,17 @@ func run(svr pb.KeyTransparencyAdminServer) {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	glog.Infof("Listening on %v", *addr)
-	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
-		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
-		glog.Errorf("ListenAndServeTLS: %v", err)
+	server := &http.Server{
+		Addr:    *addr,
+		Handler: serverutil.GrpcHandlerFunc(grpcServer, mux),
 	}
+
+	go func() {
+		glog.Infof("Listening on %v", *addr)
+		if err := server.ListenAndServeTLS(*certFile, *keyFile); err != nil {
+			glog.Errorf("ListenAndServeTLS: %v", err)
+		}
+	}()
+	// Return a handle to the http server to callers can call Shutdown().
+	return server
 }

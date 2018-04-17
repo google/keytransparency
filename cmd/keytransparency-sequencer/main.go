@@ -100,14 +100,13 @@ func main() {
 	glog.Infof("Signer starting")
 
 	// Run servers
-	cctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		if err := signer.ListenForNewDomains(cctx, *refresh); err != nil {
-			glog.Errorf("StartSequencingAll(): %v", err)
-		}
-	}()
-	run(adminServer)
-	cancel()
+	httpServer := startHTTPServer(adminServer)
 
+	cctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := signer.ListenForNewDomains(cctx, *refresh); err != nil {
+		glog.Errorf("StartSequencingAll(): %v", err)
+	}
+	httpServer.Shutdown(cctx)
 	glog.Errorf("Signer exiting")
 }
