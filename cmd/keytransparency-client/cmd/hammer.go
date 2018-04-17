@@ -54,6 +54,7 @@ func init() {
 
 	hammerCmd.Flags().UintVar(&maxWorkers, "workers", 1, "Number of parallel workers")
 	hammerCmd.Flags().DurationVar(&ramp, "ramp", 1*time.Second, "Time to spend ramping up")
+	hammerCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 }
 
 // hammerCmd represents the post command
