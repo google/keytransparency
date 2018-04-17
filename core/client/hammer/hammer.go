@@ -185,7 +185,7 @@ func (h *Hammer) writeOp(ctx context.Context, userID string) error {
 		return fmt.Errorf("getClient(): %v", err)
 	}
 	_, err = c.Update(cctx, u, h.signers)
-	return fmt.Errorf("Update(): %v", err)
+	return err
 }
 
 // getClient connects to the server and returns a key transparency verification client.
