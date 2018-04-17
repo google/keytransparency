@@ -15,7 +15,7 @@ Key Transparency can be used as a public key discovery service to authenticate
 users and provides a mechanism to keep the service accountable.  It can be used
 by account owners to [reliably see](docs/verification.md) what keys have been
 associated with their account, and it can be used by senders to see how long an
-account has been active and stable before trusting it. 
+account has been active and stable before trusting it.
 
 * [Overview](docs/overview.md)
 * [Design document](docs/design.md)
@@ -37,11 +37,16 @@ development.
 
 ### Client operations
 
-#### Publish a public key
+#### Generate a private key
 
   ```sh
-  keytransparency-client authorized-keys --help 
-  keytransparency-client authorized-keys add --generate --type=ecdsa --activate
+  keytransparency-client authorized-keys create-keyset -p password
+  keytransparency-client authorized-keys list-keyset -p password
+  ```
+
+#### Publish the public key
+
+  ```sh
   keytransparency-client post user@domain.com app1 --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
   ```
 
@@ -71,20 +76,20 @@ development.
 
 ## Running the server
 
-### Install 
+### Install
 1. [OpenSSL](https://www.openssl.org/community/binaries.html)
-1. [Docker](https://docs.docker.com/engine/installation/) 
+1. [Docker](https://docs.docker.com/engine/installation/)
    - Docker Engine 1.13.0+ `docker version -f '{{.Server.APIVersion}}'`
    - Docker Compose 1.11.0+ `docker-compose --version`
 1. `go get -u github.com/google/keytransparency/...`
 1. `go get -u github.com/google/trillian/...`
-1. `./scripts/prepare_server.sh -f` 
+1. `./scripts/prepare_server.sh -f`
 
 ### Run
 1. Run Key Transparency
 
   ```sh
-$ docker-compose up -d 
+$ docker-compose up -d
 Creating keytransparency_db_1 ...         done
 Creating keytransparency_map_server_1 ... done
 Creating keytransparency_log_server_1 ... done

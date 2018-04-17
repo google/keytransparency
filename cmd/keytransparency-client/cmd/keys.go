@@ -24,11 +24,13 @@ import (
 	"text/tabwriter"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/subtle/aead"
 	"github.com/google/tink/go/tink"
+	"github.com/spf13/cobra"
 	"golang.org/x/crypto/pbkdf2"
 
-	"github.com/spf13/cobra"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 const (
@@ -45,9 +47,7 @@ var (
 	masterPassword    string
 )
 
-var (
-	keyset *tink.KeysetHandle
-)
+var keyset *tink.KeysetHandle
 
 // keysCmd represents the authorized-keys command.
 var keysCmd = &cobra.Command{
@@ -56,27 +56,63 @@ var keysCmd = &cobra.Command{
 	Long: `Manage the authorized-keys list with tinkey
 	https://github.com/google/tink/blob/master/doc/TINKEY.md`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		signature.PublicKeySignConfig().RegisterStandardKeyTypes()
+	},
+}
+
+// createCmd creates a new keyset
+var createCmd = &cobra.Command{
+	Use:   "create-keyset",
+	Short: "Creates a new keyset",
+	Long: `Creates a new keyset and generates the first key:
+
+./keytransparency-client authorized-keys create-keyset
+`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		template, err := keyTemplate(keyType)
+		if err != nil {
+			return err
+		}
+
+		keyset, err = tink.CleartextKeysetHandle().GenerateNew(template)
+		if err != nil {
+			return err
+		}
+
+		return writeKeysetFile(keyset, keysetFile, masterPassword)
+	},
+}
+
+func keyTemplate(keyType string) (*tinkpb.KeyTemplate, error) {
+	switch keyType {
+	case "P256":
+		return signature.EcdsaP256KeyTemplate(), nil
+	case "P384":
+		return signature.EcdsaP384KeyTemplate(), nil
+	case "P521":
+		return signature.EcdsaP521KeyTemplate(), nil
+	default:
+		return nil, fmt.Errorf("Unknown key-type: %s", keyType)
+	}
+}
+
+// listCmd represents the authorized-keys list command.
+var listCmd = &cobra.Command{
+	Use:   "list-keyset",
+	Short: "List all authorized keys",
+	Long: `List metadata about all authorized keys. e.g.:
+
+./keytransparency-client authorized-keys list-keyset
+
+The actual keys are not listed, only their corresponding metadata.
+`,
+	PreRun: func(cmd *cobra.Command, args []string) {
 		handle, err := readKeysetFile(keysetFile, masterPassword)
 		if err != nil {
 			log.Fatal(err)
 		}
 		keyset = handle
 	},
-	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		return writeKeysetFile(keyset, keysetFile, masterPassword)
-	},
-}
-
-// listCmd represents the authorized-keys list command.
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all authorized keys",
-	Long: `List metadata about all authorized keys. e.g.:
-
-./keytransparency-client authorized-keys list
-
-The actual keys are not listed, only their corresponding metadata.
-`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		keysetInfo, err := keyset.KeysetInfo()
 		if err != nil {
@@ -144,7 +180,9 @@ func writeKeysetFile(keyset *tink.KeysetHandle, file, password string) error {
 func init() {
 	RootCmd.AddCommand(keysCmd)
 	keysCmd.AddCommand(listCmd)
+	keysCmd.AddCommand(createCmd)
 
-	keysCmd.PersistentFlags().StringVarP(&masterPassword, "master-password", "p", "", "The master key to the local keyset")
-	keysCmd.PersistentFlags().StringVar(&keyType, "type", "P256", "Type of keys to generate: [P256, P384, P21]")
+	keysCmd.PersistentFlags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
+
+	createCmd.Flags().StringVar(&keyType, "key-type", "P256", "Type of keys to generate: [P256, P384, P521]")
 }
