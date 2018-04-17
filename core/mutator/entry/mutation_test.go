@@ -18,15 +18,12 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/testutil"
-	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 )
 
 const domainID = "default"
 
 func TestCreateAndVerify(t *testing.T) {
-	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
-	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
 	for _, tc := range []struct {
 		old     []byte
 		pubKeys *tink.KeysetHandle
