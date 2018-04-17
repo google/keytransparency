@@ -50,8 +50,6 @@ echo "Pushing docker images..."
 docker-compose push
 
 echo "Tagging docker images..."
-
-
 gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT} us.gcr.io/${PROJECT_NAME_CI}/prometheus:latest
 gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/log-server:${TRAVIS_COMMIT} us.gcr.io/${PROJECT_NAME_CI}/log-server:latest
 gcloud --quiet container images add-tag us.gcr.io/${PROJECT_NAME_CI}/log-signer:${TRAVIS_COMMIT} us.gcr.io/${PROJECT_NAME_CI}/log-signer:latest
