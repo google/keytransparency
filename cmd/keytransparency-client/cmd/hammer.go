@@ -65,11 +65,9 @@ var hammerCmd = &cobra.Command{
 
 		log.Printf("Hammering %v/domains/%v: with %v timeout", ktURL, domainID, timeout)
 
-		hammer.CustomDial = dial
-
 		ctx := context.Background()
 
-		h, err := hammer.New(ctx, ktURL, domainID, timeout, keyset)
+		h, err := hammer.New(ctx, dial, ktURL, domainID, timeout, keyset)
 		if err != nil {
 			return err
 		}
