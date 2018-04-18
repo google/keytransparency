@@ -33,13 +33,14 @@ import (
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
-// CustomDial returns a grpc connection.
-var CustomDial func(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTransparencyClient, error)
+// DialFunc returns a connected grpc client for Key Transparency.
+type DialFunc func(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTransparencyClient, error)
 
 // Hammer represents a single run of the hammer.
 type Hammer struct {
 	workers int
 
+	dial    DialFunc
 	timeout time.Duration
 	ktAddr  string
 	appID   string
@@ -50,8 +51,8 @@ type Hammer struct {
 }
 
 // New returns a new hammer job
-func New(ctx context.Context, ktAddr, domainID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
-	client, err := CustomDial(ctx, ktAddr)
+func New(ctx context.Context, dial DialFunc, ktAddr, domainID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
+	client, err := dial(ctx, ktAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +68,7 @@ func New(ctx context.Context, ktAddr, domainID string, timeout time.Duration, ke
 	}
 
 	return &Hammer{
+		dial:    dial,
 		timeout: timeout,
 		ktAddr:  ktAddr,
 		appID:   fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
@@ -192,7 +194,7 @@ func (h *Hammer) writeOp(ctx context.Context, userID string) error {
 func (h *Hammer) getClientWithUser(ctx context.Context, userID string) (*client.Client, error) {
 	userCreds := authentication.GetFakeCredential(userID)
 
-	ktCli, err := CustomDial(ctx, h.ktAddr, grpc.WithPerRPCCredentials(userCreds))
+	ktCli, err := h.dial(ctx, h.ktAddr, grpc.WithPerRPCCredentials(userCreds))
 	if err != nil {
 		return nil, fmt.Errorf("Dial(): %v", err)
 	}
