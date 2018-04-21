@@ -294,7 +294,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
 		// Retry() in client/client.go.
-		return &pb.UpdateEntryResponse{Proof: resp}, nil
+		return &pb.UpdateEntryResponse{}, nil
 	} else if err != nil {
 		glog.Warningf("Invalid mutation: %v", err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
@@ -305,7 +305,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}
-	return &pb.UpdateEntryResponse{Proof: resp}, nil
+	return &pb.UpdateEntryResponse{}, nil
 }
 
 // GetDomain returns all info tied to the specified domain.
