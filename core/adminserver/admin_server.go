@@ -17,7 +17,6 @@ package adminserver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -45,7 +44,7 @@ var (
 			DisplayName:        "KT SMH Log",
 			TreeState:          tpb.TreeState_ACTIVE,
 			TreeType:           tpb.TreeType_LOG,
-			HashStrategy:       tpb.HashStrategy_OBJECT_RFC6962_SHA256,
+			HashStrategy:       tpb.HashStrategy_RFC6962_SHA256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
 			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
@@ -289,13 +288,9 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	}
 
 	glog.Infof("Initializing Trillian Log %v with empty map root", logID)
-	// Non-blocking add leaf
-	smrJSON, err := json.Marshal(resp.GetMapRoot())
-	if err != nil {
-		return err
-	}
 
-	if err := logClient.AddLeaf(ctx, smrJSON); err != nil {
+	// Non-blocking add leaf
+	if err := logClient.AddLeaf(ctx, resp.GetMapRoot().GetMapRoot()); err != nil {
 		return fmt.Errorf("adminserver: log.AddLeaf(): %v", err)
 	}
 	return nil

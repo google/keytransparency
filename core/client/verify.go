@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -150,10 +149,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	}
 
 	// Verify inclusion proof.
-	b, err := json.Marshal(in.GetSmr())
-	if err != nil {
-		return nil, nil, fmt.Errorf("json.Marshal(): %v", err)
-	}
+	b := in.GetSmr().GetMapRoot()
 	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, int64(mapRoot.Revision), in.GetLogInclusion()); err != nil {
 		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, mapRoot.Revision, err)
 	}

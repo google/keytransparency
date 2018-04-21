@@ -1,10 +1,10 @@
 {
 	"domain_id": "domain_5577006791947779410",
 	"log": {
-		"tree_id": 4013249521620300357,
+		"tree_id": 2029501983648168255,
 		"tree_state": 1,
 		"tree_type": 1,
-		"hash_strategy": 3,
+		"hash_strategy": 1,
 		"hash_algorithm": 4,
 		"signature_algorithm": 3,
 		"display_name": "KT SMH Log",
@@ -14,16 +14,16 @@
 		},
 		"max_root_duration": {},
 		"create_time": {
-			"seconds": 1523456034,
-			"nanos": 378000000
+			"seconds": 1524330530,
+			"nanos": 903000000
 		},
 		"update_time": {
-			"seconds": 1523456034,
-			"nanos": 378000000
+			"seconds": 1524330530,
+			"nanos": 903000000
 		}
 	},
 	"map": {
-		"tree_id": 5729223567038307366,
+		"tree_id": 2916019053042637603,
 		"tree_state": 1,
 		"tree_type": 2,
 		"hash_strategy": 4,
@@ -36,12 +36,12 @@
 		},
 		"max_root_duration": {},
 		"create_time": {
-			"seconds": 1523456034,
-			"nanos": 384000000
+			"seconds": 1524330530,
+			"nanos": 908000000
 		},
 		"update_time": {
-			"seconds": 1523456034,
-			"nanos": 384000000
+			"seconds": 1524330530,
+			"nanos": 908000000
 		}
 	},
 	"vrf": {
