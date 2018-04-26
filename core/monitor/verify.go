@@ -89,17 +89,6 @@ func (e *ErrList) Proto() []*statuspb.Status {
 	return errs
 }
 
-// updateTrusted sets the local reference for the latest SignedLogRoot if
-// newTrusted is correctly signed and newer than the current stored root.
-func (m *Monitor) updateTrusted(newTrusted *types.LogRootV1) {
-	if newTrusted.TimestampNanos <= m.trusted.TimestampNanos ||
-		newTrusted.TreeSize < m.trusted.TreeSize {
-		// Valid root, but it's older than the one we currently have.
-		return
-	}
-	m.trusted = *newTrusted
-}
-
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.SignedMapRoot, expectedNewRoot *types.MapRootV1) []error {
 	errs := ErrList{}
 	mutator := entry.New()

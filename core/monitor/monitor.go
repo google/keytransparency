@@ -40,7 +40,6 @@ type Monitor struct {
 	mapVerifier *tclient.MapVerifier
 	signer      *tcrypto.Signer
 	store       monitorstorage.Interface
-	trusted     types.LogRootV1
 }
 
 // NewFromDomain produces a new monitor from a Domain object.
