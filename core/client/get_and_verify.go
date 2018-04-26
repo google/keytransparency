@@ -18,8 +18,9 @@ import (
 	"context"
 
 	"github.com/golang/glog"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/trillian/types"
+
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // VerifiedGetEntry fetches and verifies the results of GetEntry.
@@ -43,4 +44,59 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 	Vlog.Printf("✓ Log root updated.")
 
 	return e, slr, nil
+}
+
+// VerifiedGetLatestEpoch fetches the latest revision from the key server.
+// It also verifies the consistency from the last seen revision.
+// Returns the latest log root and the latest map root.
+func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, *types.MapRootV1, error) {
+	// Only one method should attempt to update the trusted root at time.
+	c.trustedLock.Lock()
+	defer c.trustedLock.Unlock()
+
+	e, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
+		DomainId:      c.domainID,
+		FirstTreeSize: int64(c.trusted.TreeSize),
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	slr, smr, err := c.VerifyEpoch(e, c.trusted)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.updateTrusted(slr)
+	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
+	Vlog.Printf("✓ Log root updated.")
+	return slr, smr, nil
+}
+
+// VerifiedGetEpoch fetches the requested revision from the key server.
+// It also verifies the consistency of the latest log root against the last seen log root.
+// Returns the latest log root and the requested map root.
+func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogRootV1, *types.MapRootV1, error) {
+	// Only one method should attempt to update the trusted root at time.
+	c.trustedLock.Lock()
+	defer c.trustedLock.Unlock()
+
+	e, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
+		DomainId:      c.domainID,
+		Epoch:         epoch,
+		FirstTreeSize: int64(c.trusted.TreeSize),
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	slr, smr, err := c.VerifyEpoch(e, c.trusted)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.updateTrusted(slr)
+	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
+	Vlog.Printf("✓ Log root updated.")
+	return slr, smr, nil
 }

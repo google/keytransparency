@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
@@ -80,11 +81,12 @@ var (
 // - - Sign key update requests.
 type Client struct {
 	*Verifier
-	cli        pb.KeyTransparencyClient
-	domainID   string
-	mutator    mutator.Func
-	RetryDelay time.Duration
-	trusted    types.LogRootV1
+	cli         pb.KeyTransparencyClient
+	domainID    string
+	mutator     mutator.Func
+	RetryDelay  time.Duration
+	trusted     types.LogRootV1
+	trustedLock sync.Mutex
 }
 
 // NewFromConfig creates a new client from a config

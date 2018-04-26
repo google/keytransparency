@@ -19,7 +19,6 @@ package monitor
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"math/big"
 
@@ -90,36 +89,6 @@ func (e *ErrList) Proto() []*statuspb.Status {
 	return errs
 }
 
-// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
-// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
-func (m *Monitor) VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) []error {
-	errs := ErrList{}
-
-	logRoot, err := m.logVerifier.VerifyRoot(&trusted, epoch.GetLogRoot(), epoch.GetLogConsistency())
-	if err != nil {
-		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyLogRoot: %v", err).WithDetails(epoch.GetLogRoot()))
-	}
-	m.updateTrusted(logRoot)
-	mapRoot, err := m.mapVerifier.VerifySignedMapRoot(epoch.GetSmr())
-	if err != nil {
-		glog.Infof("couldn't verify signature on map root: %v", err)
-		errs.AppendStatus(status.Newf(codes.DataLoss, "VerifyMapRoot: %v", err).WithDetails(epoch.GetSmr()))
-	}
-
-	b, err := json.Marshal(epoch.GetSmr())
-	if err != nil {
-		glog.Errorf("json.Marshal(): %v", err)
-		errs.AppendStatus(status.Newf(codes.DataLoss, "json.Marshal(): %v", err).WithDetails(epoch.GetSmr()))
-	}
-	leafIndex := int64(mapRoot.Revision)
-	treeSize := int64(logRoot.TreeSize)
-	if err := m.logVerifier.VerifyInclusionAtIndex(logRoot, b, leafIndex, epoch.GetLogInclusion()); err != nil {
-		glog.Errorf("m.logVerifier.VerifyInclusionAtIndex((%v, %v, _): %v", leafIndex, treeSize, err)
-		errs.AppendStatus(status.Newf(codes.DataLoss, "invalid log inclusion: %v", err).WithDetails(epoch))
-	}
-	return errs
-}
-
 // updateTrusted sets the local reference for the latest SignedLogRoot if
 // newTrusted is correctly signed and newer than the current stored root.
 func (m *Monitor) updateTrusted(newTrusted *types.LogRootV1) {
@@ -131,7 +100,7 @@ func (m *Monitor) updateTrusted(newTrusted *types.LogRootV1) {
 	m.trusted = *newTrusted
 }
 
-func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot *trillian.SignedMapRoot) []error {
+func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.SignedMapRoot, expectedNewRoot *types.MapRootV1) []error {
 	errs := ErrList{}
 	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
@@ -203,12 +172,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNew
 	return errs
 }
 
-func (m *Monitor) validateMapRoot(expectedRoot *trillian.SignedMapRoot, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
-	newRoot, err := m.mapVerifier.VerifySignedMapRoot(expectedRoot)
-	if err != nil {
-		return err
-	}
-
+func (m *Monitor) validateMapRoot(newRoot *types.MapRootV1, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
 	// compute the new root using local intermediate hashes from epoch e
 	// (above proof hashes):
 	hs2 := merkle.NewHStar2(m.mapVerifier.MapID, m.mapVerifier.Hasher)

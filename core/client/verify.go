@@ -160,3 +160,36 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	Vlog.Printf("✓ Log inclusion proof verified.")
 	return mapRoot, logRoot, nil
 }
+
+// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
+// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
+func (v *Verifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
+
+	mapRoot, err := v.mapVerifier.VerifySignedMapRoot(in.GetSmr())
+	if err != nil {
+		Vlog.Printf("✗ Signed Map Head signature verification failed.")
+		return nil, nil, fmt.Errorf("VerifySignedMapRoot(): %v", err)
+	}
+
+	Vlog.Printf("✓ Signed Map Head signature verified.")
+
+	// Verify consistency proof between root and newroot.
+	// TODO(gdbelvin): Gossip root.
+	logRoot, err := v.logVerifier.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency())
+	if err != nil {
+		return nil, nil, fmt.Errorf("logVerifier: VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
+	}
+
+	// Verify inclusion proof.
+	b, err := json.Marshal(in.GetSmr())
+	if err != nil {
+		return nil, nil, fmt.Errorf("json.Marshal(): %v", err)
+	}
+	leafIndex := int64(mapRoot.Revision)
+	treeSize := int64(logRoot.TreeSize)
+	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetLogInclusion()); err != nil {
+		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, treeSize, err)
+	}
+	Vlog.Printf("✓ Log inclusion proof verified.")
+	return logRoot, mapRoot, nil
+}
