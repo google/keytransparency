@@ -17,7 +17,6 @@ package sequencer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -333,11 +332,6 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 
 // TODO(gdbelvin): Add leaf at a specific index. trillian#423
 func queueLogLeaf(ctx context.Context, logClient *tclient.LogClient, smr *tpb.SignedMapRoot) error {
-	smrJSON, err := json.Marshal(smr)
-	if err != nil {
-		return err
-	}
-
 	// Queue the leaf and then wait until it has been sequenced and verified.
-	return logClient.AddLeaf(ctx, smrJSON)
+	return logClient.AddLeaf(ctx, smr.MapRoot)
 }

@@ -39,8 +39,6 @@ import (
 
 	mopb "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
-	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 )
 
 var (

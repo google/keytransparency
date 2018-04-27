@@ -23,7 +23,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/subtle/aead"
 	"github.com/google/tink/go/tink"

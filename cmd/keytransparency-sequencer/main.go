@@ -35,9 +35,6 @@ import (
 
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
-	_ "github.com/google/trillian/merkle/coniks"    // Load hasher
-	_ "github.com/google/trillian/merkle/maphasher" // Load hasher
-	_ "github.com/google/trillian/merkle/objhasher" // Load hasher
 )
 
 var (

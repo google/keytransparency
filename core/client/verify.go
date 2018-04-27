@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -30,6 +29,8 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tclient "github.com/google/trillian/client"
+	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 )
 
 var (
@@ -167,10 +168,7 @@ func (v *Verifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.Lo
 	}
 
 	// Verify inclusion proof.
-	b, err := json.Marshal(in.GetSmr())
-	if err != nil {
-		return nil, nil, fmt.Errorf("json.Marshal(): %v", err)
-	}
+	b := in.GetSmr().GetMapRoot()
 	leafIndex := int64(mapRoot.Revision)
 	treeSize := int64(logRoot.TreeSize)
 	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetLogInclusion()); err != nil {

@@ -19,7 +19,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/crypto/keys/pem"
