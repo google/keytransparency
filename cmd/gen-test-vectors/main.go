@@ -21,8 +21,10 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
@@ -192,27 +194,27 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 
 // SaveTestVectors generates test vectors for interoprability testing.
 func SaveTestVectors(dir string, env *integration.Env, resps []testdata.GetEntryResponseVector) error {
+	marshaler := &jsonpb.Marshaler{
+		Indent: "\t",
+	}
 	// Output all key material needed to verify the test vectors.
 	domainFile := dir + "/domain.json"
-	b, err := json.Marshal(env.Domain)
+	f, err := os.OpenFile(domainFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return fmt.Errorf("json.Marshal(): %v", err)
+		return err
 	}
-	var out bytes.Buffer
-	json.Indent(&out, b, "", "\t")
-	if err := ioutil.WriteFile(domainFile, out.Bytes(), 0666); err != nil {
-		return fmt.Errorf("WriteFile(%v): %v", domainFile, err)
+	defer f.Close()
+	if err := marshaler.Marshal(f, env.Domain); err != nil {
+		return fmt.Errorf("jsonpb.Marshal(): %v", err)
 	}
-	out.Reset()
 
 	// Save list of responses
 	respFile := dir + "/getentryresponse.json"
-	b, err = json.Marshal(resps)
+	out, err := json.MarshalIndent(resps, "", "\t")
 	if err != nil {
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
-	json.Indent(&out, b, "", "\t")
-	if err := ioutil.WriteFile(respFile, out.Bytes(), 0666); err != nil {
+	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
 		return fmt.Errorf("WriteFile(%v): %v", respFile, err)
 	}
 	return nil

@@ -18,8 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/types"
 
@@ -32,13 +34,14 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 	ctx := context.Background()
 
 	domainFile := "../testdata/domain.json"
-	b, err := ioutil.ReadFile(domainFile)
+	f, err := os.Open(domainFile)
 	if err != nil {
 		t.Fatalf("ReadFile(%v): %v", domainFile, err)
 	}
+	defer f.Close()
 	var domainPB pb.Domain
-	if err := json.Unmarshal(b, &domainPB); err != nil {
-		t.Fatalf("Unmarshal(): %v", err)
+	if err := jsonpb.Unmarshal(f, &domainPB); err != nil {
+		t.Fatalf("jsonpb.Unmarshal(): %v", err)
 	}
 	v, err := NewVerifierFromDomain(&domainPB)
 	if err != nil {
@@ -46,7 +49,7 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 	}
 
 	respFile := "../testdata/getentryresponse.json"
-	b, err = ioutil.ReadFile(respFile)
+	b, err := ioutil.ReadFile(respFile)
 	if err != nil {
 		t.Fatalf("ReadFile(%v): %v", respFile, err)
 	}
