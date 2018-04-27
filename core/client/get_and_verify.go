@@ -67,6 +67,7 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 	if err != nil {
 		return nil, nil, err
 	}
+	c.updateTrusted(slr)
 
 	// Also check that the map revision returned is the latest one.
 	// TreeSize -1 == mapRoot.Revision.
@@ -78,7 +79,6 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 		return nil, nil, fmt.Errorf("GetLatestEpoch() did not return latest map revision. Got MapRoot.Revison: %v, want: %v", smr.Revision, wantRevision)
 	}
 
-	c.updateTrusted(slr)
 	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
 	Vlog.Printf("✓ Log root updated.")
 	return slr, smr, nil

@@ -360,14 +360,13 @@ func sthForRevision(revision int64) int64 {
 // mapRevisionFor returns the latest map revision, given the latest sth.
 // The log is the authoritative source of the latest revision.
 func mapRevisionFor(sth *types.LogRootV1) (uint64, error) {
-	treeSize := sth.TreeSize
 	// The revision of the map is its index in the log.
 	if sth.TreeSize < 1 {
 		return 0, ErrLogUninitialized
 	}
 
 	// TreeSize = max_index + 1 because the log starts at index 0.
-	maxIndex := treeSize - 1
+	maxIndex := sth.TreeSize - 1
 	return maxIndex, nil
 }
 

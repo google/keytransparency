@@ -129,13 +129,6 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	}
 	leafProof.Leaf.Index = index[:]
 
-	mapRoot, err := v.mapVerifier.VerifySignedMapRoot(in.GetSmr())
-	if err != nil {
-		Vlog.Printf("✗ Signed Map Head signature verification failed.")
-		return nil, nil, fmt.Errorf("VerifySignedMapRoot(): %v", err)
-	}
-
-	Vlog.Printf("✓ Signed Map Head signature verified.")
 	if err := v.mapVerifier.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
