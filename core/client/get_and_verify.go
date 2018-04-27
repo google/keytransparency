@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian/types"
@@ -65,6 +66,16 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 	slr, smr, err := c.VerifyEpoch(e, c.trusted)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Also check that the map revision returned is the latest one.
+	// TreeSize -1 == mapRoot.Revision.
+	wantRevision, err := mapRevisionFor(slr)
+	if err != nil {
+		return nil, nil, err
+	}
+	if smr.Revision != wantRevision {
+		return nil, nil, fmt.Errorf("GetLatestEpoch() did not return latest map revision. Got MapRoot.Revison: %v, want: %v", smr.Revision, wantRevision)
 	}
 
 	c.updateTrusted(slr)

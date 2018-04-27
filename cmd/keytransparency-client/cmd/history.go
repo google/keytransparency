@@ -57,18 +57,14 @@ and verify that the results are consistent.`,
 		}
 		if end == 0 {
 			// Get the current epoch.
-			slr, err := c.LatestSTH(ctx)
+			slr, smr, err := c.VerifiedGetLatestEpoch(ctx)
 			if err != nil {
 				return fmt.Errorf("GetEntry failed: %v", err)
-			}
-			revision, err := mapRevisionFor(slr)
-			if err != nil {
-				return err
 			}
 			if verbose {
 				fmt.Printf("Got current epoch: %v\n", slr.TreeSize-1)
 			}
-			end = revision
+			end = int64(smr.Revision)
 		}
 
 		profiles, err := c.ListHistory(ctx, userID, appID, start, end)
@@ -93,20 +89,6 @@ and verify that the results are consistent.`,
 		}
 		return nil
 	},
-}
-
-// mapRevisionFor returns the latest map revision, given the latest sth.
-// The log is the authoritative source of the latest revision.
-func mapRevisionFor(sth *types.LogRootV1) (int64, error) {
-	treeSize := int64(sth.TreeSize)
-	// TreeSize = max_index + 1 because the log starts at index 0.
-	maxIndex := treeSize - 1
-
-	// The revision of the map is its index in the log.
-	if maxIndex < 0 {
-		return 0, fmt.Errorf("log is uninitialized")
-	}
-	return maxIndex, nil
 }
 
 // mapHeads satisfies sort.Interface to allow sorting []MapHead by epoch.

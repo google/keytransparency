@@ -63,6 +63,9 @@ var (
 	// ErrIncomplete occurs when the server indicates that requested epochs
 	// are not available.
 	ErrIncomplete = errors.New("incomplete account history")
+	// ErrLogUninitialized occurs when the Log.TreeSize < 1 which indicates
+	// that the log of signed map roots is empty.
+	ErrLogUninitialized = errors.New("log is uninitialized")
 	// Vlog is the verbose logger. By default it outputs to /dev/null.
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
@@ -352,6 +355,20 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 // Map revision N is stored at Log index N, the minimum TreeSize will be N+1.
 func sthForRevision(revision int64) int64 {
 	return revision + 1
+}
+
+// mapRevisionFor returns the latest map revision, given the latest sth.
+// The log is the authoritative source of the latest revision.
+func mapRevisionFor(sth *types.LogRootV1) (uint64, error) {
+	treeSize := sth.TreeSize
+	// The revision of the map is its index in the log.
+	if sth.TreeSize < 1 {
+		return 0, ErrLogUninitialized
+	}
+
+	// TreeSize = max_index + 1 because the log starts at index 0.
+	maxIndex := treeSize - 1
+	return maxIndex, nil
 }
 
 // WaitForRevision waits until a given map revision is available.
