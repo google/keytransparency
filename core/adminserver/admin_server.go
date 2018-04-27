@@ -41,9 +41,11 @@ import (
 var (
 	logArgs = &tpb.CreateTreeRequest{
 		Tree: &tpb.Tree{
-			DisplayName:        "KT SMH Log",
-			TreeState:          tpb.TreeState_ACTIVE,
-			TreeType:           tpb.TreeType_LOG,
+			DisplayName: "KT SMH Log",
+			TreeState:   tpb.TreeState_ACTIVE,
+			TreeType:    tpb.TreeType_LOG,
+			// Clients that verify output from the log need to import
+			// _ "github.com/google/trillian/merkle/rfc6962"
 			HashStrategy:       tpb.HashStrategy_RFC6962_SHA256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
@@ -52,9 +54,11 @@ var (
 	}
 	mapArgs = &tpb.CreateTreeRequest{
 		Tree: &tpb.Tree{
-			DisplayName:        "KT Map",
-			TreeState:          tpb.TreeState_ACTIVE,
-			TreeType:           tpb.TreeType_MAP,
+			DisplayName: "KT Map",
+			TreeState:   tpb.TreeState_ACTIVE,
+			TreeType:    tpb.TreeType_MAP,
+			// Clients that verify output from the map need to import
+			// _ "github.com/google/trillian/merkle/coniks"
 			HashStrategy:       tpb.HashStrategy_CONIKS_SHA512_256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
