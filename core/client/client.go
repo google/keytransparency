@@ -32,6 +32,7 @@ import (
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
@@ -129,6 +130,8 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 		return
 	}
 	c.trusted = *newTrusted
+	glog.Infof("Trusted root updated to TreeSize %v", c.trusted.TreeSize)
+	Vlog.Printf("✓ Log root updated.")
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.

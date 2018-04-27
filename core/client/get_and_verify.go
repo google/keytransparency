@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/glog"
 	"github.com/google/trillian/types"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -41,8 +40,6 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 		return nil, nil, err
 	}
 	c.updateTrusted(slr)
-	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
-	Vlog.Printf("✓ Log root updated.")
 
 	return e, slr, nil
 }
@@ -78,9 +75,6 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 	if smr.Revision != wantRevision {
 		return nil, nil, fmt.Errorf("GetLatestEpoch() did not return latest map revision. Got MapRoot.Revison: %v, want: %v", smr.Revision, wantRevision)
 	}
-
-	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
-	Vlog.Printf("✓ Log root updated.")
 	return slr, smr, nil
 }
 
@@ -107,7 +101,5 @@ func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogR
 	}
 
 	c.updateTrusted(slr)
-	glog.Infof("VerifiedGetEntry: Trusted root updated to TreeSize %v", c.trusted.TreeSize)
-	Vlog.Printf("✓ Log root updated.")
 	return slr, smr, nil
 }
