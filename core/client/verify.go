@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -30,6 +29,8 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tclient "github.com/google/trillian/client"
+	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 )
 
 var (
@@ -150,10 +151,7 @@ func (v *Verifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, 
 	}
 
 	// Verify inclusion proof.
-	b, err := json.Marshal(in.GetSmr())
-	if err != nil {
-		return nil, nil, fmt.Errorf("json.Marshal(): %v", err)
-	}
+	b := in.GetSmr().GetMapRoot()
 	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, int64(mapRoot.Revision), in.GetLogInclusion()); err != nil {
 		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, mapRoot.Revision, err)
 	}

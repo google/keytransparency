@@ -35,8 +35,6 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
-	_ "github.com/google/trillian/merkle/objhasher" // Used to init the package so that the hasher gets registered
 )
 
 var (

@@ -1,56 +1,40 @@
 {
-	"domain_id": "domain_5577006791947779410",
+	"domainId": "domain_5577006791947779410",
 	"log": {
-		"tree_id": 4013249521620300357,
-		"tree_state": 1,
-		"tree_type": 1,
-		"hash_strategy": 3,
-		"hash_algorithm": 4,
-		"signature_algorithm": 3,
-		"display_name": "KT SMH Log",
+		"treeId": "1732270362285615536",
+		"treeState": "ACTIVE",
+		"treeType": "LOG",
+		"hashStrategy": "RFC6962_SHA256",
+		"hashAlgorithm": "SHA256",
+		"signatureAlgorithm": "ECDSA",
+		"displayName": "KT SMH Log",
 		"description": "KT domain domain_5577006791947779410",
-		"public_key": {
+		"publicKey": {
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqGXPnhMIclRmYHSmAnCMmfDUJ9iNBMmFxR/wHJdL12AuVUkgcuhbEp2hy5ETs7bfFc2P95IYFlmbiuHMq3UY/A=="
 		},
-		"max_root_duration": {},
-		"create_time": {
-			"seconds": 1523456034,
-			"nanos": 378000000
-		},
-		"update_time": {
-			"seconds": 1523456034,
-			"nanos": 378000000
-		}
+		"maxRootDuration": "0.000s",
+		"createTime": "2018-04-27T14:14:56.890Z",
+		"updateTime": "2018-04-27T14:14:56.890Z"
 	},
 	"map": {
-		"tree_id": 5729223567038307366,
-		"tree_state": 1,
-		"tree_type": 2,
-		"hash_strategy": 4,
-		"hash_algorithm": 4,
-		"signature_algorithm": 3,
-		"display_name": "KT Map",
+		"treeId": "7216431821431111201",
+		"treeState": "ACTIVE",
+		"treeType": "MAP",
+		"hashStrategy": "CONIKS_SHA512_256",
+		"hashAlgorithm": "SHA256",
+		"signatureAlgorithm": "ECDSA",
+		"displayName": "KT Map",
 		"description": "KT domain domain_5577006791947779410",
-		"public_key": {
+		"publicKey": {
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWLHm0TLYaTzENpPkBl2E79ySqJI+EW51VpoWh7wqY3OjSJcft4zgEeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA=="
 		},
-		"max_root_duration": {},
-		"create_time": {
-			"seconds": 1523456034,
-			"nanos": 384000000
-		},
-		"update_time": {
-			"seconds": 1523456034,
-			"nanos": 384000000
-		}
+		"maxRootDuration": "0.000s",
+		"createTime": "2018-04-27T14:14:56.896Z",
+		"updateTime": "2018-04-27T14:14:56.896Z"
 	},
 	"vrf": {
 		"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF2Pm2kKya+JBun1QRmKQMcoMOIBNWp8fjECkJX+/hNWdV1UKb12W+yXcX2MqN7ZMX77hS9mLus/WaE0NS370mA=="
 	},
-	"min_interval": {
-		"seconds": 216000
-	},
-	"max_interval": {
-		"seconds": 216000
-	}
+	"minInterval": "216000.000s",
+	"maxInterval": "216000.000s"
 }

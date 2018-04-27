@@ -47,8 +47,8 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	domaindef "github.com/google/keytransparency/core/domain"
-	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
-	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
+	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )
