@@ -40,8 +40,6 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	gauth "github.com/google/keytransparency/impl/google/authentication"
-	_ "github.com/google/trillian/merkle/coniks"    // Register coniks
-	_ "github.com/google/trillian/merkle/objhasher" // Register objhasher
 )
 
 var (

@@ -29,6 +29,8 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tclient "github.com/google/trillian/client"
+	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 )
 
 var (

@@ -29,8 +29,8 @@ import (
 	"github.com/google/trillian/testonly/integration"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	_ "github.com/google/trillian/merkle/coniks"    // Register hasher
-	_ "github.com/google/trillian/merkle/objhasher" // Register hasher
+	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 )
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
