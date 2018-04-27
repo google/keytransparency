@@ -199,7 +199,7 @@ func SaveTestVectors(dir string, env *integration.Env, resps []testdata.GetEntry
 	}
 	// Output all key material needed to verify the test vectors.
 	domainFile := dir + "/domain.json"
-	f, err := os.OpenFile(domainFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	f, err := os.Create(domainFile)
 	if err != nil {
 		return err
 	}
