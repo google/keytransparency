@@ -16,25 +16,119 @@ package adminserver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/storage/testdb"
+	"github.com/google/trillian/testonly"
 	"github.com/google/trillian/testonly/integration"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tpb "github.com/google/trillian"
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 )
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 	return der.NewProtoFromSpec(spec)
+}
+
+type miniEnv struct {
+	s              *testonly.MockServer
+	srv            *Server
+	stopFakeServer func()
+	stopController func()
+}
+
+func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
+	fakeDomains := fake.NewDomainStorage()
+	if err := fakeDomains.Write(ctx, &domain.Domain{
+		DomainID: "existingdomain",
+	}); err != nil {
+		return nil, fmt.Errorf("admin.Write(): %v", err)
+	}
+
+	ctrl := gomock.NewController(t)
+	s, stopFakeServer, err := testonly.NewMockServer(ctrl)
+	if err != nil {
+		return nil, fmt.Errorf("Error starting fake server: %v", err)
+	}
+	srv := &Server{
+		tlog:     s.LogClient,
+		tmap:     s.MapClient,
+		logAdmin: s.AdminClient,
+		mapAdmin: s.AdminClient,
+		domains:  fakeDomains,
+		keygen:   vrfKeyGen,
+	}
+	return &miniEnv{
+		s:              s,
+		srv:            srv,
+		stopController: ctrl.Finish,
+		stopFakeServer: stopFakeServer,
+	}, nil
+}
+
+func (e *miniEnv) Close() {
+	e.stopController()
+	e.stopFakeServer()
+}
+
+func TestCreateDomain(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	for _, tc := range []struct {
+		desc     string
+		domainID string
+		wantCode codes.Code
+		expect   func(*miniEnv)
+	}{
+		{
+			desc:     "Already Exists",
+			domainID: "existingdomain",
+			wantCode: codes.AlreadyExists,
+			expect:   func(e *miniEnv) {},
+		},
+		{
+			desc:     "Map init fails",
+			domainID: "mapinitfails",
+			wantCode: codes.Internal,
+			expect: func(e *miniEnv) {
+				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.s.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
+				e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
+				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
+				e.s.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, fmt.Errorf("init map failure")).MinTimes(1)
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			e, err := newMiniEnv(ctx, t)
+			if err != nil {
+				t.Fatalf("newMiniEnv(): %v", err)
+			}
+			defer e.Close()
+
+			tc.expect(e)
+
+			if _, err := e.srv.CreateDomain(ctx, &pb.CreateDomainRequest{
+				DomainId: tc.domainID,
+			}); status.Code(err) != tc.wantCode {
+				t.Errorf("CreateDomain(): %v, want %v", err, tc.wantCode)
+			}
+		})
+	}
 }
 
 func TestCreateRead(t *testing.T) {

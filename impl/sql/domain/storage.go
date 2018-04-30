@@ -26,6 +26,8 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/trillian/crypto/keyspb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -170,7 +172,9 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 		&d.MapID, &d.LogID,
 		&pubkey, &anyData,
 		&d.MinInterval, &d.MaxInterval,
-		&d.Deleted); err != nil {
+		&d.Deleted); err == sql.ErrNoRows {
+		return nil, status.Errorf(codes.NotFound, "%v", err)
+	} else if err != nil {
 		return nil, err
 	}
 
