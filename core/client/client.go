@@ -151,6 +151,8 @@ func min(x, y int32) int32 {
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
 func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*types.MapRootV1][]byte, error) {
+	c.trustedLock.Lock()
+	defer c.trustedLock.Unlock()
 	if start < 0 {
 		return nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
