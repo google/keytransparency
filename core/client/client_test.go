@@ -26,9 +26,9 @@ func TestMapRevisionFor(t *testing.T) {
 		wantRevision uint64
 		wantErr      error
 	}{
-		{treeSize: 1, wantRevision: 0, wantErr: nil},
-		{treeSize: 0, wantRevision: 0, wantErr: ErrLogUninitialized},
-		{treeSize: ^uint64(0), wantRevision: ^uint64(0) - 1, wantErr: nil},
+		{treeSize: 1, wantRevision: 0},
+		{treeSize: 0, wantRevision: 0, wantErr: ErrLogEmpty},
+		{treeSize: ^uint64(0), wantRevision: ^uint64(0) - 1},
 	} {
 		revision, err := mapRevisionFor(&types.LogRootV1{TreeSize: tc.treeSize})
 		if got, want := revision, tc.wantRevision; got != want {

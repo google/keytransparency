@@ -64,9 +64,9 @@ var (
 	// ErrIncomplete occurs when the server indicates that requested epochs
 	// are not available.
 	ErrIncomplete = errors.New("incomplete account history")
-	// ErrLogUninitialized occurs when the Log.TreeSize < 1 which indicates
+	// ErrLogEmpty occurs when the Log.TreeSize < 1 which indicates
 	// that the log of signed map roots is empty.
-	ErrLogUninitialized = errors.New("log is uninitialized")
+	ErrLogEmpty = errors.New("log is empty - domain initialization failed")
 	// Vlog is the verbose logger. By default it outputs to /dev/null.
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
@@ -123,6 +123,7 @@ func New(ktClient pb.KeyTransparencyClient,
 
 // updateTrusted sets the local reference for the latest SignedLogRoot if
 // newTrusted is correctly signed and newer than the current stored root.
+// updateTrusted should be called while c.trustedLock has been acquired.
 func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 	if newTrusted.TimestampNanos <= c.trusted.TimestampNanos ||
 		newTrusted.TreeSize < c.trusted.TreeSize {
@@ -365,10 +366,10 @@ func sthForRevision(revision int64) int64 {
 func mapRevisionFor(sth *types.LogRootV1) (uint64, error) {
 	// The revision of the map is its index in the log.
 	if sth.TreeSize < 1 {
-		return 0, ErrLogUninitialized
+		return 0, ErrLogEmpty
 	}
 
-	// TreeSize = max_index + 1 because the log starts at index 0.
+	// TreeSize = maxIndex + 1 because the log starts at index 0.
 	maxIndex := sth.TreeSize - 1
 	return maxIndex, nil
 }

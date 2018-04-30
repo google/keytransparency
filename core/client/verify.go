@@ -170,9 +170,8 @@ func (v *Verifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.Lo
 	// Verify inclusion proof.
 	b := in.GetSmr().GetMapRoot()
 	leafIndex := int64(mapRoot.Revision)
-	treeSize := int64(logRoot.TreeSize)
 	if err := v.logVerifier.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetLogInclusion()); err != nil {
-		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, treeSize, err)
+		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, leafIndex, err)
 	}
 	Vlog.Printf("✓ Log inclusion proof verified.")
 	return logRoot, mapRoot, nil

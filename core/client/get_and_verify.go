@@ -25,6 +25,8 @@ import (
 
 // VerifiedGetEntry fetches and verifies the results of GetEntry.
 func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*pb.GetEntryResponse, *types.LogRootV1, error) {
+	c.trustedLock.Lock()
+	defer c.trustedLock.Unlock()
 	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
 		DomainId:      c.domainID,
 		UserId:        userID,
@@ -64,10 +66,11 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 	if err != nil {
 		return nil, nil, err
 	}
+	// At this point, the SignedLogRoot has been verified as consistent.
 	c.updateTrusted(slr)
 
 	// Also check that the map revision returned is the latest one.
-	// TreeSize -1 == mapRoot.Revision.
+	// TreeSize - 1 == mapRoot.Revision.
 	wantRevision, err := mapRevisionFor(slr)
 	if err != nil {
 		return nil, nil, err
