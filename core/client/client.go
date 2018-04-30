@@ -151,8 +151,6 @@ func min(x, y int32) int32 {
 // ListHistory returns a list of profiles starting and ending at given epochs.
 // It also filters out all identical consecutive profiles.
 func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*types.MapRootV1][]byte, error) {
-	c.trustedLock.Lock()
-	defer c.trustedLock.Unlock()
 	if start < 0 {
 		return nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
@@ -161,43 +159,47 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 	epochsReceived := int64(0)
 	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
-		trustedSnapshot := c.trusted
-		resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-			DomainId:      c.domainID,
-			UserId:        userID,
-			AppId:         appID,
-			FirstTreeSize: int64(trustedSnapshot.TreeSize),
-			Start:         start,
-			PageSize:      min(int32((end-start)+1), pageSize),
-		}, opts...)
-		if err != nil {
-			return nil, err
-		}
-		epochsReceived += int64(len(resp.GetValues()))
-
-		for i, v := range resp.GetValues() {
-			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			smr, slr, err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, trustedSnapshot, v)
+		{
+			// TODO(gbelvin): Factor out the verification of a single getHistory request into a separate function.
+			c.trustedLock.Lock()
+			defer c.trustedLock.Unlock()
+			resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
+				DomainId:      c.domainID,
+				UserId:        userID,
+				AppId:         appID,
+				FirstTreeSize: int64(c.trusted.TreeSize),
+				Start:         start,
+				PageSize:      min(int32((end-start)+1), pageSize),
+			}, opts...)
 			if err != nil {
 				return nil, err
 			}
-			c.updateTrusted(slr)
+			epochsReceived += int64(len(resp.GetValues()))
 
-			// Compress profiles that are equal through time.  All
-			// nil profiles before the first profile are ignored.
-			profile := v.GetCommitted().GetData()
-			if bytes.Equal(currentProfile, profile) {
-				continue
+			for i, v := range resp.GetValues() {
+				Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
+				smr, slr, err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, v)
+				if err != nil {
+					return nil, err
+				}
+				c.updateTrusted(slr)
+
+				// Compress profiles that are equal through time.  All
+				// nil profiles before the first profile are ignored.
+				profile := v.GetCommitted().GetData()
+				if bytes.Equal(currentProfile, profile) {
+					continue
+				}
+
+				// Append the slice and update currentProfile.
+				profiles[smr] = profile
+				currentProfile = profile
 			}
-
-			// Append the slice and update currentProfile.
-			profiles[smr] = profile
-			currentProfile = profile
+			if resp.NextStart == 0 {
+				break // No more data.
+			}
+			start = resp.NextStart // Fetch the next block of results.
 		}
-		if resp.NextStart == 0 {
-			break // No more data.
-		}
-		start = resp.NextStart // Fetch the next block of results.
 	}
 
 	if epochsReceived < epochsWant {
