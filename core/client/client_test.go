@@ -120,6 +120,7 @@ func TestPaginateHistory(t *testing.T) {
 
 	type request struct {
 		wantStart int64
+		wantSize  int32
 		next      int64
 		items     []*pb.GetEntryResponse
 	}
@@ -128,10 +129,8 @@ func TestPaginateHistory(t *testing.T) {
 		desc       string
 		start, end int64
 		reqs       []request
-
-		clientPageSize int32
-		serverPageSize int32
-		wantErr        error
+		pageSize   int32
+		wantErr    error
 	}{
 		{
 			desc:    "incomplete",
@@ -172,6 +171,25 @@ func TestPaginateHistory(t *testing.T) {
 				}},
 			},
 		},
+		{
+			desc:     "pageSize",
+			start:    0,
+			end:      5,
+			pageSize: 3,
+			reqs: []request{
+				// The value of next is opaque to the client.
+				{wantStart: 0, wantSize: 3, next: 1, items: []*pb.GetEntryResponse{
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{1}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{2}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{3}}},
+				}},
+				{wantStart: 1, wantSize: 2, next: 0, items: []*pb.GetEntryResponse{
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{5}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{6}}},
+				}},
+			},
+		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -185,13 +203,15 @@ func TestPaginateHistory(t *testing.T) {
 			c := Client{
 				Verifier: &fakeVerifier{},
 				cli:      s.Client,
+				pageSize: tc.pageSize,
 			}
 
 			for _, r := range tc.reqs {
 				s.Server.EXPECT().ListEntryHistory(gomock.Any(), matchers.ProtoEqual(&pb.ListEntryHistoryRequest{
-					AppId:  appID,
-					UserId: userID,
-					Start:  r.wantStart,
+					AppId:    appID,
+					UserId:   userID,
+					Start:    r.wantStart,
+					PageSize: r.wantSize,
 				})).
 					Return(&pb.ListEntryHistoryResponse{
 						NextStart: r.next,
