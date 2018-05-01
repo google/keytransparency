@@ -45,13 +45,7 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-const (
-	// Each page contains pageSize profiles. Each profile contains multiple
-	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
-	// size 16 will contain about 8KB of data.
-	pageSize = 16
-	// TODO: Public keys of trusted monitors.
-)
+// TODO: Public keys of trusted monitors.
 
 var (
 	// ErrRetry occurs when an update has been queued, but the
@@ -108,6 +102,10 @@ type Client struct {
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
 	trustedLock sync.Mutex
+	// Each page contains pageSize profiles. Each profile contains multiple
+	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
+	// size 16 will contain about 8KB of data.
+	pageSize int32
 }
 
 // NewFromConfig creates a new client from a config
@@ -135,6 +133,7 @@ func New(ktClient pb.KeyTransparencyClient,
 		domainID:   domainID,
 		mutator:    entry.New(),
 		RetryDelay: retryDelay,
+		pageSize:   16,
 	}
 }
 
@@ -176,7 +175,7 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 	epochsReceived := int64(0)
 	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
-		count := min(int32((end-start)+1), pageSize)
+		count := min(int32((end-start)+1), c.pageSize)
 		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, count)
 		if err != nil {
 			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
