@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
@@ -31,6 +33,7 @@ import (
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
@@ -62,6 +65,11 @@ var (
 	// ErrIncomplete occurs when the server indicates that requested epochs
 	// are not available.
 	ErrIncomplete = errors.New("incomplete account history")
+	// ErrLogEmpty occurs when the Log.TreeSize < 1 which indicates
+	// that the log of signed map roots is empty.
+	ErrLogEmpty = errors.New("log is empty - domain initialization failed")
+	// ErrNonContiguous occurs when there are holes in a list of map roots.
+	ErrNonContiguous = errors.New("noncontiguous map roots")
 	// Vlog is the verbose logger. By default it outputs to /dev/null.
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
@@ -80,11 +88,12 @@ var (
 // - - Sign key update requests.
 type Client struct {
 	*Verifier
-	cli        pb.KeyTransparencyClient
-	domainID   string
-	mutator    mutator.Func
-	RetryDelay time.Duration
-	trusted    types.LogRootV1
+	cli         pb.KeyTransparencyClient
+	domainID    string
+	mutator     mutator.Func
+	RetryDelay  time.Duration
+	trusted     types.LogRootV1
+	trustedLock sync.Mutex
 }
 
 // NewFromConfig creates a new client from a config
@@ -117,6 +126,7 @@ func New(ktClient pb.KeyTransparencyClient,
 
 // updateTrusted sets the local reference for the latest SignedLogRoot if
 // newTrusted is correctly signed and newer than the current stored root.
+// updateTrusted should be called while c.trustedLock has been acquired.
 func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 	if newTrusted.TimestampNanos <= c.trusted.TimestampNanos ||
 		newTrusted.TreeSize < c.trusted.TreeSize {
@@ -124,6 +134,8 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 		return
 	}
 	c.trusted = *newTrusted
+	glog.Infof("Trusted root updated to TreeSize %v", c.trusted.TreeSize)
+	Vlog.Printf("✓ Log root updated.")
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
@@ -139,62 +151,81 @@ func min(x, y int32) int32 {
 	return y
 }
 
-// ListHistory returns a list of profiles starting and ending at given epochs.
-// It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*types.MapRootV1][]byte, error) {
+// ListHistory returns a list of map roots and profiles at each revision.
+func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
 	if start < 0 {
-		return nil, fmt.Errorf("start=%v, want >= 0", start)
+		return nil, nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
-	var currentProfile []byte
-	profiles := make(map[*types.MapRootV1][]byte)
+	allRoots := make(map[uint64]*types.MapRootV1)
+	allProfiles := make(map[uint64][]byte)
 	epochsReceived := int64(0)
 	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
-		trustedSnapshot := c.trusted
-		resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-			DomainId:      c.domainID,
-			UserId:        userID,
-			AppId:         appID,
-			FirstTreeSize: int64(trustedSnapshot.TreeSize),
-			Start:         start,
-			PageSize:      min(int32((end-start)+1), pageSize),
-		}, opts...)
+		count := min(int32((end-start)+1), pageSize)
+		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, count)
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
 		}
-		epochsReceived += int64(len(resp.GetValues()))
-
-		for i, v := range resp.GetValues() {
-			Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-			smr, slr, err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, trustedSnapshot, v)
-			if err != nil {
-				return nil, err
-			}
-			c.updateTrusted(slr)
-
-			// Compress profiles that are equal through time.  All
-			// nil profiles before the first profile are ignored.
-			profile := v.GetCommitted().GetData()
-			if bytes.Equal(currentProfile, profile) {
-				continue
-			}
-
-			// Append the slice and update currentProfile.
-			profiles[smr] = profile
-			currentProfile = profile
+		for r, d := range profiles {
+			allRoots[r.Revision] = r
+			allProfiles[r.Revision] = d
 		}
-		if resp.NextStart == 0 {
+
+		if next == 0 {
 			break // No more data.
 		}
-		start = resp.NextStart // Fetch the next block of results.
+		start = next // Fetch the next block of results.
+		epochsReceived += int64(len(profiles))
 	}
 
 	if epochsReceived < epochsWant {
-		return nil, ErrIncomplete
+		return nil, nil, ErrIncomplete
 	}
 
-	return profiles, nil
+	return allRoots, allProfiles, nil
 }
+
+// CompressHistory takes a map of data by epoch number.
+// CompressHistory returns only the epochs where the associated data changed.
+// CompressHistory returns an error if the list of epochs is not contiguous.
+func CompressHistory(profiles map[uint64][]byte) (map[uint64][]byte, error) {
+	// Sort map roots.
+	epochs := make(uint64Slice, 0, len(profiles))
+	for e := range profiles {
+		epochs = append(epochs, e)
+	}
+	sort.Sort(epochs)
+
+	// Compress profiles that are equal through time.  All
+	// nil profiles before the first profile are ignored.
+	var prevData []byte
+	var prevEpoch uint64
+	ret := make(map[uint64][]byte)
+	for i, e := range epochs {
+		// Verify that the roots are contiguous
+		if i != 0 && e != prevEpoch+1 {
+			glog.Errorf("Non contiguous history. Got epoch %v, want %v", e, prevEpoch+1)
+			return nil, ErrNonContiguous
+		}
+		prevEpoch = e
+
+		// Append to output when data changes.
+		data := profiles[e]
+		if bytes.Equal(data, prevData) {
+			continue
+		}
+		prevData = data
+		ret[e] = data
+	}
+	return ret, nil
+}
+
+// uint64Slice satisfies sort.Interface.
+type uint64Slice []uint64
+
+func (m uint64Slice) Len() int           { return len(m) }
+func (m uint64Slice) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates an UpdateEntryRequest for a user,
 // attempt to submit it multiple times depending until ctx times out.
@@ -352,23 +383,17 @@ func sthForRevision(revision int64) int64 {
 	return revision + 1
 }
 
-// LatestSTH retrieves and verifies the latest epoch.
-func (c *Client) LatestSTH(ctx context.Context) (*types.LogRootV1, error) {
-	// Make a copy of trusted for concurrency safety.
-	trusted := c.trusted
-	resp, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
-		DomainId:      c.domainID,
-		FirstTreeSize: int64(trusted.TreeSize),
-	})
-	if err != nil {
-		return nil, err
+// mapRevisionFor returns the latest map revision, given the latest sth.
+// The log is the authoritative source of the latest revision.
+func mapRevisionFor(sth *types.LogRootV1) (uint64, error) {
+	// The revision of the map is its index in the log.
+	if sth.TreeSize < 1 {
+		return 0, ErrLogEmpty
 	}
-	root, err := c.logVerifier.VerifyRoot(&trusted, resp.GetLogRoot(), resp.GetLogConsistency())
-	if err != nil {
-		return nil, fmt.Errorf("LatestSTH(): %v", err)
-	}
-	c.updateTrusted(root)
-	return root, nil
+
+	// TreeSize = maxIndex + 1 because the log starts at index 0.
+	maxIndex := sth.TreeSize - 1
+	return maxIndex, nil
 }
 
 // WaitForRevision waits until a given map revision is available.
@@ -389,7 +414,7 @@ func (c *Client) WaitForSTHUpdate(ctx context.Context, treeSize int64) error {
 	for {
 		select {
 		case <-time.After(b.Duration()):
-			logRoot, err := c.LatestSTH(ctx)
+			logRoot, _, err := c.VerifiedGetLatestEpoch(ctx)
 			if err != nil {
 				return err
 			}

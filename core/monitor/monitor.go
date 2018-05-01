@@ -40,7 +40,6 @@ type Monitor struct {
 	mapVerifier *tclient.MapVerifier
 	signer      *tcrypto.Signer
 	store       monitorstorage.Interface
-	trusted     types.LogRootV1
 }
 
 // NewFromDomain produces a new monitor from a Domain object.
@@ -124,11 +123,12 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 	defer cancel()
 
 	for pair := range pairs {
-		mapRoot, err := m.mapVerifier.VerifySignedMapRoot(pair.B.GetSmr())
+		_, mapRootB, err := m.cli.VerifyEpoch(pair.B, trusted)
 		if err != nil {
+			glog.Errorf("Invalid Epoch %v: %v", mapRootB.Revision, err)
 			return err
 		}
-		revision := int64(mapRoot.Revision)
+
 		mutations, err := m.cli.EpochMutations(ctx, pair.B)
 		if err != nil {
 			return err
@@ -136,24 +136,25 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 
 		var smr *trillian.SignedMapRoot
 		var errList []error
-		if errs := m.VerifyEpochMutations(pair.A, pair.B, trusted, mutations); len(errs) > 0 {
-			glog.Infof("Epoch %v did not verify: %v", revision, errs)
+
+		if errs := m.verifyMutations(mutations, pair.A.GetSmr(), mapRootB); len(errs) > 0 {
+			glog.Errorf("Invalid Epoch %v Mutations: %v", mapRootB.Revision, errs)
 			errList = errs
 		} else {
 			// Sign if successful.
-			smr, err = m.signer.SignMapRoot(mapRoot)
+			smr, err = m.signer.SignMapRoot(mapRootB)
 			if err != nil {
 				return err
 			}
 		}
 
 		// Save result.
-		if err := m.store.Set(revision, &monitorstorage.Result{
+		if err := m.store.Set(int64(mapRootB.Revision), &monitorstorage.Result{
 			Smr:    smr,
 			Seen:   time.Now(),
 			Errors: errList,
 		}); err != nil {
-			return fmt.Errorf("monitorstorage.Set(%v, _): %v", revision, err)
+			return fmt.Errorf("monitorstorage.Set(%v, _): %v", mapRootB.Revision, err)
 		}
 	}
 	errA := <-errc
@@ -162,25 +163,4 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 		return err
 	}
 	return errB
-}
-
-// VerifyEpochMutations validates that epochA + mutations = epochB.
-func (m *Monitor) VerifyEpochMutations(epochA, epochB *pb.Epoch, trusted types.LogRootV1, mutations []*pb.MutationProof) []error {
-	mapRootB, err := m.mapVerifier.VerifySignedMapRoot(epochB.GetSmr())
-	if err != nil {
-		return []error{err}
-	}
-	revision := int64(mapRootB.Revision)
-	if errs := m.VerifyEpoch(epochB, trusted); len(errs) > 0 {
-		glog.Errorf("Invalid Epoch %v: %v", revision, errs)
-		return errs
-	}
-
-	// Fetch Previous root.
-	if errs := m.verifyMutations(mutations, epochA.GetSmr(), epochB.GetSmr()); len(errs) > 0 {
-		glog.Errorf("Invalid Epoch %v Mutations: %v", revision, errs)
-		return errs
-	}
-	return nil
-
 }
