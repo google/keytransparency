@@ -164,7 +164,7 @@ func (v *Verifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.Lo
 	// TODO(gdbelvin): Gossip root.
 	logRoot, err := v.logVerifier.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency())
 	if err != nil {
-		return nil, nil, fmt.Errorf("logVerifier: VerifyRoot(%v, %v): %v", in.GetLogRoot(), in.GetLogConsistency(), err)
+		return nil, nil, fmt.Errorf("logVerifier: VerifyRoot(%v -> %v, %v): %v", trusted, in.GetLogRoot(), in.GetLogConsistency(), err)
 	}
 
 	// Verify inclusion proof.

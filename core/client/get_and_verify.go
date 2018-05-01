@@ -106,3 +106,36 @@ func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogR
 	c.updateTrusted(slr)
 	return slr, smr, nil
 }
+
+// VerifiedListHistory performs one list history operation, verifies and returns the results.
+func (c *Client) VerifiedListHistory(ctx context.Context, appID, userID string, start int64, count int32) (map[*types.MapRootV1][]byte, int64, error) {
+	c.trustedLock.Lock()
+	defer c.trustedLock.Unlock()
+	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
+		DomainId:      c.domainID,
+		UserId:        userID,
+		AppId:         appID,
+		FirstTreeSize: int64(c.trusted.TreeSize),
+		Start:         start,
+		PageSize:      count,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// The roots are only updated once per API call.
+	// TODO(gbelvin): Remove the redundancy inside the responses.
+	var slr *types.LogRootV1
+	var smr *types.MapRootV1
+	profiles := make(map[*types.MapRootV1][]byte)
+	for i, v := range resp.GetValues() {
+		Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
+		smr, slr, err = c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, v)
+		if err != nil {
+			return nil, 0, err
+		}
+		profiles[smr] = v.GetCommitted().GetData()
+	}
+	c.updateTrusted(slr)
+	return profiles, resp.NextStart, nil
+}

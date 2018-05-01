@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/authentication"
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/testutil"
-	"github.com/google/trillian/types"
 
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
@@ -277,15 +277,19 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 		{0, 18, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
 		{0, 1000, [][]byte{}, true},                                                      // Invalid end epoch, beyond current epoch
 	} {
-		resp, err := env.Client.ListHistory(ctx, userID, appID, tc.start, tc.end)
+		_, resp, err := env.Client.ListHistory(ctx, userID, appID, tc.start, tc.end)
 		if got := err != nil; got != tc.wantErr {
 			t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
 		}
 		if err != nil {
 			continue
 		}
+		compressed, err := client.CompressHistory(resp)
+		if err != nil {
+			t.Errorf("CompressHistory(): %v", err)
+		}
 
-		if got := sortHistory(resp); !reflect.DeepEqual(got, tc.wantHistory) {
+		if got := sortHistory(compressed); !reflect.DeepEqual(got, tc.wantHistory) {
 			t.Errorf("ListHistory(%v, %v): %x, want %x", tc.start, tc.end, got, tc.wantHistory)
 		}
 	}
@@ -338,25 +342,25 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 	return nil
 }
 
-func sortHistory(history map[*types.MapRootV1][]byte) [][]byte {
-	keys := make([]*types.MapRootV1, 0, len(history))
+func sortHistory(history map[uint64][]byte) [][]byte {
+	keys := make(uint64Slice, 0, len(history))
 	for k := range history {
 		keys = append(keys, k)
 	}
-	sort.Sort(mapHeads(keys))
-	profiles := make([][]byte, len(keys))
-	for i, k := range keys {
-		profiles[i] = history[k]
+	sort.Sort(keys)
+	profiles := make([][]byte, 0, len(keys))
+	for _, k := range keys {
+		profiles = append(profiles, history[k])
 	}
 	return profiles
 }
 
-// MapHead sorter.
-type mapHeads []*types.MapRootV1
+// uint64Slice satisfies sort.Interface.
+type uint64Slice []uint64
 
-func (m mapHeads) Len() int           { return len(m) }
-func (m mapHeads) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m mapHeads) Less(i, j int) bool { return m[i].Revision < m[j].Revision }
+func (m uint64Slice) Len() int           { return len(m) }
+func (m uint64Slice) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // cp creates a dummy profile using the passed tag.
 func cp(tag int) []byte {

@@ -15,6 +15,7 @@
 package client
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/trillian/types"
@@ -39,3 +40,68 @@ func TestMapRevisionFor(t *testing.T) {
 		}
 	}
 }
+
+func TestCompressHistory(t *testing.T) {
+	for _, tc := range []struct {
+		desc    string
+		roots   map[uint64][]byte
+		want    map[uint64][]byte
+		wantErr error
+	}{
+		{
+			desc: "Single",
+			roots: map[uint64][]byte{
+				1: []byte("a"),
+			},
+			want: map[uint64][]byte{
+				1: []byte("a"),
+			},
+		},
+		{
+			desc: "Compress",
+			roots: map[uint64][]byte{
+				0: []byte("a"),
+				1: []byte("a"),
+				2: []byte("a"),
+			},
+			want: map[uint64][]byte{
+				0: []byte("a"),
+			},
+		},
+		{
+			desc: "Not Contiguous",
+			roots: map[uint64][]byte{
+				0: []byte("a"),
+				2: []byte("a"),
+			},
+			wantErr: ErrNonContiguous,
+		},
+		{
+			desc: "Complex",
+			roots: map[uint64][]byte{
+				1: []byte("a"),
+				2: []byte("a"),
+				3: []byte("b"),
+				4: []byte("b"),
+				5: []byte("c"),
+			},
+			want: map[uint64][]byte{
+				1: []byte("a"),
+				3: []byte("b"),
+				5: []byte("c"),
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			got, err := CompressHistory(tc.roots)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("compressHistory(): %#v, want %#v", got, tc.want)
+			}
+			if err != tc.wantErr {
+				t.Errorf("compressHistory(): %v, want %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// TODO(gbelvin): Implement stronger ListHistory testing

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -67,6 +68,8 @@ var (
 	// ErrLogEmpty occurs when the Log.TreeSize < 1 which indicates
 	// that the log of signed map roots is empty.
 	ErrLogEmpty = errors.New("log is empty - domain initialization failed")
+	// ErrNonContiguous occurs when there are holes in a list of map roots.
+	ErrNonContiguous = errors.New("noncontiguous map roots")
 	// Vlog is the verbose logger. By default it outputs to /dev/null.
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
@@ -148,66 +151,81 @@ func min(x, y int32) int32 {
 	return y
 }
 
-// ListHistory returns a list of profiles starting and ending at given epochs.
-// It also filters out all identical consecutive profiles.
-func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64, opts ...grpc.CallOption) (map[*types.MapRootV1][]byte, error) {
+// ListHistory returns a list of map roots and profiles at each revision.
+func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
 	if start < 0 {
-		return nil, fmt.Errorf("start=%v, want >= 0", start)
+		return nil, nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
-	var currentProfile []byte
-	profiles := make(map[*types.MapRootV1][]byte)
+	allRoots := make(map[uint64]*types.MapRootV1)
+	allProfiles := make(map[uint64][]byte)
 	epochsReceived := int64(0)
 	epochsWant := end - start + 1
 	for epochsReceived < epochsWant {
-		{
-			// TODO(gbelvin): Factor out the verification of a single getHistory request into a separate function.
-			c.trustedLock.Lock()
-			defer c.trustedLock.Unlock()
-			resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-				DomainId:      c.domainID,
-				UserId:        userID,
-				AppId:         appID,
-				FirstTreeSize: int64(c.trusted.TreeSize),
-				Start:         start,
-				PageSize:      min(int32((end-start)+1), pageSize),
-			}, opts...)
-			if err != nil {
-				return nil, err
-			}
-			epochsReceived += int64(len(resp.GetValues()))
-
-			for i, v := range resp.GetValues() {
-				Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
-				smr, slr, err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, v)
-				if err != nil {
-					return nil, err
-				}
-				c.updateTrusted(slr)
-
-				// Compress profiles that are equal through time.  All
-				// nil profiles before the first profile are ignored.
-				profile := v.GetCommitted().GetData()
-				if bytes.Equal(currentProfile, profile) {
-					continue
-				}
-
-				// Append the slice and update currentProfile.
-				profiles[smr] = profile
-				currentProfile = profile
-			}
-			if resp.NextStart == 0 {
-				break // No more data.
-			}
-			start = resp.NextStart // Fetch the next block of results.
+		count := min(int32((end-start)+1), pageSize)
+		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, count)
+		if err != nil {
+			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
 		}
+		for r, d := range profiles {
+			allRoots[r.Revision] = r
+			allProfiles[r.Revision] = d
+		}
+
+		if next == 0 {
+			break // No more data.
+		}
+		start = next // Fetch the next block of results.
+		epochsReceived += int64(len(profiles))
 	}
 
 	if epochsReceived < epochsWant {
-		return nil, ErrIncomplete
+		return nil, nil, ErrIncomplete
 	}
 
-	return profiles, nil
+	return allRoots, allProfiles, nil
 }
+
+// CompressHistory takes a map of data by epoch number.
+// CompressHistory returns only the epochs where the associated data changed.
+// CompressHistory returns an error if the list of epochs is not contiguous.
+func CompressHistory(profiles map[uint64][]byte) (map[uint64][]byte, error) {
+	// Sort map roots.
+	epochs := make(uint64Slice, 0, len(profiles))
+	for e := range profiles {
+		epochs = append(epochs, e)
+	}
+	sort.Sort(epochs)
+
+	// Compress profiles that are equal through time.  All
+	// nil profiles before the first profile are ignored.
+	var prevData []byte
+	var prevEpoch uint64
+	ret := make(map[uint64][]byte)
+	for i, e := range epochs {
+		// Verify that the roots are contiguous
+		if i != 0 && e != prevEpoch+1 {
+			glog.Errorf("Non contiguous history. Got epoch %v, want %v", e, prevEpoch+1)
+			return nil, ErrNonContiguous
+		}
+		prevEpoch = e
+
+		// Append to output when data changes.
+		data := profiles[e]
+		if bytes.Equal(data, prevData) {
+			continue
+		}
+		prevData = data
+		ret[e] = data
+	}
+	return ret, nil
+}
+
+// uint64Slice satisfies sort.Interface.
+type uint64Slice []uint64
+
+func (m uint64Slice) Len() int           { return len(m) }
+func (m uint64Slice) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates an UpdateEntryRequest for a user,
 // attempt to submit it multiple times depending until ctx times out.
