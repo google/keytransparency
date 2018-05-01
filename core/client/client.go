@@ -165,8 +165,9 @@ func min(x, y int32) int32 {
 	return y
 }
 
-// ListHistory returns a list of map roots and profiles at each revision.
-func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
+// PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
+// Returns a list of map roots and profiles at each revision.
+func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
 	if start < 0 {
 		return nil, nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
