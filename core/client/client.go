@@ -172,9 +172,8 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 	}
 	allRoots := make(map[uint64]*types.MapRootV1)
 	allProfiles := make(map[uint64][]byte)
-	epochsReceived := int64(0)
-	epochsWant := end - start + 1
-	for epochsReceived < epochsWant {
+	epochsWant := int(end - start + 1)
+	for len(allProfiles) < epochsWant {
 		count := min(int32((end-start)+1), c.pageSize)
 		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, count)
 		if err != nil {
@@ -189,10 +188,10 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 			break // No more data.
 		}
 		start = next // Fetch the next block of results.
-		epochsReceived += int64(len(profiles))
 	}
 
-	if epochsReceived < epochsWant {
+	if len(allProfiles) < epochsWant {
+		glog.Infof("PaginateHistory(): incomplete. Got %v profiles, wanted %v", len(allProfiles), epochsWant)
 		return nil, nil, ErrIncomplete
 	}
 

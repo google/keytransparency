@@ -21,11 +21,12 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian"
 	"github.com/google/trillian/testonly/matchers"
 	"github.com/google/trillian/types"
+
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 func TestMapRevisionFor(t *testing.T) {
@@ -117,20 +118,59 @@ func TestPaginateHistory(t *testing.T) {
 	appID := "fakeapp"
 	userID := "fakeuser"
 
+	type request struct {
+		wantStart int64
+		next      int64
+		items     []*pb.GetEntryResponse
+	}
+
 	for _, tc := range []struct {
-		desc           string
-		start, end     int64
-		next           []int32
+		desc       string
+		start, end int64
+		reqs       []request
+
 		clientPageSize int32
 		serverPageSize int32
 		wantErr        error
 	}{
 		{
-			desc:           "play",
-			start:          0,
-			end:            10,
-			clientPageSize: 16,
-			serverPageSize: 32,
+			desc:    "incomplete",
+			end:     10,
+			reqs:    []request{{}},
+			wantErr: ErrIncomplete,
+		},
+		{
+			desc: "1Item",
+			end:  0,
+			reqs: []request{
+				{items: []*pb.GetEntryResponse{
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
+				}},
+			},
+		},
+		{
+			desc:  "3Times",
+			start: 0,
+			end:   10,
+			reqs: []request{
+				{wantStart: 0, next: 5, items: []*pb.GetEntryResponse{
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{1}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{2}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{3}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{4}}},
+				}},
+				{wantStart: 5, next: 10, items: []*pb.GetEntryResponse{
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{5}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{6}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{7}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{8}}},
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{9}}},
+				}},
+				{wantStart: 10, next: 0, items: []*pb.GetEntryResponse{
+					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{10}}},
+				}},
+			},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -147,17 +187,20 @@ func TestPaginateHistory(t *testing.T) {
 				cli:      s.Client,
 			}
 
-			s.Server.EXPECT().ListEntryHistory(gomock.Any(), matchers.ProtoEqual(&pb.ListEntryHistoryRequest{
-				AppId:  appID,
-				UserId: userID,
-				Start:  0,
-			})).
-				Return(&pb.ListEntryHistoryResponse{
-					NextStart: 1,
-				}, nil)
+			for _, r := range tc.reqs {
+				s.Server.EXPECT().ListEntryHistory(gomock.Any(), matchers.ProtoEqual(&pb.ListEntryHistoryRequest{
+					AppId:  appID,
+					UserId: userID,
+					Start:  r.wantStart,
+				})).
+					Return(&pb.ListEntryHistoryResponse{
+						NextStart: r.next,
+						Values:    r.items,
+					}, nil)
+			}
 
-			if _, _, err = c.PaginateHistory(ctx, appID, userID, tc.start, tc.end); err != nil {
-				t.Errorf("PaginateHistory(): %v", err)
+			if _, _, err = c.PaginateHistory(ctx, appID, userID, tc.start, tc.end); err != tc.wantErr {
+				t.Errorf("PaginateHistory(): %v, want %v", err, tc.wantErr)
 			}
 		})
 	}
@@ -171,13 +214,15 @@ func (f *fakeVerifier) Index(vrfProof []byte, domainID string, appID string, use
 }
 
 func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, domainID string, appID string, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	return &types.MapRootV1{}, &types.LogRootV1{}, nil
+	smr, err := f.VerifySignedMapRoot(in.Smr)
+	return smr, &types.LogRootV1{}, err
 }
 
 func (f *fakeVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	return &types.LogRootV1{}, &types.MapRootV1{}, nil
+	smr, err := f.VerifySignedMapRoot(in.Smr)
+	return &types.LogRootV1{}, smr, err
 }
 
 func (f *fakeVerifier) VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error) {
-	return &types.MapRootV1{}, nil
+	return &types.MapRootV1{Revision: uint64(smr.MapRoot[0])}, nil
 }

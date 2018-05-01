@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/google/trillian/types"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -128,12 +129,13 @@ func (c *Client) VerifiedListHistory(ctx context.Context, appID, userID string, 
 	var slr *types.LogRootV1
 	var smr *types.MapRootV1
 	profiles := make(map[*types.MapRootV1][]byte)
-	for i, v := range resp.GetValues() {
-		Vlog.Printf("Processing entry for %v, epoch %v", userID, start+int64(i))
+	for _, v := range resp.GetValues() {
 		smr, slr, err = c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, v)
 		if err != nil {
 			return nil, 0, err
 		}
+		Vlog.Printf("Processing entry for %v, epoch %v", userID, smr.Revision)
+		glog.V(2).Infof("Processing entry for %v, epoch %v", userID, smr.Revision)
 		profiles[smr] = v.GetCommitted().GetData()
 	}
 	if slr != nil {
