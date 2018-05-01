@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/trillian"
 
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
@@ -74,6 +75,19 @@ var (
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
+// Verifier is used to verify specific outputs from Key Transparency.
+type Verifier interface {
+	// Index computes the index from a VRF proof.
+	Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error)
+	// VerifyGetEntryResponse verifies everything about a GetEntryResponse:
+	VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
+	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
+	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
+	VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
+	// VerifySignedMapRoot verifies the signature on the SignedMapRoot.
+	VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error)
+}
+
 // Client is a helper library for issuing updates to the key server.
 // Client Responsibilities
 // - Trust Model:
@@ -87,7 +101,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	*Verify
+	Verifier
 	cli         pb.KeyTransparencyClient
 	domainID    string
 	mutator     mutator.Func
@@ -116,7 +130,7 @@ func New(ktClient pb.KeyTransparencyClient,
 	retryDelay time.Duration,
 	ktVerifier *Verify) *Client {
 	return &Client{
-		Verify:     ktVerifier,
+		Verifier:   ktVerifier,
 		cli:        ktClient,
 		domainID:   domainID,
 		mutator:    entry.New(),
