@@ -15,9 +15,16 @@
 package client
 
 import (
+	"context"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/golang/mock/gomock"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/trillian"
+	"github.com/google/trillian/testonly/matchers"
 	"github.com/google/trillian/types"
 )
 
@@ -104,4 +111,73 @@ func TestCompressHistory(t *testing.T) {
 	}
 }
 
-// TODO(gbelvin): Implement stronger ListHistory testing
+func TestPaginateHistory(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	appID := "fakeapp"
+	userID := "fakeuser"
+
+	for _, tc := range []struct {
+		desc           string
+		start, end     int64
+		next           []int32
+		clientPageSize int32
+		serverPageSize int32
+		wantErr        error
+	}{
+		{
+			desc:           "play",
+			start:          0,
+			end:            10,
+			clientPageSize: 16,
+			serverPageSize: 32,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			s, stop, err := testutil.NewMockKT(ctrl)
+			if err != nil {
+				t.Fatalf("NewMockKT(): %v", err)
+			}
+			defer stop()
+
+			c := Client{
+				Verifier: &fakeVerifier{},
+				cli:      s.Client,
+			}
+
+			s.Server.EXPECT().ListEntryHistory(gomock.Any(), matchers.ProtoEqual(&pb.ListEntryHistoryRequest{
+				AppId:  appID,
+				UserId: userID,
+				Start:  0,
+			})).
+				Return(&pb.ListEntryHistoryResponse{
+					NextStart: 1,
+				}, nil)
+
+			if _, _, err = c.PaginateHistory(ctx, appID, userID, tc.start, tc.end); err != nil {
+				t.Errorf("PaginateHistory(): %v", err)
+			}
+		})
+	}
+
+}
+
+type fakeVerifier struct{}
+
+func (f *fakeVerifier) Index(vrfProof []byte, domainID string, appID string, userID string) ([]byte, error) {
+	return make([]byte, 32), nil
+}
+
+func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, domainID string, appID string, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
+	return &types.MapRootV1{}, &types.LogRootV1{}, nil
+}
+
+func (f *fakeVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
+	return &types.LogRootV1{}, &types.MapRootV1{}, nil
+}
+
+func (f *fakeVerifier) VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error) {
+	return &types.MapRootV1{}, nil
+}

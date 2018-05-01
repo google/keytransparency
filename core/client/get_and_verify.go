@@ -136,6 +136,8 @@ func (c *Client) VerifiedListHistory(ctx context.Context, appID, userID string, 
 		}
 		profiles[smr] = v.GetCommitted().GetData()
 	}
-	c.updateTrusted(slr)
+	if slr != nil {
+		c.updateTrusted(slr)
+	}
 	return profiles, resp.NextStart, nil
 }
