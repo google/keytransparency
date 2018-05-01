@@ -87,7 +87,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	*Verifier
+	*Verify
 	cli         pb.KeyTransparencyClient
 	domainID    string
 	mutator     mutator.Func
@@ -114,9 +114,9 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
 	retryDelay time.Duration,
-	ktVerifier *Verifier) *Client {
+	ktVerifier *Verify) *Client {
 	return &Client{
-		Verifier:   ktVerifier,
+		Verify:     ktVerifier,
 		cli:        ktClient,
 		domainID:   domainID,
 		mutator:    entry.New(),
