@@ -706,7 +706,7 @@ func (m *ListMutationsRequest) GetPageSize() int32 {
 
 // ListMutationsResponse contains the mutations that produced an epoch.
 type ListMutationsResponse struct {
-	// mutations contains the the mutation object and the leaf value it operated on.
+	// mutations contains the mutation object and the leaf value it operated on.
 	Mutations []*MutationProof `protobuf:"bytes,6,rep,name=mutations" json:"mutations,omitempty"`
 	// next_page_token is the next page token to query for pagination.
 	// An empty value means there are no more results to fetch.
