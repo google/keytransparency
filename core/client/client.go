@@ -73,7 +73,7 @@ var (
 type Verifier interface {
 	// Index computes the index from a VRF proof.
 	Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error)
-	// VerifyGetEntryResponse verifies everything about a GetEntryResponse:
+	// VerifyGetEntryResponse verifies everything about a GetEntryResponse.
 	VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
 	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
@@ -126,7 +126,7 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
 	retryDelay time.Duration,
-	ktVerifier *Verify) *Client {
+	ktVerifier *RealVerifier) *Client {
 	return &Client{
 		Verifier:   ktVerifier,
 		cli:        ktClient,
@@ -172,10 +172,10 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 	}
 	allRoots := make(map[uint64]*types.MapRootV1)
 	allProfiles := make(map[uint64][]byte)
-	epochsWant := int(end - start + 1)
-	for len(allProfiles) < epochsWant {
+	epochsWant := end - start + 1
+	for int64(len(allProfiles)) < epochsWant {
 		log.Printf("pageSize: %v", c.pageSize)
-		count := min(int32(epochsWant-len(allProfiles)), c.pageSize)
+		count := min(int32(epochsWant-int64(len(allProfiles))), c.pageSize)
 		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, count)
 		if err != nil {
 			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
@@ -191,7 +191,7 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 		start = next // Fetch the next block of results.
 	}
 
-	if len(allProfiles) < epochsWant {
+	if int64(len(allProfiles)) < epochsWant {
 		glog.Infof("PaginateHistory(): incomplete. Got %v profiles, wanted %v", len(allProfiles), epochsWant)
 		return nil, nil, ErrIncomplete
 	}

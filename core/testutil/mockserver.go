@@ -31,10 +31,8 @@ type MockKT struct {
 	Addr   string
 }
 
-// NewMockKT returns a new mock Key Transparency server listening on a random port .
-// Returns the started server, the listener it's using for connection and a
-// close function that must be defer-called on the scope the server is meant to
-// stop.
+// NewMockKT returns a new mock Key Transparency server listening on a random port.
+// Returns the started server and a close function.
 func NewMockKT(ctrl *gomock.Controller) (*MockKT, func(), error) {
 	grpcServer := grpc.NewServer()
 	ktServer := ktmock.NewMockKeyTransparencyServer(ctrl)

@@ -212,11 +212,10 @@ func TestPaginateHistory(t *testing.T) {
 					UserId:   userID,
 					Start:    r.wantStart,
 					PageSize: r.wantSize,
-				})).
-					Return(&pb.ListEntryHistoryResponse{
-						NextStart: r.next,
-						Values:    r.items,
-					}, nil)
+				})).Return(&pb.ListEntryHistoryResponse{
+					NextStart: r.next,
+					Values:    r.items,
+				}, nil)
 			}
 
 			if _, _, err = c.PaginateHistory(ctx, appID, userID, tc.start, tc.end); err != tc.wantErr {
@@ -224,7 +223,6 @@ func TestPaginateHistory(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 type fakeVerifier struct{}
