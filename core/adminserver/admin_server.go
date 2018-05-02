@@ -221,9 +221,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	mapTree, err := client.CreateAndInitTree(ctx, mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
 	if err != nil {
 		// Delete log if map creation fails.
-		if _, delErr := s.logAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{
-			TreeId: logTree.TreeId,
-		}); delErr != nil {
+		if _, delErr := s.logAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: logTree.TreeId}); delErr != nil {
 			return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v, DeleteTree(%v): %v ", err, logTree.TreeId, delErr)
 		}
 		return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v", err)
@@ -239,7 +237,14 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 
 	// Initialize log with first map root.
 	if err := s.initialize(ctx, logTree, mapTree); err != nil {
-		return nil, fmt.Errorf("adminserver: initialize of log %v and map %v failed: %v",
+		// Delete log and map if initialization fails.
+		if _, delErr := s.logAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: logTree.TreeId}); delErr != nil {
+			return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v, DeleteTree(%v): %v ", err, logTree.TreeId, delErr)
+		}
+		if _, delErr := s.mapAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: mapTree.TreeId}); delErr != nil {
+			return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v, DeleteTree(%v): %v ", err, mapTree.TreeId, delErr)
+		}
+		return nil, status.Errorf(codes.Internal, "adminserver: initialize of log %v and map %v failed: %v",
 			logTree.TreeId, mapTree.TreeId, err)
 	}
 

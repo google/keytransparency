@@ -25,7 +25,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
-	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/storage/testdb"
@@ -36,8 +35,9 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
-	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
-	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
+	_ "github.com/google/trillian/crypto/keys/der/proto" // Register PrivateKey ProtoHandler
+	_ "github.com/google/trillian/merkle/coniks"         // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962"        // Register hasher
 )
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -86,8 +86,6 @@ func (e *miniEnv) Close() {
 }
 
 func TestCreateDomain(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
 	for _, tc := range []struct {
 		desc     string
 		domainID string
@@ -101,7 +99,7 @@ func TestCreateDomain(t *testing.T) {
 			expect:   func(e *miniEnv) {},
 		},
 		{
-			desc:     "Map init fails",
+			desc:     "Create map fails",
 			domainID: "mapinitfails",
 			wantCode: codes.Internal,
 			expect: func(e *miniEnv) {
@@ -109,11 +107,28 @@ func TestCreateDomain(t *testing.T) {
 				e.s.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
 				e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
 				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
-				e.s.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, fmt.Errorf("init map failure")).MinTimes(1)
+				e.s.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
+				e.s.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).Return(&tpb.GetSignedMapRootResponse{}, fmt.Errorf("not found")).MinTimes(1)
+			},
+		},
+		{
+			desc:     "init fails",
+			domainID: "initfails",
+			wantCode: codes.Internal,
+			expect: func(e *miniEnv) {
+				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.s.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
+				e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
+				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
+				e.s.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
+				e.s.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).Return(&tpb.GetSignedMapRootResponse{}, nil).MinTimes(1)
+				e.s.Admin.EXPECT().DeleteTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{}, nil).MinTimes(2)
 			},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			defer cancel()
 			e, err := newMiniEnv(ctx, t)
 			if err != nil {
 				t.Fatalf("newMiniEnv(): %v", err)
@@ -123,7 +138,9 @@ func TestCreateDomain(t *testing.T) {
 			tc.expect(e)
 
 			if _, err := e.srv.CreateDomain(ctx, &pb.CreateDomainRequest{
-				DomainId: tc.domainID,
+				DomainId:    tc.domainID,
+				MinInterval: ptypes.DurationProto(60 * time.Hour),
+				MaxInterval: ptypes.DurationProto(60 * time.Hour),
 			}); status.Code(err) != tc.wantCode {
 				t.Errorf("CreateDomain(): %v, want %v", err, tc.wantCode)
 			}
@@ -174,10 +191,10 @@ func TestCreateRead(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetDomain(): %v", err)
 		}
-		if got, want := domain.Log.TreeType, trillian.TreeType_LOG; got != want {
+		if got, want := domain.Log.TreeType, tpb.TreeType_LOG; got != want {
 			t.Errorf("Log.TreeType: %v, want %v", got, want)
 		}
-		if got, want := domain.Map.TreeType, trillian.TreeType_MAP; got != want {
+		if got, want := domain.Map.TreeType, tpb.TreeType_MAP; got != want {
 			t.Errorf("Map.TreeType: %v, want %v", got, want)
 		}
 	}
