@@ -285,9 +285,12 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	}
 
 	// TODO(gbelvin): does this need to be in a retry loop?
-	resp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: mapID})
+	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
+		MapId:    mapID,
+		Revision: 0,
+	})
 	if err != nil {
-		return fmt.Errorf("adminserver: GetSignedMapRoot(%v): %v", mapID, err)
+		return fmt.Errorf("adminserver: GetSignedMapRootByRevision(%v,0): %v", mapID, err)
 	}
 	mapVerifier, err := client.NewMapVerifierFromTree(mapTree)
 	if err != nil {
