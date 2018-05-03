@@ -37,19 +37,19 @@ func New() authorization.Authorization {
 // IsAuthorized verifies that the identity issuing the call (from ctx) is
 // authorized to carry the given permission. A call is authorized if:
 //  1. userID matches the identity in sctx,
-//  2. or, sctx's identity is authorized to do the action in mapID and appID.
-func (a *authz) IsAuthorized(sctx *authentication.SecurityContext, mapID int64,
-	appID, userID string, permission authzpb.Permission) error {
+//  2. or, sctx's identity is authorized to do the action in domainID and appID.
+func (a *authz) IsAuthorized(sctx *authentication.SecurityContext,
+	domainID, appID, userID string, permission authzpb.Permission) error {
 	// Case 1.
 	if sctx.Identity() == userID {
 		return nil
 	}
 
 	// Case 2.
-	rLabel := resourceLabel(mapID, appID)
+	rLabel := resourceLabel(domainID, appID)
 	roles, ok := a.policy.GetResourceToRoleLabels()[rLabel]
 	if !ok {
-		return fmt.Errorf("resource <mapID=%v, appID=%v> does not have a defined policy", mapID, appID)
+		return fmt.Errorf("resource <domainID=%v, appID=%v> does not have a defined policy", domainID, appID)
 	}
 	for _, l := range roles.GetLabels() {
 		role := a.policy.GetRoles()[l]
@@ -57,11 +57,11 @@ func (a *authz) IsAuthorized(sctx *authentication.SecurityContext, mapID int64,
 			return nil
 		}
 	}
-	return fmt.Errorf("%v is not authorized to perform %v on resource defined by <mapID=%v, appID=%v>", sctx.Identity(), permission, mapID, appID)
+	return fmt.Errorf("%v is not authorized to perform %v on resource defined by <domainID=%v, appID=%v>", sctx.Identity(), permission, domainID, appID)
 }
 
-func resourceLabel(mapID int64, appID string) string {
-	return fmt.Sprintf("%d|%s", mapID, appID)
+func resourceLabel(domainID, appID string) string {
+	return fmt.Sprintf("%v|%v", domainID, appID)
 }
 
 func isPrincipalInRole(role *pb.AuthorizationPolicy_Role, identity string) bool {
