@@ -17,14 +17,14 @@ option go_package = "github.com/google/keytransparency/impl/authorization/authz_
 
 package google.keytransparency.impl;
 
-import "core/api/type/type_proto/authz.proto";
+import "core/api/type/authz.proto";
 
 // AuthorizationPolicy contains an authorization policy.
 message AuthorizationPolicy {
   // Resource contains the resource being accessed.
   message Resource {
     // map_id contains the Key Transparency map identity for this entry.
-    int64 map_id = 1;
+    string domain_id = 1;
     // app_id contains the application identity for this entry.
     string app_id = 2;
   }
