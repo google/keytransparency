@@ -21,7 +21,7 @@ import (
 	"github.com/google/keytransparency/core/authentication"
 
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
-	pb "github.com/google/keytransparency/impl/authorization/authz_proto"
+	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 
 const (

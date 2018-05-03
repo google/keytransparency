@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package authz_proto
+package authorization
 
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/keytransparency/ --go_out=:$GOPATH/src ./authz.proto

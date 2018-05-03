@@ -13,7 +13,7 @@
 // limitations under the License.
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/impl/authorization/authz_proto";
+option go_package = "github.com/google/keytransparency/impl/authorization/authz_go_proto";
 
 package google.keytransparency.impl;
 
