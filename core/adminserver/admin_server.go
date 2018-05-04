@@ -238,14 +238,10 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	// Initialize log with first map root.
 	if err := s.initialize(ctx, logTree, mapTree); err != nil {
 		// Delete log and map if initialization fails.
-		if _, delErr := s.logAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: logTree.TreeId}); delErr != nil {
-			return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v, DeleteTree(%v): %v ", err, logTree.TreeId, delErr)
-		}
-		if _, delErr := s.mapAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: mapTree.TreeId}); delErr != nil {
-			return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v, DeleteTree(%v): %v ", err, mapTree.TreeId, delErr)
-		}
-		return nil, status.Errorf(codes.Internal, "adminserver: initialize of log %v and map %v failed: %v",
-			logTree.TreeId, mapTree.TreeId, err)
+		_, delLogErr := s.logAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: logTree.TreeId})
+		_, delMapErr := s.mapAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: mapTree.TreeId})
+		return nil, status.Errorf(codes.Internal, "adminserver: init of log with first map root failed: %v. Cleanup: delete log %v: %v, delete map %v: %v",
+			err, logTree.TreeId, delLogErr, mapTree.TreeId, delMapErr)
 	}
 
 	if err := s.domains.Write(ctx, &domain.Domain{

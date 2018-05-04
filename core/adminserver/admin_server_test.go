@@ -45,9 +45,9 @@ func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, 
 }
 
 type miniEnv struct {
-	s              *testonly.MockServer
+	ms             *testonly.MockServer
 	srv            *Server
-	stopFakeServer func()
+	stopMockServer func()
 	stopController func()
 }
 
@@ -73,16 +73,16 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 		keygen:   vrfKeyGen,
 	}
 	return &miniEnv{
-		s:              s,
+		ms:             s,
 		srv:            srv,
 		stopController: ctrl.Finish,
-		stopFakeServer: stopFakeServer,
+		stopMockServer: stopFakeServer,
 	}, nil
 }
 
 func (e *miniEnv) Close() {
 	e.stopController()
-	e.stopFakeServer()
+	e.stopMockServer()
 }
 
 func TestCreateDomain(t *testing.T) {
@@ -103,26 +103,30 @@ func TestCreateDomain(t *testing.T) {
 			domainID: "mapinitfails",
 			wantCode: codes.Internal,
 			expect: func(e *miniEnv) {
-				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
-				e.s.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
-				e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
-				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
-				e.s.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
-				e.s.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).Return(&tpb.GetSignedMapRootResponse{}, fmt.Errorf("not found")).MinTimes(1)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
+				e.ms.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
+				e.ms.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
+				e.ms.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetSignedMapRootResponse{}, fmt.Errorf("not found")).MinTimes(1)
 			},
 		},
 		{
-			desc:     "init fails",
+			desc:     "log init with map root fails",
 			domainID: "initfails",
 			wantCode: codes.Internal,
 			expect: func(e *miniEnv) {
-				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
-				e.s.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
-				e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
-				e.s.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
-				e.s.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
-				e.s.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).Return(&tpb.GetSignedMapRootResponse{}, nil).MinTimes(1)
-				e.s.Admin.EXPECT().DeleteTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{}, nil).MinTimes(2)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
+				e.ms.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
+				e.ms.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
+				e.ms.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetSignedMapRootResponse{}, nil).MinTimes(1)
+				// Verify that we delete the log and map when the sequencer's init fails.
+				// In this case the sequencer's init fails because it can't create a verifier for a fake tree. HashStrategy is UNKNOWN.
+				e.ms.Admin.EXPECT().DeleteTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{}, nil).MinTimes(2)
 			},
 		},
 	} {
