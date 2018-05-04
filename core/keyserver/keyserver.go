@@ -276,7 +276,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, status.Errorf(codes.Unauthenticated, "Unauthenticated")
 	}
 	// Validate proper authorization.
-	if s.authz.IsAuthorized(sctx, domain.MapID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
+	if s.authz.IsAuthorized(sctx, domain.DomainID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
 		glog.Warningf("Authz failed: %v", err)
 		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized")
 	}

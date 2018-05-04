@@ -25,6 +25,6 @@ import (
 type Authorization interface {
 	// IsAuthorized verifies that the identity issuing the call
 	// (from ctx) is authorized to carry the given permission.
-	IsAuthorized(ctx *authentication.SecurityContext, mapID int64,
-		appID, userID string, permission authzpb.Permission) error
+	IsAuthorized(ctx *authentication.SecurityContext,
+		domainID, appID, userID string, permission authzpb.Permission) error
 }
