@@ -16,9 +16,10 @@ package fake
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/keytransparency/core/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // DomainStorage implements domain.Storage
@@ -52,7 +53,7 @@ func (a *DomainStorage) Write(ctx context.Context, d *domain.Domain) error {
 func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domain.Domain, error) {
 	d, ok := a.domains[ID]
 	if !ok {
-		return nil, fmt.Errorf("Domain %v not found", ID)
+		return nil, status.Errorf(codes.NotFound, "Domain %v not found", ID)
 	}
 	return d, nil
 }
@@ -61,7 +62,7 @@ func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (
 func (a *DomainStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
 	_, ok := a.domains[ID]
 	if !ok {
-		return fmt.Errorf("Domain %v not found", ID)
+		return status.Errorf(codes.NotFound, "Domain %v not found", ID)
 	}
 	a.domains[ID].Deleted = isDeleted
 	return nil

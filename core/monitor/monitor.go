@@ -115,10 +115,14 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 	pairs := make(chan EpochPair)
 
 	go func(ctx context.Context) {
-		errc <- m.cli.StreamEpochs(ctx, domainID, int64(trusted.TreeSize), epochs)
+		err := m.cli.StreamEpochs(ctx, domainID, int64(trusted.TreeSize), epochs)
+		glog.Errorf("StreamEpochs(%v): %v", domainID, err)
+		errc <- err
 	}(cctx)
 	go func(ctx context.Context) {
-		errc <- EpochPairs(ctx, epochs, pairs)
+		err := EpochPairs(ctx, epochs, pairs)
+		glog.Errorf("EpochPairs(): %v", err)
+		errc <- err
 	}(cctx)
 	defer cancel()
 
