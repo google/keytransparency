@@ -24,6 +24,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/domain"
@@ -189,7 +191,11 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, domainID 
 
 // CreateDomain reachs out to Trillian to produce new trees.
 func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (*pb.Domain, error) {
-	// TODO(gbelvin): Test whether the domain exists before creating trees.
+	glog.Infof("Begin CreateDomain(%v)", in.GetDomainId())
+	if _, err := s.domains.Read(ctx, in.GetDomainId(), true); status.Code(err) != codes.NotFound {
+		// Domain already exists.
+		return nil, status.Errorf(codes.AlreadyExists, "Domain %v already exists or is soft deleted.", in.GetDomainId())
+	}
 
 	// Generate VRF key.
 	wrapped, err := privKeyOrGen(ctx, in.GetVrfPrivateKey(), s.keygen)
@@ -214,7 +220,11 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	mapTreeArgs := treeConfig(mapArgs, in.GetMapPrivateKey(), in.GetDomainId())
 	mapTree, err := client.CreateAndInitTree(ctx, mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
 	if err != nil {
-		return nil, fmt.Errorf("adminserver: CreateAndInitTree(map): %v", err)
+		// Delete log if map creation fails.
+		if _, delErr := s.logAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: logTree.TreeId}); delErr != nil {
+			return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v, DeleteTree(%v): %v ", err, logTree.TreeId, delErr)
+		}
+		return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v", err)
 	}
 	minInterval, err := ptypes.Duration(in.MinInterval)
 	if err != nil {
@@ -227,8 +237,11 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 
 	// Initialize log with first map root.
 	if err := s.initialize(ctx, logTree, mapTree); err != nil {
-		return nil, fmt.Errorf("adminserver: initialize of log %v and map %v failed: %v",
-			logTree.TreeId, mapTree.TreeId, err)
+		// Delete log and map if initialization fails.
+		_, delLogErr := s.logAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: logTree.TreeId})
+		_, delMapErr := s.mapAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: mapTree.TreeId})
+		return nil, status.Errorf(codes.Internal, "adminserver: init of log with first map root failed: %v. Cleanup: delete log %v: %v, delete map %v: %v",
+			err, logTree.TreeId, delLogErr, mapTree.TreeId, delMapErr)
 	}
 
 	if err := s.domains.Write(ctx, &domain.Domain{
@@ -242,15 +255,16 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}); err != nil {
 		return nil, fmt.Errorf("adminserver: domains.Write(): %v", err)
 	}
-	glog.Infof("Created domain %v", in.GetDomainId())
-	return &pb.Domain{
+	d := &pb.Domain{
 		DomainId:    in.GetDomainId(),
 		Log:         logTree,
 		Map:         mapTree,
 		Vrf:         vrfPublicPB,
 		MinInterval: in.MinInterval,
 		MaxInterval: in.MaxInterval,
-	}, nil
+	}
+	glog.Infof("Created domain: %v", d)
+	return d, nil
 }
 
 // initialize inserts the first (empty) SignedMapRoot into the log if it is empty.
@@ -272,9 +286,12 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	}
 
 	// TODO(gbelvin): does this need to be in a retry loop?
-	resp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: mapID})
+	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
+		MapId:    mapID,
+		Revision: 0,
+	})
 	if err != nil {
-		return fmt.Errorf("adminserver: GetSignedMapRoot(%v): %v", mapID, err)
+		return fmt.Errorf("adminserver: GetSignedMapRootByRevision(%v,0): %v", mapID, err)
 	}
 	mapVerifier, err := client.NewMapVerifierFromTree(mapTree)
 	if err != nil {

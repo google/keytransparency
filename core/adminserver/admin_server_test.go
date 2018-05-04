@@ -16,25 +16,140 @@ package adminserver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/fake"
-	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/storage/testdb"
+	"github.com/google/trillian/testonly"
 	"github.com/google/trillian/testonly/integration"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
-	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
+	tpb "github.com/google/trillian"
+	_ "github.com/google/trillian/crypto/keys/der/proto" // Register PrivateKey ProtoHandler
+	_ "github.com/google/trillian/merkle/coniks"         // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962"        // Register hasher
 )
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 	return der.NewProtoFromSpec(spec)
+}
+
+type miniEnv struct {
+	ms             *testonly.MockServer
+	srv            *Server
+	stopMockServer func()
+	stopController func()
+}
+
+func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
+	fakeDomains := fake.NewDomainStorage()
+	if err := fakeDomains.Write(ctx, &domain.Domain{
+		DomainID: "existingdomain",
+	}); err != nil {
+		return nil, fmt.Errorf("admin.Write(): %v", err)
+	}
+
+	ctrl := gomock.NewController(t)
+	s, stopFakeServer, err := testonly.NewMockServer(ctrl)
+	if err != nil {
+		return nil, fmt.Errorf("Error starting fake server: %v", err)
+	}
+	srv := &Server{
+		tlog:     s.LogClient,
+		tmap:     s.MapClient,
+		logAdmin: s.AdminClient,
+		mapAdmin: s.AdminClient,
+		domains:  fakeDomains,
+		keygen:   vrfKeyGen,
+	}
+	return &miniEnv{
+		ms:             s,
+		srv:            srv,
+		stopController: ctrl.Finish,
+		stopMockServer: stopFakeServer,
+	}, nil
+}
+
+func (e *miniEnv) Close() {
+	e.stopController()
+	e.stopMockServer()
+}
+
+func TestCreateDomain(t *testing.T) {
+	for _, tc := range []struct {
+		desc     string
+		domainID string
+		wantCode codes.Code
+		expect   func(*miniEnv)
+	}{
+		{
+			desc:     "Already Exists",
+			domainID: "existingdomain",
+			wantCode: codes.AlreadyExists,
+			expect:   func(e *miniEnv) {},
+		},
+		{
+			desc:     "Create map fails",
+			domainID: "mapinitfails",
+			wantCode: codes.Internal,
+			expect: func(e *miniEnv) {
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
+				e.ms.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
+				e.ms.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
+				e.ms.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetSignedMapRootResponse{}, fmt.Errorf("not found")).MinTimes(1)
+			},
+		},
+		{
+			desc:     "log init with map root fails",
+			domainID: "initfails",
+			wantCode: codes.Internal,
+			expect: func(e *miniEnv) {
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
+				e.ms.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
+				e.ms.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
+				e.ms.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).
+					Return(&tpb.GetSignedMapRootResponse{}, nil).MinTimes(1)
+				// Verify that we delete the log and map when the sequencer's init fails.
+				// In this case the sequencer's init fails because it can't create a verifier for a fake tree. HashStrategy is UNKNOWN.
+				e.ms.Admin.EXPECT().DeleteTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{}, nil).MinTimes(2)
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			defer cancel()
+			e, err := newMiniEnv(ctx, t)
+			if err != nil {
+				t.Fatalf("newMiniEnv(): %v", err)
+			}
+			defer e.Close()
+
+			tc.expect(e)
+
+			if _, err := e.srv.CreateDomain(ctx, &pb.CreateDomainRequest{
+				DomainId:    tc.domainID,
+				MinInterval: ptypes.DurationProto(60 * time.Hour),
+				MaxInterval: ptypes.DurationProto(60 * time.Hour),
+			}); status.Code(err) != tc.wantCode {
+				t.Errorf("CreateDomain(): %v, want %v", err, tc.wantCode)
+			}
+		})
+	}
 }
 
 func TestCreateRead(t *testing.T) {
@@ -80,10 +195,10 @@ func TestCreateRead(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetDomain(): %v", err)
 		}
-		if got, want := domain.Log.TreeType, trillian.TreeType_LOG; got != want {
+		if got, want := domain.Log.TreeType, tpb.TreeType_LOG; got != want {
 			t.Errorf("Log.TreeType: %v, want %v", got, want)
 		}
-		if got, want := domain.Map.TreeType, trillian.TreeType_MAP; got != want {
+		if got, want := domain.Map.TreeType, tpb.TreeType_MAP; got != want {
 			t.Errorf("Map.TreeType: %v, want %v", got, want)
 		}
 	}
