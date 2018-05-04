@@ -23,9 +23,9 @@ import "core/api/type/authz.proto";
 message AuthorizationPolicy {
   // Resource contains the resource being accessed.
   message Resource {
-    // map_id contains the Key Transparency map identity for this entry.
+    // domain_id contains the Key Transparency domain of this entry.
     string domain_id = 1;
-    // app_id contains the application identity for this entry.
+    // app_id contains the application identity of this entry.
     string app_id = 2;
   }
 

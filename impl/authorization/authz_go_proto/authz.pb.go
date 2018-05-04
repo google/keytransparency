@@ -58,9 +58,9 @@ func (m *AuthorizationPolicy) GetResourceToRoleLabels() map[string]*Authorizatio
 
 // Resource contains the resource being accessed.
 type AuthorizationPolicy_Resource struct {
-	// map_id contains the Key Transparency map identity for this entry.
+	// domain_id contains the Key Transparency domain of this entry.
 	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
-	// app_id contains the application identity for this entry.
+	// app_id contains the application identity of this entry.
 	AppId string `protobuf:"bytes,2,opt,name=app_id,json=appId" json:"app_id,omitempty"`
 }
 
