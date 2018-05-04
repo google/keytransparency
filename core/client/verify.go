@@ -39,6 +39,7 @@ var (
 )
 
 // RealVerifier is a client helper library for verifying request and responses.
+// Implements Verifier.
 type RealVerifier struct {
 	vrf vrf.PublicKey
 	*tclient.MapVerifier
