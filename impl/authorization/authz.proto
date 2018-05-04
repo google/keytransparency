@@ -13,19 +13,19 @@
 // limitations under the License.
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/impl/authorization/authz_proto";
+option go_package = "github.com/google/keytransparency/impl/authorization/authz_go_proto";
 
 package google.keytransparency.impl;
 
-import "core/api/type/type_proto/authz.proto";
+import "core/api/type/authz.proto";
 
 // AuthorizationPolicy contains an authorization policy.
 message AuthorizationPolicy {
   // Resource contains the resource being accessed.
   message Resource {
-    // map_id contains the Key Transparency map identity for this entry.
-    int64 map_id = 1;
-    // app_id contains the application identity for this entry.
+    // domain_id contains the Key Transparency domain of this entry.
+    string domain_id = 1;
+    // app_id contains the application identity of this entry.
     string app_id = 2;
   }
 
