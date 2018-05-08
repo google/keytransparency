@@ -71,13 +71,13 @@ var (
 
 // Verifier is used to verify specific outputs from Key Transparency.
 type Verifier interface {
-	// Index computes the index from a VRF proof.
+	// Index computes the index of an appID, userID pair from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error)
 	// VerifyGetEntryResponse verifies everything about a GetEntryResponse.
 	VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
 	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
-	VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
+	VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
 	// VerifySignedMapRoot verifies the signature on the SignedMapRoot.
 	VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error)
 }
