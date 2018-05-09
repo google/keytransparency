@@ -107,6 +107,7 @@ User email MUST match the OAuth account used to authorize the update.
 func init() {
 	RootCmd.AddCommand(postCmd)
 
+	postCmd.PersistentFlags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 	postCmd.PersistentFlags().StringP("secret", "s", "", "Path to client secret json")
 	if err := viper.BindPFlag("client-secret", postCmd.PersistentFlags().Lookup("secret")); err != nil {
 		log.Fatalf("%v", err)
