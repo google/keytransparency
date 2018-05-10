@@ -16,10 +16,13 @@
 package authorization
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
@@ -38,10 +41,15 @@ func New() authorization.Authorization {
 // authorized to carry the given permission. A call is authorized if:
 //  1. userID matches the identity in sctx,
 //  2. or, sctx's identity is authorized to do the action in domainID and appID.
-func (a *authz) IsAuthorized(sctx *authentication.SecurityContext,
+func (a *authz) Authorize(ctx context.Context,
 	domainID, appID, userID string, permission authzpb.Permission) error {
+	sctx, ok := authentication.FromContext(ctx)
+	if !ok {
+		return status.Errorf(codes.Unauthenticated, "Request does not contain a ValidatedSecurity object")
+	}
+
 	// Case 1.
-	if sctx.Identity() == userID {
+	if sctx.Email == userID {
 		return nil
 	}
 
@@ -53,11 +61,11 @@ func (a *authz) IsAuthorized(sctx *authentication.SecurityContext,
 	}
 	for _, l := range roles.GetLabels() {
 		role := a.policy.GetRoles()[l]
-		if isPrincipalInRole(role, sctx.Identity()) && isPermisionInRole(role, permission) {
+		if isPrincipalInRole(role, sctx.Email) && isPermisionInRole(role, permission) {
 			return nil
 		}
 	}
-	return fmt.Errorf("%v is not authorized to perform %v on resource defined by <domainID=%v, appID=%v>", sctx.Identity(), permission, domainID, appID)
+	return fmt.Errorf("%v is not authorized to perform %v on resource defined by <domainID=%v, appID=%v>", sctx.Email, permission, domainID, appID)
 }
 
 func resourceLabel(domainID, appID string) string {

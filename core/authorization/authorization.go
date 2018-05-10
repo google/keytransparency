@@ -16,15 +16,15 @@
 package authorization
 
 import (
-	"github.com/google/keytransparency/core/authentication"
+	"context"
 
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 // Authorization authorizes access to RPCs.
 type Authorization interface {
-	// IsAuthorized verifies that the identity issuing the call
+	// Authorize verifies that the identity issuing the call
 	// (from ctx) is authorized to carry the given permission.
-	IsAuthorized(ctx *authentication.SecurityContext,
+	Authorize(ctx context.Context,
 		domainID, appID, userID string, permission authzpb.Permission) error
 }

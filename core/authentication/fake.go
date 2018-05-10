@@ -16,46 +16,27 @@ package authentication
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
-	"github.com/golang/glog"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
 )
 
 const fakeCredentialType string = "FakeCredential"
 
-// NewFake returns a new authenticator.
-func NewFake() *FakeAuth {
-	return &FakeAuth{}
-}
-
-// FakeAuth provides a fake authenticator for testing.
-type FakeAuth struct{}
-
-// ValidateCreds authenticate the information present in ctx.
-func (a *FakeAuth) ValidateCreds(ctx context.Context) (*SecurityContext, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		glog.V(2).Infof("FakeAuth: missing authentication data")
-		return nil, ErrMissingAuth
-	}
-	authHeader, ok := md["authorization"]
-	if !ok || len(authHeader) != 1 {
-		return nil, ErrMissingAuth
-	}
-	p := strings.Split(authHeader[0], " ")
-	if len(p) != 2 {
-		return nil, fmt.Errorf("Bad Authentication Format")
+// FakeAuthFunc implements go-grpc-middleware/auth.AuthFunc
+// FakeAuthFunc looks for a fake authentication token and puts a
+// SecurityContext in the returned ctx.
+func FakeAuthFunc(ctx context.Context) (context.Context, error) {
+	token, err := grpc_auth.AuthFromMD(ctx, fakeCredentialType)
+	if err != nil {
+		return nil, err
 	}
 
-	if got, want := p[0], fakeCredentialType; got != want {
-		return nil, fmt.Errorf("FakeAuth: wrong credential type. got: %v, want %v", got, want)
-	}
-
-	glog.V(2).Infof("FakeAuth: fake authentication succeeded for user %+v", p[1])
-	return NewSecurityContext(p[1]), nil
+	return context.WithValue(ctx, securityContextKey, &ValidatedSecurity{
+		Email: token,
+	}), nil
 }
 
 // GetFakeCredential returns fake PerRPCCredentials

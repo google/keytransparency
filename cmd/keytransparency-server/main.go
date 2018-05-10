@@ -78,11 +78,11 @@ func main() {
 		glog.Exitf("Failed to load server credentials %v", err)
 	}
 
-	var auth authentication.Authenticator
+	var authFunc auth.AuthFunc
 	switch *authType {
 	case "insecure-fake":
 		glog.Warning("INSECURE! Using fake authentication.")
-		auth = authentication.NewFake()
+		auth = authentication.FakeAuthFunc
 	case "google":
 		var err error
 		auth, err = gauth.NewGoogleAuth()
@@ -124,8 +124,14 @@ func main() {
 		entry.New(), auth, authz, domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_prometheus.StreamServerInterceptor,
+			grpc_auth.StreamServerInterceptor(auth),
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_prometheus.UnaryServerInterceptor,
+			grpc_auth.UnaryServerInterceptor(auth),
+		)),
 	)
 	pb.RegisterKeyTransparencyServer(grpcServer, ksvr)
 	reflection.Register(grpcServer)

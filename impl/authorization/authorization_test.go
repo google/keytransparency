@@ -16,9 +16,11 @@
 package authorization
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/keytransparency/core/authentication"
+	"google.golang.org/grpc/metadata"
 
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
@@ -85,10 +87,11 @@ func setup() *authz {
 }
 
 func TestIsAuthorized(t *testing.T) {
+	ctx := context.Background()
 	a := setup()
 	for _, tc := range []struct {
 		description string
-		sctx        *authentication.SecurityContext
+		ctx         context.Context
 		domainID    string
 		appID       string
 		userID      string
@@ -97,7 +100,7 @@ func TestIsAuthorized(t *testing.T) {
 	}{
 		{
 			"self updating own profile",
-			authentication.NewSecurityContext(testUser),
+			authentication.WithOutgoingFakeAuth(ctx, testUser),
 			"1",
 			"1",
 			testUser,
@@ -106,7 +109,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"other accessing profile, authorized with one role",
-			authentication.NewSecurityContext(admin1),
+			authentication.WithOutgoingFakeAuth(ctx, admin1),
 			"1",
 			"1",
 			"",
@@ -115,7 +118,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"other accessing profile, authorized with multiple roles",
-			authentication.NewSecurityContext(admin2),
+			authentication.WithOutgoingFakeAuth(ctx, admin2),
 			"1",
 			"1",
 			"",
@@ -124,7 +127,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"other accessing profile, authorized second resource",
-			authentication.NewSecurityContext(admin3),
+			authentication.WithOutgoingFakeAuth(ctx, admin3),
 			"1",
 			"2",
 			"",
@@ -133,7 +136,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"not authorized, no resource label",
-			authentication.NewSecurityContext(admin1),
+			authentication.WithOutgoingFakeAuth(ctx, admin1),
 			"1",
 			"10",
 			"",
@@ -142,7 +145,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"not authorized, no label_to_role defined",
-			authentication.NewSecurityContext(admin1),
+			authentication.WithOutgoingFakeAuth(ctx, admin1),
 			"1",
 			"4",
 			"",
@@ -151,7 +154,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"not authorized, empty role definition",
-			authentication.NewSecurityContext(admin1),
+			authentication.WithOutgoingFakeAuth(ctx, admin1),
 			"1",
 			"3",
 			"",
@@ -160,7 +163,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"not authorized, wrong permission",
-			authentication.NewSecurityContext(admin2),
+			authentication.WithOutgoingFakeAuth(ctx, admin2),
 			"1",
 			"1",
 			"",
@@ -169,7 +172,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 		{
 			"not authorized principal",
-			authentication.NewSecurityContext(admin4),
+			authentication.WithOutgoingFakeAuth(ctx, admin4),
 			"1",
 			"1",
 			"",
@@ -177,7 +180,18 @@ func TestIsAuthorized(t *testing.T) {
 			false,
 		},
 	} {
-		err := a.IsAuthorized(tc.sctx, tc.domainID, tc.appID, tc.userID, tc.permission)
+		// Convert outgoing context to incoming context.
+		md, ok := metadata.FromOutgoingContext(tc.ctx)
+		if !ok {
+			t.Errorf("No outgoing context metadata")
+		}
+		inCtx := metadata.NewIncomingContext(ctx, md)
+		sctx, err := authentication.FakeAuthFunc(inCtx)
+		if err != nil {
+			t.Errorf("FakeAuthFunc(): %v", err)
+			continue
+		}
+		err = a.Authorize(sctx, tc.domainID, tc.appID, tc.userID, tc.permission)
 		if got, want := err == nil, tc.success; got != want {
 			t.Errorf("%v: IsAuthorized err == nil: %v, want %v", tc.description, got, want)
 		}

@@ -21,7 +21,6 @@
 package authentication
 
 import (
-	"context"
 	"errors"
 )
 
@@ -29,9 +28,3 @@ var (
 	// ErrMissingAuth occurs when authentication information is missing.
 	ErrMissingAuth = errors.New("auth: missing authentication header")
 )
-
-// Authenticator provides services to authenticate users.
-type Authenticator interface {
-	// ValidateCreds authenticate the information present in ctx.
-	ValidateCreds(ctx context.Context) (*SecurityContext, error)
-}

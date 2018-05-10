@@ -23,8 +23,8 @@ import (
 
 	"github.com/google/keytransparency/core/authentication"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"golang.org/x/oauth2"
-	"google.golang.org/grpc/metadata"
 
 	gAPI "google.golang.org/api/oauth2/v2"
 )
@@ -61,10 +61,15 @@ func NewGoogleAuth() (*GAuth, error) {
 	return &GAuth{googleService}, nil
 }
 
-// ValidateCreds authenticate the information present in ctx.
-func (a *GAuth) ValidateCreds(ctx context.Context) (*authentication.SecurityContext, error) {
-	// Get Tokeninfo from credentials.
-	tokenInfo, err := a.validateToken(ctx)
+// AuthFunc authenticate the information present in ctx.
+func (a *GAuth) AuthFunc(ctx context.Context) (context.Context, error) {
+	accessToken, err := grpc_auth.AuthFromMD(ctx, "bearer")
+	if err != nil {
+		return nil, err
+	}
+
+	token := parseToken(accessToken)
+	tokenInfo, err := a.validateToken(token)
 	if err != nil {
 		return nil, err
 	}
@@ -99,13 +104,16 @@ func setDifference(a, b []string) []string {
 	return diff
 }
 
+func parseToken(accessToken string) *oauth2.Token {
+	return &oauth2.Token{
+		TokenType:   "bearer",
+		AccessToken: accessToken,
+	}
+}
+
 // validateToken makes an https request to the tokeninfo API using the access
 // token provided in the header.
-func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
-	token, err := getIDTokenAuthorizationHeader(ctx)
-	if err != nil {
-		return nil, err
-	}
+func (a *GAuth) validateToken(token *oauth2.Token) (*gAPI.Tokeninfo, error) {
 	if !token.Valid() {
 		return nil, ErrInvalidToken
 	}
@@ -117,25 +125,4 @@ func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 		return nil, err
 	}
 	return info, nil
-}
-
-// getIDTokenAuthorizationHeader pulls the bearer token from the "authorization"
-// header in gRPC.
-func getIDTokenAuthorizationHeader(ctx context.Context) (*oauth2.Token, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, authentication.ErrMissingAuth
-	}
-	authHeader, ok := md["authorization"]
-	if !ok || len(authHeader) != 1 {
-		return nil, authentication.ErrMissingAuth
-	}
-	p := strings.Split(authHeader[0], " ")
-	if len(p) != 2 {
-		return nil, ErrBadFormat
-	}
-	return &oauth2.Token{
-		TokenType:   p[0],
-		AccessToken: p[1],
-	}, nil
 }

@@ -19,7 +19,6 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -44,7 +43,6 @@ type Server struct {
 	tmap      tpb.TrillianMapClient
 	logAdmin  tpb.TrillianAdminClient
 	mapAdmin  tpb.TrillianAdminClient
-	auth      authentication.Authenticator
 	authz     authorization.Authorization
 	mutator   mutator.Func
 	domains   domain.Storage
@@ -59,7 +57,6 @@ func New(tlog tpb.TrillianLogClient,
 	logAdmin tpb.TrillianAdminClient,
 	mapAdmin tpb.TrillianAdminClient,
 	mutator mutator.Func,
-	auth authentication.Authenticator,
 	authz authorization.Authorization,
 	domains domain.Storage,
 	queue mutator.MutationQueue,
@@ -70,7 +67,6 @@ func New(tlog tpb.TrillianLogClient,
 		logAdmin:  logAdmin,
 		mapAdmin:  mapAdmin,
 		mutator:   mutator,
-		auth:      auth,
 		authz:     authz,
 		domains:   domains,
 		queue:     queue,
@@ -264,19 +260,8 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	// Validate proper authentication.
-	sctx, err := s.auth.ValidateCreds(ctx)
-	switch err {
-	case nil:
-		break // Authentication succeeded.
-	case authentication.ErrMissingAuth:
-		return nil, status.Errorf(codes.Unauthenticated, "Missing authentication header")
-	default:
-		glog.Warningf("Auth failed: %v", err)
-		return nil, status.Errorf(codes.Unauthenticated, "Unauthenticated")
-	}
 	// Validate proper authorization.
-	if s.authz.IsAuthorized(sctx, domain.DomainID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
+	if s.authz.Authorize(ctx, domain.DomainID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
 		glog.Warningf("Authz failed: %v", err)
 		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized")
 	}
