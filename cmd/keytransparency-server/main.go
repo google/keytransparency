@@ -128,11 +128,12 @@ func main() {
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_prometheus.StreamServerInterceptor,
-			grpc_auth.StreamServerInterceptor(authFunc),
 		)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_prometheus.UnaryServerInterceptor,
-			grpc_auth.UnaryServerInterceptor(authFunc),
+			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{
+				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": authFunc,
+			}),
 		)),
 	)
 	pb.RegisterKeyTransparencyServer(grpcServer, ksvr)

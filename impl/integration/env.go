@@ -160,17 +160,17 @@ func NewEnv() (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
 	}
+	authFunc := authentication.FakeAuthFunc
 	authz := authorization.New()
 
 	queue := mutator.MutationQueue(mutations)
 	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
 		entry.New(), authz, domainStorage, queue, mutations)
 	gsvr := grpc.NewServer(
-		grpc.StreamInterceptor(
-			grpc_auth.StreamServerInterceptor(authentication.FakeAuthFunc),
-		),
 		grpc.UnaryInterceptor(
-			grpc_auth.UnaryServerInterceptor(authentication.FakeAuthFunc),
+			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{
+				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": authFunc,
+			}),
 		),
 	)
 	pb.RegisterKeyTransparencyServer(gsvr, server)

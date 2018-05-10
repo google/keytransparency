@@ -261,9 +261,9 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 	}
 
 	// Validate proper authorization.
-	if s.authz.Authorize(ctx, domain.DomainID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
-		glog.Warningf("Authz failed for domains/%v/apps/%v/users/%v", domain.DomainID, in.AppId, in.UserId, err)
-		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized")
+	if err := s.authz.Authorize(ctx, domain.DomainID, in.AppId, in.UserId, authzpb.Permission_WRITE); err != nil {
+		glog.Warningf("Authorize(domains/%v/apps/%v/users/%v): %v", domain.DomainID, in.AppId, in.UserId, err)
+		return nil, err
 	}
 	// Verify:
 	// - Index to Key equality in SignedKV.
