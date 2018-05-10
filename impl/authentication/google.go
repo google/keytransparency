@@ -35,15 +35,6 @@ var (
 	E2EScope = "https://www.googleapis.com/auth/e2ekeys"
 	// RequiredScopes is the set of scopes the server requires for a user to change keys.
 	RequiredScopes = []string{gAPI.UserinfoEmailScope, E2EScope}
-
-	// ErrBadFormat occurs when the authentication header is malformed.
-	ErrBadFormat = status.Error(codes.Unauthenticated, "auth: bad authorization header format")
-	// ErrInvalidToken occurs when the authentication header is not valid.
-	ErrInvalidToken = status.Error(codes.Unauthenticated, "auth: invalid token")
-	// ErrEmailNotVerified occurs when token info indicates that email has not been verified.
-	ErrEmailNotVerified = status.Error(codes.Unauthenticated, "auth: unverified email address")
-	// ErrMissingScope occurs when a required scope is missing.
-	ErrMissingScope = status.Error(codes.Unauthenticated, "auth: missing scope")
 )
 
 // GAuth authenticates Google users through the Google TokenInfo API endpoint.
@@ -62,17 +53,16 @@ func NewGoogleAuth() (*GAuth, error) {
 
 // AuthFunc authenticate the information present in ctx.
 func (a *GAuth) AuthFunc(ctx context.Context) (context.Context, error) {
-	accessToken, err := grpc_auth.AuthFromMD(ctx, "bearer")
+	token, err := parseToken(ctx)
 	if err != nil {
 		return nil, err
 	}
-	token := parseToken(accessToken)
 	tokenInfo, err := a.validateToken(token)
 	if err != nil {
 		return nil, err
 	}
 	if !tokenInfo.VerifiedEmail {
-		return nil, ErrEmailNotVerified
+		return nil, status.Error(codes.Unauthenticated, "auth: unverified email address")
 	}
 
 	// Validate scopes.
@@ -80,9 +70,9 @@ func (a *GAuth) AuthFunc(ctx context.Context) (context.Context, error) {
 	diff := setDifference(RequiredScopes, scopes)
 	if len(diff) > 0 {
 		log.Printf("Failed auth: missing scopes %v", diff)
-		return nil, ErrMissingScope
+		return nil, status.Error(codes.Unauthenticated, "auth: missing scope")
 	}
-	return context.WithValue(ctx, securityContextKey, &ValidatedSecurity{
+	return context.WithValue(ctx, securityContextKey, &SecurityContext{
 		Email: tokenInfo.Email,
 	}), nil
 }
@@ -104,18 +94,22 @@ func setDifference(a, b []string) []string {
 	return diff
 }
 
-func parseToken(accessToken string) *oauth2.Token {
+func parseToken(ctx context.Context) (*oauth2.Token, error) {
+	accessToken, err := grpc_auth.AuthFromMD(ctx, "bearer")
+	if err != nil {
+		return nil, err
+	}
 	return &oauth2.Token{
 		TokenType:   "bearer",
 		AccessToken: accessToken,
-	}
+	}, nil
 }
 
 // validateToken makes an https request to the tokeninfo API using the access
 // token provided in the header.
 func (a *GAuth) validateToken(token *oauth2.Token) (*gAPI.Tokeninfo, error) {
 	if !token.Valid() {
-		return nil, ErrInvalidToken
+		return nil, status.Error(codes.Unauthenticated, "auth: invalid token")
 	}
 
 	infoCall := a.service.Tokeninfo()

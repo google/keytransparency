@@ -38,15 +38,16 @@ func New() authorization.Authorization {
 	return &authz{}
 }
 
-// IsAuthorized verifies that the identity issuing the call (from ctx) is
-// authorized to carry the given permission. A call is authorized if:
-//  1. userID matches the identity in sctx,
-//  2. or, sctx's identity is authorized to do the action in domainID and appID.
+// Authorize verifies that the identity issuing the call.
+// ctx must contain an authentication.SecurityContext.
+// A call is authorized if:
+//  1. userID matches SecurityContext.Email,
+//  2. or, SecurityContext.Email is authorized to do the action in domains/domainID/apps/appID.
 func (a *authz) Authorize(ctx context.Context,
 	domainID, appID, userID string, permission authzpb.Permission) error {
 	sctx, ok := authentication.FromContext(ctx)
 	if !ok {
-		return status.Errorf(codes.Unauthenticated, "Request does not contain a ValidatedSecurity object")
+		return status.Error(codes.Unauthenticated, "Request does not contain a ValidatedSecurity object")
 	}
 
 	// Case 1.

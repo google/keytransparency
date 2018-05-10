@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ package authentication
 
 import "context"
 
-// ValidatedSecurity is the auth value stored in the Contexts.
-type ValidatedSecurity struct {
+// SecurityContext is the auth value stored in the Contexts.
+type SecurityContext struct {
 	Email string
 }
 
@@ -32,7 +32,7 @@ var securityContextKey struct{}
 
 // FromContext returns a ValidatedSecurity from the current context.
 // ValidatedSecurity is inserted into ctx by AuthFunc.
-func FromContext(ctx context.Context) (*ValidatedSecurity, bool) {
-	v, ok := ctx.Value(securityContextKey).(*ValidatedSecurity)
+func FromContext(ctx context.Context) (*SecurityContext, bool) {
+	v, ok := ctx.Value(securityContextKey).(*SecurityContext)
 	return v, ok
 }

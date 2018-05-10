@@ -24,13 +24,12 @@ import (
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 )
 
-// UnaryServerInterceptor returns a new unary server interceptors that performs per-request auth.
+// UnaryServerInterceptor returns a new unary server interceptor that performs per-request auth.
 func UnaryServerInterceptor(authFuncs map[string]grpc_auth.AuthFunc) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		glog.Infof("In authentication interceptor")
 		authFunc, ok := authFuncs[info.FullMethod]
 		if !ok {
-			glog.Infof("auth interceptor: no hander for %v", info.FullMethod)
+			glog.V(2).Infof("auth interceptor: no hander for %v", info.FullMethod)
 			// If no auth handler was found for this method, invoke the method directly.
 			return handler(ctx, req)
 
@@ -43,11 +42,12 @@ func UnaryServerInterceptor(authFuncs map[string]grpc_auth.AuthFunc) grpc.UnaryS
 	}
 }
 
-// StreamServerInterceptor returns a new unary server interceptors that performs per-request auth.
+// StreamServerInterceptor returns a new stream server interceptor that performs per-request auth.
 func StreamServerInterceptor(authFuncs map[string]grpc_auth.AuthFunc) grpc.StreamServerInterceptor {
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		authFunc, ok := authFuncs[info.FullMethod]
 		if !ok {
+			glog.V(2).Infof("auth interceptor: no hander for %v", info.FullMethod)
 			// If no auth handler was found for this method, invoke the method directly.
 			return handler(srv, stream)
 		}

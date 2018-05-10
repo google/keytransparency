@@ -178,17 +178,18 @@ func TestIsAuthorized(t *testing.T) {
 			wantCode:    codes.PermissionDenied,
 		},
 	} {
-		// Convert outgoing context to incoming context.
-		inCtx := metautils.ExtractOutgoing(tc.ctx).ToIncoming(ctx)
-		sctx, err := authentication.FakeAuthFunc(inCtx)
-		if err != nil {
-			t.Errorf("FakeAuthFunc(): %v", err)
-			continue
-		}
-		err = a.Authorize(sctx, tc.domainID, tc.appID, tc.userID, tc.permission)
-		if got, want := status.Code(err), tc.wantCode; got != want {
-			t.Errorf("%v: IsAuthorized(): %v, want %v", tc.description, err, want)
-		}
+		t.Run(tc.description, func(t *testing.T) {
+			// Convert outgoing context to incoming context.
+			inCtx := metautils.ExtractOutgoing(tc.ctx).ToIncoming(ctx)
+			sctx, err := authentication.FakeAuthFunc(inCtx)
+			if err != nil {
+				t.Fatalf("FakeAuthFunc(): %v", err)
+			}
+			err = a.Authorize(sctx, tc.domainID, tc.appID, tc.userID, tc.permission)
+			if got, want := status.Code(err), tc.wantCode; got != want {
+				t.Errorf("IsAuthorized(): %v, want %v", err, want)
+			}
+		})
 	}
 }
 

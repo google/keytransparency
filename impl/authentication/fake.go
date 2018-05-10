@@ -34,7 +34,7 @@ func FakeAuthFunc(ctx context.Context) (context.Context, error) {
 		return nil, err
 	}
 
-	return context.WithValue(ctx, securityContextKey, &ValidatedSecurity{
+	return context.WithValue(ctx, securityContextKey, &SecurityContext{
 		Email: token,
 	}), nil
 }
