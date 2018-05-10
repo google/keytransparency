@@ -25,9 +25,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/integration"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"

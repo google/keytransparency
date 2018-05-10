@@ -24,8 +24,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/impl/authentication"
 
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys/der"
@@ -39,7 +39,6 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	gauth "github.com/google/keytransparency/impl/google/authentication"
 )
 
 var (
@@ -142,7 +141,7 @@ func getCreds(ctx context.Context, clientSecretFile string) (credentials.PerRPCC
 		return nil, err
 	}
 
-	config, err := google.ConfigFromJSON(b, gauth.RequiredScopes...)
+	config, err := google.ConfigFromJSON(b, authentication.RequiredScopes...)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +158,7 @@ func getServiceCreds(serviceKeyFile string) (credentials.PerRPCCredentials, erro
 	if err != nil {
 		return nil, err
 	}
-	return oauth.NewServiceAccountFromKey(b, gauth.RequiredScopes...)
+	return oauth.NewServiceAccountFromKey(b, authentication.RequiredScopes...)
 }
 
 func transportCreds(ktURL string) (credentials.TransportCredentials, error) {

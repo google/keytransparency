@@ -25,8 +25,8 @@ import (
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/impl/authentication"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"

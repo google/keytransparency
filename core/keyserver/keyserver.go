@@ -262,7 +262,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 
 	// Validate proper authorization.
 	if s.authz.Authorize(ctx, domain.DomainID, in.AppId, in.UserId, authzpb.Permission_WRITE) != nil {
-		glog.Warningf("Authz failed: %v", err)
+		glog.Warningf("Authz failed for domains/%v/apps/%v/users/%v", domain.DomainID, in.AppId, in.UserId, err)
 		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized")
 	}
 	// Verify:
