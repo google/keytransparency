@@ -18,6 +18,7 @@ package authorization
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/keytransparency/core/authorization"
 	"google.golang.org/grpc/codes"
@@ -57,7 +58,7 @@ func (a *authz) Authorize(ctx context.Context,
 	rLabel := resourceLabel(domainID, appID)
 	roles, ok := a.policy.GetResourceToRoleLabels()[rLabel]
 	if !ok {
-		return fmt.Errorf("resource <domainID=%v, appID=%v> does not have a defined policy", domainID, appID)
+		return status.Errorf(codes.PermissionDenied, "%v does not have a defined policy", rLabel)
 	}
 	for _, l := range roles.GetLabels() {
 		role := a.policy.GetRoles()[l]
@@ -65,11 +66,13 @@ func (a *authz) Authorize(ctx context.Context,
 			return nil
 		}
 	}
-	return fmt.Errorf("%v is not authorized to perform %v on resource defined by <domainID=%v, appID=%v>", sctx.Email, permission, domainID, appID)
+	return status.Errorf(codes.PermissionDenied, "%v is not authorized to perform %v on %v", sctx.Email, permission, rLabel)
 }
 
 func resourceLabel(domainID, appID string) string {
-	return fmt.Sprintf("%v|%v", domainID, appID)
+	return fmt.Sprintf("domains/%v/apps/%v",
+		strings.Replace(domainID, "/", "_", -1),
+		strings.Replace(appID, "/", "_", -1))
 }
 
 func isPrincipalInRole(role *pb.AuthorizationPolicy_Role, identity string) bool {

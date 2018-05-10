@@ -32,7 +32,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
-	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -40,6 +39,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
@@ -126,9 +126,8 @@ func main() {
 		entry.New(), authz, domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			grpc_prometheus.StreamServerInterceptor,
-		)),
+		// All streaming methods are unauthenticated for now.
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_prometheus.UnaryServerInterceptor,
 			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{

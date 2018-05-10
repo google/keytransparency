@@ -19,10 +19,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/keytransparency/impl/authentication"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
-	"github.com/google/keytransparency/impl/authentication"
 	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 
@@ -37,10 +39,10 @@ const (
 	admin2   = "admin2@example.com"
 	admin3   = "admin3@example.com"
 	admin4   = "admin4@example.com"
-	res1     = "1|1"
-	res2     = "1|2"
-	res3     = "1|3"
-	res4     = "1|4"
+	res1     = "domains/1/apps/1"
+	res2     = "domains/1/apps/2"
+	res3     = "domains/1/apps/3"
+	res4     = "domains/1/apps/4"
 )
 
 func setup() *authz {
@@ -96,88 +98,84 @@ func TestIsAuthorized(t *testing.T) {
 		appID       string
 		userID      string
 		permission  authzpb.Permission
-		success     bool
+		wantCode    codes.Code
 	}{
 		{
-			"self updating own profile",
-			authentication.WithOutgoingFakeAuth(ctx, testUser),
-			"1",
-			"1",
-			testUser,
-			authzpb.Permission_WRITE,
-			true,
+			description: "self updating own profile",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, testUser),
+			domainID:    "1",
+			appID:       "1",
+			userID:      testUser,
+			permission:  authzpb.Permission_WRITE,
 		},
 		{
-			"other accessing profile, authorized with one role",
-			authentication.WithOutgoingFakeAuth(ctx, admin1),
-			"1",
-			"1",
-			"",
-			authzpb.Permission_WRITE,
-			true,
+			description: "other accessing profile, authorized with one role",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
+			domainID:    "1",
+			appID:       "1",
+			userID:      "",
+			permission:  authzpb.Permission_WRITE,
 		},
 		{
-			"other accessing profile, authorized with multiple roles",
-			authentication.WithOutgoingFakeAuth(ctx, admin2),
-			"1",
-			"1",
-			"",
-			authzpb.Permission_READ,
-			true,
+			description: "other accessing profile, authorized with multiple roles",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin2),
+			domainID:    "1",
+			appID:       "1",
+			userID:      "",
+			permission:  authzpb.Permission_READ,
 		},
 		{
-			"other accessing profile, authorized second resource",
-			authentication.WithOutgoingFakeAuth(ctx, admin3),
-			"1",
-			"2",
-			"",
-			authzpb.Permission_LOG,
-			true,
+			description: "other accessing profile, authorized second resource",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin3),
+			domainID:    "1",
+			appID:       "2",
+			userID:      "",
+			permission:  authzpb.Permission_LOG,
 		},
 		{
-			"not authorized, no resource label",
-			authentication.WithOutgoingFakeAuth(ctx, admin1),
-			"1",
-			"10",
-			"",
-			authzpb.Permission_WRITE,
-			false,
+			description: "not authorized, no resource label",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
+			domainID:    "1",
+			appID:       "10",
+			userID:      "",
+			permission:  authzpb.Permission_WRITE,
+			wantCode:    codes.PermissionDenied,
 		},
 		{
-			"not authorized, no label_to_role defined",
-			authentication.WithOutgoingFakeAuth(ctx, admin1),
-			"1",
-			"4",
-			"",
-			authzpb.Permission_LOG,
-			false,
+			description: "not authorized, no label_to_role defined",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
+			domainID:    "1",
+			appID:       "4",
+			userID:      "",
+			permission:  authzpb.Permission_LOG,
+			wantCode:    codes.PermissionDenied,
 		},
 		{
-			"not authorized, empty role definition",
-			authentication.WithOutgoingFakeAuth(ctx, admin1),
-			"1",
-			"3",
-			"",
-			authzpb.Permission_WRITE,
-			false,
+			description: "not authorized, empty role definition",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
+			domainID:    "1",
+			appID:       "3",
+			userID:      "",
+			permission:  authzpb.Permission_WRITE,
+			wantCode:    codes.PermissionDenied,
 		},
 		{
-			"not authorized, wrong permission",
-			authentication.WithOutgoingFakeAuth(ctx, admin2),
-			"1",
-			"1",
-			"",
-			authzpb.Permission_WRITE,
-			false,
+			description: "not authorized, wrong permission",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin2),
+			domainID:    "1",
+			appID:       "1",
+			userID:      "",
+			permission:  authzpb.Permission_WRITE,
+			wantCode:    codes.PermissionDenied,
 		},
 		{
-			"not authorized principal",
-			authentication.WithOutgoingFakeAuth(ctx, admin4),
-			"1",
-			"1",
-			"",
-			authzpb.Permission_WRITE,
-			false,
+			description: "not authorized principal",
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin4),
+			domainID:    "1",
+			appID:       "1",
+			userID:      "",
+			permission:  authzpb.Permission_WRITE,
+			wantCode:    codes.PermissionDenied,
 		},
 	} {
 		// Convert outgoing context to incoming context.
@@ -188,8 +186,8 @@ func TestIsAuthorized(t *testing.T) {
 			continue
 		}
 		err = a.Authorize(sctx, tc.domainID, tc.appID, tc.userID, tc.permission)
-		if got, want := err == nil, tc.success; got != want {
-			t.Errorf("%v: IsAuthorized err == nil: %v, want %v", tc.description, got, want)
+		if got, want := status.Code(err), tc.wantCode; got != want {
+			t.Errorf("%v: IsAuthorized(): %v, want %v", tc.description, err, want)
 		}
 	}
 }
@@ -200,11 +198,12 @@ func TestResouceLabel(t *testing.T) {
 		appID    string
 		out      string
 	}{
-		{"1", "1", "1|1"},
-		{"1", "2", "1|2"},
-		{"1", "111", "1|111"},
-		{"111", "1", "111|1"},
-		{"111", "111", "111|111"},
+		{"1", "1", "domains/1/apps/1"},
+		{"1", "2", "domains/1/apps/2"},
+		{"1", "111", "domains/1/apps/111"},
+		{"111", "1", "domains/111/apps/1"},
+		{"111", "111", "domains/111/apps/111"},
+		{"1/apps/1", "", "domains/1_apps_1/apps/"},
 	} {
 		if got, want := resourceLabel(tc.domainID, tc.appID), tc.out; got != want {
 			t.Errorf("resourceLabel(%v, %v)=%v, want %v", tc.domainID, tc.appID, got, want)

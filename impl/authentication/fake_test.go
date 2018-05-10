@@ -37,8 +37,6 @@ func TestBasicValidateCreds(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Convert outgoing context to incoming context.
 			inCtx := metautils.ExtractOutgoing(tc.ctx).ToIncoming(ctx)
-
-			// Build context by adding the credential information.
 			sctx, err := FakeAuthFunc(inCtx)
 			if got, want := status.Code(err), tc.wantCode; got != want {
 				t.Errorf("FakeAuthFunc(): %v, want %v", err, want)

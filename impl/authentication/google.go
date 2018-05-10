@@ -16,14 +16,15 @@ package authentication
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"strings"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"golang.org/x/oauth2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	gAPI "google.golang.org/api/oauth2/v2"
 )
 
@@ -36,13 +37,13 @@ var (
 	RequiredScopes = []string{gAPI.UserinfoEmailScope, E2EScope}
 
 	// ErrBadFormat occurs when the authentication header is malformed.
-	ErrBadFormat = errors.New("auth: bad authorization header format")
+	ErrBadFormat = status.Error(codes.Unauthenticated, "auth: bad authorization header format")
 	// ErrInvalidToken occurs when the authentication header is not valid.
-	ErrInvalidToken = errors.New("auth: invalid token")
+	ErrInvalidToken = status.Error(codes.Unauthenticated, "auth: invalid token")
 	// ErrEmailNotVerified occurs when token info indicates that email has not been verified.
-	ErrEmailNotVerified = errors.New("auth: unverified email address")
+	ErrEmailNotVerified = status.Error(codes.Unauthenticated, "auth: unverified email address")
 	// ErrMissingScope occurs when a required scope is missing.
-	ErrMissingScope = errors.New("auth: missing scope")
+	ErrMissingScope = status.Error(codes.Unauthenticated, "auth: missing scope")
 )
 
 // GAuth authenticates Google users through the Google TokenInfo API endpoint.
@@ -56,7 +57,7 @@ func NewGoogleAuth() (*GAuth, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &GAuth{googleService}, nil
+	return &GAuth{service: googleService}, nil
 }
 
 // AuthFunc authenticate the information present in ctx.
@@ -65,7 +66,6 @@ func (a *GAuth) AuthFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	token := parseToken(accessToken)
 	tokenInfo, err := a.validateToken(token)
 	if err != nil {
