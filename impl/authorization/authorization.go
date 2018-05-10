@@ -20,17 +20,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/authorization"
+	"github.com/google/keytransparency/impl/authentication"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
-	"github.com/google/keytransparency/impl/authentication"
-	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
+	typepb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	authzpb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 
 type authz struct {
-	policy *pb.AuthorizationPolicy
+	policy *authzpb.AuthorizationPolicy
 }
 
 // New creates a new instance of the authorization module.
@@ -43,13 +45,23 @@ func New() authorization.Authorization {
 // A call is authorized if:
 //  1. userID matches SecurityContext.Email,
 //  2. or, SecurityContext.Email is authorized to do the action in domains/domainID/apps/appID.
-func (a *authz) Authorize(ctx context.Context,
-	domainID, appID, userID string, permission authzpb.Permission) error {
+func (a *authz) Authorize(ctx context.Context, m proto.Message, permission typepb.Permission) error {
 	sctx, ok := authentication.FromContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "Request does not contain a ValidatedSecurity object")
 	}
 
+	switch t := m.(type) {
+	case *pb.UpdateEntryRequest:
+		return a.checkPermission(sctx, t.DomainId, t.AppId, t.UserId, permission)
+		// Can't authorize any other requests
+	default:
+		return status.Errorf(codes.PermissionDenied, "message type %T not recognized", t)
+	}
+
+}
+
+func (a *authz) checkPermission(sctx *authentication.SecurityContext, domainID, appID, userID string, permission typepb.Permission) error {
 	// Case 1.
 	if sctx.Email == userID {
 		return nil
@@ -81,7 +93,7 @@ func resourceLabel(domainID, appID string) (string, error) {
 	return fmt.Sprintf("domains/%v/apps/%v", domainID, appID), nil
 }
 
-func isPrincipalInRole(role *pb.AuthorizationPolicy_Role, identity string) bool {
+func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string) bool {
 	for _, p := range role.GetPrincipals() {
 		if p == identity {
 			return true
@@ -90,7 +102,7 @@ func isPrincipalInRole(role *pb.AuthorizationPolicy_Role, identity string) bool 
 	return false
 }
 
-func isPermisionInRole(role *pb.AuthorizationPolicy_Role, permission authzpb.Permission) bool {
+func isPermisionInRole(role *authzpb.AuthorizationPolicy_Role, permission typepb.Permission) bool {
 	for _, p := range role.GetPermissions() {
 		if p == permission {
 			return true

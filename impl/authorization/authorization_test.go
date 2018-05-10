@@ -24,8 +24,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
-	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
+	typepb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	authzpb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 
 const (
@@ -47,30 +48,30 @@ const (
 
 func setup() *authz {
 	a := &authz{}
-	a.policy = &pb.AuthorizationPolicy{
-		Roles: map[string]*pb.AuthorizationPolicy_Role{
+	a.policy = &authzpb.AuthorizationPolicy{
+		Roles: map[string]*authzpb.AuthorizationPolicy_Role{
 			l1: {
 				Principals: []string{admin1},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_WRITE,
+				Permissions: []typepb.Permission{
+					typepb.Permission_WRITE,
 				},
 			},
 			l2: {
 				Principals: []string{admin1, admin2},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
+				Permissions: []typepb.Permission{
+					typepb.Permission_LOG,
+					typepb.Permission_READ,
 				},
 			},
 			l3: {
 				Principals: []string{admin3},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
+				Permissions: []typepb.Permission{
+					typepb.Permission_LOG,
 				},
 			},
 			l4: {},
 		},
-		ResourceToRoleLabels: map[string]*pb.AuthorizationPolicy_RoleLabels{
+		ResourceToRoleLabels: map[string]*authzpb.AuthorizationPolicy_RoleLabels{
 			res1: {
 				Labels: []string{l1, l2},
 			},
@@ -97,7 +98,7 @@ func TestIsAuthorized(t *testing.T) {
 		domainID    string
 		appID       string
 		userID      string
-		permission  authzpb.Permission
+		permission  typepb.Permission
 		wantCode    codes.Code
 	}{
 		{
@@ -106,7 +107,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      testUser,
-			permission:  authzpb.Permission_WRITE,
+			permission:  typepb.Permission_WRITE,
 		},
 		{
 			description: "other accessing profile, authorized with one role",
@@ -114,7 +115,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
+			permission:  typepb.Permission_WRITE,
 		},
 		{
 			description: "other accessing profile, authorized with multiple roles",
@@ -122,7 +123,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      "",
-			permission:  authzpb.Permission_READ,
+			permission:  typepb.Permission_READ,
 		},
 		{
 			description: "other accessing profile, authorized second resource",
@@ -130,7 +131,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "2",
 			userID:      "",
-			permission:  authzpb.Permission_LOG,
+			permission:  typepb.Permission_LOG,
 		},
 		{
 			description: "not authorized, no resource label",
@@ -138,7 +139,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "10",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
+			permission:  typepb.Permission_WRITE,
 			wantCode:    codes.PermissionDenied,
 		},
 		{
@@ -147,7 +148,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "4",
 			userID:      "",
-			permission:  authzpb.Permission_LOG,
+			permission:  typepb.Permission_LOG,
 			wantCode:    codes.PermissionDenied,
 		},
 		{
@@ -156,7 +157,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "3",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
+			permission:  typepb.Permission_WRITE,
 			wantCode:    codes.PermissionDenied,
 		},
 		{
@@ -165,7 +166,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
+			permission:  typepb.Permission_WRITE,
 			wantCode:    codes.PermissionDenied,
 		},
 		{
@@ -174,7 +175,7 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
+			permission:  typepb.Permission_WRITE,
 			wantCode:    codes.PermissionDenied,
 		},
 	} {
@@ -185,7 +186,12 @@ func TestIsAuthorized(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FakeAuthFunc(): %v", err)
 			}
-			err = a.Authorize(sctx, tc.domainID, tc.appID, tc.userID, tc.permission)
+			req := &pb.UpdateEntryRequest{
+				DomainId: tc.domainID,
+				AppId:    tc.appID,
+				UserId:   tc.userID,
+			}
+			err = a.Authorize(sctx, req, tc.permission)
 			if got, want := status.Code(err), tc.wantCode; got != want {
 				t.Errorf("IsAuthorized(): %v, want %v", err, want)
 			}
@@ -221,54 +227,54 @@ func TestIsPermisionInRole(t *testing.T) {
 	// AuthorizationPolicy_Role.Principals is not relevant in this test.
 	for _, tc := range []struct {
 		description string
-		role        *pb.AuthorizationPolicy_Role
-		permission  authzpb.Permission
+		role        *authzpb.AuthorizationPolicy_Role
+		permission  typepb.Permission
 		out         bool
 	}{
 		{
 			"permission is not in role, empty permissions list",
-			&pb.AuthorizationPolicy_Role{
+			&authzpb.AuthorizationPolicy_Role{
 				Principals:  []string{},
-				Permissions: []authzpb.Permission{},
+				Permissions: []typepb.Permission{},
 			},
-			authzpb.Permission_WRITE,
+			typepb.Permission_WRITE,
 			false,
 		},
 		{
 			"permission is not in role, permission not found",
-			&pb.AuthorizationPolicy_Role{
+			&authzpb.AuthorizationPolicy_Role{
 				Principals: []string{},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
+				Permissions: []typepb.Permission{
+					typepb.Permission_LOG,
+					typepb.Permission_READ,
 				},
 			},
-			authzpb.Permission_WRITE,
+			typepb.Permission_WRITE,
 			false,
 		},
 		{
 			"permission is in role, one permission in the list",
-			&pb.AuthorizationPolicy_Role{
+			&authzpb.AuthorizationPolicy_Role{
 				Principals: []string{},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
+				Permissions: []typepb.Permission{
+					typepb.Permission_LOG,
+					typepb.Permission_READ,
 				},
 			},
-			authzpb.Permission_LOG,
+			typepb.Permission_LOG,
 			true,
 		},
 		{
 			"permission is in role, multiple permissions in the list",
-			&pb.AuthorizationPolicy_Role{
+			&authzpb.AuthorizationPolicy_Role{
 				Principals: []string{},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
-					authzpb.Permission_WRITE,
+				Permissions: []typepb.Permission{
+					typepb.Permission_LOG,
+					typepb.Permission_READ,
+					typepb.Permission_WRITE,
 				},
 			},
-			authzpb.Permission_WRITE,
+			typepb.Permission_WRITE,
 			true,
 		},
 	} {

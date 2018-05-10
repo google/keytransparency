@@ -18,6 +18,8 @@ package authorization
 import (
 	"context"
 
+	"github.com/golang/protobuf/proto"
+
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
@@ -25,6 +27,5 @@ import (
 type Authorization interface {
 	// Authorize verifies that the identity issuing the call
 	// (from ctx) is authorized to carry the given permission.
-	Authorize(ctx context.Context,
-		domainID, appID, userID string, permission authzpb.Permission) error
+	Authorize(ctx context.Context, req proto.Message, permission authzpb.Permission) error
 }
