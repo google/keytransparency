@@ -19,10 +19,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/keytransparency/core/authentication"
-	"google.golang.org/grpc/metadata"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/keytransparency/impl/authentication"
 	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 
@@ -181,11 +181,7 @@ func TestIsAuthorized(t *testing.T) {
 		},
 	} {
 		// Convert outgoing context to incoming context.
-		md, ok := metadata.FromOutgoingContext(tc.ctx)
-		if !ok {
-			t.Errorf("No outgoing context metadata")
-		}
-		inCtx := metadata.NewIncomingContext(ctx, md)
+		inCtx := metautils.ExtractOutgoing(tc.ctx).ToIncoming(ctx)
 		sctx, err := authentication.FakeAuthFunc(inCtx)
 		if err != nil {
 			t.Errorf("FakeAuthFunc(): %v", err)

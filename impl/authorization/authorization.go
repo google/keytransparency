@@ -19,12 +19,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/authorization"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/keytransparency/impl/authentication"
 	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 

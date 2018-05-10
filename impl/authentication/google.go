@@ -21,8 +21,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/keytransparency/core/authentication"
-
 	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"golang.org/x/oauth2"
 
@@ -84,7 +82,9 @@ func (a *GAuth) AuthFunc(ctx context.Context) (context.Context, error) {
 		log.Printf("Failed auth: missing scopes %v", diff)
 		return nil, ErrMissingScope
 	}
-	return authentication.NewSecurityContext(tokenInfo.Email), nil
+	return context.WithValue(ctx, securityContextKey, &ValidatedSecurity{
+		Email: tokenInfo.Email,
+	}), nil
 }
 
 // setDifference returns all the elements of A that are not elements of B.

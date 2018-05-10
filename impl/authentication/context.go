@@ -14,17 +14,25 @@
 
 // Package authentication implements authentication mechanisms.
 //
-// The Transparent Key Server is designed to be used by identity providers -
+// Key Transparency is designed to be used by identity providers -
 // IdP in OAuth parlance.  OAuth2 Access Tokens may be provided as
 // authentication information, which can be resolved to user information and
 // associated scopes on the backend.
 package authentication
 
-import (
-	"errors"
-)
+import "context"
 
-var (
-	// ErrMissingAuth occurs when authentication information is missing.
-	ErrMissingAuth = errors.New("auth: missing authentication header")
-)
+// ValidatedSecurity is the auth value stored in the Contexts.
+type ValidatedSecurity struct {
+	Email string
+}
+
+// securityContextKey identifies ValidatedSecurity within context.Context.
+var securityContextKey struct{}
+
+// FromContext returns a ValidatedSecurity from the current context.
+// ValidatedSecurity is inserted into ctx by AuthFunc.
+func FromContext(ctx context.Context) (*ValidatedSecurity, bool) {
+	v, ok := ctx.Value(securityContextKey).(*ValidatedSecurity)
+	return v, ok
+}

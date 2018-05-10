@@ -68,12 +68,16 @@ func TestGoogleValidateCreds(t *testing.T) {
 		t.Errorf("Error annotating context: %v", err)
 	}
 
-	sctx, err := a.ValidateCreds(ctx)
+	sctx, err := a.AuthFunc(ctx)
 	if err != nil {
-		t.Fatalf("ValidateCreds(): %v", err)
+		t.Fatalf("AuthFunc(): %v", err)
 	}
-	if got, want := sctx.Identity(), *email; got != want {
-		t.Errorf("sctx.Identity()=%v, want %v", got, want)
+	validated, ok := FromContext(sctx)
+	if !ok {
+		t.Fatalf("FromContext(): no ValidatedSecurity object found")
+	}
+	if got, want := validated.Email, *email; got != want {
+		t.Errorf("validated.Email: %v, want %v", got, want)
 	}
 }
 
