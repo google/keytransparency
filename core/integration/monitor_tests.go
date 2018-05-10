@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
