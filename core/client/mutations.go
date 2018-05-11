@@ -73,7 +73,7 @@ func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch i
 
 // EpochMutations fetches all the mutations in an epoch
 func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.MutationProof, error) {
-	mapRoot, err := c.mapVerifier.VerifySignedMapRoot(epoch.GetSmr())
+	mapRoot, err := c.VerifySignedMapRoot(epoch.GetSmr())
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +83,10 @@ func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.Mut
 		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
 			DomainId:  epoch.GetDomainId(),
 			Epoch:     int64(mapRoot.Revision),
-			PageSize:  pageSize,
 			PageToken: token,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("GetMutations(%v, %v): %v", epoch.GetDomainId(), pageSize, err)
+			return nil, fmt.Errorf("GetMutations(%v): %v", epoch.GetDomainId(), err)
 		}
 		mutations = append(mutations, resp.GetMutations()...)
 		token = resp.GetNextPageToken()

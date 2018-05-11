@@ -67,7 +67,7 @@ and verify that the results are consistent.`,
 			end = int64(smr.Revision)
 		}
 
-		roots, profiles, err := c.ListHistory(ctx, userID, appID, start, end)
+		roots, profiles, err := c.PaginateHistory(ctx, appID, userID, start, end)
 		if err != nil {
 			return fmt.Errorf("ListHistory failed: %v", err)
 		}

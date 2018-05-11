@@ -277,7 +277,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 		{0, 18, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
 		{0, 1000, [][]byte{}, true},                                                      // Invalid end epoch, beyond current epoch
 	} {
-		_, resp, err := env.Client.ListHistory(ctx, userID, appID, tc.start, tc.end)
+		_, resp, err := env.Client.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
 		if got := err != nil; got != tc.wantErr {
 			t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
 		}
