@@ -236,7 +236,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 		responses[i] = resp
 	}
 
-	nextStart := in.Start + int64(in.PageSize)
+	nextStart := in.Start + int64(len(responses))
 	if nextStart > currentEpoch {
 		nextStart = 0
 	}

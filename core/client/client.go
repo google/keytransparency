@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/trillian"
 
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
@@ -44,13 +45,7 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-const (
-	// Each page contains pageSize profiles. Each profile contains multiple
-	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
-	// size 16 will contain about 8KB of data.
-	pageSize = 16
-	// TODO: Public keys of trusted monitors.
-)
+// TODO: Public keys of trusted monitors.
 
 var (
 	// ErrRetry occurs when an update has been queued, but the
@@ -74,6 +69,19 @@ var (
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
+// Verifier is used to verify specific outputs from Key Transparency.
+type Verifier interface {
+	// Index computes the index of an appID, userID pair from a VRF proof, obtained from the server.
+	Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error)
+	// VerifyGetEntryResponse verifies everything about a GetEntryResponse.
+	VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
+	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
+	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
+	VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
+	// VerifySignedMapRoot verifies the signature on the SignedMapRoot.
+	VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error)
+}
+
 // Client is a helper library for issuing updates to the key server.
 // Client Responsibilities
 // - Trust Model:
@@ -87,7 +95,7 @@ var (
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	*Verifier
+	Verifier
 	cli         pb.KeyTransparencyClient
 	domainID    string
 	mutator     mutator.Func
@@ -114,7 +122,7 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 func New(ktClient pb.KeyTransparencyClient,
 	domainID string,
 	retryDelay time.Duration,
-	ktVerifier *Verifier) *Client {
+	ktVerifier *RealVerifier) *Client {
 	return &Client{
 		Verifier:   ktVerifier,
 		cli:        ktClient,
@@ -144,25 +152,18 @@ func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grp
 	return e.GetCommitted().GetData(), slr, err
 }
 
-func min(x, y int32) int32 {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-// ListHistory returns a list of map roots and profiles at each revision.
-func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
+// PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
+// Returns a list of map roots and profiles at each revision.
+func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
 	if start < 0 {
 		return nil, nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
 	allRoots := make(map[uint64]*types.MapRootV1)
 	allProfiles := make(map[uint64][]byte)
-	epochsReceived := int64(0)
 	epochsWant := end - start + 1
-	for epochsReceived < epochsWant {
-		count := min(int32((end-start)+1), pageSize)
-		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, count)
+	for int64(len(allProfiles)) < epochsWant {
+		count := epochsWant - int64(len(allProfiles))
+		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, int32(count))
 		if err != nil {
 			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
 		}
@@ -175,10 +176,10 @@ func (c *Client) ListHistory(ctx context.Context, userID, appID string, start, e
 			break // No more data.
 		}
 		start = next // Fetch the next block of results.
-		epochsReceived += int64(len(profiles))
 	}
 
-	if epochsReceived < epochsWant {
+	if int64(len(allProfiles)) < epochsWant {
+		glog.Infof("PaginateHistory(): incomplete. Got %v profiles, wanted %v", len(allProfiles), epochsWant)
 		return nil, nil, ErrIncomplete
 	}
 
