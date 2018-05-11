@@ -152,13 +152,6 @@ func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grp
 	return e.GetCommitted().GetData(), slr, err
 }
 
-func min(x, y int64) int64 {
-	if x < y {
-		return x
-	}
-	return y
-}
-
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
 // Returns a list of map roots and profiles at each revision.
 func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
