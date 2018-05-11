@@ -21,10 +21,10 @@ import (
 	"net/http"
 
 	"github.com/google/keytransparency/cmd/serverutil"
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
@@ -38,8 +38,9 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	gauth "github.com/google/keytransparency/impl/google/authentication"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
@@ -78,17 +79,18 @@ func main() {
 		glog.Exitf("Failed to load server credentials %v", err)
 	}
 
-	var auth authentication.Authenticator
+	var authFunc grpc_auth.AuthFunc
 	switch *authType {
 	case "insecure-fake":
 		glog.Warning("INSECURE! Using fake authentication.")
-		auth = authentication.NewFake()
+		authFunc = authentication.FakeAuthFunc
 	case "google":
 		var err error
-		auth, err = gauth.NewGoogleAuth()
+		gauth, err := authentication.NewGoogleAuth()
 		if err != nil {
 			glog.Exitf("Failed to create authentication library instance: %v", err)
 		}
+		authFunc = gauth.AuthFunc
 	default:
 		glog.Exitf("Invalid auth-type parameter: %v.", *authType)
 	}
@@ -121,11 +123,21 @@ func main() {
 	// Create gRPC server.
 	queue := mutator.MutationQueue(mutations)
 	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
-		entry.New(), auth, authz, domains, queue, mutations)
+		entry.New(), authz, domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_prometheus.StreamServerInterceptor,
+			authentication.StreamServerInterceptor(map[string]grpc_auth.AuthFunc{
+				// All streaming methods are unauthenticated for now.
+			}),
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_prometheus.UnaryServerInterceptor,
+			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{
+				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": authFunc,
+			}),
+		)),
 	)
 	pb.RegisterKeyTransparencyServer(grpcServer, ksvr)
 	reflection.Register(grpcServer)

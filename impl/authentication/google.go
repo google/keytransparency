@@ -16,16 +16,15 @@ package authentication
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"strings"
 
-	"github.com/google/keytransparency/core/authentication"
-
 	"golang.org/x/oauth2"
-	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	gAPI "google.golang.org/api/oauth2/v2"
 )
 
@@ -36,15 +35,6 @@ var (
 	E2EScope = "https://www.googleapis.com/auth/e2ekeys"
 	// RequiredScopes is the set of scopes the server requires for a user to change keys.
 	RequiredScopes = []string{gAPI.UserinfoEmailScope, E2EScope}
-
-	// ErrBadFormat occurs when the authentication header is malformed.
-	ErrBadFormat = errors.New("auth: bad authorization header format")
-	// ErrInvalidToken occurs when the authentication header is not valid.
-	ErrInvalidToken = errors.New("auth: invalid token")
-	// ErrEmailNotVerified occurs when token info indicates that email has not been verified.
-	ErrEmailNotVerified = errors.New("auth: unverified email address")
-	// ErrMissingScope occurs when a required scope is missing.
-	ErrMissingScope = errors.New("auth: missing scope")
 )
 
 // GAuth authenticates Google users through the Google TokenInfo API endpoint.
@@ -58,18 +48,21 @@ func NewGoogleAuth() (*GAuth, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &GAuth{googleService}, nil
+	return &GAuth{service: googleService}, nil
 }
 
-// ValidateCreds authenticate the information present in ctx.
-func (a *GAuth) ValidateCreds(ctx context.Context) (*authentication.SecurityContext, error) {
-	// Get Tokeninfo from credentials.
-	tokenInfo, err := a.validateToken(ctx)
+// AuthFunc authenticate the information present in ctx.
+func (a *GAuth) AuthFunc(ctx context.Context) (context.Context, error) {
+	token, err := parseToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tokenInfo, err := a.validateToken(token)
 	if err != nil {
 		return nil, err
 	}
 	if !tokenInfo.VerifiedEmail {
-		return nil, ErrEmailNotVerified
+		return nil, status.Error(codes.Unauthenticated, "auth: unverified email address")
 	}
 
 	// Validate scopes.
@@ -77,9 +70,11 @@ func (a *GAuth) ValidateCreds(ctx context.Context) (*authentication.SecurityCont
 	diff := setDifference(RequiredScopes, scopes)
 	if len(diff) > 0 {
 		log.Printf("Failed auth: missing scopes %v", diff)
-		return nil, ErrMissingScope
+		return nil, status.Error(codes.Unauthenticated, "auth: missing scope")
 	}
-	return authentication.NewSecurityContext(tokenInfo.Email), nil
+	return context.WithValue(ctx, securityContextKey, &SecurityContext{
+		Email: tokenInfo.Email,
+	}), nil
 }
 
 // setDifference returns all the elements of A that are not elements of B.
@@ -99,15 +94,22 @@ func setDifference(a, b []string) []string {
 	return diff
 }
 
-// validateToken makes an https request to the tokeninfo API using the access
-// token provided in the header.
-func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
-	token, err := getIDTokenAuthorizationHeader(ctx)
+func parseToken(ctx context.Context) (*oauth2.Token, error) {
+	accessToken, err := grpc_auth.AuthFromMD(ctx, "bearer")
 	if err != nil {
 		return nil, err
 	}
+	return &oauth2.Token{
+		TokenType:   "bearer",
+		AccessToken: accessToken,
+	}, nil
+}
+
+// validateToken makes an https request to the tokeninfo API using the access
+// token provided in the header.
+func (a *GAuth) validateToken(token *oauth2.Token) (*gAPI.Tokeninfo, error) {
 	if !token.Valid() {
-		return nil, ErrInvalidToken
+		return nil, status.Error(codes.Unauthenticated, "auth: invalid token")
 	}
 
 	infoCall := a.service.Tokeninfo()
@@ -117,25 +119,4 @@ func (a *GAuth) validateToken(ctx context.Context) (*gAPI.Tokeninfo, error) {
 		return nil, err
 	}
 	return info, nil
-}
-
-// getIDTokenAuthorizationHeader pulls the bearer token from the "authorization"
-// header in gRPC.
-func getIDTokenAuthorizationHeader(ctx context.Context) (*oauth2.Token, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, authentication.ErrMissingAuth
-	}
-	authHeader, ok := md["authorization"]
-	if !ok || len(authHeader) != 1 {
-		return nil, authentication.ErrMissingAuth
-	}
-	p := strings.Split(authHeader[0], " ")
-	if len(p) != 2 {
-		return nil, ErrBadFormat
-	}
-	return &oauth2.Token{
-		TokenType:   p[0],
-		AccessToken: p[1],
-	}, nil
 }

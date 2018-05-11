@@ -31,13 +31,13 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/adminserver"
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
@@ -50,6 +50,7 @@ import (
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )
 
@@ -159,13 +160,19 @@ func NewEnv() (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
 	}
-	auth := authentication.NewFake()
+	authFunc := authentication.FakeAuthFunc
 	authz := authorization.New()
 
 	queue := mutator.MutationQueue(mutations)
 	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
-		entry.New(), auth, authz, domainStorage, queue, mutations)
-	gsvr := grpc.NewServer()
+		entry.New(), authz, domainStorage, queue, mutations)
+	gsvr := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{
+				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": authFunc,
+			}),
+		),
+	)
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer

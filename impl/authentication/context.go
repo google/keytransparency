@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,25 @@
 
 // Package authentication implements authentication mechanisms.
 //
-// The Transparent Key Server is designed to be used by identity providers -
+// Key Transparency is designed to be used by identity providers -
 // IdP in OAuth parlance.  OAuth2 Access Tokens may be provided as
 // authentication information, which can be resolved to user information and
 // associated scopes on the backend.
 package authentication
 
-import (
-	"context"
-	"errors"
-)
+import "context"
 
-var (
-	// ErrMissingAuth occurs when authentication information is missing.
-	ErrMissingAuth = errors.New("auth: missing authentication header")
-)
+// SecurityContext is the auth value stored in the Contexts.
+type SecurityContext struct {
+	Email string
+}
 
-// Authenticator provides services to authenticate users.
-type Authenticator interface {
-	// ValidateCreds authenticate the information present in ctx.
-	ValidateCreds(ctx context.Context) (*SecurityContext, error)
+// securityContextKey identifies ValidatedSecurity within context.Context.
+var securityContextKey struct{}
+
+// FromContext returns a ValidatedSecurity from the current context.
+// ValidatedSecurity is inserted into ctx by AuthFunc.
+func FromContext(ctx context.Context) (*SecurityContext, bool) {
+	v, ok := ctx.Value(securityContextKey).(*SecurityContext)
+	return v, ok
 }

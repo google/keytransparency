@@ -22,9 +22,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/google/keytransparency/core/authentication"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/keytransparency/impl/authentication"
 
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
