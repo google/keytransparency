@@ -27,11 +27,11 @@ type SecurityContext struct {
 	Email string
 }
 
-// securityContextKey identifies ValidatedSecurity within context.Context.
+// securityContextKey identifies SecurityContext within context.Context.
 var securityContextKey struct{}
 
-// FromContext returns a ValidatedSecurity from the current context.
-// ValidatedSecurity is inserted into ctx by AuthFunc.
+// FromContext returns a SecurityContext from the current context.
+// SecurityContext is inserted into ctx by AuthFunc.
 func FromContext(ctx context.Context) (*SecurityContext, bool) {
 	v, ok := ctx.Value(securityContextKey).(*SecurityContext)
 	return v, ok
