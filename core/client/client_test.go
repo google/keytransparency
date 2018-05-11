@@ -20,11 +20,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian"
-	"github.com/google/trillian/testonly/matchers"
 	"github.com/google/trillian/types"
+	"github.com/kylelemons/godebug/pretty"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -118,57 +119,63 @@ func TestPaginateHistory(t *testing.T) {
 	appID := "fakeapp"
 	userID := "fakeuser"
 
-	type request struct {
-		wantStart int64
-		wantSize  int32
-		next      int64
-		items     []*pb.GetEntryResponse
+	srv := &fakeKeyServer{
+		revisions: map[int64]*pb.GetEntryResponse{
+			0:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
+			1:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{1}}},
+			2:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{2}}},
+			3:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{3}}},
+			4:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{4}}},
+			5:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{5}}},
+			6:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{6}}},
+			7:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{7}}},
+			8:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{8}}},
+			9:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{9}}},
+			10: {Smr: &trillian.SignedMapRoot{MapRoot: []byte{10}}},
+		},
 	}
+	s, stop, err := testutil.NewFakeKT(srv)
+	if err != nil {
+		t.Fatalf("NewMockKT(): %v", err)
+	}
+	defer stop()
 
 	for _, tc := range []struct {
 		desc       string
 		start, end int64
-		reqs       []request
 		pageSize   int32
 		wantErr    error
+		wantValues map[uint64][]byte
 	}{
 		{
 			desc:    "incomplete",
-			end:     10,
-			reqs:    []request{{}},
+			start:   9,
+			end:     15,
 			wantErr: ErrIncomplete,
 		},
 		{
 			desc: "1Item",
 			end:  0,
-			reqs: []request{
-				{items: []*pb.GetEntryResponse{
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
-				}},
+			wantValues: map[uint64][]byte{
+				0: nil,
 			},
 		},
 		{
 			desc:  "3Times",
 			start: 0,
 			end:   10,
-			reqs: []request{
-				{wantStart: 0, next: 5, items: []*pb.GetEntryResponse{
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{1}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{2}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{3}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{4}}},
-				}},
-				{wantStart: 5, next: 10, items: []*pb.GetEntryResponse{
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{5}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{6}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{7}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{8}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{9}}},
-				}},
-				{wantStart: 10, next: 0, items: []*pb.GetEntryResponse{
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{10}}},
-				}},
+			wantValues: map[uint64][]byte{
+				0:  nil,
+				1:  nil,
+				2:  nil,
+				3:  nil,
+				4:  nil,
+				5:  nil,
+				6:  nil,
+				7:  nil,
+				8:  nil,
+				9:  nil,
+				10: nil,
 			},
 		},
 		{
@@ -176,53 +183,89 @@ func TestPaginateHistory(t *testing.T) {
 			start:    0,
 			end:      5,
 			pageSize: 3,
-			reqs: []request{
-				// The value of next is opaque to the client.
-				{wantStart: 0, wantSize: 3, next: 1, items: []*pb.GetEntryResponse{
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{1}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{2}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{3}}},
-				}},
-				{wantStart: 1, wantSize: 2, next: 0, items: []*pb.GetEntryResponse{
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{5}}},
-					{Smr: &trillian.SignedMapRoot{MapRoot: []byte{6}}},
-				}},
+			wantValues: map[uint64][]byte{
+				0: nil,
+				1: nil,
+				2: nil,
+				3: nil,
+				4: nil,
+				5: nil,
 			},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-			s, stop, err := testutil.NewMockKT(ctrl)
-			if err != nil {
-				t.Fatalf("NewMockKT(): %v", err)
-			}
-			defer stop()
-
 			c := Client{
 				Verifier: &fakeVerifier{},
 				cli:      s.Client,
 				pageSize: tc.pageSize,
 			}
 
-			for _, r := range tc.reqs {
-				s.Server.EXPECT().ListEntryHistory(gomock.Any(), matchers.ProtoEqual(&pb.ListEntryHistoryRequest{
-					AppId:    appID,
-					UserId:   userID,
-					Start:    r.wantStart,
-					PageSize: r.wantSize,
-				})).Return(&pb.ListEntryHistoryResponse{
-					NextStart: r.next,
-					Values:    r.items,
-				}, nil)
-			}
-
-			if _, _, err = c.PaginateHistory(ctx, appID, userID, tc.start, tc.end); err != tc.wantErr {
+			_, values, err := c.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
+			if err != tc.wantErr {
 				t.Errorf("PaginateHistory(): %v, want %v", err, tc.wantErr)
 			}
+			if got, want := values, tc.wantValues; !reflect.DeepEqual(got, want) {
+				t.Errorf("PaginateHistory().values: \n%#v, want \n%#v, diff: \n%v",
+					got, want, pretty.Compare(got, want))
+			}
+
 		})
 	}
+}
+
+type fakeKeyServer struct {
+	revisions map[int64]*pb.GetEntryResponse
+}
+
+func (f *fakeKeyServer) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
+	if in.PageSize > 5 {
+		in.PageSize = 5 // Test maximum page size limits.
+	}
+	values := make([]*pb.GetEntryResponse, 0)
+	for i := in.Start; i <= in.Start+int64(in.PageSize) && i < int64(len(f.revisions)); i++ {
+		values = append(values, f.revisions[i])
+	}
+	next := in.Start + int64(len(values))
+	if next >= int64(len(f.revisions)) {
+		next = 0 // no more!
+	}
+
+	return &pb.ListEntryHistoryResponse{
+		Values:    values,
+		NextStart: next,
+	}, nil
+}
+
+func (f *fakeKeyServer) GetDomain(context.Context, *pb.GetDomainRequest) (*pb.Domain, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) GetEpoch(context.Context, *pb.GetEpochRequest) (*pb.Epoch, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) GetLatestEpoch(context.Context, *pb.GetLatestEpochRequest) (*pb.Epoch, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) GetEpochStream(*pb.GetEpochRequest, pb.KeyTransparency_GetEpochStreamServer) error {
+	return status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) ListMutations(context.Context, *pb.ListMutationsRequest) (*pb.ListMutationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) ListMutationsStream(*pb.ListMutationsRequest, pb.KeyTransparency_ListMutationsStreamServer) error {
+	return status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) GetEntry(context.Context, *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) UpdateEntry(context.Context, *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 type fakeVerifier struct{}

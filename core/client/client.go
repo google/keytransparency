@@ -174,8 +174,7 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 	allProfiles := make(map[uint64][]byte)
 	epochsWant := end - start + 1
 	for int64(len(allProfiles)) < epochsWant {
-		log.Printf("pageSize: %v", c.pageSize)
-		count := min(epochsWant-int64(len(allProfiles)), int64(c.pageSize))
+		count := min(epochsWant-int64(len(allProfiles))-1, int64(c.pageSize))
 		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, int32(count))
 		if err != nil {
 			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
