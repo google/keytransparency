@@ -198,16 +198,21 @@ func TestResouceLabel(t *testing.T) {
 		domainID string
 		appID    string
 		out      string
+		wantCode codes.Code
 	}{
-		{"1", "1", "domains/1/apps/1"},
-		{"1", "2", "domains/1/apps/2"},
-		{"1", "111", "domains/1/apps/111"},
-		{"111", "1", "domains/111/apps/1"},
-		{"111", "111", "domains/111/apps/111"},
-		{"1/apps/1", "", "domains/1_apps_1/apps/"},
+		{domainID: "1", appID: "1", out: "domains/1/apps/1"},
+		{domainID: "1", appID: "2", out: "domains/1/apps/2"},
+		{domainID: "1", appID: "111", out: "domains/1/apps/111"},
+		{domainID: "111", appID: "1", out: "domains/111/apps/1"},
+		{domainID: "111", appID: "111", out: "domains/111/apps/111"},
+		{domainID: "1/apps/1", wantCode: codes.InvalidArgument},
 	} {
-		if got, want := resourceLabel(tc.domainID, tc.appID), tc.out; got != want {
-			t.Errorf("resourceLabel(%v, %v)=%v, want %v", tc.domainID, tc.appID, got, want)
+		label, err := resourceLabel(tc.domainID, tc.appID)
+		if got, want := label, tc.out; got != want {
+			t.Errorf("resourceLabel(%v, %v): %v, want %v", tc.domainID, tc.appID, got, want)
+		}
+		if got, want := status.Code(err), tc.wantCode; got != want {
+			t.Errorf("resourceLabel(%v, %v): %v, want %v", tc.domainID, tc.appID, err, want)
 		}
 	}
 }

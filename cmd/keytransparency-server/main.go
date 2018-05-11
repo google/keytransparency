@@ -126,8 +126,12 @@ func main() {
 		entry.New(), authz, domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
-		// All streaming methods are unauthenticated for now.
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_prometheus.StreamServerInterceptor,
+			authentication.StreamServerInterceptor(map[string]grpc_auth.AuthFunc{
+				// All streaming methods are unauthenticated for now.
+			}),
+		)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_prometheus.UnaryServerInterceptor,
 			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{

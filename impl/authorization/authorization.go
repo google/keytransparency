@@ -56,7 +56,10 @@ func (a *authz) Authorize(ctx context.Context,
 	}
 
 	// Case 2.
-	rLabel := resourceLabel(domainID, appID)
+	rLabel, err := resourceLabel(domainID, appID)
+	if err != nil {
+		return err
+	}
 	roles, ok := a.policy.GetResourceToRoleLabels()[rLabel]
 	if !ok {
 		return status.Errorf(codes.PermissionDenied, "%v does not have a defined policy", rLabel)
@@ -70,10 +73,12 @@ func (a *authz) Authorize(ctx context.Context,
 	return status.Errorf(codes.PermissionDenied, "%v is not authorized to perform %v on %v", sctx.Email, permission, rLabel)
 }
 
-func resourceLabel(domainID, appID string) string {
-	return fmt.Sprintf("domains/%v/apps/%v",
-		strings.Replace(domainID, "/", "_", -1),
-		strings.Replace(appID, "/", "_", -1))
+func resourceLabel(domainID, appID string) (string, error) {
+	if strings.Contains(domainID, "/") ||
+		strings.Contains(appID, "/") {
+		return "", status.Errorf(codes.InvalidArgument, "resource label contains invalid character '/'")
+	}
+	return fmt.Sprintf("domains/%v/apps/%v", domainID, appID), nil
 }
 
 func isPrincipalInRole(role *pb.AuthorizationPolicy_Role, identity string) bool {

@@ -42,7 +42,7 @@ var (
 // Example test invocation:
 // GOOGLE_APPLICATION_CREDENTIALS=/path/to/server_account.json \
 // go test ./authentication/ -token=authentication_token -email=youremail@example.com
-func TestGoogleValidateCreds(t *testing.T) {
+func TestGoogleAuthn(t *testing.T) {
 	if *accessToken == "" {
 		t.Skip()
 	}
