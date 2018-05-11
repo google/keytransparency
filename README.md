@@ -33,7 +33,6 @@ development.
 ### Setup
 1. Install [Go 1.9](https://golang.org/doc/install).
 2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
-3. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
 
 ### Client operations
 
@@ -45,6 +44,7 @@ development.
   ```
 
 #### Publish the public key
+1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
 
   ```sh
   keytransparency-client post user@domain.com app1 --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
@@ -104,9 +104,9 @@ Creating keytransparency_monitor_1 ...    done
 
 2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [Proof for app1/foo@bar.com](https://localhost:8080/v1/domains/default/users/foo@bar.com?app_id=app1)
-- [Server configuration info](https://localhost:8080/v1/domains/default/info)
-- [Prometheus graphs](http://localhost:9090/graph)
+- [Proof for app1/foo@bar.com](https://35.224.99.110:8080/v1/domains/default/apps/appID/users/foo@bar.com)
+- [Server configuration info](https://35.224.99.110:8080/v1/domains/default)
+- [Prometheus graphs](http://35.184.145.242:9090/alerts)
 
 ## Development and Testing
 Key Transparency and its [Trillian](https://github.com/google/trillian) backend
