@@ -102,10 +102,6 @@ type Client struct {
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
 	trustedLock sync.Mutex
-	// Each page contains pageSize profiles. Each profile contains multiple
-	// keys. Assuming 2 keys per profile (each of size 2048-bit), a page of
-	// size 16 will contain about 8KB of data.
-	pageSize int32
 }
 
 // NewFromConfig creates a new client from a config
@@ -133,7 +129,6 @@ func New(ktClient pb.KeyTransparencyClient,
 		domainID:   domainID,
 		mutator:    entry.New(),
 		RetryDelay: retryDelay,
-		pageSize:   16,
 	}
 }
 
@@ -174,7 +169,7 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 	allProfiles := make(map[uint64][]byte)
 	epochsWant := end - start + 1
 	for int64(len(allProfiles)) < epochsWant {
-		count := min(epochsWant-int64(len(allProfiles))-1, int64(c.pageSize))
+		count := epochsWant - int64(len(allProfiles))
 		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, int32(count))
 		if err != nil {
 			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)

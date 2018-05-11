@@ -136,14 +136,13 @@ func TestPaginateHistory(t *testing.T) {
 	}
 	s, stop, err := testutil.NewFakeKT(srv)
 	if err != nil {
-		t.Fatalf("NewMockKT(): %v", err)
+		t.Fatalf("NewFakeKT(): %v", err)
 	}
 	defer stop()
 
 	for _, tc := range []struct {
 		desc       string
 		start, end int64
-		pageSize   int32
 		wantErr    error
 		wantValues map[uint64][]byte
 	}{
@@ -158,6 +157,14 @@ func TestPaginateHistory(t *testing.T) {
 			end:  0,
 			wantValues: map[uint64][]byte{
 				0: nil,
+			},
+		},
+		{
+			desc: "2Items",
+			end:  1,
+			wantValues: map[uint64][]byte{
+				0: nil,
+				1: nil,
 			},
 		},
 		{
@@ -179,10 +186,9 @@ func TestPaginateHistory(t *testing.T) {
 			},
 		},
 		{
-			desc:     "pageSize",
-			start:    0,
-			end:      5,
-			pageSize: 3,
+			desc:  "pageSize",
+			start: 0,
+			end:   5,
 			wantValues: map[uint64][]byte{
 				0: nil,
 				1: nil,
@@ -197,7 +203,6 @@ func TestPaginateHistory(t *testing.T) {
 			c := Client{
 				Verifier: &fakeVerifier{},
 				cli:      s.Client,
-				pageSize: tc.pageSize,
 			}
 
 			_, values, err := c.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
@@ -218,15 +223,20 @@ type fakeKeyServer struct {
 }
 
 func (f *fakeKeyServer) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
-	if in.PageSize > 5 {
+	currentEpoch := int64(len(f.revisions)) - 1 // len(1) contains map revision 0.
+	if in.PageSize > 5 || in.PageSize == 0 {
 		in.PageSize = 5 // Test maximum page size limits.
 	}
-	values := make([]*pb.GetEntryResponse, 0)
-	for i := in.Start; i <= in.Start+int64(in.PageSize) && i < int64(len(f.revisions)); i++ {
-		values = append(values, f.revisions[i])
+	if in.Start+int64(in.PageSize) > currentEpoch {
+		in.PageSize = int32(currentEpoch - in.Start + 1)
+	}
+
+	values := make([]*pb.GetEntryResponse, in.PageSize)
+	for i := range values {
+		values[i] = f.revisions[in.Start+int64(i)]
 	}
 	next := in.Start + int64(len(values))
-	if next >= int64(len(f.revisions)) {
+	if next > currentEpoch {
 		next = 0 // no more!
 	}
 

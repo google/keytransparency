@@ -83,11 +83,10 @@ func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.Mut
 		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
 			DomainId:  epoch.GetDomainId(),
 			Epoch:     int64(mapRoot.Revision),
-			PageSize:  c.pageSize,
 			PageToken: token,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("GetMutations(%v, %v): %v", epoch.GetDomainId(), c.pageSize, err)
+			return nil, fmt.Errorf("GetMutations(%v): %v", epoch.GetDomainId(), err)
 		}
 		mutations = append(mutations, resp.GetMutations()...)
 		token = resp.GetNextPageToken()
