@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client/hammer"
+	"github.com/google/keytransparency/impl/authentication"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -67,7 +68,8 @@ var hammerCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		h, err := hammer.New(ctx, dial, ktURL, domainID, timeout, keyset)
+		h, err := hammer.New(ctx, dial, authentication.GetFakeCredential,
+			ktURL, domainID, timeout, keyset)
 		if err != nil {
 			return err
 		}
