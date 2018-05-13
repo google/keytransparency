@@ -15,7 +15,6 @@
   "Exclude": [
     ".+\\.pb\\.go",
     ".+\\.pb\\.gw\\.go",
-    "mock_.+\\.go",
     "Errors unhandled.,LOW,HIGH \\(gas\\)"
   ]
 }

@@ -128,7 +128,7 @@ func main() {
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_prometheus.StreamServerInterceptor,
-			authentication.StreamServerInterceptor(map[string]grpc_auth.AuthFunc{
+			authorization.StreamServerInterceptor(map[string]authorization.AuthPair{
 				// All streaming methods are unauthenticated for now.
 			}),
 		)),

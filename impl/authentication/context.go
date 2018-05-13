@@ -31,7 +31,7 @@ type SecurityContext struct {
 var securityContextKey struct{}
 
 // FromContext returns a SecurityContext from the current context.
-// SecurityContext is inserted into ctx by AuthFunc.
+// ValidatedSecurity is inserted into ctx by AuthFunc.
 func FromContext(ctx context.Context) (*SecurityContext, bool) {
 	v, ok := ctx.Value(securityContextKey).(*SecurityContext)
 	return v, ok

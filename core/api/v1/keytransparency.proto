@@ -89,12 +89,6 @@ message MapperMetadata {
   int64 highest_fully_completed_seq = 1;
 }
 
-// UserProfile is the data that a client would like to store on the server.
-message UserProfile {
-  // data is the public key data for the user.
-  bytes data = 1;
-}
-
 // GetEntryRequest for a user object.
 message GetEntryRequest {
   // domain_id identifies the domain in which the user and application live.

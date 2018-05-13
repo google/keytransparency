@@ -20,24 +20,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/impl/authentication"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	typepb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	authzpb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 
-type authz struct {
-	policy *authzpb.AuthorizationPolicy
-}
+// AuthzFunc performs authorization using the embedded SecurityContext on a message.
+type AuthzFunc func(context.Context, interface{}) error
 
-// New creates a new instance of the authorization module.
-func New() authorization.Authorization {
-	return &authz{}
+// AuthzPolicy contains the authorization policy.
+type AuthzPolicy struct {
+	Policy *authzpb.AuthorizationPolicy
 }
 
 // Authorize verifies that the identity issuing the call.
@@ -45,7 +41,7 @@ func New() authorization.Authorization {
 // A call is authorized if:
 //  1. userID matches SecurityContext.Email,
 //  2. or, SecurityContext.Email is authorized to do the action in domains/domainID/apps/appID.
-func (a *authz) Authorize(ctx context.Context, m proto.Message, permission typepb.Permission) error {
+func (a *AuthzPolicy) Authorize(ctx context.Context, m interface{}) error {
 	sctx, ok := authentication.FromContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "Request does not contain a ValidatedSecurity object")
@@ -53,7 +49,7 @@ func (a *authz) Authorize(ctx context.Context, m proto.Message, permission typep
 
 	switch t := m.(type) {
 	case *pb.UpdateEntryRequest:
-		return a.checkPermission(sctx, t.DomainId, t.AppId, t.UserId, permission)
+		return a.checkPermission(sctx, t.DomainId, t.AppId, t.UserId)
 		// Can't authorize any other requests
 	default:
 		return status.Errorf(codes.PermissionDenied, "message type %T not recognized", t)
@@ -61,7 +57,7 @@ func (a *authz) Authorize(ctx context.Context, m proto.Message, permission typep
 
 }
 
-func (a *authz) checkPermission(sctx *authentication.SecurityContext, domainID, appID, userID string, permission typepb.Permission) error {
+func (a *AuthzPolicy) checkPermission(sctx *authentication.SecurityContext, domainID, appID, userID string) error {
 	// Case 1.
 	if sctx.Email == userID {
 		return nil
@@ -72,17 +68,17 @@ func (a *authz) checkPermission(sctx *authentication.SecurityContext, domainID, 
 	if err != nil {
 		return err
 	}
-	roles, ok := a.policy.GetResourceToRoleLabels()[rLabel]
+	roles, ok := a.Policy.GetResourceToRoleLabels()[rLabel]
 	if !ok {
 		return status.Errorf(codes.PermissionDenied, "%v does not have a defined policy", rLabel)
 	}
 	for _, l := range roles.GetLabels() {
-		role := a.policy.GetRoles()[l]
-		if isPrincipalInRole(role, sctx.Email) && isPermisionInRole(role, permission) {
+		role := a.Policy.GetRoles()[l]
+		if isPrincipalInRole(role, sctx.Email) {
 			return nil
 		}
 	}
-	return status.Errorf(codes.PermissionDenied, "%v is not authorized to perform %v on %v", sctx.Email, permission, rLabel)
+	return status.Errorf(codes.PermissionDenied, "%v is not authorized to perform %v on %v", sctx.Email, rLabel)
 }
 
 func resourceLabel(domainID, appID string) (string, error) {
@@ -96,15 +92,6 @@ func resourceLabel(domainID, appID string) (string, error) {
 func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string) bool {
 	for _, p := range role.GetPrincipals() {
 		if p == identity {
-			return true
-		}
-	}
-	return false
-}
-
-func isPermisionInRole(role *authzpb.AuthorizationPolicy_Role, permission typepb.Permission) bool {
-	for _, p := range role.GetPermissions() {
-		if p == permission {
 			return true
 		}
 	}
