@@ -50,7 +50,6 @@ import (
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
 )
 
@@ -161,15 +160,18 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
 	}
 	authFunc := authentication.FakeAuthFunc
-	authz := authorization.New()
+	authz := &authorization.AuthzPolicy{}
 
 	queue := mutator.MutationQueue(mutations)
 	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
-		entry.New(), authz, domainStorage, queue, mutations)
+		entry.New(), domainStorage, queue, mutations)
 	gsvr := grpc.NewServer(
 		grpc.UnaryInterceptor(
-			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{
-				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": authFunc,
+			authorization.UnaryServerInterceptor(map[string]authorization.AuthPair{
+				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": {
+					AuthnFunc: authFunc,
+					AuthzFunc: authz.Authorize,
+				},
 			}),
 		),
 	)

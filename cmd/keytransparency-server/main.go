@@ -79,6 +79,7 @@ func main() {
 		glog.Exitf("Failed to load server credentials %v", err)
 	}
 
+	authz := &authorization.AuthzPolicy{}
 	var authFunc grpc_auth.AuthFunc
 	switch *authType {
 	case "insecure-fake":
@@ -94,7 +95,6 @@ func main() {
 	default:
 		glog.Exitf("Invalid auth-type parameter: %v.", *authType)
 	}
-	authz := authorization.New()
 
 	// Create database and helper objects.
 	domains, err := domain.NewStorage(sqldb)
@@ -123,19 +123,22 @@ func main() {
 	// Create gRPC server.
 	queue := mutator.MutationQueue(mutations)
 	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
-		entry.New(), authz, domains, queue, mutations)
+		entry.New(), domains, queue, mutations)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_prometheus.StreamServerInterceptor,
-			authentication.StreamServerInterceptor(map[string]grpc_auth.AuthFunc{
+			authorization.StreamServerInterceptor(map[string]authorization.AuthPair{
 				// All streaming methods are unauthenticated for now.
 			}),
 		)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_prometheus.UnaryServerInterceptor,
-			authentication.UnaryServerInterceptor(map[string]grpc_auth.AuthFunc{
-				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": authFunc,
+			authorization.UnaryServerInterceptor(map[string]authorization.AuthPair{
+				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": {
+					AuthnFunc: authFunc,
+					AuthzFunc: authz.Authorize,
+				},
 			}),
 		)),
 	)

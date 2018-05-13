@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
-	pb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	authzpb "github.com/google/keytransparency/impl/authorization/authz_go_proto"
 )
 
 const (
@@ -45,32 +45,21 @@ const (
 	res4     = "domains/1/apps/4"
 )
 
-func setup() *authz {
-	a := &authz{}
-	a.policy = &pb.AuthorizationPolicy{
-		Roles: map[string]*pb.AuthorizationPolicy_Role{
+var authz = AuthzPolicy{
+	Policy: &authzpb.AuthorizationPolicy{
+		Roles: map[string]*authzpb.AuthorizationPolicy_Role{
 			l1: {
 				Principals: []string{admin1},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_WRITE,
-				},
 			},
 			l2: {
 				Principals: []string{admin1, admin2},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
-				},
 			},
 			l3: {
 				Principals: []string{admin3},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-				},
 			},
 			l4: {},
 		},
-		ResourceToRoleLabels: map[string]*pb.AuthorizationPolicy_RoleLabels{
+		ResourceToRoleLabels: map[string]*authzpb.AuthorizationPolicy_RoleLabels{
 			res1: {
 				Labels: []string{l1, l2},
 			},
@@ -84,20 +73,17 @@ func setup() *authz {
 				Labels: []string{l5},
 			},
 		},
-	}
-	return a
+	},
 }
 
 func TestIsAuthorized(t *testing.T) {
 	ctx := context.Background()
-	a := setup()
 	for _, tc := range []struct {
 		description string
 		ctx         context.Context
 		domainID    string
 		appID       string
 		userID      string
-		permission  authzpb.Permission
 		wantCode    codes.Code
 	}{
 		{
@@ -106,7 +92,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      testUser,
-			permission:  authzpb.Permission_WRITE,
 		},
 		{
 			description: "other accessing profile, authorized with one role",
@@ -114,7 +99,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
 		},
 		{
 			description: "other accessing profile, authorized with multiple roles",
@@ -122,7 +106,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      "",
-			permission:  authzpb.Permission_READ,
 		},
 		{
 			description: "other accessing profile, authorized second resource",
@@ -130,7 +113,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "2",
 			userID:      "",
-			permission:  authzpb.Permission_LOG,
 		},
 		{
 			description: "not authorized, no resource label",
@@ -138,7 +120,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "10",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
 			wantCode:    codes.PermissionDenied,
 		},
 		{
@@ -147,7 +128,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "4",
 			userID:      "",
-			permission:  authzpb.Permission_LOG,
 			wantCode:    codes.PermissionDenied,
 		},
 		{
@@ -156,16 +136,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "3",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
-			wantCode:    codes.PermissionDenied,
-		},
-		{
-			description: "not authorized, wrong permission",
-			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin2),
-			domainID:    "1",
-			appID:       "1",
-			userID:      "",
-			permission:  authzpb.Permission_WRITE,
 			wantCode:    codes.PermissionDenied,
 		},
 		{
@@ -174,7 +144,6 @@ func TestIsAuthorized(t *testing.T) {
 			domainID:    "1",
 			appID:       "1",
 			userID:      "",
-			permission:  authzpb.Permission_WRITE,
 			wantCode:    codes.PermissionDenied,
 		},
 	} {
@@ -185,7 +154,12 @@ func TestIsAuthorized(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FakeAuthFunc(): %v", err)
 			}
-			err = a.Authorize(sctx, tc.domainID, tc.appID, tc.userID, tc.permission)
+			req := &pb.UpdateEntryRequest{
+				DomainId: tc.domainID,
+				AppId:    tc.appID,
+				UserId:   tc.userID,
+			}
+			err = authz.Authorize(sctx, req)
 			if got, want := status.Code(err), tc.wantCode; got != want {
 				t.Errorf("IsAuthorized(): %v, want %v", err, want)
 			}
@@ -213,67 +187,6 @@ func TestResouceLabel(t *testing.T) {
 		}
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("resourceLabel(%v, %v): %v, want %v", tc.domainID, tc.appID, err, want)
-		}
-	}
-}
-
-func TestIsPermisionInRole(t *testing.T) {
-	// AuthorizationPolicy_Role.Principals is not relevant in this test.
-	for _, tc := range []struct {
-		description string
-		role        *pb.AuthorizationPolicy_Role
-		permission  authzpb.Permission
-		out         bool
-	}{
-		{
-			"permission is not in role, empty permissions list",
-			&pb.AuthorizationPolicy_Role{
-				Principals:  []string{},
-				Permissions: []authzpb.Permission{},
-			},
-			authzpb.Permission_WRITE,
-			false,
-		},
-		{
-			"permission is not in role, permission not found",
-			&pb.AuthorizationPolicy_Role{
-				Principals: []string{},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
-				},
-			},
-			authzpb.Permission_WRITE,
-			false,
-		},
-		{
-			"permission is in role, one permission in the list",
-			&pb.AuthorizationPolicy_Role{
-				Principals: []string{},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
-				},
-			},
-			authzpb.Permission_LOG,
-			true,
-		},
-		{
-			"permission is in role, multiple permissions in the list",
-			&pb.AuthorizationPolicy_Role{
-				Principals: []string{},
-				Permissions: []authzpb.Permission{
-					authzpb.Permission_LOG,
-					authzpb.Permission_READ,
-					authzpb.Permission_WRITE,
-				},
-			},
-			authzpb.Permission_WRITE,
-			true,
-		},
-	} {
-		if got, want := isPermisionInRole(tc.role, tc.permission), tc.out; got != want {
-			t.Errorf("%v: isPermisionInRole=%v, want %v", tc.description, got, want)
 		}
 	}
 }

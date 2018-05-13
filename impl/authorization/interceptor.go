@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package authentication
+package authorization
 
 import (
 	"context"
@@ -24,18 +24,27 @@ import (
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 )
 
+// AuthPair defines an authentication and authorization pair.
+type AuthPair struct {
+	AuthnFunc grpc_auth.AuthFunc
+	AuthzFunc AuthzFunc
+}
+
 // UnaryServerInterceptor returns a new unary server interceptor that performs per-request auth.
-func UnaryServerInterceptor(authFuncs map[string]grpc_auth.AuthFunc) grpc.UnaryServerInterceptor {
+func UnaryServerInterceptor(authFuncs map[string]AuthPair) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		authFunc, ok := authFuncs[info.FullMethod]
+		policy, ok := authFuncs[info.FullMethod]
 		if !ok {
 			glog.V(2).Infof("auth interceptor: no hander for %v", info.FullMethod)
 			// If no auth handler was found for this method, invoke the method directly.
 			return handler(ctx, req)
 
 		}
-		newCtx, err := authFunc(ctx)
+		newCtx, err := policy.AuthnFunc(ctx)
 		if err != nil {
+			return nil, err
+		}
+		if err := policy.AuthzFunc(newCtx, req); err != nil {
 			return nil, err
 		}
 		return handler(newCtx, req)
@@ -43,17 +52,20 @@ func UnaryServerInterceptor(authFuncs map[string]grpc_auth.AuthFunc) grpc.UnaryS
 }
 
 // StreamServerInterceptor returns a new stream server interceptor that performs per-request auth.
-func StreamServerInterceptor(authFuncs map[string]grpc_auth.AuthFunc) grpc.StreamServerInterceptor {
+func StreamServerInterceptor(authFuncs map[string]AuthPair) grpc.StreamServerInterceptor {
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		authFunc, ok := authFuncs[info.FullMethod]
+		policy, ok := authFuncs[info.FullMethod]
 		if !ok {
 			glog.V(2).Infof("auth interceptor: no hander for %v", info.FullMethod)
 			// If no auth handler was found for this method, invoke the method directly.
 			return handler(srv, stream)
 		}
 
-		newCtx, err := authFunc(stream.Context())
+		newCtx, err := policy.AuthnFunc(stream.Context())
 		if err != nil {
+			return err
+		}
+		if err := policy.AuthzFunc(newCtx, stream); err != nil {
 			return err
 		}
 		wrapped := grpc_middleware.WrapServerStream(stream)

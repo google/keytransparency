@@ -19,7 +19,6 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/google/keytransparency/core/authorization"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/domain"
@@ -32,7 +31,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	authzpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -43,7 +41,6 @@ type Server struct {
 	tmap      tpb.TrillianMapClient
 	logAdmin  tpb.TrillianAdminClient
 	mapAdmin  tpb.TrillianAdminClient
-	authz     authorization.Authorization
 	mutator   mutator.Func
 	domains   domain.Storage
 	queue     mutator.MutationQueue
@@ -57,7 +54,6 @@ func New(tlog tpb.TrillianLogClient,
 	logAdmin tpb.TrillianAdminClient,
 	mapAdmin tpb.TrillianAdminClient,
 	mutator mutator.Func,
-	authz authorization.Authorization,
 	domains domain.Storage,
 	queue mutator.MutationQueue,
 	mutations mutator.MutationStorage) *Server {
@@ -67,7 +63,6 @@ func New(tlog tpb.TrillianLogClient,
 		logAdmin:  logAdmin,
 		mapAdmin:  mapAdmin,
 		mutator:   mutator,
-		authz:     authz,
 		domains:   domains,
 		queue:     queue,
 		mutations: mutations,
@@ -260,11 +255,6 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		return nil, err
 	}
 
-	// Validate proper authorization.
-	if err := s.authz.Authorize(ctx, domain.DomainID, in.AppId, in.UserId, authzpb.Permission_WRITE); err != nil {
-		glog.Warningf("Authorize(domains/%v/apps/%v/users/%v): %v", domain.DomainID, in.AppId, in.UserId, err)
-		return nil, err
-	}
 	// Verify:
 	// - Index to Key equality in SignedKV.
 	// - Correct profile commitment.
