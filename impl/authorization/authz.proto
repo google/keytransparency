@@ -17,8 +17,6 @@ option go_package = "github.com/google/keytransparency/impl/authorization/authz_
 
 package google.keytransparency.impl;
 
-import "core/api/type/authz.proto";
-
 // AuthorizationPolicy contains an authorization policy.
 message AuthorizationPolicy {
   // Resource contains the resource being accessed.
@@ -33,8 +31,6 @@ message AuthorizationPolicy {
   message Role {
     // principals contains an application specific identifier for this entry.
     repeated string principals = 1;
-    // permissions contains the set of permissions this role is granted.
-    repeated type.Permission permissions = 2;
   }
 
   // RoleLabels contains a lot of role labels identifying each role.
