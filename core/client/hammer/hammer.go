@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	"github.com/google/keytransparency/core/client"
 
@@ -36,26 +35,26 @@ import (
 // DialFunc returns a connected grpc client for Key Transparency.
 type DialFunc func(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTransparencyClient, error)
 
-// GetCreds returns PerRPCCredentials for the requested user.
-type GetCreds func(userID string) credentials.PerRPCCredentials
+// CallOptions returns PerRPCCredentials for the requested user.
+type CallOptions func(userID string) []grpc.CallOption
 
 // Hammer represents a single run of the hammer.
 type Hammer struct {
 	workers int
 
-	getCreds GetCreds
-	timeout  time.Duration
-	ktAddr   string
-	appID    string
-	config   *pb.Domain
-	client   *client.Client
+	callOptions CallOptions
+	timeout     time.Duration
+	ktAddr      string
+	appID       string
+	config      *pb.Domain
+	client      *client.Client
 
 	signers        []*tink.KeysetHandle
 	authorizedKeys *tinkpb.Keyset
 }
 
 // New returns a new hammer job
-func New(ctx context.Context, dial DialFunc, getCreds GetCreds,
+func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 	ktAddr, domainID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
 	ktCli, err := dial(ctx, ktAddr)
 	if err != nil {
@@ -78,12 +77,12 @@ func New(ctx context.Context, dial DialFunc, getCreds GetCreds,
 	}
 
 	return &Hammer{
-		getCreds: getCreds,
-		timeout:  timeout,
-		ktAddr:   ktAddr,
-		appID:    fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
-		config:   config,
-		client:   client,
+		callOptions: callOptions,
+		timeout:     timeout,
+		ktAddr:      ktAddr,
+		appID:       fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
+		config:      config,
+		client:      client,
 
 		signers:        []*tink.KeysetHandle{keyset},
 		authorizedKeys: authorizedKeys.Keyset(),
@@ -183,7 +182,7 @@ func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- err
 
 // writeOp performs one write command.
 func (h *Hammer) writeOp(ctx context.Context, userID string) error {
-	userCreds := h.getCreds(userID)
+	callOptions := h.callOptions(userID)
 
 	cctx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
@@ -195,6 +194,6 @@ func (h *Hammer) writeOp(ctx context.Context, userID string) error {
 		PublicKeyData:  []byte("publickey"),
 		AuthorizedKeys: h.authorizedKeys,
 	}
-	_, err := h.client.Update(cctx, u, h.signers, grpc.PerRPCCredentials(userCreds))
+	_, err := h.client.Update(cctx, u, h.signers, callOptions...)
 	return err
 }
