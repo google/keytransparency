@@ -21,9 +21,11 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client/hammer"
+	"github.com/google/keytransparency/impl/authentication"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -67,7 +69,8 @@ var hammerCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		h, err := hammer.New(ctx, dial, ktURL, domainID, timeout, keyset)
+		h, err := hammer.New(ctx, dial, callOptions,
+			ktURL, domainID, timeout, keyset)
 		if err != nil {
 			return err
 		}
@@ -75,4 +78,10 @@ var hammerCmd = &cobra.Command{
 		h.Run(ctx, maxOperations, maxWorkers, ramp)
 		return nil
 	},
+}
+
+func callOptions(userID string) []grpc.CallOption {
+	return []grpc.CallOption{
+		grpc.PerRPCCredentials(authentication.GetFakeCredential(userID)),
+	}
 }

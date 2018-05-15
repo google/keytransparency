@@ -26,7 +26,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/client"
-	"github.com/google/keytransparency/impl/authentication"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -36,28 +35,38 @@ import (
 // DialFunc returns a connected grpc client for Key Transparency.
 type DialFunc func(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTransparencyClient, error)
 
+// CallOptions returns PerRPCCredentials for the requested user.
+type CallOptions func(userID string) []grpc.CallOption
+
 // Hammer represents a single run of the hammer.
 type Hammer struct {
 	workers int
 
-	dial    DialFunc
-	timeout time.Duration
-	ktAddr  string
-	appID   string
-	config  *pb.Domain
+	callOptions CallOptions
+	timeout     time.Duration
+	ktAddr      string
+	appID       string
+	config      *pb.Domain
+	client      *client.Client
 
 	signers        []*tink.KeysetHandle
 	authorizedKeys *tinkpb.Keyset
 }
 
 // New returns a new hammer job
-func New(ctx context.Context, dial DialFunc, ktAddr, domainID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
-	client, err := dial(ctx, ktAddr)
+func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
+	ktAddr, domainID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
+	ktCli, err := dial(ctx, ktAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	config, err := client.GetDomain(ctx, &pb.GetDomainRequest{DomainId: domainID})
+	config, err := ktCli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: domainID})
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := client.NewFromConfig(ktCli, config)
 	if err != nil {
 		return nil, err
 	}
@@ -68,11 +77,12 @@ func New(ctx context.Context, dial DialFunc, ktAddr, domainID string, timeout ti
 	}
 
 	return &Hammer{
-		dial:    dial,
-		timeout: timeout,
-		ktAddr:  ktAddr,
-		appID:   fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
-		config:  config,
+		callOptions: callOptions,
+		timeout:     timeout,
+		ktAddr:      ktAddr,
+		appID:       fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
+		config:      config,
+		client:      client,
 
 		signers:        []*tink.KeysetHandle{keyset},
 		authorizedKeys: authorizedKeys.Keyset(),
@@ -172,6 +182,8 @@ func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- err
 
 // writeOp performs one write command.
 func (h *Hammer) writeOp(ctx context.Context, userID string) error {
+	callOptions := h.callOptions(userID)
+
 	cctx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
 
@@ -182,22 +194,6 @@ func (h *Hammer) writeOp(ctx context.Context, userID string) error {
 		PublicKeyData:  []byte("publickey"),
 		AuthorizedKeys: h.authorizedKeys,
 	}
-	c, err := h.getClientWithUser(cctx, userID)
-	if err != nil {
-		return fmt.Errorf("getClient(): %v", err)
-	}
-	_, err = c.Update(cctx, u, h.signers)
+	_, err := h.client.Update(cctx, u, h.signers, callOptions...)
 	return err
-}
-
-// getClient connects to the server and returns a key transparency verification client.
-func (h *Hammer) getClientWithUser(ctx context.Context, userID string) (*client.Client, error) {
-	userCreds := authentication.GetFakeCredential(userID)
-
-	ktCli, err := h.dial(ctx, h.ktAddr, grpc.WithPerRPCCredentials(userCreds))
-	if err != nil {
-		return nil, fmt.Errorf("Dial(): %v", err)
-	}
-
-	return client.NewFromConfig(ktCli, h.config)
 }

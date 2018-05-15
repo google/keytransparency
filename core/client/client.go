@@ -231,7 +231,7 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 // Update creates an UpdateEntryRequest for a user,
 // attempt to submit it multiple times depending until ctx times out.
 // Returns context.DeadlineExceeded if ctx times out.
-func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle) (*entry.Mutation, error) {
+func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	if got, want := u.DomainId, c.domainID; got != want {
 		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
 	}
@@ -253,7 +253,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 		case err == ErrWait:
 			// Try again.
 		case err == ErrRetry:
-			if err := c.QueueMutation(ctx, m, signers); err != nil {
+			if err := c.QueueMutation(ctx, m, signers, opts...); err != nil {
 				return nil, err
 			}
 		case status.Code(err) == codes.DeadlineExceeded:
@@ -268,7 +268,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 }
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
-func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle) error {
+func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
 	req, err := m.SerializeAndSign(signers, int64(c.trusted.TreeSize))
 	if err != nil {
 		return fmt.Errorf("SerializeAndSign(): %v", err)
@@ -276,7 +276,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 
 	Vlog.Printf("Sending Update request...")
 	// TODO(gdbelvin): Change name from UpdateEntry to QueueUpdate.
-	_, err = c.cli.UpdateEntry(ctx, req)
+	_, err = c.cli.UpdateEntry(ctx, req, opts...)
 	return err
 }
 
