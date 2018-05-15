@@ -11,7 +11,7 @@
 	      }
              },
   "Severity": {"license": "error"},
-  "Enable": ["license", "imports-impl"],
+  "Enable": ["license", "imports-impl", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
   "Vendor": true,
   "VendoredLinters": true,
   "Exclude": [
