@@ -22,7 +22,6 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/testutil"
-	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -100,10 +99,10 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		},
 	} {
 		for _, u := range e.userUpdates {
-			actx := authentication.WithOutgoingFakeAuth(ctx, u.UserId)
-			cctx, cancel := context.WithTimeout(actx, 500*time.Millisecond)
+			opts := env.CallOpts(u.UserId)
+			cctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			defer cancel()
-			if _, err = env.Client.Update(cctx, u, e.signers); err != context.DeadlineExceeded {
+			if _, err = env.Client.Update(cctx, u, e.signers, opts...); err != context.DeadlineExceeded {
 				t.Fatalf("Could not send update request: %v", err)
 			}
 		}

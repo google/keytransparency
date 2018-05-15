@@ -215,6 +215,9 @@ func NewEnv() (*Env, error) {
 			Domain:   domainPB,
 			Receiver: receiver,
 			Timeout:  500 * time.Millisecond,
+			CallOpts: func(userID string) []grpc.CallOption {
+				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
+			},
 		},
 		mapEnv:     mapEnv,
 		logEnv:     logEnv,
