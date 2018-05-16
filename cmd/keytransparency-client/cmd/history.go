@@ -47,11 +47,7 @@ and verify that the results are consistent.`,
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		userCreds, err := userCreds(ctx, false)
-		if err != nil {
-			return err
-		}
-		c, err := GetClient(ctx, userCreds)
+		c, err := GetClient(ctx)
 		if err != nil {
 			return fmt.Errorf("Error connecting: %v", err)
 		}
