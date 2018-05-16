@@ -31,7 +31,7 @@ development.
 ## Key Transparency Client
 
 ### Setup
-1. Install [Go 1.9](https://golang.org/doc/install).
+1. Install [Go 1.10](https://golang.org/doc/install).
 2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
 
 ### Client operations
@@ -113,8 +113,27 @@ Key Transparency and its [Trillian](https://github.com/google/trillian) backend
 use a [MySQL database](https://github.com/google/trillian/blob/master/README.md#mysql-setup),
 which must be setup in order for the Key Transparency tests to work.
 
-Support
-------
+
+### Directory structure
+
+The directory structure of Key Transparency is as follows:
+
+* [**core**](core): main library source code. Core libraries do not import [impl](impl).
+    * [**api**](core/api): gRPC API definitions
+    * [**keyserver**](core/keyserver): keyserver implementation
+    * [**sequencer**](core/sequencer): sequencer implementation
+    * [**adminserver**](core/adminserver): admin server implementation
+* [**impl**](impl): environment specific modules:
+    * [**authentication**](impl/authentication): grpc authentication interceptor
+    * [**sql**](impl/sql): mysql implementations of storage modules
+    * [**integration**](impl/integration): environment specific integration tests
+* [**cmd**](cmd): binaries
+    * [**keytransparency-client**](cmd/keytransparency-client): Key Transparency CLI client
+* [**scripts**](scripts): scripts
+    * [**deploy**](scripts/deploy.sh): Deploy to Google Compute Engine
+
+
+## Support
 
 - [Mailing list](https://groups.google.com/forum/#!forum/keytransparency).
 
