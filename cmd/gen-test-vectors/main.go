@@ -73,8 +73,7 @@ func main() {
 
 // GenerateTestVectors verifies set/get semantics.
 func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
-	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
-	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
+	signature.RegisterStandardKeyTypes()
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 

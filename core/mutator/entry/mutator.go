@@ -33,8 +33,7 @@ import (
 )
 
 func init() {
-	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
-	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
+	signature.RegisterStandardKeyTypes()
 }
 
 // Mutator defines mutations to simply replace the current map value with the
@@ -126,7 +125,7 @@ func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data interface{}, sigs [][]byte
 // verifyAuthorizedKeys requires AT LEAST one verifier to have a valid
 // corresponding signature.
 func verifyAuthorizedKeys(data interface{}, handle *tink.KeysetHandle, sigs [][]byte) error {
-	verifier, err := signature.PublicKeyVerifyFactory().GetPrimitive(handle)
+	verifier, err := signature.GetPublicKeyVerifyPrimitive(handle)
 	if err != nil {
 		return err
 	}

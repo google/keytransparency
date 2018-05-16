@@ -56,7 +56,7 @@ var keysCmd = &cobra.Command{
 	Long: `Manage the authorized-keys list with tinkey
 	https://github.com/google/tink/blob/master/doc/TINKEY.md`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		signature.PublicKeySignConfig().RegisterStandardKeyTypes()
+		signature.RegisterStandardKeyTypes()
 	},
 }
 
@@ -158,7 +158,17 @@ func readKeysetFile(file, password string) (*tink.KeysetHandle, error) {
 		return nil, fmt.Errorf("reading keystore file %q failed: %v", file, err)
 	}
 
-	return tink.EncryptedKeysetHandle().ParseSerializedKeyset(data, masterKey)
+	encryptedKeyset := new(tinkpb.EncryptedKeyset)
+	if err := proto.Unmarshal(data, encryptedKeyset); err != nil {
+		return nil, fmt.Errorf("could not parse encrypted keyset: %v", err)
+	}
+
+	keyset, err := tink.DecryptKeyset(encryptedKeyset, masterKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tink.CleartextKeysetHandle().ParseKeyset(keyset)
 }
 
 func writeKeysetFile(keyset *tink.KeysetHandle, file, password string) error {

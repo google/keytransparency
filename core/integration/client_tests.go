@@ -72,8 +72,7 @@ func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
 
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
-	signature.PublicKeyVerifyConfig().RegisterStandardKeyTypes()
-	signature.PublicKeySignConfig().RegisterStandardKeyTypes()
+	signature.RegisterStandardKeyTypes()
 
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
