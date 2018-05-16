@@ -56,10 +56,10 @@ func PrivateKeyFromPEM(privPEM string, keyID uint32) *tinkpb.Keyset_Key {
 	if err != nil {
 		panic(fmt.Sprintf("proto.Marshal(): %v", err))
 	}
-	keyData := tink.NewKeyData(signature.EcdsaSignTypeURL,
+	keyData := tink.CreateKeyData(signature.EcdsaSignTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PRIVATE)
-	return tink.NewKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
+	return tink.CreateKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
 }
 
 // PublicKeyFromPEM produces a Keyset_Key from pubPEM.
@@ -84,10 +84,10 @@ func PublicKeyFromPEM(pubPEM string, keyID uint32) *tinkpb.Keyset_Key {
 	if err != nil {
 		panic(fmt.Sprintf("proto.Marshal(): %v", err))
 	}
-	keyData := tink.NewKeyData(signature.EcdsaVerifyTypeURL,
+	keyData := tink.CreateKeyData(signature.EcdsaVerifyTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PUBLIC)
-	return tink.NewKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
+	return tink.CreateKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
 }
 
 // VerifyKeysetFromPEMs produces a Keyset with pubPEMs.
@@ -100,7 +100,7 @@ func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
 		keysetKey := PublicKeyFromPEM(pem, uint32(i+1))
 		keys = append(keys, keysetKey)
 	}
-	keyset := tink.NewKeyset(1, keys)
+	keyset := tink.CreateKeyset(1, keys)
 	parsedHandle, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
 	if err != nil {
 		panic(fmt.Sprintf("ParseKeyset(): %v", err))
@@ -116,7 +116,7 @@ func SignKeysetsFromPEMs(privPEMs ...string) []*tink.KeysetHandle {
 			continue
 		}
 		keysetKey := PrivateKeyFromPEM(pem, uint32(i+1))
-		keyset := tink.NewKeyset(uint32(i+1), []*tinkpb.Keyset_Key{keysetKey})
+		keyset := tink.CreateKeyset(uint32(i+1), []*tinkpb.Keyset_Key{keysetKey})
 		parsedHandle, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
 		if err != nil {
 			panic(fmt.Sprintf("ParseKeyset(): %v", err))

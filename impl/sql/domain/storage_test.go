@@ -17,10 +17,11 @@ package domain
 import (
 	"context"
 	"database/sql"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/domain"
 
 	"github.com/google/trillian/crypto/keyspb"
@@ -78,8 +79,8 @@ func TestList(t *testing.T) {
 			t.Errorf("List(): %v", err)
 			continue
 		}
-		if got, want := domains, tc.domains; !reflect.DeepEqual(got, want) {
-			t.Errorf("Domain: %v, want %v", got, want)
+		if got, want := domains, tc.domains; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
+			t.Errorf("List(): %#v, want %#v, diff: \n%v", got, want, cmp.Diff(got, want))
 		}
 	}
 }
@@ -207,8 +208,8 @@ func TestWriteReadDelete(t *testing.T) {
 				return
 			}
 			tc.d.Deleted = tc.isDeleted
-			if got, want := *domain, tc.d; !reflect.DeepEqual(got, want) {
-				t.Errorf("Domain: %v, want %v", got, want)
+			if got, want := *domain, tc.d; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
+				t.Errorf("Read(%v, %v): %#v, want %#v, diff: \n%v", tc.d.DomainID, tc.readDeleted, got, want, cmp.Diff(got, want))
 			}
 		})
 	}

@@ -149,7 +149,7 @@ func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.Entry, error) {
 	m.entry.Signatures = nil
 	sigs := make([][]byte, 0, len(signers))
 	for _, handle := range signers {
-		signer, err := signature.PublicKeySignFactory().GetPrimitive(handle)
+		signer, err := signature.GetPublicKeySignPrimitive(handle)
 		if err != nil {
 			return nil, err
 		}
