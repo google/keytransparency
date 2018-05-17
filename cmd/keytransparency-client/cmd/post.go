@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	"github.com/google/tink/go/tink"
@@ -76,7 +77,7 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return err
 		}
-		c, err := GetClient(ctx, userCreds)
+		c, err := GetClient(ctx)
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
@@ -96,7 +97,8 @@ User email MUST match the OAuth account used to authorize the update.
 			PublicKeyData:  profileData,
 			AuthorizedKeys: authorizedKeys.Keyset(),
 		}
-		if _, err := c.Update(ctx, u, []*tink.KeysetHandle{keyset}); err != nil {
+		if _, err := c.Update(ctx, u, []*tink.KeysetHandle{keyset},
+			grpc.PerRPCCredentials(userCreds)); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}
 		fmt.Printf("New key for %v: %x\n", userID, data)
