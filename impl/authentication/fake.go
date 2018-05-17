@@ -56,7 +56,7 @@ func (c fakeCredential) GetRequestMetadata(ctx context.Context, uri ...string) (
 }
 
 func (c fakeCredential) RequireTransportSecurity() bool {
-	return true
+	return false
 }
 
 // WithOutgoingFakeAuth returns a ctx with FakeAuth information for userID.
