@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/mutator"
+	"google.golang.org/grpc"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -34,7 +35,11 @@ type Env struct {
 	Domain   *pb.Domain
 	Receiver mutator.Receiver
 	Timeout  time.Duration
+	CallOpts CallOptions
 }
+
+// CallOptions returns grpc.CallOptions for the requested user.
+type CallOptions func(userID string) []grpc.CallOption
 
 // NamedTestFn is a binding between a readable test name (used for a Go subtest)
 // and a function that performs the test, given a test environment.
@@ -49,7 +54,6 @@ type NamedTestFn struct {
 var AllTests = []NamedTestFn{
 	// Client Tests
 	{"TestEmptyGetAndUpdate", TestEmptyGetAndUpdate},
-	{"TestUpdateValidation", TestUpdateValidation},
 	{"TestListHistory", TestListHistory},
 	// Monitor Tests
 	{"TestMonitor", TestMonitor},

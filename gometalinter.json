@@ -1,10 +1,17 @@
 {
   "Linters": {
 	      "errcheck": "errcheck -abspath -ignore 'Close|Write|Serve' {path}:PATH:LINE:COL:MESSAGE",
-	      "license": "grep -rL 'Apache License' {path}:^(?P<path>.[^.]+\\.(go|proto))$"
+	      "license": {
+		      "Command": "grep -rL 'Apache License'",
+		      "Pattern": "^(?P<path>.[^.]+\\.(go|proto))$"
+	      },
+	      "imports-impl": {
+		      "Command": "grep -rl 'keytransparency/impl'",
+		      "Pattern": "^(?P<path>\\./core.*(go|proto))$"
+	      }
              },
   "Severity": {"license": "error"},
-  "Enable": ["license", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
+  "Enable": ["license", "imports-impl", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
   "Vendor": true,
   "VendoredLinters": true,
   "Exclude": [
