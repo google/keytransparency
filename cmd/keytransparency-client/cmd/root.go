@@ -223,10 +223,10 @@ func dial(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTran
 
 // GetClient connects to the server and returns a key transparency verification
 // client.
-func GetClient(ctx context.Context, userCreds credentials.PerRPCCredentials) (*client.Client, error) {
+func GetClient(ctx context.Context) (*client.Client, error) {
 	ktURL := viper.GetString("kt-url")
 
-	ktCli, err := dial(ctx, ktURL, grpc.WithPerRPCCredentials(userCreds))
+	ktCli, err := dial(ctx, ktURL)
 	if err != nil {
 		return nil, fmt.Errorf("dial %v: %v", ktURL, err)
 	}
