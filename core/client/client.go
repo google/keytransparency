@@ -242,7 +242,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 	}
 
 	// 2. Queue Mutation.
-	if err := c.QueueMutation(ctx, m, signers); err != nil {
+	if err := c.QueueMutation(ctx, m, signers, opts...); err != nil {
 		return nil, err
 	}
 

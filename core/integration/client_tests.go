@@ -24,11 +24,10 @@ import (
 
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/testutil"
-	"github.com/google/keytransparency/impl/authentication"
 
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
-	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -64,12 +63,6 @@ var (
 	appID = "app"
 )
 
-// WithOutgoingFakeAuth returns a ctx with FakeAuth information for userID.
-func WithOutgoingFakeAuth(ctx context.Context, userID string) context.Context {
-	md, _ := authentication.GetFakeCredential(userID).GetRequestMetadata(ctx)
-	return metadata.NewOutgoingContext(ctx, metadata.New(md))
-}
-
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	signature.RegisterStandardKeyTypes()
@@ -88,7 +81,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		desc           string
 		wantProfile    []byte
 		setProfile     []byte
-		ctx            context.Context
+		opts           []grpc.CallOption
 		userID         string
 		signers        []*tink.KeysetHandle
 		authorizedKeys *tinkpb.Keyset
@@ -97,7 +90,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "empty_alice",
 			wantProfile:    nil,
 			setProfile:     []byte("alice-key1"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "alice"),
+			opts:           env.CallOpts("alice"),
 			userID:         "alice",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -106,7 +99,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob0_set",
 			wantProfile:    nil,
 			setProfile:     []byte("bob-key1"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
+			opts:           env.CallOpts("bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -115,7 +108,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "set_carol",
 			wantProfile:    nil,
 			setProfile:     []byte("carol-key1"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "carol"),
+			opts:           env.CallOpts("carol"),
 			userID:         "carol",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -124,7 +117,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob1_get",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     nil,
-			ctx:            context.Background(),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -133,7 +125,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob1_set",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     []byte("bob-key2"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
+			opts:           env.CallOpts("bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -142,7 +134,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob2_setkeys",
 			wantProfile:    []byte("bob-key2"),
 			setProfile:     []byte("bob-key3"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
+			opts:           env.CallOpts("bob"),
 			userID:         "bob",
 			signers:        signers2,
 			authorizedKeys: authorizedKeys2,
@@ -151,7 +143,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			desc:           "bob3_setnewkeys",
 			wantProfile:    []byte("bob-key3"),
 			setProfile:     []byte("bob-key4"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
+			opts:           env.CallOpts("bob"),
 			userID:         "bob",
 			signers:        signers3,
 			authorizedKeys: authorizedKeys3,
@@ -176,16 +168,16 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 					PublicKeyData:  tc.setProfile,
 					AuthorizedKeys: tc.authorizedKeys,
 				}
-				cctx, cancel := context.WithTimeout(tc.ctx, env.Timeout)
+				cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 				defer cancel()
-				m, err := env.Client.Update(cctx, u, tc.signers)
+				m, err := env.Client.Update(cctx, u, tc.signers, tc.opts...)
 				if got, want := err, context.DeadlineExceeded; got != want {
 					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
 				}
-				cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
+				cctx, cancel = context.WithTimeout(ctx, env.Timeout)
 				defer cancel()
 				env.Receiver.Flush(cctx)
-				cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
+				cctx, cancel = context.WithTimeout(ctx, env.Timeout)
 				defer cancel()
 				if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
@@ -195,63 +187,16 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	}
 }
 
-// TestUpdateValidation verifies the correctness of updates submitted by the client.
-func TestUpdateValidation(ctx context.Context, env *Env, t *testing.T) {
-	// Create lists of signers and authorized keys
-	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
-
-	for _, tc := range []struct {
-		want           bool
-		ctx            context.Context
-		userID         string
-		profile        []byte
-		signers        []*tink.KeysetHandle
-		authorizedKeys *tinkpb.Keyset
-	}{
-		{false, context.Background(), "alice", []byte("alice-key1"), signers, authorizedKeys},
-		{false, authentication.WithOutgoingFakeAuth(ctx, "carol"), "bob", []byte("bob-key1"), signers, authorizedKeys},
-		{true, authentication.WithOutgoingFakeAuth(ctx, "dave"), "dave", []byte("dave-key1"), signers, authorizedKeys},
-		{true, authentication.WithOutgoingFakeAuth(ctx, "eve"), "eve", []byte("eve-key1"), signers, authorizedKeys},
-	} {
-		u := &tpb.User{
-			DomainId:       env.Domain.DomainId,
-			AppId:          appID,
-			UserId:         tc.userID,
-			PublicKeyData:  tc.profile,
-			AuthorizedKeys: tc.authorizedKeys,
-		}
-		cctx, cancel := context.WithTimeout(tc.ctx, env.Timeout)
-		defer cancel()
-		m, err := env.Client.Update(cctx, u, tc.signers)
-
-		if tc.want {
-			// The first update response is always a retry.
-			if got, want := err, context.DeadlineExceeded; got != want {
-				t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
-			}
-			env.Receiver.Flush(tc.ctx)
-			if _, err := env.Client.WaitForUserUpdate(tc.ctx, m); err != nil {
-				t.Errorf("WaitForUserUpdate(): %v, want nil", err)
-			}
-		} else {
-			if got, want := err, context.DeadlineExceeded; got == want {
-				t.Fatalf("Update(%v): %v, don't want %v", tc.userID, got, want)
-			}
-		}
-	}
-}
-
 // TestListHistory verifies that repeated history values get collapsed properly.
 func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	userID := "bob"
-	ctx = authentication.WithOutgoingFakeAuth(ctx, userID)
+	opts := env.CallOpts(userID)
 
 	// Create lists of signers and authorized keys
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 
-	if err := env.setupHistory(ctx, env.Domain, userID, signers, authorizedKeys); err != nil {
+	if err := env.setupHistory(ctx, env.Domain, userID, signers, authorizedKeys, opts); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
 	}
 
@@ -294,7 +239,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	}
 }
 
-func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []*tink.KeysetHandle, authorizedKeys *tinkpb.Keyset) error {
+func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []*tink.KeysetHandle, authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -321,7 +266,7 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
 			// The first update response is always a retry.
-			m, err := env.Client.Update(cctx, u, signers)
+			m, err := env.Client.Update(cctx, u, signers, opts...)
 			if err != context.DeadlineExceeded {
 				return fmt.Errorf("Update(%v, %v): %v, want %v", userID, i, err, context.DeadlineExceeded)
 			}
