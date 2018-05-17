@@ -127,7 +127,7 @@ The directory structure of Key Transparency is as follows:
     * [**api**](core/api): gRPC API definitions.
     * [**crypto**](core/crypto): verifiable random function and commitment implementations.
     * [domain](core/domain): interface for retrieving domain info from storage.
-    * [keyservercore/keyserver): keyserver implementation.
+    * [keyserver](core/keyserver): keyserver implementation.
     * [**mutator**](core/mutator): "smart contract" implementation.
     * [sequencer](core/sequencer): mutation executor.
 * [**deploy**](deploy): deployment configs:
