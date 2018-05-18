@@ -35,7 +35,7 @@ func NewFakeKT(ktServer pb.KeyTransparencyServer) (*FakeKT, func(), error) {
 	grpcServer := grpc.NewServer()
 	pb.RegisterKeyTransparencyServer(grpcServer, ktServer)
 
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return nil, nil, err
 	}
