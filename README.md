@@ -31,7 +31,7 @@ development.
 ## Key Transparency Client
 
 ### Setup
-1. Install [Go 1.9](https://golang.org/doc/install).
+1. Install [Go 1.10](https://golang.org/doc/install).
 2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
 
 ### Client operations
@@ -113,8 +113,38 @@ Key Transparency and its [Trillian](https://github.com/google/trillian) backend
 use a [MySQL database](https://github.com/google/trillian/blob/master/README.md#mysql-setup),
 which must be setup in order for the Key Transparency tests to work.
 
-Support
-------
+
+### Directory structure
+
+The directory structure of Key Transparency is as follows:
+
+* [**cmd**](cmd): binaries
+    * [**keytransparency-client**](cmd/keytransparency-client): Key Transparency CLI client.
+    * [keytransparency-sequencer](cmd/keytransparency-sequencer): Key Transparency backend.
+    * [keytransparency-server](cmd/keytransparency-sequencer): Key Transparency frontend.
+* [**core**](core): main library source code. Core libraries do not import [impl](impl).
+    * [adminserver](core/adminserver): private api for creating new domains and apps.
+    * [**api**](core/api): gRPC API definitions.
+    * [**crypto**](core/crypto): verifiable random function and commitment implementations.
+    * [domain](core/domain): interface for retrieving domain info from storage.
+    * [keyserver](core/keyserver): keyserver implementation.
+    * [**mutator**](core/mutator): "smart contract" implementation.
+    * [sequencer](core/sequencer): mutation executor.
+* [**deploy**](deploy): deployment configs:
+    * [docker](deploy/docker): init helper.
+    * [**kubernetes**](deploy/kubernetes): kube deploy configs.
+    * [prometheus](deploy/prometheus): monitoring docker module.
+* [**docs**](docs): documentation.
+* [**impl**](impl): environment specific modules:
+    * [**authentication**](impl/authentication): authentication policy grpc interceptor.
+    * [**authorization**](impl/authorization): OAuth and fake auth grpc interceptor.
+    * [integration](impl/integration): environment specific integration tests.
+    * [**sql**](impl/sql): mysql implementations of storage modules.
+* [**scripts**](scripts): scripts
+    * [**deploy**](scripts/deploy.sh): deploy to Google Compute Engine.
+
+
+## Support
 
 - [Mailing list](https://groups.google.com/forum/#!forum/keytransparency).
 
