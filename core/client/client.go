@@ -228,9 +228,8 @@ func (m uint64Slice) Len() int           { return len(m) }
 func (m uint64Slice) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
-// Update creates an UpdateEntryRequest for a user,
-// attempt to submit it multiple times depending until ctx times out.
-// Returns context.DeadlineExceeded if ctx times out.
+// Update creates and submits a mutation for a user, and wait for it to appear.
+// Returns ErrRetry if there was a race condition.
 func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	if got, want := u.DomainId, c.domainID; got != want {
 		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
@@ -247,24 +246,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 	}
 
 	// 3. Wait for update.
-	m, err = c.waitOnceForUserUpdate(ctx, m)
-	for {
-		switch {
-		case err == ErrWait:
-			// Try again.
-		case err == ErrRetry:
-			if err := c.QueueMutation(ctx, m, signers, opts...); err != nil {
-				return nil, err
-			}
-		case status.Code(err) == codes.DeadlineExceeded:
-			// Sometimes the timeout occurs during an rpc.
-			// Convert to a standard context.DeadlineExceeded for consistent error handling.
-			return m, context.DeadlineExceeded
-		default:
-			return m, err
-		}
-		m, err = c.waitOnceForUserUpdate(ctx, m)
-	}
+	return c.WaitForUserUpdate(ctx, m)
 }
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
@@ -321,8 +303,9 @@ func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*ent
 		case err == ErrWait:
 			// Try again.
 		case status.Code(err) == codes.DeadlineExceeded:
-			// Sometimes the timeout occurs during an rpc.
-			// Convert to a standard context.DeadlineExceeded for consistent error handling.
+			// Sometimes the timeout occurs during an rpc. Convert
+			// to a standard context.DeadlineExceeded for
+			// consistent error handling.
 			return m, context.DeadlineExceeded
 		default:
 			return m, err
