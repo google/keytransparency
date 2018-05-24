@@ -214,7 +214,7 @@ func NewEnv() (*Env, error) {
 			Cli:      ktClient,
 			Domain:   domainPB,
 			Receiver: receiver,
-			Timeout:  500 * time.Millisecond,
+			Timeout:  2 * time.Second,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
