@@ -103,7 +103,8 @@ func (h *Hammer) launchWorkers(ctx context.Context, jobs <-chan int, workers int
 	go func() {
 		rampTicker := time.NewTicker(ramp / time.Duration(workers))
 		var wg sync.WaitGroup
-		for ; h.workers < workers; h.workers++ {
+		for h.workers < workers {
+			h.workers++
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
