@@ -208,7 +208,7 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("NewFromConfig(): %v", err)
 	}
 	// Integration tests manually create epochs immediately, so retry fairly quickly.
-	client.RetryDelay = 50 * time.Millisecond
+	client.RetryDelay = 10 * time.Millisecond
 
 	return &Env{
 		Env: &integration.Env{
