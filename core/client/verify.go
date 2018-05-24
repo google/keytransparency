@@ -113,7 +113,7 @@ func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, domainID, app
 		nonce := in.GetCommitted().GetKey()
 		if err := commitments.Verify(userID, appID, commitment, data, nonce); err != nil {
 			Vlog.Printf("✗ Commitment verification failed.")
-			return nil, nil, fmt.Errorf("commitments.Verify(%v, %v, %v, %v, %v): %v", userID, appID, commitment, data, nonce, err)
+			return nil, nil, fmt.Errorf("commitments.Verify(%v, %v, %x, %x, %v): %v", userID, appID, commitment, data, nonce, err)
 		}
 	}
 	Vlog.Printf("✓ Commitment verified.")
@@ -172,7 +172,7 @@ func (v *RealVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*type
 	b := in.GetSmr().GetMapRoot()
 	leafIndex := int64(mapRoot.Revision)
 	if err := v.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetLogInclusion()); err != nil {
-		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%s, %v, _): %v", b, leafIndex, err)
+		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%x, %v, _): %v", b, leafIndex, err)
 	}
 	Vlog.Printf("✓ Log inclusion proof verified.")
 	return logRoot, mapRoot, nil
