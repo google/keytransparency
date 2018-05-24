@@ -235,7 +235,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
 	}
 	// 1. pb.User + ExistingEntry -> Mutation.
-	m, err := c.newMutation(ctx, u)
+	m, err := c.CreateMutation(ctx, u)
 	if err != nil {
 		return nil, err
 	}
@@ -262,8 +262,8 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 	return err
 }
 
-// newMutation fetches the current index and value for a user and prepares a mutation.
-func (c *Client) newMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
+// CreateMutation fetches the current index and value for a user and prepares a mutation.
+func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
 	e, _, err := c.VerifiedGetEntry(ctx, u.AppId, u.UserId)
 	if err != nil {
 		return nil, err
