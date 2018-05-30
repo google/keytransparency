@@ -170,15 +170,17 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 				}
 				cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 				defer cancel()
-				m, err := env.Client.Update(cctx, u, tc.signers, tc.opts...)
-				if got, want := err, context.DeadlineExceeded; got != want {
-					t.Fatalf("Update(%v): %v, want %v", tc.userID, got, want)
+
+				m, err := env.Client.CreateMutation(cctx, u)
+				if err != nil {
+					t.Fatalf("CreateMutation(%v): %v", tc.userID, err)
 				}
-				cctx, cancel = context.WithTimeout(ctx, env.Timeout)
-				defer cancel()
-				env.Receiver.Flush(cctx)
-				cctx, cancel = context.WithTimeout(ctx, env.Timeout)
-				defer cancel()
+				if err := env.Client.QueueMutation(cctx, m, tc.signers, tc.opts...); err != nil {
+					t.Fatalf("QueueMutation(%v): %v", tc.userID, err)
+				}
+
+				env.Receiver.Flush(ctx)
+
 				if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 				}
@@ -250,7 +252,7 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 	// Log TreeSize:  2  3  4  5  6  7  8  9  10 11 ...
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
-	for i, p := range [][]byte{
+	for _, p := range [][]byte{
 		nil, cp(1), cp(2), nil, nil, cp(3), nil,
 		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
 		nil, cp(5), cp(7), nil,
@@ -265,16 +267,17 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			}
 			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
-			// The first update response is always a retry.
-			m, err := env.Client.Update(cctx, u, signers, opts...)
-			if err != context.DeadlineExceeded {
-				return fmt.Errorf("Update(%v, %v): %v, want %v", userID, i, err, context.DeadlineExceeded)
+
+			m, err := env.Client.CreateMutation(cctx, u)
+			if err != nil {
+				return fmt.Errorf("CreateMutation(%v): %v", userID, err)
 			}
-			cctx, cancel = context.WithTimeout(ctx, env.Timeout)
-			defer cancel()
-			env.Receiver.Flush(cctx)
-			cctx, cancel = context.WithTimeout(ctx, env.Timeout)
-			defer cancel()
+			if err := env.Client.QueueMutation(cctx, m, signers, opts...); err != nil {
+				return fmt.Errorf("QueueMutation(%v): %v", userID, err)
+			}
+
+			env.Receiver.Flush(ctx)
+
 			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 				return fmt.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 			}

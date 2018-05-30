@@ -102,8 +102,12 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			opts := env.CallOpts(u.UserId)
 			cctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			defer cancel()
-			if _, err = env.Client.Update(cctx, u, e.signers, opts...); err != context.DeadlineExceeded {
-				t.Fatalf("Could not send update request: %v", err)
+			m, err := env.Client.CreateMutation(cctx, u)
+			if err != nil {
+				t.Fatalf("CreateMutation(%v): %v", u.UserId, err)
+			}
+			if err := env.Client.QueueMutation(cctx, m, e.signers, opts...); err != nil {
+				t.Fatalf("QueueMutation(%v): %v", u.UserId, err)
 			}
 		}
 
