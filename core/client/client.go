@@ -388,9 +388,9 @@ func (c *Client) WaitForRevision(ctx context.Context, revision int64) error {
 // to at least treeSize or times out.
 func (c *Client) WaitForSTHUpdate(ctx context.Context, treeSize int64) error {
 	b := &backoff.Backoff{
-		Min:    100 * time.Millisecond,
-		Max:    10 * time.Second,
-		Factor: 1.2,
+		Min:    c.RetryDelay,
+		Max:    1 * time.Minute,
+		Factor: 1.1,
 		Jitter: true,
 	}
 
