@@ -228,7 +228,7 @@ func (m uint64Slice) Len() int           { return len(m) }
 func (m uint64Slice) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
-// Update creates and submits a mutation for a user, and wait for it to appear.
+// Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns ErrRetry if there was a race condition.
 func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	if got, want := u.DomainId, c.domainID; got != want {
@@ -303,9 +303,8 @@ func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*ent
 		case err == ErrWait:
 			// Try again.
 		case status.Code(err) == codes.DeadlineExceeded:
-			// Sometimes the timeout occurs during an rpc. Convert
-			// to a standard context.DeadlineExceeded for
-			// consistent error handling.
+			// Sometimes the timeout occurs during an rpc. Convert to a
+			// standard context.DeadlineExceeded for consistent error handling.
 			return m, context.DeadlineExceeded
 		default:
 			return m, err
