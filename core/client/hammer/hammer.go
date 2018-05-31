@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 
@@ -44,10 +45,9 @@ type Hammer struct {
 
 	callOptions CallOptions
 	timeout     time.Duration
-	ktAddr      string
+	ktCli       pb.KeyTransparencyClient
 	appID       string
 	config      *pb.Domain
-	client      *client.Client
 
 	signers        []*tink.KeysetHandle
 	authorizedKeys *tinkpb.Keyset
@@ -66,11 +66,6 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		return nil, err
 	}
 
-	client, err := client.NewFromConfig(ktCli, config)
-	if err != nil {
-		return nil, err
-	}
-
 	authorizedKeys, err := keyset.GetPublicKeysetHandle()
 	if err != nil {
 		return nil, fmt.Errorf("keyset.GetPublicKeysetHandle() failed: %v", err)
@@ -79,10 +74,9 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 	return &Hammer{
 		callOptions: callOptions,
 		timeout:     timeout,
-		ktAddr:      ktAddr,
+		ktCli:       ktCli,
 		appID:       fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
 		config:      config,
-		client:      client,
 
 		signers:        []*tink.KeysetHandle{keyset},
 		authorizedKeys: authorizedKeys.Keyset(),
@@ -103,7 +97,8 @@ func (h *Hammer) launchWorkers(ctx context.Context, jobs <-chan int, workers int
 	go func() {
 		rampTicker := time.NewTicker(ramp / time.Duration(workers))
 		var wg sync.WaitGroup
-		for ; h.workers < workers; h.workers++ {
+		for h.workers < workers {
+			h.workers++
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -174,16 +169,20 @@ func (h *Hammer) printStats(period time.Duration, outputs <-chan error) {
 }
 
 func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- error) {
+	client, err := client.NewFromConfig(h.ktCli, h.config)
+	if err != nil {
+		glog.Errorf("NewFromConfig(): %v", err)
+		return
+	}
+
 	for i := range jobs {
 		userID := fmt.Sprintf("user_%v", i)
-		outputs <- h.writeOp(ctx, userID)
+		outputs <- h.writeOp(ctx, client, userID)
 	}
 }
 
 // writeOp performs one write command.
-func (h *Hammer) writeOp(ctx context.Context, userID string) error {
-	callOptions := h.callOptions(userID)
-
+func (h *Hammer) writeOp(ctx context.Context, client *client.Client, userID string) error {
 	cctx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
 
@@ -194,6 +193,8 @@ func (h *Hammer) writeOp(ctx context.Context, userID string) error {
 		PublicKeyData:  []byte("publickey"),
 		AuthorizedKeys: h.authorizedKeys,
 	}
-	_, err := h.client.Update(cctx, u, h.signers, callOptions...)
+
+	callOptions := h.callOptions(userID)
+	_, err := client.Update(cctx, u, h.signers, callOptions...)
 	return err
 }

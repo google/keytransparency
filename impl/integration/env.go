@@ -207,6 +207,8 @@ func NewEnv() (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("NewFromConfig(): %v", err)
 	}
+	// Integration tests manually create epochs immediately, so retry fairly quickly.
+	client.RetryDelay = 10 * time.Millisecond
 
 	return &Env{
 		Env: &integration.Env{
@@ -214,7 +216,7 @@ func NewEnv() (*Env, error) {
 			Cli:      ktClient,
 			Domain:   domainPB,
 			Receiver: receiver,
-			Timeout:  500 * time.Millisecond,
+			Timeout:  2 * time.Second,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
