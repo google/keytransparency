@@ -83,7 +83,7 @@ func (r *Receiver) Close() {
 
 // Flush sends any waiting queue items.
 func (r *Receiver) Flush(ctx context.Context) {
-	r.sendBatch(ctx, true)
+	r.sendBatch(ctx, 0, r.opts.MaxBatchSize)
 }
 
 func (r *Receiver) run(ctx context.Context, last time.Time) {
@@ -94,18 +94,18 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 	}
 
 	if time.Since(last) > (r.opts.MaxPeriod - r.opts.Period) {
-		r.sendBatch(ctx, true) // We will be overdue for an epoch soon.
+		r.sendBatch(ctx, 0, r.opts.MaxBatchSize) // We will be overdue for an epoch soon.
 	}
 
 	for {
 		var count int32
 		select {
 		case <-r.more:
-			count = r.sendBatch(ctx, false)
+			count = r.sendBatch(ctx, 1, r.opts.MaxBatchSize)
 		case <-r.ticker.C:
-			count = r.sendBatch(ctx, false)
+			count = r.sendBatch(ctx, 1, r.opts.MaxBatchSize)
 		case <-r.maxTicker.C:
-			count = r.sendBatch(ctx, true)
+			count = r.sendBatch(ctx, 0, r.opts.MaxBatchSize)
 		case <-ctx.Done():
 			return
 		case <-r.done:
@@ -119,13 +119,13 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 }
 
 // sendBatch sends up to batchSize items to the receiver. Returns the number of sent items.
-func (r *Receiver) sendBatch(ctx context.Context, sendEmpty bool) int32 {
-	ms, err := r.store.readQueue(ctx, r.domainID, r.opts.MaxBatchSize)
+func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int32) int32 {
+	ms, err := r.store.readQueue(ctx, r.domainID, maxBatch)
 	if err != nil {
 		glog.Errorf("readQueue(): %v", err)
 		return 0
 	}
-	if len(ms) == 0 && !sendEmpty {
+	if int32(len(ms)) < minBatch {
 		return 0
 	}
 
