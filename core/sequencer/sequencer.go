@@ -326,7 +326,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	indexCTR.Add(float64(len(indexes)))
 	mapUpdateHist.Observe(mapSetEnd.Sub(mapSetStart).Seconds())
 	createEpochHist.Observe(time.Since(start).Seconds())
-	glog.Infof("CreatedEpoch: rev: %v, root: %x", mapRoot.Revision, mapRoot.RootHash)
+	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
 	return nil
 }
 
