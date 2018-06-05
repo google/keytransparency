@@ -45,7 +45,7 @@ var (
 		Tree: &tpb.Tree{
 			DisplayName: "KT SMH Log",
 			TreeState:   tpb.TreeState_ACTIVE,
-			TreeType:    tpb.TreeType_LOG,
+			TreeType:    tpb.TreeType_PREORDERED_LOG,
 			// Clients that verify output from the log need to import
 			// _ "github.com/google/trillian/merkle/rfc6962"
 			HashStrategy:       tpb.HashStrategy_RFC6962_SHA256,
@@ -310,9 +310,8 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 
 	glog.Infof("Initializing Trillian Log %v with empty map root", logID)
 
-	// Non-blocking add leaf
-	if err := logClient.AddLeaf(ctx, resp.GetMapRoot().GetMapRoot()); err != nil {
-		return fmt.Errorf("adminserver: log.AddLeaf(): %v", err)
+	if err := logClient.AddSequencedLeafAndWait(ctx, resp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision)); err != nil {
+		return fmt.Errorf("adminserver: log.AddSequencedLeaf(%v): %v", mapRoot.Revision, err)
 	}
 	return nil
 }

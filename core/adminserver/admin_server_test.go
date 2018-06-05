@@ -103,7 +103,7 @@ func TestCreateDomain(t *testing.T) {
 			domainID: "mapinitfails",
 			wantCode: codes.Internal,
 			expect: func(e *miniEnv) {
-				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_PREORDERED_LOG}, nil)
 				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
 				e.ms.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
 				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
@@ -117,7 +117,7 @@ func TestCreateDomain(t *testing.T) {
 			domainID: "initfails",
 			wantCode: codes.Internal,
 			expect: func(e *miniEnv) {
-				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_LOG}, nil)
+				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_PREORDERED_LOG}, nil)
 				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
 				e.ms.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).Return(&tpb.GetLatestSignedLogRootResponse{}, nil)
 				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
@@ -195,7 +195,7 @@ func TestCreateRead(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetDomain(): %v", err)
 		}
-		if got, want := domain.Log.TreeType, tpb.TreeType_LOG; got != want {
+		if got, want := domain.Log.TreeType, tpb.TreeType_PREORDERED_LOG; got != want {
 			t.Errorf("Log.TreeType: %v, want %v", got, want)
 		}
 		if got, want := domain.Map.TreeType, tpb.TreeType_MAP; got != want {

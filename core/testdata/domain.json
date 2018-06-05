@@ -3,7 +3,7 @@
 	"log": {
 		"treeId": "1732270362285615536",
 		"treeState": "ACTIVE",
-		"treeType": "LOG",
+		"treeType": "PREORDERED_LOG",
 		"hashStrategy": "RFC6962_SHA256",
 		"hashAlgorithm": "SHA256",
 		"signatureAlgorithm": "ECDSA",
