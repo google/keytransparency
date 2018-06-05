@@ -79,7 +79,8 @@ type ReceiveFunc func([]*QueueMessage) error
 type Receiver interface {
 	// Close stops the receiver and returns only when all callbacks are complete.
 	Close()
-	// Flush waits for n items and then sends them.
+	// FlushN waits for n items and then sends them.
+	// Deterministic implementations that can't wait will return an error.
 	FlushN(context.Context, int) error
 }
 

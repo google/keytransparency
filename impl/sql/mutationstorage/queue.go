@@ -84,11 +84,11 @@ func (r *Receiver) Close() {
 
 // FlushN verifies that a minimum of n items are available to send, and sends them.
 func (r *Receiver) FlushN(ctx context.Context, n int) error {
-	got := r.sendBatch(ctx, int32(n), r.opts.MaxBatchSize)
-	if got < int32(n) {
-		// We could retry at this point, but because this queue does not have
-		// non-determinism, we know that waiting won't be very useful.
-		return fmt.Errorf("sendBatch(): %v, want >= %v", got, n)
+	sent := r.sendBatch(ctx, int32(n), r.opts.MaxBatchSize)
+	if sent < int32(n) {
+		// We could retry at this point, but because this queue is mysql based
+		// and deterministic, we know that waiting won't be very useful.
+		return fmt.Errorf("sendBatch(): %v, want >= %v", sent, n)
 	}
 	return nil
 }
@@ -126,6 +126,8 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 }
 
 // sendBatch sends up to batchSize items to the receiver. Returns the number of sent items.
+// If the number of available items is < minBatch, 0 items are sent.
+// If the number of available items is > maxBatch only maxBatch items are sent.
 func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int32) int32 {
 	ms, err := r.store.readQueue(ctx, r.domainID, maxBatch)
 	if err != nil {
