@@ -17,6 +17,7 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sync"
 	"time"
 
@@ -81,9 +82,15 @@ func (r *Receiver) Close() {
 	r.running.Wait()
 }
 
-// Flush sends any waiting queue items.
-func (r *Receiver) Flush(ctx context.Context) {
-	r.sendBatch(ctx, 0, r.opts.MaxBatchSize)
+// FlushN verifies that a minimum of n items are available to send, and sends them.
+func (r *Receiver) FlushN(ctx context.Context, n int) error {
+	got := r.sendBatch(ctx, int32(n), r.opts.MaxBatchSize)
+	if got < int32(n) {
+		// We could retry at this point, but because this queue does not have
+		// non-determinism, we know that waiting won't be very useful.
+		return fmt.Errorf("sendBatch(): %v, want >= %v", got, n)
+	}
+	return nil
 }
 
 func (r *Receiver) run(ctx context.Context, last time.Time) {

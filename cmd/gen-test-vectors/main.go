@@ -175,9 +175,11 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 			if got, want := err, context.DeadlineExceeded; got != want {
 				return fmt.Errorf("Update(%v): %v, want %v", tc.userID, got, want)
 			}
-			cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
-			defer cancel()
-			env.Receiver.Flush(cctx)
+
+			if err := env.Receiver.FlushN(ctx, 1); err != nil {
+				return fmt.Errorf("FlushN(1): %v", err)
+			}
+
 			cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
 			defer cancel()
 			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
