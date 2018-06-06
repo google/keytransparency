@@ -77,7 +77,7 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 		return nil, nil, err
 	}
 	if smr.Revision != wantRevision {
-		return nil, nil, fmt.Errorf("GetLatestEpoch() did not return latest map revision. Got MapRoot.Revison: %v, want: %v", smr.Revision, wantRevision)
+		return nil, nil, fmt.Errorf("GetLatestEpoch(): smr.Revison: %v + 1 != slr.TreeSize: %v", smr.Revision, slr.TreeSize)
 	}
 	return slr, smr, nil
 }
