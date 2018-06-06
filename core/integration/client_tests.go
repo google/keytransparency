@@ -179,7 +179,9 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 					t.Fatalf("QueueMutation(%v): %v", tc.userID, err)
 				}
 
-				env.Receiver.Flush(ctx)
+				if err := env.Receiver.FlushN(ctx, 1); err != nil {
+					t.Fatalf("FlushN(1): %v", err)
+				}
 
 				if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
@@ -208,20 +210,20 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 		wantErr     bool
 	}{
 		{-1, 1, [][]byte{}, true},                                                        // start epoch < 0: expect error
-		{0, 1, [][]byte{}, false},                                                        // no profile yet
-		{1, 2, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
-		{2, 2, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
-		{3, 3, [][]byte{cp(2)}, false},                                                   // single (changed) profile
-		{4, 4, [][]byte{cp(2)}, false},                                                   // single (unchanged) profile
+		{1, 2, [][]byte{}, false},                                                        // no profile yet
+		{2, 3, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
+		{3, 3, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
+		{4, 4, [][]byte{cp(2)}, false},                                                   // single (changed) profile
 		{5, 5, [][]byte{cp(2)}, false},                                                   // single (unchanged) profile
-		{6, 6, [][]byte{cp(3)}, false},                                                   // single (changed) profile
-		{2, 3, [][]byte{cp(1), cp(2)}, false},                                            // multiple profiles
-		{0, 3, [][]byte{cp(1), cp(2)}, false},                                            // test 'nil' first profile(s)
-		{2, 9, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                       // filtering
-		{8, 15, [][]byte{cp(4), cp(5), cp(6)}, false},                                    // filtering consecutive resubmitted profiles
-		{8, 18, [][]byte{cp(4), cp(5), cp(6), cp(5), cp(7)}, false},                      // no filtering of resubmitted profiles
-		{0, 18, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
-		{0, 1000, [][]byte{}, true},                                                      // Invalid end epoch, beyond current epoch
+		{6, 6, [][]byte{cp(2)}, false},                                                   // single (unchanged) profile
+		{7, 7, [][]byte{cp(3)}, false},                                                   // single (changed) profile
+		{3, 4, [][]byte{cp(1), cp(2)}, false},                                            // multiple profiles
+		{1, 4, [][]byte{cp(1), cp(2)}, false},                                            // test 'nil' first profile(s)
+		{3, 10, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                      // filtering
+		{9, 16, [][]byte{cp(4), cp(5), cp(6)}, false},                                    // filtering consecutive resubmitted profiles
+		{9, 19, [][]byte{cp(4), cp(5), cp(6), cp(5), cp(7)}, false},                      // no filtering of resubmitted profiles
+		{1, 19, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
+		{1, 1001, [][]byte{}, true},                                                      // Invalid end epoch, beyond current epoch
 	} {
 		_, resp, err := env.Client.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
 		if got := err != nil; got != tc.wantErr {
@@ -276,14 +278,18 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 				return fmt.Errorf("QueueMutation(%v): %v", userID, err)
 			}
 
-			env.Receiver.Flush(ctx)
+			if err := env.Receiver.FlushN(ctx, 1); err != nil {
+				return fmt.Errorf("FlushN(1): %v", err)
+			}
 
 			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 				return fmt.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 			}
 		} else {
 			// Create an empty epoch.
-			env.Receiver.Flush(ctx)
+			if err := env.Receiver.FlushN(ctx, 0); err != nil {
+				return fmt.Errorf("FlushN(0): %v", err)
+			}
 		}
 	}
 	return nil

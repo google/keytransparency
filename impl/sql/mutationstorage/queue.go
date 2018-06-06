@@ -17,6 +17,7 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sync"
 	"time"
 
@@ -81,9 +82,15 @@ func (r *Receiver) Close() {
 	r.running.Wait()
 }
 
-// Flush sends any waiting queue items.
-func (r *Receiver) Flush(ctx context.Context) {
-	r.sendBatch(ctx, true)
+// FlushN verifies that a minimum of n items are available to send, and sends them.
+func (r *Receiver) FlushN(ctx context.Context, n int) error {
+	sent := r.sendBatch(ctx, int32(n), r.opts.MaxBatchSize)
+	if sent < int32(n) {
+		// We could retry at this point, but because this queue is mysql based
+		// and deterministic, we know that waiting won't be very useful.
+		return fmt.Errorf("sendBatch(): %v, want >= %v", sent, n)
+	}
+	return nil
 }
 
 func (r *Receiver) run(ctx context.Context, last time.Time) {
@@ -94,18 +101,18 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 	}
 
 	if time.Since(last) > (r.opts.MaxPeriod - r.opts.Period) {
-		r.sendBatch(ctx, true) // We will be overdue for an epoch soon.
+		r.sendBatch(ctx, 0, r.opts.MaxBatchSize) // We will be overdue for an epoch soon.
 	}
 
 	for {
 		var count int32
 		select {
 		case <-r.more:
-			count = r.sendBatch(ctx, false)
+			count = r.sendBatch(ctx, 1, r.opts.MaxBatchSize)
 		case <-r.ticker.C:
-			count = r.sendBatch(ctx, false)
+			count = r.sendBatch(ctx, 1, r.opts.MaxBatchSize)
 		case <-r.maxTicker.C:
-			count = r.sendBatch(ctx, true)
+			count = r.sendBatch(ctx, 0, r.opts.MaxBatchSize)
 		case <-ctx.Done():
 			return
 		case <-r.done:
@@ -119,13 +126,15 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 }
 
 // sendBatch sends up to batchSize items to the receiver. Returns the number of sent items.
-func (r *Receiver) sendBatch(ctx context.Context, sendEmpty bool) int32 {
-	ms, err := r.store.readQueue(ctx, r.domainID, r.opts.MaxBatchSize)
+// If the number of available items is < minBatch, 0 items are sent.
+// If the number of available items is > maxBatch only maxBatch items are sent.
+func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int32) int32 {
+	ms, err := r.store.readQueue(ctx, r.domainID, maxBatch)
 	if err != nil {
 		glog.Errorf("readQueue(): %v", err)
 		return 0
 	}
-	if len(ms) == 0 && !sendEmpty {
+	if int32(len(ms)) < minBatch {
 		return 0
 	}
 

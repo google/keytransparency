@@ -111,7 +111,9 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			}
 		}
 
-		env.Receiver.Flush(ctx)
+		if err := env.Receiver.FlushN(ctx, len(e.userUpdates)); err != nil {
+			t.Fatalf("FlushN(%v): %v", len(e.userUpdates), err)
+		}
 		if err := env.Client.WaitForRevision(ctx, e.epoch); err != nil {
 			t.Fatalf("WaitForRevision(): %v", err)
 		}
