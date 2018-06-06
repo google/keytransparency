@@ -316,8 +316,8 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	}
 
 	// Put SignedMapHead in an append only log.
-	if err := queueLogLeaf(ctx, logClient, setResp.GetMapRoot()); err != nil {
-		glog.Fatalf("queueLogLeaf(logID: %v, rev: %v): %v", d.LogID, mapRoot.Revision, err)
+	if err := logClient.AddSequencedLeafAndWait(ctx, setResp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision)); err != nil {
+		glog.Fatalf("AddSequencedLeaf(logID: %v, rev: %v): %v", d.LogID, mapRoot.Revision, err)
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
 	}
@@ -328,10 +328,4 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	createEpochHist.Observe(time.Since(start).Seconds())
 	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
 	return nil
-}
-
-// TODO(gdbelvin): Add leaf at a specific index. trillian#423
-func queueLogLeaf(ctx context.Context, logClient *tclient.LogClient, smr *tpb.SignedMapRoot) error {
-	// Queue the leaf and then wait until it has been sequenced and verified.
-	return logClient.AddLeaf(ctx, smr.MapRoot)
 }
