@@ -181,7 +181,7 @@ func (s *Server) logInclusion(ctx context.Context, d *domain.Domain, logRoot *tp
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("logProofs(): log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
+		glog.Errorf("log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof: %v", err)
 	}
 	return logInclusion.GetProof(), nil
