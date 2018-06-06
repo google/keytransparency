@@ -17,7 +17,6 @@ package integration
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
@@ -100,7 +99,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		for _, u := range e.userUpdates {
 			opts := env.CallOpts(u.UserId)
-			cctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
 			m, err := env.Client.CreateMutation(cctx, u)
 			if err != nil {
@@ -120,7 +119,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	}
 
 	trusted := types.LogRootV1{}
-	cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted); err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
 		t.Errorf("Monitor could not process mutations: %v", err)
 	}
