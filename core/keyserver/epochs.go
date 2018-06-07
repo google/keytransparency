@@ -46,17 +46,18 @@ func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochReques
 	}
 
 	// Fetch latest revision.
-	sth, err := s.latestLogRoot(ctx, d)
+	sth, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
 	if err != nil {
 		return nil, err
 	}
+
 	currentEpoch, err := mapRevisionFor(sth)
 	if err != nil {
 		glog.Errorf("mapRevisionFor(log %v, sth%v): %v", d.LogID, sth, err)
 		return nil, err
 	}
 
-	return s.getEpochByRevision(ctx, d, in.GetFirstTreeSize(), currentEpoch)
+	return s.getEpochByRevision(ctx, d, sth, logConsistency, currentEpoch)
 }
 
 // GetEpoch returns the requested epoch.
@@ -73,11 +74,21 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
 	}
 
-	return s.getEpochByRevision(ctx, d, in.GetFirstTreeSize(), in.GetEpoch())
+	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	if err != nil {
+		return nil, err
+	}
+
+	return s.getEpochByRevision(ctx, d, logRoot, logConsistency, in.GetEpoch())
 
 }
 
-func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain, firstTreeSize, mapRevision int64) (*pb.Epoch, error) {
+func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain,
+	logRoot *tpb.SignedLogRoot, logConsistency *tpb.Proof, mapRevision int64) (*pb.Epoch, error) {
+	logInclusion, err := s.logInclusion(ctx, d, logRoot, mapRevision)
+	if err != nil {
+		return nil, err
+	}
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
 		MapId:    d.MapID,
@@ -88,19 +99,12 @@ func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain, first
 		return nil, err
 	}
 
-	// MapRevisions start at 0. Log leaf indices starts at 0.
-	// MapRevision should be at least 1 since the Signer is
-	// supposed to create at least one revision on startup.
-	logProof, err := s.logProofs(ctx, d, firstTreeSize, mapRevision)
-	if err != nil {
-		return nil, err
-	}
 	return &pb.Epoch{
 		DomainId:       d.DomainID,
 		Smr:            resp.GetMapRoot(),
-		LogRoot:        logProof.LogRoot,
-		LogConsistency: logProof.LogConsistency.GetHashes(),
-		LogInclusion:   logProof.LogInclusion.GetHashes(),
+		LogRoot:        logRoot,
+		LogConsistency: logConsistency.GetHashes(),
+		LogInclusion:   logInclusion.GetHashes(),
 	}, nil
 }
 
@@ -162,20 +166,8 @@ func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTra
 	return status.Error(codes.Unimplemented, "ListMutationStream is unimplemented")
 }
 
-// logProof holds the proof for a signed map root up to signed log root.
-type logProof struct {
-	LogRoot        *tpb.SignedLogRoot
-	LogConsistency *tpb.Proof
-	LogInclusion   *tpb.Proof
-}
-
-// logProofs returns the proofs for a given epoch.
-func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize int64, epoch int64) (*logProof, error) {
-	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, firstTreeSize)
-	if err != nil {
-		return nil, err
-	}
-
+// logInclusion returns the inclusion proof for a map revision in the log of map roots.
+func (s *Server) logInclusion(ctx context.Context, d *domain.Domain, logRoot *tpb.SignedLogRoot, epoch int64) (*tpb.Proof, error) {
 	// Inclusion proof.
 	secondTreeSize := logRoot.GetTreeSize()
 	if epoch >= secondTreeSize {
@@ -189,14 +181,11 @@ func (s *Server) logProofs(ctx context.Context, d *domain.Domain, firstTreeSize 
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("logProofs(): log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
+		glog.Errorf("log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof: %v", err)
 	}
-	return &logProof{
-		LogRoot:        logRoot,
-		LogConsistency: logConsistency,
-		LogInclusion:   logInclusion.GetProof(),
-	}, nil
+	return logInclusion.GetProof(), nil
+
 }
 
 func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.SignedLogRoot, error) {
