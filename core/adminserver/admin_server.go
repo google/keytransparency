@@ -43,9 +43,8 @@ import (
 var (
 	logArgs = &tpb.CreateTreeRequest{
 		Tree: &tpb.Tree{
-			DisplayName: "KT SMH Log",
-			TreeState:   tpb.TreeState_ACTIVE,
-			TreeType:    tpb.TreeType_PREORDERED_LOG,
+			TreeState: tpb.TreeState_ACTIVE,
+			TreeType:  tpb.TreeType_PREORDERED_LOG,
 			// Clients that verify output from the log need to import
 			// _ "github.com/google/trillian/merkle/rfc6962"
 			HashStrategy:       tpb.HashStrategy_RFC6962_SHA256,
@@ -56,9 +55,8 @@ var (
 	}
 	mapArgs = &tpb.CreateTreeRequest{
 		Tree: &tpb.Tree{
-			DisplayName: "KT Map",
-			TreeState:   tpb.TreeState_ACTIVE,
-			TreeType:    tpb.TreeType_MAP,
+			TreeState: tpb.TreeState_ACTIVE,
+			TreeType:  tpb.TreeType_MAP,
 			// Clients that verify output from the map need to import
 			// _ "github.com/google/trillian/merkle/coniks"
 			HashStrategy:       tpb.HashStrategy_CONIKS_SHA512_256,
@@ -186,6 +184,7 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, domainID 
 	}
 
 	config.Tree.Description = fmt.Sprintf("KT domain %s", domainID)
+	config.Tree.DisplayName = fmt.Sprintf("%s", domainID)
 	return &config
 }
 
