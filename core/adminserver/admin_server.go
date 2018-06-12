@@ -184,7 +184,7 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, domainID 
 	}
 
 	config.Tree.Description = fmt.Sprintf("KT domain %s", domainID)
-	config.Tree.DisplayName = fmt.Sprintf("%s", domainID)
+	config.Tree.DisplayName = domainID
 	return &config
 }
 
