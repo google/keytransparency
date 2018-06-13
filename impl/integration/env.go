@@ -113,6 +113,7 @@ func keyFromPEM(p string) *any.Any {
 // NewEnv sets up common resources for tests.
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
+	timeout := 2 * time.Second
 	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
 
 	db, err := testdb.NewTrillianDB(ctx)
@@ -140,7 +141,9 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: failed to create domain storage: %v", err)
 	}
 	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, domainStorage, vrfKeyGen)
-	domainPB, err := adminSvr.CreateDomain(ctx, &pb.CreateDomainRequest{
+	cctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	domainPB, err := adminSvr.CreateDomain(cctx, &pb.CreateDomainRequest{
 		DomainId: domainID,
 		// Only sequence when explicitly asked with receiver.Flush()
 		MinInterval:   ptypes.DurationProto(60 * time.Hour),
@@ -220,7 +223,7 @@ func NewEnv() (*Env, error) {
 			Cli:      ktClient,
 			Domain:   domainPB,
 			Receiver: receiver,
-			Timeout:  2 * time.Second,
+			Timeout:  timeout,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
