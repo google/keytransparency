@@ -184,7 +184,12 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, domainID 
 	}
 
 	config.Tree.Description = fmt.Sprintf("KT domain %s", domainID)
-	config.Tree.DisplayName = domainID
+	maxDisplayNameLen := 20
+	if len(domainID) < maxDisplayNameLen {
+		config.Tree.DisplayName = domainID
+	} else {
+		config.Tree.DisplayName = domainID[:maxDisplayNameLen]
+	}
 	return &config
 }
 
