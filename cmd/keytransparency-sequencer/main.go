@@ -35,6 +35,7 @@ import (
 
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/monitoring/prometheus"
 )
 
 var (
@@ -89,7 +90,7 @@ func main() {
 	queue := mutator.MutationQueue(mutations)
 
 	// Create servers
-	signer := sequencer.New(tlog, logAdmin, tmap, mapAdmin, entry.New(), domainStorage, mutations, queue)
+	signer := sequencer.New(tlog, logAdmin, tmap, mapAdmin, entry.New(), domainStorage, mutations, queue, prometheus.MetricFactory{})
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
