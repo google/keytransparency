@@ -43,6 +43,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/storage/testdb"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -181,7 +182,7 @@ func NewEnv() (*Env, error) {
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
 	// Sequencer
-	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, mapEnv.Admin, entry.New(), domainStorage, mutations, queue)
+	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, mapEnv.Admin, entry.New(), domainStorage, mutations, queue, monitoring.InertMetricFactory{})
 	d := &domaindef.Domain{
 		DomainID:    domainPB.DomainId,
 		LogID:       domainPB.Log.TreeId,
