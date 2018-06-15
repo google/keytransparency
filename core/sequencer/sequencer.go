@@ -43,7 +43,7 @@ const (
 var (
 	once               sync.Once
 	knownDomains       monitoring.Gauge
-	mutationsCTR       monitoring.Counter
+	mutationCount      monitoring.Counter
 	sequencingRuns     monitoring.Counter
 	sequencingFailures monitoring.Counter
 	sequencingLatency  monitoring.Histogram
@@ -54,8 +54,8 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"known_domains",
 		"Set to 1 for known domains (whether this instance is master or not)",
 		domainIDLabel)
-	mutationsCTR = mf.NewCounter(
-		"mutations",
+	mutationCount = mf.NewCounter(
+		"mutation_count",
 		"Number of mutations the signer has processed",
 		domainIDLabel)
 	sequencingRuns = mf.NewCounter(
@@ -130,7 +130,7 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 				return fmt.Errorf("admin.List(): %v", err)
 			}
 			for _, d := range domains {
-				knownDomains.Set(1.0, d.DomainID)
+				knownDomains.Set(1, d.DomainID)
 				if _, ok := s.receivers[d.DomainID]; !ok {
 					glog.Infof("StartSigning domain: %v", d.DomainID)
 					r, err := s.NewReceiver(ctx, d)
@@ -340,7 +340,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 		return err
 	}
 
-	mutationsCTR.Add(float64(len(msgs)), d.DomainID)
+	mutationCount.Add(float64(len(msgs)), d.DomainID)
 	sequencingLatency.Observe(time.Since(start).Seconds(), d.DomainID)
 	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
 	return nil
