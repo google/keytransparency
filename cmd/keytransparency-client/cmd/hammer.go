@@ -31,7 +31,6 @@ import (
 var (
 	maxWorkers    int
 	maxOperations int
-	ramp          time.Duration
 )
 
 func init() {
@@ -41,9 +40,8 @@ func init() {
 
 	RootCmd.AddCommand(hammerCmd)
 
-	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1, "Number of parallel workers")
+	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 2000, "Number of parallel workers")
 	hammerCmd.Flags().IntVar(&maxOperations, "operations", 10000, "Number of operations")
-	hammerCmd.Flags().DurationVar(&ramp, "ramp", 1*time.Second, "Time to spend ramping up")
 	hammerCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 }
 
@@ -75,8 +73,23 @@ var hammerCmd = &cobra.Command{
 			return err
 		}
 
-		h.Run(ctx, maxOperations, maxWorkers, ramp)
-		return nil
+		return h.Run(ctx, maxWorkers, hammer.Config{
+			BatchWriteQPS:   1,
+			BatchWriteSize:  1000,
+			BatchWriteCount: 60,
+
+			WriteQPS:   20,
+			WriteCount: 1000,
+
+			ReadQPS:   50,
+			ReadCount: 1000,
+
+			HistoryQPS:       1000,
+			HistoryCount:     1000,
+			HistoryBatchSize: 1000,
+
+			Duration: 2 * time.Minute,
+		})
 	},
 }
 
