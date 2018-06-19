@@ -50,8 +50,9 @@ func startHandlers(ctx context.Context, inflightReqs <-chan request, reqHandlers
 	return results
 }
 
-func generateReport(ctx context.Context, reqs <-chan request, handlers []ReqHandler) {
+func generateReport(ctx context.Context, reqs <-chan request, handlers []ReqHandler) *Stats {
 	results := startHandlers(ctx, reqs, handlers)
 	stats := collectStats(results)
 	stats.Print()
+	return stats
 }

@@ -76,17 +76,17 @@ var hammerCmd = &cobra.Command{
 		return h.Run(ctx, maxWorkers, hammer.Config{
 			BatchWriteQPS:   1,
 			BatchWriteSize:  1000,
-			BatchWriteCount: 60,
+			BatchWriteCount: maxOperations,
 
 			WriteQPS:   20,
-			WriteCount: 1000,
+			WriteCount: maxOperations,
 
 			ReadQPS:   50,
-			ReadCount: 1000,
+			ReadCount: maxOperations,
 
 			HistoryQPS:       1000,
 			HistoryCount:     1000,
-			HistoryBatchSize: 1000,
+			HistoryBatchSize: maxOperations,
 
 			Duration: 2 * time.Minute,
 		})
