@@ -60,8 +60,6 @@ type Config struct {
 
 // Hammer represents a single run of the hammer.
 type Hammer struct {
-	workers int
-
 	callOptions CallOptions
 	timeout     time.Duration
 	ktCli       pb.KeyTransparencyClient
@@ -230,7 +228,7 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 	return nil
 }
 
-// readOp simulates a read operation, typicaly performed during conversaion setup.
+// readOp simulates a read operation, typically performed during conversation setup.
 func (w *worker) readOp(ctx context.Context, req *request) error {
 	for _, userID := range req.UserIDs {
 		_, _, err := w.client.GetEntry(ctx, userID, w.appID)
