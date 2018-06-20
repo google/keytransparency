@@ -32,6 +32,7 @@ func executeRequests(ctx context.Context, inflightReqs <-chan request, reqHandle
 	for _, rh := range reqHandlers {
 		wg.Add(1)
 		go func(rh ReqHandler) {
+			defer wg.Done()
 			for req := range inflightReqs {
 				rh(ctx, &req)
 			}
