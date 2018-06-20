@@ -24,7 +24,7 @@ spec:
         - --rpc_endpoint=0.0.0.0:8090
         - --http_endpoint=0.0.0.0:8091
         - --alsologtostderr
-        image: 'us.gcr.io/key-transparency/log-server:'
+        image: us.gcr.io/key-transparency/log-server:latest
         livenessProbe:
           exec:
             command:

@@ -28,7 +28,7 @@ spec:
         - --batch_size=50
         - --force_master=true
         - --alsologtostderr
-        image: 'us.gcr.io/key-transparency/log-signer:'
+        image: us.gcr.io/key-transparency/log-signer:latest
         livenessProbe:
           exec:
             command:

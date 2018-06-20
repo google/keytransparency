@@ -18,7 +18,7 @@ spec:
         io.kompose.service: prometheus
     spec:
       containers:
-      - image: 'us.gcr.io/key-transparency/prometheus:'
+      - image: us.gcr.io/key-transparency/prometheus:latest
         name: prometheus
         ports:
         - containerPort: 9090
