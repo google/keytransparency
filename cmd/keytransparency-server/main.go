@@ -17,7 +17,6 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"log"
 	"net/http"
 
 	"github.com/google/keytransparency/cmd/serverutil"
@@ -165,9 +164,9 @@ func main() {
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
-		log.Printf("Hosting metrics on %v", *metricsAddr)
+		glog.Infof("Hosting metrics on %v", *metricsAddr)
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			log.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
+			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
 		}
 	}()
 	// Serve HTTP2 server over TLS.
