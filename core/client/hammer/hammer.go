@@ -120,6 +120,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 			handlers = append(handlers, w.writeOp)
 		}
 		executeRequests(ctx, requests, handlers)
+		fmt.Print("\n")
 	}
 
 	if ok := c.TestTypes["write"]; ok {
@@ -131,6 +132,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 			handlers = append(handlers, w.writeOp)
 		}
 		executeRequests(ctx, requests, handlers)
+		fmt.Print("\n")
 	}
 
 	if ok := c.TestTypes["read"]; ok {
@@ -142,6 +144,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 			handlers = append(handlers, w.readOp)
 		}
 		executeRequests(ctx, requests, handlers)
+		fmt.Print("\n")
 	}
 
 	if ok := c.TestTypes["audit"]; ok {
@@ -153,6 +156,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 			handlers = append(handlers, w.historyOp)
 		}
 		executeRequests(ctx, requests, handlers)
+		fmt.Print("\n")
 	}
 
 	return nil
@@ -227,6 +231,7 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 		if err := w.client.QueueMutation(cctx, m, w.signers, callOptions...); err != nil {
 			return err
 		}
+		fmt.Print(".")
 	}
 
 	for _, m := range mutations {
@@ -235,6 +240,7 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 		if _, err := w.client.WaitForUserUpdate(cctx, m); err != nil {
 			return err
 		}
+		fmt.Print("+")
 	}
 	return nil
 }
@@ -247,6 +253,7 @@ func (w *worker) readOp(ctx context.Context, req *request) error {
 		if err != nil {
 			return err
 		}
+		fmt.Print(".")
 	}
 	return nil
 }
@@ -258,6 +265,7 @@ func (w *worker) historyOp(ctx context.Context, req *request) error {
 		if err != nil {
 			return err
 		}
+		fmt.Print(".")
 	}
 	return nil
 }
