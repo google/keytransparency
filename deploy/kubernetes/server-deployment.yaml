@@ -42,7 +42,7 @@ spec:
           timeoutSeconds: 10
         name: server
         ports:
-        - containerPort: 443
+        - containerPort: 8080
         - containerPort: 8081
         resources: {}
       restartPolicy: Always
