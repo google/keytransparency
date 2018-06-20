@@ -31,6 +31,8 @@ import (
 var (
 	maxWorkers    int
 	maxOperations int
+	pageSize      int
+	qps           int
 )
 
 func init() {
@@ -40,7 +42,9 @@ func init() {
 
 	RootCmd.AddCommand(hammerCmd)
 
-	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 2000, "Number of parallel workers")
+	hammerCmd.Flags().IntVar(&qps, "qps", 100, "Numer of requests a second")
+	hammerCmd.Flags().IntVar(&pageSize, "batch", 100, "Number of things to do at once")
+	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1000, "Number of parallel workers")
 	hammerCmd.Flags().IntVar(&maxOperations, "operations", 10000, "Number of operations")
 	hammerCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 }
@@ -74,19 +78,20 @@ var hammerCmd = &cobra.Command{
 		}
 
 		return h.Run(ctx, maxWorkers, hammer.Config{
-			BatchWriteQPS:   1,
-			BatchWriteSize:  1000,
+			BatchWriteQPS:   qps,
+			BatchWriteSize:  pageSize,
 			BatchWriteCount: maxOperations,
 
-			WriteQPS:   20,
+			WriteQPS:   qps,
 			WriteCount: maxOperations,
 
-			ReadQPS:   50,
-			ReadCount: maxOperations,
+			ReadQPS:      qps,
+			ReadCount:    maxOperations,
+			ReadPageSize: pageSize,
 
-			HistoryQPS:       1000,
-			HistoryCount:     1000,
-			HistoryBatchSize: maxOperations,
+			HistoryQPS:      qps,
+			HistoryCount:    maxOperations,
+			HistoryPageSize: pageSize,
 
 			Duration: 2 * time.Minute,
 		})

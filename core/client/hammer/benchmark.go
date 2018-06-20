@@ -22,11 +22,11 @@ import (
 type ReqHandler func(ctx context.Context, req *request) error
 
 type request struct {
-	UserIDs   []string
-	BatchSize int
+	UserIDs  []string
+	PageSize int
 }
 
-func startHandlers(ctx context.Context, inflightReqs <-chan request, reqHandlers []ReqHandler) {
+func executeRequests(ctx context.Context, inflightReqs <-chan request, reqHandlers []ReqHandler) {
 	go func() {
 		for _, rh := range reqHandlers {
 			go func(rh ReqHandler) {

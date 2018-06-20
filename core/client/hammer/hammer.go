@@ -48,12 +48,13 @@ type Config struct {
 	BatchWriteCount int
 	BatchWriteSize  int
 
-	ReadQPS   int
-	ReadCount int
+	ReadQPS      int
+	ReadCount    int
+	ReadPageSize int
 
-	HistoryQPS       int
-	HistoryCount     int
-	HistoryBatchSize int
+	HistoryQPS      int
+	HistoryCount    int
+	HistoryPageSize int
 
 	Duration time.Duration
 }
@@ -100,7 +101,7 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 	}, nil
 }
 
-// Run runs operationCount with up to maxWorkers over ramp duration.
+// Run runs operationCount with up to maxWorkers.
 // workers should roughly be (goal QPS / timeout seconds)
 func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	workers, err := h.newWorkers(numWorkers)
@@ -110,44 +111,44 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 
 	// Batch Write users
 	log.Printf("Batch Write")
-	requests := genRequests(ctx, c.BatchWriteQPS, c.BatchWriteSize, c.BatchWriteCount, c.Duration)
+	requests := requestGenerator(ctx, c.BatchWriteQPS, c.BatchWriteSize, c.BatchWriteCount, c.Duration)
 	handlers := make([]ReqHandler, 0, len(workers))
 	for _, w := range workers {
 		handlers = append(handlers, w.writeOp)
 	}
-	startHandlers(ctx, requests, handlers)
+	executeRequests(ctx, requests, handlers)
 
 	// Write users
 	log.Printf("User Write")
-	requests = genRequests(ctx, c.WriteQPS, 1, c.WriteCount, c.Duration)
+	requests = requestGenerator(ctx, c.WriteQPS, 1, c.WriteCount, c.Duration)
 	handlers = make([]ReqHandler, 0, len(workers))
 	for _, w := range workers {
 		handlers = append(handlers, w.writeOp)
 	}
-	startHandlers(ctx, requests, handlers)
+	executeRequests(ctx, requests, handlers)
 
 	// Read users
 	log.Printf("User Read")
-	requests = genRequests(ctx, c.ReadQPS, 1, c.ReadCount, c.Duration)
+	requests = requestGenerator(ctx, c.ReadQPS, c.ReadPageSize, c.ReadCount, c.Duration)
 	handlers = make([]ReqHandler, 0, len(workers))
 	for _, w := range workers {
 		handlers = append(handlers, w.readOp)
 	}
-	startHandlers(ctx, requests, handlers)
+	executeRequests(ctx, requests, handlers)
 
 	// History
 	log.Printf("User Audit History")
-	requests = genRequests(ctx, c.HistoryQPS, c.HistoryBatchSize, c.HistoryCount, c.Duration)
+	requests = requestGenerator(ctx, c.HistoryQPS, c.HistoryPageSize, c.HistoryCount, c.Duration)
 	handlers = make([]ReqHandler, 0, len(workers))
 	for _, w := range workers {
 		handlers = append(handlers, w.historyOp)
 	}
-	startHandlers(ctx, requests, handlers)
+	executeRequests(ctx, requests, handlers)
 
 	return nil
 }
 
-func genRequests(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan request {
+func requestGenerator(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan request {
 	inflightReqs := make(chan request)
 	go func() {
 		cctx, cancel := context.WithTimeout(ctx, duration)
@@ -164,8 +165,8 @@ func genRequests(ctx context.Context, qps, batch, count int, duration time.Durat
 				return
 			}
 			inflightReqs <- request{
-				UserIDs:   userIDs,
-				BatchSize: batch,
+				UserIDs:  userIDs,
+				PageSize: batch,
 			}
 		}
 	}()
@@ -180,7 +181,7 @@ type worker struct {
 func (h *Hammer) newWorkers(n int) ([]worker, error) {
 	workers := make([]worker, n)
 	for i := range workers {
-		// Give each worker it's own client.
+		// Give each worker its own client.
 		client, err := client.NewFromConfig(h.ktCli, h.domain)
 		if err != nil {
 			return nil, err
@@ -193,7 +194,7 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 
 // batchWriteOp queues many user mutations, waits, and then verifies them all.
 func (w *worker) writeOp(ctx context.Context, req *request) error {
-	users := make([]*tpb.User, 0, req.BatchSize)
+	users := make([]*tpb.User, 0, len(req.UserIDs))
 	for _, userID := range req.UserIDs {
 		users = append(users, &tpb.User{
 			DomainId:       w.domain.DomainId,
@@ -228,7 +229,8 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 	return nil
 }
 
-// readOp simulates a read operation, typically performed during conversation setup.
+// readOp simulates multiple read operations by a single client.
+// Typical conversation setup involves querying two userIDs: self and other.
 func (w *worker) readOp(ctx context.Context, req *request) error {
 	for _, userID := range req.UserIDs {
 		_, _, err := w.client.GetEntry(ctx, userID, w.appID)
@@ -242,7 +244,7 @@ func (w *worker) readOp(ctx context.Context, req *request) error {
 // auditHistoryOp simulates the daily check-in.
 func (w *worker) historyOp(ctx context.Context, req *request) error {
 	for _, userID := range req.UserIDs {
-		_, _, err := w.client.PaginateHistory(ctx, userID, w.appID, 0, int64(req.BatchSize))
+		_, _, err := w.client.PaginateHistory(ctx, userID, w.appID, 0, int64(req.PageSize))
 		if err != nil {
 			return err
 		}
