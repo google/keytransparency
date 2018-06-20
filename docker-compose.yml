@@ -167,6 +167,12 @@ services:
       - --v=5
     ports:
       - "8080"
+      - "8081"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   init:
     image: us.gcr.io/key-transparency/init:latest
