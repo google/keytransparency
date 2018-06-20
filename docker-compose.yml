@@ -119,6 +119,7 @@ services:
       - --map-url=map-server:8090
       - --tls-key=/kt/server.key
       - --tls-cert=/kt/server.crt
+      - --auth-type=insecure-fake
       - --alsologtostderr
       - --v=5
     labels:
