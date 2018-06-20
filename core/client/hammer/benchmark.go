@@ -16,8 +16,6 @@ package hammer
 
 import (
 	"context"
-	"sync"
-	"time"
 )
 
 // ReqHandler executes a request.
@@ -28,31 +26,14 @@ type request struct {
 	BatchSize int
 }
 
-func startHandlers(ctx context.Context, inflightReqs <-chan request, reqHandlers []ReqHandler) <-chan Result {
-	results := make(chan Result)
-
+func startHandlers(ctx context.Context, inflightReqs <-chan request, reqHandlers []ReqHandler) {
 	go func() {
-		var wg sync.WaitGroup
 		for _, rh := range reqHandlers {
-			wg.Add(1)
 			go func(rh ReqHandler) {
-				defer wg.Done()
 				for req := range inflightReqs {
-					st := time.Now()
-					err := rh(ctx, &req)
-					results <- Result{Err: err, Start: st, End: time.Now()}
+					rh(ctx, &req)
 				}
 			}(rh)
 		}
-		wg.Wait()
-		close(results)
 	}()
-	return results
-}
-
-func generateReport(ctx context.Context, reqs <-chan request, handlers []ReqHandler) *Stats {
-	results := startHandlers(ctx, reqs, handlers)
-	stats := collectStats(results)
-	stats.Print()
-	return stats
 }

@@ -115,7 +115,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	for _, w := range workers {
 		handlers = append(handlers, w.writeOp)
 	}
-	generateReport(ctx, requests, handlers)
+	startHandlers(ctx, requests, handlers)
 
 	// Write users
 	log.Printf("User Write")
@@ -124,7 +124,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	for _, w := range workers {
 		handlers = append(handlers, w.writeOp)
 	}
-	generateReport(ctx, requests, handlers)
+	startHandlers(ctx, requests, handlers)
 
 	// Read users
 	log.Printf("User Read")
@@ -133,7 +133,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	for _, w := range workers {
 		handlers = append(handlers, w.readOp)
 	}
-	generateReport(ctx, requests, handlers)
+	startHandlers(ctx, requests, handlers)
 
 	// History
 	log.Printf("User Audit History")
@@ -142,7 +142,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	for _, w := range workers {
 		handlers = append(handlers, w.historyOp)
 	}
-	generateReport(ctx, requests, handlers)
+	startHandlers(ctx, requests, handlers)
 
 	return nil
 }
