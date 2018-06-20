@@ -23,6 +23,7 @@ spec:
         - --stackdriver-prefix=custom.googleapis.com
         - --source=logserver:http://log-server:8091/metrics
         - --source=logsigner:http://log-signer:8091/metrics
+        - --source=mapserver:http://map-server:8091/metrics
         - --source=keyserver:http://server:8081/metrics
         - --source=sequencer:http://sequencer:8081/metrics
         - --pod-id=prometheus-to-sd
