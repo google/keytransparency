@@ -34,9 +34,10 @@ import (
 )
 
 var (
-	addr     = flag.String("addr", ":8080", "The ip:port to serve on")
-	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
+	addr        = flag.String("addr", ":8080", "The ip:port to serve on")
+	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
+	certFile    = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 )
 
 func startHTTPServer(svr pb.KeyTransparencyAdminServer) *http.Server {
@@ -60,8 +61,16 @@ func startHTTPServer(svr pb.KeyTransparencyAdminServer) *http.Server {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", gwmux)
+
+	metricMux := http.NewServeMux()
+	metricMux.Handle("/metrics", promhttp.Handler())
+	go func() {
+		glog.Infof("Hosting metrics on %v", *metricsAddr)
+		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
+			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
+		}
+	}()
 
 	pb.RegisterKeyTransparencyAdminServer(grpcServer, svr)
 	reflection.Register(grpcServer)
