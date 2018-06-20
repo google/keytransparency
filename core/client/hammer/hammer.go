@@ -164,7 +164,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 }
 
 func requestGenerator(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan request {
-	inflightReqs := make(chan request)
+	inflightReqs := make(chan request, qps)
 	go func() {
 		cctx, cancel := context.WithTimeout(ctx, duration)
 		defer cancel()
