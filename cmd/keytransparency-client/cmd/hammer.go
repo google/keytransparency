@@ -46,7 +46,7 @@ func init() {
 
 	hammerCmd.Flags().StringVar(&testTypes, "types", "batch,write,read,audit", "Types of stress tests to run")
 	hammerCmd.Flags().IntVar(&qps, "qps", 100, "Numer of requests a second")
-	hammerCmd.Flags().IntVar(&pageSize, "batch", 100, "Number of things to do at once")
+	hammerCmd.Flags().IntVar(&pageSize, "batch", 10, "Number of things to do at once")
 	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1000, "Number of parallel workers")
 	hammerCmd.Flags().IntVar(&maxOperations, "operations", 10000, "Number of operations")
 	hammerCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
@@ -97,7 +97,7 @@ var hammerCmd = &cobra.Command{
 
 			ReadQPS:      qps,
 			ReadCount:    maxOperations,
-			ReadPageSize: pageSize,
+			ReadPageSize: 1,
 
 			HistoryQPS:      qps,
 			HistoryCount:    maxOperations,

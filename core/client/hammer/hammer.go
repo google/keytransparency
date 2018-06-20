@@ -119,6 +119,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		for _, w := range workers {
 			handlers = append(handlers, w.writeOp)
 		}
+		log.Printf("workers: %v", len(handlers))
 		executeRequests(ctx, requests, handlers)
 		fmt.Print("\n")
 	}
@@ -175,7 +176,8 @@ func requestGenerator(ctx context.Context, qps, batch, count int, duration time.
 			for j := 0; j < batch; j++ {
 				userIDs = append(userIDs, fmt.Sprintf("user_%v", i*batch+j))
 			}
-			if err := rateLimiter.Wait(cctx); err != nil {
+			if err := rateLimiter.WaitN(cctx, batch); err != nil {
+				log.Printf("Duration %v elapsed, stopping request generation", duration)
 				return
 			}
 			inflightReqs <- request{
@@ -193,15 +195,15 @@ type worker struct {
 }
 
 func (h *Hammer) newWorkers(n int) ([]worker, error) {
-	workers := make([]worker, n)
-	for i := range workers {
+	workers := make([]worker, 0, n)
+	for i := 0; i < n; i++ {
 		// Give each worker its own client.
 		client, err := client.NewFromConfig(h.ktCli, h.domain)
 		if err != nil {
 			return nil, err
 		}
 
-		workers[i] = worker{Hammer: h, client: client}
+		workers = append(workers, worker{Hammer: h, client: client})
 	}
 	return workers, nil
 }
@@ -224,20 +226,25 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 		callOptions := w.callOptions(u.UserId)
 		cctx, cancel := context.WithTimeout(ctx, w.timeout)
 		defer cancel()
+		fmt.Print(".")
 		m, err := w.client.CreateMutation(cctx, u)
 		if err != nil {
+			fmt.Print("!")
 			return err
 		}
+		mutations = append(mutations, m)
 		if err := w.client.QueueMutation(cctx, m, w.signers, callOptions...); err != nil {
+			fmt.Print("!")
 			return err
 		}
-		fmt.Print(".")
+		fmt.Print("-")
 	}
 
 	for _, m := range mutations {
 		cctx, cancel := context.WithTimeout(ctx, w.timeout)
 		defer cancel()
 		if _, err := w.client.WaitForUserUpdate(cctx, m); err != nil {
+			fmt.Print("!")
 			return err
 		}
 		fmt.Print("+")
@@ -249,11 +256,13 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 // Typical conversation setup involves querying two userIDs: self and other.
 func (w *worker) readOp(ctx context.Context, req *request) error {
 	for _, userID := range req.UserIDs {
+		fmt.Print(".")
 		_, _, err := w.client.GetEntry(ctx, userID, w.appID)
 		if err != nil {
+			fmt.Print("!")
 			return err
 		}
-		fmt.Print(".")
+		fmt.Print("-")
 	}
 	return nil
 }
@@ -261,11 +270,13 @@ func (w *worker) readOp(ctx context.Context, req *request) error {
 // auditHistoryOp simulates the daily check-in.
 func (w *worker) historyOp(ctx context.Context, req *request) error {
 	for _, userID := range req.UserIDs {
+		fmt.Print(".")
 		_, _, err := w.client.PaginateHistory(ctx, userID, w.appID, 0, int64(req.PageSize))
 		if err != nil {
+			fmt.Print("!")
 			return err
 		}
-		fmt.Print(".")
+		fmt.Print("-")
 	}
 	return nil
 }
