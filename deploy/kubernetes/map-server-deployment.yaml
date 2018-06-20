@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert --file ../../docker-compose.yml
-    kompose.version: 1.4.0 (HEAD)
+    kompose.version: 1.14.0 ()
   creationTimestamp: null
   labels:
     io.kompose.service: map-server
@@ -24,7 +24,7 @@ spec:
         - --rpc_endpoint=0.0.0.0:8090
         - --http_endpoint=0.0.0.0:8091
         - --alsologtostderr
-        image: us.gcr.io/key-transparency/map-server:latest
+        image: 'us.gcr.io/key-transparency/map-server:'
         livenessProbe:
           exec:
             command:

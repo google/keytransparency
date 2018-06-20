@@ -109,7 +109,7 @@ services:
       dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
     restart: always
     ports:
-      - "8080:8080" # json & grpc
+      - "8080:443" # json & grpc
       - "8081:8081" # metrics
     entrypoint:
       - /go/bin/keytransparency-server
@@ -119,6 +119,7 @@ services:
       - --map-url=map-server:8090
       - --tls-key=/kt/server.key
       - --tls-cert=/kt/server.crt
+      - --auth-type=insecure-fake
       - --alsologtostderr
       - --v=5
     labels:

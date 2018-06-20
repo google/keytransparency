@@ -4,7 +4,7 @@ metadata:
   annotations:
     kompose.cmd: kompose convert --file ../../docker-compose.yml
     kompose.service.type: LoadBalancer
-    kompose.version: 1.4.0 (HEAD)
+    kompose.version: 1.14.0 ()
   creationTimestamp: null
   labels:
     io.kompose.service: server
@@ -30,7 +30,7 @@ spec:
         - --auth-type=insecure-fake
         - --alsologtostderr
         - --v=5
-        image: us.gcr.io/key-transparency/keytransparency-server:latest
+        image: 'us.gcr.io/key-transparency/keytransparency-server:'
         livenessProbe:
           exec:
             command:
@@ -42,7 +42,7 @@ spec:
           timeoutSeconds: 10
         name: server
         ports:
-        - containerPort: 8080
+        - containerPort: 443
         - containerPort: 8081
         resources: {}
       restartPolicy: Always

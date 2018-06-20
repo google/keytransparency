@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert --file ../../docker-compose.yml
-    kompose.version: 1.4.0 (HEAD)
+    kompose.version: 1.14.0 ()
   creationTimestamp: null
   labels:
     io.kompose.service: prometheus
@@ -18,7 +18,7 @@ spec:
         io.kompose.service: prometheus
     spec:
       containers:
-      - image: us.gcr.io/key-transparency/prometheus:latest
+      - image: 'us.gcr.io/key-transparency/prometheus:'
         name: prometheus
         ports:
         - containerPort: 9090
