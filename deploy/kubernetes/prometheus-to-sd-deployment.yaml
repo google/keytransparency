@@ -24,7 +24,7 @@ spec:
         - --source=logserver:http://log-server:8091/metrics
         - --source=logsigner:http://log-signer:8091/metrics
         - --source=keyserver:http://server:8081/metrics
-        - --source=sequencer:https://sequencer:8080/metrics
+        - --source=sequencer:http://sequencer:8081/metrics
         - --pod-id=prometheus-to-sd
         - --namespace-id=default
         - --metrics-resolution=5s
