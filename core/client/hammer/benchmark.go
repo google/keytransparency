@@ -16,6 +16,7 @@ package hammer
 
 import (
 	"context"
+	"sync"
 )
 
 // ReqHandler executes a request.
@@ -27,13 +28,14 @@ type request struct {
 }
 
 func executeRequests(ctx context.Context, inflightReqs <-chan request, reqHandlers []ReqHandler) {
-	go func() {
-		for _, rh := range reqHandlers {
-			go func(rh ReqHandler) {
-				for req := range inflightReqs {
-					rh(ctx, &req)
-				}
-			}(rh)
-		}
-	}()
+	var wg sync.WaitGroup
+	for _, rh := range reqHandlers {
+		wg.Add(1)
+		go func(rh ReqHandler) {
+			for req := range inflightReqs {
+				rh(ctx, &req)
+			}
+		}(rh)
+	}
+	wg.Wait()
 }

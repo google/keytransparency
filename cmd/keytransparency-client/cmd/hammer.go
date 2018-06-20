@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/keytransparency/core/client/hammer"
@@ -33,6 +34,7 @@ var (
 	maxOperations int
 	pageSize      int
 	qps           int
+	testTypes     string
 )
 
 func init() {
@@ -42,6 +44,7 @@ func init() {
 
 	RootCmd.AddCommand(hammerCmd)
 
+	hammerCmd.Flags().StringVar(&testTypes, "types", "batch,write,read,audit", "Types of stress tests to run")
 	hammerCmd.Flags().IntVar(&qps, "qps", 100, "Numer of requests a second")
 	hammerCmd.Flags().IntVar(&pageSize, "batch", 100, "Number of things to do at once")
 	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1000, "Number of parallel workers")
@@ -77,7 +80,14 @@ var hammerCmd = &cobra.Command{
 			return err
 		}
 
+		types := make(map[string]bool)
+		for _, s := range strings.Split(testTypes, ",") {
+			types[s] = true
+		}
+
 		return h.Run(ctx, maxWorkers, hammer.Config{
+			TestTypes: types,
+
 			BatchWriteQPS:   qps,
 			BatchWriteSize:  pageSize,
 			BatchWriteCount: maxOperations,
