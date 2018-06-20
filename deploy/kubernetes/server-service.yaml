@@ -11,8 +11,8 @@ metadata:
   name: server
 spec:
   ports:
-  - name: "8080"
-    port: 8080
+  - name: "443"
+    port: 443
     targetPort: 8080
   - name: "8081"
     port: 8081
