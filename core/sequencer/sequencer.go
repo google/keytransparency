@@ -263,7 +263,7 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, mapVerifier *tclient.MapVerifier, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
-	batchSize.Set(float64(len(msgs)))
+	batchSize.Set(float64(len(msgs)), d.DomainID)
 	sequencingRuns.Inc(d.DomainID)
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
