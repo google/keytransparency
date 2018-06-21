@@ -28,6 +28,7 @@ import (
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/mutator/entry"
 
+	cpb "github.com/cheggaaa/pb"
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
@@ -111,6 +112,15 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		return err
 	}
 
+	bars := make([]*cpb.ProgressBar, 0, len(workers))
+	for _, w := range workers {
+		bars = append(bars, w.bar)
+	}
+	pool, err := cpb.StartPool(bars...)
+	if err != nil {
+		return err
+	}
+
 	if ok := c.TestTypes["batch"]; ok {
 		// Batch Write users
 		log.Printf("Batch Write")
@@ -160,6 +170,8 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		fmt.Print("\n")
 	}
 
+	pool.Stop()
+
 	return nil
 }
 
@@ -192,6 +204,7 @@ func requestGenerator(ctx context.Context, qps, batch, count int, duration time.
 type worker struct {
 	*Hammer
 	client *client.Client
+	bar    *cpb.ProgressBar
 }
 
 func (h *Hammer) newWorkers(n int) ([]worker, error) {
@@ -203,7 +216,11 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 			return nil, err
 		}
 
-		workers = append(workers, worker{Hammer: h, client: client})
+		workers = append(workers, worker{
+			Hammer: h,
+			client: client,
+			bar:    cpb.New(100).Prefix(fmt.Sprintf("%v ", i)),
+		})
 	}
 	return workers, nil
 }
@@ -226,7 +243,9 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 		callOptions := w.callOptions(u.UserId)
 		cctx, cancel := context.WithTimeout(ctx, w.timeout)
 		defer cancel()
-		fmt.Print(".")
+		//fmt.Print(".")
+		w.bar.Increment()
+
 		m, err := w.client.CreateMutation(cctx, u)
 		if err != nil {
 			fmt.Print("!")
@@ -237,7 +256,8 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 			fmt.Print("!")
 			return err
 		}
-		fmt.Print("-")
+		w.bar.Increment()
+		//fmt.Print("-")
 	}
 
 	for _, m := range mutations {
@@ -247,7 +267,8 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 			fmt.Print("!")
 			return err
 		}
-		fmt.Print("+")
+		w.bar.Increment()
+		//fmt.Print("+")
 	}
 	return nil
 }
@@ -256,13 +277,15 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 // Typical conversation setup involves querying two userIDs: self and other.
 func (w *worker) readOp(ctx context.Context, req *request) error {
 	for _, userID := range req.UserIDs {
-		fmt.Print(".")
+		//fmt.Print(".")
+		w.bar.Increment()
 		_, _, err := w.client.GetEntry(ctx, userID, w.appID)
 		if err != nil {
 			fmt.Print("!")
 			return err
 		}
-		fmt.Print("-")
+		//fmt.Print("-")
+		w.bar.Increment()
 	}
 	return nil
 }
@@ -270,13 +293,15 @@ func (w *worker) readOp(ctx context.Context, req *request) error {
 // auditHistoryOp simulates the daily check-in.
 func (w *worker) historyOp(ctx context.Context, req *request) error {
 	for _, userID := range req.UserIDs {
-		fmt.Print(".")
+		//fmt.Print(".")
+		w.bar.Increment()
 		_, _, err := w.client.PaginateHistory(ctx, userID, w.appID, 0, int64(req.PageSize))
 		if err != nil {
 			fmt.Print("!")
 			return err
 		}
-		fmt.Print("-")
+		// fmt.Print("-")
+		w.bar.Increment()
 	}
 	return nil
 }
