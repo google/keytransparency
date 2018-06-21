@@ -116,8 +116,8 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		log.Printf("Batch Write")
 		requests := requestGenerator(ctx, c.BatchWriteQPS, c.BatchWriteSize, c.BatchWriteCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
-		for _, w := range workers {
-			handlers = append(handlers, w.writeOp)
+		for i := range workers {
+			handlers = append(handlers, workers[i].writeOp)
 		}
 		log.Printf("workers: %v", len(handlers))
 		executeRequests(ctx, requests, handlers)
@@ -129,8 +129,8 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		log.Printf("User Write")
 		requests := requestGenerator(ctx, c.WriteQPS, 1, c.WriteCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
-		for _, w := range workers {
-			handlers = append(handlers, w.writeOp)
+		for i := range workers {
+			handlers = append(handlers, workers[i].writeOp)
 		}
 		executeRequests(ctx, requests, handlers)
 		fmt.Print("\n")
@@ -141,8 +141,8 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		log.Printf("User Read")
 		requests := requestGenerator(ctx, c.ReadQPS, c.ReadPageSize, c.ReadCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
-		for _, w := range workers {
-			handlers = append(handlers, w.readOp)
+		for i := range workers {
+			handlers = append(handlers, workers[i].readOp)
 		}
 		executeRequests(ctx, requests, handlers)
 		fmt.Print("\n")
@@ -153,8 +153,8 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		log.Printf("User Audit History")
 		requests := requestGenerator(ctx, c.HistoryQPS, c.HistoryPageSize, c.HistoryCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
-		for _, w := range workers {
-			handlers = append(handlers, w.historyOp)
+		for i := range workers {
+			handlers = append(handlers, workers[i].historyOp)
 		}
 		executeRequests(ctx, requests, handlers)
 		fmt.Print("\n")
