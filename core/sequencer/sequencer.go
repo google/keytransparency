@@ -34,11 +34,7 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
-const (
-	// MaxBatchSize limits the number of mutations that will be processed per epoch.
-	MaxBatchSize  = int32(1000)
-	domainIDLabel = "domainid"
-)
+const domainIDLabel = "domainid"
 
 var (
 	once               sync.Once
@@ -88,6 +84,7 @@ type Sequencer struct {
 	mutations   mutator.MutationStorage
 	queue       mutator.MutationQueue
 	receivers   map[string]mutator.Receiver
+	batchSize   int32
 }
 
 // New creates a new instance of the signer.
@@ -99,7 +96,9 @@ func New(tlog tpb.TrillianLogClient,
 	domains domain.Storage,
 	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue,
-	metricsFactory monitoring.MetricFactory) *Sequencer {
+	metricsFactory monitoring.MetricFactory,
+	batchSize int,
+) *Sequencer {
 	once.Do(func() { createMetrics(metricsFactory) })
 
 	return &Sequencer{
@@ -112,6 +111,7 @@ func New(tlog tpb.TrillianLogClient,
 		mutations:   mutations,
 		queue:       queue,
 		receivers:   make(map[string]mutator.Receiver),
+		batchSize:   int32(batchSize),
 	}
 }
 
@@ -189,7 +189,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
 		return s.createEpoch(ctx, d, logClient, mapVerifier, mutations)
 	}, mutator.ReceiverOptions{
-		MaxBatchSize: MaxBatchSize,
+		MaxBatchSize: s.batchSize,
 		Period:       d.MinInterval,
 		MaxPeriod:    d.MaxInterval,
 	}), nil
