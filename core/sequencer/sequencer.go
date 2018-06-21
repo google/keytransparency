@@ -262,12 +262,12 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		return fmt.Errorf("GetSignedMapRoot(%v): %v", d.MapID, err)
 	}
 	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
 	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		return err
 	}
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", mapRoot.Revision)
@@ -283,7 +283,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 		Index: indexes,
 	})
 	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		return err
 	}
 	glog.V(3).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
@@ -300,7 +300,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	// Apply mutations to values.
 	newLeaves, err := s.applyMutations(msgs, leaves)
 	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		return err
 	}
 	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves", len(msgs), len(leaves))
@@ -311,12 +311,12 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 		Leaves: newLeaves,
 	})
 	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		return err
 	}
 	mapRoot, err = mapVerifier.VerifySignedMapRoot(setResp.GetMapRoot())
 	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		return err
 	}
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
@@ -328,13 +328,13 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	}
 	if err := s.mutations.WriteBatch(ctx, d.DomainID, int64(mapRoot.Revision), mutations); err != nil {
 		glog.Fatalf("Could not write mutations for revision %v: %v", mapRoot.Revision, err)
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		return err
 	}
 
 	// Put SignedMapHead in an append only log.
 	if err := logClient.AddSequencedLeafAndWait(ctx, setResp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-		sequencingFailures.Inc(d.DomainID)
+		sequencingFailures.Inc(d.DomainID, err.Error())
 		glog.Fatalf("AddSequencedLeaf(logID: %v, rev: %v): %v", d.LogID, mapRoot.Revision, err)
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
 		return err
