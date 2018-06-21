@@ -35,6 +35,7 @@ var (
 	pageSize      int
 	qps           int
 	testTypes     string
+	duration      time.Duration
 )
 
 func init() {
@@ -44,6 +45,7 @@ func init() {
 
 	RootCmd.AddCommand(hammerCmd)
 
+	hammerCmd.Flags().DurationVar(&duration, "duration", 10*time.Minute, "Maximum time to run each test")
 	hammerCmd.Flags().StringVar(&testTypes, "types", "batch,write,read,audit", "Types of stress tests to run")
 	hammerCmd.Flags().IntVar(&qps, "qps", 100, "Numer of requests a second")
 	hammerCmd.Flags().IntVar(&pageSize, "batch", 10, "Number of things to do at once")
@@ -103,7 +105,7 @@ var hammerCmd = &cobra.Command{
 			HistoryCount:    maxOperations,
 			HistoryPageSize: pageSize,
 
-			Duration: 2 * time.Minute,
+			Duration: duration,
 		})
 	},
 }
