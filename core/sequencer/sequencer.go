@@ -43,6 +43,7 @@ const (
 var (
 	once               sync.Once
 	knownDomains       monitoring.Gauge
+	batchSize          monitoring.Gauge
 	mutationCount      monitoring.Counter
 	sequencingRuns     monitoring.Counter
 	sequencingFailures monitoring.Counter
@@ -56,7 +57,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 	mutationCount = mf.NewCounter(
 		"mutation_count",
-		"Number of mutations the signer has processed",
+		"Number of mutations the signer has processed for domainid since process start",
+		domainIDLabel)
+	batchSize = mf.NewGauge(
+		"batch_size",
+		"Number of mutations the signer is attempting to process for domainid",
 		domainIDLabel)
 	sequencingRuns = mf.NewCounter(
 		"sequencing_runs",
@@ -258,6 +263,7 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, mapVerifier *tclient.MapVerifier, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
+	batchSize.Set(float64(len(msgs)))
 	sequencingRuns.Inc(d.DomainID)
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
