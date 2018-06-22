@@ -42,9 +42,10 @@ var (
 	serverDBPath = flag.String("db", "db", "Database connection string")
 
 	// Info to connect to the trillian map and log.
-	mapURL  = flag.String("map-url", "", "URL of Trillian Map Server")
-	logURL  = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
-	refresh = flag.Duration("domain-refresh", 5*time.Second, "Time to detect new domain")
+	mapURL    = flag.String("map-url", "", "URL of Trillian Map Server")
+	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	refresh   = flag.Duration("domain-refresh", 5*time.Second, "Time to detect new domain")
+	batchSize = flag.Int("batch-size", 100, "Maximum number of mutations to process per map revision")
 )
 
 func openDB() *sql.DB {
@@ -90,7 +91,7 @@ func main() {
 	queue := mutator.MutationQueue(mutations)
 
 	// Create servers
-	signer := sequencer.New(tlog, logAdmin, tmap, mapAdmin, entry.New(), domainStorage, mutations, queue, prometheus.MetricFactory{})
+	signer := sequencer.New(tlog, logAdmin, tmap, mapAdmin, entry.New(), domainStorage, mutations, queue, prometheus.MetricFactory{}, *batchSize)
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
