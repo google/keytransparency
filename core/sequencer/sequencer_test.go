@@ -15,15 +15,47 @@
 package sequencer
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 
 	tpb "github.com/google/trillian"
 )
 
+func queueMsg(id int64, signer *tink.KeysetHandle) *mutator.QueueMessage {
+	index := []byte{byte(id)}
+	userID := string(id)
+	m := entry.NewMutation(index, "domain", "app", userID)
+	signers := []*tink.KeysetHandle{signer}
+	pubkey, err := signer.GetPublicKeysetHandle()
+	if err != nil {
+		panic(fmt.Errorf("GetPublicKeysetHandle(): %v", err))
+	}
+	m.ReplaceAuthorizedKeys(pubkey.Keyset())
+	update, err := m.SerializeAndSign(signers, 0)
+	if err != nil {
+		panic(fmt.Errorf("SerializeAndSign(): %v", err))
+	}
+
+	return &mutator.QueueMessage{
+		ID:        id,
+		Mutation:  update.EntryUpdate.Mutation,
+		ExtraData: update.EntryUpdate.Committed,
+	}
+}
+
+// TestDuplicateMutations verifies that each call to tlog.SetLeaves specifies
+// each mapleaf.Index at most ONCE.  Failure to do so will corrupt the map.
 func TestDuplicateMutations(t *testing.T) {
+
+	keyset, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
+	if err != nil {
+		t.Fatalf("tink.GenerateNew(): %v", err)
+	}
 	s := &Sequencer{
 		mutatorFunc: entry.New(),
 	}
@@ -37,8 +69,8 @@ func TestDuplicateMutations(t *testing.T) {
 		{
 			desc: "duplicate",
 			msgs: []*mutator.QueueMessage{
-				{ID: 1},
-				{ID: 2},
+				queueMsg(1, keyset),
+				queueMsg(1, keyset),
 			},
 			wantLeaves: 1,
 		},

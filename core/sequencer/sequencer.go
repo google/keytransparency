@@ -240,6 +240,8 @@ func (s *Sequencer) applyMutations(msgs []*mutator.QueueMessage, leaves []*tpb.M
 			continue
 		}
 
+		// Make sure that only ONE MapLeaf is output per index.
+		// Failure to do so will corrupt the map.
 		retMap[toArray(index)] = &tpb.MapLeaf{
 			Index:     index,
 			LeafValue: leafValue,
