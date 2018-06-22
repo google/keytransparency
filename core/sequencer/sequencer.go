@@ -34,15 +34,12 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
-const (
-	// MaxBatchSize limits the number of mutations that will be processed per epoch.
-	MaxBatchSize  = int32(1000)
-	domainIDLabel = "domainid"
-)
+const domainIDLabel = "domainid"
 
 var (
 	once               sync.Once
 	knownDomains       monitoring.Gauge
+	batchSize          monitoring.Gauge
 	mutationCount      monitoring.Counter
 	sequencingRuns     monitoring.Counter
 	sequencingFailures monitoring.Counter
@@ -56,7 +53,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 	mutationCount = mf.NewCounter(
 		"mutation_count",
-		"Number of mutations the signer has processed",
+		"Number of mutations the signer has processed for domainid since process start",
+		domainIDLabel)
+	batchSize = mf.NewGauge(
+		"batch_size",
+		"Number of mutations the signer is attempting to process for domainid",
 		domainIDLabel)
 	sequencingRuns = mf.NewCounter(
 		"sequencing_runs",
@@ -83,6 +84,7 @@ type Sequencer struct {
 	mutations   mutator.MutationStorage
 	queue       mutator.MutationQueue
 	receivers   map[string]mutator.Receiver
+	batchSize   int32
 }
 
 // New creates a new instance of the signer.
@@ -94,7 +96,9 @@ func New(tlog tpb.TrillianLogClient,
 	domains domain.Storage,
 	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue,
-	metricsFactory monitoring.MetricFactory) *Sequencer {
+	metricsFactory monitoring.MetricFactory,
+	batchSize int,
+) *Sequencer {
 	once.Do(func() { createMetrics(metricsFactory) })
 
 	return &Sequencer{
@@ -107,6 +111,7 @@ func New(tlog tpb.TrillianLogClient,
 		mutations:   mutations,
 		queue:       queue,
 		receivers:   make(map[string]mutator.Receiver),
+		batchSize:   int32(batchSize),
 	}
 }
 
@@ -184,7 +189,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
 		return s.createEpoch(ctx, d, logClient, mapVerifier, mutations)
 	}, mutator.ReceiverOptions{
-		MaxBatchSize: MaxBatchSize,
+		MaxBatchSize: s.batchSize,
 		Period:       d.MinInterval,
 		MaxPeriod:    d.MaxInterval,
 	}), nil
@@ -258,6 +263,7 @@ func (s *Sequencer) applyMutations(mutations []*mutator.QueueMessage, leaves []*
 func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, mapVerifier *tclient.MapVerifier, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
+	batchSize.Set(float64(len(msgs)), d.DomainID)
 	sequencingRuns.Inc(d.DomainID)
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
