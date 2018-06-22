@@ -3,8 +3,6 @@ services:
   prometheus-to-sd:
     container_name: prometheus-to-sd
     image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
-    ports:
-      - "6060"
     entrypoint:
       - /monitor
       - --stackdriver-prefix=custom.googleapis.com

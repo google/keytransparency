@@ -31,8 +31,6 @@ spec:
         - --metrics-resolution=5s
         image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
         name: prometheus-to-sd
-        ports:
-        - containerPort: 6060
         resources: {}
       restartPolicy: Always
 status: {}
