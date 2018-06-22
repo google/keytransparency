@@ -1,5 +1,6 @@
 version: "3"
 services:
+  # Only works when when replicas = 1 for reach monitored service.
   prometheus-to-sd:
     container_name: prometheus-to-sd
     image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
