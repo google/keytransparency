@@ -18,17 +18,21 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	tpb "github.com/google/trillian"
 )
 
 func TestDuplicateMutations(t *testing.T) {
-	s := &Sequencer{}
+	s := &Sequencer{
+		mutatorFunc: entry.New(),
+	}
 
 	for _, tc := range []struct {
-		desc   string
-		msgs   []*mutator.QueueMessage
-		leaves []*tpb.MapLeaf
+		desc       string
+		msgs       []*mutator.QueueMessage
+		leaves     []*tpb.MapLeaf
+		wantLeaves int
 	}{
 		{
 			desc: "duplicate",
@@ -36,6 +40,7 @@ func TestDuplicateMutations(t *testing.T) {
 				{ID: 1},
 				{ID: 2},
 			},
+			wantLeaves: 1,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -50,6 +55,10 @@ func TestDuplicateMutations(t *testing.T) {
 				if c := counts[toArray(l.Index)]; c > 1 {
 					t.Errorf("Map leaf %x found %v times", l.Index, c)
 				}
+			}
+			// Verify totals.
+			if got, want := len(newLeaves), tc.wantLeaves; got != want {
+				t.Errorf("applyMutations(): len: %v, want %v", got, want)
 			}
 		})
 	}
