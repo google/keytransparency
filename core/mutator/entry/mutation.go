@@ -121,7 +121,10 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle, trustedTreeSiz
 
 	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(), m.entry.GetAuthorizedKeys(),
 		skv, mutation.GetSignatures()); err != nil {
-		return nil, fmt.Errorf("verifyKeys(sig: %v): %v", len(mutation.GetSignatures()), err)
+		return nil, fmt.Errorf("verifyKeys(oldKeys: %v, newKeys: %v, sigs: %v): %v",
+			len(m.prevEntry.GetAuthorizedKeys().GetKey()),
+			len(m.entry.GetAuthorizedKeys().GetKey()),
+			len(mutation.GetSignatures()), err)
 	}
 
 	// Sanity check the mutation's correctness.
