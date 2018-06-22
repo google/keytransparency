@@ -274,7 +274,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
 	}
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", mapRoot.Revision)
 
@@ -290,7 +290,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	})
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("tmap.GetLeaves(): %v", err)
 	}
 	glog.V(3).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
 		len(getResp.MapLeafInclusion))
@@ -318,12 +318,12 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	})
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("tmap.SetLeaves(): %v", err)
 	}
 	mapRoot, err = mapVerifier.VerifySignedMapRoot(setResp.GetMapRoot())
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
 	}
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
@@ -335,7 +335,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	if err := s.mutations.WriteBatch(ctx, d.DomainID, int64(mapRoot.Revision), mutations); err != nil {
 		glog.Fatalf("Could not write mutations for revision %v: %v", mapRoot.Revision, err)
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("mutations.WriteBatch(): %v", err)
 	}
 
 	// Put SignedMapHead in an append only log.
@@ -343,7 +343,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 		sequencingFailures.Inc(d.DomainID)
 		glog.Fatalf("AddSequencedLeaf(logID: %v, rev: %v): %v", d.LogID, mapRoot.Revision, err)
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
-		return err
+		return fmt.Errorf("tlog.AddSequencedLeafAndWait(): %v", err)
 	}
 
 	mutationCount.Add(float64(len(msgs)), d.DomainID)
