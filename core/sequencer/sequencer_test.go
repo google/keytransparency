@@ -15,7 +15,6 @@
 package sequencer
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/keytransparency/core/mutator"
@@ -26,19 +25,20 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func queueMsg(id int64, signer *tink.KeysetHandle) *mutator.QueueMessage {
+func queueMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *mutator.QueueMessage {
+	t.Helper()
 	index := []byte{byte(id)}
 	userID := string(id)
 	m := entry.NewMutation(index, "domain", "app", userID)
 	signers := []*tink.KeysetHandle{signer}
 	pubkey, err := signer.GetPublicKeysetHandle()
 	if err != nil {
-		panic(fmt.Errorf("GetPublicKeysetHandle(): %v", err))
+		t.Fatalf("GetPublicKeysetHandle(): %v", err)
 	}
 	m.ReplaceAuthorizedKeys(pubkey.Keyset())
 	update, err := m.SerializeAndSign(signers, 0)
 	if err != nil {
-		panic(fmt.Errorf("SerializeAndSign(): %v", err))
+		t.Fatalf("SerializeAndSign(): %v", err)
 	}
 
 	return &mutator.QueueMessage{
@@ -52,7 +52,11 @@ func queueMsg(id int64, signer *tink.KeysetHandle) *mutator.QueueMessage {
 // each mapleaf.Index at most ONCE.  Failure to do so will corrupt the map.
 func TestDuplicateMutations(t *testing.T) {
 
-	keyset, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
+	keyset1, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
+	if err != nil {
+		t.Fatalf("tink.GenerateNew(): %v", err)
+	}
+	keyset2, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
 	if err != nil {
 		t.Fatalf("tink.GenerateNew(): %v", err)
 	}
@@ -69,8 +73,8 @@ func TestDuplicateMutations(t *testing.T) {
 		{
 			desc: "duplicate",
 			msgs: []*mutator.QueueMessage{
-				queueMsg(1, keyset),
-				queueMsg(1, keyset),
+				queueMsg(t, 1, keyset1),
+				queueMsg(t, 1, keyset2),
 			},
 			wantLeaves: 1,
 		},
