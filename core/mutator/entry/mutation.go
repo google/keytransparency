@@ -4,8 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
+//     http://www.apache.org/licenses/LICENSE-2.0 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +18,8 @@ import (
 	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
@@ -121,7 +122,8 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle, trustedTreeSiz
 
 	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(), m.entry.GetAuthorizedKeys(),
 		skv, mutation.GetSignatures()); err != nil {
-		return nil, fmt.Errorf("verifyKeys(oldKeys: %v, newKeys: %v, sigs: %v): %v",
+		return nil, status.Errorf(codes.PermissionDenied,
+			"verifyKeys(oldKeys: %v, newKeys: %v, sigs: %v): %v",
 			len(m.prevEntry.GetAuthorizedKeys().GetKey()),
 			len(m.entry.GetAuthorizedKeys().GetKey()),
 			len(mutation.GetSignatures()), err)
