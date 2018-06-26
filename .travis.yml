@@ -2,7 +2,6 @@ language: go
 go:
 - 1.10.x
 dist: trusty
-sudo: required
 services:
 - docker-ce
 cache:
