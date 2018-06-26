@@ -34,15 +34,12 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
-const (
-	// MaxBatchSize limits the number of mutations that will be processed per epoch.
-	MaxBatchSize  = int32(1000)
-	domainIDLabel = "domainid"
-)
+const domainIDLabel = "domainid"
 
 var (
 	once               sync.Once
 	knownDomains       monitoring.Gauge
+	batchSize          monitoring.Gauge
 	mutationCount      monitoring.Counter
 	sequencingRuns     monitoring.Counter
 	sequencingFailures monitoring.Counter
@@ -56,7 +53,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 	mutationCount = mf.NewCounter(
 		"mutation_count",
-		"Number of mutations the signer has processed",
+		"Number of mutations the signer has processed for domainid since process start",
+		domainIDLabel)
+	batchSize = mf.NewGauge(
+		"batch_size",
+		"Number of mutations the signer is attempting to process for domainid",
 		domainIDLabel)
 	sequencingRuns = mf.NewCounter(
 		"sequencing_runs",
@@ -83,6 +84,7 @@ type Sequencer struct {
 	mutations   mutator.MutationStorage
 	queue       mutator.MutationQueue
 	receivers   map[string]mutator.Receiver
+	batchSize   int32
 }
 
 // New creates a new instance of the signer.
@@ -94,7 +96,9 @@ func New(tlog tpb.TrillianLogClient,
 	domains domain.Storage,
 	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue,
-	metricsFactory monitoring.MetricFactory) *Sequencer {
+	metricsFactory monitoring.MetricFactory,
+	batchSize int,
+) *Sequencer {
 	once.Do(func() { createMetrics(metricsFactory) })
 
 	return &Sequencer{
@@ -107,6 +111,7 @@ func New(tlog tpb.TrillianLogClient,
 		mutations:   mutations,
 		queue:       queue,
 		receivers:   make(map[string]mutator.Receiver),
+		batchSize:   int32(batchSize),
 	}
 }
 
@@ -184,7 +189,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
 		return s.createEpoch(ctx, d, logClient, mapVerifier, mutations)
 	}, mutator.ReceiverOptions{
-		MaxBatchSize: MaxBatchSize,
+		MaxBatchSize: s.batchSize,
 		Period:       d.MinInterval,
 		MaxPeriod:    d.MaxInterval,
 	}), nil
@@ -260,6 +265,7 @@ func (s *Sequencer) applyMutations(msgs []*mutator.QueueMessage, leaves []*tpb.M
 func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, mapVerifier *tclient.MapVerifier, msgs []*mutator.QueueMessage) error {
 	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
 	start := time.Now()
+	batchSize.Set(float64(len(msgs)), d.DomainID)
 	sequencingRuns.Inc(d.DomainID)
 	// Get the current root.
 	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
@@ -270,7 +276,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
 	}
 	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", mapRoot.Revision)
 
@@ -286,7 +292,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	})
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("tmap.GetLeaves(): %v", err)
 	}
 	glog.V(3).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
 		len(getResp.MapLeafInclusion))
@@ -314,12 +320,12 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	})
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("tmap.SetLeaves(): %v", err)
 	}
 	mapRoot, err = mapVerifier.VerifySignedMapRoot(setResp.GetMapRoot())
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
 	}
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
@@ -331,7 +337,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	if err := s.mutations.WriteBatch(ctx, d.DomainID, int64(mapRoot.Revision), mutations); err != nil {
 		glog.Fatalf("Could not write mutations for revision %v: %v", mapRoot.Revision, err)
 		sequencingFailures.Inc(d.DomainID)
-		return err
+		return fmt.Errorf("mutations.WriteBatch(): %v", err)
 	}
 
 	// Put SignedMapHead in an append only log.
@@ -339,7 +345,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 		sequencingFailures.Inc(d.DomainID)
 		glog.Fatalf("AddSequencedLeaf(logID: %v, rev: %v): %v", d.LogID, mapRoot.Revision, err)
 		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
-		return err
+		return fmt.Errorf("tlog.AddSequencedLeafAndWait(): %v", err)
 	}
 
 	mutationCount.Add(float64(len(msgs)), d.DomainID)
