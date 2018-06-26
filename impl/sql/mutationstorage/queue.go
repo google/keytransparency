@@ -51,7 +51,6 @@ func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, domainID st
 		store:       m,
 		domainID:    domainID,
 		opts:        rOpts,
-		more:        make(chan time.Time, 1),
 		ticker:      time.NewTicker(rOpts.Period),
 		maxTicker:   time.NewTicker(rOpts.MaxPeriod),
 		done:        make(chan interface{}),
@@ -69,7 +68,6 @@ type Receiver struct {
 	domainID    string
 	recieveFunc mutator.ReceiveFunc
 	opts        mutator.ReceiverOptions
-	more        chan time.Time
 	ticker      *time.Ticker
 	maxTicker   *time.Ticker
 	done        chan interface{}
@@ -84,11 +82,14 @@ func (r *Receiver) Close() {
 
 // FlushN verifies that a minimum of n items are available to send, and sends them.
 func (r *Receiver) FlushN(ctx context.Context, n int) error {
-	sent := r.sendBatch(ctx, int32(n), r.opts.MaxBatchSize)
-	if sent < int32(n) {
+	sent, err := r.sendMultiBatch(ctx, n, int(r.opts.MaxBatchSize))
+	if err != nil {
+		return err
+	}
+	if sent < n {
 		// We could retry at this point, but because this queue is mysql based
 		// and deterministic, we know that waiting won't be very useful.
-		return fmt.Errorf("sendBatch(): %v, want >= %v", sent, n)
+		return fmt.Errorf("sendMultiBatch(): %v, want >= %v", sent, n)
 	}
 	return nil
 }
@@ -101,46 +102,59 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 	}
 
 	if time.Since(last) > (r.opts.MaxPeriod - r.opts.Period) {
-		r.sendBatch(ctx, 0, r.opts.MaxBatchSize) // We will be overdue for an epoch soon.
+		if _, err := r.sendMultiBatch(ctx, 0, int(r.opts.MaxBatchSize)); err != nil {
+			glog.Errorf("firstTick: sendMultiBatch(): %v", err)
+		}
 	}
 
 	for {
-		var count int32
 		select {
-		case <-r.more:
-			count = r.sendBatch(ctx, 1, r.opts.MaxBatchSize)
 		case <-r.ticker.C:
-			count = r.sendBatch(ctx, 1, r.opts.MaxBatchSize)
+			if _, err := r.sendMultiBatch(ctx, 1, int(r.opts.MaxBatchSize)); err != nil {
+				glog.Errorf("minTick: sendMultiBatch(): %v", err)
+			}
 		case <-r.maxTicker.C:
-			count = r.sendBatch(ctx, 0, r.opts.MaxBatchSize)
+			if _, err := r.sendMultiBatch(ctx, 0, int(r.opts.MaxBatchSize)); err != nil {
+				glog.Errorf("maxTick: sendMultiBatch(): %v", err)
+			}
 		case <-ctx.Done():
 			return
 		case <-r.done:
 			return
 		}
-		if count >= r.opts.MaxBatchSize {
-			// Continue sending until we drop below batch size.
-			r.more <- time.Now()
+	}
+}
+
+// sendMultiBatch will send multiple batches if the number of available messages > maxMsgs.
+// This helps the queue catch up when there is high traffic, rather than waiting for the next
+// mintick to occur.
+func (r *Receiver) sendMultiBatch(ctx context.Context, minMsgs, maxMsgs int) (int, error) {
+	var total int
+	var err error
+	for sent := maxMsgs; sent >= maxMsgs; {
+		sent, err = r.sendBatch(ctx, minMsgs, maxMsgs)
+		total += sent
+		if err != nil {
+			return total, err
 		}
 	}
+	return total, nil
 }
 
 // sendBatch sends up to batchSize items to the receiver. Returns the number of sent items.
 // If the number of available items is < minBatch, 0 items are sent.
 // If the number of available items is > maxBatch only maxBatch items are sent.
-func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int32) int32 {
-	ms, err := r.store.readQueue(ctx, r.domainID, maxBatch)
+func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int) (int, error) {
+	ms, err := r.store.readQueue(ctx, r.domainID, int32(maxBatch))
 	if err != nil {
-		glog.Errorf("readQueue(): %v", err)
-		return 0
+		return 0, fmt.Errorf("readQueue(): %v", err)
 	}
-	if int32(len(ms)) < minBatch {
-		return 0
+	if len(ms) < minBatch {
+		return 0, nil
 	}
 
 	if err := r.recieveFunc(ms); err != nil {
-		glog.Errorf("queue.SendBatch(): %v", err)
-		return 0
+		return 0, fmt.Errorf("queue.SendBatch(): %v", err)
 	}
 	// TODO(gbelvin): Do we need finer grained errors?
 	// We could put an ack'ed field in a QueueMessage object.
@@ -148,10 +162,10 @@ func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int32) int3
 
 	// Delete old messages.
 	if err := r.store.deleteMessages(ctx, r.domainID, ms); err != nil {
-		glog.Errorf("deleteQueueMessages(%v, len(ms): %v): %v", r.domainID, len(ms), err)
+		return 0, fmt.Errorf("deleteQueueMessages(%v, len(ms): %v): %v", r.domainID, len(ms), err)
 	}
 
-	return int32(len(ms))
+	return len(ms), nil
 }
 
 // readQueue reads all mutations that are still in the queue up to batchSize.
