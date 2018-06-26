@@ -28,14 +28,9 @@ spec:
         - --v=5
         image: us.gcr.io/key-transparency/keytransparency-sequencer:latest
         livenessProbe:
-          exec:
-            command:
-            - curl
-            - -f
-            - http://localhost:8081/metrics
-          failureThreshold: 5
-          periodSeconds: 30
-          timeoutSeconds: 10
+         httpGet:
+           path: /metrics
+           port: 8081
         name: sequencer
         ports:
         - containerPort: 8080

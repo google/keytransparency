@@ -30,14 +30,9 @@ spec:
         - --alsologtostderr
         image: us.gcr.io/key-transparency/log-signer:latest
         livenessProbe:
-          exec:
-            command:
-            - curl
-            - -f
-            - http://localhost:8091/metrics
-          failureThreshold: 3
-          periodSeconds: 30
-          timeoutSeconds: 30
+         httpGet:
+           path: /metrics
+           port: 8091
         name: log-signer
         ports:
         - containerPort: 8091
