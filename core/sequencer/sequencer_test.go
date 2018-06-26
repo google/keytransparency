@@ -74,7 +74,15 @@ func TestDuplicateMutations(t *testing.T) {
 		wantLeaves int
 	}{
 		{
-			desc: "duplicate",
+			desc: "duplicate index, same data",
+			msgs: []*mutator.QueueMessage{
+				queueMsg(t, 1, keyset1),
+				queueMsg(t, 1, keyset1),
+			},
+			wantLeaves: 1,
+		},
+		{
+			desc: "duplicate index, different data",
 			msgs: []*mutator.QueueMessage{
 				queueMsg(t, 1, keyset1),
 				queueMsg(t, 1, keyset2),
