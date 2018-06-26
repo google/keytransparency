@@ -4,7 +4,7 @@ go:
 dist: trusty
 sudo: required
 services:
-- docker
+- docker-ce
 cache:
   directories:
   - $HOME/google-cloud-sdk/
@@ -35,8 +35,6 @@ after_success:
   - bash <(curl -s https://codecov.io/bash)
 
 before_deploy:
-  - sudo apt-get update
-  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
   - sudo pip3 install docker-compose
   - docker --version
   - docker-compose --version
