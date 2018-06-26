@@ -116,7 +116,7 @@ func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data interface{}, sigs [][]byte
 
 	verifier, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
 	if err != nil {
-		return err
+		return fmt.Errorf("ParseKeyset(new): %v", err)
 	}
 
 	return verifyAuthorizedKeys(data, verifier, sigs)

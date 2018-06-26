@@ -19,12 +19,61 @@ import (
 
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/tink/go/tink"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const domainID = "default"
 
+func TestSerializeAndSign(t *testing.T) {
+	for _, tc := range []struct {
+		desc    string
+		old     []byte
+		pubKeys *tink.KeysetHandle
+		signers []*tink.KeysetHandle
+		data    []byte
+		want    codes.Code
+	}{
+		{
+			old:     nil,
+			pubKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
+			data:    []byte("foo"),
+		},
+		{
+			old:     nil,
+			pubKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey2),
+			data:    []byte("foo"),
+			want:    codes.PermissionDenied,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			index := []byte{}
+			userID := "alice"
+			appID := "app1"
+
+			m := NewMutation(index, domainID, appID, userID)
+			if err := m.SetPrevious(tc.old, true); err != nil {
+				t.Fatalf("NewMutation(%v): %v", tc.old, err)
+			}
+			if err := m.SetCommitment(tc.data); err != nil {
+				t.Fatalf("SetCommitment(%v): %v", tc.data, err)
+			}
+			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
+				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
+			}
+			_, err := m.SerializeAndSign(tc.signers, 0)
+			if got := status.Code(err); got != tc.want {
+				t.Fatalf("SerializeAndSign(): %v, want %v", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestCreateAndVerify(t *testing.T) {
 	for _, tc := range []struct {
+		desc    string
 		old     []byte
 		pubKeys *tink.KeysetHandle
 		signers []*tink.KeysetHandle
@@ -37,43 +86,39 @@ func TestCreateAndVerify(t *testing.T) {
 			data:    []byte("foo"),
 		},
 	} {
-		index := []byte{}
-		userID := "alice"
-		appID := "app1"
+		t.Run(tc.desc, func(t *testing.T) {
+			index := []byte{}
+			userID := "alice"
+			appID := "app1"
 
-		m := NewMutation(index, domainID, appID, userID)
-		if err := m.SetPrevious(tc.old, true); err != nil {
-			t.Errorf("NewMutation(%v): %v", tc.old, err)
-			continue
-		}
-		if err := m.SetCommitment(tc.data); err != nil {
-			t.Errorf("SetCommitment(%v): %v", tc.data, err)
-			continue
-		}
-		if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
-			t.Errorf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
-			continue
-		}
-		update, err := m.SerializeAndSign(tc.signers, 0)
-		if err != nil {
-			t.Errorf("SerializeAndSign(%v): %v", tc.signers, err)
-			continue
-		}
-		// Verify mutation.
-		oldValue, err := FromLeafValue(tc.old)
-		if err != nil {
-			t.Errorf("FromLeafValue(%v): %v", tc.old, err)
-			continue
-		}
-		f := New()
-		newEntry, err := f.Mutate(oldValue, update.GetEntryUpdate().GetMutation())
-		if err != nil {
-			t.Errorf("Mutate(%v): %v", update.GetEntryUpdate().GetMutation(), err)
-			continue
-		}
+			m := NewMutation(index, domainID, appID, userID)
+			if err := m.SetPrevious(tc.old, true); err != nil {
+				t.Fatalf("NewMutation(%v): %v", tc.old, err)
+			}
+			if err := m.SetCommitment(tc.data); err != nil {
+				t.Fatalf("SetCommitment(%v): %v", tc.data, err)
+			}
+			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
+				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
+			}
+			update, err := m.SerializeAndSign(tc.signers, 0)
+			if err != nil {
+				t.Fatalf("SerializeAndSign(): %v", err)
+			}
+			// Verify mutation.
+			oldValue, err := FromLeafValue(tc.old)
+			if err != nil {
+				t.Fatalf("FromLeafValue(%v): %v", tc.old, err)
+			}
+			f := New()
+			newEntry, err := f.Mutate(oldValue, update.GetEntryUpdate().GetMutation())
+			if err != nil {
+				t.Fatalf("Mutate(%v): %v", update.GetEntryUpdate().GetMutation(), err)
+			}
 
-		if !m.EqualsRequested(newEntry) {
-			t.Errorf("EqualsRequested(): false")
-		}
+			if !m.EqualsRequested(newEntry) {
+				t.Errorf("EqualsRequested(): false")
+			}
+		})
 	}
 }

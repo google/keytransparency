@@ -215,7 +215,7 @@ func toArray(b []byte) [32]byte {
 // Multiple mutations for the same leaf will be applied to provided leaf.
 // The last valid mutation for each leaf is included in the output.
 // Returns a list of map leaves that should be updated.
-func (s *Sequencer) applyMutations(d *domain.Domain, mutations []*mutator.QueueMessage, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
+func (s *Sequencer) applyMutations(d *domain.Domain, msgs []*mutator.QueueMessage, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[[32]byte]*tpb.MapLeaf)
 	for _, l := range leaves {
@@ -223,8 +223,8 @@ func (s *Sequencer) applyMutations(d *domain.Domain, mutations []*mutator.QueueM
 	}
 
 	retMap := make(map[[32]byte]*tpb.MapLeaf)
-	for _, m := range mutations {
-		index := m.Mutation.GetIndex()
+	for _, msg := range msgs {
+		index := msg.Mutation.GetIndex()
 		var oldValue *pb.Entry // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[toArray(index)]; ok {
 			var err error
@@ -236,7 +236,7 @@ func (s *Sequencer) applyMutations(d *domain.Domain, mutations []*mutator.QueueM
 			}
 		}
 
-		newValue, err := s.mutatorFunc.Mutate(oldValue, m.Mutation)
+		newValue, err := s.mutatorFunc.Mutate(oldValue, msg.Mutation)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
 			mutationFailures.Inc(d.DomainID, "Mutate")
@@ -250,13 +250,14 @@ func (s *Sequencer) applyMutations(d *domain.Domain, mutations []*mutator.QueueM
 		}
 
 		// Serialize commitment.
-		extraData, err := proto.Marshal(m.ExtraData)
+		extraData, err := proto.Marshal(msg.ExtraData)
 		if err != nil {
 			glog.Warningf("Marshal(committed proto): %v", err)
 			mutationFailures.Inc(d.DomainID, "Marshal")
 			continue
 		}
 
+		// Make sure that only ONE MapLeaf is output per index.
 		retMap[toArray(index)] = &tpb.MapLeaf{
 			Index:     index,
 			LeafValue: leafValue,
