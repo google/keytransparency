@@ -139,7 +139,7 @@ func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int32) int3
 	}
 
 	if err := r.recieveFunc(ms); err != nil {
-		glog.Infof("queue.SendBatch failed: %v", err)
+		glog.Errorf("queue.SendBatch(): %v", err)
 		return 0
 	}
 	// TODO(gbelvin): Do we need finer grained errors?

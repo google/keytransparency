@@ -31,7 +31,7 @@ gcloud --quiet config set project ${PROJECT_NAME_CI}
 gcloud --quiet config set compute/zone ${CLOUDSDK_COMPUTE_ZONE}
 gcloud --quiet config set container/cluster ${CLUSTER_NAME_CI}
 gcloud --quiet container clusters get-credentials ${CLUSTER_NAME_CI}
-gcloud --quiet docker --authorize-only
+gcloud --quiet auth configure-docker
 
 
 echo "Generating keys..."
