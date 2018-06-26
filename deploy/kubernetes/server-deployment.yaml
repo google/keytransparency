@@ -32,18 +32,31 @@ spec:
         - --v=5
         image: us.gcr.io/key-transparency/keytransparency-server:latest
         livenessProbe:
-          exec:
-            command:
-            - curl
-            - -f
-            - http://localhost:8081/metrics
-          failureThreshold: 5
-          periodSeconds: 30
-          timeoutSeconds: 10
+         httpGet:
+           path: /metrics
+           port: 8081
         name: server
         ports:
         - containerPort: 8080
         - containerPort: 8081
         resources: {}
+      - name: prometheus-to-sd
+        image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
+        command:
+          - /monitor
+          - --stackdriver-prefix=custom.googleapis.com
+          - --source=keyserver:http://localhost:8081/metrics
+          - --pod-id=$(POD_NAME)
+          - --namespace-id=$(POD_NAMESPACE)
+          - --metrics-resolution=5s
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
       restartPolicy: Always
 status: {}
