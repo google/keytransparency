@@ -35,7 +35,9 @@ func queueMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *mutator.QueueM
 	if err != nil {
 		t.Fatalf("GetPublicKeysetHandle(): %v", err)
 	}
-	m.ReplaceAuthorizedKeys(pubkey.Keyset())
+	if err := m.ReplaceAuthorizedKeys(pubkey.Keyset()); err != nil {
+		t.Fatalf("ReplaceAuthorizedKeys(): %v", err)
+	}
 	update, err := m.SerializeAndSign(signers, 0)
 	if err != nil {
 		t.Fatalf("SerializeAndSign(): %v", err)
@@ -49,7 +51,7 @@ func queueMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *mutator.QueueM
 }
 
 // TestDuplicateMutations verifies that each call to tlog.SetLeaves specifies
-// each mapleaf.Index at most ONCE.  Failure to do so will corrupt the map.
+// each mapleaf.Index at most ONCE.
 func TestDuplicateMutations(t *testing.T) {
 
 	keyset1, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
