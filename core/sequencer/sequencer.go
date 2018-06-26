@@ -34,13 +34,17 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
-const domainIDLabel = "domainid"
+const (
+	domainIDLabel = "domainid"
+	reasonLabel   = "reason"
+)
 
 var (
 	once               sync.Once
 	knownDomains       monitoring.Gauge
 	batchSize          monitoring.Gauge
 	mutationCount      monitoring.Counter
+	mutationFailures   monitoring.Counter
 	sequencingRuns     monitoring.Counter
 	sequencingFailures monitoring.Counter
 	sequencingLatency  monitoring.Histogram
@@ -55,6 +59,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"mutation_count",
 		"Number of mutations the signer has processed for domainid since process start",
 		domainIDLabel)
+	mutationFailures = mf.NewCounter(
+		"mutation_failures",
+		"Number of invalid mutations the signer has processed for domainid since process start",
+		domainIDLabel, reasonLabel)
 	batchSize = mf.NewGauge(
 		"batch_size",
 		"Number of mutations the signer is attempting to process for domainid",
@@ -207,7 +215,7 @@ func toArray(b []byte) [32]byte {
 // Multiple mutations for the same leaf will be applied to provided leaf.
 // The last valid mutation for each leaf is included in the output.
 // Returns a list of map leaves that should be updated.
-func (s *Sequencer) applyMutations(msgs []*mutator.QueueMessage, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
+func (s *Sequencer) applyMutations(d *domain.Domain, msgs []*mutator.QueueMessage, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[[32]byte]*tpb.MapLeaf)
 	for _, l := range leaves {
@@ -223,6 +231,7 @@ func (s *Sequencer) applyMutations(msgs []*mutator.QueueMessage, leaves []*tpb.M
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
 			if err != nil {
 				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
+				mutationFailures.Inc(d.DomainID, "Unmarshal")
 				continue
 			}
 		}
@@ -230,11 +239,13 @@ func (s *Sequencer) applyMutations(msgs []*mutator.QueueMessage, leaves []*tpb.M
 		newValue, err := s.mutatorFunc.Mutate(oldValue, msg.Mutation)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
+			mutationFailures.Inc(d.DomainID, "Mutate")
 			continue // A bad mutation should not make the whole batch fail.
 		}
 		leafValue, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Warningf("ToLeafValue(): %v", err)
+			mutationFailures.Inc(d.DomainID, "Marshal")
 			continue
 		}
 
@@ -242,6 +253,7 @@ func (s *Sequencer) applyMutations(msgs []*mutator.QueueMessage, leaves []*tpb.M
 		extraData, err := proto.Marshal(msg.ExtraData)
 		if err != nil {
 			glog.Warningf("Marshal(committed proto): %v", err)
+			mutationFailures.Inc(d.DomainID, "Marshal")
 			continue
 		}
 
@@ -305,7 +317,7 @@ func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(msgs, leaves)
+	newLeaves, err := s.applyMutations(d, msgs, leaves)
 	if err != nil {
 		sequencingFailures.Inc(d.DomainID)
 		return err

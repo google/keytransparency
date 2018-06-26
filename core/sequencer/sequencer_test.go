@@ -17,6 +17,7 @@ package sequencer
 import (
 	"testing"
 
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/tink/go/signature"
@@ -82,7 +83,8 @@ func TestDuplicateMutations(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			newLeaves, err := s.applyMutations(tc.msgs, tc.leaves)
+			d := &domain.Domain{DomainID: "test"}
+			newLeaves, err := s.applyMutations(d, tc.msgs, tc.leaves)
 			if err != nil {
 				t.Errorf("applyMutations(): %v", err)
 			}
