@@ -2,9 +2,8 @@ language: go
 go:
 - 1.10.x
 dist: trusty
-sudo: required
 services:
-- docker
+- docker-ce
 cache:
   directories:
   - $HOME/google-cloud-sdk/
@@ -35,21 +34,17 @@ after_success:
   - bash <(curl -s https://codecov.io/bash)
 
 before_deploy:
-  - sudo apt-get update
-  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
-  - sudo pip3 install docker-compose
+  - pip3 install --user docker-compose
   - docker --version
   - docker-compose --version
   - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
     curl https://sdk.cloud.google.com | bash; fi
-  - source ~/virtualenv/python2.7/bin/activate
   - source $HOME/google-cloud-sdk/path.bash.inc
+  - gcloud --quiet version
   - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
   - tar -xzf travis_secrets.tar.gz
   - gcloud auth activate-service-account --key-file service_key.json
   - rm -f service_key.json
-  - gcloud --quiet components update kubectl
-  - gcloud --quiet version
   - go get github.com/google/trillian/server/trillian_log_server
   - go get github.com/google/trillian/server/trillian_log_signer
   - go get github.com/google/trillian/server/trillian_map_server
