@@ -34,7 +34,10 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
-const domainIDLabel = "domainid"
+const (
+	domainIDLabel = "domainid"
+	reasonLabel   = "reason"
+)
 
 var (
 	once               sync.Once
@@ -58,8 +61,8 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
-		"Number of mutations the signer has processed for domainid since process start",
-		domainIDLabel)
+		"Number of invalid mutations the signer has processed for domainid since process start",
+		domainIDLabel, reasonLabel)
 	batchSize = mf.NewGauge(
 		"batch_size",
 		"Number of mutations the signer is attempting to process for domainid",
@@ -228,7 +231,7 @@ func (s *Sequencer) applyMutations(d *domain.Domain, mutations []*mutator.QueueM
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
 			if err != nil {
 				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
-				mutationFailures.Inc(d.DomainID)
+				mutationFailures.Inc(d.DomainID, "Unmarshal")
 				continue
 			}
 		}
@@ -236,13 +239,13 @@ func (s *Sequencer) applyMutations(d *domain.Domain, mutations []*mutator.QueueM
 		newValue, err := s.mutatorFunc.Mutate(oldValue, m.Mutation)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
-			mutationFailures.Inc(d.DomainID)
+			mutationFailures.Inc(d.DomainID, "Mutate")
 			continue // A bad mutation should not make the whole batch fail.
 		}
 		leafValue, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Warningf("ToLeafValue(): %v", err)
-			mutationFailures.Inc(d.DomainID)
+			mutationFailures.Inc(d.DomainID, "Marshal")
 			continue
 		}
 
@@ -250,7 +253,7 @@ func (s *Sequencer) applyMutations(d *domain.Domain, mutations []*mutator.QueueM
 		extraData, err := proto.Marshal(m.ExtraData)
 		if err != nil {
 			glog.Warningf("Marshal(committed proto): %v", err)
-			mutationFailures.Inc(d.DomainID)
+			mutationFailures.Inc(d.DomainID, "Marshal")
 			continue
 		}
 
