@@ -29,6 +29,39 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func TestFlush(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+
+	if err := fillQueue(ctx, m); err != nil {
+		t.Fatalf("Failed to write updates: %v", err)
+	}
+
+	r, ok := m.NewReceiver(ctx, time.Now(), domainID, func([]*mutator.QueueMessage) error {
+		return nil
+	}, mutator.ReceiverOptions{
+		MaxBatchSize: 1,
+		Period:       1 * time.Hour,
+		MaxPeriod:    2 * time.Hour,
+	}).(*Receiver)
+	if !ok {
+		t.Fatalf("receiver is: %T", r)
+	}
+
+	err = r.FlushN(ctx, 5)
+	if err != nil {
+		t.Errorf("FlushN(5): %v", err)
+	}
+	err = r.FlushN(ctx, 1)
+	if err == nil {
+		t.Errorf("FlushN(1): %v, want err", err)
+	}
+}
+
 func TestRecieverChan(t *testing.T) {
 	ctx := context.Background()
 	m, err := New(newDB(t))

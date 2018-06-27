@@ -111,6 +111,7 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 	for {
 		select {
 		case <-r.ticker.C:
+			// We will be overdue for an epoch soon.
 			if _, err := r.sendMultiBatch(ctx, 1, int(r.opts.MaxBatchSize)); err != nil {
 				glog.Errorf("minTick: sendMultiBatch(): %v", err)
 			}
@@ -132,6 +133,9 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 func (r *Receiver) sendMultiBatch(ctx context.Context, minMsgs, maxMsgs int) (int, error) {
 	var total int
 	var err error
+	if minMsgs > maxMsgs {
+		minMsgs = maxMsgs
+	}
 	for sent := maxMsgs; sent >= maxMsgs; {
 		sent, err = r.sendBatch(ctx, minMsgs, maxMsgs)
 		if err != nil {
