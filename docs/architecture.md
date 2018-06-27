@@ -2,7 +2,7 @@
 
 ![Architecture](images/architecture.png)
 
-#Clients
+# Clients
 Clients make requests to Key Transparency servers over HTTPS / JSON or gRPC.  
 
 # Key Transparency Server
