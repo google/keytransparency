@@ -155,10 +155,10 @@ func TestQueueSendBatch(t *testing.T) {
 			batchSize:   10,
 		},
 	} {
-		var wg sync.WaitGroup
-		wg.Add(len(tc.updates))
-		var i int
 		t.Run(tc.description, func(t *testing.T) {
+			var wg sync.WaitGroup
+			wg.Add(len(tc.updates))
+			var i int
 			r, ok := m.NewReceiver(ctx, time.Now(), domainID, func(msgs []*mutator.QueueMessage) error {
 				if got, want := len(msgs), len(tc.updates[i]); got != want {
 					t.Errorf("len(msgs): %v, want %v", got, want)
