@@ -19,7 +19,6 @@ addons:
     - python3-pip
 
 install:
-  - go get github.com/wadey/gocovmerge
   - go get -u github.com/alecthomas/gometalinter
   - gometalinter --install 
   - go get -t ./...
@@ -27,11 +26,10 @@ install:
 script:
   - make
   - gometalinter --config=gometalinter.json ./...
-  - go test ./... -coverprofile=out1.txt
-  - TRILLIAN_SQL_DRIVER=mysql go test ./impl/integration/ -coverprofile=out2.txt -coverpkg=./...
+  - go test ./... -coverprofile=coverage1.txt
+  - TRILLIAN_SQL_DRIVER=mysql go test ./impl/integration/ -coverprofile=coverage2.txt -coverpkg=./...
 
 after_success:
-  - gocovmerge out1.txt out2.txt > coverage.txt
   - bash <(curl -s https://codecov.io/bash)
 
 before_deploy:
