@@ -17,7 +17,6 @@ addons:
   apt:
     packages:
     - python3-pip
-    - parallel
 
 install:
   - go get -u github.com/alecthomas/gometalinter
@@ -25,10 +24,9 @@ install:
   - go get -t ./...
 
 script:
-  - export TRILLIAN_SQL_DRIVER=mysql
   - make
   - gometalinter --config=gometalinter.json ./...
-  - ./coverage.sh
+  - TRILLIAN_SQL_DRIVER=mysql go test ./... -coverprofile=coverage.txt
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
