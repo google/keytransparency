@@ -36,7 +36,7 @@ test: main
 	TRILLIAN_SQL_DRIVER=mysql go test ./...
 
 coverage: main
-	TRILLIAN_SQL_DRIVER=mysql go test ./... -cover 
+	TRILLIAN_SQL_DRIVER=mysql go test ./... -cover
 
 check:
 	gometalinter --config=gometalinter.json ./...

@@ -1,4 +1,4 @@
-#Contributing to the Key Transparency Server
+# Contributing to the Key Transparency Server
 
 We'd love for you to contribute to our source code! Here are the guidelines we'd like you to follow:
 

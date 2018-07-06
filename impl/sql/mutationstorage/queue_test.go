@@ -29,6 +29,39 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func TestFlush(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+
+	if err := fillQueue(ctx, m); err != nil {
+		t.Fatalf("Failed to write updates: %v", err)
+	}
+
+	r, ok := m.NewReceiver(ctx, time.Now(), domainID, func([]*mutator.QueueMessage) error {
+		return nil
+	}, mutator.ReceiverOptions{
+		MaxBatchSize: 1,
+		Period:       1 * time.Hour,
+		MaxPeriod:    2 * time.Hour,
+	}).(*Receiver)
+	if !ok {
+		t.Fatalf("receiver is: %T", r)
+	}
+
+	err = r.FlushN(ctx, 5)
+	if err != nil {
+		t.Errorf("FlushN(5): %v", err)
+	}
+	err = r.FlushN(ctx, 1)
+	if err == nil {
+		t.Errorf("FlushN(1): %v, want err", err)
+	}
+}
+
 func TestRecieverChan(t *testing.T) {
 	ctx := context.Background()
 	m, err := New(newDB(t))
@@ -131,48 +164,48 @@ func TestQueueSendBatch(t *testing.T) {
 
 	for _, tc := range []struct {
 		description string
-		updates     []*pb.EntryUpdate
+		updates     [][]*pb.EntryUpdate
 		batchSize   int32
 	}{
 		{
-			description: "read half",
-			updates: []*pb.EntryUpdate{
-				genUpdate(1),
-				genUpdate(2),
-				genUpdate(3),
-			},
-			batchSize: 3,
-		},
-		{
-			description: "read rest",
-			updates: []*pb.EntryUpdate{
-				genUpdate(4),
-				genUpdate(5),
+			description: "read half and rest",
+			updates: [][]*pb.EntryUpdate{
+				{
+					genUpdate(1),
+					genUpdate(2),
+					genUpdate(3),
+				},
+				{
+					genUpdate(4),
+					genUpdate(5),
+				},
 			},
 			batchSize: 3,
 		},
 		{
 			description: "empty queue",
-			updates:     nil,
+			updates:     [][]*pb.EntryUpdate{{}},
 			batchSize:   10,
 		},
 	} {
-		wg := new(sync.WaitGroup)
-		wg.Add(1)
 		t.Run(tc.description, func(t *testing.T) {
+			var wg sync.WaitGroup
+			wg.Add(len(tc.updates))
+			var i int
 			r, ok := m.NewReceiver(ctx, time.Now(), domainID, func(msgs []*mutator.QueueMessage) error {
-				if got, want := len(msgs), len(tc.updates); got != want {
+				if got, want := len(msgs), len(tc.updates[i]); got != want {
 					t.Errorf("len(msgs): %v, want %v", got, want)
 				}
-				for i, msg := range msgs {
-					if got, want := msg.Mutation, tc.updates[i].Mutation; !proto.Equal(got, want) {
+				for j, msg := range msgs {
+					if got, want := msg.Mutation, tc.updates[i][j].Mutation; !proto.Equal(got, want) {
 						t.Errorf("msg[%v].Mutation: %v, want %v", i, got, want)
 					}
-					if got, want := msg.ExtraData, tc.updates[i].Committed; !proto.Equal(got, want) {
+					if got, want := msg.ExtraData, tc.updates[i][j].Committed; !proto.Equal(got, want) {
 						t.Errorf("msg[%v].ExtraData: %v, want %v", i, got, want)
 					}
 				}
 				wg.Done()
+				i++
 				return nil
 			}, mutator.ReceiverOptions{
 				MaxBatchSize: tc.batchSize,
