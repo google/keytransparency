@@ -88,7 +88,11 @@ func main() {
 
 	// TODO(gbelvin): persist trusted roots
 	trusted := types.LogRootV1{}
-	go mon.ProcessLoop(ctx, *domainID, trusted)
+	go func() {
+		if err := mon.ProcessLoop(ctx, *domainID, trusted); err != nil {
+			glog.Errorf("ProcessLoop: %v", err)
+		}
+	}()
 
 	// Monitor Server.
 	srv := monitorserver.New(store)

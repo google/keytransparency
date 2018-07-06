@@ -37,7 +37,7 @@ var (
 func init() {
 	// Silence "logging before flag.Parse"
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	flag.CommandLine.Parse([]string{})
+	_ = flag.CommandLine.Parse([]string{})
 
 	RootCmd.AddCommand(hammerCmd)
 
