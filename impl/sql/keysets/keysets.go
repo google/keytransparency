@@ -54,7 +54,7 @@ type keyset struct {
 }
 
 // newKeyset converts a tpb.KeySet to keyset.
-func newKeyset(instance int64, domainID, appID string, k *tpb.KeySet) (*keyset, error) {
+func newKeyset(instance int64, domainID, appID string, k proto.Message) (*keyset, error) {
 	data, err := proto.Marshal(k)
 	if err != nil {
 		return nil, err
