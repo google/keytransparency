@@ -41,7 +41,9 @@ func FakeAuthFunc(ctx context.Context) (context.Context, error) {
 
 // GetFakeCredential returns fake PerRPCCredentials
 func GetFakeCredential(userID string) credentials.PerRPCCredentials {
-	return fakeCredential{userID}
+	return fakeCredential{
+		userID: userID,
+	}
 }
 
 // fakeCredential implements credentials.PerRPCCredentials.

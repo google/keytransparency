@@ -53,8 +53,8 @@ type NamedTestFn struct {
 // This is done so that tests can be run in different environments in a portable way.
 var AllTests = []NamedTestFn{
 	// Client Tests
-	{"TestEmptyGetAndUpdate", TestEmptyGetAndUpdate},
-	{"TestListHistory", TestListHistory},
+	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate},
+	{Name: "TestListHistory", Fn: TestListHistory},
 	// Monitor Tests
-	{"TestMonitor", TestMonitor},
+	{Name: "TestMonitor", Fn: TestMonitor},
 }
