@@ -49,13 +49,13 @@ and verify that the results are consistent.`,
 
 		c, err := GetClient(ctx)
 		if err != nil {
-			return fmt.Errorf("Error connecting: %v", err)
+			return fmt.Errorf("error connecting: %v", err)
 		}
 		if end == 0 {
 			// Get the current epoch.
 			slr, smr, err := c.VerifiedGetLatestEpoch(ctx)
 			if err != nil {
-				return fmt.Errorf("GetEntry failed: %v", err)
+				return fmt.Errorf("failed to get user: %v", err)
 			}
 			if verbose {
 				fmt.Printf("Got current epoch: %v\n", slr.TreeSize-1)
@@ -65,11 +65,11 @@ and verify that the results are consistent.`,
 
 		roots, profiles, err := c.PaginateHistory(ctx, appID, userID, start, end)
 		if err != nil {
-			return fmt.Errorf("ListHistory failed: %v", err)
+			return fmt.Errorf("failed fetching history: %v", err)
 		}
 		compressed, err := client.CompressHistory(profiles)
 		if err != nil {
-			return fmt.Errorf("CompressHistory() failed: %v", err)
+			return fmt.Errorf("failed compressing history: %v", err)
 		}
 
 		// Sort map heads.

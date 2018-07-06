@@ -147,13 +147,13 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 			AppId:    appID,
 		})
 		if err != nil {
-			return fmt.Errorf("GetEntry(): %v", err)
+			return fmt.Errorf("gen-test-vectors: GetEntry(): %v", err)
 		}
 		if _, _, err := env.Client.VerifyGetEntryResponse(ctx, env.Domain.DomainId, appID, tc.userID, types.LogRootV1{}, e); err != nil {
-			return fmt.Errorf("VerifyGetEntryResponse(): %v", err)
+			return fmt.Errorf("gen-test-vectors: VerifyGetEntryResponse(): %v", err)
 		}
 		if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
-			return fmt.Errorf("VerifiedGetEntry(%v): %s, want %s", tc.userID, got, want)
+			return fmt.Errorf("gen-test-vectors: VerifiedGetEntry(%v): %s, want %s", tc.userID, got, want)
 		}
 		getEntryResps = append(getEntryResps, testdata.GetEntryResponseVector{
 			Desc:   tc.desc,
@@ -175,21 +175,21 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 			defer cancel()
 			m, err := env.Client.Update(cctx, u, tc.signers)
 			if got, want := err, context.DeadlineExceeded; got != want {
-				return fmt.Errorf("Update(%v): %v, want %v", tc.userID, got, want)
+				return fmt.Errorf("gen-test-vectors: Update(%v): %v, want %v", tc.userID, got, want)
 			}
 
 			if err := env.Receiver.FlushN(ctx, 1); err != nil {
-				return fmt.Errorf("FlushN(1): %v", err)
+				return fmt.Errorf("gen-test-vectors: FlushN(1): %v", err)
 			}
 
 			cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
 			defer cancel()
 			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
-				return fmt.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
+				return fmt.Errorf("gen-test-vectors: WaitForUserUpdate(%v): %v, want nil", m, err)
 			}
 		}
 		if err := SaveTestVectors(*testdataDir, env, getEntryResps); err != nil {
-			return fmt.Errorf("SaveTestVectors(): %v", err)
+			return fmt.Errorf("gen-test-vectors: SaveTestVectors(): %v", err)
 		}
 	}
 	return nil
@@ -208,17 +208,17 @@ func SaveTestVectors(dir string, env *integration.Env, resps []testdata.GetEntry
 	}
 	defer f.Close()
 	if err := marshaler.Marshal(f, env.Domain); err != nil {
-		return fmt.Errorf("jsonpb.Marshal(): %v", err)
+		return fmt.Errorf("gen-test-vectors: jsonpb.Marshal(): %v", err)
 	}
 
 	// Save list of responses
 	respFile := dir + "/getentryresponse.json"
 	out, err := json.MarshalIndent(resps, "", "\t")
 	if err != nil {
-		return fmt.Errorf("json.Marshal(): %v", err)
+		return fmt.Errorf("gen-test-vectors: json.Marshal(): %v", err)
 	}
 	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
-		return fmt.Errorf("WriteFile(%v): %v", respFile, err)
+		return fmt.Errorf("gen-test-vectors: WriteFile(%v): %v", respFile, err)
 	}
 	return nil
 }

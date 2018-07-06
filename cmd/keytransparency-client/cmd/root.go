@@ -259,7 +259,7 @@ func readConfigFromDisk() (*pb.Domain, error) {
 	// Log PubKey.
 	logPubKey, err := pem.ReadPublicKeyFile(logPEMFile)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open log public key %v: %v", logPEMFile, err)
+		return nil, fmt.Errorf("failed to open log public key %v: %v", logPEMFile, err)
 	}
 	logPubPB, err := der.ToPublicProto(logPubKey)
 	if err != nil {
