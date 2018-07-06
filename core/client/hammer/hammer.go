@@ -104,8 +104,8 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 	}, nil
 }
 
-// Run runs operationCount with up to maxWorkers.
-// workers should roughly be (goal QPS / timeout seconds)
+// Run runs a total of operationCount operations across numWorkers.
+// The number of workers should roughly be (goal QPS / timeout seconds)
 func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	workers, err := h.newWorkers(numWorkers)
 	if err != nil {
@@ -124,49 +124,49 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	if ok := c.TestTypes["batch"]; ok {
 		// Batch Write users
 		log.Printf("Batch Write")
-		requests := requestGenerator(ctx, c.BatchWriteQPS, c.BatchWriteSize, c.BatchWriteCount, c.Duration)
+		args := genArgs(ctx, c.BatchWriteQPS, c.BatchWriteSize, c.BatchWriteCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
 		for i := range workers {
 			handlers = append(handlers, workers[i].writeOp)
 		}
 		log.Printf("workers: %v", len(handlers))
-		executeRequests(ctx, requests, handlers)
+		executeRequests(ctx, args, handlers)
 		fmt.Print("\n")
 	}
 
 	if ok := c.TestTypes["write"]; ok {
 		// Write users
 		log.Printf("User Write")
-		requests := requestGenerator(ctx, c.WriteQPS, 1, c.WriteCount, c.Duration)
+		args := genArgs(ctx, c.WriteQPS, 1, c.WriteCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
 		for i := range workers {
 			handlers = append(handlers, workers[i].writeOp)
 		}
-		executeRequests(ctx, requests, handlers)
+		executeRequests(ctx, args, handlers)
 		fmt.Print("\n")
 	}
 
 	if ok := c.TestTypes["read"]; ok {
 		// Read users
 		log.Printf("User Read")
-		requests := requestGenerator(ctx, c.ReadQPS, c.ReadPageSize, c.ReadCount, c.Duration)
+		args := genArgs(ctx, c.ReadQPS, c.ReadPageSize, c.ReadCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
 		for i := range workers {
 			handlers = append(handlers, workers[i].readOp)
 		}
-		executeRequests(ctx, requests, handlers)
+		executeRequests(ctx, args, handlers)
 		fmt.Print("\n")
 	}
 
 	if ok := c.TestTypes["audit"]; ok {
 		// History
 		log.Printf("User Audit History")
-		requests := requestGenerator(ctx, c.HistoryQPS, c.HistoryPageSize, c.HistoryCount, c.Duration)
+		args := genArgs(ctx, c.HistoryQPS, c.HistoryPageSize, c.HistoryCount, c.Duration)
 		handlers := make([]ReqHandler, 0, len(workers))
 		for i := range workers {
 			handlers = append(handlers, workers[i].historyOp)
 		}
-		executeRequests(ctx, requests, handlers)
+		executeRequests(ctx, args, handlers)
 		fmt.Print("\n")
 	}
 
@@ -175,8 +175,8 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 	return nil
 }
 
-func requestGenerator(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan request {
-	inflightReqs := make(chan request, qps)
+func genArgs(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan opArg {
+	inflightReqs := make(chan opArg, qps)
 	go func() {
 		cctx, cancel := context.WithTimeout(ctx, duration)
 		defer cancel()
@@ -192,7 +192,7 @@ func requestGenerator(ctx context.Context, qps, batch, count int, duration time.
 				log.Printf("Duration %v elapsed, stopping request generation", duration)
 				return
 			}
-			inflightReqs <- request{
+			inflightReqs <- opArg{
 				UserIDs:  userIDs,
 				PageSize: batch,
 			}
@@ -225,8 +225,8 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 	return workers, nil
 }
 
-// batchWriteOp queues many user mutations, waits, and then verifies them all.
-func (w *worker) writeOp(ctx context.Context, req *request) error {
+// writeOp queues many user mutations, waits, and then verifies them all.
+func (w *worker) writeOp(ctx context.Context, req *opArg) error {
 	users := make([]*tpb.User, 0, len(req.UserIDs))
 	for _, userID := range req.UserIDs {
 		users = append(users, &tpb.User{
@@ -241,12 +241,12 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 	mutations := make([]*entry.Mutation, 0, len(users))
 	for _, u := range users {
 		callOptions := w.callOptions(u.UserId)
-		cctx, cancel := context.WithTimeout(ctx, w.timeout)
-		defer cancel()
 		//fmt.Print(".")
 		w.bar.Increment()
 
+		cctx, cancel := context.WithTimeout(ctx, w.timeout)
 		m, err := w.client.CreateMutation(cctx, u)
+		cancel()
 		if err != nil {
 			fmt.Print("!")
 			return err
@@ -262,8 +262,9 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 
 	for _, m := range mutations {
 		cctx, cancel := context.WithTimeout(ctx, w.timeout)
-		defer cancel()
-		if _, err := w.client.WaitForUserUpdate(cctx, m); err != nil {
+		_, err := w.client.WaitForUserUpdate(cctx, m)
+		cancel()
+		if err != nil {
 			fmt.Print("!")
 			return err
 		}
@@ -275,7 +276,7 @@ func (w *worker) writeOp(ctx context.Context, req *request) error {
 
 // readOp simulates multiple read operations by a single client.
 // Typical conversation setup involves querying two userIDs: self and other.
-func (w *worker) readOp(ctx context.Context, req *request) error {
+func (w *worker) readOp(ctx context.Context, req *opArg) error {
 	for _, userID := range req.UserIDs {
 		//fmt.Print(".")
 		w.bar.Increment()
@@ -291,7 +292,7 @@ func (w *worker) readOp(ctx context.Context, req *request) error {
 }
 
 // auditHistoryOp simulates the daily check-in.
-func (w *worker) historyOp(ctx context.Context, req *request) error {
+func (w *worker) historyOp(ctx context.Context, req *opArg) error {
 	for _, userID := range req.UserIDs {
 		//fmt.Print(".")
 		w.bar.Increment()
