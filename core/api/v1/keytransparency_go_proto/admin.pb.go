@@ -63,7 +63,7 @@ func (m *Domain) Reset()         { *m = Domain{} }
 func (m *Domain) String() string { return proto.CompactTextString(m) }
 func (*Domain) ProtoMessage()    {}
 func (*Domain) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_c3b05a971594dbf6, []int{0}
+	return fileDescriptor_admin_16c702ec8e54ed10, []int{0}
 }
 func (m *Domain) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Domain.Unmarshal(m, b)
@@ -147,7 +147,7 @@ func (m *ListDomainsRequest) Reset()         { *m = ListDomainsRequest{} }
 func (m *ListDomainsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListDomainsRequest) ProtoMessage()    {}
 func (*ListDomainsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_c3b05a971594dbf6, []int{1}
+	return fileDescriptor_admin_16c702ec8e54ed10, []int{1}
 }
 func (m *ListDomainsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListDomainsRequest.Unmarshal(m, b)
@@ -186,7 +186,7 @@ func (m *ListDomainsResponse) Reset()         { *m = ListDomainsResponse{} }
 func (m *ListDomainsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListDomainsResponse) ProtoMessage()    {}
 func (*ListDomainsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_c3b05a971594dbf6, []int{2}
+	return fileDescriptor_admin_16c702ec8e54ed10, []int{2}
 }
 func (m *ListDomainsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListDomainsResponse.Unmarshal(m, b)
@@ -228,7 +228,7 @@ func (m *GetDomainRequest) Reset()         { *m = GetDomainRequest{} }
 func (m *GetDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*GetDomainRequest) ProtoMessage()    {}
 func (*GetDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_c3b05a971594dbf6, []int{3}
+	return fileDescriptor_admin_16c702ec8e54ed10, []int{3}
 }
 func (m *GetDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetDomainRequest.Unmarshal(m, b)
@@ -280,7 +280,7 @@ func (m *CreateDomainRequest) Reset()         { *m = CreateDomainRequest{} }
 func (m *CreateDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateDomainRequest) ProtoMessage()    {}
 func (*CreateDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_c3b05a971594dbf6, []int{4}
+	return fileDescriptor_admin_16c702ec8e54ed10, []int{4}
 }
 func (m *CreateDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateDomainRequest.Unmarshal(m, b)
@@ -354,7 +354,7 @@ func (m *DeleteDomainRequest) Reset()         { *m = DeleteDomainRequest{} }
 func (m *DeleteDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteDomainRequest) ProtoMessage()    {}
 func (*DeleteDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_c3b05a971594dbf6, []int{5}
+	return fileDescriptor_admin_16c702ec8e54ed10, []int{5}
 }
 func (m *DeleteDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteDomainRequest.Unmarshal(m, b)
@@ -393,7 +393,7 @@ func (m *UndeleteDomainRequest) Reset()         { *m = UndeleteDomainRequest{} }
 func (m *UndeleteDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*UndeleteDomainRequest) ProtoMessage()    {}
 func (*UndeleteDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_c3b05a971594dbf6, []int{6}
+	return fileDescriptor_admin_16c702ec8e54ed10, []int{6}
 }
 func (m *UndeleteDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UndeleteDomainRequest.Unmarshal(m, b)
@@ -657,9 +657,9 @@ var _KeyTransparencyAdmin_serviceDesc = grpc.ServiceDesc{
 	Metadata: "v1/admin.proto",
 }
 
-func init() { proto.RegisterFile("v1/admin.proto", fileDescriptor_admin_c3b05a971594dbf6) }
+func init() { proto.RegisterFile("v1/admin.proto", fileDescriptor_admin_16c702ec8e54ed10) }
 
-var fileDescriptor_admin_c3b05a971594dbf6 = []byte{
+var fileDescriptor_admin_16c702ec8e54ed10 = []byte{
 	// 679 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x95, 0x4d, 0x6e, 0xd3, 0x40,
 	0x14, 0xc7, 0xe5, 0x84, 0xa6, 0xed, 0x24, 0x0d, 0x65, 0x52, 0x8a, 0x9b, 0x22, 0x48, 0xcd, 0x26,
