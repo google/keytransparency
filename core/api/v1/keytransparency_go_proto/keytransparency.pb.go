@@ -50,7 +50,7 @@ func (m *Committed) Reset()         { *m = Committed{} }
 func (m *Committed) String() string { return proto.CompactTextString(m) }
 func (*Committed) ProtoMessage()    {}
 func (*Committed) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{0}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{0}
 }
 func (m *Committed) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Committed.Unmarshal(m, b)
@@ -99,7 +99,7 @@ func (m *EntryUpdate) Reset()         { *m = EntryUpdate{} }
 func (m *EntryUpdate) String() string { return proto.CompactTextString(m) }
 func (*EntryUpdate) ProtoMessage()    {}
 func (*EntryUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{1}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{1}
 }
 func (m *EntryUpdate) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntryUpdate.Unmarshal(m, b)
@@ -160,7 +160,7 @@ func (m *Entry) Reset()         { *m = Entry{} }
 func (m *Entry) String() string { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()    {}
 func (*Entry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{2}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{2}
 }
 func (m *Entry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Entry.Unmarshal(m, b)
@@ -234,7 +234,7 @@ func (m *MutationProof) Reset()         { *m = MutationProof{} }
 func (m *MutationProof) String() string { return proto.CompactTextString(m) }
 func (*MutationProof) ProtoMessage()    {}
 func (*MutationProof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{3}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{3}
 }
 func (m *MutationProof) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MutationProof.Unmarshal(m, b)
@@ -281,7 +281,7 @@ func (m *MapperMetadata) Reset()         { *m = MapperMetadata{} }
 func (m *MapperMetadata) String() string { return proto.CompactTextString(m) }
 func (*MapperMetadata) ProtoMessage()    {}
 func (*MapperMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{4}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{4}
 }
 func (m *MapperMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MapperMetadata.Unmarshal(m, b)
@@ -328,7 +328,7 @@ func (m *GetEntryRequest) Reset()         { *m = GetEntryRequest{} }
 func (m *GetEntryRequest) String() string { return proto.CompactTextString(m) }
 func (*GetEntryRequest) ProtoMessage()    {}
 func (*GetEntryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{5}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{5}
 }
 func (m *GetEntryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetEntryRequest.Unmarshal(m, b)
@@ -405,7 +405,7 @@ func (m *GetEntryResponse) Reset()         { *m = GetEntryResponse{} }
 func (m *GetEntryResponse) String() string { return proto.CompactTextString(m) }
 func (*GetEntryResponse) ProtoMessage()    {}
 func (*GetEntryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{6}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{6}
 }
 func (m *GetEntryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetEntryResponse.Unmarshal(m, b)
@@ -498,7 +498,7 @@ func (m *ListEntryHistoryRequest) Reset()         { *m = ListEntryHistoryRequest
 func (m *ListEntryHistoryRequest) String() string { return proto.CompactTextString(m) }
 func (*ListEntryHistoryRequest) ProtoMessage()    {}
 func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{7}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{7}
 }
 func (m *ListEntryHistoryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListEntryHistoryRequest.Unmarshal(m, b)
@@ -576,7 +576,7 @@ func (m *ListEntryHistoryResponse) Reset()         { *m = ListEntryHistoryRespon
 func (m *ListEntryHistoryResponse) String() string { return proto.CompactTextString(m) }
 func (*ListEntryHistoryResponse) ProtoMessage()    {}
 func (*ListEntryHistoryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{8}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{8}
 }
 func (m *ListEntryHistoryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListEntryHistoryResponse.Unmarshal(m, b)
@@ -632,7 +632,7 @@ func (m *UpdateEntryRequest) Reset()         { *m = UpdateEntryRequest{} }
 func (m *UpdateEntryRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateEntryRequest) ProtoMessage()    {}
 func (*UpdateEntryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{9}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{9}
 }
 func (m *UpdateEntryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateEntryRequest.Unmarshal(m, b)
@@ -701,7 +701,7 @@ func (m *UpdateEntryResponse) Reset()         { *m = UpdateEntryResponse{} }
 func (m *UpdateEntryResponse) String() string { return proto.CompactTextString(m) }
 func (*UpdateEntryResponse) ProtoMessage()    {}
 func (*UpdateEntryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{10}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{10}
 }
 func (m *UpdateEntryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateEntryResponse.Unmarshal(m, b)
@@ -746,7 +746,7 @@ func (m *GetEpochRequest) Reset()         { *m = GetEpochRequest{} }
 func (m *GetEpochRequest) String() string { return proto.CompactTextString(m) }
 func (*GetEpochRequest) ProtoMessage()    {}
 func (*GetEpochRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{11}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{11}
 }
 func (m *GetEpochRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetEpochRequest.Unmarshal(m, b)
@@ -803,7 +803,7 @@ func (m *GetLatestEpochRequest) Reset()         { *m = GetLatestEpochRequest{} }
 func (m *GetLatestEpochRequest) String() string { return proto.CompactTextString(m) }
 func (*GetLatestEpochRequest) ProtoMessage()    {}
 func (*GetLatestEpochRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{12}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{12}
 }
 func (m *GetLatestEpochRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetLatestEpochRequest.Unmarshal(m, b)
@@ -859,7 +859,7 @@ func (m *Epoch) Reset()         { *m = Epoch{} }
 func (m *Epoch) String() string { return proto.CompactTextString(m) }
 func (*Epoch) ProtoMessage()    {}
 func (*Epoch) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{13}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{13}
 }
 func (m *Epoch) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Epoch.Unmarshal(m, b)
@@ -936,7 +936,7 @@ func (m *ListMutationsRequest) Reset()         { *m = ListMutationsRequest{} }
 func (m *ListMutationsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsRequest) ProtoMessage()    {}
 func (*ListMutationsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{14}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{14}
 }
 func (m *ListMutationsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMutationsRequest.Unmarshal(m, b)
@@ -1000,7 +1000,7 @@ func (m *ListMutationsResponse) Reset()         { *m = ListMutationsResponse{} }
 func (m *ListMutationsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsResponse) ProtoMessage()    {}
 func (*ListMutationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_1a4dae9ae6f53062, []int{15}
+	return fileDescriptor_keytransparency_33a488312ebbbb29, []int{15}
 }
 func (m *ListMutationsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMutationsResponse.Unmarshal(m, b)
@@ -1488,10 +1488,10 @@ var _KeyTransparency_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("v1/keytransparency.proto", fileDescriptor_keytransparency_1a4dae9ae6f53062)
+	proto.RegisterFile("v1/keytransparency.proto", fileDescriptor_keytransparency_33a488312ebbbb29)
 }
 
-var fileDescriptor_keytransparency_1a4dae9ae6f53062 = []byte{
+var fileDescriptor_keytransparency_33a488312ebbbb29 = []byte{
 	// 1295 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x98, 0xcf, 0x6f, 0x1b, 0xc5,
 	0x17, 0xc0, 0xb5, 0x76, 0xec, 0xd8, 0xcf, 0xf9, 0x51, 0x4d, 0x93, 0x6f, 0xb6, 0xee, 0xb7, 0x10,

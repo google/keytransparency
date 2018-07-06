@@ -41,7 +41,7 @@ func (m *GetKeySetRequest) Reset()         { *m = GetKeySetRequest{} }
 func (m *GetKeySetRequest) String() string { return proto.CompactTextString(m) }
 func (*GetKeySetRequest) ProtoMessage()    {}
 func (*GetKeySetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_usermanager_ff9665bcb81e2069, []int{0}
+	return fileDescriptor_usermanager_b190d25534bddbe9, []int{0}
 }
 func (m *GetKeySetRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetKeySetRequest.Unmarshal(m, b)
@@ -94,7 +94,7 @@ func (m *CreateUserRequest) Reset()         { *m = CreateUserRequest{} }
 func (m *CreateUserRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateUserRequest) ProtoMessage()    {}
 func (*CreateUserRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_usermanager_ff9665bcb81e2069, []int{1}
+	return fileDescriptor_usermanager_b190d25534bddbe9, []int{1}
 }
 func (m *CreateUserRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateUserRequest.Unmarshal(m, b)
@@ -146,7 +146,7 @@ func (m *UpdateUserRequest) Reset()         { *m = UpdateUserRequest{} }
 func (m *UpdateUserRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateUserRequest) ProtoMessage()    {}
 func (*UpdateUserRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_usermanager_ff9665bcb81e2069, []int{2}
+	return fileDescriptor_usermanager_b190d25534bddbe9, []int{2}
 }
 func (m *UpdateUserRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateUserRequest.Unmarshal(m, b)
@@ -201,7 +201,7 @@ func (m *BatchCreateUserRequest) Reset()         { *m = BatchCreateUserRequest{}
 func (m *BatchCreateUserRequest) String() string { return proto.CompactTextString(m) }
 func (*BatchCreateUserRequest) ProtoMessage()    {}
 func (*BatchCreateUserRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_usermanager_ff9665bcb81e2069, []int{3}
+	return fileDescriptor_usermanager_b190d25534bddbe9, []int{3}
 }
 func (m *BatchCreateUserRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchCreateUserRequest.Unmarshal(m, b)
@@ -262,7 +262,7 @@ func (m *BatchCreateUserResponse) Reset()         { *m = BatchCreateUserResponse
 func (m *BatchCreateUserResponse) String() string { return proto.CompactTextString(m) }
 func (*BatchCreateUserResponse) ProtoMessage()    {}
 func (*BatchCreateUserResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_usermanager_ff9665bcb81e2069, []int{4}
+	return fileDescriptor_usermanager_b190d25534bddbe9, []int{4}
 }
 func (m *BatchCreateUserResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchCreateUserResponse.Unmarshal(m, b)
@@ -482,10 +482,10 @@ var _UserManager_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("usermanager/v1/usermanager.proto", fileDescriptor_usermanager_ff9665bcb81e2069)
+	proto.RegisterFile("usermanager/v1/usermanager.proto", fileDescriptor_usermanager_b190d25534bddbe9)
 }
 
-var fileDescriptor_usermanager_ff9665bcb81e2069 = []byte{
+var fileDescriptor_usermanager_b190d25534bddbe9 = []byte{
 	// 568 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x55, 0xdd, 0x6a, 0x13, 0x41,
 	0x14, 0x66, 0x9b, 0x36, 0x36, 0x13, 0xb0, 0xed, 0xe0, 0x4f, 0x88, 0x5e, 0xc4, 0x15, 0x21, 0x78,
