@@ -39,7 +39,9 @@ func TestWriteRead(t *testing.T) {
 		t.Fatalf("Failed to create keysets.Storage")
 	}
 
-	signature.RegisterStandardKeyTypes()
+	if _, err := signature.RegisterStandardKeyTypes(); err != nil {
+		t.Fatalf("RegisterStandardKeyTypes(): %v", err)
+	}
 	ks, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
 	if err != nil {
 		t.Fatalf("tink.GenerateNew(): %v", err)
