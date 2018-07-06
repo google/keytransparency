@@ -17,7 +17,7 @@ package fake
 import (
 	"context"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -31,18 +31,18 @@ type keyID struct {
 
 // KeySets implements storage.UserManagerTable in memory.
 type KeySets struct {
-	keysets map[keyID]*tpb.KeySet
+	keysets map[keyID]*tink.KeysetHandle
 }
 
 // NewKeySets produces a fake implementation of storage.UserManagerTable.
 func NewKeySets() *KeySets {
 	return &KeySets{
-		keysets: make(map[keyID]*tpb.KeySet),
+		keysets: make(map[keyID]*tink.KeysetHandle),
 	}
 }
 
 // Get returns the requested keyset.
-func (k *KeySets) Get(ctx context.Context, instance int64, domainID, appID string) (*tpb.KeySet, error) {
+func (k *KeySets) Get(ctx context.Context, instance int64, domainID, appID string) (*tink.KeysetHandle, error) {
 	ks, ok := k.keysets[keyID{
 		instance: instance,
 		domainID: domainID,

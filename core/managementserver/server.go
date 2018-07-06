@@ -21,19 +21,30 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/google/tink/go/tink"
+
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/usermanager/v1/usermanager_go_proto"
-	"github.com/google/keytransparency/core/storage"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
+
+// KeySets gets and sets keysets.
+type KeySets interface {
+	// Get returns the keyset for a given domain and app.
+	// instance supports hosting multiple usermanager servers on the same infrastructure.
+	Get(ctx context.Context, instance int64, domainID, appID string) (*tink.KeysetHandle, error)
+	// Set saves a keyset.
+	Set(ctx context.Context, instance int64, domainID, appID string, k *tink.KeysetHandle) error
+}
 
 // Server implements pb.UserManagerServer
 type Server struct {
 	instance int64
-	keysets  storage.KeySets
+	keysets  KeySets
 }
 
 // New creates a new managementserver
-func New(instance int64, keysets storage.KeySets) *Server {
+func New(instance int64, keysets KeySets) *Server {
 	return &Server{
 		instance: instance,
 		keysets:  keysets,
@@ -42,13 +53,16 @@ func New(instance int64, keysets storage.KeySets) *Server {
 
 // GetKeySet returns a list of public keys (a keyset) that corresponds to the signing keys
 // this service has for a given domain and app.
-func (s *Server) GetKeySet(ctx context.Context, in *pb.GetKeySetRequest) (*tpb.KeySet, error) {
+func (s *Server) GetKeySet(ctx context.Context, in *pb.GetKeySetRequest) (*tinkpb.Keyset, error) {
 	ks, err := s.keysets.Get(ctx, s.instance, in.GetDomainId(), in.GetAppId())
 	if err != nil {
 		return nil, err
 	}
-	ks.SigningKeys = nil // DON'T LEAK PRIVATE KEYS!!
-	return ks, nil
+	pub, err := ks.GetPublicKeysetHandle()
+	if err != nil {
+		return nil, err
+	}
+	return pub.Keyset(), nil
 }
 
 // CreateUser creates a new user and initializes it.
