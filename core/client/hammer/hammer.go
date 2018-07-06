@@ -112,14 +112,16 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		return err
 	}
 
-	bars := make([]*cpb.ProgressBar, 0, len(workers))
-	for _, w := range workers {
-		bars = append(bars, w.bar)
-	}
-	pool, err := cpb.StartPool(bars...)
-	if err != nil {
-		return err
-	}
+	/*
+		bars := make([]*cpb.ProgressBar, 0, len(workers))
+		for _, w := range workers {
+			bars = append(bars, w.bar)
+		}
+		pool, err := cpb.StartPool(bars...)
+		if err != nil {
+			return err
+		}
+	*/
 
 	if ok := c.TestTypes["batch"]; ok {
 		// Batch Write users
@@ -170,7 +172,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		fmt.Print("\n")
 	}
 
-	return pool.Stop()
+	return nil //pool.Stop()
 }
 
 func genArgs(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan opArg {
@@ -239,23 +241,20 @@ func (w *worker) writeOp(ctx context.Context, req *opArg) error {
 	mutations := make([]*entry.Mutation, 0, len(users))
 	for _, u := range users {
 		callOptions := w.callOptions(u.UserId)
-		//fmt.Print(".")
-		w.bar.Increment()
 
 		cctx, cancel := context.WithTimeout(ctx, w.timeout)
 		m, err := w.client.CreateMutation(cctx, u)
 		cancel()
 		if err != nil {
-			fmt.Print("!")
 			return err
 		}
 		mutations = append(mutations, m)
-		if err := w.client.QueueMutation(cctx, m, w.signers, callOptions...); err != nil {
-			fmt.Print("!")
+		cctx, cancel = context.WithTimeout(ctx, w.timeout)
+		err = w.client.QueueMutation(cctx, m, w.signers, callOptions...)
+		cancel()
+		if err != nil {
 			return err
 		}
-		w.bar.Increment()
-		//fmt.Print("-")
 	}
 
 	for _, m := range mutations {
@@ -263,11 +262,9 @@ func (w *worker) writeOp(ctx context.Context, req *opArg) error {
 		_, err := w.client.WaitForUserUpdate(cctx, m)
 		cancel()
 		if err != nil {
-			fmt.Print("!")
 			return err
 		}
-		w.bar.Increment()
-		//fmt.Print("+")
+		fmt.Print(".")
 	}
 	return nil
 }
@@ -276,15 +273,11 @@ func (w *worker) writeOp(ctx context.Context, req *opArg) error {
 // Typical conversation setup involves querying two userIDs: self and other.
 func (w *worker) readOp(ctx context.Context, req *opArg) error {
 	for _, userID := range req.UserIDs {
-		//fmt.Print(".")
-		w.bar.Increment()
 		_, _, err := w.client.GetEntry(ctx, userID, w.appID)
 		if err != nil {
-			fmt.Print("!")
 			return err
 		}
-		//fmt.Print("-")
-		w.bar.Increment()
+		fmt.Print(".")
 	}
 	return nil
 }
@@ -292,15 +285,11 @@ func (w *worker) readOp(ctx context.Context, req *opArg) error {
 // auditHistoryOp simulates the daily check-in.
 func (w *worker) historyOp(ctx context.Context, req *opArg) error {
 	for _, userID := range req.UserIDs {
-		//fmt.Print(".")
-		w.bar.Increment()
 		_, _, err := w.client.PaginateHistory(ctx, userID, w.appID, 0, int64(req.PageSize))
 		if err != nil {
-			fmt.Print("!")
 			return err
 		}
-		// fmt.Print("-")
-		w.bar.Increment()
+		fmt.Print(".")
 	}
 	return nil
 }
