@@ -17,6 +17,8 @@ package hammer
 import (
 	"context"
 	"sync"
+
+	"github.com/golang/glog"
 )
 
 // ReqHandler executes a request.
@@ -34,7 +36,9 @@ func executeRequests(ctx context.Context, inflightReqs <-chan opArg, reqHandlers
 		go func(rh ReqHandler) {
 			defer wg.Done()
 			for req := range inflightReqs {
-				rh(ctx, &req)
+				if err := rh(ctx, &req); err != nil {
+					glog.Errorf("Handler(%v): %v", req, err)
+				}
 			}
 		}(rh)
 	}

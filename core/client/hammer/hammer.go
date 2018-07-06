@@ -170,9 +170,7 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		fmt.Print("\n")
 	}
 
-	pool.Stop()
-
-	return nil
+	return pool.Stop()
 }
 
 func genArgs(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan opArg {
