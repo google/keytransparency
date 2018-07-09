@@ -18,7 +18,6 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"net"
 	"time"
 
 	"github.com/google/keytransparency/core/adminserver"
@@ -36,9 +35,6 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring/prometheus"
-
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
@@ -64,6 +60,7 @@ func openDB() *sql.DB {
 
 func main() {
 	flag.Parse()
+	ctx := context.Background()
 
 	// Connect to trillian log and map backends.
 	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
@@ -101,23 +98,16 @@ func main() {
 		mutations,
 		prometheus.MetricFactory{},
 	)
-	grpcServer := grpc.NewServer()
-	grpc_prometheus.Register(grpcServer)
-	grpc_prometheus.EnableHandlingTimeHistogram()
-	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencerServer)
-	lis, err := net.Listen("tcp", "localhost:0")
+
+	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)
 	if err != nil {
-		glog.Errorf("net.Listen('localhost:0'): %v", err)
+		glog.Errorf("error launching sequencer server: %v", err)
 	}
-	go grpcServer.Serve(lis)
-	sequencerConn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
-	if err != nil {
-		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
-	}
+	defer stop()
 
 	//sequencerClient
 	signer := sequencer.New(
-		spb.NewKeyTransparencySequencerClient(sequencerConn),
+		sequencerClient,
 		tlog, tmap,
 		mapAdmin,
 		domainStorage,

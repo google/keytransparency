@@ -48,7 +48,6 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	domaindef "github.com/google/keytransparency/core/domain"
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
@@ -91,11 +90,12 @@ func Listen() (string, net.Listener, error) {
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
 	*integration.Env
-	mapEnv     *ttest.MapEnv
-	logEnv     *ttest.LogEnv
-	grpcServer *grpc.Server
-	grpcCC     *grpc.ClientConn
-	db         *sql.DB
+	mapEnv        *ttest.MapEnv
+	logEnv        *ttest.LogEnv
+	grpcServer    *grpc.Server
+	grpcCC        *grpc.ClientConn
+	db            *sql.DB
+	stopSequencer func()
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -190,23 +190,16 @@ func NewEnv() (*Env, error) {
 		mutations,
 		monitoring.InertMetricFactory{},
 	)
-	spb.RegisterKeyTransparencySequencerServer(gsvr, sequencerServer)
 
-	// Serve and listen.
-	addr, lis, err := Listen()
+	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)
 	if err != nil {
-		return nil, fmt.Errorf("env: Listen(): %v", err)
-	}
-	go gsvr.Serve(lis)
-	cc, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
+		return nil, fmt.Errorf("error launching sequencer server: %v", err)
 	}
 
 	// Sequencer
 	batchSize := 100
 	seq := sequencer.New(
-		spb.NewKeyTransparencySequencerClient(cc),
+		sequencerClient,
 		logEnv.Log, mapEnv.Map, mapEnv.Admin,
 		domainStorage, mutations, queue, batchSize)
 	d := &domaindef.Domain{
@@ -222,6 +215,17 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
 	}
 
+	// Serve and listen.
+	addr, lis, err := Listen()
+	if err != nil {
+		return nil, fmt.Errorf("env: Listen(): %v", err)
+	}
+	go gsvr.Serve(lis)
+
+	cc, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
+	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client, err := client.NewFromConfig(ktClient, domainPB)
 	if err != nil {
@@ -244,16 +248,18 @@ func NewEnv() (*Env, error) {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
 		},
-		mapEnv:     mapEnv,
-		logEnv:     logEnv,
-		grpcServer: gsvr,
-		grpcCC:     cc,
-		db:         db,
+		mapEnv:        mapEnv,
+		logEnv:        logEnv,
+		grpcServer:    gsvr,
+		grpcCC:        cc,
+		db:            db,
+		stopSequencer: stop,
 	}, nil
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
+	env.stopSequencer()
 	env.grpcCC.Close()
 	env.grpcServer.Stop()
 	env.mapEnv.Close()

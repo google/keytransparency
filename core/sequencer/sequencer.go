@@ -18,10 +18,12 @@ package sequencer
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/mutator"
+	"google.golang.org/grpc"
 
 	"github.com/golang/glog"
 
@@ -64,6 +66,39 @@ func New(
 		receivers:       make(map[string]mutator.Receiver),
 		batchSize:       int32(batchSize),
 	}
+}
+
+// RunAndConnect creates a local gRPC server returns a connected client.
+func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer) (client spb.KeyTransparencySequencerClient, stop func(), startErr error) {
+	server := grpc.NewServer()
+	spb.RegisterKeyTransparencySequencerServer(server, impl)
+
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("error creating TCP listener: %v", err)
+	}
+	defer func() {
+		if startErr != nil {
+			lis.Close()
+		}
+	}()
+
+	go server.Serve(lis)
+
+	addr := lis.Addr().String()
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("error connecting to %v: %v", addr, err)
+	}
+
+	stop = func() {
+		conn.Close()
+		server.Stop()
+		lis.Close()
+	}
+
+	client = spb.NewKeyTransparencySequencerClient(conn)
+	return client, stop, err
 }
 
 // Close stops all receivers and releases resources.
