@@ -18,11 +18,11 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"net"
 	"time"
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
@@ -36,6 +36,9 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring/prometheus"
+
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
@@ -90,8 +93,38 @@ func main() {
 	}
 	queue := mutator.MutationQueue(mutations)
 
-	// Create servers
-	signer := sequencer.New(tlog, logAdmin, tmap, mapAdmin, entry.New(), domainStorage, mutations, queue, prometheus.MetricFactory{}, *batchSize)
+	// Create server
+	sequencerServer := sequencer.NewServer(
+		domainStorage,
+		logAdmin, mapAdmin,
+		tlog, tmap,
+		mutations,
+		prometheus.MetricFactory{},
+	)
+	grpcServer := grpc.NewServer()
+	grpc_prometheus.Register(grpcServer)
+	grpc_prometheus.EnableHandlingTimeHistogram()
+	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencerServer)
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		glog.Errorf("net.Listen('localhost:0'): %v", err)
+	}
+	go grpcServer.Serve(lis)
+	sequencerConn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
+	if err != nil {
+		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
+	}
+
+	//sequencerClient
+	signer := sequencer.New(
+		spb.NewKeyTransparencySequencerClient(sequencerConn),
+		tlog, tmap,
+		mapAdmin,
+		domainStorage,
+		mutations,
+		queue,
+		*batchSize)
+
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}

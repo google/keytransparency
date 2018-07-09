@@ -48,6 +48,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	domaindef "github.com/google/keytransparency/core/domain"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
@@ -181,9 +182,33 @@ func NewEnv() (*Env, error) {
 	)
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
+	// Sequencer Server.
+	sequencerServer := sequencer.NewServer(
+		domainStorage,
+		logEnv.Admin, mapEnv.Admin,
+		logEnv.Log, mapEnv.Map,
+		mutations,
+		monitoring.InertMetricFactory{},
+	)
+	spb.RegisterKeyTransparencySequencerServer(gsvr, sequencerServer)
+
+	// Serve and listen.
+	addr, lis, err := Listen()
+	if err != nil {
+		return nil, fmt.Errorf("env: Listen(): %v", err)
+	}
+	go gsvr.Serve(lis)
+	cc, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
+	}
+
 	// Sequencer
 	batchSize := 100
-	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, mapEnv.Admin, entry.New(), domainStorage, mutations, queue, monitoring.InertMetricFactory{}, batchSize)
+	seq := sequencer.New(
+		spb.NewKeyTransparencySequencerClient(cc),
+		logEnv.Log, mapEnv.Map, mapEnv.Admin,
+		domainStorage, mutations, queue, batchSize)
 	d := &domaindef.Domain{
 		DomainID:    domainPB.DomainId,
 		LogID:       domainPB.Log.TreeId,
@@ -197,17 +222,6 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
 	}
 
-	addr, lis, err := Listen()
-	if err != nil {
-		return nil, fmt.Errorf("env: Listen(): %v", err)
-	}
-	go gsvr.Serve(lis)
-
-	// Client
-	cc, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
-	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client, err := client.NewFromConfig(ktClient, domainPB)
 	if err != nil {

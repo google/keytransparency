@@ -176,7 +176,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 
 	mutationCount.Add(float64(len(msgs)), domainID)
 	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
-	return nil, nil
+	return &empty.Empty{}, nil
 }
 
 // applyMutations takes the set of mutations and applies them to given leafs.
