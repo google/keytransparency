@@ -83,7 +83,11 @@ func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer)
 		}
 	}()
 
-	go server.Serve(lis)
+	go func() {
+		if err := server.Serve(lis); err != nil {
+			glog.Errorf("server exited with error: %v", err)
+		}
+	}()
 
 	addr := lis.Addr().String()
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
