@@ -23,9 +23,9 @@ import (
 
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/mutator"
-	"google.golang.org/grpc"
 
 	"github.com/golang/glog"
+	"google.golang.org/grpc"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
