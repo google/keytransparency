@@ -46,10 +46,10 @@ func init() {
 	RootCmd.AddCommand(hammerCmd)
 
 	hammerCmd.Flags().DurationVar(&duration, "duration", 10*time.Minute, "Maximum time to run each test")
-	hammerCmd.Flags().StringVar(&testTypes, "types", "batch,write,read,audit", "Types of stress tests to run")
+	hammerCmd.Flags().StringVar(&testTypes, "types", "batch,write,read,audit", "Types of stress tests to run, comma separated")
 	hammerCmd.Flags().IntVar(&qps, "qps", 100, "Numer of requests a second")
-	hammerCmd.Flags().IntVar(&pageSize, "batch", 10, "Number of things to do at once")
-	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1000, "Number of parallel workers")
+	hammerCmd.Flags().IntVar(&pageSize, "batch", 10, "Number of entries to process at once")
+	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1000, "Number of parallel workers. Best when workers = QPS * timeout")
 	hammerCmd.Flags().IntVar(&maxOperations, "operations", 10000, "Number of operations")
 	hammerCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 }

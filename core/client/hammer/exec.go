@@ -22,14 +22,14 @@ import (
 )
 
 // ReqHandler executes a request.
-type ReqHandler func(ctx context.Context, arg *opArg) error
+type ReqHandler func(ctx context.Context, arg *reqArgs) error
 
-type opArg struct {
+type reqArgs struct {
 	UserIDs  []string
 	PageSize int
 }
 
-func executeRequests(ctx context.Context, inflightReqs <-chan opArg, reqHandlers []ReqHandler) {
+func executeRequests(ctx context.Context, inflightReqs <-chan reqArgs, reqHandlers []ReqHandler) {
 	var wg sync.WaitGroup
 	for _, rh := range reqHandlers {
 		wg.Add(1)
