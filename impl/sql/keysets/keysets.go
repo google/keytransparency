@@ -20,11 +20,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/google/keytransparency/core/storage"
-
 	"github.com/golang/protobuf/proto"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/tink/go/tink"
 )
 
 const (
@@ -54,8 +52,8 @@ type keyset struct {
 }
 
 // newKeyset converts a tpb.KeySet to keyset.
-func newKeyset(instance int64, domainID, appID string, k *tpb.KeySet) (*keyset, error) {
-	data, err := proto.Marshal(k)
+func newKeyset(instance int64, domainID, appID string, k *tink.KeysetHandle) (*keyset, error) {
+	serializedKeyset, err := proto.Marshal(k.Keyset())
 	if err != nil {
 		return nil, err
 	}
@@ -63,21 +61,17 @@ func newKeyset(instance int64, domainID, appID string, k *tpb.KeySet) (*keyset, 
 		InstanceID: instance,
 		DomainID:   domainID,
 		AppID:      appID,
-		KeySet:     data,
+		KeySet:     serializedKeyset,
 	}, nil
 }
 
 // Proto converts a keyset to a tpb.KeySet proto.
-func (k *keyset) Proto() (*tpb.KeySet, error) {
-	ks := tpb.KeySet{}
-	if err := proto.Unmarshal(k.KeySet, &ks); err != nil {
-		return nil, err
-	}
-	return &ks, nil
+func (k *keyset) Proto() (*tink.KeysetHandle, error) {
+	return tink.CleartextKeysetHandle().ParseSerializedKeyset(k.KeySet)
 }
 
 // New returns a storage.KeySets client backed by an SQL table.
-func New(db *sql.DB) (storage.KeySets, error) {
+func New(db *sql.DB) (*Storage, error) {
 	s := &Storage{db: db}
 	// Create schema.
 	if _, err := s.db.Exec(schema); err != nil {
@@ -87,7 +81,7 @@ func New(db *sql.DB) (storage.KeySets, error) {
 }
 
 // Get returns a stored keyset.
-func (s *Storage) Get(ctx context.Context, instance int64, domainID, appID string) (*tpb.KeySet, error) {
+func (s *Storage) Get(ctx context.Context, instance int64, domainID, appID string) (*tink.KeysetHandle, error) {
 	readStmt, err := s.db.PrepareContext(ctx, getSQL)
 	if err != nil {
 		return nil, err
@@ -101,11 +95,12 @@ func (s *Storage) Get(ctx context.Context, instance int64, domainID, appID strin
 		&r.KeySet); err != nil {
 		return nil, err
 	}
+
 	return r.Proto()
 }
 
 // Set saves a keyset.
-func (s *Storage) Set(ctx context.Context, instance int64, domainID, appID string, k *tpb.KeySet) error {
+func (s *Storage) Set(ctx context.Context, instance int64, domainID, appID string, k *tink.KeysetHandle) error {
 	r, err := newKeyset(instance, domainID, appID, k)
 	if err != nil {
 		return err
