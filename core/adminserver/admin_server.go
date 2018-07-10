@@ -34,6 +34,7 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
+	"github.com/google/trillian/types"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -277,8 +278,9 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) error {
 	logID := logTree.GetTreeId()
 	mapID := mapTree.GetTreeId()
+	trustedRoot := types.LogRootV1{} // Automatically trust the first observed log root.
 
-	logClient, err := client.NewFromTree(s.tlog, logTree)
+	logClient, err := client.NewFromTree(s.tlog, logTree, trustedRoot)
 	if err != nil {
 		return fmt.Errorf("adminserver: could not create log client: %v", err)
 	}
