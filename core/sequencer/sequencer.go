@@ -28,6 +28,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/monitoring"
+	"github.com/google/trillian/types"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
@@ -189,7 +190,9 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	if err != nil {
 		return nil, err
 	}
-	logClient, err := tclient.NewFromTree(s.tlog, logTree)
+	// TODO(gbelvin): Store and track trustedRoot.
+	trustedRoot := types.LogRootV1{} // Automatically trust the first observed log root.
+	logClient, err := tclient.NewFromTree(s.tlog, logTree, trustedRoot)
 	if err != nil {
 		return nil, err
 	}
