@@ -278,6 +278,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) error {
 	logID := logTree.GetTreeId()
 	mapID := mapTree.GetTreeId()
+	// TODO(gbelvin): Store and track trusted root.
 	trustedRoot := types.LogRootV1{} // Automatically trust the first observed log root.
 
 	logClient, err := client.NewFromTree(s.tlog, logTree, trustedRoot)

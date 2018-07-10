@@ -190,6 +190,7 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	if err != nil {
 		return nil, err
 	}
+	// TODO(gbelvin): Store and track trustedRoot.
 	trustedRoot := types.LogRootV1{} // Automatically trust the first observed log root.
 	logClient, err := tclient.NewFromTree(s.tlog, logTree, trustedRoot)
 	if err != nil {
