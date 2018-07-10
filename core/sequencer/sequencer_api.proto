@@ -37,7 +37,7 @@ message CreateEpochRequest {
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
-  // CreateDomain applies the contained mutations to the current map root.
+  // CreateEpoch applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
   rpc CreateEpoch(CreateEpochRequest) returns (google.protobuf.Empty) {}
 }

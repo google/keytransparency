@@ -68,7 +68,7 @@ func New(
 	}
 }
 
-// RunAndConnect creates a local gRPC server returns a connected client.
+// RunAndConnect creates a local gRPC server and returns a connected client.
 func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer) (client spb.KeyTransparencySequencerClient, stop func(), startErr error) {
 	server := grpc.NewServer()
 	spb.RegisterKeyTransparencySequencerServer(server, impl)

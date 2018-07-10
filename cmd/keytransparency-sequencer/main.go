@@ -105,14 +105,11 @@ func main() {
 	}
 	defer stop()
 
-	//sequencerClient
 	signer := sequencer.New(
 		sequencerClient,
-		tlog, tmap,
-		mapAdmin,
+		tlog, tmap, mapAdmin,
 		domainStorage,
-		mutations,
-		queue,
+		mutations, queue,
 		*batchSize)
 
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
