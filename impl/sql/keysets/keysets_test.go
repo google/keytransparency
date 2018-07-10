@@ -21,8 +21,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -38,9 +39,13 @@ func TestWriteRead(t *testing.T) {
 		t.Fatalf("Failed to create keysets.Storage")
 	}
 
-	ks := &tpb.KeySet{VerifyingKeys: map[string]*tpb.VerifyingKey{
-		"1": {KeyMaterial: []byte("keydata")},
-	}}
+	if _, err := signature.RegisterStandardKeyTypes(); err != nil {
+		t.Fatalf("RegisterStandardKeyTypes(): %v", err)
+	}
+	ks, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
+	if err != nil {
+		t.Fatalf("tink.GenerateNew(): %v", err)
+	}
 	for _, tc := range []struct {
 		desc         string
 		instanceID   int64
@@ -83,11 +88,14 @@ func TestWriteRead(t *testing.T) {
 			}
 		}
 		if tc.read {
-			ks, err := keysets.Get(ctx, tc.instanceID, tc.domainID, tc.appID)
+			gotKs, err := keysets.Get(ctx, tc.instanceID, tc.domainID, tc.appID)
 			if got, want := err != nil, tc.wantReadErr; got != want {
 				t.Errorf("Read(%v): %v, wantErr %v", tc.instanceID, err, want)
 			}
-			if got, want := ks, ks; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
+			if err != nil {
+				continue
+			}
+			if got, want := gotKs.Keyset(), ks.Keyset(); !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
 				t.Errorf("Read(%v): %v, want %v", tc.instanceID, got, want)
 			}
 		}
