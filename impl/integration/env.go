@@ -90,11 +90,12 @@ func Listen() (string, net.Listener, error) {
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
 	*integration.Env
-	mapEnv     *ttest.MapEnv
-	logEnv     *ttest.LogEnv
-	grpcServer *grpc.Server
-	grpcCC     *grpc.ClientConn
-	db         *sql.DB
+	mapEnv        *ttest.MapEnv
+	logEnv        *ttest.LogEnv
+	grpcServer    *grpc.Server
+	grpcCC        *grpc.ClientConn
+	db            *sql.DB
+	stopSequencer func()
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -181,9 +182,26 @@ func NewEnv() (*Env, error) {
 	)
 	pb.RegisterKeyTransparencyServer(gsvr, server)
 
+	// Sequencer Server.
+	sequencerServer := sequencer.NewServer(
+		domainStorage,
+		logEnv.Admin, mapEnv.Admin,
+		logEnv.Log, mapEnv.Map,
+		mutations,
+		monitoring.InertMetricFactory{},
+	)
+
+	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)
+	if err != nil {
+		return nil, fmt.Errorf("error launching sequencer server: %v", err)
+	}
+
 	// Sequencer
 	batchSize := 100
-	seq := sequencer.New(logEnv.Log, logEnv.Admin, mapEnv.Map, mapEnv.Admin, entry.New(), domainStorage, mutations, queue, monitoring.InertMetricFactory{}, batchSize)
+	seq := sequencer.New(
+		sequencerClient,
+		logEnv.Log, mapEnv.Map, mapEnv.Admin,
+		domainStorage, mutations, queue, batchSize)
 	d := &domaindef.Domain{
 		DomainID:    domainPB.DomainId,
 		LogID:       domainPB.Log.TreeId,
@@ -197,13 +215,13 @@ func NewEnv() (*Env, error) {
 		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
 	}
 
+	// Serve and listen.
 	addr, lis, err := Listen()
 	if err != nil {
 		return nil, fmt.Errorf("env: Listen(): %v", err)
 	}
 	go gsvr.Serve(lis)
 
-	// Client
 	cc, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
@@ -230,16 +248,18 @@ func NewEnv() (*Env, error) {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
 		},
-		mapEnv:     mapEnv,
-		logEnv:     logEnv,
-		grpcServer: gsvr,
-		grpcCC:     cc,
-		db:         db,
+		mapEnv:        mapEnv,
+		logEnv:        logEnv,
+		grpcServer:    gsvr,
+		grpcCC:        cc,
+		db:            db,
+		stopSequencer: stop,
 	}, nil
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
+	env.stopSequencer()
 	env.grpcCC.Close()
 	env.grpcServer.Stop()
 	env.mapEnv.Close()

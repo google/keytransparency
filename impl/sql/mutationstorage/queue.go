@@ -54,7 +54,7 @@ func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, domainID st
 		ticker:      time.NewTicker(rOpts.Period),
 		maxTicker:   time.NewTicker(rOpts.MaxPeriod),
 		done:        make(chan interface{}),
-		recieveFunc: recieveFunc,
+		receiveFunc: recieveFunc,
 	}
 
 	go r.run(ctx, last)
@@ -66,7 +66,7 @@ func (m *Mutations) NewReceiver(ctx context.Context, last time.Time, domainID st
 type Receiver struct {
 	store       *Mutations
 	domainID    string
-	recieveFunc mutator.ReceiveFunc
+	receiveFunc mutator.ReceiveFunc
 	opts        mutator.ReceiverOptions
 	ticker      *time.Ticker
 	maxTicker   *time.Ticker
@@ -158,7 +158,7 @@ func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int) (int, 
 		return 0, nil
 	}
 
-	if err := r.recieveFunc(batch); err != nil {
+	if err := r.receiveFunc(batch); err != nil {
 		return 0, fmt.Errorf("queue: recieveFunc(): %v", err)
 	}
 	// TODO(gbelvin): Do we need finer grained errors?
