@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
@@ -61,6 +60,7 @@ func openDB() *sql.DB {
 
 func main() {
 	flag.Parse()
+	ctx := context.Background()
 
 	// Connect to trillian log and map backends.
 	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
@@ -90,8 +90,28 @@ func main() {
 	}
 	queue := mutator.MutationQueue(mutations)
 
-	// Create servers
-	signer := sequencer.New(tlog, logAdmin, tmap, mapAdmin, entry.New(), domainStorage, mutations, queue, prometheus.MetricFactory{}, *batchSize)
+	// Create server
+	sequencerServer := sequencer.NewServer(
+		domainStorage,
+		logAdmin, mapAdmin,
+		tlog, tmap,
+		mutations,
+		prometheus.MetricFactory{},
+	)
+
+	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)
+	if err != nil {
+		glog.Errorf("error launching sequencer server: %v", err)
+	}
+	defer stop()
+
+	signer := sequencer.New(
+		sequencerClient,
+		tlog, tmap, mapAdmin,
+		domainStorage,
+		mutations, queue,
+		*batchSize)
+
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
