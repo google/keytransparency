@@ -19,14 +19,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/google/tink/go/tink"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -39,15 +39,35 @@ type DialFunc func(ctx context.Context, addr string, opts ...grpc.DialOption) (p
 // CallOptions returns PerRPCCredentials for the requested user.
 type CallOptions func(userID string) []grpc.CallOption
 
+// Config tells the hammer what operations to do and how fast to go.
+type Config struct {
+	TestTypes map[string]bool
+
+	WriteQPS   int
+	WriteCount int
+
+	BatchWriteQPS   int
+	BatchWriteCount int
+	BatchWriteSize  int
+
+	ReadQPS      int
+	ReadCount    int
+	ReadPageSize int
+
+	HistoryQPS      int
+	HistoryCount    int
+	HistoryPageSize int
+
+	Duration time.Duration
+}
+
 // Hammer represents a single run of the hammer.
 type Hammer struct {
-	workers int
-
 	callOptions CallOptions
 	timeout     time.Duration
 	ktCli       pb.KeyTransparencyClient
 	appID       string
-	config      *pb.Domain
+	domain      *pb.Domain
 
 	signers        []*tink.KeysetHandle
 	authorizedKeys *tinkpb.Keyset
@@ -61,7 +81,7 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		return nil, err
 	}
 
-	config, err := ktCli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: domainID})
+	domain, err := ktCli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: domainID})
 	if err != nil {
 		return nil, err
 	}
@@ -76,125 +96,184 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		timeout:     timeout,
 		ktCli:       ktCli,
 		appID:       fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
-		config:      config,
+		domain:      domain,
 
 		signers:        []*tink.KeysetHandle{keyset},
 		authorizedKeys: authorizedKeys.Keyset(),
 	}, nil
 }
 
-// Run runs operationCount with up to maxWorkers over ramp duration.
-func (h *Hammer) Run(ctx context.Context, operationCount, maxWorkers int, ramp time.Duration) {
-	jobs := gen(ctx, operationCount)
-	outputs := h.launchWorkers(ctx, jobs, maxWorkers, ramp)
-	h.printStats(1*time.Second, outputs)
-}
-
-// launchWorkers gradually adds workers to the worker pool over ramp up to workers.
-func (h *Hammer) launchWorkers(ctx context.Context, jobs <-chan int, workers int, ramp time.Duration) <-chan error {
-	outputs := make(chan error)
-
-	go func() {
-		rampTicker := time.NewTicker(ramp / time.Duration(workers))
-		var wg sync.WaitGroup
-		for h.workers < workers {
-			h.workers++
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				h.worker(ctx, jobs, outputs)
-			}()
-			<-rampTicker.C
-		}
-		rampTicker.Stop()
-
-		wg.Wait()
-		close(outputs)
-	}()
-
-	return outputs
-}
-
-// gen produces a channel of integers from 0 up to count-1 and then closes.
-func gen(ctx context.Context, count int) <-chan int {
-	jobs := make(chan int)
-	go func() {
-		defer close(jobs)
-		for i := 0; i < count; i++ {
-			select {
-			case <-ctx.Done():
-				return
-			case jobs <- i:
-			}
-		}
-	}()
-	return jobs
-}
-
-// printStats prints stats repeatedly every period until outputs closes.
-func (h *Hammer) printStats(period time.Duration, outputs <-chan error) {
-	startTime := time.Now()
-	var totalRequests float64
-
-	// Print stats asyncronously until refresh closes.
-	refresh := time.NewTicker(period)
-	stop := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-refresh.C:
-				rate := totalRequests / time.Since(startTime).Seconds()
-				log.Printf("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
-			case <-stop:
-				rate := totalRequests / time.Since(startTime).Seconds()
-				log.Printf("QPS: %v, \tRequests: %v, \tWorkers: %v", rate, totalRequests, h.workers)
-				refresh.Stop()
-				return
-			}
-		}
-	}()
-
-	// Collect outputs until output closes.
-	for err := range outputs {
-		totalRequests++
-		if err != nil {
-			log.Printf("writeOp(): %v", err)
-		}
-	}
-	close(stop)
-	wg.Wait()
-}
-
-func (h *Hammer) worker(ctx context.Context, jobs <-chan int, outputs chan<- error) {
-	client, err := client.NewFromConfig(h.ktCli, h.config)
+// Run runs a total of operationCount operations across numWorkers.
+// The number of workers should roughly be (goal QPS) * (timeout seconds).
+func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
+	workers, err := h.newWorkers(numWorkers)
 	if err != nil {
-		glog.Errorf("NewFromConfig(): %v", err)
-		return
+		return err
 	}
 
-	for i := range jobs {
-		userID := fmt.Sprintf("user_%v", i)
-		outputs <- h.writeOp(ctx, client, userID)
+	if ok := c.TestTypes["batch"]; ok {
+		// Batch Write users
+		log.Print("Batch Write")
+		args := genArgs(ctx, c.BatchWriteQPS, c.BatchWriteSize, c.BatchWriteCount, c.Duration)
+		handlers := make([]ReqHandler, 0, len(workers))
+		for i := range workers {
+			handlers = append(handlers, workers[i].writeOp)
+		}
+		log.Printf("workers: %v", len(handlers))
+		executeRequests(ctx, args, handlers)
+		fmt.Print("\n")
 	}
+
+	if ok := c.TestTypes["write"]; ok {
+		// Write users
+		log.Print("User Write")
+		args := genArgs(ctx, c.WriteQPS, 1, c.WriteCount, c.Duration)
+		handlers := make([]ReqHandler, 0, len(workers))
+		for i := range workers {
+			handlers = append(handlers, workers[i].writeOp)
+		}
+		executeRequests(ctx, args, handlers)
+		fmt.Print("\n")
+	}
+
+	if ok := c.TestTypes["read"]; ok {
+		// Read users
+		log.Print("User Read")
+		args := genArgs(ctx, c.ReadQPS, c.ReadPageSize, c.ReadCount, c.Duration)
+		handlers := make([]ReqHandler, 0, len(workers))
+		for i := range workers {
+			handlers = append(handlers, workers[i].readOp)
+		}
+		executeRequests(ctx, args, handlers)
+		fmt.Print("\n")
+	}
+
+	if ok := c.TestTypes["audit"]; ok {
+		// History
+		log.Print("User Audit History")
+		args := genArgs(ctx, c.HistoryQPS, c.HistoryPageSize, c.HistoryCount, c.Duration)
+		handlers := make([]ReqHandler, 0, len(workers))
+		for i := range workers {
+			handlers = append(handlers, workers[i].historyOp)
+		}
+		executeRequests(ctx, args, handlers)
+		fmt.Print("\n")
+	}
+
+	return nil
 }
 
-// writeOp performs one write command.
-func (h *Hammer) writeOp(ctx context.Context, client *client.Client, userID string) error {
-	cctx, cancel := context.WithTimeout(ctx, h.timeout)
-	defer cancel()
+func genArgs(ctx context.Context, qps, batch, count int, duration time.Duration) <-chan reqArgs {
+	inflightReqs := make(chan reqArgs, qps)
+	go func() {
+		cctx, cancel := context.WithTimeout(ctx, duration)
+		defer cancel()
+		defer close(inflightReqs)
 
-	u := &tpb.User{
-		DomainId:       h.config.DomainId,
-		AppId:          h.appID,
-		UserId:         userID,
-		PublicKeyData:  []byte("publickey"),
-		AuthorizedKeys: h.authorizedKeys,
+		rateLimiter := rate.NewLimiter(rate.Limit(qps), batch)
+		for i := 0; i < count; i++ {
+			userIDs := make([]string, 0, batch)
+			for j := 0; j < batch; j++ {
+				userIDs = append(userIDs, fmt.Sprintf("user_%v", i*batch+j))
+			}
+			if err := rateLimiter.WaitN(cctx, batch); err != nil {
+				log.Printf("stopping request generation: ratelimiter.WaitN():  %v", err)
+				return
+			}
+			inflightReqs <- reqArgs{
+				UserIDs:  userIDs,
+				PageSize: batch,
+			}
+		}
+	}()
+	return inflightReqs
+}
+
+type worker struct {
+	*Hammer
+	client *client.Client
+}
+
+func (h *Hammer) newWorkers(n int) ([]worker, error) {
+	workers := make([]worker, 0, n)
+	for i := 0; i < n; i++ {
+		// Give each worker its own client.
+		client, err := client.NewFromConfig(h.ktCli, h.domain)
+		if err != nil {
+			return nil, err
+		}
+
+		workers = append(workers, worker{
+			Hammer: h,
+			client: client,
+		})
+	}
+	return workers, nil
+}
+
+// writeOp queues many user mutations, waits, and then verifies them all.
+func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
+	users := make([]*tpb.User, 0, len(req.UserIDs))
+	for _, userID := range req.UserIDs {
+		users = append(users, &tpb.User{
+			DomainId:       w.domain.DomainId,
+			AppId:          w.appID,
+			UserId:         userID,
+			PublicKeyData:  []byte("publickey"),
+			AuthorizedKeys: w.authorizedKeys,
+		})
 	}
 
-	callOptions := h.callOptions(userID)
-	_, err := client.Update(cctx, u, h.signers, callOptions...)
-	return err
+	mutations := make([]*entry.Mutation, 0, len(users))
+	for _, u := range users {
+		callOptions := w.callOptions(u.UserId)
+
+		cctx, cancel := context.WithTimeout(ctx, w.timeout)
+		m, err := w.client.CreateMutation(cctx, u)
+		cancel()
+		if err != nil {
+			return err
+		}
+		mutations = append(mutations, m)
+		cctx, cancel = context.WithTimeout(ctx, w.timeout)
+		err = w.client.QueueMutation(cctx, m, w.signers, callOptions...)
+		cancel()
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, m := range mutations {
+		cctx, cancel := context.WithTimeout(ctx, w.timeout)
+		_, err := w.client.WaitForUserUpdate(cctx, m)
+		cancel()
+		if err != nil {
+			return err
+		}
+		fmt.Print(".")
+	}
+	return nil
+}
+
+// readOp simulates multiple read operations by a single client.
+// Typical conversation setup involves querying two userIDs: self and other.
+func (w *worker) readOp(ctx context.Context, req *reqArgs) error {
+	for _, userID := range req.UserIDs {
+		if _, _, err := w.client.GetEntry(ctx, userID, w.appID); err != nil {
+			return err
+		}
+		fmt.Print(".")
+	}
+	return nil
+}
+
+// historyOp simulates the daily check-in.
+func (w *worker) historyOp(ctx context.Context, req *reqArgs) error {
+	for _, userID := range req.UserIDs {
+		if _, _, err := w.client.PaginateHistory(ctx, userID, w.appID, 0, int64(req.PageSize)); err != nil {
+			return err
+		}
+		fmt.Print(".")
+	}
+	return nil
 }
