@@ -92,6 +92,7 @@ type Env struct {
 	*integration.Env
 	mapEnv        *ttest.MapEnv
 	logEnv        *ttest.LogEnv
+	Receiver      mutator.Receiver
 	grpcServer    *grpc.Server
 	grpcCC        *grpc.ClientConn
 	db            *sql.DB
@@ -146,9 +147,8 @@ func NewEnv() (*Env, error) {
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	domainPB, err := adminSvr.CreateDomain(cctx, &pb.CreateDomainRequest{
-		DomainId: domainID,
-		// Only sequence when explicitly asked with receiver.Flush()
-		MinInterval:   ptypes.DurationProto(60 * time.Hour),
+		DomainId:      domainID,
+		MinInterval:   ptypes.DurationProto(100 * time.Millisecond),
 		MaxInterval:   ptypes.DurationProto(60 * time.Hour),
 		VrfPrivateKey: keyFromPEM(vrfPriv),
 		LogPrivateKey: keyFromPEM(logPriv),
@@ -243,12 +243,12 @@ func NewEnv() (*Env, error) {
 			Cli:       ktClient,
 			Sequencer: sequencerClient,
 			Domain:    domainPB,
-			Receiver:  receiver,
 			Timeout:   timeout,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
 		},
+		Receiver:      receiver,
 		mapEnv:        mapEnv,
 		logEnv:        logEnv,
 		grpcServer:    gsvr,

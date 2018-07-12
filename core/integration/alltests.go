@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client"
-	"github.com/google/keytransparency/core/mutator"
 	"google.golang.org/grpc"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -35,7 +34,6 @@ type Env struct {
 	Cli       pb.KeyTransparencyClient
 	Sequencer spb.KeyTransparencySequencerClient
 	Domain    *pb.Domain
-	Receiver  mutator.Receiver
 	Timeout   time.Duration
 	CallOpts  CallOptions
 }

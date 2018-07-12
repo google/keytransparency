@@ -180,10 +180,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 					t.Fatalf("QueueMutation(%v): %v", tc.userID, err)
 				}
 
-				if err := env.Receiver.FlushN(ctx, 1); err != nil {
-					t.Fatalf("FlushN(1): %v", err)
-				}
-
 				if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 				}
@@ -277,10 +273,6 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			}
 			if err := env.Client.QueueMutation(cctx, m, signers, opts...); err != nil {
 				return fmt.Errorf("QueueMutation(%v): %v", userID, err)
-			}
-
-			if err := env.Receiver.FlushN(ctx, 1); err != nil {
-				return fmt.Errorf("FlushN(1): %v", err)
 			}
 
 			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
