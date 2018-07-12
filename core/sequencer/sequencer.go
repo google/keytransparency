@@ -18,109 +18,91 @@ package sequencer
 import (
 	"context"
 	"fmt"
-	"sync"
+	"net"
 	"time"
 
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
-	"github.com/google/trillian/monitoring"
+	"google.golang.org/grpc"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 	tclient "github.com/google/trillian/client"
 )
 
-const (
-	domainIDLabel = "domainid"
-	reasonLabel   = "reason"
-)
-
-var (
-	once               sync.Once
-	knownDomains       monitoring.Gauge
-	batchSize          monitoring.Gauge
-	mutationCount      monitoring.Counter
-	mutationFailures   monitoring.Counter
-	sequencingRuns     monitoring.Counter
-	sequencingFailures monitoring.Counter
-	sequencingLatency  monitoring.Histogram
-)
-
-func createMetrics(mf monitoring.MetricFactory) {
-	knownDomains = mf.NewGauge(
-		"known_domains",
-		"Set to 1 for known domains (whether this instance is master or not)",
-		domainIDLabel)
-	mutationCount = mf.NewCounter(
-		"mutation_count",
-		"Number of mutations the signer has processed for domainid since process start",
-		domainIDLabel)
-	mutationFailures = mf.NewCounter(
-		"mutation_failures",
-		"Number of invalid mutations the signer has processed for domainid since process start",
-		domainIDLabel, reasonLabel)
-	batchSize = mf.NewGauge(
-		"batch_size",
-		"Number of mutations the signer is attempting to process for domainid",
-		domainIDLabel)
-	sequencingRuns = mf.NewCounter(
-		"sequencing_runs",
-		"Number of times a sequencing run has been attempted",
-		domainIDLabel)
-	sequencingFailures = mf.NewCounter(
-		"sequencing_errors",
-		"Number of times a sequencing run has failed",
-		domainIDLabel)
-	sequencingLatency = mf.NewHistogram(
-		"sequencing_latency",
-		"Time taken to complete a sequencing run",
-		domainIDLabel)
-}
-
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
-	domains     domain.Storage
-	logAdmin    tpb.TrillianAdminClient
-	tlog        tpb.TrillianLogClient
-	mapAdmin    tpb.TrillianAdminClient
-	tmap        tpb.TrillianMapClient
-	mutatorFunc mutator.Func
-	mutations   mutator.MutationStorage
-	queue       mutator.MutationQueue
-	receivers   map[string]mutator.Receiver
-	batchSize   int32
+	domains         domain.Storage
+	tlog            tpb.TrillianLogClient
+	mapAdmin        tpb.TrillianAdminClient
+	tmap            tpb.TrillianMapClient
+	queue           mutator.MutationQueue
+	receivers       map[string]mutator.Receiver
+	batchSize       int32
+	sequencerClient spb.KeyTransparencySequencerClient
 }
 
 // New creates a new instance of the signer.
-func New(tlog tpb.TrillianLogClient,
-	logAdmin tpb.TrillianAdminClient,
+func New(
+	sequencerClient spb.KeyTransparencySequencerClient,
+	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	mapAdmin tpb.TrillianAdminClient,
-	mutatorFunc mutator.Func,
 	domains domain.Storage,
 	mutations mutator.MutationStorage,
 	queue mutator.MutationQueue,
-	metricsFactory monitoring.MetricFactory,
 	batchSize int,
 ) *Sequencer {
-	once.Do(func() { createMetrics(metricsFactory) })
-
 	return &Sequencer{
-		domains:     domains,
-		tlog:        tlog,
-		logAdmin:    logAdmin,
-		tmap:        tmap,
-		mapAdmin:    mapAdmin,
-		mutatorFunc: mutatorFunc,
-		mutations:   mutations,
-		queue:       queue,
-		receivers:   make(map[string]mutator.Receiver),
-		batchSize:   int32(batchSize),
+		sequencerClient: sequencerClient,
+		domains:         domains,
+		tlog:            tlog,
+		tmap:            tmap,
+		mapAdmin:        mapAdmin,
+		queue:           queue,
+		receivers:       make(map[string]mutator.Receiver),
+		batchSize:       int32(batchSize),
 	}
+}
+
+// RunAndConnect creates a local gRPC server and returns a connected client.
+func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer) (client spb.KeyTransparencySequencerClient, stop func(), startErr error) {
+	server := grpc.NewServer()
+	spb.RegisterKeyTransparencySequencerServer(server, impl)
+
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("error creating TCP listener: %v", err)
+	}
+	defer func() {
+		if startErr != nil {
+			lis.Close()
+		}
+	}()
+
+	go func() {
+		if err := server.Serve(lis); err != nil {
+			glog.Errorf("server exited with error: %v", err)
+		}
+	}()
+
+	addr := lis.Addr().String()
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("error connecting to %v: %v", addr, err)
+	}
+
+	stop = func() {
+		conn.Close()
+		server.Stop()
+		lis.Close()
+	}
+
+	client = spb.NewKeyTransparencySequencerClient(conn)
+	return client, stop, err
 }
 
 // Close stops all receivers and releases resources.
@@ -185,182 +167,22 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 	}
 	last := time.Unix(0, int64(mapRoot.TimestampNanos))
 
-	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
-	if err != nil {
-		return nil, err
-	}
-	logClient, err := tclient.NewFromTree(s.tlog, logTree)
-	if err != nil {
-		return nil, err
-	}
-
 	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
-		return s.createEpoch(ctx, d, logClient, mapVerifier, mutations)
+		msgs := make([]*ktpb.EntryUpdate, 0, len(mutations))
+		for _, m := range mutations {
+			msgs = append(msgs, &ktpb.EntryUpdate{
+				Mutation:  m.Mutation,
+				Committed: m.ExtraData,
+			})
+		}
+		_, err := s.sequencerClient.CreateEpoch(ctx, &spb.CreateEpochRequest{
+			DomainId: d.DomainID,
+			Messages: msgs,
+		})
+		return err
 	}, mutator.ReceiverOptions{
 		MaxBatchSize: s.batchSize,
 		Period:       d.MinInterval,
 		MaxPeriod:    d.MaxInterval,
 	}), nil
-}
-
-// toArray returns the first 32 bytes from b.
-// If b is less than 32 bytes long, the output is zero padded.
-func toArray(b []byte) [32]byte {
-	var i [32]byte
-	copy(i[:], b)
-	return i
-}
-
-// applyMutations takes the set of mutations and applies them to given leafs.
-// Multiple mutations for the same leaf will be applied to provided leaf.
-// The last valid mutation for each leaf is included in the output.
-// Returns a list of map leaves that should be updated.
-func (s *Sequencer) applyMutations(d *domain.Domain, msgs []*mutator.QueueMessage, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
-	// Put leaves in a map from index to leaf value.
-	leafMap := make(map[[32]byte]*tpb.MapLeaf)
-	for _, l := range leaves {
-		leafMap[toArray(l.Index)] = l
-	}
-
-	retMap := make(map[[32]byte]*tpb.MapLeaf)
-	for _, msg := range msgs {
-		index := msg.Mutation.GetIndex()
-		var oldValue *pb.Entry // If no map leaf was found, oldValue will be nil.
-		if leaf, ok := leafMap[toArray(index)]; ok {
-			var err error
-			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
-			if err != nil {
-				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
-				mutationFailures.Inc(d.DomainID, "Unmarshal")
-				continue
-			}
-		}
-
-		newValue, err := s.mutatorFunc.Mutate(oldValue, msg.Mutation)
-		if err != nil {
-			glog.Warningf("Mutate(): %v", err)
-			mutationFailures.Inc(d.DomainID, "Mutate")
-			continue // A bad mutation should not make the whole batch fail.
-		}
-		leafValue, err := entry.ToLeafValue(newValue)
-		if err != nil {
-			glog.Warningf("ToLeafValue(): %v", err)
-			mutationFailures.Inc(d.DomainID, "Marshal")
-			continue
-		}
-
-		// Serialize commitment.
-		extraData, err := proto.Marshal(msg.ExtraData)
-		if err != nil {
-			glog.Warningf("Marshal(committed proto): %v", err)
-			mutationFailures.Inc(d.DomainID, "Marshal")
-			continue
-		}
-
-		// Make sure that only ONE MapLeaf is output per index.
-		retMap[toArray(index)] = &tpb.MapLeaf{
-			Index:     index,
-			LeafValue: leafValue,
-			ExtraData: extraData,
-		}
-	}
-	// Convert return map back into a list.
-	ret := make([]*tpb.MapLeaf, 0, len(retMap))
-	for _, v := range retMap {
-		ret = append(ret, v)
-	}
-	return ret, nil
-}
-
-// createEpoch signs the current map head.
-func (s *Sequencer) createEpoch(ctx context.Context, d *domain.Domain, logClient *tclient.LogClient, mapVerifier *tclient.MapVerifier, msgs []*mutator.QueueMessage) error {
-	glog.Infof("CreateEpoch: starting sequencing run with %d mutations", len(msgs))
-	start := time.Now()
-	batchSize.Set(float64(len(msgs)), d.DomainID)
-	sequencingRuns.Inc(d.DomainID)
-	// Get the current root.
-	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
-	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
-		return fmt.Errorf("GetSignedMapRoot(%v): %v", d.MapID, err)
-	}
-	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
-	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
-		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
-	}
-	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", mapRoot.Revision)
-
-	// Get current leaf values.
-	indexes := make([][]byte, 0, len(msgs))
-	for _, m := range msgs {
-		indexes = append(indexes, m.Mutation.Index)
-	}
-	glog.V(2).Infof("CreateEpoch: len(mutations): %v, len(indexes): %v", len(msgs), len(indexes))
-	getResp, err := s.tmap.GetLeaves(ctx, &tpb.GetMapLeavesRequest{
-		MapId: d.MapID,
-		Index: indexes,
-	})
-	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
-		return fmt.Errorf("tmap.GetLeaves(): %v", err)
-	}
-	glog.V(3).Infof("CreateEpoch: len(GetLeaves.MapLeafInclusions): %v",
-		len(getResp.MapLeafInclusion))
-
-	// Trust the leaf values provided by the map server.
-	// If the map server is run by an untrusted entity, perform inclusion
-	// and signature verification here.
-	leaves := make([]*tpb.MapLeaf, 0, len(getResp.MapLeafInclusion))
-	for _, m := range getResp.MapLeafInclusion {
-		leaves = append(leaves, m.Leaf)
-	}
-
-	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(d, msgs, leaves)
-	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
-		return err
-	}
-	glog.V(2).Infof("CreateEpoch: applied %v mutations to %v leaves", len(msgs), len(leaves))
-
-	// Set new leaf values.
-	setResp, err := s.tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
-		MapId:  d.MapID,
-		Leaves: newLeaves,
-	})
-	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
-		return fmt.Errorf("tmap.SetLeaves(): %v", err)
-	}
-	mapRoot, err = mapVerifier.VerifySignedMapRoot(setResp.GetMapRoot())
-	if err != nil {
-		sequencingFailures.Inc(d.DomainID)
-		return fmt.Errorf("VerifySignedMapRoot(): %v", err)
-	}
-	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
-
-	// Write mutations associated with this epoch.
-	mutations := make([]*pb.Entry, 0, len(msgs))
-	for _, msg := range msgs {
-		mutations = append(mutations, msg.Mutation)
-	}
-	if err := s.mutations.WriteBatch(ctx, d.DomainID, int64(mapRoot.Revision), mutations); err != nil {
-		glog.Fatalf("Could not write mutations for revision %v: %v", mapRoot.Revision, err)
-		sequencingFailures.Inc(d.DomainID)
-		return fmt.Errorf("mutations.WriteBatch(): %v", err)
-	}
-
-	// Put SignedMapHead in an append only log.
-	if err := logClient.AddSequencedLeafAndWait(ctx, setResp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-		sequencingFailures.Inc(d.DomainID)
-		glog.Fatalf("AddSequencedLeaf(logID: %v, rev: %v): %v", d.LogID, mapRoot.Revision, err)
-		// TODO(gdbelvin): If the log doesn't do this, we need to generate an emergency alert.
-		return fmt.Errorf("tlog.AddSequencedLeafAndWait(): %v", err)
-	}
-
-	mutationCount.Add(float64(len(msgs)), d.DomainID)
-	sequencingLatency.Observe(time.Since(start).Seconds(), d.DomainID)
-	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
-	return nil
 }

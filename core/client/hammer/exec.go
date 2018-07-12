@@ -12,20 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package storage defines storage interfaces.
-package storage
+package hammer
 
 import (
 	"context"
+	"sync"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/golang/glog"
 )
 
-// KeySets gets and sets keysets.
-type KeySets interface {
-	// Get returns the keyset for a given domain and app.
-	// instance supports hosting multiple usermanager servers on the same infrastructure.
-	Get(ctx context.Context, instance int64, domainID, appID string) (*tpb.KeySet, error)
-	// Set saves a keyset.
-	Set(ctx context.Context, instance int64, domainID, appID string, k *tpb.KeySet) error
+// ReqHandler executes a request.
+type ReqHandler func(ctx context.Context, arg *reqArgs) error
+
+type reqArgs struct {
+	UserIDs  []string
+	PageSize int
+}
+
+func executeRequests(ctx context.Context, inflightReqs <-chan reqArgs, reqHandlers []ReqHandler) {
+	var wg sync.WaitGroup
+	for _, rh := range reqHandlers {
+		wg.Add(1)
+		go func(rh ReqHandler) {
+			defer wg.Done()
+			for req := range inflightReqs {
+				if err := rh(ctx, &req); err != nil {
+					glog.Errorf("Handler(%v): %v", req, err)
+				}
+			}
+		}(rh)
+	}
+	wg.Wait()
 }
