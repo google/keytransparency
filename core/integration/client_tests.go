@@ -31,6 +31,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
@@ -181,10 +182,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 					t.Fatalf("QueueMutation(%v): %v", tc.userID, err)
 				}
 
-				if err := env.Receiver.FlushN(ctx, 1); err != nil {
-					t.Fatalf("FlushN(1): %v", err)
-				}
-
 				if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
 					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
 				}
@@ -256,6 +253,13 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 	// Log TreeSize:  2  3  4  5  6  7  8  9  10 11 ...
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
+
+	// Create an empty epoch.
+	if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+		DomainId: domain.DomainId,
+	}); err != nil {
+		return fmt.Errorf("create empty epoch: %v", err)
+	}
 	for _, p := range [][]byte{
 		nil, cp(1), cp(2), nil, nil, cp(3), nil,
 		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
@@ -276,21 +280,23 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			if err != nil {
 				return fmt.Errorf("CreateMutation(%v): %v", userID, err)
 			}
-			if err := env.Client.QueueMutation(cctx, m, signers, opts...); err != nil {
-				return fmt.Errorf("QueueMutation(%v): %v", userID, err)
+			msg, err := m.SerializeAndSign(signers, 0)
+			if err != nil {
+				return fmt.Errorf("SerializeAndSign(): %v", err)
 			}
 
-			if err := env.Receiver.FlushN(ctx, 1); err != nil {
-				return fmt.Errorf("FlushN(1): %v", err)
-			}
-
-			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
-				return fmt.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
+			if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+				DomainId: domain.DomainId,
+				Messages: []*pb.EntryUpdate{msg.EntryUpdate},
+			}); err != nil {
+				return fmt.Errorf("create epoch: %v", err)
 			}
 		} else {
 			// Create an empty epoch.
-			if err := env.Receiver.FlushN(ctx, 0); err != nil {
-				return fmt.Errorf("FlushN(0): %v", err)
+			if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+				DomainId: domain.DomainId,
+			}); err != nil {
+				return fmt.Errorf("create empty epoch: %v", err)
 			}
 		}
 	}

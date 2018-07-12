@@ -96,8 +96,8 @@ func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer)
 	}
 
 	stop = func() {
+		server.GracefulStop()
 		conn.Close()
-		server.Stop()
 		lis.Close()
 	}
 
@@ -144,9 +144,7 @@ func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Durati
 // NewReceiver creates a new receiver for a domain.
 // New epochs will be created at least once per maxInterval and as often as minInterval.
 func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.Receiver, error) {
-	cctx, cancel := context.WithTimeout(ctx, d.MinInterval)
-	defer cancel()
-	mapTree, err := s.mapAdmin.GetTree(cctx, &tpb.GetTreeRequest{TreeId: d.MapID})
+	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.MapID})
 	if err != nil {
 		return nil, err
 	}
@@ -155,11 +153,10 @@ func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.
 		return nil, err
 	}
 
-	rootResp, err := s.tmap.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
+	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
 	if err != nil {
 		return nil, err
 	}
-	cancel()
 	// Fetch last time from previous map head (as stored in the map server)
 	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
 	if err != nil {

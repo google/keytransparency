@@ -47,7 +47,6 @@ import (
 	"github.com/google/trillian/storage/testdb"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	domaindef "github.com/google/keytransparency/core/domain"
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 	ttest "github.com/google/trillian/testonly/integration"
@@ -92,6 +91,7 @@ type Env struct {
 	*integration.Env
 	mapEnv        *ttest.MapEnv
 	logEnv        *ttest.LogEnv
+	Receiver      mutator.Receiver
 	grpcServer    *grpc.Server
 	grpcCC        *grpc.ClientConn
 	db            *sql.DB
@@ -115,7 +115,7 @@ func keyFromPEM(p string) *any.Any {
 // NewEnv sets up common resources for tests.
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
-	timeout := 2 * time.Second
+	timeout := 6 * time.Second
 	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
 
 	db, err := testdb.NewTrillianDB(ctx)
@@ -146,9 +146,8 @@ func NewEnv() (*Env, error) {
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	domainPB, err := adminSvr.CreateDomain(cctx, &pb.CreateDomainRequest{
-		DomainId: domainID,
-		// Only sequence when explicitly asked with receiver.Flush()
-		MinInterval:   ptypes.DurationProto(60 * time.Hour),
+		DomainId:      domainID,
+		MinInterval:   ptypes.DurationProto(100 * time.Millisecond),
 		MaxInterval:   ptypes.DurationProto(60 * time.Hour),
 		VrfPrivateKey: keyFromPEM(vrfPriv),
 		LogPrivateKey: keyFromPEM(logPriv),
@@ -202,12 +201,10 @@ func NewEnv() (*Env, error) {
 		sequencerClient,
 		logEnv.Log, mapEnv.Map, mapEnv.Admin,
 		domainStorage, mutations, queue, batchSize)
-	d := &domaindef.Domain{
-		DomainID:    domainPB.DomainId,
-		LogID:       domainPB.Log.TreeId,
-		MapID:       domainPB.Map.TreeId,
-		MinInterval: time.Duration(domainPB.MinInterval.Seconds) * time.Second,
-		MaxInterval: time.Duration(domainPB.MaxInterval.Seconds) * time.Second,
+
+	d, err := domainStorage.Read(ctx, domainPB.DomainId, false)
+	if err != nil {
+		return nil, err
 	}
 	// NewReceiver will create a fist map revision right away.
 	receiver, err := seq.NewReceiver(ctx, d)
@@ -233,21 +230,18 @@ func NewEnv() (*Env, error) {
 	}
 	// Integration tests manually create epochs immediately, so retry fairly quickly.
 	client.RetryDelay = 10 * time.Millisecond
-	if err := client.WaitForRevision(ctx, 1); err != nil {
-		return nil, fmt.Errorf("WaitForRevision(1): %v", err)
-	}
-
 	return &Env{
 		Env: &integration.Env{
-			Client:   client,
-			Cli:      ktClient,
-			Domain:   domainPB,
-			Receiver: receiver,
-			Timeout:  timeout,
+			Client:    client,
+			Cli:       ktClient,
+			Sequencer: sequencerClient,
+			Domain:    domainPB,
+			Timeout:   timeout,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
 		},
+		Receiver:      receiver,
 		mapEnv:        mapEnv,
 		logEnv:        logEnv,
 		grpcServer:    gsvr,
