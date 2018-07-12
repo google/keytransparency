@@ -230,12 +230,6 @@ func NewEnv() (*Env, error) {
 	}
 	// Integration tests manually create epochs immediately, so retry fairly quickly.
 	client.RetryDelay = 10 * time.Millisecond
-	/*
-		if err := client.WaitForRevision(ctx, 1); err != nil {
-			return nil, fmt.Errorf("WaitForRevision(1): %v", err)
-		}
-	*/
-
 	return &Env{
 		Env: &integration.Env{
 			Client:    client,
