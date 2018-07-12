@@ -31,6 +31,7 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
@@ -287,8 +288,10 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			}
 		} else {
 			// Create an empty epoch.
-			if err := env.Receiver.FlushN(ctx, 0); err != nil {
-				return fmt.Errorf("FlushN(0): %v", err)
+			if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+				DomainId: domain.DomainId,
+			}); err != nil {
+				return fmt.Errorf("create empty epoch: %v", err)
 			}
 		}
 	}

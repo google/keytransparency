@@ -239,11 +239,12 @@ func NewEnv() (*Env, error) {
 
 	return &Env{
 		Env: &integration.Env{
-			Client:   client,
-			Cli:      ktClient,
-			Domain:   domainPB,
-			Receiver: receiver,
-			Timeout:  timeout,
+			Client:    client,
+			Cli:       ktClient,
+			Sequencer: sequencerClient,
+			Domain:    domainPB,
+			Receiver:  receiver,
+			Timeout:   timeout,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},

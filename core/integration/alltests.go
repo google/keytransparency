@@ -26,16 +26,18 @@ import (
 	"google.golang.org/grpc"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
-	Client   *client.Client
-	Cli      pb.KeyTransparencyClient
-	Domain   *pb.Domain
-	Receiver mutator.Receiver
-	Timeout  time.Duration
-	CallOpts CallOptions
+	Client    *client.Client
+	Cli       pb.KeyTransparencyClient
+	Sequencer spb.KeyTransparencySequencerClient
+	Domain    *pb.Domain
+	Receiver  mutator.Receiver
+	Timeout   time.Duration
+	CallOpts  CallOptions
 }
 
 // CallOptions returns grpc.CallOptions for the requested user.
