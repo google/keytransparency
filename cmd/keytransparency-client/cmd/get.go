@@ -44,7 +44,7 @@ results are consistent.`,
 		}
 		profile, _, err := c.GetEntry(ctx, userID, appID)
 		if err != nil {
-			return fmt.Errorf("GetEntry failed: %v", err)
+			return fmt.Errorf("failed to get user: %v", err)
 		}
 		fmt.Printf("Profile for %v: %+v\n", userID, profile)
 		return nil

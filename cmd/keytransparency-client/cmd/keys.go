@@ -93,7 +93,7 @@ func keyTemplate(keyType string) (*tinkpb.KeyTemplate, error) {
 	case "P521":
 		return signature.EcdsaP521KeyTemplate(), nil
 	default:
-		return nil, fmt.Errorf("Unknown key-type: %s", keyType)
+		return nil, fmt.Errorf("unknown key-type: %s", keyType)
 	}
 }
 

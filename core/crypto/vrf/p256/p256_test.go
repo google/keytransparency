@@ -287,7 +287,7 @@ func TestBitFlip(t *testing.T) {
 
 func flipBit(a []byte, pos int) []byte {
 	index := int(math.Floor(float64(pos) / 8))
-	b := byte(a[index])
+	b := a[index]
 	b ^= (1 << uint(math.Mod(float64(pos), 8.0)))
 
 	var buf bytes.Buffer
