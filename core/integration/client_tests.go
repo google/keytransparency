@@ -287,7 +287,7 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 				DomainId: domain.DomainId,
 				Messages: []*pb.EntryUpdate{msg.EntryUpdate},
 			}); err != nil {
-				return fmt.Errorf("create empty epoch: %v", err)
+				return fmt.Errorf("create epoch: %v", err)
 			}
 		} else {
 			// Create an empty epoch.
