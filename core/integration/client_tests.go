@@ -66,7 +66,7 @@ var (
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	if _, err := signature.RegisterStandardKeyTypes(); err != nil {
-		t.Errorf("RegisterStandaredKeyTypes(): %v", err)
+		t.Fatalf("RegisterStandardKeyTypes(): %v", err)
 	}
 
 	// Create lists of signers.

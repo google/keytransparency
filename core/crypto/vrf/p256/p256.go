@@ -74,8 +74,7 @@ func GenerateKey() (vrf.PrivateKey, vrf.PublicKey) {
 		return nil, nil
 	}
 
-	return &PrivateKey{PrivateKey: key},
-		&PublicKey{PublicKey: &key.PublicKey}
+	return &PrivateKey{PrivateKey: key}, &PublicKey{PublicKey: &key.PublicKey}
 }
 
 // H1 hashes m to a curve point
@@ -244,9 +243,7 @@ func NewVRFSigner(key *ecdsa.PrivateKey) (vrf.PrivateKey, error) {
 	if !curve.IsOnCurve(key.X, key.Y) {
 		return nil, ErrPointNotOnCurve
 	}
-	return &PrivateKey{
-		PrivateKey: key,
-	}, nil
+	return &PrivateKey{PrivateKey: key}, nil
 }
 
 // Public returns the corresponding public key as bytes.
@@ -262,9 +259,7 @@ func NewVRFVerifier(pubkey *ecdsa.PublicKey) (vrf.PublicKey, error) {
 	if !curve.IsOnCurve(pubkey.X, pubkey.Y) {
 		return nil, ErrPointNotOnCurve
 	}
-	return &PublicKey{
-		PublicKey: pubkey,
-	}, nil
+	return &PublicKey{PublicKey: pubkey}, nil
 }
 
 // NewVRFSignerFromPEM creates a vrf private key from a PEM data structure.
