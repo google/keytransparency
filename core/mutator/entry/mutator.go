@@ -33,7 +33,9 @@ import (
 )
 
 func init() {
-	signature.RegisterStandardKeyTypes()
+	if _, err := signature.RegisterStandardKeyTypes(); err != nil {
+		glog.Errorf("RegisterStandardKeyTypes(): %v", err)
+	}
 }
 
 // Mutator defines mutations to simply replace the current map value with the

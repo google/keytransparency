@@ -1,0 +1,24 @@
+linters-settings:
+  govet:
+    check-shadowing: false
+  golint:
+    min-confidence: 0.2
+  gocyclo:
+    min-complexity: 18
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  misspell:
+    locale: US
+
+linters:
+  enable-all: true
+  disable:
+    - maligned
+
+issues:
+  exclude:
+    - .((os\.)?std(out|err)\..*|.*Close|.*Flush|.*Write|.*Serve|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv).
+  new: true
