@@ -30,6 +30,8 @@ import (
 	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
 const (
@@ -97,21 +99,27 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			},
 		},
 	} {
+
+		msgs := make([]*pb.EntryUpdate, 0, len(e.userUpdates))
 		for _, u := range e.userUpdates {
-			opts := env.CallOpts(u.UserId)
 			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
 			m, err := env.Client.CreateMutation(cctx, u)
 			if err != nil {
 				t.Fatalf("CreateMutation(%v): %v", u.UserId, err)
 			}
-			if err := env.Client.QueueMutation(cctx, m, e.signers, opts...); err != nil {
-				t.Fatalf("QueueMutation(%v): %v", u.UserId, err)
+			msg, err := m.SerializeAndSign(e.signers, 0)
+			if err != nil {
+				t.Fatalf("SerializeAndSign(): %v", err)
 			}
+			msgs = append(msgs, msg.EntryUpdate)
 		}
 
-		if err := env.Client.WaitForRevision(ctx, e.epoch); err != nil {
-			t.Fatalf("WaitForRevision(): %v", err)
+		if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+			DomainId: env.Domain.DomainId,
+			Messages: msgs,
+		}); err != nil {
+			t.Fatalf("create empty epoch: %v", err)
 		}
 	}
 

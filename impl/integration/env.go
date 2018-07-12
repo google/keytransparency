@@ -115,7 +115,7 @@ func keyFromPEM(p string) *any.Any {
 // NewEnv sets up common resources for tests.
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
-	timeout := 60 * time.Second
+	timeout := 6 * time.Second
 	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
 
 	db, err := testdb.NewTrillianDB(ctx)
