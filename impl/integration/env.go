@@ -19,7 +19,6 @@ import (
 	"database/sql"
 	"encoding/pem"
 	"fmt"
-	"math/rand"
 	"net"
 	"time"
 
@@ -91,6 +90,7 @@ type Env struct {
 	*integration.Env
 	mapEnv        *ttest.MapEnv
 	logEnv        *ttest.LogEnv
+	admin         *adminserver.Server
 	Receiver      mutator.Receiver
 	grpcServer    *grpc.Server
 	grpcCC        *grpc.ClientConn
@@ -116,7 +116,7 @@ func keyFromPEM(p string) *any.Any {
 func NewEnv() (*Env, error) {
 	ctx := context.Background()
 	timeout := 6 * time.Second
-	domainID := fmt.Sprintf("domain_%d", rand.Int()) // nolint: gas
+	domainID := "integration"
 
 	db, err := testdb.NewTrillianDB(ctx)
 	if err != nil {
@@ -244,6 +244,7 @@ func NewEnv() (*Env, error) {
 		Receiver:      receiver,
 		mapEnv:        mapEnv,
 		logEnv:        logEnv,
+		admin:         adminSvr,
 		grpcServer:    gsvr,
 		grpcCC:        cc,
 		db:            db,
@@ -254,6 +255,12 @@ func NewEnv() (*Env, error) {
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
 	env.stopSequencer()
+	ctx := context.Background()
+	if _, err := env.admin.DeleteDomain(ctx, &pb.DeleteDomainRequest{
+		DomainId: env.Domain.DomainId,
+	}); err != nil {
+		glog.Errorf("env: Close(): DeleteDomain(%v): %v", env.Domain.DomainId, err)
+	}
 	env.grpcCC.Close()
 	env.grpcServer.Stop()
 	env.mapEnv.Close()
