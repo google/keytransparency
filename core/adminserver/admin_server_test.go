@@ -203,3 +203,72 @@ func TestCreateRead(t *testing.T) {
 		}
 	}
 }
+
+func TestDelete(t *testing.T) {
+	testdb.SkipIfNoMySQL(t)
+	ctx := context.Background()
+	storage := fake.NewDomainStorage()
+
+	// Map server
+	mapEnv, err := integration.NewMapEnv(ctx)
+	if err != nil {
+		t.Fatalf("Failed to create trillian map server: %v", err)
+	}
+
+	// Log server
+	numSequencers := 1
+	unused := ""
+	logEnv, err := integration.NewLogEnv(ctx, numSequencers, unused)
+	if err != nil {
+		t.Fatalf("Failed to create trillian log server: %v", err)
+	}
+
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, vrfKeyGen)
+
+	for _, tc := range []struct {
+		domainID                 string
+		minInterval, maxInterval time.Duration
+	}{
+		{
+			domainID:    "testdomain",
+			minInterval: 1 * time.Second,
+			maxInterval: 5 * time.Second,
+		},
+	} {
+		_, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
+			DomainId:    tc.domainID,
+			MinInterval: ptypes.DurationProto(tc.minInterval),
+			MaxInterval: ptypes.DurationProto(tc.maxInterval),
+		})
+		if err != nil {
+			t.Fatalf("CreateDomain(): %v", err)
+		}
+		if _, err := svr.DeleteDomain(ctx, &pb.DeleteDomainRequest{DomainId: tc.domainID}); err != nil {
+			t.Fatalf("DeleteDomain(): %v", err)
+		}
+		domain, err := svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID, ShowDeleted: true})
+		if err != nil {
+			t.Fatalf("GetDomain(): %v", err)
+		}
+		if got, want := domain.Log.Deleted, true; got != want {
+			t.Errorf("Log.TreeState: %v, want %v", got, want)
+		}
+		if got, want := domain.Map.Deleted, true; got != want {
+			t.Errorf("Map.TreeState: %v, want %v", got, want)
+		}
+		if _, err := svr.UndeleteDomain(ctx, &pb.UndeleteDomainRequest{DomainId: tc.domainID}); err != nil {
+			t.Fatalf("UndeleteDomain(): %v", err)
+		}
+		domain, err = svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID})
+		if err != nil {
+			t.Fatalf("GetDomain(): %v", err)
+		}
+		if got, want := domain.Log.Deleted, false; got != want {
+			t.Errorf("Log.TreeState: %v, want %v", got, want)
+		}
+		if got, want := domain.Map.Deleted, false; got != want {
+			t.Errorf("Map.TreeState: %v, want %v", got, want)
+		}
+	}
+
+}
