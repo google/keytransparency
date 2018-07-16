@@ -112,8 +112,8 @@ func (s *Sequencer) Close() {
 	}
 }
 
-// ListenForNewDomains starts receivers for all domains and periodically checks for new domains.
-func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Duration) error {
+// PeriodicallyCheckForNewDomains starts receivers for all domains and periodically checks for new domains.
+func (s *Sequencer) PeriodicallyCheckForNewDomains(ctx context.Context, refresh time.Duration) error {
 	ticker := time.NewTicker(refresh)
 	defer func() { ticker.Stop() }()
 
