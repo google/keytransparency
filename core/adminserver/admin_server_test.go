@@ -235,12 +235,11 @@ func TestDelete(t *testing.T) {
 			maxInterval: 5 * time.Second,
 		},
 	} {
-		_, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
+		if _, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
 			DomainId:    tc.domainID,
 			MinInterval: ptypes.DurationProto(tc.minInterval),
 			MaxInterval: ptypes.DurationProto(tc.maxInterval),
-		})
-		if err != nil {
+		}); err != nil {
 			t.Fatalf("CreateDomain(): %v", err)
 		}
 		if _, err := svr.DeleteDomain(ctx, &pb.DeleteDomainRequest{DomainId: tc.domainID}); err != nil {
@@ -270,5 +269,59 @@ func TestDelete(t *testing.T) {
 			t.Errorf("Map.TreeState: %v, want %v", got, want)
 		}
 	}
+}
 
+func TestListDomains(t *testing.T) {
+	testdb.SkipIfNoMySQL(t)
+	ctx := context.Background()
+	storage := fake.NewDomainStorage()
+
+	// Map server
+	mapEnv, err := integration.NewMapEnv(ctx)
+	if err != nil {
+		t.Fatalf("Failed to create trillian map server: %v", err)
+	}
+
+	// Log server
+	numSequencers := 1
+	unused := ""
+	logEnv, err := integration.NewLogEnv(ctx, numSequencers, unused)
+	if err != nil {
+		t.Fatalf("Failed to create trillian log server: %v", err)
+	}
+
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, vrfKeyGen)
+
+	for _, tc := range []struct {
+		domainIDs []string
+	}{
+		{
+			domainIDs: []string{"A", "B"},
+		},
+	} {
+		for _, domain := range tc.domainIDs {
+			if _, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
+				DomainId:    domain,
+				MinInterval: ptypes.DurationProto(60 * time.Hour),
+				MaxInterval: ptypes.DurationProto(60 * time.Hour),
+			}); err != nil {
+				t.Fatalf("CreateDomain(%v): %v", domain, err)
+			}
+		}
+		resp, err := svr.ListDomains(ctx, &pb.ListDomainsRequest{})
+		if err != nil {
+			t.Fatalf("ListDomains(): %v", err)
+		}
+		// Make sure we got all the same domains back.
+		want := make(map[string]bool)
+		for _, d := range tc.domainIDs {
+			want[d] = true
+		}
+		for _, d := range resp.GetDomains() {
+			domainID := d.GetDomainId()
+			if ok := want[domainID]; !ok {
+				t.Errorf("Did not find domain %v in list response", domainID)
+			}
+		}
+	}
 }
