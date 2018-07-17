@@ -346,21 +346,5 @@ func (s *Server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (
 
 // UndeleteDomain reactivates a deleted domain - provided that UndeleteDomain is called sufficiently soon after DeleteDomain.
 func (s *Server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainRequest) (*google_protobuf.Empty, error) {
-	d, err := s.GetDomain(ctx, &pb.GetDomainRequest{DomainId: in.GetDomainId(), ShowDeleted: true})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.domains.SetDelete(ctx, in.GetDomainId(), false); err != nil {
-		return nil, err
-	}
-
-	_, delLogErr := s.logAdmin.UndeleteTree(ctx, &tpb.UndeleteTreeRequest{TreeId: d.Log.TreeId})
-	_, delMapErr := s.mapAdmin.UndeleteTree(ctx, &tpb.UndeleteTreeRequest{TreeId: d.Map.TreeId})
-	if delLogErr != nil || delMapErr != nil {
-		return nil, status.Errorf(codes.Internal, "adminserver: undelete log %v: %v, undelete map %v: %v",
-			err, d.Log.TreeId, delLogErr, d.Map.TreeId, delMapErr)
-	}
-
-	return &google_protobuf.Empty{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }

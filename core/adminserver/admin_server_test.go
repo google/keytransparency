@@ -255,19 +255,6 @@ func TestDelete(t *testing.T) {
 		if got, want := domain.Map.Deleted, true; got != want {
 			t.Errorf("Map.TreeState: %v, want %v", got, want)
 		}
-		if _, err := svr.UndeleteDomain(ctx, &pb.UndeleteDomainRequest{DomainId: tc.domainID}); err != nil {
-			t.Fatalf("UndeleteDomain(): %v", err)
-		}
-		domain, err = svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID})
-		if err != nil {
-			t.Fatalf("GetDomain(): %v", err)
-		}
-		if got, want := domain.Log.Deleted, false; got != want {
-			t.Errorf("Log.TreeState: %v, want %v", got, want)
-		}
-		if got, want := domain.Map.Deleted, false; got != want {
-			t.Errorf("Map.TreeState: %v, want %v", got, want)
-		}
 	}
 }
 
