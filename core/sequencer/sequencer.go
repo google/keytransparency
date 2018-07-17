@@ -112,33 +112,42 @@ func (s *Sequencer) Close() {
 	}
 }
 
-// ListenForNewDomains starts receivers for all domains and periodically checks for new domains.
-func (s *Sequencer) ListenForNewDomains(ctx context.Context, refresh time.Duration) error {
+// PeriodicallyCheckForNewDomains starts receivers for all domains and periodically checks for new domains.
+func (s *Sequencer) PeriodicallyCheckForNewDomains(ctx context.Context, refresh time.Duration) error {
 	ticker := time.NewTicker(refresh)
 	defer func() { ticker.Stop() }()
 
 	for {
 		select {
 		case <-ticker.C:
-			domains, err := s.domains.List(ctx, false)
-			if err != nil {
-				return fmt.Errorf("admin.List(): %v", err)
-			}
-			for _, d := range domains {
-				knownDomains.Set(1, d.DomainID)
-				if _, ok := s.receivers[d.DomainID]; !ok {
-					glog.Infof("StartSigning domain: %v", d.DomainID)
-					r, err := s.NewReceiver(ctx, d)
-					if err != nil {
-						return err
-					}
-					s.receivers[d.DomainID] = r
-				}
+			if err := s.CheckForNewDomains(ctx); err != nil {
+				return err
 			}
 		case <-ctx.Done():
 			return ctx.Err()
 		}
 	}
+}
+
+// CheckForNewDomains scans the domains table for new domains and creates new receivers for
+// domains that the sequencer is not currently receiving for.
+func (s *Sequencer) CheckForNewDomains(ctx context.Context) error {
+	domains, err := s.domains.List(ctx, false)
+	if err != nil {
+		return fmt.Errorf("admin.List(): %v", err)
+	}
+	for _, d := range domains {
+		knownDomains.Set(1, d.DomainID)
+		if _, ok := s.receivers[d.DomainID]; !ok {
+			glog.Infof("StartSigning domain: %v", d.DomainID)
+			r, err := s.NewReceiver(ctx, d)
+			if err != nil {
+				return err
+			}
+			s.receivers[d.DomainID] = r
+		}
+	}
+	return nil
 }
 
 // NewReceiver creates a new receiver for a domain.
