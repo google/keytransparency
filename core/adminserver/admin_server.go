@@ -348,3 +348,37 @@ func (s *Server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (
 func (s *Server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainRequest) (*google_protobuf.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
+
+// GarbageCollect looks for domains that have been deleted for longer than a given duration and fully deletes them.
+func (s *Server) GarbageCollect(ctx context.Context, in *pb.GarbageCollectRequest) (*pb.GarbageCollectResponse, error) {
+	duration, err := ptypes.Duration(in.GetDuration())
+	if err != nil {
+		return nil, err
+	}
+
+	// Search for domains older than in.Duration.
+	showDeleted := true
+	domains, err := s.domains.List(ctx, showDeleted)
+	if err != nil {
+		return nil, err
+	}
+
+	deleted := make([]*pb.Domain, 0)
+	for _, d := range domains {
+		if d.Deleted && time.Since(d.DeletedTimestamp) > duration {
+			dproto, err := s.GetDomain(ctx, &pb.GetDomainRequest{
+				DomainId:    d.DomainID,
+				ShowDeleted: true,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if err := s.domains.Delete(ctx, d.DomainID); err != nil {
+				return nil, err
+			}
+			deleted = append(deleted, dproto)
+		}
+	}
+
+	return &pb.GarbageCollectResponse{Domains: deleted}, nil
+}
