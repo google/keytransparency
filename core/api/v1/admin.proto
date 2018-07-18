@@ -27,6 +27,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 import "trillian.proto";
 import "crypto/keyspb/keyspb.proto";
 
@@ -93,10 +94,10 @@ message UndeleteDomainRequest {
 }
 
 // GarbageCollect request.
-// Deletes domains that have been deleted longer than `duration`.
 message GarbageCollectRequest {
-  // Domains soft-deleted older than duration will be fully deleted.
-  google.protobuf.Duration duration = 1;
+  // Soft-deleted domains with a deleted timestamp before this will be fully
+  // deleted.
+  google.protobuf.Timestamp before = 1;
 }
 
 message GarbageCollectResponse {

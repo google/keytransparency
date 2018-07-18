@@ -351,7 +351,7 @@ func (s *Server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainReques
 
 // GarbageCollect looks for domains that have been deleted for longer than a given duration and fully deletes them.
 func (s *Server) GarbageCollect(ctx context.Context, in *pb.GarbageCollectRequest) (*pb.GarbageCollectResponse, error) {
-	duration, err := ptypes.Duration(in.GetDuration())
+	before, err := ptypes.Timestamp(in.GetBefore())
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func (s *Server) GarbageCollect(ctx context.Context, in *pb.GarbageCollectReques
 
 	deleted := make([]*pb.Domain, 0)
 	for _, d := range domains {
-		if d.Deleted && time.Since(d.DeletedTimestamp) > duration {
+		if d.Deleted && d.DeletedTimestamp.Before(before) {
 			dproto, err := s.GetDomain(ctx, &pb.GetDomainRequest{
 				DomainId:    d.DomainID,
 				ShowDeleted: true,
