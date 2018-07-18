@@ -55,6 +55,9 @@ func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "Domain %v not found", ID)
 	}
+	if d.Deleted && !showDeleted {
+		return nil, status.Errorf(codes.NotFound, "Domain %v not found", ID)
+	}
 	return d, nil
 }
 
@@ -65,5 +68,15 @@ func (a *DomainStorage) SetDelete(ctx context.Context, ID string, isDeleted bool
 		return status.Errorf(codes.NotFound, "Domain %v not found", ID)
 	}
 	a.domains[ID].Deleted = isDeleted
+	return nil
+}
+
+// Delete deletes a domain.
+func (a *DomainStorage) Delete(ctx context.Context, ID string) error {
+	_, ok := a.domains[ID]
+	if !ok {
+		return status.Errorf(codes.NotFound, "Domain %v not found", ID)
+	}
+	delete(a.domains, ID)
 	return nil
 }

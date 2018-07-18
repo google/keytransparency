@@ -23,23 +23,33 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/trillian/crypto/keyspb"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestList(t *testing.T) {
-	ctx := context.Background()
+func newStorage(t *testing.T) (s domain.Storage, close func()) {
+	t.Helper()
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
 	}
-	defer db.Close()
-	admin, err := NewStorage(db)
+	closeFunc := func() { db.Close() }
+	s, err = NewStorage(db)
 	if err != nil {
+		closeFunc()
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}
+	return s, closeFunc
+}
+
+func TestList(t *testing.T) {
+	ctx := context.Background()
+	admin, closeF := newStorage(t)
+	defer closeF()
 	for _, tc := range []struct {
 		domains     []*domain.Domain
 		readDeleted bool
@@ -87,16 +97,8 @@ func TestList(t *testing.T) {
 
 func TestWriteReadDelete(t *testing.T) {
 	ctx := context.Background()
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
-		t.Fatalf("sql.Open(): %v", err)
-	}
-	defer db.Close()
-	admin, err := NewStorage(db)
-	if err != nil {
-		t.Fatalf("Failed to create adminstorage: %v", err)
-	}
-
+	admin, closeF := newStorage(t)
+	defer closeF()
 	for _, tc := range []struct {
 		desc                 string
 		d                    domain.Domain
@@ -212,5 +214,32 @@ func TestWriteReadDelete(t *testing.T) {
 				t.Errorf("Read(%v, %v): %#v, want %#v, diff: \n%v", tc.d.DomainID, tc.readDeleted, got, want, cmp.Diff(got, want))
 			}
 		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	ctx := context.Background()
+	s, closeF := newStorage(t)
+	defer closeF()
+	for _, tc := range []struct {
+		domainID string
+	}{
+		{domainID: "test"},
+	} {
+		d := &domain.Domain{
+			DomainID: tc.domainID,
+			VRF:      &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+			VRFPriv:  &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+		}
+		if err := s.Write(ctx, d); err != nil {
+			t.Errorf("Write(): %v", err)
+		}
+		if err := s.Delete(ctx, tc.domainID); err != nil {
+			t.Errorf("Delete(): %v", err)
+		}
+		_, err := s.Read(ctx, tc.domainID, true)
+		if got, want := status.Code(err), codes.NotFound; got != want {
+			t.Errorf("Read(): %v, wanted %v", got, want)
+		}
 	}
 }

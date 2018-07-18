@@ -46,4 +46,6 @@ type Storage interface {
 	Read(ctx context.Context, domainID string, showDeleted bool) (*Domain, error)
 	// Delete and undelete.
 	SetDelete(ctx context.Context, domainID string, isDeleted bool) error
+	// HardDelete the domain.
+	Delete(ctx context.Context, domainID string) error
 }

@@ -60,6 +60,7 @@ FROM Domains WHERE Deleted = 0;`
 SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains;`
 	setDeletedSQL = `UPDATE Domains SET Deleted = ?, DeleteTimeMillis = ? WHERE DomainId = ?`
+	deleteSQL     = `DELETE FROM Domains WHERE DomainId = ?`
 )
 
 type storage struct {
@@ -202,5 +203,11 @@ func unwrapAnyProto(anyData []byte) (proto.Message, error) {
 
 func (s *storage) SetDelete(ctx context.Context, domainID string, isDeleted bool) error {
 	_, err := s.db.ExecContext(ctx, setDeletedSQL, isDeleted, time.Now().Unix(), domainID)
+	return err
+}
+
+// Delete deletes a domain.
+func (s *storage) Delete(ctx context.Context, domainID string) error {
+	_, err := s.db.ExecContext(ctx, deleteSQL, domainID)
 	return err
 }
