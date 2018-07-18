@@ -196,6 +196,8 @@ func TestWriteReadDelete(t *testing.T) {
 				}
 			}
 			if tc.setDelete {
+				tc.d.DeletedTimestamp = time.Now().Truncate(time.Second)
+				tc.d.Deleted = tc.isDeleted
 				if err := admin.SetDelete(ctx, tc.d.DomainID, tc.isDeleted); err != nil {
 					t.Errorf("SetDelete(%v, %v): %v", tc.d.DomainID, tc.isDeleted, err)
 					return
@@ -209,7 +211,6 @@ func TestWriteReadDelete(t *testing.T) {
 			if err != nil {
 				return
 			}
-			tc.d.Deleted = tc.isDeleted
 			if got, want := *domain, tc.d; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
 				t.Errorf("Read(%v, %v): %#v, want %#v, diff: \n%v", tc.d.DomainID, tc.readDeleted, got, want, cmp.Diff(got, want))
 			}

@@ -33,7 +33,8 @@ type Domain struct {
 	VRFPriv                  proto.Message
 	MinInterval, MaxInterval time.Duration
 	// TODO(gbelvin): specify mutation function
-	Deleted bool
+	Deleted          bool
+	DeletedTimestamp time.Time
 }
 
 // Storage is an interface for storing multi-tenant configuration information.

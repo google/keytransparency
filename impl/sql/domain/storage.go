@@ -41,17 +41,17 @@ CREATE TABLE IF NOT EXISTS Domains(
   MinInterval           BIGINT NOT NULL,
   MaxInterval           BIGINT NOT NULL,
   Deleted               INTEGER,
-  DeleteTimeMillis      BIGINT,
+  DeleteTimeSeconds      BIGINT,
   PRIMARY KEY(DomainId)
 );`
 	writeSQL = `INSERT INTO Domains 
-(DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted) 
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
+(DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
 	readSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
 FROM Domains WHERE DomainId = ? AND Deleted = 0;`
 	readDeletedSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
 FROM Domains WHERE DomainId = ?;`
 	listSQL = `
 SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
@@ -59,7 +59,7 @@ FROM Domains WHERE Deleted = 0;`
 	listDeletedSQL = `
 SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Domains;`
-	setDeletedSQL = `UPDATE Domains SET Deleted = ?, DeleteTimeMillis = ? WHERE DomainId = ?`
+	setDeletedSQL = `UPDATE Domains SET Deleted = ?, DeleteTimeSeconds = ? WHERE DomainId = ?`
 	deleteSQL     = `DELETE FROM Domains WHERE DomainId = ?`
 )
 
@@ -150,7 +150,7 @@ func (s *storage) Write(ctx context.Context, d *domain.Domain) error {
 		d.MapID, d.LogID,
 		d.VRF.Der, anyData,
 		d.MinInterval.Nanoseconds(), d.MaxInterval.Nanoseconds(),
-		false)
+		false, time.Time{}.Unix())
 	return err
 }
 
@@ -168,12 +168,15 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 	defer readStmt.Close()
 	d := &domain.Domain{}
 	var pubkey, anyData []byte
+	var deletedUnix int64
 	if err := readStmt.QueryRowContext(ctx, domainID).Scan(
 		&d.DomainID,
 		&d.MapID, &d.LogID,
 		&pubkey, &anyData,
 		&d.MinInterval, &d.MaxInterval,
-		&d.Deleted); err == sql.ErrNoRows {
+		&d.Deleted,
+		&deletedUnix,
+	); err == sql.ErrNoRows {
 		return nil, status.Errorf(codes.NotFound, "%v", err)
 	} else if err != nil {
 		return nil, err
@@ -182,6 +185,7 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 	// Unwrap protos.
 	d.VRF = &keyspb.PublicKey{Der: pubkey}
 	d.VRFPriv, err = unwrapAnyProto(anyData)
+	d.DeletedTimestamp = time.Unix(deletedUnix, 0)
 	if err != nil {
 		return nil, err
 	}
