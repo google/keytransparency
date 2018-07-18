@@ -92,6 +92,17 @@ message UndeleteDomainRequest {
   string domain_id = 1;
 }
 
+// GarbageCollect request.
+// Deletes domains that have been deleted longer than `duration`.
+message GarbageCollectRequest {
+  // Domains soft-deleted older than duration will be fully deleted.
+  google.protobuf.Duration duration = 1;
+}
+
+message GarbageCollectResponse {
+  repeated Domain domains = 1;
+}
+
 
 // The KeyTransparencyAdmin API provides the following resources:
 // - Domains
@@ -137,5 +148,9 @@ service KeyTransparencyAdmin {
     option (google.api.http) = {
       delete: "/v1/domains/{domain_id}:undelete"
     };
+  }
+
+  // Fully delete soft-deleted domains that have been deleted for longer than a duration.
+  rpc GarbageCollect(GarbageCollectRequest) returns (GarbageCollectResponse) {
   }
 }
