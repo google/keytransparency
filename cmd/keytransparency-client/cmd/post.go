@@ -73,7 +73,7 @@ User email MUST match the OAuth account used to authorize the update.
 		defer cancel()
 
 		// Create client.
-		userCreds, err := userCreds(ctx, false)
+		userCreds, err := userCreds(ctx)
 		if err != nil {
 			return err
 		}
