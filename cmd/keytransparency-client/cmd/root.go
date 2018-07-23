@@ -152,14 +152,6 @@ func getCreds(ctx context.Context, clientSecretFile string) (credentials.PerRPCC
 	return oauth.NewOauthAccess(tok), nil
 }
 
-func getServiceCreds(serviceKeyFile string) (credentials.PerRPCCredentials, error) {
-	b, err := ioutil.ReadFile(serviceKeyFile)
-	if err != nil {
-		return nil, err
-	}
-	return oauth.NewServiceAccountFromKey(b, authentication.RequiredScopes...)
-}
-
 func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
 	ktCert := viper.GetString("kt-cert")
 	insecure := viper.GetBool("insecure")
