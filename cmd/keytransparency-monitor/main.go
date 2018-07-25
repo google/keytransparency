@@ -154,7 +154,7 @@ func transportCreds(ktURL string, insecure bool) (credentials.TransportCredentia
 
 	if insecure {
 		return credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true, // nolint: gas
+			InsecureSkipVerify: true, // nolint: gosec
 		}), nil
 	}
 	return credentials.NewClientTLSFromCert(nil, host), nil

@@ -11,7 +11,7 @@
 	      }
              },
   "Severity": {"license": "error"},
-  "Enable": ["license", "imports-impl", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gas"],
+  "Enable": ["license", "imports-impl", "gofmt", "golint", "vet", "ineffassign", "misspell", "gocyclo", "deadcode", "varcheck", "unconvert", "megacheck", "gosec"],
   "Vendor": true,
   "VendoredLinters": true,
   "Exclude": [
@@ -22,6 +22,7 @@
   "Exclude": [
     ".+\\.pb\\.go",
     ".+\\.pb\\.gw\\.go",
-    "Errors unhandled.,LOW,HIGH \\(gas\\)"
+    "Errors unhandled.,LOW,HIGH \\(gosec\\)",
+    "Potential file inclusion via variable,MEDIUM,HIGH \\(gosec\\)"
   ]
 }
