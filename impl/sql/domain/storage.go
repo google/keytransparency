@@ -150,7 +150,10 @@ func (s *storage) Write(ctx context.Context, d *domain.Domain) error {
 		d.MapID, d.LogID,
 		d.VRF.Der, anyData,
 		d.MinInterval.Nanoseconds(), d.MaxInterval.Nanoseconds(),
-		false, time.Time{}.Unix())
+		false,
+		// Store January 1, year 1, 00:00:00 UTC, the time.Time zero value.
+		// Store this as unix seconds till Jan 1 1970, a large negative number.
+		time.Time{}.Unix())
 	return err
 }
 
