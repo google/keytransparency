@@ -210,7 +210,7 @@ func (s *storage) SetDelete(ctx context.Context, domainID string, isDeleted bool
 	return err
 }
 
-// Delete deletes a domain.
+// Delete permanently deletes a domain.
 func (s *storage) Delete(ctx context.Context, domainID string) error {
 	_, err := s.db.ExecContext(ctx, deleteSQL, domainID)
 	return err

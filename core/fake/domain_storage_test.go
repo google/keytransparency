@@ -30,6 +30,7 @@ func TestDelete(t *testing.T) {
 		domainID string
 	}{
 		{domainID: "test"},
+		{domainID: ""},
 	} {
 		d := &domain.Domain{DomainID: tc.domainID}
 		if err := s.Write(ctx, d); err != nil {
@@ -39,6 +40,10 @@ func TestDelete(t *testing.T) {
 			t.Errorf("Delete(): %v", err)
 		}
 		_, err := s.Read(ctx, tc.domainID, true)
+		if got, want := status.Code(err), codes.NotFound; got != want {
+			t.Errorf("Read(): %v, wanted %v", got, want)
+		}
+		_, err = s.Read(ctx, tc.domainID, false)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}
@@ -64,6 +69,9 @@ func TestSetDelete(t *testing.T) {
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}
+		if _, err := s.Read(ctx, tc.domainID, true); err != nil {
+			t.Errorf("Read(): %v", err)
+		}
 	}
 }
 
@@ -79,10 +87,8 @@ func TestList(t *testing.T) {
 		if err := s.Write(ctx, d); err != nil {
 			t.Errorf("Write(): %v", err)
 		}
-		if d.Deleted {
-			if err := s.SetDelete(ctx, d.DomainID, true); err != nil {
-				t.Errorf("SetDelete(): %v", err)
-			}
+		if err := s.SetDelete(ctx, d.DomainID, d.Deleted); err != nil {
+			t.Errorf("SetDelete(): %v", err)
 		}
 	}
 	ret, err := s.List(ctx, false)

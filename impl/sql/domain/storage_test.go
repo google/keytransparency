@@ -48,7 +48,7 @@ func newStorage(t *testing.T) (s domain.Storage, close func()) {
 
 func TestList(t *testing.T) {
 	ctx := context.Background()
-	admin, closeF := newStorage(t)
+	s, closeF := newStorage(t)
 	defer closeF()
 	for _, tc := range []struct {
 		domains     []*domain.Domain
@@ -78,13 +78,13 @@ func TestList(t *testing.T) {
 		},
 	} {
 		for _, d := range tc.domains {
-			if err := admin.Write(ctx, d); err != nil {
+			if err := s.Write(ctx, d); err != nil {
 				t.Errorf("Write(): %v", err)
 				continue
 			}
 		}
 
-		domains, err := admin.List(ctx, tc.readDeleted)
+		domains, err := s.List(ctx, tc.readDeleted)
 		if err != nil {
 			t.Errorf("List(): %v", err)
 			continue
@@ -97,7 +97,7 @@ func TestList(t *testing.T) {
 
 func TestWriteReadDelete(t *testing.T) {
 	ctx := context.Background()
-	admin, closeF := newStorage(t)
+	s, closeF := newStorage(t)
 	defer closeF()
 	for _, tc := range []struct {
 		desc                 string
@@ -186,7 +186,7 @@ func TestWriteReadDelete(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			if tc.write {
-				err := admin.Write(ctx, &tc.d)
+				err := s.Write(ctx, &tc.d)
 				if got, want := err != nil, tc.wantWriteErr; got != want {
 					t.Errorf("Write(): %v, want err: %v", err, want)
 					return
@@ -198,13 +198,13 @@ func TestWriteReadDelete(t *testing.T) {
 			if tc.setDelete {
 				tc.d.DeletedTimestamp = time.Now().Truncate(time.Second)
 				tc.d.Deleted = tc.isDeleted
-				if err := admin.SetDelete(ctx, tc.d.DomainID, tc.isDeleted); err != nil {
+				if err := s.SetDelete(ctx, tc.d.DomainID, tc.isDeleted); err != nil {
 					t.Errorf("SetDelete(%v, %v): %v", tc.d.DomainID, tc.isDeleted, err)
 					return
 				}
 			}
 
-			domain, err := admin.Read(ctx, tc.d.DomainID, tc.readDeleted)
+			domain, err := s.Read(ctx, tc.d.DomainID, tc.readDeleted)
 			if got, want := err != nil, tc.wantReadErr; got != want {
 				t.Errorf("Read(): %v, want err: %v", err, want)
 			}
@@ -239,6 +239,10 @@ func TestDelete(t *testing.T) {
 			t.Errorf("Delete(): %v", err)
 		}
 		_, err := s.Read(ctx, tc.domainID, true)
+		if got, want := status.Code(err), codes.NotFound; got != want {
+			t.Errorf("Read(): %v, wanted %v", got, want)
+		}
+		_, err = s.Read(ctx, tc.domainID, false)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}

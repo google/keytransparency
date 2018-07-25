@@ -52,10 +52,7 @@ func (a *DomainStorage) Write(ctx context.Context, d *domain.Domain) error {
 // Read returns existing domains.
 func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domain.Domain, error) {
 	d, ok := a.domains[ID]
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, "Domain %v not found", ID)
-	}
-	if d.Deleted && !showDeleted {
+	if !ok || d.Deleted && !showDeleted {
 		return nil, status.Errorf(codes.NotFound, "Domain %v not found", ID)
 	}
 	return d, nil
@@ -71,7 +68,7 @@ func (a *DomainStorage) SetDelete(ctx context.Context, ID string, isDeleted bool
 	return nil
 }
 
-// Delete deletes a domain.
+// Delete permanently deletes a domain.
 func (a *DomainStorage) Delete(ctx context.Context, ID string) error {
 	_, ok := a.domains[ID]
 	if !ok {

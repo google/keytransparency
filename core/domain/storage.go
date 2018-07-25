@@ -45,7 +45,7 @@ type Storage interface {
 	Write(ctx context.Context, d *Domain) error
 	// Read a configuration from storage.
 	Read(ctx context.Context, domainID string, showDeleted bool) (*Domain, error)
-	// Delete and undelete.
+	// Soft-delete or undelete the domain
 	SetDelete(ctx context.Context, domainID string, isDeleted bool) error
 	// HardDelete the domain.
 	Delete(ctx context.Context, domainID string) error
