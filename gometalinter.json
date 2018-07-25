@@ -22,6 +22,7 @@
   "Exclude": [
     ".+\\.pb\\.go",
     ".+\\.pb\\.gw\\.go",
-    "Errors unhandled.,LOW,HIGH \\(gosec\\)"
+    "Errors unhandled.,LOW,HIGH \\(gosec\\)",
+    "Potential file inclusion via variable,MEDIUM,HIGH \\(gosec\\)"
   ]
 }
