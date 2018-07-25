@@ -85,7 +85,6 @@ func init() {
 	RootCmd.PersistentFlags().String("map-key", "genfiles/trillian-map.pem", "Path to public key PEM for Trillian Map server")
 
 	RootCmd.PersistentFlags().String("client-secret", "", "Path to client_secret.json file for user creds")
-	RootCmd.PersistentFlags().String("service-key", "", "Path to service_key.json file for anonymous creds")
 	RootCmd.PersistentFlags().String("fake-auth-userid", "", "userid to present to the server as identity for authentication. Only succeeds if fake auth is enabled on the server side.")
 
 	// Global flags for use by subcommands.
@@ -153,14 +152,6 @@ func getCreds(ctx context.Context, clientSecretFile string) (credentials.PerRPCC
 	return oauth.NewOauthAccess(tok), nil
 }
 
-func getServiceCreds(serviceKeyFile string) (credentials.PerRPCCredentials, error) {
-	b, err := ioutil.ReadFile(serviceKeyFile)
-	if err != nil {
-		return nil, err
-	}
-	return oauth.NewServiceAccountFromKey(b, authentication.RequiredScopes...)
-}
-
 func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
 	ktCert := viper.GetString("kt-cert")
 	insecure := viper.GetBool("insecure")
@@ -187,21 +178,15 @@ func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
 // userCreds returns PerRPCCredentials. Only one type of credential
 // should exist in an RPC call. Fake credentials have the highest priority, followed
 // by Client credentials and Service Credentials.
-func userCreds(ctx context.Context, useClientSecret bool) (credentials.PerRPCCredentials, error) {
+func userCreds(ctx context.Context) (credentials.PerRPCCredentials, error) {
 	fakeUserID := viper.GetString("fake-auth-userid")    // Fake user creds.
 	clientSecretFile := viper.GetString("client-secret") // Real user creds.
-	serviceKeyFile := viper.GetString("service-key")     // Anonymous user creds.
-	if !useClientSecret {
-		clientSecretFile = ""
-	}
 
 	switch {
 	case fakeUserID != "":
 		return authentication.GetFakeCredential(fakeUserID), nil
 	case clientSecretFile != "":
 		return getCreds(ctx, clientSecretFile)
-	case serviceKeyFile != "":
-		return getServiceCreds(serviceKeyFile)
 	default:
 		return nil, nil
 	}
@@ -212,8 +197,8 @@ func dial(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTran
 	if err != nil {
 		return nil, err
 	}
-
 	opts = append(opts, grpc.WithTransportCredentials(transportCreds))
+
 	cc, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
 		return nil, err
