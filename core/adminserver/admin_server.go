@@ -338,7 +338,7 @@ func (s *Server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (
 	_, delMapErr := s.mapAdmin.DeleteTree(ctx, &tpb.DeleteTreeRequest{TreeId: d.Map.TreeId})
 	if delLogErr != nil || delMapErr != nil {
 		return nil, status.Errorf(codes.Internal, "adminserver: delete log %v: %v, delete map %v: %v",
-			err, d.Log.TreeId, delLogErr, d.Map.TreeId, delMapErr)
+			d.Log.TreeId, delLogErr, d.Map.TreeId, delMapErr)
 	}
 
 	return &google_protobuf.Empty{}, nil
