@@ -157,7 +157,7 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 	case insecure: // Impatient insecure.
 		Vlog.Printf("Warning: Skipping verification of KT Server's TLS certificate.")
 		return credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true, // nolint: gas
+			InsecureSkipVerify: true, // nolint: gosec
 		}), nil
 
 	case len(ktTLSCertPEM) != 0: // Custom CA Cert.
