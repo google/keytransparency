@@ -49,7 +49,7 @@ func (m *CreateEpochRequest) Reset()         { *m = CreateEpochRequest{} }
 func (m *CreateEpochRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateEpochRequest) ProtoMessage()    {}
 func (*CreateEpochRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequencer_api_609a447dd3e0461c, []int{0}
+	return fileDescriptor_sequencer_api_327ff544def86630, []int{0}
 }
 func (m *CreateEpochRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateEpochRequest.Unmarshal(m, b)
@@ -106,7 +106,7 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type KeyTransparencySequencerClient interface {
-	// CreateDomain applies the contained mutations to the current map root.
+	// CreateEpoch applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
 	CreateEpoch(ctx context.Context, in *CreateEpochRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 }
@@ -131,7 +131,7 @@ func (c *keyTransparencySequencerClient) CreateEpoch(ctx context.Context, in *Cr
 // Server API for KeyTransparencySequencer service
 
 type KeyTransparencySequencerServer interface {
-	// CreateDomain applies the contained mutations to the current map root.
+	// CreateEpoch applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
 	CreateEpoch(context.Context, *CreateEpochRequest) (*empty.Empty, error)
 }
@@ -171,9 +171,9 @@ var _KeyTransparencySequencer_serviceDesc = grpc.ServiceDesc{
 	Metadata: "sequencer_api.proto",
 }
 
-func init() { proto.RegisterFile("sequencer_api.proto", fileDescriptor_sequencer_api_609a447dd3e0461c) }
+func init() { proto.RegisterFile("sequencer_api.proto", fileDescriptor_sequencer_api_327ff544def86630) }
 
-var fileDescriptor_sequencer_api_609a447dd3e0461c = []byte{
+var fileDescriptor_sequencer_api_327ff544def86630 = []byte{
 	// 277 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x90, 0x4f, 0x4b, 0xc3, 0x30,
 	0x18, 0xc6, 0xad, 0x05, 0xe9, 0xb2, 0x5b, 0x04, 0x29, 0xdd, 0xa5, 0xec, 0x20, 0x3d, 0x25, 0x6c,

@@ -64,7 +64,7 @@ func (m *Domain) Reset()         { *m = Domain{} }
 func (m *Domain) String() string { return proto.CompactTextString(m) }
 func (*Domain) ProtoMessage()    {}
 func (*Domain) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{0}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{0}
 }
 func (m *Domain) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Domain.Unmarshal(m, b)
@@ -148,7 +148,7 @@ func (m *ListDomainsRequest) Reset()         { *m = ListDomainsRequest{} }
 func (m *ListDomainsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListDomainsRequest) ProtoMessage()    {}
 func (*ListDomainsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{1}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{1}
 }
 func (m *ListDomainsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListDomainsRequest.Unmarshal(m, b)
@@ -187,7 +187,7 @@ func (m *ListDomainsResponse) Reset()         { *m = ListDomainsResponse{} }
 func (m *ListDomainsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListDomainsResponse) ProtoMessage()    {}
 func (*ListDomainsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{2}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{2}
 }
 func (m *ListDomainsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListDomainsResponse.Unmarshal(m, b)
@@ -229,7 +229,7 @@ func (m *GetDomainRequest) Reset()         { *m = GetDomainRequest{} }
 func (m *GetDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*GetDomainRequest) ProtoMessage()    {}
 func (*GetDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{3}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{3}
 }
 func (m *GetDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetDomainRequest.Unmarshal(m, b)
@@ -281,7 +281,7 @@ func (m *CreateDomainRequest) Reset()         { *m = CreateDomainRequest{} }
 func (m *CreateDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateDomainRequest) ProtoMessage()    {}
 func (*CreateDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{4}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{4}
 }
 func (m *CreateDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateDomainRequest.Unmarshal(m, b)
@@ -355,7 +355,7 @@ func (m *DeleteDomainRequest) Reset()         { *m = DeleteDomainRequest{} }
 func (m *DeleteDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteDomainRequest) ProtoMessage()    {}
 func (*DeleteDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{5}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{5}
 }
 func (m *DeleteDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteDomainRequest.Unmarshal(m, b)
@@ -394,7 +394,7 @@ func (m *UndeleteDomainRequest) Reset()         { *m = UndeleteDomainRequest{} }
 func (m *UndeleteDomainRequest) String() string { return proto.CompactTextString(m) }
 func (*UndeleteDomainRequest) ProtoMessage()    {}
 func (*UndeleteDomainRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{6}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{6}
 }
 func (m *UndeleteDomainRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UndeleteDomainRequest.Unmarshal(m, b)
@@ -435,7 +435,7 @@ func (m *GarbageCollectRequest) Reset()         { *m = GarbageCollectRequest{} }
 func (m *GarbageCollectRequest) String() string { return proto.CompactTextString(m) }
 func (*GarbageCollectRequest) ProtoMessage()    {}
 func (*GarbageCollectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{7}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{7}
 }
 func (m *GarbageCollectRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GarbageCollectRequest.Unmarshal(m, b)
@@ -473,7 +473,7 @@ func (m *GarbageCollectResponse) Reset()         { *m = GarbageCollectResponse{}
 func (m *GarbageCollectResponse) String() string { return proto.CompactTextString(m) }
 func (*GarbageCollectResponse) ProtoMessage()    {}
 func (*GarbageCollectResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_e358b22ccde6444d, []int{8}
+	return fileDescriptor_admin_a750b75ae0ac8872, []int{8}
 }
 func (m *GarbageCollectResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GarbageCollectResponse.Unmarshal(m, b)
@@ -540,7 +540,7 @@ type KeyTransparencyAdminClient interface {
 	// UndeleteDomain marks a previously deleted domain as active if it has not
 	// already been garbage collected.
 	UndeleteDomain(ctx context.Context, in *UndeleteDomainRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	// Fully delete soft-deleted domains that have been deleted for longer than a duration.
+	// Fully delete soft-deleted domains that have been soft-deleted before the specified timestamp.
 	GarbageCollect(ctx context.Context, in *GarbageCollectRequest, opts ...grpc.CallOption) (*GarbageCollectResponse, error)
 }
 
@@ -625,7 +625,7 @@ type KeyTransparencyAdminServer interface {
 	// UndeleteDomain marks a previously deleted domain as active if it has not
 	// already been garbage collected.
 	UndeleteDomain(context.Context, *UndeleteDomainRequest) (*empty.Empty, error)
-	// Fully delete soft-deleted domains that have been deleted for longer than a duration.
+	// Fully delete soft-deleted domains that have been soft-deleted before the specified timestamp.
 	GarbageCollect(context.Context, *GarbageCollectRequest) (*GarbageCollectResponse, error)
 }
 
@@ -774,9 +774,9 @@ var _KeyTransparencyAdmin_serviceDesc = grpc.ServiceDesc{
 	Metadata: "v1/admin.proto",
 }
 
-func init() { proto.RegisterFile("v1/admin.proto", fileDescriptor_admin_e358b22ccde6444d) }
+func init() { proto.RegisterFile("v1/admin.proto", fileDescriptor_admin_a750b75ae0ac8872) }
 
-var fileDescriptor_admin_e358b22ccde6444d = []byte{
+var fileDescriptor_admin_a750b75ae0ac8872 = []byte{
 	// 753 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x96, 0x4f, 0x53, 0xd3, 0x4e,
 	0x18, 0xc7, 0x7f, 0x69, 0x7f, 0x14, 0xd8, 0x94, 0x8a, 0x5b, 0xc0, 0x10, 0x1c, 0x29, 0xf1, 0xd2,
