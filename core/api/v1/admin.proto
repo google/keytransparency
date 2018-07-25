@@ -151,7 +151,7 @@ service KeyTransparencyAdmin {
     };
   }
 
-  // Fully delete soft-deleted domains that have been deleted before the specified timestamp.
+  // Fully delete soft-deleted domains that have been soft-deleted before the specified timestamp.
   rpc GarbageCollect(GarbageCollectRequest) returns (GarbageCollectResponse) {
   }
 }

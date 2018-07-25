@@ -255,7 +255,6 @@ func TestDelete(t *testing.T) {
 		if got, want := domain.Map.Deleted, true; got != want {
 			t.Errorf("Map.TreeState: %v, want %v", got, want)
 		}
-		// Garbage collect
 		if _, err := svr.GarbageCollect(ctx, &pb.GarbageCollectRequest{
 			Before: ptypes.TimestampNow(),
 		}); err != nil {

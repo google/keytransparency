@@ -349,20 +349,20 @@ func (s *Server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainReques
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-// GarbageCollect looks for domains that have been deleted for longer than a given duration and fully deletes them.
+// GarbageCollect looks for domains that have been deleted before the specified timestamp and fully deletes them.
 func (s *Server) GarbageCollect(ctx context.Context, in *pb.GarbageCollectRequest) (*pb.GarbageCollectResponse, error) {
 	before, err := ptypes.Timestamp(in.GetBefore())
 	if err != nil {
 		return nil, err
 	}
 
-	// Search for domains older than in.Duration.
 	showDeleted := true
 	domains, err := s.domains.List(ctx, showDeleted)
 	if err != nil {
 		return nil, err
 	}
 
+	// Search for domains deleted before in.Before.
 	deleted := make([]*pb.Domain, 0)
 	for _, d := range domains {
 		if d.Deleted && d.DeletedTimestamp.Before(before) {
