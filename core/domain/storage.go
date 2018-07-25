@@ -33,7 +33,8 @@ type Domain struct {
 	VRFPriv                  proto.Message
 	MinInterval, MaxInterval time.Duration
 	// TODO(gbelvin): specify mutation function
-	Deleted bool
+	Deleted          bool
+	DeletedTimestamp time.Time
 }
 
 // Storage is an interface for storing multi-tenant configuration information.
@@ -44,6 +45,8 @@ type Storage interface {
 	Write(ctx context.Context, d *Domain) error
 	// Read a configuration from storage.
 	Read(ctx context.Context, domainID string, showDeleted bool) (*Domain, error)
-	// Delete and undelete.
+	// Soft-delete or undelete the domain
 	SetDelete(ctx context.Context, domainID string, isDeleted bool) error
+	// HardDelete the domain.
+	Delete(ctx context.Context, domainID string) error
 }
