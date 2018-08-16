@@ -55,11 +55,11 @@ func TestVectors(t *testing.T) {
 		userID, appID, data string
 		want                []byte
 	}{
-		{"", "", "", dh("0698789c7beed09e93848e4df08be5c911de534d286abcbf69359debe4c62bc2")},
-		{"foo", "app", "bar", dh("064c8933f50f897e8b179065c6b3ec13e9d093337c6d403c77e3ed1701378ed6")},
-		{"foo1", "app", "bar", dh("77015921f7fe584e1b5866a32ab9f305715c4e0241581d41f66ee34b24cdb566")},
-		{"foo", "app1", "bar", dh("e7337229d7747cc2c9a83ee08adbec712f4acafd1b72258bbebf74637de987b7")},
-		{"foo", "app", "bar1", dh("0fa2d7d53552e0871564c0e82ad394e72476b75f7fc77f40e2080af7f33d66eb")},
+		{"", "", "", dh("c0ed0ecc3801a7d66fd86f37dbaf9d6853b7829a320036f21035adced508df1a")},
+		{"foo", "app", "bar", dh("f686de3c4ccfe52724f8067b95a9d2030df73353ed548a1b6d8e334d16bcac57")},
+		{"foo1", "app", "bar", dh("c5eff3426ff412ca9976186aa188b7eacdaaec9743536f9524ada564bdf78543")},
+		{"foo", "app1", "bar", dh("0d7f40c12fc912f971f4afce7fa44a034b38aca299b8a4b29800ba45bec79148")},
+		{"foo", "app", "bar1", dh("a42a7e606753b61964e0333823939baeda4cd0c80583af0aa6d71dadec6e5bb8")},
 	} {
 		data := []byte(tc.data)
 		if got, want := Commit(tc.userID, tc.appID, data, zeroKey), tc.want; !bytes.Equal(got, want) {

@@ -22,7 +22,7 @@ package commitments
 import (
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha512"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 )
@@ -36,7 +36,7 @@ const (
 )
 
 var (
-	hashAlgo = sha512.New512_256
+	hashAlgo = sha256.New
 	// key is publicly known random fixed key for use in the HMAC function.
 	// This fixed key allows the commitment scheme to be modeled as a random oracle.
 	fixedKey = []byte{0x19, 0x6e, 0x7e, 0x52, 0x84, 0xa7, 0xef, 0x93, 0x0e, 0xcb, 0x9a, 0x19, 0x78, 0x74, 0x97, 0x55}

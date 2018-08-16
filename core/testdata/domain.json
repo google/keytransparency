@@ -1,40 +1,40 @@
 {
-	"domainId": "domain_5577006791947779410",
+	"domainId": "integration",
 	"log": {
-		"treeId": "1732270362285615536",
+		"treeId": "7997144867253999714",
 		"treeState": "ACTIVE",
 		"treeType": "PREORDERED_LOG",
 		"hashStrategy": "RFC6962_SHA256",
 		"hashAlgorithm": "SHA256",
 		"signatureAlgorithm": "ECDSA",
-		"displayName": "KT SMH Log",
-		"description": "KT domain domain_5577006791947779410",
+		"displayName": "integration",
+		"description": "KT domain integration",
 		"publicKey": {
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqGXPnhMIclRmYHSmAnCMmfDUJ9iNBMmFxR/wHJdL12AuVUkgcuhbEp2hy5ETs7bfFc2P95IYFlmbiuHMq3UY/A=="
 		},
-		"maxRootDuration": "0.000s",
-		"createTime": "2018-04-27T14:14:56.890Z",
-		"updateTime": "2018-04-27T14:14:56.890Z"
+		"maxRootDuration": "0s",
+		"createTime": "2018-08-15T20:17:55.678Z",
+		"updateTime": "2018-08-15T20:17:55.678Z"
 	},
 	"map": {
-		"treeId": "7216431821431111201",
+		"treeId": "8069525039617416297",
 		"treeState": "ACTIVE",
 		"treeType": "MAP",
 		"hashStrategy": "CONIKS_SHA512_256",
 		"hashAlgorithm": "SHA256",
 		"signatureAlgorithm": "ECDSA",
-		"displayName": "KT Map",
-		"description": "KT domain domain_5577006791947779410",
+		"displayName": "integration",
+		"description": "KT domain integration",
 		"publicKey": {
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWLHm0TLYaTzENpPkBl2E79ySqJI+EW51VpoWh7wqY3OjSJcft4zgEeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA=="
 		},
-		"maxRootDuration": "0.000s",
-		"createTime": "2018-04-27T14:14:56.896Z",
-		"updateTime": "2018-04-27T14:14:56.896Z"
+		"maxRootDuration": "0s",
+		"createTime": "2018-08-15T20:17:55.689Z",
+		"updateTime": "2018-08-15T20:17:55.689Z"
 	},
 	"vrf": {
 		"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF2Pm2kKya+JBun1QRmKQMcoMOIBNWp8fjECkJX+/hNWdV1UKb12W+yXcX2MqN7ZMX77hS9mLus/WaE0NS370mA=="
 	},
-	"minInterval": "216000.000s",
-	"maxInterval": "216000.000s"
+	"minInterval": "0.100s",
+	"maxInterval": "216000s"
 }
