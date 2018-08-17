@@ -173,19 +173,9 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 			}
 			cctx, cancel := context.WithTimeout(tc.ctx, env.Timeout)
 			defer cancel()
-			m, err := env.Client.Update(cctx, u, tc.signers)
-			if got, want := err, context.DeadlineExceeded; got != want {
-				return fmt.Errorf("gen-test-vectors: Update(%v): %v, want %v", tc.userID, got, want)
-			}
-
-			if err := env.Receiver.FlushN(ctx, 1); err != nil {
-				return fmt.Errorf("gen-test-vectors: FlushN(1): %v", err)
-			}
-
-			cctx, cancel = context.WithTimeout(tc.ctx, env.Timeout)
-			defer cancel()
-			if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
-				return fmt.Errorf("gen-test-vectors: WaitForUserUpdate(%v): %v, want nil", m, err)
+			_, err := env.Client.Update(cctx, u, tc.signers)
+			if err != nil {
+				return fmt.Errorf("gen-test-vectors: Update(%v): %v", tc.userID, err)
 			}
 		}
 		if err := SaveTestVectors(*testdataDir, env, getEntryResps); err != nil {
