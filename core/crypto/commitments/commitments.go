@@ -16,7 +16,7 @@
 //
 // Commitment scheme is as follows:
 // T = HMAC(fixedKey, "Key Transparency Commitment" || 16 byte nonce || message)
-// message is defined as: len(userID) || userID || data
+// message is defined as: len(userID) || userID || len(appID) || appID || data
 package commitments
 
 import (
