@@ -1,7 +1,7 @@
 {
 	"domainId": "integration",
 	"log": {
-		"treeId": "7997144867253999714",
+		"treeId": "1019253731460280494",
 		"treeState": "ACTIVE",
 		"treeType": "PREORDERED_LOG",
 		"hashStrategy": "RFC6962_SHA256",
@@ -13,14 +13,14 @@
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqGXPnhMIclRmYHSmAnCMmfDUJ9iNBMmFxR/wHJdL12AuVUkgcuhbEp2hy5ETs7bfFc2P95IYFlmbiuHMq3UY/A=="
 		},
 		"maxRootDuration": "0s",
-		"createTime": "2018-08-15T20:17:55.678Z",
-		"updateTime": "2018-08-15T20:17:55.678Z"
+		"createTime": "2018-08-29T20:24:06.330Z",
+		"updateTime": "2018-08-29T20:24:06.330Z"
 	},
 	"map": {
-		"treeId": "8069525039617416297",
+		"treeId": "551621260456305372",
 		"treeState": "ACTIVE",
 		"treeType": "MAP",
-		"hashStrategy": "CONIKS_SHA512_256",
+		"hashStrategy": "CONIKS_SHA256",
 		"hashAlgorithm": "SHA256",
 		"signatureAlgorithm": "ECDSA",
 		"displayName": "integration",
@@ -29,8 +29,8 @@
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWLHm0TLYaTzENpPkBl2E79ySqJI+EW51VpoWh7wqY3OjSJcft4zgEeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA=="
 		},
 		"maxRootDuration": "0s",
-		"createTime": "2018-08-15T20:17:55.689Z",
-		"updateTime": "2018-08-15T20:17:55.689Z"
+		"createTime": "2018-08-29T20:24:06.341Z",
+		"updateTime": "2018-08-29T20:24:06.341Z"
 	},
 	"vrf": {
 		"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF2Pm2kKya+JBun1QRmKQMcoMOIBNWp8fjECkJX+/hNWdV1UKb12W+yXcX2MqN7ZMX77hS9mLus/WaE0NS370mA=="

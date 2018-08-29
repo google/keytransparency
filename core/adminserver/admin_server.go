@@ -60,7 +60,7 @@ var (
 			TreeType:  tpb.TreeType_MAP,
 			// Clients that verify output from the map need to import
 			// _ "github.com/google/trillian/merkle/coniks"
-			HashStrategy:       tpb.HashStrategy_CONIKS_SHA512_256,
+			HashStrategy:       tpb.HashStrategy_CONIKS_SHA256,
 			SignatureAlgorithm: sigpb.DigitallySigned_ECDSA,
 			HashAlgorithm:      sigpb.DigitallySigned_SHA256,
 			MaxRootDuration:    ptypes.DurationProto(0 * time.Millisecond),
