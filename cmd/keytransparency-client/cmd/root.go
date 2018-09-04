@@ -50,7 +50,7 @@ var (
 var RootCmd = &cobra.Command{
 	Use:   "keytransparency-client",
 	Short: "A client for interacting with the key transparency server",
-	Long: `The key transparency client retrieves and sets keys in the 
+	Long: `The key transparency client retrieves and sets keys in the
 key transparency server.  The client verifies all cryptographic proofs the
 server provides to ensure that account data is accurate.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -277,7 +277,7 @@ func readConfigFromDisk() (*pb.Domain, error) {
 			PublicKey:    logPubPB,
 		},
 		Map: &trillian.Tree{
-			HashStrategy: trillian.HashStrategy_CONIKS_SHA512_256,
+			HashStrategy: trillian.HashStrategy_CONIKS_SHA256,
 			PublicKey:    mapPubPB,
 		},
 		Vrf: vrfPubPB,
