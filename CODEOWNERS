@@ -6,11 +6,3 @@
 
 # Default
 *				@gdbelvin
-
-/cmd				@gdbelvin
-/core				@gdbelvin
-/core/crypto			@gdbelvin
-/deploy				@gdbelvin
-/docs				@gdbelvin
-/impl				@gdbelvin
-/scripts			@gdbelvin
