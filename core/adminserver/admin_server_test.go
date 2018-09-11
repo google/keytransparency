@@ -158,7 +158,7 @@ func TestCreateRead(t *testing.T) {
 	storage := fake.NewDomainStorage()
 
 	// Map server
-	mapEnv, err := integration.NewMapEnv(ctx)
+	mapEnv, err := integration.NewMapEnv(ctx, false)
 	if err != nil {
 		t.Fatalf("Failed to create trillian map server: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestDelete(t *testing.T) {
 	storage := fake.NewDomainStorage()
 
 	// Map server
-	mapEnv, err := integration.NewMapEnv(ctx)
+	mapEnv, err := integration.NewMapEnv(ctx, false)
 	if err != nil {
 		t.Fatalf("Failed to create trillian map server: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestListDomains(t *testing.T) {
 	storage := fake.NewDomainStorage()
 
 	// Map server
-	mapEnv, err := integration.NewMapEnv(ctx)
+	mapEnv, err := integration.NewMapEnv(ctx, false)
 	if err != nil {
 		t.Fatalf("Failed to create trillian map server: %v", err)
 	}

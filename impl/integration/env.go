@@ -124,7 +124,7 @@ func NewEnv() (*Env, error) {
 	}
 
 	// Map server
-	mapEnv, err := ttest.NewMapEnv(ctx)
+	mapEnv, err := ttest.NewMapEnv(ctx, false)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to create trillian map server: %v", err)
 	}
