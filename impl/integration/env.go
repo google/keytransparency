@@ -186,7 +186,7 @@ func NewEnv() (*Env, error) {
 		domainStorage,
 		logEnv.Admin, mapEnv.Admin,
 		logEnv.Log, mapEnv.Map,
-		mutations,
+		mutations, mutations,
 		monitoring.InertMetricFactory{},
 	)
 

@@ -138,13 +138,12 @@ func (s *Sequencer) CheckForNewDomains(ctx context.Context) error {
 	}
 	for _, d := range domains {
 		knownDomains.Set(1, d.DomainID)
-		if _, ok := s.receivers[d.DomainID]; !ok {
-			glog.Infof("StartSigning domain: %v", d.DomainID)
-			r, err := s.NewReceiver(ctx, d)
-			if err != nil {
-				return err
-			}
-			s.receivers[d.DomainID] = r
+		if _, err := s.sequencerClient.RunBatch(ctx, &spb.RunBatchRequest{
+			DomainId: d.DomainID,
+			MinBatch: 1,
+			MaxBatch: s.batchSize,
+		}); err != nil {
+			return err
 		}
 	}
 	return nil
