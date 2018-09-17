@@ -20,7 +20,6 @@ package mutator
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -68,8 +67,6 @@ type QueueMessage struct {
 type MutationQueue interface {
 	// Send submits an item to the queue
 	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
-	// NewReceiver starts receiving messages sent to the queue. As batches become ready, receiveFunc will be called.
-	NewReceiver(ctx context.Context, last time.Time, domainID string, receiveFunc ReceiveFunc, ropts ReceiverOptions) Receiver
 }
 
 // ReceiveFunc receives updates from the queue.
@@ -82,19 +79,6 @@ type Receiver interface {
 	// FlushN waits for n items and then sends them.
 	// Deterministic implementations that can't wait will return an error.
 	FlushN(context.Context, int) error
-}
-
-// ReceiverOptions holds options for setting up a receiver.
-type ReceiverOptions struct {
-	// MaxBatchSize is the maximum number of items allowed in a batch.
-	MaxBatchSize int32
-	// Period is the typical amount of time between batches.
-	// If there are more than MaxBatchSize items, receiveFunc will be called
-	// repeatedly with no delay until the load decreases under MaxBatchSize.
-	Period time.Duration
-	// MaxPeriod is the maximum allowed time between batches.
-	// If no data has been received in this period, an empty batch will be sent.
-	MaxPeriod time.Duration
 }
 
 // MutationStorage reads and writes mutations to the database.

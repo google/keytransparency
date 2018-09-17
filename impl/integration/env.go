@@ -199,15 +199,15 @@ func NewEnv() (*Env, error) {
 	batchSize := 100
 	seq := sequencer.New(
 		sequencerClient,
-		logEnv.Log, mapEnv.Map, mapEnv.Admin,
-		domainStorage, mutations, queue, batchSize)
+		mapEnv.Admin,
+		domainStorage, mutations, batchSize)
 
 	d, err := domainStorage.Read(ctx, domainPB.DomainId, false)
 	if err != nil {
 		return nil, err
 	}
-	// NewReceiver will create a fist map revision right away.
-	receiver, err := seq.NewReceiver(ctx, d)
+	// CheckForNewDomains will create a fist map revision right away.
+	receiver, err := seq.CheckForNewDomains(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
 	}
