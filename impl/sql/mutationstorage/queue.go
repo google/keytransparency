@@ -31,7 +31,7 @@ import (
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
-	glog.Infof("queue.Send(%v, <mutation>)", domainID)
+	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
 	mData, err := proto.Marshal(update)
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func (r *Receiver) FlushN(ctx context.Context, n int) error {
 	if sent < n {
 		// We could retry at this point, but because this queue is mysql based
 		// and deterministic, we know that waiting won't be very useful.
-		return fmt.Errorf("sendMultiBatch(): %v, want >= %v", sent, n)
+		return fmt.Errorf("mutationstorage: sendMultiBatch(): %v, want >= %v", sent, n)
 	}
 	return nil
 }
@@ -113,11 +113,11 @@ func (r *Receiver) run(ctx context.Context, last time.Time) {
 		case <-r.ticker.C:
 			// We will be overdue for an epoch soon.
 			if _, err := r.sendMultiBatch(ctx, 1, int(r.opts.MaxBatchSize)); err != nil {
-				glog.Errorf("minTick: sendMultiBatch(): %v", err)
+				glog.Errorf("mutationstorage: minTick: sendMultiBatch(): %v", err)
 			}
 		case <-r.maxTicker.C:
 			if _, err := r.sendMultiBatch(ctx, 0, int(r.opts.MaxBatchSize)); err != nil {
-				glog.Errorf("maxTick: sendMultiBatch(): %v", err)
+				glog.Errorf("mutationstorage: maxTick: sendMultiBatch(): %v", err)
 			}
 		case <-ctx.Done():
 			return
@@ -152,14 +152,14 @@ func (r *Receiver) sendMultiBatch(ctx context.Context, minMsgs, maxMsgs int) (in
 func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int) (int, error) {
 	batch, err := r.store.ReadQueue(ctx, r.domainID, int32(maxBatch))
 	if err != nil {
-		return 0, fmt.Errorf("ReadQueue(): %v", err)
+		return 0, fmt.Errorf("mutationstorage: ReadQueue(): %v", err)
 	}
 	if len(batch) < minBatch {
 		return 0, nil
 	}
 
 	if err := r.receiveFunc(batch); err != nil {
-		return 0, fmt.Errorf("queue: recieveFunc(): %v", err)
+		return 0, fmt.Errorf("mutationstorage: recieveFunc(): %v", err)
 	}
 	// TODO(gbelvin): Do we need finer grained errors?
 	// We could put an ack'ed field in a QueueMessage object.
@@ -167,7 +167,7 @@ func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int) (int, 
 
 	// Delete old messages.
 	if err := r.store.DeleteMessages(ctx, r.domainID, batch); err != nil {
-		return 0, fmt.Errorf("DeleteMessages(%v, len(ms): %v): %v", r.domainID, len(batch), err)
+		return 0, fmt.Errorf("mutationstorage: DeleteMessages(%v, len(ms): %v): %v", r.domainID, len(batch), err)
 	}
 
 	return len(batch), nil
@@ -214,7 +214,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
 
 // DeleteMessages removes messages from the queue.
 func (m *Mutations) DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error {
-	glog.V(4).Infof("queue.Delete(%v, <mutation>)", domainID)
+	glog.V(4).Infof("mutationstorage: DeleteMessages(%v, <mutation>)", domainID)
 	delStmt, err := m.db.Prepare(deleteQueueExpr)
 	if err != nil {
 		return err
