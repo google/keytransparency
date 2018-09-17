@@ -17,7 +17,6 @@ package keyserver
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -320,7 +319,7 @@ func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Do
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
 	domain, err := s.domains.Read(ctx, in.DomainId, false)
-	if err == sql.ErrNoRows {
+	if status.Code(err) == codes.NotFound {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
 		return nil, status.Errorf(codes.NotFound, "Domain %v not found", in.DomainId)
 	} else if err != nil {
