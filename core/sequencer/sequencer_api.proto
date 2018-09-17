@@ -35,8 +35,20 @@ message CreateEpochRequest {
    int64 revision = 3;
 }
 
+// RunBatchRequest describes the size of a batch for a given domain.
+message RunBatchRequest{
+   // domain_id is the domain to run.
+   string domain_id = 1;
+   // min_batch is the minimum number of items in a batch.
+   int32 min_batch = 2;
+   // max_batch is the maximum number of items in a batch.
+   int32 max_batch = 3;
+}
+
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
+  // RunBatch reads oustanding mutations and calls CreateEpoch.
+  rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty) {}
   // CreateEpoch applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
   rpc CreateEpoch(CreateEpochRequest) returns (google.protobuf.Empty) {}
