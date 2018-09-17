@@ -150,9 +150,9 @@ func (r *Receiver) sendMultiBatch(ctx context.Context, minMsgs, maxMsgs int) (in
 // If the number of available items is < minBatch, 0 items are sent.
 // If the number of available items is > maxBatch only maxBatch items are sent.
 func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int) (int, error) {
-	batch, err := r.store.readQueue(ctx, r.domainID, int32(maxBatch))
+	batch, err := r.store.ReadQueue(ctx, r.domainID, int32(maxBatch))
 	if err != nil {
-		return 0, fmt.Errorf("readQueue(): %v", err)
+		return 0, fmt.Errorf("ReadQueue(): %v", err)
 	}
 	if len(batch) < minBatch {
 		return 0, nil
@@ -166,15 +166,15 @@ func (r *Receiver) sendBatch(ctx context.Context, minBatch, maxBatch int) (int, 
 	// But I don't think we need that level of granularity -- yet?
 
 	// Delete old messages.
-	if err := r.store.deleteMessages(ctx, r.domainID, batch); err != nil {
-		return 0, fmt.Errorf("deleteMessages(%v, len(ms): %v): %v", r.domainID, len(batch), err)
+	if err := r.store.DeleteMessages(ctx, r.domainID, batch); err != nil {
+		return 0, fmt.Errorf("DeleteMessages(%v, len(ms): %v): %v", r.domainID, len(batch), err)
 	}
 
 	return len(batch), nil
 }
 
-// readQueue reads all mutations that are still in the queue up to batchSize.
-func (m *Mutations) readQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error) {
+// ReadQueue reads all mutations that are still in the queue up to batchSize.
+func (m *Mutations) ReadQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error) {
 	readStmt, err := m.db.Prepare(readQueueExpr)
 	if err != nil {
 		return nil, err
@@ -212,7 +212,8 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
 	return results, nil
 }
 
-func (m *Mutations) deleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error {
+// DeleteMessages removes messages from the queue.
+func (m *Mutations) DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error {
 	glog.V(4).Infof("queue.Delete(%v, <mutation>)", domainID)
 	delStmt, err := m.db.Prepare(deleteQueueExpr)
 	if err != nil {
