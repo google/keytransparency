@@ -112,15 +112,15 @@ func (s *Sequencer) Close() {
 	}
 }
 
-// PeriodicallyCheckForNewDomains starts receivers for all domains and periodically checks for new domains.
-func (s *Sequencer) PeriodicallyCheckForNewDomains(ctx context.Context, refresh time.Duration) error {
+// PeriodicallyRunBatchForAllDomains starts receivers for all domains and periodically checks for new domains.
+func (s *Sequencer) PeriodicallyRunBatchForAllDomains(ctx context.Context, refresh time.Duration) error {
 	ticker := time.NewTicker(refresh)
 	defer func() { ticker.Stop() }()
 
 	for {
 		select {
 		case <-ticker.C:
-			if err := s.CheckForNewDomains(ctx); err != nil {
+			if err := s.RunBatchForAllDomains(ctx); err != nil {
 				return err
 			}
 		case <-ctx.Done():
@@ -129,9 +129,9 @@ func (s *Sequencer) PeriodicallyCheckForNewDomains(ctx context.Context, refresh 
 	}
 }
 
-// CheckForNewDomains scans the domains table for new domains and creates new receivers for
+// RunBatchForAllDomains scans the domains table for new domains and creates new receivers for
 // domains that the sequencer is not currently receiving for.
-func (s *Sequencer) CheckForNewDomains(ctx context.Context) error {
+func (s *Sequencer) RunBatchForAllDomains(ctx context.Context) error {
 	domains, err := s.domains.List(ctx, false)
 	if err != nil {
 		return fmt.Errorf("admin.List(): %v", err)

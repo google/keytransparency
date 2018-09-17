@@ -123,7 +123,7 @@ func main() {
 
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := signer.PeriodicallyCheckForNewDomains(cctx, *refresh); err != nil {
+	if err := signer.PeriodicallyRunBatchForAllDomains(cctx, *refresh); err != nil {
 		glog.Errorf("StartSequencingAll(): %v", err)
 	}
 	httpServer.Shutdown(cctx)
