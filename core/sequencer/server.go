@@ -113,7 +113,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
 	}
 	if int32(len(batch)) < in.MinBatch {
-		return nil, nil
+		return &empty.Empty{}, nil
 	}
 	if err := s.queue.DeleteMessages(ctx, in.DomainId, batch); err != nil {
 		return nil, err

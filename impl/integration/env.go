@@ -91,7 +91,6 @@ type Env struct {
 	mapEnv        *ttest.MapEnv
 	logEnv        *ttest.LogEnv
 	admin         *adminserver.Server
-	Receiver      mutator.Receiver
 	grpcServer    *grpc.Server
 	grpcCC        *grpc.ClientConn
 	db            *sql.DB
@@ -202,15 +201,11 @@ func NewEnv() (*Env, error) {
 		mapEnv.Admin,
 		domainStorage, mutations, batchSize)
 
-	d, err := domainStorage.Read(ctx, domainPB.DomainId, false)
-	if err != nil {
-		return nil, err
+	// RunBatchForAllDomains will create a fist map revision right away.
+	if err := seq.RunBatchForAllDomains(ctx); err != nil {
+		return nil, fmt.Errorf("env: RunBatchForAllDomains(): %v", err)
 	}
-	// CheckForNewDomains will create a fist map revision right away.
-	receiver, err := seq.CheckForNewDomains(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
-	}
+	go seq.PeriodicallyRunBatchForAllDomains(ctx, 100*time.Millisecond)
 
 	// Serve and listen.
 	addr, lis, err := Listen()
@@ -241,7 +236,6 @@ func NewEnv() (*Env, error) {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
 		},
-		Receiver:      receiver,
 		mapEnv:        mapEnv,
 		logEnv:        logEnv,
 		admin:         adminSvr,
