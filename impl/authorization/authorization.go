@@ -78,7 +78,7 @@ func (a *AuthzPolicy) checkPermission(sctx *authentication.SecurityContext, doma
 			return nil
 		}
 	}
-	return status.Errorf(codes.PermissionDenied, "%v is not authorized to perform %v on %v", sctx.Email, rLabel)
+	return status.Errorf(codes.PermissionDenied, "%v is not authorized to act on %v", sctx.Email, rLabel)
 }
 
 func resourceLabel(domainID, appID string) (string, error) {
