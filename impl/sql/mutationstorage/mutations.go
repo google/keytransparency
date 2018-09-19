@@ -37,6 +37,8 @@ const (
 	insertQueueExpr = `
 	INSERT INTO Queue (DomainID, Time, Mutation)
 	VALUES (?, ?, ?);`
+	readQueueWatermarkExpr = `
+	SELECT Time FROM Queue WHERE DomainID = ? ORDER BY TIME DESC LIMIT 1;`
 	readQueueExpr = `
  	SELECT Time, Mutation FROM Queue
  	WHERE DomainID = ?

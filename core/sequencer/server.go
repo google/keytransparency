@@ -70,6 +70,8 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // Queue reads messages that haven't been deleted off the queue.
 type Queue interface {
+	// HighWatermark returns the highest timestamp in the mutations table.
+	HighWatermark(ctx context.Context, domainID string) (int64, error)
 	// Read returns up to batchSize messages for domainID.
 	ReadQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error)
 	// DeleteMessages removes the requested messages.

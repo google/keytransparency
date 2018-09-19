@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -41,6 +43,23 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 	defer writeStmt.Close()
 	_, err = writeStmt.ExecContext(ctx, domainID, time.Now().UnixNano(), mData)
 	return err
+}
+
+// HighWatermark returns the highest timestamp in the mutations table.
+func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (int64, error) {
+	readStmt, err := m.db.Prepare(readQueueWatermarkExpr)
+	if err != nil {
+		return 0, err
+	}
+	defer readStmt.Close()
+	row := readStmt.QueryRowContext(ctx, domainID)
+	var watermark int64
+	if err := row.Scan(&watermark); err == sql.ErrNoRows {
+		return 0, status.Errorf(codes.NotFound, "%v", err)
+	} else if err != nil {
+		return 0, err
+	}
+	return watermark, err
 }
 
 // ReadQueue reads all mutations that are still in the queue up to batchSize.
