@@ -48,6 +48,12 @@ message RunBatchRequest{
    int32 max_batch = 3;
 }
 
+
+// PublishBatchRequest copies all SignedMapHeads into the Log of SignedMapHeads.
+message PublishBatchRequest {
+   string domain_id = 1;
+}
+
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
   // RunBatch reads outstanding mutations and calls CreateEpoch.
@@ -55,5 +61,8 @@ service KeyTransparencySequencer {
   // CreateEpoch applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
   rpc CreateEpoch(CreateEpochRequest) returns (google.protobuf.Empty) {}
+  // PublishBatch copies the MapRoots of all known map revisions into the Log
+  // of MapRoots.
+  rpc PublishBatch(PublishBatchRequest) returns (google.protobuf.Empty) {}
 }
 
