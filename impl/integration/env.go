@@ -40,6 +40,7 @@ import (
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
+	"github.com/google/martian/log"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring"
@@ -205,7 +206,11 @@ func NewEnv() (*Env, error) {
 	if err := seq.RunBatchForAllDomains(ctx); err != nil {
 		return nil, fmt.Errorf("env: RunBatchForAllDomains(): %v", err)
 	}
-	go seq.PeriodicallyRunBatchForAllDomains(ctx, 100*time.Millisecond)
+	go func() {
+		if err := seq.PeriodicallyRunBatchForAllDomains(ctx, 100*time.Millisecond); err != nil {
+			log.Errorf("PeriodicallyRunBatchForAllDomains(): %v", err)
+		}
+	}()
 
 	// Serve and listen.
 	addr, lis, err := Listen()
