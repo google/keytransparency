@@ -21,7 +21,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/domain"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
@@ -106,7 +105,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	cli, err := client.NewVerifierFromDomain(config)
+	mapClient, err := tclient.NewMapClientFromTree(s.tmap, config.Map)
 	if err != nil {
 		return nil, err
 	}
@@ -119,13 +118,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 	glog.V(2).Infof("CreateEpoch: %v mutations, %v indexes", len(msgs), len(indexes))
 
-	mapRoot, err := s.getAndVerifyMapRoot(ctx, cli, config.Map.TreeId)
-	if err != nil {
-		return nil, err
-	}
-	glog.V(3).Infof("CreateEpoch: Previous SignedMapRoot: {Revision: %v}", mapRoot.Revision)
-
-	leaves, err := s.getAndVerifyMapLeaves(ctx, cli.MapVerifier, mapRoot, config.Map.TreeId, indexes)
+	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +137,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "tmap.SetLeaves(): %v", err)
 	}
-	mapRoot, err = cli.VerifySignedMapRoot(setResp.GetMapRoot())
+	mapRoot, err := mapClient.VerifySignedMapRoot(setResp.GetMapRoot())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
@@ -238,37 +231,4 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 	}
 	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
-}
-
-func (s *Server) getAndVerifyMapRoot(ctx context.Context, cli client.Verifier, mapID int64) (*types.MapRootV1, error) {
-	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: mapID})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "GetSignedMapRoot(%v): %v", mapID, err)
-	}
-	mapRoot, err := cli.VerifySignedMapRoot(rootResp.GetMapRoot())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
-	}
-	return mapRoot, nil
-}
-
-func (s *Server) getAndVerifyMapLeaves(ctx context.Context, verifier *tclient.MapVerifier, mapRoot *types.MapRootV1, mapID int64, indexes [][]byte) ([]*tpb.MapLeaf, error) {
-	getResp, err := s.tmap.GetLeaves(ctx, &tpb.GetMapLeavesRequest{
-		MapId: mapID,
-		Index: indexes,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "tmap.GetLeaves(): %v", err)
-	}
-	if got, want := len(getResp.MapLeafInclusion), len(indexes); got != want {
-		return nil, status.Errorf(codes.Internal, "got %v leaves, want %v", got, want)
-	}
-	leaves := make([]*tpb.MapLeaf, 0, len(getResp.MapLeafInclusion))
-	for _, m := range getResp.MapLeafInclusion {
-		if err := verifier.VerifyMapLeafInclusionHash(mapRoot.RootHash, m); err != nil {
-			return nil, status.Errorf(codes.Internal, "map: VerifyMapLeafInclusion(): %v", err)
-		}
-		leaves = append(leaves, m.Leaf)
-	}
-	return leaves, nil
 }
