@@ -61,13 +61,13 @@ func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (int64, 
 }
 
 // ReadQueue reads all mutations that are still in the queue up to batchSize.
-func (m *Mutations) ReadQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error) {
+func (m *Mutations) ReadQueue(ctx context.Context, domainID string, low, high int64) ([]*mutator.QueueMessage, error) {
 	readStmt, err := m.db.Prepare(readQueueExpr)
 	if err != nil {
 		return nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, domainID, batchSize)
+	rows, err := readStmt.QueryContext(ctx, domainID, low, high)
 	if err != nil {
 		return nil, err
 	}

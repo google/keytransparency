@@ -73,9 +73,8 @@ type Queue interface {
 	// HighWatermark returns the highest timestamp in the mutations table.
 	HighWatermark(ctx context.Context, domainID string) (int64, error)
 	// Read returns up to batchSize messages for domainID.
-	ReadQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error)
-	// DeleteMessages removes the requested messages.
-	DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error
+	// TODO(gbelvin): Add paging API back in to support sharded reads.
+	ReadQueue(ctx context.Context, domainID string, low, high int64) ([]*mutator.QueueMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -110,7 +109,30 @@ func NewServer(
 
 // RunBatch reads mutations out of the queue and calls CreateEpoch.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
-	batch, err := s.queue.ReadQueue(ctx, in.DomainId, in.MaxBatch)
+	// Get the previous and current high water marks.
+	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})
+	if err != nil {
+		return nil, err
+	}
+	mapClient, err := tclient.NewMapClientFromTree(s.tmap, domain.Map)
+	if err != nil {
+		return nil, err
+	}
+	latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var low spb.MapMetadata
+	if err := proto.Unmarshal(latestMapRoot.Metadata, &low); err != nil {
+		return nil, err
+	}
+	high, err := s.queue.HighWatermark(ctx, in.DomainId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
+	}
+
+	// Read mutations
+	batch, err := s.queue.ReadQueue(ctx, in.DomainId, low.HighWatermark, high)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
 	}
@@ -125,18 +147,10 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 			Committed: m.ExtraData,
 		})
 	}
-	_, err = s.CreateEpoch(ctx, &spb.CreateEpochRequest{
+	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
 		DomainId: in.DomainId,
 		Messages: msgs,
 	})
-	if err != nil {
-		// If an error occurs here, messages in the queue will be retried.
-		return nil, err
-	}
-	if err := s.queue.DeleteMessages(ctx, in.DomainId, batch); err != nil {
-		return nil, err
-	}
-	return &empty.Empty{}, nil
 }
 
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
@@ -188,6 +202,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	// Write mutations associated with this epoch.
+	// TODO(gbelvin): Remove when the monitor reads from the batches table.
 	mutations := make([]*ktpb.Entry, 0, len(msgs))
 	for _, msg := range msgs {
 		mutations = append(mutations, msg.Mutation)
