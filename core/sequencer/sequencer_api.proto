@@ -25,6 +25,12 @@ package google.keytransparency.sequencer;
 import "google/protobuf/empty.proto";
 import "v1/keytransparency.proto";
 
+message MapMetadata {
+   // high_watermark is the highest timestamp (inclusive) of the source log that
+   // has been incorporated into this map revision.
+   int64 high_watermark = 1;
+}
+
 // CreateEpochRequest contains information needed to create a new epoch.
 message CreateEpochRequest {
    // domain_id is the domain to apply the mutations to.
