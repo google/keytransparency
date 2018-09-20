@@ -20,8 +20,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -55,7 +53,7 @@ func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (int64, 
 	row := readStmt.QueryRowContext(ctx, domainID)
 	var watermark int64
 	if err := row.Scan(&watermark); err == sql.ErrNoRows {
-		return 0, status.Errorf(codes.NotFound, "%v", err)
+		return 0, nil
 	} else if err != nil {
 		return 0, err
 	}

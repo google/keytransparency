@@ -17,10 +17,9 @@ package mutationstorage
 import (
 	"context"
 	"testing"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -34,29 +33,26 @@ func TestWatermark(t *testing.T) {
 	}
 	domainID := "foo"
 
-	_, err = m.HighWatermark(ctx, domainID)
-	if got, want := status.Code(err), codes.NotFound; got != want {
-		t.Errorf("HighWatermark(): %v, want %v", got, want)
-	}
-
-	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
-		t.Fatalf("Send(): %v", err)
-	}
-	high1, err := m.HighWatermark(ctx, domainID)
-	if got, want := status.Code(err), codes.OK; got != want {
-		t.Errorf("HighWatermark(): %v, want %v", got, want)
-	}
-	if got, want := high1, int64(1); got < want {
-		t.Errorf("HighWatermark(): %v, want > %v", got, want)
-	}
-	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
-		t.Fatalf("Send(): %v", err)
-	}
-	high2, err := m.HighWatermark(ctx, domainID)
-	if got, want := status.Code(err), codes.OK; got != want {
-		t.Errorf("HighWatermark(): %v, want %v", got, want)
-	}
-	if high2 <= high1 {
-		t.Errorf("HighWatermark(): %v, want > %v", high2, high1)
+	for _, tc := range []struct {
+		desc string
+		send bool
+		want int64
+	}{
+		{desc: "no rows", want: 0},
+		{desc: "first", send: true, want: time.Now().UnixNano()},
+		{desc: "second", send: true, want: time.Now().UnixNano()},
+	} {
+		if tc.send {
+			if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
+				t.Fatalf("Send(): %v", err)
+			}
+		}
+		high, err := m.HighWatermark(ctx, domainID)
+		if err != nil {
+			t.Fatalf("HighWatermark(): %v", err)
+		}
+		if high < tc.want {
+			t.Errorf("HighWatermark(): %v, want > %v", high, tc.want)
+		}
 	}
 }
