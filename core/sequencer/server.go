@@ -113,10 +113,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
 	}
 	if int32(len(batch)) < in.MinBatch {
+		// TODO(gbelvin): Process remaining messages after a timeout.
 		return &empty.Empty{}, nil
-	}
-	if err := s.queue.DeleteMessages(ctx, in.DomainId, batch); err != nil {
-		return nil, err
 	}
 	msgs := make([]*ktpb.EntryUpdate, 0, len(batch))
 	for _, m := range batch {
@@ -129,7 +127,14 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		DomainId: in.DomainId,
 		Messages: msgs,
 	})
-	return &empty.Empty{}, err
+	if err != nil {
+		// If an error occurs here, messages in the queue will be retried.
+		return nil, err
+	}
+	if err := s.queue.DeleteMessages(ctx, in.DomainId, batch); err != nil {
+		return nil, err
+	}
+	return &empty.Empty{}, nil
 }
 
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
