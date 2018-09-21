@@ -96,7 +96,6 @@ type Env struct {
 	grpcCC        *grpc.ClientConn
 	db            *sql.DB
 	stopSequencer func()
-	cancelCtx     context.CancelFunc
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {

@@ -59,9 +59,10 @@ hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
 
 func main() {
 	flag.Parse()
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	env, err := integration.NewEnv()
+	env, err := integration.NewEnv(ctx)
 	if err != nil {
 		glog.Fatalf("Could not create Env: %v", err)
 	}
