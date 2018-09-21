@@ -38,6 +38,10 @@ func TestSend(t *testing.T) {
 	ts2 := ts1.Add(time.Duration(1))
 	ts3 := ts2.Add(time.Duration(1))
 
+	if err := m.AddShards(ctx, domainID, 1, 2); err != nil {
+		t.Fatalf("AddShards(): %v", err)
+	}
+
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
 		desc     string
@@ -51,7 +55,7 @@ func TestSend(t *testing.T) {
 		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
 		{desc: "New", ts: ts3},
 	} {
-		err := m.send(ctx, domainID, update, tc.ts)
+		err := m.send(ctx, domainID, 1, update, tc.ts)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
@@ -69,6 +73,10 @@ func TestWatermark(t *testing.T) {
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 
+	if err := m.AddShards(ctx, domainID, 1, 2); err != nil {
+		t.Fatalf("AddShards(): %v", err)
+	}
+
 	for _, tc := range []struct {
 		desc string
 		send bool
@@ -80,7 +88,7 @@ func TestWatermark(t *testing.T) {
 		{desc: "second", send: true, ts: ts2, want: ts2.UnixNano()},
 	} {
 		if tc.send {
-			if err := m.send(ctx, domainID, []byte("foo"), tc.ts); err != nil {
+			if err := m.send(ctx, domainID, 1, []byte("foo"), tc.ts); err != nil {
 				t.Fatalf("send(): %v", err)
 			}
 		}

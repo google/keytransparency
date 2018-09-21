@@ -50,9 +50,16 @@ var (
 	);`,
 		`CREATE TABLE IF NOT EXISTS Queue (
 		DomainID VARCHAR(30)   NOT NULL,
+		ShardID  BIGINT        NOT NULL,
 		Time     BIGINT        NOT NULL,
 		Mutation BLOB          NOT NULL,
 		PRIMARY KEY(DomainID, Time)
+	);`,
+		`CREATE TABLE IF NOT EXISTS Shards (
+		DomainID VARCHAR(30)   NOT NULL,
+		ShardID  BIGINT        NOT NULL,
+		Write    INT           NOT NULL,
+		PRIMARY KEY(DomainID, ShardID)
 	);`,
 	}
 )

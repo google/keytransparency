@@ -29,20 +29,52 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
+// AddShards creates and adds new shards for queue writing to a domain.
+func (m *Mutations) AddShards(ctx context.Context, domainID string, shardIDs ...int64) error {
+	glog.Infof("mutationstorage: AddShard(%v, %v)", domainID, shardIDs)
+	for _, shardID := range shardIDs {
+		if _, err := m.db.ExecContext(ctx,
+			`INSERT INTO Shards (DomainID, ShardID, Write)  Values(?, ?, ?);`,
+			domainID, shardID, true); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
+	// TODO(gbelvin): Implement retry with backoff for retryable errors if
+	// we get timestamp contention.
+	shardID, err := m.randomShard(ctx, domainID)
+	if err != nil {
+		return err
+	}
 	mData, err := proto.Marshal(update)
 	if err != nil {
 		return err
 	}
-	// TODO(gbelvin): Implement retry with backoff for retryable errors if
-	// we get timestamp contention.
-	return m.send(ctx, domainID, mData, time.Now())
+	return m.send(ctx, domainID, shardID, mData, time.Now())
+}
+
+// randomShard returns a random shard from the list of active shards for domainID.
+func (m *Mutations) randomShard(ctx context.Context, domainID string) (int64, error) {
+	var shardID int64
+	err := m.db.QueryRowContext(ctx,
+		`SELECT ShardID from Shards WHERE DomainID = ? ORDER BY RANDOM() LIMIT 1;`,
+		domainID).Scan(&shardID)
+	switch {
+	case err == sql.ErrNoRows:
+		return 0, status.Errorf(codes.NotFound, "No shard found for domain %v", domainID)
+	case err != nil:
+		return 0, err
+	}
+	return shardID, nil
 }
 
 // ts must be greater than all other timestamps currently recorded for domainID.
-func (m *Mutations) send(ctx context.Context, domainID string, mData []byte, ts time.Time) error {
+func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mData []byte, ts time.Time) error {
 	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
@@ -50,8 +82,8 @@ func (m *Mutations) send(ctx context.Context, domainID string, mData []byte, ts 
 
 	var maxTime int64
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ?;`,
-		domainID).Scan(&maxTime); err != nil {
+		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ? AND ShardID = ?;`,
+		domainID, shardID).Scan(&maxTime); err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			return status.Errorf(codes.Internal,
 				"query err: %v and could not roll back: %v", err, rollbackErr)
@@ -69,8 +101,8 @@ func (m *Mutations) send(ctx context.Context, domainID string, mData []byte, ts 
 	}
 
 	if _, err = tx.ExecContext(ctx,
-		`INSERT INTO Queue (DomainID, Time, Mutation) VALUES (?, ?, ?);`,
-		domainID, tsTime, mData); err != nil {
+		`INSERT INTO Queue (DomainID, ShardID, Time, Mutation) VALUES (?, ?, ?, ?);`,
+		domainID, shardID, tsTime, mData); err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			return status.Errorf(codes.Internal,
 				"insert err: %v and could not roll back: %v", err, rollbackErr)
