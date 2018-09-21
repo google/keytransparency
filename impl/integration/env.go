@@ -46,10 +46,11 @@ import (
 	"github.com/google/trillian/storage/testdb"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	ttest "github.com/google/trillian/testonly/integration"
+
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
-	ttest "github.com/google/trillian/testonly/integration"
-	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+	_ "github.com/mattn/go-sqlite3"               // Use sqlite database for testing.
 )
 
 var (
@@ -95,6 +96,7 @@ type Env struct {
 	grpcCC        *grpc.ClientConn
 	db            *sql.DB
 	stopSequencer func()
+	cancelCtx     context.CancelFunc
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -112,8 +114,7 @@ func keyFromPEM(p string) *any.Any {
 }
 
 // NewEnv sets up common resources for tests.
-func NewEnv() (*Env, error) {
-	ctx := context.Background()
+func NewEnv(ctx context.Context) (*Env, error) {
 	timeout := 6 * time.Second
 	domainID := "integration"
 
