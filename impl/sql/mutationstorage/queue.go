@@ -126,13 +126,13 @@ func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (int64, 
 }
 
 // ReadQueue reads all mutations that are still in the queue up to batchSize.
-func (m *Mutations) ReadQueue(ctx context.Context, domainID string, low, high int64) ([]*mutator.QueueMessage, error) {
+func (m *Mutations) ReadQueue(ctx context.Context, domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, Mutation FROM Queue
-		WHERE DomainID = ? AND
-		Time > ? AND Time <= ?
+		WHERE DomainID = ? AND ShardID = ? 
+		AND Time > ? AND Time <= ?
 		ORDER BY Time ASC;`,
-		domainID, low, high)
+		domainID, shardID, low, high)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -99,5 +100,30 @@ func TestWatermark(t *testing.T) {
 		if high != tc.want {
 			t.Errorf("HighWatermark(): %v, want > %v", high, tc.want)
 		}
+	}
+}
+
+func TestReadQueue(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+	domainID := "readqueue"
+	shardID := int64(5)
+	if err := m.AddShards(ctx, domainID, shardID); err != nil {
+		t.Fatalf("AddShards(): %v", err)
+	}
+	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
+		t.Fatalf("Send(): %v", err)
+	}
+
+	rows, err := m.ReadQueue(ctx, domainID, shardID, 0, time.Now().UnixNano())
+	if err != nil {
+		t.Fatalf("ReadQueue(): %v", err)
+	}
+	if got, want := len(rows), 1; got != want {
+		t.Fatalf("ReadQueue(): len: %v, want %v", got, want)
 	}
 }
