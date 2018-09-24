@@ -70,11 +70,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // Queue reads messages that haven't been deleted off the queue.
 type Queue interface {
-	// HighWatermark returns the highest primary key in the mutations table for DomainID.
-	HighWatermark(ctx context.Context, domainID string) (int64, error)
-	// ReadQueue returns the messages between (low, high] for domainID.
-	// TODO(gbelvin): Add paging API back in to support sharded reads.
-	ReadQueue(ctx context.Context, domainID string, low, high int64) ([]*mutator.QueueMessage, error)
+	// HighWatermark returns the highest timestamp in the mutations table.
+	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
+	// Read returns up to batchSize messages for domainID.
+	ReadQueue(ctx context.Context, domainID string, shard, low, high int64) ([]*mutator.QueueMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -126,7 +125,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
-	high, err := s.queue.HighWatermark(ctx, in.DomainId)
+	highs, err := s.queue.HighWatermarks(ctx, in.DomainId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}
@@ -138,42 +137,44 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	// Count items to be processed.  Unfortunately, this means we will be
 	// reading the items to be processed twice.  Once, here in RunBatch and
 	// again in CreateEpoch.
-	metadata := &spb.MapMetadata{
-		Source: &spb.MapMetadata_SourceSlice{
-			LowestWatermark:  lastMeta.GetSource().GetHighestWatermark(),
+	sources := make(map[int64]*spb.MapMetadata_SourceSlice)
+	for sliceID, high := range highs {
+		sources[sliceID] = &spb.MapMetadata_SourceSlice{
+			LowestWatermark:  lastMeta.Sources[sliceID].GetHighestWatermark(),
 			HighestWatermark: high,
-		},
+		}
 	}
 
-	msgs, err := s.readMessages(ctx, in.DomainId, metadata.GetSource())
+	msgs, err := s.readMessages(ctx, in.DomainId, sources)
 	if err != nil {
 		return nil, err
 	}
-	if int32(len(msgs)) < in.MinBatch {
+	if len(msgs) < int(in.MinBatch) {
 		return &empty.Empty{}, nil
 	}
 
 	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
 		DomainId:    in.DomainId,
 		Revision:    int64(latestMapRoot.Revision) + 1,
-		MapMetadata: metadata,
+		MapMetadata: &spb.MapMetadata{Sources: sources},
 	})
 }
 
 func (s *Server) readMessages(ctx context.Context, domainID string,
-	source *spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
-	// Read mutations
-	batch, err := s.queue.ReadQueue(ctx, domainID,
-		source.GetLowestWatermark(), source.GetHighestWatermark())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
-	}
-	msgs := make([]*ktpb.EntryUpdate, 0, len(batch))
-	for _, m := range batch {
-		msgs = append(msgs, &ktpb.EntryUpdate{
-			Mutation:  m.Mutation,
-			Committed: m.ExtraData,
-		})
+	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
+	msgs := make([]*ktpb.EntryUpdate, 0)
+	for shardID, source := range sources {
+		batch, err := s.queue.ReadQueue(ctx, domainID, shardID,
+			source.GetLowestWatermark(), source.GetHighestWatermark())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
+		}
+		for _, m := range batch {
+			msgs = append(msgs, &ktpb.EntryUpdate{
+				Mutation:  m.Mutation,
+				Committed: m.ExtraData,
+			})
+		}
 	}
 	return msgs, nil
 }
@@ -181,10 +182,10 @@ func (s *Server) readMessages(ctx context.Context, domainID string,
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	domainID := in.GetDomainId()
-	if in.MapMetadata.GetSource() == nil {
+	if in.MapMetadata.GetSources() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
 	}
-	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSource())
+	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSources())
 	if err != nil {
 		return nil, err
 	}

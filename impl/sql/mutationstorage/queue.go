@@ -56,7 +56,9 @@ func (m *Mutations) randShard(ctx context.Context, domainID string) (int64, erro
 	}
 	for rows.Next() {
 		var shardID int64
-		rows.Scan(&shardID)
+		if err := rows.Scan(&shardID); err != nil {
+			return 0, err
+		}
 		shardIDs = append(shardIDs, shardID)
 	}
 	if err := rows.Err(); err != nil {
@@ -163,12 +165,12 @@ func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[in
 	return watermarks, nil
 }
 
-// ReadQueue reads all mutations that are still in the queue up to batchSize.
-func (m *Mutations) ReadQueue(ctx context.Context, domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error) {
+// ReadQueue reads all mutations that are still in the queue.
+func (m *Mutations) ReadQueue(ctx context.Context,
+	domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, Mutation FROM Queue
-		WHERE DomainID = ? AND ShardID = ? 
-		AND Time > ? AND Time <= ?
+		WHERE DomainID = ? AND ShardID = ? AND Time > ? AND Time <= ?
 		ORDER BY Time ASC;`,
 		domainID, shardID, low, high)
 	if err != nil {
