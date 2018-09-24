@@ -25,7 +25,7 @@ package google.keytransparency.sequencer;
 import "google/protobuf/empty.proto";
 
 message MapMetadata {
-   // MapSourceSlice is the range of inputs that have been included in a map revision.
+   // SourceSlice is the range of inputs that have been included in a map revision.
    message SourceSlice {
       // lowest_watermark is the lowest primary key (exclusive) the source log
       // that has been incorporated into this map revision. The primary keys of
@@ -36,8 +36,9 @@ message MapMetadata {
       // of logged items MUST be monotonically increasing.
       int64 highest_watermark = 2;
    }
-   // source defines the range of inputs used for this map revision.
-   SourceSlice source = 1;
+   reserved 1;
+   // sources defines the ranges of inputs used for this map revision for each slice.
+   map<int64, SourceSlice> sources = 2;
 }
 
 

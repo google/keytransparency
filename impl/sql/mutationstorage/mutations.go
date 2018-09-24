@@ -58,7 +58,7 @@ var (
 		`CREATE TABLE IF NOT EXISTS Shards (
 		DomainID VARCHAR(30)   NOT NULL,
 		ShardID  BIGINT        NOT NULL,
-		Write    INT           NOT NULL,
+		Enabled  INTEGER       NOT NULL,
 		PRIMARY KEY(DomainID, ShardID)
 	);`,
 	}

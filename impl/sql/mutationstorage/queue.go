@@ -17,6 +17,7 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
+	"math/rand"
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
@@ -34,7 +35,7 @@ func (m *Mutations) AddShards(ctx context.Context, domainID string, shardIDs ...
 	glog.Infof("mutationstorage: AddShard(%v, %v)", domainID, shardIDs)
 	for _, shardID := range shardIDs {
 		if _, err := m.db.ExecContext(ctx,
-			`INSERT INTO Shards (DomainID, ShardID, Write)  Values(?, ?, ?);`,
+			`INSERT INTO Shards (DomainID, ShardID, Enabled)  Values(?, ?, ?);`,
 			domainID, shardID, true); err != nil {
 			return err
 		}
@@ -42,11 +43,36 @@ func (m *Mutations) AddShards(ctx context.Context, domainID string, shardIDs ...
 	return nil
 }
 
+// randShard returns a random, enabled shard for domainID.
+func (m *Mutations) randShard(ctx context.Context, domainID string) (int64, error) {
+	// Read all enabled shards for domainID.
+	// TODO(gbelvin): Cache these results.
+	var shardIDs []int64
+	rows, err := m.db.QueryContext(ctx,
+		`SELECT ShardID from Shards WHERE DomainID = ? AND Enabled = ?;`,
+		domainID, true)
+	if err != nil {
+		return 0, err
+	}
+	for rows.Next() {
+		var shardID int64
+		rows.Scan(&shardID)
+		shardIDs = append(shardIDs, shardID)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if len(shardIDs) == 0 {
+		return 0, status.Errorf(codes.NotFound, "No shard found for domain %v", domainID)
+	}
+
+	// Return a random shard.
+	return shardIDs[rand.Intn(len(shardIDs))], nil
+}
+
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
-	// TODO(gbelvin): Implement retry with backoff for retryable errors if
-	// we get timestamp contention.
 	shardID, err := m.randomShard(ctx, domainID)
 	if err != nil {
 		return err
@@ -55,6 +81,8 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 	if err != nil {
 		return err
 	}
+	// TODO(gbelvin): Implement retry with backoff for retryable errors if
+	// we get timestamp contention.
 	return m.send(ctx, domainID, shardID, mData, time.Now())
 }
 
@@ -112,8 +140,8 @@ func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mD
 	return tx.Commit()
 }
 
-// HighWatermark returns the highest timestamp in the mutations table.
-func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (map[int64]int64, error) {
+// HighWatermarks returns the highest timestamp in the mutations table.
+func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error) {
 	watermarks := make(map[int64]int64)
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT ShardID, Max(Time) FROM Queue WHERE DomainID = ? GROUP BY ShardID;`,

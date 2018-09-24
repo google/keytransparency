@@ -27,6 +27,50 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func TestRandShard(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create Mutations: %v", err)
+	}
+	domainID := "foo"
+
+	for _, tc := range []struct {
+		desc       string
+		send       bool
+		wantCode   codes.Code
+		wantShards map[int64]bool
+	}{
+		{desc: "no rows", wantCode: codes.NotFound, wantShards: map[int64]bool{}},
+		{desc: "second", send: true, wantShards: map[int64]bool{
+			1: true,
+			2: true,
+			3: true,
+		}},
+	} {
+		if tc.send {
+			if err := m.AddShards(ctx, domainID, 1, 2, 3); err != nil {
+				t.Fatalf("AddShards(): %v", err)
+			}
+		}
+		shards := make(map[int64]bool)
+		for i := 0; i < 20; i++ {
+			shard, err := m.randShard(ctx, domainID)
+			if got, want := status.Code(err), tc.wantCode; got != want {
+				t.Errorf("randShard(): %v, want %v", got, want)
+			}
+			if err != nil {
+				break
+			}
+			shards[shard] = true
+		}
+		if got, want := shards, tc.wantShards; !cmp.Equal(got, want) {
+			t.Errorf("shards: %v, want %v", got, want)
+		}
+	}
+}
+
 func TestSend(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
@@ -102,8 +146,7 @@ func TestWatermark(t *testing.T) {
 				t.Fatalf("send(%v, %v): %v", shardID, ts, err)
 			}
 		}
-
-		highs, err := m.HighWatermark(ctx, domainID)
+		highs, err := m.HighWatermarks(ctx, domainID)
 		if err != nil {
 			t.Fatalf("HighWatermark(): %v", err)
 		}
