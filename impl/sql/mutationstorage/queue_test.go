@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -74,31 +75,40 @@ func TestWatermark(t *testing.T) {
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 
-	if err := m.AddShards(ctx, domainID, 1, 2); err != nil {
+	if err := m.AddShards(ctx, domainID, 1, 2, 3); err != nil {
 		t.Fatalf("AddShards(): %v", err)
 	}
 
 	for _, tc := range []struct {
 		desc string
-		send bool
-		ts   time.Time
-		want int64
+		send map[int64]time.Time
+		want map[int64]int64
 	}{
-		{desc: "no rows", want: 0},
-		{desc: "first", send: true, ts: ts1, want: ts1.UnixNano()},
-		{desc: "second", send: true, ts: ts2, want: ts2.UnixNano()},
+		{desc: "no rows", want: map[int64]int64{}},
+		{
+			desc: "first",
+			send: map[int64]time.Time{1: ts1},
+			want: map[int64]int64{1: ts1.UnixNano()},
+		},
+		{
+			desc: "second",
+			// Highwatermarks in each shard proceed independently.
+			send: map[int64]time.Time{1: ts2, 2: ts1},
+			want: map[int64]int64{1: ts2.UnixNano(), 2: ts1.UnixNano()},
+		},
 	} {
-		if tc.send {
-			if err := m.send(ctx, domainID, 1, []byte("foo"), tc.ts); err != nil {
-				t.Fatalf("send(): %v", err)
+		for shardID, ts := range tc.send {
+			if err := m.send(ctx, domainID, shardID, []byte("foo"), ts); err != nil {
+				t.Fatalf("send(%v, %v): %v", shardID, ts, err)
 			}
 		}
-		high, err := m.HighWatermark(ctx, domainID)
+
+		highs, err := m.HighWatermark(ctx, domainID)
 		if err != nil {
 			t.Fatalf("HighWatermark(): %v", err)
 		}
-		if high != tc.want {
-			t.Errorf("HighWatermark(): %v, want > %v", high, tc.want)
+		if !cmp.Equal(highs, tc.want) {
+			t.Errorf("HighWatermark(): %v, want %v", highs, tc.want)
 		}
 	}
 }

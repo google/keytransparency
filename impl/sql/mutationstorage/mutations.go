@@ -53,7 +53,7 @@ var (
 		ShardID  BIGINT        NOT NULL,
 		Time     BIGINT        NOT NULL,
 		Mutation BLOB          NOT NULL,
-		PRIMARY KEY(DomainID, Time)
+		PRIMARY KEY(DomainID, ShardID, Time)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Shards (
 		DomainID VARCHAR(30)   NOT NULL,

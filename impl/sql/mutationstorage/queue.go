@@ -113,16 +113,26 @@ func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mD
 }
 
 // HighWatermark returns the highest timestamp in the mutations table.
-func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (int64, error) {
-	var watermark int64
-	if err := m.db.QueryRowContext(ctx,
-		`SELECT Time FROM Queue WHERE DomainID = ? ORDER BY Time DESC LIMIT 1;`,
-		domainID).Scan(&watermark); err == sql.ErrNoRows {
-		return 0, nil
-	} else if err != nil {
-		return 0, err
+func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (map[int64]int64, error) {
+	watermarks := make(map[int64]int64)
+	rows, err := m.db.QueryContext(ctx,
+		`SELECT ShardID, Max(Time) FROM Queue WHERE DomainID = ? GROUP BY ShardID;`,
+		domainID)
+	if err != nil {
+		return nil, err
 	}
-	return watermark, nil
+	defer rows.Close()
+	for rows.Next() {
+		var shardID, watermark int64
+		if err := rows.Scan(&shardID, &watermark); err != nil {
+			return nil, err
+		}
+		watermarks[shardID] = watermark
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return watermarks, nil
 }
 
 // ReadQueue reads all mutations that are still in the queue up to batchSize.
