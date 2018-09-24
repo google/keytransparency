@@ -46,10 +46,11 @@ import (
 	"github.com/google/trillian/storage/testdb"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	ttest "github.com/google/trillian/testonly/integration"
+
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
-	ttest "github.com/google/trillian/testonly/integration"
-	_ "github.com/mattn/go-sqlite3" // Use sqlite database for testing.
+	_ "github.com/mattn/go-sqlite3"               // Use sqlite database for testing.
 )
 
 var (
@@ -91,7 +92,6 @@ type Env struct {
 	mapEnv        *ttest.MapEnv
 	logEnv        *ttest.LogEnv
 	admin         *adminserver.Server
-	Receiver      mutator.Receiver
 	grpcServer    *grpc.Server
 	grpcCC        *grpc.ClientConn
 	db            *sql.DB
@@ -113,8 +113,7 @@ func keyFromPEM(p string) *any.Any {
 }
 
 // NewEnv sets up common resources for tests.
-func NewEnv() (*Env, error) {
-	ctx := context.Background()
+func NewEnv(ctx context.Context) (*Env, error) {
 	timeout := 6 * time.Second
 	domainID := "integration"
 
@@ -186,7 +185,7 @@ func NewEnv() (*Env, error) {
 		domainStorage,
 		logEnv.Admin, mapEnv.Admin,
 		logEnv.Log, mapEnv.Map,
-		mutations,
+		mutations, mutations,
 		monitoring.InertMetricFactory{},
 	)
 
@@ -199,18 +198,18 @@ func NewEnv() (*Env, error) {
 	batchSize := 100
 	seq := sequencer.New(
 		sequencerClient,
-		logEnv.Log, mapEnv.Map, mapEnv.Admin,
-		domainStorage, mutations, queue, batchSize)
+		mapEnv.Admin,
+		domainStorage, mutations, batchSize)
 
-	d, err := domainStorage.Read(ctx, domainPB.DomainId, false)
-	if err != nil {
-		return nil, err
+	// RunBatchForAllDomains will create a fist map revision right away.
+	if err := seq.RunBatchForAllDomains(ctx); err != nil {
+		return nil, fmt.Errorf("env: RunBatchForAllDomains(): %v", err)
 	}
-	// NewReceiver will create a fist map revision right away.
-	receiver, err := seq.NewReceiver(ctx, d)
-	if err != nil {
-		return nil, fmt.Errorf("env: NewReceiver(): %v", err)
-	}
+	go func() {
+		if err := seq.PeriodicallyRunBatchForAllDomains(ctx, 100*time.Millisecond); err != nil {
+			glog.Errorf("PeriodicallyRunBatchForAllDomains(): %v", err)
+		}
+	}()
 
 	// Serve and listen.
 	addr, lis, err := Listen()
@@ -241,7 +240,6 @@ func NewEnv() (*Env, error) {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
 		},
-		Receiver:      receiver,
 		mapEnv:        mapEnv,
 		logEnv:        logEnv,
 		admin:         adminSvr,

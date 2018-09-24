@@ -27,20 +27,14 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
-	tclient "github.com/google/trillian/client"
 )
 
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
 	domains         domain.Storage
-	tlog            tpb.TrillianLogClient
 	mapAdmin        tpb.TrillianAdminClient
-	tmap            tpb.TrillianMapClient
-	queue           mutator.MutationQueue
-	receivers       map[string]mutator.Receiver
 	batchSize       int32
 	sequencerClient spb.KeyTransparencySequencerClient
 }
@@ -48,22 +42,15 @@ type Sequencer struct {
 // New creates a new instance of the signer.
 func New(
 	sequencerClient spb.KeyTransparencySequencerClient,
-	tlog tpb.TrillianLogClient,
-	tmap tpb.TrillianMapClient,
 	mapAdmin tpb.TrillianAdminClient,
 	domains domain.Storage,
 	mutations mutator.MutationStorage,
-	queue mutator.MutationQueue,
 	batchSize int,
 ) *Sequencer {
 	return &Sequencer{
 		sequencerClient: sequencerClient,
 		domains:         domains,
-		tlog:            tlog,
-		tmap:            tmap,
 		mapAdmin:        mapAdmin,
-		queue:           queue,
-		receivers:       make(map[string]mutator.Receiver),
 		batchSize:       int32(batchSize),
 	}
 }
@@ -105,22 +92,15 @@ func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer)
 	return client, stop, err
 }
 
-// Close stops all receivers and releases resources.
-func (s *Sequencer) Close() {
-	for _, r := range s.receivers {
-		r.Close()
-	}
-}
-
-// PeriodicallyCheckForNewDomains starts receivers for all domains and periodically checks for new domains.
-func (s *Sequencer) PeriodicallyCheckForNewDomains(ctx context.Context, refresh time.Duration) error {
+// PeriodicallyRunBatchForAllDomains starts receivers for all domains and periodically checks for new domains.
+func (s *Sequencer) PeriodicallyRunBatchForAllDomains(ctx context.Context, refresh time.Duration) error {
 	ticker := time.NewTicker(refresh)
 	defer func() { ticker.Stop() }()
 
 	for {
 		select {
 		case <-ticker.C:
-			if err := s.CheckForNewDomains(ctx); err != nil {
+			if err := s.RunBatchForAllDomains(ctx); err != nil {
 				return err
 			}
 		case <-ctx.Done():
@@ -129,66 +109,22 @@ func (s *Sequencer) PeriodicallyCheckForNewDomains(ctx context.Context, refresh 
 	}
 }
 
-// CheckForNewDomains scans the domains table for new domains and creates new receivers for
+// RunBatchForAllDomains scans the domains table for new domains and creates new receivers for
 // domains that the sequencer is not currently receiving for.
-func (s *Sequencer) CheckForNewDomains(ctx context.Context) error {
+func (s *Sequencer) RunBatchForAllDomains(ctx context.Context) error {
 	domains, err := s.domains.List(ctx, false)
 	if err != nil {
 		return fmt.Errorf("admin.List(): %v", err)
 	}
 	for _, d := range domains {
 		knownDomains.Set(1, d.DomainID)
-		if _, ok := s.receivers[d.DomainID]; !ok {
-			glog.Infof("StartSigning domain: %v", d.DomainID)
-			r, err := s.NewReceiver(ctx, d)
-			if err != nil {
-				return err
-			}
-			s.receivers[d.DomainID] = r
+		if _, err := s.sequencerClient.RunBatch(ctx, &spb.RunBatchRequest{
+			DomainId: d.DomainID,
+			MinBatch: 1,
+			MaxBatch: s.batchSize,
+		}); err != nil {
+			return err
 		}
 	}
 	return nil
-}
-
-// NewReceiver creates a new receiver for a domain.
-// New epochs will be created at least once per maxInterval and as often as minInterval.
-func (s *Sequencer) NewReceiver(ctx context.Context, d *domain.Domain) (mutator.Receiver, error) {
-	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.MapID})
-	if err != nil {
-		return nil, err
-	}
-	mapVerifier, err := tclient.NewMapVerifierFromTree(mapTree)
-	if err != nil {
-		return nil, err
-	}
-
-	rootResp, err := s.tmap.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: d.MapID})
-	if err != nil {
-		return nil, err
-	}
-	// Fetch last time from previous map head (as stored in the map server)
-	mapRoot, err := mapVerifier.VerifySignedMapRoot(rootResp.GetMapRoot())
-	if err != nil {
-		return nil, err
-	}
-	last := time.Unix(0, int64(mapRoot.TimestampNanos))
-
-	return s.queue.NewReceiver(ctx, last, d.DomainID, func(mutations []*mutator.QueueMessage) error {
-		msgs := make([]*ktpb.EntryUpdate, 0, len(mutations))
-		for _, m := range mutations {
-			msgs = append(msgs, &ktpb.EntryUpdate{
-				Mutation:  m.Mutation,
-				Committed: m.ExtraData,
-			})
-		}
-		_, err := s.sequencerClient.CreateEpoch(ctx, &spb.CreateEpochRequest{
-			DomainId: d.DomainID,
-			Messages: msgs,
-		})
-		return err
-	}, mutator.ReceiverOptions{
-		MaxBatchSize: s.batchSize,
-		Period:       d.MinInterval,
-		MaxPeriod:    d.MaxInterval,
-	}), nil
 }

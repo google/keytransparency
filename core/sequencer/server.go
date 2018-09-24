@@ -68,12 +68,21 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 }
 
+// Queue reads messages that haven't been deleted off the queue.
+type Queue interface {
+	// Read returns up to batchSize messages for domainID.
+	ReadQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error)
+	// DeleteMessages removes the requested messages.
+	DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error
+}
+
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
 	ktServer  *keyserver.Server
 	mutations mutator.MutationStorage
 	tmap      tpb.TrillianMapClient
 	tlog      tpb.TrillianLogClient
+	queue     Queue
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -84,6 +93,7 @@ func NewServer(
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	mutations mutator.MutationStorage,
+	queue Queue,
 	metricsFactory monitoring.MetricFactory,
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
@@ -92,7 +102,39 @@ func NewServer(
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
+		queue:     queue,
 	}
+}
+
+// RunBatch reads mutations out of the queue and calls CreateEpoch.
+func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
+	batch, err := s.queue.ReadQueue(ctx, in.DomainId, in.MaxBatch)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
+	}
+	if int32(len(batch)) < in.MinBatch {
+		// TODO(gbelvin): Process remaining messages after a timeout.
+		return &empty.Empty{}, nil
+	}
+	msgs := make([]*ktpb.EntryUpdate, 0, len(batch))
+	for _, m := range batch {
+		msgs = append(msgs, &ktpb.EntryUpdate{
+			Mutation:  m.Mutation,
+			Committed: m.ExtraData,
+		})
+	}
+	_, err = s.CreateEpoch(ctx, &spb.CreateEpochRequest{
+		DomainId: in.DomainId,
+		Messages: msgs,
+	})
+	if err != nil {
+		// If an error occurs here, messages in the queue will be retried.
+		return nil, err
+	}
+	if err := s.queue.DeleteMessages(ctx, in.DomainId, batch); err != nil {
+		return nil, err
+	}
+	return &empty.Empty{}, nil
 }
 
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.

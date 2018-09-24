@@ -26,11 +26,12 @@ import (
 func TestIntegration(t *testing.T) {
 	// We can only run the integration tests if there is a MySQL instance available.
 	testdb.SkipIfNoMySQL(t)
-	ctx := context.Background()
 
 	for _, test := range integration.AllTests {
 		t.Run(test.Name, func(t *testing.T) {
-			env, err := NewEnv()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			env, err := NewEnv(ctx)
 			if err != nil {
 				t.Fatalf("Could not create Env: %v", err)
 			}

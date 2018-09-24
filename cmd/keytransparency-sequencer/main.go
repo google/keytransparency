@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/adminserver"
-	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/sql/domain"
 	"github.com/google/keytransparency/impl/sql/engine"
@@ -88,14 +87,13 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create domain storage object: %v", err)
 	}
-	queue := mutator.MutationQueue(mutations)
 
 	// Create server
 	sequencerServer := sequencer.NewServer(
 		domainStorage,
 		logAdmin, mapAdmin,
 		tlog, tmap,
-		mutations,
+		mutations, mutations,
 		prometheus.MetricFactory{},
 	)
 
@@ -107,9 +105,9 @@ func main() {
 
 	signer := sequencer.New(
 		sequencerClient,
-		tlog, tmap, mapAdmin,
+		mapAdmin,
 		domainStorage,
-		mutations, queue,
+		mutations,
 		*batchSize)
 
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -123,7 +121,7 @@ func main() {
 
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := signer.PeriodicallyCheckForNewDomains(cctx, *refresh); err != nil {
+	if err := signer.PeriodicallyRunBatchForAllDomains(cctx, *refresh); err != nil {
 		glog.Errorf("StartSequencingAll(): %v", err)
 	}
 	httpServer.Shutdown(cctx)
