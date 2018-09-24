@@ -223,9 +223,13 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 	if err != nil {
 		return nil, err
 	}
-	latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	rootResp, err := mapClient.Conn.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: mapClient.MapID})
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(status.Code(err), "GetSignedMapRoot(%v): %v", mapClient.MapID, err)
+	}
+	latestMapRoot, err := mapClient.VerifySignedMapRoot(rootResp.GetMapRoot())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(%v): %v", mapClient.MapID, err)
 	}
 
 	// Add all unpublished map roots to the log.
@@ -246,13 +250,10 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 			glog.Errorf("AddSequencedLeaf(logID: %v, rev: %v): %v", logClient.LogID, mapRoot.Revision, err)
 			return nil, err
 		}
-
-		// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
-		if rev == latestMapRoot.Revision {
-			if err := logClient.WaitForInclusion(ctx, rawMapRoot.GetMapRoot()); err != nil {
-				return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
-			}
-		}
+	}
+	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
+	if err := logClient.WaitForInclusion(ctx, rootResp.GetMapRoot().GetMapRoot()); err != nil {
+		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
 	}
 	return &empty.Empty{}, nil
 }
