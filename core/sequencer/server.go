@@ -247,7 +247,7 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 			return nil, err
 		}
 
-		// TODO(gbelvin): Remove wait when batching boundaries are deterministic
+		// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
 		if rev == latestMapRoot.Revision {
 			if err := logClient.WaitForInclusion(ctx, rawMapRoot.GetMapRoot()); err != nil {
 				return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
