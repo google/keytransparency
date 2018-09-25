@@ -257,8 +257,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 	}
 
 	Vlog.Printf("Sending Update request...")
-	// TODO(gdbelvin): Change name from UpdateEntry to QueueUpdate.
-	_, err = c.cli.UpdateEntry(ctx, req, opts...)
+	_, err = c.cli.QueueEntryUpdate(ctx, req, opts...)
 	return err
 }
 

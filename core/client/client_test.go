@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian"
 	"github.com/google/trillian/types"
@@ -274,7 +275,7 @@ func (f *fakeKeyServer) GetEntry(context.Context, *pb.GetEntryRequest) (*pb.GetE
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (f *fakeKeyServer) UpdateEntry(context.Context, *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest) (*empty.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 

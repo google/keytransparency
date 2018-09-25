@@ -27,6 +27,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -237,9 +238,9 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}, nil
 }
 
-// UpdateEntry updates a user's profile. If the user does not exist, a new
+// QueueEntryUpdate updates a user's profile. If the user does not exist, a new
 // profile will be created.
-func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*pb.UpdateEntryResponse, error) {
+func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest) (*empty.Empty, error) {
 	if in.DomainId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
 	}
@@ -294,7 +295,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		// Return the response. The client should handle the replay case
 		// by comparing the returned response with the request. Check
 		// Retry() in client/client.go.
-		return &pb.UpdateEntryResponse{}, nil
+		return &empty.Empty{}, nil
 	} else if err != nil {
 		glog.Warningf("Invalid mutation: %v", err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
@@ -305,7 +306,7 @@ func (s *Server) UpdateEntry(ctx context.Context, in *pb.UpdateEntryRequest) (*p
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}
-	return &pb.UpdateEntryResponse{}, nil
+	return &empty.Empty{}, nil
 }
 
 // GetDomain returns all info tied to the specified domain.
