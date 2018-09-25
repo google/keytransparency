@@ -84,10 +84,8 @@ func request_KeyTransparencyAdmin_CreateDomain_0(ctx context.Context, marshaler 
 	var protoReq CreateDomainRequest
 	var metadata runtime.ServerMetadata
 
-	if req.ContentLength > 0 {
-		if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
-			return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-		}
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.CreateDomain(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -159,14 +157,14 @@ func RegisterKeyTransparencyAdminHandlerFromEndpoint(ctx context.Context, mux *r
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Printf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Printf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
@@ -180,8 +178,8 @@ func RegisterKeyTransparencyAdminHandler(ctx context.Context, mux *runtime.Serve
 	return RegisterKeyTransparencyAdminHandlerClient(ctx, mux, NewKeyTransparencyAdminClient(conn))
 }
 
-// RegisterKeyTransparencyAdminHandler registers the http handlers for service KeyTransparencyAdmin to "mux".
-// The handlers forward requests to the grpc endpoint over the given implementation of "KeyTransparencyAdminClient".
+// RegisterKeyTransparencyAdminHandlerClient registers the http handlers for service KeyTransparencyAdmin
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "KeyTransparencyAdminClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KeyTransparencyAdminClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "KeyTransparencyAdminClient" to call the correct interceptors.
