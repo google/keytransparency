@@ -75,14 +75,21 @@ var (
 	}
 )
 
+// QueueAdmin controls the lifecycle and scaling of mutation queues.
+type QueueAdmin interface {
+	// AddShards creates and adds new shards for queue writing to a domain.
+	AddShards(ctx context.Context, domainID string, shardIDs ...int64) error
+}
+
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
-	tlog     tpb.TrillianLogClient
-	tmap     tpb.TrillianMapClient
-	logAdmin tpb.TrillianAdminClient
-	mapAdmin tpb.TrillianAdminClient
-	domains  domain.Storage
-	keygen   keys.ProtoGenerator
+	tlog       tpb.TrillianLogClient
+	tmap       tpb.TrillianMapClient
+	logAdmin   tpb.TrillianAdminClient
+	mapAdmin   tpb.TrillianAdminClient
+	domains    domain.Storage
+	queueAdmin QueueAdmin
+	keygen     keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdmin implementation.
@@ -91,15 +98,17 @@ func New(
 	tmap tpb.TrillianMapClient,
 	logAdmin, mapAdmin tpb.TrillianAdminClient,
 	domains domain.Storage,
+	queueAdmin QueueAdmin,
 	keygen keys.ProtoGenerator,
 ) *Server {
 	return &Server{
-		tlog:     tlog,
-		tmap:     tmap,
-		logAdmin: logAdmin,
-		mapAdmin: mapAdmin,
-		domains:  domains,
-		keygen:   keygen,
+		tlog:       tlog,
+		tmap:       tmap,
+		logAdmin:   logAdmin,
+		mapAdmin:   mapAdmin,
+		domains:    domains,
+		queueAdmin: queueAdmin,
+		keygen:     keygen,
 	}
 }
 
@@ -249,6 +258,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 			err, logTree.TreeId, delLogErr, mapTree.TreeId, delMapErr)
 	}
 
+	// Create domain - {log, map} binding.
 	if err := s.domains.Write(ctx, &domain.Domain{
 		DomainID:    in.GetDomainId(),
 		MapID:       mapTree.TreeId,
@@ -260,6 +270,13 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	}); err != nil {
 		return nil, fmt.Errorf("adminserver: domains.Write(): %v", err)
 	}
+
+	// Create shards for queue.
+	shardIDs := []int64{1}
+	if err := s.queueAdmin.AddShards(ctx, in.GetDomainId(), shardIDs...); err != nil {
+		return nil, fmt.Errorf("adminserver: AddShards(%v): %v", shardIDs, err)
+	}
+
 	d := &pb.Domain{
 		DomainId:    in.GetDomainId(),
 		Log:         logTree,
