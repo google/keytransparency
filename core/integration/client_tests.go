@@ -237,7 +237,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 		}
 
 		if got := sortHistory(compressed); !reflect.DeepEqual(got, tc.wantHistory) {
-			t.Errorf("ListHistory(%v, %v): %x, want %x", tc.start, tc.end, got, tc.wantHistory)
+			t.Errorf("ListHistory(%v, %v): %s, want %s", tc.start, tc.end, got, tc.wantHistory)
 		}
 	}
 }

@@ -195,22 +195,66 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 		return nil, status.Errorf(codes.Internal, "mutations.WriteBatch(): %v", err)
 	}
 
-	// TODO(gbelvin): Store and track trustedRoot.
-	trustedRoot := types.LogRootV1{} // Automatically trust the first observed log root.
+	mutationCount.Add(float64(len(msgs)), domainID)
+	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
+	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DomainId: domainID})
+}
 
-	// Put SignedMapHead in the append only log.
-	logClient, err := tclient.NewFromTree(s.tlog, config.Log, trustedRoot)
+// PublishBatch copies the MapRoots of all known map revisions into the Log of MapRoots.
+func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) (*empty.Empty, error) {
+	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})
 	if err != nil {
 		return nil, err
 	}
-	if err := logClient.AddSequencedLeafAndWait(ctx, setResp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-		glog.Fatalf("AddSequencedLeaf(logID: %v, rev: %v): %v", config.Log.TreeId, mapRoot.Revision, err)
-		// TODO(gdbelvin): Implement retries.
+
+	// Create verifying log and map clients.
+	trustedRoot := types.LogRootV1{} // TODO(gbelvin): Store and track trustedRoot.
+	logClient, err := tclient.NewFromTree(s.tlog, domain.Log, trustedRoot)
+	if err != nil {
+		return nil, err
+	}
+	mapClient, err := tclient.NewMapClientFromTree(s.tmap, domain.Map)
+	if err != nil {
 		return nil, err
 	}
 
-	mutationCount.Add(float64(len(msgs)), domainID)
-	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
+	// Get latest log root and map root.
+	logRoot, err := logClient.UpdateRoot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rootResp, err := mapClient.Conn.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: mapClient.MapID})
+	if err != nil {
+		return nil, status.Errorf(status.Code(err), "GetSignedMapRoot(%v): %v", mapClient.MapID, err)
+	}
+	latestMapRoot, err := mapClient.VerifySignedMapRoot(rootResp.GetMapRoot())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(%v): %v", mapClient.MapID, err)
+	}
+
+	// Add all unpublished map roots to the log.
+	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
+		resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
+			MapId:    mapClient.MapID,
+			Revision: int64(rev),
+		})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "GetSignedMapRootByRevision(%v, %v): %v", mapClient.MapID, rev, err)
+		}
+		rawMapRoot := resp.GetMapRoot()
+		mapRoot, err := mapClient.VerifySignedMapRoot(rawMapRoot)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
+		}
+		if err := logClient.AddSequencedLeaf(ctx, rawMapRoot.GetMapRoot(), int64(mapRoot.Revision)); err != nil {
+			glog.Errorf("AddSequencedLeaf(logID: %v, rev: %v): %v", logClient.LogID, mapRoot.Revision, err)
+			return nil, err
+		}
+	}
+	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
+	if err := logClient.WaitForInclusion(ctx, rootResp.GetMapRoot().GetMapRoot()); err != nil {
+		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
+	}
 	return &empty.Empty{}, nil
 }
 
