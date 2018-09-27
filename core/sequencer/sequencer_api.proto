@@ -23,22 +23,36 @@ option go_package = "github.com/google/keytransparency/core/sequencer/sequencer_
 package google.keytransparency.sequencer;
 
 import "google/protobuf/empty.proto";
-import "v1/keytransparency.proto";
 
 message MapMetadata {
-   // high_watermark is the highest timestamp (inclusive) of the source log that
-   // has been incorporated into this map revision.
-   int64 high_watermark = 1;
+   // MapSourceSlice is the range of inputs that have been included in a map revision.
+   message SourceSlice {
+      // lowest_timestamp is the lowest timestamp (exclusive) in nanoseconds
+      // since January 1, 1970 UTC of the source log that has been incorporated
+      // into this map revision. The timestamps of logged items MUST be
+      // monotonically increasing.
+      int64 lowest_timestamp = 1;
+      // highest_timestamp is the highest timestamp (inclusive) in nanoseconds
+      // since January 1, 1970 UTC of the source log that has been incorporated
+      // into this map revision. The timestamps of logged items MUST be
+      // monotonically increasing.
+      int64 highest_timestamp = 2;
+   }
+   // source defines the range of inputs used for this map revision.
+   SourceSlice source = 1;
 }
+
 
 // CreateEpochRequest contains information needed to create a new epoch.
 message CreateEpochRequest {
    // domain_id is the domain to apply the mutations to.
    string domain_id = 1;
-   // messages is the list of mutations that should be applied to the current epoch.
-   repeated v1.EntryUpdate messages = 2;
+   // deprecated messages. Server now reads messages via source watermarks.
+   reserved 2;
    // revision is the expected revision of the new epoch.
    int64 revision = 3;
+   // sources defines the inputs used for this map revision.
+   MapMetadata map_metadata = 4;
 }
 
 // RunBatchRequest triggers the sequencing of a batch of mutations for a
@@ -48,7 +62,7 @@ message RunBatchRequest{
    string domain_id = 1;
    // min_batch is the minimum number of items in a batch.
    // If less than min_batch items are available, nothing happens.
-   // TODO(gbelvin): Add a timeout so items in the queue get processed eventually.
+   // TODO(#1047): Replace with timeout so items in the queue get processed eventually.
    int32 min_batch = 2;
    // max_batch is the maximum number of items in a batch.
    int32 max_batch = 3;
