@@ -20,9 +20,36 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
+
+func TestSend(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+	domainID := "foo"
+	update := &pb.EntryUpdate{}
+
+	for _, tc := range []struct {
+		desc     string
+		ts       time.Time
+		wantCode codes.Code
+	}{
+		{desc: "First"},
+		{desc: "Second", wantCode: codes.Aborted},
+	} {
+		err := m.send(ctx, domainID, update, tc.ts)
+		if got, want := status.Code(err), tc.wantCode; got != want {
+			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
+		}
+	}
+}
 
 func TestWatermark(t *testing.T) {
 	ctx := context.Background()

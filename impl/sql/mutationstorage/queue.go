@@ -17,9 +17,12 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -29,6 +32,10 @@ import (
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
+	return m.send(ctx, domainID, update, time.Now())
+}
+
+func (m *Mutations) send(ctx context.Context, domainID string, update *pb.EntryUpdate, ts time.Time) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
 	mData, err := proto.Marshal(update)
 	if err != nil {
@@ -39,7 +46,10 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 		return err
 	}
 	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, domainID, time.Now().UnixNano(), mData)
+	_, err = writeStmt.ExecContext(ctx, domainID, ts.UnixNano(), mData)
+	if err != nil && strings.Contains(err.Error(), "UNIQUE constraint") {
+		return status.Errorf(codes.Aborted, "Clashing timestamp: %v. Try again", err)
+	}
 	return err
 }
 
