@@ -34,15 +34,22 @@ func TestSend(t *testing.T) {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
 	domainID := "foo"
-	update := &pb.EntryUpdate{}
+	update := []byte("bar")
+	ts1 := time.Now()
+	ts2 := ts1.Add(time.Duration(1))
+	ts3 := ts2.Add(time.Duration(1))
 
 	for _, tc := range []struct {
 		desc     string
 		ts       time.Time
 		wantCode codes.Code
 	}{
-		{desc: "First"},
-		{desc: "Second", wantCode: codes.Aborted},
+		// Enforce timestamp uniqueness.
+		{desc: "First", ts: ts2},
+		{desc: "Second", ts: ts2, wantCode: codes.Aborted},
+		// Enforce a monotonically increasing timestamp
+		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
+		{desc: "New", ts: ts3},
 	} {
 		err := m.send(ctx, domainID, update, tc.ts)
 		if got, want := status.Code(err), tc.wantCode; got != want {

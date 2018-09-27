@@ -32,25 +32,49 @@ import (
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
-	return m.send(ctx, domainID, update, time.Now())
-}
-
-func (m *Mutations) send(ctx context.Context, domainID string, update *pb.EntryUpdate, ts time.Time) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
 	mData, err := proto.Marshal(update)
 	if err != nil {
 		return err
 	}
-	writeStmt, err := m.db.Prepare(insertQueueExpr)
+	return m.send(ctx, domainID, mData, time.Now())
+}
+
+// ts must be greater than all other timestamps currently recorded for domainID.
+func (m *Mutations) send(ctx context.Context, domainID string, mData []byte, ts time.Time) error {
+	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
-	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, domainID, ts.UnixNano(), mData)
-	if err != nil && strings.Contains(err.Error(), "UNIQUE constraint") {
-		return status.Errorf(codes.Aborted, "Clashing timestamp: %v. Try again", err)
+
+	var maxTime int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ?;`,
+		domainID).Scan(&maxTime); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return status.Errorf(codes.Internal, "could not roll back: %v\n", rollbackErr)
+		}
+		return err
 	}
-	return err
+	tsTime := ts.UnixNano()
+	if tsTime <= maxTime {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return status.Errorf(codes.Internal, "could not roll back: %v\n", rollbackErr)
+		}
+		return status.Errorf(codes.Aborted, "timestamp: %v, want > %v", tsTime, maxTime)
+	}
+
+	if _, err = tx.ExecContext(ctx,
+		`INSERT INTO Queue (DomainID, Time, Mutation) VALUES (?, ?, ?);`,
+		domainID, ts.UnixNano(), mData); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return status.Errorf(codes.Internal, "could not roll back: %v\n", rollbackErr)
+		}
+		if strings.Contains(err.Error(), "UNIQUE constraint") {
+			return status.Errorf(codes.Aborted, "clashing timestamp: %v. Try again", err)
+		}
+	}
+	return tx.Commit()
 }
 
 // HighWatermark returns the highest timestamp in the mutations table.
