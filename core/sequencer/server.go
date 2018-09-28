@@ -213,10 +213,17 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 		return nil, err
 	}
 
+	// Serialize metadata
+	metadata, err := proto.Marshal(in.MapMetadata)
+	if err != nil {
+		return nil, err
+	}
+
 	// Set new leaf values.
 	setResp, err := s.tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
-		MapId:  config.Map.TreeId,
-		Leaves: newLeaves,
+		MapId:    config.Map.TreeId,
+		Leaves:   newLeaves,
+		Metadata: metadata,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "tmap.SetLeaves(): %v", err)
