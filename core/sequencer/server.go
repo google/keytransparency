@@ -70,9 +70,9 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // Queue reads messages that haven't been deleted off the queue.
 type Queue interface {
-	// HighWatermark returns the highest timestamp in the mutations table.
+	// HighWatermark returns the highest timestamp in the mutations table for DomainID.
 	HighWatermark(ctx context.Context, domainID string) (int64, error)
-	// Read returns up to batchSize messages for domainID.
+	// ReadQueue returns the messages between (low, high] for domainID.
 	// TODO(gbelvin): Add paging API back in to support sharded reads.
 	ReadQueue(ctx context.Context, domainID string, low, high int64) ([]*mutator.QueueMessage, error)
 }
@@ -122,8 +122,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err != nil {
 		return nil, err
 	}
-	var low spb.MapMetadata
-	if err := proto.Unmarshal(latestMapRoot.Metadata, &low); err != nil {
+	var lastMeta spb.MapMetadata
+	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
 	high, err := s.queue.HighWatermark(ctx, in.DomainId)
@@ -131,14 +131,40 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}
 
+	// TODO(gbelvin): If time since last map revision > max timeout, run batch.
+	// TODO(#1047): If time since oldest queue item > max latency has elapsed, run batch.
+	// TODO(gbelvin): If count items > max_batch, run batch.
+
+	// Count items to be processed.  Unfortunately, this means we will be
+	// reading the items to be processed twice.  Once, here in RunBatch
+	// (will be CommitBatch), and again in CreateEpoch (will be RunBatch).
+	metadata := &spb.MapMetadata{
+		Source: &spb.MapMetadata_SourceSlice{
+			LowestTimestamp:  lastMeta.GetSource().GetHighestTimestamp(),
+			HighestTimestamp: high,
+		},
+	}
+
+	msgs, err := s.readMessages(ctx, in.DomainId, metadata.GetSource())
+	if err != nil {
+		return nil, err
+	}
+	if int32(len(msgs)) < in.MinBatch {
+		return &empty.Empty{}, nil
+	}
+
+	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
+		DomainId:    in.DomainId,
+		Revision:    int64(latestMapRoot.Revision) + 1,
+		MapMetadata: metadata,
+	})
+}
+
+func (s *Server) readMessages(ctx context.Context, domainID string, source *spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	// Read mutations
-	batch, err := s.queue.ReadQueue(ctx, in.DomainId, low.HighWatermark, high)
+	batch, err := s.queue.ReadQueue(ctx, domainID, source.LowestTimestamp, source.HighestTimestamp)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
-	}
-	if int32(len(batch)) < in.MinBatch {
-		// TODO(gbelvin): Process remaining messages after a timeout.
-		return &empty.Empty{}, nil
 	}
 	msgs := make([]*ktpb.EntryUpdate, 0, len(batch))
 	for _, m := range batch {
@@ -147,16 +173,16 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 			Committed: m.ExtraData,
 		})
 	}
-	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
-		DomainId: in.DomainId,
-		Messages: msgs,
-	})
+	return msgs, nil
 }
 
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	domainID := in.GetDomainId()
-	msgs := in.GetMessages()
+	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSource())
+	if err != nil {
+		return nil, err
+	}
 	glog.Infof("CreateEpoch: for %v with %d messages", domainID, len(msgs))
 	// Fetch verification objects for domainID.
 	config, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: domainID})
@@ -182,7 +208,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(domainID, entry.New(), in.GetMessages(), leaves)
+	newLeaves, err := s.applyMutations(domainID, entry.New(), msgs, leaves)
 	if err != nil {
 		return nil, err
 	}
