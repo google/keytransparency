@@ -21,8 +21,11 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testutil"
 
 	"github.com/google/tink/go/signature"
@@ -66,6 +69,19 @@ var (
 
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
+	go func() {
+		if err := sequencer.PeriodicallyRun(ctx, time.Tick(100*time.Millisecond),
+			func(ctx context.Context) error {
+				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+					DomainId: env.Domain.DomainId,
+					MinBatch: 1,
+				})
+				return err
+			}); err != nil {
+			glog.Errorf("PeriodicallyRun(): %v", err)
+		}
+	}()
+
 	if _, err := signature.RegisterStandardKeyTypes(); err != nil {
 		t.Fatalf("RegisterStandardKeyTypes(): %v", err)
 	}
@@ -254,14 +270,8 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 	// Note that profile 5 is submitted twice by the user to test that
 	// filtering case.
 
-	// Create an empty epoch.
-	if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
-		DomainId: domain.DomainId,
-	}); err != nil {
-		return fmt.Errorf("create empty epoch: %v", err)
-	}
-	for _, p := range [][]byte{
-		nil, cp(1), cp(2), nil, nil, cp(3), nil,
+	for i, p := range [][]byte{
+		nil, nil, cp(1), cp(2), nil, nil, cp(3), nil,
 		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
 		nil, cp(5), cp(7), nil,
 	} {

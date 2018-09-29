@@ -92,21 +92,24 @@ func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer)
 	return client, stop, err
 }
 
-// PeriodicallyRunBatchForAllDomains starts receivers for all domains and periodically checks for new domains.
-func (s *Sequencer) PeriodicallyRunBatchForAllDomains(ctx context.Context, refresh time.Duration) error {
-	ticker := time.NewTicker(refresh)
-	defer func() { ticker.Stop() }()
-
-	for {
+// PeriodicallyRun executes f once per tick until ctx is closed.
+func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx context.Context) error) error {
+	for range tickch {
 		select {
-		case <-ticker.C:
-			if err := s.RunBatchForAllDomains(ctx); err != nil {
-				return err
-			}
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
+		default:
+		}
+		if err := func() error {
+			// Give each invocation of f a separate context.
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			return f(ctx)
+		}(); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 // RunBatchForAllDomains scans the domains table for new domains and creates new receivers for
