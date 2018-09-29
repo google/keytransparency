@@ -162,7 +162,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 
 func (s *Server) readMessages(ctx context.Context, domainID string, source *spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	// Read mutations
-	batch, err := s.queue.ReadQueue(ctx, domainID, source.LowestTimestamp, source.HighestTimestamp)
+	batch, err := s.queue.ReadQueue(ctx, domainID,
+		source.GetLowestTimestamp(), source.GetHighestTimestamp())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
 	}
@@ -179,6 +180,9 @@ func (s *Server) readMessages(ctx context.Context, domainID string, source *spb.
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	domainID := in.GetDomainId()
+	if in.MapMetadata.GetSource() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
+	}
 	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSource())
 	if err != nil {
 		return nil, err

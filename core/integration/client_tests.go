@@ -70,7 +70,9 @@ var (
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	go func() {
-		if err := sequencer.PeriodicallyRun(ctx, time.Tick(100*time.Millisecond),
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
 			func(ctx context.Context) error {
 				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 					DomainId: env.Domain.DomainId,
@@ -290,23 +292,22 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			if err != nil {
 				return fmt.Errorf("CreateMutation(%v): %v", userID, err)
 			}
-			msg, err := m.SerializeAndSign(signers, 0)
-			if err != nil {
-				return fmt.Errorf("SerializeAndSign(): %v", err)
+			if err := env.Client.QueueMutation(ctx, m, signers,
+				env.CallOpts(userID)...); err != nil {
+				return fmt.Errorf("QueueMutation(): %v", err)
 			}
-
-			if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 				DomainId: domain.DomainId,
-				Messages: []*pb.EntryUpdate{msg.EntryUpdate},
+				MinBatch: 1,
 			}); err != nil {
-				return fmt.Errorf("create epoch: %v", err)
+				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}
 		} else {
 			// Create an empty epoch.
-			if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 				DomainId: domain.DomainId,
 			}); err != nil {
-				return fmt.Errorf("create empty epoch: %v", err)
+				return fmt.Errorf("sequencer.RunBatch(empty): %v", err)
 			}
 		}
 	}
