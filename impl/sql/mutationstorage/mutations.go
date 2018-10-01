@@ -34,13 +34,6 @@ const (
   	SELECT Sequence, Mutation FROM Mutations
   	WHERE DomainID = ? AND Revision = ? AND Sequence >= ?
   	ORDER BY Sequence ASC LIMIT ?;`
-	readQueueWatermarkExpr = `
-	SELECT Time FROM Queue WHERE DomainID = ? ORDER BY Time DESC LIMIT 1;`
-	readQueueExpr = `
- 	SELECT Time, Mutation FROM Queue
- 	WHERE DomainID = ? AND
-	Time > ? AND Time <= ?
-	ORDER BY Time ASC;`
 	deleteQueueExpr = `
 	DELETE FROM Queue
 	WHERE DomainID = ? AND Time = ?;`
