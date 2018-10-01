@@ -24,6 +24,7 @@ option go_package = "github.com/google/keytransparency/core/api/v1/keytransparen
 package google.keytransparency.v1;
 
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
 import "trillian.proto";
 import "trillian_map_api.proto";
 import "tink.proto";
@@ -180,13 +181,6 @@ message UpdateEntryRequest {
   EntryUpdate entry_update = 4;
 }
 
-// UpdateEntryResponse contains a proof once the update has been included in
-// the Merkle Tree.
-message UpdateEntryResponse {
-  // proof contains a proof that the update has been included in the tree.
-  GetEntryResponse proof = 1;
-}
-
 // GetEpochRequest identifies a particular epoch.
 message GetEpochRequest {
   // domain_id is the domain for which epochs are being requested.
@@ -328,13 +322,12 @@ service KeyTransparency {
     option (google.api.http) = { get: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}/history" };
   }
 
-  // UpdateEntry updates a user's profile.
+  // QueueUserUpdate enqueues an update to a user's profile.
   //
-  // Returns the current user profile.
-  // Clients must retry until this function returns a proof containing the desired value.
-  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {
+  // Clients should poll GetEntry until the update appears, and retry if no update appears after a timeout.
+  rpc QueueEntryUpdate(UpdateEntryRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      put: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}"
+      post: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}:queue"
       body: "entry_update"
     };
   }

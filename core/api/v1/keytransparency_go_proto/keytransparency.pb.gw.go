@@ -402,10 +402,10 @@ func request_KeyTransparency_ListEntryHistory_0(ctx context.Context, marshaler r
 }
 
 var (
-	filter_KeyTransparency_UpdateEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"entry_update": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
+	filter_KeyTransparency_QueueEntryUpdate_0 = &utilities.DoubleArray{Encoding: map[string]int{"entry_update": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
 )
 
-func request_KeyTransparency_UpdateEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_KeyTransparency_QueueEntryUpdate_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateEntryRequest
 	var metadata runtime.ServerMetadata
 
@@ -453,11 +453,11 @@ func request_KeyTransparency_UpdateEntry_0(ctx context.Context, marshaler runtim
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_UpdateEntry_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_QueueEntryUpdate_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.UpdateEntry(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.QueueEntryUpdate(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
@@ -732,7 +732,7 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 
 	})
 
-	mux.Handle("PUT", pattern_KeyTransparency_UpdateEntry_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_KeyTransparency_QueueEntryUpdate_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -750,14 +750,14 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparency_UpdateEntry_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_QueueEntryUpdate_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparency_UpdateEntry_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_QueueEntryUpdate_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -781,7 +781,7 @@ var (
 
 	pattern_KeyTransparency_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id", "history"}, ""))
 
-	pattern_KeyTransparency_UpdateEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, ""))
+	pattern_KeyTransparency_QueueEntryUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, "queue"))
 )
 
 var (
@@ -801,5 +801,5 @@ var (
 
 	forward_KeyTransparency_ListEntryHistory_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparency_UpdateEntry_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_QueueEntryUpdate_0 = runtime.ForwardResponseMessage
 )
