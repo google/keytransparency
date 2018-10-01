@@ -36,7 +36,11 @@ func TestIntegration(t *testing.T) {
 				t.Fatalf("Could not create Env: %v", err)
 			}
 			defer env.Close()
-			test.Fn(ctx, env.Env, t)
+			func() {
+				ctx, cancel := context.WithCancel(ctx)
+				defer cancel()
+				test.Fn(ctx, env.Env, t)
+			}()
 		})
 	}
 }

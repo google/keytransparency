@@ -121,8 +121,9 @@ func main() {
 
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), signer.RunBatchForAllDomains); err != nil {
-		glog.Errorf("StartSequencingAll(): %v", err)
+	if err := sequencer.PeriodicallyRun(ctx, time.Tick(*refresh),
+		signer.RunBatchForAllDomains); err != nil {
+		glog.Errorf("PeriodicallyRun(RunBatchForAllDomains): %v", err)
 	}
 	httpServer.Shutdown(cctx)
 	glog.Errorf("Signer exiting")

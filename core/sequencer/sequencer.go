@@ -26,6 +26,8 @@ import (
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -102,10 +104,13 @@ func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx co
 		}
 		if err := func() error {
 			// Give each invocation of f a separate context.
-			ctx, cancel := context.WithCancel(ctx)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			return f(ctx)
-		}(); err != nil {
+		}(); err == context.Canceled || status.Code(err) == codes.Canceled {
+			// Ingore canceled errors. These are expected on shutdown.
+			return nil
+		} else if err != nil {
 			return err
 		}
 	}
