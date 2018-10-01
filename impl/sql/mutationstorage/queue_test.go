@@ -68,13 +68,13 @@ func TestWatermark(t *testing.T) {
 	domainID := "foo"
 
 	for _, tc := range []struct {
-		desc string
-		send bool
-		want int64
+		desc      string
+		send      bool
+		wantAfter int64
 	}{
-		{desc: "no rows", want: 0},
-		{desc: "first", send: true, want: time.Now().UnixNano()},
-		{desc: "second", send: true, want: time.Now().UnixNano()},
+		{desc: "no rows", wantAfter: 0},
+		{desc: "first", send: true, wantAfter: time.Now().UnixNano()},
+		{desc: "second", send: true, wantAfter: time.Now().UnixNano()},
 	} {
 		if tc.send {
 			if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
@@ -85,8 +85,8 @@ func TestWatermark(t *testing.T) {
 		if err != nil {
 			t.Fatalf("HighWatermark(): %v", err)
 		}
-		if high < tc.want {
-			t.Errorf("HighWatermark(): %v, want > %v", high, tc.want)
+		if high < tc.wantAfter {
+			t.Errorf("HighWatermark(): %v, want > %v", high, tc.wantAfter)
 		}
 	}
 }

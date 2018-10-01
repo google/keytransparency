@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testutil"
@@ -80,7 +79,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 				})
 				return err
 			}); err != nil {
-			glog.Errorf("PeriodicallyRun(): %v", err)
+			t.Errorf("PeriodicallyRun(): %v", err)
 		}
 	}()
 
@@ -294,7 +293,7 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			}
 			if err := env.Client.QueueMutation(ctx, m, signers,
 				env.CallOpts(userID)...); err != nil {
-				return fmt.Errorf("QueueMutation(): %v", err)
+				return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 			}
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 				DomainId: domain.DomainId,

@@ -160,7 +160,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	})
 }
 
-func (s *Server) readMessages(ctx context.Context, domainID string, source *spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
+func (s *Server) readMessages(ctx context.Context, domainID string,
+	source *spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	// Read mutations
 	batch, err := s.queue.ReadQueue(ctx, domainID,
 		source.GetLowestTimestamp(), source.GetHighestTimestamp())
