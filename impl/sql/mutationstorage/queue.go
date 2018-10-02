@@ -17,7 +17,6 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
@@ -37,6 +36,8 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 	if err != nil {
 		return err
 	}
+	// TODO(gbelvin): Implement retry with backoff for retryable errors if
+	// we get timestamp contention.
 	return m.send(ctx, domainID, mData, time.Now())
 }
 
@@ -52,27 +53,29 @@ func (m *Mutations) send(ctx context.Context, domainID string, mData []byte, ts 
 		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ?;`,
 		domainID).Scan(&maxTime); err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return status.Errorf(codes.Internal, "could not roll back: %v\n", rollbackErr)
+			return status.Errorf(codes.Internal,
+				"query err: %v and could not roll back: %v", err, rollbackErr)
 		}
 		return err
 	}
 	tsTime := ts.UnixNano()
 	if tsTime <= maxTime {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return status.Errorf(codes.Internal, "could not roll back: %v\n", rollbackErr)
+			return status.Errorf(codes.Internal, "could not roll back: %v", rollbackErr)
 		}
-		return status.Errorf(codes.Aborted, "timestamp: %v, want > %v", tsTime, maxTime)
+		return status.Errorf(codes.Aborted,
+			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
+			tsTime, maxTime)
 	}
 
 	if _, err = tx.ExecContext(ctx,
 		`INSERT INTO Queue (DomainID, Time, Mutation) VALUES (?, ?, ?);`,
-		domainID, ts.UnixNano(), mData); err != nil {
+		domainID, tsTime, mData); err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return status.Errorf(codes.Internal, "could not roll back: %v\n", rollbackErr)
+			return status.Errorf(codes.Internal,
+				"insert err: %v and could not roll back: %v", err, rollbackErr)
 		}
-		if strings.Contains(err.Error(), "UNIQUE constraint") {
-			return status.Errorf(codes.Aborted, "clashing timestamp: %v. Try again", err)
-		}
+		return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 	}
 	return tx.Commit()
 }

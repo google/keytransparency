@@ -27,16 +27,14 @@ import "google/protobuf/empty.proto";
 message MapMetadata {
    // MapSourceSlice is the range of inputs that have been included in a map revision.
    message SourceSlice {
-      // lowest_timestamp is the lowest timestamp (exclusive) in nanoseconds
-      // since January 1, 1970 UTC of the source log that has been incorporated
-      // into this map revision. The timestamps of logged items MUST be
-      // monotonically increasing.
-      int64 lowest_timestamp = 1;
-      // highest_timestamp is the highest timestamp (inclusive) in nanoseconds
-      // since January 1, 1970 UTC of the source log that has been incorporated
-      // into this map revision. The timestamps of logged items MUST be
-      // monotonically increasing.
-      int64 highest_timestamp = 2;
+      // lowest_watermark is the lowest primary key (exclusive) the source log
+      // that has been incorporated into this map revision. The primary keys of
+      // logged items MUST be monotonically increasing.
+      int64 lowest_watermark = 1;
+      // highest_watermark is the highest primary key (inclusive) of the source
+      // log that has been incorporated into this map revision. The primary keys
+      // of logged items MUST be monotonically increasing.
+      int64 highest_watermark = 2;
    }
    // source defines the range of inputs used for this map revision.
    SourceSlice source = 1;
@@ -51,7 +49,7 @@ message CreateEpochRequest {
    reserved 2;
    // revision is the expected revision of the new epoch.
    int64 revision = 3;
-   // sources defines the inputs used for this map revision.
+   // map_metadata defines the inputs used for this map revision.
    MapMetadata map_metadata = 4;
 }
 

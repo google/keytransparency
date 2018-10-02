@@ -104,11 +104,12 @@ func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx co
 		}
 		if err := func() error {
 			// Give each invocation of f a separate context.
-			ctx, cancel := context.WithCancel(context.Background())
+			// Prevent f from creating detached go routines using ctx.
+			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			return f(ctx)
 		}(); err == context.Canceled || status.Code(err) == codes.Canceled {
-			// Ingore canceled errors. These are expected on shutdown.
+			// Ignore canceled errors. These are expected on shutdown.
 			return nil
 		} else if err != nil {
 			return err

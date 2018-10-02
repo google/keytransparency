@@ -70,7 +70,7 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // Queue reads messages that haven't been deleted off the queue.
 type Queue interface {
-	// HighWatermark returns the highest timestamp in the mutations table for DomainID.
+	// HighWatermark returns the highest primary key in the mutations table for DomainID.
 	HighWatermark(ctx context.Context, domainID string) (int64, error)
 	// ReadQueue returns the messages between (low, high] for domainID.
 	// TODO(gbelvin): Add paging API back in to support sharded reads.
@@ -136,12 +136,12 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	// TODO(gbelvin): If count items > max_batch, run batch.
 
 	// Count items to be processed.  Unfortunately, this means we will be
-	// reading the items to be processed twice.  Once, here in RunBatch
-	// (will be CommitBatch), and again in CreateEpoch (will be RunBatch).
+	// reading the items to be processed twice.  Once, here in RunBatch and
+	// again in CreateEpoch.
 	metadata := &spb.MapMetadata{
 		Source: &spb.MapMetadata_SourceSlice{
-			LowestTimestamp:  lastMeta.GetSource().GetHighestTimestamp(),
-			HighestTimestamp: high,
+			LowestWatermark:  lastMeta.GetSource().GetHighestWatermark(),
+			HighestWatermark: high,
 		},
 	}
 
@@ -164,7 +164,7 @@ func (s *Server) readMessages(ctx context.Context, domainID string,
 	source *spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	// Read mutations
 	batch, err := s.queue.ReadQueue(ctx, domainID,
-		source.GetLowestTimestamp(), source.GetHighestTimestamp())
+		source.GetLowestWatermark(), source.GetHighestWatermark())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
 	}
