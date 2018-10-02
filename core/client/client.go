@@ -53,10 +53,10 @@ var (
 	// This indicates that a separate update was in-flight while
 	// this update was being submitted. To continue, the client
 	// should make a fresh update and try again.
-	ErrRetry = errors.New("client: update race condition - try again")
+	ErrRetry = status.Errorf(codes.FailedPrecondition, "client: update race condition - try again")
 	// ErrWait occurs when an update has been queued, but no change has been
 	// observed in the user's account yet.
-	ErrWait = errors.New("client: update not present yet - wait some more")
+	ErrWait = status.Errorf(codes.Unavailable, "client: update not present yet - wait some more")
 	// ErrIncomplete occurs when the server indicates that requested epochs
 	// are not available.
 	ErrIncomplete = errors.New("incomplete account history")
@@ -229,7 +229,7 @@ func (m uint64Slice) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates and submits a mutation for a user, and waits for it to appear.
-// Returns ErrRetry if there was a race condition.
+// Returns codes.FailedPrecondition if there was a race condition.
 func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	if got, want := u.DomainId, c.domainID; got != want {
 		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
@@ -355,7 +355,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		if err := m.SetPrevious(cntLeaf, copyPreviousLeafData); err != nil {
 			return nil, fmt.Errorf("waitforupdate: SetPrevious(): %v", err)
 		}
-		return m, errors.New("client: update race condition - try again")
+		return m, ErrRetry
 	}
 }
 
