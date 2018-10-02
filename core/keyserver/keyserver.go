@@ -292,10 +292,8 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	}
 	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetMutation()); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
-		// Return the response. The client should handle the replay case
-		// by comparing the returned response with the request. Check
-		// Retry() in client/client.go.
-		return &empty.Empty{}, nil
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"The request contains a reference to old data. Please regenerate request and try again")
 	} else if err != nil {
 		glog.Warningf("Invalid mutation: %v", err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
