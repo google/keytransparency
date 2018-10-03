@@ -24,4 +24,5 @@ type GetEntryResponseVector struct {
 	Desc          string
 	AppID, UserID string
 	Resp          *pb.GetEntryResponse
+	TrustNewLog   bool
 }
