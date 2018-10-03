@@ -36,7 +36,7 @@ var (
 var postCmd = &cobra.Command{
 	Use:   "post [user email] [app] -d {base64 key data}",
 	Short: "Update the account with the given profile",
-	Long: `Post replaces the current key-set with the provided key-set, 
+	Long: `Post replaces the current key-set with the provided key-set,
 and verifies that both the previous and current key-sets are accurate. eg:
 
 ./keytransparency-client post foobar@example.com app1 -d "dGVzdA=="
@@ -83,7 +83,7 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 
 		// Update.
-		authorizedKeys, err := keyset.GetPublicKeysetHandle()
+		authorizedKeys, err := keyset.Public()
 		if err != nil {
 			return fmt.Errorf("store.PublicKeys() failed: %v", err)
 		}

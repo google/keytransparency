@@ -102,7 +102,7 @@ func (m *Mutation) SetCommitment(data []byte) error {
 // pubkeys must contain at least one key.
 func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
 	// Make sure that pubkeys is a valid keyset.
-	if _, err := tink.CleartextKeysetHandle().ParseKeyset(pubkeys); err != nil {
+	if _, err := tink.KeysetHandleWithNoSecret(pubkeys); err != nil {
 		return err
 	}
 
@@ -155,7 +155,7 @@ func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.Entry, error) {
 	m.entry.Signatures = nil
 	sigs := make([][]byte, 0, len(signers))
 	for _, handle := range signers {
-		signer, err := signature.GetPublicKeySignPrimitive(handle)
+		signer, err := signature.NewSigner(handle)
 		if err != nil {
 			return nil, err
 		}
