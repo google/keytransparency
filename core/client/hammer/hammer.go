@@ -86,9 +86,9 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		return nil, err
 	}
 
-	authorizedKeys, err := keyset.GetPublicKeysetHandle()
+	authorizedKeys, err := keyset.Public()
 	if err != nil {
-		return nil, fmt.Errorf("keyset.GetPublicKeysetHandle() failed: %v", err)
+		return nil, fmt.Errorf("keyset.Public() failed: %v", err)
 	}
 
 	return &Hammer{
