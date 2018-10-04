@@ -104,7 +104,7 @@ func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
 	keyset := tink.CreateKeyset(1, keys)
 	parsedHandle, err := tink.KeysetHandleWithNoSecret(keyset)
 	if err != nil {
-		panic(fmt.Sprintf("KeysetHandleWithNoSecret(): %v", err))
+		panic(fmt.Sprintf("tink.KeysetHandleWithNoSecret(): %v", err))
 	}
 	return parsedHandle
 }
@@ -120,7 +120,7 @@ func SignKeysetsFromPEMs(privPEMs ...string) []*tink.KeysetHandle {
 		keyset := tink.CreateKeyset(uint32(i+1), []*tinkpb.Keyset_Key{keysetKey})
 		parsedHandle, err := testkeysethandle.KeysetHandle(keyset)
 		if err != nil {
-			panic(fmt.Sprintf("KeysetHandleWithNoSecret(): %v", err))
+			panic(fmt.Sprintf("testkeysethandle.KeysetHandle(): %v", err))
 		}
 		handles = append(handles, parsedHandle)
 	}

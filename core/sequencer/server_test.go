@@ -55,11 +55,11 @@ func TestDuplicateMutations(t *testing.T) {
 
 	keyset1, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
 	if err != nil {
-		t.Fatalf("tink.GenerateNew(): %v", err)
+		t.Fatalf("tink.NewKeysetHandle(): %v", err)
 	}
 	keyset2, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
 	if err != nil {
-		t.Fatalf("tink.GenerateNew(): %v", err)
+		t.Fatalf("tink.NewKeysetHandle(): %v", err)
 	}
 	s := &Server{}
 
