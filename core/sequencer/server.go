@@ -131,9 +131,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}
 
-	// TODO(gbelvin): If time since last map revision > max timeout, run batch.
+	// TODO(#1057): If time since last map revision > max timeout, run batch.
 	// TODO(#1047): If time since oldest queue item > max latency has elapsed, run batch.
-	// TODO(gbelvin): If count items > max_batch, run batch.
+	// TODO(#1056): If count items > max_batch, run batch.
 
 	// Count items to be processed.  Unfortunately, this means we will be
 	// reading the items to be processed twice.  Once, here in RunBatch and
