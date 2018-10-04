@@ -34,13 +34,6 @@ const (
   	SELECT Sequence, Mutation FROM Mutations
   	WHERE DomainID = ? AND Revision = ? AND Sequence >= ?
   	ORDER BY Sequence ASC LIMIT ?;`
-	insertQueueExpr = `
-	INSERT INTO Queue (DomainID, Time, Mutation)
-	VALUES (?, ?, ?);`
-	readQueueExpr = `
- 	SELECT Time, Mutation FROM Queue
- 	WHERE DomainID = ?
-	ORDER BY Time ASC LIMIT ?;`
 	deleteQueueExpr = `
 	DELETE FROM Queue
 	WHERE DomainID = ? AND Time = ?;`

@@ -70,10 +70,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // Queue reads messages that haven't been deleted off the queue.
 type Queue interface {
-	// Read returns up to batchSize messages for domainID.
-	ReadQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error)
-	// DeleteMessages removes the requested messages.
-	DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error
+	// HighWatermark returns the highest primary key in the mutations table for DomainID.
+	HighWatermark(ctx context.Context, domainID string) (int64, error)
+	// ReadQueue returns the messages between (low, high] for domainID.
+	// TODO(gbelvin): Add paging API back in to support sharded reads.
+	ReadQueue(ctx context.Context, domainID string, low, high int64) ([]*mutator.QueueMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -108,13 +109,64 @@ func NewServer(
 
 // RunBatch reads mutations out of the queue and calls CreateEpoch.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
-	batch, err := s.queue.ReadQueue(ctx, in.DomainId, in.MaxBatch)
+	// Get the previous and current high water marks.
+	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})
+	if err != nil {
+		return nil, err
+	}
+	mapClient, err := tclient.NewMapClientFromTree(s.tmap, domain.Map)
+	if err != nil {
+		return nil, err
+	}
+	latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var lastMeta spb.MapMetadata
+	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
+		return nil, err
+	}
+	high, err := s.queue.HighWatermark(ctx, in.DomainId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
+	}
+
+	// TODO(#1057): If time since last map revision > max timeout, run batch.
+	// TODO(#1047): If time since oldest queue item > max latency has elapsed, run batch.
+	// TODO(#1056): If count items > max_batch, run batch.
+
+	// Count items to be processed.  Unfortunately, this means we will be
+	// reading the items to be processed twice.  Once, here in RunBatch and
+	// again in CreateEpoch.
+	metadata := &spb.MapMetadata{
+		Source: &spb.MapMetadata_SourceSlice{
+			LowestWatermark:  lastMeta.GetSource().GetHighestWatermark(),
+			HighestWatermark: high,
+		},
+	}
+
+	msgs, err := s.readMessages(ctx, in.DomainId, metadata.GetSource())
+	if err != nil {
+		return nil, err
+	}
+	if int32(len(msgs)) < in.MinBatch {
+		return &empty.Empty{}, nil
+	}
+
+	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
+		DomainId:    in.DomainId,
+		Revision:    int64(latestMapRoot.Revision) + 1,
+		MapMetadata: metadata,
+	})
+}
+
+func (s *Server) readMessages(ctx context.Context, domainID string,
+	source *spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
+	// Read mutations
+	batch, err := s.queue.ReadQueue(ctx, domainID,
+		source.GetLowestWatermark(), source.GetHighestWatermark())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
-	}
-	if int32(len(batch)) < in.MinBatch {
-		// TODO(gbelvin): Process remaining messages after a timeout.
-		return &empty.Empty{}, nil
 	}
 	msgs := make([]*ktpb.EntryUpdate, 0, len(batch))
 	for _, m := range batch {
@@ -123,24 +175,19 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 			Committed: m.ExtraData,
 		})
 	}
-	_, err = s.CreateEpoch(ctx, &spb.CreateEpochRequest{
-		DomainId: in.DomainId,
-		Messages: msgs,
-	})
-	if err != nil {
-		// If an error occurs here, messages in the queue will be retried.
-		return nil, err
-	}
-	if err := s.queue.DeleteMessages(ctx, in.DomainId, batch); err != nil {
-		return nil, err
-	}
-	return &empty.Empty{}, nil
+	return msgs, nil
 }
 
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	domainID := in.GetDomainId()
-	msgs := in.GetMessages()
+	if in.MapMetadata.GetSource() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
+	}
+	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSource())
+	if err != nil {
+		return nil, err
+	}
 	glog.Infof("CreateEpoch: for %v with %d messages", domainID, len(msgs))
 	// Fetch verification objects for domainID.
 	config, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: domainID})
@@ -166,15 +213,22 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(domainID, entry.New(), in.GetMessages(), leaves)
+	newLeaves, err := s.applyMutations(domainID, entry.New(), msgs, leaves)
+	if err != nil {
+		return nil, err
+	}
+
+	// Serialize metadata
+	metadata, err := proto.Marshal(in.MapMetadata)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set new leaf values.
 	setResp, err := s.tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
-		MapId:  config.Map.TreeId,
-		Leaves: newLeaves,
+		MapId:    config.Map.TreeId,
+		Leaves:   newLeaves,
+		Metadata: metadata,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "tmap.SetLeaves(): %v", err)
@@ -186,6 +240,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	// Write mutations associated with this epoch.
+	// TODO(gbelvin): Remove when the monitor reads from the batches table.
 	mutations := make([]*ktpb.Entry, 0, len(msgs))
 	for _, msg := range msgs {
 		mutations = append(mutations, msg.Mutation)

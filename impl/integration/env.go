@@ -194,23 +194,6 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		return nil, fmt.Errorf("error launching sequencer server: %v", err)
 	}
 
-	// Sequencer
-	batchSize := 100
-	seq := sequencer.New(
-		sequencerClient,
-		mapEnv.Admin,
-		domainStorage, mutations, batchSize)
-
-	// RunBatchForAllDomains will create a fist map revision right away.
-	if err := seq.RunBatchForAllDomains(ctx); err != nil {
-		return nil, fmt.Errorf("env: RunBatchForAllDomains(): %v", err)
-	}
-	go func() {
-		if err := seq.PeriodicallyRunBatchForAllDomains(ctx, 100*time.Millisecond); err != nil {
-			glog.Errorf("PeriodicallyRunBatchForAllDomains(): %v", err)
-		}
-	}()
-
 	// Serve and listen.
 	addr, lis, err := Listen()
 	if err != nil {

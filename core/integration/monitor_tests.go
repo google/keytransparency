@@ -30,7 +30,6 @@ import (
 	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
@@ -100,7 +99,6 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		},
 	} {
 
-		msgs := make([]*pb.EntryUpdate, 0, len(e.userUpdates))
 		for _, u := range e.userUpdates {
 			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
@@ -108,18 +106,16 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			if err != nil {
 				t.Fatalf("CreateMutation(%v): %v", u.UserId, err)
 			}
-			msg, err := m.SerializeAndSign(e.signers, 0)
-			if err != nil {
-				t.Fatalf("SerializeAndSign(): %v", err)
+			if err := env.Client.QueueMutation(ctx, m, e.signers,
+				env.CallOpts(u.UserId)...); err != nil {
+				t.Errorf("QueueMutation(): %v", err)
 			}
-			msgs = append(msgs, msg.EntryUpdate)
 		}
-
-		if _, err := env.Sequencer.CreateEpoch(ctx, &spb.CreateEpochRequest{
+		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 			DomainId: env.Domain.DomainId,
-			Messages: msgs,
+			MinBatch: int32(len(e.userUpdates)),
 		}); err != nil {
-			t.Fatalf("create empty epoch: %v", err)
+			t.Errorf("sequencer.RunBatch(): %v", err)
 		}
 	}
 

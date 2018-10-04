@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -34,23 +36,71 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 	if err != nil {
 		return err
 	}
-	writeStmt, err := m.db.Prepare(insertQueueExpr)
+	// TODO(gbelvin): Implement retry with backoff for retryable errors if
+	// we get timestamp contention.
+	return m.send(ctx, domainID, mData, time.Now())
+}
+
+// ts must be greater than all other timestamps currently recorded for domainID.
+func (m *Mutations) send(ctx context.Context, domainID string, mData []byte, ts time.Time) error {
+	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
-	defer writeStmt.Close()
-	_, err = writeStmt.ExecContext(ctx, domainID, time.Now().UnixNano(), mData)
-	return err
+
+	var maxTime int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ?;`,
+		domainID).Scan(&maxTime); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return status.Errorf(codes.Internal,
+				"query err: %v and could not roll back: %v", err, rollbackErr)
+		}
+		return err
+	}
+	tsTime := ts.UnixNano()
+	if tsTime <= maxTime {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return status.Errorf(codes.Internal, "could not roll back: %v", rollbackErr)
+		}
+		return status.Errorf(codes.Aborted,
+			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
+			tsTime, maxTime)
+	}
+
+	if _, err = tx.ExecContext(ctx,
+		`INSERT INTO Queue (DomainID, Time, Mutation) VALUES (?, ?, ?);`,
+		domainID, tsTime, mData); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return status.Errorf(codes.Internal,
+				"insert err: %v and could not roll back: %v", err, rollbackErr)
+		}
+		return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
+	}
+	return tx.Commit()
+}
+
+// HighWatermark returns the highest timestamp in the mutations table.
+func (m *Mutations) HighWatermark(ctx context.Context, domainID string) (int64, error) {
+	var watermark int64
+	if err := m.db.QueryRowContext(ctx,
+		`SELECT Time FROM Queue WHERE DomainID = ? ORDER BY Time DESC LIMIT 1;`,
+		domainID).Scan(&watermark); err == sql.ErrNoRows {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	return watermark, nil
 }
 
 // ReadQueue reads all mutations that are still in the queue up to batchSize.
-func (m *Mutations) ReadQueue(ctx context.Context, domainID string, batchSize int32) ([]*mutator.QueueMessage, error) {
-	readStmt, err := m.db.Prepare(readQueueExpr)
-	if err != nil {
-		return nil, err
-	}
-	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, domainID, batchSize)
+func (m *Mutations) ReadQueue(ctx context.Context, domainID string, low, high int64) ([]*mutator.QueueMessage, error) {
+	rows, err := m.db.QueryContext(ctx,
+		`SELECT Time, Mutation FROM Queue
+		WHERE DomainID = ? AND
+		Time > ? AND Time <= ?
+		ORDER BY Time ASC;`,
+		domainID, low, high)
 	if err != nil {
 		return nil, err
 	}
