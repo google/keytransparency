@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/tink/go/insecure"
 	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/testkeysethandle"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/crypto/keys/pem"
 
@@ -118,7 +118,7 @@ func SignKeysetsFromPEMs(privPEMs ...string) []*tink.KeysetHandle {
 		}
 		keysetKey := PrivateKeyFromPEM(pem, uint32(i+1))
 		keyset := tink.CreateKeyset(uint32(i+1), []*tinkpb.Keyset_Key{keysetKey})
-		parsedHandle, err := insecure.KeysetHandle(keyset)
+		parsedHandle, err := testkeysethandle.KeysetHandle(keyset)
 		if err != nil {
 			panic(fmt.Sprintf("KeysetHandleWithNoSecret(): %v", err))
 		}
