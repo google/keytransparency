@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/google/tink/go/insecure"
 	"github.com/google/tink/go/tink"
 )
 
@@ -67,7 +68,7 @@ func newKeyset(instance int64, domainID, appID string, k *tink.KeysetHandle) (*k
 
 // Proto converts a keyset to a tpb.KeySet proto.
 func (k *keyset) Proto() (*tink.KeysetHandle, error) {
-	return tink.CleartextKeysetHandle().ParseSerializedKeyset(k.KeySet)
+	return insecure.KeysetHandleFromSerializedProto(k.KeySet)
 }
 
 // New returns a storage.KeySets client backed by an SQL table.

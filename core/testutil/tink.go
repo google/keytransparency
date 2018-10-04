@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/testkeysethandle"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/crypto/keys/pem"
 
@@ -41,22 +42,22 @@ func PrivateKeyFromPEM(privPEM string, keyID uint32) *tinkpb.Keyset_Key {
 		panic(fmt.Sprintf("not ecdsa private key: %T", signer))
 	}
 
-	params := signature.NewEcdsaParams(
+	params := signature.NewECDSAParams(
 		commonpb.HashType_SHA256,
 		commonpb.EllipticCurveType_NIST_P256,
 		ecdsapb.EcdsaSignatureEncoding_DER)
 
-	publicKey := signature.NewEcdsaPublicKey(
-		signature.EcdsaVerifyKeyVersion,
+	publicKey := signature.NewECDSAPublicKey(
+		signature.ECDSAVerifierKeyVersion,
 		params, priv.X.Bytes(), priv.Y.Bytes())
-	privKey := signature.NewEcdsaPrivateKey(
-		signature.EcdsaSignKeyVersion,
+	privKey := signature.NewECDSAPrivateKey(
+		signature.ECDSASignerKeyVersion,
 		publicKey, priv.D.Bytes())
 	serializedKey, err := proto.Marshal(privKey)
 	if err != nil {
 		panic(fmt.Sprintf("proto.Marshal(): %v", err))
 	}
-	keyData := tink.CreateKeyData(signature.EcdsaSignTypeURL,
+	keyData := tink.CreateKeyData(signature.ECDSASignerTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PRIVATE)
 	return tink.CreateKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
@@ -73,18 +74,18 @@ func PublicKeyFromPEM(pubPEM string, keyID uint32) *tinkpb.Keyset_Key {
 		panic(fmt.Sprintf("not ecdsa public key: %T", pubKey))
 	}
 
-	params := signature.NewEcdsaParams(
+	params := signature.NewECDSAParams(
 		commonpb.HashType_SHA256,
 		commonpb.EllipticCurveType_NIST_P256,
 		ecdsapb.EcdsaSignatureEncoding_DER)
-	publicKey := signature.NewEcdsaPublicKey(
-		signature.EcdsaVerifyKeyVersion,
+	publicKey := signature.NewECDSAPublicKey(
+		signature.ECDSAVerifierKeyVersion,
 		params, pub.X.Bytes(), pub.Y.Bytes())
 	serializedKey, err := proto.Marshal(publicKey)
 	if err != nil {
 		panic(fmt.Sprintf("proto.Marshal(): %v", err))
 	}
-	keyData := tink.CreateKeyData(signature.EcdsaVerifyTypeURL,
+	keyData := tink.CreateKeyData(signature.ECDSAVerifierTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PUBLIC)
 	return tink.CreateKey(keyData, tinkpb.KeyStatusType_ENABLED, keyID, tinkpb.OutputPrefixType_TINK)
@@ -101,9 +102,9 @@ func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
 		keys = append(keys, keysetKey)
 	}
 	keyset := tink.CreateKeyset(1, keys)
-	parsedHandle, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
+	parsedHandle, err := tink.KeysetHandleWithNoSecret(keyset)
 	if err != nil {
-		panic(fmt.Sprintf("ParseKeyset(): %v", err))
+		panic(fmt.Sprintf("tink.KeysetHandleWithNoSecret(): %v", err))
 	}
 	return parsedHandle
 }
@@ -117,9 +118,9 @@ func SignKeysetsFromPEMs(privPEMs ...string) []*tink.KeysetHandle {
 		}
 		keysetKey := PrivateKeyFromPEM(pem, uint32(i+1))
 		keyset := tink.CreateKeyset(uint32(i+1), []*tinkpb.Keyset_Key{keysetKey})
-		parsedHandle, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
+		parsedHandle, err := testkeysethandle.KeysetHandle(keyset)
 		if err != nil {
-			panic(fmt.Sprintf("ParseKeyset(): %v", err))
+			panic(fmt.Sprintf("testkeysethandle.KeysetHandle(): %v", err))
 		}
 		handles = append(handles, parsedHandle)
 	}

@@ -33,8 +33,8 @@ import (
 )
 
 func init() {
-	if _, err := signature.RegisterStandardKeyTypes(); err != nil {
-		glog.Errorf("RegisterStandardKeyTypes(): %v", err)
+	if err := signature.Register(); err != nil {
+		glog.Errorf("signature.Register(): %v", err)
 	}
 }
 
@@ -116,7 +116,7 @@ func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data interface{}, sigs [][]byte
 		keyset = authz
 	}
 
-	verifier, err := tink.CleartextKeysetHandle().ParseKeyset(keyset)
+	verifier, err := tink.KeysetHandleWithNoSecret(keyset)
 	if err != nil {
 		return fmt.Errorf("ParseKeyset(new): %v", err)
 	}
@@ -127,7 +127,7 @@ func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data interface{}, sigs [][]byte
 // verifyAuthorizedKeys requires AT LEAST one verifier to have a valid
 // corresponding signature.
 func verifyAuthorizedKeys(data interface{}, handle *tink.KeysetHandle, sigs [][]byte) error {
-	verifier, err := signature.GetPublicKeyVerifyPrimitive(handle)
+	verifier, err := signature.NewVerifier(handle)
 	if err != nil {
 		return err
 	}

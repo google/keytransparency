@@ -83,8 +83,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		}
 	}()
 
-	if _, err := signature.RegisterStandardKeyTypes(); err != nil {
-		t.Fatalf("RegisterStandardKeyTypes(): %v", err)
+	if err := signature.Register(); err != nil {
+		t.Fatalf("signature.Register(): %v", err)
 	}
 
 	// Create lists of signers.
