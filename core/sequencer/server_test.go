@@ -31,9 +31,9 @@ func queueMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpda
 	userID := string(id)
 	m := entry.NewMutation(index, "domain", "app", userID)
 	signers := []*tink.KeysetHandle{signer}
-	pubkey, err := signer.GetPublicKeysetHandle()
+	pubkey, err := signer.Public()
 	if err != nil {
-		t.Fatalf("GetPublicKeysetHandle(): %v", err)
+		t.Fatalf("Public(): %v", err)
 	}
 	if err := m.ReplaceAuthorizedKeys(pubkey.Keyset()); err != nil {
 		t.Fatalf("ReplaceAuthorizedKeys(): %v", err)
@@ -53,11 +53,11 @@ func queueMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpda
 // each mapleaf.Index at most ONCE.
 func TestDuplicateMutations(t *testing.T) {
 
-	keyset1, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
+	keyset1, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
 	if err != nil {
 		t.Fatalf("tink.GenerateNew(): %v", err)
 	}
-	keyset2, err := tink.CleartextKeysetHandle().GenerateNew(signature.EcdsaP256KeyTemplate())
+	keyset2, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
 	if err != nil {
 		t.Fatalf("tink.GenerateNew(): %v", err)
 	}

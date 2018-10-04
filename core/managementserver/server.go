@@ -58,7 +58,7 @@ func (s *Server) GetKeySet(ctx context.Context, in *pb.GetKeySetRequest) (*tinkp
 	if err != nil {
 		return nil, err
 	}
-	pub, err := ks.GetPublicKeysetHandle()
+	pub, err := ks.Public()
 	if err != nil {
 		return nil, err
 	}
