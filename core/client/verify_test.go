@@ -58,11 +58,15 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 		t.Fatalf("Unmarshal(): %v", err)
 	}
 
+	trusted := &types.LogRootV1{}
 	for _, tc := range getEntryResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			trusted := types.LogRootV1{}
-			if _, _, err := v.VerifyGetEntryResponse(ctx, domainPB.DomainId, tc.AppID, tc.UserID, trusted, tc.Resp); err != nil {
+			var slr *types.LogRootV1
+			if _, slr, err = v.VerifyGetEntryResponse(ctx, domainPB.DomainId, tc.AppID, tc.UserID, *trusted, tc.Resp); err != nil {
 				t.Errorf("VerifyGetEntryResponse(): %v)", err)
+			}
+			if tc.TrustNewLog {
+				trusted = slr
 			}
 		})
 	}

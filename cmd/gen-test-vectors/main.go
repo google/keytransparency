@@ -86,6 +86,9 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	// Collect a list of valid GetEntryResponses
 	getEntryResps := make([]testdata.GetEntryResponseVector, 0)
 
+	// Start with an empty trusted log root
+	slr := &types.LogRootV1{}
+
 	for _, tc := range []struct {
 		desc           string
 		wantProfile    []byte
@@ -143,24 +146,35 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	} {
 		// Check profile.
 		e, err := env.Cli.GetEntry(ctx, &pb.GetEntryRequest{
-			DomainId: env.Domain.DomainId,
-			UserId:   tc.userID,
-			AppId:    appID,
+			DomainId:      env.Domain.DomainId,
+			UserId:        tc.userID,
+			AppId:         appID,
+			FirstTreeSize: int64(slr.TreeSize),
 		})
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: GetEntry(): %v", err)
 		}
-		if _, _, err := env.Client.VerifyGetEntryResponse(ctx, env.Domain.DomainId, appID, tc.userID, types.LogRootV1{}, e); err != nil {
+		var newslr *types.LogRootV1
+		if _, newslr, err = env.Client.VerifyGetEntryResponse(ctx, env.Domain.DomainId, appID, tc.userID, *slr, e); err != nil {
 			return fmt.Errorf("gen-test-vectors: VerifyGetEntryResponse(): %v", err)
 		}
+
 		if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
 			return fmt.Errorf("gen-test-vectors: VerifiedGetEntry(%v): %s, want %s", tc.userID, got, want)
 		}
+
+		// Update the trusted root on the first revision, then let it fall behind
+		// every few revisions to make consistency proofs more interesting.
+		trust := newslr.TreeSize%5 == 1
+		if trust {
+			slr = newslr
+		}
 		getEntryResps = append(getEntryResps, testdata.GetEntryResponseVector{
-			Desc:   tc.desc,
-			AppID:  appID,
-			UserID: tc.userID,
-			Resp:   e,
+			Desc:        tc.desc,
+			AppID:       appID,
+			UserID:      tc.userID,
+			Resp:        e,
+			TrustNewLog: trust,
 		})
 
 		// Update profile.
@@ -179,9 +193,10 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 				return fmt.Errorf("gen-test-vectors: Update(%v): %v", tc.userID, err)
 			}
 		}
-		if err := SaveTestVectors(*testdataDir, env, getEntryResps); err != nil {
-			return fmt.Errorf("gen-test-vectors: SaveTestVectors(): %v", err)
-		}
+	}
+
+	if err := SaveTestVectors(*testdataDir, env, getEntryResps); err != nil {
+		return fmt.Errorf("gen-test-vectors: SaveTestVectors(): %v", err)
 	}
 	return nil
 }
