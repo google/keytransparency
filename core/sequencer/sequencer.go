@@ -95,6 +95,7 @@ func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer)
 }
 
 // PeriodicallyRun executes f once per tick until ctx is closed.
+// Closing ctx will also stop any in-flight operation mid-way through.
 func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx context.Context) error) error {
 	for range tickch {
 		select {
