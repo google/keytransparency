@@ -34,7 +34,6 @@ func TestRandShard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
 	}
-	domainID := "foo"
 
 	for _, tc := range []struct {
 		desc       string
@@ -78,7 +77,6 @@ func TestSend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
 	}
-	domainID := "foo"
 	update := []byte("bar")
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
@@ -115,7 +113,6 @@ func TestWatermark(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
 	}
-	domainID := "foo"
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 
@@ -142,7 +139,7 @@ func TestWatermark(t *testing.T) {
 		},
 	} {
 		for shardID, ts := range tc.send {
-			if err := m.send(ctx, domainID, shardID, []byte("foo"), ts); err != nil {
+			if err := m.send(ctx, domainID, shardID, []byte("mutation"), ts); err != nil {
 				t.Fatalf("send(%v, %v): %v", shardID, ts, err)
 			}
 		}
@@ -163,7 +160,6 @@ func TestReadQueue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
-	domainID := "readqueue"
 	shardID := int64(5)
 	if err := m.AddShards(ctx, domainID, shardID); err != nil {
 		t.Fatalf("AddShards(): %v", err)
