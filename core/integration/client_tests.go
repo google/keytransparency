@@ -27,7 +27,6 @@ import (
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testutil"
 
-	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 
@@ -82,10 +81,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			t.Errorf("PeriodicallyRun(): %v", err)
 		}
 	}()
-
-	if err := signature.Register(); err != nil {
-		t.Fatalf("signature.Register(): %v", err)
-	}
 
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
