@@ -43,9 +43,24 @@ func (m *Mutations) AddShards(ctx context.Context, domainID string, shardIDs ...
 	return nil
 }
 
+// Send writes mutations to the leading edge (by sequence number) of the mutations table.
+func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
+	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
+	shardID, err := m.randShard(ctx, domainID)
+	if err != nil {
+		return err
+	}
+	mData, err := proto.Marshal(update)
+	if err != nil {
+		return err
+	}
+	// TODO(gbelvin): Implement retry with backoff for retryable errors if
+	// we get timestamp contention.
+	return m.send(ctx, domainID, shardID, mData, time.Now())
+}
+
 // randShard returns a random, enabled shard for domainID.
 func (m *Mutations) randShard(ctx context.Context, domainID string) (int64, error) {
-	// Read all enabled shards for domainID.
 	// TODO(gbelvin): Cache these results.
 	var shardIDs []int64
 	rows, err := m.db.QueryContext(ctx,
@@ -70,37 +85,6 @@ func (m *Mutations) randShard(ctx context.Context, domainID string) (int64, erro
 
 	// Return a random shard.
 	return shardIDs[rand.Intn(len(shardIDs))], nil
-}
-
-// Send writes mutations to the leading edge (by sequence number) of the mutations table.
-func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
-	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
-	shardID, err := m.randomShard(ctx, domainID)
-	if err != nil {
-		return err
-	}
-	mData, err := proto.Marshal(update)
-	if err != nil {
-		return err
-	}
-	// TODO(gbelvin): Implement retry with backoff for retryable errors if
-	// we get timestamp contention.
-	return m.send(ctx, domainID, shardID, mData, time.Now())
-}
-
-// randomShard returns a random shard from the list of active shards for domainID.
-func (m *Mutations) randomShard(ctx context.Context, domainID string) (int64, error) {
-	var shardID int64
-	err := m.db.QueryRowContext(ctx,
-		`SELECT ShardID from Shards WHERE DomainID = ? ORDER BY RANDOM() LIMIT 1;`,
-		domainID).Scan(&shardID)
-	switch {
-	case err == sql.ErrNoRows:
-		return 0, status.Errorf(codes.NotFound, "No shard found for domain %v", domainID)
-	case err != nil:
-		return 0, err
-	}
-	return shardID, nil
 }
 
 // ts must be greater than all other timestamps currently recorded for domainID.
