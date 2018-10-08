@@ -6,7 +6,7 @@ services:
 - docker-ce
 cache:
   directories:
-  - $HOME/google-cloud-sdk/
+  - "$HOME/google-cloud-sdk/"
 env:
   global:
   - DOCKER_COMPOSE_VERSION="1.13.0"
@@ -20,7 +20,7 @@ addons:
 
 install:
   - go get -u github.com/alecthomas/gometalinter
-  - gometalinter --install 
+  - gometalinter --install
   - go get -t ./...
 
 script:
@@ -41,9 +41,9 @@ before_deploy:
   - source $HOME/google-cloud-sdk/path.bash.inc
   - gcloud --quiet components install kubectl
   - gcloud --quiet version
-  - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
-  - tar -xzf travis_secrets.tar.gz
-  - gcloud auth activate-service-account --key-file service_key.json
+  - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
+    -in client_secrets.json.enc -out client_secrets.json -d
+  - gcloud auth activate-service-account --key-file client_secrets.json
   - rm -f service_key.json
   - go get github.com/google/trillian/server/trillian_log_server
   - go get github.com/google/trillian/server/trillian_log_signer
@@ -52,6 +52,6 @@ before_deploy:
 deploy:
   skip_cleanup: true
   provider: script
-  script: ./scripts/deploy.sh
+  script: "./scripts/deploy.sh"
   on:
     branch: master
