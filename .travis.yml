@@ -51,9 +51,7 @@ before_deploy:
   - docker --version
   - docker-compose --version
   - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
-    -in client_secrets.json.enc -out client_secrets.json -d
-  - gcloud auth activate-service-account --key-file client_secrets.json
-  - rm -f service_key.json
+    -in client_secrets.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
   - go get github.com/google/trillian/server/trillian_log_server
   - go get github.com/google/trillian/server/trillian_log_signer
   - go get github.com/google/trillian/server/trillian_map_server
