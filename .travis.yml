@@ -17,14 +17,14 @@ addons:
     packages:
     - python3-pip
     - google-cloud-sdk
-    - kubectl
 
 before_install:
   - gcloud --quiet version
-  - kubectl version
   - docker --version
 
 install:
+  - gcloud components update kubectl
+  - kubectl version
   - go get -u github.com/alecthomas/gometalinter
   - gometalinter --install 
   - go get -t ./...
