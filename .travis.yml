@@ -27,6 +27,7 @@ before_install:
         printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh &&
         cd $TRAVIS_BUILD_DIR;
     fi
+  - source "$HOME/gcloud/google-cloud-sdk/path.bash.inc"
   - gcloud -q components update
   - gcloud -q version
 
