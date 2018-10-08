@@ -13,7 +13,7 @@ env:
 addons:
   apt:
     sources:
-    - google-cloud
+    - google-cloud-trusty
     packages:
     - python3-pip
     - google-cloud-sdk
