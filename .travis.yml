@@ -1,6 +1,6 @@
 language: go
 go:
-- "1.x"
+- 1.x
 dist: trusty
 services:
 - docker-ce
@@ -20,11 +20,11 @@ addons:
 
 before_install:
   - if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
-        mkdir -p $HOME/gcloud &&
-        wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud &&
-        cd $HOME/gcloud &&
-        tar xzf google-cloud-sdk.tar.gz &&
-        printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh &&
+        mkdir -p $HOME/gcloud
+        wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud
+        cd $HOME/gcloud
+        tar xzf google-cloud-sdk.tar.gz
+        ./google-cloud-sdk/install.sh -q
         cd $TRAVIS_BUILD_DIR;
     fi
   - source "$HOME/gcloud/google-cloud-sdk/path.bash.inc"
@@ -61,6 +61,6 @@ before_deploy:
 deploy:
   skip_cleanup: true
   provider: script
-  script: "./scripts/deploy.sh"
+  script: ./scripts/deploy.sh
   on:
     branch: master
