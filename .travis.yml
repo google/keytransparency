@@ -10,8 +10,9 @@ cache:
 env:
   global:
   - DOCKER_COMPOSE_VERSION="1.13.0"
-  - PATH=$PATH:${HOME}/google-cloud-sdk/bin
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+  - GOMETALINTER_VERSION="$(.travis/get-gometalinter-version.sh)"
+  - PATH=$PATH:${HOME}/google-cloud-sdk/bin:${TRAVIS_HOME}/gometalinter/gometalinter-${GOMETALINTER_VERSION}-linux-amd64
 
 addons:
   apt:
@@ -19,9 +20,12 @@ addons:
     - python3-pip
 
 install:
-  - go get -u github.com/alecthomas/gometalinter
-  - gometalinter --install 
+  - ./.travis/gometalinter-install.sh
   - go get -t ./...
+  
+cache: 
+  directories:
+  - ${TRAVIS_HOME}/gometalinter/gometalinter-${GOMETALINTER_VERSION}-linux-amd64
 
 script:
   - go build ./...
