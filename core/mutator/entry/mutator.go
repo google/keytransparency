@@ -32,12 +32,6 @@ import (
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
-func init() {
-	if err := signature.Register(); err != nil {
-		glog.Errorf("signature.Register(): %v", err)
-	}
-}
-
 // Mutator defines mutations to simply replace the current map value with the
 // contents of the mutation.
 type Mutator struct{}

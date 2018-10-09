@@ -56,9 +56,6 @@ var keysCmd = &cobra.Command{
 	Short: "Manage authorized keys",
 	Long: `Manage the authorized-keys list with tinkey
 	https://github.com/google/tink/blob/master/doc/TINKEY.md`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return signature.Register()
-	},
 }
 
 // createCmd creates a new keyset

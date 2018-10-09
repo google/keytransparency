@@ -29,7 +29,6 @@ import (
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/integration"
-	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/types"
 
@@ -74,9 +73,6 @@ func main() {
 
 // GenerateTestVectors verifies set/get semantics.
 func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
-	if err := signature.Register(); err != nil {
-		return err
-	}
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 
