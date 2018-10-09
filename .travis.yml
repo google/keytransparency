@@ -1,12 +1,12 @@
 language: go
 go:
-- "1.x"
+- 1.x
 dist: trusty
 services:
 - docker-ce
 cache:
   directories:
-  - $HOME/google-cloud-sdk/
+  - "$HOME/gcloud/"
 env:
   global:
   - DOCKER_COMPOSE_VERSION="1.13.0"
@@ -18,9 +18,24 @@ addons:
     packages:
     - python3-pip
 
+before_install:
+  - |
+    if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
+        mkdir -p $HOME/gcloud 
+        wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud
+        cd $HOME/gcloud
+        tar xzf google-cloud-sdk.tar.gz;
+        ./google-cloud-sdk/install.sh -q;
+        cd $TRAVIS_BUILD_DIR
+    fi
+  - source "$HOME/gcloud/google-cloud-sdk/path.bash.inc"
+  - gcloud -q components update
+  - gcloud -q version
+
 install:
+  - gcloud -q components install kubectl
   - go get -u github.com/alecthomas/gometalinter
-  - gometalinter --install 
+  - gometalinter --install
   - go get -t ./...
 
 script:
@@ -36,15 +51,8 @@ before_deploy:
   - pip3 install --user docker-compose
   - docker --version
   - docker-compose --version
-  - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk;
-    curl https://sdk.cloud.google.com | bash; fi
-  - source $HOME/google-cloud-sdk/path.bash.inc
-  - gcloud --quiet components install kubectl
-  - gcloud --quiet version
-  - openssl aes-256-cbc -K $encrypted_a1eb99cfc21e_key -iv $encrypted_a1eb99cfc21e_iv -in travis_secrets.tar.gz.enc -out travis_secrets.tar.gz -d
-  - tar -xzf travis_secrets.tar.gz
-  - gcloud auth activate-service-account --key-file service_key.json
-  - rm -f service_key.json
+  - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
+    -in client_secrets.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
   - go get github.com/google/trillian/server/trillian_log_server
   - go get github.com/google/trillian/server/trillian_log_signer
   - go get github.com/google/trillian/server/trillian_map_server
