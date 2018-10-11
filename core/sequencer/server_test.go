@@ -80,8 +80,8 @@ func TestDuplicateMutations(t *testing.T) {
 		{
 			desc: "duplicate index, different data",
 			msgs: []*ktpb.EntryUpdate{
-				logMsg(t, 1, keyset1),
-				logMsg(t, 1, keyset2),
+				logMsg(t, 2, keyset1),
+				logMsg(t, 2, keyset2),
 			},
 			wantLeaves: 1,
 		},
