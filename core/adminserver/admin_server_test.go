@@ -87,7 +87,7 @@ func (e *miniEnv) Close() {
 
 type fakeQueueAdmin struct{}
 
-func (fakeQueueAdmin) AddLogs(ctx context.Context, domainID string, shardIDs ...int64) error {
+func (fakeQueueAdmin) AddLogs(ctx context.Context, domainID string, logIDs ...int64) error {
 	return nil
 }
 

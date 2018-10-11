@@ -133,14 +133,14 @@ func TestWatermarks(t *testing.T) {
 		},
 		{
 			desc: "second",
-			// Highwatermarks in each shard proceed independently.
+			// Highwatermarks in each log proceed independently.
 			send: map[int64]time.Time{1: ts2, 2: ts1},
 			want: map[int64]int64{1: ts2.UnixNano(), 2: ts1.UnixNano()},
 		},
 	} {
-		for shardID, ts := range tc.send {
-			if err := m.send(ctx, domainID, shardID, []byte("mutation"), ts); err != nil {
-				t.Fatalf("send(%v, %v): %v", shardID, ts, err)
+		for logID, ts := range tc.send {
+			if err := m.send(ctx, domainID, logID, []byte("mutation"), ts); err != nil {
+				t.Fatalf("send(%v, %v): %v", logID, ts, err)
 			}
 		}
 		highs, err := m.HighWatermarks(ctx, domainID)

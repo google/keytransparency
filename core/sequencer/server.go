@@ -68,9 +68,9 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 }
 
-// LogsReader reads messages in multiple log shards.
+// LogsReader reads messages in multiple log logs.
 type LogsReader interface {
-	// HighWatermarks returns the highest primary key for each shard in the mutations table.
+	// HighWatermarks returns the highest primary key for each log in the mutations table.
 	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
 	// ReadLog returns the messages under logID in the (low, high] range.
 	// ReadLog does NOT delete messages.
@@ -164,8 +164,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 func (s *Server) readMessages(ctx context.Context, domainID string,
 	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
-	for shardID, source := range sources {
-		batch, err := s.logs.ReadLog(ctx, domainID, shardID,
+	for logID, source := range sources {
+		batch, err := s.logs.ReadLog(ctx, domainID, logID,
 			source.GetLowestWatermark(), source.GetHighestWatermark())
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)

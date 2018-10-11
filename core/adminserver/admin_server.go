@@ -77,7 +77,7 @@ var (
 
 // LogsAdmin controls the lifecycle and scaling of mutation logs.
 type LogsAdmin interface {
-	// AddLogs creates and adds new shards for writing to a domain.
+	// AddLogs creates and adds new logs for writing to a domain.
 	AddLogs(ctx context.Context, domainID string, logIDs ...int64) error
 }
 
@@ -273,9 +273,9 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 
 	// Create initial logs for writing.
 	// TODO(#1063): Additional logs can be added at a later point to support increased server load.
-	shardIDs := []int64{1, 2}
-	if err := s.logsAdmin.AddLogs(ctx, in.GetDomainId(), shardIDs...); err != nil {
-		return nil, fmt.Errorf("adminserver: AddShards(%v): %v", shardIDs, err)
+	logIDs := []int64{1, 2}
+	if err := s.logsAdmin.AddLogs(ctx, in.GetDomainId(), logIDs...); err != nil {
+		return nil, fmt.Errorf("adminserver: AddLogs(%v): %v", logIDs, err)
 	}
 
 	d := &pb.Domain{
