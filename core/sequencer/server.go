@@ -68,13 +68,13 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 }
 
-// Queue reads messages that haven't been deleted off the queue.
-type Queue interface {
+// LogsReader reads messages in multiple log shards.
+type LogsReader interface {
 	// HighWatermarks returns the highest primary key for each shard in the mutations table.
 	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
-	// ReadQueue returns the messages under shardID in the (low, high] range.
-	// ReadQueue does NOT delete messages.
-	ReadQueue(ctx context.Context, domainID string, shardID, low, high int64) ([]*mutator.LogMessage, error)
+	// ReadLog returns the messages under logID in the (low, high] range.
+	// ReadLog does NOT delete messages.
+	ReadLog(ctx context.Context, domainID string, logID, low, high int64) ([]*mutator.LogMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -83,7 +83,7 @@ type Server struct {
 	mutations mutator.MutationStorage
 	tmap      tpb.TrillianMapClient
 	tlog      tpb.TrillianLogClient
-	queue     Queue
+	logs      LogsReader
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -94,7 +94,7 @@ func NewServer(
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	mutations mutator.MutationStorage,
-	queue Queue,
+	logs LogsReader,
 	metricsFactory monitoring.MetricFactory,
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
@@ -103,7 +103,7 @@ func NewServer(
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
-		queue:     queue,
+		logs:      logs,
 	}
 }
 
@@ -126,7 +126,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
-	highs, err := s.queue.HighWatermarks(ctx, in.DomainId)
+	highs, err := s.logs.HighWatermarks(ctx, in.DomainId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}
@@ -165,7 +165,7 @@ func (s *Server) readMessages(ctx context.Context, domainID string,
 	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
 	for shardID, source := range sources {
-		batch, err := s.queue.ReadQueue(ctx, domainID, shardID,
+		batch, err := s.logs.ReadLog(ctx, domainID, shardID,
 			source.GetLowestWatermark(), source.GetHighestWatermark())
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
