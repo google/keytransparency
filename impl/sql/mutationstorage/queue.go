@@ -91,27 +91,27 @@ func (m *Mutations) randShard(ctx context.Context, domainID string) (int64, erro
 }
 
 // ts must be greater than all other timestamps currently recorded for domainID.
-func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mData []byte, ts time.Time) error {
+func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mData []byte, ts time.Time) (ret error) {
 	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if ret != nil {
+			if err := tx.Rollback(); err != nil {
+				ret = status.Errorf(codes.Internal, "%v, and could not rollback: %v", ret, err)
+			}
+		}
+	}()
 
 	var maxTime int64
 	if err := tx.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ? AND ShardID = ?;`,
 		domainID, shardID).Scan(&maxTime); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return status.Errorf(codes.Internal,
-				"query err: %v and could not roll back: %v", err, rollbackErr)
-		}
-		return err
+		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
 	tsTime := ts.UnixNano()
 	if tsTime <= maxTime {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return status.Errorf(codes.Internal, "could not roll back: %v", rollbackErr)
-		}
 		return status.Errorf(codes.Aborted,
 			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
 			tsTime, maxTime)
@@ -120,10 +120,6 @@ func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mD
 	if _, err = tx.ExecContext(ctx,
 		`INSERT INTO Queue (DomainID, ShardID, Time, Mutation) VALUES (?, ?, ?, ?);`,
 		domainID, shardID, tsTime, mData); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return status.Errorf(codes.Internal,
-				"insert err: %v and could not roll back: %v", err, rollbackErr)
-		}
 		return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 	}
 	return tx.Commit()

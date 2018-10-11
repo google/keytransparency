@@ -73,7 +73,7 @@ type Queue interface {
 	// HighWatermarks returns the highest primary key for each shard in the mutations table.
 	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
 	// ReadQueue returns the messages under shardID in the (low, high] range.
-	// ReadQueue does NOT delete messages
+	// ReadQueue does NOT delete messages.
 	ReadQueue(ctx context.Context, domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error)
 }
 

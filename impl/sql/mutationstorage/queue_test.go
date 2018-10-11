@@ -29,11 +29,6 @@ import (
 
 func TestRandShard(t *testing.T) {
 	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create Mutations: %v", err)
-	}
 
 	for _, tc := range []struct {
 		desc       string
@@ -42,29 +37,36 @@ func TestRandShard(t *testing.T) {
 		wantShards map[int64]bool
 	}{
 		{desc: "no rows", wantCode: codes.NotFound, wantShards: map[int64]bool{}},
+		{desc: "one row", send: []int64{10}, wantShards: map[int64]bool{10: true}},
 		{desc: "second", send: []int64{1, 2, 3}, wantShards: map[int64]bool{
 			1: true,
 			2: true,
 			3: true,
 		}},
 	} {
-		if err := m.AddShards(ctx, domainID, tc.send...); err != nil {
-			t.Fatalf("AddShards(): %v", err)
-		}
-		shards := make(map[int64]bool)
-		for i := 0; i < 10*len(tc.wantShards); i++ {
-			shard, err := m.randShard(ctx, domainID)
-			if got, want := status.Code(err), tc.wantCode; got != want {
-				t.Errorf("randShard(): %v, want %v", got, want)
-			}
+		t.Run(tc.desc, func(t *testing.T) {
+			m, err := New(newDB(t))
 			if err != nil {
-				break
+				t.Fatalf("Failed to create Mutations: %v", err)
 			}
-			shards[shard] = true
-		}
-		if got, want := shards, tc.wantShards; !cmp.Equal(got, want) {
-			t.Errorf("shards: %v, want %v", got, want)
-		}
+			if err := m.AddShards(ctx, domainID, tc.send...); err != nil {
+				t.Fatalf("AddShards(): %v", err)
+			}
+			shards := make(map[int64]bool)
+			for i := 0; i < 10*len(tc.wantShards); i++ {
+				shard, err := m.randShard(ctx, domainID)
+				if got, want := status.Code(err), tc.wantCode; got != want {
+					t.Errorf("randShard(): %v, want %v", got, want)
+				}
+				if err != nil {
+					break
+				}
+				shards[shard] = true
+			}
+			if got, want := shards, tc.wantShards; !cmp.Equal(got, want) {
+				t.Errorf("shards: %v, want %v", got, want)
+			}
+		})
 	}
 }
 
@@ -143,10 +145,10 @@ func TestWatermarks(t *testing.T) {
 		}
 		highs, err := m.HighWatermarks(ctx, domainID)
 		if err != nil {
-			t.Fatalf("HighWatermark(): %v", err)
+			t.Fatalf("HighWatermarks(): %v", err)
 		}
 		if !cmp.Equal(highs, tc.want) {
-			t.Errorf("HighWatermark(): %v, want %v", highs, tc.want)
+			t.Errorf("HighWatermarks(): %v, want %v", highs, tc.want)
 		}
 	}
 }
