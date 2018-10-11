@@ -25,7 +25,7 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func queueMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate {
+func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate {
 	t.Helper()
 	index := []byte{byte(id)}
 	userID := string(id)
@@ -72,16 +72,16 @@ func TestDuplicateMutations(t *testing.T) {
 		{
 			desc: "duplicate index, same data",
 			msgs: []*ktpb.EntryUpdate{
-				queueMsg(t, 1, keyset1),
-				queueMsg(t, 1, keyset1),
+				logMsg(t, 1, keyset1),
+				logMsg(t, 1, keyset1),
 			},
 			wantLeaves: 1,
 		},
 		{
 			desc: "duplicate index, different data",
 			msgs: []*ktpb.EntryUpdate{
-				queueMsg(t, 1, keyset1),
-				queueMsg(t, 1, keyset2),
+				logMsg(t, 1, keyset1),
+				logMsg(t, 1, keyset2),
 			},
 			wantLeaves: 1,
 		},

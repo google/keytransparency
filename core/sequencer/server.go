@@ -107,7 +107,7 @@ func NewServer(
 	}
 }
 
-// RunBatch reads mutations out of the queue and calls CreateEpoch.
+// RunBatch reads mutations out of the logs and calls CreateEpoch.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
 	// Get the previous and current high water marks.
 	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})
@@ -132,7 +132,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	}
 
 	// TODO(#1057): If time since last map revision > max timeout, run batch.
-	// TODO(#1047): If time since oldest queue item > max latency has elapsed, run batch.
+	// TODO(#1047): If time since oldest log item > max latency has elapsed, run batch.
 	// TODO(#1056): If count items > max_batch, run batch.
 
 	// Count items to be processed.  Unfortunately, this means we will be

@@ -62,7 +62,7 @@ message RunBatchRequest{
    string domain_id = 1;
    // min_batch is the minimum number of items in a batch.
    // If less than min_batch items are available, nothing happens.
-   // TODO(#1047): Replace with timeout so items in the queue get processed eventually.
+   // TODO(#1047): Replace with timeout so items in the log get processed eventually.
    int32 min_batch = 2;
    // max_batch is the maximum number of items in a batch.
    int32 max_batch = 3;
