@@ -75,21 +75,21 @@ var (
 	}
 )
 
-// QueueAdmin controls the lifecycle and scaling of mutation queues.
-type QueueAdmin interface {
-	// AddShards creates and adds new shards for queue writing to a domain.
-	AddShards(ctx context.Context, domainID string, shardIDs ...int64) error
+// LogsAdmin controls the lifecycle and scaling of mutation queues.
+type LogsAdmin interface {
+	// AddLogs creates and adds new shards for queue writing to a domain.
+	AddLogs(ctx context.Context, domainID string, logIDs ...int64) error
 }
 
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
-	tlog       tpb.TrillianLogClient
-	tmap       tpb.TrillianMapClient
-	logAdmin   tpb.TrillianAdminClient
-	mapAdmin   tpb.TrillianAdminClient
-	domains    domain.Storage
-	queueAdmin QueueAdmin
-	keygen     keys.ProtoGenerator
+	tlog      tpb.TrillianLogClient
+	tmap      tpb.TrillianMapClient
+	logAdmin  tpb.TrillianAdminClient
+	mapAdmin  tpb.TrillianAdminClient
+	domains   domain.Storage
+	logsAdmin LogsAdmin
+	keygen    keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdmin implementation.
@@ -98,17 +98,17 @@ func New(
 	tmap tpb.TrillianMapClient,
 	logAdmin, mapAdmin tpb.TrillianAdminClient,
 	domains domain.Storage,
-	queueAdmin QueueAdmin,
+	logsAdmin LogsAdmin,
 	keygen keys.ProtoGenerator,
 ) *Server {
 	return &Server{
-		tlog:       tlog,
-		tmap:       tmap,
-		logAdmin:   logAdmin,
-		mapAdmin:   mapAdmin,
-		domains:    domains,
-		queueAdmin: queueAdmin,
-		keygen:     keygen,
+		tlog:      tlog,
+		tmap:      tmap,
+		logAdmin:  logAdmin,
+		mapAdmin:  mapAdmin,
+		domains:   domains,
+		logsAdmin: logsAdmin,
+		keygen:    keygen,
 	}
 }
 
@@ -274,7 +274,7 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 	// Create initial shards for queue.
 	// TODO(#1063): Additional shards can be added at a later point to support increased server load.
 	shardIDs := []int64{1, 2}
-	if err := s.queueAdmin.AddShards(ctx, in.GetDomainId(), shardIDs...); err != nil {
+	if err := s.logsAdmin.AddLogs(ctx, in.GetDomainId(), shardIDs...); err != nil {
 		return nil, fmt.Errorf("adminserver: AddShards(%v): %v", shardIDs, err)
 	}
 
