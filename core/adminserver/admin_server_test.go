@@ -85,6 +85,12 @@ func (e *miniEnv) Close() {
 	e.stopMockServer()
 }
 
+type fakeQueueAdmin struct{}
+
+func (fakeQueueAdmin) AddShards(ctx context.Context, domainID string, shardIDs ...int64) error {
+	return nil
+}
+
 func TestCreateDomain(t *testing.T) {
 	for _, tc := range []struct {
 		desc     string
@@ -171,7 +177,7 @@ func TestCreateRead(t *testing.T) {
 		t.Fatalf("Failed to create trillian log server: %v", err)
 	}
 
-	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, vrfKeyGen)
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
 
 	for _, tc := range []struct {
 		domainID                 string
@@ -223,7 +229,7 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("Failed to create trillian log server: %v", err)
 	}
 
-	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, vrfKeyGen)
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
 
 	for _, tc := range []struct {
 		domainID                 string
@@ -287,7 +293,7 @@ func TestListDomains(t *testing.T) {
 		t.Fatalf("Failed to create trillian log server: %v", err)
 	}
 
-	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, vrfKeyGen)
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
 
 	for _, tc := range []struct {
 		domainIDs []string

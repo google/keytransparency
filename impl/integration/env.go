@@ -141,7 +141,11 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to create domain storage: %v", err)
 	}
-	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, domainStorage, vrfKeyGen)
+	mutations, err := mutationstorage.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
+	}
+	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, domainStorage, mutations, vrfKeyGen)
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	domainPB, err := adminSvr.CreateDomain(cctx, &pb.CreateDomainRequest{
@@ -158,10 +162,6 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	glog.V(5).Infof("Domain: %# v", pretty.Formatter(domainPB))
 
 	// Common data structures.
-	mutations, err := mutationstorage.New(db)
-	if err != nil {
-		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
-	}
 	authFunc := authentication.FakeAuthFunc
 	authz := &authorization.AuthzPolicy{}
 

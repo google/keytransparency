@@ -19,11 +19,56 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+func TestRandShard(t *testing.T) {
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		desc       string
+		send       []int64
+		wantCode   codes.Code
+		wantShards map[int64]bool
+	}{
+		{desc: "no rows", wantCode: codes.NotFound, wantShards: map[int64]bool{}},
+		{desc: "one row", send: []int64{10}, wantShards: map[int64]bool{10: true}},
+		{desc: "second", send: []int64{1, 2, 3}, wantShards: map[int64]bool{
+			1: true,
+			2: true,
+			3: true,
+		}},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			m, err := New(newDB(t))
+			if err != nil {
+				t.Fatalf("Failed to create Mutations: %v", err)
+			}
+			if err := m.AddShards(ctx, domainID, tc.send...); err != nil {
+				t.Fatalf("AddShards(): %v", err)
+			}
+			shards := make(map[int64]bool)
+			for i := 0; i < 10*len(tc.wantShards); i++ {
+				shard, err := m.randShard(ctx, domainID)
+				if got, want := status.Code(err), tc.wantCode; got != want {
+					t.Errorf("randShard(): %v, want %v", got, want)
+				}
+				if err != nil {
+					break
+				}
+				shards[shard] = true
+			}
+			if got, want := shards, tc.wantShards; !cmp.Equal(got, want) {
+				t.Errorf("shards: %v, want %v", got, want)
+			}
+		})
+	}
+}
 
 func TestSend(t *testing.T) {
 	ctx := context.Background()
@@ -32,11 +77,14 @@ func TestSend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
 	}
-	domainID := "foo"
 	update := []byte("bar")
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 	ts3 := ts2.Add(time.Duration(1))
+
+	if err := m.AddShards(ctx, domainID, 1, 2); err != nil {
+		t.Fatalf("AddShards(): %v", err)
+	}
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
@@ -51,45 +99,80 @@ func TestSend(t *testing.T) {
 		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
 		{desc: "New", ts: ts3},
 	} {
-		err := m.send(ctx, domainID, update, tc.ts)
+		err := m.send(ctx, domainID, 1, update, tc.ts)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
 	}
 }
 
-func TestWatermark(t *testing.T) {
+func TestWatermarks(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	m, err := New(db)
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
 	}
-	domainID := "foo"
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 
+	if err := m.AddShards(ctx, domainID, 1, 2, 3); err != nil {
+		t.Fatalf("AddShards(): %v", err)
+	}
+
 	for _, tc := range []struct {
 		desc string
-		send bool
-		ts   time.Time
-		want int64
+		send map[int64]time.Time
+		want map[int64]int64
 	}{
-		{desc: "no rows", want: 0},
-		{desc: "first", send: true, ts: ts1, want: ts1.UnixNano()},
-		{desc: "second", send: true, ts: ts2, want: ts2.UnixNano()},
+		{desc: "no rows", want: map[int64]int64{}},
+		{
+			desc: "first",
+			send: map[int64]time.Time{1: ts1},
+			want: map[int64]int64{1: ts1.UnixNano()},
+		},
+		{
+			desc: "second",
+			// Highwatermarks in each shard proceed independently.
+			send: map[int64]time.Time{1: ts2, 2: ts1},
+			want: map[int64]int64{1: ts2.UnixNano(), 2: ts1.UnixNano()},
+		},
 	} {
-		if tc.send {
-			if err := m.send(ctx, domainID, []byte("foo"), tc.ts); err != nil {
-				t.Fatalf("send(): %v", err)
+		for shardID, ts := range tc.send {
+			if err := m.send(ctx, domainID, shardID, []byte("mutation"), ts); err != nil {
+				t.Fatalf("send(%v, %v): %v", shardID, ts, err)
 			}
 		}
-		high, err := m.HighWatermark(ctx, domainID)
+		highs, err := m.HighWatermarks(ctx, domainID)
 		if err != nil {
-			t.Fatalf("HighWatermark(): %v", err)
+			t.Fatalf("HighWatermarks(): %v", err)
 		}
-		if high != tc.want {
-			t.Errorf("HighWatermark(): %v, want > %v", high, tc.want)
+		if !cmp.Equal(highs, tc.want) {
+			t.Errorf("HighWatermarks(): %v, want %v", highs, tc.want)
 		}
+	}
+}
+
+func TestReadQueue(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+	shardID := int64(5)
+	if err := m.AddShards(ctx, domainID, shardID); err != nil {
+		t.Fatalf("AddShards(): %v", err)
+	}
+	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
+		t.Fatalf("Send(): %v", err)
+	}
+
+	rows, err := m.ReadQueue(ctx, domainID, shardID, 0, time.Now().UnixNano())
+	if err != nil {
+		t.Fatalf("ReadQueue(): %v", err)
+	}
+	if got, want := len(rows), 1; got != want {
+		t.Fatalf("ReadQueue(): len: %v, want %v", got, want)
 	}
 }
