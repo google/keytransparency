@@ -27,18 +27,18 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestRandShard(t *testing.T) {
+func TestRandLog(t *testing.T) {
 	ctx := context.Background()
 
 	for _, tc := range []struct {
-		desc       string
-		send       []int64
-		wantCode   codes.Code
-		wantShards map[int64]bool
+		desc     string
+		send     []int64
+		wantCode codes.Code
+		wantLogs map[int64]bool
 	}{
-		{desc: "no rows", wantCode: codes.NotFound, wantShards: map[int64]bool{}},
-		{desc: "one row", send: []int64{10}, wantShards: map[int64]bool{10: true}},
-		{desc: "second", send: []int64{1, 2, 3}, wantShards: map[int64]bool{
+		{desc: "no rows", wantCode: codes.NotFound, wantLogs: map[int64]bool{}},
+		{desc: "one row", send: []int64{10}, wantLogs: map[int64]bool{10: true}},
+		{desc: "second", send: []int64{1, 2, 3}, wantLogs: map[int64]bool{
 			1: true,
 			2: true,
 			3: true,
@@ -49,22 +49,22 @@ func TestRandShard(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create Mutations: %v", err)
 			}
-			if err := m.AddShards(ctx, domainID, tc.send...); err != nil {
-				t.Fatalf("AddShards(): %v", err)
+			if err := m.AddLogs(ctx, domainID, tc.send...); err != nil {
+				t.Fatalf("AddLogs(): %v", err)
 			}
-			shards := make(map[int64]bool)
-			for i := 0; i < 10*len(tc.wantShards); i++ {
-				shard, err := m.randShard(ctx, domainID)
+			logs := make(map[int64]bool)
+			for i := 0; i < 10*len(tc.wantLogs); i++ {
+				logID, err := m.randLog(ctx, domainID)
 				if got, want := status.Code(err), tc.wantCode; got != want {
-					t.Errorf("randShard(): %v, want %v", got, want)
+					t.Errorf("randLog(): %v, want %v", got, want)
 				}
 				if err != nil {
 					break
 				}
-				shards[shard] = true
+				logs[logID] = true
 			}
-			if got, want := shards, tc.wantShards; !cmp.Equal(got, want) {
-				t.Errorf("shards: %v, want %v", got, want)
+			if got, want := logs, tc.wantLogs; !cmp.Equal(got, want) {
+				t.Errorf("logs: %v, want %v", got, want)
 			}
 		})
 	}
@@ -82,8 +82,8 @@ func TestSend(t *testing.T) {
 	ts2 := ts1.Add(time.Duration(1))
 	ts3 := ts2.Add(time.Duration(1))
 
-	if err := m.AddShards(ctx, domainID, 1, 2); err != nil {
-		t.Fatalf("AddShards(): %v", err)
+	if err := m.AddLogs(ctx, domainID, 1, 2); err != nil {
+		t.Fatalf("AddLogs(): %v", err)
 	}
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
@@ -116,8 +116,8 @@ func TestWatermarks(t *testing.T) {
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 
-	if err := m.AddShards(ctx, domainID, 1, 2, 3); err != nil {
-		t.Fatalf("AddShards(): %v", err)
+	if err := m.AddLogs(ctx, domainID, 1, 2, 3); err != nil {
+		t.Fatalf("AddLogs(): %v", err)
 	}
 
 	for _, tc := range []struct {
@@ -153,26 +153,26 @@ func TestWatermarks(t *testing.T) {
 	}
 }
 
-func TestReadQueue(t *testing.T) {
+func TestReadLog(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	m, err := New(db)
 	if err != nil {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
-	shardID := int64(5)
-	if err := m.AddShards(ctx, domainID, shardID); err != nil {
-		t.Fatalf("AddShards(): %v", err)
+	logID := int64(5)
+	if err := m.AddLogs(ctx, domainID, logID); err != nil {
+		t.Fatalf("AddLogs(): %v", err)
 	}
 	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
 		t.Fatalf("Send(): %v", err)
 	}
 
-	rows, err := m.ReadQueue(ctx, domainID, shardID, 0, time.Now().UnixNano())
+	rows, err := m.ReadLog(ctx, domainID, logID, 0, time.Now().UnixNano())
 	if err != nil {
-		t.Fatalf("ReadQueue(): %v", err)
+		t.Fatalf("ReadLog(): %v", err)
 	}
 	if got, want := len(rows), 1; got != want {
-		t.Fatalf("ReadQueue(): len: %v, want %v", got, want)
+		t.Fatalf("ReadLog(): len: %v, want %v", got, want)
 	}
 }
