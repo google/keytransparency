@@ -54,8 +54,8 @@ type Func interface {
 	Mutate(value, mutation proto.Message) (proto.Message, error)
 }
 
-// QueueMessage represents a change to a user, and associated data.
-type QueueMessage struct {
+// LogMessage represents a change to a user, and associated data.
+type LogMessage struct {
 	ID        int64
 	Mutation  *pb.Entry
 	ExtraData *pb.Committed
@@ -68,7 +68,7 @@ type MutationLogs interface {
 }
 
 // ReceiveFunc receives updates from the queue.
-type ReceiveFunc func([]*QueueMessage) error
+type ReceiveFunc func([]*LogMessage) error
 
 // Receiver receives messages from a queue.
 type Receiver interface {

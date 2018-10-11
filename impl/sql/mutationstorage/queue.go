@@ -150,7 +150,7 @@ func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[in
 
 // ReadQueue reads all mutations in shardID between (low, high].
 func (m *Mutations) ReadQueue(ctx context.Context,
-	domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error) {
+	domainID string, shardID, low, high int64) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, Mutation FROM Queue
 		WHERE DomainID = ? AND ShardID = ? AND Time > ? AND Time <= ?
@@ -163,8 +163,8 @@ func (m *Mutations) ReadQueue(ctx context.Context,
 	return readQueueMessages(rows)
 }
 
-func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
-	results := make([]*mutator.QueueMessage, 0)
+func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
+	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
 		var timestamp int64
 		var mData []byte
@@ -175,7 +175,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
 		if err := proto.Unmarshal(mData, entryUpdate); err != nil {
 			return nil, err
 		}
-		results = append(results, &mutator.QueueMessage{
+		results = append(results, &mutator.LogMessage{
 			ID:        timestamp,
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,
@@ -188,7 +188,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
 }
 
 // DeleteMessages removes messages from the queue.
-func (m *Mutations) DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error {
+func (m *Mutations) DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.LogMessage) error {
 	glog.V(4).Infof("mutationstorage: DeleteMessages(%v, <mutation>)", domainID)
 	delStmt, err := m.db.Prepare(deleteQueueExpr)
 	if err != nil {
