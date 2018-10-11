@@ -43,7 +43,7 @@ type Server struct {
 	mapAdmin  tpb.TrillianAdminClient
 	mutator   mutator.Func
 	domains   domain.Storage
-	queue     mutator.MutationQueue
+	queue     mutator.MutationLogs
 	mutations mutator.MutationStorage
 	indexFunc indexFunc
 }
@@ -55,7 +55,7 @@ func New(tlog tpb.TrillianLogClient,
 	mapAdmin tpb.TrillianAdminClient,
 	mutator mutator.Func,
 	domains domain.Storage,
-	queue mutator.MutationQueue,
+	queue mutator.MutationLogs,
 	mutations mutator.MutationStorage) *Server {
 	return &Server{
 		tlog:      tlog,

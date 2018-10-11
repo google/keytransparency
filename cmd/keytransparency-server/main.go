@@ -120,7 +120,7 @@ func main() {
 	mapAdmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	queue := mutator.MutationQueue(mutations)
+	queue := mutator.MutationLogs(mutations)
 	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
 		entry.New(), domains, queue, mutations)
 	grpcServer := grpc.NewServer(

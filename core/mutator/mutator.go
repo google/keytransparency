@@ -61,10 +61,8 @@ type QueueMessage struct {
 	ExtraData *pb.Committed
 }
 
-// MutationQueue provides (at minimum) a roughly time ordered queue that can support
-// multiple writers.  Replays, drops, and duplicate delivery must be tolerated by
-// receivers.
-type MutationQueue interface {
+// MutationLogs provides a time ordered log(s) of messages.
+type MutationLogs interface {
 	// Send submits an item to the queue
 	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
 }
