@@ -271,8 +271,9 @@ func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (
 		return nil, fmt.Errorf("adminserver: domains.Write(): %v", err)
 	}
 
-	// Create shards for queue.
-	shardIDs := []int64{1}
+	// Create initial shards for queue.
+	// TODO(#1063): Additional shards can be added at a later point to support increased server load.
+	shardIDs := []int64{1, 2}
 	if err := s.queueAdmin.AddShards(ctx, in.GetDomainId(), shardIDs...); err != nil {
 		return nil, fmt.Errorf("adminserver: AddShards(%v): %v", shardIDs, err)
 	}

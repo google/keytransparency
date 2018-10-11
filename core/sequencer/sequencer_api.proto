@@ -27,9 +27,9 @@ import "google/protobuf/empty.proto";
 message MapMetadata {
    // SourceSlice is the range of inputs that have been included in a map revision.
    message SourceSlice {
-      // lowest_watermark is the lowest primary key (exclusive) the source log
-      // that has been incorporated into this map revision. The primary keys of
-      // logged items MUST be monotonically increasing.
+      // lowest_watermark is the lowest primary key (exclusive) of the source
+      // log that has been incorporated into this map revision. The primary
+      // keys of logged items MUST be monotonically increasing.
       int64 lowest_watermark = 1;
       // highest_watermark is the highest primary key (inclusive) of the source
       // log that has been incorporated into this map revision. The primary keys
@@ -37,7 +37,8 @@ message MapMetadata {
       int64 highest_watermark = 2;
    }
    reserved 1;
-   // sources defines the ranges of inputs used for this map revision for each slice.
+   // sources is a map from log source IDs to the (low, high] range of primary keys
+   // in each slice that were used to construct this map revision.
    map<int64, SourceSlice> sources = 2;
 }
 

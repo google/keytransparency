@@ -37,24 +37,22 @@ func TestRandShard(t *testing.T) {
 
 	for _, tc := range []struct {
 		desc       string
-		send       bool
+		send       []int64
 		wantCode   codes.Code
 		wantShards map[int64]bool
 	}{
 		{desc: "no rows", wantCode: codes.NotFound, wantShards: map[int64]bool{}},
-		{desc: "second", send: true, wantShards: map[int64]bool{
+		{desc: "second", send: []int64{1, 2, 3}, wantShards: map[int64]bool{
 			1: true,
 			2: true,
 			3: true,
 		}},
 	} {
-		if tc.send {
-			if err := m.AddShards(ctx, domainID, 1, 2, 3); err != nil {
-				t.Fatalf("AddShards(): %v", err)
-			}
+		if err := m.AddShards(ctx, domainID, tc.send...); err != nil {
+			t.Fatalf("AddShards(): %v", err)
 		}
 		shards := make(map[int64]bool)
-		for i := 0; i < 20; i++ {
+		for i := 0; i < 10*len(tc.wantShards); i++ {
 			shard, err := m.randShard(ctx, domainID)
 			if got, want := status.Code(err), tc.wantCode; got != want {
 				t.Errorf("randShard(): %v, want %v", got, want)
@@ -106,7 +104,7 @@ func TestSend(t *testing.T) {
 	}
 }
 
-func TestWatermark(t *testing.T) {
+func TestWatermarks(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	m, err := New(db)

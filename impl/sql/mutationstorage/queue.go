@@ -20,12 +20,11 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -34,6 +33,9 @@ import (
 func (m *Mutations) AddShards(ctx context.Context, domainID string, shardIDs ...int64) error {
 	glog.Infof("mutationstorage: AddShard(%v, %v)", domainID, shardIDs)
 	for _, shardID := range shardIDs {
+		// TODO(gdbelvin): Use INSERT IGNORE to allow this function to be retried.
+		// TODO(gdbelvin): Migrate to a MySQL Docker image for unit tests.
+		// MySQL and SQLite do not have the same syntax for INSERT IGNORE.
 		if _, err := m.db.ExecContext(ctx,
 			`INSERT INTO Shards (DomainID, ShardID, Enabled)  Values(?, ?, ?);`,
 			domainID, shardID, true); err != nil {
@@ -69,6 +71,7 @@ func (m *Mutations) randShard(ctx context.Context, domainID string) (int64, erro
 	if err != nil {
 		return 0, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var shardID int64
 		if err := rows.Scan(&shardID); err != nil {
@@ -126,7 +129,7 @@ func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mD
 	return tx.Commit()
 }
 
-// HighWatermarks returns the highest timestamp in the mutations table.
+// HighWatermarks returns the highest timestamp for each shard in the mutations table.
 func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error) {
 	watermarks := make(map[int64]int64)
 	rows, err := m.db.QueryContext(ctx,
@@ -149,7 +152,7 @@ func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[in
 	return watermarks, nil
 }
 
-// ReadQueue reads all mutations that are still in the queue.
+// ReadQueue reads all mutations in shardID between (low, high].
 func (m *Mutations) ReadQueue(ctx context.Context,
 	domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error) {
 	rows, err := m.db.QueryContext(ctx,

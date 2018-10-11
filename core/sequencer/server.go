@@ -70,10 +70,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // Queue reads messages that haven't been deleted off the queue.
 type Queue interface {
-	// HighWatermark returns the highest timestamp in the mutations table.
+	// HighWatermarks returns the highest primary key for each shard in the mutations table.
 	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
-	// Read returns up to batchSize messages for domainID.
-	ReadQueue(ctx context.Context, domainID string, shard, low, high int64) ([]*mutator.QueueMessage, error)
+	// ReadQueue returns the messages under shardID in the (low, high] range.
+	// ReadQueue does NOT delete messages
+	ReadQueue(ctx context.Context, domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
