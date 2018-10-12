@@ -34,9 +34,6 @@ const (
   	SELECT Sequence, Mutation FROM Mutations
   	WHERE DomainID = ? AND Revision = ? AND Sequence >= ?
   	ORDER BY Sequence ASC LIMIT ?;`
-	deleteQueueExpr = `
-	DELETE FROM Queue
-	WHERE DomainID = ? AND Time = ?;`
 )
 
 var (
