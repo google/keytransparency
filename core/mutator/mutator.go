@@ -67,18 +67,6 @@ type MutationLogs interface {
 	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
 }
 
-// ReceiveFunc receives updates from the queue.
-type ReceiveFunc func([]*LogMessage) error
-
-// Receiver receives messages from a queue.
-type Receiver interface {
-	// Close stops the receiver and returns only when all callbacks are complete.
-	Close()
-	// FlushN waits for n items and then sends them.
-	// Deterministic implementations that can't wait will return an error.
-	FlushN(context.Context, int) error
-}
-
 // MutationStorage reads and writes mutations to the database.
 type MutationStorage interface {
 	// ReadPage returns mutations in the interval (start, end] for mapID.
