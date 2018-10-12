@@ -101,7 +101,7 @@ func main() {
 	}
 	logs, err := mutationstorage.New(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create logs object: %v", err)
+		glog.Exitf("Failed to create mutations storage: %v", err)
 	}
 
 	// Connect to log and map server.

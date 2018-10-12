@@ -68,11 +68,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 }
 
-// LogsReader reads messages in multiple log logs.
+// LogsReader reads messages in multiple logs.
 type LogsReader interface {
 	// HighWatermarks returns the highest primary key for each log in the mutations table.
 	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
-	// ReadLog returns the messages under logID in the (low, high] range.
+	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
 	ReadLog(ctx context.Context, domainID string, logID, low, high int64) ([]*mutator.LogMessage, error)
 }
@@ -107,7 +107,12 @@ func NewServer(
 	}
 }
 
-// RunBatch reads mutations out of the logs and calls CreateEpoch.
+// RunBatch runs the full sequence of steps (for one domain) nessesary to get a
+// mutation from the log integrated into the map. This consists of a series of
+// idempotent steps:
+// a) assign a batch of mutations from the logs to a map revision
+// b) apply the batch to the map
+// c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
 	// Get the previous and current high water marks.
 	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})

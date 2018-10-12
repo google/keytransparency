@@ -83,7 +83,7 @@ func (m *Mutations) randLog(ctx context.Context, domainID string) (int64, error)
 		return 0, err
 	}
 	if len(logIDs) == 0 {
-		return 0, status.Errorf(codes.NotFound, "No log found for domain %v", domainID)
+		return 0, status.Errorf(codes.NotFound, "no log found for domain %v", domainID)
 	}
 
 	// Return a random log.

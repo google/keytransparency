@@ -61,7 +61,7 @@ type LogMessage struct {
 	ExtraData *pb.Committed
 }
 
-// MutationLogs provides a time ordered logs of messages.
+// MutationLogs provides sets of time ordered message logs.
 type MutationLogs interface {
 	// Send submits an item to a random log.
 	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
