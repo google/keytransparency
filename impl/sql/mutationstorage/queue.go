@@ -186,22 +186,3 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 	}
 	return results, nil
 }
-
-// DeleteMessages removes messages from the log.
-func (m *Mutations) DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.LogMessage) error {
-	glog.V(4).Infof("mutationstorage: DeleteMessages(%v, <mutation>)", domainID)
-	delStmt, err := m.db.Prepare(deleteQueueExpr)
-	if err != nil {
-		return err
-	}
-	defer delStmt.Close()
-	var retErr error
-	for _, mutation := range mutations {
-		if _, err = delStmt.ExecContext(ctx, domainID, mutation.ID); err != nil {
-			// If an error occurs, take note, but continue deleting
-			// the other referenced mutations.
-			retErr = err
-		}
-	}
-	return retErr
-}
