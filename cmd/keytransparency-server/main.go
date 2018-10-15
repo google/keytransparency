@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/keyserver"
-	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
@@ -100,9 +99,9 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create domain storage: %v", err)
 	}
-	mutations, err := mutationstorage.New(sqldb)
+	logs, err := mutationstorage.New(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create mutations object: %v", err)
+		glog.Exitf("Failed to create mutations storage: %v", err)
 	}
 
 	// Connect to log and map server.
@@ -120,9 +119,8 @@ func main() {
 	mapAdmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	queue := mutator.MutationQueue(mutations)
 	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
-		entry.New(), domains, queue, mutations)
+		entry.New(), domains, logs, logs)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(

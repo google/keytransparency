@@ -68,13 +68,13 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 }
 
-// Queue reads messages that haven't been deleted off the queue.
-type Queue interface {
-	// HighWatermarks returns the highest primary key for each shard in the mutations table.
+// LogsReader reads messages in multiple logs.
+type LogsReader interface {
+	// HighWatermarks returns the highest primary key for each log in the mutations table.
 	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
-	// ReadQueue returns the messages under shardID in the (low, high] range.
-	// ReadQueue does NOT delete messages.
-	ReadQueue(ctx context.Context, domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error)
+	// ReadLog returns the messages in the (low, high] range stored in the specified log.
+	// ReadLog does NOT delete messages.
+	ReadLog(ctx context.Context, domainID string, logID, low, high int64) ([]*mutator.LogMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -83,7 +83,7 @@ type Server struct {
 	mutations mutator.MutationStorage
 	tmap      tpb.TrillianMapClient
 	tlog      tpb.TrillianLogClient
-	queue     Queue
+	logs      LogsReader
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -94,7 +94,7 @@ func NewServer(
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	mutations mutator.MutationStorage,
-	queue Queue,
+	logs LogsReader,
 	metricsFactory monitoring.MetricFactory,
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
@@ -103,11 +103,16 @@ func NewServer(
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
-		queue:     queue,
+		logs:      logs,
 	}
 }
 
-// RunBatch reads mutations out of the queue and calls CreateEpoch.
+// RunBatch runs the full sequence of steps (for one domain) nessesary to get a
+// mutation from the log integrated into the map. This consists of a series of
+// idempotent steps:
+// a) assign a batch of mutations from the logs to a map revision
+// b) apply the batch to the map
+// c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
 	// Get the previous and current high water marks.
 	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})
@@ -126,13 +131,13 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
-	highs, err := s.queue.HighWatermarks(ctx, in.DomainId)
+	highs, err := s.logs.HighWatermarks(ctx, in.DomainId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}
 
 	// TODO(#1057): If time since last map revision > max timeout, run batch.
-	// TODO(#1047): If time since oldest queue item > max latency has elapsed, run batch.
+	// TODO(#1047): If time since oldest log item > max latency has elapsed, run batch.
 	// TODO(#1056): If count items > max_batch, run batch.
 
 	// Count items to be processed.  Unfortunately, this means we will be
@@ -164,8 +169,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 func (s *Server) readMessages(ctx context.Context, domainID string,
 	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
-	for shardID, source := range sources {
-		batch, err := s.queue.ReadQueue(ctx, domainID, shardID,
+	for logID, source := range sources {
+		batch, err := s.logs.ReadLog(ctx, domainID, logID,
 			source.GetLowestWatermark(), source.GetHighestWatermark())
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)

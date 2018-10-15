@@ -43,7 +43,7 @@ type Server struct {
 	mapAdmin  tpb.TrillianAdminClient
 	mutator   mutator.Func
 	domains   domain.Storage
-	queue     mutator.MutationQueue
+	logs      mutator.MutationLogs
 	mutations mutator.MutationStorage
 	indexFunc indexFunc
 }
@@ -55,7 +55,7 @@ func New(tlog tpb.TrillianLogClient,
 	mapAdmin tpb.TrillianAdminClient,
 	mutator mutator.Func,
 	domains domain.Storage,
-	queue mutator.MutationQueue,
+	logs mutator.MutationLogs,
 	mutations mutator.MutationStorage) *Server {
 	return &Server{
 		tlog:      tlog,
@@ -64,7 +64,7 @@ func New(tlog tpb.TrillianLogClient,
 		mapAdmin:  mapAdmin,
 		mutator:   mutator,
 		domains:   domains,
-		queue:     queue,
+		logs:      logs,
 		mutations: mutations,
 		indexFunc: indexFromVRF,
 	}
@@ -300,7 +300,7 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	}
 
 	// Save mutation to the database.
-	if err := s.queue.Send(ctx, domain.DomainID, in.GetEntryUpdate()); err != nil {
+	if err := s.logs.Send(ctx, domain.DomainID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}

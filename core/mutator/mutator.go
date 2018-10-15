@@ -54,18 +54,16 @@ type Func interface {
 	Mutate(value, mutation proto.Message) (proto.Message, error)
 }
 
-// QueueMessage represents a change to a user, and associated data.
-type QueueMessage struct {
+// LogMessage represents a change to a user, and associated data.
+type LogMessage struct {
 	ID        int64
 	Mutation  *pb.Entry
 	ExtraData *pb.Committed
 }
 
-// MutationQueue provides (at minimum) a roughly time ordered queue that can support
-// multiple writers.  Replays, drops, and duplicate delivery must be tolerated by
-// receivers.
-type MutationQueue interface {
-	// Send submits an item to the queue
+// MutationLogs provides sets of time ordered message logs.
+type MutationLogs interface {
+	// Send submits an item to a random log.
 	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
 }
 
