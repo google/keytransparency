@@ -77,9 +77,16 @@ type LogsReader interface {
 	ReadLog(ctx context.Context, domainID string, logID, low, high int64) ([]*mutator.LogMessage, error)
 }
 
+// Batcher writes batch definitions to storage.
+type Batcher interface {
+	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
+	WriteBatchSources(ctx context.Context, domainID string, revision int64, sources map[int64]*spb.MapMetadata_SourceSlice) error
+}
+
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
 	ktServer  *keyserver.Server
+	batcher   Batcher
 	mutations mutator.MutationStorage
 	tmap      tpb.TrillianMapClient
 	tlog      tpb.TrillianLogClient
@@ -93,6 +100,7 @@ func NewServer(
 	mapAdmin tpb.TrillianAdminClient,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
+	batcher Batcher,
 	mutations mutator.MutationStorage,
 	logs LogsReader,
 	metricsFactory monitoring.MetricFactory,
@@ -103,6 +111,7 @@ func NewServer(
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
+		batcher:   batcher,
 		logs:      logs,
 	}
 }
@@ -157,6 +166,10 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	}
 	if len(msgs) < int(in.MinBatch) {
 		return &empty.Empty{}, nil
+	}
+
+	if err := s.batcher.WriteBatchSources(ctx, in.DomainId, int64(latestMapRoot.Revision)+1, sources); err != nil {
+		return nil, err
 	}
 
 	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
