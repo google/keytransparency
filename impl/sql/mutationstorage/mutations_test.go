@@ -19,11 +19,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/keytransparency/core/mutator"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -44,7 +46,7 @@ func genMutation(i int) *pb.Entry {
 	}
 }
 
-func fillDB(ctx context.Context, m mutator.MutationStorage) error {
+func fillDB(ctx context.Context, m *Mutations) error {
 	for _, tc := range []struct {
 		revision  int64
 		mutations []*pb.Entry
@@ -70,6 +72,69 @@ func fillDB(ctx context.Context, m mutator.MutationStorage) error {
 		}
 	}
 	return nil
+}
+
+func TestWriteBatch(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+
+	domainID := "writebatchtest"
+	for _, tc := range []struct {
+		rev      int64
+		wantCode codes.Code
+		sources  map[int64]*spb.MapMetadata_SourceSlice
+	}{
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 11}}, wantCode: codes.AlreadyExists},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{2: {HighestWatermark: 20}}, wantCode: codes.AlreadyExists},
+		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
+	} {
+		err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.sources)
+		if got, want := status.Code(err), tc.wantCode; got != want {
+			t.Errorf("WriteBatchSources(%v, %v): err: %v. code: %v, want %v",
+				tc.rev, tc.sources, err, got, want)
+		}
+	}
+}
+
+func TestReadBatch(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+
+	domainID := "readbatchtest"
+	for _, tc := range []struct {
+		rev      int64
+		wantCode codes.Code
+		sources  map[int64]*spb.MapMetadata_SourceSlice
+	}{
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{
+			1: {HighestWatermark: 10},
+			2: {HighestWatermark: 20},
+		}},
+		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{
+			1: {HighestWatermark: 11},
+			2: {HighestWatermark: 22},
+		}},
+	} {
+		if err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.sources); err != nil {
+			t.Fatalf("WriteBatch(%v): %v", tc.rev, err)
+		}
+		highs, err := m.ReadBatch(ctx, domainID, tc.rev)
+		if err != nil {
+			t.Fatalf("ReadBatch(%v): %v", tc.rev, err)
+		}
+		if !cmp.Equal(highs, tc.sources) {
+			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, highs, tc.sources)
+		}
+	}
 }
 
 func TestReadPage(t *testing.T) {
