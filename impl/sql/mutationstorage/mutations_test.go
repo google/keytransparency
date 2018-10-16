@@ -111,9 +111,8 @@ func TestReadBatch(t *testing.T) {
 
 	domainID := "readbatchtest"
 	for _, tc := range []struct {
-		rev      int64
-		wantCode codes.Code
-		sources  map[int64]*spb.MapMetadata_SourceSlice
+		rev     int64
+		sources map[int64]*spb.MapMetadata_SourceSlice
 	}{
 		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{
 			1: {HighestWatermark: 10},

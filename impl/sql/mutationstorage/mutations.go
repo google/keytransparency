@@ -192,8 +192,7 @@ func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revi
 
 	for logID, source := range sources {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO Batches (DomainID, Revision, LogID, Low, High)
-			VALUES (?, ?, ?, ?, ?);`,
+			`INSERT INTO Batches (DomainID, Revision, LogID, Low, High) VALUES (?, ?, ?, ?, ?);`,
 			domainID, revision, logID, source.LowestWatermark, source.HighestWatermark); err != nil {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				return fmt.Errorf("could not roll back: %v", rollbackErr)
@@ -209,7 +208,8 @@ func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revi
 }
 
 // ReadBatch returns the batch definitions for a given revision.
-func (m *Mutations) ReadBatch(ctx context.Context, domainID string, revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error) {
+func (m *Mutations) ReadBatch(ctx context.Context, domainID string,
+	revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error) {
 	watermarks := make(map[int64]*spb.MapMetadata_SourceSlice)
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT LogID, Low, High FROM Batches WHERE DomainID = ? AND Revision = ?;`,

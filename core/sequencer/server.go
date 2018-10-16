@@ -80,9 +80,11 @@ type LogsReader interface {
 // Batcher writes batch definitions to storage.
 type Batcher interface {
 	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
-	WriteBatchSources(ctx context.Context, domainID string, revision int64, sources map[int64]*spb.MapMetadata_SourceSlice) error
+	WriteBatchSources(ctx context.Context, domainID string,
+		revision int64, sources map[int64]*spb.MapMetadata_SourceSlice) error
 	// ReadBatch returns the batch definitions for a given revision.
-	ReadBatch(ctx context.Context, domainID string, revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error)
+	ReadBatch(ctx context.Context, domainID string,
+		revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
