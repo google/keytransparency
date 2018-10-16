@@ -29,16 +29,16 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// AddShards creates and adds new shards for queue writing to a domain.
-func (m *Mutations) AddShards(ctx context.Context, domainID string, shardIDs ...int64) error {
-	glog.Infof("mutationstorage: AddShard(%v, %v)", domainID, shardIDs)
-	for _, shardID := range shardIDs {
+// AddLogs creates and adds new logs for writing to a domain.
+func (m *Mutations) AddLogs(ctx context.Context, domainID string, logIDs ...int64) error {
+	glog.Infof("mutationstorage: AddLog(%v, %v)", domainID, logIDs)
+	for _, logID := range logIDs {
 		// TODO(gdbelvin): Use INSERT IGNORE to allow this function to be retried.
 		// TODO(gdbelvin): Migrate to a MySQL Docker image for unit tests.
 		// MySQL and SQLite do not have the same syntax for INSERT IGNORE.
 		if _, err := m.db.ExecContext(ctx,
-			`INSERT INTO Shards (DomainID, ShardID, Enabled)  Values(?, ?, ?);`,
-			domainID, shardID, true); err != nil {
+			`INSERT INTO Logs (DomainID, LogID, Enabled)  Values(?, ?, ?);`,
+			domainID, logID, true); err != nil {
 			return err
 		}
 	}
@@ -48,7 +48,7 @@ func (m *Mutations) AddShards(ctx context.Context, domainID string, shardIDs ...
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryUpdate) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", domainID)
-	shardID, err := m.randShard(ctx, domainID)
+	logID, err := m.randLog(ctx, domainID)
 	if err != nil {
 		return err
 	}
@@ -58,40 +58,40 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 	}
 	// TODO(gbelvin): Implement retry with backoff for retryable errors if
 	// we get timestamp contention.
-	return m.send(ctx, domainID, shardID, mData, time.Now())
+	return m.send(ctx, domainID, logID, mData, time.Now())
 }
 
-// randShard returns a random, enabled shard for domainID.
-func (m *Mutations) randShard(ctx context.Context, domainID string) (int64, error) {
+// randLog returns a random, enabled log for domainID.
+func (m *Mutations) randLog(ctx context.Context, domainID string) (int64, error) {
 	// TODO(gbelvin): Cache these results.
-	var shardIDs []int64
+	var logIDs []int64
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT ShardID from Shards WHERE DomainID = ? AND Enabled = ?;`,
+		`SELECT LogID from Logs WHERE DomainID = ? AND Enabled = ?;`,
 		domainID, true)
 	if err != nil {
 		return 0, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var shardID int64
-		if err := rows.Scan(&shardID); err != nil {
+		var logID int64
+		if err := rows.Scan(&logID); err != nil {
 			return 0, err
 		}
-		shardIDs = append(shardIDs, shardID)
+		logIDs = append(logIDs, logID)
 	}
 	if err := rows.Err(); err != nil {
 		return 0, err
 	}
-	if len(shardIDs) == 0 {
-		return 0, status.Errorf(codes.NotFound, "No shard found for domain %v", domainID)
+	if len(logIDs) == 0 {
+		return 0, status.Errorf(codes.NotFound, "no log found for domain %v", domainID)
 	}
 
-	// Return a random shard.
-	return shardIDs[rand.Intn(len(shardIDs))], nil
+	// Return a random log.
+	return logIDs[rand.Intn(len(logIDs))], nil
 }
 
 // ts must be greater than all other timestamps currently recorded for domainID.
-func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mData []byte, ts time.Time) (ret error) {
+func (m *Mutations) send(ctx context.Context, domainID string, logID int64, mData []byte, ts time.Time) (ret error) {
 	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
@@ -106,8 +106,8 @@ func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mD
 
 	var maxTime int64
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ? AND ShardID = ?;`,
-		domainID, shardID).Scan(&maxTime); err != nil {
+		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DomainID = ? AND LogID = ?;`,
+		domainID, logID).Scan(&maxTime); err != nil {
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
 	tsTime := ts.UnixNano()
@@ -118,29 +118,29 @@ func (m *Mutations) send(ctx context.Context, domainID string, shardID int64, mD
 	}
 
 	if _, err = tx.ExecContext(ctx,
-		`INSERT INTO Queue (DomainID, ShardID, Time, Mutation) VALUES (?, ?, ?, ?);`,
-		domainID, shardID, tsTime, mData); err != nil {
+		`INSERT INTO Queue (DomainID, LogID, Time, Mutation) VALUES (?, ?, ?, ?);`,
+		domainID, logID, tsTime, mData); err != nil {
 		return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 	}
 	return tx.Commit()
 }
 
-// HighWatermarks returns the highest timestamp for each shard in the mutations table.
+// HighWatermarks returns the highest timestamp for each log in the mutations table.
 func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error) {
 	watermarks := make(map[int64]int64)
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT ShardID, Max(Time) FROM Queue WHERE DomainID = ? GROUP BY ShardID;`,
+		`SELECT LogID, Max(Time) FROM Queue WHERE DomainID = ? GROUP BY LogID;`,
 		domainID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var shardID, watermark int64
-		if err := rows.Scan(&shardID, &watermark); err != nil {
+		var logID, watermark int64
+		if err := rows.Scan(&logID, &watermark); err != nil {
 			return nil, err
 		}
-		watermarks[shardID] = watermark
+		watermarks[logID] = watermark
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -148,14 +148,14 @@ func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[in
 	return watermarks, nil
 }
 
-// ReadQueue reads all mutations in shardID between (low, high].
-func (m *Mutations) ReadQueue(ctx context.Context,
-	domainID string, shardID, low, high int64) ([]*mutator.QueueMessage, error) {
+// ReadLog reads all mutations in logID between (low, high].
+func (m *Mutations) ReadLog(ctx context.Context,
+	domainID string, logID, low, high int64) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, Mutation FROM Queue
-		WHERE DomainID = ? AND ShardID = ? AND Time > ? AND Time <= ?
+		WHERE DomainID = ? AND LogID = ? AND Time > ? AND Time <= ?
 		ORDER BY Time ASC;`,
-		domainID, shardID, low, high)
+		domainID, logID, low, high)
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +163,8 @@ func (m *Mutations) ReadQueue(ctx context.Context,
 	return readQueueMessages(rows)
 }
 
-func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
-	results := make([]*mutator.QueueMessage, 0)
+func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
+	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
 		var timestamp int64
 		var mData []byte
@@ -175,7 +175,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
 		if err := proto.Unmarshal(mData, entryUpdate); err != nil {
 			return nil, err
 		}
-		results = append(results, &mutator.QueueMessage{
+		results = append(results, &mutator.LogMessage{
 			ID:        timestamp,
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,
@@ -185,23 +185,4 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.QueueMessage, error) {
 		return nil, err
 	}
 	return results, nil
-}
-
-// DeleteMessages removes messages from the queue.
-func (m *Mutations) DeleteMessages(ctx context.Context, domainID string, mutations []*mutator.QueueMessage) error {
-	glog.V(4).Infof("mutationstorage: DeleteMessages(%v, <mutation>)", domainID)
-	delStmt, err := m.db.Prepare(deleteQueueExpr)
-	if err != nil {
-		return err
-	}
-	defer delStmt.Close()
-	var retErr error
-	for _, mutation := range mutations {
-		if _, err = delStmt.ExecContext(ctx, domainID, mutation.ID); err != nil {
-			// If an error occurs, take note, but continue deleting
-			// the other referenced mutations.
-			retErr = err
-		}
-	}
-	return retErr
 }

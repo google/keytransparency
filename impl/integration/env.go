@@ -165,7 +165,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	authFunc := authentication.FakeAuthFunc
 	authz := &authorization.AuthzPolicy{}
 
-	queue := mutator.MutationQueue(mutations)
+	queue := mutator.MutationLogs(mutations)
 	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
 		entry.New(), domainStorage, queue, mutations)
 	gsvr := grpc.NewServer(

@@ -34,9 +34,6 @@ const (
   	SELECT Sequence, Mutation FROM Mutations
   	WHERE DomainID = ? AND Revision = ? AND Sequence >= ?
   	ORDER BY Sequence ASC LIMIT ?;`
-	deleteQueueExpr = `
-	DELETE FROM Queue
-	WHERE DomainID = ? AND Time = ?;`
 )
 
 var (
@@ -50,16 +47,16 @@ var (
 	);`,
 		`CREATE TABLE IF NOT EXISTS Queue (
 		DomainID VARCHAR(30)   NOT NULL,
-		ShardID  BIGINT        NOT NULL,
+		LogID    BIGINT        NOT NULL,
 		Time     BIGINT        NOT NULL,
 		Mutation BLOB          NOT NULL,
-		PRIMARY KEY(DomainID, ShardID, Time)
+		PRIMARY KEY(DomainID, LogID, Time)
 	);`,
-		`CREATE TABLE IF NOT EXISTS Shards (
+		`CREATE TABLE IF NOT EXISTS Logs (
 		DomainID VARCHAR(30)   NOT NULL,
-		ShardID  BIGINT        NOT NULL,
+		LogID    BIGINT        NOT NULL,
 		Enabled  INTEGER       NOT NULL,
-		PRIMARY KEY(DomainID, ShardID)
+		PRIMARY KEY(DomainID, LogID)
 	);`,
 	}
 )
