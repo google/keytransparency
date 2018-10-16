@@ -87,13 +87,13 @@ func TestNext(t *testing.T) {
 	for _, tc := range []struct {
 		desc    string
 		rt      *rtpb.ReadToken
-		lastRow *mutator.QueueMessage
+		lastRow *mutator.LogMessage
 		want    *rtpb.ReadToken
 	}{
 		{
 			desc:    "first page",
 			rt:      &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
-			lastRow: &mutator.QueueMessage{ID: 6},
+			lastRow: &mutator.LogMessage{ID: 6},
 			want:    &rtpb.ReadToken{ShardId: 2, LowWatermark: 6},
 		},
 		{

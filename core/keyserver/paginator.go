@@ -58,7 +58,7 @@ func (s SourceMap) First() *rtpb.ReadToken {
 // Next returns the next read token. Returns an empty struct when the read is finished.
 // lastRow is the (batchSize)th row from the last read, or nil if fewer than
 // batchSize + 1 rows were returned.
-func (s SourceMap) Next(rt *rtpb.ReadToken, lastRow *mutator.QueueMessage) *rtpb.ReadToken {
+func (s SourceMap) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.ReadToken {
 	if lastRow != nil {
 		// There are more items in this shard.
 		return &rtpb.ReadToken{
