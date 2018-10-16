@@ -27,6 +27,17 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func newForTest(ctx context.Context, t *testing.T, shardIDs ...int64) *Mutations {
+	m, err := New(newDB(t))
+	if err != nil {
+		t.Fatalf("Failed to create Mutations: %v", err)
+	}
+	if err := m.AddLogs(ctx, domainID, shardIDs...); err != nil {
+		t.Fatalf("AddLogs(): %v", err)
+	}
+	return m
+}
+
 func TestRandLog(t *testing.T) {
 	ctx := context.Background()
 
@@ -45,13 +56,7 @@ func TestRandLog(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			m, err := New(newDB(t))
-			if err != nil {
-				t.Fatalf("Failed to create Mutations: %v", err)
-			}
-			if err := m.AddLogs(ctx, domainID, tc.send...); err != nil {
-				t.Fatalf("AddLogs(): %v", err)
-			}
+			m := newForTest(ctx, t, tc.send...)
 			logs := make(map[int64]bool)
 			for i := 0; i < 10*len(tc.wantLogs); i++ {
 				logID, err := m.randLog(ctx, domainID)
@@ -72,19 +77,12 @@ func TestRandLog(t *testing.T) {
 
 func TestSend(t *testing.T) {
 	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create Mutations: %v", err)
-	}
+
+	m := newForTest(ctx, t, 1, 2)
 	update := []byte("bar")
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 	ts3 := ts2.Add(time.Duration(1))
-
-	if err := m.AddLogs(ctx, domainID, 1, 2); err != nil {
-		t.Fatalf("AddLogs(): %v", err)
-	}
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
@@ -108,17 +106,9 @@ func TestSend(t *testing.T) {
 
 func TestWatermarks(t *testing.T) {
 	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create Mutations: %v", err)
-	}
+	m := newForTest(ctx, t, 1, 2, 3)
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
-
-	if err := m.AddLogs(ctx, domainID, 1, 2, 3); err != nil {
-		t.Fatalf("AddLogs(): %v", err)
-	}
 
 	for _, tc := range []struct {
 		desc string
@@ -155,15 +145,8 @@ func TestWatermarks(t *testing.T) {
 
 func TestReadLog(t *testing.T) {
 	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create mutations: %v", err)
-	}
 	logID := int64(5)
-	if err := m.AddLogs(ctx, domainID, logID); err != nil {
-		t.Fatalf("AddLogs(): %v", err)
-	}
+	m := newForTest(ctx, t, logID)
 	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
 		t.Fatalf("Send(): %v", err)
 	}
