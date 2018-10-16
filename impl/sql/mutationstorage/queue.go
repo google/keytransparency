@@ -143,7 +143,8 @@ func (m *Mutations) send(ctx context.Context, domainID string, logID int64, mDat
 // HighWatermarks returns the highest watermark that is less than or equal to batchSize items
 // greater than the watermark for that log in starts, for each log for domainID.
 // The total size will be numLogs * batchSize.
-func (m *Mutations) HighWatermarks(ctx context.Context, domainID string, starts map[int64]int64, batchSize int32) (map[int64]int32, map[int64]int64, error) {
+func (m *Mutations) HighWatermarks(ctx context.Context, domainID string,
+	starts map[int64]int64, batchSize int32) (map[int64]int32, map[int64]int64, error) {
 	watermarks := make(map[int64]int64)
 	counts := make(map[int64]int32)
 
@@ -166,8 +167,10 @@ func (m *Mutations) HighWatermarks(ctx context.Context, domainID string, starts 
 	return counts, watermarks, nil
 }
 
-// highWatarmark returns the highest watermark in logID that is less than or equal to batchSize items greater than start.
-func (m *Mutations) highWatermark(ctx context.Context, domainID string, logID, start int64, batchSize int32) (int32, int64, error) {
+// highWatarmark returns the highest watermark in logID that is less than or
+// equal to batchSize items greater than start.
+func (m *Mutations) highWatermark(ctx context.Context, domainID string, logID,
+	start int64, batchSize int32) (int32, int64, error) {
 	var count int32
 	var high int64
 	if err := m.db.QueryRowContext(ctx,

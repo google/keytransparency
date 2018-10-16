@@ -16,6 +16,7 @@ package sequencer
 
 import (
 	"context"
+	"math"
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
@@ -140,7 +141,17 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	for logID, source := range lastMeta.Sources {
 		startWatermarks[logID] = source.HighestWatermark
 	}
-	counts, highs, err := s.logs.HighWatermarks(ctx, in.DomainId, startWatermarks, in.MaxBatch)
+
+	// Set the perLogMaxBatch to be the next lowest value such that if every
+	// log returned perLogMaxBatch items, the sum total would be less than in.MaxBatch.
+	numLogs := float64(len(lastMeta.Sources))
+	perLogMaxBatch := in.MaxBatch
+	if numLogs > 0 {
+		tmp := math.Floor(float64(in.MaxBatch) / numLogs)
+		perLogMaxBatch = int32(math.Max(tmp, 1))
+	}
+
+	counts, highs, err := s.logs.HighWatermarks(ctx, in.DomainId, startWatermarks, perLogMaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}

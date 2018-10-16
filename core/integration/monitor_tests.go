@@ -114,7 +114,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 			DomainId: env.Domain.DomainId,
 			MinBatch: int32(len(e.userUpdates)),
-			MaxBatch: int32(len(e.userUpdates)),
+			MaxBatch: int32(len(e.userUpdates)) * 2,
 		}); err != nil {
 			t.Errorf("sequencer.RunBatch(): %v", err)
 		}
