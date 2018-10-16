@@ -61,29 +61,44 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 	return m.send(ctx, domainID, logID, mData, time.Now())
 }
 
-// randLog returns a random, enabled log for domainID.
-func (m *Mutations) randLog(ctx context.Context, domainID string) (int64, error) {
-	// TODO(gbelvin): Cache these results.
-	var logIDs []int64
-	rows, err := m.db.QueryContext(ctx,
-		`SELECT LogID from Logs WHERE DomainID = ? AND Enabled = ?;`,
-		domainID, true)
-	if err != nil {
-		return 0, err
+// logList returns a list of all logs for domainID, optionally filtered for writable logs.
+func (m *Mutations) logList(ctx context.Context, domainID string, writable bool) ([]int64, error) {
+	var query string
+	if writable {
+		query = `SELECT LogID from Logs WHERE DomainID = ? AND Enabled = True;`
+	} else {
+		query = `SELECT LogID from Logs WHERE DomainID = ?;`
 	}
+	var logIDs []int64
+	rows, err := m.db.QueryContext(ctx, query, domainID)
+	if err != nil {
+		return nil, err
+	}
+
 	defer rows.Close()
 	for rows.Next() {
 		var logID int64
 		if err := rows.Scan(&logID); err != nil {
-			return 0, err
+			return nil, err
 		}
 		logIDs = append(logIDs, logID)
 	}
 	if err := rows.Err(); err != nil {
-		return 0, err
+		return nil, err
 	}
 	if len(logIDs) == 0 {
-		return 0, status.Errorf(codes.NotFound, "no log found for domain %v", domainID)
+		return nil, status.Errorf(codes.NotFound, "no log found for domain %v", domainID)
+	}
+	return logIDs, nil
+}
+
+// randLog returns a random, enabled log for domainID.
+func (m *Mutations) randLog(ctx context.Context, domainID string) (int64, error) {
+	// TODO(gbelvin): Cache these results.
+	writable := true
+	logIDs, err := m.logList(ctx, domainID, writable)
+	if err != nil {
+		return 0, err
 	}
 
 	// Return a random log.
@@ -125,27 +140,49 @@ func (m *Mutations) send(ctx context.Context, domainID string, logID int64, mDat
 	return tx.Commit()
 }
 
-// HighWatermarks returns the highest timestamp for each log in the mutations table.
-func (m *Mutations) HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error) {
+// HighWatermarks returns the highest watermark that is less than or equal to batchSize items
+// greater than the watermark for that log in starts, for each log for domainID.
+// The total size will be numLogs * batchSize.
+func (m *Mutations) HighWatermarks(ctx context.Context, domainID string, starts map[int64]int64, batchSize int32) (map[int64]int32, map[int64]int64, error) {
 	watermarks := make(map[int64]int64)
-	rows, err := m.db.QueryContext(ctx,
-		`SELECT LogID, Max(Time) FROM Queue WHERE DomainID = ? GROUP BY LogID;`,
-		domainID)
+	counts := make(map[int64]int32)
+
+	filterForWritable := false
+	logIDs, err := m.logList(ctx, domainID, filterForWritable)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var logID, watermark int64
-		if err := rows.Scan(&logID, &watermark); err != nil {
-			return nil, err
+	for _, logID := range logIDs {
+		start := starts[logID]
+		count, high, err := m.highWatermark(ctx, domainID, logID, start, batchSize)
+		if err != nil {
+			return nil, nil, status.Errorf(codes.Internal,
+				"highWatermark(%v/%v, start: %v, batch:%v): %v",
+				domainID, logID, start, batchSize, err)
 		}
-		watermarks[logID] = watermark
+		watermarks[logID] = high
+		counts[logID] = count
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	return counts, watermarks, nil
+}
+
+// highWatarmark returns the highest watermark in logID that is less than or equal to batchSize items greater than start.
+func (m *Mutations) highWatermark(ctx context.Context, domainID string, logID, start int64, batchSize int32) (int32, int64, error) {
+	var count int32
+	var high int64
+	if err := m.db.QueryRowContext(ctx,
+		`SELECT COUNT(*), COALESCE(MAX(T1.Time), ?) FROM 
+		(
+			SELECT Q.Time FROM Queue as Q
+			WHERE Q.DomainID = ? AND Q.LogID = ? AND Q.Time > ?
+			ORDER BY Q.Time ASC
+			LIMIT ?
+		) AS T1`,
+		start, domainID, logID, start, batchSize).
+		Scan(&count, &high); err != nil {
+		return 0, 0, err
 	}
-	return watermarks, nil
+	return count, high, nil
 }
 
 // ReadLog reads all mutations in logID between (low, high].

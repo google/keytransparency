@@ -106,40 +106,116 @@ func TestSend(t *testing.T) {
 
 func TestWatermarks(t *testing.T) {
 	ctx := context.Background()
-	m := newForTest(ctx, t, 1, 2, 3)
 	ts1 := time.Now()
-	ts2 := ts1.Add(time.Duration(1))
+	ts2 := ts1.Add(1)
+
+	type logRows []struct {
+		logID int64
+		ts    time.Time
+	}
 
 	for _, tc := range []struct {
-		desc string
-		send map[int64]time.Time
-		want map[int64]int64
+		desc      string
+		send      logRows
+		starts    map[int64]int64
+		batchSize int32
+		want      map[int64]int64
 	}{
-		{desc: "no rows", want: map[int64]int64{}},
 		{
-			desc: "first",
-			send: map[int64]time.Time{1: ts1},
-			want: map[int64]int64{1: ts1.UnixNano()},
+			desc:      "no rows",
+			starts:    map[int64]int64{},
+			batchSize: 100,
+			want:      map[int64]int64{1: 0, 2: 0, 3: 0},
+		},
+		{
+			desc:      "first",
+			send:      logRows{{1, ts1}},
+			starts:    map[int64]int64{},
+			batchSize: 100,
+			want:      map[int64]int64{1: ts1.UnixNano(), 2: 0, 3: 0},
 		},
 		{
 			desc: "second",
 			// Highwatermarks in each log proceed independently.
-			send: map[int64]time.Time{1: ts2, 2: ts1},
-			want: map[int64]int64{1: ts2.UnixNano(), 2: ts1.UnixNano()},
+			send:      logRows{{1, ts2}, {2, ts1}},
+			starts:    map[int64]int64{},
+			batchSize: 100,
+			want:      map[int64]int64{1: ts2.UnixNano(), 2: ts1.UnixNano(), 3: 0},
+		},
+		{
+			desc: "batch sizes",
+			// Highwatermarks in each log proceed independently.
+			send: logRows{
+				{1, ts1}, {2, ts1},
+				{1, ts2},
+			},
+			starts:    map[int64]int64{1: ts1.UnixNano()},
+			batchSize: 1,
+			want:      map[int64]int64{1: ts2.UnixNano(), 2: ts1.UnixNano(), 3: 0},
 		},
 	} {
-		for logID, ts := range tc.send {
-			if err := m.send(ctx, domainID, logID, []byte("mutation"), ts); err != nil {
-				t.Fatalf("send(%v, %v): %v", logID, ts, err)
+		t.Run(tc.desc, func(t *testing.T) {
+			m := newForTest(ctx, t, 1, 2, 3)
+			for _, row := range tc.send {
+				if err := m.send(ctx, domainID, row.logID, []byte("mutation"), row.ts); err != nil {
+					t.Fatalf("send(%v, %v): %v", row.logID, row.ts.UnixNano(), err)
+				}
+			}
+			_, highs, err := m.HighWatermarks(ctx, domainID, tc.starts, tc.batchSize)
+			if err != nil {
+				t.Fatalf("HighWatermarks(): %v", err)
+			}
+			if !cmp.Equal(highs, tc.want) {
+				t.Errorf("HighWatermarks(): %v, want %v", highs, tc.want)
+			}
+		})
+	}
+}
+
+func TestWatermark(t *testing.T) {
+	ctx := context.Background()
+	shardIDs := []int64{1, 2}
+	m := newForTest(ctx, t, shardIDs...)
+	update := []byte("bar")
+
+	startTS := time.Now()
+	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
+		for _, shardID := range shardIDs {
+			if err := m.send(ctx, domainID, shardID, update, ts); err != nil {
+				t.Fatalf("m.send(%v): %v", shardID, err)
 			}
 		}
-		highs, err := m.HighWatermarks(ctx, domainID)
-		if err != nil {
-			t.Fatalf("HighWatermarks(): %v", err)
-		}
-		if !cmp.Equal(highs, tc.want) {
-			t.Errorf("HighWatermarks(): %v, want %v", highs, tc.want)
-		}
+	}
+
+	start := startTS.UnixNano()
+	for _, tc := range []struct {
+		desc      string
+		logID     int64
+		start     int64
+		batchSize int32
+		count     int32
+		want      int64
+	}{
+		{desc: "log1 max", logID: 1, batchSize: 100, want: start + 9, count: 10},
+		{desc: "log2 max", logID: 2, batchSize: 100, want: start + 9, count: 10},
+		{desc: "batch0", logID: 1, batchSize: 0},
+		{desc: "batch0start55", logID: 1, start: 55, batchSize: 0, want: 55},
+		{desc: "batch5", logID: 1, batchSize: 5, want: start + 4, count: 5},
+		{desc: "start1", logID: 1, start: start + 2, batchSize: 5, want: start + 7, count: 5},
+		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 9, count: 1},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			count, got, err := m.highWatermark(ctx, domainID, tc.logID, tc.start, tc.batchSize)
+			if err != nil {
+				t.Errorf("highWatermark(): %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got, tc.want)
+			}
+			if count != tc.count {
+				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)
+			}
+		})
 	}
 }
 
