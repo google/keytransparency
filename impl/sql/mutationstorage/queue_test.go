@@ -223,15 +223,34 @@ func TestReadLog(t *testing.T) {
 	ctx := context.Background()
 	logID := int64(5)
 	m := newForTest(ctx, t, logID)
-	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
-		t.Fatalf("Send(): %v", err)
+	for i := byte(0); i < 10; i++ {
+		entry := &pb.EntryUpdate{Mutation: &pb.Entry{Index: []byte{i}}}
+		if err := m.Send(ctx, domainID, entry); err != nil {
+			t.Fatalf("Send(): %v", err)
+		}
 	}
 
-	rows, err := m.ReadLog(ctx, domainID, logID, 0, time.Now().UnixNano())
-	if err != nil {
-		t.Fatalf("ReadLog(): %v", err)
-	}
-	if got, want := len(rows), 1; got != want {
-		t.Fatalf("ReadLog(): len: %v, want %v", got, want)
+	for _, tc := range []struct {
+		batchSize int32
+		offset    int32
+		count     int
+	}{
+		{batchSize: 0, offset: 0, count: 0},
+		{batchSize: 1, offset: 0, count: 1},
+		{batchSize: 1, offset: 1, count: 1},
+		{batchSize: 100, offset: 8, count: 2},
+	} {
+		rows, err := m.ReadLog(ctx, domainID, logID, 0, time.Now().UnixNano(), tc.batchSize, tc.offset)
+		if err != nil {
+			t.Fatalf("ReadLog(): %v", err)
+		}
+		if got, want := len(rows), tc.count; got != want {
+			t.Fatalf("ReadLog(): len: %v, want %v", got, want)
+		}
+		for i, r := range rows {
+			if got, want := r.Mutation.GetIndex()[0], byte(int(tc.offset)+i); got != want {
+				t.Errorf("ReadLog()[%v]: %v, want %v", i, got, want)
+			}
+		}
 	}
 }

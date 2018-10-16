@@ -78,7 +78,8 @@ type LogsReader interface {
 		startWatermarks map[int64]int64, batchSize int32) (map[int64]int32, map[int64]int64, error)
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
-	ReadLog(ctx context.Context, domainID string, logID, low, high int64) ([]*mutator.LogMessage, error)
+	ReadLog(ctx context.Context, domainID string, logID, low, high int64,
+		batchSize, offset int32) ([]*mutator.LogMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -186,20 +187,29 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	return &empty.Empty{}, nil
 }
 
+const readBatchSize = int32(1)
+
 func (s *Server) readMessages(ctx context.Context, domainID string,
 	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
 	for logID, source := range sources {
-		batch, err := s.logs.ReadLog(ctx, domainID, logID,
-			source.GetLowestWatermark(), source.GetHighestWatermark())
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
-		}
-		for _, m := range batch {
-			msgs = append(msgs, &ktpb.EntryUpdate{
-				Mutation:  m.Mutation,
-				Committed: m.ExtraData,
-			})
+		var offset int32
+		count := readBatchSize
+		for count == readBatchSize {
+			batch, err := s.logs.ReadLog(ctx, domainID, logID,
+				source.GetLowestWatermark(), source.GetHighestWatermark(),
+				readBatchSize, offset)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
+			}
+			for _, m := range batch {
+				msgs = append(msgs, &ktpb.EntryUpdate{
+					Mutation:  m.Mutation,
+					Committed: m.ExtraData,
+				})
+			}
+			count = int32(len(batch))
+			offset += count
 		}
 	}
 	return msgs, nil
