@@ -70,8 +70,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
-	// HighWatermarks returns the highest primary key for each log in the mutations table.
-	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
+	// HighWatermarks returns the highest primary key that is less than or equal to batchSize
+	// items greater than the watermark for that log in starts, for each log for domainID.
+	// The total size will be numLogs * batchSize.
+	HighWatermarks(ctx context.Context, domainID string,
+		startWatermarks map[int64]int64, batchSize int32) (map[int64]int32, map[int64]int64, error)
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
 	ReadLog(ctx context.Context, domainID string, logID, low, high int64) ([]*mutator.LogMessage, error)
@@ -131,18 +134,16 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
-	highs, err := s.logs.HighWatermarks(ctx, in.DomainId)
+
+	// Limit each new shard to only process at most batchSize items.
+	startWatermarks := make(map[int64]int64)
+	for logID, source := range lastMeta.Sources {
+		startWatermarks[logID] = source.HighestWatermark
+	}
+	counts, highs, err := s.logs.HighWatermarks(ctx, in.DomainId, startWatermarks, in.MaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}
-
-	// TODO(#1057): If time since last map revision > max timeout, run batch.
-	// TODO(#1047): If time since oldest log item > max latency has elapsed, run batch.
-	// TODO(#1056): If count items > max_batch, run batch.
-
-	// Count items to be processed.  Unfortunately, this means we will be
-	// reading the items to be processed twice.  Once, here in RunBatch and
-	// again in CreateEpoch.
 	sources := make(map[int64]*spb.MapMetadata_SourceSlice)
 	for sliceID, high := range highs {
 		sources[sliceID] = &spb.MapMetadata_SourceSlice{
@@ -151,19 +152,27 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		}
 	}
 
-	msgs, err := s.readMessages(ctx, in.DomainId, sources)
-	if err != nil {
-		return nil, err
+	//
+	// Rate limit the creation of new batches.
+	///
+
+	var totalCount int32
+	for _, count := range counts {
+		totalCount += count
 	}
-	if len(msgs) < int(in.MinBatch) {
-		return &empty.Empty{}, nil
+	// TODO(#1057): If time since last map revision > max timeout, run batch.
+	// TODO(#1047): If time since oldest queue item > max latency has elapsed, run batch.
+	// If count items >= min_batch, run batch.
+	if totalCount >= in.MinBatch {
+		return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
+			DomainId:    in.DomainId,
+			Revision:    int64(latestMapRoot.Revision) + 1,
+			MapMetadata: &spb.MapMetadata{Sources: sources},
+		})
 	}
 
-	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
-		DomainId:    in.DomainId,
-		Revision:    int64(latestMapRoot.Revision) + 1,
-		MapMetadata: &spb.MapMetadata{Sources: sources},
-	})
+	// TODO(#1056): If count items > max_batch, should we define the next batch immediately?
+	return &empty.Empty{}, nil
 }
 
 func (s *Server) readMessages(ctx context.Context, domainID string,

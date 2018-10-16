@@ -75,6 +75,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 					DomainId: env.Domain.DomainId,
 					MinBatch: 1,
+					MaxBatch: 10,
 				})
 				return err
 			}); err != nil {
@@ -293,6 +294,7 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 				DomainId: domain.DomainId,
 				MinBatch: 1,
+				MaxBatch: 1,
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}

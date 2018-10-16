@@ -108,7 +108,7 @@ func main() {
 		mapAdmin,
 		domainStorage,
 		mutations,
-		*batchSize)
+		int32(*batchSize))
 
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
