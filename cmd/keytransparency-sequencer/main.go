@@ -93,7 +93,7 @@ func main() {
 		domainStorage,
 		logAdmin, mapAdmin,
 		tlog, tmap,
-		mutations, mutations,
+		mutations, mutations, mutations,
 		prometheus.MetricFactory{},
 	)
 
