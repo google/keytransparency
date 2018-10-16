@@ -81,6 +81,8 @@ type LogsReader interface {
 type Batcher interface {
 	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
 	WriteBatchSources(ctx context.Context, domainID string, revision int64, sources map[int64]*spb.MapMetadata_SourceSlice) error
+	// ReadBatch returns the batch definitions for a given revision.
+	ReadBatch(ctx context.Context, domainID string, revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -173,9 +175,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	}
 
 	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
-		DomainId:    in.DomainId,
-		Revision:    int64(latestMapRoot.Revision) + 1,
-		MapMetadata: &spb.MapMetadata{Sources: sources},
+		DomainId: in.DomainId,
+		Revision: int64(latestMapRoot.Revision) + 1,
 	})
 }
 
@@ -201,10 +202,11 @@ func (s *Server) readMessages(ctx context.Context, domainID string,
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	domainID := in.GetDomainId()
-	if in.MapMetadata.GetSources() == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
+	sources, err := s.batcher.ReadBatch(ctx, in.DomainId, in.Revision)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DomainId, in.Revision, err)
 	}
-	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSources())
+	msgs, err := s.readMessages(ctx, in.DomainId, sources)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +241,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	// Serialize metadata
-	metadata, err := proto.Marshal(in.MapMetadata)
+	metadata, err := proto.Marshal(&spb.MapMetadata{Sources: sources})
 	if err != nil {
 		return nil, err
 	}
