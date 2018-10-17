@@ -46,6 +46,18 @@ func DecodeToken(token string, msg proto.Message) error {
 // SourceMap is a paginator for a map of sources.
 type SourceMap map[int64]*spb.MapMetadata_SourceSlice
 
+// ParseToken will return the first token if token is "", otherwise it will try to parse the read token.
+func (s SourceMap) ParseToken(token string) (*rtpb.ReadToken, error) {
+	if token == "" {
+		return s.First(), nil
+	}
+	var rt rtpb.ReadToken
+	if err := DecodeToken(token, &rt); err != nil {
+		return nil, err
+	}
+	return &rt, nil
+}
+
 // First returns the first read parameters for this source.
 func (s SourceMap) First() *rtpb.ReadToken {
 	shardID := sortedKeys(s)[0]

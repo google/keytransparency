@@ -33,7 +33,6 @@ import (
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/keyserver"
-	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authentication"
@@ -165,9 +164,8 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	authFunc := authentication.FakeAuthFunc
 	authz := &authorization.AuthzPolicy{}
 
-	queue := mutator.MutationLogs(mutations)
 	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
-		entry.New(), directoryStorage, queue, mutations)
+		entry.New(), directoryStorage, mutations, mutations)
 	gsvr := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			authorization.UnaryServerInterceptor(map[string]authorization.AuthPair{

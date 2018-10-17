@@ -16,14 +16,13 @@ package keyserver
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
@@ -125,24 +124,38 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		glog.Errorf("ListMutations(): adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
-
-	start, err := parseToken(in.PageToken)
+	sources, err := s.batches.ReadBatch(ctx, in.DirectoryId, in.Epoch)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Epoch, err)
 	}
-	// Read mutations from the database.
-	max, entries, err := s.mutations.ReadPage(ctx, d.DirectoryID, in.GetEpoch(), start, in.GetPageSize())
+	rt, err := SourceMap(sources).ParseToken(in.PageToken)
 	if err != nil {
-		glog.Errorf("ListMutations(): mutations.ReadRange(%v, %v, %v, %v): %v", d.MapID, in.GetEpoch(), start, in.GetPageSize(), err)
+		return nil, status.Errorf(codes.InvalidArgument, "Failed parsing page_token: %v: %v", in.PageToken, err)
+	}
+
+	// Read PageSize + 1 messages from the log to see if there is another page.
+	high := sources[rt.ShardId].HighestWatermark
+	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize+1, 0)
+	if err != nil {
+		glog.Errorf("ListMutations(): ReadLog(%v, log: %v/(%v, %v], batchSize: %v): %v",
+			d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize, err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
 	}
-	indexes := make([][]byte, 0, len(entries))
-	mutations := make([]*pb.MutationProof, 0, len(entries))
-	for _, e := range entries {
-		mutations = append(mutations, &pb.MutationProof{Mutation: e})
-		indexes = append(indexes, e.GetIndex())
+	more := len(msgs) == int(in.PageSize+1)
+	var lastRow *mutator.LogMessage
+	if more {
+		msgs = msgs[0:in.PageSize]    // Only return PageSize messages.
+		lastRow = msgs[in.PageSize-1] // Next start is the last row of this batch.
 	}
-	// Get leaf proofs.
+
+	// For each msg, attach the leaf value from the previous map revision.
+	// This will allow the client to re-run the mutation for themselves.
+	indexes := make([][]byte, 0, len(msgs))
+	mutations := make([]*pb.MutationProof, 0, len(msgs))
+	for _, m := range msgs {
+		mutations = append(mutations, &pb.MutationProof{Mutation: m.Mutation})
+		indexes = append(indexes, m.Mutation.GetIndex())
+	}
 	proofs, err := s.inclusionProofs(ctx, d, indexes, in.Epoch-1)
 	if err != nil {
 		return nil, err
@@ -150,14 +163,14 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	for i, p := range proofs {
 		mutations[i].LeafProof = p
 	}
+	nextToken, err := EncodeToken(SourceMap(sources).Next(rt, lastRow))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed creating next token: %v", err)
 
-	nextPageToken := ""
-	if len(mutations) == int(in.PageSize) {
-		nextPageToken = fmt.Sprintf("%d", max+1)
 	}
 	return &pb.ListMutationsResponse{
 		Mutations:     mutations,
-		NextPageToken: nextPageToken,
+		NextPageToken: nextToken,
 	}, nil
 }
 
@@ -242,20 +255,6 @@ func mapRevisionFor(sth *tpb.SignedLogRoot) (int64, error) {
 		return 0, status.Errorf(codes.Internal, "log is uninitialized")
 	}
 	return maxIndex, nil
-}
-
-// parseToken returns the sequence number in token.
-// If token is unset, return 0.
-func parseToken(token string) (int64, error) {
-	if token == "" {
-		return 0, nil
-	}
-	seq, err := strconv.ParseInt(token, 10, 64)
-	if err != nil {
-		glog.Errorf("parseToken(%v): strconv.ParseInt(): %v", token, err)
-		return 0, status.Errorf(codes.InvalidArgument, "%v is not a valid sequence number", token)
-	}
-	return seq, nil
 }
 
 func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, indexes [][]byte, epoch int64) (
