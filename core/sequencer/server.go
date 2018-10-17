@@ -102,12 +102,11 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	ktServer  *keyserver.Server
-	batcher   Batcher
-	mutations mutator.MutationStorage
-	tmap      tpb.TrillianMapClient
-	tlog      tpb.TrillianLogClient
-	logs      LogsReader
+	ktServer *keyserver.Server
+	batcher  Batcher
+	tmap     tpb.TrillianMapClient
+	tlog     tpb.TrillianLogClient
+	logs     LogsReader
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -118,18 +117,16 @@ func NewServer(
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	batcher Batcher,
-	mutations mutator.MutationStorage,
 	logs LogsReader,
 	metricsFactory monitoring.MetricFactory,
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
-		ktServer:  keyserver.New(nil, nil, logAdmin, mapAdmin, nil, directories, nil, nil),
-		tlog:      tlog,
-		tmap:      tmap,
-		mutations: mutations,
-		batcher:   batcher,
-		logs:      logs,
+		ktServer: keyserver.New(nil, nil, logAdmin, mapAdmin, nil, directories, nil, nil),
+		tlog:     tlog,
+		tmap:     tmap,
+		batcher:  batcher,
+		logs:     logs,
 	}
 }
 
@@ -290,17 +287,6 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
 	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
-
-	// Write mutations associated with this epoch.
-	// TODO(gbelvin): Remove when the monitor reads from the batches table.
-	mutations := make([]*ktpb.Entry, 0, len(msgs))
-	for _, msg := range msgs {
-		mutations = append(mutations, msg.Mutation)
-	}
-	if err := s.mutations.WriteBatch(ctx, directoryID, int64(mapRoot.Revision), mutations); err != nil {
-		glog.Errorf("Could not write mutations for revision %v: %v", mapRoot.Revision, err)
-		return nil, status.Errorf(codes.Internal, "mutations.WriteBatch(): %v", err)
-	}
 
 	mutationCount.Add(float64(len(msgs)), directoryID)
 	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
