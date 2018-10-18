@@ -68,6 +68,12 @@ func createMetrics(mf monitoring.MetricFactory) {
 		domainIDLabel)
 }
 
+// SourcesEntry is a map of SourceSlices by logID.
+type SourcesEntry map[int64]*spb.MapMetadata_SourceSlice
+
+// Watermarks is map of watermarks by logID.
+type Watermarks map[int64]int64
+
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
 	// HighWatermarks returns the number of items (not to exceed batchSize) between start and
@@ -139,7 +145,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	}
 
 	// Limit each new shard to only process at most batchSize items.
-	startWatermarks := make(map[int64]int64)
+	startWatermarks := make(Watermarks)
 	for logID, source := range lastMeta.Sources {
 		startWatermarks[logID] = source.HighestWatermark
 	}
@@ -148,7 +154,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
-	sources := make(map[int64]*spb.MapMetadata_SourceSlice)
+	sources := make(SourcesEntry)
 	for sliceID, high := range highs {
 		sources[sliceID] = &spb.MapMetadata_SourceSlice{
 			LowestWatermark:  lastMeta.Sources[sliceID].GetHighestWatermark(),
@@ -177,8 +183,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 
 const readBatchSize = int32(1)
 
-func (s *Server) readMessages(ctx context.Context, domainID string,
-	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
+func (s *Server) readMessages(ctx context.Context, domainID string, sources SourcesEntry) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
 	for logID, source := range sources {
 		var offset int32
@@ -398,9 +403,6 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
 }
-
-// Watermarks is map of watermarks by logID.
-type Watermarks map[int64]int64
 
 // HighWatermarks returns the total count and the highest watermark for each log.
 // batchSize is a limit on the total number of items represented by the returned watermarks.
