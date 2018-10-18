@@ -164,15 +164,14 @@ func TestReadLog(t *testing.T) {
 
 	for _, tc := range []struct {
 		batchSize int32
-		offset    int32
 		count     int
 	}{
-		{batchSize: 0, offset: 0, count: 0},
-		{batchSize: 1, offset: 0, count: 1},
-		{batchSize: 1, offset: 1, count: 1},
-		{batchSize: 100, offset: 8, count: 2},
+		{batchSize: 0, count: 0},
+		{batchSize: 1, count: 1},
+		{batchSize: 1, count: 1},
+		{batchSize: 100, count: 10},
 	} {
-		rows, err := m.ReadLog(ctx, domainID, logID, 0, time.Now().UnixNano(), tc.batchSize, tc.offset)
+		rows, err := m.ReadLog(ctx, domainID, logID, 0, time.Now().UnixNano(), tc.batchSize)
 		if err != nil {
 			t.Fatalf("ReadLog(): %v", err)
 		}
@@ -180,7 +179,7 @@ func TestReadLog(t *testing.T) {
 			t.Fatalf("ReadLog(): len: %v, want %v", got, want)
 		}
 		for i, r := range rows {
-			if got, want := r.Mutation.GetIndex()[0], byte(int(tc.offset)+i); got != want {
+			if got, want := r.Mutation.GetIndex()[0], byte(i); got != want {
 				t.Errorf("ReadLog()[%v]: %v, want %v", i, got, want)
 			}
 		}

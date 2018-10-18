@@ -163,13 +163,13 @@ func (m *Mutations) HighWatermark(ctx context.Context, domainID string, logID,
 
 // ReadLog reads all mutations in logID between (low, high].
 func (m *Mutations) ReadLog(ctx context.Context, domainID string,
-	logID, low, high int64, batchSize, offset int32) ([]*mutator.LogMessage, error) {
+	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, Mutation FROM Queue
 		WHERE DomainID = ? AND LogID = ? AND Time > ? AND Time <= ?
 		ORDER BY Time ASC
-		LIMIT ? OFFSET ?;`,
-		domainID, logID, low, high, batchSize, offset)
+		LIMIT ?;`,
+		domainID, logID, low, high, batchSize)
 	if err != nil {
 		return nil, err
 	}
