@@ -85,8 +85,7 @@ type LogsReader interface {
 
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
-	ReadLog(ctx context.Context, domainID string, logID, low, high int64,
-		batchSize, offset int32) ([]*mutator.LogMessage, error)
+	ReadLog(ctx context.Context, domainID string, logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -181,28 +180,30 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	return &empty.Empty{}, nil
 }
 
-const readBatchSize = int32(1)
+const readBatchSize = int32(1000)
 
-func (s *Server) readMessages(ctx context.Context, domainID string, sources SourcesEntry) ([]*ktpb.EntryUpdate, error) {
+// readMessages returns the full set of EntryUpdates defined by sources.
+// batchSize limits the number of messages to read from a log at one time.
+func (s *Server) readMessages(ctx context.Context, domainID string, sources SourcesEntry, batchSize int32) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
 	for logID, source := range sources {
-		var offset int32
+		low := source.GetLowestWatermark()
 		count := readBatchSize
 		for count == readBatchSize {
-			batch, err := s.logs.ReadLog(ctx, domainID, logID,
-				source.GetLowestWatermark(), source.GetHighestWatermark(),
-				readBatchSize, offset)
+			batch, err := s.logs.ReadLog(ctx, domainID, logID, low, source.GetHighestWatermark(), batchSize)
 			if err != nil {
-				return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
+				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
 			}
 			for _, m := range batch {
 				msgs = append(msgs, &ktpb.EntryUpdate{
 					Mutation:  m.Mutation,
 					Committed: m.ExtraData,
 				})
+				if m.ID > low {
+					low = m.ID
+				}
 			}
 			count = int32(len(batch))
-			offset += count
 		}
 	}
 	return msgs, nil
@@ -214,7 +215,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	if in.MapMetadata.GetSources() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
 	}
-	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSources())
+	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSources(), readBatchSize)
 	if err != nil {
 		return nil, err
 	}
