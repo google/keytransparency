@@ -107,6 +107,8 @@ func TestHighWatermarks(t *testing.T) {
 		{batchSize: 30, starts: Watermarks{}, count: 28, highs: Watermarks{0: 9, 1: 19}},
 		{batchSize: 20, starts: Watermarks{}, count: 20, highs: Watermarks{0: 9, 1: 11}},
 		{batchSize: 20, starts: Watermarks{0: 9}, count: 19, highs: Watermarks{0: 9, 1: 19}},
+		{batchSize: 1, starts: Watermarks{1: 9}, count: 1, highs: Watermarks{0: 1, 1: 9}},       // Don't drop existing watermarks.
+		{batchSize: 0, starts: Watermarks{3: 9}, count: 0, highs: Watermarks{0: 0, 1: 0, 3: 9}}, // Don't drop pre-existing watermarks.
 	} {
 		count, highs, err := s.HighWatermarks(ctx, domainID, tc.starts, tc.batchSize)
 		if err != nil {

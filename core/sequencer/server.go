@@ -154,9 +154,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
 	sources := make(SourcesEntry)
-	for sliceID, high := range highs {
-		sources[sliceID] = &spb.MapMetadata_SourceSlice{
-			LowestWatermark:  lastMeta.Sources[sliceID].GetHighestWatermark(),
+	for logID, high := range highs {
+		sources[logID] = &spb.MapMetadata_SourceSlice{
+			LowestWatermark:  lastMeta.Sources[logID].GetHighestWatermark(),
 			HighestWatermark: high,
 		}
 	}
@@ -238,6 +238,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 	glog.V(2).Infof("CreateEpoch: %v mutations, %v indexes", len(msgs), len(indexes))
 
+	// TODO(gbelvin): fetch map leaves at a specific revision
 	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
 	if err != nil {
 		return nil, err
@@ -407,9 +408,17 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 
 // HighWatermarks returns the total count and the highest watermark for each log.
 // batchSize is a limit on the total number of items represented by the returned watermarks.
-func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Watermarks, batchSize int32) (int32, Watermarks, error) {
+func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Watermarks, maxBatch int32) (int32, Watermarks, error) {
 	watermarks := make(Watermarks)
 	var total int32
+
+	// Ensure that we do not lose track of watermarks, even if they are no longer in the
+	// active log list, or if they do not move. The sequencer needs them to know where to
+	// pick up reading for the next map revision.
+	// TODO(gbelvin): Separate high water marks for the sequencer's needs from the verifier's needs.
+	for logID, low := range starts {
+		watermarks[logID] = low
+	}
 
 	filterForWritable := false
 	logIDs, err := s.logs.ListLogs(ctx, domainID, filterForWritable)
@@ -419,7 +428,11 @@ func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Wat
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
 		start := starts[logID]
-		count, high, err := s.logs.HighWatermark(ctx, domainID, logID, start, batchSize)
+		if maxBatch <= 0 {
+			watermarks[logID] = start
+			continue
+		}
+		count, high, err := s.logs.HighWatermark(ctx, domainID, logID, start, maxBatch)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"highWatermark(%v/%v, start: %v, batch:%v): %v",
@@ -427,10 +440,7 @@ func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Wat
 		}
 		watermarks[logID] = high
 		total += count
-		batchSize -= count
-		if batchSize <= 0 {
-			break
-		}
+		maxBatch -= count
 	}
 	return total, watermarks, nil
 }
