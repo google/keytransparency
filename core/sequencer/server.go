@@ -16,7 +16,6 @@ package sequencer
 
 import (
 	"context"
-	"math"
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
@@ -71,11 +70,13 @@ func createMetrics(mf monitoring.MetricFactory) {
 
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
-	// HighWatermarks returns the highest primary key that is less than or equal to batchSize
-	// items greater than the watermark for that log in starts, for each log for domainID.
-	// The total size will be numLogs * batchSize.
-	HighWatermarks(ctx context.Context, domainID string,
-		startWatermarks map[int64]int64, batchSize int32) (map[int64]int32, map[int64]int64, error)
+	// HighWatermarks returns the number of items (not to exceed batchSize) between start and
+	// the highest primary key in the log identified by logID.
+	HighWatermark(ctx context.Context, domainID string, logID, start int64, batchSize int32) (int32, int64, error)
+
+	// ListLogs returns the logIDs associated with domainID.
+	ListLogs(ctx context.Context, domainID string, writable bool) ([]int64, error)
+
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
 	ReadLog(ctx context.Context, domainID string, logID, low, high int64,
@@ -143,18 +144,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		startWatermarks[logID] = source.HighestWatermark
 	}
 
-	// Set the perLogMaxBatch to be the next lowest value such that if every
-	// log returned perLogMaxBatch items, the sum total would be less than in.MaxBatch.
-	numLogs := float64(len(lastMeta.Sources))
-	perLogMaxBatch := in.MaxBatch
-	if numLogs > 0 {
-		tmp := math.Floor(float64(in.MaxBatch) / numLogs)
-		perLogMaxBatch = int32(math.Max(tmp, 1))
-	}
-
-	counts, highs, err := s.logs.HighWatermarks(ctx, in.DomainId, startWatermarks, perLogMaxBatch)
+	count, highs, err := s.HighWatermarks(ctx, in.DomainId, startWatermarks, in.MaxBatch)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
+		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
 	sources := make(map[int64]*spb.MapMetadata_SourceSlice)
 	for sliceID, high := range highs {
@@ -168,14 +160,10 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	// Rate limit the creation of new batches.
 	///
 
-	var totalCount int32
-	for _, count := range counts {
-		totalCount += count
-	}
 	// TODO(#1057): If time since last map revision > max timeout, run batch.
 	// TODO(#1047): If time since oldest queue item > max latency has elapsed, run batch.
 	// If count items >= min_batch, run batch.
-	if totalCount >= in.MinBatch {
+	if count >= in.MinBatch {
 		return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
 			DomainId:    in.DomainId,
 			Revision:    int64(latestMapRoot.Revision) + 1,
@@ -409,4 +397,38 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 	}
 	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
+}
+
+// Watermarks is map of watermarks by logID.
+type Watermarks map[int64]int64
+
+// HighWatermarks returns the total count and the highest watermark for each log.
+// batchSize is a limit on the total number of items represented by the returned watermarks.
+func (s *Server) HighWatermarks(ctx context.Context, domainID string,
+	starts Watermarks, batchSize int32) (int32, Watermarks, error) {
+	watermarks := make(Watermarks)
+	var total int32
+
+	filterForWritable := false
+	logIDs, err := s.logs.ListLogs(ctx, domainID, filterForWritable)
+	if err != nil {
+		return 0, nil, err
+	}
+	// TODO(gbelvin): Get HighWatermarks in parallel.
+	for _, logID := range logIDs {
+		start := starts[logID]
+		count, high, err := s.logs.HighWatermark(ctx, domainID, logID, start, batchSize)
+		if err != nil {
+			return 0, nil, status.Errorf(codes.Internal,
+				"highWatermark(%v/%v, start: %v, batch:%v): %v",
+				domainID, logID, start, batchSize, err)
+		}
+		watermarks[logID] = high
+		total += count
+		batchSize -= count
+		if batchSize <= 0 {
+			break
+		}
+	}
+	return total, watermarks, nil
 }
