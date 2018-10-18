@@ -61,8 +61,8 @@ func (m *Mutations) Send(ctx context.Context, domainID string, update *pb.EntryU
 	return m.send(ctx, domainID, logID, mData, time.Now())
 }
 
-// logList returns a list of all logs for domainID, optionally filtered for writable logs.
-func (m *Mutations) logList(ctx context.Context, domainID string, writable bool) ([]int64, error) {
+// ListLogs returns a list of all logs for domainID, optionally filtered for writable logs.
+func (m *Mutations) ListLogs(ctx context.Context, domainID string, writable bool) ([]int64, error) {
 	var query string
 	if writable {
 		query = `SELECT LogID from Logs WHERE DomainID = ? AND Enabled = True;`
@@ -96,7 +96,7 @@ func (m *Mutations) logList(ctx context.Context, domainID string, writable bool)
 func (m *Mutations) randLog(ctx context.Context, domainID string) (int64, error) {
 	// TODO(gbelvin): Cache these results.
 	writable := true
-	logIDs, err := m.logList(ctx, domainID, writable)
+	logIDs, err := m.ListLogs(ctx, domainID, writable)
 	if err != nil {
 		return 0, err
 	}
@@ -140,36 +140,9 @@ func (m *Mutations) send(ctx context.Context, domainID string, logID int64, mDat
 	return tx.Commit()
 }
 
-// HighWatermarks returns the highest watermark that is less than or equal to batchSize items
-// greater than the watermark for that log in starts, for each log for domainID.
-// The total size will be numLogs * batchSize.
-func (m *Mutations) HighWatermarks(ctx context.Context, domainID string,
-	starts map[int64]int64, batchSize int32) (map[int64]int32, map[int64]int64, error) {
-	watermarks := make(map[int64]int64)
-	counts := make(map[int64]int32)
-
-	filterForWritable := false
-	logIDs, err := m.logList(ctx, domainID, filterForWritable)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, logID := range logIDs {
-		start := starts[logID]
-		count, high, err := m.highWatermark(ctx, domainID, logID, start, batchSize)
-		if err != nil {
-			return nil, nil, status.Errorf(codes.Internal,
-				"highWatermark(%v/%v, start: %v, batch:%v): %v",
-				domainID, logID, start, batchSize, err)
-		}
-		watermarks[logID] = high
-		counts[logID] = count
-	}
-	return counts, watermarks, nil
-}
-
-// highWatarmark returns the highest watermark in logID that is less than or
+// HighWatermark returns the highest watermark in logID that is less than or
 // equal to batchSize items greater than start.
-func (m *Mutations) highWatermark(ctx context.Context, domainID string, logID,
+func (m *Mutations) HighWatermark(ctx context.Context, domainID string, logID,
 	start int64, batchSize int32) (int32, int64, error) {
 	var count int32
 	var high int64
