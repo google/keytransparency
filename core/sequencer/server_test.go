@@ -16,15 +16,17 @@ package sequencer
 
 import (
 	"context"
+	"sort"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
 
@@ -45,6 +47,8 @@ func (l fakeLogs) ListLogs(ctx context.Context, domainID string, writable bool) 
 	for logID := range l {
 		logIDs = append(logIDs, logID)
 	}
+	// sort logsIDs for test repeatability.
+	sort.Slice(logIDs, func(i, j int) bool { return logIDs[i] < logIDs[j] })
 	return logIDs, nil
 }
 
@@ -87,7 +91,34 @@ func TestReadMessages(t *testing.T) {
 }
 
 func TestHighWatermarks(t *testing.T) {
+	ctx := context.Background()
+	domainID := "domainID"
+	s := Server{logs: fakeLogs{
+		0: make([]mutator.LogMessage, 10),
+		1: make([]mutator.LogMessage, 20),
+	}}
 
+	for _, tc := range []struct {
+		starts    Watermarks
+		batchSize int32
+		count     int32
+		highs     Watermarks
+	}{
+		{batchSize: 30, starts: Watermarks{}, count: 28, highs: Watermarks{0: 9, 1: 19}},
+		{batchSize: 20, starts: Watermarks{}, count: 20, highs: Watermarks{0: 9, 1: 11}},
+		{batchSize: 20, starts: Watermarks{0: 9}, count: 19, highs: Watermarks{0: 9, 1: 19}},
+	} {
+		count, highs, err := s.HighWatermarks(ctx, domainID, tc.starts, tc.batchSize)
+		if err != nil {
+			t.Errorf("HighWatermarks(): %v", err)
+		}
+		if count != tc.count {
+			t.Errorf("HighWatermarks(): count: %v, want %v", count, tc.count)
+		}
+		if !cmp.Equal(highs, tc.highs) {
+			t.Errorf("HighWatermarks(): %v, want %v", highs, tc.highs)
+		}
+	}
 }
 
 func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate {

@@ -407,8 +407,7 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 
 // HighWatermarks returns the total count and the highest watermark for each log.
 // batchSize is a limit on the total number of items represented by the returned watermarks.
-func (s *Server) HighWatermarks(ctx context.Context, domainID string,
-	starts Watermarks, batchSize int32) (int32, Watermarks, error) {
+func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Watermarks, batchSize int32) (int32, Watermarks, error) {
 	watermarks := make(Watermarks)
 	var total int32
 
