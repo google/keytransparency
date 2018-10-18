@@ -47,7 +47,8 @@ func New() *Mutator {
 func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 	// Ensure that the mutation size is within bounds.
 	if proto.Size(update) > mutator.MaxMutationSize {
-		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
+		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).",
+			proto.Size(update), mutator.MaxMutationSize)
 		return nil, mutator.ErrSize
 	}
 
@@ -83,7 +84,8 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
-		glog.Warningf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], newEntry.GetPrevious())
+		glog.Warningf("previous entry hash (%x) does not match the hash provided in this mutation (%x)",
+			prevEntryHash[:], newEntry.GetPrevious())
 		return nil, mutator.ErrPreviousHash
 	}
 

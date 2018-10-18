@@ -83,9 +83,10 @@ type LogsReader interface {
 	// ListLogs returns the logIDs associated with domainID.
 	ListLogs(ctx context.Context, domainID string, writable bool) ([]int64, error)
 
-	// ReadLog returns the messages in the (low, high] range stored in the specified log.
-	// ReadLog does NOT delete messages.
-	ReadLog(ctx context.Context, domainID string, logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error)
+	// ReadLog returns the messages in the (low, high] range stored in the specified log, up to batchSize.
+	// Paginate by setting low to the highest LogMessage returned in the previous page.
+	ReadLog(ctx context.Context, domainID string, logID, low, high int64,
+		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -176,7 +177,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		})
 	}
 
-	// TODO(#1056): If count items > max_batch, should we define the next batch immediately?
+	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
 	return &empty.Empty{}, nil
 }
 
@@ -184,7 +185,8 @@ const readBatchSize = int32(1000)
 
 // readMessages returns the full set of EntryUpdates defined by sources.
 // batchSize limits the number of messages to read from a log at one time.
-func (s *Server) readMessages(ctx context.Context, domainID string, sources SourcesEntry, batchSize int32) ([]*ktpb.EntryUpdate, error) {
+func (s *Server) readMessages(ctx context.Context, domainID string, sources SourcesEntry,
+	batchSize int32) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
 	for logID, source := range sources {
 		low := source.GetLowestWatermark()
@@ -204,6 +206,7 @@ func (s *Server) readMessages(ctx context.Context, domainID string, sources Sour
 				}
 			}
 			count = int32(len(batch))
+			glog.Infof("ReadLog(%v, (%v, %v], %v) count: %v", logID, low, source.GetHighestWatermark(), batchSize, count)
 		}
 	}
 	return msgs, nil
@@ -283,7 +286,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	mutationCount.Add(float64(len(msgs)), domainID)
-	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
+	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(newLeaves), mapRoot.RootHash)
 	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DomainId: domainID})
 }
 
@@ -326,7 +329,9 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 			Revision: int64(rev),
 		})
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "GetSignedMapRootByRevision(%v, %v): %v", mapClient.MapID, rev, err)
+			return nil, status.Errorf(codes.Internal,
+				"GetSignedMapRootByRevision(%v, %v): %v",
+				mapClient.MapID, rev, err)
 		}
 		rawMapRoot := resp.GetMapRoot()
 		mapRoot, err := mapClient.VerifySignedMapRoot(rawMapRoot)
@@ -408,7 +413,9 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 
 // HighWatermarks returns the total count and the highest watermark for each log.
 // batchSize is a limit on the total number of items represented by the returned watermarks.
-func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Watermarks, maxBatch int32) (int32, Watermarks, error) {
+// TODO(gbelvin): Block until a minBatchSize has been reached or a timeout has occurred.
+func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Watermarks,
+	maxBatch int32) (int32, Watermarks, error) {
 	watermarks := make(Watermarks)
 	var total int32
 
@@ -436,7 +443,7 @@ func (s *Server) HighWatermarks(ctx context.Context, domainID string, starts Wat
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"highWatermark(%v/%v, start: %v, batch:%v): %v",
-				domainID, logID, start, batchSize, err)
+				domainID, logID, start, maxBatch, err)
 		}
 		watermarks[logID] = high
 		total += count

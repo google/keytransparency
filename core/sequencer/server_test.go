@@ -32,7 +32,8 @@ import (
 
 type fakeLogs map[int64][]mutator.LogMessage
 
-func (l fakeLogs) ReadLog(ctx context.Context, domainID string, logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
+func (l fakeLogs) ReadLog(ctx context.Context, domainID string, logID, low, high int64,
+	batchSize int32) ([]*mutator.LogMessage, error) {
 	refs := make([]*mutator.LogMessage, 0, int(high-low))
 	for i := low + 1; i < high+1; i++ {
 		l[logID][i].ID = i
@@ -52,7 +53,8 @@ func (l fakeLogs) ListLogs(ctx context.Context, domainID string, writable bool) 
 	return logIDs, nil
 }
 
-func (l fakeLogs) HighWatermark(ctx context.Context, domainID string, logID, start int64, batchSize int32) (int32, int64, error) {
+func (l fakeLogs) HighWatermark(ctx context.Context, domainID string, logID, start int64,
+	batchSize int32) (int32, int64, error) {
 	high := start + int64(batchSize)
 	if high > int64(len(l[logID]))-1 {
 		high = int64(len(l[logID])) - 1
@@ -75,10 +77,13 @@ func TestReadMessages(t *testing.T) {
 		batchSize int32
 		want      int
 	}{
-		{batchSize: 1, want: 9, sources: SourcesEntry{0: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 9}}},
+		{batchSize: 1, want: 9, sources: SourcesEntry{
+			0: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 9},
+		}},
 		{batchSize: 1, want: 19, sources: SourcesEntry{
 			0: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 9},
-			1: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 10}}},
+			1: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 10},
+		}},
 	} {
 		msgs, err := s.readMessages(ctx, domainID, tc.sources, tc.batchSize)
 		if err != nil {
@@ -107,8 +112,10 @@ func TestHighWatermarks(t *testing.T) {
 		{batchSize: 30, starts: Watermarks{}, count: 28, highs: Watermarks{0: 9, 1: 19}},
 		{batchSize: 20, starts: Watermarks{}, count: 20, highs: Watermarks{0: 9, 1: 11}},
 		{batchSize: 20, starts: Watermarks{0: 9}, count: 19, highs: Watermarks{0: 9, 1: 19}},
-		{batchSize: 1, starts: Watermarks{1: 9}, count: 1, highs: Watermarks{0: 1, 1: 9}},       // Don't drop existing watermarks.
-		{batchSize: 0, starts: Watermarks{3: 9}, count: 0, highs: Watermarks{0: 0, 1: 0, 3: 9}}, // Don't drop pre-existing watermarks.
+		// Don't drop existing watermarks.
+		{batchSize: 1, starts: Watermarks{1: 9}, count: 1, highs: Watermarks{0: 1, 1: 9}},
+		// Don't drop pre-existing watermarks.
+		{batchSize: 0, starts: Watermarks{3: 9}, count: 0, highs: Watermarks{0: 0, 1: 0, 3: 9}},
 	} {
 		count, highs, err := s.HighWatermarks(ctx, domainID, tc.starts, tc.batchSize)
 		if err != nil {
