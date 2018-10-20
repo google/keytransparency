@@ -166,25 +166,27 @@ func readMutations(rows *sql.Rows) (int64, []*pb.Entry, error) {
 // WriteBatchSources saves the mutations in the database.
 // If revision has alredy been defined, this will fail.
 func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revision int64,
-	sources map[int64]*spb.MapMetadata_SourceSlice) error {
+	sources map[int64]*spb.MapMetadata_SourceSlice) (ret error) {
 	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if ret != nil {
+			if err := tx.Rollback(); err != nil {
+				ret = status.Errorf(codes.Internal, "%v, and could not rollback: %v", ret, err)
+			}
+		}
+	}()
+
 	// Search for existing domainID/revision.
 	var count int64
 	if err := tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM Batches WHERE DomainID = ? AND Revision = ?;`,
 		domainID, revision).Scan(&count); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("could not roll back: %v", rollbackErr)
-		}
 		return fmt.Errorf("error querying batch definition: %v", err)
 	}
 	if count > 0 {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("could not roll back: %v", rollbackErr)
-		}
 		return status.Errorf(codes.AlreadyExists,
 			"a batch definition for %v rev %v already exists with %v logs",
 			domainID, revision, count)
@@ -194,9 +196,6 @@ func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revi
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO Batches (DomainID, Revision, LogID, Low, High) VALUES (?, ?, ?, ?, ?);`,
 			domainID, revision, logID, source.LowestWatermark, source.HighestWatermark); err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				return fmt.Errorf("could not roll back: %v", rollbackErr)
-			}
 			return fmt.Errorf("insert batch boundary (%v, %v, %v, %v) failed: %v",
 				domainID, revision, logID, source, err)
 		}
