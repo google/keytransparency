@@ -21,9 +21,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/mattn/go-sqlite3"
@@ -84,17 +81,20 @@ func TestWriteBatch(t *testing.T) {
 
 	domainID := "writebatchtest"
 	for _, tc := range []struct {
-		rev      int64
-		wantCode codes.Code
-		sources  map[int64]*spb.MapMetadata_SourceSlice
+		rev     int64
+		wantErr bool
+		sources map[int64]*spb.MapMetadata_SourceSlice
 	}{
+		// Tests are cumulative.
 		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 11}}, wantCode: codes.AlreadyExists},
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{2: {HighestWatermark: 20}}, wantCode: codes.AlreadyExists},
-		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 11}}, wantErr: true},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{2: {HighestWatermark: 20}}, wantErr: true},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{}, wantErr: true},
+		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{}},
+		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}, wantErr: true},
 	} {
 		err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.sources)
-		if got, want := status.Code(err), tc.wantCode; got != want {
+		if got, want := err != nil, tc.wantErr; got != want {
 			t.Errorf("WriteBatchSources(%v, %v): err: %v. code: %v, want %v",
 				tc.rev, tc.sources, err, got, want)
 		}
@@ -130,7 +130,7 @@ func TestReadBatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ReadBatch(%v): %v", tc.rev, err)
 		}
-		if !cmp.Equal(highs, tc.sources) {
+		if !cmp.Equal(highs, tc.sources, cmp.Comparer(proto.Equal)) {
 			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, highs, tc.sources)
 		}
 	}

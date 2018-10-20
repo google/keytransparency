@@ -22,8 +22,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -51,10 +49,8 @@ var (
 		`CREATE TABLE IF NOT EXISTS Batches (
 		DomainID VARCHAR(30)   NOT NULL,
 		Revision BIGINT        NOT NULL,
-		LogID    BIGINT        NOT NULL,
-		Low      BIGINT        NOT NULL, 
-		High     BIGINT        NOT NULL,
-		PRIMARY KEY(DomainID, Revision, LogID)
+		Sources  BLOB          NOT NULL,
+		PRIMARY KEY(DomainID, Revision)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Queue (
 		DomainID VARCHAR(30)   NOT NULL,
@@ -166,70 +162,34 @@ func readMutations(rows *sql.Rows) (int64, []*pb.Entry, error) {
 // WriteBatchSources saves the mutations in the database.
 // If revision has alredy been defined, this will fail.
 func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revision int64,
-	sources map[int64]*spb.MapMetadata_SourceSlice) (ret error) {
-	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	sources map[int64]*spb.MapMetadata_SourceSlice) error {
+	sourceData, err := proto.Marshal(&spb.MapMetadata{Sources: sources})
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if ret != nil {
-			if err := tx.Rollback(); err != nil {
-				ret = status.Errorf(codes.Internal, "%v, and could not rollback: %v", ret, err)
-			}
-		}
-	}()
-
-	// Search for existing domainID/revision.
-	var count int64
-	if err := tx.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM Batches WHERE DomainID = ? AND Revision = ?;`,
-		domainID, revision).Scan(&count); err != nil {
-		return fmt.Errorf("error querying batch definition: %v", err)
+	if _, err := m.db.ExecContext(ctx,
+		`INSERT INTO Batches (DomainID, Revision, Sources) VALUES (?, ?, ?);`,
+		domainID, revision, sourceData); err != nil {
+		return fmt.Errorf("insert batch boundary (%v, %v) failed: %v",
+			domainID, revision, err)
 	}
-	if count > 0 {
-		return status.Errorf(codes.AlreadyExists,
-			"a batch definition for %v rev %v already exists with %v logs",
-			domainID, revision, count)
-	}
-
-	for logID, source := range sources {
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO Batches (DomainID, Revision, LogID, Low, High) VALUES (?, ?, ?, ?, ?);`,
-			domainID, revision, logID, source.LowestWatermark, source.HighestWatermark); err != nil {
-			return fmt.Errorf("insert batch boundary (%v, %v, %v, %v) failed: %v",
-				domainID, revision, logID, source, err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit failed: %v", err)
-	}
-	return nil
+	return err
 }
 
 // ReadBatch returns the batch definitions for a given revision.
 func (m *Mutations) ReadBatch(ctx context.Context, domainID string,
 	revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error) {
-	watermarks := make(map[int64]*spb.MapMetadata_SourceSlice)
-	rows, err := m.db.QueryContext(ctx,
-		`SELECT LogID, Low, High FROM Batches WHERE DomainID = ? AND Revision = ?;`,
-		domainID, revision)
-	if err != nil {
+	var sourceData []byte
+	if err := m.db.QueryRowContext(ctx,
+		`SELECT Sources FROM Batches WHERE DomainID = ? AND Revision = ?;`,
+		domainID, revision).Scan(&sourceData); err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var logID, low, high int64
-		if err := rows.Scan(&logID, &low, &high); err != nil {
-			return nil, err
-		}
-		watermarks[logID] = &spb.MapMetadata_SourceSlice{
-			LowestWatermark:  low,
-			HighestWatermark: high,
-		}
 
-	}
-	if err := rows.Err(); err != nil {
+	var mapMetadata spb.MapMetadata
+	if err := proto.Unmarshal(sourceData, &mapMetadata); err != nil {
 		return nil, err
 	}
-	return watermarks, nil
+
+	return mapMetadata.Sources, nil
 }
