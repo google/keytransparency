@@ -111,27 +111,27 @@ func TestReadBatch(t *testing.T) {
 
 	domainID := "readbatchtest"
 	for _, tc := range []struct {
-		rev     int64
-		sources map[int64]*spb.MapMetadata_SourceSlice
+		rev  int64
+		want map[int64]*spb.MapMetadata_SourceSlice
 	}{
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{
+		{rev: 0, want: map[int64]*spb.MapMetadata_SourceSlice{
 			1: {HighestWatermark: 10},
 			2: {HighestWatermark: 20},
 		}},
-		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{
+		{rev: 1, want: map[int64]*spb.MapMetadata_SourceSlice{
 			1: {HighestWatermark: 11},
 			2: {HighestWatermark: 22},
 		}},
 	} {
-		if err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.sources); err != nil {
+		if err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.want); err != nil {
 			t.Fatalf("WriteBatch(%v): %v", tc.rev, err)
 		}
-		highs, err := m.ReadBatch(ctx, domainID, tc.rev)
+		got, err := m.ReadBatch(ctx, domainID, tc.rev)
 		if err != nil {
 			t.Fatalf("ReadBatch(%v): %v", tc.rev, err)
 		}
-		if !cmp.Equal(highs, tc.sources, cmp.Comparer(proto.Equal)) {
-			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, highs, tc.sources)
+		if !cmp.Equal(got, tc.want, cmp.Comparer(proto.Equal)) {
+			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, got, tc.want)
 		}
 	}
 }
