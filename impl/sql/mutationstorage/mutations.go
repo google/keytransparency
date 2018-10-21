@@ -161,9 +161,8 @@ func readMutations(rows *sql.Rows) (int64, []*pb.Entry, error) {
 
 // WriteBatchSources saves the mutations in the database.
 // If revision has alredy been defined, this will fail.
-func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revision int64,
-	sources map[int64]*spb.MapMetadata_SourceSlice) error {
-	sourceData, err := proto.Marshal(&spb.MapMetadata{Sources: sources})
+func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revision int64, sources *spb.MapMetadata) error {
+	sourceData, err := proto.Marshal(sources)
 	if err != nil {
 		return err
 	}
@@ -178,7 +177,7 @@ func (m *Mutations) WriteBatchSources(ctx context.Context, domainID string, revi
 
 // ReadBatch returns the batch definitions for a given revision.
 func (m *Mutations) ReadBatch(ctx context.Context, domainID string,
-	revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error) {
+	revision int64) (*spb.MapMetadata, error) {
 	var sourceData []byte
 	if err := m.db.QueryRowContext(ctx,
 		`SELECT Sources FROM Batches WHERE DomainID = ? AND Revision = ?;`,
@@ -191,5 +190,5 @@ func (m *Mutations) ReadBatch(ctx context.Context, domainID string,
 		return nil, err
 	}
 
-	return mapMetadata.Sources, nil
+	return &mapMetadata, nil
 }

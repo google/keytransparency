@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/mattn/go-sqlite3"
@@ -93,7 +94,7 @@ func TestWriteBatch(t *testing.T) {
 		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{}},
 		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}, wantErr: true},
 	} {
-		err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.sources)
+		err := m.WriteBatchSources(ctx, domainID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
 		if got, want := err != nil, tc.wantErr; got != want {
 			t.Errorf("WriteBatchSources(%v, %v): err: %v. code: %v, want %v",
 				tc.rev, tc.sources, err, got, want)
@@ -112,16 +113,16 @@ func TestReadBatch(t *testing.T) {
 	domainID := "readbatchtest"
 	for _, tc := range []struct {
 		rev  int64
-		want map[int64]*spb.MapMetadata_SourceSlice
+		want *spb.MapMetadata
 	}{
-		{rev: 0, want: map[int64]*spb.MapMetadata_SourceSlice{
+		{rev: 0, want: &spb.MapMetadata{Sources: map[int64]*spb.MapMetadata_SourceSlice{
 			1: {HighestWatermark: 10},
 			2: {HighestWatermark: 20},
-		}},
-		{rev: 1, want: map[int64]*spb.MapMetadata_SourceSlice{
+		}}},
+		{rev: 1, want: &spb.MapMetadata{Sources: map[int64]*spb.MapMetadata_SourceSlice{
 			1: {HighestWatermark: 11},
 			2: {HighestWatermark: 22},
-		}},
+		}}},
 	} {
 		if err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.want); err != nil {
 			t.Fatalf("WriteBatch(%v): %v", tc.rev, err)

@@ -81,10 +81,10 @@ type LogsReader interface {
 type Batcher interface {
 	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
 	WriteBatchSources(ctx context.Context, domainID string,
-		revision int64, sources map[int64]*spb.MapMetadata_SourceSlice) error
+		revision int64, sources *spb.MapMetadata) error
 	// ReadBatch returns the batch definitions for a given revision.
 	ReadBatch(ctx context.Context, domainID string,
-		revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error)
+		revision int64) (*spb.MapMetadata, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -156,15 +156,15 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	// Count items to be processed.  Unfortunately, this means we will be
 	// reading the items to be processed twice.  Once, here in RunBatch and
 	// again in CreateEpoch.
-	sources := make(map[int64]*spb.MapMetadata_SourceSlice)
+	meta := &spb.MapMetadata{Sources: make(map[int64]*spb.MapMetadata_SourceSlice)}
 	for sliceID, high := range highs {
-		sources[sliceID] = &spb.MapMetadata_SourceSlice{
+		meta.Sources[sliceID] = &spb.MapMetadata_SourceSlice{
 			LowestWatermark:  lastMeta.Sources[sliceID].GetHighestWatermark(),
 			HighestWatermark: high,
 		}
 	}
 
-	msgs, err := s.readMessages(ctx, in.DomainId, sources)
+	msgs, err := s.readMessages(ctx, in.DomainId, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return &empty.Empty{}, nil
 	}
 
-	if err := s.batcher.WriteBatchSources(ctx, in.DomainId, int64(latestMapRoot.Revision)+1, sources); err != nil {
+	if err := s.batcher.WriteBatchSources(ctx, in.DomainId, int64(latestMapRoot.Revision)+1, meta); err != nil {
 		return nil, err
 	}
 
@@ -183,9 +183,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 }
 
 func (s *Server) readMessages(ctx context.Context, domainID string,
-	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
+	meta *spb.MapMetadata) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
-	for logID, source := range sources {
+	for logID, source := range meta.Sources {
 		batch, err := s.logs.ReadLog(ctx, domainID, logID,
 			source.GetLowestWatermark(), source.GetHighestWatermark())
 		if err != nil {
@@ -204,11 +204,11 @@ func (s *Server) readMessages(ctx context.Context, domainID string,
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	domainID := in.GetDomainId()
-	sources, err := s.batcher.ReadBatch(ctx, in.DomainId, in.Revision)
+	meta, err := s.batcher.ReadBatch(ctx, in.DomainId, in.Revision)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DomainId, in.Revision, err)
 	}
-	msgs, err := s.readMessages(ctx, in.DomainId, sources)
+	msgs, err := s.readMessages(ctx, in.DomainId, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	// Serialize metadata
-	metadata, err := proto.Marshal(&spb.MapMetadata{Sources: sources})
+	metadata, err := proto.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
