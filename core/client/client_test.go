@@ -291,7 +291,7 @@ func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, domainID stri
 }
 
 func (f *fakeVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.Smr)
+	smr, err := f.VerifySignedMapRoot(in.MapRoot)
 	return &types.LogRootV1{}, smr, err
 }
 

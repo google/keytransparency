@@ -206,13 +206,13 @@ message GetLatestEpochRequest {
 message Epoch {
   // domain_id is the domain identifier.
   string domain_id = 1;
-  // smr contains the signed map root for the sparse Merkle Tree.
-  trillian.SignedMapRoot smr = 2;
+  // map_root contains the signed map root for the sparse Merkle Tree.
+  trillian.SignedMapRoot map_root = 2;
   // log_root is the latest globally consistent log root.
   trillian.SignedLogRoot log_root = 3;
   // log_consistency proves that log_root is consistent with previously seen roots.
   repeated bytes log_consistency = 4;
-  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  // log_inclusion proves that map_root is part of log_root at index=map_root.MapRevision.
   repeated bytes log_inclusion = 5;
 }
 
