@@ -122,17 +122,17 @@ func TestPaginateHistory(t *testing.T) {
 
 	srv := &fakeKeyServer{
 		revisions: map[int64]*pb.GetEntryResponse{
-			0:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
-			1:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{1}}},
-			2:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{2}}},
-			3:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{3}}},
-			4:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{4}}},
-			5:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{5}}},
-			6:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{6}}},
-			7:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{7}}},
-			8:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{8}}},
-			9:  {Smr: &trillian.SignedMapRoot{MapRoot: []byte{9}}},
-			10: {Smr: &trillian.SignedMapRoot{MapRoot: []byte{10}}},
+			0:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{0}}},
+			1:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{1}}},
+			2:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{2}}},
+			3:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{3}}},
+			4:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{4}}},
+			5:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{5}}},
+			6:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{6}}},
+			7:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{7}}},
+			8:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{8}}},
+			9:  {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{9}}},
+			10: {MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{10}}},
 		},
 	}
 	s, stop, err := testutil.NewFakeKT(srv)
@@ -286,7 +286,7 @@ func (f *fakeVerifier) Index(vrfProof []byte, domainID string, appID string, use
 }
 
 func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, domainID string, appID string, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.Smr)
+	smr, err := f.VerifySignedMapRoot(in.MapRoot)
 	return smr, &types.LogRootV1{}, err
 }
 

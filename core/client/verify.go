@@ -131,14 +131,14 @@ func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, domainID, app
 	}
 	leafProof.Leaf.Index = index
 
-	if err := v.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {
+	if err := v.VerifyMapLeafInclusion(in.GetMapRoot(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
 	epoch := &pb.Epoch{
-		Smr:            in.GetSmr(),
+		Smr:            in.GetMapRoot(),
 		LogRoot:        in.GetLogRoot(),
 		LogConsistency: in.GetLogConsistency(),
 		LogInclusion:   in.GetLogInclusion(),
