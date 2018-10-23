@@ -73,7 +73,7 @@ func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch i
 
 // EpochMutations fetches all the mutations in an epoch
 func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.MutationProof, error) {
-	mapRoot, err := c.VerifySignedMapRoot(epoch.GetSmr())
+	mapRoot, err := c.VerifySignedMapRoot(epoch.GetMapRoot())
 	if err != nil {
 		return nil, err
 	}

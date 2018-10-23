@@ -123,12 +123,12 @@ message GetEntryResponse {
   // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle
   // Tree.
   trillian.MapLeafInclusion leaf_proof = 3;
-  // smr contains the signed map head for the sparse Merkle Tree.
-  // smr is also stored in the append only log.
-  trillian.SignedMapRoot smr = 4;
+  // map_root contains the signed map head for the sparse Merkle Tree.
+  // map_root is also stored in the append only log.
+  trillian.SignedMapRoot map_root = 4;
 
   //
-  // Trillian log layer proves that smr is part of a globally consistent, append only log.
+  // Trillian log layer proves that the map_root is part of a globally consistent, append only log.
   //
 
   // log_root is the latest globally consistent log root.
@@ -136,7 +136,7 @@ message GetEntryResponse {
   trillian.SignedLogRoot log_root = 5;
   // log_consistency proves that log_root is consistent with previously seen roots.
   repeated bytes log_consistency = 6;
-  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  // log_inclusion proves that map_root is part of log_root at index=map_root.MapRevision.
   repeated bytes log_inclusion = 7;
 }
 
@@ -206,13 +206,13 @@ message GetLatestEpochRequest {
 message Epoch {
   // domain_id is the domain identifier.
   string domain_id = 1;
-  // smr contains the signed map root for the sparse Merkle Tree.
-  trillian.SignedMapRoot smr = 2;
+  // map_root contains the signed map root for the sparse Merkle Tree.
+  trillian.SignedMapRoot map_root = 2;
   // log_root is the latest globally consistent log root.
   trillian.SignedLogRoot log_root = 3;
   // log_consistency proves that log_root is consistent with previously seen roots.
   repeated bytes log_consistency = 4;
-  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  // log_inclusion proves that map_root is part of log_root at index=map_root.MapRevision.
   repeated bytes log_inclusion = 5;
 }
 
