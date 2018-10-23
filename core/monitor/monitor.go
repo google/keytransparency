@@ -141,7 +141,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 		var smr *trillian.SignedMapRoot
 		var errList []error
 
-		if errs := m.verifyMutations(mutations, pair.A.GetSmr(), mapRootB); len(errs) > 0 {
+		if errs := m.verifyMutations(mutations, pair.A.GetMapRoot(), mapRootB); len(errs) > 0 {
 			glog.Errorf("Invalid Epoch %v Mutations: %v", mapRootB.Revision, errs)
 			errList = errs
 		} else {

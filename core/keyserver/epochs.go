@@ -101,7 +101,7 @@ func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain,
 
 	return &pb.Epoch{
 		DomainId:       d.DomainID,
-		Smr:            resp.GetMapRoot(),
+		MapRoot:        resp.GetMapRoot(),
 		LogRoot:        logRoot,
 		LogConsistency: logConsistency.GetHashes(),
 		LogInclusion:   logInclusion.GetHashes(),

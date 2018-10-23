@@ -65,7 +65,7 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 			if _, slr, err = v.VerifyGetEntryResponse(ctx, domainPB.DomainId, tc.AppID, tc.UserID, *trusted, tc.Resp); err != nil {
 				t.Errorf("VerifyGetEntryResponse(): %v)", err)
 			}
-			if tc.TrustNewLog {
+			if err == nil && tc.TrustNewLog {
 				trusted = slr
 			}
 		})
