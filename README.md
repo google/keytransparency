@@ -48,7 +48,7 @@ development.
 1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
 
   ```sh
-  keytransparency-client post user@directory.com app1 --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
+  keytransparency-client post user@domain.com app1 --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
   ```
 
 #### Get and verify a public key
