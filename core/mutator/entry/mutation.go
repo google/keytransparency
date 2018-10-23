@@ -111,7 +111,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle, trustedTreeSize int64) (*pb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEntryRequest, error) {
 	mutation, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -136,10 +136,9 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle, trustedTreeSiz
 	}
 
 	return &pb.UpdateEntryRequest{
-		DomainId:      m.DomainID,
-		UserId:        m.UserID,
-		AppId:         m.AppID,
-		FirstTreeSize: trustedTreeSize,
+		DomainId: m.DomainID,
+		UserId:   m.UserID,
+		AppId:    m.AppID,
 		EntryUpdate: &pb.EntryUpdate{
 			Mutation: mutation,
 			Committed: &pb.Committed{
