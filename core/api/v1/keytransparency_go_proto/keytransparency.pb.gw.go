@@ -29,11 +29,11 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_KeyTransparency_GetDomain_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparency_GetDirectory_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_KeyTransparency_GetDomain_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetDomainRequest
+func request_KeyTransparency_GetDirectory_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetDirectoryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -43,28 +43,28 @@ func request_KeyTransparency_GetDomain_0(ctx context.Context, marshaler runtime.
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetDomain_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetDirectory_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetDomain(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetDirectory(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
 var (
-	filter_KeyTransparency_GetEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_GetEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_KeyTransparency_GetEpoch_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -78,15 +78,15 @@ func request_KeyTransparency_GetEpoch_0(ctx context.Context, marshaler runtime.M
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["epoch"]
@@ -110,7 +110,7 @@ func request_KeyTransparency_GetEpoch_0(ctx context.Context, marshaler runtime.M
 }
 
 var (
-	filter_KeyTransparency_GetLatestEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparency_GetLatestEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_KeyTransparency_GetLatestEpoch_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -124,15 +124,15 @@ func request_KeyTransparency_GetLatestEpoch_0(ctx context.Context, marshaler run
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetLatestEpoch_0); err != nil {
@@ -145,7 +145,7 @@ func request_KeyTransparency_GetLatestEpoch_0(ctx context.Context, marshaler run
 }
 
 var (
-	filter_KeyTransparency_GetEpochStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparency_GetEpochStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_KeyTransparency_GetEpochStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (KeyTransparency_GetEpochStreamClient, runtime.ServerMetadata, error) {
@@ -159,15 +159,15 @@ func request_KeyTransparency_GetEpochStream_0(ctx context.Context, marshaler run
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetEpochStream_0); err != nil {
@@ -188,7 +188,7 @@ func request_KeyTransparency_GetEpochStream_0(ctx context.Context, marshaler run
 }
 
 var (
-	filter_KeyTransparency_ListMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_ListMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_KeyTransparency_ListMutations_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -202,15 +202,15 @@ func request_KeyTransparency_ListMutations_0(ctx context.Context, marshaler runt
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["epoch"]
@@ -234,7 +234,7 @@ func request_KeyTransparency_ListMutations_0(ctx context.Context, marshaler runt
 }
 
 var (
-	filter_KeyTransparency_ListMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_ListMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_KeyTransparency_ListMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (KeyTransparency_ListMutationsStreamClient, runtime.ServerMetadata, error) {
@@ -248,15 +248,15 @@ func request_KeyTransparency_ListMutationsStream_0(ctx context.Context, marshale
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["epoch"]
@@ -288,7 +288,7 @@ func request_KeyTransparency_ListMutationsStream_0(ctx context.Context, marshale
 }
 
 var (
-	filter_KeyTransparency_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_KeyTransparency_GetEntry_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
 func request_KeyTransparency_GetEntry_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -302,15 +302,15 @@ func request_KeyTransparency_GetEntry_0(ctx context.Context, marshaler runtime.M
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["app_id"]
@@ -345,7 +345,7 @@ func request_KeyTransparency_GetEntry_0(ctx context.Context, marshaler runtime.M
 }
 
 var (
-	filter_KeyTransparency_ListEntryHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{"domain_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_KeyTransparency_ListEntryHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "app_id": 1, "user_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
 func request_KeyTransparency_ListEntryHistory_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -359,15 +359,15 @@ func request_KeyTransparency_ListEntryHistory_0(ctx context.Context, marshaler r
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["app_id"]
@@ -416,15 +416,15 @@ func request_KeyTransparency_QueueEntryUpdate_0(ctx context.Context, marshaler r
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["app_id"]
@@ -492,7 +492,7 @@ func RegisterKeyTransparencyHandler(ctx context.Context, mux *runtime.ServeMux, 
 // "KeyTransparencyClient" to call the correct interceptors.
 func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.ServeMux, client KeyTransparencyClient) error {
 
-	mux.Handle("GET", pattern_KeyTransparency_GetDomain_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetDirectory_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -510,14 +510,14 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparency_GetDomain_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetDirectory_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparency_GetDomain_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetDirectory_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -757,27 +757,27 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 }
 
 var (
-	pattern_KeyTransparency_GetDomain_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "domains", "domain_id"}, ""))
+	pattern_KeyTransparency_GetDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, ""))
 
-	pattern_KeyTransparency_GetEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "domains", "domain_id", "epochs", "epoch"}, ""))
+	pattern_KeyTransparency_GetEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "epochs", "epoch"}, ""))
 
-	pattern_KeyTransparency_GetLatestEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "domains", "domain_id", "epochs"}, "latest"))
+	pattern_KeyTransparency_GetLatestEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "epochs"}, "latest"))
 
-	pattern_KeyTransparency_GetEpochStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "domains", "domain_id", "epochs"}, "stream"))
+	pattern_KeyTransparency_GetEpochStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "epochs"}, "stream"))
 
-	pattern_KeyTransparency_ListMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "domains", "domain_id", "epochs", "epoch", "mutations"}, ""))
+	pattern_KeyTransparency_ListMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "directories", "directory_id", "epochs", "epoch", "mutations"}, ""))
 
-	pattern_KeyTransparency_ListMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "domains", "domain_id", "epochs", "epoch", "mutations"}, "stream"))
+	pattern_KeyTransparency_ListMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "directories", "directory_id", "epochs", "epoch", "mutations"}, "stream"))
 
-	pattern_KeyTransparency_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, ""))
+	pattern_KeyTransparency_GetEntry_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "directories", "directory_id", "apps", "app_id", "users", "user_id"}, ""))
 
-	pattern_KeyTransparency_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id", "history"}, ""))
+	pattern_KeyTransparency_ListEntryHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1", "directories", "directory_id", "apps", "app_id", "users", "user_id", "history"}, ""))
 
-	pattern_KeyTransparency_QueueEntryUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "domains", "domain_id", "apps", "app_id", "users", "user_id"}, "queue"))
+	pattern_KeyTransparency_QueueEntryUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1", "directories", "directory_id", "apps", "app_id", "users", "user_id"}, "queue"))
 )
 
 var (
-	forward_KeyTransparency_GetDomain_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_GetDirectory_0 = runtime.ForwardResponseMessage
 
 	forward_KeyTransparency_GetEpoch_0 = runtime.ForwardResponseMessage
 

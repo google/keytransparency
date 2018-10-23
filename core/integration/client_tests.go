@@ -73,8 +73,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
 			func(ctx context.Context) error {
 				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-					DomainId: env.Domain.DomainId,
-					MinBatch: 1,
+					DirectoryId: env.Directory.DirectoryId,
+					MinBatch:    1,
 				})
 				return err
 			}); err != nil {
@@ -177,7 +177,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			// Update profile.
 			if tc.setProfile != nil {
 				u := &tpb.User{
-					DomainId:       env.Domain.DomainId,
+					DirectoryId:    env.Directory.DirectoryId,
 					AppId:          appID,
 					UserId:         tc.userID,
 					PublicKeyData:  tc.setProfile,
@@ -211,7 +211,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 
-	if err := env.setupHistory(ctx, env.Domain, userID, signers, authorizedKeys, opts); err != nil {
+	if err := env.setupHistory(ctx, env.Directory, userID, signers, authorizedKeys, opts); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
 	}
 
@@ -253,7 +253,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	}
 }
 
-func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []*tink.KeysetHandle, authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
+func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []*tink.KeysetHandle, authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -272,7 +272,7 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 	} {
 		if p != nil {
 			u := &tpb.User{
-				DomainId:       domain.DomainId,
+				DirectoryId:    directory.DirectoryId,
 				AppId:          appID,
 				UserId:         userID,
 				PublicKeyData:  p,
@@ -290,15 +290,15 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 				return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 			}
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-				DomainId: domain.DomainId,
-				MinBatch: 1,
+				DirectoryId: directory.DirectoryId,
+				MinBatch:    1,
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}
 		} else {
 			// Create an empty epoch.
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-				DomainId: domain.DomainId,
+				DirectoryId: directory.DirectoryId,
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(empty): %v", err)
 			}

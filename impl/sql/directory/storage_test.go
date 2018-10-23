@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package domain
+package directory
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -31,7 +31,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func newStorage(t *testing.T) (s domain.Storage, close func()) {
+func newStorage(t *testing.T) (s directory.Storage, close func()) {
 	t.Helper()
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
@@ -51,13 +51,13 @@ func TestList(t *testing.T) {
 	s, closeF := newStorage(t)
 	defer closeF()
 	for _, tc := range []struct {
-		domains     []*domain.Domain
+		directories []*directory.Directory
 		readDeleted bool
 	}{
 		{
-			domains: []*domain.Domain{
+			directories: []*directory.Directory{
 				{
-					DomainID:    "domain1",
+					DirectoryID: "directory1",
 					MapID:       1,
 					LogID:       2,
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -66,7 +66,7 @@ func TestList(t *testing.T) {
 					MaxInterval: 5 * time.Second,
 				},
 				{
-					DomainID:    "domain2",
+					DirectoryID: "directory2",
 					MapID:       1,
 					LogID:       2,
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -77,19 +77,19 @@ func TestList(t *testing.T) {
 			},
 		},
 	} {
-		for _, d := range tc.domains {
+		for _, d := range tc.directories {
 			if err := s.Write(ctx, d); err != nil {
 				t.Errorf("Write(): %v", err)
 				continue
 			}
 		}
 
-		domains, err := s.List(ctx, tc.readDeleted)
+		directories, err := s.List(ctx, tc.readDeleted)
 		if err != nil {
 			t.Errorf("List(): %v", err)
 			continue
 		}
-		if got, want := domains, tc.domains; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
+		if got, want := directories, tc.directories; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
 			t.Errorf("List(): %#v, want %#v, diff: \n%v", got, want, cmp.Diff(got, want))
 		}
 	}
@@ -101,7 +101,7 @@ func TestWriteReadDelete(t *testing.T) {
 	defer closeF()
 	for _, tc := range []struct {
 		desc                 string
-		d                    domain.Domain
+		d                    directory.Directory
 		write                bool
 		wantWriteErr         bool
 		setDelete, isDeleted bool
@@ -111,8 +111,8 @@ func TestWriteReadDelete(t *testing.T) {
 		{
 			desc:  "Success",
 			write: true,
-			d: domain.Domain{
-				DomainID:    "testdomain",
+			d: directory.Directory{
+				DirectoryID: "testdirectory",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -122,10 +122,10 @@ func TestWriteReadDelete(t *testing.T) {
 			},
 		},
 		{
-			desc:  "Duplicate DomainID",
+			desc:  "Duplicate DirectoryID",
 			write: true,
-			d: domain.Domain{
-				DomainID:    "testdomain",
+			d: directory.Directory{
+				DirectoryID: "testdirectory",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -137,8 +137,8 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Delete",
-			d: domain.Domain{
-				DomainID:    "testdomain",
+			d: directory.Directory{
+				DirectoryID: "testdirectory",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -153,8 +153,8 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Read deleted",
-			d: domain.Domain{
-				DomainID:    "testdomain",
+			d: directory.Directory{
+				DirectoryID: "testdirectory",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -169,8 +169,8 @@ func TestWriteReadDelete(t *testing.T) {
 		},
 		{
 			desc: "Undelete",
-			d: domain.Domain{
-				DomainID:    "testdomain",
+			d: directory.Directory{
+				DirectoryID: "testdirectory",
 				MapID:       1,
 				LogID:       2,
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -198,21 +198,21 @@ func TestWriteReadDelete(t *testing.T) {
 			if tc.setDelete {
 				tc.d.DeletedTimestamp = time.Now().Truncate(time.Second)
 				tc.d.Deleted = tc.isDeleted
-				if err := s.SetDelete(ctx, tc.d.DomainID, tc.isDeleted); err != nil {
-					t.Errorf("SetDelete(%v, %v): %v", tc.d.DomainID, tc.isDeleted, err)
+				if err := s.SetDelete(ctx, tc.d.DirectoryID, tc.isDeleted); err != nil {
+					t.Errorf("SetDelete(%v, %v): %v", tc.d.DirectoryID, tc.isDeleted, err)
 					return
 				}
 			}
 
-			domain, err := s.Read(ctx, tc.d.DomainID, tc.readDeleted)
+			directory, err := s.Read(ctx, tc.d.DirectoryID, tc.readDeleted)
 			if got, want := err != nil, tc.wantReadErr; got != want {
 				t.Errorf("Read(): %v, want err: %v", err, want)
 			}
 			if err != nil {
 				return
 			}
-			if got, want := *domain, tc.d; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
-				t.Errorf("Read(%v, %v): %#v, want %#v, diff: \n%v", tc.d.DomainID, tc.readDeleted, got, want, cmp.Diff(got, want))
+			if got, want := *directory, tc.d; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
+				t.Errorf("Read(%v, %v): %#v, want %#v, diff: \n%v", tc.d.DirectoryID, tc.readDeleted, got, want, cmp.Diff(got, want))
 			}
 		})
 	}
@@ -223,26 +223,26 @@ func TestDelete(t *testing.T) {
 	s, closeF := newStorage(t)
 	defer closeF()
 	for _, tc := range []struct {
-		domainID string
+		directoryID string
 	}{
-		{domainID: "test"},
+		{directoryID: "test"},
 	} {
-		d := &domain.Domain{
-			DomainID: tc.domainID,
-			VRF:      &keyspb.PublicKey{Der: []byte("pubkeybytes")},
-			VRFPriv:  &keyspb.PrivateKey{Der: []byte("privkeybytes")},
+		d := &directory.Directory{
+			DirectoryID: tc.directoryID,
+			VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
+			VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 		}
 		if err := s.Write(ctx, d); err != nil {
 			t.Errorf("Write(): %v", err)
 		}
-		if err := s.Delete(ctx, tc.domainID); err != nil {
+		if err := s.Delete(ctx, tc.directoryID); err != nil {
 			t.Errorf("Delete(): %v", err)
 		}
-		_, err := s.Read(ctx, tc.domainID, true)
+		_, err := s.Read(ctx, tc.directoryID, true)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}
-		_, err = s.Read(ctx, tc.domainID, false)
+		_, err = s.Read(ctx, tc.directoryID, false)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}

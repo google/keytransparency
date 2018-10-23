@@ -33,7 +33,7 @@ type Env struct {
 	Client    *client.Client
 	Cli       pb.KeyTransparencyClient
 	Sequencer spb.KeyTransparencySequencerClient
-	Domain    *pb.Domain
+	Directory *pb.Directory
 	Timeout   time.Duration
 	CallOpts  CallOptions
 }

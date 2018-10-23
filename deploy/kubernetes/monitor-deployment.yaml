@@ -23,7 +23,7 @@ spec:
         - --addr=0.0.0.0:8099
         - --kt-url=server:8080
         - --insecure
-        - --domainid=default
+        - --directoryid=default
         - --tls-key=/kt/server.key
         - --tls-cert=/kt/server.crt
         - --sign-key=/kt/monitor_sign-key.pem

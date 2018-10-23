@@ -29,7 +29,7 @@ func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate
 	t.Helper()
 	index := []byte{byte(id)}
 	userID := string(id)
-	m := entry.NewMutation(index, "domain", "app", userID)
+	m := entry.NewMutation(index, "directory", "app", userID)
 	signers := []*tink.KeysetHandle{signer}
 	pubkey, err := signer.Public()
 	if err != nil {
@@ -87,8 +87,8 @@ func TestDuplicateMutations(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			domainID := "test"
-			newLeaves, err := s.applyMutations(domainID, entry.New(), tc.msgs, tc.leaves)
+			directoryID := "test"
+			newLeaves, err := s.applyMutations(directoryID, entry.New(), tc.msgs, tc.leaves)
 			if err != nil {
 				t.Errorf("applyMutations(): %v", err)
 			}

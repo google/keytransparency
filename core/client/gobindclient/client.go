@@ -69,7 +69,7 @@ func SetTimeout(ms int32) {
 }
 
 // AddKtServer creates a new grpc client to handle connections to the ktURL server and adds it to the global map of clients.
-func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfoHash []byte) error {
+func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryInfoHash []byte) error {
 	if _, exists := clients[ktURL]; exists {
 		return fmt.Errorf("The KtServer connection for %v already exists", ktURL)
 	}
@@ -85,13 +85,13 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	config, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{})
+	config, err := ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{})
 	if err != nil {
 		return fmt.Errorf("Error getting config: %v", err)
 	}
 
-	if len(domainInfoHash) == 0 {
-		Vlog.Print("Warning: no domainInfoHash provided. Key material from the server will be trusted.")
+	if len(directoryInfoHash) == 0 {
+		Vlog.Print("Warning: no directoryInfoHash provided. Key material from the server will be trusted.")
 	} else {
 		cj, err := objecthash.CommonJSONify(config)
 		if err != nil {
@@ -101,8 +101,8 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, domainInfo
 		if err != nil {
 			return fmt.Errorf("ObjectHash(): %v", err)
 		}
-		if !bytes.Equal(got[:], domainInfoHash) {
-			return fmt.Errorf("The KtServer %v returned a domainInfoResponse inconsistent with the provided domainInfoHash", ktURL)
+		if !bytes.Equal(got[:], directoryInfoHash) {
+			return fmt.Errorf("The KtServer %v returned a directoryInfoResponse inconsistent with the provided directoryInfoHash", ktURL)
 		}
 	}
 

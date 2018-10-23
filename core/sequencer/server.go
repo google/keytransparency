@@ -21,7 +21,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -37,44 +37,44 @@ import (
 )
 
 const (
-	domainIDLabel = "domainid"
-	reasonLabel   = "reason"
+	directoryIDLabel = "directoryid"
+	reasonLabel      = "reason"
 )
 
 var (
 	once             sync.Once
-	knownDomains     monitoring.Gauge
+	knownDirectories monitoring.Gauge
 	batchSize        monitoring.Gauge
 	mutationCount    monitoring.Counter
 	mutationFailures monitoring.Counter
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
-	knownDomains = mf.NewGauge(
-		"known_domains",
-		"Set to 1 for known domains (whether this instance is master or not)",
-		domainIDLabel)
+	knownDirectories = mf.NewGauge(
+		"known_directories",
+		"Set to 1 for known directories (whether this instance is master or not)",
+		directoryIDLabel)
 	mutationCount = mf.NewCounter(
 		"mutation_count",
-		"Number of mutations the signer has processed for domainid since process start",
-		domainIDLabel)
+		"Number of mutations the signer has processed for directoryid since process start",
+		directoryIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
-		"Number of invalid mutations the signer has processed for domainid since process start",
-		domainIDLabel, reasonLabel)
+		"Number of invalid mutations the signer has processed for directoryid since process start",
+		directoryIDLabel, reasonLabel)
 	batchSize = mf.NewGauge(
 		"batch_size",
-		"Number of mutations the signer is attempting to process for domainid",
-		domainIDLabel)
+		"Number of mutations the signer is attempting to process for directoryid",
+		directoryIDLabel)
 }
 
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
 	// HighWatermarks returns the highest primary key for each log in the mutations table.
-	HighWatermarks(ctx context.Context, domainID string) (map[int64]int64, error)
+	HighWatermarks(ctx context.Context, directoryID string) (map[int64]int64, error)
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
-	ReadLog(ctx context.Context, domainID string, logID, low, high int64) ([]*mutator.LogMessage, error)
+	ReadLog(ctx context.Context, directoryID string, logID, low, high int64) ([]*mutator.LogMessage, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -88,7 +88,7 @@ type Server struct {
 
 // NewServer creates a new KeyTransparencySequencerServer.
 func NewServer(
-	domains domain.Storage,
+	directories directory.Storage,
 	logAdmin tpb.TrillianAdminClient,
 	mapAdmin tpb.TrillianAdminClient,
 	tlog tpb.TrillianLogClient,
@@ -99,7 +99,7 @@ func NewServer(
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
-		ktServer:  keyserver.New(nil, nil, logAdmin, mapAdmin, nil, domains, nil, nil),
+		ktServer:  keyserver.New(nil, nil, logAdmin, mapAdmin, nil, directories, nil, nil),
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
@@ -107,7 +107,7 @@ func NewServer(
 	}
 }
 
-// RunBatch runs the full sequence of steps (for one domain) nessesary to get a
+// RunBatch runs the full sequence of steps (for one directory) nessesary to get a
 // mutation from the log integrated into the map. This consists of a series of
 // idempotent steps:
 // a) assign a batch of mutations from the logs to a map revision
@@ -115,11 +115,11 @@ func NewServer(
 // c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
 	// Get the previous and current high water marks.
-	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})
+	directory, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: in.DirectoryId})
 	if err != nil {
 		return nil, err
 	}
-	mapClient, err := tclient.NewMapClientFromTree(s.tmap, domain.Map)
+	mapClient, err := tclient.NewMapClientFromTree(s.tmap, directory.Map)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
-	highs, err := s.logs.HighWatermarks(ctx, in.DomainId)
+	highs, err := s.logs.HighWatermarks(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
 	}
@@ -151,7 +151,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		}
 	}
 
-	msgs, err := s.readMessages(ctx, in.DomainId, sources)
+	msgs, err := s.readMessages(ctx, in.DirectoryId, sources)
 	if err != nil {
 		return nil, err
 	}
@@ -160,17 +160,17 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	}
 
 	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
-		DomainId:    in.DomainId,
+		DirectoryId: in.DirectoryId,
 		Revision:    int64(latestMapRoot.Revision) + 1,
 		MapMetadata: &spb.MapMetadata{Sources: sources},
 	})
 }
 
-func (s *Server) readMessages(ctx context.Context, domainID string,
+func (s *Server) readMessages(ctx context.Context, directoryID string,
 	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
 	for logID, source := range sources {
-		batch, err := s.logs.ReadLog(ctx, domainID, logID,
+		batch, err := s.logs.ReadLog(ctx, directoryID, logID,
 			source.GetLowestWatermark(), source.GetHighestWatermark())
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
@@ -187,17 +187,17 @@ func (s *Server) readMessages(ctx context.Context, domainID string,
 
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
-	domainID := in.GetDomainId()
+	directoryID := in.GetDirectoryId()
 	if in.MapMetadata.GetSources() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
 	}
-	msgs, err := s.readMessages(ctx, in.DomainId, in.MapMetadata.GetSources())
+	msgs, err := s.readMessages(ctx, in.DirectoryId, in.MapMetadata.GetSources())
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("CreateEpoch: for %v with %d messages", domainID, len(msgs))
-	// Fetch verification objects for domainID.
-	config, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: domainID})
+	glog.Infof("CreateEpoch: for %v with %d messages", directoryID, len(msgs))
+	// Fetch verification objects for directoryID.
+	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: directoryID})
 	if err != nil {
 		return nil, err
 	}
@@ -206,8 +206,8 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 		return nil, err
 	}
 
-	// Parse mutations using the mutator for this domain.
-	batchSize.Set(float64(len(msgs)), config.DomainId)
+	// Parse mutations using the mutator for this directory.
+	batchSize.Set(float64(len(msgs)), config.DirectoryId)
 	indexes := make([][]byte, 0, len(msgs))
 	for _, m := range msgs {
 		indexes = append(indexes, m.GetMutation().GetIndex())
@@ -220,7 +220,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(domainID, entry.New(), msgs, leaves)
+	newLeaves, err := s.applyMutations(directoryID, entry.New(), msgs, leaves)
 	if err != nil {
 		return nil, err
 	}
@@ -252,30 +252,30 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	for _, msg := range msgs {
 		mutations = append(mutations, msg.Mutation)
 	}
-	if err := s.mutations.WriteBatch(ctx, domainID, int64(mapRoot.Revision), mutations); err != nil {
+	if err := s.mutations.WriteBatch(ctx, directoryID, int64(mapRoot.Revision), mutations); err != nil {
 		glog.Errorf("Could not write mutations for revision %v: %v", mapRoot.Revision, err)
 		return nil, status.Errorf(codes.Internal, "mutations.WriteBatch(): %v", err)
 	}
 
-	mutationCount.Add(float64(len(msgs)), domainID)
+	mutationCount.Add(float64(len(msgs)), directoryID)
 	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
-	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DomainId: domainID})
+	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DirectoryId: directoryID})
 }
 
 // PublishBatch copies the MapRoots of all known map revisions into the Log of MapRoots.
 func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) (*empty.Empty, error) {
-	domain, err := s.ktServer.GetDomain(ctx, &ktpb.GetDomainRequest{DomainId: in.DomainId})
+	directory, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: in.DirectoryId})
 	if err != nil {
 		return nil, err
 	}
 
 	// Create verifying log and map clients.
 	trustedRoot := types.LogRootV1{} // TODO(gbelvin): Store and track trustedRoot.
-	logClient, err := tclient.NewFromTree(s.tlog, domain.Log, trustedRoot)
+	logClient, err := tclient.NewFromTree(s.tlog, directory.Log, trustedRoot)
 	if err != nil {
 		return nil, err
 	}
-	mapClient, err := tclient.NewMapClientFromTree(s.tmap, domain.Map)
+	mapClient, err := tclient.NewMapClientFromTree(s.tmap, directory.Map)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 // Multiple mutations for the same leaf will be applied to provided leaf.
 // The last valid mutation for each leaf is included in the output.
 // Returns a list of map leaves that should be updated.
-func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
+func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.Func,
 	msgs []*ktpb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[string]*tpb.MapLeaf)
@@ -341,7 +341,7 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
 			if err != nil {
 				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
-				mutationFailures.Inc(domainID, "Unmarshal")
+				mutationFailures.Inc(directoryID, "Unmarshal")
 				continue
 			}
 		}
@@ -349,19 +349,19 @@ func (s *Server) applyMutations(domainID string, mutatorFunc mutator.Func,
 		newValue, err := mutatorFunc.Mutate(oldValue, msg.Mutation)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
-			mutationFailures.Inc(domainID, "Mutate")
+			mutationFailures.Inc(directoryID, "Mutate")
 			continue // A bad mutation should not make the whole batch fail.
 		}
 		leafValue, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Warningf("ToLeafValue(): %v", err)
-			mutationFailures.Inc(domainID, "Marshal")
+			mutationFailures.Inc(directoryID, "Marshal")
 			continue
 		}
 		extraData, err := proto.Marshal(msg.Committed)
 		if err != nil {
 			glog.Warningf("proto.Marshal(): %v", err)
-			mutationFailures.Inc(domainID, "Marshal")
+			mutationFailures.Inc(directoryID, "Marshal")
 			continue
 		}
 

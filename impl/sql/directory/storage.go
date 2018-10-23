@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package domain implements the domain.Storage interface.
-package domain
+// Package directory implements the directory.Storage interface.
+package directory
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,8 +32,8 @@ import (
 
 const (
 	createSQL = `
-CREATE TABLE IF NOT EXISTS Domains(
-  DomainId              VARCHAR(40) NOT NULL,
+CREATE TABLE IF NOT EXISTS Directories(
+  DirectoryId              VARCHAR(40) NOT NULL,
   MapId                 BIGINT NOT NULL,
   LogId                 BIGINT NOT NULL,
   VRFPublicKey          MEDIUMBLOB NOT NULL,
@@ -42,33 +42,33 @@ CREATE TABLE IF NOT EXISTS Domains(
   MaxInterval           BIGINT NOT NULL,
   Deleted               INTEGER,
   DeleteTimeSeconds      BIGINT,
-  PRIMARY KEY(DomainId)
+  PRIMARY KEY(DirectoryId)
 );`
-	writeSQL = `INSERT INTO Domains 
-(DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds)
+	writeSQL = `INSERT INTO Directories
+(DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
 	readSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
-FROM Domains WHERE DomainId = ? AND Deleted = 0;`
+SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
+FROM Directories WHERE DirectoryId = ? AND Deleted = 0;`
 	readDeletedSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
-FROM Domains WHERE DomainId = ?;`
+SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
+FROM Directories WHERE DirectoryId = ?;`
 	listSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
-FROM Domains WHERE Deleted = 0;`
+SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+FROM Directories WHERE Deleted = 0;`
 	listDeletedSQL = `
-SELECT DomainId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
-FROM Domains;`
-	setDeletedSQL = `UPDATE Domains SET Deleted = ?, DeleteTimeSeconds = ? WHERE DomainId = ?`
-	deleteSQL     = `DELETE FROM Domains WHERE DomainId = ?`
+SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+FROM Directories;`
+	setDeletedSQL = `UPDATE Directories SET Deleted = ?, DeleteTimeSeconds = ? WHERE DirectoryId = ?`
+	deleteSQL     = `DELETE FROM Directories WHERE DirectoryId = ?`
 )
 
 type storage struct {
 	db *sql.DB
 }
 
-// NewStorage returns a domain.Storage client backed by an SQL table.
-func NewStorage(db *sql.DB) (domain.Storage, error) {
+// NewStorage returns a directory.Storage client backed by an SQL table.
+func NewStorage(db *sql.DB) (directory.Storage, error) {
 	s := &storage{
 		db: db,
 	}
@@ -87,7 +87,7 @@ func (s *storage) create() error {
 	return nil
 }
 
-func (s *storage) List(ctx context.Context, showDeleted bool) ([]*domain.Domain, error) {
+func (s *storage) List(ctx context.Context, showDeleted bool) ([]*directory.Directory, error) {
 	var query string
 	if showDeleted {
 		query = listDeletedSQL
@@ -106,12 +106,12 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*domain.Domain,
 	}
 	defer rows.Close()
 
-	ret := []*domain.Domain{}
+	ret := []*directory.Directory{}
 	for rows.Next() {
 		var pubkey, anyData []byte
-		d := &domain.Domain{}
+		d := &directory.Directory{}
 		if err := rows.Scan(
-			&d.DomainID,
+			&d.DirectoryID,
 			&d.MapID, &d.LogID,
 			&pubkey, &anyData,
 			&d.MinInterval, &d.MaxInterval,
@@ -129,7 +129,7 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*domain.Domain,
 	return ret, nil
 }
 
-func (s *storage) Write(ctx context.Context, d *domain.Domain) error {
+func (s *storage) Write(ctx context.Context, d *directory.Directory) error {
 	// Prepare data.
 	anyPB, err := ptypes.MarshalAny(d.VRFPriv)
 	if err != nil {
@@ -146,7 +146,7 @@ func (s *storage) Write(ctx context.Context, d *domain.Domain) error {
 	}
 	defer writeStmt.Close()
 	_, err = writeStmt.ExecContext(ctx,
-		d.DomainID,
+		d.DirectoryID,
 		d.MapID, d.LogID,
 		d.VRF.Der, anyData,
 		d.MinInterval.Nanoseconds(), d.MaxInterval.Nanoseconds(),
@@ -157,7 +157,7 @@ func (s *storage) Write(ctx context.Context, d *domain.Domain) error {
 	return err
 }
 
-func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (*domain.Domain, error) {
+func (s *storage) Read(ctx context.Context, directoryID string, showDeleted bool) (*directory.Directory, error) {
 	var SQL string
 	if showDeleted {
 		SQL = readDeletedSQL
@@ -169,11 +169,11 @@ func (s *storage) Read(ctx context.Context, domainID string, showDeleted bool) (
 		return nil, err
 	}
 	defer readStmt.Close()
-	d := &domain.Domain{}
+	d := &directory.Directory{}
 	var pubkey, anyData []byte
 	var deletedUnix int64
-	if err := readStmt.QueryRowContext(ctx, domainID).Scan(
-		&d.DomainID,
+	if err := readStmt.QueryRowContext(ctx, directoryID).Scan(
+		&d.DirectoryID,
 		&d.MapID, &d.LogID,
 		&pubkey, &anyData,
 		&d.MinInterval, &d.MaxInterval,
@@ -208,13 +208,13 @@ func unwrapAnyProto(anyData []byte) (proto.Message, error) {
 	return privKey.Message, nil
 }
 
-func (s *storage) SetDelete(ctx context.Context, domainID string, isDeleted bool) error {
-	_, err := s.db.ExecContext(ctx, setDeletedSQL, isDeleted, time.Now().Unix(), domainID)
+func (s *storage) SetDelete(ctx context.Context, directoryID string, isDeleted bool) error {
+	_, err := s.db.ExecContext(ctx, setDeletedSQL, isDeleted, time.Now().Unix(), directoryID)
 	return err
 }
 
-// Delete permanently deletes a domain.
-func (s *storage) Delete(ctx context.Context, domainID string) error {
-	_, err := s.db.ExecContext(ctx, deleteSQL, domainID)
+// Delete permanently deletes a directory.
+func (s *storage) Delete(ctx context.Context, directoryID string) error {
+	_, err := s.db.ExecContext(ctx, deleteSQL, directoryID)
 	return err
 }
