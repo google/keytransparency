@@ -43,7 +43,7 @@ message Committed {
 message EntryUpdate {
   // mutation authorizes the change to entry.
   Entry mutation = 2;
-  // commitment contains the data committed to in update.commitment.
+  // committed contains the data committed to in mutation.commitment.
   Committed committed = 3;
 }
 
