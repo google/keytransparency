@@ -90,6 +90,7 @@ development.
 1. Run Key Transparency
 
   ```sh
+$ cd $GOPATH/src/github.com/google/keytransparency
 $ docker-compose up -d
 Creating keytransparency_db_1 ...         done
 Creating keytransparency_map_server_1 ... done
@@ -105,9 +106,8 @@ Creating keytransparency_monitor_1 ...    done
 
 2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [Proof for app1/foo@bar.com](https://35.224.99.110:8080/v1/domains/default/apps/appID/users/foo@bar.com)
-- [Server configuration info](https://35.224.99.110:8080/v1/domains/default)
-- [Prometheus graphs](http://35.184.145.242:9090/alerts)
+- [Proof for app1/foo@bar.com](https://35.202.56.9/v1/domains/default/apps/appID/users/foo@bar.com)
+- [Server configuration info](https://35.202.56.9/v1/domains/default)
 
 ## Development and Testing
 Key Transparency and its [Trillian](https://github.com/google/trillian) backend
