@@ -38,7 +38,7 @@ func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate
 	if err := m.ReplaceAuthorizedKeys(pubkey.Keyset()); err != nil {
 		t.Fatalf("ReplaceAuthorizedKeys(): %v", err)
 	}
-	update, err := m.SerializeAndSign(signers, 0)
+	update, err := m.SerializeAndSign(signers)
 	if err != nil {
 		t.Fatalf("SerializeAndSign(): %v", err)
 	}
