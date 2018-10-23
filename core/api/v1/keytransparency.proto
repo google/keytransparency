@@ -174,9 +174,8 @@ message UpdateEntryRequest {
   string user_id = 1;
   // app_id is the identifier for the application.
   string app_id = 2;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 3;
+  // Used to be first_tree_size. QueueEntryUpdate no longer returns any data.
+  reserved 3;
   // entry_update contains the user submitted update.
   EntryUpdate entry_update = 4;
 }
