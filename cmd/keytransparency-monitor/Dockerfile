@@ -1,4 +1,4 @@
-FROM golang:1.9
+FROM golang:1
 
 ADD keytransparency/genfiles/* /kt/
 ADD ./keytransparency /go/src/github.com/google/keytransparency
