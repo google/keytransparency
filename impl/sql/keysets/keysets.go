@@ -30,7 +30,7 @@ const (
 	schema = `
 CREATE TABLE IF NOT EXISTS KeySets(
 InstanceID            BIGINT NOT NULL,
-DirectoryID              VARCHAR(40) NOT NULL,
+DirectoryID           VARCHAR(40) NOT NULL,
 AppID                 VARCHAR(40) NOT NULL,
 KeySet                MEDIUMBLOB NOT NULL,
 PRIMARY KEY(InstanceID,DirectoryID,AppID)

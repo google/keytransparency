@@ -40,22 +40,22 @@ var (
 	createStmt = []string{
 		`CREATE TABLE IF NOT EXISTS Mutations (
 		DirectoryID VARCHAR(30)   NOT NULL,
-		Revision BIGINT        NOT NULL,
-		Sequence INTEGER       NOT NULL,
-		Mutation BLOB          NOT NULL,
+		Revision BIGINT           NOT NULL,
+		Sequence INTEGER          NOT NULL,
+		Mutation BLOB             NOT NULL,
 		PRIMARY KEY(DirectoryID, Revision, Sequence)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Queue (
 		DirectoryID VARCHAR(30)   NOT NULL,
-		LogID    BIGINT        NOT NULL,
-		Time     BIGINT        NOT NULL,
-		Mutation BLOB          NOT NULL,
+		LogID    BIGINT           NOT NULL,
+		Time     BIGINT           NOT NULL,
+		Mutation BLOB             NOT NULL,
 		PRIMARY KEY(DirectoryID, LogID, Time)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Logs (
 		DirectoryID VARCHAR(30)   NOT NULL,
-		LogID    BIGINT        NOT NULL,
-		Enabled  INTEGER       NOT NULL,
+		LogID    BIGINT           NOT NULL,
+		Enabled  INTEGER          NOT NULL,
 		PRIMARY KEY(DirectoryID, LogID)
 	);`,
 	}

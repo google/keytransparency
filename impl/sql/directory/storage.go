@@ -33,7 +33,7 @@ import (
 const (
 	createSQL = `
 CREATE TABLE IF NOT EXISTS Directories(
-  DirectoryId              VARCHAR(40) NOT NULL,
+  DirectoryId           VARCHAR(40) NOT NULL,
   MapId                 BIGINT NOT NULL,
   LogId                 BIGINT NOT NULL,
   VRFPublicKey          MEDIUMBLOB NOT NULL,
