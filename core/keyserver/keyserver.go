@@ -176,7 +176,7 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 				LeafValue: leaf,
 			},
 		},
-		Smr:          getResp.GetMapRoot(),
+		MapRoot:      getResp.GetMapRoot(),
 		LogInclusion: logInclusion.GetProof().GetHashes(),
 	}, nil
 }

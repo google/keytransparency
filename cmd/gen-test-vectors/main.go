@@ -22,18 +22,22 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/integration"
+	"github.com/google/martian/log"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
@@ -66,13 +70,30 @@ func main() {
 		glog.Fatalf("Could not create Env: %v", err)
 	}
 	defer env.Close()
-	if err := GenerateTestVectors(ctx, env); err != nil {
+	cctx, cancel2 := context.WithCancel(ctx)
+	if err := GenerateTestVectors(cctx, env); err != nil {
 		glog.Fatalf("GenerateTestVectors(): %v", err)
 	}
+	cancel2()
 }
 
 // GenerateTestVectors verifies set/get semantics.
+// TODO(gbelvin): Migrate into core/integration/client_tests to avoid code rot.
 func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
+			func(ctx context.Context) error {
+				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+					DomainId: env.Domain.DomainId,
+					MinBatch: 1,
+				})
+				return err
+			}); err != nil {
+			log.Errorf("PeriodicallyRun(): %v", err)
+		}
+	}()
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 
