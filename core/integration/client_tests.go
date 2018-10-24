@@ -286,8 +286,7 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 			if err != nil {
 				return fmt.Errorf("CreateMutation(%v): %v", userID, err)
 			}
-			if err := env.Client.QueueMutation(ctx, m, signers,
-				env.CallOpts(userID)...); err != nil {
+			if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
 				return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 			}
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
