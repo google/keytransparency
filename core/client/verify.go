@@ -57,8 +57,8 @@ func NewVerifier(vrf vrf.PublicKey,
 	}
 }
 
-// NewVerifierFromDomain creates a new instance of the client verifier from a config.
-func NewVerifierFromDomain(config *pb.Domain) (*RealVerifier, error) {
+// NewVerifierFromDirectory creates a new instance of the client verifier from a config.
+func NewVerifierFromDirectory(config *pb.Directory) (*RealVerifier, error) {
 	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func NewVerifierFromDomain(config *pb.Domain) (*RealVerifier, error) {
 }
 
 // Index computes the index from a VRF proof.
-func (v *RealVerifier) Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error) {
+func (v *RealVerifier) Index(vrfProof []byte, directoryID, appID, userID string) ([]byte, error) {
 	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), vrfProof)
 	if err != nil {
 		return nil, fmt.Errorf("vrf.ProofToHash(): %v", err)
@@ -95,9 +95,9 @@ func (v *RealVerifier) Index(vrfProof []byte, domainID, appID, userID string) ([
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
 // Returns the verified map root and log root.
-func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string,
+func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID, appID, userID string,
 	trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", domainID, appID, userID, pretty.Formatter(in))
+	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", directoryID, appID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
 	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
@@ -118,7 +118,7 @@ func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, domainID, app
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	index, err := v.Index(in.GetVrfProof(), domainID, appID, userID)
+	index, err := v.Index(in.GetVrfProof(), directoryID, appID, userID)
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
 		return nil, nil, err
@@ -131,14 +131,14 @@ func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, domainID, app
 	}
 	leafProof.Leaf.Index = index
 
-	if err := v.VerifyMapLeafInclusion(in.GetSmr(), leafProof); err != nil {
+	if err := v.VerifyMapLeafInclusion(in.GetMapRoot(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
 	epoch := &pb.Epoch{
-		Smr:            in.GetSmr(),
+		MapRoot:        in.GetMapRoot(),
 		LogRoot:        in.GetLogRoot(),
 		LogConsistency: in.GetLogConsistency(),
 		LogInclusion:   in.GetLogInclusion(),
@@ -153,7 +153,7 @@ func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, domainID, app
 // VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 // VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
 func (v *RealVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	mapRoot, err := v.VerifySignedMapRoot(in.GetSmr())
+	mapRoot, err := v.VerifySignedMapRoot(in.GetMapRoot())
 	if err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return nil, nil, fmt.Errorf("VerifySignedMapRoot(): %v", err)
@@ -169,7 +169,7 @@ func (v *RealVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*type
 	}
 
 	// Verify inclusion proof.
-	b := in.GetSmr().GetMapRoot()
+	b := in.GetMapRoot().GetMapRoot()
 	leafIndex := int64(mapRoot.Revision)
 	if err := v.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetLogInclusion()); err != nil {
 		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%x, %v, _): %v", b, leafIndex, err)

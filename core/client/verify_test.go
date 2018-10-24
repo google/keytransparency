@@ -33,17 +33,17 @@ import (
 func TestVerifyGetEntryResponse(t *testing.T) {
 	ctx := context.Background()
 
-	domainFile := "../testdata/domain.json"
-	f, err := os.Open(domainFile)
+	directoryFile := "../testdata/directory.json"
+	f, err := os.Open(directoryFile)
 	if err != nil {
-		t.Fatalf("ReadFile(%v): %v", domainFile, err)
+		t.Fatalf("ReadFile(%v): %v", directoryFile, err)
 	}
 	defer f.Close()
-	var domainPB pb.Domain
-	if err := jsonpb.Unmarshal(f, &domainPB); err != nil {
+	var directoryPB pb.Directory
+	if err := jsonpb.Unmarshal(f, &directoryPB); err != nil {
 		t.Fatalf("jsonpb.Unmarshal(): %v", err)
 	}
-	v, err := NewVerifierFromDomain(&domainPB)
+	v, err := NewVerifierFromDirectory(&directoryPB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,11 +61,11 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 	trusted := &types.LogRootV1{}
 	for _, tc := range getEntryResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			var slr *types.LogRootV1
-			if _, slr, err = v.VerifyGetEntryResponse(ctx, domainPB.DomainId, tc.AppID, tc.UserID, *trusted, tc.Resp); err != nil {
+			_, slr, err := v.VerifyGetEntryResponse(ctx, directoryPB.DirectoryId, tc.AppID, tc.UserID, *trusted, tc.Resp)
+			if err != nil {
 				t.Errorf("VerifyGetEntryResponse(): %v)", err)
 			}
-			if tc.TrustNewLog {
+			if err == nil && tc.TrustNewLog {
 				trusted = slr
 			}
 		})

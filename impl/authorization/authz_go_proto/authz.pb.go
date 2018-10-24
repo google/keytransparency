@@ -70,8 +70,8 @@ func (m *AuthorizationPolicy) GetResourceToRoleLabels() map[string]*Authorizatio
 
 // Resource contains the resource being accessed.
 type AuthorizationPolicy_Resource struct {
-	// domain_id contains the Key Transparency domain of this entry.
-	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId" json:"domain_id,omitempty"`
+	// directory_id contains the Key Transparency directory of this entry.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId" json:"directory_id,omitempty"`
 	// app_id contains the application identity of this entry.
 	AppId                string   `protobuf:"bytes,2,opt,name=app_id,json=appId" json:"app_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -103,9 +103,9 @@ func (m *AuthorizationPolicy_Resource) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_AuthorizationPolicy_Resource proto.InternalMessageInfo
 
-func (m *AuthorizationPolicy_Resource) GetDomainId() string {
+func (m *AuthorizationPolicy_Resource) GetDirectoryId() string {
 	if m != nil {
-		return m.DomainId
+		return m.DirectoryId
 	}
 	return ""
 }

@@ -35,8 +35,8 @@ var nilHash, _ = objecthash.ObjectHash(nil)
 
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
-	DomainID, AppID, UserID string
-	data, nonce             []byte
+	DirectoryID, AppID, UserID string
+	data, nonce                []byte
 
 	prevEntry *pb.Entry
 	entry     *pb.Entry
@@ -47,11 +47,11 @@ type Mutation struct {
 // - Create a new mutation for a user starting with the previous value with NewMutation.
 // - Change the value with SetCommitment and ReplaceAuthorizedKeys.
 // - Finalize the changes and create the mutation with SerializeAndSign.
-func NewMutation(index []byte, domainID, appID, userID string) *Mutation {
+func NewMutation(index []byte, directoryID, appID, userID string) *Mutation {
 	return &Mutation{
-		DomainID: domainID,
-		AppID:    appID,
-		UserID:   userID,
+		DirectoryID: directoryID,
+		AppID:       appID,
+		UserID:      userID,
 		entry: &pb.Entry{
 			Index:    index,
 			Previous: nilHash[:],
@@ -111,7 +111,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle, trustedTreeSize int64) (*pb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEntryRequest, error) {
 	mutation, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -136,10 +136,9 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle, trustedTreeSiz
 	}
 
 	return &pb.UpdateEntryRequest{
-		DomainId:      m.DomainID,
-		UserId:        m.UserID,
-		AppId:         m.AppID,
-		FirstTreeSize: trustedTreeSize,
+		DirectoryId: m.DirectoryID,
+		UserId:      m.UserID,
+		AppId:       m.AppID,
 		EntryUpdate: &pb.EntryUpdate{
 			Mutation: mutation,
 			Committed: &pb.Committed{

@@ -50,7 +50,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	}
 	signer := crypto.NewSHA256Signer(privKey)
 	store := fake.NewMonitorStorage()
-	mon, err := monitor.NewFromDomain(env.Cli, env.Domain, signer, store)
+	mon, err := monitor.NewFromDirectory(env.Cli, env.Directory, signer, store)
 	if err != nil {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
-					DomainId:       env.Domain.DomainId,
+					DirectoryId:    env.Directory.DirectoryId,
 					AppId:          "app1",
 					UserId:         "alice@test.com",
 					PublicKeyData:  []byte("alice-key1"),
@@ -82,14 +82,14 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
-					DomainId:       env.Domain.DomainId,
+					DirectoryId:    env.Directory.DirectoryId,
 					AppId:          "app1",
 					UserId:         "bob@test.com",
 					PublicKeyData:  []byte("bob-key1"),
 					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 				},
 				{
-					DomainId:       env.Domain.DomainId,
+					DirectoryId:    env.Directory.DirectoryId,
 					AppId:          "app1",
 					UserId:         "carol@test.com",
 					PublicKeyData:  []byte("carol-key1"),
@@ -112,8 +112,8 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			}
 		}
 		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-			DomainId: env.Domain.DomainId,
-			MinBatch: int32(len(e.userUpdates)),
+			DirectoryId: env.Directory.DirectoryId,
+			MinBatch:    int32(len(e.userUpdates)),
 		}); err != nil {
 			t.Errorf("sequencer.RunBatch(): %v", err)
 		}
@@ -121,7 +121,8 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 
 	trusted := types.LogRootV1{}
 	cctx, cancel := context.WithTimeout(ctx, env.Timeout)
-	if err := mon.ProcessLoop(cctx, env.Domain.DomainId, trusted); err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
+	err = mon.ProcessLoop(cctx, env.Directory.DirectoryId, trusted)
+	if err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
 		t.Errorf("Monitor could not process mutations: %v", err)
 	}
 	cancel()

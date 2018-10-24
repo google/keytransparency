@@ -43,7 +43,7 @@ message Committed {
 message EntryUpdate {
   // mutation authorizes the change to entry.
   Entry mutation = 2;
-  // commitment contains the data committed to in update.commitment.
+  // committed contains the data committed to in mutation.commitment.
   Committed committed = 3;
 }
 
@@ -92,8 +92,8 @@ message MapperMetadata {
 
 // GetEntryRequest for a user object.
 message GetEntryRequest {
-  // domain_id identifies the domain in which the user and application live.
-  string domain_id = 4;
+  // directory_id identifies the directory in which the user and application live.
+  string directory_id = 4;
   // user_id is the user identifier. Most commonly an email address.
   string user_id = 1;
   // app_id is the identifier for the application.
@@ -123,12 +123,12 @@ message GetEntryResponse {
   // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle
   // Tree.
   trillian.MapLeafInclusion leaf_proof = 3;
-  // smr contains the signed map head for the sparse Merkle Tree.
-  // smr is also stored in the append only log.
-  trillian.SignedMapRoot smr = 4;
+  // map_root contains the signed map head for the sparse Merkle Tree.
+  // map_root is also stored in the append only log.
+  trillian.SignedMapRoot map_root = 4;
 
   //
-  // Trillian log layer proves that smr is part of a globally consistent, append only log.
+  // Trillian log layer proves that the map_root is part of a globally consistent, append only log.
   //
 
   // log_root is the latest globally consistent log root.
@@ -136,14 +136,14 @@ message GetEntryResponse {
   trillian.SignedLogRoot log_root = 5;
   // log_consistency proves that log_root is consistent with previously seen roots.
   repeated bytes log_consistency = 6;
-  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  // log_inclusion proves that map_root is part of log_root at index=map_root.MapRevision.
   repeated bytes log_inclusion = 7;
 }
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
 message ListEntryHistoryRequest {
-  // domain_id identifies the domain in which the user and application live.
-  string domain_id = 6;
+  // directory_id identifies the directory in which the user and application live.
+  string directory_id = 6;
   // user_id is the user identifier.
   string user_id = 1;
   // start is the starting epoch.
@@ -168,23 +168,22 @@ message ListEntryHistoryResponse {
 
 // UpdateEntryRequest updates a user's profile.
 message UpdateEntryRequest {
-  // domain_id identifies the domain in which the user and application live.
-  string domain_id = 5;
+  // directory_id identifies the directory in which the user and application live.
+  string directory_id = 5;
   // user_id specifies the id for the user who's profile is being updated.
   string user_id = 1;
   // app_id is the identifier for the application.
   string app_id = 2;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 3;
+  // Used to be first_tree_size. QueueEntryUpdate no longer returns any data.
+  reserved 3;
   // entry_update contains the user submitted update.
   EntryUpdate entry_update = 4;
 }
 
 // GetEpochRequest identifies a particular epoch.
 message GetEpochRequest {
-  // domain_id is the domain for which epochs are being requested.
-  string domain_id = 5;
+  // directory_id is the directory for which epochs are being requested.
+  string directory_id = 5;
   // epoch specifies the epoch number in which mutations will be returned.
   int64 epoch = 1;
   // first_tree_size is the tree_size of the currently trusted log root.
@@ -194,8 +193,8 @@ message GetEpochRequest {
 
 // GetLatestEpochRequest identifies a particular epoch.
 message GetLatestEpochRequest {
-  // domain_id is the domain for which epochs are being requested.
-  string domain_id = 1;
+  // directory_id is the directory for which epochs are being requested.
+  string directory_id = 1;
   // first_tree_size is the tree_size of the currently trusted log root.
   // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 2;
@@ -204,22 +203,22 @@ message GetLatestEpochRequest {
 // Epoch represents a snapshot of the entire key directory and
 // a diff of what changed between this revision and the previous revision.
 message Epoch {
-  // domain_id is the domain identifier.
-  string domain_id = 1;
-  // smr contains the signed map root for the sparse Merkle Tree.
-  trillian.SignedMapRoot smr = 2;
+  // directory_id is the directory identifier.
+  string directory_id = 1;
+  // map_root contains the signed map root for the sparse Merkle Tree.
+  trillian.SignedMapRoot map_root = 2;
   // log_root is the latest globally consistent log root.
   trillian.SignedLogRoot log_root = 3;
   // log_consistency proves that log_root is consistent with previously seen roots.
   repeated bytes log_consistency = 4;
-  // log_inclusion proves that smr is part of log_root at index=srm.MapRevision.
+  // log_inclusion proves that map_root is part of log_root at index=map_root.MapRevision.
   repeated bytes log_inclusion = 5;
 }
 
 // ListMutationsRequest requests the mutations that created a given epoch.
 message ListMutationsRequest {
-  // domain_id is the domain identifier.
-  string domain_id = 5;
+  // directory_id is the directory identifier.
+  string directory_id = 5;
   // epoch specifies the epoch number.
   int64 epoch = 1;
   // page_token defines the starting point for pagination.
@@ -243,67 +242,67 @@ message ListMutationsResponse {
 
 // The KeyTransparency API represents a directory of public keys.
 //
-// The API has a collection of domains:
-// `/v1/domains/`
-//  * Each domain has a single sparse merkle tree, append only log,
+// The API has a collection of directories:
+// `/v1/directories/`
+//  * Each directory has a single sparse merkle tree, append only log,
 //    and other public key material that is needed to verify server responses.
 //
-// Each Domain has a collection of snapshots called epochs:
-// `/v1/domains/*/epochs/`
+// Each Directory has a collection of snapshots called epochs:
+// `/v1/directories/*/epochs/`
 //  * Each Epoch contains the root of the sparse merkle tree and the changes that
 //    occurred that epoch and the previous.
 //
 // Each Epoch has a collection of mutations:
-// `/v1/domains/*/epochs/*/mutations/`.
+// `/v1/directories/*/epochs/*/mutations/`.
 //  * Each mutation contains the leafvalue of the previous epoch that it operated on.
 //  * The full set of mutations for an epoch allows the receiver to compute the
 //     Merkle Tree Root of this epoch from the previous epoch.
 //
-// Each Domain has a collection of applications:
-// `/v1/domains/*/apps/`
+// Each Directory has a collection of applications:
+// `/v1/directories/*/apps/`
 //  * Each Application has distinct users and permissions, but are indistinguishable
 //    from each other just by looking at the tree.
 //
 // Each Application has a collection of Users:
-// `/v1/domains/*/apps/*/users`
+// `/v1/directories/*/apps/*/users`
 //  * Each User contains public key material, permissions for who is allowed to change
 //    that user, and signatures indicating who made the last change.
 //
 // Each User also has a collection of historical values for user:
-// `/v1/domains/*/apps/*/users/*/history`
+// `/v1/directories/*/apps/*/users/*/history`
 //
 service KeyTransparency {
-  // GetDomain returns the information needed to verify the specified domain.
-  rpc GetDomain(GetDomainRequest) returns (Domain) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}" };
+  // GetDirectory returns the information needed to verify the specified directory.
+  rpc GetDirectory(GetDirectoryRequest) returns (Directory) {
+    option (google.api.http) = { get: "/v1/directories/{directory_id}" };
   }
 
   // GetEpoch returns a SignedMapRoot by the by the requested revision number
   // along with its inclusion proof in the log and the log's consistency proofs.
   rpc GetEpoch(GetEpochRequest) returns (Epoch) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}" };
+    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs/{epoch}" };
   }
 
   // GetLatestEpoch returns the latest SignedMapRoot along with its inclusion
   // proof in the log and the log's consistency proofs.
   rpc GetLatestEpoch(GetLatestEpochRequest) returns (Epoch) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:latest" };
+    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs:latest" };
   }
 
   // GetEpochStream streams new epochs from a requested starting point
   // and continues as new epochs are created.
   rpc GetEpochStream(GetEpochRequest) returns (stream Epoch) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs:stream" };
+    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs:stream" };
   }
 
   // ListMutations returns a list of mutations in a specific epoch.
   rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}/mutations" };
+    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations" };
   }
 
   // ListMutationsStream is a streaming list of mutations in a specific epoch.
   rpc ListMutationsStream(ListMutationsRequest) returns (stream MutationProof) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/epochs/{epoch}/mutations:stream" };
+    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations:stream" };
   }
 
   // GetEntry returns a user's entry in the Merkle Tree.
@@ -311,7 +310,7 @@ service KeyTransparency {
   // Entries contain signed commitments to a profile, which is also returned.
   // TODO(gbelvin): Replace with GetUser
   rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}" };
+    option (google.api.http) = { get: "/v1/directories/{directory_id}/apps/{app_id}/users/{user_id}" };
   }
 
   // ListEntryHistory returns a list of historic GetEntry values.
@@ -319,7 +318,7 @@ service KeyTransparency {
   // Clients verify their account history by observing correct values for their
   // account over time.
   rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
-    option (google.api.http) = { get: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}/history" };
+    option (google.api.http) = { get: "/v1/directories/{directory_id}/apps/{app_id}/users/{user_id}/history" };
   }
 
   // QueueUserUpdate enqueues an update to a user's profile.
@@ -327,7 +326,7 @@ service KeyTransparency {
   // Clients should poll GetEntry until the update appears, and retry if no update appears after a timeout.
   rpc QueueEntryUpdate(UpdateEntryRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v1/domains/{domain_id}/apps/{app_id}/users/{user_id}:queue"
+      post: "/v1/directories/{directory_id}/apps/{app_id}/users/{user_id}:queue"
       body: "entry_update"
     };
   }

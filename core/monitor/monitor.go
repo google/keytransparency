@@ -42,9 +42,9 @@ type Monitor struct {
 	store       monitorstorage.Interface
 }
 
-// NewFromDomain produces a new monitor from a Domain object.
-func NewFromDomain(cli pb.KeyTransparencyClient,
-	config *pb.Domain,
+// NewFromDirectory produces a new monitor from a Directory object.
+func NewFromDirectory(cli pb.KeyTransparencyClient,
+	config *pb.Directory,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
@@ -108,15 +108,15 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 }
 
 // ProcessLoop continuously fetches mutations and processes them.
-func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted types.LogRootV1) error {
+func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted types.LogRootV1) error {
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
 	epochs := make(chan *pb.Epoch)
 	pairs := make(chan EpochPair)
 
 	go func(ctx context.Context) {
-		err := m.cli.StreamEpochs(ctx, domainID, int64(trusted.TreeSize), epochs)
-		glog.Errorf("StreamEpochs(%v): %v", domainID, err)
+		err := m.cli.StreamEpochs(ctx, directoryID, int64(trusted.TreeSize), epochs)
+		glog.Errorf("StreamEpochs(%v): %v", directoryID, err)
 		errc <- err
 	}(cctx)
 	go func(ctx context.Context) {
@@ -141,7 +141,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, domainID string, trusted type
 		var smr *trillian.SignedMapRoot
 		var errList []error
 
-		if errs := m.verifyMutations(mutations, pair.A.GetSmr(), mapRootB); len(errs) > 0 {
+		if errs := m.verifyMutations(mutations, pair.A.GetMapRoot(), mapRootB); len(errs) > 0 {
 			glog.Errorf("Invalid Epoch %v Mutations: %v", mapRootB.Revision, errs)
 			errList = errs
 		} else {

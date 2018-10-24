@@ -38,13 +38,13 @@ type EpochMutations struct {
 // StreamEpochs repeatedly fetches epochs and sends them to out until GetEpoch
 // returns an error other than NotFound or until ctx.Done is closed.  When
 // GetEpoch returns NotFound, it waits one pollPeriod before trying again.
-func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch int64, out chan<- *pb.Epoch) error {
+func (c *Client) StreamEpochs(ctx context.Context, directoryID string, startEpoch int64, out chan<- *pb.Epoch) error {
 	defer close(out)
 	wait := time.NewTicker(c.RetryDelay).C
 	for i := startEpoch; ; {
 		// time out if we exceed the poll period:
 		epoch, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
-			DomainId:      domainID,
+			DirectoryId:   directoryID,
 			Epoch:         i,
 			FirstTreeSize: startEpoch,
 		})
@@ -58,7 +58,7 @@ func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch i
 				continue
 			}
 		} else if err != nil {
-			glog.Warningf("GetEpoch(%v,%v): %v", domainID, i, err)
+			glog.Warningf("GetEpoch(%v,%v): %v", directoryID, i, err)
 			return err
 		}
 
@@ -73,7 +73,7 @@ func (c *Client) StreamEpochs(ctx context.Context, domainID string, startEpoch i
 
 // EpochMutations fetches all the mutations in an epoch
 func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.MutationProof, error) {
-	mapRoot, err := c.VerifySignedMapRoot(epoch.GetSmr())
+	mapRoot, err := c.VerifySignedMapRoot(epoch.GetMapRoot())
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +81,12 @@ func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.Mut
 	token := ""
 	for {
 		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
-			DomainId:  epoch.GetDomainId(),
-			Epoch:     int64(mapRoot.Revision),
-			PageToken: token,
+			DirectoryId: epoch.GetDirectoryId(),
+			Epoch:       int64(mapRoot.Revision),
+			PageToken:   token,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("GetMutations(%v): %v", epoch.GetDomainId(), err)
+			return nil, fmt.Errorf("list mutations on %v: %v", epoch.GetDirectoryId(), err)
 		}
 		mutations = append(mutations, resp.GetMutations()...)
 		token = resp.GetNextPageToken()

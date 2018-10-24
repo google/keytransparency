@@ -39,15 +39,15 @@ func request_UserManager_GetKeySet_0(ctx context.Context, marshaler runtime.Mars
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["app_id"]
@@ -67,7 +67,7 @@ func request_UserManager_GetKeySet_0(ctx context.Context, marshaler runtime.Mars
 }
 
 var (
-	filter_UserManager_CreateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
+	filter_UserManager_CreateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "directory_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
 )
 
 func request_UserManager_CreateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -85,15 +85,15 @@ func request_UserManager_CreateUser_0(ctx context.Context, marshaler runtime.Mar
 		_   = err
 	)
 
-	val, ok = pathParams["user.domain_id"]
+	val, ok = pathParams["user.directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user.domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user.directory_id")
 	}
 
-	err = runtime.PopulateFieldFromPath(&protoReq, "user.domain_id", val)
+	err = runtime.PopulateFieldFromPath(&protoReq, "user.directory_id", val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user.domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user.directory_id", err)
 	}
 
 	val, ok = pathParams["user.app_id"]
@@ -128,7 +128,7 @@ func request_UserManager_CreateUser_0(ctx context.Context, marshaler runtime.Mar
 }
 
 var (
-	filter_UserManager_UpdateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
+	filter_UserManager_UpdateUser_0 = &utilities.DoubleArray{Encoding: map[string]int{"user": 0, "directory_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 4, 1, 2, 3, 0, 0, 0, 0}, Check: []int{0, 1, 2, 2, 2, 3, 4, 5, 2}}
 )
 
 func request_UserManager_UpdateUser_0(ctx context.Context, marshaler runtime.Marshaler, client UserManagerClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -146,15 +146,15 @@ func request_UserManager_UpdateUser_0(ctx context.Context, marshaler runtime.Mar
 		_   = err
 	)
 
-	val, ok = pathParams["user.domain_id"]
+	val, ok = pathParams["user.directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user.domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user.directory_id")
 	}
 
-	err = runtime.PopulateFieldFromPath(&protoReq, "user.domain_id", val)
+	err = runtime.PopulateFieldFromPath(&protoReq, "user.directory_id", val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user.domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user.directory_id", err)
 	}
 
 	val, ok = pathParams["user.app_id"]
@@ -203,15 +203,15 @@ func request_UserManager_BatchCreateUser_0(ctx context.Context, marshaler runtim
 		_   = err
 	)
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["app_id"]
@@ -388,13 +388,13 @@ func RegisterUserManagerHandlerClient(ctx context.Context, mux *runtime.ServeMux
 }
 
 var (
-	pattern_UserManager_GetKeySet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"usermanager", "v1", "domains", "domain_id", "apps", "app_id", "keyset"}, ""))
+	pattern_UserManager_GetKeySet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"usermanager", "v1", "directories", "directory_id", "apps", "app_id", "keyset"}, ""))
 
-	pattern_UserManager_CreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "domains", "user.domain_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
+	pattern_UserManager_CreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "directories", "user.directory_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
 
-	pattern_UserManager_UpdateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "domains", "user.domain_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
+	pattern_UserManager_UpdateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"usermanager", "v1", "directories", "user.directory_id", "apps", "user.app_id", "users", "user.user_id"}, ""))
 
-	pattern_UserManager_BatchCreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"usermanager", "v1", "domains", "domain_id", "apps", "app_id"}, "BatchCreate"))
+	pattern_UserManager_BatchCreateUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"usermanager", "v1", "directories", "directory_id", "apps", "app_id"}, "BatchCreate"))
 )
 
 var (

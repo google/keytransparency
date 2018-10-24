@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
@@ -37,15 +37,15 @@ import (
 
 // Server holds internal state for the key server.
 type Server struct {
-	tlog      tpb.TrillianLogClient
-	tmap      tpb.TrillianMapClient
-	logAdmin  tpb.TrillianAdminClient
-	mapAdmin  tpb.TrillianAdminClient
-	mutator   mutator.Func
-	domains   domain.Storage
-	logs      mutator.MutationLogs
-	mutations mutator.MutationStorage
-	indexFunc indexFunc
+	tlog        tpb.TrillianLogClient
+	tmap        tpb.TrillianMapClient
+	logAdmin    tpb.TrillianAdminClient
+	mapAdmin    tpb.TrillianAdminClient
+	mutator     mutator.Func
+	directories directory.Storage
+	logs        mutator.MutationLogs
+	mutations   mutator.MutationStorage
+	indexFunc   indexFunc
 }
 
 // New creates a new instance of the key server.
@@ -54,19 +54,19 @@ func New(tlog tpb.TrillianLogClient,
 	logAdmin tpb.TrillianAdminClient,
 	mapAdmin tpb.TrillianAdminClient,
 	mutator mutator.Func,
-	domains domain.Storage,
+	directories directory.Storage,
 	logs mutator.MutationLogs,
 	mutations mutator.MutationStorage) *Server {
 	return &Server{
-		tlog:      tlog,
-		tmap:      tmap,
-		logAdmin:  logAdmin,
-		mapAdmin:  mapAdmin,
-		mutator:   mutator,
-		domains:   domains,
-		logs:      logs,
-		mutations: mutations,
-		indexFunc: indexFromVRF,
+		tlog:        tlog,
+		tmap:        tmap,
+		logAdmin:    logAdmin,
+		mapAdmin:    mapAdmin,
+		mutator:     mutator,
+		directories: directories,
+		logs:        logs,
+		mutations:   mutations,
+		indexFunc:   indexFromVRF,
 	}
 }
 
@@ -74,16 +74,16 @@ func New(tlog tpb.TrillianLogClient,
 // this user and that it is the same one being provided to everyone else.
 // GetEntry also supports querying past values by setting the epoch field.
 func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
-	domainID := in.GetDomainId()
-	if domainID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+	directoryID := in.GetDirectoryId()
+	if directoryID == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 
 	// Lookup log and map info.
-	d, err := s.domains.Read(ctx, domainID, false)
+	d, err := s.directories.Read(ctx, directoryID, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
+		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
 	// Fetch latest revision.
@@ -113,7 +113,8 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 // getEntryByRevision does NOT populate the following fields:
 // - LogRoot
 // - LogConsistency
-func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *domain.Domain, userID, appID string, mapRevision int64) (*pb.GetEntryResponse, error) {
+func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory,
+	userID, appID string, mapRevision int64) (*pb.GetEntryResponse, error) {
 	if mapRevision < 0 {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"Revision is %v, want >= 0", mapRevision)
@@ -176,7 +177,7 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 				LeafValue: leaf,
 			},
 		},
-		Smr:          getResp.GetMapRoot(),
+		MapRoot:      getResp.GetMapRoot(),
 		LogInclusion: logInclusion.GetProof().GetHashes(),
 	}, nil
 }
@@ -184,14 +185,14 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
 	// Lookup log and map info.
-	domainID := in.GetDomainId()
-	if domainID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+	directoryID := in.GetDirectoryId()
+	if directoryID == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
-	d, err := s.domains.Read(ctx, domainID, false)
+	d, err := s.directories.Read(ctx, directoryID, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", domainID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
+		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
 	// Fetch latest revision.
@@ -241,16 +242,16 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 // QueueEntryUpdate updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest) (*empty.Empty, error) {
-	if in.DomainId == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+	if in.DirectoryId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 	// Lookup log and map info.
-	domain, err := s.domains.Read(ctx, in.DomainId, false)
+	directory, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
+		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
-	vrfPriv, err := p256.NewFromWrappedKey(ctx, domain.VRFPriv)
+	vrfPriv, err := p256.NewFromWrappedKey(ctx, directory.VRFPriv)
 	if err != nil {
 		return nil, err
 	}
@@ -266,9 +267,9 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 
 	// Query for the current epoch.
 	req := &pb.GetEntryRequest{
-		DomainId: in.DomainId,
-		UserId:   in.UserId,
-		AppId:    in.AppId,
+		DirectoryId: in.DirectoryId,
+		UserId:      in.UserId,
+		AppId:       in.AppId,
 		//EpochStart: in.GetEntryUpdate().EpochStart,
 	}
 	resp, err := s.GetEntry(ctx, req)
@@ -300,58 +301,58 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	}
 
 	// Save mutation to the database.
-	if err := s.logs.Send(ctx, domain.DomainID, in.GetEntryUpdate()); err != nil {
+	if err := s.logs.Send(ctx, directory.DirectoryID, in.GetEntryUpdate()); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}
 	return &empty.Empty{}, nil
 }
 
-// GetDomain returns all info tied to the specified domain.
+// GetDirectory returns all info tied to the specified directory.
 //
 // This API to get all necessary data needed to verify a particular
 // key-server. Data contains for instance the tree-info, like for instance the
 // log/map-id and the corresponding public-keys.
-func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Domain, error) {
+func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (*pb.Directory, error) {
 	// Lookup log and map info.
-	if in.DomainId == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "Please specify a domain_id")
+	if in.DirectoryId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
-	domain, err := s.domains.Read(ctx, in.DomainId, false)
+	directory, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if status.Code(err) == codes.NotFound {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, status.Errorf(codes.NotFound, "Domain %v not found", in.DomainId)
+		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
+		return nil, status.Errorf(codes.NotFound, "Directory %v not found", in.DirectoryId)
 	} else if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info for %v", in.DomainId)
+		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info for %v", in.DirectoryId)
 	}
 
-	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: domain.LogID})
+	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: directory.LogID})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal,
-			"Cannot fetch log info for %v: %v", in.DomainId, err)
+			"Cannot fetch log info for %v: %v", in.DirectoryId, err)
 	}
-	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: domain.MapID})
+	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: directory.MapID})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal,
-			"Cannot fetch map info for %v: %v", in.DomainId, err)
+			"Cannot fetch map info for %v: %v", in.DirectoryId, err)
 	}
 
-	return &pb.Domain{
-		DomainId:    domain.DomainID,
+	return &pb.Directory{
+		DirectoryId: directory.DirectoryID,
 		Log:         logTree,
 		Map:         mapTree,
-		Vrf:         domain.VRF,
-		MinInterval: ptypes.DurationProto(domain.MinInterval),
-		MaxInterval: ptypes.DurationProto(domain.MaxInterval),
+		Vrf:         directory.VRF,
+		MinInterval: ptypes.DurationProto(directory.MinInterval),
+		MaxInterval: ptypes.DurationProto(directory.MaxInterval),
 	}, nil
 }
 
-// indexFunc computes an index and proof for domain/app/user
-type indexFunc func(ctx context.Context, d *domain.Domain, appID, userID string) ([32]byte, []byte, error)
+// indexFunc computes an index and proof for directory/app/user
+type indexFunc func(ctx context.Context, d *directory.Directory, appID, userID string) ([32]byte, []byte, error)
 
-// index returns the index and proof for domain/app/user
-func indexFromVRF(ctx context.Context, d *domain.Domain, appID, userID string) ([32]byte, []byte, error) {
+// index returns the index and proof for directory/app/user
+func indexFromVRF(ctx context.Context, d *directory.Directory, appID, userID string) ([32]byte, []byte, error) {
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, d.VRFPriv)
 	if err != nil {
 		return [32]byte{}, nil, err

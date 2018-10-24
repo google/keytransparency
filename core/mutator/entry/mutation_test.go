@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const domainID = "default"
+const directoryID = "default"
 
 func TestSerializeAndSign(t *testing.T) {
 	for _, tc := range []struct {
@@ -53,7 +53,7 @@ func TestSerializeAndSign(t *testing.T) {
 			userID := "alice"
 			appID := "app1"
 
-			m := NewMutation(index, domainID, appID, userID)
+			m := NewMutation(index, directoryID, appID, userID)
 			if err := m.SetPrevious(tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}
@@ -63,7 +63,7 @@ func TestSerializeAndSign(t *testing.T) {
 			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
-			_, err := m.SerializeAndSign(tc.signers, 0)
+			_, err := m.SerializeAndSign(tc.signers)
 			if got := status.Code(err); got != tc.want {
 				t.Fatalf("SerializeAndSign(): %v, want %v", err, tc.want)
 			}
@@ -91,7 +91,7 @@ func TestCreateAndVerify(t *testing.T) {
 			userID := "alice"
 			appID := "app1"
 
-			m := NewMutation(index, domainID, appID, userID)
+			m := NewMutation(index, directoryID, appID, userID)
 			if err := m.SetPrevious(tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}
@@ -101,7 +101,7 @@ func TestCreateAndVerify(t *testing.T) {
 			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
-			update, err := m.SerializeAndSign(tc.signers, 0)
+			update, err := m.SerializeAndSign(tc.signers)
 			if err != nil {
 				t.Fatalf("SerializeAndSign(): %v", err)
 			}

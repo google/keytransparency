@@ -23,8 +23,8 @@ package google.keytransparency.type;
 
 // User represents plain account information that gets committed to and obfuscated in Entry.
 message User {
-  // domain_id specifies the domain.
-  string domain_id = 1;
+  // directory_id specifies the directory.
+  string directory_id = 1;
   // app_id specifies that application.
   string app_id = 2;
   // user_id specifies the user.

@@ -29,7 +29,7 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_Monitor_GetState_0 = &utilities.DoubleArray{Encoding: map[string]int{"kt_url": 0, "domain_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_Monitor_GetState_0 = &utilities.DoubleArray{Encoding: map[string]int{"kt_url": 0, "directory_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_Monitor_GetState_0(ctx context.Context, marshaler runtime.Marshaler, client MonitorClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -54,15 +54,15 @@ func request_Monitor_GetState_0(ctx context.Context, marshaler runtime.Marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "kt_url", err)
 	}
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_Monitor_GetState_0); err != nil {
@@ -96,15 +96,15 @@ func request_Monitor_GetStateByRevision_0(ctx context.Context, marshaler runtime
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "kt_url", err)
 	}
 
-	val, ok = pathParams["domain_id"]
+	val, ok = pathParams["directory_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "domain_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "directory_id")
 	}
 
-	protoReq.DomainId, err = runtime.String(val)
+	protoReq.DirectoryId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "domain_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
 	val, ok = pathParams["epoch"]
@@ -223,9 +223,9 @@ func RegisterMonitorHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 }
 
 var (
-	pattern_Monitor_GetState_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"monitor", "v1", "servers", "kt_url", "domains", "domain_id", "states"}, "latest"))
+	pattern_Monitor_GetState_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"monitor", "v1", "servers", "kt_url", "directories", "directory_id", "states"}, "latest"))
 
-	pattern_Monitor_GetStateByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"monitor", "v1", "servers", "kt_url", "domains", "domain_id", "states", "epoch"}, ""))
+	pattern_Monitor_GetStateByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"monitor", "v1", "servers", "kt_url", "directories", "directory_id", "states", "epoch"}, ""))
 )
 
 var (

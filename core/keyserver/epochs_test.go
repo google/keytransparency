@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	domainID = "domain"
+	directoryID = "directory"
 )
 
 func genInclusions(start, end int) []*tpb.MapLeafInclusion {
@@ -82,7 +82,7 @@ func TestListMutations(t *testing.T) {
 		{epoch: 1, start: 1, end: 6},
 		{epoch: 2, start: 7, end: 10},
 	} {
-		if err := fakeMutations.WriteBatch(ctx, domainID, rev.epoch, genMutations(rev.start, rev.end)); err != nil {
+		if err := fakeMutations.WriteBatch(ctx, directoryID, rev.epoch, genMutations(rev.start, rev.end)); err != nil {
 			t.Fatalf("Test setup failed: %v", err)
 		}
 	}
@@ -124,10 +124,10 @@ func TestListMutations(t *testing.T) {
 			}
 
 			resp, err := e.srv.ListMutations(ctx, &pb.ListMutationsRequest{
-				DomainId:  domainID,
-				Epoch:     tc.epoch,
-				PageToken: tc.token,
-				PageSize:  tc.pageSize,
+				DirectoryId: directoryID,
+				Epoch:       tc.epoch,
+				PageToken:   tc.token,
+				PageSize:    tc.pageSize,
 			})
 			if got, want := err != nil, tc.wantErr; got != want {
 				t.Fatalf("GetMutations: %v, wantErr %v", err, want)

@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
@@ -39,10 +39,10 @@ var (
 // GetLatestEpoch returns the latest epoch. The current epoch tracks the SignedLogRoot.
 func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochRequest) (*pb.Epoch, error) {
 	// Lookup log and map info.
-	d, err := s.domains.Read(ctx, in.DomainId, false)
+	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("GetLatestEpoch(): adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
+		glog.Errorf("GetLatestEpoch(): adminstorage.Read(%v): %v", in.DirectoryId, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
 	// Fetch latest revision.
@@ -68,10 +68,10 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 	}
 
 	// Lookup log and map info.
-	d, err := s.domains.Read(ctx, in.DomainId, false)
+	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("GetEpoch(): adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
+		glog.Errorf("GetEpoch(): adminstorage.Read(%v): %v", in.DirectoryId, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
 	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
@@ -83,7 +83,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 
 }
 
-func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain,
+func (s *Server) getEpochByRevision(ctx context.Context, d *directory.Directory,
 	logRoot *tpb.SignedLogRoot, logConsistency *tpb.Proof, mapRevision int64) (*pb.Epoch, error) {
 	logInclusion, err := s.logInclusion(ctx, d, logRoot, mapRevision)
 	if err != nil {
@@ -100,8 +100,8 @@ func (s *Server) getEpochByRevision(ctx context.Context, d *domain.Domain,
 	}
 
 	return &pb.Epoch{
-		DomainId:       d.DomainID,
-		Smr:            resp.GetMapRoot(),
+		DirectoryId:    d.DirectoryID,
+		MapRoot:        resp.GetMapRoot(),
 		LogRoot:        logRoot,
 		LogConsistency: logConsistency.GetHashes(),
 		LogInclusion:   logInclusion.GetHashes(),
@@ -120,10 +120,10 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, status.Error(codes.InvalidArgument, "Invalid request")
 	}
 	// Lookup log and map info.
-	d, err := s.domains.Read(ctx, in.DomainId, false)
+	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("ListMutations(): adminstorage.Read(%v): %v", in.DomainId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch domain info")
+		glog.Errorf("ListMutations(): adminstorage.Read(%v): %v", in.DirectoryId, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
 	start, err := parseToken(in.PageToken)
@@ -131,7 +131,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		return nil, err
 	}
 	// Read mutations from the database.
-	max, entries, err := s.mutations.ReadPage(ctx, d.DomainID, in.GetEpoch(), start, in.GetPageSize())
+	max, entries, err := s.mutations.ReadPage(ctx, d.DirectoryID, in.GetEpoch(), start, in.GetPageSize())
 	if err != nil {
 		glog.Errorf("ListMutations(): mutations.ReadRange(%v, %v, %v, %v): %v", d.MapID, in.GetEpoch(), start, in.GetPageSize(), err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
@@ -167,7 +167,8 @@ func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTra
 }
 
 // logInclusion returns the inclusion proof for a map revision in the log of map roots.
-func (s *Server) logInclusion(ctx context.Context, d *domain.Domain, logRoot *tpb.SignedLogRoot, epoch int64) (*tpb.Proof, error) {
+func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRoot *tpb.SignedLogRoot, epoch int64) (
+	*tpb.Proof, error) {
 	// Inclusion proof.
 	secondTreeSize := logRoot.GetTreeSize()
 	if epoch >= secondTreeSize {
@@ -188,7 +189,7 @@ func (s *Server) logInclusion(ctx context.Context, d *domain.Domain, logRoot *tp
 
 }
 
-func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.SignedLogRoot, error) {
+func (s *Server) latestLogRoot(ctx context.Context, d *directory.Directory) (*tpb.SignedLogRoot, error) {
 	// Fresh Root.
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
 		&tpb.GetLatestSignedLogRootRequest{
@@ -203,7 +204,8 @@ func (s *Server) latestLogRoot(ctx context.Context, d *domain.Domain) (*tpb.Sign
 }
 
 // latestLogRootProof returns the latest SignedLogRoot and it's consistency proof.
-func (s *Server) latestLogRootProof(ctx context.Context, d *domain.Domain, firstTreeSize int64) (*tpb.SignedLogRoot, *tpb.Proof, error) {
+func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory, firstTreeSize int64) (
+	*tpb.SignedLogRoot, *tpb.Proof, error) {
 
 	sth, err := s.latestLogRoot(ctx, d)
 	if err != nil {
@@ -256,7 +258,8 @@ func parseToken(token string) (int64, error) {
 	return seq, nil
 }
 
-func (s *Server) inclusionProofs(ctx context.Context, d *domain.Domain, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {
+func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, indexes [][]byte, epoch int64) (
+	[]*tpb.MapLeafInclusion, error) {
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    d.MapID,
 		Index:    indexes,

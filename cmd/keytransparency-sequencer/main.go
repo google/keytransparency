@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/impl/sql/domain"
+	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
@@ -42,7 +42,7 @@ var (
 	// Info to connect to the trillian map and log.
 	mapURL    = flag.String("map-url", "", "URL of Trillian Map Server")
 	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
-	refresh   = flag.Duration("domain-refresh", 5*time.Second, "Time to detect new domain")
+	refresh   = flag.Duration("directory-refresh", 5*time.Second, "Time to detect new directory")
 	batchSize = flag.Int("batch-size", 100, "Maximum number of mutations to process per map revision")
 )
 
@@ -83,14 +83,14 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to create mutations object: %v", err)
 	}
-	domainStorage, err := domain.NewStorage(sqldb)
+	directoryStorage, err := directory.NewStorage(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create domain storage object: %v", err)
+		glog.Exitf("Failed to create directory storage object: %v", err)
 	}
 
 	// Create server
 	sequencerServer := sequencer.NewServer(
-		domainStorage,
+		directoryStorage,
 		logAdmin, mapAdmin,
 		tlog, tmap,
 		mutations, mutations, mutations,
@@ -106,14 +106,14 @@ func main() {
 	signer := sequencer.New(
 		sequencerClient,
 		mapAdmin,
-		domainStorage,
+		directoryStorage,
 		mutations,
 		*batchSize)
 
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 		return der.NewProtoFromSpec(spec)
 	}
-	adminServer := adminserver.New(tlog, tmap, logAdmin, mapAdmin, domainStorage, mutations, keygen)
+	adminServer := adminserver.New(tlog, tmap, logAdmin, mapAdmin, directoryStorage, mutations, keygen)
 	glog.Infof("Signer starting")
 
 	// Run servers
@@ -122,8 +122,8 @@ func main() {
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	if err := sequencer.PeriodicallyRun(ctx, time.Tick(*refresh),
-		signer.RunBatchForAllDomains); err != nil {
-		glog.Errorf("PeriodicallyRun(RunBatchForAllDomains): %v", err)
+		signer.RunBatchForAllDirectories); err != nil {
+		glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
 	}
 	httpServer.Shutdown(cctx)
 	glog.Errorf("Signer exiting")

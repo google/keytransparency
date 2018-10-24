@@ -22,18 +22,22 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/integration"
+	"github.com/google/martian/log"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/types"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
@@ -66,13 +70,30 @@ func main() {
 		glog.Fatalf("Could not create Env: %v", err)
 	}
 	defer env.Close()
-	if err := GenerateTestVectors(ctx, env); err != nil {
+	cctx, cancel2 := context.WithCancel(ctx)
+	if err := GenerateTestVectors(cctx, env); err != nil {
 		glog.Fatalf("GenerateTestVectors(): %v", err)
 	}
+	cancel2()
 }
 
 // GenerateTestVectors verifies set/get semantics.
+// TODO(gbelvin): Migrate into core/integration/client_tests to avoid code rot.
 func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
+			func(ctx context.Context) error {
+				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+					DirectoryId: env.Directory.DirectoryId,
+					MinBatch:    1,
+				})
+				return err
+			}); err != nil {
+			log.Errorf("PeriodicallyRun(): %v", err)
+		}
+	}()
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 
@@ -142,7 +163,7 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	} {
 		// Check profile.
 		e, err := env.Cli.GetEntry(ctx, &pb.GetEntryRequest{
-			DomainId:      env.Domain.DomainId,
+			DirectoryId:   env.Directory.DirectoryId,
 			UserId:        tc.userID,
 			AppId:         appID,
 			FirstTreeSize: int64(slr.TreeSize),
@@ -150,8 +171,8 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: GetEntry(): %v", err)
 		}
-		var newslr *types.LogRootV1
-		if _, newslr, err = env.Client.VerifyGetEntryResponse(ctx, env.Domain.DomainId, appID, tc.userID, *slr, e); err != nil {
+		_, newslr, err := env.Client.VerifyGetEntryResponse(ctx, env.Directory.DirectoryId, appID, tc.userID, *slr, e)
+		if err != nil {
 			return fmt.Errorf("gen-test-vectors: VerifyGetEntryResponse(): %v", err)
 		}
 
@@ -176,7 +197,7 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		// Update profile.
 		if tc.setProfile != nil {
 			u := &tpb.User{
-				DomainId:       env.Domain.DomainId,
+				DirectoryId:    env.Directory.DirectoryId,
 				AppId:          appID,
 				UserId:         tc.userID,
 				PublicKeyData:  tc.setProfile,
@@ -203,13 +224,13 @@ func SaveTestVectors(dir string, env *integration.Env, resps []testdata.GetEntry
 		Indent: "\t",
 	}
 	// Output all key material needed to verify the test vectors.
-	domainFile := dir + "/domain.json"
-	f, err := os.Create(domainFile)
+	directoryFile := dir + "/directory.json"
+	f, err := os.Create(directoryFile)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	if err := marshaler.Marshal(f, env.Domain); err != nil {
+	if err := marshaler.Marshal(f, env.Directory); err != nil {
 		return fmt.Errorf("gen-test-vectors: jsonpb.Marshal(): %v", err)
 	}
 

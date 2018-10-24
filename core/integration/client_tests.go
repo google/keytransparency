@@ -73,8 +73,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
 			func(ctx context.Context) error {
 				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-					DomainId: env.Domain.DomainId,
-					MinBatch: 1,
+					DirectoryId: env.Directory.DirectoryId,
+					MinBatch:    1,
 				})
 				return err
 			}); err != nil {
@@ -177,7 +177,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			// Update profile.
 			if tc.setProfile != nil {
 				u := &tpb.User{
-					DomainId:       env.Domain.DomainId,
+					DirectoryId:    env.Directory.DirectoryId,
 					AppId:          appID,
 					UserId:         tc.userID,
 					PublicKeyData:  tc.setProfile,
@@ -211,50 +211,50 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 
-	if err := env.setupHistory(ctx, env.Domain, userID, signers, authorizedKeys, opts); err != nil {
+	if err := env.setupHistory(ctx, env.Directory, userID, signers, authorizedKeys, opts); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
 	}
 
 	for _, tc := range []struct {
+		desc        string
 		start, end  int64
 		wantHistory [][]byte
 		wantErr     bool
 	}{
-		{-1, 1, [][]byte{}, true},                                                        // start epoch < 0: expect error
-		{1, 2, [][]byte{}, false},                                                        // no profile yet
-		{2, 3, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
-		{3, 3, [][]byte{cp(1)}, false},                                                   // single profile (first entry at 3)
-		{4, 4, [][]byte{cp(2)}, false},                                                   // single (changed) profile
-		{5, 5, [][]byte{cp(2)}, false},                                                   // single (unchanged) profile
-		{6, 6, [][]byte{cp(2)}, false},                                                   // single (unchanged) profile
-		{7, 7, [][]byte{cp(3)}, false},                                                   // single (changed) profile
-		{3, 4, [][]byte{cp(1), cp(2)}, false},                                            // multiple profiles
-		{1, 4, [][]byte{cp(1), cp(2)}, false},                                            // test 'nil' first profile(s)
-		{3, 10, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5)}, false},                      // filtering
-		{9, 16, [][]byte{cp(4), cp(5), cp(6)}, false},                                    // filtering consecutive resubmitted profiles
-		{9, 19, [][]byte{cp(4), cp(5), cp(6), cp(5), cp(7)}, false},                      // no filtering of resubmitted profiles
-		{1, 19, [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}, false}, // multiple pages
-		{1, 1001, [][]byte{}, true},                                                      // Invalid end epoch, beyond current epoch
+		{desc: "negative start", start: -1, end: 1, wantHistory: [][]byte{}, wantErr: true},
+		{desc: "large start", start: 1, end: 1001, wantHistory: [][]byte{}, wantErr: true},
+		{desc: "single1", start: 3, end: 3, wantHistory: [][]byte{cp(1)}},
+		{desc: "single3", start: 7, end: 7, wantHistory: [][]byte{cp(3)}},
+		{desc: "single3", start: 8, end: 8, wantHistory: [][]byte{cp(3)}},
+		{desc: "0to3", end: 3, wantHistory: [][]byte{cp(1)}},
+		{desc: "multi", end: 4, wantHistory: [][]byte{cp(1), cp(2)}},
+		{desc: "filter nil", end: 11, wantHistory: [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5)}},
+		{desc: "filter dup", start: 9, end: 16, wantHistory: [][]byte{cp(4), cp(5), cp(6)}},
+		{desc: "filter contiguous", start: 9, end: 19, wantHistory: [][]byte{cp(4), cp(5), cp(6), cp(5), cp(7)}},
+		{desc: "multi page", start: 1, end: 19, wantHistory: [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}},
 	} {
-		_, resp, err := env.Client.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
-		if got := err != nil; got != tc.wantErr {
-			t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
-		}
-		if err != nil {
-			continue
-		}
-		compressed, err := client.CompressHistory(resp)
-		if err != nil {
-			t.Errorf("CompressHistory(): %v", err)
-		}
+		t.Run(tc.desc, func(t *testing.T) {
+			_, resp, err := env.Client.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
+			if got := err != nil; got != tc.wantErr {
+				t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
+			}
+			if err != nil {
+				return
+			}
+			compressed, err := client.CompressHistory(resp)
+			if err != nil {
+				t.Errorf("CompressHistory(): %v", err)
+			}
 
-		if got := sortHistory(compressed); !reflect.DeepEqual(got, tc.wantHistory) {
-			t.Errorf("ListHistory(%v, %v): %s, want %s", tc.start, tc.end, got, tc.wantHistory)
-		}
+			if got := sortHistory(compressed); !reflect.DeepEqual(got, tc.wantHistory) {
+				t.Errorf("ListHistory(%v, %v): %s, want %s", tc.start, tc.end, got, tc.wantHistory)
+			}
+		})
 	}
 }
 
-func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID string, signers []*tink.KeysetHandle, authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
+func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []*tink.KeysetHandle,
+	authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that epoch, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -273,7 +273,7 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 	} {
 		if p != nil {
 			u := &tpb.User{
-				DomainId:       domain.DomainId,
+				DirectoryId:    directory.DirectoryId,
 				AppId:          appID,
 				UserId:         userID,
 				PublicKeyData:  p,
@@ -286,20 +286,19 @@ func (env *Env) setupHistory(ctx context.Context, domain *pb.Domain, userID stri
 			if err != nil {
 				return fmt.Errorf("CreateMutation(%v): %v", userID, err)
 			}
-			if err := env.Client.QueueMutation(ctx, m, signers,
-				env.CallOpts(userID)...); err != nil {
+			if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
 				return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 			}
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-				DomainId: domain.DomainId,
-				MinBatch: 1,
+				DirectoryId: directory.DirectoryId,
+				MinBatch:    1,
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}
 		} else {
 			// Create an empty epoch.
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-				DomainId: domain.DomainId,
+				DirectoryId: directory.DirectoryId,
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(empty): %v", err)
 			}

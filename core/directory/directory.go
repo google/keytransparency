@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package domain stores multi-tenancy configuration information.
-package domain
+// Package directory stores multi-tenancy configuration information.
+package directory
 
 import (
 	"context"
@@ -23,12 +23,12 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 )
 
-// Domain stores configuration information for a single Key Transparency instance.
-type Domain struct {
-	DomainID string
-	MapID    int64
-	LogID    int64
-	VRF      *keyspb.PublicKey
+// Directory stores configuration information for a single Key Transparency instance.
+type Directory struct {
+	DirectoryID string
+	MapID       int64
+	LogID       int64
+	VRF         *keyspb.PublicKey
 
 	VRFPriv                  proto.Message
 	MinInterval, MaxInterval time.Duration
@@ -39,14 +39,14 @@ type Domain struct {
 
 // Storage is an interface for storing multi-tenant configuration information.
 type Storage interface {
-	// List returns the full list of domains.
-	List(ctx context.Context, deleted bool) ([]*Domain, error)
+	// List returns the full list of directories.
+	List(ctx context.Context, deleted bool) ([]*Directory, error)
 	// Write stores a new instance to storage.
-	Write(ctx context.Context, d *Domain) error
+	Write(ctx context.Context, d *Directory) error
 	// Read a configuration from storage.
-	Read(ctx context.Context, domainID string, showDeleted bool) (*Domain, error)
-	// Soft-delete or undelete the domain
-	SetDelete(ctx context.Context, domainID string, isDeleted bool) error
-	// HardDelete the domain.
-	Delete(ctx context.Context, domainID string) error
+	Read(ctx context.Context, directoryID string, showDeleted bool) (*Directory, error)
+	// Soft-delete or undelete the directory
+	SetDelete(ctx context.Context, directoryID string, isDeleted bool) error
+	// HardDelete the directory.
+	Delete(ctx context.Context, directoryID string) error
 }
