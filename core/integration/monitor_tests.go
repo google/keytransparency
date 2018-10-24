@@ -121,7 +121,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 
 	trusted := types.LogRootV1{}
 	cctx, cancel := context.WithTimeout(ctx, env.Timeout)
-	err := mon.ProcessLoop(cctx, env.Directory.DirectoryId, trusted)
+	err = mon.ProcessLoop(cctx, env.Directory.DirectoryId, trusted)
 	if err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
 		t.Errorf("Monitor could not process mutations: %v", err)
 	}
