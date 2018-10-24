@@ -251,7 +251,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
 func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
-	req, err := m.SerializeAndSign(signers, int64(c.trusted.TreeSize))
+	req, err := m.SerializeAndSign(signers)
 	if err != nil {
 		return fmt.Errorf("SerializeAndSign(): %v", err)
 	}

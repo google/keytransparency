@@ -63,7 +63,7 @@ func TestSerializeAndSign(t *testing.T) {
 			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
-			_, err := m.SerializeAndSign(tc.signers, 0)
+			_, err := m.SerializeAndSign(tc.signers)
 			if got := status.Code(err); got != tc.want {
 				t.Fatalf("SerializeAndSign(): %v, want %v", err, tc.want)
 			}
@@ -101,7 +101,7 @@ func TestCreateAndVerify(t *testing.T) {
 			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
-			update, err := m.SerializeAndSign(tc.signers, 0)
+			update, err := m.SerializeAndSign(tc.signers)
 			if err != nil {
 				t.Fatalf("SerializeAndSign(): %v", err)
 			}

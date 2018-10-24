@@ -401,10 +401,6 @@ func request_KeyTransparency_ListEntryHistory_0(ctx context.Context, marshaler r
 
 }
 
-var (
-	filter_KeyTransparency_QueueEntryUpdate_0 = &utilities.DoubleArray{Encoding: map[string]int{"entry_update": 0, "domain_id": 1, "app_id": 2, "user_id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
-)
-
 func request_KeyTransparency_QueueEntryUpdate_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateEntryRequest
 	var metadata runtime.ServerMetadata
@@ -451,10 +447,6 @@ func request_KeyTransparency_QueueEntryUpdate_0(ctx context.Context, marshaler r
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
-	}
-
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_QueueEntryUpdate_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.QueueEntryUpdate(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))

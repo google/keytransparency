@@ -16,6 +16,8 @@ syntax = "proto3";
 
 option go_package = "github.com/google/keytransparency/core/keyserver/readtoken_go_proto";
 
+package google.keytransparency.v1;
+
 // ReadToken can be serialized and handed to users for pagination.
 message ReadToken {
    // shard_id identifies the source for reading.
