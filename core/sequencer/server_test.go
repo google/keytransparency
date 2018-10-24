@@ -20,13 +20,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
-
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
 

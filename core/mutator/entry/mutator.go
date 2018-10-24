@@ -77,14 +77,13 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, fmt.Errorf("ObjectHash: %v", err)
 	}
 
-	if !bytes.Equal(prevEntryHash[:], newEntry.GetPrevious()) {
+	if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
 		// Check if this mutation is a replay.
 		if oldEntry != nil && proto.Equal(oldEntry, newEntry) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
-		glog.Warningf("previous entry hash (%x) does not match the hash provided in this mutation (%x)",
-			prevEntryHash[:], newEntry.GetPrevious())
+		glog.Warningf("previous entry hash: %x, want %x", got, want)
 		return nil, mutator.ErrPreviousHash
 	}
 
