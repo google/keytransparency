@@ -212,7 +212,8 @@ func TestWriteReadDelete(t *testing.T) {
 				return
 			}
 			if got, want := *directory, tc.d; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
-				t.Errorf("Read(%v, %v): %#v, want %#v, diff: \n%v", tc.d.DirectoryID, tc.readDeleted, got, want, cmp.Diff(got, want))
+				t.Errorf("Read(%v, %v): %#v, want %#v, diff: \n%v",
+					tc.d.DirectoryID, tc.readDeleted, got, want, cmp.Diff(got, want))
 			}
 		})
 	}

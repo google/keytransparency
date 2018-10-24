@@ -113,7 +113,8 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 // getEntryByRevision does NOT populate the following fields:
 // - LogRoot
 // - LogConsistency
-func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory, userID, appID string, mapRevision int64) (*pb.GetEntryResponse, error) {
+func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory,
+	userID, appID string, mapRevision int64) (*pb.GetEntryResponse, error) {
 	if mapRevision < 0 {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"Revision is %v, want >= 0", mapRevision)

@@ -285,7 +285,8 @@ func (f *fakeVerifier) Index(vrfProof []byte, directoryID string, appID string, 
 	return make([]byte, 32), nil
 }
 
-func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID string, appID string, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
+func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID string, appID string, userID string,
+	trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
 	smr, err := f.VerifySignedMapRoot(in.MapRoot)
 	return smr, &types.LogRootV1{}, err
 }

@@ -167,7 +167,8 @@ func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTra
 }
 
 // logInclusion returns the inclusion proof for a map revision in the log of map roots.
-func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRoot *tpb.SignedLogRoot, epoch int64) (*tpb.Proof, error) {
+func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRoot *tpb.SignedLogRoot, epoch int64) (
+	*tpb.Proof, error) {
 	// Inclusion proof.
 	secondTreeSize := logRoot.GetTreeSize()
 	if epoch >= secondTreeSize {
@@ -203,7 +204,8 @@ func (s *Server) latestLogRoot(ctx context.Context, d *directory.Directory) (*tp
 }
 
 // latestLogRootProof returns the latest SignedLogRoot and it's consistency proof.
-func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory, firstTreeSize int64) (*tpb.SignedLogRoot, *tpb.Proof, error) {
+func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory, firstTreeSize int64) (
+	*tpb.SignedLogRoot, *tpb.Proof, error) {
 
 	sth, err := s.latestLogRoot(ctx, d)
 	if err != nil {
@@ -256,7 +258,8 @@ func parseToken(token string) (int64, error) {
 	return seq, nil
 }
 
-func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, indexes [][]byte, epoch int64) ([]*tpb.MapLeafInclusion, error) {
+func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, indexes [][]byte, epoch int64) (
+	[]*tpb.MapLeafInclusion, error) {
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    d.MapID,
 		Index:    indexes,

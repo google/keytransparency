@@ -113,7 +113,8 @@ func New(
 }
 
 // ListDirectories produces a list of the configured directories
-func (s *Server) ListDirectories(ctx context.Context, in *pb.ListDirectoriesRequest) (*pb.ListDirectoriesResponse, error) {
+func (s *Server) ListDirectories(ctx context.Context, in *pb.ListDirectoriesRequest) (
+	*pb.ListDirectoriesResponse, error) {
 	directories, err := s.directories.List(ctx, in.GetShowDeleted())
 	if err != nil {
 		return nil, err
@@ -362,8 +363,10 @@ func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequ
 	return &google_protobuf.Empty{}, nil
 }
 
-// UndeleteDirectory reactivates a deleted directory - provided that UndeleteDirectory is called sufficiently soon after DeleteDirectory.
-func (s *Server) UndeleteDirectory(ctx context.Context, in *pb.UndeleteDirectoryRequest) (*google_protobuf.Empty, error) {
+// UndeleteDirectory reactivates a deleted directory - provided that UndeleteDirectory is called sufficiently soon after
+// DeleteDirectory.
+func (s *Server) UndeleteDirectory(ctx context.Context, in *pb.UndeleteDirectoryRequest) (
+	*google_protobuf.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 

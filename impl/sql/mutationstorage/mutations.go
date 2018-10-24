@@ -95,7 +95,8 @@ func (m *Mutations) createTables() error {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *Mutations) ReadPage(ctx context.Context, directoryID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error) {
+func (m *Mutations) ReadPage(ctx context.Context, directoryID string, revision, start int64, pageSize int32) (
+	int64, []*pb.Entry, error) {
 	readStmt, err := m.db.Prepare(readMutationsExpr)
 	if err != nil {
 		return 0, nil, err

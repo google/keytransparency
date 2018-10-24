@@ -61,8 +61,8 @@ func TestVerifyGetEntryResponse(t *testing.T) {
 	trusted := &types.LogRootV1{}
 	for _, tc := range getEntryResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			var slr *types.LogRootV1
-			if _, slr, err = v.VerifyGetEntryResponse(ctx, directoryPB.DirectoryId, tc.AppID, tc.UserID, *trusted, tc.Resp); err != nil {
+			_, slr, err := v.VerifyGetEntryResponse(ctx, directoryPB.DirectoryId, tc.AppID, tc.UserID, *trusted, tc.Resp)
+			if err != nil {
 				t.Errorf("VerifyGetEntryResponse(): %v)", err)
 			}
 			if err == nil && tc.TrustNewLog {

@@ -86,7 +86,7 @@ func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.Mut
 			PageToken:   token,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("GetMutations(%v): %v", epoch.GetDirectoryId(), err)
+			return nil, fmt.Errorf("list mutations on %v: %v", epoch.GetDirectoryId(), err)
 		}
 		mutations = append(mutations, resp.GetMutations()...)
 		token = resp.GetNextPageToken()

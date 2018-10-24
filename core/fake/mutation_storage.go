@@ -35,14 +35,15 @@ func NewMutationStorage() *MutationStorage {
 }
 
 // ReadPage paginates through the list of mutations
-func (m *MutationStorage) ReadPage(_ context.Context, directoryID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error) {
+func (m *MutationStorage) ReadPage(_ context.Context, directoryID string, revision, start int64, pageSize int32) (
+	int64, []*pb.Entry, error) {
 	directory, ok := m.mtns[directoryID]
 	if !ok {
-		return 0, nil, fmt.Errorf("DirectoryID %v not found", directoryID)
+		return 0, nil, fmt.Errorf("directory ID %v not found", directoryID)
 	}
 	mutationList, ok := directory[revision]
 	if !ok {
-		return 0, nil, fmt.Errorf("DirectoryID: %v, revision %v not found", directoryID, revision)
+		return 0, nil, fmt.Errorf("directory ID: %v, revision %v not found", directoryID, revision)
 	}
 	if int(start) > len(mutationList) {
 		return start, nil, nil
@@ -55,7 +56,8 @@ func (m *MutationStorage) ReadPage(_ context.Context, directoryID string, revisi
 }
 
 // WriteBatch stores a set of mutations that are associated with a revision.
-func (m *MutationStorage) WriteBatch(_ context.Context, directoryID string, revision int64, mutations []*pb.Entry) error {
+func (m *MutationStorage) WriteBatch(_ context.Context, directoryID string, revision int64,
+	mutations []*pb.Entry) error {
 	if _, ok := m.mtns[directoryID]; !ok {
 		m.mtns[directoryID] = make(map[int64][]*pb.Entry)
 	}

@@ -171,8 +171,8 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: GetEntry(): %v", err)
 		}
-		var newslr *types.LogRootV1
-		if _, newslr, err = env.Client.VerifyGetEntryResponse(ctx, env.Directory.DirectoryId, appID, tc.userID, *slr, e); err != nil {
+		_, newslr, err := env.Client.VerifyGetEntryResponse(ctx, env.Directory.DirectoryId, appID, tc.userID, *slr, e)
+		if err != nil {
 			return fmt.Errorf("gen-test-vectors: VerifyGetEntryResponse(): %v", err)
 		}
 

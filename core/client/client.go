@@ -74,7 +74,8 @@ type Verifier interface {
 	// Index computes the index of an appID, userID pair from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, appID, userID string) ([]byte, error)
 	// VerifyGetEntryResponse verifies everything about a GetEntryResponse.
-	VerifyGetEntryResponse(ctx context.Context, directoryID, appID, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
+	VerifyGetEntryResponse(ctx context.Context, directoryID, appID, userID string, trusted types.LogRootV1,
+		in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
 	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
 	VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)

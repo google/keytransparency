@@ -102,7 +102,8 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 			return fmt.Errorf("ObjectHash(): %v", err)
 		}
 		if !bytes.Equal(got[:], directoryInfoHash) {
-			return fmt.Errorf("The KtServer %v returned a directoryInfoResponse inconsistent with the provided directoryInfoHash", ktURL)
+			return fmt.Errorf("server %v returned a directoryInfoResponse inconsistent with the provided directoryInfoHash",
+				ktURL)
 		}
 	}
 
