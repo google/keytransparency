@@ -46,9 +46,8 @@ func New() *Mutator {
 // the same output. OldValue and update are both SignedKV protos.
 func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 	// Ensure that the mutation size is within bounds.
-	if proto.Size(update) > mutator.MaxMutationSize {
-		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).",
-			proto.Size(update), mutator.MaxMutationSize)
+	if got, want := proto.Size(update), mutator.MaxMutationSize; got > want {
+		glog.Warningf("mutation is %v bytes, want <= %v", got, want)
 		return nil, mutator.ErrSize
 	}
 
