@@ -10,9 +10,10 @@ package sequencer_go_proto
 
 import (
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/golang/protobuf/proto"
 	empty "github.com/golang/protobuf/ptypes/empty"
-	math "math"
 )
 
 import (
@@ -127,8 +128,8 @@ func (m *MapMetadata_SourceSlice) GetHighestWatermark() int64 {
 
 // CreateEpochRequest contains information needed to create a new epoch.
 type CreateEpochRequest struct {
-	// domain_id is the domain to apply the mutations to.
-	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId,proto3" json:"domain_id,omitempty"`
+	// directory_id is the directory to apply the mutations to.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	// revision is the expected revision of the new epoch.
 	Revision int64 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
 	// map_metadata defines the inputs used for this map revision.
@@ -163,9 +164,9 @@ func (m *CreateEpochRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CreateEpochRequest proto.InternalMessageInfo
 
-func (m *CreateEpochRequest) GetDomainId() string {
+func (m *CreateEpochRequest) GetDirectoryId() string {
 	if m != nil {
-		return m.DomainId
+		return m.DirectoryId
 	}
 	return ""
 }
@@ -185,10 +186,10 @@ func (m *CreateEpochRequest) GetMapMetadata() *MapMetadata {
 }
 
 // RunBatchRequest triggers the sequencing of a batch of mutations for a
-// domain, with the batch size governed by the request parameters.
+// directory, with the batch size governed by the request parameters.
 type RunBatchRequest struct {
-	// domain_id is the domain to run for.
-	DomainId string `protobuf:"bytes,1,opt,name=domain_id,json=domainId,proto3" json:"domain_id,omitempty"`
+	// directory_id is the directory to run for.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	// min_batch is the minimum number of items in a batch.
 	// If less than min_batch items are available, nothing happens.
 	// TODO(#1047): Replace with timeout so items in the queue get processed eventually.
@@ -225,9 +226,9 @@ func (m *RunBatchRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RunBatchRequest proto.InternalMessageInfo
 
-func (m *RunBatchRequest) GetDomainId() string {
+func (m *RunBatchRequest) GetDirectoryId() string {
 	if m != nil {
-		return m.DomainId
+		return m.DirectoryId
 	}
 	return ""
 }
@@ -248,7 +249,7 @@ func (m *RunBatchRequest) GetMaxBatch() int32 {
 
 // PublishBatchRequest copies all SignedMapHeads into the Log of SignedMapHeads.
 type PublishBatchRequest struct {
-	DomainId             string   `protobuf:"bytes,1,opt,name=domain_id,json=domainId,proto3" json:"domain_id,omitempty"`
+	DirectoryId          string   `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -279,9 +280,9 @@ func (m *PublishBatchRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PublishBatchRequest proto.InternalMessageInfo
 
-func (m *PublishBatchRequest) GetDomainId() string {
+func (m *PublishBatchRequest) GetDirectoryId() string {
 	if m != nil {
-		return m.DomainId
+		return m.DirectoryId
 	}
 	return ""
 }

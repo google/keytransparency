@@ -21,7 +21,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
 
 	"github.com/golang/glog"
@@ -35,7 +35,7 @@ import (
 
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
-	domains         domain.Storage
+	directories     directory.Storage
 	mapAdmin        tpb.TrillianAdminClient
 	batchSize       int32
 	sequencerClient spb.KeyTransparencySequencerClient
@@ -45,13 +45,13 @@ type Sequencer struct {
 func New(
 	sequencerClient spb.KeyTransparencySequencerClient,
 	mapAdmin tpb.TrillianAdminClient,
-	domains domain.Storage,
+	directories directory.Storage,
 	mutations mutator.MutationStorage,
 	batchSize int32,
 ) *Sequencer {
 	return &Sequencer{
 		sequencerClient: sequencerClient,
-		domains:         domains,
+		directories:     directories,
 		mapAdmin:        mapAdmin,
 		batchSize:       batchSize,
 	}
@@ -119,19 +119,19 @@ func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx co
 	return nil
 }
 
-// RunBatchForAllDomains scans the domains table for new domains and creates new receivers for
-// domains that the sequencer is not currently receiving for.
-func (s *Sequencer) RunBatchForAllDomains(ctx context.Context) error {
-	domains, err := s.domains.List(ctx, false)
+// RunBatchForAllDirectories scans the directories table for new directories and creates new receivers for
+// directories that the sequencer is not currently receiving for.
+func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
+	directories, err := s.directories.List(ctx, false)
 	if err != nil {
 		return fmt.Errorf("admin.List(): %v", err)
 	}
-	for _, d := range domains {
-		knownDomains.Set(1, d.DomainID)
+	for _, d := range directories {
+		knownDirectories.Set(1, d.DirectoryID)
 		if _, err := s.sequencerClient.RunBatch(ctx, &spb.RunBatchRequest{
-			DomainId: d.DomainID,
-			MinBatch: 1,
-			MaxBatch: s.batchSize,
+			DirectoryId: d.DirectoryID,
+			MinBatch:    1,
+			MaxBatch:    s.batchSize,
 		}); err != nil {
 			return err
 		}

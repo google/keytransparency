@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const domainID = "default"
+const directoryID = "default"
 
 func TestSerializeAndSign(t *testing.T) {
 	for _, tc := range []struct {
@@ -53,7 +53,7 @@ func TestSerializeAndSign(t *testing.T) {
 			userID := "alice"
 			appID := "app1"
 
-			m := NewMutation(index, domainID, appID, userID)
+			m := NewMutation(index, directoryID, appID, userID)
 			if err := m.SetPrevious(tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}
@@ -91,7 +91,7 @@ func TestCreateAndVerify(t *testing.T) {
 			userID := "alice"
 			appID := "app1"
 
-			m := NewMutation(index, domainID, appID, userID)
+			m := NewMutation(index, directoryID, appID, userID)
 			if err := m.SetPrevious(tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}

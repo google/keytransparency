@@ -27,7 +27,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const domainID = "default"
+const directoryID = "default"
 
 func newDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
@@ -65,7 +65,7 @@ func fillDB(ctx context.Context, m mutator.MutationStorage) error {
 			},
 		},
 	} {
-		if err := m.WriteBatch(ctx, domainID, tc.revision, tc.mutations); err != nil {
+		if err := m.WriteBatch(ctx, directoryID, tc.revision, tc.mutations); err != nil {
 			return err
 		}
 	}
@@ -139,7 +139,7 @@ func TestReadPage(t *testing.T) {
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			max, results, err := m.ReadPage(ctx, domainID, tc.revision, tc.start, tc.count)
+			max, results, err := m.ReadPage(ctx, directoryID, tc.revision, tc.start, tc.count)
 			if err != nil {
 				t.Errorf("failed to read mutations: %v", err)
 			}

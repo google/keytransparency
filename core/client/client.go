@@ -62,7 +62,7 @@ var (
 	ErrIncomplete = errors.New("incomplete account history")
 	// ErrLogEmpty occurs when the Log.TreeSize < 1 which indicates
 	// that the log of signed map roots is empty.
-	ErrLogEmpty = errors.New("log is empty - domain initialization failed")
+	ErrLogEmpty = errors.New("log is empty - directory initialization failed")
 	// ErrNonContiguous occurs when there are holes in a list of map roots.
 	ErrNonContiguous = errors.New("noncontiguous map roots")
 	// Vlog is the verbose logger. By default it outputs to /dev/null.
@@ -72,9 +72,10 @@ var (
 // Verifier is used to verify specific outputs from Key Transparency.
 type Verifier interface {
 	// Index computes the index of an appID, userID pair from a VRF proof, obtained from the server.
-	Index(vrfProof []byte, domainID, appID, userID string) ([]byte, error)
+	Index(vrfProof []byte, directoryID, appID, userID string) ([]byte, error)
 	// VerifyGetEntryResponse verifies everything about a GetEntryResponse.
-	VerifyGetEntryResponse(ctx context.Context, domainID, appID, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
+	VerifyGetEntryResponse(ctx context.Context, directoryID, appID, userID string, trusted types.LogRootV1,
+		in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
 	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
 	VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
@@ -97,7 +98,7 @@ type Verifier interface {
 type Client struct {
 	Verifier
 	cli         pb.KeyTransparencyClient
-	domainID    string
+	directoryID string
 	mutator     mutator.Func
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
@@ -105,8 +106,8 @@ type Client struct {
 }
 
 // NewFromConfig creates a new client from a config
-func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Client, error) {
-	ktVerifier, err := NewVerifierFromDomain(config)
+func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Directory) (*Client, error) {
+	ktVerifier, err := NewVerifierFromDirectory(config)
 	if err != nil {
 		return nil, err
 	}
@@ -115,20 +116,20 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Domain) (*Clien
 		return nil, err
 	}
 
-	return New(ktClient, config.DomainId, minInterval, ktVerifier), nil
+	return New(ktClient, config.DirectoryId, minInterval, ktVerifier), nil
 }
 
 // New creates a new client.
 func New(ktClient pb.KeyTransparencyClient,
-	domainID string,
+	directoryID string,
 	retryDelay time.Duration,
 	ktVerifier *RealVerifier) *Client {
 	return &Client{
-		Verifier:   ktVerifier,
-		cli:        ktClient,
-		domainID:   domainID,
-		mutator:    entry.New(),
-		RetryDelay: retryDelay,
+		Verifier:    ktVerifier,
+		cli:         ktClient,
+		directoryID: directoryID,
+		mutator:     entry.New(),
+		RetryDelay:  retryDelay,
 	}
 }
 
@@ -231,8 +232,8 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 // Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns codes.FailedPrecondition if there was a race condition.
 func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
-	if got, want := u.DomainId, c.domainID; got != want {
-		return nil, fmt.Errorf("u.DomainID: %v, want %v", got, want)
+	if got, want := u.DirectoryId, c.directoryID; got != want {
+		return nil, fmt.Errorf("u.DirectoryID: %v, want %v", got, want)
 	}
 	// 1. pb.User + ExistingEntry -> Mutation.
 	m, err := c.CreateMutation(ctx, u)
@@ -270,12 +271,12 @@ func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutati
 	oldLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetVrfProof(), u.DomainId, u.AppId, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), u.DirectoryId, u.AppId, u.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	mutation := entry.NewMutation(index, u.DomainId, u.AppId, u.UserId)
+	mutation := entry.NewMutation(index, u.DirectoryId, u.AppId, u.UserId)
 
 	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
 		return nil, err

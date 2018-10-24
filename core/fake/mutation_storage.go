@@ -23,7 +23,7 @@ import (
 
 // MutationStorage implements mutator.Mutation
 type MutationStorage struct {
-	// mtns is a map of domains to epoch numbers to a list of mutations.
+	// mtns is a map of directories to epoch numbers to a list of mutations.
 	mtns map[string]map[int64][]*pb.Entry
 }
 
@@ -35,14 +35,15 @@ func NewMutationStorage() *MutationStorage {
 }
 
 // ReadPage paginates through the list of mutations
-func (m *MutationStorage) ReadPage(_ context.Context, domainID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error) {
-	domain, ok := m.mtns[domainID]
+func (m *MutationStorage) ReadPage(_ context.Context, directoryID string, revision, start int64, pageSize int32) (
+	int64, []*pb.Entry, error) {
+	directory, ok := m.mtns[directoryID]
 	if !ok {
-		return 0, nil, fmt.Errorf("DomainID %v not found", domainID)
+		return 0, nil, fmt.Errorf("directory ID %v not found", directoryID)
 	}
-	mutationList, ok := domain[revision]
+	mutationList, ok := directory[revision]
 	if !ok {
-		return 0, nil, fmt.Errorf("DomainID: %v, revision %v not found", domainID, revision)
+		return 0, nil, fmt.Errorf("directory ID: %v, revision %v not found", directoryID, revision)
 	}
 	if int(start) > len(mutationList) {
 		return start, nil, nil
@@ -55,10 +56,11 @@ func (m *MutationStorage) ReadPage(_ context.Context, domainID string, revision,
 }
 
 // WriteBatch stores a set of mutations that are associated with a revision.
-func (m *MutationStorage) WriteBatch(_ context.Context, domainID string, revision int64, mutations []*pb.Entry) error {
-	if _, ok := m.mtns[domainID]; !ok {
-		m.mtns[domainID] = make(map[int64][]*pb.Entry)
+func (m *MutationStorage) WriteBatch(_ context.Context, directoryID string, revision int64,
+	mutations []*pb.Entry) error {
+	if _, ok := m.mtns[directoryID]; !ok {
+		m.mtns[directoryID] = make(map[int64][]*pb.Entry)
 	}
-	m.mtns[domainID][revision] = mutations
+	m.mtns[directoryID][revision] = mutations
 	return nil
 }

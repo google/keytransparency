@@ -28,35 +28,35 @@ import (
 
 const (
 	insertMutationsExpr = `
-	INSERT INTO Mutations (DomainID, Revision, Sequence, Mutation)
+	INSERT INTO Mutations (DirectoryID, Revision, Sequence, Mutation)
 	VALUES (?, ?, ?, ?);`
 	readMutationsExpr = `
   	SELECT Sequence, Mutation FROM Mutations
-  	WHERE DomainID = ? AND Revision = ? AND Sequence >= ?
+  	WHERE DirectoryID = ? AND Revision = ? AND Sequence >= ?
   	ORDER BY Sequence ASC LIMIT ?;`
 )
 
 var (
 	createStmt = []string{
 		`CREATE TABLE IF NOT EXISTS Mutations (
-		DomainID VARCHAR(30)   NOT NULL,
-		Revision BIGINT        NOT NULL,
-		Sequence INTEGER       NOT NULL,
-		Mutation BLOB          NOT NULL,
-		PRIMARY KEY(DomainID, Revision, Sequence)
+		DirectoryID VARCHAR(30)   NOT NULL,
+		Revision BIGINT           NOT NULL,
+		Sequence INTEGER          NOT NULL,
+		Mutation BLOB             NOT NULL,
+		PRIMARY KEY(DirectoryID, Revision, Sequence)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Queue (
-		DomainID VARCHAR(30)   NOT NULL,
-		LogID    BIGINT        NOT NULL,
-		Time     BIGINT        NOT NULL,
-		Mutation BLOB          NOT NULL,
-		PRIMARY KEY(DomainID, LogID, Time)
+		DirectoryID VARCHAR(30)   NOT NULL,
+		LogID    BIGINT           NOT NULL,
+		Time     BIGINT           NOT NULL,
+		Mutation BLOB             NOT NULL,
+		PRIMARY KEY(DirectoryID, LogID, Time)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Logs (
-		DomainID VARCHAR(30)   NOT NULL,
-		LogID    BIGINT        NOT NULL,
-		Enabled  INTEGER       NOT NULL,
-		PRIMARY KEY(DomainID, LogID)
+		DirectoryID VARCHAR(30)   NOT NULL,
+		LogID    BIGINT           NOT NULL,
+		Enabled  INTEGER          NOT NULL,
+		PRIMARY KEY(DirectoryID, LogID)
 	);`,
 	}
 )
@@ -90,18 +90,19 @@ func (m *Mutations) createTables() error {
 	return nil
 }
 
-// ReadPage reads all mutations for a specific given domainID and sequence range.
+// ReadPage reads all mutations for a specific given directoryID and sequence range.
 // The range is identified by a starting sequence number and a count. Note that
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *Mutations) ReadPage(ctx context.Context, domainID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error) {
+func (m *Mutations) ReadPage(ctx context.Context, directoryID string, revision, start int64, pageSize int32) (
+	int64, []*pb.Entry, error) {
 	readStmt, err := m.db.Prepare(readMutationsExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, domainID, revision, start, pageSize)
+	rows, err := readStmt.QueryContext(ctx, directoryID, revision, start, pageSize)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -110,7 +111,7 @@ func (m *Mutations) ReadPage(ctx context.Context, domainID string, revision, sta
 }
 
 // WriteBatch saves the mutations in the database.
-func (m *Mutations) WriteBatch(ctx context.Context, domainID string, revision int64, mutations []*pb.Entry) error {
+func (m *Mutations) WriteBatch(ctx context.Context, directoryID string, revision int64, mutations []*pb.Entry) error {
 	writeStmt, err := m.db.Prepare(insertMutationsExpr)
 	if err != nil {
 		return err
@@ -121,7 +122,7 @@ func (m *Mutations) WriteBatch(ctx context.Context, domainID string, revision in
 		if err != nil {
 			return err
 		}
-		if _, err := writeStmt.ExecContext(ctx, domainID, revision, i, mData); err != nil {
+		if _, err := writeStmt.ExecContext(ctx, directoryID, revision, i, mData); err != nil {
 			return err
 		}
 	}

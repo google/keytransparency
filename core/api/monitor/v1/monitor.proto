@@ -27,22 +27,22 @@ import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 import "trillian.proto";
 
-// GetStateRequest requests the verification state of a keytransparency domain
+// GetStateRequest requests the verification state of a keytransparency directory
 // for a particular point in time.
 message GetStateRequest {
   // kt_url is the URL of the keytransparency server for which the monitoring
   // result will be returned.
   string kt_url = 2;
 
-  // domain_id identifies the merkle tree being monitored.
-  string domain_id = 3;
+  // directory_id identifies the merkle tree being monitored.
+  string directory_id = 3;
 
   // epoch specifies the revision for which the monitoring results will
   // be returned (epochs start at 0).
   int64 epoch = 1;
 }
 
-// State represents the monitor's evaluation of a Key Transparency domain
+// State represents the monitor's evaluation of a Key Transparency directory
 // at a particular epoch.
 message State {
   // smr contains the map root for the sparse Merkle Tree signed with the
@@ -64,8 +64,8 @@ message State {
 //
 // - Signed Map Roots can be collected using the GetSignedMapRoot APIs.
 // - Monitor resources are named:
-//   - /monitor/v1/servers/{kt_url}/domains/{domain_id}/states/{epoch}
-//   - /monitor/v1/servers/{kt_url}/domains/{domain_id}/states:latest
+//   - /monitor/v1/servers/{kt_url}/directories/{directory_id}/states/{epoch}
+//   - /monitor/v1/servers/{kt_url}/directories/{directory_id}/states:latest
 //
 service Monitor {
   // GetSignedMapRoot returns the latest valid signed map root the monitor
@@ -77,7 +77,7 @@ service Monitor {
   // from the previous to the current epoch it won't sign the map root and
   // additional data will be provided to reproduce the failure.
   rpc GetState(GetStateRequest) returns (State) {
-    option (google.api.http) = { get: "/monitor/v1/servers/{kt_url}/domains/{domain_id}/states:latest" };
+    option (google.api.http) = { get: "/monitor/v1/servers/{kt_url}/directories/{directory_id}/states:latest" };
   }
 
   // GetSignedMapRootByRevision returns the monitor's result for a specific map
@@ -88,7 +88,7 @@ service Monitor {
   // mutations from the previous to the current epoch it won't sign the map root
   // and additional data will be provided to reproduce the failure.
   rpc GetStateByRevision(GetStateRequest) returns(State) {
-    option (google.api.http) = { get: "/monitor/v1/servers/{kt_url}/domains/{domain_id}/states/{epoch}" };
+    option (google.api.http) = { get: "/monitor/v1/servers/{kt_url}/directories/{directory_id}/states/{epoch}" };
   }
 }
 

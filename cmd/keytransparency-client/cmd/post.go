@@ -91,7 +91,7 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
 		u := &tpb.User{
-			DomainId:       viper.GetString("domain"),
+			DirectoryId:    viper.GetString("directory"),
 			AppId:          appID,
 			UserId:         userID,
 			PublicKeyData:  profileData,

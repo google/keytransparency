@@ -21,8 +21,8 @@ package google.keytransparency.impl;
 message AuthorizationPolicy {
   // Resource contains the resource being accessed.
   message Resource {
-    // domain_id contains the Key Transparency domain of this entry.
-    string domain_id = 1;
+    // directory_id contains the Key Transparency directory of this entry.
+    string directory_id = 1;
     // app_id contains the application identity of this entry.
     string app_id = 2;
   }

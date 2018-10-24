@@ -46,7 +46,7 @@ services:
     depends_on:
       - db
     image: us.gcr.io/key-transparency/log-server:${TRAVIS_COMMIT}
-    build: 
+    build:
       context: ../trillian
       dockerfile: server/trillian_log_server/Dockerfile
     restart: always
@@ -55,7 +55,7 @@ services:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
-      - --alsologtostderr 
+      - --alsologtostderr
     ports:
       - "8090"
       - "8091"
@@ -73,7 +73,7 @@ services:
       context: ../trillian
       dockerfile: server/trillian_log_signer/Dockerfile
     restart: always
-    entrypoint: 
+    entrypoint:
       - /go/bin/trillian_log_signer
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --http_endpoint=0.0.0.0:8091
@@ -95,7 +95,7 @@ services:
     depends_on:
       - db
     image: us.gcr.io/key-transparency/map-server:${TRAVIS_COMMIT}
-    build: 
+    build:
       context: ../trillian
       dockerfile: server/trillian_map_server/Dockerfile
     restart: always
@@ -104,7 +104,7 @@ services:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
-      - --alsologtostderr 
+      - --alsologtostderr
     ports:
       - "8090"
       - "8091"
@@ -139,7 +139,7 @@ services:
       - --alsologtostderr
       - --v=5
     labels:
-      kompose.service.type: LoadBalancer 
+      kompose.service.type: LoadBalancer
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/metrics"]
       interval: 30s
@@ -179,12 +179,12 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-    build: 
+    build:
       context: .
-      dockerfile: ./deploy/docker/init/Dockerfile 
-    depends_on: 
+      dockerfile: ./deploy/docker/init/Dockerfile
+    depends_on:
       - sequencer
-    command:  sequencer:8080 -- curl -k https://sequencer:8080/v1/domains -d'{"domain_id":"default","min_interval":"1s","max_interval":"60s"}'
+    command:  sequencer:8080 -- curl -k https://sequencer:8080/v1/directories -d'{"directory_id":"default","min_interval":"1s","max_interval":"60s"}'
 
   monitor:
     depends_on:
@@ -199,7 +199,7 @@ services:
       - --addr=0.0.0.0:8099
       - --kt-url=server:8080
       - --insecure
-      - --domainid=default
+      - --directoryid=default
       - --tls-key=/kt/server.key
       - --tls-cert=/kt/server.crt
       - --sign-key=/kt/monitor_sign-key.pem

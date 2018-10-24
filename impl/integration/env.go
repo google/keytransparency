@@ -38,7 +38,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/sql/domain"
+	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
@@ -115,7 +115,7 @@ func keyFromPEM(p string) *any.Any {
 // NewEnv sets up common resources for tests.
 func NewEnv(ctx context.Context) (*Env, error) {
 	timeout := 6 * time.Second
-	domainID := "integration"
+	directoryID := "integration"
 
 	db, err := testdb.NewTrillianDB(ctx)
 	if err != nil {
@@ -136,20 +136,20 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		return nil, fmt.Errorf("env: failed to create trillian log server: %v", err)
 	}
 
-	// Configure domain, which creates new map and log trees.
-	domainStorage, err := domain.NewStorage(db)
+	// Configure directory, which creates new map and log trees.
+	directoryStorage, err := directory.NewStorage(db)
 	if err != nil {
-		return nil, fmt.Errorf("env: failed to create domain storage: %v", err)
+		return nil, fmt.Errorf("env: failed to create directory storage: %v", err)
 	}
 	mutations, err := mutationstorage.New(db)
 	if err != nil {
 		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
 	}
-	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, domainStorage, mutations, vrfKeyGen)
+	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, directoryStorage, mutations, vrfKeyGen)
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	domainPB, err := adminSvr.CreateDomain(cctx, &pb.CreateDomainRequest{
-		DomainId:      domainID,
+	directoryPB, err := adminSvr.CreateDirectory(cctx, &pb.CreateDirectoryRequest{
+		DirectoryId:   directoryID,
 		MinInterval:   ptypes.DurationProto(100 * time.Millisecond),
 		MaxInterval:   ptypes.DurationProto(60 * time.Hour),
 		VrfPrivateKey: keyFromPEM(vrfPriv),
@@ -157,9 +157,9 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		MapPrivateKey: keyFromPEM(mapPriv),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("env: CreateDomain(): %v", err)
+		return nil, fmt.Errorf("env: CreateDirectory(): %v", err)
 	}
-	glog.V(5).Infof("Domain: %# v", pretty.Formatter(domainPB))
+	glog.V(5).Infof("Directory: %# v", pretty.Formatter(directoryPB))
 
 	// Common data structures.
 	authFunc := authentication.FakeAuthFunc
@@ -167,7 +167,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 
 	queue := mutator.MutationLogs(mutations)
 	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
-		entry.New(), domainStorage, queue, mutations)
+		entry.New(), directoryStorage, queue, mutations)
 	gsvr := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			authorization.UnaryServerInterceptor(map[string]authorization.AuthPair{
@@ -182,7 +182,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 
 	// Sequencer Server.
 	sequencerServer := sequencer.NewServer(
-		domainStorage,
+		directoryStorage,
 		logEnv.Admin, mapEnv.Admin,
 		logEnv.Log, mapEnv.Map,
 		mutations, mutations,
@@ -206,7 +206,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
-	client, err := client.NewFromConfig(ktClient, domainPB)
+	client, err := client.NewFromConfig(ktClient, directoryPB)
 	if err != nil {
 		return nil, fmt.Errorf("NewFromConfig(): %v", err)
 	}
@@ -217,7 +217,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 			Client:    client,
 			Cli:       ktClient,
 			Sequencer: sequencerClient,
-			Domain:    domainPB,
+			Directory: directoryPB,
 			Timeout:   timeout,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
@@ -237,10 +237,10 @@ func NewEnv(ctx context.Context) (*Env, error) {
 func (env *Env) Close() {
 	env.stopSequencer()
 	ctx := context.Background()
-	if _, err := env.admin.DeleteDomain(ctx, &pb.DeleteDomainRequest{
-		DomainId: env.Domain.DomainId,
+	if _, err := env.admin.DeleteDirectory(ctx, &pb.DeleteDirectoryRequest{
+		DirectoryId: env.Directory.DirectoryId,
 	}); err != nil {
-		glog.Errorf("env: Close(): DeleteDomain(%v): %v", env.Domain.DomainId, err)
+		glog.Errorf("env: Close(): DeleteDirectory(%v): %v", env.Directory.DirectoryId, err)
 	}
 	env.grpcCC.Close()
 	env.grpcServer.Stop()

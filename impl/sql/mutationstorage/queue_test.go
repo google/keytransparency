@@ -27,12 +27,12 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func newForTest(ctx context.Context, t *testing.T, shardIDs ...int64) *Mutations {
+func newForTest(ctx context.Context, t *testing.T, logIDs ...int64) *Mutations {
 	m, err := New(newDB(t))
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
 	}
-	if err := m.AddLogs(ctx, domainID, shardIDs...); err != nil {
+	if err := m.AddLogs(ctx, directoryID, logIDs...); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
 	return m
@@ -59,7 +59,7 @@ func TestRandLog(t *testing.T) {
 			m := newForTest(ctx, t, tc.send...)
 			logs := make(map[int64]bool)
 			for i := 0; i < 10*len(tc.wantLogs); i++ {
-				logID, err := m.randLog(ctx, domainID)
+				logID, err := m.randLog(ctx, directoryID)
 				if got, want := status.Code(err), tc.wantCode; got != want {
 					t.Errorf("randLog(): %v, want %v", got, want)
 				}
@@ -97,7 +97,7 @@ func TestSend(t *testing.T) {
 		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
 		{desc: "New", ts: ts3},
 	} {
-		err := m.send(ctx, domainID, 1, update, tc.ts)
+		err := m.send(ctx, directoryID, 1, update, tc.ts)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
@@ -106,15 +106,15 @@ func TestSend(t *testing.T) {
 
 func TestWatermark(t *testing.T) {
 	ctx := context.Background()
-	shardIDs := []int64{1, 2}
-	m := newForTest(ctx, t, shardIDs...)
+	logIDs := []int64{1, 2}
+	m := newForTest(ctx, t, logIDs...)
 	update := []byte("bar")
 
 	startTS := time.Now()
 	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
-		for _, shardID := range shardIDs {
-			if err := m.send(ctx, domainID, shardID, update, ts); err != nil {
-				t.Fatalf("m.send(%v): %v", shardID, err)
+		for _, logID := range logIDs {
+			if err := m.send(ctx, directoryID, logID, update, ts); err != nil {
+				t.Fatalf("m.send(%v): %v", logID, err)
 			}
 		}
 	}
@@ -137,7 +137,7 @@ func TestWatermark(t *testing.T) {
 		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 9, count: 1},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			count, got, err := m.HighWatermark(ctx, domainID, tc.logID, tc.start, tc.batchSize)
+			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
 			if err != nil {
 				t.Errorf("highWatermark(): %v", err)
 			}
@@ -157,7 +157,7 @@ func TestReadLog(t *testing.T) {
 	m := newForTest(ctx, t, logID)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.Entry{Index: []byte{i}}}
-		if err := m.Send(ctx, domainID, entry); err != nil {
+		if err := m.Send(ctx, directoryID, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
 	}
@@ -171,7 +171,7 @@ func TestReadLog(t *testing.T) {
 		{batchSize: 1, count: 1},
 		{batchSize: 100, count: 10},
 	} {
-		rows, err := m.ReadLog(ctx, domainID, logID, 0, time.Now().UnixNano(), tc.batchSize)
+		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.batchSize)
 		if err != nil {
 			t.Fatalf("ReadLog(): %v", err)
 		}

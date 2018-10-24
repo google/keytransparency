@@ -67,7 +67,7 @@ type Hammer struct {
 	timeout     time.Duration
 	ktCli       pb.KeyTransparencyClient
 	appID       string
-	domain      *pb.Domain
+	directory   *pb.Directory
 
 	signers        []*tink.KeysetHandle
 	authorizedKeys *tinkpb.Keyset
@@ -75,13 +75,13 @@ type Hammer struct {
 
 // New returns a new hammer job
 func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
-	ktAddr, domainID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
+	ktAddr, directoryID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
 	ktCli, err := dial(ctx, ktAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	domain, err := ktCli.GetDomain(ctx, &pb.GetDomainRequest{DomainId: domainID})
+	directory, err := ktCli.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: directoryID})
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		timeout:     timeout,
 		ktCli:       ktCli,
 		appID:       fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
-		domain:      domain,
+		directory:   directory,
 
 		signers:        []*tink.KeysetHandle{keyset},
 		authorizedKeys: authorizedKeys.Keyset(),
@@ -198,7 +198,7 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 	workers := make([]worker, 0, n)
 	for i := 0; i < n; i++ {
 		// Give each worker its own client.
-		client, err := client.NewFromConfig(h.ktCli, h.domain)
+		client, err := client.NewFromConfig(h.ktCli, h.directory)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +216,7 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 	users := make([]*tpb.User, 0, len(req.UserIDs))
 	for _, userID := range req.UserIDs {
 		users = append(users, &tpb.User{
-			DomainId:       w.domain.DomainId,
+			DirectoryId:    w.directory.DirectoryId,
 			AppId:          w.appID,
 			UserId:         userID,
 			PublicKeyData:  []byte("publickey"),

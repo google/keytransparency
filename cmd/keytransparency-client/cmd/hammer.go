@@ -69,15 +69,15 @@ var hammerCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ktURL := viper.GetString("kt-url")
-		domainID := viper.GetString("domain")
+		directoryID := viper.GetString("directory")
 		timeout := viper.GetDuration("timeout")
 
-		log.Printf("Hammering %v/domains/%v: with %v timeout", ktURL, domainID, timeout)
+		log.Printf("Hammering %v/directories/%v: with %v timeout", ktURL, directoryID, timeout)
 
 		ctx := context.Background()
 
 		h, err := hammer.New(ctx, dial, callOptions,
-			ktURL, domainID, timeout, keyset)
+			ktURL, directoryID, timeout, keyset)
 		if err != nil {
 			return err
 		}

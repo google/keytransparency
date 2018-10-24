@@ -247,7 +247,7 @@ func (f *fakeKeyServer) ListEntryHistory(ctx context.Context, in *pb.ListEntryHi
 	}, nil
 }
 
-func (f *fakeKeyServer) GetDomain(context.Context, *pb.GetDomainRequest) (*pb.Domain, error) {
+func (f *fakeKeyServer) GetDirectory(context.Context, *pb.GetDirectoryRequest) (*pb.Directory, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
@@ -281,11 +281,12 @@ func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest
 
 type fakeVerifier struct{}
 
-func (f *fakeVerifier) Index(vrfProof []byte, domainID string, appID string, userID string) ([]byte, error) {
+func (f *fakeVerifier) Index(vrfProof []byte, directoryID string, appID string, userID string) ([]byte, error) {
 	return make([]byte, 32), nil
 }
 
-func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, domainID string, appID string, userID string, trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
+func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID string, appID string, userID string,
+	trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
 	smr, err := f.VerifySignedMapRoot(in.MapRoot)
 	return smr, &types.LogRootV1{}, err
 }

@@ -24,7 +24,7 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/sql/domain"
+	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
@@ -95,9 +95,9 @@ func main() {
 	}
 
 	// Create database and helper objects.
-	domains, err := domain.NewStorage(sqldb)
+	directories, err := directory.NewStorage(sqldb)
 	if err != nil {
-		glog.Exitf("Failed to create domain storage: %v", err)
+		glog.Exitf("Failed to create directory storage: %v", err)
 	}
 	logs, err := mutationstorage.New(sqldb)
 	if err != nil {
@@ -120,7 +120,7 @@ func main() {
 
 	// Create gRPC server.
 	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
-		entry.New(), domains, logs, logs)
+		entry.New(), directories, logs, logs)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
