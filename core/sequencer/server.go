@@ -71,20 +71,18 @@ func createMetrics(mf monitoring.MetricFactory) {
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
 	// HighWatermarks returns the highest primary key for each log in the mutations table.
-	HighWatermarks(ctx context.Context, directoryID string) (map[int64]int64, error)
+	HighWatermarks(ctx context.Context, dirID string) (map[int64]int64, error)
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
-	ReadLog(ctx context.Context, directoryID string, logID, low, high int64) ([]*mutator.LogMessage, error)
+	ReadLog(ctx context.Context, dirID string, logID, low, high int64) ([]*mutator.LogMessage, error)
 }
 
 // Batcher writes batch definitions to storage.
 type Batcher interface {
 	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
-	WriteBatchSources(ctx context.Context, directoryID string,
-		revision int64, sources *spb.MapMetadata) error
+	WriteBatchSources(ctx context.Context, dirID string, rev int64, sources *spb.MapMetadata) error
 	// ReadBatch returns the batch definitions for a given revision.
-	ReadBatch(ctx context.Context, directoryID string,
-		revision int64) (*spb.MapMetadata, error)
+	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
