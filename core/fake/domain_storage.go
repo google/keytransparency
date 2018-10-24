@@ -17,63 +17,63 @@ package fake
 import (
 	"context"
 
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// DomainStorage implements domain.Storage
-type DomainStorage struct {
-	domains map[string]*domain.Domain
+// DirectoryStorage implements directory.Storage
+type DirectoryStorage struct {
+	directories map[string]*directory.Directory
 }
 
-// NewDomainStorage returns a fake dominstorage.Storage
-func NewDomainStorage() *DomainStorage {
-	return &DomainStorage{
-		domains: make(map[string]*domain.Domain),
+// NewDirectoryStorage returns a fake dominstorage.Storage
+func NewDirectoryStorage() *DirectoryStorage {
+	return &DirectoryStorage{
+		directories: make(map[string]*directory.Directory),
 	}
 }
 
-// List returns a list of active domains
-func (a *DomainStorage) List(ctx context.Context, deleted bool) ([]*domain.Domain, error) {
-	ret := make([]*domain.Domain, 0, len(a.domains))
-	for _, d := range a.domains {
+// List returns a list of active directories
+func (a *DirectoryStorage) List(ctx context.Context, deleted bool) ([]*directory.Directory, error) {
+	ret := make([]*directory.Directory, 0, len(a.directories))
+	for _, d := range a.directories {
 		ret = append(ret, d)
 	}
 	return ret, nil
 }
 
-// Write adds a new domain.
-func (a *DomainStorage) Write(ctx context.Context, d *domain.Domain) error {
-	a.domains[d.DomainID] = d
+// Write adds a new directory.
+func (a *DirectoryStorage) Write(ctx context.Context, d *directory.Directory) error {
+	a.directories[d.DirectoryID] = d
 	return nil
 }
 
-// Read returns existing domains.
-func (a *DomainStorage) Read(ctx context.Context, ID string, showDeleted bool) (*domain.Domain, error) {
-	d, ok := a.domains[ID]
+// Read returns existing directories.
+func (a *DirectoryStorage) Read(ctx context.Context, ID string, showDeleted bool) (*directory.Directory, error) {
+	d, ok := a.directories[ID]
 	if !ok || d.Deleted && !showDeleted {
-		return nil, status.Errorf(codes.NotFound, "Domain %v not found", ID)
+		return nil, status.Errorf(codes.NotFound, "Directory %v not found", ID)
 	}
 	return d, nil
 }
 
-// SetDelete deletes or undeletes a domain.
-func (a *DomainStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
-	_, ok := a.domains[ID]
+// SetDelete deletes or undeletes a directory.
+func (a *DirectoryStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
+	_, ok := a.directories[ID]
 	if !ok {
-		return status.Errorf(codes.NotFound, "Domain %v not found", ID)
+		return status.Errorf(codes.NotFound, "Directory %v not found", ID)
 	}
-	a.domains[ID].Deleted = isDeleted
+	a.directories[ID].Deleted = isDeleted
 	return nil
 }
 
-// Delete permanently deletes a domain.
-func (a *DomainStorage) Delete(ctx context.Context, ID string) error {
-	_, ok := a.domains[ID]
+// Delete permanently deletes a directory.
+func (a *DirectoryStorage) Delete(ctx context.Context, ID string) error {
+	_, ok := a.directories[ID]
 	if !ok {
-		return status.Errorf(codes.NotFound, "Domain %v not found", ID)
+		return status.Errorf(codes.NotFound, "Directory %v not found", ID)
 	}
-	delete(a.domains, ID)
+	delete(a.directories, ID)
 	return nil
 }

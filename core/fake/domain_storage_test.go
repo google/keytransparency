@@ -18,32 +18,32 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func TestDelete(t *testing.T) {
-	s := NewDomainStorage()
+	s := NewDirectoryStorage()
 	ctx := context.Background()
 	for _, tc := range []struct {
-		domainID string
+		directoryID string
 	}{
-		{domainID: "test"},
-		{domainID: ""},
+		{directoryID: "test"},
+		{directoryID: ""},
 	} {
-		d := &domain.Domain{DomainID: tc.domainID}
+		d := &directory.Directory{DirectoryID: tc.directoryID}
 		if err := s.Write(ctx, d); err != nil {
 			t.Errorf("Write(): %v", err)
 		}
-		if err := s.Delete(ctx, tc.domainID); err != nil {
+		if err := s.Delete(ctx, tc.directoryID); err != nil {
 			t.Errorf("Delete(): %v", err)
 		}
-		_, err := s.Read(ctx, tc.domainID, true)
+		_, err := s.Read(ctx, tc.directoryID, true)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}
-		_, err = s.Read(ctx, tc.domainID, false)
+		_, err = s.Read(ctx, tc.directoryID, false)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}
@@ -51,43 +51,43 @@ func TestDelete(t *testing.T) {
 }
 
 func TestSetDelete(t *testing.T) {
-	s := NewDomainStorage()
+	s := NewDirectoryStorage()
 	ctx := context.Background()
 	for _, tc := range []struct {
-		domainID string
+		directoryID string
 	}{
-		{domainID: "test"},
+		{directoryID: "test"},
 	} {
-		d := &domain.Domain{DomainID: tc.domainID}
+		d := &directory.Directory{DirectoryID: tc.directoryID}
 		if err := s.Write(ctx, d); err != nil {
 			t.Errorf("Write(): %v", err)
 		}
-		if err := s.SetDelete(ctx, tc.domainID, true); err != nil {
+		if err := s.SetDelete(ctx, tc.directoryID, true); err != nil {
 			t.Errorf("Delete(): %v", err)
 		}
-		_, err := s.Read(ctx, tc.domainID, false)
+		_, err := s.Read(ctx, tc.directoryID, false)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}
-		if _, err := s.Read(ctx, tc.domainID, true); err != nil {
+		if _, err := s.Read(ctx, tc.directoryID, true); err != nil {
 			t.Errorf("Read(): %v", err)
 		}
 	}
 }
 
 func TestList(t *testing.T) {
-	s := NewDomainStorage()
+	s := NewDirectoryStorage()
 	ctx := context.Background()
-	domains := []*domain.Domain{
-		{DomainID: "test1"},
-		{DomainID: "test2", Deleted: true},
-		{DomainID: "test3"},
+	directories := []*directory.Directory{
+		{DirectoryID: "test1"},
+		{DirectoryID: "test2", Deleted: true},
+		{DirectoryID: "test3"},
 	}
-	for _, d := range domains {
+	for _, d := range directories {
 		if err := s.Write(ctx, d); err != nil {
 			t.Errorf("Write(): %v", err)
 		}
-		if err := s.SetDelete(ctx, d.DomainID, d.Deleted); err != nil {
+		if err := s.SetDelete(ctx, d.DirectoryID, d.Deleted); err != nil {
 			t.Errorf("SetDelete(): %v", err)
 		}
 	}
@@ -95,13 +95,13 @@ func TestList(t *testing.T) {
 	if err != nil {
 		t.Errorf("List()): %v", err)
 	}
-	domainSet := make(map[string]bool)
+	directorySet := make(map[string]bool)
 	for _, d := range ret {
-		domainSet[d.DomainID] = true
+		directorySet[d.DirectoryID] = true
 	}
-	for _, d := range domains {
-		if !d.Deleted && !domainSet[d.DomainID] {
-			t.Errorf("Didn't find domain %v in output", d.DomainID)
+	for _, d := range directories {
+		if !d.Deleted && !directorySet[d.DirectoryID] {
+			t.Errorf("Didn't find directory %v in output", d.DirectoryID)
 		}
 	}
 }

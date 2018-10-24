@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian/testonly"
 	"google.golang.org/grpc/codes"
@@ -41,9 +41,9 @@ type miniEnv struct {
 }
 
 func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
-	fakeAdmin := fake.NewDomainStorage()
-	if err := fakeAdmin.Write(ctx, &domain.Domain{
-		DomainID:    domainID,
+	fakeAdmin := fake.NewDirectoryStorage()
+	if err := fakeAdmin.Write(ctx, &directory.Directory{
+		DirectoryID: directoryID,
 		MapID:       mapID,
 		MinInterval: 1 * time.Second,
 		MaxInterval: 5 * time.Second,
@@ -57,10 +57,10 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 		return nil, fmt.Errorf("Error starting fake server: %v", err)
 	}
 	srv := &Server{
-		domains: fakeAdmin,
-		tlog:    s.LogClient,
-		tmap:    s.MapClient,
-		indexFunc: func(context.Context, *domain.Domain, string, string) ([32]byte, []byte, error) {
+		directories: fakeAdmin,
+		tlog:        s.LogClient,
+		tmap:        s.MapClient,
+		indexFunc: func(context.Context, *directory.Directory, string, string) ([32]byte, []byte, error) {
 			return [32]byte{}, []byte(""), nil
 		},
 	}
@@ -115,7 +115,7 @@ func TestLatestRevision(t *testing.T) {
 					Return(&tpb.GetInclusionProofResponse{}, nil)
 			}
 
-			_, err = e.srv.GetEntry(ctx, &pb.GetEntryRequest{DomainId: domainID})
+			_, err = e.srv.GetEntry(ctx, &pb.GetEntryRequest{DirectoryId: directoryID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("GetEntry(): %v, want %v", err, want)
 			}
@@ -144,7 +144,7 @@ func TestLatestRevision(t *testing.T) {
 					Return(&tpb.GetInclusionProofResponse{}, nil)
 			}
 
-			_, err = e.srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{DomainId: domainID})
+			_, err = e.srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{DirectoryId: directoryID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListEntryHistory(): %v, want %v", err, tc.wantErr)
 			}

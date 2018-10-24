@@ -73,10 +73,10 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
 
-	RootCmd.PersistentFlags().String("domain", "default", "Domain within the KT server")
+	RootCmd.PersistentFlags().String("directory", "default", "Directory within the KT server")
 	RootCmd.PersistentFlags().String("kt-url", "35.202.56.9:443", "URL of Key Transparency server")
 	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
-	RootCmd.PersistentFlags().Bool("autoconfig", true, "Fetch config info from the server's /v1/domain/info")
+	RootCmd.PersistentFlags().Bool("autoconfig", true, "Fetch config info from the server's /v1/directory/info")
 	RootCmd.PersistentFlags().Bool("insecure", true, "Skip TLS checks")
 
 	RootCmd.PersistentFlags().String("vrf", "genfiles/vrf-pubkey.pem", "path to vrf public key")
@@ -225,18 +225,18 @@ func GetClient(ctx context.Context) (*client.Client, error) {
 }
 
 // config selects a source for and returns the client configuration.
-func config(ctx context.Context, client pb.KeyTransparencyClient) (*pb.Domain, error) {
+func config(ctx context.Context, client pb.KeyTransparencyClient) (*pb.Directory, error) {
 	autoConfig := viper.GetBool("autoconfig")
-	domain := viper.GetString("domain")
+	directory := viper.GetString("directory")
 	switch {
 	case autoConfig:
-		return client.GetDomain(ctx, &pb.GetDomainRequest{DomainId: domain})
+		return client.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: directory})
 	default:
 		return readConfigFromDisk()
 	}
 }
 
-func readConfigFromDisk() (*pb.Domain, error) {
+func readConfigFromDisk() (*pb.Directory, error) {
 	vrfPubFile := viper.GetString("vrf")
 	logPEMFile := viper.GetString("log-key")
 	mapPEMFile := viper.GetString("map-key")
@@ -271,7 +271,7 @@ func readConfigFromDisk() (*pb.Domain, error) {
 		return nil, fmt.Errorf("error seralizeing map public key: %v", err)
 	}
 
-	return &pb.Domain{
+	return &pb.Directory{
 		Log: &trillian.Tree{
 			HashStrategy: trillian.HashStrategy_OBJECT_RFC6962_SHA256,
 			PublicKey:    logPubPB,

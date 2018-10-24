@@ -30,11 +30,11 @@ import (
 
 // KeySets gets and sets keysets.
 type KeySets interface {
-	// Get returns the keyset for a given domain and app.
+	// Get returns the keyset for a given directory and app.
 	// instance supports hosting multiple usermanager servers on the same infrastructure.
-	Get(ctx context.Context, instance int64, domainID, appID string) (*tink.KeysetHandle, error)
+	Get(ctx context.Context, instance int64, directoryID, appID string) (*tink.KeysetHandle, error)
 	// Set saves a keyset.
-	Set(ctx context.Context, instance int64, domainID, appID string, k *tink.KeysetHandle) error
+	Set(ctx context.Context, instance int64, directoryID, appID string, k *tink.KeysetHandle) error
 }
 
 // Server implements pb.UserManagerServer
@@ -52,9 +52,9 @@ func New(instance int64, keysets KeySets) *Server {
 }
 
 // GetKeySet returns a list of public keys (a keyset) that corresponds to the signing keys
-// this service has for a given domain and app.
+// this service has for a given directory and app.
 func (s *Server) GetKeySet(ctx context.Context, in *pb.GetKeySetRequest) (*tinkpb.Keyset, error) {
-	ks, err := s.keysets.Get(ctx, s.instance, in.GetDomainId(), in.GetAppId())
+	ks, err := s.keysets.Get(ctx, s.instance, in.GetDirectoryId(), in.GetAppId())
 	if err != nil {
 		return nil, err
 	}

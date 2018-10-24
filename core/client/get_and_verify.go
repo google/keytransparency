@@ -29,7 +29,7 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
-		DomainId:      c.domainID,
+		DirectoryId:   c.directoryID,
 		UserId:        userID,
 		AppId:         appID,
 		FirstTreeSize: int64(c.trusted.TreeSize),
@@ -38,7 +38,7 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*p
 		return nil, nil, err
 	}
 
-	_, slr, err := c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, e)
+	_, slr, err := c.VerifyGetEntryResponse(ctx, c.directoryID, appID, userID, c.trusted, e)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -56,7 +56,7 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
-		DomainId:      c.domainID,
+		DirectoryId:   c.directoryID,
 		FirstTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
@@ -91,7 +91,7 @@ func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogR
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
-		DomainId:      c.domainID,
+		DirectoryId:   c.directoryID,
 		Epoch:         epoch,
 		FirstTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -113,7 +113,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, appID, userID string, 
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-		DomainId:      c.domainID,
+		DirectoryId:   c.directoryID,
 		UserId:        userID,
 		AppId:         appID,
 		FirstTreeSize: int64(c.trusted.TreeSize),
@@ -130,7 +130,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, appID, userID string, 
 	var smr *types.MapRootV1
 	profiles := make(map[*types.MapRootV1][]byte)
 	for _, v := range resp.GetValues() {
-		smr, slr, err = c.VerifyGetEntryResponse(ctx, c.domainID, appID, userID, c.trusted, v)
+		smr, slr, err = c.VerifyGetEntryResponse(ctx, c.directoryID, appID, userID, c.trusted, v)
 		if err != nil {
 			return nil, 0, err
 		}

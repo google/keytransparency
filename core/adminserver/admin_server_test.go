@@ -23,7 +23,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/google/keytransparency/core/domain"
+	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
@@ -52,9 +52,9 @@ type miniEnv struct {
 }
 
 func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
-	fakeDomains := fake.NewDomainStorage()
-	if err := fakeDomains.Write(ctx, &domain.Domain{
-		DomainID: "existingdomain",
+	fakeDirectories := fake.NewDirectoryStorage()
+	if err := fakeDirectories.Write(ctx, &directory.Directory{
+		DirectoryID: "existingdirectory",
 	}); err != nil {
 		return nil, fmt.Errorf("admin.Write(): %v", err)
 	}
@@ -65,12 +65,12 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 		return nil, fmt.Errorf("error starting fake server: %v", err)
 	}
 	srv := &Server{
-		tlog:     s.LogClient,
-		tmap:     s.MapClient,
-		logAdmin: s.AdminClient,
-		mapAdmin: s.AdminClient,
-		domains:  fakeDomains,
-		keygen:   vrfKeyGen,
+		tlog:        s.LogClient,
+		tmap:        s.MapClient,
+		logAdmin:    s.AdminClient,
+		mapAdmin:    s.AdminClient,
+		directories: fakeDirectories,
+		keygen:      vrfKeyGen,
 	}
 	return &miniEnv{
 		ms:             s,
@@ -87,27 +87,27 @@ func (e *miniEnv) Close() {
 
 type fakeQueueAdmin struct{}
 
-func (fakeQueueAdmin) AddLogs(ctx context.Context, domainID string, logIDs ...int64) error {
+func (fakeQueueAdmin) AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error {
 	return nil
 }
 
-func TestCreateDomain(t *testing.T) {
+func TestCreateDirectory(t *testing.T) {
 	for _, tc := range []struct {
-		desc     string
-		domainID string
-		wantCode codes.Code
-		expect   func(*miniEnv)
+		desc        string
+		directoryID string
+		wantCode    codes.Code
+		expect      func(*miniEnv)
 	}{
 		{
-			desc:     "Already Exists",
-			domainID: "existingdomain",
-			wantCode: codes.AlreadyExists,
-			expect:   func(e *miniEnv) {},
+			desc:        "Already Exists",
+			directoryID: "existingdirectory",
+			wantCode:    codes.AlreadyExists,
+			expect:      func(e *miniEnv) {},
 		},
 		{
-			desc:     "Create map fails",
-			domainID: "mapinitfails",
-			wantCode: codes.Internal,
+			desc:        "Create map fails",
+			directoryID: "mapinitfails",
+			wantCode:    codes.Internal,
 			expect: func(e *miniEnv) {
 				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_PREORDERED_LOG}, nil)
 				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
@@ -119,9 +119,9 @@ func TestCreateDomain(t *testing.T) {
 			},
 		},
 		{
-			desc:     "log init with map root fails",
-			domainID: "initfails",
-			wantCode: codes.Internal,
+			desc:        "log init with map root fails",
+			directoryID: "initfails",
+			wantCode:    codes.Internal,
 			expect: func(e *miniEnv) {
 				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_PREORDERED_LOG}, nil)
 				e.ms.Log.EXPECT().InitLog(gomock.Any(), gomock.Any()).Return(&tpb.InitLogResponse{}, nil)
@@ -147,12 +147,12 @@ func TestCreateDomain(t *testing.T) {
 
 			tc.expect(e)
 
-			if _, err := e.srv.CreateDomain(ctx, &pb.CreateDomainRequest{
-				DomainId:    tc.domainID,
+			if _, err := e.srv.CreateDirectory(ctx, &pb.CreateDirectoryRequest{
+				DirectoryId: tc.directoryID,
 				MinInterval: ptypes.DurationProto(60 * time.Hour),
 				MaxInterval: ptypes.DurationProto(60 * time.Hour),
 			}); status.Code(err) != tc.wantCode {
-				t.Errorf("CreateDomain(): %v, want %v", err, tc.wantCode)
+				t.Errorf("CreateDirectory(): %v, want %v", err, tc.wantCode)
 			}
 		})
 	}
@@ -161,7 +161,7 @@ func TestCreateDomain(t *testing.T) {
 func TestCreateRead(t *testing.T) {
 	testdb.SkipIfNoMySQL(t)
 	ctx := context.Background()
-	storage := fake.NewDomainStorage()
+	storage := fake.NewDirectoryStorage()
 
 	// Map server
 	mapEnv, err := integration.NewMapEnv(ctx, false)
@@ -180,31 +180,31 @@ func TestCreateRead(t *testing.T) {
 	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
 
 	for _, tc := range []struct {
-		domainID                 string
+		directoryID              string
 		minInterval, maxInterval time.Duration
 	}{
 		{
-			domainID:    "testdomain",
+			directoryID: "testdirectory",
 			minInterval: 1 * time.Second,
 			maxInterval: 5 * time.Second,
 		},
 	} {
-		_, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
-			DomainId:    tc.domainID,
+		_, err := svr.CreateDirectory(ctx, &pb.CreateDirectoryRequest{
+			DirectoryId: tc.directoryID,
 			MinInterval: ptypes.DurationProto(tc.minInterval),
 			MaxInterval: ptypes.DurationProto(tc.maxInterval),
 		})
 		if err != nil {
-			t.Fatalf("CreateDomain(): %v", err)
+			t.Fatalf("CreateDirectory(): %v", err)
 		}
-		domain, err := svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID})
+		directory, err := svr.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: tc.directoryID})
 		if err != nil {
-			t.Fatalf("GetDomain(): %v", err)
+			t.Fatalf("GetDirectory(): %v", err)
 		}
-		if got, want := domain.Log.TreeType, tpb.TreeType_PREORDERED_LOG; got != want {
+		if got, want := directory.Log.TreeType, tpb.TreeType_PREORDERED_LOG; got != want {
 			t.Errorf("Log.TreeType: %v, want %v", got, want)
 		}
-		if got, want := domain.Map.TreeType, tpb.TreeType_MAP; got != want {
+		if got, want := directory.Map.TreeType, tpb.TreeType_MAP; got != want {
 			t.Errorf("Map.TreeType: %v, want %v", got, want)
 		}
 	}
@@ -213,7 +213,7 @@ func TestCreateRead(t *testing.T) {
 func TestDelete(t *testing.T) {
 	testdb.SkipIfNoMySQL(t)
 	ctx := context.Background()
-	storage := fake.NewDomainStorage()
+	storage := fake.NewDirectoryStorage()
 
 	// Map server
 	mapEnv, err := integration.NewMapEnv(ctx, false)
@@ -232,33 +232,33 @@ func TestDelete(t *testing.T) {
 	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
 
 	for _, tc := range []struct {
-		domainID                 string
+		directoryID              string
 		minInterval, maxInterval time.Duration
 	}{
 		{
-			domainID:    "testdomain",
+			directoryID: "testdirectory",
 			minInterval: 1 * time.Second,
 			maxInterval: 5 * time.Second,
 		},
 	} {
-		if _, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
-			DomainId:    tc.domainID,
+		if _, err := svr.CreateDirectory(ctx, &pb.CreateDirectoryRequest{
+			DirectoryId: tc.directoryID,
 			MinInterval: ptypes.DurationProto(tc.minInterval),
 			MaxInterval: ptypes.DurationProto(tc.maxInterval),
 		}); err != nil {
-			t.Fatalf("CreateDomain(): %v", err)
+			t.Fatalf("CreateDirectory(): %v", err)
 		}
-		if _, err := svr.DeleteDomain(ctx, &pb.DeleteDomainRequest{DomainId: tc.domainID}); err != nil {
-			t.Fatalf("DeleteDomain(): %v", err)
+		if _, err := svr.DeleteDirectory(ctx, &pb.DeleteDirectoryRequest{DirectoryId: tc.directoryID}); err != nil {
+			t.Fatalf("DeleteDirectory(): %v", err)
 		}
-		domain, err := svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID, ShowDeleted: true})
+		directory, err := svr.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: tc.directoryID, ShowDeleted: true})
 		if err != nil {
-			t.Fatalf("GetDomain(): %v", err)
+			t.Fatalf("GetDirectory(): %v", err)
 		}
-		if got, want := domain.Log.Deleted, true; got != want {
+		if got, want := directory.Log.Deleted, true; got != want {
 			t.Errorf("Log.TreeState: %v, want %v", got, want)
 		}
-		if got, want := domain.Map.Deleted, true; got != want {
+		if got, want := directory.Map.Deleted, true; got != want {
 			t.Errorf("Map.TreeState: %v, want %v", got, want)
 		}
 		if _, err := svr.GarbageCollect(ctx, &pb.GarbageCollectRequest{
@@ -266,18 +266,18 @@ func TestDelete(t *testing.T) {
 		}); err != nil {
 			t.Fatalf("GarbageCollect(): %v", err)
 		}
-		_, err = svr.GetDomain(ctx, &pb.GetDomainRequest{DomainId: tc.domainID, ShowDeleted: true})
+		_, err = svr.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: tc.directoryID, ShowDeleted: true})
 		if got, want := status.Code(err), codes.NotFound; got != want {
-			t.Fatalf("GetDomain(): %v, want %v", got, want)
+			t.Fatalf("GetDirectory(): %v, want %v", got, want)
 		}
 
 	}
 }
 
-func TestListDomains(t *testing.T) {
+func TestListDirectories(t *testing.T) {
 	testdb.SkipIfNoMySQL(t)
 	ctx := context.Background()
-	storage := fake.NewDomainStorage()
+	storage := fake.NewDirectoryStorage()
 
 	// Map server
 	mapEnv, err := integration.NewMapEnv(ctx, false)
@@ -296,34 +296,34 @@ func TestListDomains(t *testing.T) {
 	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
 
 	for _, tc := range []struct {
-		domainIDs []string
+		directoryIDs []string
 	}{
 		{
-			domainIDs: []string{"A", "B"},
+			directoryIDs: []string{"A", "B"},
 		},
 	} {
-		for _, domain := range tc.domainIDs {
-			if _, err := svr.CreateDomain(ctx, &pb.CreateDomainRequest{
-				DomainId:    domain,
+		for _, directory := range tc.directoryIDs {
+			if _, err := svr.CreateDirectory(ctx, &pb.CreateDirectoryRequest{
+				DirectoryId: directory,
 				MinInterval: ptypes.DurationProto(60 * time.Hour),
 				MaxInterval: ptypes.DurationProto(60 * time.Hour),
 			}); err != nil {
-				t.Fatalf("CreateDomain(%v): %v", domain, err)
+				t.Fatalf("CreateDirectory(%v): %v", directory, err)
 			}
 		}
-		resp, err := svr.ListDomains(ctx, &pb.ListDomainsRequest{})
+		resp, err := svr.ListDirectories(ctx, &pb.ListDirectoriesRequest{})
 		if err != nil {
-			t.Fatalf("ListDomains(): %v", err)
+			t.Fatalf("ListDirectories(): %v", err)
 		}
-		// Make sure we got all the same domains back.
+		// Make sure we got all the same directories back.
 		want := make(map[string]bool)
-		for _, d := range tc.domainIDs {
+		for _, d := range tc.directoryIDs {
 			want[d] = true
 		}
-		for _, d := range resp.GetDomains() {
-			domainID := d.GetDomainId()
-			if ok := want[domainID]; !ok {
-				t.Errorf("Did not find domain %v in list response", domainID)
+		for _, d := range resp.GetDirectories() {
+			directoryID := d.GetDirectoryId()
+			if ok := want[directoryID]; !ok {
+				t.Errorf("Did not find directory %v in list response", directoryID)
 			}
 		}
 	}

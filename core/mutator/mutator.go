@@ -64,7 +64,7 @@ type LogMessage struct {
 // MutationLogs provides sets of time ordered message logs.
 type MutationLogs interface {
 	// Send submits an item to a random log.
-	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
+	Send(ctx context.Context, directoryID string, mutation *pb.EntryUpdate) error
 }
 
 // MutationStorage reads and writes mutations to the database.
@@ -72,7 +72,7 @@ type MutationStorage interface {
 	// ReadPage returns mutations in the interval (start, end] for mapID.
 	// pageSize specifies the maximum number of items to return.
 	// Returns the maximum sequence number returned.
-	ReadPage(ctx context.Context, domainID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error)
-	// WriteBatch saves the mutations in the database under domainID/revision.
-	WriteBatch(ctx context.Context, domainID string, revision int64, mutation []*pb.Entry) error
+	ReadPage(ctx context.Context, directoryID string, revision, start int64, pageSize int32) (int64, []*pb.Entry, error)
+	// WriteBatch saves the mutations in the database under directoryID/revision.
+	WriteBatch(ctx context.Context, directoryID string, revision int64, mutation []*pb.Entry) error
 }

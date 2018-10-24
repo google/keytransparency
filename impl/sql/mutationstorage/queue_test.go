@@ -49,12 +49,12 @@ func TestRandLog(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create Mutations: %v", err)
 			}
-			if err := m.AddLogs(ctx, domainID, tc.send...); err != nil {
+			if err := m.AddLogs(ctx, directoryID, tc.send...); err != nil {
 				t.Fatalf("AddLogs(): %v", err)
 			}
 			logs := make(map[int64]bool)
 			for i := 0; i < 10*len(tc.wantLogs); i++ {
-				logID, err := m.randLog(ctx, domainID)
+				logID, err := m.randLog(ctx, directoryID)
 				if got, want := status.Code(err), tc.wantCode; got != want {
 					t.Errorf("randLog(): %v, want %v", got, want)
 				}
@@ -82,7 +82,7 @@ func TestSend(t *testing.T) {
 	ts2 := ts1.Add(time.Duration(1))
 	ts3 := ts2.Add(time.Duration(1))
 
-	if err := m.AddLogs(ctx, domainID, 1, 2); err != nil {
+	if err := m.AddLogs(ctx, directoryID, 1, 2); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
 
@@ -99,7 +99,7 @@ func TestSend(t *testing.T) {
 		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
 		{desc: "New", ts: ts3},
 	} {
-		err := m.send(ctx, domainID, 1, update, tc.ts)
+		err := m.send(ctx, directoryID, 1, update, tc.ts)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
@@ -116,7 +116,7 @@ func TestWatermarks(t *testing.T) {
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 
-	if err := m.AddLogs(ctx, domainID, 1, 2, 3); err != nil {
+	if err := m.AddLogs(ctx, directoryID, 1, 2, 3); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
 
@@ -139,11 +139,11 @@ func TestWatermarks(t *testing.T) {
 		},
 	} {
 		for logID, ts := range tc.send {
-			if err := m.send(ctx, domainID, logID, []byte("mutation"), ts); err != nil {
+			if err := m.send(ctx, directoryID, logID, []byte("mutation"), ts); err != nil {
 				t.Fatalf("send(%v, %v): %v", logID, ts, err)
 			}
 		}
-		highs, err := m.HighWatermarks(ctx, domainID)
+		highs, err := m.HighWatermarks(ctx, directoryID)
 		if err != nil {
 			t.Fatalf("HighWatermarks(): %v", err)
 		}
@@ -161,14 +161,14 @@ func TestReadLog(t *testing.T) {
 		t.Fatalf("Failed to create mutations: %v", err)
 	}
 	logID := int64(5)
-	if err := m.AddLogs(ctx, domainID, logID); err != nil {
+	if err := m.AddLogs(ctx, directoryID, logID); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
-	if err := m.Send(ctx, domainID, &pb.EntryUpdate{}); err != nil {
+	if err := m.Send(ctx, directoryID, &pb.EntryUpdate{}); err != nil {
 		t.Fatalf("Send(): %v", err)
 	}
 
-	rows, err := m.ReadLog(ctx, domainID, logID, 0, time.Now().UnixNano())
+	rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano())
 	if err != nil {
 		t.Fatalf("ReadLog(): %v", err)
 	}

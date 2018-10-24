@@ -50,7 +50,7 @@ var (
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
 	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
-	domainID           = flag.String("domainid", "", "KT Domain identifier to monitor")
+	directoryID        = flag.String("directoryid", "", "KT Directory identifier to monitor")
 
 	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
 	// metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
@@ -67,9 +67,9 @@ func main() {
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 
-	config, err := ktClient.GetDomain(ctx, &pb.GetDomainRequest{DomainId: *domainID})
+	config, err := ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
 	if err != nil {
-		glog.Exitf("Could not read domain info %v:", err)
+		glog.Exitf("Could not read directory info %v:", err)
 	}
 
 	// Read signing key:
@@ -81,7 +81,7 @@ func main() {
 	store := fake.NewMonitorStorage()
 
 	// Create monitoring background process.
-	mon, err := monitor.NewFromDomain(ktClient, config, signer, store)
+	mon, err := monitor.NewFromDirectory(ktClient, config, signer, store)
 	if err != nil {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}
@@ -89,7 +89,7 @@ func main() {
 	// TODO(gbelvin): persist trusted roots
 	trusted := types.LogRootV1{}
 	go func() {
-		if err := mon.ProcessLoop(ctx, *domainID, trusted); err != nil {
+		if err := mon.ProcessLoop(ctx, *directoryID, trusted); err != nil {
 			glog.Errorf("ProcessLoop: %v", err)
 		}
 	}()

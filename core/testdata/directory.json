@@ -1,5 +1,5 @@
 {
-	"domainId": "integration",
+	"directoryId": "integration",
 	"log": {
 		"treeId": "562218644231254768",
 		"treeState": "ACTIVE",
@@ -8,7 +8,7 @@
 		"hashAlgorithm": "SHA256",
 		"signatureAlgorithm": "ECDSA",
 		"displayName": "integration",
-		"description": "KT domain integration",
+		"description": "KT directory integration",
 		"publicKey": {
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqGXPnhMIclRmYHSmAnCMmfDUJ9iNBMmFxR/wHJdL12AuVUkgcuhbEp2hy5ETs7bfFc2P95IYFlmbiuHMq3UY/A=="
 		},
@@ -24,7 +24,7 @@
 		"hashAlgorithm": "SHA256",
 		"signatureAlgorithm": "ECDSA",
 		"displayName": "integration",
-		"description": "KT domain integration",
+		"description": "KT directory integration",
 		"publicKey": {
 			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWLHm0TLYaTzENpPkBl2E79ySqJI+EW51VpoWh7wqY3OjSJcft4zgEeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA=="
 		},
