@@ -24,19 +24,19 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/domain"
 	"github.com/google/trillian/client"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/crypto/sigpb"
 	"github.com/google/trillian/types"
-
-	google_protobuf "github.com/golang/protobuf/ptypes/empty"
+ 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -77,19 +77,19 @@ var (
 
 // LogsAdmin controls the lifecycle and scaling of mutation logs.
 type LogsAdmin interface {
-	// AddLogs creates and adds new logs for writing to a directory.
-	AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error
+	// AddLogs creates and adds new logs for writing to a domain.
+	AddLogs(ctx context.Context, domainID string, logIDs ...int64) error
 }
 
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
-	tlog        tpb.TrillianLogClient
-	tmap        tpb.TrillianMapClient
-	logAdmin    tpb.TrillianAdminClient
-	mapAdmin    tpb.TrillianAdminClient
-	directories directory.Storage
-	logsAdmin   LogsAdmin
-	keygen      keys.ProtoGenerator
+	tlog      tpb.TrillianLogClient
+	tmap      tpb.TrillianMapClient
+	logAdmin  tpb.TrillianAdminClient
+	mapAdmin  tpb.TrillianAdminClient
+	domains   domain.Storage
+	logsAdmin LogsAdmin
+	keygen    keys.ProtoGenerator
 }
 
 // New returns a KeyTransparencyAdmin implementation.
@@ -97,46 +97,44 @@ func New(
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	logAdmin, mapAdmin tpb.TrillianAdminClient,
-	directories directory.Storage,
+	domains domain.Storage,
 	logsAdmin LogsAdmin,
 	keygen keys.ProtoGenerator,
 ) *Server {
 	return &Server{
-		tlog:        tlog,
-		tmap:        tmap,
-		logAdmin:    logAdmin,
-		mapAdmin:    mapAdmin,
-		directories: directories,
-		logsAdmin:   logsAdmin,
-		keygen:      keygen,
+		tlog:      tlog,
+		tmap:      tmap,
+		logAdmin:  logAdmin,
+		mapAdmin:  mapAdmin,
+		domains:   domains,
+		logsAdmin: logsAdmin,
+		keygen:    keygen,
 	}
 }
 
-// ListDirectories produces a list of the configured directories
-func (s *Server) ListDirectories(ctx context.Context, in *pb.ListDirectoriesRequest) (
-	*pb.ListDirectoriesResponse, error) {
-	directories, err := s.directories.List(ctx, in.GetShowDeleted())
+// ListDomains produces a list of the configured domains
+func (s *Server) ListDomains(ctx context.Context, in *pb.ListDomainsRequest) (*pb.ListDomainsResponse, error) {
+	domains, err := s.domains.List(ctx, in.GetShowDeleted())
 	if err != nil {
 		return nil, err
 	}
 
-	resp := make([]*pb.Directory, 0, len(directories))
-	for _, d := range directories {
-		info, err := s.fetchDirectory(ctx, d)
+	resp := []*pb.Domain{}
+	for _, d := range domains {
+		info, err := s.fetchDomain(ctx, d)
 		if err != nil {
 			return nil, err
 		}
 		resp = append(resp, info)
 
 	}
-	return &pb.ListDirectoriesResponse{
-		Directories: resp,
+	return &pb.ListDomainsResponse{Domains: resp,
 	}, nil
 }
 
-// fetchDirectory converts an adminstorage.Directory object into a pb.Directory object
+// fetchDomain converts an adminstorage.Domain object into a pb.Domain object
 // by fetching the relevant info from Trillian.
-func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*pb.Directory, error) {
+func (s *Server) fetchDomain(ctx context.Context, d *domain.Domain) (*pb.Domain, error) {
 	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
 	if err != nil {
 		return nil, err
@@ -145,8 +143,8 @@ func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Directory{
-		DirectoryId: d.DirectoryID,
+	return &pb.Domain{
+		DomainId:    d.DomainID,
 		Log:         logTree,
 		Map:         mapTree,
 		Vrf:         d.VRF,
@@ -156,13 +154,13 @@ func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*p
 	}, nil
 }
 
-// GetDirectory retrieves the directory info for a given directory.
-func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (*pb.Directory, error) {
-	directory, err := s.directories.Read(ctx, in.GetDirectoryId(), in.GetShowDeleted())
+// GetDomain retrieves the domain info for a given domain.
+func (s *Server) GetDomain(ctx context.Context, in *pb.GetDomainRequest) (*pb.Domain, error) {
+	domain, err := s.domains.Read(ctx, in.GetDomainId(), in.GetShowDeleted())
 	if err != nil {
 		return nil, err
 	}
-	info, err := s.fetchDirectory(ctx, directory)
+	info, err := s.fetchDomain(ctx, domain)
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +182,8 @@ func privKeyOrGen(ctx context.Context, privKey *any.Any, keygen keys.ProtoGenera
 
 // treeConfig returns a CreateTreeRequest
 // - with a set PrivateKey is not nil, otherwise KeySpec is set.
-// - with a tree description of "KT directory %v"
-func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, directoryID string) *tpb.CreateTreeRequest {
+// - with a tree description of "KT domain %v"
+func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, domainID string) *tpb.CreateTreeRequest {
 	config := *treeTemplate
 
 	if privKey != nil {
@@ -194,22 +192,22 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, directory
 		config.KeySpec = keyspec
 	}
 
-	config.Tree.Description = fmt.Sprintf("KT directory %s", directoryID)
+	config.Tree.Description = fmt.Sprintf("KT domain %s", domainID)
 	maxDisplayNameLen := 20
-	if len(directoryID) < maxDisplayNameLen {
-		config.Tree.DisplayName = directoryID
+	if len(domainID) < maxDisplayNameLen {
+		config.Tree.DisplayName = domainID
 	} else {
-		config.Tree.DisplayName = directoryID[:maxDisplayNameLen]
+		config.Tree.DisplayName = domainID[:maxDisplayNameLen]
 	}
 	return &config
 }
 
-// CreateDirectory reachs out to Trillian to produce new trees.
-func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequest) (*pb.Directory, error) {
-	glog.Infof("Begin CreateDirectory(%v)", in.GetDirectoryId())
-	if _, err := s.directories.Read(ctx, in.GetDirectoryId(), true); status.Code(err) != codes.NotFound {
-		// Directory already exists.
-		return nil, status.Errorf(codes.AlreadyExists, "Directory %v already exists or is soft deleted.", in.GetDirectoryId())
+// CreateDomain reachs out to Trillian to produce new trees.
+func (s *Server) CreateDomain(ctx context.Context, in *pb.CreateDomainRequest) (*pb.Domain, error) {
+	glog.Infof("Begin CreateDomain(%v)", in.GetDomainId())
+	if _, err := s.domains.Read(ctx, in.GetDomainId(), true); status.Code(err) != codes.NotFound {
+		// Domain already exists.
+		return nil, status.Errorf(codes.AlreadyExists, "Domain %v already exists or is soft deleted.", in.GetDomainId())
 	}
 
 	// Generate VRF key.
@@ -227,12 +225,12 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 	}
 
 	// Create Trillian keys.
-	logTreeArgs := treeConfig(logArgs, in.GetLogPrivateKey(), in.GetDirectoryId())
+	logTreeArgs := treeConfig(logArgs, in.GetLogPrivateKey(), in.GetDomainId())
 	logTree, err := client.CreateAndInitTree(ctx, logTreeArgs, s.logAdmin, s.tmap, s.tlog)
 	if err != nil {
 		return nil, fmt.Errorf("adminserver: CreateTree(log): %v", err)
 	}
-	mapTreeArgs := treeConfig(mapArgs, in.GetMapPrivateKey(), in.GetDirectoryId())
+	mapTreeArgs := treeConfig(mapArgs, in.GetMapPrivateKey(), in.GetDomainId())
 	mapTree, err := client.CreateAndInitTree(ctx, mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
 	if err != nil {
 		// Delete log if map creation fails.
@@ -259,9 +257,9 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 			err, logTree.TreeId, delLogErr, mapTree.TreeId, delMapErr)
 	}
 
-	// Create directory - {log, map} binding.
-	if err := s.directories.Write(ctx, &directory.Directory{
-		DirectoryID: in.GetDirectoryId(),
+	// Create domain - {log, map} binding.
+	if err := s.domains.Write(ctx, &domain.Domain{
+		DomainID:    in.GetDomainId(),
 		MapID:       mapTree.TreeId,
 		LogID:       logTree.TreeId,
 		VRF:         vrfPublicPB,
@@ -269,25 +267,25 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		MinInterval: minInterval,
 		MaxInterval: maxInterval,
 	}); err != nil {
-		return nil, fmt.Errorf("adminserver: directories.Write(): %v", err)
+		return nil, fmt.Errorf("adminserver: domains.Write(): %v", err)
 	}
 
 	// Create initial logs for writing.
 	// TODO(#1063): Additional logs can be added at a later point to support increased server load.
 	logIDs := []int64{1, 2}
-	if err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), logIDs...); err != nil {
+	if err := s.logsAdmin.AddLogs(ctx, in.GetDomainId(), logIDs...); err != nil {
 		return nil, fmt.Errorf("adminserver: AddLogs(%v): %v", logIDs, err)
 	}
 
-	d := &pb.Directory{
-		DirectoryId: in.GetDirectoryId(),
+	d := &pb.Domain{
+		DomainId:    in.GetDomainId(),
 		Log:         logTree,
 		Map:         mapTree,
 		Vrf:         vrfPublicPB,
 		MinInterval: in.MinInterval,
 		MaxInterval: in.MaxInterval,
 	}
-	glog.Infof("Created directory: %v", d)
+	glog.Infof("Created domain: %v", d)
 	return d, nil
 }
 
@@ -342,14 +340,14 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	return nil
 }
 
-// DeleteDirectory marks a directory as deleted, but does not immediately delete it.
-func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequest) (*google_protobuf.Empty, error) {
-	d, err := s.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: in.GetDirectoryId()})
+// DeleteDomain marks a domain as deleted, but does not immediately delete it.
+func (s *Server) DeleteDomain(ctx context.Context, in *pb.DeleteDomainRequest) (*empty.Empty, error) {
+	d, err := s.GetDomain(ctx, &pb.GetDomainRequest{DomainId: in.GetDomainId()})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.directories.SetDelete(ctx, in.GetDirectoryId(), true); err != nil {
+	if err := s.domains.SetDelete(ctx, in.GetDomainId(), true); err != nil {
 		return nil, err
 	}
 
@@ -360,17 +358,15 @@ func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequ
 			d.Log.TreeId, delLogErr, d.Map.TreeId, delMapErr)
 	}
 
-	return &google_protobuf.Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
-// UndeleteDirectory reactivates a deleted directory - provided that UndeleteDirectory is called sufficiently soon after
-// DeleteDirectory.
-func (s *Server) UndeleteDirectory(ctx context.Context, in *pb.UndeleteDirectoryRequest) (
-	*google_protobuf.Empty, error) {
+// UndeleteDomain reactivates a deleted domain - provided that UndeleteDomain is called sufficiently soon after DeleteDomain.
+func (s *Server) UndeleteDomain(ctx context.Context, in *pb.UndeleteDomainRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-// GarbageCollect looks for directories that have been deleted before the specified timestamp and fully deletes them.
+// GarbageCollect looks for domains that have been deleted before the specified timestamp and fully deletes them.
 func (s *Server) GarbageCollect(ctx context.Context, in *pb.GarbageCollectRequest) (*pb.GarbageCollectResponse, error) {
 	before, err := ptypes.Timestamp(in.GetBefore())
 	if err != nil {
@@ -378,28 +374,28 @@ func (s *Server) GarbageCollect(ctx context.Context, in *pb.GarbageCollectReques
 	}
 
 	showDeleted := true
-	directories, err := s.directories.List(ctx, showDeleted)
+	domains, err := s.domains.List(ctx, showDeleted)
 	if err != nil {
 		return nil, err
 	}
 
-	// Search for directories deleted before in.Before.
-	deleted := make([]*pb.Directory, 0)
-	for _, d := range directories {
+	// Search for domains deleted before in.Before.
+	deleted := make([]*pb.Domain, 0)
+	for _, d := range domains {
 		if d.Deleted && d.DeletedTimestamp.Before(before) {
-			dproto, err := s.GetDirectory(ctx, &pb.GetDirectoryRequest{
-				DirectoryId: d.DirectoryID,
+			dproto, err := s.GetDomain(ctx, &pb.GetDomainRequest{
+				DomainId:    d.DomainID,
 				ShowDeleted: true,
 			})
 			if err != nil {
 				return nil, err
 			}
-			if err := s.directories.Delete(ctx, d.DirectoryID); err != nil {
+			if err := s.domains.Delete(ctx, d.DomainID); err != nil {
 				return nil, err
 			}
 			deleted = append(deleted, dproto)
 		}
 	}
 
-	return &pb.GarbageCollectResponse{Directories: deleted}, nil
+	return &pb.GarbageCollectResponse{Domains: deleted}, nil
 }
