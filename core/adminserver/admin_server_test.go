@@ -35,6 +35,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
+
 	_ "github.com/google/trillian/crypto/keys/der/proto" // Register PrivateKey ProtoHandler
 	_ "github.com/google/trillian/merkle/coniks"         // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962"        // Register hasher
@@ -53,9 +54,8 @@ type miniEnv struct {
 
 func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	fakeDirectories := fake.NewDirectoryStorage()
-	if err := fakeDirectories.Write(ctx, &directory.Directory{
-		DirectoryID: "existingdirectory",
-	}); err != nil {
+	dir := &directory.Directory{DirectoryID: "existingdirectory"}
+	if err := fakeDirectories.Write(ctx, dir); err != nil {
 		return nil, fmt.Errorf("admin.Write(): %v", err)
 	}
 
@@ -64,14 +64,8 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error starting fake server: %v", err)
 	}
-	srv := &Server{
-		tlog:        s.LogClient,
-		tmap:        s.MapClient,
-		logAdmin:    s.AdminClient,
-		mapAdmin:    s.AdminClient,
-		directories: fakeDirectories,
-		keygen:      vrfKeyGen,
-	}
+	srv := New(s.LogClient, s.MapClient, s.AdminClient, s.AdminClient, fakeDirectories, vrfKeyGen)
+
 	return &miniEnv{
 		ms:             s,
 		srv:            srv,

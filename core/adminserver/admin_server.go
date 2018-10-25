@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -36,7 +37,6 @@ import (
 	"github.com/google/trillian/crypto/sigpb"
 	"github.com/google/trillian/types"
 
-	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -120,18 +120,15 @@ func (s *Server) ListDirectories(ctx context.Context, in *pb.ListDirectoriesRequ
 		return nil, err
 	}
 
-	resp := make([]*pb.Directory, 0, len(directories))
+	resp := []*pb.Directory{}
 	for _, d := range directories {
 		info, err := s.fetchDirectory(ctx, d)
 		if err != nil {
 			return nil, err
 		}
 		resp = append(resp, info)
-
 	}
-	return &pb.ListDirectoriesResponse{
-		Directories: resp,
-	}, nil
+	return &pb.ListDirectoriesResponse{Directories: resp}, nil
 }
 
 // fetchDirectory converts an adminstorage.Directory object into a pb.Directory object
@@ -162,11 +159,7 @@ func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (
 	if err != nil {
 		return nil, err
 	}
-	info, err := s.fetchDirectory(ctx, directory)
-	if err != nil {
-		return nil, err
-	}
-	return info, nil
+	return s.fetchDirectory(ctx, directory)
 }
 
 // privKeyOrGen returns the message inside privKey if privKey is not nil,
@@ -195,11 +188,9 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, directory
 	}
 
 	config.Tree.Description = fmt.Sprintf("KT directory %s", directoryID)
-	maxDisplayNameLen := 20
-	if len(directoryID) < maxDisplayNameLen {
-		config.Tree.DisplayName = directoryID
-	} else {
-		config.Tree.DisplayName = directoryID[:maxDisplayNameLen]
+	config.Tree.DisplayName = directoryID
+	if len(directoryID) >= 20 {
+		config.Tree.DisplayName = directoryID[:20]
 	}
 	return &config
 }
@@ -260,7 +251,7 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 	}
 
 	// Create directory - {log, map} binding.
-	if err := s.directories.Write(ctx, &directory.Directory{
+	dir := &directory.Directory{
 		DirectoryID: in.GetDirectoryId(),
 		MapID:       mapTree.TreeId,
 		LogID:       logTree.TreeId,
@@ -268,7 +259,8 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		VRFPriv:     wrapped,
 		MinInterval: minInterval,
 		MaxInterval: maxInterval,
-	}); err != nil {
+	}
+	if err := s.directories.Write(ctx, dir); err != nil {
 		return nil, fmt.Errorf("adminserver: directories.Write(): %v", err)
 	}
 
@@ -276,7 +268,7 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 	// TODO(#1063): Additional logs can be added at a later point to support increased server load.
 	logIDs := []int64{1, 2}
 	if err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), logIDs...); err != nil {
-		return nil, fmt.Errorf("adminserver: AddLogs(%v): %v", logIDs, err)
+		return nil, fmt.Errorf("adminserver: AddLogs(%+v): %v", logIDs, err)
 	}
 
 	d := &pb.Directory{
@@ -287,7 +279,7 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		MinInterval: in.MinInterval,
 		MaxInterval: in.MaxInterval,
 	}
-	glog.Infof("Created directory: %v", d)
+	glog.Infof("Created directory: %+v", d)
 	return d, nil
 }
 
@@ -311,11 +303,9 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 		return fmt.Errorf("adminserver: UpdateRoot(): %v", err)
 	}
 
+	req := &tpb.GetSignedMapRootByRevisionRequest{MapId: mapID, Revision: 0}
 	// TODO(gbelvin): does this need to be in a retry loop?
-	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
-		MapId:    mapID,
-		Revision: 0,
-	})
+	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, req)
 	if err != nil {
 		return fmt.Errorf("adminserver: GetSignedMapRootByRevision(%v,0): %v", mapID, err)
 	}
@@ -343,7 +333,7 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 }
 
 // DeleteDirectory marks a directory as deleted, but does not immediately delete it.
-func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequest) (*google_protobuf.Empty, error) {
+func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequest) (*empty.Empty, error) {
 	d, err := s.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: in.GetDirectoryId()})
 	if err != nil {
 		return nil, err
@@ -360,13 +350,13 @@ func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequ
 			d.Log.TreeId, delLogErr, d.Map.TreeId, delMapErr)
 	}
 
-	return &google_protobuf.Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
 // UndeleteDirectory reactivates a deleted directory - provided that UndeleteDirectory is called sufficiently soon after
 // DeleteDirectory.
 func (s *Server) UndeleteDirectory(ctx context.Context, in *pb.UndeleteDirectoryRequest) (
-	*google_protobuf.Empty, error) {
+	*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
@@ -384,13 +374,11 @@ func (s *Server) GarbageCollect(ctx context.Context, in *pb.GarbageCollectReques
 	}
 
 	// Search for directories deleted before in.Before.
-	deleted := make([]*pb.Directory, 0)
+	deleted := []*pb.Directory{}
 	for _, d := range directories {
 		if d.Deleted && d.DeletedTimestamp.Before(before) {
-			dproto, err := s.GetDirectory(ctx, &pb.GetDirectoryRequest{
-				DirectoryId: d.DirectoryID,
-				ShowDeleted: true,
-			})
+			req := &pb.GetDirectoryRequest{DirectoryId: d.DirectoryID, ShowDeleted: showDeleted}
+			dproto, err := s.GetDirectory(ctx, req)
 			if err != nil {
 				return nil, err
 			}
