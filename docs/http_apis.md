@@ -9,9 +9,9 @@ The core gRPC APIs are exposed over HTTP via a
 ## Index
 <table>
 <tr><td>Path</td><td>Method</td><td>Summary</td></tr>
-<tr><td>`/v1/users/{user_id}`</td><td>GET</td><td>GetEntry returns a user's entry in the Merkle Tree.</td></tr>
+<tr><td>`/v1/users/{user_id}`</td><td>GET</td><td>GetUser returns a user's entry in the Merkle Tree.</td></tr>
 <tr><td>`/v1/users/{user_id}`</td><td>PUT</td><td>UpdateEntry submits a SignedEntryUpdate.</td></tr>
-<tr><td>`/v1/users/{user_id}/history`</td><td>GET</td><td>ListEntryHistory returns a list of historic GetEntry values.</td></tr>
+<tr><td>`/v1/users/{user_id}/history`</td><td>GET</td><td>ListEntryHistory returns a list of historic GetUser values.</td></tr>
 </table>
 
 ### `GET /v1/users/{user_id}`
@@ -93,10 +93,10 @@ https://<host>/v1/users/user_id
       "// signatures is a map from key ids to signatures on key_value"
       "signatures": {"k": "1234", "v": "SJT3BgccSMEbSR0ZqjLHYhcXe+P04S00g1Kmktj4z8I="},
       "// ObjectHash of previous entry."
-      "previous": "SJT3BgccSMEbSR0ZqjLHYhcXe+P04S00g1Kmktj4z8I=" 
+      "previous": "SJT3BgccSMEbSR0ZqjLHYhcXe+P04S00g1Kmktj4z8I="
     },
     "committed": {
-      "// key is a random 16 byte value" 
+      "// key is a random 16 byte value"
       "key": "BtVQb1P7Em+lTUKEH3c5lw==",
       "// data = ProtoSerialize(Profile(your key data))"
       "data": "CgwKBGFwcDESBHRlc3QKDAoEYXBwMhIEdGVzdA==",

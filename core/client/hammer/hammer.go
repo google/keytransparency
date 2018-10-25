@@ -256,7 +256,7 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 // Typical conversation setup involves querying two userIDs: self and other.
 func (w *worker) readOp(ctx context.Context, req *reqArgs) error {
 	for _, userID := range req.UserIDs {
-		if _, _, err := w.client.GetEntry(ctx, userID); err != nil {
+		if _, _, err := w.client.GetUser(ctx, userID); err != nil {
 			return err
 		}
 		fmt.Print(".")

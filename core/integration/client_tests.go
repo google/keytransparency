@@ -163,12 +163,12 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			e, _, err := env.Client.VerifiedGetEntry(ctx, tc.userID)
+			e, _, err := env.Client.VerifiedGetUser(ctx, tc.userID)
 			if err != nil {
-				t.Errorf("VerifiedGetEntry(%v): %v, want nil", tc.userID, err)
+				t.Errorf("VerifiedGetUser(%v): %v, want nil", tc.userID, err)
 			}
-			if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
-				t.Errorf("VerifiedGetEntry(%v): %s, want %s", tc.userID, got, want)
+			if got, want := e.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
+				t.Errorf("VerifiedGetUser(%v): %s, want %s", tc.userID, got, want)
 			}
 
 			// Update profile.

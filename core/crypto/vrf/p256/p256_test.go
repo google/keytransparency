@@ -207,13 +207,13 @@ func TestProofToHash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile(%v): %v", respFile, err)
 	}
-	var getEntryResponses []testdata.GetEntryResponseVector
-	if err := json.Unmarshal(b, &getEntryResponses); err != nil {
+	var getUserResponses []testdata.GetUserResponseVector
+	if err := json.Unmarshal(b, &getUserResponses); err != nil {
 		t.Fatalf("Unmarshal(): %v", err)
 	}
-	for _, tc := range getEntryResponses {
+	for _, tc := range getUserResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			_, err := pk.ProofToHash([]byte(tc.UserID), tc.Resp.GetVrfProof())
+			_, err := pk.ProofToHash([]byte(tc.UserID), tc.Resp.GetLeaf().GetVrfProof())
 			if err != nil {
 				t.Errorf("ProofToHash(%v): %v)", tc.Desc, err)
 			}

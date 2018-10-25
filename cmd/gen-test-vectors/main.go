@@ -100,8 +100,8 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	// Create lists of authorized keys
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
 
-	// Collect a list of valid GetEntryResponses
-	getEntryResps := make([]testdata.GetEntryResponseVector, 0)
+	// Collect a list of valid GetUserResponses
+	getUserResps := make([]testdata.GetUserResponseVector, 0)
 
 	// Start with an empty trusted log root
 	slr := &types.LogRootV1{}
@@ -162,21 +162,21 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		},
 	} {
 		// Check profile.
-		e, err := env.Cli.GetEntry(ctx, &pb.GetEntryRequest{
+		e, err := env.Cli.GetUser(ctx, &pb.GetUserRequest{
 			DirectoryId:   env.Directory.DirectoryId,
 			UserId:        tc.userID,
 			FirstTreeSize: int64(slr.TreeSize),
 		})
 		if err != nil {
-			return fmt.Errorf("gen-test-vectors: GetEntry(): %v", err)
+			return fmt.Errorf("gen-test-vectors: GetUser(): %v", err)
 		}
-		_, newslr, err := env.Client.VerifyGetEntryResponse(ctx, env.Directory.DirectoryId, tc.userID, *slr, e)
+		_, newslr, err := env.Client.VerifyGetUserResponse(ctx, env.Directory.DirectoryId, tc.userID, *slr, e)
 		if err != nil {
-			return fmt.Errorf("gen-test-vectors: VerifyGetEntryResponse(): %v", err)
+			return fmt.Errorf("gen-test-vectors: VerifyGetUserResponse(): %v", err)
 		}
 
-		if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
-			return fmt.Errorf("gen-test-vectors: VerifiedGetEntry(%v): %s, want %s", tc.userID, got, want)
+		if got, want := e.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
+			return fmt.Errorf("gen-test-vectors: VerifiedGetUser(%v): %s, want %s", tc.userID, got, want)
 		}
 
 		// Update the trusted root on the first revision, then let it fall behind
@@ -185,7 +185,7 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		if trust {
 			slr = newslr
 		}
-		getEntryResps = append(getEntryResps, testdata.GetEntryResponseVector{
+		getUserResps = append(getUserResps, testdata.GetUserResponseVector{
 			Desc:        tc.desc,
 			UserID:      tc.userID,
 			Resp:        e,
@@ -209,14 +209,14 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		}
 	}
 
-	if err := SaveTestVectors(*testdataDir, env, getEntryResps); err != nil {
+	if err := SaveTestVectors(*testdataDir, env, getUserResps); err != nil {
 		return fmt.Errorf("gen-test-vectors: SaveTestVectors(): %v", err)
 	}
 	return nil
 }
 
 // SaveTestVectors generates test vectors for interoprability testing.
-func SaveTestVectors(dir string, env *integration.Env, resps []testdata.GetEntryResponseVector) error {
+func SaveTestVectors(dir string, env *integration.Env, resps []testdata.GetUserResponseVector) error {
 	marshaler := &jsonpb.Marshaler{
 		Indent: "\t",
 	}
