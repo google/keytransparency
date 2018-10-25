@@ -185,7 +185,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		directoryStorage,
 		logEnv.Admin, mapEnv.Admin,
 		logEnv.Log, mapEnv.Map,
-		mutations, mutations,
+		mutations, mutations, mutations,
 		monitoring.InertMetricFactory{},
 	)
 

@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
 const (
@@ -44,6 +45,12 @@ var (
 		Sequence INTEGER          NOT NULL,
 		Mutation BLOB             NOT NULL,
 		PRIMARY KEY(DirectoryID, Revision, Sequence)
+	);`,
+		`CREATE TABLE IF NOT EXISTS Batches (
+		DomainID VARCHAR(30)   NOT NULL,
+		Revision BIGINT        NOT NULL,
+		Sources  BLOB          NOT NULL,
+		PRIMARY KEY(DomainID, Revision)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Queue (
 		DirectoryID VARCHAR(30)   NOT NULL,
@@ -95,14 +102,14 @@ func (m *Mutations) createTables() error {
 // startSequence is not included in the result. ReadRange stops when endSequence
 // or count is reached, whichever comes first. ReadRange also returns the maximum
 // sequence number read.
-func (m *Mutations) ReadPage(ctx context.Context, directoryID string, revision, start int64, pageSize int32) (
+func (m *Mutations) ReadPage(ctx context.Context, directoryID string, rev, start int64, pageSize int32) (
 	int64, []*pb.Entry, error) {
 	readStmt, err := m.db.Prepare(readMutationsExpr)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, directoryID, revision, start, pageSize)
+	rows, err := readStmt.QueryContext(ctx, directoryID, rev, start, pageSize)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -111,7 +118,7 @@ func (m *Mutations) ReadPage(ctx context.Context, directoryID string, revision, 
 }
 
 // WriteBatch saves the mutations in the database.
-func (m *Mutations) WriteBatch(ctx context.Context, directoryID string, revision int64, mutations []*pb.Entry) error {
+func (m *Mutations) WriteBatch(ctx context.Context, directoryID string, rev int64, mutations []*pb.Entry) error {
 	writeStmt, err := m.db.Prepare(insertMutationsExpr)
 	if err != nil {
 		return err
@@ -122,7 +129,7 @@ func (m *Mutations) WriteBatch(ctx context.Context, directoryID string, revision
 		if err != nil {
 			return err
 		}
-		if _, err := writeStmt.ExecContext(ctx, directoryID, revision, i, mData); err != nil {
+		if _, err := writeStmt.ExecContext(ctx, directoryID, rev, i, mData); err != nil {
 			return err
 		}
 	}
@@ -151,4 +158,37 @@ func readMutations(rows *sql.Rows) (int64, []*pb.Entry, error) {
 		return 0, nil, err
 	}
 	return maxSequence, results, nil
+}
+
+// WriteBatchSources saves the mutations in the database.
+// If revision has already been defined, this will fail.
+func (m *Mutations) WriteBatchSources(ctx context.Context, dirID string, rev int64,
+	sources *spb.MapMetadata) error {
+	sourceData, err := proto.Marshal(sources)
+	if err != nil {
+		return fmt.Errorf("proto.Marshal(): %v", err)
+	}
+	if _, err := m.db.ExecContext(ctx,
+		`INSERT INTO Batches (DomainID, Revision, Sources) VALUES (?, ?, ?);`,
+		dirID, rev, sourceData); err != nil {
+		return fmt.Errorf("insert batch boundary (%v, %v) failed: %v", dirID, rev, err)
+	}
+	return nil
+}
+
+// ReadBatch returns the batch definitions for a given revision.
+func (m *Mutations) ReadBatch(ctx context.Context, domainID string, rev int64) (*spb.MapMetadata, error) {
+	var sourceData []byte
+	if err := m.db.QueryRowContext(ctx,
+		`SELECT Sources FROM Batches WHERE DomainID = ? AND Revision = ?;`,
+		domainID, rev).Scan(&sourceData); err != nil {
+		return nil, err
+	}
+
+	var mapMetadata spb.MapMetadata
+	if err := proto.Unmarshal(sourceData, &mapMetadata); err != nil {
+		return nil, err
+	}
+
+	return &mapMetadata, nil
 }
