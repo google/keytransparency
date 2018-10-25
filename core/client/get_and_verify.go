@@ -108,7 +108,8 @@ func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogR
 }
 
 // VerifiedListHistory performs one list history operation, verifies and returns the results.
-func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start int64, count int32) (map[*types.MapRootV1][]byte, int64, error) {
+func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start int64, count int32) (
+	map[*types.MapRootV1][]byte, int64, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{

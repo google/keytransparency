@@ -148,14 +148,16 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) ([]byte, *types.LogRootV1, error) {
+func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (
+	[]byte, *types.LogRootV1, error) {
 	e, slr, err := c.VerifiedGetEntry(ctx, userID)
 	return e.GetCommitted().GetData(), slr, err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
 // Returns a list of map roots and profiles at each revision.
-func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
+func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end int64) (
+	map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
 	if start < 0 {
 		return nil, nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
