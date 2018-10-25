@@ -117,7 +117,6 @@ func TestCompressHistory(t *testing.T) {
 func TestPaginateHistory(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	appID := "fakeapp"
 	userID := "fakeuser"
 
 	srv := &fakeKeyServer{
@@ -206,7 +205,7 @@ func TestPaginateHistory(t *testing.T) {
 				cli:      s.Client,
 			}
 
-			_, values, err := c.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
+			_, values, err := c.PaginateHistory(ctx, userID, tc.start, tc.end)
 			if err != tc.wantErr {
 				t.Errorf("PaginateHistory(): %v, want %v", err, tc.wantErr)
 			}
@@ -281,12 +280,12 @@ func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest
 
 type fakeVerifier struct{}
 
-func (f *fakeVerifier) Index(vrfProof []byte, directoryID string, appID string, userID string) ([]byte, error) {
+func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, error) {
 	return make([]byte, 32), nil
 }
 
-func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID string, appID string, userID string,
-	trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
+func (f *fakeVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
+	in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
 	smr, err := f.VerifySignedMapRoot(in.MapRoot)
 	return smr, &types.LogRootV1{}, err
 }

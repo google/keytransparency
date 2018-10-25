@@ -28,42 +28,39 @@ var zeroKey = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 func TestCommit(t *testing.T) {
 	for _, tc := range []struct {
-		userID, appID, data    string
-		muserID, mappID, mdata string
-		mutate                 bool
-		want                   error
+		userID, data   string
+		muserID, mdata string
+		mutate         bool
+		want           error
 	}{
-		{"foo", "app", "bar", "foo", "app", "bar", false, nil},
-		{"foo", "app", "bar", "foo", "app", "bar", true, ErrInvalidCommitment},
-		{"foo", "app", "bar", "fooa", "pp", "bar", false, ErrInvalidCommitment},
-		{"foo", "app", "bar", "foo", "ap", "pbar", false, ErrInvalidCommitment},
+		{"foo", "bar", "foo", "bar", false, nil},
+		{"foo", "bar", "fo", "obar", false, ErrInvalidCommitment},
+		{"foo", "bar", "foob", "ar", false, ErrInvalidCommitment},
 	} {
 		data := []byte(tc.data)
-		c := Commit(tc.userID, tc.appID, data, zeroKey)
+		c := Commit(tc.userID, data, zeroKey)
 		if tc.mutate {
 			c[0] ^= 1
 		}
-		if got := Verify(tc.muserID, tc.mappID, c, data, zeroKey); got != tc.want {
-			t.Errorf("Verify(%v, %v, %x, %x, %x): %v, want %v",
-				tc.userID, tc.appID, c, data, zeroKey, got, tc.want)
+		if got := Verify(tc.muserID, c, data, zeroKey); got != tc.want {
+			t.Errorf("Verify(%v, %x, %x, %x): %v, want %v", tc.userID, c, data, zeroKey, got, tc.want)
 		}
 	}
 }
 
 func TestVectors(t *testing.T) {
 	for _, tc := range []struct {
-		userID, appID, data string
-		want                []byte
+		userID, data string
+		want         []byte
 	}{
-		{"", "", "", dh("c0ed0ecc3801a7d66fd86f37dbaf9d6853b7829a320036f21035adced508df1a")},
-		{"foo", "app", "bar", dh("f686de3c4ccfe52724f8067b95a9d2030df73353ed548a1b6d8e334d16bcac57")},
-		{"foo1", "app", "bar", dh("c5eff3426ff412ca9976186aa188b7eacdaaec9743536f9524ada564bdf78543")},
-		{"foo", "app1", "bar", dh("0d7f40c12fc912f971f4afce7fa44a034b38aca299b8a4b29800ba45bec79148")},
-		{"foo", "app", "bar1", dh("a42a7e606753b61964e0333823939baeda4cd0c80583af0aa6d71dadec6e5bb8")},
+		{"", "", dh("30094c7227737fc4694f83759427044290281e0ed2ddc475726feb491d99a9c9")},
+		{"foo", "bar", dh("85425456c59c8af715d352477b2883beea5fc7399d8946d6716285b058b9813c")},
+		{"foo1", "bar", dh("9570f81783f11df56c5ed3efc7f03a0fd58c8f404cc0f46b5ec4aefdb94fba45")},
+		{"foo", "bar1", dh("cdfc663f9403bc2c6104e5c95cef08403745bf309525ba56147d601041f83d04")},
 	} {
 		data := []byte(tc.data)
-		if got, want := Commit(tc.userID, tc.appID, data, zeroKey), tc.want; !bytes.Equal(got, want) {
-			t.Errorf("Commit(%v, %x): %x ,want %x", tc.userID, tc.data, got, want)
+		if got, want := Commit(tc.userID, data, zeroKey), tc.want; !bytes.Equal(got, want) {
+			t.Errorf("Commit(%v, %v): %x ,want %x", tc.userID, tc.data, got, want)
 		}
 	}
 }

@@ -214,7 +214,7 @@ func TestProofToHash(t *testing.T) {
 	}
 	for _, tc := range getEntryResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			_, err := pk.ProofToHash(vrf.UniqueID(tc.UserID, tc.AppID), tc.Resp.GetVrfProof())
+			_, err := pk.ProofToHash(vrf.UniqueID(tc.UserID), tc.Resp.GetVrfProof())
 			if err != nil {
 				t.Errorf("ProofToHash(%v): %v)", tc.Desc, err)
 			}

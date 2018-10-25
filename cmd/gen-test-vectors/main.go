@@ -57,7 +57,6 @@ dXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4
 hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
 -----END PUBLIC KEY-----`
-	appID = "app"
 )
 
 func main() {
@@ -165,13 +164,12 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		e, err := env.Cli.GetEntry(ctx, &pb.GetEntryRequest{
 			DirectoryId:   env.Directory.DirectoryId,
 			UserId:        tc.userID,
-			AppId:         appID,
 			FirstTreeSize: int64(slr.TreeSize),
 		})
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: GetEntry(): %v", err)
 		}
-		_, newslr, err := env.Client.VerifyGetEntryResponse(ctx, env.Directory.DirectoryId, appID, tc.userID, *slr, e)
+		_, newslr, err := env.Client.VerifyGetEntryResponse(ctx, env.Directory.DirectoryId, tc.userID, *slr, e)
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: VerifyGetEntryResponse(): %v", err)
 		}
@@ -188,7 +186,6 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		}
 		getEntryResps = append(getEntryResps, testdata.GetEntryResponseVector{
 			Desc:        tc.desc,
-			AppID:       appID,
 			UserID:      tc.userID,
 			Resp:        e,
 			TrustNewLog: trust,
@@ -198,7 +195,6 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		if tc.setProfile != nil {
 			u := &tpb.User{
 				DirectoryId:    env.Directory.DirectoryId,
-				AppId:          appID,
 				UserId:         tc.userID,
 				PublicKeyData:  tc.setProfile,
 				AuthorizedKeys: tc.authorizedKeys,

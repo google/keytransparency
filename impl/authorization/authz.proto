@@ -23,8 +23,8 @@ message AuthorizationPolicy {
   message Resource {
     // directory_id contains the Key Transparency directory of this entry.
     string directory_id = 1;
-    // app_id contains the application identity of this entry.
-    string app_id = 2;
+    // Used to be app_id.
+    reserved 2;
   }
 
   // Role contains a specific identity of an authorization entry.
@@ -40,8 +40,6 @@ message AuthorizationPolicy {
 
   // roles is a map of roles keyed by labels used in RoleLabels.
   map<string, Role> roles = 2;
-  // resource_to_role_labels specifies the authorization policy keyed by resource
-  // map_id|app_id concatenation as a string.
+  // resource_to_role_labels specifies the authorization policy keyed by resource directory_id.
   map<string, RoleLabels> resource_to_role_labels = 3;
 }
-

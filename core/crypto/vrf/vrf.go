@@ -41,12 +41,10 @@ type PublicKey interface {
 	ProofToHash(m, proof []byte) (index [32]byte, err error)
 }
 
-// UniqueID computes a unique string for a directory, userID and appID combo.
-func UniqueID(userID, appID string) []byte {
+// UniqueID computes a unique string for a userID.
+func UniqueID(userID string) []byte {
 	b := new(bytes.Buffer)
 	binary.Write(b, binary.BigEndian, uint32(len(userID)))
 	b.WriteString(userID)
-	binary.Write(b, binary.BigEndian, uint32(len(appID)))
-	b.WriteString(appID)
 	return b.Bytes()
 }

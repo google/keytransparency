@@ -71,10 +71,10 @@ var (
 
 // Verifier is used to verify specific outputs from Key Transparency.
 type Verifier interface {
-	// Index computes the index of an appID, userID pair from a VRF proof, obtained from the server.
-	Index(vrfProof []byte, directoryID, appID, userID string) ([]byte, error)
+	// Index computes the index of a userID from a VRF proof, obtained from the server.
+	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
 	// VerifyGetEntryResponse verifies everything about a GetEntryResponse.
-	VerifyGetEntryResponse(ctx context.Context, directoryID, appID, userID string, trusted types.LogRootV1,
+	VerifyGetEntryResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
 		in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
 	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
@@ -148,14 +148,14 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 }
 
 // GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID, appID string, opts ...grpc.CallOption) ([]byte, *types.LogRootV1, error) {
-	e, slr, err := c.VerifiedGetEntry(ctx, appID, userID)
+func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) ([]byte, *types.LogRootV1, error) {
+	e, slr, err := c.VerifiedGetEntry(ctx, userID)
 	return e.GetCommitted().GetData(), slr, err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
 // Returns a list of map roots and profiles at each revision.
-func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
+func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end int64) (map[uint64]*types.MapRootV1, map[uint64][]byte, error) {
 	if start < 0 {
 		return nil, nil, fmt.Errorf("start=%v, want >= 0", start)
 	}
@@ -164,7 +164,7 @@ func (c *Client) PaginateHistory(ctx context.Context, appID, userID string, star
 	epochsWant := end - start + 1
 	for int64(len(allProfiles)) < epochsWant {
 		count := epochsWant - int64(len(allProfiles))
-		profiles, next, err := c.VerifiedListHistory(ctx, appID, userID, start, int32(count))
+		profiles, next, err := c.VerifiedListHistory(ctx, userID, start, int32(count))
 		if err != nil {
 			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
 		}
@@ -264,19 +264,19 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 
 // CreateMutation fetches the current index and value for a user and prepares a mutation.
 func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
-	e, _, err := c.VerifiedGetEntry(ctx, u.AppId, u.UserId)
+	e, _, err := c.VerifiedGetEntry(ctx, u.UserId)
 	if err != nil {
 		return nil, err
 	}
 	oldLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetVrfProof(), u.DirectoryId, u.AppId, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), u.DirectoryId, u.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	mutation := entry.NewMutation(index, u.DirectoryId, u.AppId, u.UserId)
+	mutation := entry.NewMutation(index, u.DirectoryId, u.UserId)
 
 	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
 		return nil, err
@@ -328,7 +328,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 	}
 
 	// GetEntry.
-	e, _, err := c.VerifiedGetEntry(ctx, m.AppID, m.UserID)
+	e, _, err := c.VerifiedGetEntry(ctx, m.UserID)
 	if err != nil {
 		return m, err
 	}

@@ -60,7 +60,7 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 		directories: fakeAdmin,
 		tlog:        s.LogClient,
 		tmap:        s.MapClient,
-		indexFunc: func(context.Context, *directory.Directory, string, string) ([32]byte, []byte, error) {
+		indexFunc: func(context.Context, *directory.Directory, string) ([32]byte, []byte, error) {
 			return [32]byte{}, []byte(""), nil
 		},
 	}

@@ -97,7 +97,7 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		return nil, err
 	}
 
-	entryProof, err := s.getEntryByRevision(ctx, sth, d, in.UserId, in.AppId, revision)
+	entryProof, err := s.getEntryByRevision(ctx, sth, d, in.UserId, revision)
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +113,14 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 // getEntryByRevision does NOT populate the following fields:
 // - LogRoot
 // - LogConsistency
-func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory,
-	userID, appID string, mapRevision int64) (*pb.GetEntryResponse, error) {
+func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory, userID string,
+	mapRevision int64) (*pb.GetEntryResponse, error) {
 	if mapRevision < 0 {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"Revision is %v, want >= 0", mapRevision)
 	}
 
-	index, proof, err := s.indexFunc(ctx, d, appID, userID)
+	index, proof, err := s.indexFunc(ctx, d, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	// Get all GetEntryResponse for all epochs in the range [start, start + in.PageSize].
 	responses := make([]*pb.GetEntryResponse, in.PageSize)
 	for i := range responses {
-		resp, err := s.getEntryByRevision(ctx, sth, d, in.UserId, in.AppId, in.Start+int64(i))
+		resp, err := s.getEntryByRevision(ctx, sth, d, in.UserId, in.Start+int64(i))
 		if err != nil {
 			glog.Errorf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
 			return nil, status.Errorf(codes.Internal, "GetEntry failed")
@@ -269,7 +269,6 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	req := &pb.GetEntryRequest{
 		DirectoryId: in.DirectoryId,
 		UserId:      in.UserId,
-		AppId:       in.AppId,
 		//EpochStart: in.GetEntryUpdate().EpochStart,
 	}
 	resp, err := s.GetEntry(ctx, req)
@@ -348,15 +347,15 @@ func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (
 	}, nil
 }
 
-// indexFunc computes an index and proof for directory/app/user
-type indexFunc func(ctx context.Context, d *directory.Directory, appID, userID string) ([32]byte, []byte, error)
+// indexFunc computes an index and proof for directory/user
+type indexFunc func(ctx context.Context, d *directory.Directory, userID string) ([32]byte, []byte, error)
 
-// index returns the index and proof for directory/app/user
-func indexFromVRF(ctx context.Context, d *directory.Directory, appID, userID string) ([32]byte, []byte, error) {
+// index returns the index and proof for directory/user
+func indexFromVRF(ctx context.Context, d *directory.Directory, userID string) ([32]byte, []byte, error) {
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, d.VRFPriv)
 	if err != nil {
 		return [32]byte{}, nil, err
 	}
-	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID, appID))
+	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID))
 	return index, proof, nil
 }
