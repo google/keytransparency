@@ -38,7 +38,6 @@ message QueueKeyUpdateRequest {
 
 // Manages user keys stored in Key Transparency with a client-friendly API.
 // This service is operated by the application provider, and is authorized to make key changes on users' behalves.
-// TODO(jtoohill): Should this also wrap GetEntry / ListEntryHistory?
 service KeyTransparencyFrontend {
   // Enqueues an update to a user's identity keys.
   rpc QueueKeyUpdate(QueueKeyUpdateRequest) returns (google.protobuf.Empty) {
