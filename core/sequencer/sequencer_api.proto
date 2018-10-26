@@ -51,8 +51,8 @@ message CreateEpochRequest {
    reserved 2;
    // revision is the expected revision of the new epoch.
    int64 revision = 3;
-   // map_metadata defines the inputs used for this map revision.
-   MapMetadata map_metadata = 4;
+   // deprecated map_metadata. Server now reads source watermarks from batch table.
+   reserved 4;
 }
 
 // RunBatchRequest triggers the sequencing of a batch of mutations for a
