@@ -1,0 +1,49 @@
+// Copyright 2018 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option go_package = "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto";
+
+// Key Transparency Frontend
+//
+// The Key Transparency API consists of a map of user names to public
+// keys. Each user name also has a history of public keys that have been
+// associated with it.
+package google.keytransparency.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+// QueueKeyUpdateRequest enqueues an update to a user's identity keys.
+message QueueKeyUpdateRequest {
+  // directory_id identifies the directory in which the user lives.
+  string directory_id = 1;
+  // user_id specifies the id for the user whose keys are being updated.
+  string user_id = 2;
+  // key_data is the key data to store.
+  bytes key_data = 3;
+}
+
+// Manages user keys stored in Key Transparency with a client-friendly API.
+// This service is operated by the application provider, and is authorized to make key changes on users' behalves.
+service KeyTransparencyFrontend {
+  // Enqueues an update to a user's identity keys.
+  rpc QueueKeyUpdate(QueueKeyUpdateRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/users/{user_id}"
+      body: "key_data"
+    };
+  }
+}
