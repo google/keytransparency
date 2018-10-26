@@ -71,15 +71,24 @@ func createMetrics(mf monitoring.MetricFactory) {
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
 	// HighWatermarks returns the highest primary key for each log in the mutations table.
-	HighWatermarks(ctx context.Context, directoryID string) (map[int64]int64, error)
+	HighWatermarks(ctx context.Context, dirID string) (map[int64]int64, error)
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	// ReadLog does NOT delete messages.
-	ReadLog(ctx context.Context, directoryID string, logID, low, high int64) ([]*mutator.LogMessage, error)
+	ReadLog(ctx context.Context, dirID string, logID, low, high int64) ([]*mutator.LogMessage, error)
+}
+
+// Batcher writes batch definitions to storage.
+type Batcher interface {
+	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
+	WriteBatchSources(ctx context.Context, dirID string, rev int64, sources *spb.MapMetadata) error
+	// ReadBatch returns the batch definitions for a given revision.
+	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
 	ktServer  *keyserver.Server
+	batcher   Batcher
 	mutations mutator.MutationStorage
 	tmap      tpb.TrillianMapClient
 	tlog      tpb.TrillianLogClient
@@ -93,6 +102,7 @@ func NewServer(
 	mapAdmin tpb.TrillianAdminClient,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
+	batcher Batcher,
 	mutations mutator.MutationStorage,
 	logs LogsReader,
 	metricsFactory monitoring.MetricFactory,
@@ -103,6 +113,7 @@ func NewServer(
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
+		batcher:   batcher,
 		logs:      logs,
 	}
 }
@@ -143,15 +154,15 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	// Count items to be processed.  Unfortunately, this means we will be
 	// reading the items to be processed twice.  Once, here in RunBatch and
 	// again in CreateEpoch.
-	sources := make(map[int64]*spb.MapMetadata_SourceSlice)
+	meta := &spb.MapMetadata{Sources: make(map[int64]*spb.MapMetadata_SourceSlice)}
 	for sliceID, high := range highs {
-		sources[sliceID] = &spb.MapMetadata_SourceSlice{
+		meta.Sources[sliceID] = &spb.MapMetadata_SourceSlice{
 			LowestWatermark:  lastMeta.Sources[sliceID].GetHighestWatermark(),
 			HighestWatermark: high,
 		}
 	}
 
-	msgs, err := s.readMessages(ctx, in.DirectoryId, sources)
+	msgs, err := s.readMessages(ctx, in.DirectoryId, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -159,17 +170,20 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return &empty.Empty{}, nil
 	}
 
+	if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, int64(latestMapRoot.Revision)+1, meta); err != nil {
+		return nil, err
+	}
+
 	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
 		DirectoryId: in.DirectoryId,
 		Revision:    int64(latestMapRoot.Revision) + 1,
-		MapMetadata: &spb.MapMetadata{Sources: sources},
 	})
 }
 
 func (s *Server) readMessages(ctx context.Context, directoryID string,
-	sources map[int64]*spb.MapMetadata_SourceSlice) ([]*ktpb.EntryUpdate, error) {
+	meta *spb.MapMetadata) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
-	for logID, source := range sources {
+	for logID, source := range meta.Sources {
 		batch, err := s.logs.ReadLog(ctx, directoryID, logID,
 			source.GetLowestWatermark(), source.GetHighestWatermark())
 		if err != nil {
@@ -188,10 +202,11 @@ func (s *Server) readMessages(ctx context.Context, directoryID string,
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	directoryID := in.GetDirectoryId()
-	if in.MapMetadata.GetSources() == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
+	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
-	msgs, err := s.readMessages(ctx, in.DirectoryId, in.MapMetadata.GetSources())
+	msgs, err := s.readMessages(ctx, in.DirectoryId, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +241,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	// Serialize metadata
-	metadata, err := proto.Marshal(in.MapMetadata)
+	metadata, err := proto.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
