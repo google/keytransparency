@@ -40,9 +40,11 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
+
 const (
 	maxDisplayNameLength = 20
 )
+
 var (
 	logArgs = &tpb.CreateTreeRequest{
 		Tree: &tpb.Tree{
