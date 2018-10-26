@@ -40,7 +40,9 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
-
+const (
+	maxDisplayNameLength = 20
+)
 var (
 	logArgs = &tpb.CreateTreeRequest{
 		Tree: &tpb.Tree{
@@ -189,8 +191,8 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, directory
 
 	config.Tree.Description = fmt.Sprintf("KT directory %s", directoryID)
 	config.Tree.DisplayName = directoryID
-	if len(directoryID) >= 20 {
-		config.Tree.DisplayName = directoryID[:20]
+	if len(directoryID) >= maxDisplayNameLength {
+		config.Tree.DisplayName = directoryID[:maxDisplayNameLength]
 	}
 	return &config
 }
