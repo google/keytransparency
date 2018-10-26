@@ -64,7 +64,7 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error starting fake server: %v", err)
 	}
-	srv := New(s.LogClient, s.MapClient, s.AdminClient, s.AdminClient, fakeDirectories, vrfKeyGen)
+	srv := New(s.LogClient, s.MapClient, s.AdminClient, s.AdminClient, fakeDirectories, nil, vrfKeyGen)
 
 	return &miniEnv{
 		ms:             s,
