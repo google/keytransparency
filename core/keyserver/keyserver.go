@@ -42,7 +42,7 @@ type MutationLogs interface {
 	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	ReadLog(ctx context.Context, domainID string, logID, low, high int64,
-		batchSize, offset int32) ([]*mutator.LogMessage, error)
+		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
 // BatchReader reads batch definitions.

@@ -135,7 +135,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 
 	// Read PageSize + 1 messages from the log to see if there is another page.
 	high := sources[rt.ShardId].HighestWatermark
-	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize+1, 0)
+	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize+1)
 	if err != nil {
 		glog.Errorf("ListMutations(): ReadLog(%v, log: %v/(%v, %v], batchSize: %v): %v",
 			d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize, err)

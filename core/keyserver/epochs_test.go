@@ -88,7 +88,7 @@ func (m *mutations) Send(ctx context.Context, domainID string, mutation *pb.Entr
 }
 
 func (m *mutations) ReadLog(ctx context.Context, domainID string,
-	logID, low, high int64, batchSize, offset int32) ([]*mutator.LogMessage, error) {
+	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	logShard := (*m)[logID]
 	low = low + 1 // Begin exclusive
 	if low > int64(len(logShard)) {
