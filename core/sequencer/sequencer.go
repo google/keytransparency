@@ -47,13 +47,13 @@ func New(
 	mapAdmin tpb.TrillianAdminClient,
 	directories directory.Storage,
 	mutations mutator.MutationStorage,
-	batchSize int,
+	batchSize int32,
 ) *Sequencer {
 	return &Sequencer{
 		sequencerClient: sequencerClient,
 		directories:     directories,
 		mapAdmin:        mapAdmin,
-		batchSize:       int32(batchSize),
+		batchSize:       batchSize,
 	}
 }
 

@@ -27,6 +27,17 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func newForTest(ctx context.Context, t *testing.T, logIDs ...int64) *Mutations {
+	m, err := New(newDB(t))
+	if err != nil {
+		t.Fatalf("Failed to create Mutations: %v", err)
+	}
+	if err := m.AddLogs(ctx, directoryID, logIDs...); err != nil {
+		t.Fatalf("AddLogs(): %v", err)
+	}
+	return m
+}
+
 func TestRandLog(t *testing.T) {
 	ctx := context.Background()
 
@@ -45,13 +56,7 @@ func TestRandLog(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			m, err := New(newDB(t))
-			if err != nil {
-				t.Fatalf("Failed to create Mutations: %v", err)
-			}
-			if err := m.AddLogs(ctx, directoryID, tc.send...); err != nil {
-				t.Fatalf("AddLogs(): %v", err)
-			}
+			m := newForTest(ctx, t, tc.send...)
 			logs := make(map[int64]bool)
 			for i := 0; i < 10*len(tc.wantLogs); i++ {
 				logID, err := m.randLog(ctx, directoryID)
@@ -72,19 +77,12 @@ func TestRandLog(t *testing.T) {
 
 func TestSend(t *testing.T) {
 	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create Mutations: %v", err)
-	}
+
+	m := newForTest(ctx, t, 1, 2)
 	update := []byte("bar")
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
 	ts3 := ts2.Add(time.Duration(1))
-
-	if err := m.AddLogs(ctx, directoryID, 1, 2); err != nil {
-		t.Fatalf("AddLogs(): %v", err)
-	}
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
@@ -106,73 +104,84 @@ func TestSend(t *testing.T) {
 	}
 }
 
-func TestWatermarks(t *testing.T) {
+func TestWatermark(t *testing.T) {
 	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create Mutations: %v", err)
-	}
-	ts1 := time.Now()
-	ts2 := ts1.Add(time.Duration(1))
+	logIDs := []int64{1, 2}
+	m := newForTest(ctx, t, logIDs...)
+	update := []byte("bar")
 
-	if err := m.AddLogs(ctx, directoryID, 1, 2, 3); err != nil {
-		t.Fatalf("AddLogs(): %v", err)
-	}
-
-	for _, tc := range []struct {
-		desc string
-		send map[int64]time.Time
-		want map[int64]int64
-	}{
-		{desc: "no rows", want: map[int64]int64{}},
-		{
-			desc: "first",
-			send: map[int64]time.Time{1: ts1},
-			want: map[int64]int64{1: ts1.UnixNano()},
-		},
-		{
-			desc: "second",
-			// Highwatermarks in each log proceed independently.
-			send: map[int64]time.Time{1: ts2, 2: ts1},
-			want: map[int64]int64{1: ts2.UnixNano(), 2: ts1.UnixNano()},
-		},
-	} {
-		for logID, ts := range tc.send {
-			if err := m.send(ctx, directoryID, logID, []byte("mutation"), ts); err != nil {
-				t.Fatalf("send(%v, %v): %v", logID, ts, err)
+	startTS := time.Now()
+	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
+		for _, logID := range logIDs {
+			if err := m.send(ctx, directoryID, logID, update, ts); err != nil {
+				t.Fatalf("m.send(%v): %v", logID, err)
 			}
 		}
-		highs, err := m.HighWatermarks(ctx, directoryID)
-		if err != nil {
-			t.Fatalf("HighWatermarks(): %v", err)
-		}
-		if !cmp.Equal(highs, tc.want) {
-			t.Errorf("HighWatermarks(): %v, want %v", highs, tc.want)
-		}
+	}
+
+	start := startTS.UnixNano()
+	for _, tc := range []struct {
+		desc      string
+		logID     int64
+		start     int64
+		batchSize int32
+		count     int32
+		want      int64
+	}{
+		{desc: "log1 max", logID: 1, batchSize: 100, want: start + 9, count: 10},
+		{desc: "log2 max", logID: 2, batchSize: 100, want: start + 9, count: 10},
+		{desc: "batch0", logID: 1, batchSize: 0},
+		{desc: "batch0start55", logID: 1, start: 55, batchSize: 0, want: 55},
+		{desc: "batch5", logID: 1, batchSize: 5, want: start + 4, count: 5},
+		{desc: "start1", logID: 1, start: start + 2, batchSize: 5, want: start + 7, count: 5},
+		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 9, count: 1},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
+			if err != nil {
+				t.Errorf("highWatermark(): %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got, tc.want)
+			}
+			if count != tc.count {
+				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)
+			}
+		})
 	}
 }
 
 func TestReadLog(t *testing.T) {
 	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create mutations: %v", err)
-	}
 	logID := int64(5)
-	if err := m.AddLogs(ctx, directoryID, logID); err != nil {
-		t.Fatalf("AddLogs(): %v", err)
-	}
-	if err := m.Send(ctx, directoryID, &pb.EntryUpdate{}); err != nil {
-		t.Fatalf("Send(): %v", err)
+	m := newForTest(ctx, t, logID)
+	for i := byte(0); i < 10; i++ {
+		entry := &pb.EntryUpdate{Mutation: &pb.Entry{Index: []byte{i}}}
+		if err := m.Send(ctx, directoryID, entry); err != nil {
+			t.Fatalf("Send(): %v", err)
+		}
 	}
 
-	rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano())
-	if err != nil {
-		t.Fatalf("ReadLog(): %v", err)
-	}
-	if got, want := len(rows), 1; got != want {
-		t.Fatalf("ReadLog(): len: %v, want %v", got, want)
+	for _, tc := range []struct {
+		batchSize int32
+		count     int
+	}{
+		{batchSize: 0, count: 0},
+		{batchSize: 1, count: 1},
+		{batchSize: 1, count: 1},
+		{batchSize: 100, count: 10},
+	} {
+		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.batchSize)
+		if err != nil {
+			t.Fatalf("ReadLog(): %v", err)
+		}
+		if got, want := len(rows), tc.count; got != want {
+			t.Fatalf("ReadLog(): len: %v, want %v", got, want)
+		}
+		for i, r := range rows {
+			if got, want := r.Mutation.GetIndex()[0], byte(i); got != want {
+				t.Errorf("ReadLog()[%v]: %v, want %v", i, got, want)
+			}
+		}
 	}
 }

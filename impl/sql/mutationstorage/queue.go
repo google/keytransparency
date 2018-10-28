@@ -61,29 +61,44 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, update *pb.Ent
 	return m.send(ctx, directoryID, logID, mData, time.Now())
 }
 
-// randLog returns a random, enabled log for directoryID.
-func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, error) {
-	// TODO(gbelvin): Cache these results.
-	var logIDs []int64
-	rows, err := m.db.QueryContext(ctx,
-		`SELECT LogID from Logs WHERE DirectoryID = ? AND Enabled = ?;`,
-		directoryID, true)
-	if err != nil {
-		return 0, err
+// ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
+func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
+	var query string
+	if writable {
+		query = `SELECT LogID from Logs WHERE DirectoryID = ? AND Enabled = True;`
+	} else {
+		query = `SELECT LogID from Logs WHERE DirectoryID = ?;`
 	}
+	var logIDs []int64
+	rows, err := m.db.QueryContext(ctx, query, directoryID)
+	if err != nil {
+		return nil, err
+	}
+
 	defer rows.Close()
 	for rows.Next() {
 		var logID int64
 		if err := rows.Scan(&logID); err != nil {
-			return 0, err
+			return nil, err
 		}
 		logIDs = append(logIDs, logID)
 	}
 	if err := rows.Err(); err != nil {
-		return 0, err
+		return nil, err
 	}
 	if len(logIDs) == 0 {
-		return 0, status.Errorf(codes.NotFound, "no log found for directory %v", directoryID)
+		return nil, status.Errorf(codes.NotFound, "no log found for directory %v", directoryID)
+	}
+	return logIDs, nil
+}
+
+// randLog returns a random, enabled log for directoryID.
+func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, error) {
+	// TODO(gbelvin): Cache these results.
+	writable := true
+	logIDs, err := m.ListLogs(ctx, directoryID, writable)
+	if err != nil {
+		return 0, err
 	}
 
 	// Return a random log.
@@ -125,37 +140,36 @@ func (m *Mutations) send(ctx context.Context, directoryID string, logID int64, m
 	return tx.Commit()
 }
 
-// HighWatermarks returns the highest timestamp for each log in the mutations table.
-func (m *Mutations) HighWatermarks(ctx context.Context, directoryID string) (map[int64]int64, error) {
-	watermarks := make(map[int64]int64)
-	rows, err := m.db.QueryContext(ctx,
-		`SELECT LogID, Max(Time) FROM Queue WHERE DirectoryID = ? GROUP BY LogID;`,
-		directoryID)
-	if err != nil {
-		return nil, err
+// HighWatermark returns the highest watermark in logID that is less than or
+// equal to batchSize items greater than start.
+func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID,
+	start int64, batchSize int32) (int32, int64, error) {
+	var count int32
+	var high int64
+	if err := m.db.QueryRowContext(ctx,
+		`SELECT COUNT(*), COALESCE(MAX(T1.Time), ?) FROM 
+		(
+			SELECT Q.Time FROM Queue as Q
+			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time > ?
+			ORDER BY Q.Time ASC
+			LIMIT ?
+		) AS T1`,
+		start, directoryID, logID, start, batchSize).
+		Scan(&count, &high); err != nil {
+		return 0, 0, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var logID, watermark int64
-		if err := rows.Scan(&logID, &watermark); err != nil {
-			return nil, err
-		}
-		watermarks[logID] = watermark
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return watermarks, nil
+	return count, high, nil
 }
 
 // ReadLog reads all mutations in logID between (low, high].
-func (m *Mutations) ReadLog(ctx context.Context,
-	directoryID string, logID, low, high int64) ([]*mutator.LogMessage, error) {
+func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
+	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time > ? AND Time <= ?
-		ORDER BY Time ASC;`,
-		directoryID, logID, low, high)
+		ORDER BY Time ASC
+		LIMIT ?;`,
+		directoryID, logID, low, high, batchSize)
 	if err != nil {
 		return nil, err
 	}

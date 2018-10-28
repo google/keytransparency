@@ -46,8 +46,8 @@ func New() *Mutator {
 // the same output. OldValue and update are both SignedKV protos.
 func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 	// Ensure that the mutation size is within bounds.
-	if proto.Size(update) > mutator.MaxMutationSize {
-		glog.Warningf("mutation (%v bytes) is larger than the maximum accepted size (%v bytes).", proto.Size(update), mutator.MaxMutationSize)
+	if got, want := proto.Size(update), mutator.MaxMutationSize; got > want {
+		glog.Warningf("mutation is %v bytes, want <= %v", got, want)
 		return nil, mutator.ErrSize
 	}
 
@@ -77,13 +77,13 @@ func (*Mutator) Mutate(oldValue, update proto.Message) (proto.Message, error) {
 		return nil, fmt.Errorf("ObjectHash: %v", err)
 	}
 
-	if !bytes.Equal(prevEntryHash[:], newEntry.GetPrevious()) {
+	if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
 		// Check if this mutation is a replay.
 		if oldEntry != nil && proto.Equal(oldEntry, newEntry) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
-		glog.Warningf("previous entry hash (%v) does not match the hash provided in this mutation (%v)", prevEntryHash[:], newEntry.GetPrevious())
+		glog.Warningf("previous entry hash: %x, want %x", got, want)
 		return nil, mutator.ErrPreviousHash
 	}
 

@@ -68,19 +68,34 @@ func createMetrics(mf monitoring.MetricFactory) {
 		directoryIDLabel)
 }
 
+// SourcesEntry is a map of SourceSlices by logID.
+type SourcesEntry map[int64]*spb.MapMetadata_SourceSlice
+
+// Watermarks is a map of watermarks by logID.
+type Watermarks map[int64]int64
+
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
-	// HighWatermarks returns the highest primary key for each log in the mutations table.
-	HighWatermarks(ctx context.Context, dirID string) (map[int64]int64, error)
-	// ReadLog returns the messages in the (low, high] range stored in the specified log.
-	// ReadLog does NOT delete messages.
-	ReadLog(ctx context.Context, dirID string, logID, low, high int64) ([]*mutator.LogMessage, error)
+	// HighWatermark returns the number of items and the highest primary
+	// key up to batchSize items after start (exclusive).
+	HighWatermark(ctx context.Context, directoryID string, logID, start int64,
+		batchSize int32) (count int32, watermark int64, err error)
+
+	// ListLogs returns the logIDs associated with directoryID that have their write bits set,
+	// or all logIDs associated with directoryID if writable is false.
+	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
+
+	// ReadLog returns the lowest messages in the (low, high] range stored in the
+	// specified log, up to batchSize.  Paginate by setting low to the
+	// highest LogMessage returned in the previous page.
+	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
 // Batcher writes batch definitions to storage.
 type Batcher interface {
 	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
-	WriteBatchSources(ctx context.Context, dirID string, rev int64, sources *spb.MapMetadata) error
+	WriteBatchSources(ctx context.Context, dirID string, rev int64, meta *spb.MapMetadata) error
 	// ReadBatch returns the batch definitions for a given revision.
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
@@ -142,58 +157,71 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
-	highs, err := s.logs.HighWatermarks(ctx, in.DirectoryId)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "HighWatermark(): %v", err)
+
+	startWatermarks := make(Watermarks)
+	for logID, source := range lastMeta.Sources {
+		startWatermarks[logID] = source.HighestWatermark
 	}
-
-	// TODO(#1057): If time since last map revision > max timeout, run batch.
-	// TODO(#1047): If time since oldest log item > max latency has elapsed, run batch.
-	// TODO(#1056): If count items > max_batch, run batch.
-
-	// Count items to be processed.  Unfortunately, this means we will be
-	// reading the items to be processed twice.  Once, here in RunBatch and
-	// again in CreateEpoch.
-	meta := &spb.MapMetadata{Sources: make(map[int64]*spb.MapMetadata_SourceSlice)}
-	for sliceID, high := range highs {
-		meta.Sources[sliceID] = &spb.MapMetadata_SourceSlice{
-			LowestWatermark:  lastMeta.Sources[sliceID].GetHighestWatermark(),
+	count, highs, err := s.HighWatermarks(ctx, in.DirectoryId, startWatermarks, in.MaxBatch)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
+	}
+	meta := &spb.MapMetadata{Sources: make(SourcesEntry)}
+	for logID, high := range highs {
+		meta.Sources[logID] = &spb.MapMetadata_SourceSlice{
+			LowestWatermark:  startWatermarks[logID],
 			HighestWatermark: high,
 		}
 	}
 
-	msgs, err := s.readMessages(ctx, in.DirectoryId, meta)
-	if err != nil {
-		return nil, err
-	}
-	if len(msgs) < int(in.MinBatch) {
-		return &empty.Empty{}, nil
+	//
+	// Rate limit the creation of new batches.
+	//
+
+	// TODO(#1057): If time since last map revision > max timeout, define batch.
+	// TODO(#1047): If time since oldest queue item > max latency has elapsed, define batch.
+	// If count items >= min_batch, define batch.
+	if count >= in.MinBatch {
+		nextRev := int64(latestMapRoot.Revision) + 1
+		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
+			return nil, err
+		}
+
+		return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
+			DirectoryId: in.DirectoryId,
+			Revision:    nextRev,
+		})
 	}
 
-	if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, int64(latestMapRoot.Revision)+1, meta); err != nil {
-		return nil, err
-	}
-
-	return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
-		DirectoryId: in.DirectoryId,
-		Revision:    int64(latestMapRoot.Revision) + 1,
-	})
+	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
+	return &empty.Empty{}, nil
 }
 
-func (s *Server) readMessages(ctx context.Context, directoryID string,
-	meta *spb.MapMetadata) ([]*ktpb.EntryUpdate, error) {
+// readMessages returns the full set of EntryUpdates defined by sources.
+// batchSize limits the number of messages to read from a log at one time.
+func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb.MapMetadata,
+	batchSize int32) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
 	for logID, source := range meta.Sources {
-		batch, err := s.logs.ReadLog(ctx, directoryID, logID,
-			source.GetLowestWatermark(), source.GetHighestWatermark())
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "ReadQueue(): %v", err)
-		}
-		for _, m := range batch {
-			msgs = append(msgs, &ktpb.EntryUpdate{
-				Mutation:  m.Mutation,
-				Committed: m.ExtraData,
-			})
+		low := source.GetLowestWatermark()
+		high := source.GetHighestWatermark()
+		// Loop until less than batchSize items are returned.
+		for count := batchSize; count == batchSize; {
+			batch, err := s.logs.ReadLog(ctx, directoryID, logID, low, high, batchSize)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
+			}
+			for _, m := range batch {
+				msgs = append(msgs, &ktpb.EntryUpdate{
+					Mutation:  m.Mutation,
+					Committed: m.ExtraData,
+				})
+				if m.ID > low {
+					low = m.ID
+				}
+			}
+			count = int32(len(batch))
+			glog.Infof("ReadLog(%v, (%v, %v], %v) count: %v", logID, low, high, batchSize, count)
 		}
 	}
 	return msgs, nil
@@ -206,7 +234,8 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
-	msgs, err := s.readMessages(ctx, in.DirectoryId, meta)
+	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
+	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, readBatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +258,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 	glog.V(2).Infof("CreateEpoch: %v mutations, %v indexes", len(msgs), len(indexes))
 
+	// TODO(gbelvin): Fetch map leaves at a specific revision.
 	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
 	if err != nil {
 		return nil, err
@@ -316,7 +346,9 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 			Revision: int64(rev),
 		})
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "GetSignedMapRootByRevision(%v, %v): %v", mapClient.MapID, rev, err)
+			return nil, status.Errorf(codes.Internal,
+				"GetSignedMapRootByRevision(%v, %v): %v",
+				mapClient.MapID, rev, err)
 		}
 		rawMapRoot := resp.GetMapRoot()
 		mapRoot, err := mapClient.VerifySignedMapRoot(rawMapRoot)
@@ -394,4 +426,47 @@ func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.Func,
 	}
 	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
+}
+
+// HighWatermarks returns the total count across all logs and the highest watermark for each log.
+// batchSize is a limit on the total number of items represented by the returned watermarks.
+// TODO(gbelvin): Block until a minBatchSize has been reached or a timeout has occurred.
+func (s *Server) HighWatermarks(ctx context.Context, directoryID string, starts Watermarks,
+	batchSize int32) (int32, Watermarks, error) {
+	watermarks := make(Watermarks)
+	var total int32
+
+	// Ensure that we do not lose track of watermarks, even if they are no
+	// longer in the active log list, or if they do not move. The sequencer
+	// needs them to know where to pick up reading for the next map
+	// revision.
+	// TODO(gbelvin): Separate high water marks for the sequencer's needs
+	// from the verifier's needs.
+	for logID, low := range starts {
+		watermarks[logID] = low
+	}
+
+	filterForWritable := false
+	logIDs, err := s.logs.ListLogs(ctx, directoryID, filterForWritable)
+	if err != nil {
+		return 0, nil, err
+	}
+	// TODO(gbelvin): Get HighWatermarks in parallel.
+	for _, logID := range logIDs {
+		start := starts[logID]
+		if batchSize <= 0 {
+			watermarks[logID] = start
+			continue
+		}
+		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, start, batchSize)
+		if err != nil {
+			return 0, nil, status.Errorf(codes.Internal,
+				"HighWatermark(%v/%v, start: %v, batch: %v): %v",
+				directoryID, logID, start, batchSize, err)
+		}
+		watermarks[logID] = high
+		total += count
+		batchSize -= count
+	}
+	return total, watermarks, nil
 }
