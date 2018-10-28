@@ -31,7 +31,7 @@ import (
 
 type fakeLogs map[int64][]mutator.LogMessage
 
-func (l fakeLogs) ReadLog(ctx context.Context, domainID string, logID, low, high int64,
+func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
 	batchSize int32) ([]*mutator.LogMessage, error) {
 	refs := make([]*mutator.LogMessage, 0, int(high-low))
 	for i := low + 1; i < high+1; i++ {
@@ -42,7 +42,7 @@ func (l fakeLogs) ReadLog(ctx context.Context, domainID string, logID, low, high
 
 }
 
-func (l fakeLogs) ListLogs(ctx context.Context, domainID string, writable bool) ([]int64, error) {
+func (l fakeLogs) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
 	logIDs := make([]int64, 0, len(l))
 	for logID := range l {
 		logIDs = append(logIDs, logID)
@@ -52,7 +52,7 @@ func (l fakeLogs) ListLogs(ctx context.Context, domainID string, writable bool) 
 	return logIDs, nil
 }
 
-func (l fakeLogs) HighWatermark(ctx context.Context, domainID string, logID, start int64,
+func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, start int64,
 	batchSize int32) (int32, int64, error) {
 	high := start + int64(batchSize)
 	if high > int64(len(l[logID]))-1 {
@@ -60,12 +60,11 @@ func (l fakeLogs) HighWatermark(ctx context.Context, domainID string, logID, sta
 	}
 	count := int32(high - start)
 	return count, high, nil
-
 }
 
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
-	domainID := "domainID"
+	directoryID := "directoryID"
 	s := Server{logs: fakeLogs{
 		0: make([]mutator.LogMessage, 10),
 		1: make([]mutator.LogMessage, 20),
@@ -84,7 +83,7 @@ func TestReadMessages(t *testing.T) {
 			1: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 10},
 		}},
 	} {
-		msgs, err := s.readMessages(ctx, domainID, tc.sources, tc.batchSize)
+		msgs, err := s.readMessages(ctx, directoryID, tc.sources, tc.batchSize)
 		if err != nil {
 			t.Errorf("readMessages(): %v", err)
 		}
@@ -96,7 +95,7 @@ func TestReadMessages(t *testing.T) {
 
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
-	domainID := "domainID"
+	directoryID := "directoryID"
 	s := Server{logs: fakeLogs{
 		0: make([]mutator.LogMessage, 10),
 		1: make([]mutator.LogMessage, 20),
@@ -116,7 +115,7 @@ func TestHighWatermarks(t *testing.T) {
 		// Don't drop pre-existing watermarks.
 		{batchSize: 0, starts: Watermarks{3: 9}, count: 0, highs: Watermarks{0: 0, 1: 0, 3: 9}},
 	} {
-		count, highs, err := s.HighWatermarks(ctx, domainID, tc.starts, tc.batchSize)
+		count, highs, err := s.HighWatermarks(ctx, directoryID, tc.starts, tc.batchSize)
 		if err != nil {
 			t.Errorf("HighWatermarks(): %v", err)
 		}

@@ -76,8 +76,8 @@ type Watermarks map[int64]int64
 
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
-	// Highwatermark returns the number of items and the highest primary
-	// key up to batchsize items after start (exclusive).
+	// HighWatermark returns the number of items and the highest primary
+	// key up to batchSize items after start (exclusive).
 	HighWatermark(ctx context.Context, directoryID string, logID, start int64,
 		batchSize int32) (count int32, watermark int64, err error)
 
@@ -218,7 +218,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	if in.MapMetadata.GetSources() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
 	}
-	readBatchSize := int32(1000)
+	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
 	msgs, err := s.readMessages(ctx, in.DirectoryId, in.MapMetadata.GetSources(), readBatchSize)
 	if err != nil {
 		return nil, err
@@ -242,7 +242,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 	glog.V(2).Infof("CreateEpoch: %v mutations, %v indexes", len(msgs), len(indexes))
 
-	// TODO(gbelvin): fetch map leaves at a specific revision
+	// TODO(gbelvin): Fetch map leaves at a specific revision.
 	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
 	if err != nil {
 		return nil, err
