@@ -76,18 +76,17 @@ func TestGetEpochStream(t *testing.T) {
 
 type batchStorage map[int64]SourceMap // Map of Revision to Sources
 
-func (b batchStorage) ReadBatch(ctx context.Context, domainID string,
-	revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error) {
-	return b[revision], nil
+func (b batchStorage) ReadBatch(ctx context.Context, dirID string, rev int64) (*spb.MapMetadata, error) {
+	return &spb.MapMetadata{Sources: b[rev]}, nil
 }
 
 type mutations map[int64][]*mutator.LogMessage // Map of logID to Slice of LogMessages
 
-func (m *mutations) Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error {
+func (m *mutations) Send(ctx context.Context, dirID string, mutation *pb.EntryUpdate) error {
 	return errors.New("Unimplemented")
 }
 
-func (m *mutations) ReadLog(ctx context.Context, domainID string,
+func (m *mutations) ReadLog(ctx context.Context, dirID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	logShard := (*m)[logID]
 	low = low + 1 // Begin exclusive

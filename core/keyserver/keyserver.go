@@ -39,17 +39,16 @@ import (
 // MutationLogs provides sets of time ordered message logs.
 type MutationLogs interface {
 	// Send submits an item to a random log.
-	Send(ctx context.Context, domainID string, mutation *pb.EntryUpdate) error
+	Send(ctx context.Context, directoryID string, mutation *pb.EntryUpdate) error
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
-	ReadLog(ctx context.Context, domainID string, logID, low, high int64,
+	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
 // BatchReader reads batch definitions.
 type BatchReader interface {
 	// ReadBatch returns the batch definitions for a given revision.
-	ReadBatch(ctx context.Context, domainID string,
-		revision int64) (map[int64]*spb.MapMetadata_SourceSlice, error)
+	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
 // Server holds internal state for the key server.

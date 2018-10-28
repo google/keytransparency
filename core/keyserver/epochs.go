@@ -124,17 +124,17 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		glog.Errorf("ListMutations(): adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
-	sources, err := s.batches.ReadBatch(ctx, in.DirectoryId, in.Epoch)
+	meta, err := s.batches.ReadBatch(ctx, in.DirectoryId, in.Epoch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Epoch, err)
 	}
-	rt, err := SourceMap(sources).ParseToken(in.PageToken)
+	rt, err := SourceMap(meta.Sources).ParseToken(in.PageToken)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Failed parsing page_token: %v: %v", in.PageToken, err)
 	}
 
 	// Read PageSize + 1 messages from the log to see if there is another page.
-	high := sources[rt.ShardId].HighestWatermark
+	high := meta.Sources[rt.ShardId].HighestWatermark
 	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize+1)
 	if err != nil {
 		glog.Errorf("ListMutations(): ReadLog(%v, log: %v/(%v, %v], batchSize: %v): %v",
@@ -163,7 +163,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	for i, p := range proofs {
 		mutations[i].LeafProof = p
 	}
-	nextToken, err := EncodeToken(SourceMap(sources).Next(rt, lastRow))
+	nextToken, err := EncodeToken(SourceMap(meta.Sources).Next(rt, lastRow))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed creating next token: %v", err)
 
