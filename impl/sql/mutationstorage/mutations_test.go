@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/keytransparency/core/mutator"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/google/go-cmp/cmp"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -44,7 +44,7 @@ func genMutation(i int) *pb.Entry {
 	}
 }
 
-func fillDB(ctx context.Context, m mutator.MutationStorage) error {
+func fillDB(ctx context.Context, m *Mutations) error {
 	for _, tc := range []struct {
 		revision  int64
 		mutations []*pb.Entry
@@ -72,6 +72,71 @@ func fillDB(ctx context.Context, m mutator.MutationStorage) error {
 	return nil
 }
 
+func TestWriteBatch(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+
+	domainID := "writebatchtest"
+	for _, tc := range []struct {
+		rev     int64
+		wantErr bool
+		sources map[int64]*spb.MapMetadata_SourceSlice
+	}{
+		// Tests are cumulative.
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 11}}, wantErr: true},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{2: {HighestWatermark: 20}}, wantErr: true},
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{}, wantErr: true},
+		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{}},
+		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}, wantErr: true},
+	} {
+		err := m.WriteBatchSources(ctx, domainID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
+		if got, want := err != nil, tc.wantErr; got != want {
+			t.Errorf("WriteBatchSources(%v, %v): err: %v. code: %v, want %v",
+				tc.rev, tc.sources, err, got, want)
+		}
+	}
+}
+
+func TestReadBatch(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+
+	domainID := "readbatchtest"
+	for _, tc := range []struct {
+		rev  int64
+		want *spb.MapMetadata
+	}{
+		{rev: 0, want: &spb.MapMetadata{Sources: map[int64]*spb.MapMetadata_SourceSlice{
+			1: {HighestWatermark: 10},
+			2: {HighestWatermark: 20},
+		}}},
+		{rev: 1, want: &spb.MapMetadata{Sources: map[int64]*spb.MapMetadata_SourceSlice{
+			1: {HighestWatermark: 11},
+			2: {HighestWatermark: 22},
+		}}},
+	} {
+		if err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.want); err != nil {
+			t.Fatalf("WriteBatch(%v): %v", tc.rev, err)
+		}
+		got, err := m.ReadBatch(ctx, domainID, tc.rev)
+		if err != nil {
+			t.Fatalf("ReadBatch(%v): %v", tc.rev, err)
+		}
+		if !cmp.Equal(got, tc.want, cmp.Comparer(proto.Equal)) {
+			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, got, tc.want)
+		}
+	}
+}
+
 func TestReadPage(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
@@ -84,67 +149,31 @@ func TestReadPage(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		description string
-		revision    int64
-		start       int64
-		count       int32
-		wantMax     int64
-		mutations   []*pb.Entry
+		desc      string
+		rev       int64
+		start     int64
+		count     int32
+		wantMax   int64
+		mutations []*pb.Entry
 	}{
-		{
-			description: "read a single mutation",
-			start:       0,
-			count:       1,
-			wantMax:     0,
-			mutations:   []*pb.Entry{genMutation(1)},
-		},
-		{
-			description: "empty mutations list",
-			revision:    100,
-			start:       0,
-			count:       10,
-		},
-		{
-			description: "full mutations range size",
-			revision:    0,
-			start:       0,
-			count:       5,
-			wantMax:     1,
-			mutations: []*pb.Entry{
-				genMutation(1),
-				genMutation(2),
-			},
-		},
-		{
-			description: "non-zero start",
-			revision:    1,
-			start:       1,
-			count:       2,
-			wantMax:     2,
-			mutations: []*pb.Entry{
-				genMutation(4),
-				genMutation(5),
-			},
-		},
-		{
-			description: "limit by count",
-			revision:    1,
-			start:       0,
-			count:       2,
-			wantMax:     1,
-			mutations: []*pb.Entry{
-				genMutation(3),
-				genMutation(4),
-			},
-		},
+		{desc: "single", start: 0, count: 1, wantMax: 0, mutations: []*pb.Entry{
+			genMutation(1)}},
+		{desc: "empty", rev: 100, start: 0, count: 10},
+		{desc: "full range", rev: 0, start: 0, count: 5, wantMax: 1, mutations: []*pb.Entry{
+			genMutation(1), genMutation(2)}},
+		{desc: "non-zero start", rev: 1, start: 1, count: 2, wantMax: 2, mutations: []*pb.Entry{
+			genMutation(4), genMutation(5)}},
+		{desc: "limit by count", rev: 1, start: 0, count: 2, wantMax: 1, mutations: []*pb.Entry{
+			genMutation(3), genMutation(4)}},
 	} {
-		t.Run(tc.description, func(t *testing.T) {
-			max, results, err := m.ReadPage(ctx, directoryID, tc.revision, tc.start, tc.count)
+		t.Run(tc.desc, func(t *testing.T) {
+			max, results, err := m.ReadPage(ctx, directoryID, tc.rev, tc.start, tc.count)
 			if err != nil {
 				t.Errorf("failed to read mutations: %v", err)
 			}
-			if got, want := max, tc.wantMax; got != want {
-				t.Errorf("ReadPage(%v,%v,%v).max:%v, want %v", tc.revision, tc.start, tc.count, got, want)
+			if max != tc.wantMax {
+				t.Errorf("ReadPage(%v,%v,%v).max:%v, want %v",
+					tc.rev, tc.start, tc.count, max, tc.wantMax)
 			}
 			if got, want := len(results), len(tc.mutations); got != want {
 				t.Fatalf("len(results)=%v, want %v", got, want)

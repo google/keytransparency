@@ -71,19 +71,19 @@ func TestReadMessages(t *testing.T) {
 	}}
 
 	for _, tc := range []struct {
-		sources   SourcesEntry
+		meta      *spb.MapMetadata
 		batchSize int32
 		want      int
 	}{
-		{batchSize: 1, want: 9, sources: SourcesEntry{
+		{batchSize: 1, want: 9, meta: &spb.MapMetadata{Sources: SourcesEntry{
 			0: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 9},
-		}},
-		{batchSize: 1, want: 19, sources: SourcesEntry{
+		}}},
+		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: SourcesEntry{
 			0: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 9},
 			1: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 10},
-		}},
+		}}},
 	} {
-		msgs, err := s.readMessages(ctx, directoryID, tc.sources, tc.batchSize)
+		msgs, err := s.readMessages(ctx, directoryID, tc.meta, tc.batchSize)
 		if err != nil {
 			t.Errorf("readMessages(): %v", err)
 		}

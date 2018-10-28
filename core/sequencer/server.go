@@ -92,9 +92,18 @@ type LogsReader interface {
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
+// Batcher writes batch definitions to storage.
+type Batcher interface {
+	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
+	WriteBatchSources(ctx context.Context, dirID string, rev int64, meta *spb.MapMetadata) error
+	// ReadBatch returns the batch definitions for a given revision.
+	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
+}
+
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
 	ktServer  *keyserver.Server
+	batcher   Batcher
 	mutations mutator.MutationStorage
 	tmap      tpb.TrillianMapClient
 	tlog      tpb.TrillianLogClient
@@ -108,6 +117,7 @@ func NewServer(
 	mapAdmin tpb.TrillianAdminClient,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
+	batcher Batcher,
 	mutations mutator.MutationStorage,
 	logs LogsReader,
 	metricsFactory monitoring.MetricFactory,
@@ -118,6 +128,7 @@ func NewServer(
 		tlog:      tlog,
 		tmap:      tmap,
 		mutations: mutations,
+		batcher:   batcher,
 		logs:      logs,
 	}
 }
@@ -155,9 +166,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
-	sources := make(SourcesEntry)
+	meta := &spb.MapMetadata{Sources: make(SourcesEntry)}
 	for logID, high := range highs {
-		sources[logID] = &spb.MapMetadata_SourceSlice{
+		meta.Sources[logID] = &spb.MapMetadata_SourceSlice{
 			LowestWatermark:  startWatermarks[logID],
 			HighestWatermark: high,
 		}
@@ -171,10 +182,14 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	// TODO(#1047): If time since oldest queue item > max latency has elapsed, define batch.
 	// If count items >= min_batch, define batch.
 	if count >= in.MinBatch {
+		nextRev := int64(latestMapRoot.Revision) + 1
+		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
+			return nil, err
+		}
+
 		return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
 			DirectoryId: in.DirectoryId,
-			Revision:    int64(latestMapRoot.Revision) + 1,
-			MapMetadata: &spb.MapMetadata{Sources: sources},
+			Revision:    nextRev,
 		})
 	}
 
@@ -184,10 +199,10 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 
 // readMessages returns the full set of EntryUpdates defined by sources.
 // batchSize limits the number of messages to read from a log at one time.
-func (s *Server) readMessages(ctx context.Context, directoryID string, sources SourcesEntry,
+func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb.MapMetadata,
 	batchSize int32) ([]*ktpb.EntryUpdate, error) {
 	msgs := make([]*ktpb.EntryUpdate, 0)
-	for logID, source := range sources {
+	for logID, source := range meta.Sources {
 		low := source.GetLowestWatermark()
 		high := source.GetHighestWatermark()
 		// Loop until less than batchSize items are returned.
@@ -215,11 +230,12 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, sources S
 // CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
 func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
 	directoryID := in.GetDirectoryId()
-	if in.MapMetadata.GetSources() == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "missing map metadata")
+	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
-	msgs, err := s.readMessages(ctx, in.DirectoryId, in.MapMetadata.GetSources(), readBatchSize)
+	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, readBatchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +271,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	}
 
 	// Serialize metadata
-	metadata, err := proto.Marshal(in.MapMetadata)
+	metadata, err := proto.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
