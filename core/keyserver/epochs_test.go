@@ -21,15 +21,15 @@ import (
 	"testing"
 	"time"
 
-	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
-	"github.com/google/keytransparency/core/mutator"
-
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/google/keytransparency/core/mutator"
+
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -83,7 +83,7 @@ func (b batchStorage) ReadBatch(ctx context.Context, dirID string, rev int64) (*
 type mutations map[int64][]*mutator.LogMessage // Map of logID to Slice of LogMessages
 
 func (m *mutations) Send(ctx context.Context, dirID string, mutation *pb.EntryUpdate) error {
-	return errors.New("Unimplemented")
+	return errors.New("unimplemented")
 }
 
 func (m *mutations) ReadLog(ctx context.Context, dirID string,
@@ -91,7 +91,7 @@ func (m *mutations) ReadLog(ctx context.Context, dirID string,
 	logShard := (*m)[logID]
 	low = low + 1 // Begin exclusive
 	if low > int64(len(logShard)) {
-		return nil, fmt.Errorf("ReadLog(%v, %v]: max watermark: %v", low, high, len(*m))
+		return nil, fmt.Errorf("invalid argument: low: %v, want < max watermark: %v", low, len(*m))
 	}
 	count := high + 1 - low // End inclusive
 	if int32(count) > batchSize {
@@ -159,7 +159,8 @@ func TestListMutations(t *testing.T) {
 		{desc: "large page", pageSize: 10, start: 1, end: 6},
 		{desc: "partial", pageSize: 4, start: 1, end: 5, wantNext: rtpb.ReadToken{LowWatermark: 5}},
 		{desc: "large page with token", token: MustEncodeToken(t, 2), pageSize: 10, start: 2, end: 6},
-		{desc: "small page with token", token: MustEncodeToken(t, 2), pageSize: 2, start: 2, end: 4, wantNext: rtpb.ReadToken{LowWatermark: 4}},
+		{desc: "small page with token", token: MustEncodeToken(t, 2), pageSize: 2, start: 2, end: 4,
+			wantNext: rtpb.ReadToken{LowWatermark: 4}},
 		{desc: "invalid page token", token: "some_token", pageSize: 0, wantErr: true},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
