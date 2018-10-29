@@ -31,7 +31,6 @@ import "google/protobuf/timestamp.proto";
 import "trillian.proto";
 import "crypto/keyspb/keyspb.proto";
 
-
 // Directory contains information on a single directory
 message Directory {
   // DirectoryId can be any URL safe string.
@@ -47,20 +46,21 @@ message Directory {
   // max_interval is the maximum time between epochs.
   google.protobuf.Duration max_interval = 6;
   // Deleted indicates whether the directory has been marked as deleted.
-  // By its presence in a response, this directory has not been garbage collected.
+  // By its presence in a response, this directory has not been garbage
+  // collected.
   bool deleted = 7;
 }
 
 // ListDirectories request.
 // No pagination options are provided.
-message ListDirectoriesRequest{
+message ListDirectoriesRequest {
   // showDeleted requests directories that have been marked for deletion
   // but have not been garbage collected.
   bool show_deleted = 1;
 }
 
 // ListDirectories response contains directories.
-message ListDirectoriesResponse{
+message ListDirectoriesResponse {
   repeated Directory directories = 1;
 }
 
@@ -104,30 +104,33 @@ message GarbageCollectResponse {
   repeated Directory directories = 1;
 }
 
-
 // The KeyTransparencyAdmin API provides the following resources:
 // - Directories
-//   Namespaces on which which Key Transparency operates. A directory determines a
-//   unique Trillian map to use. It also determines the authentication policies
-//   for users and apps within a directory.
+//   Namespaces on which which Key Transparency operates. A directory determines
+//   a unique Trillian map to use. It also determines the authentication
+//   policies for users and apps within a directory.
 //   - /v1/directories
 service KeyTransparencyAdmin {
-
-  // ListDirectories returns a list of all directories this Key Transparency server
-  // operates on.
-  rpc ListDirectories(ListDirectoriesRequest) returns (ListDirectoriesResponse) {
-    option (google.api.http) = { get: "/v1/directories" };
+  // ListDirectories returns a list of all directories this Key Transparency
+  // server operates on.
+  rpc ListDirectories(ListDirectoriesRequest)
+      returns (ListDirectoriesResponse) {
+    option (google.api.http) = {
+      get: "/v1/directories"
+    };
   }
 
   // GetDirectory returns the confiuration information for a given directory.
   rpc GetDirectory(GetDirectoryRequest) returns (Directory) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}"
+    };
   }
 
-  // CreateDirectory creates a new Trillian log/map pair.  A unique directoryId must
-  // be provided.  To create a new directory with the same name as a previously
-  // deleted directory, a user must wait X days until the directory is garbage
-  // collected.
+  // CreateDirectory creates a new Trillian log/map pair.  A unique directoryId
+  // must be provided.  To create a new directory with the same name as a
+  // previously deleted directory, a user must wait X days until the directory
+  // is garbage collected.
   rpc CreateDirectory(CreateDirectoryRequest) returns (Directory) {
     option (google.api.http) = {
       post: "/v1/directories"
@@ -135,23 +138,25 @@ service KeyTransparencyAdmin {
     };
   }
 
-  // DeleteDirectory marks a directory as deleted.  Directories will be garbage collected
-  // after X days.
+  // DeleteDirectory marks a directory as deleted.  Directories will be garbage
+  // collected after X days.
   rpc DeleteDirectory(DeleteDirectoryRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/directories/{directory_id}"
     };
   }
 
-  // UndeleteDirectory marks a previously deleted directory as active if it has not
-  // already been garbage collected.
-  rpc UndeleteDirectory(UndeleteDirectoryRequest) returns (google.protobuf.Empty) {
+  // UndeleteDirectory marks a previously deleted directory as active if it has
+  // not already been garbage collected.
+  rpc UndeleteDirectory(UndeleteDirectoryRequest)
+      returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/directories/{directory_id}:undelete"
     };
   }
 
-  // Fully delete soft-deleted directories that have been soft-deleted before the specified timestamp.
+  // Fully delete soft-deleted directories that have been soft-deleted before
+  // the specified timestamp.
   rpc GarbageCollect(GarbageCollectRequest) returns (GarbageCollectResponse) {
   }
 }

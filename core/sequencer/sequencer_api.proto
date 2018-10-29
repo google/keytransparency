@@ -45,33 +45,34 @@ message MapMetadata {
 
 // CreateEpochRequest contains information needed to create a new epoch.
 message CreateEpochRequest {
-   // directory_id is the directory to apply the mutations to.
-   string directory_id = 1;
-   // deprecated messages. Server now reads messages via source watermarks.
-   reserved 2;
-   // revision is the expected revision of the new epoch.
-   int64 revision = 3;
-   // deprecated map_metadata. Server now reads source watermarks from batch table.
-   reserved 4;
+  // directory_id is the directory to apply the mutations to.
+  string directory_id = 1;
+  // deprecated messages. Server now reads messages via source watermarks.
+  reserved 2;
+  // revision is the expected revision of the new epoch.
+  int64 revision = 3;
+  // deprecated map_metadata. Server now reads source watermarks from batch table.
+  reserved 4;
 }
 
 // RunBatchRequest triggers the sequencing of a batch of mutations for a
 // directory, with the batch size governed by the request parameters.
 message RunBatchRequest{
-   // directory_id is the directory to run for.
-   string directory_id = 1;
-   // min_batch is the minimum number of items in a batch.
-   // If less than min_batch items are available, nothing happens.
-   // TODO(#1047): Replace with timeout so items in the log get processed eventually.
-   int32 min_batch = 2;
-   // max_batch is the maximum number of items in a batch.
-   int32 max_batch = 3;
+  // directory_id is the directory to run for.
+  string directory_id = 1;
+  // min_batch is the minimum number of items in a batch.
+  // If less than min_batch items are available, nothing happens.
+  // TODO(#1047): Replace with timeout so items in the log get processed
+  // eventually.
+  int32 min_batch = 2;
+  // max_batch is the maximum number of items in a batch.
+  int32 max_batch = 3;
 }
 
 
 // PublishBatchRequest copies all SignedMapHeads into the Log of SignedMapHeads.
 message PublishBatchRequest {
-   string directory_id = 1;
+  string directory_id = 1;
 }
 
 // The KeyTransparency Sequencer API.
