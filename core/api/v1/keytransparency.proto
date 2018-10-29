@@ -92,7 +92,8 @@ message MapperMetadata {
 
 // GetEntryRequest for a user object.
 message GetEntryRequest {
-  // directory_id identifies the directory in which the user and application live.
+  // directory_id identifies the directory in which the user and application
+  // live.
   string directory_id = 4;
   // user_id is the user identifier. Most commonly an email address.
   string user_id = 1;
@@ -142,7 +143,8 @@ message GetEntryResponse {
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
 message ListEntryHistoryRequest {
-  // directory_id identifies the directory in which the user and application live.
+  // directory_id identifies the directory in which the user and application
+  // live.
   string directory_id = 6;
   // user_id is the user identifier.
   string user_id = 1;
@@ -168,7 +170,8 @@ message ListEntryHistoryResponse {
 
 // UpdateEntryRequest updates a user's profile.
 message UpdateEntryRequest {
-  // directory_id identifies the directory in which the user and application live.
+  // directory_id identifies the directory in which the user and application
+  // live.
   string directory_id = 5;
   // user_id specifies the id for the user who's profile is being updated.
   string user_id = 1;
@@ -249,60 +252,77 @@ message ListMutationsResponse {
 //
 // Each Directory has a collection of snapshots called epochs:
 // `/v1/directories/*/epochs/`
-//  * Each Epoch contains the root of the sparse merkle tree and the changes that
+//  * Each Epoch contains the root of the sparse merkle tree and the changes
+//  that
 //    occurred that epoch and the previous.
 //
 // Each Epoch has a collection of mutations:
 // `/v1/directories/*/epochs/*/mutations/`.
-//  * Each mutation contains the leafvalue of the previous epoch that it operated on.
+//  * Each mutation contains the leafvalue of the previous epoch that it
+//  operated on.
 //  * The full set of mutations for an epoch allows the receiver to compute the
 //     Merkle Tree Root of this epoch from the previous epoch.
 //
 // Each Directory has a collection of applications:
 // `/v1/directories/*/apps/`
-//  * Each Application has distinct users and permissions, but are indistinguishable
+//  * Each Application has distinct users and permissions, but are
+//  indistinguishable
 //    from each other just by looking at the tree.
 //
 // Each Application has a collection of Users:
 // `/v1/directories/*/apps/*/users`
-//  * Each User contains public key material, permissions for who is allowed to change
+//  * Each User contains public key material, permissions for who is allowed to
+//  change
 //    that user, and signatures indicating who made the last change.
 //
 // Each User also has a collection of historical values for user:
 // `/v1/directories/*/apps/*/users/*/history`
 //
 service KeyTransparency {
-  // GetDirectory returns the information needed to verify the specified directory.
+  // GetDirectory returns the information needed to verify the specified
+  // directory.
   rpc GetDirectory(GetDirectoryRequest) returns (Directory) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}"
+    };
   }
 
   // GetEpoch returns a SignedMapRoot by the by the requested revision number
   // along with its inclusion proof in the log and the log's consistency proofs.
   rpc GetEpoch(GetEpochRequest) returns (Epoch) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs/{epoch}" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/epochs/{epoch}"
+    };
   }
 
   // GetLatestEpoch returns the latest SignedMapRoot along with its inclusion
   // proof in the log and the log's consistency proofs.
   rpc GetLatestEpoch(GetLatestEpochRequest) returns (Epoch) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs:latest" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/epochs:latest"
+    };
   }
 
   // GetEpochStream streams new epochs from a requested starting point
   // and continues as new epochs are created.
   rpc GetEpochStream(GetEpochRequest) returns (stream Epoch) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs:stream" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/epochs:stream"
+    };
   }
 
   // ListMutations returns a list of mutations in a specific epoch.
   rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations"
+    };
   }
 
   // ListMutationsStream is a streaming list of mutations in a specific epoch.
   rpc ListMutationsStream(ListMutationsRequest) returns (stream MutationProof) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations:stream" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations:stream"
+    };
   }
 
   // GetEntry returns a user's entry in the Merkle Tree.
@@ -310,7 +330,9 @@ service KeyTransparency {
   // Entries contain signed commitments to a profile, which is also returned.
   // TODO(gbelvin): Replace with GetUser
   rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}/apps/{app_id}/users/{user_id}" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/apps/{app_id}/users/{user_id}"
+    };
   }
 
   // ListEntryHistory returns a list of historic GetEntry values.
@@ -318,7 +340,9 @@ service KeyTransparency {
   // Clients verify their account history by observing correct values for their
   // account over time.
   rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
-    option (google.api.http) = { get: "/v1/directories/{directory_id}/apps/{app_id}/users/{user_id}/history" };
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/apps/{app_id}/users/{user_id}/history"
+    };
   }
 
   // QueueUserUpdate enqueues an update to a user's profile.
