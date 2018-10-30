@@ -61,10 +61,6 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-var (
-	appID = "app"
-)
-
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	go func() {
@@ -167,7 +163,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			e, _, err := env.Client.VerifiedGetEntry(ctx, appID, tc.userID)
+			e, _, err := env.Client.VerifiedGetEntry(ctx, tc.userID)
 			if err != nil {
 				t.Errorf("VerifiedGetEntry(%v): %v, want nil", tc.userID, err)
 			}
@@ -179,7 +175,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			if tc.setProfile != nil {
 				u := &tpb.User{
 					DirectoryId:    env.Directory.DirectoryId,
-					AppId:          appID,
 					UserId:         tc.userID,
 					PublicKeyData:  tc.setProfile,
 					AuthorizedKeys: tc.authorizedKeys,
@@ -235,7 +230,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 		{desc: "multi page", start: 1, end: 19, wantHistory: [][]byte{cp(1), cp(2), cp(3), cp(4), cp(5), cp(6), cp(5), cp(7)}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			_, resp, err := env.Client.PaginateHistory(ctx, appID, userID, tc.start, tc.end)
+			_, resp, err := env.Client.PaginateHistory(ctx, userID, tc.start, tc.end)
 			if got := err != nil; got != tc.wantErr {
 				t.Errorf("ListHistory(%v, %v) failed: %v, wantErr :%v", tc.start, tc.end, err, tc.wantErr)
 			}
@@ -275,7 +270,6 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 		if p != nil {
 			u := &tpb.User{
 				DirectoryId:    directory.DirectoryId,
-				AppId:          appID,
 				UserId:         userID,
 				PublicKeyData:  p,
 				AuthorizedKeys: authorizedKeys,
@@ -333,5 +327,3 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 func cp(tag int) []byte {
 	return []byte(fmt.Sprintf("bar%v", tag))
 }
-
-// TODO: Test AppID filtering when implemented.

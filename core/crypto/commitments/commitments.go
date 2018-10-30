@@ -16,7 +16,7 @@
 //
 // Commitment scheme is as follows:
 // T = HMAC(fixedKey, "Key Transparency Commitment" || 16 byte nonce || message)
-// message is defined as: len(userID) || userID || len(appID) || appID || data
+// message is defined as: len(userID) || userID || data
 package commitments
 
 import (
@@ -64,7 +64,7 @@ func GenCommitmentKey() ([]byte, error) {
 }
 
 // Commit makes a cryptographic commitment under a specific userID to data.
-func Commit(userID, appID string, data, nonce []byte) []byte {
+func Commit(userID string, data, nonce []byte) []byte {
 	mac := hmac.New(hashAlgo, fixedKey)
 	mac.Write([]byte(prefix))
 	mac.Write(nonce)
@@ -72,16 +72,14 @@ func Commit(userID, appID string, data, nonce []byte) []byte {
 	// Message
 	binary.Write(mac, binary.BigEndian, uint32(len(userID)))
 	mac.Write([]byte(userID))
-	binary.Write(mac, binary.BigEndian, uint32(len(appID)))
-	mac.Write([]byte(appID))
 	mac.Write(data)
 
 	return mac.Sum(nil)
 }
 
 // Verify customizes a commitment with a userID.
-func Verify(userID, appID string, commitment, data, nonce []byte) error {
-	if got, want := Commit(userID, appID, data, nonce),
+func Verify(userID string, commitment, data, nonce []byte) error {
+	if got, want := Commit(userID, data, nonce),
 		commitment; !hmac.Equal(got, want) {
 		return ErrInvalidCommitment
 	}

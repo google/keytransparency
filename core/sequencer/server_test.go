@@ -132,7 +132,7 @@ func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate
 	t.Helper()
 	index := []byte{byte(id)}
 	userID := string(id)
-	m := entry.NewMutation(index, "directory", "app", userID)
+	m := entry.NewMutation(index, "directory", userID)
 	signers := []*tink.KeysetHandle{signer}
 	pubkey, err := signer.Public()
 	if err != nil {

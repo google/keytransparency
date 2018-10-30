@@ -31,13 +31,10 @@ import (
 // Maximum period of time to allow between CreationTime and server time.
 const (
 	MaxClockDrift = 5 * time.Minute
-	PGPAppID      = "pgp"
 	MinNonceLen   = 16
 )
 
 var (
-	// ErrNoAppID occurs when the app id is missing.
-	ErrNoAppID = errors.New("missing AppID")
 	// ErrNoCommitted occurs when the committed field is missing.
 	ErrNoCommitted = errors.New("missing commitment")
 	// ErrCommittedKeyLen occurs when the committed key is too small.
@@ -52,30 +49,13 @@ var (
 	ErrInvalidPageSize = errors.New("Invalid page size")
 )
 
-// validateKey verifies:
-// - appID is present.
-// - Key is valid for its format.
-func validateKey(userID, appID string, key []byte) error {
-	if appID == "" {
-		return ErrNoAppID
-	}
-	if appID == PGPAppID {
-		pgpUserID := fmt.Sprintf("<%v>", userID)
-		if _, err := validatePGP(pgpUserID, bytes.NewBuffer(key)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // validateUpdateEntryRequest verifies
 // - Commitment in SignedEntryUpdate matches the serialized profile.
-// - Profile is a valid.
 func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
 	entry := in.GetEntryUpdate().GetMutation()
 
 	// Verify Index / VRF
-	index, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId, in.AppId))
+	index, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId))
 	if got, want := entry.Index, index[:]; !bytes.Equal(got, want) {
 		return ErrWrongIndex
 	}
@@ -88,11 +68,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	if got, want := len(committed.Key), MinNonceLen; got < want {
 		return ErrCommittedKeyLen
 	}
-	if err := commitments.Verify(in.UserId, in.AppId, entry.Commitment, committed.Data, committed.Key); err != nil {
-		return err
-	}
-
-	return validateKey(in.GetUserId(), in.GetAppId(), committed.GetData())
+	return commitments.Verify(in.UserId, entry.Commitment, committed.Data, committed.Key)
 }
 
 // validateListEntryHistoryRequest ensures that start epoch is in range [1,

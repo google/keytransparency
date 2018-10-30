@@ -25,8 +25,8 @@ package google.keytransparency.type;
 message User {
   // directory_id specifies the directory.
   string directory_id = 1;
-  // app_id specifies that application.
-  string app_id = 2;
+  // Used to be app_id. Applications can define their own hierarchy for user_id if desired.
+  reserved 2;
   // user_id specifies the user.
   string user_id = 3;
   // public_key_data is the public key material for this account.

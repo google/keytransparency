@@ -51,9 +51,8 @@ func TestSerializeAndSign(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			index := []byte{}
 			userID := "alice"
-			appID := "app1"
 
-			m := NewMutation(index, directoryID, appID, userID)
+			m := NewMutation(index, directoryID, userID)
 			if err := m.SetPrevious(tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}
@@ -89,9 +88,8 @@ func TestCreateAndVerify(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			index := []byte{}
 			userID := "alice"
-			appID := "app1"
 
-			m := NewMutation(index, directoryID, appID, userID)
+			m := NewMutation(index, directoryID, userID)
 			if err := m.SetPrevious(tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}

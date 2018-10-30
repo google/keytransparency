@@ -34,12 +34,12 @@ var (
 
 // postCmd represents the post command
 var postCmd = &cobra.Command{
-	Use:   "post [user email] [app] -d {base64 key data}",
+	Use:   "post [user email] -d {base64 key data}",
 	Short: "Update the account with the given profile",
 	Long: `Post replaces the current key-set with the provided key-set,
 and verifies that both the previous and current key-sets are accurate. eg:
 
-./keytransparency-client post foobar@example.com app1 -d "dGVzdA=="
+./keytransparency-client post foobar@example.com -d "dGVzdA=="
 
 User email MUST match the OAuth account used to authorize the update.
 `,
@@ -53,8 +53,8 @@ User email MUST match the OAuth account used to authorize the update.
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Validate input.
-		if len(args) < 2 {
-			return fmt.Errorf("user email and app-id need to be provided")
+		if len(args) < 1 {
+			return fmt.Errorf("user email needs to be provided")
 		}
 		if data == "" {
 			return fmt.Errorf("no key data provided")
@@ -67,7 +67,6 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("hex.Decode(%v): %v", data, err)
 		}
 		userID := args[0]
-		appID := args[1]
 		timeout := viper.GetDuration("timeout")
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
@@ -92,7 +91,6 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 		u := &tpb.User{
 			DirectoryId:    viper.GetString("directory"),
-			AppId:          appID,
 			UserId:         userID,
 			PublicKeyData:  profileData,
 			AuthorizedKeys: authorizedKeys.Keyset(),

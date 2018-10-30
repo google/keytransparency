@@ -22,31 +22,31 @@ import (
 
 func TestUniqueID(t *testing.T) {
 	for _, tc := range []struct {
-		userID, appID   string
-		muserID, mappID string
+		userID  string
+		muserID string
 	}{
-		{"foo", "app", "fooa", "pp"},
-		{"foo", "app", "", "fooapp"},
-		{"foo", "app", "fooapp", ""},
+		{"foo", "fooa"},
+		{"foo", ""},
+		{"foo", "fooapp"},
 	} {
 		if got, want :=
-			UniqueID(tc.userID, tc.appID),
-			UniqueID(tc.muserID, tc.mappID); bytes.Equal(got, want) {
-			t.Errorf("UniqueID(%v, %v) == UniqueID(%v, %v): %s, want !=", tc.userID, tc.appID, tc.muserID, tc.mappID, got)
+			UniqueID(tc.userID),
+			UniqueID(tc.muserID); bytes.Equal(got, want) {
+			t.Errorf("UniqueID(%v) == UniqueID(%v): %s, want !=", tc.userID, tc.muserID, got)
 		}
 	}
 }
 
 func TestUniqueIDTestVector(t *testing.T) {
 	for _, tc := range []struct {
-		userID, appID string
-		expected      []byte
+		userID   string
+		expected []byte
 	}{
-		{"foo", "app", dh("00000003666f6f00000003617070")},
-		{"foo", "", dh("00000003666f6f00000000")},
+		{"foo", dh("00000003666f6f")},
+		{"foobar", dh("00000006666f6f626172")},
 	} {
-		if got, want := UniqueID(tc.userID, tc.appID), tc.expected; !bytes.Equal(got, want) {
-			t.Errorf("UniqueID(%v, %v): %x, want %v", tc.userID, tc.appID, got, want)
+		if got, want := UniqueID(tc.userID), tc.expected; !bytes.Equal(got, want) {
+			t.Errorf("UniqueID(%v): %x, want %v", tc.userID, got, want)
 		}
 	}
 }

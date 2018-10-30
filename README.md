@@ -48,13 +48,13 @@ development.
 1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
 
   ```sh
-  keytransparency-client post user@domain.com app1 --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
+  keytransparency-client post user@domain.com --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
   ```
 
 #### Get and verify a public key
 
   ```
-  keytransparency-client get <email> <app> --insecure --verbose
+  keytransparency-client get <email> --insecure --verbose
   ✓ Commitment verified.
   ✓ VRF verified.
   ✓ Sparse tree proof verified.
@@ -106,7 +106,7 @@ Creating keytransparency_monitor_1 ...    done
 
 2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [Proof for app1/foo@bar.com](https://35.202.56.9/v1/directories/default/apps/appID/users/foo@bar.com)
+- [Proof for foo@bar.com](https://35.202.56.9/v1/directories/default/users/foo@bar.com)
 - [Server configuration info](https://35.202.56.9/v1/directories/default)
 
 ## Development and Testing
@@ -124,7 +124,7 @@ The directory structure of Key Transparency is as follows:
     * [keytransparency-sequencer](cmd/keytransparency-sequencer): Key Transparency backend.
     * [keytransparency-server](cmd/keytransparency-sequencer): Key Transparency frontend.
 * [**core**](core): main library source code. Core libraries do not import [impl](impl).
-    * [adminserver](core/adminserver): private api for creating new directories and apps.
+    * [adminserver](core/adminserver): private api for creating new directories.
     * [**api**](core/api): gRPC API definitions.
     * [**crypto**](core/crypto): verifiable random function and commitment implementations.
     * [directory](core/directory): interface for retrieving directory info from storage.

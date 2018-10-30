@@ -47,7 +47,6 @@ func TestWriteRead(t *testing.T) {
 		desc         string
 		instanceID   int64
 		directoryID  string
-		appID        string
 		write        bool
 		wantWriteErr bool
 		read         bool
@@ -57,7 +56,6 @@ func TestWriteRead(t *testing.T) {
 			desc:        "write,read",
 			instanceID:  0,
 			directoryID: "directory",
-			appID:       "app",
 			write:       true,
 			read:        true,
 		},
@@ -65,7 +63,6 @@ func TestWriteRead(t *testing.T) {
 			desc:         "double write",
 			instanceID:   0,
 			directoryID:  "directory",
-			appID:        "app",
 			write:        true,
 			wantWriteErr: true,
 		},
@@ -73,19 +70,18 @@ func TestWriteRead(t *testing.T) {
 			desc:        "notfound",
 			instanceID:  1,
 			directoryID: "directory",
-			appID:       "app",
 			read:        true,
 			wantReadErr: true,
 		},
 	} {
 		if tc.write {
-			err := keysets.Set(ctx, tc.instanceID, tc.directoryID, tc.appID, ks)
+			err := keysets.Set(ctx, tc.instanceID, tc.directoryID, ks)
 			if got, want := err != nil, tc.wantWriteErr; got != want {
 				t.Errorf("Set(%v): %v, wantErr %v", tc.instanceID, err, want)
 			}
 		}
 		if tc.read {
-			gotKs, err := keysets.Get(ctx, tc.instanceID, tc.directoryID, tc.appID)
+			gotKs, err := keysets.Get(ctx, tc.instanceID, tc.directoryID)
 			if got, want := err != nil, tc.wantReadErr; got != want {
 				t.Errorf("Read(%v): %v, wantErr %v", tc.instanceID, err, want)
 			}
