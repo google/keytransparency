@@ -94,7 +94,7 @@ func (m *mutations) ReadLog(ctx context.Context, dirID string,
 		return nil, fmt.Errorf("invalid argument: low: %v, want < max watermark: %v", low, len(*m))
 	}
 	count := high + 1 - low // End inclusive
-	if int32(count) > batchSize {
+	if count > int64(batchSize) {
 		count = int64(batchSize)
 	}
 	if low+count > int64(len(logShard)) {
