@@ -79,8 +79,8 @@ func NewVerifierFromDirectory(config *pb.Directory) (*RealVerifier, error) {
 }
 
 // Index computes the index from a VRF proof.
-func (v *RealVerifier) Index(vrfProof []byte, directoryID, appID, userID string) ([]byte, error) {
-	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID, appID), vrfProof)
+func (v *RealVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, error) {
+	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID), vrfProof)
 	if err != nil {
 		return nil, fmt.Errorf("vrf.ProofToHash(): %v", err)
 	}
@@ -95,9 +95,9 @@ func (v *RealVerifier) Index(vrfProof []byte, directoryID, appID, userID string)
 //  - Verify consistency proof from log.Root().
 //  - Verify inclusion proof.
 // Returns the verified map root and log root.
-func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID, appID, userID string,
-	trusted types.LogRootV1, in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v/%v): %# v", directoryID, appID, userID, pretty.Formatter(in))
+func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
+	in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error) {
+	glog.V(5).Infof("VerifyGetEntryResponse(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
 	e, err := entry.FromLeafValue(in.GetLeafProof().GetLeaf().GetLeafValue())
@@ -111,14 +111,14 @@ func (v *RealVerifier) VerifyGetEntryResponse(ctx context.Context, directoryID, 
 		commitment := e.GetCommitment()
 		data := in.GetCommitted().GetData()
 		nonce := in.GetCommitted().GetKey()
-		if err := commitments.Verify(userID, appID, commitment, data, nonce); err != nil {
+		if err := commitments.Verify(userID, commitment, data, nonce); err != nil {
 			Vlog.Printf("✗ Commitment verification failed.")
-			return nil, nil, fmt.Errorf("commitments.Verify(%v, %v, %x, %x, %v): %v", userID, appID, commitment, data, nonce, err)
+			return nil, nil, fmt.Errorf("commitments.Verify(%v, %x, %x, %v): %v", userID, commitment, data, nonce, err)
 		}
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	index, err := v.Index(in.GetVrfProof(), directoryID, appID, userID)
+	index, err := v.Index(in.GetVrfProof(), directoryID, userID)
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
 		return nil, nil, err

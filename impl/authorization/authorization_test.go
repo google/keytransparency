@@ -39,10 +39,10 @@ const (
 	admin2   = "admin2@example.com"
 	admin3   = "admin3@example.com"
 	admin4   = "admin4@example.com"
-	res1     = "directories/1/apps/1"
-	res2     = "directories/1/apps/2"
-	res3     = "directories/1/apps/3"
-	res4     = "directories/1/apps/4"
+	res1     = "directories/1"
+	res2     = "directories/2"
+	res3     = "directories/3"
+	res4     = "directories/4"
 )
 
 var authz = AuthzPolicy{
@@ -82,7 +82,6 @@ func TestIsAuthorized(t *testing.T) {
 		description string
 		ctx         context.Context
 		directoryID string
-		appID       string
 		userID      string
 		wantCode    codes.Code
 	}{
@@ -90,51 +89,44 @@ func TestIsAuthorized(t *testing.T) {
 			description: "self updating own profile",
 			ctx:         authentication.WithOutgoingFakeAuth(ctx, testUser),
 			directoryID: "1",
-			appID:       "1",
 			userID:      testUser,
 		},
 		{
 			description: "other accessing profile, authorized with one role",
-			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin2),
 			directoryID: "1",
-			appID:       "1",
 			userID:      "",
 		},
 		{
 			description: "other accessing profile, authorized with multiple roles",
-			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin2),
+			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
 			directoryID: "1",
-			appID:       "1",
 			userID:      "",
 		},
 		{
 			description: "other accessing profile, authorized second resource",
 			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin3),
-			directoryID: "1",
-			appID:       "2",
+			directoryID: "2",
 			userID:      "",
 		},
 		{
 			description: "not authorized, no resource label",
 			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
-			directoryID: "1",
-			appID:       "10",
+			directoryID: "5",
 			userID:      "",
 			wantCode:    codes.PermissionDenied,
 		},
 		{
 			description: "not authorized, no label_to_role defined",
 			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
-			directoryID: "1",
-			appID:       "4",
+			directoryID: "3",
 			userID:      "",
 			wantCode:    codes.PermissionDenied,
 		},
 		{
 			description: "not authorized, empty role definition",
 			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin1),
-			directoryID: "1",
-			appID:       "3",
+			directoryID: "4",
 			userID:      "",
 			wantCode:    codes.PermissionDenied,
 		},
@@ -142,7 +134,6 @@ func TestIsAuthorized(t *testing.T) {
 			description: "not authorized principal",
 			ctx:         authentication.WithOutgoingFakeAuth(ctx, admin4),
 			directoryID: "1",
-			appID:       "1",
 			userID:      "",
 			wantCode:    codes.PermissionDenied,
 		},
@@ -156,7 +147,6 @@ func TestIsAuthorized(t *testing.T) {
 			}
 			req := &pb.UpdateEntryRequest{
 				DirectoryId: tc.directoryID,
-				AppId:       tc.appID,
 				UserId:      tc.userID,
 			}
 			err = authz.Authorize(sctx, req)
@@ -170,23 +160,19 @@ func TestIsAuthorized(t *testing.T) {
 func TestResouceLabel(t *testing.T) {
 	for _, tc := range []struct {
 		directoryID string
-		appID       string
 		out         string
 		wantCode    codes.Code
 	}{
-		{directoryID: "1", appID: "1", out: "directories/1/apps/1"},
-		{directoryID: "1", appID: "2", out: "directories/1/apps/2"},
-		{directoryID: "1", appID: "111", out: "directories/1/apps/111"},
-		{directoryID: "111", appID: "1", out: "directories/111/apps/1"},
-		{directoryID: "111", appID: "111", out: "directories/111/apps/111"},
-		{directoryID: "1/apps/1", wantCode: codes.InvalidArgument},
+		{directoryID: "1", out: "directories/1"},
+		{directoryID: "111", out: "directories/111"},
+		{directoryID: "1/1", wantCode: codes.InvalidArgument},
 	} {
-		label, err := resourceLabel(tc.directoryID, tc.appID)
+		label, err := resourceLabel(tc.directoryID)
 		if got, want := label, tc.out; got != want {
-			t.Errorf("resourceLabel(%v, %v): %v, want %v", tc.directoryID, tc.appID, got, want)
+			t.Errorf("resourceLabel(%v): %v, want %v", tc.directoryID, got, want)
 		}
 		if got, want := status.Code(err), tc.wantCode; got != want {
-			t.Errorf("resourceLabel(%v, %v): %v, want %v", tc.directoryID, tc.appID, err, want)
+			t.Errorf("resourceLabel(%v): %v, want %v", tc.directoryID, err, want)
 		}
 	}
 }

@@ -40,7 +40,7 @@ type AuthzPolicy struct {
 // ctx must contain an authentication.SecurityContext.
 // A call is authorized if:
 //  1. userID matches SecurityContext.Email,
-//  2. or, SecurityContext.Email is authorized to do the action in directories/directoryID/apps/appID.
+//  2. or, SecurityContext.Email is authorized to do the action in directories/directoryID.
 func (a *AuthzPolicy) Authorize(ctx context.Context, m interface{}) error {
 	sctx, ok := authentication.FromContext(ctx)
 	if !ok {
@@ -49,7 +49,7 @@ func (a *AuthzPolicy) Authorize(ctx context.Context, m interface{}) error {
 
 	switch t := m.(type) {
 	case *pb.UpdateEntryRequest:
-		return a.checkPermission(sctx, t.DirectoryId, t.AppId, t.UserId)
+		return a.checkPermission(sctx, t.DirectoryId, t.UserId)
 		// Can't authorize any other requests
 	default:
 		return status.Errorf(codes.PermissionDenied, "message type %T not recognized", t)
@@ -57,14 +57,14 @@ func (a *AuthzPolicy) Authorize(ctx context.Context, m interface{}) error {
 
 }
 
-func (a *AuthzPolicy) checkPermission(sctx *authentication.SecurityContext, directoryID, appID, userID string) error {
+func (a *AuthzPolicy) checkPermission(sctx *authentication.SecurityContext, directoryID, userID string) error {
 	// Case 1.
 	if sctx.Email == userID {
 		return nil
 	}
 
 	// Case 2.
-	rLabel, err := resourceLabel(directoryID, appID)
+	rLabel, err := resourceLabel(directoryID)
 	if err != nil {
 		return err
 	}
@@ -81,12 +81,11 @@ func (a *AuthzPolicy) checkPermission(sctx *authentication.SecurityContext, dire
 	return status.Errorf(codes.PermissionDenied, "%v is not authorized to act on %v", sctx.Email, rLabel)
 }
 
-func resourceLabel(directoryID, appID string) (string, error) {
-	if strings.Contains(directoryID, "/") ||
-		strings.Contains(appID, "/") {
+func resourceLabel(directoryID string) (string, error) {
+	if strings.Contains(directoryID, "/") {
 		return "", status.Errorf(codes.InvalidArgument, "resource label contains invalid character '/'")
 	}
-	return fmt.Sprintf("directories/%v/apps/%v", directoryID, appID), nil
+	return fmt.Sprintf("directories/%v", directoryID), nil
 }
 
 func isPrincipalInRole(role *authzpb.AuthorizationPolicy_Role, identity string) bool {

@@ -35,14 +35,13 @@ var (
 var histCmd = &cobra.Command{
 	Use:   "history [user email] [app]",
 	Short: "Retrieve and verify all keys used for this account",
-	Long: `Retrieve all user profiles for this account from the key server 
+	Long: `Retrieve all user profiles for this account from the key server
 and verify that the results are consistent.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 2 {
-			return fmt.Errorf("user email and application need to be provided")
+		if len(args) < 1 {
+			return fmt.Errorf("user email needs to be provided")
 		}
 		userID := args[0]
-		appID := args[1]
 		timeout := viper.GetDuration("timeout")
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
@@ -63,7 +62,7 @@ and verify that the results are consistent.`,
 			end = int64(smr.Revision)
 		}
 
-		roots, profiles, err := c.PaginateHistory(ctx, appID, userID, start, end)
+		roots, profiles, err := c.PaginateHistory(ctx, userID, start, end)
 		if err != nil {
 			return fmt.Errorf("failed fetching history: %v", err)
 		}

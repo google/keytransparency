@@ -25,20 +25,19 @@ import (
 )
 
 // VerifiedGetEntry fetches and verifies the results of GetEntry.
-func (c *Client) VerifiedGetEntry(ctx context.Context, appID, userID string) (*pb.GetEntryResponse, *types.LogRootV1, error) {
+func (c *Client) VerifiedGetEntry(ctx context.Context, userID string) (*pb.GetEntryResponse, *types.LogRootV1, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
 		DirectoryId:   c.directoryID,
 		UserId:        userID,
-		AppId:         appID,
 		FirstTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	_, slr, err := c.VerifyGetEntryResponse(ctx, c.directoryID, appID, userID, c.trusted, e)
+	_, slr, err := c.VerifyGetEntryResponse(ctx, c.directoryID, userID, c.trusted, e)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -109,13 +108,13 @@ func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogR
 }
 
 // VerifiedListHistory performs one list history operation, verifies and returns the results.
-func (c *Client) VerifiedListHistory(ctx context.Context, appID, userID string, start int64, count int32) (map[*types.MapRootV1][]byte, int64, error) {
+func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start int64, count int32) (
+	map[*types.MapRootV1][]byte, int64, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
 		DirectoryId:   c.directoryID,
 		UserId:        userID,
-		AppId:         appID,
 		FirstTreeSize: int64(c.trusted.TreeSize),
 		Start:         start,
 		PageSize:      count,
@@ -130,7 +129,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, appID, userID string, 
 	var smr *types.MapRootV1
 	profiles := make(map[*types.MapRootV1][]byte)
 	for _, v := range resp.GetValues() {
-		smr, slr, err = c.VerifyGetEntryResponse(ctx, c.directoryID, appID, userID, c.trusted, v)
+		smr, slr, err = c.VerifyGetEntryResponse(ctx, c.directoryID, userID, c.trusted, v)
 		if err != nil {
 			return nil, 0, err
 		}
