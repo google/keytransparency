@@ -16,9 +16,7 @@
 package vrf
 
 import (
-	"bytes"
 	"crypto"
-	"encoding/binary"
 )
 
 // A VRF is a pseudorandom function f_k from a secret key k, such that that
@@ -39,12 +37,4 @@ type PrivateKey interface {
 type PublicKey interface {
 	// ProofToHash verifies the NP-proof supplied by Proof and outputs Index.
 	ProofToHash(m, proof []byte) (index [32]byte, err error)
-}
-
-// UniqueID computes a unique string for a userID.
-func UniqueID(userID string) []byte {
-	b := new(bytes.Buffer)
-	binary.Write(b, binary.BigEndian, uint32(len(userID)))
-	b.WriteString(userID)
-	return b.Bytes()
 }
