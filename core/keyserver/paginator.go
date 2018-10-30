@@ -112,7 +112,7 @@ func (s SourceMap) NextShard(shardID int64) (int64, bool) {
 		// shardID isn't in SourceMap.
 		return 0, false
 	}
-	if i == len(shardIDs)-1 {
+	if i >= len(shardIDs)-1 {
 		// there are no more shards to iterate over.
 		return 0, false
 	}
