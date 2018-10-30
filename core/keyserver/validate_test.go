@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
-	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -31,7 +30,7 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 	// Test verification for new entries.
 	userID := "joe"
 	vrfPriv, _ := p256.GenerateKey()
-	index, _ := vrfPriv.Evaluate(vrf.UniqueID(userID))
+	index, _ := vrfPriv.Evaluate([]byte(userID))
 	nonce, err := commitments.GenCommitmentKey()
 	if err != nil {
 		t.Fatal(err)
