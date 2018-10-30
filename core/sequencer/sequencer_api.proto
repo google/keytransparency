@@ -51,7 +51,8 @@ message CreateEpochRequest {
   reserved 2;
   // revision is the expected revision of the new epoch.
   int64 revision = 3;
-  // deprecated map_metadata. Server now reads source watermarks from batch table.
+  // deprecated map_metadata. Server now reads source watermarks from batch
+  // table.
   reserved 4;
 }
 
