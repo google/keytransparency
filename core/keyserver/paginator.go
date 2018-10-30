@@ -61,6 +61,10 @@ func (s SourceMap) ParseToken(token string) (*rtpb.ReadToken, error) {
 
 // First returns the first read parameters for this source.
 func (s SourceMap) First() *rtpb.ReadToken {
+	if len(s) == 0 {
+		// Empty struct means there is nothing else to page through.
+		return &rtpb.ReadToken{}
+	}
 	firstLog := int64(math.MaxInt64)
 	for logID := range s {
 		if logID < firstLog {

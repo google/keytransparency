@@ -69,13 +69,22 @@ func TestTokenEncodeDecode(t *testing.T) {
 }
 
 func TestFirst(t *testing.T) {
-	s := SourceMap{
-		2: &spb.MapMetadata_SourceSlice{LowestWatermark: 1, HighestWatermark: 10},
-		3: &spb.MapMetadata_SourceSlice{LowestWatermark: 10, HighestWatermark: 20},
-	}
-	want := &rtpb.ReadToken{ShardId: 2, LowWatermark: 1}
-	if got := s.First(); !proto.Equal(got, want) {
-		t.Errorf("First(): %v, want %v", got, want)
+	for _, tc := range []struct {
+		s    SourceMap
+		want *rtpb.ReadToken
+	}{
+		{
+			s: SourceMap{
+				2: &spb.MapMetadata_SourceSlice{LowestWatermark: 1, HighestWatermark: 10},
+				3: &spb.MapMetadata_SourceSlice{LowestWatermark: 10, HighestWatermark: 20},
+			},
+			want: &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
+		},
+		{s: SourceMap{}, want: &rtpb.ReadToken{}},
+	} {
+		if got := tc.s.First(); !proto.Equal(got, tc.want) {
+			t.Errorf("First(): %v, want %v", got, tc.want)
+		}
 	}
 }
 
