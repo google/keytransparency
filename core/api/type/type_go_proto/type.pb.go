@@ -20,7 +20,8 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// User represents plain account information that gets committed to and obfuscated in Entry.
+// User represents plain account information that gets committed to and
+// obfuscated in Entry.
 type User struct {
 	// directory_id specifies the directory.
 	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
@@ -41,7 +42,7 @@ func (m *User) Reset()         { *m = User{} }
 func (m *User) String() string { return proto.CompactTextString(m) }
 func (*User) ProtoMessage()    {}
 func (*User) Descriptor() ([]byte, []int) {
-	return fileDescriptor_type_867fadf9d47e5fa2, []int{0}
+	return fileDescriptor_type_68cdb4aa8017d8af, []int{0}
 }
 func (m *User) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_User.Unmarshal(m, b)
@@ -100,9 +101,9 @@ func init() {
 	proto.RegisterType((*User)(nil), "google.keytransparency.type.User")
 }
 
-func init() { proto.RegisterFile("type/type.proto", fileDescriptor_type_867fadf9d47e5fa2) }
+func init() { proto.RegisterFile("type/type.proto", fileDescriptor_type_68cdb4aa8017d8af) }
 
-var fileDescriptor_type_867fadf9d47e5fa2 = []byte{
+var fileDescriptor_type_68cdb4aa8017d8af = []byte{
 	// 285 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0x90, 0x3d, 0x4f, 0xf3, 0x30,
 	0x10, 0xc7, 0x95, 0xa7, 0x7d, 0x02, 0xb8, 0x85, 0x22, 0x2f, 0x8d, 0xca, 0x52, 0x18, 0x50, 0xc5,

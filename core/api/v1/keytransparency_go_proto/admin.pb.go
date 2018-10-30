@@ -65,7 +65,7 @@ func (m *Directory) Reset()         { *m = Directory{} }
 func (m *Directory) String() string { return proto.CompactTextString(m) }
 func (*Directory) ProtoMessage()    {}
 func (*Directory) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{0}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{0}
 }
 func (m *Directory) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Directory.Unmarshal(m, b)
@@ -149,7 +149,7 @@ func (m *ListDirectoriesRequest) Reset()         { *m = ListDirectoriesRequest{}
 func (m *ListDirectoriesRequest) String() string { return proto.CompactTextString(m) }
 func (*ListDirectoriesRequest) ProtoMessage()    {}
 func (*ListDirectoriesRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{1}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{1}
 }
 func (m *ListDirectoriesRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListDirectoriesRequest.Unmarshal(m, b)
@@ -188,7 +188,7 @@ func (m *ListDirectoriesResponse) Reset()         { *m = ListDirectoriesResponse
 func (m *ListDirectoriesResponse) String() string { return proto.CompactTextString(m) }
 func (*ListDirectoriesResponse) ProtoMessage()    {}
 func (*ListDirectoriesResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{2}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{2}
 }
 func (m *ListDirectoriesResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListDirectoriesResponse.Unmarshal(m, b)
@@ -230,7 +230,7 @@ func (m *GetDirectoryRequest) Reset()         { *m = GetDirectoryRequest{} }
 func (m *GetDirectoryRequest) String() string { return proto.CompactTextString(m) }
 func (*GetDirectoryRequest) ProtoMessage()    {}
 func (*GetDirectoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{3}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{3}
 }
 func (m *GetDirectoryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetDirectoryRequest.Unmarshal(m, b)
@@ -282,7 +282,7 @@ func (m *CreateDirectoryRequest) Reset()         { *m = CreateDirectoryRequest{}
 func (m *CreateDirectoryRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateDirectoryRequest) ProtoMessage()    {}
 func (*CreateDirectoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{4}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{4}
 }
 func (m *CreateDirectoryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateDirectoryRequest.Unmarshal(m, b)
@@ -356,7 +356,7 @@ func (m *DeleteDirectoryRequest) Reset()         { *m = DeleteDirectoryRequest{}
 func (m *DeleteDirectoryRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteDirectoryRequest) ProtoMessage()    {}
 func (*DeleteDirectoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{5}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{5}
 }
 func (m *DeleteDirectoryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteDirectoryRequest.Unmarshal(m, b)
@@ -395,7 +395,7 @@ func (m *UndeleteDirectoryRequest) Reset()         { *m = UndeleteDirectoryReque
 func (m *UndeleteDirectoryRequest) String() string { return proto.CompactTextString(m) }
 func (*UndeleteDirectoryRequest) ProtoMessage()    {}
 func (*UndeleteDirectoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{6}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{6}
 }
 func (m *UndeleteDirectoryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UndeleteDirectoryRequest.Unmarshal(m, b)
@@ -436,7 +436,7 @@ func (m *GarbageCollectRequest) Reset()         { *m = GarbageCollectRequest{} }
 func (m *GarbageCollectRequest) String() string { return proto.CompactTextString(m) }
 func (*GarbageCollectRequest) ProtoMessage()    {}
 func (*GarbageCollectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{7}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{7}
 }
 func (m *GarbageCollectRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GarbageCollectRequest.Unmarshal(m, b)
@@ -474,7 +474,7 @@ func (m *GarbageCollectResponse) Reset()         { *m = GarbageCollectResponse{}
 func (m *GarbageCollectResponse) String() string { return proto.CompactTextString(m) }
 func (*GarbageCollectResponse) ProtoMessage()    {}
 func (*GarbageCollectResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_admin_7138ccc53a21076c, []int{8}
+	return fileDescriptor_admin_8cdb9491806cafd9, []int{8}
 }
 func (m *GarbageCollectResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GarbageCollectResponse.Unmarshal(m, b)
@@ -776,9 +776,9 @@ var _KeyTransparencyAdmin_serviceDesc = grpc.ServiceDesc{
 	Metadata: "v1/admin.proto",
 }
 
-func init() { proto.RegisterFile("v1/admin.proto", fileDescriptor_admin_7138ccc53a21076c) }
+func init() { proto.RegisterFile("v1/admin.proto", fileDescriptor_admin_8cdb9491806cafd9) }
 
-var fileDescriptor_admin_7138ccc53a21076c = []byte{
+var fileDescriptor_admin_8cdb9491806cafd9 = []byte{
 	// 768 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x96, 0xcd, 0x6e, 0xd3, 0x4a,
 	0x14, 0xc7, 0xaf, 0x93, 0xdb, 0xf4, 0x76, 0xd2, 0x9b, 0xa8, 0x73, 0x7b, 0x53, 0xd7, 0xf7, 0xaa,

@@ -51,7 +51,7 @@ func (m *Committed) Reset()         { *m = Committed{} }
 func (m *Committed) String() string { return proto.CompactTextString(m) }
 func (*Committed) ProtoMessage()    {}
 func (*Committed) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{0}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{0}
 }
 func (m *Committed) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Committed.Unmarshal(m, b)
@@ -100,7 +100,7 @@ func (m *EntryUpdate) Reset()         { *m = EntryUpdate{} }
 func (m *EntryUpdate) String() string { return proto.CompactTextString(m) }
 func (*EntryUpdate) ProtoMessage()    {}
 func (*EntryUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{1}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{1}
 }
 func (m *EntryUpdate) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntryUpdate.Unmarshal(m, b)
@@ -161,7 +161,7 @@ func (m *Entry) Reset()         { *m = Entry{} }
 func (m *Entry) String() string { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()    {}
 func (*Entry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{2}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{2}
 }
 func (m *Entry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Entry.Unmarshal(m, b)
@@ -216,15 +216,17 @@ func (m *Entry) GetSignatures() [][]byte {
 	return nil
 }
 
-// MutationProof contains the information necessary to compute the new leaf value.
-// It contains a) the old leaf value with it's inclusion proof and b) the mutation.
-// The new leaf value is computed via:
+// MutationProof contains the information necessary to compute the new leaf
+// value. It contains a) the old leaf value with it's inclusion proof and b) the
+// mutation. The new leaf value is computed via:
 //       Mutate(leaf_value, mutation)
 type MutationProof struct {
 	// mutation contains the information needed to modify the old leaf.
-	// The format of a mutation is specific to the particular Mutate function being used.
+	// The format of a mutation is specific to the particular Mutate function
+	// being used.
 	Mutation *Entry `protobuf:"bytes,1,opt,name=mutation,proto3" json:"mutation,omitempty"`
-	// leaf_proof contains the leaf and its inclusion proof for a particular map revision.
+	// leaf_proof contains the leaf and its inclusion proof for a particular map
+	// revision.
 	LeafProof            *trillian.MapLeafInclusion `protobuf:"bytes,2,opt,name=leaf_proof,json=leafProof,proto3" json:"leaf_proof,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
 	XXX_unrecognized     []byte                     `json:"-"`
@@ -235,7 +237,7 @@ func (m *MutationProof) Reset()         { *m = MutationProof{} }
 func (m *MutationProof) String() string { return proto.CompactTextString(m) }
 func (*MutationProof) ProtoMessage()    {}
 func (*MutationProof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{3}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{3}
 }
 func (m *MutationProof) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MutationProof.Unmarshal(m, b)
@@ -282,7 +284,7 @@ func (m *MapperMetadata) Reset()         { *m = MapperMetadata{} }
 func (m *MapperMetadata) String() string { return proto.CompactTextString(m) }
 func (*MapperMetadata) ProtoMessage()    {}
 func (*MapperMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{4}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{4}
 }
 func (m *MapperMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MapperMetadata.Unmarshal(m, b)
@@ -313,7 +315,8 @@ func (m *MapperMetadata) GetHighestFullyCompletedSeq() int64 {
 type GetEntryRequest struct {
 	// directory_id identifies the directory in which the user lives.
 	DirectoryId string `protobuf:"bytes,4,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// user_id is the user identifier, the format of which is defined by the application.
+	// user_id is the user identifier, the format of which is defined by the
+	// application.
 	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// first_tree_size is the tree_size of the currently trusted log root.
 	// Omitting this field will omit the log consistency proof from the response.
@@ -327,7 +330,7 @@ func (m *GetEntryRequest) Reset()         { *m = GetEntryRequest{} }
 func (m *GetEntryRequest) String() string { return proto.CompactTextString(m) }
 func (*GetEntryRequest) ProtoMessage()    {}
 func (*GetEntryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{5}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{5}
 }
 func (m *GetEntryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetEntryRequest.Unmarshal(m, b)
@@ -384,9 +387,11 @@ type GetEntryResponse struct {
 	// log_root is the latest globally consistent log root.
 	// TODO: gossip the log root to verify global consistency.
 	LogRoot *trillian.SignedLogRoot `protobuf:"bytes,5,opt,name=log_root,json=logRoot,proto3" json:"log_root,omitempty"`
-	// log_consistency proves that log_root is consistent with previously seen roots.
+	// log_consistency proves that log_root is consistent with previously seen
+	// roots.
 	LogConsistency [][]byte `protobuf:"bytes,6,rep,name=log_consistency,json=logConsistency,proto3" json:"log_consistency,omitempty"`
-	// log_inclusion proves that map_root is part of log_root at index=map_root.MapRevision.
+	// log_inclusion proves that map_root is part of log_root at
+	// index=map_root.MapRevision.
 	LogInclusion         [][]byte `protobuf:"bytes,7,rep,name=log_inclusion,json=logInclusion,proto3" json:"log_inclusion,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -397,7 +402,7 @@ func (m *GetEntryResponse) Reset()         { *m = GetEntryResponse{} }
 func (m *GetEntryResponse) String() string { return proto.CompactTextString(m) }
 func (*GetEntryResponse) ProtoMessage()    {}
 func (*GetEntryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{6}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{6}
 }
 func (m *GetEntryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetEntryResponse.Unmarshal(m, b)
@@ -488,7 +493,7 @@ func (m *ListEntryHistoryRequest) Reset()         { *m = ListEntryHistoryRequest
 func (m *ListEntryHistoryRequest) String() string { return proto.CompactTextString(m) }
 func (*ListEntryHistoryRequest) ProtoMessage()    {}
 func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{7}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{7}
 }
 func (m *ListEntryHistoryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListEntryHistoryRequest.Unmarshal(m, b)
@@ -559,7 +564,7 @@ func (m *ListEntryHistoryResponse) Reset()         { *m = ListEntryHistoryRespon
 func (m *ListEntryHistoryResponse) String() string { return proto.CompactTextString(m) }
 func (*ListEntryHistoryResponse) ProtoMessage()    {}
 func (*ListEntryHistoryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{8}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{8}
 }
 func (m *ListEntryHistoryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListEntryHistoryResponse.Unmarshal(m, b)
@@ -610,7 +615,7 @@ func (m *UpdateEntryRequest) Reset()         { *m = UpdateEntryRequest{} }
 func (m *UpdateEntryRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateEntryRequest) ProtoMessage()    {}
 func (*UpdateEntryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{9}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{9}
 }
 func (m *UpdateEntryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateEntryRequest.Unmarshal(m, b)
@@ -669,7 +674,7 @@ func (m *GetEpochRequest) Reset()         { *m = GetEpochRequest{} }
 func (m *GetEpochRequest) String() string { return proto.CompactTextString(m) }
 func (*GetEpochRequest) ProtoMessage()    {}
 func (*GetEpochRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{10}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{10}
 }
 func (m *GetEpochRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetEpochRequest.Unmarshal(m, b)
@@ -726,7 +731,7 @@ func (m *GetLatestEpochRequest) Reset()         { *m = GetLatestEpochRequest{} }
 func (m *GetLatestEpochRequest) String() string { return proto.CompactTextString(m) }
 func (*GetLatestEpochRequest) ProtoMessage()    {}
 func (*GetLatestEpochRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{11}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{11}
 }
 func (m *GetLatestEpochRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetLatestEpochRequest.Unmarshal(m, b)
@@ -769,9 +774,11 @@ type Epoch struct {
 	MapRoot *trillian.SignedMapRoot `protobuf:"bytes,2,opt,name=map_root,json=mapRoot,proto3" json:"map_root,omitempty"`
 	// log_root is the latest globally consistent log root.
 	LogRoot *trillian.SignedLogRoot `protobuf:"bytes,3,opt,name=log_root,json=logRoot,proto3" json:"log_root,omitempty"`
-	// log_consistency proves that log_root is consistent with previously seen roots.
+	// log_consistency proves that log_root is consistent with previously seen
+	// roots.
 	LogConsistency [][]byte `protobuf:"bytes,4,rep,name=log_consistency,json=logConsistency,proto3" json:"log_consistency,omitempty"`
-	// log_inclusion proves that map_root is part of log_root at index=map_root.MapRevision.
+	// log_inclusion proves that map_root is part of log_root at
+	// index=map_root.MapRevision.
 	LogInclusion         [][]byte `protobuf:"bytes,5,rep,name=log_inclusion,json=logInclusion,proto3" json:"log_inclusion,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -782,7 +789,7 @@ func (m *Epoch) Reset()         { *m = Epoch{} }
 func (m *Epoch) String() string { return proto.CompactTextString(m) }
 func (*Epoch) ProtoMessage()    {}
 func (*Epoch) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{12}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{12}
 }
 func (m *Epoch) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Epoch.Unmarshal(m, b)
@@ -859,7 +866,7 @@ func (m *ListMutationsRequest) Reset()         { *m = ListMutationsRequest{} }
 func (m *ListMutationsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsRequest) ProtoMessage()    {}
 func (*ListMutationsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{13}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{13}
 }
 func (m *ListMutationsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMutationsRequest.Unmarshal(m, b)
@@ -923,7 +930,7 @@ func (m *ListMutationsResponse) Reset()         { *m = ListMutationsResponse{} }
 func (m *ListMutationsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsResponse) ProtoMessage()    {}
 func (*ListMutationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_43f6c5e560b8d12b, []int{14}
+	return fileDescriptor_keytransparency_95979fbfbf585b1c, []int{14}
 }
 func (m *ListMutationsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMutationsResponse.Unmarshal(m, b)
@@ -1015,7 +1022,8 @@ type KeyTransparencyClient interface {
 	ListEntryHistory(ctx context.Context, in *ListEntryHistoryRequest, opts ...grpc.CallOption) (*ListEntryHistoryResponse, error)
 	// QueueUserUpdate enqueues an update to a user's profile.
 	//
-	// Clients should poll GetEntry until the update appears, and retry if no update appears after a timeout.
+	// Clients should poll GetEntry until the update appears, and retry if no
+	// update appears after a timeout.
 	QueueEntryUpdate(ctx context.Context, in *UpdateEntryRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 }
 
@@ -1184,7 +1192,8 @@ type KeyTransparencyServer interface {
 	ListEntryHistory(context.Context, *ListEntryHistoryRequest) (*ListEntryHistoryResponse, error)
 	// QueueUserUpdate enqueues an update to a user's profile.
 	//
-	// Clients should poll GetEntry until the update appears, and retry if no update appears after a timeout.
+	// Clients should poll GetEntry until the update appears, and retry if no
+	// update appears after a timeout.
 	QueueEntryUpdate(context.Context, *UpdateEntryRequest) (*empty.Empty, error)
 }
 
@@ -1409,10 +1418,10 @@ var _KeyTransparency_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("v1/keytransparency.proto", fileDescriptor_keytransparency_43f6c5e560b8d12b)
+	proto.RegisterFile("v1/keytransparency.proto", fileDescriptor_keytransparency_95979fbfbf585b1c)
 }
 
-var fileDescriptor_keytransparency_43f6c5e560b8d12b = []byte{
+var fileDescriptor_keytransparency_95979fbfbf585b1c = []byte{
 	// 1300 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x97, 0x5d, 0x6f, 0x1b, 0x45,
 	0x17, 0xc7, 0xb5, 0x7e, 0x49, 0xec, 0xe3, 0xbc, 0x58, 0xf3, 0xa4, 0xed, 0x3e, 0x2e, 0xad, 0xc2,

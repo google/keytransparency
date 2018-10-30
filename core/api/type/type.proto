@@ -21,11 +21,13 @@ import "tink.proto";
 
 package google.keytransparency.type;
 
-// User represents plain account information that gets committed to and obfuscated in Entry.
+// User represents plain account information that gets committed to and
+// obfuscated in Entry.
 message User {
   // directory_id specifies the directory.
   string directory_id = 1;
-  // Used to be app_id. Applications can define their own hierarchy for user_id if desired.
+  // Used to be app_id. Applications can define their own hierarchy for user_id
+  // if desired.
   reserved 2;
   // user_id specifies the user.
   string user_id = 3;
