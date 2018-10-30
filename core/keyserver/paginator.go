@@ -16,6 +16,7 @@ package keyserver
 
 import (
 	"encoding/base64"
+	"math"
 	"sort"
 
 	"github.com/golang/protobuf/proto"
@@ -60,10 +61,15 @@ func (s SourceMap) ParseToken(token string) (*rtpb.ReadToken, error) {
 
 // First returns the first read parameters for this source.
 func (s SourceMap) First() *rtpb.ReadToken {
-	shardID := sortedKeys(s)[0]
+	firstLog := int64(math.MaxInt64)
+	for logID := range s {
+		if logID < firstLog {
+			firstLog = logID
+		}
+	}
 	return &rtpb.ReadToken{
-		ShardId:      shardID,
-		LowWatermark: s[shardID].LowestWatermark,
+		ShardId:      firstLog,
+		LowWatermark: s[firstLog].LowestWatermark,
 	}
 }
 

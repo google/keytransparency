@@ -100,7 +100,6 @@ func (m *mutations) ReadLog(ctx context.Context, dirID string,
 	if low+count > int64(len(logShard)) {
 		count = int64(len(logShard)) - low + 1
 	}
-
 	return logShard[low : low+count], nil
 
 }

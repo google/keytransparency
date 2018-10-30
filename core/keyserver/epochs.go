@@ -141,9 +141,9 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 			d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize, err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
 	}
-	more := len(msgs) == int(in.PageSize+1)
+	moreInLogID := len(msgs) == int(in.PageSize+1)
 	var lastRow *mutator.LogMessage
-	if more {
+	if moreInLogID {
 		msgs = msgs[0:in.PageSize]    // Only return PageSize messages.
 		lastRow = msgs[in.PageSize-1] // Next start is the last row of this batch.
 	}
