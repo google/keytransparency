@@ -109,7 +109,7 @@ func TestCreateDirectory(t *testing.T) {
 				e.ms.Admin.EXPECT().CreateTree(gomock.Any(), gomock.Any()).Return(&tpb.Tree{TreeType: tpb.TreeType_MAP}, nil)
 				e.ms.Map.EXPECT().InitMap(gomock.Any(), gomock.Any()).Return(&tpb.InitMapResponse{}, nil)
 				e.ms.Map.EXPECT().GetSignedMapRootByRevision(gomock.Any(), gomock.Any()).
-					Return(&tpb.GetSignedMapRootResponse{}, fmt.Errorf("not found")).MinTimes(1)
+					Return(&tpb.GetSignedMapRootResponse{}, status.Errorf(codes.FailedPrecondition, "tree needs init")).MinTimes(1)
 			},
 		},
 		{
