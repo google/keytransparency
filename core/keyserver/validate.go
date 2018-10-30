@@ -55,7 +55,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	entry := in.GetEntryUpdate().GetMutation()
 
 	// Verify Index / VRF
-	index, _ := vrfPriv.Evaluate(vrf.UniqueID(in.UserId))
+	index, _ := vrfPriv.Evaluate([]byte(in.UserId))
 	if got, want := entry.Index, index[:]; !bytes.Equal(got, want) {
 		return ErrWrongIndex
 	}

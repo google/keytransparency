@@ -80,7 +80,7 @@ func NewVerifierFromDirectory(config *pb.Directory) (*RealVerifier, error) {
 
 // Index computes the index from a VRF proof.
 func (v *RealVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, error) {
-	index, err := v.vrf.ProofToHash(vrf.UniqueID(userID), vrfProof)
+	index, err := v.vrf.ProofToHash([]byte(userID), vrfProof)
 	if err != nil {
 		return nil, fmt.Errorf("vrf.ProofToHash(): %v", err)
 	}
