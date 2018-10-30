@@ -117,7 +117,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 }
 
 // GetEntry retrieves an entry from the ktURL server and verifies the soundness of the corresponding proofs.
-func GetEntry(ktURL, userID, appID string) ([]byte, error) {
+func GetEntry(ktURL, userID string) ([]byte, error) {
 	client, exists := clients[ktURL]
 	if !exists {
 		return nil, fmt.Errorf("A connection to %v does not exists. Please call AddKtServer first", ktURL)
@@ -125,7 +125,7 @@ func GetEntry(ktURL, userID, appID string) ([]byte, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	entry, _, err := client.GetEntry(ctx, userID, appID)
+	entry, _, err := client.GetEntry(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("GetEntry failed: %v", err)
 	}

@@ -70,7 +70,6 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			userUpdates: []*tpb.User{
 				{
 					DirectoryId:    env.Directory.DirectoryId,
-					AppId:          "app1",
 					UserId:         "alice@test.com",
 					PublicKeyData:  []byte("alice-key1"),
 					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
@@ -83,14 +82,12 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			userUpdates: []*tpb.User{
 				{
 					DirectoryId:    env.Directory.DirectoryId,
-					AppId:          "app1",
 					UserId:         "bob@test.com",
 					PublicKeyData:  []byte("bob-key1"),
 					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 				},
 				{
 					DirectoryId:    env.Directory.DirectoryId,
-					AppId:          "app1",
 					UserId:         "carol@test.com",
 					PublicKeyData:  []byte("carol-key1"),
 					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),

@@ -66,7 +66,6 @@ type Hammer struct {
 	callOptions CallOptions
 	timeout     time.Duration
 	ktCli       pb.KeyTransparencyClient
-	appID       string
 	directory   *pb.Directory
 
 	signers        []*tink.KeysetHandle
@@ -95,7 +94,6 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		callOptions: callOptions,
 		timeout:     timeout,
 		ktCli:       ktCli,
-		appID:       fmt.Sprintf("hammer_%v", time.Now().Format("2006-01-02/15:04:05")),
 		directory:   directory,
 
 		signers:        []*tink.KeysetHandle{keyset},
@@ -217,7 +215,6 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 	for _, userID := range req.UserIDs {
 		users = append(users, &tpb.User{
 			DirectoryId:    w.directory.DirectoryId,
-			AppId:          w.appID,
 			UserId:         userID,
 			PublicKeyData:  []byte("publickey"),
 			AuthorizedKeys: w.authorizedKeys,
@@ -259,7 +256,7 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 // Typical conversation setup involves querying two userIDs: self and other.
 func (w *worker) readOp(ctx context.Context, req *reqArgs) error {
 	for _, userID := range req.UserIDs {
-		if _, _, err := w.client.GetEntry(ctx, userID, w.appID); err != nil {
+		if _, _, err := w.client.GetEntry(ctx, userID); err != nil {
 			return err
 		}
 		fmt.Print(".")
@@ -270,7 +267,7 @@ func (w *worker) readOp(ctx context.Context, req *reqArgs) error {
 // historyOp simulates the daily check-in.
 func (w *worker) historyOp(ctx context.Context, req *reqArgs) error {
 	for _, userID := range req.UserIDs {
-		if _, _, err := w.client.PaginateHistory(ctx, userID, w.appID, 0, int64(req.PageSize)); err != nil {
+		if _, _, err := w.client.PaginateHistory(ctx, userID, 0, int64(req.PageSize)); err != nil {
 			return err
 		}
 		fmt.Print(".")

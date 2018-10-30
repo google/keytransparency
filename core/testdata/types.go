@@ -21,8 +21,8 @@ import (
 
 // GetEntryResponseVector is a captured GetEntryResponse that should verify without errors.
 type GetEntryResponseVector struct {
-	Desc          string
-	AppID, UserID string
-	Resp          *pb.GetEntryResponse
-	TrustNewLog   bool
+	Desc        string
+	UserID      string
+	Resp        *pb.GetEntryResponse
+	TrustNewLog bool
 }

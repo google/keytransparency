@@ -31,13 +31,12 @@ const (
 CREATE TABLE IF NOT EXISTS KeySets(
 InstanceID            BIGINT NOT NULL,
 DirectoryID           VARCHAR(40) NOT NULL,
-AppID                 VARCHAR(40) NOT NULL,
 KeySet                MEDIUMBLOB NOT NULL,
-PRIMARY KEY(InstanceID,DirectoryID,AppID)
+PRIMARY KEY(InstanceID,DirectoryID)
 );`
 
-	getSQL = `SELECT * FROM KeySets WHERE InstanceID = ? AND DirectoryID = ? AND AppID = ?`
-	setSQL = `INSERT INTO KeySets (InstanceID, DirectoryID, AppID, KeySet) VALUES (?, ?, ?, ?);`
+	getSQL = `SELECT * FROM KeySets WHERE InstanceID = ? AND DirectoryID = ?`
+	setSQL = `INSERT INTO KeySets (InstanceID, DirectoryID, KeySet) VALUES (?, ?, ?);`
 )
 
 // Storage stores keysets, backed by an SQL database.
@@ -48,12 +47,11 @@ type Storage struct {
 type keyset struct {
 	InstanceID  int64
 	DirectoryID string
-	AppID       string
 	KeySet      []byte
 }
 
 // newKeyset converts a tpb.KeySet to keyset.
-func newKeyset(instance int64, directoryID, appID string, k *tink.KeysetHandle) (*keyset, error) {
+func newKeyset(instance int64, directoryID string, k *tink.KeysetHandle) (*keyset, error) {
 	serializedKeyset, err := proto.Marshal(k.Keyset())
 	if err != nil {
 		return nil, err
@@ -61,7 +59,6 @@ func newKeyset(instance int64, directoryID, appID string, k *tink.KeysetHandle) 
 	return &keyset{
 		InstanceID:  instance,
 		DirectoryID: directoryID,
-		AppID:       appID,
 		KeySet:      serializedKeyset,
 	}, nil
 }
@@ -82,17 +79,16 @@ func New(db *sql.DB) (*Storage, error) {
 }
 
 // Get returns a stored keyset.
-func (s *Storage) Get(ctx context.Context, instance int64, directoryID, appID string) (*tink.KeysetHandle, error) {
+func (s *Storage) Get(ctx context.Context, instance int64, directoryID string) (*tink.KeysetHandle, error) {
 	readStmt, err := s.db.PrepareContext(ctx, getSQL)
 	if err != nil {
 		return nil, err
 	}
 	defer readStmt.Close()
 	r := keyset{}
-	if err := readStmt.QueryRowContext(ctx, instance, directoryID, appID).Scan(
+	if err := readStmt.QueryRowContext(ctx, instance, directoryID).Scan(
 		&r.InstanceID,
 		&r.DirectoryID,
-		&r.AppID,
 		&r.KeySet); err != nil {
 		return nil, err
 	}
@@ -101,8 +97,8 @@ func (s *Storage) Get(ctx context.Context, instance int64, directoryID, appID st
 }
 
 // Set saves a keyset.
-func (s *Storage) Set(ctx context.Context, instance int64, directoryID, appID string, k *tink.KeysetHandle) error {
-	r, err := newKeyset(instance, directoryID, appID, k)
+func (s *Storage) Set(ctx context.Context, instance int64, directoryID string, k *tink.KeysetHandle) error {
+	r, err := newKeyset(instance, directoryID, k)
 	if err != nil {
 		return err
 	}
@@ -116,7 +112,6 @@ func (s *Storage) Set(ctx context.Context, instance int64, directoryID, appID st
 	_, err = writeStmt.ExecContext(ctx,
 		r.InstanceID,
 		r.DirectoryID,
-		r.AppID,
 		r.KeySet)
 	return err
 }
