@@ -21,13 +21,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/keytransparency/core/directory"
-	"github.com/google/keytransparency/core/mutator"
-
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/google/keytransparency/core/directory"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -46,7 +45,6 @@ func New(
 	sequencerClient spb.KeyTransparencySequencerClient,
 	mapAdmin tpb.TrillianAdminClient,
 	directories directory.Storage,
-	mutations mutator.MutationStorage,
 	batchSize int32,
 ) *Sequencer {
 	return &Sequencer{

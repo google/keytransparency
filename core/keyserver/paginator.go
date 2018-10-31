@@ -16,6 +16,7 @@ package keyserver
 
 import (
 	"encoding/base64"
+	"math"
 	"sort"
 
 	"github.com/golang/protobuf/proto"
@@ -46,12 +47,33 @@ func DecodeToken(token string, msg proto.Message) error {
 // SourceMap is a paginator for a map of sources.
 type SourceMap map[int64]*spb.MapMetadata_SourceSlice
 
+// ParseToken will return the first token if token is "", otherwise it will try to parse the read token.
+func (s SourceMap) ParseToken(token string) (*rtpb.ReadToken, error) {
+	if token == "" {
+		return s.First(), nil
+	}
+	var rt rtpb.ReadToken
+	if err := DecodeToken(token, &rt); err != nil {
+		return nil, err
+	}
+	return &rt, nil
+}
+
 // First returns the first read parameters for this source.
 func (s SourceMap) First() *rtpb.ReadToken {
-	shardID := sortedKeys(s)[0]
+	if len(s) == 0 {
+		// Empty struct means there is nothing else to page through.
+		return &rtpb.ReadToken{}
+	}
+	firstLog := int64(math.MaxInt64)
+	for logID := range s {
+		if logID < firstLog {
+			firstLog = logID
+		}
+	}
 	return &rtpb.ReadToken{
-		ShardId:      shardID,
-		LowWatermark: s[shardID].LowestWatermark,
+		ShardId:      firstLog,
+		LowWatermark: s[firstLog].LowestWatermark,
 	}
 }
 
@@ -90,7 +112,7 @@ func (s SourceMap) NextShard(shardID int64) (int64, bool) {
 		// shardID isn't in SourceMap.
 		return 0, false
 	}
-	if i == len(shardIDs)-1 {
+	if i >= len(shardIDs)-1 {
 		// there are no more shards to iterate over.
 		return 0, false
 	}

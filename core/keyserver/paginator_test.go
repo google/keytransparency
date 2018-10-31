@@ -69,22 +69,32 @@ func TestTokenEncodeDecode(t *testing.T) {
 }
 
 func TestFirst(t *testing.T) {
-	s := SourceMap{
-		2: &spb.MapMetadata_SourceSlice{LowestWatermark: 1, HighestWatermark: 10},
-		3: &spb.MapMetadata_SourceSlice{LowestWatermark: 10, HighestWatermark: 20},
-	}
-	want := &rtpb.ReadToken{ShardId: 2, LowWatermark: 1}
-	if got := s.First(); !proto.Equal(got, want) {
-		t.Errorf("First(): %v, want %v", got, want)
+	for _, tc := range []struct {
+		s    SourceMap
+		want *rtpb.ReadToken
+	}{
+		{
+			s: SourceMap{
+				2: &spb.MapMetadata_SourceSlice{LowestWatermark: 1, HighestWatermark: 10},
+				3: &spb.MapMetadata_SourceSlice{LowestWatermark: 10, HighestWatermark: 20},
+			},
+			want: &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
+		},
+		{s: SourceMap{}, want: &rtpb.ReadToken{}},
+	} {
+		if got := tc.s.First(); !proto.Equal(got, tc.want) {
+			t.Errorf("First(): %v, want %v", got, tc.want)
+		}
 	}
 }
 
 func TestNext(t *testing.T) {
-	s := SourceMap{
+	a := SourceMap{
 		2: &spb.MapMetadata_SourceSlice{LowestWatermark: 1, HighestWatermark: 10},
 		3: &spb.MapMetadata_SourceSlice{LowestWatermark: 10, HighestWatermark: 20},
 	}
 	for _, tc := range []struct {
+		s       SourceMap
 		desc    string
 		rt      *rtpb.ReadToken
 		lastRow *mutator.LogMessage
@@ -92,25 +102,35 @@ func TestNext(t *testing.T) {
 	}{
 		{
 			desc:    "first page",
+			s:       a,
 			rt:      &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
 			lastRow: &mutator.LogMessage{ID: 6},
 			want:    &rtpb.ReadToken{ShardId: 2, LowWatermark: 6},
 		},
 		{
 			desc:    "next source",
+			s:       a,
 			rt:      &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{ShardId: 3, LowWatermark: 10},
 		},
 		{
 			desc:    "last page",
+			s:       a,
+			rt:      &rtpb.ReadToken{ShardId: 3, LowWatermark: 1},
+			lastRow: nil,
+			want:    &rtpb.ReadToken{},
+		},
+		{
+			desc:    "empty",
+			s:       SourceMap{},
 			rt:      &rtpb.ReadToken{ShardId: 3, LowWatermark: 1},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got := s.Next(tc.rt, tc.lastRow)
+			got := tc.s.Next(tc.rt, tc.lastRow)
 			if !proto.Equal(got, tc.want) {
 				t.Errorf("Next(): %v, want %v", got, tc.want)
 			}

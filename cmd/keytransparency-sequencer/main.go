@@ -93,7 +93,7 @@ func main() {
 		directoryStorage,
 		logAdmin, mapAdmin,
 		tlog, tmap,
-		mutations, mutations, mutations,
+		mutations, mutations,
 		prometheus.MetricFactory{},
 	)
 
@@ -107,7 +107,6 @@ func main() {
 		sequencerClient,
 		mapAdmin,
 		directoryStorage,
-		mutations,
 		int32(*batchSize))
 
 	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {

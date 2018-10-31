@@ -23,29 +23,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-)
-
-const (
-	insertMutationsExpr = `
-	INSERT INTO Mutations (DirectoryID, Revision, Sequence, Mutation)
-	VALUES (?, ?, ?, ?);`
-	readMutationsExpr = `
-  	SELECT Sequence, Mutation FROM Mutations
-  	WHERE DirectoryID = ? AND Revision = ? AND Sequence >= ?
-  	ORDER BY Sequence ASC LIMIT ?;`
 )
 
 var (
 	createStmt = []string{
-		`CREATE TABLE IF NOT EXISTS Mutations (
-		DirectoryID VARCHAR(30)   NOT NULL,
-		Revision BIGINT           NOT NULL,
-		Sequence INTEGER          NOT NULL,
-		Mutation BLOB             NOT NULL,
-		PRIMARY KEY(DirectoryID, Revision, Sequence)
-	);`,
 		`CREATE TABLE IF NOT EXISTS Batches (
 		DomainID VARCHAR(30)   NOT NULL,
 		Revision BIGINT        NOT NULL,
@@ -95,69 +77,6 @@ func (m *Mutations) createTables() error {
 		}
 	}
 	return nil
-}
-
-// ReadPage reads all mutations for a specific given directoryID and sequence range.
-// The range is identified by a starting sequence number and a count. Note that
-// startSequence is not included in the result. ReadRange stops when endSequence
-// or count is reached, whichever comes first. ReadRange also returns the maximum
-// sequence number read.
-func (m *Mutations) ReadPage(ctx context.Context, directoryID string, rev, start int64, pageSize int32) (
-	int64, []*pb.Entry, error) {
-	readStmt, err := m.db.Prepare(readMutationsExpr)
-	if err != nil {
-		return 0, nil, err
-	}
-	defer readStmt.Close()
-	rows, err := readStmt.QueryContext(ctx, directoryID, rev, start, pageSize)
-	if err != nil {
-		return 0, nil, err
-	}
-	defer rows.Close()
-	return readMutations(rows)
-}
-
-// WriteBatch saves the mutations in the database.
-func (m *Mutations) WriteBatch(ctx context.Context, directoryID string, rev int64, mutations []*pb.Entry) error {
-	writeStmt, err := m.db.Prepare(insertMutationsExpr)
-	if err != nil {
-		return err
-	}
-	defer writeStmt.Close()
-	for i, m := range mutations {
-		mData, err := proto.Marshal(m)
-		if err != nil {
-			return err
-		}
-		if _, err := writeStmt.ExecContext(ctx, directoryID, rev, i, mData); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func readMutations(rows *sql.Rows) (int64, []*pb.Entry, error) {
-	results := make([]*pb.Entry, 0)
-	maxSequence := int64(0)
-	for rows.Next() {
-		var sequence int64
-		var mData []byte
-		if err := rows.Scan(&sequence, &mData); err != nil {
-			return 0, nil, err
-		}
-		if sequence > maxSequence {
-			maxSequence = sequence
-		}
-		entry := new(pb.Entry)
-		if err := proto.Unmarshal(mData, entry); err != nil {
-			return 0, nil, err
-		}
-		results = append(results, entry)
-	}
-	if err := rows.Err(); err != nil {
-		return 0, nil, err
-	}
-	return maxSequence, results, nil
 }
 
 // WriteBatchSources saves the mutations in the database.

@@ -31,8 +31,24 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
+
+// MutationLogs provides sets of time ordered message logs.
+type MutationLogs interface {
+	// Send submits an item to a random log.
+	Send(ctx context.Context, directoryID string, mutation *pb.EntryUpdate) error
+	// ReadLog returns the messages in the (low, high] range stored in the specified log.
+	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+		batchSize int32) ([]*mutator.LogMessage, error)
+}
+
+// BatchReader reads batch definitions.
+type BatchReader interface {
+	// ReadBatch returns the batch definitions for a given revision.
+	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
+}
 
 // Server holds internal state for the key server.
 type Server struct {
@@ -42,8 +58,8 @@ type Server struct {
 	mapAdmin    tpb.TrillianAdminClient
 	mutator     mutator.Func
 	directories directory.Storage
-	logs        mutator.MutationLogs
-	mutations   mutator.MutationStorage
+	logs        MutationLogs
+	batches     BatchReader
 	indexFunc   indexFunc
 }
 
@@ -54,8 +70,8 @@ func New(tlog tpb.TrillianLogClient,
 	mapAdmin tpb.TrillianAdminClient,
 	mutator mutator.Func,
 	directories directory.Storage,
-	logs mutator.MutationLogs,
-	mutations mutator.MutationStorage) *Server {
+	logs MutationLogs,
+	batches BatchReader) *Server {
 	return &Server{
 		tlog:        tlog,
 		tmap:        tmap,
@@ -64,7 +80,7 @@ func New(tlog tpb.TrillianLogClient,
 		mutator:     mutator,
 		directories: directories,
 		logs:        logs,
-		mutations:   mutations,
+		batches:     batches,
 		indexFunc:   indexFromVRF,
 	}
 }

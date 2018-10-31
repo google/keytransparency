@@ -16,13 +16,11 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -35,41 +33,6 @@ func newDB(t testing.TB) *sql.DB {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	return db
-}
-
-func genMutation(i int) *pb.Entry {
-	return &pb.Entry{
-		Index:      []byte(fmt.Sprintf("index%d", i)),
-		Commitment: []byte(fmt.Sprintf("mutation%d", i)),
-	}
-}
-
-func fillDB(ctx context.Context, m *Mutations) error {
-	for _, tc := range []struct {
-		revision  int64
-		mutations []*pb.Entry
-	}{
-		{
-			revision: 0,
-			mutations: []*pb.Entry{
-				genMutation(1),
-				genMutation(2),
-			},
-		},
-		{
-			revision: 1,
-			mutations: []*pb.Entry{
-				genMutation(3),
-				genMutation(4),
-				genMutation(5),
-			},
-		},
-	} {
-		if err := m.WriteBatch(ctx, directoryID, tc.revision, tc.mutations); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func TestWriteBatch(t *testing.T) {
@@ -134,55 +97,5 @@ func TestReadBatch(t *testing.T) {
 		if !cmp.Equal(got, tc.want, cmp.Comparer(proto.Equal)) {
 			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, got, tc.want)
 		}
-	}
-}
-
-func TestReadPage(t *testing.T) {
-	ctx := context.Background()
-	db := newDB(t)
-	m, err := New(db)
-	if err != nil {
-		t.Fatalf("Failed to create mutations: %v", err)
-	}
-	if err := fillDB(ctx, m); err != nil {
-		t.Fatalf("Failed to write mutations: %v", err)
-	}
-
-	for _, tc := range []struct {
-		desc      string
-		rev       int64
-		start     int64
-		count     int32
-		wantMax   int64
-		mutations []*pb.Entry
-	}{
-		{desc: "single", start: 0, count: 1, wantMax: 0, mutations: []*pb.Entry{
-			genMutation(1)}},
-		{desc: "empty", rev: 100, start: 0, count: 10},
-		{desc: "full range", rev: 0, start: 0, count: 5, wantMax: 1, mutations: []*pb.Entry{
-			genMutation(1), genMutation(2)}},
-		{desc: "non-zero start", rev: 1, start: 1, count: 2, wantMax: 2, mutations: []*pb.Entry{
-			genMutation(4), genMutation(5)}},
-		{desc: "limit by count", rev: 1, start: 0, count: 2, wantMax: 1, mutations: []*pb.Entry{
-			genMutation(3), genMutation(4)}},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			max, results, err := m.ReadPage(ctx, directoryID, tc.rev, tc.start, tc.count)
-			if err != nil {
-				t.Errorf("failed to read mutations: %v", err)
-			}
-			if max != tc.wantMax {
-				t.Errorf("ReadPage(%v,%v,%v).max:%v, want %v",
-					tc.rev, tc.start, tc.count, max, tc.wantMax)
-			}
-			if got, want := len(results), len(tc.mutations); got != want {
-				t.Fatalf("len(results)=%v, want %v", got, want)
-			}
-			for i := range results {
-				if got, want := results[i], tc.mutations[i]; !proto.Equal(got, want) {
-					t.Errorf("results[%v] data=%v, want %v", i, got, want)
-				}
-			}
-		})
 	}
 }
