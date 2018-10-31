@@ -18,7 +18,6 @@ package keyserver
 import (
 	"context"
 
-	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
@@ -372,6 +371,6 @@ func indexFromVRF(ctx context.Context, d *directory.Directory, userID string) ([
 	if err != nil {
 		return [32]byte{}, nil, err
 	}
-	index, proof := vrfPriv.Evaluate(vrf.UniqueID(userID))
+	index, proof := vrfPriv.Evaluate([]byte(userID))
 	return index, proof, nil
 }

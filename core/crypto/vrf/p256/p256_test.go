@@ -27,7 +27,6 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/crypto/keys"
 	"github.com/google/trillian/crypto/keys/der"
@@ -214,7 +213,7 @@ func TestProofToHash(t *testing.T) {
 	}
 	for _, tc := range getEntryResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			_, err := pk.ProofToHash(vrf.UniqueID(tc.UserID), tc.Resp.GetVrfProof())
+			_, err := pk.ProofToHash([]byte(tc.UserID), tc.Resp.GetVrfProof())
 			if err != nil {
 				t.Errorf("ProofToHash(%v): %v)", tc.Desc, err)
 			}
