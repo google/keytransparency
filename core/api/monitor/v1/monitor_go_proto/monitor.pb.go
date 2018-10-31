@@ -54,7 +54,7 @@ func (m *GetStateRequest) Reset()         { *m = GetStateRequest{} }
 func (m *GetStateRequest) String() string { return proto.CompactTextString(m) }
 func (*GetStateRequest) ProtoMessage()    {}
 func (*GetStateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_monitor_1fd9fc01b41f8aa1, []int{0}
+	return fileDescriptor_monitor_ae80ac585eaadbb7, []int{0}
 }
 func (m *GetStateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetStateRequest.Unmarshal(m, b)
@@ -117,7 +117,7 @@ func (m *State) Reset()         { *m = State{} }
 func (m *State) String() string { return proto.CompactTextString(m) }
 func (*State) ProtoMessage()    {}
 func (*State) Descriptor() ([]byte, []int) {
-	return fileDescriptor_monitor_1fd9fc01b41f8aa1, []int{1}
+	return fileDescriptor_monitor_ae80ac585eaadbb7, []int{1}
 }
 func (m *State) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_State.Unmarshal(m, b)
@@ -298,9 +298,9 @@ var _Monitor_serviceDesc = grpc.ServiceDesc{
 	Metadata: "monitor/v1/monitor.proto",
 }
 
-func init() { proto.RegisterFile("monitor/v1/monitor.proto", fileDescriptor_monitor_1fd9fc01b41f8aa1) }
+func init() { proto.RegisterFile("monitor/v1/monitor.proto", fileDescriptor_monitor_ae80ac585eaadbb7) }
 
-var fileDescriptor_monitor_1fd9fc01b41f8aa1 = []byte{
+var fileDescriptor_monitor_ae80ac585eaadbb7 = []byte{
 	// 452 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x93, 0xb1, 0x8e, 0xd3, 0x40,
 	0x10, 0x86, 0xe5, 0xb3, 0x12, 0xee, 0x36, 0x08, 0xa4, 0x15, 0xe8, 0xac, 0x08, 0x89, 0x5c, 0xaa,

@@ -87,6 +87,7 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 					DirectoryId: env.Directory.DirectoryId,
 					MinBatch:    1,
+					MaxBatch:    100,
 				})
 				return err
 			}); err != nil {

@@ -20,8 +20,8 @@ package google.keytransparency.v1;
 
 // ReadToken can be serialized and handed to users for pagination.
 message ReadToken {
-   // shard_id identifies the source for reading.
-   int64 shard_id = 1;
-   // low_watemark identifies the lowest (exclusive) row to return.
-   int64 low_watermark = 2;
+  // shard_id identifies the source for reading.
+  int64 shard_id = 1;
+  // low_watemark identifies the lowest (exclusive) row to return.
+  int64 low_watermark = 2;
 }

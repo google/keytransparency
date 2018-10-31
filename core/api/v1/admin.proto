@@ -157,6 +157,5 @@ service KeyTransparencyAdmin {
 
   // Fully delete soft-deleted directories that have been soft-deleted before
   // the specified timestamp.
-  rpc GarbageCollect(GarbageCollectRequest) returns (GarbageCollectResponse) {
-  }
+  rpc GarbageCollect(GarbageCollectRequest) returns (GarbageCollectResponse) {}
 }
