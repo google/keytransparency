@@ -50,7 +50,7 @@ func (m *QueueKeyUpdateRequest) Reset()         { *m = QueueKeyUpdateRequest{} }
 func (m *QueueKeyUpdateRequest) String() string { return proto.CompactTextString(m) }
 func (*QueueKeyUpdateRequest) ProtoMessage()    {}
 func (*QueueKeyUpdateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_frontend_8ff4b409c1bdf8e0, []int{0}
+	return fileDescriptor_frontend_2921d535a3a36e74, []int{0}
 }
 func (m *QueueKeyUpdateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueueKeyUpdateRequest.Unmarshal(m, b)
@@ -169,9 +169,9 @@ var _KeyTransparencyFrontend_serviceDesc = grpc.ServiceDesc{
 	Metadata: "v1/frontend.proto",
 }
 
-func init() { proto.RegisterFile("v1/frontend.proto", fileDescriptor_frontend_8ff4b409c1bdf8e0) }
+func init() { proto.RegisterFile("v1/frontend.proto", fileDescriptor_frontend_2921d535a3a36e74) }
 
-var fileDescriptor_frontend_8ff4b409c1bdf8e0 = []byte{
+var fileDescriptor_frontend_2921d535a3a36e74 = []byte{
 	// 319 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0xd1, 0x4f, 0x4b, 0xc3, 0x30,
 	0x18, 0x06, 0x70, 0x3a, 0x61, 0xd3, 0x38, 0x04, 0x0b, 0xba, 0x3f, 0x7a, 0x98, 0x3b, 0xed, 0x94,

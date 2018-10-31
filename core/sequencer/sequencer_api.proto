@@ -25,21 +25,22 @@ package google.keytransparency.sequencer;
 import "google/protobuf/empty.proto";
 
 message MapMetadata {
-   // SourceSlice is the range of inputs that have been included in a map revision.
-   message SourceSlice {
-      // lowest_watermark is the lowest primary key (exclusive) of the source
-      // log that has been incorporated into this map revision. The primary
-      // keys of logged items MUST be monotonically increasing.
-      int64 lowest_watermark = 1;
-      // highest_watermark is the highest primary key (inclusive) of the source
-      // log that has been incorporated into this map revision. The primary keys
-      // of logged items MUST be monotonically increasing.
-      int64 highest_watermark = 2;
-   }
-   reserved 1;
-   // sources is a map from log source IDs to the (low, high] range of primary keys
-   // in each slice that were used to construct this map revision.
-   map<int64, SourceSlice> sources = 2;
+  // SourceSlice is the range of inputs that have been included in a map
+  // revision.
+  message SourceSlice {
+    // lowest_watermark is the lowest primary key (exclusive) of the source
+    // log that has been incorporated into this map revision. The primary
+    // keys of logged items MUST be monotonically increasing.
+    int64 lowest_watermark = 1;
+    // highest_watermark is the highest primary key (inclusive) of the source
+    // log that has been incorporated into this map revision. The primary keys
+    // of logged items MUST be monotonically increasing.
+    int64 highest_watermark = 2;
+  }
+  reserved 1;
+  // sources is a map from log source IDs to the (low, high] range of primary
+  // keys in each slice that were used to construct this map revision.
+  map<int64, SourceSlice> sources = 2;
 }
 
 
@@ -58,7 +59,7 @@ message CreateEpochRequest {
 
 // RunBatchRequest triggers the sequencing of a batch of mutations for a
 // directory, with the batch size governed by the request parameters.
-message RunBatchRequest{
+message RunBatchRequest {
   // directory_id is the directory to run for.
   string directory_id = 1;
   // min_batch is the minimum number of items in a batch.
@@ -69,7 +70,6 @@ message RunBatchRequest{
   // max_batch is the maximum number of items in a batch.
   int32 max_batch = 3;
 }
-
 
 // PublishBatchRequest copies all SignedMapHeads into the Log of SignedMapHeads.
 message PublishBatchRequest {
@@ -87,4 +87,3 @@ service KeyTransparencySequencer {
   // of MapRoots.
   rpc PublishBatch(PublishBatchRequest) returns (google.protobuf.Empty) {}
 }
-
