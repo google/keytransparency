@@ -127,7 +127,7 @@ func GetUser(ktURL, userID string) ([]byte, error) {
 	defer cancel()
 	entry, _, err := client.GetUser(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("GetUser failed: %v", err)
+		return nil, fmt.Errorf("client.GetUser(%v): %v", userID, err)
 	}
 	// TODO(amarcedone): Consider returning or persisting slr to verify consistency over time.
 	return entry, nil
