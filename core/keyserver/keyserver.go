@@ -186,7 +186,7 @@ func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, 
 	}
 
 	return &pb.GetUserResponse{
-		Leaf: &pb.MapLeafEntry{
+		Leaf: &pb.MapLeaf{
 			VrfProof:  proof,
 			Committed: committed,
 			MapInclusion: &tpb.MapLeafInclusion{
