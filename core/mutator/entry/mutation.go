@@ -15,7 +15,6 @@
 package entry
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/commitments"
@@ -148,24 +147,16 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEnt
 }
 
 // Sign produces the mutation
-func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.Entry, error) {
+func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.SignedEntry, error) {
 	m.entry.Signatures = nil
+
 	sigs := make([][]byte, 0, len(signers))
 	for _, handle := range signers {
 		signer, err := signature.NewSigner(handle)
 		if err != nil {
 			return nil, err
 		}
-
-		j, err := json.Marshal(m.entry)
-		if err != nil {
-			return nil, err
-		}
-		hash, err := objecthash.CommonJSONHash(string(j))
-		if err != nil {
-			return nil, err
-		}
-
+		hash := sha256.Sha256Sum(m.entry)
 		sig, err := signer.Sign(hash[:])
 		if err != nil {
 			return nil, err
@@ -173,8 +164,10 @@ func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.Entry, error) {
 		sigs = append(sigs, sig)
 	}
 
-	m.entry.Signatures = sigs
-	return m.entry, nil
+	return &pb.SignedEntry{
+		Entry:      entryData,
+		Signatures: sigs,
+	}, nil
 }
 
 // EqualsRequested verifies that an update was successfully applied.
