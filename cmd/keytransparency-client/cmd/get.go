@@ -41,7 +41,7 @@ results are consistent.`,
 		if err != nil {
 			return fmt.Errorf("error connecting: %v", err)
 		}
-		profile, _, err := c.GetEntry(ctx, userID)
+		profile, _, err := c.GetUser(ctx, userID)
 		if err != nil {
 			return fmt.Errorf("failed to get user: %v", err)
 		}

@@ -92,59 +92,40 @@ message MapperMetadata {
   int64 highest_fully_completed_seq = 1;
 }
 
-// GetEntryRequest for a user object.
-message GetEntryRequest {
+// Gets the leaf entry for a user.
+message GetUserRequest {
   // directory_id identifies the directory in which the user lives.
-  string directory_id = 4;
-  // user_id is the user identifier, the format of which is defined by the
+  string directory_id = 1;
+  // user_id is the user identifier, the format for which is defined by the
   // application.
-  string user_id = 1;
-  // Used to be app_id. Applications can define their own hierarchy for user_id
-  // if desired.
-  reserved 2;
+  string user_id = 2;
   // first_tree_size is the tree_size of the currently trusted log root.
   // Omitting this field will omit the log consistency proof from the response.
   int64 first_tree_size = 3;
 }
 
-// GetEntryResponse returns a requested user entry.
-message GetEntryResponse {
-  //
-  // Privacy layer hides user_id and profile data until requested.
-  //
-
-  // vrf_proof is the proof for VRF on user_id.
+// Leaf entry for a user.
+message MapLeaf {
+  // vrf_proof is the proof for the VRF on user_id.
   bytes vrf_proof = 1;
+  // map_inclusion is an inclusion proof for the map leaf in an accompanying
+  // trillian.SignedMapRoot. If the leaf is non-empty, its leaf.leaf_value
+  // stores a serialized Entry proto.
+  trillian.MapLeafInclusion map_inclusion = 2;
+  // committed contains the data and nonce used to make a cryptographic
+  // commitment, which is stored in the commitment field of the serialized Entry
+  // proto from map_inclusion.
+  // Note: committed can also be found serialized in
+  // map_inclusion.leaf.extra_data.
+  Committed committed = 3;
+}
 
-  // committed contains the profile for this account and connects the data
-  // in profile to the commitment in leaf_proof.
-  Committed committed = 2;
-
-  //
-  // Trillian map layer proves that the response is consistent.
-  //
-
-  // leaf_proof contains an Entry and an inclusion proof in the sparse Merkle
-  // Tree.
-  trillian.MapLeafInclusion leaf_proof = 3;
-  // map_root contains the signed map head for the sparse Merkle Tree.
-  // map_root is also stored in the append only log.
-  trillian.SignedMapRoot map_root = 4;
-
-  //
-  // Trillian log layer proves that the map_root is part of a globally
-  // consistent, append only log.
-  //
-
-  // log_root is the latest globally consistent log root.
-  // TODO: gossip the log root to verify global consistency.
-  trillian.SignedLogRoot log_root = 5;
-  // log_consistency proves that log_root is consistent with previously seen
-  // roots.
-  repeated bytes log_consistency = 6;
-  // log_inclusion proves that map_root is part of log_root at
-  // index=map_root.MapRevision.
-  repeated bytes log_inclusion = 7;
+// Contains the leaf entry for a user at the most recently published epoch.
+message GetUserResponse {
+  // epoch is the most recently published epoch.
+  Epoch epoch = 1;
+  // leaf is the leaf entry for the requested user.
+  MapLeaf leaf = 2;
 }
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
@@ -168,7 +149,7 @@ message ListEntryHistoryRequest {
 // ListEntryHistoryResponse requests a paginated history of keys for a user.
 message ListEntryHistoryResponse {
   // values represents the list of keys this user_id has contained over time.
-  repeated GetEntryResponse values = 1;
+  repeated GetUserResponse values = 1;
   // next_start is the next page token to query for pagination.
   // next_start is 0 when there are no more results to fetch.
   int64 next_start = 2;
@@ -326,17 +307,14 @@ service KeyTransparency {
     };
   }
 
-  // GetEntry returns a user's entry in the Merkle Tree.
-  //
-  // Entries contain signed commitments to a profile, which is also returned.
-  // TODO(gbelvin): Replace with GetUser
-  rpc GetEntry(GetEntryRequest) returns (GetEntryResponse) {
+  // GetUser returns a user's leaf entry in the Merkle Tree.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users/{user_id}"
     };
   }
 
-  // ListEntryHistory returns a list of historic GetEntry values.
+  // ListEntryHistory returns a list of historic GetUser values.
   //
   // Clients verify their account history by observing correct values for their
   // account over time.
@@ -349,7 +327,7 @@ service KeyTransparency {
 
   // QueueUserUpdate enqueues an update to a user's profile.
   //
-  // Clients should poll GetEntry until the update appears, and retry if no
+  // Clients should poll GetUser until the update appears, and retry if no
   // update appears after a timeout.
   rpc QueueEntryUpdate(UpdateEntryRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {

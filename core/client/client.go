@@ -73,9 +73,9 @@ var (
 type Verifier interface {
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
-	// VerifyGetEntryResponse verifies everything about a GetEntryResponse.
-	VerifyGetEntryResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
-		in *pb.GetEntryResponse) (*types.MapRootV1, *types.LogRootV1, error)
+	// VerifyGetUserResponse verifies everything about a GetUserResponse.
+	VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
+		in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error)
 	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
 	VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
@@ -147,11 +147,11 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 	Vlog.Printf("✓ Log root updated.")
 }
 
-// GetEntry returns an entry if it exists, and nil if it does not.
-func (c *Client) GetEntry(ctx context.Context, userID string, opts ...grpc.CallOption) (
+// GetUser returns an entry if it exists, and nil if it does not.
+func (c *Client) GetUser(ctx context.Context, userID string, opts ...grpc.CallOption) (
 	[]byte, *types.LogRootV1, error) {
-	e, slr, err := c.VerifiedGetEntry(ctx, userID)
-	return e.GetCommitted().GetData(), slr, err
+	e, slr, err := c.VerifiedGetUser(ctx, userID)
+	return e.GetLeaf().GetCommitted().GetData(), slr, err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
@@ -266,14 +266,14 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 
 // CreateMutation fetches the current index and value for a user and prepares a mutation.
 func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
-	e, _, err := c.VerifiedGetEntry(ctx, u.UserId)
+	e, _, err := c.VerifiedGetUser(ctx, u.UserId)
 	if err != nil {
 		return nil, err
 	}
-	oldLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
+	oldLeaf := e.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetVrfProof(), u.DirectoryId, u.UserId)
+	index, err := c.Index(e.GetLeaf().GetVrfProof(), u.DirectoryId, u.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -329,15 +329,15 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		return m, err
 	}
 
-	// GetEntry.
-	e, _, err := c.VerifiedGetEntry(ctx, m.UserID)
+	// GetUser.
+	e, _, err := c.VerifiedGetUser(ctx, m.UserID)
 	if err != nil {
 		return m, err
 	}
 	Vlog.Printf("Got current entry...")
 
 	// Verify.
-	cntLeaf := e.GetLeafProof().GetLeaf().GetLeafValue()
+	cntLeaf := e.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
 	cntValue, err := entry.FromLeafValue(cntLeaf)
 	if err != nil {
 		return m, err

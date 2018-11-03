@@ -24,11 +24,11 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// VerifiedGetEntry fetches and verifies the results of GetEntry.
-func (c *Client) VerifiedGetEntry(ctx context.Context, userID string) (*pb.GetEntryResponse, *types.LogRootV1, error) {
+// VerifiedGetUser fetches and verifies the results of GetUser.
+func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.GetUserResponse, *types.LogRootV1, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
-	e, err := c.cli.GetEntry(ctx, &pb.GetEntryRequest{
+	e, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
 		DirectoryId:   c.directoryID,
 		UserId:        userID,
 		FirstTreeSize: int64(c.trusted.TreeSize),
@@ -37,7 +37,7 @@ func (c *Client) VerifiedGetEntry(ctx context.Context, userID string) (*pb.GetEn
 		return nil, nil, err
 	}
 
-	_, slr, err := c.VerifyGetEntryResponse(ctx, c.directoryID, userID, c.trusted, e)
+	_, slr, err := c.VerifyGetUserResponse(ctx, c.directoryID, userID, c.trusted, e)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,13 +129,13 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	var smr *types.MapRootV1
 	profiles := make(map[*types.MapRootV1][]byte)
 	for _, v := range resp.GetValues() {
-		smr, slr, err = c.VerifyGetEntryResponse(ctx, c.directoryID, userID, c.trusted, v)
+		smr, slr, err = c.VerifyGetUserResponse(ctx, c.directoryID, userID, c.trusted, v)
 		if err != nil {
 			return nil, 0, err
 		}
 		Vlog.Printf("Processing entry for %v, epoch %v", userID, smr.Revision)
 		glog.V(2).Infof("Processing entry for %v, epoch %v", userID, smr.Revision)
-		profiles[smr] = v.GetCommitted().GetData()
+		profiles[smr] = v.GetLeaf().GetCommitted().GetData()
 	}
 	if slr != nil {
 		c.updateTrusted(slr)

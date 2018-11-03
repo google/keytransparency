@@ -89,7 +89,7 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "not initialized", treeSize: 0, wantErr: codes.Internal},
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
-		t.Run(tc.desc+" GetEntry", func(t *testing.T) {
+		t.Run(tc.desc+" GetUser", func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			defer cancel()
 			e, err := newMiniEnv(ctx, t)
@@ -115,12 +115,12 @@ func TestLatestRevision(t *testing.T) {
 					Return(&tpb.GetInclusionProofResponse{}, nil)
 			}
 
-			_, err = e.srv.GetEntry(ctx, &pb.GetEntryRequest{DirectoryId: directoryID})
+			_, err = e.srv.GetUser(ctx, &pb.GetUserRequest{DirectoryId: directoryID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
-				t.Errorf("GetEntry(): %v, want %v", err, want)
+				t.Errorf("GetUser(): %v, want %v", err, want)
 			}
 		})
-		t.Run(tc.desc+" GetEntryHistory", func(t *testing.T) {
+		t.Run(tc.desc+" GetUserHistory", func(t *testing.T) {
 			e, err := newMiniEnv(ctx, t)
 			if err != nil {
 				t.Fatalf("newMiniEnv(): %v", err)

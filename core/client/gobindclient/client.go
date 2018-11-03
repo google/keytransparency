@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package gobindclient contains a gobind friendly implementation of a KeyTransparency Client able to make
-// GetEntry requests to a KT server and verify the soundness of the responses.
+// GetUser requests to a KT server and verify the soundness of the responses.
 package gobindclient
 
 import (
@@ -116,8 +116,8 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 	return nil
 }
 
-// GetEntry retrieves an entry from the ktURL server and verifies the soundness of the corresponding proofs.
-func GetEntry(ktURL, userID string) ([]byte, error) {
+// GetUser retrieves an entry from the ktURL server and verifies the soundness of the corresponding proofs.
+func GetUser(ktURL, userID string) ([]byte, error) {
 	client, exists := clients[ktURL]
 	if !exists {
 		return nil, fmt.Errorf("A connection to %v does not exists. Please call AddKtServer first", ktURL)
@@ -125,9 +125,9 @@ func GetEntry(ktURL, userID string) ([]byte, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	entry, _, err := client.GetEntry(ctx, userID)
+	entry, _, err := client.GetUser(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("GetEntry failed: %v", err)
+		return nil, fmt.Errorf("client.GetUser(%v): %v", userID, err)
 	}
 	// TODO(amarcedone): Consider returning or persisting slr to verify consistency over time.
 	return entry, nil

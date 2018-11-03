@@ -19,10 +19,10 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// GetEntryResponseVector is a captured GetEntryResponse that should verify without errors.
-type GetEntryResponseVector struct {
+// GetUserResponseVector is a captured GetUserResponse that should verify without errors.
+type GetUserResponseVector struct {
 	Desc        string
 	UserID      string
-	Resp        *pb.GetEntryResponse
+	Resp        *pb.GetUserResponse
 	TrustNewLog bool
 }

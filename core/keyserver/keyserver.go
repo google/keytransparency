@@ -85,10 +85,10 @@ func New(tlog tpb.TrillianLogClient,
 	}
 }
 
-// GetEntry returns a user's profile and proof that there is only one object for
+// GetUser returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
-// GetEntry also supports querying past values by setting the epoch field.
-func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetEntryResponse, error) {
+// GetUser also supports querying past values by setting the epoch field.
+func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUserResponse, error) {
 	directoryID := in.GetDirectoryId()
 	if directoryID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
@@ -112,24 +112,26 @@ func (s *Server) GetEntry(ctx context.Context, in *pb.GetEntryRequest) (*pb.GetE
 		return nil, err
 	}
 
-	entryProof, err := s.getEntryByRevision(ctx, sth, d, in.UserId, revision)
+	entryProof, err := s.getUserByRevision(ctx, sth, d, in.UserId, revision)
 	if err != nil {
 		return nil, err
 	}
-	resp := &pb.GetEntryResponse{
-		LogRoot:        sth,
-		LogConsistency: consistencyProof.GetHashes(),
+	resp := &pb.GetUserResponse{
+		Epoch: &pb.Epoch{
+			LogRoot:        sth,
+			LogConsistency: consistencyProof.GetHashes(),
+		},
 	}
 	proto.Merge(resp, entryProof)
 	return resp, nil
 }
 
-// getEntryByRevision returns an entry and its proofs.
-// getEntryByRevision does NOT populate the following fields:
+// getUserByRevision returns an entry and its proofs.
+// getUserByRevision does NOT populate the following fields:
 // - LogRoot
 // - LogConsistency
-func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory, userID string,
-	mapRevision int64) (*pb.GetEntryResponse, error) {
+func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory, userID string,
+	mapRevision int64) (*pb.GetUserResponse, error) {
 	if mapRevision < 0 {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"Revision is %v, want >= 0", mapRevision)
@@ -183,17 +185,21 @@ func (s *Server) getEntryByRevision(ctx context.Context, sth *tpb.SignedLogRoot,
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
-	return &pb.GetEntryResponse{
-		VrfProof:  proof,
-		Committed: committed,
-		LeafProof: &tpb.MapLeafInclusion{
-			Inclusion: neighbors,
-			Leaf: &tpb.MapLeaf{
-				LeafValue: leaf,
+	return &pb.GetUserResponse{
+		Leaf: &pb.MapLeaf{
+			VrfProof:  proof,
+			Committed: committed,
+			MapInclusion: &tpb.MapLeafInclusion{
+				Inclusion: neighbors,
+				Leaf: &tpb.MapLeaf{
+					LeafValue: leaf,
+				},
 			},
 		},
-		MapRoot:      getResp.GetMapRoot(),
-		LogInclusion: logInclusion.GetProof().GetHashes(),
+		Epoch: &pb.Epoch{
+			MapRoot:      getResp.GetMapRoot(),
+			LogInclusion: logInclusion.GetProof().GetHashes(),
+		},
 	}, nil
 }
 
@@ -227,18 +233,20 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}
 
 	// TODO(gbelvin): fetch all history from trillian at once.
-	// Get all GetEntryResponse for all epochs in the range [start, start + in.PageSize].
-	responses := make([]*pb.GetEntryResponse, in.PageSize)
+	// Get all GetUserResponse for all epochs in the range [start, start + in.PageSize].
+	responses := make([]*pb.GetUserResponse, in.PageSize)
 	for i := range responses {
-		resp, err := s.getEntryByRevision(ctx, sth, d, in.UserId, in.Start+int64(i))
+		resp, err := s.getUserByRevision(ctx, sth, d, in.UserId, in.Start+int64(i))
 		if err != nil {
-			glog.Errorf("getEntry failed for epoch %v: %v", in.Start+int64(i), err)
-			return nil, status.Errorf(codes.Internal, "GetEntry failed")
+			glog.Errorf("getUser failed for epoch %v: %v", in.Start+int64(i), err)
+			return nil, status.Errorf(codes.Internal, "GetUser failed")
 		}
-		proto.Merge(resp, &pb.GetEntryResponse{
-			LogRoot: sth,
-			// TODO(gbelvin): This is redundant and wasteful. Refactor response API.
-			LogConsistency: consistencyProof.GetHashes(),
+		proto.Merge(resp, &pb.GetUserResponse{
+			Epoch: &pb.Epoch{
+				LogRoot: sth,
+				// TODO(gbelvin): This is redundant and wasteful. Refactor response API.
+				LogConsistency: consistencyProof.GetHashes(),
+			},
 		})
 		responses[i] = resp
 	}
@@ -281,14 +289,14 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	}
 
 	// Query for the current epoch.
-	req := &pb.GetEntryRequest{
+	req := &pb.GetUserRequest{
 		DirectoryId: in.DirectoryId,
 		UserId:      in.UserId,
-		//EpochStart: in.GetEntryUpdate().EpochStart,
+		//EpochStart: in.GetUserUpdate().EpochStart,
 	}
-	resp, err := s.GetEntry(ctx, req)
+	resp, err := s.GetUser(ctx, req)
 	if err != nil {
-		glog.Errorf("GetEntry failed: %v", err)
+		glog.Errorf("GetUser failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Read failed")
 	}
 
@@ -299,7 +307,7 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	// - Hash of current data matches the expectation in the mutation.
 
 	// The very first mutation will have resp.LeafProof.MapLeaf.LeafValue=nil.
-	oldLeafB := resp.GetLeafProof().GetLeaf().GetLeafValue()
+	oldLeafB := resp.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
 	oldEntry, err := entry.FromLeafValue(oldLeafB)
 	if err != nil {
 		glog.Errorf("entry.FromLeafValue: %v", err)
