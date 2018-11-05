@@ -18,8 +18,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/keyserver"
@@ -251,7 +251,11 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	batchSize.Set(float64(len(msgs)), config.DirectoryId)
 	indexes := make([][]byte, 0, len(msgs))
 	for _, m := range msgs {
-		indexes = append(indexes, m.GetMutation().GetIndex())
+		var entry ktpb.Entry
+		if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
+			return nil, err
+		}
+		indexes = append(indexes, entry.Index)
 	}
 	glog.V(2).Infof("CreateEpoch: %v mutations, %v indexes", len(msgs), len(indexes))
 
@@ -367,9 +371,12 @@ func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.Func,
 
 	retMap := make(map[string]*tpb.MapLeaf)
 	for _, msg := range msgs {
-		index := msg.Mutation.GetIndex()
-		var oldValue *ktpb.Entry // If no map leaf was found, oldValue will be nil.
-		if leaf, ok := leafMap[string(index)]; ok {
+		var e ktpb.Entry
+		if err := proto.Unmarshal(msg.Mutation.Entry, &e); err != nil {
+			return nil, err
+		}
+		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
+		if leaf, ok := leafMap[string(e.Index)]; ok {
 			var err error
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
 			if err != nil {
@@ -399,8 +406,8 @@ func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.Func,
 		}
 
 		// Make sure that only ONE MapLeaf is output per index.
-		retMap[string(index)] = &tpb.MapLeaf{
-			Index:     index,
+		retMap[string(e.Index)] = &tpb.MapLeaf{
+			Index:     e.Index,
 			LeafValue: leafValue,
 			ExtraData: extraData,
 		}

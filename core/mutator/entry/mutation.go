@@ -15,30 +15,32 @@
 package entry
 
 import (
+	"crypto/sha256"
 	"fmt"
 
-	"github.com/google/keytransparency/core/crypto/commitments"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"github.com/benlaurie/objecthash/go/objecthash"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/google/keytransparency/core/crypto/commitments"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
-var nilHash, _ = objecthash.ObjectHash(nil)
+var nilHash = sha256.Sum256(nil)
 
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
 	DirectoryID, UserID string
 	data, nonce         []byte
 
-	prevEntry *pb.Entry
-	entry     *pb.Entry
+	prevEntry       *pb.Entry
+	prevSignedEntry *pb.SignedEntry
+	entry           *pb.Entry
+	signedEntry     *pb.SignedEntry
 }
 
 // NewMutation creates a mutation object from a previous value which can be modified.
@@ -60,22 +62,19 @@ func NewMutation(index []byte, directoryID, userID string) *Mutation {
 // SetPrevious sets the previous hash.
 // If copyPrevious is true, AuthorizedKeys and Commitment are also copied.
 func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
-	prevEntry, err := FromLeafValue(oldValue)
+	prevSignedEntry, err := FromLeafValue(oldValue)
 	if err != nil {
 		return err
 	}
+	m.prevSignedEntry = prevSignedEntry
 
-	pej, err := objecthash.CommonJSONify(prevEntry)
-	if err != nil {
-		return err
-	}
-	hash, err := objecthash.ObjectHash(pej)
-	if err != nil {
-		return err
-	}
-
-	m.prevEntry = prevEntry
+	hash := sha256.Sum256(prevSignedEntry.GetEntry())
 	m.entry.Previous = hash[:]
+
+	var prevEntry pb.Entry
+	if err := proto.Unmarshal(prevSignedEntry.GetEntry(), &prevEntry); err != nil {
+		return err
+	}
 	if copyPrevious {
 		m.entry.AuthorizedKeys = prevEntry.GetAuthorizedKeys()
 		m.entry.Commitment = prevEntry.GetCommitment()
@@ -116,11 +115,8 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEnt
 	}
 
 	// Check authorization.
-	skv := *mutation
-	skv.Signatures = nil
-
 	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(), m.entry.GetAuthorizedKeys(),
-		skv, mutation.GetSignatures()); err != nil {
+		mutation.Entry, mutation.Signatures); err != nil {
 		return nil, status.Errorf(codes.PermissionDenied,
 			"verifyKeys(oldKeys: %v, newKeys: %v, sigs: %v): %v",
 			len(m.prevEntry.GetAuthorizedKeys().GetKey()),
@@ -129,7 +125,7 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEnt
 	}
 
 	// Sanity check the mutation's correctness.
-	if _, err := New().Mutate(m.prevEntry, mutation); err != nil {
+	if _, err := New().Mutate(m.prevSignedEntry, mutation); err != nil {
 		return nil, fmt.Errorf("presign mutation check: %v", err)
 	}
 
@@ -148,7 +144,10 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEnt
 
 // Sign produces the mutation
 func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.SignedEntry, error) {
-	m.entry.Signatures = nil
+	entryData, err := proto.Marshal(m.entry)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal(): %v", err)
+	}
 
 	sigs := make([][]byte, 0, len(signers))
 	for _, handle := range signers {
@@ -156,31 +155,28 @@ func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.SignedEntry, error) {
 		if err != nil {
 			return nil, err
 		}
-		hash := sha256.Sha256Sum(m.entry)
-		sig, err := signer.Sign(hash[:])
+		sig, err := signer.Sign(entryData)
 		if err != nil {
 			return nil, err
 		}
 		sigs = append(sigs, sig)
 	}
 
-	return &pb.SignedEntry{
+	m.signedEntry = &pb.SignedEntry{
 		Entry:      entryData,
 		Signatures: sigs,
-	}, nil
+	}
+	return m.signedEntry, nil
 }
 
 // EqualsRequested verifies that an update was successfully applied.
 // Returns nil if newLeaf is equal to the entry in this mutation.
-func (m *Mutation) EqualsRequested(leafValue proto.Message) bool {
-	// TODO(gbelvin): Figure out reliable object comparison.
-	// Mutations are no longer stable serialized byte slices, so we need to
-	// use an equality operation on the proto itself.
-	return proto.Equal(leafValue, m.entry)
+func (m *Mutation) EqualsRequested(leafValue *pb.SignedEntry) bool {
+	return proto.Equal(leafValue, m.signedEntry)
 }
 
 // EqualsPrevious returns true if the leafValue is equal to
 // the value of entry at the time this mutation was made.
-func (m *Mutation) EqualsPrevious(leafValue proto.Message) bool {
-	return proto.Equal(leafValue, m.prevEntry)
+func (m *Mutation) EqualsPrevious(leafValue *pb.SignedEntry) bool {
+	return proto.Equal(leafValue, m.prevSignedEntry)
 }

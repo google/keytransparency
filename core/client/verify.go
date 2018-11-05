@@ -20,12 +20,14 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian/types"
+	"github.com/kr/pretty"
+
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/trillian/types"
-	"github.com/kr/pretty"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tclient "github.com/google/trillian/client"
@@ -100,8 +102,12 @@ func (v *RealVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, u
 	glog.V(5).Infof("VerifyGetUserResponse(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
-	e, err := entry.FromLeafValue(in.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue())
+	signedEntry, err := entry.FromLeafValue(in.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue())
 	if err != nil {
+		return nil, nil, err
+	}
+	var e pb.Entry
+	if err := proto.Unmarshal(signedEntry.GetEntry(), &e); err != nil {
 		return nil, nil, err
 	}
 

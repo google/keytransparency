@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -154,7 +155,11 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	mutations := make([]*pb.MutationProof, 0, len(msgs))
 	for _, m := range msgs {
 		mutations = append(mutations, &pb.MutationProof{Mutation: m.Mutation})
-		indexes = append(indexes, m.Mutation.GetIndex())
+		var entry pb.Entry
+		if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
+			return nil, status.Errorf(codes.DataLoss, "could not unmarshal entry")
+		}
+		indexes = append(indexes, entry.GetIndex())
 	}
 	proofs, err := s.inclusionProofs(ctx, d, indexes, in.Epoch-1)
 	if err != nil {
