@@ -274,6 +274,10 @@ func (f *fakeKeyServer) GetUser(context.Context, *pb.GetUserRequest) (*pb.GetUse
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
+func (f *fakeKeyServer) GetUserBatch(context.Context, *pb.GetUserBatchRequest) (*pb.GetUserBatchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest) (*empty.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
