@@ -203,6 +203,11 @@ func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, 
 	}, nil
 }
 
+// GetUserBatch returns a batch of users at the same epoch.
+func (s *Server) GetUserBatch(ctx context.Context, in *pb.GetUserBatchRequest) (*pb.GetUserBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not yet implemented")
+}
+
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
 func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
 	// Lookup log and map info.
