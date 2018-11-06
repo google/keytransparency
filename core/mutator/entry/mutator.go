@@ -39,9 +39,8 @@ func New() *Mutator {
 	return &Mutator{}
 }
 
-// Mutate verifies that this is a valid mutation for this item and applies
-// mutation to value. Repeated applications of Mutate on the same input produce
-// the same output. OldValue and update are both SignedKV protos.
+// Mutate verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
+// application of newSignedEntry to oldSignedEntry.
 func (*Mutator) Mutate(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
 	// Ensure that the mutation size is within bounds.
 	if got, want := proto.Size(newSignedEntry), mutator.MaxMutationSize; got > want {

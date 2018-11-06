@@ -62,10 +62,9 @@ message Entry {
   bytes commitment = 6;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
   crypto.tink.Keyset authorized_keys = 7;
-  // previous contains the hash of the previous entry that this mutation is
-  // modifying creating a hash chain of all mutations. The hash used is
-  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
+  // previous contains the SHA256 hash of SignedEntry.Entry the last time it was modified.
   bytes previous = 8;
+  reserved 1, 2, 4, 5;
 }
 
 // SignedEntry is a cryptographically signed Entry.
@@ -76,6 +75,7 @@ message SignedEntry {
   // signatures on entry. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.
+  // The signature scheme is specified by the authorized_keys tink.Keyset.
   repeated bytes signatures = 2;
 }
 
