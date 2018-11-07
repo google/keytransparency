@@ -82,17 +82,15 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
-		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
-			func(ctx context.Context) error {
-				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-					DirectoryId: env.Directory.DirectoryId,
-					MinBatch:    1,
-					MaxBatch:    100,
-				})
-				return err
+		sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
+			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+				DirectoryId: env.Directory.DirectoryId,
+				MinBatch:    1,
+				MaxBatch:    100,
 			}); err != nil {
-			log.Errorf("PeriodicallyRun(): %v", err)
-		}
+				log.Errorf("RunBatch(): %v", err)
+			}
+		})
 	}()
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
