@@ -102,7 +102,7 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 	}
 
 	// Fetch latest revision.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}
 
 	// Fetch latest revision.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}
