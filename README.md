@@ -71,7 +71,7 @@ development.
   ```
   keytransparency-client history <email> --insecure
   Revision |Timestamp                    |Profile
-  4     |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
+  4        |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
 
 
