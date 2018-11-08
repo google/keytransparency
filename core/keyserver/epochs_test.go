@@ -64,9 +64,9 @@ func genIndexes(start, end int64) [][]byte {
 	return indexes
 }
 
-func TestGetEpochStream(t *testing.T) {
+func TestGetRevisionStream(t *testing.T) {
 	srv := &Server{}
-	err := srv.GetEpochStream(nil, nil)
+	err := srv.GetRevisionStream(nil, nil)
 	if got, want := status.Code(err), codes.Unimplemented; got != want {
 		t.Errorf("GetMutationsStream(_, _): %v, want %v", got, want)
 	}
@@ -162,7 +162,7 @@ func TestListMutations(t *testing.T) {
 		{desc: "invalid page token", token: "some_token", pageSize: 0, wantErr: true},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			epoch := int64(1)
+			revision := int64(1)
 			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			defer cancel()
 			e, err := newMiniEnv(ctx, t)
@@ -185,7 +185,7 @@ func TestListMutations(t *testing.T) {
 
 			resp, err := e.srv.ListMutations(ctx, &pb.ListMutationsRequest{
 				DirectoryId: directoryID,
-				Epoch:       epoch,
+				Revision:    revision,
 				PageToken:   tc.token,
 				PageSize:    tc.pageSize,
 			})

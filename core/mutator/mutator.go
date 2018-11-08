@@ -26,7 +26,7 @@ import (
 var (
 	// MaxMutationSize represent the maximum allowed mutation size in bytes.
 	MaxMutationSize = 16 * 1024
-	// ErrReplay occurs when two mutations acting on the same entry & epoch
+	// ErrReplay occurs when two mutations acting on the same entry & revision
 	// occur.
 	ErrReplay = errors.New("mutation replay")
 	// ErrSize occurs when the mutation size is larger than the allowed upper

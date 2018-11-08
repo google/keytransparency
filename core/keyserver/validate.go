@@ -44,9 +44,9 @@ var (
 	// ErrWrongIndex occurs when the index in key value does not match the
 	// output of VRF.
 	ErrWrongIndex = errors.New("index does not match VRF")
-	// ErrInvalidStart occurs when the start epoch of ListEntryHistoryRequest
-	// is not valid (not in [1, currentEpoch]).
-	ErrInvalidStart = errors.New("invalid start epoch")
+	// ErrInvalidStart occurs when the start revision of ListEntryHistoryRequest
+	// is not valid (not in [1, currentRevision]).
+	ErrInvalidStart = errors.New("invalid start revision")
 	// ErrInvalidPageSize occurs when the page size is < 0.
 	ErrInvalidPageSize = errors.New("Invalid page size")
 )
@@ -77,11 +77,11 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	return commitments.Verify(in.UserId, entry.Commitment, committed.Data, committed.Key)
 }
 
-// validateListEntryHistoryRequest ensures that start epoch is in range [1,
-// currentEpoch] and sets the page size if it is 0 or larger than what the server
-// can return (due to reaching currentEpoch).
-func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentEpoch int64) error {
-	if in.Start < 0 || in.Start > currentEpoch {
+// validateListEntryHistoryRequest ensures that start revision is in range [1,
+// currentRevision] and sets the page size if it is 0 or larger than what the server
+// can return (due to reaching currentRevision).
+func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentRevision int64) error {
+	if in.Start < 0 || in.Start > currentRevision {
 		return ErrInvalidStart
 	}
 
@@ -93,23 +93,23 @@ func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentEpoc
 	case in.PageSize > maxPageSize:
 		in.PageSize = maxPageSize
 	}
-	// Ensure in.PageSize does not exceed currentEpoch.
-	if in.Start+int64(in.PageSize) > currentEpoch {
-		in.PageSize = int32(currentEpoch - in.Start + 1)
+	// Ensure in.PageSize does not exceed currentRevision.
+	if in.Start+int64(in.PageSize) > currentRevision {
+		in.PageSize = int32(currentRevision - in.Start + 1)
 	}
 	return nil
 }
 
-// validateGetEpochRequest ensures that start epoch starts with 1
-func validateGetEpochRequest(in *pb.GetEpochRequest) error {
-	if in.Epoch < 0 {
+// validateGetRevisionRequest ensures that start revision starts with 1
+func validateGetRevisionRequest(in *pb.GetRevisionRequest) error {
+	if in.Revision < 0 {
 		return ErrInvalidStart
 	}
 	return nil
 }
 
 func validateListMutationsRequest(in *pb.ListMutationsRequest) error {
-	if in.Epoch < 1 {
+	if in.Revision < 1 {
 		return ErrInvalidStart
 	}
 	switch {

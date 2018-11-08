@@ -64,11 +64,11 @@ func request_KeyTransparency_GetDirectory_0(ctx context.Context, marshaler runti
 }
 
 var (
-	filter_KeyTransparency_GetEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_GetRevision_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "revision": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
-func request_KeyTransparency_GetEpoch_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetEpochRequest
+func request_KeyTransparency_GetRevision_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetRevisionRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -89,32 +89,32 @@ func request_KeyTransparency_GetEpoch_0(ctx context.Context, marshaler runtime.M
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	val, ok = pathParams["epoch"]
+	val, ok = pathParams["revision"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "revision")
 	}
 
-	protoReq.Epoch, err = runtime.Int64(val)
+	protoReq.Revision, err = runtime.Int64(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "revision", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetEpoch_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetRevision_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetEpoch(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetRevision(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
 var (
-	filter_KeyTransparency_GetLatestEpoch_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparency_GetLatestRevision_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_KeyTransparency_GetLatestEpoch_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetLatestEpochRequest
+func request_KeyTransparency_GetLatestRevision_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetLatestRevisionRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -135,21 +135,21 @@ func request_KeyTransparency_GetLatestEpoch_0(ctx context.Context, marshaler run
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetLatestEpoch_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetLatestRevision_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetLatestEpoch(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetLatestRevision(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
 var (
-	filter_KeyTransparency_GetEpochStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_KeyTransparency_GetRevisionStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_KeyTransparency_GetEpochStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (KeyTransparency_GetEpochStreamClient, runtime.ServerMetadata, error) {
-	var protoReq GetEpochRequest
+func request_KeyTransparency_GetRevisionStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (KeyTransparency_GetRevisionStreamClient, runtime.ServerMetadata, error) {
+	var protoReq GetRevisionRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -170,11 +170,11 @@ func request_KeyTransparency_GetEpochStream_0(ctx context.Context, marshaler run
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetEpochStream_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_GetRevisionStream_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	stream, err := client.GetEpochStream(ctx, &protoReq)
+	stream, err := client.GetRevisionStream(ctx, &protoReq)
 	if err != nil {
 		return nil, metadata, err
 	}
@@ -188,7 +188,7 @@ func request_KeyTransparency_GetEpochStream_0(ctx context.Context, marshaler run
 }
 
 var (
-	filter_KeyTransparency_ListMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_ListMutations_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "revision": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_KeyTransparency_ListMutations_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -213,15 +213,15 @@ func request_KeyTransparency_ListMutations_0(ctx context.Context, marshaler runt
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	val, ok = pathParams["epoch"]
+	val, ok = pathParams["revision"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "revision")
 	}
 
-	protoReq.Epoch, err = runtime.Int64(val)
+	protoReq.Revision, err = runtime.Int64(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "revision", err)
 	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_ListMutations_0); err != nil {
@@ -234,7 +234,7 @@ func request_KeyTransparency_ListMutations_0(ctx context.Context, marshaler runt
 }
 
 var (
-	filter_KeyTransparency_ListMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "epoch": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_KeyTransparency_ListMutationsStream_0 = &utilities.DoubleArray{Encoding: map[string]int{"directory_id": 0, "revision": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_KeyTransparency_ListMutationsStream_0(ctx context.Context, marshaler runtime.Marshaler, client KeyTransparencyClient, req *http.Request, pathParams map[string]string) (KeyTransparency_ListMutationsStreamClient, runtime.ServerMetadata, error) {
@@ -259,15 +259,15 @@ func request_KeyTransparency_ListMutationsStream_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	val, ok = pathParams["epoch"]
+	val, ok = pathParams["revision"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "revision")
 	}
 
-	protoReq.Epoch, err = runtime.Int64(val)
+	protoReq.Revision, err = runtime.Int64(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "revision", err)
 	}
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparency_ListMutationsStream_0); err != nil {
@@ -523,7 +523,7 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparency_GetEpoch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetRevision_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -541,18 +541,18 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparency_GetEpoch_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetRevision_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparency_GetEpoch_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetRevision_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparency_GetLatestEpoch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetLatestRevision_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -570,18 +570,18 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparency_GetLatestEpoch_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetLatestRevision_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparency_GetLatestEpoch_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetLatestRevision_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_KeyTransparency_GetEpochStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_KeyTransparency_GetRevisionStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		if cn, ok := w.(http.CloseNotifier); ok {
@@ -599,14 +599,14 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_KeyTransparency_GetEpochStream_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_KeyTransparency_GetRevisionStream_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_KeyTransparency_GetEpochStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+		forward_KeyTransparency_GetRevisionStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -790,15 +790,15 @@ func RegisterKeyTransparencyHandlerClient(ctx context.Context, mux *runtime.Serv
 var (
 	pattern_KeyTransparency_GetDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, ""))
 
-	pattern_KeyTransparency_GetEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "epochs", "epoch"}, ""))
+	pattern_KeyTransparency_GetRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "revisions", "revision"}, ""))
 
-	pattern_KeyTransparency_GetLatestEpoch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "epochs"}, "latest"))
+	pattern_KeyTransparency_GetLatestRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "revisions"}, "latest"))
 
-	pattern_KeyTransparency_GetEpochStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "epochs"}, "stream"))
+	pattern_KeyTransparency_GetRevisionStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "revisions"}, "stream"))
 
-	pattern_KeyTransparency_ListMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "directories", "directory_id", "epochs", "epoch", "mutations"}, ""))
+	pattern_KeyTransparency_ListMutations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "directories", "directory_id", "revisions", "revision", "mutations"}, ""))
 
-	pattern_KeyTransparency_ListMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "directories", "directory_id", "epochs", "epoch", "mutations"}, "stream"))
+	pattern_KeyTransparency_ListMutationsStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "directories", "directory_id", "revisions", "revision", "mutations"}, "stream"))
 
 	pattern_KeyTransparency_GetUser_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "users", "user_id"}, ""))
 
@@ -812,11 +812,11 @@ var (
 var (
 	forward_KeyTransparency_GetDirectory_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparency_GetEpoch_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_GetRevision_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparency_GetLatestEpoch_0 = runtime.ForwardResponseMessage
+	forward_KeyTransparency_GetLatestRevision_0 = runtime.ForwardResponseMessage
 
-	forward_KeyTransparency_GetEpochStream_0 = runtime.ForwardResponseStream
+	forward_KeyTransparency_GetRevisionStream_0 = runtime.ForwardResponseStream
 
 	forward_KeyTransparency_ListMutations_0 = runtime.ForwardResponseMessage
 

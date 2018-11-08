@@ -22,7 +22,7 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func TestEpochPairs(t *testing.T) {
+func TestRevisionPairs(t *testing.T) {
 	ctx := context.Background()
 	for _, tc := range []struct {
 		in  []byte
@@ -32,14 +32,14 @@ func TestEpochPairs(t *testing.T) {
 	}{
 		{in: []byte{0, 1, 2}, out: []struct{ a, b byte }{{0, 1}, {1, 2}}},
 	} {
-		epochs := make(chan *pb.Epoch, len(tc.in)+1)
-		pairs := make(chan EpochPair, len(tc.out)+1)
+		revisions := make(chan *pb.Revision, len(tc.in)+1)
+		pairs := make(chan RevisionPair, len(tc.out)+1)
 		for _, i := range tc.in {
-			epochs <- &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &tpb.SignedMapRoot{MapRoot: []byte{i}}}}
+			revisions <- &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &tpb.SignedMapRoot{MapRoot: []byte{i}}}}
 		}
-		close(epochs)
-		if err := EpochPairs(ctx, epochs, pairs); err != nil {
-			t.Fatalf("EpochPairs(): %v", err)
+		close(revisions)
+		if err := RevisionPairs(ctx, revisions, pairs); err != nil {
+			t.Fatalf("RevisionPairs(): %v", err)
 		}
 		for i, p := range tc.out {
 			pair := <-pairs

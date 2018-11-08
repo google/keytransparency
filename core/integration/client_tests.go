@@ -252,7 +252,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []*tink.KeysetHandle,
 	authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
-	// did not submit a new profile in that epoch, or contains the profile
+	// did not submit a new profile in that revision, or contains the profile
 	// that the user is submitting. The user profile history contains the
 	// following profiles:
 	// Profile Value: err nil 1  2  2  2  3  3  4  5  5 5 5 5 5 6 6 5 7 7
@@ -292,7 +292,7 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}
 		} else {
-			// Create an empty epoch.
+			// Create an empty revision.
 			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 				DirectoryId: directory.DirectoryId,
 			}); err != nil {

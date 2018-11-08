@@ -14,7 +14,7 @@
 
 package client
 
-// This file contains functions that download epochs and mutations.
+// This file contains functions that download revisions and mutations.
 
 import (
 	"context"
@@ -28,29 +28,29 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// EpochMutations contains all the mutations needed to advance
-// the map from epoch-1 to epoch.
-type EpochMutations struct {
-	Epoch     *pb.Epoch
+// RevisionMutations contains all the mutations needed to advance
+// the map from revision-1 to revision.
+type RevisionMutations struct {
+	Revision  *pb.Revision
 	Mutations []*pb.MutationProof
 }
 
-// StreamEpochs repeatedly fetches epochs and sends them to out until GetEpoch
+// StreamRevisions repeatedly fetches revisions and sends them to out until GetRevision
 // returns an error other than NotFound or until ctx.Done is closed.  When
-// GetEpoch returns NotFound, it waits one pollPeriod before trying again.
-func (c *Client) StreamEpochs(ctx context.Context, directoryID string, startEpoch int64, out chan<- *pb.Epoch) error {
+// GetRevision returns NotFound, it waits one pollPeriod before trying again.
+func (c *Client) StreamRevisions(ctx context.Context, directoryID string, startRevision int64, out chan<- *pb.Revision) error {
 	defer close(out)
 	wait := time.NewTicker(c.RetryDelay).C
-	for i := startEpoch; ; {
+	for i := startRevision; ; {
 		// time out if we exceed the poll period:
-		epoch, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
+		revision, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
 			DirectoryId:          directoryID,
-			Epoch:                i,
-			LastVerifiedTreeSize: startEpoch,
+			Revision:             i,
+			LastVerifiedTreeSize: startRevision,
 		})
-		// If this epoch was not found, wait and retry.
+		// If this revision was not found, wait and retry.
 		if s, _ := status.FromError(err); s.Code() == codes.NotFound {
-			glog.Infof("Waiting for a new epoch to appear")
+			glog.Infof("Waiting for a new revision to appear")
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -58,22 +58,22 @@ func (c *Client) StreamEpochs(ctx context.Context, directoryID string, startEpoc
 				continue
 			}
 		} else if err != nil {
-			glog.Warningf("GetEpoch(%v,%v): %v", directoryID, i, err)
+			glog.Warningf("GetRevision(%v,%v): %v", directoryID, i, err)
 			return err
 		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case out <- epoch:
+		case out <- revision:
 			i++
 		}
 	}
 }
 
-// EpochMutations fetches all the mutations in an epoch
-func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.MutationProof, error) {
-	mapRoot, err := c.VerifySignedMapRoot(epoch.GetMapRoot().GetMapRoot())
+// RevisionMutations fetches all the mutations in an revision
+func (c *Client) RevisionMutations(ctx context.Context, revision *pb.Revision) ([]*pb.MutationProof, error) {
+	mapRoot, err := c.VerifySignedMapRoot(revision.GetMapRoot().GetMapRoot())
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +81,12 @@ func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.Mut
 	token := ""
 	for {
 		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
-			DirectoryId: epoch.GetDirectoryId(),
-			Epoch:       int64(mapRoot.Revision),
+			DirectoryId: revision.GetDirectoryId(),
+			Revision:    int64(mapRoot.Revision),
 			PageToken:   token,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("list mutations on %v: %v", epoch.GetDirectoryId(), err)
+			return nil, fmt.Errorf("list mutations on %v: %v", revision.GetDirectoryId(), err)
 		}
 		mutations = append(mutations, resp.GetMutations()...)
 		token = resp.GetNextPageToken()

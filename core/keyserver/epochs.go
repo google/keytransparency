@@ -36,12 +36,12 @@ var (
 	maxPageSize = int32(2048) // 8MB
 )
 
-// GetLatestEpoch returns the latest epoch. The current epoch tracks the SignedLogRoot.
-func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochRequest) (*pb.Epoch, error) {
+// GetLatestRevision returns the latest revision. The current revision tracks the SignedLogRoot.
+func (s *Server) GetLatestRevision(ctx context.Context, in *pb.GetLatestRevisionRequest) (*pb.Revision, error) {
 	// Lookup log and map info.
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("GetLatestEpoch(): adminstorage.Read(%v): %v", in.DirectoryId, err)
+		glog.Errorf("GetLatestRevision(): adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
@@ -51,26 +51,26 @@ func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochReques
 		return nil, err
 	}
 
-	currentEpoch, err := mapRevisionFor(sth)
+	currentRevision, err := mapRevisionFor(sth)
 	if err != nil {
 		glog.Errorf("mapRevisionFor(log %v, sth%v): %v", d.LogID, sth, err)
 		return nil, err
 	}
 
-	return s.getEpochByRevision(ctx, d, sth, logConsistency, currentEpoch)
+	return s.getRevisionByRevision(ctx, d, sth, logConsistency, currentRevision)
 }
 
-// GetEpoch returns the requested epoch.
-func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoch, error) {
-	if err := validateGetEpochRequest(in); err != nil {
-		glog.Errorf("validateGetEpochRequest(%v): %v", in, err)
+// GetRevision returns the requested revision.
+func (s *Server) GetRevision(ctx context.Context, in *pb.GetRevisionRequest) (*pb.Revision, error) {
+	if err := validateGetRevisionRequest(in); err != nil {
+		glog.Errorf("validateGetRevisionRequest(%v): %v", in, err)
 		return nil, status.Error(codes.InvalidArgument, "Invalid request")
 	}
 
 	// Lookup log and map info.
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("GetEpoch(): adminstorage.Read(%v): %v", in.DirectoryId, err)
+		glog.Errorf("GetRevision(): adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
@@ -79,12 +79,12 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		return nil, err
 	}
 
-	return s.getEpochByRevision(ctx, d, logRoot, logConsistency, in.GetEpoch())
+	return s.getRevisionByRevision(ctx, d, logRoot, logConsistency, in.GetRevision())
 
 }
 
-func (s *Server) getEpochByRevision(ctx context.Context, d *directory.Directory,
-	logRoot *tpb.SignedLogRoot, logConsistency *tpb.Proof, mapRevision int64) (*pb.Epoch, error) {
+func (s *Server) getRevisionByRevision(ctx context.Context, d *directory.Directory,
+	logRoot *tpb.SignedLogRoot, logConsistency *tpb.Proof, mapRevision int64) (*pb.Revision, error) {
 	logInclusion, err := s.logInclusion(ctx, d, logRoot, mapRevision)
 	if err != nil {
 		return nil, err
@@ -95,11 +95,11 @@ func (s *Server) getEpochByRevision(ctx context.Context, d *directory.Directory,
 		Revision: mapRevision,
 	})
 	if err != nil {
-		glog.Errorf("GetEpoch(): GetSignedMapRootByRevision(%v, %v): %v", d.MapID, mapRevision, err)
+		glog.Errorf("GetRevision(): GetSignedMapRootByRevision(%v, %v): %v", d.MapID, mapRevision, err)
 		return nil, err
 	}
 
-	return &pb.Epoch{
+	return &pb.Revision{
 		DirectoryId: d.DirectoryID,
 		MapRoot: &pb.MapRoot{
 			MapRoot:      resp.GetMapRoot(),
@@ -112,12 +112,12 @@ func (s *Server) getEpochByRevision(ctx context.Context, d *directory.Directory,
 	}, nil
 }
 
-// GetEpochStream is a streaming API similar to ListMutations.
-func (*Server) GetEpochStream(in *pb.GetEpochRequest, stream pb.KeyTransparency_GetEpochStreamServer) error {
-	return status.Error(codes.Unimplemented, "GetEpochStream is unimplemented")
+// GetRevisionStream is a streaming API similar to ListMutations.
+func (*Server) GetRevisionStream(in *pb.GetRevisionRequest, stream pb.KeyTransparency_GetRevisionStreamServer) error {
+	return status.Error(codes.Unimplemented, "GetRevisionStream is unimplemented")
 }
 
-// ListMutations returns the mutations that created an epoch.
+// ListMutations returns the mutations that created an revision.
 func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest) (*pb.ListMutationsResponse, error) {
 	if err := validateListMutationsRequest(in); err != nil {
 		glog.Errorf("validateListMutationsRequest(%v): %v", in, err)
@@ -129,9 +129,9 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		glog.Errorf("ListMutations(): adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
-	meta, err := s.batches.ReadBatch(ctx, in.DirectoryId, in.Epoch)
+	meta, err := s.batches.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Epoch, err)
+		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 	rt, err := SourceMap(meta.Sources).ParseToken(in.PageToken)
 	if err != nil {
@@ -165,7 +165,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		}
 		indexes = append(indexes, entry.GetIndex())
 	}
-	proofs, err := s.inclusionProofs(ctx, d, indexes, in.Epoch-1)
+	proofs, err := s.inclusionProofs(ctx, d, indexes, in.Revision-1)
 	if err != nil {
 		return nil, err
 	}
@@ -183,28 +183,28 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}, nil
 }
 
-// ListMutationsStream is a streaming list of mutations in a specific epoch.
+// ListMutationsStream is a streaming list of mutations in a specific revision.
 func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTransparency_ListMutationsStreamServer) error {
 	return status.Error(codes.Unimplemented, "ListMutationStream is unimplemented")
 }
 
 // logInclusion returns the inclusion proof for a map revision in the log of map roots.
-func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRoot *tpb.SignedLogRoot, epoch int64) (
+func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRoot *tpb.SignedLogRoot, revision int64) (
 	*tpb.Proof, error) {
 	// Inclusion proof.
 	secondTreeSize := logRoot.GetTreeSize()
-	if epoch >= secondTreeSize {
-		return nil, status.Errorf(codes.NotFound, "keyserver: Epoch %v has not been released yet", epoch)
+	if revision >= secondTreeSize {
+		return nil, status.Errorf(codes.NotFound, "keyserver: Revision %v has not been released yet", revision)
 	}
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&tpb.GetInclusionProofRequest{
 			LogId: d.LogID,
 			// SignedMapRoot must be in the log at MapRevision.
-			LeafIndex: epoch,
+			LeafIndex: revision,
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("log.GetInclusionProof(%v, %v, %v): %v", d.LogID, epoch, secondTreeSize, err)
+		glog.Errorf("log.GetInclusionProof(%v, %v, %v): %v", d.LogID, revision, secondTreeSize, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof: %v", err)
 	}
 	return logInclusion.GetProof(), nil
@@ -266,12 +266,12 @@ func mapRevisionFor(sth *tpb.SignedLogRoot) (int64, error) {
 	return maxIndex, nil
 }
 
-func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, indexes [][]byte, epoch int64) (
+func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, indexes [][]byte, revision int64) (
 	[]*tpb.MapLeafInclusion, error) {
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    d.MapID,
 		Index:    indexes,
-		Revision: epoch,
+		Revision: revision,
 	})
 	if err != nil {
 		glog.Errorf("inclusionProofs(): GetLeavesByRevision(): %v", err)

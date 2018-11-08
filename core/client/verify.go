@@ -137,22 +137,22 @@ func (v *RealVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, u
 	}
 	leafProof.Leaf.Index = index
 
-	if err := v.VerifyMapLeafInclusion(in.GetEpoch().GetMapRoot().GetMapRoot(), leafProof); err != nil {
+	if err := v.VerifyMapLeafInclusion(in.GetRevision().GetMapRoot().GetMapRoot(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
 	}
 	Vlog.Printf("✓ Sparse tree proof verified.")
 
-	logRoot, mapRoot, err := v.VerifyEpoch(in.GetEpoch(), trusted)
+	logRoot, mapRoot, err := v.VerifyRevision(in.GetRevision(), trusted)
 	if err != nil {
 		return nil, nil, err
 	}
 	return mapRoot, logRoot, nil
 }
 
-// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
-// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
-func (v *RealVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
+// VerifyRevision verifies that revision is correctly signed and included in the append only log.
+// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
+func (v *RealVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
 	mapRoot, err := v.VerifySignedMapRoot(in.GetMapRoot().GetMapRoot())
 	if err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")

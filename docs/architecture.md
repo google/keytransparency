@@ -63,13 +63,13 @@ Mutations in Key Transparency are defined as a signed key-value object.
   break race conditions and it forms a hash chain in each account.
 
 # Monitors
-Monitors process and verify the mutations that make each new epoch.
+Monitors process and verify the mutations that make each new revision.
 Monitors verify various policy properties of the signed key-values in the
 Trillian Map.  In particular, monitors verify that 
 - Back pointers in each leaf do not skip over any values - an operation that
   would be bandwidth intensive for mobile clients.  
 - Mutations are properly signed and verified by public keys declared in the
-  prior epoch. 
+  prior revision. 
 
 Monitors also observe the Trillian Log proofs provided by the Key Transparency 
 front end to detect any log forks.  

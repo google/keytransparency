@@ -32,24 +32,24 @@ func NewMonitorStorage() *MonitorStorage {
 }
 
 // Set stores the given data as a MonitoringResult which can be retrieved by Get.
-func (s *MonitorStorage) Set(epoch int64, r *monitorstorage.Result) error {
-	if _, ok := s.store[epoch]; ok {
+func (s *MonitorStorage) Set(revision int64, r *monitorstorage.Result) error {
+	if _, ok := s.store[revision]; ok {
 		return monitorstorage.ErrAlreadyStored
 	}
-	s.store[epoch] = r
-	s.latest = epoch
+	s.store[revision] = r
+	s.latest = revision
 	return nil
 }
 
-// Get returns the Result for the given epoch. It returns ErrNotFound if the epoch does not exist.
-func (s *MonitorStorage) Get(epoch int64) (*monitorstorage.Result, error) {
-	if result, ok := s.store[epoch]; ok {
+// Get returns the Result for the given revision. It returns ErrNotFound if the revision does not exist.
+func (s *MonitorStorage) Get(revision int64) (*monitorstorage.Result, error) {
+	if result, ok := s.store[revision]; ok {
 		return result, nil
 	}
 	return nil, monitorstorage.ErrNotFound
 }
 
-// LatestEpoch is a convenience method to retrieve the latest stored epoch.
-func (s *MonitorStorage) LatestEpoch() int64 {
+// LatestRevision is a convenience method to retrieve the latest stored revision.
+func (s *MonitorStorage) LatestRevision() int64 {
 	return s.latest
 }
