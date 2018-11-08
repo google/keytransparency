@@ -29,9 +29,9 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.GetUse
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	e, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
-		DirectoryId:   c.directoryID,
-		UserId:        userID,
-		FirstTreeSize: int64(c.trusted.TreeSize),
+		DirectoryId:          c.directoryID,
+		UserId:               userID,
+		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -55,8 +55,8 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
-		DirectoryId:   c.directoryID,
-		FirstTreeSize: int64(c.trusted.TreeSize),
+		DirectoryId:          c.directoryID,
+		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -90,9 +90,9 @@ func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogR
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
-		DirectoryId:   c.directoryID,
-		Epoch:         epoch,
-		FirstTreeSize: int64(c.trusted.TreeSize),
+		DirectoryId:          c.directoryID,
+		Epoch:                epoch,
+		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -113,11 +113,11 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-		DirectoryId:   c.directoryID,
-		UserId:        userID,
-		FirstTreeSize: int64(c.trusted.TreeSize),
-		Start:         start,
-		PageSize:      count,
+		DirectoryId:          c.directoryID,
+		UserId:               userID,
+		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
+		Start:                start,
+		PageSize:             count,
 	})
 	if err != nil {
 		return nil, 0, err

@@ -99,9 +99,10 @@ message GetUserRequest {
   // user_id is the user identifier, the format for which is defined by the
   // application.
   string user_id = 2;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 3;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 3;
 }
 
 // Leaf entry for a user.
@@ -134,9 +135,10 @@ message GetUserBatchRequest {
   // user_ids are the user identifiers, the format for which is defined by the
   // application.
   repeated string user_ids = 2;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 3;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 3;
 }
 
 // Contains the leaf entries for a set of users at the most recently published epoch.
@@ -160,9 +162,10 @@ message ListEntryHistoryRequest {
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
   reserved 4;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 5;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 5;
 }
 
 // ListEntryHistoryResponse requests a paginated history of keys for a user.
@@ -195,18 +198,20 @@ message GetEpochRequest {
   string directory_id = 5;
   // epoch specifies the epoch number in which mutations will be returned.
   int64 epoch = 1;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 2;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 2;
 }
 
 // GetLatestEpochRequest identifies a particular epoch.
 message GetLatestEpochRequest {
   // directory_id is the directory for which epochs are being requested.
   string directory_id = 1;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 2;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 2;
 }
 
 // Epoch represents a snapshot of the entire key directory and
