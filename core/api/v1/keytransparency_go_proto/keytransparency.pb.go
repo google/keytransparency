@@ -316,67 +316,6 @@ func (m *MapperMetadata) GetHighestFullyCompletedSeq() int64 {
 	return 0
 }
 
-// Gets the leaf entry for a user.
-type GetUserRequest struct {
-	// directory_id identifies the directory in which the user lives.
-	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// user_id is the user identifier, the format for which is defined by the
-	// application.
-	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// first_tree_size is the tree_size of the currently trusted log root.
-	// Omitting this field will omit the log consistency proof from the response.
-	FirstTreeSize        int64    `protobuf:"varint,3,opt,name=first_tree_size,json=firstTreeSize,proto3" json:"first_tree_size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *GetUserRequest) Reset()         { *m = GetUserRequest{} }
-func (m *GetUserRequest) String() string { return proto.CompactTextString(m) }
-func (*GetUserRequest) ProtoMessage()    {}
-func (*GetUserRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{5}
-}
-
-func (m *GetUserRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetUserRequest.Unmarshal(m, b)
-}
-func (m *GetUserRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetUserRequest.Marshal(b, m, deterministic)
-}
-func (m *GetUserRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetUserRequest.Merge(m, src)
-}
-func (m *GetUserRequest) XXX_Size() int {
-	return xxx_messageInfo_GetUserRequest.Size(m)
-}
-func (m *GetUserRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetUserRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetUserRequest proto.InternalMessageInfo
-
-func (m *GetUserRequest) GetDirectoryId() string {
-	if m != nil {
-		return m.DirectoryId
-	}
-	return ""
-}
-
-func (m *GetUserRequest) GetUserId() string {
-	if m != nil {
-		return m.UserId
-	}
-	return ""
-}
-
-func (m *GetUserRequest) GetFirstTreeSize() int64 {
-	if m != nil {
-		return m.FirstTreeSize
-	}
-	return 0
-}
-
 // Leaf entry for a user.
 type MapLeaf struct {
 	// vrf_proof is the proof for the VRF on user_id.
@@ -400,7 +339,7 @@ func (m *MapLeaf) Reset()         { *m = MapLeaf{} }
 func (m *MapLeaf) String() string { return proto.CompactTextString(m) }
 func (*MapLeaf) ProtoMessage()    {}
 func (*MapLeaf) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{6}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{5}
 }
 
 func (m *MapLeaf) XXX_Unmarshal(b []byte) error {
@@ -442,6 +381,117 @@ func (m *MapLeaf) GetCommitted() *Committed {
 	return nil
 }
 
+// MapRevision contains map leaves at a specific revision.
+type MapRevision struct {
+	// map_root contains the map root and its inclusion in the log.
+	MapRoot *MapRoot `protobuf:"bytes,1,opt,name=map_root,json=mapRoot,proto3" json:"map_root,omitempty"`
+	// map_leaves contains map leaves and their inclusion proofs to map_root.
+	MapLeaves            []*MapLeaf `protobuf:"bytes,2,rep,name=map_leaves,json=mapLeaves,proto3" json:"map_leaves,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
+}
+
+func (m *MapRevision) Reset()         { *m = MapRevision{} }
+func (m *MapRevision) String() string { return proto.CompactTextString(m) }
+func (*MapRevision) ProtoMessage()    {}
+func (*MapRevision) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{6}
+}
+
+func (m *MapRevision) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_MapRevision.Unmarshal(m, b)
+}
+func (m *MapRevision) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_MapRevision.Marshal(b, m, deterministic)
+}
+func (m *MapRevision) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MapRevision.Merge(m, src)
+}
+func (m *MapRevision) XXX_Size() int {
+	return xxx_messageInfo_MapRevision.Size(m)
+}
+func (m *MapRevision) XXX_DiscardUnknown() {
+	xxx_messageInfo_MapRevision.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MapRevision proto.InternalMessageInfo
+
+func (m *MapRevision) GetMapRoot() *MapRoot {
+	if m != nil {
+		return m.MapRoot
+	}
+	return nil
+}
+
+func (m *MapRevision) GetMapLeaves() []*MapLeaf {
+	if m != nil {
+		return m.MapLeaves
+	}
+	return nil
+}
+
+// Gets the leaf entry for a user.
+type GetUserRequest struct {
+	// directory_id identifies the directory in which the user lives.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// user_id is the user identifier, the format for which is defined by the
+	// application.
+	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// last_seen_revision is the tree_size of the currently trusted log root.
+	// Omitting this field will omit the log consistency proof from the response.
+	LastSeenRevision     int64    `protobuf:"varint,3,opt,name=last_seen_revision,json=lastSeenRevision,proto3" json:"last_seen_revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetUserRequest) Reset()         { *m = GetUserRequest{} }
+func (m *GetUserRequest) String() string { return proto.CompactTextString(m) }
+func (*GetUserRequest) ProtoMessage()    {}
+func (*GetUserRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{7}
+}
+
+func (m *GetUserRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetUserRequest.Unmarshal(m, b)
+}
+func (m *GetUserRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetUserRequest.Marshal(b, m, deterministic)
+}
+func (m *GetUserRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetUserRequest.Merge(m, src)
+}
+func (m *GetUserRequest) XXX_Size() int {
+	return xxx_messageInfo_GetUserRequest.Size(m)
+}
+func (m *GetUserRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetUserRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetUserRequest proto.InternalMessageInfo
+
+func (m *GetUserRequest) GetDirectoryId() string {
+	if m != nil {
+		return m.DirectoryId
+	}
+	return ""
+}
+
+func (m *GetUserRequest) GetUserId() string {
+	if m != nil {
+		return m.UserId
+	}
+	return ""
+}
+
+func (m *GetUserRequest) GetLastSeenRevision() int64 {
+	if m != nil {
+		return m.LastSeenRevision
+	}
+	return 0
+}
+
 // Contains the leaf entry for a user at the most recently published epoch.
 type GetUserResponse struct {
 	// epoch is the most recently published epoch.
@@ -457,7 +507,7 @@ func (m *GetUserResponse) Reset()         { *m = GetUserResponse{} }
 func (m *GetUserResponse) String() string { return proto.CompactTextString(m) }
 func (*GetUserResponse) ProtoMessage()    {}
 func (*GetUserResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{7}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{8}
 }
 
 func (m *GetUserResponse) XXX_Unmarshal(b []byte) error {
@@ -492,68 +542,138 @@ func (m *GetUserResponse) GetLeaf() *MapLeaf {
 	return nil
 }
 
-type GetUserBatchRequest struct {
-	// directory_id identifies the directory in which the users live.
+// Gets the leaf entry for a user at a specific revision.
+type GetUserAtRevisionRequest struct {
+	// directory_id identifies the directory in which the user lives.
 	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// user_ids are the user identifiers, the format for which is defined by the
+	// user_id is the user identifier, the format for which is defined by the
 	// application.
-	UserIds []string `protobuf:"bytes,2,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
-	// first_tree_size is the tree_size of the currently trusted log root.
+	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// revision is the map revision to get the user at.
+	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
+	// last_seen_revision is the tree_size of the currently trusted log root.
 	// Omitting this field will omit the log consistency proof from the response.
-	FirstTreeSize        int64    `protobuf:"varint,3,opt,name=first_tree_size,json=firstTreeSize,proto3" json:"first_tree_size,omitempty"`
+	LastSeenRevision     int64    `protobuf:"varint,3,opt,name=last_seen_revision,json=lastSeenRevision,proto3" json:"last_seen_revision,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetUserBatchRequest) Reset()         { *m = GetUserBatchRequest{} }
-func (m *GetUserBatchRequest) String() string { return proto.CompactTextString(m) }
-func (*GetUserBatchRequest) ProtoMessage()    {}
-func (*GetUserBatchRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{8}
+func (m *GetUserAtRevisionRequest) Reset()         { *m = GetUserAtRevisionRequest{} }
+func (m *GetUserAtRevisionRequest) String() string { return proto.CompactTextString(m) }
+func (*GetUserAtRevisionRequest) ProtoMessage()    {}
+func (*GetUserAtRevisionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{9}
 }
 
-func (m *GetUserBatchRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetUserBatchRequest.Unmarshal(m, b)
+func (m *GetUserAtRevisionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetUserAtRevisionRequest.Unmarshal(m, b)
 }
-func (m *GetUserBatchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetUserBatchRequest.Marshal(b, m, deterministic)
+func (m *GetUserAtRevisionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetUserAtRevisionRequest.Marshal(b, m, deterministic)
 }
-func (m *GetUserBatchRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetUserBatchRequest.Merge(m, src)
+func (m *GetUserAtRevisionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetUserAtRevisionRequest.Merge(m, src)
 }
-func (m *GetUserBatchRequest) XXX_Size() int {
-	return xxx_messageInfo_GetUserBatchRequest.Size(m)
+func (m *GetUserAtRevisionRequest) XXX_Size() int {
+	return xxx_messageInfo_GetUserAtRevisionRequest.Size(m)
 }
-func (m *GetUserBatchRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetUserBatchRequest.DiscardUnknown(m)
+func (m *GetUserAtRevisionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetUserAtRevisionRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetUserBatchRequest proto.InternalMessageInfo
+var xxx_messageInfo_GetUserAtRevisionRequest proto.InternalMessageInfo
 
-func (m *GetUserBatchRequest) GetDirectoryId() string {
+func (m *GetUserAtRevisionRequest) GetDirectoryId() string {
 	if m != nil {
 		return m.DirectoryId
 	}
 	return ""
 }
 
-func (m *GetUserBatchRequest) GetUserIds() []string {
+func (m *GetUserAtRevisionRequest) GetUserId() string {
+	if m != nil {
+		return m.UserId
+	}
+	return ""
+}
+
+func (m *GetUserAtRevisionRequest) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
+
+func (m *GetUserAtRevisionRequest) GetLastSeenRevision() int64 {
+	if m != nil {
+		return m.LastSeenRevision
+	}
+	return 0
+}
+
+type BatchGetUserRequest struct {
+	// directory_id identifies the directory in which the users live.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// user_ids are the user identifiers, the format for which is defined by the
+	// application.
+	UserIds []string `protobuf:"bytes,2,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	// last_seen_revision is the tree_size of the currently trusted log root.
+	// Omitting this field will omit the log consistency proof from the response.
+	LastSeenRevision     int64    `protobuf:"varint,3,opt,name=last_seen_revision,json=lastSeenRevision,proto3" json:"last_seen_revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *BatchGetUserRequest) Reset()         { *m = BatchGetUserRequest{} }
+func (m *BatchGetUserRequest) String() string { return proto.CompactTextString(m) }
+func (*BatchGetUserRequest) ProtoMessage()    {}
+func (*BatchGetUserRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{10}
+}
+
+func (m *BatchGetUserRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BatchGetUserRequest.Unmarshal(m, b)
+}
+func (m *BatchGetUserRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BatchGetUserRequest.Marshal(b, m, deterministic)
+}
+func (m *BatchGetUserRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BatchGetUserRequest.Merge(m, src)
+}
+func (m *BatchGetUserRequest) XXX_Size() int {
+	return xxx_messageInfo_BatchGetUserRequest.Size(m)
+}
+func (m *BatchGetUserRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_BatchGetUserRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BatchGetUserRequest proto.InternalMessageInfo
+
+func (m *BatchGetUserRequest) GetDirectoryId() string {
+	if m != nil {
+		return m.DirectoryId
+	}
+	return ""
+}
+
+func (m *BatchGetUserRequest) GetUserIds() []string {
 	if m != nil {
 		return m.UserIds
 	}
 	return nil
 }
 
-func (m *GetUserBatchRequest) GetFirstTreeSize() int64 {
+func (m *BatchGetUserRequest) GetLastSeenRevision() int64 {
 	if m != nil {
-		return m.FirstTreeSize
+		return m.LastSeenRevision
 	}
 	return 0
 }
 
 // Contains the leaf entries for a set of users at the most recently published epoch.
-type GetUserBatchResponse struct {
+type BatchGetUserResponse struct {
 	// epoch is the most recently published epoch.
 	Epoch *Epoch `protobuf:"bytes,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// leaves are the leaf entries for the requested users, in the order requested.
@@ -563,172 +683,337 @@ type GetUserBatchResponse struct {
 	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *GetUserBatchResponse) Reset()         { *m = GetUserBatchResponse{} }
-func (m *GetUserBatchResponse) String() string { return proto.CompactTextString(m) }
-func (*GetUserBatchResponse) ProtoMessage()    {}
-func (*GetUserBatchResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{9}
+func (m *BatchGetUserResponse) Reset()         { *m = BatchGetUserResponse{} }
+func (m *BatchGetUserResponse) String() string { return proto.CompactTextString(m) }
+func (*BatchGetUserResponse) ProtoMessage()    {}
+func (*BatchGetUserResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{11}
 }
 
-func (m *GetUserBatchResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetUserBatchResponse.Unmarshal(m, b)
+func (m *BatchGetUserResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BatchGetUserResponse.Unmarshal(m, b)
 }
-func (m *GetUserBatchResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetUserBatchResponse.Marshal(b, m, deterministic)
+func (m *BatchGetUserResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BatchGetUserResponse.Marshal(b, m, deterministic)
 }
-func (m *GetUserBatchResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetUserBatchResponse.Merge(m, src)
+func (m *BatchGetUserResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BatchGetUserResponse.Merge(m, src)
 }
-func (m *GetUserBatchResponse) XXX_Size() int {
-	return xxx_messageInfo_GetUserBatchResponse.Size(m)
+func (m *BatchGetUserResponse) XXX_Size() int {
+	return xxx_messageInfo_BatchGetUserResponse.Size(m)
 }
-func (m *GetUserBatchResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetUserBatchResponse.DiscardUnknown(m)
+func (m *BatchGetUserResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_BatchGetUserResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetUserBatchResponse proto.InternalMessageInfo
+var xxx_messageInfo_BatchGetUserResponse proto.InternalMessageInfo
 
-func (m *GetUserBatchResponse) GetEpoch() *Epoch {
+func (m *BatchGetUserResponse) GetEpoch() *Epoch {
 	if m != nil {
 		return m.Epoch
 	}
 	return nil
 }
 
-func (m *GetUserBatchResponse) GetLeaves() []*MapLeaf {
+func (m *BatchGetUserResponse) GetLeaves() []*MapLeaf {
 	if m != nil {
 		return m.Leaves
 	}
 	return nil
 }
 
-// ListEntryHistoryRequest gets a list of historical keys for a user.
-type ListEntryHistoryRequest struct {
+// ListUserRevisionsRequest gets a list of historical keys for a user.
+type ListUserRevisionsRequest struct {
 	// directory_id identifies the directory in which the user lives.
 	DirectoryId string `protobuf:"bytes,6,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	// user_id is the user identifier.
 	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// start is the starting epoch.
-	Start int64 `protobuf:"varint,2,opt,name=start,proto3" json:"start,omitempty"`
+	// start_revision is the starting epoch.
+	StartRevision int64 `protobuf:"varint,2,opt,name=start_revision,json=startRevision,proto3" json:"start_revision,omitempty"`
+	// end_revision is the ending epoch.
+	EndRevision int64 `protobuf:"varint,7,opt,name=end_revision,json=endRevision,proto3" json:"end_revision,omitempty"`
 	// page_size is the maximum number of entries to return.
 	PageSize int32 `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	// first_tree_size is the tree_size of the currently trusted log root.
+	// last_seen_revision is the tree_size of the currently trusted log root.
 	// Omitting this field will omit the log consistency proof from the response.
-	FirstTreeSize        int64    `protobuf:"varint,5,opt,name=first_tree_size,json=firstTreeSize,proto3" json:"first_tree_size,omitempty"`
+	LastSeenRevision     int64    `protobuf:"varint,5,opt,name=last_seen_revision,json=lastSeenRevision,proto3" json:"last_seen_revision,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListEntryHistoryRequest) Reset()         { *m = ListEntryHistoryRequest{} }
-func (m *ListEntryHistoryRequest) String() string { return proto.CompactTextString(m) }
-func (*ListEntryHistoryRequest) ProtoMessage()    {}
-func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{10}
+func (m *ListUserRevisionsRequest) Reset()         { *m = ListUserRevisionsRequest{} }
+func (m *ListUserRevisionsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListUserRevisionsRequest) ProtoMessage()    {}
+func (*ListUserRevisionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{12}
 }
 
-func (m *ListEntryHistoryRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListEntryHistoryRequest.Unmarshal(m, b)
+func (m *ListUserRevisionsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListUserRevisionsRequest.Unmarshal(m, b)
 }
-func (m *ListEntryHistoryRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListEntryHistoryRequest.Marshal(b, m, deterministic)
+func (m *ListUserRevisionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListUserRevisionsRequest.Marshal(b, m, deterministic)
 }
-func (m *ListEntryHistoryRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListEntryHistoryRequest.Merge(m, src)
+func (m *ListUserRevisionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListUserRevisionsRequest.Merge(m, src)
 }
-func (m *ListEntryHistoryRequest) XXX_Size() int {
-	return xxx_messageInfo_ListEntryHistoryRequest.Size(m)
+func (m *ListUserRevisionsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListUserRevisionsRequest.Size(m)
 }
-func (m *ListEntryHistoryRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListEntryHistoryRequest.DiscardUnknown(m)
+func (m *ListUserRevisionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListUserRevisionsRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListEntryHistoryRequest proto.InternalMessageInfo
+var xxx_messageInfo_ListUserRevisionsRequest proto.InternalMessageInfo
 
-func (m *ListEntryHistoryRequest) GetDirectoryId() string {
+func (m *ListUserRevisionsRequest) GetDirectoryId() string {
 	if m != nil {
 		return m.DirectoryId
 	}
 	return ""
 }
 
-func (m *ListEntryHistoryRequest) GetUserId() string {
+func (m *ListUserRevisionsRequest) GetUserId() string {
 	if m != nil {
 		return m.UserId
 	}
 	return ""
 }
 
-func (m *ListEntryHistoryRequest) GetStart() int64 {
+func (m *ListUserRevisionsRequest) GetStartRevision() int64 {
 	if m != nil {
-		return m.Start
+		return m.StartRevision
 	}
 	return 0
 }
 
-func (m *ListEntryHistoryRequest) GetPageSize() int32 {
+func (m *ListUserRevisionsRequest) GetEndRevision() int64 {
+	if m != nil {
+		return m.EndRevision
+	}
+	return 0
+}
+
+func (m *ListUserRevisionsRequest) GetPageSize() int32 {
 	if m != nil {
 		return m.PageSize
 	}
 	return 0
 }
 
-func (m *ListEntryHistoryRequest) GetFirstTreeSize() int64 {
+func (m *ListUserRevisionsRequest) GetLastSeenRevision() int64 {
 	if m != nil {
-		return m.FirstTreeSize
+		return m.LastSeenRevision
 	}
 	return 0
 }
 
-// ListEntryHistoryResponse requests a paginated history of keys for a user.
-type ListEntryHistoryResponse struct {
-	// values represents the list of keys this user_id has contained over time.
-	Values []*GetUserResponse `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+// ListUserRevisionsResponse requests a paginated history of keys for a user.
+type ListUserRevisionsResponse struct {
+	// latest_log_root contains the lastest log root and its consistency proof.
+	LatestLogRoot *LogRoot `protobuf:"bytes,3,opt,name=latest_log_root,json=latestLogRoot,proto3" json:"latest_log_root,omitempty"`
+	// map_revisions represents the list of keys this user_id has contained over time.
+	MapRevisions []*MapRevision `protobuf:"bytes,1,rep,name=map_revisions,json=mapRevisions,proto3" json:"map_revisions,omitempty"`
 	// next_start is the next page token to query for pagination.
 	// next_start is 0 when there are no more results to fetch.
-	NextStart            int64    `protobuf:"varint,2,opt,name=next_start,json=nextStart,proto3" json:"next_start,omitempty"`
+	NextStart            string   `protobuf:"bytes,2,opt,name=next_start,json=nextStart,proto3" json:"next_start,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListEntryHistoryResponse) Reset()         { *m = ListEntryHistoryResponse{} }
-func (m *ListEntryHistoryResponse) String() string { return proto.CompactTextString(m) }
-func (*ListEntryHistoryResponse) ProtoMessage()    {}
-func (*ListEntryHistoryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{11}
+func (m *ListUserRevisionsResponse) Reset()         { *m = ListUserRevisionsResponse{} }
+func (m *ListUserRevisionsResponse) String() string { return proto.CompactTextString(m) }
+func (*ListUserRevisionsResponse) ProtoMessage()    {}
+func (*ListUserRevisionsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{13}
 }
 
-func (m *ListEntryHistoryResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListEntryHistoryResponse.Unmarshal(m, b)
+func (m *ListUserRevisionsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListUserRevisionsResponse.Unmarshal(m, b)
 }
-func (m *ListEntryHistoryResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListEntryHistoryResponse.Marshal(b, m, deterministic)
+func (m *ListUserRevisionsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListUserRevisionsResponse.Marshal(b, m, deterministic)
 }
-func (m *ListEntryHistoryResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListEntryHistoryResponse.Merge(m, src)
+func (m *ListUserRevisionsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListUserRevisionsResponse.Merge(m, src)
 }
-func (m *ListEntryHistoryResponse) XXX_Size() int {
-	return xxx_messageInfo_ListEntryHistoryResponse.Size(m)
+func (m *ListUserRevisionsResponse) XXX_Size() int {
+	return xxx_messageInfo_ListUserRevisionsResponse.Size(m)
 }
-func (m *ListEntryHistoryResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListEntryHistoryResponse.DiscardUnknown(m)
+func (m *ListUserRevisionsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListUserRevisionsResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListEntryHistoryResponse proto.InternalMessageInfo
+var xxx_messageInfo_ListUserRevisionsResponse proto.InternalMessageInfo
 
-func (m *ListEntryHistoryResponse) GetValues() []*GetUserResponse {
+func (m *ListUserRevisionsResponse) GetLatestLogRoot() *LogRoot {
 	if m != nil {
-		return m.Values
+		return m.LatestLogRoot
 	}
 	return nil
 }
 
-func (m *ListEntryHistoryResponse) GetNextStart() int64 {
+func (m *ListUserRevisionsResponse) GetMapRevisions() []*MapRevision {
+	if m != nil {
+		return m.MapRevisions
+	}
+	return nil
+}
+
+func (m *ListUserRevisionsResponse) GetNextStart() string {
 	if m != nil {
 		return m.NextStart
 	}
+	return ""
+}
+
+// BatchListUserRevisionsRequest requests user history for multiple users.
+type BatchListUserRevisionsRequest struct {
+	// directory_id identifies the directory in which the user lives.
+	DirectoryId string `protobuf:"bytes,6,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// user_ids is the user identifier.
+	UserIds []string `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	// start_revision is the starting epoch.
+	StartRevision int64 `protobuf:"varint,2,opt,name=start_revision,json=startRevision,proto3" json:"start_revision,omitempty"`
+	// end_revision is the ending epoch.
+	EndRevision int64 `protobuf:"varint,7,opt,name=end_revision,json=endRevision,proto3" json:"end_revision,omitempty"`
+	// page_size is the maximum number of entries to return.
+	PageSize int32 `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// last_seen_revision is the tree_size of the currently trusted log root.
+	// Omitting this field will omit the log consistency proof from the response.
+	LastSeenRevision     int64    `protobuf:"varint,5,opt,name=last_seen_revision,json=lastSeenRevision,proto3" json:"last_seen_revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *BatchListUserRevisionsRequest) Reset()         { *m = BatchListUserRevisionsRequest{} }
+func (m *BatchListUserRevisionsRequest) String() string { return proto.CompactTextString(m) }
+func (*BatchListUserRevisionsRequest) ProtoMessage()    {}
+func (*BatchListUserRevisionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{14}
+}
+
+func (m *BatchListUserRevisionsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BatchListUserRevisionsRequest.Unmarshal(m, b)
+}
+func (m *BatchListUserRevisionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BatchListUserRevisionsRequest.Marshal(b, m, deterministic)
+}
+func (m *BatchListUserRevisionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BatchListUserRevisionsRequest.Merge(m, src)
+}
+func (m *BatchListUserRevisionsRequest) XXX_Size() int {
+	return xxx_messageInfo_BatchListUserRevisionsRequest.Size(m)
+}
+func (m *BatchListUserRevisionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_BatchListUserRevisionsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BatchListUserRevisionsRequest proto.InternalMessageInfo
+
+func (m *BatchListUserRevisionsRequest) GetDirectoryId() string {
+	if m != nil {
+		return m.DirectoryId
+	}
+	return ""
+}
+
+func (m *BatchListUserRevisionsRequest) GetUserIds() []string {
+	if m != nil {
+		return m.UserIds
+	}
+	return nil
+}
+
+func (m *BatchListUserRevisionsRequest) GetStartRevision() int64 {
+	if m != nil {
+		return m.StartRevision
+	}
 	return 0
+}
+
+func (m *BatchListUserRevisionsRequest) GetEndRevision() int64 {
+	if m != nil {
+		return m.EndRevision
+	}
+	return 0
+}
+
+func (m *BatchListUserRevisionsRequest) GetPageSize() int32 {
+	if m != nil {
+		return m.PageSize
+	}
+	return 0
+}
+
+func (m *BatchListUserRevisionsRequest) GetLastSeenRevision() int64 {
+	if m != nil {
+		return m.LastSeenRevision
+	}
+	return 0
+}
+
+// BatchListUserRevisionsRequest requests user history for multiple users.
+type BatchListUserRevisionsResponse struct {
+	// latest_log_root contains the lastest log root and its consistency proof.
+	LatestLogRoot *LogRoot `protobuf:"bytes,3,opt,name=latest_log_root,json=latestLogRoot,proto3" json:"latest_log_root,omitempty"`
+	// map_revisions represents the list of keys this user_id has contained over time.
+	MapRevisions []*MapRevision `protobuf:"bytes,1,rep,name=map_revisions,json=mapRevisions,proto3" json:"map_revisions,omitempty"`
+	// next_start is the next page token to query for pagination.
+	// next_start is 0 when there are no more results to fetch.
+	NextStart            string   `protobuf:"bytes,2,opt,name=next_start,json=nextStart,proto3" json:"next_start,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *BatchListUserRevisionsResponse) Reset()         { *m = BatchListUserRevisionsResponse{} }
+func (m *BatchListUserRevisionsResponse) String() string { return proto.CompactTextString(m) }
+func (*BatchListUserRevisionsResponse) ProtoMessage()    {}
+func (*BatchListUserRevisionsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{15}
+}
+
+func (m *BatchListUserRevisionsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BatchListUserRevisionsResponse.Unmarshal(m, b)
+}
+func (m *BatchListUserRevisionsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BatchListUserRevisionsResponse.Marshal(b, m, deterministic)
+}
+func (m *BatchListUserRevisionsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BatchListUserRevisionsResponse.Merge(m, src)
+}
+func (m *BatchListUserRevisionsResponse) XXX_Size() int {
+	return xxx_messageInfo_BatchListUserRevisionsResponse.Size(m)
+}
+func (m *BatchListUserRevisionsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_BatchListUserRevisionsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BatchListUserRevisionsResponse proto.InternalMessageInfo
+
+func (m *BatchListUserRevisionsResponse) GetLatestLogRoot() *LogRoot {
+	if m != nil {
+		return m.LatestLogRoot
+	}
+	return nil
+}
+
+func (m *BatchListUserRevisionsResponse) GetMapRevisions() []*MapRevision {
+	if m != nil {
+		return m.MapRevisions
+	}
+	return nil
+}
+
+func (m *BatchListUserRevisionsResponse) GetNextStart() string {
+	if m != nil {
+		return m.NextStart
+	}
+	return ""
 }
 
 // UpdateEntryRequest updates a user's profile.
@@ -748,7 +1033,7 @@ func (m *UpdateEntryRequest) Reset()         { *m = UpdateEntryRequest{} }
 func (m *UpdateEntryRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateEntryRequest) ProtoMessage()    {}
 func (*UpdateEntryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{12}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{16}
 }
 
 func (m *UpdateEntryRequest) XXX_Unmarshal(b []byte) error {
@@ -796,9 +1081,9 @@ type GetEpochRequest struct {
 	DirectoryId string `protobuf:"bytes,5,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	// epoch specifies the epoch number in which mutations will be returned.
 	Epoch int64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	// first_tree_size is the tree_size of the currently trusted log root.
+	// last_seen_revision is the tree_size of the currently trusted log root.
 	// Omitting this field will omit the log consistency proof from the response.
-	FirstTreeSize        int64    `protobuf:"varint,2,opt,name=first_tree_size,json=firstTreeSize,proto3" json:"first_tree_size,omitempty"`
+	LastSeenRevision     int64    `protobuf:"varint,2,opt,name=last_seen_revision,json=lastSeenRevision,proto3" json:"last_seen_revision,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -808,7 +1093,7 @@ func (m *GetEpochRequest) Reset()         { *m = GetEpochRequest{} }
 func (m *GetEpochRequest) String() string { return proto.CompactTextString(m) }
 func (*GetEpochRequest) ProtoMessage()    {}
 func (*GetEpochRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{13}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{17}
 }
 
 func (m *GetEpochRequest) XXX_Unmarshal(b []byte) error {
@@ -843,9 +1128,9 @@ func (m *GetEpochRequest) GetEpoch() int64 {
 	return 0
 }
 
-func (m *GetEpochRequest) GetFirstTreeSize() int64 {
+func (m *GetEpochRequest) GetLastSeenRevision() int64 {
 	if m != nil {
-		return m.FirstTreeSize
+		return m.LastSeenRevision
 	}
 	return 0
 }
@@ -854,9 +1139,9 @@ func (m *GetEpochRequest) GetFirstTreeSize() int64 {
 type GetLatestEpochRequest struct {
 	// directory_id is the directory for which epochs are being requested.
 	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// first_tree_size is the tree_size of the currently trusted log root.
+	// last_seen_revision is the tree_size of the currently trusted log root.
 	// Omitting this field will omit the log consistency proof from the response.
-	FirstTreeSize        int64    `protobuf:"varint,2,opt,name=first_tree_size,json=firstTreeSize,proto3" json:"first_tree_size,omitempty"`
+	LastSeenRevision     int64    `protobuf:"varint,2,opt,name=last_seen_revision,json=lastSeenRevision,proto3" json:"last_seen_revision,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -866,7 +1151,7 @@ func (m *GetLatestEpochRequest) Reset()         { *m = GetLatestEpochRequest{} }
 func (m *GetLatestEpochRequest) String() string { return proto.CompactTextString(m) }
 func (*GetLatestEpochRequest) ProtoMessage()    {}
 func (*GetLatestEpochRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{14}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{18}
 }
 
 func (m *GetLatestEpochRequest) XXX_Unmarshal(b []byte) error {
@@ -894,28 +1179,125 @@ func (m *GetLatestEpochRequest) GetDirectoryId() string {
 	return ""
 }
 
-func (m *GetLatestEpochRequest) GetFirstTreeSize() int64 {
+func (m *GetLatestEpochRequest) GetLastSeenRevision() int64 {
 	if m != nil {
-		return m.FirstTreeSize
+		return m.LastSeenRevision
 	}
 	return 0
 }
 
-// Epoch represents a snapshot of the entire key directory and
-// a diff of what changed between this revision and the previous revision.
-type Epoch struct {
-	// directory_id is the directory identifier.
-	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// map_root contains the signed map root for the sparse Merkle Tree.
-	MapRoot *trillian.SignedMapRoot `protobuf:"bytes,2,opt,name=map_root,json=mapRoot,proto3" json:"map_root,omitempty"`
+// LogRoot contains the latest log root and its consistency proof.
+type LogRoot struct {
 	// log_root is the latest globally consistent log root.
 	LogRoot *trillian.SignedLogRoot `protobuf:"bytes,3,opt,name=log_root,json=logRoot,proto3" json:"log_root,omitempty"`
 	// log_consistency proves that log_root is consistent with previously seen
 	// roots.
-	LogConsistency [][]byte `protobuf:"bytes,4,rep,name=log_consistency,json=logConsistency,proto3" json:"log_consistency,omitempty"`
+	LogConsistency       [][]byte `protobuf:"bytes,4,rep,name=log_consistency,json=logConsistency,proto3" json:"log_consistency,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LogRoot) Reset()         { *m = LogRoot{} }
+func (m *LogRoot) String() string { return proto.CompactTextString(m) }
+func (*LogRoot) ProtoMessage()    {}
+func (*LogRoot) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{19}
+}
+
+func (m *LogRoot) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LogRoot.Unmarshal(m, b)
+}
+func (m *LogRoot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LogRoot.Marshal(b, m, deterministic)
+}
+func (m *LogRoot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogRoot.Merge(m, src)
+}
+func (m *LogRoot) XXX_Size() int {
+	return xxx_messageInfo_LogRoot.Size(m)
+}
+func (m *LogRoot) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogRoot.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LogRoot proto.InternalMessageInfo
+
+func (m *LogRoot) GetLogRoot() *trillian.SignedLogRoot {
+	if m != nil {
+		return m.LogRoot
+	}
+	return nil
+}
+
+func (m *LogRoot) GetLogConsistency() [][]byte {
+	if m != nil {
+		return m.LogConsistency
+	}
+	return nil
+}
+
+// MapRoot contains the map root and its inclusion proof in the log.
+type MapRoot struct {
+	// map_root contains the signed map root for the sparse Merkle Tree.
+	MapRoot *trillian.SignedMapRoot `protobuf:"bytes,2,opt,name=map_root,json=mapRoot,proto3" json:"map_root,omitempty"`
 	// log_inclusion proves that map_root is part of log_root at
 	// index=map_root.MapRevision.
 	LogInclusion         [][]byte `protobuf:"bytes,5,rep,name=log_inclusion,json=logInclusion,proto3" json:"log_inclusion,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *MapRoot) Reset()         { *m = MapRoot{} }
+func (m *MapRoot) String() string { return proto.CompactTextString(m) }
+func (*MapRoot) ProtoMessage()    {}
+func (*MapRoot) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9e925e13aa3e8f7d, []int{20}
+}
+
+func (m *MapRoot) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_MapRoot.Unmarshal(m, b)
+}
+func (m *MapRoot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_MapRoot.Marshal(b, m, deterministic)
+}
+func (m *MapRoot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MapRoot.Merge(m, src)
+}
+func (m *MapRoot) XXX_Size() int {
+	return xxx_messageInfo_MapRoot.Size(m)
+}
+func (m *MapRoot) XXX_DiscardUnknown() {
+	xxx_messageInfo_MapRoot.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MapRoot proto.InternalMessageInfo
+
+func (m *MapRoot) GetMapRoot() *trillian.SignedMapRoot {
+	if m != nil {
+		return m.MapRoot
+	}
+	return nil
+}
+
+func (m *MapRoot) GetLogInclusion() [][]byte {
+	if m != nil {
+		return m.LogInclusion
+	}
+	return nil
+}
+
+// Epoch represents a revision of the entire key directory.
+// a diff of what changed between this revision and the previous revision.
+type Epoch struct {
+	// directory_id is the directory identifier.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// map_root contains the map root and its inclusion in the log.
+	MapRoot *MapRoot `protobuf:"bytes,2,opt,name=map_root,json=mapRoot,proto3" json:"map_root,omitempty"`
+	// latest_log_root contains the most recent log root and its consistency
+	// proof to the client's last seen log root.
+	LatestLogRoot        *LogRoot `protobuf:"bytes,3,opt,name=latest_log_root,json=latestLogRoot,proto3" json:"latest_log_root,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -925,7 +1307,7 @@ func (m *Epoch) Reset()         { *m = Epoch{} }
 func (m *Epoch) String() string { return proto.CompactTextString(m) }
 func (*Epoch) ProtoMessage()    {}
 func (*Epoch) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{15}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{21}
 }
 
 func (m *Epoch) XXX_Unmarshal(b []byte) error {
@@ -953,30 +1335,16 @@ func (m *Epoch) GetDirectoryId() string {
 	return ""
 }
 
-func (m *Epoch) GetMapRoot() *trillian.SignedMapRoot {
+func (m *Epoch) GetMapRoot() *MapRoot {
 	if m != nil {
 		return m.MapRoot
 	}
 	return nil
 }
 
-func (m *Epoch) GetLogRoot() *trillian.SignedLogRoot {
+func (m *Epoch) GetLatestLogRoot() *LogRoot {
 	if m != nil {
-		return m.LogRoot
-	}
-	return nil
-}
-
-func (m *Epoch) GetLogConsistency() [][]byte {
-	if m != nil {
-		return m.LogConsistency
-	}
-	return nil
-}
-
-func (m *Epoch) GetLogInclusion() [][]byte {
-	if m != nil {
-		return m.LogInclusion
+		return m.LatestLogRoot
 	}
 	return nil
 }
@@ -1003,7 +1371,7 @@ func (m *ListMutationsRequest) Reset()         { *m = ListMutationsRequest{} }
 func (m *ListMutationsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsRequest) ProtoMessage()    {}
 func (*ListMutationsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{16}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{22}
 }
 
 func (m *ListMutationsRequest) XXX_Unmarshal(b []byte) error {
@@ -1068,7 +1436,7 @@ func (m *ListMutationsResponse) Reset()         { *m = ListMutationsResponse{} }
 func (m *ListMutationsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsResponse) ProtoMessage()    {}
 func (*ListMutationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9e925e13aa3e8f7d, []int{17}
+	return fileDescriptor_9e925e13aa3e8f7d, []int{23}
 }
 
 func (m *ListMutationsResponse) XXX_Unmarshal(b []byte) error {
@@ -1109,16 +1477,22 @@ func init() {
 	proto.RegisterType((*Entry)(nil), "google.keytransparency.v1.Entry")
 	proto.RegisterType((*MutationProof)(nil), "google.keytransparency.v1.MutationProof")
 	proto.RegisterType((*MapperMetadata)(nil), "google.keytransparency.v1.MapperMetadata")
-	proto.RegisterType((*GetUserRequest)(nil), "google.keytransparency.v1.GetUserRequest")
 	proto.RegisterType((*MapLeaf)(nil), "google.keytransparency.v1.MapLeaf")
+	proto.RegisterType((*MapRevision)(nil), "google.keytransparency.v1.MapRevision")
+	proto.RegisterType((*GetUserRequest)(nil), "google.keytransparency.v1.GetUserRequest")
 	proto.RegisterType((*GetUserResponse)(nil), "google.keytransparency.v1.GetUserResponse")
-	proto.RegisterType((*GetUserBatchRequest)(nil), "google.keytransparency.v1.GetUserBatchRequest")
-	proto.RegisterType((*GetUserBatchResponse)(nil), "google.keytransparency.v1.GetUserBatchResponse")
-	proto.RegisterType((*ListEntryHistoryRequest)(nil), "google.keytransparency.v1.ListEntryHistoryRequest")
-	proto.RegisterType((*ListEntryHistoryResponse)(nil), "google.keytransparency.v1.ListEntryHistoryResponse")
+	proto.RegisterType((*GetUserAtRevisionRequest)(nil), "google.keytransparency.v1.GetUserAtRevisionRequest")
+	proto.RegisterType((*BatchGetUserRequest)(nil), "google.keytransparency.v1.BatchGetUserRequest")
+	proto.RegisterType((*BatchGetUserResponse)(nil), "google.keytransparency.v1.BatchGetUserResponse")
+	proto.RegisterType((*ListUserRevisionsRequest)(nil), "google.keytransparency.v1.ListUserRevisionsRequest")
+	proto.RegisterType((*ListUserRevisionsResponse)(nil), "google.keytransparency.v1.ListUserRevisionsResponse")
+	proto.RegisterType((*BatchListUserRevisionsRequest)(nil), "google.keytransparency.v1.BatchListUserRevisionsRequest")
+	proto.RegisterType((*BatchListUserRevisionsResponse)(nil), "google.keytransparency.v1.BatchListUserRevisionsResponse")
 	proto.RegisterType((*UpdateEntryRequest)(nil), "google.keytransparency.v1.UpdateEntryRequest")
 	proto.RegisterType((*GetEpochRequest)(nil), "google.keytransparency.v1.GetEpochRequest")
 	proto.RegisterType((*GetLatestEpochRequest)(nil), "google.keytransparency.v1.GetLatestEpochRequest")
+	proto.RegisterType((*LogRoot)(nil), "google.keytransparency.v1.LogRoot")
+	proto.RegisterType((*MapRoot)(nil), "google.keytransparency.v1.MapRoot")
 	proto.RegisterType((*Epoch)(nil), "google.keytransparency.v1.Epoch")
 	proto.RegisterType((*ListMutationsRequest)(nil), "google.keytransparency.v1.ListMutationsRequest")
 	proto.RegisterType((*ListMutationsResponse)(nil), "google.keytransparency.v1.ListMutationsResponse")
@@ -1155,12 +1529,15 @@ type KeyTransparencyClient interface {
 	// GetUser returns a user's leaf entry in the Merkle Tree.
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
 	// GetUserBatch returns a batch of user leaf entries in the Merkle tree at the same epoch.
-	GetUserBatch(ctx context.Context, in *GetUserBatchRequest, opts ...grpc.CallOption) (*GetUserBatchResponse, error)
-	// ListEntryHistory returns a list of historic GetUser values.
+	BatchGetUser(ctx context.Context, in *BatchGetUserRequest, opts ...grpc.CallOption) (*BatchGetUserResponse, error)
+	// GetUserAtRevision returns the value of user at a specific revision.
+	GetUserAtRevision(ctx context.Context, in *GetUserAtRevisionRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
+	// ListUserRevisions returns a list of historic GetUser values.
 	//
 	// Clients verify their account history by observing correct values for their
 	// account over time.
-	ListEntryHistory(ctx context.Context, in *ListEntryHistoryRequest, opts ...grpc.CallOption) (*ListEntryHistoryResponse, error)
+	ListUserRevisions(ctx context.Context, in *ListUserRevisionsRequest, opts ...grpc.CallOption) (*ListUserRevisionsResponse, error)
+	BatchListUserRevisions(ctx context.Context, in *BatchListUserRevisionsRequest, opts ...grpc.CallOption) (*BatchListUserRevisionsResponse, error)
 	// QueueUserUpdate enqueues an update to a user's profile.
 	//
 	// Clients should poll GetUser until the update appears, and retry if no
@@ -1285,18 +1662,36 @@ func (c *keyTransparencyClient) GetUser(ctx context.Context, in *GetUserRequest,
 	return out, nil
 }
 
-func (c *keyTransparencyClient) GetUserBatch(ctx context.Context, in *GetUserBatchRequest, opts ...grpc.CallOption) (*GetUserBatchResponse, error) {
-	out := new(GetUserBatchResponse)
-	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/GetUserBatch", in, out, opts...)
+func (c *keyTransparencyClient) BatchGetUser(ctx context.Context, in *BatchGetUserRequest, opts ...grpc.CallOption) (*BatchGetUserResponse, error) {
+	out := new(BatchGetUserResponse)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/BatchGetUser", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencyClient) ListEntryHistory(ctx context.Context, in *ListEntryHistoryRequest, opts ...grpc.CallOption) (*ListEntryHistoryResponse, error) {
-	out := new(ListEntryHistoryResponse)
-	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/ListEntryHistory", in, out, opts...)
+func (c *keyTransparencyClient) GetUserAtRevision(ctx context.Context, in *GetUserAtRevisionRequest, opts ...grpc.CallOption) (*GetUserResponse, error) {
+	out := new(GetUserResponse)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/GetUserAtRevision", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyTransparencyClient) ListUserRevisions(ctx context.Context, in *ListUserRevisionsRequest, opts ...grpc.CallOption) (*ListUserRevisionsResponse, error) {
+	out := new(ListUserRevisionsResponse)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/ListUserRevisions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyTransparencyClient) BatchListUserRevisions(ctx context.Context, in *BatchListUserRevisionsRequest, opts ...grpc.CallOption) (*BatchListUserRevisionsResponse, error) {
+	out := new(BatchListUserRevisionsResponse)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/BatchListUserRevisions", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1333,12 +1728,15 @@ type KeyTransparencyServer interface {
 	// GetUser returns a user's leaf entry in the Merkle Tree.
 	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
 	// GetUserBatch returns a batch of user leaf entries in the Merkle tree at the same epoch.
-	GetUserBatch(context.Context, *GetUserBatchRequest) (*GetUserBatchResponse, error)
-	// ListEntryHistory returns a list of historic GetUser values.
+	BatchGetUser(context.Context, *BatchGetUserRequest) (*BatchGetUserResponse, error)
+	// GetUserAtRevision returns the value of user at a specific revision.
+	GetUserAtRevision(context.Context, *GetUserAtRevisionRequest) (*GetUserResponse, error)
+	// ListUserRevisions returns a list of historic GetUser values.
 	//
 	// Clients verify their account history by observing correct values for their
 	// account over time.
-	ListEntryHistory(context.Context, *ListEntryHistoryRequest) (*ListEntryHistoryResponse, error)
+	ListUserRevisions(context.Context, *ListUserRevisionsRequest) (*ListUserRevisionsResponse, error)
+	BatchListUserRevisions(context.Context, *BatchListUserRevisionsRequest) (*BatchListUserRevisionsResponse, error)
 	// QueueUserUpdate enqueues an update to a user's profile.
 	//
 	// Clients should poll GetUser until the update appears, and retry if no
@@ -1482,38 +1880,74 @@ func _KeyTransparency_GetUser_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparency_GetUserBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserBatchRequest)
+func _KeyTransparency_BatchGetUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetUserRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyTransparencyServer).GetUserBatch(ctx, in)
+		return srv.(KeyTransparencyServer).BatchGetUser(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/google.keytransparency.v1.KeyTransparency/GetUserBatch",
+		FullMethod: "/google.keytransparency.v1.KeyTransparency/BatchGetUser",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyServer).GetUserBatch(ctx, req.(*GetUserBatchRequest))
+		return srv.(KeyTransparencyServer).BatchGetUser(ctx, req.(*BatchGetUserRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparency_ListEntryHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListEntryHistoryRequest)
+func _KeyTransparency_GetUserAtRevision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserAtRevisionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyTransparencyServer).ListEntryHistory(ctx, in)
+		return srv.(KeyTransparencyServer).GetUserAtRevision(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/google.keytransparency.v1.KeyTransparency/ListEntryHistory",
+		FullMethod: "/google.keytransparency.v1.KeyTransparency/GetUserAtRevision",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyServer).ListEntryHistory(ctx, req.(*ListEntryHistoryRequest))
+		return srv.(KeyTransparencyServer).GetUserAtRevision(ctx, req.(*GetUserAtRevisionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyTransparency_ListUserRevisions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUserRevisionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyTransparencyServer).ListUserRevisions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/google.keytransparency.v1.KeyTransparency/ListUserRevisions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyTransparencyServer).ListUserRevisions(ctx, req.(*ListUserRevisionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyTransparency_BatchListUserRevisions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchListUserRevisionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyTransparencyServer).BatchListUserRevisions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/google.keytransparency.v1.KeyTransparency/BatchListUserRevisions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyTransparencyServer).BatchListUserRevisions(ctx, req.(*BatchListUserRevisionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1561,12 +1995,20 @@ var _KeyTransparency_serviceDesc = grpc.ServiceDesc{
 			Handler:    _KeyTransparency_GetUser_Handler,
 		},
 		{
-			MethodName: "GetUserBatch",
-			Handler:    _KeyTransparency_GetUserBatch_Handler,
+			MethodName: "BatchGetUser",
+			Handler:    _KeyTransparency_BatchGetUser_Handler,
 		},
 		{
-			MethodName: "ListEntryHistory",
-			Handler:    _KeyTransparency_ListEntryHistory_Handler,
+			MethodName: "GetUserAtRevision",
+			Handler:    _KeyTransparency_GetUserAtRevision_Handler,
+		},
+		{
+			MethodName: "ListUserRevisions",
+			Handler:    _KeyTransparency_ListUserRevisions_Handler,
+		},
+		{
+			MethodName: "BatchListUserRevisions",
+			Handler:    _KeyTransparency_BatchListUserRevisions_Handler,
 		},
 		{
 			MethodName: "QueueEntryUpdate",
@@ -1591,93 +2033,107 @@ var _KeyTransparency_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("v1/keytransparency.proto", fileDescriptor_9e925e13aa3e8f7d) }
 
 var fileDescriptor_9e925e13aa3e8f7d = []byte{
-	// 1399 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x58, 0xcf, 0x6f, 0x1b, 0xc5,
-	0x17, 0xd7, 0xc6, 0x76, 0x6c, 0xbf, 0xd8, 0x49, 0x34, 0x4d, 0xdb, 0xad, 0xfb, 0x6d, 0x95, 0xef,
-	0x82, 0x4a, 0x41, 0xd4, 0x9b, 0xa4, 0x25, 0xd0, 0x08, 0x5a, 0x94, 0xb4, 0x49, 0x93, 0x26, 0xa2,
-	0x6c, 0xda, 0x0b, 0x97, 0xd5, 0xc4, 0x7e, 0xb1, 0x57, 0x59, 0xef, 0x6c, 0x76, 0x66, 0xad, 0xba,
-	0x51, 0x0e, 0x20, 0x21, 0x10, 0x20, 0xf5, 0x80, 0x84, 0x10, 0x77, 0xe0, 0xc0, 0x11, 0x89, 0x03,
-	0x48, 0xfc, 0x13, 0xfc, 0x03, 0x1c, 0xf8, 0x43, 0xd0, 0xcc, 0xee, 0xfa, 0x47, 0xe2, 0x3a, 0x6b,
-	0xda, 0x93, 0x77, 0xde, 0xbe, 0xf7, 0xe6, 0x33, 0x9f, 0xf7, 0x6b, 0xbc, 0xa0, 0xb7, 0x17, 0xcd,
-	0x03, 0xec, 0x88, 0x80, 0x7a, 0xdc, 0xa7, 0x01, 0x7a, 0xb5, 0x4e, 0xd5, 0x0f, 0x98, 0x60, 0xe4,
-	0x52, 0x83, 0xb1, 0x86, 0x8b, 0xd5, 0x93, 0x6f, 0xdb, 0x8b, 0x95, 0xff, 0x45, 0xaf, 0x4c, 0xea,
-	0x3b, 0x26, 0xf5, 0x3c, 0x26, 0xa8, 0x70, 0x98, 0xc7, 0x23, 0xc3, 0xca, 0xe5, 0xf8, 0xad, 0x5a,
-	0xed, 0x85, 0xfb, 0x26, 0xb6, 0x7c, 0x11, 0x7b, 0xad, 0x4c, 0x8b, 0xc0, 0x71, 0x5d, 0x87, 0x7a,
-	0xf1, 0xfa, 0x42, 0xb2, 0xb6, 0x5b, 0xd4, 0xb7, 0xa9, 0xef, 0xc4, 0x72, 0x10, 0x8e, 0x77, 0x90,
-	0xd8, 0xb4, 0x17, 0x4d, 0x5a, 0x6f, 0x39, 0xb1, 0x8d, 0xb1, 0x08, 0xc5, 0x35, 0xd6, 0x6a, 0x39,
-	0x42, 0x60, 0x9d, 0xcc, 0x42, 0xe6, 0x00, 0x3b, 0xba, 0x36, 0xaf, 0x5d, 0x2f, 0x59, 0xf2, 0x91,
-	0x10, 0xc8, 0xd6, 0xa9, 0xa0, 0xfa, 0x84, 0x12, 0xa9, 0x67, 0xe3, 0xb9, 0x06, 0x53, 0xf7, 0x3d,
-	0x11, 0x74, 0x9e, 0xf8, 0x75, 0x2a, 0x90, 0xbc, 0x0f, 0x85, 0x56, 0x18, 0xc1, 0x56, 0x7a, 0x53,
-	0x4b, 0xf3, 0xd5, 0x17, 0x9e, 0xb7, 0xaa, 0x2c, 0xad, 0xae, 0x05, 0x59, 0x85, 0x62, 0x2d, 0x01,
-	0xa0, 0x67, 0x94, 0xf9, 0xeb, 0x23, 0xcc, 0xbb, 0x60, 0xad, 0x9e, 0x99, 0xf1, 0xa7, 0x06, 0x39,
-	0xe5, 0x97, 0xcc, 0x41, 0xce, 0xf1, 0xea, 0xf8, 0x54, 0x79, 0x2a, 0x59, 0xd1, 0x82, 0x5c, 0x05,
-	0x88, 0x94, 0x5b, 0xe8, 0x09, 0x7d, 0x52, 0xbd, 0xea, 0x93, 0x90, 0x35, 0x98, 0xa1, 0xa1, 0x68,
-	0xb2, 0xc0, 0x79, 0x86, 0x75, 0xfb, 0x00, 0x3b, 0x5c, 0xcf, 0x2b, 0x24, 0x95, 0x04, 0x49, 0x2d,
-	0xe8, 0xf8, 0x82, 0x55, 0x15, 0x91, 0x0f, 0xb1, 0xc3, 0x51, 0x58, 0xd3, 0x3d, 0x13, 0x29, 0x21,
-	0x15, 0x28, 0xf8, 0x01, 0xb6, 0x1d, 0x16, 0x72, 0xbd, 0xa0, 0xb6, 0xe8, 0xae, 0x25, 0x00, 0xee,
-	0x34, 0x3c, 0x2a, 0xc2, 0x00, 0xb9, 0x3e, 0x31, 0x9f, 0x91, 0x00, 0x7a, 0x12, 0xe3, 0x4b, 0x0d,
-	0xca, 0x3b, 0x31, 0x23, 0x8f, 0x02, 0xc6, 0xf6, 0x07, 0x48, 0xd5, 0xc6, 0x26, 0xf5, 0x36, 0x80,
-	0x8b, 0x74, 0xdf, 0xf6, 0xa5, 0xaf, 0x38, 0x28, 0x95, 0x6a, 0x37, 0x5d, 0x76, 0xa8, 0xbf, 0x8d,
-	0x74, 0x7f, 0xd3, 0xab, 0xb9, 0x21, 0x77, 0x98, 0x67, 0x15, 0xa5, 0xb6, 0xda, 0xd8, 0xf8, 0x08,
-	0xa6, 0x77, 0xa8, 0xef, 0x63, 0xb0, 0x83, 0x82, 0xca, 0x78, 0x93, 0x0f, 0xe0, 0x72, 0xd3, 0x69,
-	0x34, 0x91, 0x0b, 0x7b, 0x3f, 0x74, 0xdd, 0x8e, 0x5d, 0x63, 0x2d, 0xdf, 0x45, 0x81, 0x75, 0x9b,
-	0xe3, 0xa1, 0x42, 0x97, 0xb1, 0xf4, 0x58, 0x65, 0x5d, 0x6a, 0xac, 0x25, 0x0a, 0xbb, 0x78, 0x68,
-	0x08, 0x98, 0xde, 0x40, 0xf1, 0x84, 0x63, 0x60, 0xe1, 0x61, 0x88, 0x5c, 0x90, 0xff, 0x43, 0xa9,
-	0xee, 0x04, 0x58, 0x13, 0x2c, 0xe8, 0xd8, 0x4e, 0x5d, 0x79, 0x28, 0x5a, 0x53, 0x5d, 0xd9, 0x66,
-	0x9d, 0x5c, 0x84, 0x7c, 0xc8, 0x31, 0x90, 0x6f, 0x27, 0xd4, 0xdb, 0x49, 0xb9, 0xdc, 0xac, 0x93,
-	0x6b, 0x30, 0xb3, 0xef, 0x04, 0x5c, 0xd8, 0x22, 0x40, 0xb4, 0xb9, 0xf3, 0x0c, 0x55, 0xa8, 0x33,
-	0x56, 0x59, 0x89, 0x1f, 0x07, 0x88, 0xbb, 0xce, 0x33, 0x34, 0x7e, 0xd1, 0x20, 0x1f, 0x1f, 0x93,
-	0x5c, 0x86, 0x62, 0x3b, 0x48, 0xc8, 0x88, 0x92, 0xbb, 0xd0, 0x0e, 0xa2, 0xf3, 0x92, 0xbb, 0x50,
-	0x96, 0xd5, 0xe2, 0x24, 0x5c, 0xa4, 0x60, 0xab, 0xd4, 0xa2, 0x7e, 0x77, 0xf5, 0x4a, 0x12, 0xf8,
-	0x53, 0x0d, 0x66, 0xba, 0x24, 0x71, 0x9f, 0x79, 0x1c, 0xc9, 0x32, 0xe4, 0xd0, 0x67, 0xb5, 0x66,
-	0x9a, 0xf0, 0x4b, 0x3d, 0x2b, 0x52, 0x27, 0xcb, 0x90, 0x95, 0xd1, 0x8c, 0xcf, 0x61, 0x8c, 0x30,
-	0x8b, 0x0f, 0x66, 0x29, 0x7d, 0xe3, 0x08, 0xce, 0xc5, 0x10, 0x56, 0xa9, 0xa8, 0x35, 0xc7, 0x08,
-	0xd6, 0x25, 0x28, 0xc4, 0xc1, 0x8a, 0x72, 0xbb, 0x68, 0xe5, 0xa3, 0x68, 0xf1, 0xd4, 0xe1, 0xfa,
-	0x4a, 0x83, 0xb9, 0xc1, 0xdd, 0x5f, 0x92, 0x85, 0x15, 0x98, 0x74, 0x91, 0xb6, 0xe3, 0x6a, 0x4b,
-	0xc7, 0x43, 0x6c, 0x61, 0xfc, 0xa6, 0xc1, 0xc5, 0x6d, 0x87, 0x0b, 0x55, 0x55, 0x0f, 0x1c, 0x2e,
-	0x8f, 0xf9, 0x22, 0x3a, 0x26, 0x47, 0xe6, 0xae, 0x36, 0x90, 0xbb, 0x73, 0x90, 0xe3, 0x82, 0x06,
-	0x42, 0x85, 0x26, 0x63, 0x45, 0x0b, 0x99, 0x9d, 0x3e, 0x6d, 0xf4, 0x91, 0x93, 0xb3, 0x0a, 0x52,
-	0x20, 0x79, 0x19, 0xc6, 0x5f, 0x6e, 0x08, 0x7f, 0x5b, 0xd9, 0x42, 0x76, 0x36, 0x67, 0x1c, 0x83,
-	0x7e, 0x1a, 0x77, 0x4c, 0xe4, 0x2a, 0x4c, 0xb6, 0xa9, 0x1b, 0x22, 0xd7, 0x35, 0x45, 0xc8, 0x5b,
-	0x23, 0x08, 0x39, 0x91, 0x8a, 0x56, 0x6c, 0x49, 0xae, 0x00, 0x78, 0xf8, 0x54, 0xd8, 0xfd, 0xa7,
-	0x28, 0x4a, 0xc9, 0xae, 0x14, 0x18, 0x3f, 0x6b, 0x40, 0xa2, 0x99, 0x10, 0xf5, 0xa3, 0x17, 0x50,
-	0x96, 0x1b, 0x83, 0xb2, 0x4d, 0x28, 0xa1, 0xf4, 0x65, 0x87, 0xca, 0xaf, 0x9e, 0x55, 0x59, 0x70,
-	0xed, 0xac, 0x56, 0x18, 0xa1, 0xb0, 0xa6, 0xb0, 0xb7, 0xd8, 0xca, 0x16, 0x26, 0x66, 0x33, 0x5b,
-	0xd9, 0x42, 0x66, 0x36, 0x6b, 0x04, 0xaa, 0xdc, 0xa2, 0x84, 0x49, 0x8f, 0x72, 0xae, 0x3f, 0x17,
-	0x33, 0x49, 0xa6, 0x0d, 0x09, 0xd1, 0xc4, 0xb0, 0x14, 0xdf, 0x83, 0xf3, 0x1b, 0x28, 0xb6, 0xa9,
-	0x40, 0x3e, 0x7a, 0xe7, 0x21, 0x15, 0x96, 0x76, 0x8f, 0xbf, 0xe5, 0x20, 0x54, 0xa8, 0x52, 0x38,
-	0x5d, 0x82, 0x82, 0xec, 0x7c, 0x01, 0x63, 0x22, 0x6e, 0x16, 0x17, 0x7b, 0x4d, 0x6f, 0xd7, 0x69,
-	0x78, 0x58, 0xdf, 0xa1, 0xbe, 0xc5, 0x98, 0xb0, 0xf2, 0xad, 0xe8, 0x41, 0xda, 0xb8, 0xac, 0x11,
-	0xd9, 0x64, 0x86, 0xdb, 0x6c, 0xb3, 0x46, 0x64, 0xe3, 0x46, 0x0f, 0xe4, 0x0d, 0x98, 0x91, 0x36,
-	0x35, 0xe6, 0x71, 0x87, 0x0b, 0x19, 0x27, 0x3d, 0xab, 0x26, 0xe0, 0xb4, 0xcb, 0x1a, 0x6b, 0x3d,
-	0x29, 0x79, 0x0d, 0xca, 0x52, 0xb1, 0xd7, 0x8a, 0x73, 0x4a, 0xad, 0xe4, 0xb2, 0x46, 0xb7, 0xdd,
-	0x1a, 0x5f, 0x6b, 0x30, 0x27, 0x93, 0x3c, 0x19, 0x97, 0xfc, 0xa5, 0x03, 0x78, 0x05, 0x40, 0x15,
-	0xa0, 0x60, 0x07, 0xe8, 0xa9, 0x53, 0x15, 0x2d, 0x55, 0x92, 0x8f, 0xa5, 0x60, 0xb0, 0x3e, 0xb3,
-	0x83, 0xf5, 0x69, 0x7c, 0xa1, 0xc1, 0xf9, 0x13, 0x68, 0xe2, 0x7a, 0x5b, 0x87, 0x62, 0x32, 0x8e,
-	0xb9, 0x3e, 0xa9, 0x4a, 0xee, 0xfa, 0xa8, 0x1e, 0xd4, 0x3f, 0xfd, 0xad, 0x9e, 0xa9, 0x0c, 0xbd,
-	0xaa, 0xb9, 0x3e, 0x88, 0x79, 0x05, 0xb1, 0x2c, 0xc5, 0x8f, 0x12, 0x98, 0x4b, 0x9f, 0x97, 0x61,
-	0xe6, 0x21, 0x76, 0x1e, 0xf7, 0xf9, 0x25, 0xdf, 0x68, 0x50, 0xda, 0x40, 0x71, 0x2f, 0xa1, 0x80,
-	0x54, 0x47, 0x17, 0x7d, 0x57, 0x31, 0xe6, 0xb4, 0x32, 0x6a, 0x90, 0x75, 0x95, 0x8d, 0x6b, 0x9f,
-	0xfd, 0xf5, 0xcf, 0xb7, 0x13, 0xf3, 0xe4, 0xaa, 0xd9, 0x5e, 0x34, 0x13, 0xbe, 0x1d, 0xe4, 0xe6,
-	0x51, 0x7f, 0x40, 0x8e, 0xc9, 0x73, 0x0d, 0x0a, 0x49, 0xd9, 0x91, 0x33, 0xfa, 0x4f, 0x7f, 0x85,
-	0x54, 0xce, 0xec, 0xfa, 0xc6, 0x3b, 0x0a, 0x82, 0x49, 0x6e, 0x8c, 0x86, 0x60, 0xaa, 0x88, 0x73,
-	0xf3, 0x48, 0xfd, 0x1e, 0x93, 0x1f, 0x34, 0x75, 0x39, 0xe9, 0x2b, 0x4a, 0xb2, 0x30, 0x1a, 0xd7,
-	0xe9, 0xfa, 0x4d, 0x81, 0xee, 0x96, 0x42, 0x57, 0x25, 0x6f, 0xa7, 0x42, 0xb7, 0xe2, 0xaa, 0x3d,
-	0xc8, 0x77, 0x11, 0x38, 0xe5, 0x62, 0x57, 0x04, 0x48, 0x5b, 0xaf, 0x98, 0xb4, 0x31, 0x61, 0x71,
-	0x85, 0x61, 0x41, 0x23, 0xbf, 0x6a, 0x50, 0x1e, 0x48, 0x7a, 0x62, 0x8e, 0xd8, 0x6b, 0x58, 0xb1,
-	0x56, 0x16, 0xd2, 0x1b, 0x44, 0xf5, 0x64, 0xdc, 0x55, 0x60, 0x6f, 0x93, 0x77, 0xc7, 0x8a, 0xb0,
-	0xd9, 0x2b, 0xa4, 0xdf, 0x35, 0x38, 0x37, 0xe0, 0x3a, 0xe6, 0x74, 0x6c, 0xec, 0xa9, 0xcb, 0xd8,
-	0x58, 0x57, 0x98, 0x3f, 0x24, 0x77, 0xfe, 0x23, 0xe6, 0x1e, 0xe5, 0xdf, 0x6b, 0x90, 0x8f, 0xa7,
-	0x32, 0x79, 0x33, 0xcd, 0xe4, 0x8e, 0xa0, 0x8e, 0x31, 0xe4, 0x8d, 0x65, 0x05, 0x76, 0x81, 0x54,
-	0xcf, 0x00, 0x2b, 0x27, 0x33, 0x37, 0x8f, 0xe2, 0x79, 0x7d, 0x4c, 0x7e, 0x8a, 0x9a, 0x4c, 0xf7,
-	0xea, 0x76, 0x56, 0x93, 0x39, 0x79, 0xc3, 0xac, 0x98, 0xa9, 0xf5, 0x63, 0xa4, 0x69, 0x8b, 0x5d,
-	0x21, 0x5d, 0xd9, 0x93, 0xb6, 0x1b, 0x28, 0xc8, 0x1f, 0x1a, 0xcc, 0x9e, 0xbc, 0x1e, 0x91, 0xa5,
-	0x33, 0xa2, 0x3f, 0xe4, 0x0e, 0x58, 0xb9, 0x39, 0x96, 0x4d, 0x0c, 0xfa, 0x8e, 0x02, 0xfd, 0x1e,
-	0x59, 0x1e, 0x8f, 0x5e, 0xb3, 0x19, 0x03, 0xfd, 0x51, 0x83, 0xd9, 0x8f, 0x43, 0x0c, 0xb1, 0xff,
-	0xaf, 0xf7, 0x8d, 0x11, 0x48, 0x4e, 0xdf, 0xc4, 0x2a, 0x17, 0x12, 0xf5, 0xe4, 0x73, 0x42, 0xf5,
-	0x7e, 0xcb, 0x17, 0x1d, 0x63, 0x4b, 0x61, 0xbb, 0x67, 0xdc, 0x1a, 0x0f, 0xdb, 0xca, 0xa1, 0xc4,
-	0xb3, 0x32, 0x70, 0x43, 0x5b, 0x7d, 0xf0, 0xc9, 0x7a, 0xc3, 0x11, 0xcd, 0x70, 0xaf, 0x5a, 0x63,
-	0x2d, 0x33, 0xfe, 0x7c, 0x71, 0x02, 0x9e, 0x59, 0x63, 0x41, 0xf4, 0xc5, 0xe3, 0xf4, 0x17, 0x13,
-	0xbb, 0xc1, 0xec, 0x08, 0xde, 0xa4, 0xfa, 0xb9, 0xf9, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xa6,
-	0x23, 0xc7, 0xdf, 0x57, 0x11, 0x00, 0x00,
+	// 1622 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x98, 0xcf, 0x6f, 0xdb, 0x46,
+	0x16, 0xc7, 0x31, 0xfa, 0x61, 0x49, 0xcf, 0xf2, 0x8f, 0x4c, 0x9c, 0x44, 0x91, 0x37, 0x81, 0xc3,
+	0xdd, 0xcd, 0x66, 0x83, 0x44, 0xb4, 0x9d, 0x6c, 0x36, 0x31, 0x36, 0x9b, 0xc4, 0x4e, 0xec, 0xda,
+	0xb1, 0xd1, 0x94, 0x4e, 0x2e, 0xbd, 0x08, 0xb4, 0x34, 0x96, 0x09, 0x53, 0x1c, 0x9a, 0x33, 0x12,
+	0x22, 0x1b, 0x3e, 0xb4, 0x97, 0x16, 0x6d, 0x81, 0x1c, 0x0a, 0x14, 0x45, 0x7b, 0xe9, 0xa5, 0x28,
+	0x8a, 0x1e, 0x8b, 0x5e, 0x7a, 0x28, 0x0a, 0x14, 0xfd, 0x0b, 0x72, 0xe9, 0x1f, 0xd0, 0x7f, 0xa0,
+	0xfd, 0x0b, 0x8a, 0x19, 0x0e, 0x29, 0xc9, 0x92, 0x68, 0x31, 0xf1, 0xa1, 0x3d, 0x59, 0x33, 0x7c,
+	0x6f, 0xe6, 0x33, 0xdf, 0xf7, 0xe6, 0xf9, 0x91, 0x50, 0x68, 0xce, 0xe9, 0xbb, 0xa4, 0xc5, 0x3d,
+	0xd3, 0x61, 0xae, 0xe9, 0x11, 0xa7, 0xd2, 0x2a, 0xb9, 0x1e, 0xe5, 0x14, 0x9f, 0xaf, 0x51, 0x5a,
+	0xb3, 0x49, 0xe9, 0xe8, 0xd3, 0xe6, 0x5c, 0xf1, 0x6f, 0xfe, 0x23, 0xdd, 0x74, 0x2d, 0xdd, 0x74,
+	0x1c, 0xca, 0x4d, 0x6e, 0x51, 0x87, 0xf9, 0x8e, 0xc5, 0x69, 0xf5, 0x54, 0x8e, 0xb6, 0x1a, 0xdb,
+	0x3a, 0xa9, 0xbb, 0x5c, 0xad, 0x5a, 0x1c, 0xe7, 0x9e, 0x65, 0xdb, 0x96, 0xe9, 0xa8, 0xf1, 0xd9,
+	0x60, 0x5c, 0xae, 0x9b, 0x6e, 0xd9, 0x74, 0x2d, 0x35, 0x0f, 0xdc, 0x72, 0x76, 0x03, 0x9f, 0xe6,
+	0x9c, 0x6e, 0x56, 0xeb, 0x96, 0xf2, 0xd1, 0xe6, 0x20, 0xb7, 0x44, 0xeb, 0x75, 0x8b, 0x73, 0x52,
+	0xc5, 0x93, 0x90, 0xdc, 0x25, 0xad, 0x02, 0x9a, 0x41, 0x57, 0xf2, 0x86, 0xf8, 0x89, 0x31, 0xa4,
+	0xaa, 0x26, 0x37, 0x0b, 0x09, 0x39, 0x25, 0x7f, 0x6b, 0x2f, 0x10, 0x8c, 0x3e, 0x72, 0xb8, 0xd7,
+	0x7a, 0xe6, 0x56, 0x4d, 0x4e, 0xf0, 0xff, 0x20, 0x5b, 0x6f, 0xf8, 0xd8, 0xd2, 0x6e, 0x74, 0x7e,
+	0xa6, 0x34, 0xf0, 0xbc, 0x25, 0xe9, 0x69, 0x84, 0x1e, 0x78, 0x11, 0x72, 0x95, 0x00, 0xa0, 0x90,
+	0x94, 0xee, 0xff, 0x88, 0x70, 0x0f, 0x61, 0x8d, 0xb6, 0x9b, 0xf6, 0x03, 0x82, 0xb4, 0x5c, 0x17,
+	0x4f, 0x41, 0xda, 0x72, 0xaa, 0xe4, 0xb9, 0x5c, 0x29, 0x6f, 0xf8, 0x03, 0x7c, 0x11, 0xc0, 0x37,
+	0xae, 0x13, 0x87, 0x17, 0x46, 0xe4, 0xa3, 0x8e, 0x19, 0xbc, 0x04, 0x13, 0x66, 0x83, 0xef, 0x50,
+	0xcf, 0xda, 0x27, 0xd5, 0xf2, 0x2e, 0x69, 0xb1, 0x42, 0x46, 0x92, 0x14, 0x03, 0x92, 0x8a, 0xd7,
+	0x72, 0x39, 0x2d, 0x49, 0x21, 0x1f, 0x93, 0x16, 0x23, 0xdc, 0x18, 0x6f, 0xbb, 0x88, 0x19, 0x5c,
+	0x84, 0xac, 0xeb, 0x91, 0xa6, 0x45, 0x1b, 0xac, 0x90, 0x95, 0x5b, 0x84, 0x63, 0x01, 0xc0, 0xac,
+	0x9a, 0x63, 0xf2, 0x86, 0x47, 0x58, 0x21, 0x31, 0x93, 0x14, 0x00, 0xed, 0x19, 0xed, 0x7d, 0x04,
+	0x63, 0x1b, 0x4a, 0x91, 0x27, 0x1e, 0xa5, 0xdb, 0x5d, 0xa2, 0xa2, 0xd8, 0xa2, 0xde, 0x01, 0xb0,
+	0x89, 0xb9, 0x5d, 0x76, 0xc5, 0x5a, 0x2a, 0x28, 0xc5, 0x52, 0x98, 0x2e, 0x1b, 0xa6, 0xbb, 0x4e,
+	0xcc, 0xed, 0x55, 0xa7, 0x62, 0x37, 0x98, 0x45, 0x1d, 0x23, 0x27, 0xac, 0xe5, 0xc6, 0xda, 0x9b,
+	0x30, 0xbe, 0x61, 0xba, 0x2e, 0xf1, 0x36, 0x08, 0x37, 0x45, 0xbc, 0xf1, 0x5d, 0x98, 0xde, 0xb1,
+	0x6a, 0x3b, 0x84, 0xf1, 0xf2, 0x76, 0xc3, 0xb6, 0x5b, 0xe5, 0x0a, 0xad, 0xbb, 0x36, 0xe1, 0xa4,
+	0x5a, 0x66, 0x64, 0x4f, 0xd2, 0x25, 0x8d, 0x82, 0x32, 0x59, 0x16, 0x16, 0x4b, 0x81, 0xc1, 0x26,
+	0xd9, 0xd3, 0xbe, 0x41, 0x90, 0x51, 0x1b, 0xe2, 0x69, 0xc8, 0x35, 0xbd, 0x00, 0xcb, 0x4f, 0xb3,
+	0x6c, 0xd3, 0xf3, 0x77, 0xc6, 0xf7, 0x60, 0x4c, 0xe4, 0xad, 0x15, 0x50, 0x0d, 0xc1, 0x9d, 0xaf,
+	0x9b, 0x6e, 0x38, 0x3a, 0x91, 0x54, 0x12, 0xc9, 0xbd, 0x61, 0xba, 0x06, 0x69, 0x5a, 0x72, 0xcd,
+	0xbb, 0x90, 0x15, 0x50, 0x1e, 0xa5, 0x5c, 0xc5, 0x41, 0x8b, 0x58, 0x52, 0x78, 0x52, 0xca, 0x8d,
+	0x4c, 0xdd, 0xff, 0x81, 0x1f, 0x00, 0x08, 0x77, 0x9b, 0x98, 0x4d, 0x15, 0xf8, 0x63, 0x17, 0x10,
+	0x27, 0x34, 0x72, 0x75, 0xf9, 0xa3, 0x49, 0x98, 0xb6, 0x0f, 0xe3, 0x2b, 0x84, 0x3f, 0x63, 0xc4,
+	0x33, 0xc8, 0x5e, 0x83, 0x30, 0x8e, 0x2f, 0x41, 0xbe, 0x6a, 0x79, 0xa4, 0xc2, 0xa9, 0xd7, 0x2a,
+	0x5b, 0x55, 0xc9, 0x95, 0x33, 0x46, 0xc3, 0xb9, 0xd5, 0x2a, 0x3e, 0x07, 0x99, 0x06, 0x23, 0x9e,
+	0x78, 0x9a, 0x90, 0x4f, 0x47, 0xc4, 0x70, 0xb5, 0x8a, 0xaf, 0x01, 0xb6, 0x4d, 0xc6, 0xcb, 0x8c,
+	0x10, 0xa7, 0xec, 0xa9, 0x53, 0x4a, 0xb1, 0x92, 0xc6, 0xa4, 0x78, 0xb2, 0x49, 0x88, 0x13, 0x9c,
+	0x5e, 0x7b, 0x07, 0xc1, 0x44, 0xb8, 0x39, 0x73, 0xa9, 0xc3, 0x08, 0xbe, 0x05, 0x69, 0xe2, 0xd2,
+	0xca, 0xce, 0x30, 0x69, 0x29, 0xec, 0x0c, 0xdf, 0x1c, 0xdf, 0x82, 0x94, 0xc8, 0x32, 0x15, 0xd5,
+	0x61, 0x44, 0x90, 0xf6, 0xda, 0x17, 0x08, 0x0a, 0x8a, 0xe1, 0x01, 0x0f, 0xc8, 0x4e, 0x42, 0x8a,
+	0x22, 0x64, 0x43, 0x01, 0x52, 0x52, 0x80, 0x70, 0x1c, 0x5f, 0xa6, 0xd3, 0x8b, 0x26, 0xaf, 0xec,
+	0xc4, 0x0f, 0xd4, 0x79, 0xc8, 0x2a, 0x3a, 0x3f, 0x3d, 0x72, 0x46, 0xc6, 0xc7, 0x63, 0x31, 0x19,
+	0x3e, 0x40, 0x30, 0xd5, 0xcd, 0xf0, 0x9a, 0xf1, 0x5a, 0x80, 0x91, 0xd8, 0x69, 0xab, 0x3c, 0xb4,
+	0xdf, 0x10, 0x14, 0xd6, 0x2d, 0xa6, 0x40, 0x7c, 0x42, 0x36, 0x48, 0x95, 0x91, 0xc8, 0x98, 0xa1,
+	0xae, 0x98, 0xfd, 0x13, 0xc6, 0x19, 0x37, 0x3d, 0xde, 0xd6, 0x23, 0x21, 0xf5, 0x18, 0x93, 0xb3,
+	0xe1, 0xad, 0xbd, 0x04, 0x79, 0xe2, 0x54, 0xdb, 0x46, 0x19, 0x69, 0x34, 0x4a, 0x9c, 0x6a, 0x68,
+	0x32, 0x0d, 0x39, 0xd7, 0xac, 0x91, 0x32, 0xb3, 0xf6, 0x89, 0x14, 0x35, 0x6d, 0x64, 0xc5, 0xc4,
+	0xa6, 0xb5, 0x4f, 0x06, 0x48, 0x9f, 0xee, 0x2f, 0xfd, 0x5a, 0x2a, 0x9b, 0x9a, 0x4c, 0x6b, 0x2f,
+	0x11, 0x9c, 0xef, 0x73, 0x66, 0x15, 0x85, 0x35, 0x98, 0xb0, 0x4d, 0x2e, 0x6a, 0xa8, 0x4d, 0x6b,
+	0x7e, 0x39, 0x49, 0x1e, 0x7b, 0x11, 0xd6, 0x69, 0x4d, 0x96, 0x93, 0x31, 0xdf, 0x55, 0x0d, 0xf1,
+	0x63, 0xbf, 0x50, 0x06, 0x5c, 0xac, 0x80, 0x64, 0x80, 0x2e, 0x1f, 0x53, 0x98, 0x82, 0xab, 0x23,
+	0x8a, 0x66, 0x08, 0x88, 0x2f, 0x00, 0x38, 0xe4, 0x39, 0x2f, 0x4b, 0x01, 0xd5, 0x0d, 0xc9, 0x89,
+	0x99, 0x4d, 0x31, 0xa1, 0xfd, 0x8e, 0xe0, 0x82, 0x4c, 0xab, 0xd7, 0x09, 0x67, 0x67, 0x92, 0xa3,
+	0xee, 0x24, 0xff, 0x33, 0x06, 0x54, 0xfb, 0x05, 0xc1, 0xc5, 0x41, 0x87, 0xfe, 0x8b, 0xc7, 0xf3,
+	0x2b, 0x04, 0xd8, 0xef, 0xdb, 0xfc, 0x9e, 0x61, 0x40, 0x10, 0xd3, 0x31, 0xee, 0xe4, 0xaa, 0x88,
+	0x0d, 0xf7, 0x5a, 0xe5, 0x86, 0x5c, 0x57, 0xd6, 0xd2, 0x68, 0xfa, 0x8e, 0xee, 0x51, 0xc4, 0x30,
+	0x1c, 0xac, 0xa5, 0xb2, 0x89, 0xc9, 0xe4, 0x5a, 0x2a, 0x9b, 0x9c, 0x4c, 0x69, 0xcf, 0xe5, 0xbf,
+	0x1e, 0xbf, 0x24, 0x0d, 0x4f, 0x39, 0xd5, 0x59, 0xed, 0x92, 0x41, 0x2d, 0xeb, 0x1f, 0xfe, 0xc4,
+	0x80, 0xf0, 0xef, 0xc0, 0x99, 0x15, 0xc2, 0xd7, 0x65, 0x8c, 0x22, 0xf7, 0xef, 0x53, 0xcf, 0xe3,
+	0xed, 0xb4, 0x0d, 0x99, 0x20, 0x09, 0xe6, 0x21, 0x7b, 0x24, 0x93, 0xce, 0xb5, 0x1b, 0x9f, 0x4d,
+	0xab, 0xe6, 0x90, 0x6a, 0x90, 0x3e, 0x19, 0x5b, 0xf9, 0xfc, 0x0b, 0x26, 0x84, 0x4f, 0x85, 0x3a,
+	0xcc, 0x62, 0x5c, 0xa8, 0x5b, 0x48, 0xc9, 0xde, 0x72, 0xdc, 0xa6, 0xb5, 0xa5, 0xf6, 0xac, 0xb6,
+	0x25, 0x5b, 0xb0, 0x60, 0x9f, 0xb0, 0xa1, 0x49, 0xf4, 0xdf, 0xa7, 0xa7, 0x8b, 0xf9, 0x3b, 0x8c,
+	0x89, 0x7d, 0xda, 0x9d, 0x59, 0x5a, 0xee, 0x92, 0xb7, 0x69, 0x2d, 0xec, 0xbe, 0xb4, 0xef, 0x44,
+	0x13, 0x2e, 0xd5, 0x1e, 0x42, 0xa6, 0xbb, 0x3d, 0x14, 0xb1, 0xda, 0xaa, 0x13, 0xbc, 0x7d, 0xda,
+	0x87, 0x08, 0xa6, 0xc4, 0x3d, 0x0f, 0xfa, 0x6f, 0xf6, 0xda, 0xd9, 0x76, 0x01, 0x40, 0x56, 0x22,
+	0x4e, 0x77, 0x89, 0xff, 0x0f, 0x3b, 0x67, 0xc8, 0xda, 0xf4, 0x54, 0x4c, 0x74, 0x17, 0xaa, 0x54,
+	0x77, 0xa1, 0xd2, 0xde, 0x43, 0x70, 0xe6, 0x08, 0x8d, 0xaa, 0x38, 0xcb, 0x90, 0x0b, 0xfa, 0x7b,
+	0x56, 0x18, 0x91, 0x15, 0xe2, 0x4a, 0x94, 0x66, 0x9d, 0xaf, 0x13, 0x46, 0xdb, 0x15, 0x5f, 0x86,
+	0x09, 0x59, 0x20, 0x3a, 0x10, 0x33, 0x12, 0x71, 0x4c, 0x4c, 0x3f, 0x09, 0x30, 0xe7, 0x3f, 0x9f,
+	0x84, 0x89, 0xc7, 0xa4, 0xf5, 0xb4, 0x63, 0x5d, 0xfc, 0x11, 0x82, 0xfc, 0x0a, 0xe1, 0x0f, 0x03,
+	0x09, 0x70, 0x29, 0x82, 0xa0, 0xd3, 0x50, 0x69, 0x5a, 0x8c, 0xea, 0xc7, 0x43, 0x63, 0xed, 0xf2,
+	0xbb, 0x2f, 0x7f, 0xfd, 0x38, 0x31, 0x83, 0x2f, 0xea, 0xcd, 0x39, 0x3d, 0xd0, 0xdb, 0x22, 0x4c,
+	0x3f, 0xe8, 0x0c, 0xc8, 0x21, 0x7e, 0x81, 0x20, 0x1b, 0xd4, 0x08, 0x7c, 0x35, 0x1a, 0xa5, 0xf3,
+	0x22, 0x17, 0x8f, 0x6d, 0x82, 0xb4, 0xff, 0x48, 0x04, 0x1d, 0x5f, 0x8f, 0x46, 0xd0, 0x65, 0xc4,
+	0x99, 0x7e, 0x20, 0xff, 0x1e, 0xe2, 0xcf, 0x90, 0xec, 0xd6, 0x3b, 0x6a, 0x07, 0x9e, 0x8d, 0xe6,
+	0xea, 0x2d, 0x33, 0x43, 0xd0, 0xdd, 0x94, 0x74, 0x25, 0x7c, 0x6d, 0x28, 0xba, 0x05, 0x3f, 0xe1,
+	0xf1, 0x27, 0x3e, 0x9c, 0x5c, 0x62, 0x93, 0x7b, 0xc4, 0xac, 0x9f, 0xb0, 0x68, 0x31, 0xb1, 0x98,
+	0x64, 0x98, 0x45, 0xf8, 0x5b, 0x04, 0x63, 0x5d, 0x49, 0x8f, 0xf5, 0xa8, 0x7b, 0xdc, 0xe7, 0xb2,
+	0x16, 0x67, 0x87, 0x77, 0xf0, 0xef, 0x93, 0x76, 0x4f, 0xc2, 0xde, 0xc1, 0xff, 0x8d, 0x15, 0x61,
+	0xbd, 0x7d, 0x91, 0xbe, 0x47, 0x70, 0xba, 0x6b, 0x69, 0xa5, 0x69, 0x6c, 0xf6, 0xa1, 0xaf, 0xb1,
+	0xb6, 0x2c, 0x99, 0xef, 0xe3, 0xff, 0xbf, 0x22, 0x73, 0x5b, 0xf2, 0x4f, 0x11, 0x64, 0xd4, 0x9b,
+	0x02, 0xfe, 0x77, 0x74, 0x12, 0x74, 0xbc, 0xd1, 0x14, 0xaf, 0x0e, 0x63, 0xaa, 0x04, 0xbe, 0x25,
+	0x61, 0x67, 0x71, 0xe9, 0x18, 0x58, 0xd1, 0x46, 0x30, 0xfd, 0x40, 0x35, 0x17, 0x87, 0xf8, 0x6b,
+	0x04, 0xf9, 0xce, 0x37, 0x99, 0xc8, 0x22, 0xd3, 0xe7, 0xb5, 0xab, 0xa8, 0x0f, 0x6d, 0xaf, 0x48,
+	0x6f, 0x4b, 0xd2, 0x79, 0xed, 0xfa, 0x30, 0xa4, 0x0b, 0x5b, 0x6a, 0x89, 0x05, 0x74, 0x15, 0xff,
+	0x84, 0xe0, 0x54, 0xcf, 0xcb, 0x29, 0xbe, 0x71, 0xbc, 0x4a, 0x3d, 0xaf, 0xb2, 0xb1, 0xa4, 0xdd,
+	0x90, 0xc0, 0x2b, 0xda, 0x62, 0x3c, 0x69, 0xf5, 0xa0, 0x21, 0xd1, 0x0f, 0x82, 0x5f, 0x87, 0xe2,
+	0x14, 0x3f, 0x22, 0x38, 0xd5, 0xd3, 0xea, 0x46, 0x9e, 0x62, 0xd0, 0xdb, 0x40, 0xf1, 0x66, 0x3c,
+	0x27, 0x75, 0x9e, 0xfb, 0xf2, 0x3c, 0x0b, 0xf8, 0xf6, 0x2b, 0x9e, 0x87, 0xe1, 0x9f, 0x11, 0x9c,
+	0xed, 0xdf, 0xb2, 0xe3, 0xdb, 0xc7, 0xa5, 0xc3, 0xc0, 0xc3, 0xdc, 0x79, 0x05, 0xcf, 0xee, 0xe4,
+	0xd7, 0x4a, 0xc3, 0xa7, 0x94, 0x58, 0x0c, 0x7f, 0x89, 0x60, 0xf2, 0xad, 0x06, 0x69, 0x90, 0xce,
+	0x2f, 0xac, 0xd7, 0x23, 0x38, 0x7a, 0x9b, 0xf9, 0xe2, 0xd9, 0xc0, 0x3c, 0xf8, 0x6a, 0x5c, 0x7a,
+	0x54, 0x77, 0x79, 0x4b, 0x5b, 0x93, 0x4c, 0x0f, 0xb5, 0x9b, 0xf1, 0x54, 0x5e, 0xd8, 0x13, 0x3c,
+	0x0b, 0x5d, 0x4d, 0xfe, 0xe2, 0x1b, 0x6f, 0x2f, 0xd7, 0x2c, 0xbe, 0xd3, 0xd8, 0x2a, 0x55, 0x68,
+	0x5d, 0x57, 0x5f, 0xa9, 0x8f, 0xe0, 0xe9, 0x15, 0xea, 0xf9, 0x1f, 0xb6, 0x7b, 0x3f, 0x8c, 0x97,
+	0x6b, 0xb4, 0xec, 0xe3, 0x8d, 0xc8, 0x3f, 0x37, 0xfe, 0x08, 0x00, 0x00, 0xff, 0xff, 0x5e, 0x17,
+	0x26, 0x25, 0x3e, 0x17, 0x00, 0x00,
 }

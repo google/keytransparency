@@ -92,18 +92,6 @@ message MapperMetadata {
   int64 highest_fully_completed_seq = 1;
 }
 
-// Gets the leaf entry for a user.
-message GetUserRequest {
-  // directory_id identifies the directory in which the user lives.
-  string directory_id = 1;
-  // user_id is the user identifier, the format for which is defined by the
-  // application.
-  string user_id = 2;
-  // first_tree_size is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 3;
-}
-
 // Leaf entry for a user.
 message MapLeaf {
   // vrf_proof is the proof for the VRF on user_id.
@@ -120,6 +108,26 @@ message MapLeaf {
   Committed committed = 3;
 }
 
+// MapRevision contains map leaves at a specific revision.
+message MapRevision {
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 1;
+  // map_leaves contains map leaves and their inclusion proofs to map_root.
+  repeated MapLeaf map_leaves= 2;
+}
+
+// Gets the leaf entry for a user.
+message GetUserRequest {
+  // directory_id identifies the directory in which the user lives.
+  string directory_id = 1;
+  // user_id is the user identifier, the format for which is defined by the
+  // application.
+  string user_id = 2;
+  // last_seen_revision is the tree_size of the currently trusted log root.
+  // Omitting this field will omit the log consistency proof from the response.
+  int64 last_seen_revision = 3;
+}
+
 // Contains the leaf entry for a user at the most recently published epoch.
 message GetUserResponse {
   // epoch is the most recently published epoch.
@@ -128,50 +136,96 @@ message GetUserResponse {
   MapLeaf leaf = 2;
 }
 
-message GetUserBatchRequest {
+// Gets the leaf entry for a user at a specific revision.
+message GetUserAtRevisionRequest {
+  // directory_id identifies the directory in which the user lives.
+  string directory_id = 1;
+  // user_id is the user identifier, the format for which is defined by the
+  // application.
+  string user_id = 2;
+  // revision is the map revision to get the user at.
+  int64 revision = 4;
+  // last_seen_revision is the tree_size of the currently trusted log root.
+  // Omitting this field will omit the log consistency proof from the response.
+  int64 last_seen_revision = 3;
+}
+
+message BatchGetUserRequest {
   // directory_id identifies the directory in which the users live.
   string directory_id = 1;
   // user_ids are the user identifiers, the format for which is defined by the
   // application.
   repeated string user_ids = 2;
-  // first_tree_size is the tree_size of the currently trusted log root.
+  // last_seen_revision is the tree_size of the currently trusted log root.
   // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 3;
+  int64 last_seen_revision = 3;
 }
 
 // Contains the leaf entries for a set of users at the most recently published epoch.
-message GetUserBatchResponse {
+message BatchGetUserResponse {
   // epoch is the most recently published epoch.
   Epoch epoch = 1;
   // leaves are the leaf entries for the requested users, in the order requested.
   repeated MapLeaf leaves = 2;
 }
 
-// ListEntryHistoryRequest gets a list of historical keys for a user.
-message ListEntryHistoryRequest {
+// ListUserRevisionsRequest gets a list of historical keys for a user.
+message ListUserRevisionsRequest {
   // directory_id identifies the directory in which the user lives.
   string directory_id = 6;
   // user_id is the user identifier.
   string user_id = 1;
-  // start is the starting epoch.
-  int64 start = 2;
+  // start_revision is the starting epoch.
+  int64 start_revision = 2;
+  // end_revision is the ending epoch.
+  int64 end_revision = 7;
   // page_size is the maximum number of entries to return.
   int32 page_size = 3;
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
   reserved 4;
-  // first_tree_size is the tree_size of the currently trusted log root.
+  // last_seen_revision is the tree_size of the currently trusted log root.
   // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 5;
+  int64 last_seen_revision = 5;
 }
 
-// ListEntryHistoryResponse requests a paginated history of keys for a user.
-message ListEntryHistoryResponse {
-  // values represents the list of keys this user_id has contained over time.
-  repeated GetUserResponse values = 1;
+// ListUserRevisionsResponse requests a paginated history of keys for a user.
+message ListUserRevisionsResponse {
+  // latest_log_root contains the lastest log root and its consistency proof.
+  LogRoot latest_log_root = 3;
+  // map_revisions represents the list of keys this user_id has contained over time.
+  repeated MapRevision map_revisions = 1;
   // next_start is the next page token to query for pagination.
   // next_start is 0 when there are no more results to fetch.
-  int64 next_start = 2;
+  string next_start = 2;
+}
+
+// BatchListUserRevisionsRequest requests user history for multiple users.
+message BatchListUserRevisionsRequest {
+  // directory_id identifies the directory in which the user lives.
+  string directory_id = 6;
+  // user_ids is the user identifier.
+  repeated string user_ids = 1;
+  // start_revision is the starting epoch.
+  int64 start_revision = 2;
+  // end_revision is the ending epoch.
+  int64 end_revision = 7;
+  // page_size is the maximum number of entries to return.
+  int32 page_size = 3;
+  // last_seen_revision is the tree_size of the currently trusted log root.
+  // Omitting this field will omit the log consistency proof from the response.
+  int64 last_seen_revision = 5;
+}
+
+// BatchListUserRevisionsRequest requests user history for multiple users.
+message BatchListUserRevisionsResponse {
+  // latest_log_root contains the lastest log root and its consistency proof.
+  LogRoot latest_log_root = 3;
+  // map_revisions represents the list of keys this user_id has contained over time.
+  repeated MapRevision map_revisions = 1;
+  // next_start is the next page token to query for pagination.
+  // next_start is 0 when there are no more results to fetch.
+  string next_start = 2;
 }
 
 // UpdateEntryRequest updates a user's profile.
@@ -183,7 +237,7 @@ message UpdateEntryRequest {
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
   reserved 2;
-  // Used to be first_tree_size. QueueEntryUpdate no longer returns any data.
+  // Used to be last_seen_revision. QueueEntryUpdate no longer returns any data.
   reserved 3;
   // entry_update contains the user submitted update.
   EntryUpdate entry_update = 4;
@@ -195,35 +249,48 @@ message GetEpochRequest {
   string directory_id = 5;
   // epoch specifies the epoch number in which mutations will be returned.
   int64 epoch = 1;
-  // first_tree_size is the tree_size of the currently trusted log root.
+  // last_seen_revision is the tree_size of the currently trusted log root.
   // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 2;
+  int64 last_seen_revision = 2;
 }
 
 // GetLatestEpochRequest identifies a particular epoch.
 message GetLatestEpochRequest {
   // directory_id is the directory for which epochs are being requested.
   string directory_id = 1;
-  // first_tree_size is the tree_size of the currently trusted log root.
+  // last_seen_revision is the tree_size of the currently trusted log root.
   // Omitting this field will omit the log consistency proof from the response.
-  int64 first_tree_size = 2;
+  int64 last_seen_revision = 2;
 }
 
-// Epoch represents a snapshot of the entire key directory and
-// a diff of what changed between this revision and the previous revision.
-message Epoch {
-  // directory_id is the directory identifier.
-  string directory_id = 1;
-  // map_root contains the signed map root for the sparse Merkle Tree.
-  trillian.SignedMapRoot map_root = 2;
+// LogRoot contains the latest log root and its consistency proof.
+message LogRoot {
   // log_root is the latest globally consistent log root.
   trillian.SignedLogRoot log_root = 3;
   // log_consistency proves that log_root is consistent with previously seen
   // roots.
   repeated bytes log_consistency = 4;
+}
+
+// MapRoot contains the map root and its inclusion proof in the log.
+message MapRoot {
+  // map_root contains the signed map root for the sparse Merkle Tree.
+  trillian.SignedMapRoot map_root = 2;
   // log_inclusion proves that map_root is part of log_root at
   // index=map_root.MapRevision.
   repeated bytes log_inclusion = 5;
+}
+
+// Epoch represents a revision of the entire key directory.
+// a diff of what changed between this revision and the previous revision.
+message Epoch {
+  // directory_id is the directory identifier.
+  string directory_id = 1;
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 2;
+  // latest_log_root contains the most recent log root and its consistency
+  // proof to the client's last seen log root.
+  LogRoot latest_log_root = 3;
 }
 
 // ListMutationsRequest requests the mutations that created a given epoch.
@@ -334,20 +401,35 @@ service KeyTransparency {
   }
 
   // GetUserBatch returns a batch of user leaf entries in the Merkle tree at the same epoch.
-  rpc GetUserBatch(GetUserBatchRequest) returns (GetUserBatchResponse) {
+  rpc BatchGetUser(BatchGetUserRequest) returns (BatchGetUserResponse) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/users:batchGet"
+      post: "/v1/directories/{directory_id}/users:batchGet"
+      body: "*"
     };
   }
 
-  // ListEntryHistory returns a list of historic GetUser values.
+  // GetUserAtRevision returns the value of user at a specific revision.
+  rpc GetUserAtRevision(GetUserAtRevisionRequest) returns (GetUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/users/{user_id}/revision/{revision}"
+      body: "*"
+    };
+  }
+
+  // ListUserRevisions returns a list of historic GetUser values.
   //
   // Clients verify their account history by observing correct values for their
   // account over time.
-  rpc ListEntryHistory(ListEntryHistoryRequest)
-      returns (ListEntryHistoryResponse) {
+  rpc ListUserRevisions(ListUserRevisionsRequest) returns (ListUserRevisionsResponse) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/users/{user_id}/history"
+      get: "/v1/directories/{directory_id}/users/{user_id}/revisions"
+    };
+  }
+
+  rpc BatchListUserRevisions(BatchListUserRevisionsRequest)
+      returns (BatchListUserRevisionsResponse) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/users:batchList"
     };
   }
 
