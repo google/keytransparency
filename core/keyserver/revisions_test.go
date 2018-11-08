@@ -34,18 +34,7 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-const (
-	directoryID = "directory"
-)
-
-func mustMarshal(t *testing.T, p proto.Message) []byte {
-	t.Helper()
-	b, err := proto.Marshal(p)
-	if err != nil {
-		t.Fatalf("proto.Marshal(%T): %v", p, err)
-	}
-	return b
-}
+const directoryID = "directory"
 
 func genInclusions(start, end int64) []*tpb.MapLeafInclusion {
 	ret := make([]*tpb.MapLeafInclusion, end-start)

@@ -17,11 +17,21 @@ package keyserver
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
+
+func mustMarshal(t *testing.T, p proto.Message) []byte {
+	t.Helper()
+	b, err := proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("proto.Marshal(%T): %v", p, err)
+	}
+	return b
+}
 
 func TestValidateUpdateEntryRequest(t *testing.T) {
 	// Create and marshal a profile.
