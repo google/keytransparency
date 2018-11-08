@@ -23,8 +23,6 @@ import (
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/directory"
 
@@ -94,27 +92,23 @@ func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer)
 
 // PeriodicallyRun executes f once per tick until ctx is closed.
 // Closing ctx will also stop any in-flight operation mid-way through.
-func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx context.Context) error) error {
+func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx context.Context)) {
+	if f == nil {
+		glog.Errorf("cannot schedule nil function")
+		return
+	}
 	for range tickch {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		default:
 		}
-		if err := func() error {
-			// Give each invocation of f a separate context.
-			// Prevent f from creating detached go routines using ctx.
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			return f(ctx)
-		}(); err == context.Canceled || status.Code(err) == codes.Canceled {
-			// Ignore canceled errors. These are expected on shutdown.
-			return nil
-		} else if err != nil {
-			return err
-		}
+		// Give each invocation of f a separate context.
+		// Prevent f from creating detached go routines using ctx.
+		cctx, cancel := context.WithCancel(ctx)
+		f(cctx)
+		cancel()
 	}
-	return nil
 }
 
 // RunBatchForAllDirectories scans the directories table for new directories and creates new receivers for
@@ -126,11 +120,12 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 	}
 	for _, d := range directories {
 		knownDirectories.Set(1, d.DirectoryID)
-		if _, err := s.sequencerClient.RunBatch(ctx, &spb.RunBatchRequest{
+		req := &spb.RunBatchRequest{
 			DirectoryId: d.DirectoryID,
 			MinBatch:    1,
 			MaxBatch:    s.batchSize,
-		}); err != nil {
+		}
+		if _, err := s.sequencerClient.RunBatch(ctx, req); err != nil {
 			return err
 		}
 	}
