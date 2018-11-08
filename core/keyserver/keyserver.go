@@ -118,7 +118,7 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 	}
 	resp := &pb.GetUserResponse{
 		Epoch: &pb.Epoch{
-			LogRoot:        sth,
+			LatestLogRoot:  sth,
 			LogConsistency: consistencyProof.GetHashes(),
 		},
 	}
@@ -248,7 +248,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 		}
 		proto.Merge(resp, &pb.GetUserResponse{
 			Epoch: &pb.Epoch{
-				LogRoot: sth,
+				LatestLogRoot: sth,
 				// TODO(gbelvin): This is redundant and wasteful. Refactor response API.
 				LogConsistency: consistencyProof.GetHashes(),
 			},

@@ -217,7 +217,7 @@ message Epoch {
   // map_root contains the signed map root for the sparse Merkle Tree.
   trillian.SignedMapRoot map_root = 2;
   // log_root is the latest globally consistent log root.
-  trillian.SignedLogRoot log_root = 3;
+  trillian.SignedLogRoot latest_log_root = 3;
   // log_consistency proves that log_root is consistent with previously seen
   // roots.
   repeated bytes log_consistency = 4;
