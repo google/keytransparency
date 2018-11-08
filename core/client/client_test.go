@@ -274,7 +274,7 @@ func (f *fakeKeyServer) GetUser(context.Context, *pb.GetUserRequest) (*pb.GetUse
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (f *fakeKeyServer) GetUserBatch(context.Context, *pb.GetUserBatchRequest) (*pb.GetUserBatchResponse, error) {
+func (f *fakeKeyServer) BatchGetUser(context.Context, *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
