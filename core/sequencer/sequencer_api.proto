@@ -14,13 +14,13 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/sequencer/sequencer_go_proto";
-
 // Key Transparency Sequencer
 //
 // The Key Transparency Sequencer API supplies an api for applying mutations to the current
 // state of the map.
 package google.keytransparency.sequencer;
+
+option go_package = "github.com/google/keytransparency/core/sequencer/sequencer_go_proto";
 
 import "google/protobuf/empty.proto";
 
@@ -42,7 +42,6 @@ message MapMetadata {
   // keys in each slice that were used to construct this map revision.
   map<int64, SourceSlice> sources = 2;
 }
-
 
 // CreateRevisionRequest contains information needed to create a new revision.
 message CreateRevisionRequest {
@@ -79,11 +78,11 @@ message PublishBatchRequest {
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
   // RunBatch reads outstanding mutations and calls CreateRevision.
-  rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty) {}
+  rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty);
   // CreateRevision applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
-  rpc CreateRevision(CreateRevisionRequest) returns (google.protobuf.Empty) {}
+  rpc CreateRevision(CreateRevisionRequest) returns (google.protobuf.Empty);
   // PublishBatch copies the MapRoots of all known map revisions into the Log
   // of MapRoots.
-  rpc PublishBatch(PublishBatchRequest) returns (google.protobuf.Empty) {}
+  rpc PublishBatch(PublishBatchRequest) returns (google.protobuf.Empty);
 }

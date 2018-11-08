@@ -11,11 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/impl/authorization/authz_go_proto";
-
 package google.keytransparency.impl;
+
+option go_package = "github.com/google/keytransparency/impl/authorization/authz_go_proto";
 
 // AuthorizationPolicy contains an authorization policy.
 message AuthorizationPolicy {
@@ -26,18 +27,15 @@ message AuthorizationPolicy {
     // Used to be app_id.
     reserved 2;
   }
-
   // Role contains a specific identity of an authorization entry.
   message Role {
     // principals contains an application specific identifier for this entry.
     repeated string principals = 1;
   }
-
   // RoleLabels contains a lot of role labels identifying each role.
   message RoleLabels {
     repeated string labels = 1;
   }
-
   // roles is a map of roles keyed by labels used in RoleLabels.
   map<string, Role> roles = 2;
   // resource_to_role_labels specifies the authorization policy keyed by resource directory_id.
