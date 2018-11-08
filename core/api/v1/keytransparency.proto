@@ -64,6 +64,7 @@ message Entry {
   crypto.tink.Keyset authorized_keys = 7;
   // previous contains the SHA256 hash of SignedEntry.Entry the last time it was modified.
   bytes previous = 8;
+  // Deprecated tag numbers, do not reuse.
   reserved 1, 2, 4, 5;
 }
 
