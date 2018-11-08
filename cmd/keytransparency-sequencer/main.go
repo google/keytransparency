@@ -120,10 +120,11 @@ func main() {
 
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := sequencer.PeriodicallyRun(ctx, time.Tick(*refresh),
-		signer.RunBatchForAllDirectories); err != nil {
-		glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
-	}
+	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+		if err := signer.RunBatchForAllDirectories(ctx); err != nil {
+			glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
+		}
+	})
 	httpServer.Shutdown(cctx)
 	glog.Errorf("Signer exiting")
 }
