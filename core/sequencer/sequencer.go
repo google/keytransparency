@@ -120,11 +120,12 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 	}
 	for _, d := range directories {
 		knownDirectories.Set(1, d.DirectoryID)
-		if _, err := s.sequencerClient.RunBatch(ctx, &spb.RunBatchRequest{
+		req := &spb.RunBatchRequest{
 			DirectoryId: d.DirectoryID,
 			MinBatch:    1,
 			MaxBatch:    s.batchSize,
-		}); err != nil {
+		}
+		if _, err := s.sequencerClient.RunBatch(ctx, req); err != nil {
 			return err
 		}
 	}

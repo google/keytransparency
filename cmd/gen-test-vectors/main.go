@@ -83,11 +83,12 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
 		sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
-			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+			req := &spb.RunBatchRequest{
 				DirectoryId: env.Directory.DirectoryId,
 				MinBatch:    1,
 				MaxBatch:    100,
-			}); err != nil {
+			}
+			if _, err := env.Sequencer.RunBatch(ctx, req); err != nil {
 				log.Errorf("RunBatch(): %v", err)
 			}
 		})
