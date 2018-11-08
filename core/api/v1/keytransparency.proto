@@ -150,7 +150,7 @@ message BatchGetUserRequest {
   int64 last_verified_tree_size = 3;
 }
 
-// BatchGetUserReponse contains the leaf entries for a set of users at the most
+// BatchGetUserResponse contains the leaf entries for a set of users at the most
 // recently published revision.
 message BatchGetUserResponse {
   // revision is the most recently published revision.
