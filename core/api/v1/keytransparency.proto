@@ -214,7 +214,7 @@ message GetRevisionRequest {
   int64 last_verified_tree_size = 2;
 }
 
-// GetLatestRevisionRequest identifies a particular revision.
+// GetLatestRevisionRequest identifies the most current revision.
 message GetLatestRevisionRequest {
   // directory_id is the directory for which revisions are being requested.
   string directory_id = 1;
@@ -224,6 +224,20 @@ message GetLatestRevisionRequest {
   int64 last_verified_tree_size = 2;
 }
 
+// GetRevisionAtTimeRequest identifies the latest revision before a particular
+// time.
+message GetRevisionAtTimeRequest {
+  // directory_id is the directory for which revisions are being requested.
+  string directory_id = 1;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 2;
+  // time is the time which the requestor wants to lookup the revision by.
+  // The returned revision will be the Revision created closes to this time
+  // but not after.
+  google.protobuf.Timestamp time = 3;
+}
 
 // MapRoot contains the map root and its inclusion proof in the log.
 message MapRoot {
@@ -326,12 +340,21 @@ service KeyTransparency {
       get: "/v1/directories/{directory_id}/revisions/{revision}"
     };
   }
+  
+  // GetRevisionAtTime returns the latest SignedMapRoot that was committed before
+  // the specified time along with its inclusion proof in the log and the log's
+  // consistency proofs.
+  rpc GetRevisionAtTime(GetRevisionAtTimeRequest) return (Revision) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/revisions:atTimestamp"
+    };
+  }
 
   // GetLatestRevision returns the latest SignedMapRoot along with its inclusion
   // proof in the log and the log's consistency proofs.
   rpc GetLatestRevision(GetLatestRevisionRequest) returns (Revision) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/revisions:latest"
+      post: "/v1/directories/{directory_id}/revisions:latest"
     };
   }
 
