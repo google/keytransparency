@@ -14,12 +14,12 @@
 
 syntax = "proto3";
 
+package google.keytransparency.type;
+
 option go_package = "github.com/google/keytransparency/core/api/type/type_go_proto";
 
 import "google/rpc/status.proto";
 import "tink.proto";
-
-package google.keytransparency.type;
 
 // User represents plain account information that gets committed to and
 // obfuscated in Entry.
@@ -38,4 +38,5 @@ message User {
   // status is set when account is part of a batch operation.
   google.rpc.Status status = 6;
   // TODO(gbelvin): Include UserProof and UserCommitment
+
 }

@@ -14,8 +14,6 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto";
-
 // Key Transparency
 //
 // The Key Transparency API consists of a map of user names to public
@@ -23,11 +21,13 @@ option go_package = "github.com/google/keytransparency/core/api/v1/keytransparen
 // associated with it.
 package google.keytransparency.v1;
 
+option go_package = "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto";
+
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "tink.proto";
 import "trillian.proto";
 import "trillian_map_api.proto";
-import "tink.proto";
 import "v1/admin.proto";
 
 // Committed represents the data committed to in a cryptographic commitment.
@@ -224,7 +224,6 @@ message GetLatestRevisionRequest {
   int64 last_verified_tree_size = 2;
 }
 
-
 // MapRoot contains the map root and its inclusion proof in the log.
 message MapRoot {
   // map_root contains the signed map root for the sparse Merkle Tree.
@@ -271,6 +270,7 @@ message ListMutationsRequest {
   // The server may choose a smaller page_size than the one requested.
   int32 page_size = 4;
   // TODO(gbelvin): Add field mask.
+
 }
 
 // ListMutationsResponse contains the mutations that produced an revision.
@@ -318,7 +318,6 @@ service KeyTransparency {
       get: "/v1/directories/{directory_id}"
     };
   }
-
   // GetRevision returns a SignedMapRoot by the by the requested revision number
   // along with its inclusion proof in the log and the log's consistency proofs.
   rpc GetRevision(GetRevisionRequest) returns (Revision) {
@@ -326,7 +325,6 @@ service KeyTransparency {
       get: "/v1/directories/{directory_id}/revisions/{revision}"
     };
   }
-
   // GetLatestRevision returns the latest SignedMapRoot along with its inclusion
   // proof in the log and the log's consistency proofs.
   rpc GetLatestRevision(GetLatestRevisionRequest) returns (Revision) {
@@ -334,7 +332,6 @@ service KeyTransparency {
       get: "/v1/directories/{directory_id}/revisions:latest"
     };
   }
-
   // GetRevisionStream streams new revisions from a requested starting point
   // and continues as new revisions are created.
   rpc GetRevisionStream(GetRevisionRequest) returns (stream Revision) {
@@ -342,46 +339,39 @@ service KeyTransparency {
       get: "/v1/directories/{directory_id}/revisions:stream"
     };
   }
-
   // ListMutations returns a list of mutations in a specific revision.
   rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/revisions/{revision}/mutations"
     };
   }
-
   // ListMutationsStream is a streaming list of mutations in a specific revision.
   rpc ListMutationsStream(ListMutationsRequest) returns (stream MutationProof) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/revisions/{revision}/mutations:stream"
     };
   }
-
   // GetUser returns a user's leaf entry in the Merkle Tree.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users/{user_id}"
     };
   }
-
   // BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same revision.
   rpc BatchGetUser(BatchGetUserRequest) returns (BatchGetUserResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users:batchGet"
     };
   }
-
   // ListEntryHistory returns a list of historic GetUser values.
   //
   // Clients verify their account history by observing correct values for their
   // account over time.
-  rpc ListEntryHistory(ListEntryHistoryRequest)
-      returns (ListEntryHistoryResponse) {
+  rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users/{user_id}/history"
     };
   }
-
   // QueueUserUpdate enqueues an update to a user's profile.
   //
   // Clients should poll GetUser until the update appears, and retry if no
