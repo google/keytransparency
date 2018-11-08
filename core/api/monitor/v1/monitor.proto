@@ -14,13 +14,13 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto";
-
 // Monitor Service
 //
 // The Key Transparency monitor server service consists of APIs to fetch
 // monitor results queried using the mutations API.
 package google.keytransparency.monitor.v1;
+
+option go_package = "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto";
 
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
@@ -33,10 +33,8 @@ message GetStateRequest {
   // kt_url is the URL of the keytransparency server for which the monitoring
   // result will be returned.
   string kt_url = 2;
-
   // directory_id identifies the merkle tree being monitored.
   string directory_id = 3;
-
   // revision specifies the revision for which the monitoring results will
   // be returned (revisions start at 0).
   int64 revision = 1;
@@ -49,11 +47,9 @@ message State {
   // monitor's key on success. If the checks were not successful the
   // smr will be empty. The revisions are encoded into the smr map_revision.
   trillian.SignedMapRoot smr = 1;
-
   // seen_time contains the time when this particular signed map root was
   // retrieved and processed.
   google.protobuf.Timestamp seen_time = 2;
-
   // errors contains a list of errors representing the verification checks
   // that failed while monitoring the key-transparency server.
   repeated google.rpc.Status errors = 3;
@@ -81,7 +77,6 @@ service Monitor {
       get: "/monitor/v1/servers/{kt_url}/directories/{directory_id}/states:latest"
     };
   }
-
   // GetSignedMapRootByRevision returns the monitor's result for a specific map
   // revision.
   //
