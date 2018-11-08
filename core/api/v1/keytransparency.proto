@@ -251,6 +251,7 @@ message Epoch {
   // latest_log_root contains the most recent log root and its consistency
   // proof to the client's last seen log root.
   LogRoot latest_log_root = 6;
+  // Deprecated tag numbers, do not reuse.
   reserved 2, 3, 4;
 }
 
