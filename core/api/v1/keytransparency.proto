@@ -129,7 +129,8 @@ message GetUserResponse {
   MapLeaf leaf = 2;
 }
 
-message GetUserBatchRequest {
+// BatchGetUserRequest contains multiple user_ids to fetch.
+message BatchGetUserRequest {
   // directory_id identifies the directory in which the users live.
   string directory_id = 1;
   // user_ids are the user identifiers, the format for which is defined by the
@@ -141,8 +142,9 @@ message GetUserBatchRequest {
   int64 last_verified_tree_size = 3;
 }
 
-// Contains the leaf entries for a set of users at the most recently published epoch.
-message GetUserBatchResponse {
+// BatchGetUserReponse contains the leaf entries for a set of users at the most
+// recently published epoch.
+message BatchGetUserResponse {
   // epoch is the most recently published epoch.
   Epoch epoch = 1;
   // leaves are the leaf entries for the requested users, in the order requested.
@@ -338,8 +340,8 @@ service KeyTransparency {
     };
   }
 
-  // GetUserBatch returns a batch of user leaf entries in the Merkle tree at the same epoch.
-  rpc GetUserBatch(GetUserBatchRequest) returns (GetUserBatchResponse) {
+  // BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same epoch.
+  rpc BatchGetUser(BatchGetUserRequest) returns (BatchGetUserResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users:batchGet"
     };

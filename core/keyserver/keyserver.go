@@ -203,8 +203,8 @@ func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, 
 	}, nil
 }
 
-// GetUserBatch returns a batch of users at the same epoch.
-func (s *Server) GetUserBatch(ctx context.Context, in *pb.GetUserBatchRequest) (*pb.GetUserBatchResponse, error) {
+// BatchGetUser returns a batch of users at the same epoch.
+func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not yet implemented")
 }
 
