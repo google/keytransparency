@@ -225,19 +225,19 @@ message GetLatestRevisionRequest {
   int64 last_verified_tree_size = 2;
 }
 
-// GetRevisionAtTimeRequest identifies the latest revision before a particular
+// GetRevisionAtTimestampRequest identifies the latest revision before a particular
 // time.
-message GetRevisionAtTimeRequest {
+message GetRevisionAtTimestampRequest {
   // directory_id is the directory for which revisions are being requested.
   string directory_id = 1;
   // last_verified_tree_size is the tree_size of the last log root the client
   // verified. Omitting this field will omit the log consistency proof from the
   // response.
   int64 last_verified_tree_size = 2;
-  // time is the time which the requestor wants to lookup the revision by.
-  // The returned revision will be the Revision created closes to this time
-  // but not after.
-  google.protobuf.Timestamp time = 3;
+  // timestamp is the time which the requestor wants to lookup the revision by.
+  // The returned revision will be the latest Revision created at or before this
+  // time.
+  google.protobuf.Timestamp timestamp = 3;
 }
 
 // MapRoot contains the map root and its inclusion proof in the log.
@@ -342,10 +342,10 @@ service KeyTransparency {
     };
   }
   
-  // GetRevisionAtTime returns the latest SignedMapRoot that was committed before
-  // the specified time along with its inclusion proof in the log and the log's
-  // consistency proofs.
-  rpc GetRevisionAtTime(GetRevisionAtTimeRequest) return (Revision) {
+  // GetRevisionAtTimestamp returns the latest SignedMapRoot that was committed at
+  // or before the specified time along with its inclusion proof in the log and the
+  // log's consistency proofs.
+  rpc GetRevisionAtTimestamp(GetRevisionAtTimestampRequest) return (Revision) {
     option (google.api.http) = {
       post: "/v1/directories/{directory_id}/revisions:atTimestamp"
     };
