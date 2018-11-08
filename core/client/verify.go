@@ -131,7 +131,7 @@ func (v *RealVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, u
 	}
 	leafProof.Leaf.Index = index
 
-	if err := v.VerifyMapLeafInclusion(in.GetEpoch().GetMapRoot(), leafProof); err != nil {
+	if err := v.VerifyMapLeafInclusion(in.GetEpoch().GetMapRoot().GetMapRoot(), leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
 		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
 	}
@@ -147,7 +147,7 @@ func (v *RealVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, u
 // VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
 // VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
 func (v *RealVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	mapRoot, err := v.VerifySignedMapRoot(in.GetMapRoot())
+	mapRoot, err := v.VerifySignedMapRoot(in.GetMapRoot().GetMapRoot())
 	if err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
 		return nil, nil, fmt.Errorf("VerifySignedMapRoot(): %v", err)
@@ -157,15 +157,18 @@ func (v *RealVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*type
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	logRoot, err := v.VerifyRoot(&trusted, in.GetLogRoot(), in.GetLogConsistency())
+	logRoot, err := v.VerifyRoot(&trusted,
+		in.GetLatestLogRoot().GetLogRoot(),
+		in.GetLatestLogRoot().GetLogConsistency())
 	if err != nil {
-		return nil, nil, fmt.Errorf("logVerifier: VerifyRoot(%v -> %v, %v): %v", trusted, in.GetLogRoot(), in.GetLogConsistency(), err)
+		return nil, nil, fmt.Errorf("logVerifier: VerifyRoot(%v -> %v, %v): %v",
+			trusted, in.GetLatestLogRoot(), in.GetLatestLogRoot().GetLogConsistency(), err)
 	}
 
 	// Verify inclusion proof.
-	b := in.GetMapRoot().GetMapRoot()
+	b := in.GetMapRoot().GetMapRoot().GetMapRoot()
 	leafIndex := int64(mapRoot.Revision)
-	if err := v.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetLogInclusion()); err != nil {
+	if err := v.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetMapRoot().GetLogInclusion()); err != nil {
 		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%x, %v, _): %v", b, leafIndex, err)
 	}
 	Vlog.Printf("✓ Log inclusion proof verified.")
