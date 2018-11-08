@@ -1,7 +1,7 @@
 # Paths to exclude when searching for Protobuf files.
 #excludes:
-#  - path/to/a
-#  - path/to/b/file.proto
+#- path/to/a
+#- path/to/b/file.proto
 
 # Protoc directives.
 protoc:
@@ -13,22 +13,22 @@ protoc:
   # By default, the directory of the config file is included,
   # or the current directory if there is no config file.
   includes:
-    - core/api
-    - ../trillian/
-    - ../../googleapis/googleapis/
-    - ../tink/proto
+  - core/api
+  - ../trillian/
+  - ../../googleapis/googleapis/
+  - ../tink/proto
 
 # Lint directives.
 lint:
   # Linter files to ignore.
 #  ignores:
-#    - id: RPC_NAMES_CAMEL_CASE
-#      files:
-#        - path/to/foo.proto
-#        - path/to/bar.proto
-#    - id: SYNTAX_PROTO3
-#      files:
-#        - path/to/foo.proto
+#  - id: RPC_NAMES_CAMEL_CASE
+#    files:
+#    - path/to/foo.proto
+#    - path/to/bar.proto
+#  - id: SYNTAX_PROTO3
+#    files:
+#    - path/to/foo.proto
 
   # Linter rules.
   # Run prototool list-all-linters to see all available linters.
@@ -41,10 +41,10 @@ lint:
 
     # The specific linters to remove.
     remove:
-      - FILE_OPTIONS_REQUIRE_JAVA_PACKAGE
-      - FILE_OPTIONS_REQUIRE_JAVA_MULTIPLE_FILES
-      - FILE_OPTIONS_JAVA_MULTIPLE_FILES_SAME_IN_DIR
-      - FILE_OPTIONS_REQUIRE_JAVA_OUTER_CLASSNAME
-      - FILE_OPTIONS_EQUAL_GO_PACKAGE_PB_SUFFIX
-      - REQUEST_RESPONSE_TYPES_IN_SAME_FILE
-      - REQUEST_RESPONSE_TYPES_UNIQUE 
+    - FILE_OPTIONS_REQUIRE_JAVA_PACKAGE
+    - FILE_OPTIONS_REQUIRE_JAVA_MULTIPLE_FILES
+    - FILE_OPTIONS_JAVA_MULTIPLE_FILES_SAME_IN_DIR
+    - FILE_OPTIONS_REQUIRE_JAVA_OUTER_CLASSNAME
+    - FILE_OPTIONS_EQUAL_GO_PACKAGE_PB_SUFFIX
+    - REQUEST_RESPONSE_TYPES_IN_SAME_FILE
+    - REQUEST_RESPONSE_TYPES_UNIQUE 
