@@ -72,7 +72,7 @@ message Entry {
 // SignedEntry will be storead as a trillian.Map leaf.
 message SignedEntry {
   // entry contains a serialized Entry.
-  bytes Entry = 1;
+  bytes entry = 1;
   // signatures on entry. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.

@@ -102,12 +102,12 @@ func (v *RealVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, u
 	glog.V(5).Infof("VerifyGetUserResponse(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
-	signedEntry, err := entry.FromLeafValue(in.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue())
+	signed, err := entry.FromLeafValue(in.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue())
 	if err != nil {
 		return nil, nil, err
 	}
 	var e pb.Entry
-	if err := proto.Unmarshal(signedEntry.GetEntry(), &e); err != nil {
+	if err := proto.Unmarshal(signed.GetEntry(), &e); err != nil {
 		return nil, nil, err
 	}
 
