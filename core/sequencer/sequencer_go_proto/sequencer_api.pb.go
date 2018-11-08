@@ -125,49 +125,49 @@ func (m *MapMetadata_SourceSlice) GetHighestWatermark() int64 {
 	return 0
 }
 
-// CreateEpochRequest contains information needed to create a new epoch.
-type CreateEpochRequest struct {
+// CreateRevisionRequest contains information needed to create a new revision.
+type CreateRevisionRequest struct {
 	// directory_id is the directory to apply the mutations to.
 	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// revision is the expected revision of the new epoch.
+	// revision is the expected revision of the new revision.
 	Revision             int64    `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CreateEpochRequest) Reset()         { *m = CreateEpochRequest{} }
-func (m *CreateEpochRequest) String() string { return proto.CompactTextString(m) }
-func (*CreateEpochRequest) ProtoMessage()    {}
-func (*CreateEpochRequest) Descriptor() ([]byte, []int) {
+func (m *CreateRevisionRequest) Reset()         { *m = CreateRevisionRequest{} }
+func (m *CreateRevisionRequest) String() string { return proto.CompactTextString(m) }
+func (*CreateRevisionRequest) ProtoMessage()    {}
+func (*CreateRevisionRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_sequencer_api_6b093140ccdf94f7, []int{1}
 }
-func (m *CreateEpochRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CreateEpochRequest.Unmarshal(m, b)
+func (m *CreateRevisionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CreateRevisionRequest.Unmarshal(m, b)
 }
-func (m *CreateEpochRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CreateEpochRequest.Marshal(b, m, deterministic)
+func (m *CreateRevisionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CreateRevisionRequest.Marshal(b, m, deterministic)
 }
-func (dst *CreateEpochRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CreateEpochRequest.Merge(dst, src)
+func (dst *CreateRevisionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateRevisionRequest.Merge(dst, src)
 }
-func (m *CreateEpochRequest) XXX_Size() int {
-	return xxx_messageInfo_CreateEpochRequest.Size(m)
+func (m *CreateRevisionRequest) XXX_Size() int {
+	return xxx_messageInfo_CreateRevisionRequest.Size(m)
 }
-func (m *CreateEpochRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_CreateEpochRequest.DiscardUnknown(m)
+func (m *CreateRevisionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateRevisionRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_CreateEpochRequest proto.InternalMessageInfo
+var xxx_messageInfo_CreateRevisionRequest proto.InternalMessageInfo
 
-func (m *CreateEpochRequest) GetDirectoryId() string {
+func (m *CreateRevisionRequest) GetDirectoryId() string {
 	if m != nil {
 		return m.DirectoryId
 	}
 	return ""
 }
 
-func (m *CreateEpochRequest) GetRevision() int64 {
+func (m *CreateRevisionRequest) GetRevision() int64 {
 	if m != nil {
 		return m.Revision
 	}
@@ -279,7 +279,7 @@ func init() {
 	proto.RegisterType((*MapMetadata)(nil), "google.keytransparency.sequencer.MapMetadata")
 	proto.RegisterMapType((map[int64]*MapMetadata_SourceSlice)(nil), "google.keytransparency.sequencer.MapMetadata.SourcesEntry")
 	proto.RegisterType((*MapMetadata_SourceSlice)(nil), "google.keytransparency.sequencer.MapMetadata.SourceSlice")
-	proto.RegisterType((*CreateEpochRequest)(nil), "google.keytransparency.sequencer.CreateEpochRequest")
+	proto.RegisterType((*CreateRevisionRequest)(nil), "google.keytransparency.sequencer.CreateRevisionRequest")
 	proto.RegisterType((*RunBatchRequest)(nil), "google.keytransparency.sequencer.RunBatchRequest")
 	proto.RegisterType((*PublishBatchRequest)(nil), "google.keytransparency.sequencer.PublishBatchRequest")
 }
@@ -296,11 +296,11 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type KeyTransparencySequencerClient interface {
-	// RunBatch reads outstanding mutations and calls CreateEpoch.
+	// RunBatch reads outstanding mutations and calls CreateRevision.
 	RunBatch(ctx context.Context, in *RunBatchRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	// CreateEpoch applies the contained mutations to the current map root.
+	// CreateRevision applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
-	CreateEpoch(ctx context.Context, in *CreateEpochRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	CreateRevision(ctx context.Context, in *CreateRevisionRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	// PublishBatch copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
 	PublishBatch(ctx context.Context, in *PublishBatchRequest, opts ...grpc.CallOption) (*empty.Empty, error)
@@ -323,9 +323,9 @@ func (c *keyTransparencySequencerClient) RunBatch(ctx context.Context, in *RunBa
 	return out, nil
 }
 
-func (c *keyTransparencySequencerClient) CreateEpoch(ctx context.Context, in *CreateEpochRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (c *keyTransparencySequencerClient) CreateRevision(ctx context.Context, in *CreateRevisionRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/google.keytransparency.sequencer.KeyTransparencySequencer/CreateEpoch", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.sequencer.KeyTransparencySequencer/CreateRevision", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -343,11 +343,11 @@ func (c *keyTransparencySequencerClient) PublishBatch(ctx context.Context, in *P
 
 // KeyTransparencySequencerServer is the server API for KeyTransparencySequencer service.
 type KeyTransparencySequencerServer interface {
-	// RunBatch reads outstanding mutations and calls CreateEpoch.
+	// RunBatch reads outstanding mutations and calls CreateRevision.
 	RunBatch(context.Context, *RunBatchRequest) (*empty.Empty, error)
-	// CreateEpoch applies the contained mutations to the current map root.
+	// CreateRevision applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
-	CreateEpoch(context.Context, *CreateEpochRequest) (*empty.Empty, error)
+	CreateRevision(context.Context, *CreateRevisionRequest) (*empty.Empty, error)
 	// PublishBatch copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
 	PublishBatch(context.Context, *PublishBatchRequest) (*empty.Empty, error)
@@ -375,20 +375,20 @@ func _KeyTransparencySequencer_RunBatch_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparencySequencer_CreateEpoch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateEpochRequest)
+func _KeyTransparencySequencer_CreateRevision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRevisionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyTransparencySequencerServer).CreateEpoch(ctx, in)
+		return srv.(KeyTransparencySequencerServer).CreateRevision(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/google.keytransparency.sequencer.KeyTransparencySequencer/CreateEpoch",
+		FullMethod: "/google.keytransparency.sequencer.KeyTransparencySequencer/CreateRevision",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencySequencerServer).CreateEpoch(ctx, req.(*CreateEpochRequest))
+		return srv.(KeyTransparencySequencerServer).CreateRevision(ctx, req.(*CreateRevisionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -420,8 +420,8 @@ var _KeyTransparencySequencer_serviceDesc = grpc.ServiceDesc{
 			Handler:    _KeyTransparencySequencer_RunBatch_Handler,
 		},
 		{
-			MethodName: "CreateEpoch",
-			Handler:    _KeyTransparencySequencer_CreateEpoch_Handler,
+			MethodName: "CreateRevision",
+			Handler:    _KeyTransparencySequencer_CreateRevision_Handler,
 		},
 		{
 			MethodName: "PublishBatch",

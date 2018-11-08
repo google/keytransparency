@@ -51,13 +51,13 @@ and verify that the results are consistent.`,
 			return fmt.Errorf("error connecting: %v", err)
 		}
 		if end == 0 {
-			// Get the current epoch.
-			slr, smr, err := c.VerifiedGetLatestEpoch(ctx)
+			// Get the current revision.
+			slr, smr, err := c.VerifiedGetLatestRevision(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get user: %v", err)
 			}
 			if verbose {
-				fmt.Printf("Got current epoch: %v\n", slr.TreeSize-1)
+				fmt.Printf("Got current revision: %v\n", slr.TreeSize-1)
 			}
 			end = int64(smr.Revision)
 		}
@@ -78,7 +78,7 @@ and verify that the results are consistent.`,
 		}
 		sort.Sort(keys)
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
-		fmt.Fprintln(w, "Epoch\tTimestamp\tProfile")
+		fmt.Fprintln(w, "Revision\tTimestamp\tProfile")
 		for _, e := range keys {
 			mapRoot := roots[e]
 			t := time.Unix(0, int64(mapRoot.TimestampNanos))
@@ -102,6 +102,6 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 func init() {
 	RootCmd.AddCommand(histCmd)
 
-	histCmd.PersistentFlags().Int64Var(&start, "start", 1, "Start epoch")
-	histCmd.PersistentFlags().Int64Var(&end, "end", 0, "End epoch")
+	histCmd.PersistentFlags().Int64Var(&start, "start", 1, "Start revision")
+	histCmd.PersistentFlags().Int64Var(&end, "end", 0, "End revision")
 }

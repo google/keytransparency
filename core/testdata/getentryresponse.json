@@ -3,7 +3,7 @@
 		"Desc": "empty_alice",
 		"UserID": "alice",
 		"Resp": {
-			"epoch": {
+			"revision": {
 				"map_root": {
 					"map_root": {
 						"map_root": "AAEg75pBDXjGzIaM7sDn7ffwyAEF4lRaSabXOKLFpZIkWCYVZT2C/mFfYAAAAAAAAAAAAAA=",
@@ -295,7 +295,7 @@
 		"Desc": "bob0_set",
 		"UserID": "bob",
 		"Resp": {
-			"epoch": {
+			"revision": {
 				"map_root": {
 					"map_root": {
 						"map_root": "AAEgqBPH+MuN53kweZwO5lFHTsjNMYvXbs0Nh5GbMBHwb28VZT2DQvrGIAAAAAAAAAABABYSBAgBEgASDggCEgoQyOepgbSwz7IV",
@@ -593,7 +593,7 @@
 		"Desc": "set_carol",
 		"UserID": "carol",
 		"Resp": {
-			"epoch": {
+			"revision": {
 				"map_root": {
 					"map_root": {
 						"map_root": "AAEgqZbVsk2LH0Jlj6WqggNN5DKYftctXASBXzNYWGz7ZxMVZT2DZrR+0AAAAAAAAAACACASBAgBEgASGAgCEhQIyOepgbSwz7IVENjosfO1sM+yFQ==",
@@ -892,7 +892,7 @@
 		"Desc": "bob1_get",
 		"UserID": "bob",
 		"Resp": {
-			"epoch": {
+			"revision": {
 				"map_root": {
 					"map_root": {
 						"map_root": "AAEgcjvNe4L6BMUEcmGhXojX4oznG+Cy9B1AzPr8J5XJKqQVZT2Dg/XQcAAAAAAAAAADACASGAgCEhQI2Oix87Wwz7IVEKCD5uS3sM+yFRIECAESAA==",
@@ -1197,7 +1197,7 @@
 		"Desc": "bob1_set",
 		"UserID": "bob",
 		"Resp": {
-			"epoch": {
+			"revision": {
 				"map_root": {
 					"map_root": {
 						"map_root": "AAEgcjvNe4L6BMUEcmGhXojX4oznG+Cy9B1AzPr8J5XJKqQVZT2Dg/XQcAAAAAAAAAADACASGAgCEhQI2Oix87Wwz7IVEKCD5uS3sM+yFRIECAESAA==",

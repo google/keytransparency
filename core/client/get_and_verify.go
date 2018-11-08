@@ -46,15 +46,15 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.GetUse
 	return e, slr, nil
 }
 
-// VerifiedGetLatestEpoch fetches the latest revision from the key server.
+// VerifiedGetLatestRevision fetches the latest revision from the key server.
 // It also verifies the consistency from the last seen revision.
 // Returns the latest log root and the latest map root.
-func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, *types.MapRootV1, error) {
+func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV1, *types.MapRootV1, error) {
 	// Only one method should attempt to update the trusted root at time.
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 
-	e, err := c.cli.GetLatestEpoch(ctx, &pb.GetLatestEpochRequest{
+	e, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
 		DirectoryId:          c.directoryID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -62,7 +62,7 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyEpoch(e, c.trusted)
+	slr, smr, err := c.VerifyRevision(e, c.trusted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -76,29 +76,29 @@ func (c *Client) VerifiedGetLatestEpoch(ctx context.Context) (*types.LogRootV1, 
 		return nil, nil, err
 	}
 	if smr.Revision != wantRevision {
-		return nil, nil, fmt.Errorf("GetLatestEpoch(): smr.Revison: %v != slr.TreeSize-1: %v", smr.Revision, slr.TreeSize-1)
+		return nil, nil, fmt.Errorf("GetLatestRevision(): smr.Revison: %v != slr.TreeSize-1: %v", smr.Revision, slr.TreeSize-1)
 	}
 	return slr, smr, nil
 }
 
-// VerifiedGetEpoch fetches the requested revision from the key server.
+// VerifiedGetRevision fetches the requested revision from the key server.
 // It also verifies the consistency of the latest log root against the last seen log root.
 // Returns the latest log root and the requested map root.
-func (c *Client) VerifiedGetEpoch(ctx context.Context, epoch int64) (*types.LogRootV1, *types.MapRootV1, error) {
+func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*types.LogRootV1, *types.MapRootV1, error) {
 	// Only one method should attempt to update the trusted root at time.
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 
-	e, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
+	e, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
 		DirectoryId:          c.directoryID,
-		Epoch:                epoch,
+		Revision:                revision,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyEpoch(e, c.trusted)
+	slr, smr, err := c.VerifyRevision(e, c.trusted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -133,8 +133,8 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 		if err != nil {
 			return nil, 0, err
 		}
-		Vlog.Printf("Processing entry for %v, epoch %v", userID, smr.Revision)
-		glog.V(2).Infof("Processing entry for %v, epoch %v", userID, smr.Revision)
+		Vlog.Printf("Processing entry for %v, revision %v", userID, smr.Revision)
+		glog.V(2).Infof("Processing entry for %v, revision %v", userID, smr.Revision)
 		profiles[smr] = v.GetLeaf().GetCommitted().GetData()
 	}
 	if slr != nil {

@@ -121,17 +121,17 @@ func TestPaginateHistory(t *testing.T) {
 
 	srv := &fakeKeyServer{
 		revisions: map[int64]*pb.GetUserResponse{
-			0:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{0}}}}},
-			1:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{1}}}}},
-			2:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{2}}}}},
-			3:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{3}}}}},
-			4:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{4}}}}},
-			5:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{5}}}}},
-			6:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{6}}}}},
-			7:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{7}}}}},
-			8:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{8}}}}},
-			9:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{9}}}}},
-			10: {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{10}}}}},
+			0:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{0}}}}},
+			1:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{1}}}}},
+			2:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{2}}}}},
+			3:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{3}}}}},
+			4:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{4}}}}},
+			5:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{5}}}}},
+			6:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{6}}}}},
+			7:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{7}}}}},
+			8:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{8}}}}},
+			9:  {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{9}}}}},
+			10: {Revision: &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{10}}}}},
 		},
 	}
 	s, stop, err := testutil.NewFakeKT(srv)
@@ -223,12 +223,12 @@ type fakeKeyServer struct {
 }
 
 func (f *fakeKeyServer) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRequest) (*pb.ListEntryHistoryResponse, error) {
-	currentEpoch := int64(len(f.revisions)) - 1 // len(1) contains map revision 0.
+	currentRevision := int64(len(f.revisions)) - 1 // len(1) contains map revision 0.
 	if in.PageSize > 5 || in.PageSize == 0 {
 		in.PageSize = 5 // Test maximum page size limits.
 	}
-	if in.Start+int64(in.PageSize) > currentEpoch {
-		in.PageSize = int32(currentEpoch - in.Start + 1)
+	if in.Start+int64(in.PageSize) > currentRevision {
+		in.PageSize = int32(currentRevision - in.Start + 1)
 	}
 
 	values := make([]*pb.GetUserResponse, in.PageSize)
@@ -236,7 +236,7 @@ func (f *fakeKeyServer) ListEntryHistory(ctx context.Context, in *pb.ListEntryHi
 		values[i] = f.revisions[in.Start+int64(i)]
 	}
 	next := in.Start + int64(len(values))
-	if next > currentEpoch {
+	if next > currentRevision {
 		next = 0 // no more!
 	}
 
@@ -250,15 +250,15 @@ func (f *fakeKeyServer) GetDirectory(context.Context, *pb.GetDirectoryRequest) (
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (f *fakeKeyServer) GetEpoch(context.Context, *pb.GetEpochRequest) (*pb.Epoch, error) {
+func (f *fakeKeyServer) GetRevision(context.Context, *pb.GetRevisionRequest) (*pb.Revision, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (f *fakeKeyServer) GetLatestEpoch(context.Context, *pb.GetLatestEpochRequest) (*pb.Epoch, error) {
+func (f *fakeKeyServer) GetLatestRevision(context.Context, *pb.GetLatestRevisionRequest) (*pb.Revision, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (f *fakeKeyServer) GetEpochStream(*pb.GetEpochRequest, pb.KeyTransparency_GetEpochStreamServer) error {
+func (f *fakeKeyServer) GetRevisionStream(*pb.GetRevisionRequest, pb.KeyTransparency_GetRevisionStreamServer) error {
 	return status.Error(codes.Unimplemented, "not implemented")
 }
 
@@ -290,11 +290,11 @@ func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byt
 
 func (f *fakeVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
 	in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.GetEpoch().GetMapRoot().GetMapRoot())
+	smr, err := f.VerifySignedMapRoot(in.GetRevision().GetMapRoot().GetMapRoot())
 	return smr, &types.LogRootV1{}, err
 }
 
-func (f *fakeVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
+func (f *fakeVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
 	smr, err := f.VerifySignedMapRoot(in.MapRoot.MapRoot)
 	return &types.LogRootV1{}, smr, err
 }

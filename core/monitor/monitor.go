@@ -79,30 +79,30 @@ func New(cli *client.Client,
 	}, nil
 }
 
-// EpochPair is two adjacent epochs.
-type EpochPair struct {
-	A, B *pb.Epoch
+// RevisionPair is two adjacent revisions.
+type RevisionPair struct {
+	A, B *pb.Revision
 }
 
-// EpochPairs consumes epochs (0, 1, 2) and produces pairs (0,1), (1,2).
-func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- EpochPair) error {
+// RevisionPairs consumes revisions (0, 1, 2) and produces pairs (0,1), (1,2).
+func RevisionPairs(ctx context.Context, revisions <-chan *pb.Revision, pairs chan<- RevisionPair) error {
 	defer close(pairs)
-	var epochA *pb.Epoch
-	for epoch := range epochs {
-		if epochA == nil {
-			epochA = epoch
+	var revisionA *pb.Revision
+	for revision := range revisions {
+		if revisionA == nil {
+			revisionA = revision
 			continue
 		}
-		pair := EpochPair{
-			A: epochA,
-			B: epoch,
+		pair := RevisionPair{
+			A: revisionA,
+			B: revision,
 		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case pairs <- pair:
 		}
-		epochA = epoch
+		revisionA = revision
 	}
 	return nil
 }
@@ -111,29 +111,29 @@ func EpochPairs(ctx context.Context, epochs <-chan *pb.Epoch, pairs chan<- Epoch
 func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted types.LogRootV1) error {
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
-	epochs := make(chan *pb.Epoch)
-	pairs := make(chan EpochPair)
+	revisions := make(chan *pb.Revision)
+	pairs := make(chan RevisionPair)
 
 	go func(ctx context.Context) {
-		err := m.cli.StreamEpochs(ctx, directoryID, int64(trusted.TreeSize), epochs)
-		glog.Errorf("StreamEpochs(%v): %v", directoryID, err)
+		err := m.cli.StreamRevisions(ctx, directoryID, int64(trusted.TreeSize), revisions)
+		glog.Errorf("StreamRevisions(%v): %v", directoryID, err)
 		errc <- err
 	}(cctx)
 	go func(ctx context.Context) {
-		err := EpochPairs(ctx, epochs, pairs)
-		glog.Errorf("EpochPairs(): %v", err)
+		err := RevisionPairs(ctx, revisions, pairs)
+		glog.Errorf("RevisionPairs(): %v", err)
 		errc <- err
 	}(cctx)
 	defer cancel()
 
 	for pair := range pairs {
-		_, mapRootB, err := m.cli.VerifyEpoch(pair.B, trusted)
+		_, mapRootB, err := m.cli.VerifyRevision(pair.B, trusted)
 		if err != nil {
-			glog.Errorf("Invalid Epoch %v: %v", mapRootB.Revision, err)
+			glog.Errorf("Invalid Revision %v: %v", mapRootB.Revision, err)
 			return err
 		}
 
-		mutations, err := m.cli.EpochMutations(ctx, pair.B)
+		mutations, err := m.cli.RevisionMutations(ctx, pair.B)
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted t
 		var errList []error
 
 		if errs := m.verifyMutations(mutations, pair.A.GetMapRoot().GetMapRoot(), mapRootB); len(errs) > 0 {
-			glog.Errorf("Invalid Epoch %v Mutations: %v", mapRootB.Revision, errs)
+			glog.Errorf("Invalid Revision %v Mutations: %v", mapRootB.Revision, errs)
 			errList = errs
 		} else {
 			// Sign if successful.

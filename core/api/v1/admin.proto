@@ -41,9 +41,9 @@ message Directory {
   trillian.Tree map = 3;
   // Vrf contains the VRF public key.
   keyspb.PublicKey vrf = 4;
-  // min_interval is the minimum time between epochs.
+  // min_interval is the minimum time between revisions.
   google.protobuf.Duration min_interval = 5;
-  // max_interval is the maximum time between epochs.
+  // max_interval is the maximum time between revisions.
   google.protobuf.Duration max_interval = 6;
   // Deleted indicates whether the directory has been marked as deleted.
   // By its presence in a response, this directory has not been garbage

@@ -184,7 +184,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 			return nil, err
 		}
 
-		return s.CreateEpoch(ctx, &spb.CreateEpochRequest{
+		return s.CreateRevision(ctx, &spb.CreateRevisionRequest{
 			DirectoryId: in.DirectoryId,
 			Revision:    nextRev,
 		})
@@ -224,8 +224,8 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 	return msgs, nil
 }
 
-// CreateEpoch applies the supplied mutations to the current map revision and creates a new epoch.
-func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*empty.Empty, error) {
+// CreateRevision applies the supplied mutations to the current map revision and creates a new revision.
+func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionRequest) (*empty.Empty, error) {
 	directoryID := in.GetDirectoryId()
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	if err != nil {
@@ -236,7 +236,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("CreateEpoch: for %v with %d messages", directoryID, len(msgs))
+	glog.Infof("CreateRevision: for %v with %d messages", directoryID, len(msgs))
 	// Fetch verification objects for directoryID.
 	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: directoryID})
 	if err != nil {
@@ -257,7 +257,7 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 		}
 		indexes = append(indexes, entry.Index)
 	}
-	glog.V(2).Infof("CreateEpoch: %v mutations, %v indexes", len(msgs), len(indexes))
+	glog.V(2).Infof("CreateRevision: %v mutations, %v indexes", len(msgs), len(indexes))
 
 	// TODO(gbelvin): Fetch map leaves at a specific revision.
 	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
@@ -290,10 +290,10 @@ func (s *Server) CreateEpoch(ctx context.Context, in *spb.CreateEpochRequest) (*
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
-	glog.V(2).Infof("CreateEpoch: SetLeaves:{Revision: %v}", mapRoot.Revision)
+	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	mutationCount.Add(float64(len(msgs)), directoryID)
-	glog.Infof("CreatedEpoch: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
+	glog.Infof("CreatedRevision: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
 	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DirectoryId: directoryID})
 }
 

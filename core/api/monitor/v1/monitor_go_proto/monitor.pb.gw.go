@@ -107,15 +107,15 @@ func request_Monitor_GetStateByRevision_0(ctx context.Context, marshaler runtime
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	val, ok = pathParams["epoch"]
+	val, ok = pathParams["revision"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "epoch")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "revision")
 	}
 
-	protoReq.Epoch, err = runtime.Int64(val)
+	protoReq.Revision, err = runtime.Int64(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "epoch", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "revision", err)
 	}
 
 	msg, err := client.GetStateByRevision(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -225,7 +225,7 @@ func RegisterMonitorHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 var (
 	pattern_Monitor_GetState_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"monitor", "v1", "servers", "kt_url", "directories", "directory_id", "states"}, "latest"))
 
-	pattern_Monitor_GetStateByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"monitor", "v1", "servers", "kt_url", "directories", "directory_id", "states", "epoch"}, ""))
+	pattern_Monitor_GetStateByRevision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"monitor", "v1", "servers", "kt_url", "directories", "directory_id", "states", "revision"}, ""))
 )
 
 var (

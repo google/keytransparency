@@ -213,7 +213,7 @@ type SignedEntry struct {
 	// entry contains a serialized Entry.
 	Entry []byte `protobuf:"bytes,1,opt,name=entry,proto3" json:"entry,omitempty"`
 	// signatures on entry. Must be signed by keys from both previous and
-	// current epochs. The first proves ownership of new epoch key, and the
+	// current revisions. The first proves ownership of new revision key, and the
 	// second proves that the correct owner is making this change.
 	// The signature scheme is specified by the authorized_keys tink.Keyset.
 	Signatures           [][]byte `protobuf:"bytes,2,rep,name=signatures,proto3" json:"signatures,omitempty"`
@@ -485,10 +485,10 @@ func (m *MapLeaf) GetCommitted() *Committed {
 	return nil
 }
 
-// Contains the leaf entry for a user at the most recently published epoch.
+// Contains the leaf entry for a user at the most recently published revision.
 type GetUserResponse struct {
-	// epoch is the most recently published epoch.
-	Epoch *Epoch `protobuf:"bytes,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	// revision is the most recently published revision.
+	Revision *Revision `protobuf:"bytes,1,opt,name=revision,proto3" json:"revision,omitempty"`
 	// leaf is the leaf entry for the requested user.
 	Leaf                 *MapLeaf `protobuf:"bytes,2,opt,name=leaf,proto3" json:"leaf,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -521,9 +521,9 @@ func (m *GetUserResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetUserResponse proto.InternalMessageInfo
 
-func (m *GetUserResponse) GetEpoch() *Epoch {
+func (m *GetUserResponse) GetRevision() *Revision {
 	if m != nil {
-		return m.Epoch
+		return m.Revision
 	}
 	return nil
 }
@@ -598,10 +598,10 @@ func (m *BatchGetUserRequest) GetLastVerifiedTreeSize() int64 {
 }
 
 // BatchGetUserReponse contains the leaf entries for a set of users at the most
-// recently published epoch.
+// recently published revision.
 type BatchGetUserResponse struct {
-	// epoch is the most recently published epoch.
-	Epoch *Epoch `protobuf:"bytes,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	// revision is the most recently published revision.
+	Revision *Revision `protobuf:"bytes,1,opt,name=revision,proto3" json:"revision,omitempty"`
 	// leaves are the leaf entries for the requested users, in the order requested.
 	Leaves               []*MapLeaf `protobuf:"bytes,2,rep,name=leaves,proto3" json:"leaves,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
@@ -634,9 +634,9 @@ func (m *BatchGetUserResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_BatchGetUserResponse proto.InternalMessageInfo
 
-func (m *BatchGetUserResponse) GetEpoch() *Epoch {
+func (m *BatchGetUserResponse) GetRevision() *Revision {
 	if m != nil {
-		return m.Epoch
+		return m.Revision
 	}
 	return nil
 }
@@ -654,7 +654,7 @@ type ListEntryHistoryRequest struct {
 	DirectoryId string `protobuf:"bytes,6,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	// user_id is the user identifier.
 	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// start is the starting epoch.
+	// start is the starting revision.
 	Start int64 `protobuf:"varint,2,opt,name=start,proto3" json:"start,omitempty"`
 	// page_size is the maximum number of entries to return.
 	PageSize int32 `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
@@ -837,12 +837,12 @@ func (m *UpdateEntryRequest) GetEntryUpdate() *EntryUpdate {
 	return nil
 }
 
-// GetEpochRequest identifies a particular epoch.
-type GetEpochRequest struct {
-	// directory_id is the directory for which epochs are being requested.
+// GetRevisionRequest identifies a particular revision.
+type GetRevisionRequest struct {
+	// directory_id is the directory for which revisions are being requested.
 	DirectoryId string `protobuf:"bytes,5,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// epoch specifies the epoch number in which mutations will be returned.
-	Epoch int64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	// revision specifies the revision number in which mutations will be returned.
+	Revision int64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
 	// last_verified_tree_size is the tree_size of the last log root the client
 	// verified. Omitting this field will omit the log consistency proof from the
 	// response.
@@ -852,55 +852,55 @@ type GetEpochRequest struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetEpochRequest) Reset()         { *m = GetEpochRequest{} }
-func (m *GetEpochRequest) String() string { return proto.CompactTextString(m) }
-func (*GetEpochRequest) ProtoMessage()    {}
-func (*GetEpochRequest) Descriptor() ([]byte, []int) {
+func (m *GetRevisionRequest) Reset()         { *m = GetRevisionRequest{} }
+func (m *GetRevisionRequest) String() string { return proto.CompactTextString(m) }
+func (*GetRevisionRequest) ProtoMessage()    {}
+func (*GetRevisionRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9e925e13aa3e8f7d, []int{14}
 }
 
-func (m *GetEpochRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetEpochRequest.Unmarshal(m, b)
+func (m *GetRevisionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetRevisionRequest.Unmarshal(m, b)
 }
-func (m *GetEpochRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetEpochRequest.Marshal(b, m, deterministic)
+func (m *GetRevisionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetRevisionRequest.Marshal(b, m, deterministic)
 }
-func (m *GetEpochRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetEpochRequest.Merge(m, src)
+func (m *GetRevisionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetRevisionRequest.Merge(m, src)
 }
-func (m *GetEpochRequest) XXX_Size() int {
-	return xxx_messageInfo_GetEpochRequest.Size(m)
+func (m *GetRevisionRequest) XXX_Size() int {
+	return xxx_messageInfo_GetRevisionRequest.Size(m)
 }
-func (m *GetEpochRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetEpochRequest.DiscardUnknown(m)
+func (m *GetRevisionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetRevisionRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetEpochRequest proto.InternalMessageInfo
+var xxx_messageInfo_GetRevisionRequest proto.InternalMessageInfo
 
-func (m *GetEpochRequest) GetDirectoryId() string {
+func (m *GetRevisionRequest) GetDirectoryId() string {
 	if m != nil {
 		return m.DirectoryId
 	}
 	return ""
 }
 
-func (m *GetEpochRequest) GetEpoch() int64 {
+func (m *GetRevisionRequest) GetRevision() int64 {
 	if m != nil {
-		return m.Epoch
+		return m.Revision
 	}
 	return 0
 }
 
-func (m *GetEpochRequest) GetLastVerifiedTreeSize() int64 {
+func (m *GetRevisionRequest) GetLastVerifiedTreeSize() int64 {
 	if m != nil {
 		return m.LastVerifiedTreeSize
 	}
 	return 0
 }
 
-// GetLatestEpochRequest identifies a particular epoch.
-type GetLatestEpochRequest struct {
-	// directory_id is the directory for which epochs are being requested.
+// GetLatestRevisionRequest identifies a particular revision.
+type GetLatestRevisionRequest struct {
+	// directory_id is the directory for which revisions are being requested.
 	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	// last_verified_tree_size is the tree_size of the last log root the client
 	// verified. Omitting this field will omit the log consistency proof from the
@@ -911,39 +911,39 @@ type GetLatestEpochRequest struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetLatestEpochRequest) Reset()         { *m = GetLatestEpochRequest{} }
-func (m *GetLatestEpochRequest) String() string { return proto.CompactTextString(m) }
-func (*GetLatestEpochRequest) ProtoMessage()    {}
-func (*GetLatestEpochRequest) Descriptor() ([]byte, []int) {
+func (m *GetLatestRevisionRequest) Reset()         { *m = GetLatestRevisionRequest{} }
+func (m *GetLatestRevisionRequest) String() string { return proto.CompactTextString(m) }
+func (*GetLatestRevisionRequest) ProtoMessage()    {}
+func (*GetLatestRevisionRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9e925e13aa3e8f7d, []int{15}
 }
 
-func (m *GetLatestEpochRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetLatestEpochRequest.Unmarshal(m, b)
+func (m *GetLatestRevisionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetLatestRevisionRequest.Unmarshal(m, b)
 }
-func (m *GetLatestEpochRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetLatestEpochRequest.Marshal(b, m, deterministic)
+func (m *GetLatestRevisionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetLatestRevisionRequest.Marshal(b, m, deterministic)
 }
-func (m *GetLatestEpochRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetLatestEpochRequest.Merge(m, src)
+func (m *GetLatestRevisionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetLatestRevisionRequest.Merge(m, src)
 }
-func (m *GetLatestEpochRequest) XXX_Size() int {
-	return xxx_messageInfo_GetLatestEpochRequest.Size(m)
+func (m *GetLatestRevisionRequest) XXX_Size() int {
+	return xxx_messageInfo_GetLatestRevisionRequest.Size(m)
 }
-func (m *GetLatestEpochRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetLatestEpochRequest.DiscardUnknown(m)
+func (m *GetLatestRevisionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetLatestRevisionRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetLatestEpochRequest proto.InternalMessageInfo
+var xxx_messageInfo_GetLatestRevisionRequest proto.InternalMessageInfo
 
-func (m *GetLatestEpochRequest) GetDirectoryId() string {
+func (m *GetLatestRevisionRequest) GetDirectoryId() string {
 	if m != nil {
 		return m.DirectoryId
 	}
 	return ""
 }
 
-func (m *GetLatestEpochRequest) GetLastVerifiedTreeSize() int64 {
+func (m *GetLatestRevisionRequest) GetLastVerifiedTreeSize() int64 {
 	if m != nil {
 		return m.LastVerifiedTreeSize
 	}
@@ -1052,9 +1052,9 @@ func (m *LogRoot) GetLogConsistency() [][]byte {
 	return nil
 }
 
-// Epoch represents a snapshot of the entire key directory and
+// Revision represents a snapshot of the entire key directory and
 // a diff of what changed between this revision and the previous revision.
-type Epoch struct {
+type Revision struct {
 	// directory_id is the directory identifier.
 	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	// map_root contains the map root and its inclusion in the log.
@@ -1067,58 +1067,58 @@ type Epoch struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Epoch) Reset()         { *m = Epoch{} }
-func (m *Epoch) String() string { return proto.CompactTextString(m) }
-func (*Epoch) ProtoMessage()    {}
-func (*Epoch) Descriptor() ([]byte, []int) {
+func (m *Revision) Reset()         { *m = Revision{} }
+func (m *Revision) String() string { return proto.CompactTextString(m) }
+func (*Revision) ProtoMessage()    {}
+func (*Revision) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9e925e13aa3e8f7d, []int{18}
 }
 
-func (m *Epoch) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Epoch.Unmarshal(m, b)
+func (m *Revision) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Revision.Unmarshal(m, b)
 }
-func (m *Epoch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Epoch.Marshal(b, m, deterministic)
+func (m *Revision) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Revision.Marshal(b, m, deterministic)
 }
-func (m *Epoch) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Epoch.Merge(m, src)
+func (m *Revision) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Revision.Merge(m, src)
 }
-func (m *Epoch) XXX_Size() int {
-	return xxx_messageInfo_Epoch.Size(m)
+func (m *Revision) XXX_Size() int {
+	return xxx_messageInfo_Revision.Size(m)
 }
-func (m *Epoch) XXX_DiscardUnknown() {
-	xxx_messageInfo_Epoch.DiscardUnknown(m)
+func (m *Revision) XXX_DiscardUnknown() {
+	xxx_messageInfo_Revision.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Epoch proto.InternalMessageInfo
+var xxx_messageInfo_Revision proto.InternalMessageInfo
 
-func (m *Epoch) GetDirectoryId() string {
+func (m *Revision) GetDirectoryId() string {
 	if m != nil {
 		return m.DirectoryId
 	}
 	return ""
 }
 
-func (m *Epoch) GetMapRoot() *MapRoot {
+func (m *Revision) GetMapRoot() *MapRoot {
 	if m != nil {
 		return m.MapRoot
 	}
 	return nil
 }
 
-func (m *Epoch) GetLatestLogRoot() *LogRoot {
+func (m *Revision) GetLatestLogRoot() *LogRoot {
 	if m != nil {
 		return m.LatestLogRoot
 	}
 	return nil
 }
 
-// ListMutationsRequest requests the mutations that created a given epoch.
+// ListMutationsRequest requests the mutations that created a given revision.
 type ListMutationsRequest struct {
 	// directory_id is the directory identifier.
 	DirectoryId string `protobuf:"bytes,5,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// epoch specifies the epoch number.
-	Epoch int64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	// revision specifies the revision number.
+	Revision int64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
 	// page_token defines the starting point for pagination.
 	// To request the next page, pass next_page_token from the previous response.
 	// To start at the beginning, simply omit page_token from the request.
@@ -1163,9 +1163,9 @@ func (m *ListMutationsRequest) GetDirectoryId() string {
 	return ""
 }
 
-func (m *ListMutationsRequest) GetEpoch() int64 {
+func (m *ListMutationsRequest) GetRevision() int64 {
 	if m != nil {
-		return m.Epoch
+		return m.Revision
 	}
 	return 0
 }
@@ -1184,7 +1184,7 @@ func (m *ListMutationsRequest) GetPageSize() int32 {
 	return 0
 }
 
-// ListMutationsResponse contains the mutations that produced an epoch.
+// ListMutationsResponse contains the mutations that produced an revision.
 type ListMutationsResponse struct {
 	// mutations contains the mutation object and the leaf value it operated on.
 	Mutations []*MutationProof `protobuf:"bytes,6,rep,name=mutations,proto3" json:"mutations,omitempty"`
@@ -1250,11 +1250,11 @@ func init() {
 	proto.RegisterType((*ListEntryHistoryRequest)(nil), "google.keytransparency.v1.ListEntryHistoryRequest")
 	proto.RegisterType((*ListEntryHistoryResponse)(nil), "google.keytransparency.v1.ListEntryHistoryResponse")
 	proto.RegisterType((*UpdateEntryRequest)(nil), "google.keytransparency.v1.UpdateEntryRequest")
-	proto.RegisterType((*GetEpochRequest)(nil), "google.keytransparency.v1.GetEpochRequest")
-	proto.RegisterType((*GetLatestEpochRequest)(nil), "google.keytransparency.v1.GetLatestEpochRequest")
+	proto.RegisterType((*GetRevisionRequest)(nil), "google.keytransparency.v1.GetRevisionRequest")
+	proto.RegisterType((*GetLatestRevisionRequest)(nil), "google.keytransparency.v1.GetLatestRevisionRequest")
 	proto.RegisterType((*MapRoot)(nil), "google.keytransparency.v1.MapRoot")
 	proto.RegisterType((*LogRoot)(nil), "google.keytransparency.v1.LogRoot")
-	proto.RegisterType((*Epoch)(nil), "google.keytransparency.v1.Epoch")
+	proto.RegisterType((*Revision)(nil), "google.keytransparency.v1.Revision")
 	proto.RegisterType((*ListMutationsRequest)(nil), "google.keytransparency.v1.ListMutationsRequest")
 	proto.RegisterType((*ListMutationsResponse)(nil), "google.keytransparency.v1.ListMutationsResponse")
 }
@@ -1274,22 +1274,22 @@ type KeyTransparencyClient interface {
 	// GetDirectory returns the information needed to verify the specified
 	// directory.
 	GetDirectory(ctx context.Context, in *GetDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
-	// GetEpoch returns a SignedMapRoot by the by the requested revision number
+	// GetRevision returns a SignedMapRoot by the by the requested revision number
 	// along with its inclusion proof in the log and the log's consistency proofs.
-	GetEpoch(ctx context.Context, in *GetEpochRequest, opts ...grpc.CallOption) (*Epoch, error)
-	// GetLatestEpoch returns the latest SignedMapRoot along with its inclusion
+	GetRevision(ctx context.Context, in *GetRevisionRequest, opts ...grpc.CallOption) (*Revision, error)
+	// GetLatestRevision returns the latest SignedMapRoot along with its inclusion
 	// proof in the log and the log's consistency proofs.
-	GetLatestEpoch(ctx context.Context, in *GetLatestEpochRequest, opts ...grpc.CallOption) (*Epoch, error)
-	// GetEpochStream streams new epochs from a requested starting point
-	// and continues as new epochs are created.
-	GetEpochStream(ctx context.Context, in *GetEpochRequest, opts ...grpc.CallOption) (KeyTransparency_GetEpochStreamClient, error)
-	// ListMutations returns a list of mutations in a specific epoch.
+	GetLatestRevision(ctx context.Context, in *GetLatestRevisionRequest, opts ...grpc.CallOption) (*Revision, error)
+	// GetRevisionStream streams new revisions from a requested starting point
+	// and continues as new revisions are created.
+	GetRevisionStream(ctx context.Context, in *GetRevisionRequest, opts ...grpc.CallOption) (KeyTransparency_GetRevisionStreamClient, error)
+	// ListMutations returns a list of mutations in a specific revision.
 	ListMutations(ctx context.Context, in *ListMutationsRequest, opts ...grpc.CallOption) (*ListMutationsResponse, error)
-	// ListMutationsStream is a streaming list of mutations in a specific epoch.
+	// ListMutationsStream is a streaming list of mutations in a specific revision.
 	ListMutationsStream(ctx context.Context, in *ListMutationsRequest, opts ...grpc.CallOption) (KeyTransparency_ListMutationsStreamClient, error)
 	// GetUser returns a user's leaf entry in the Merkle Tree.
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
-	// BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same epoch.
+	// BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same revision.
 	BatchGetUser(ctx context.Context, in *BatchGetUserRequest, opts ...grpc.CallOption) (*BatchGetUserResponse, error)
 	// ListEntryHistory returns a list of historic GetUser values.
 	//
@@ -1320,30 +1320,30 @@ func (c *keyTransparencyClient) GetDirectory(ctx context.Context, in *GetDirecto
 	return out, nil
 }
 
-func (c *keyTransparencyClient) GetEpoch(ctx context.Context, in *GetEpochRequest, opts ...grpc.CallOption) (*Epoch, error) {
-	out := new(Epoch)
-	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/GetEpoch", in, out, opts...)
+func (c *keyTransparencyClient) GetRevision(ctx context.Context, in *GetRevisionRequest, opts ...grpc.CallOption) (*Revision, error) {
+	out := new(Revision)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/GetRevision", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencyClient) GetLatestEpoch(ctx context.Context, in *GetLatestEpochRequest, opts ...grpc.CallOption) (*Epoch, error) {
-	out := new(Epoch)
-	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/GetLatestEpoch", in, out, opts...)
+func (c *keyTransparencyClient) GetLatestRevision(ctx context.Context, in *GetLatestRevisionRequest, opts ...grpc.CallOption) (*Revision, error) {
+	out := new(Revision)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.v1.KeyTransparency/GetLatestRevision", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencyClient) GetEpochStream(ctx context.Context, in *GetEpochRequest, opts ...grpc.CallOption) (KeyTransparency_GetEpochStreamClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_KeyTransparency_serviceDesc.Streams[0], "/google.keytransparency.v1.KeyTransparency/GetEpochStream", opts...)
+func (c *keyTransparencyClient) GetRevisionStream(ctx context.Context, in *GetRevisionRequest, opts ...grpc.CallOption) (KeyTransparency_GetRevisionStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_KeyTransparency_serviceDesc.Streams[0], "/google.keytransparency.v1.KeyTransparency/GetRevisionStream", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &keyTransparencyGetEpochStreamClient{stream}
+	x := &keyTransparencyGetRevisionStreamClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -1353,17 +1353,17 @@ func (c *keyTransparencyClient) GetEpochStream(ctx context.Context, in *GetEpoch
 	return x, nil
 }
 
-type KeyTransparency_GetEpochStreamClient interface {
-	Recv() (*Epoch, error)
+type KeyTransparency_GetRevisionStreamClient interface {
+	Recv() (*Revision, error)
 	grpc.ClientStream
 }
 
-type keyTransparencyGetEpochStreamClient struct {
+type keyTransparencyGetRevisionStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *keyTransparencyGetEpochStreamClient) Recv() (*Epoch, error) {
-	m := new(Epoch)
+func (x *keyTransparencyGetRevisionStreamClient) Recv() (*Revision, error) {
+	m := new(Revision)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -1452,22 +1452,22 @@ type KeyTransparencyServer interface {
 	// GetDirectory returns the information needed to verify the specified
 	// directory.
 	GetDirectory(context.Context, *GetDirectoryRequest) (*Directory, error)
-	// GetEpoch returns a SignedMapRoot by the by the requested revision number
+	// GetRevision returns a SignedMapRoot by the by the requested revision number
 	// along with its inclusion proof in the log and the log's consistency proofs.
-	GetEpoch(context.Context, *GetEpochRequest) (*Epoch, error)
-	// GetLatestEpoch returns the latest SignedMapRoot along with its inclusion
+	GetRevision(context.Context, *GetRevisionRequest) (*Revision, error)
+	// GetLatestRevision returns the latest SignedMapRoot along with its inclusion
 	// proof in the log and the log's consistency proofs.
-	GetLatestEpoch(context.Context, *GetLatestEpochRequest) (*Epoch, error)
-	// GetEpochStream streams new epochs from a requested starting point
-	// and continues as new epochs are created.
-	GetEpochStream(*GetEpochRequest, KeyTransparency_GetEpochStreamServer) error
-	// ListMutations returns a list of mutations in a specific epoch.
+	GetLatestRevision(context.Context, *GetLatestRevisionRequest) (*Revision, error)
+	// GetRevisionStream streams new revisions from a requested starting point
+	// and continues as new revisions are created.
+	GetRevisionStream(*GetRevisionRequest, KeyTransparency_GetRevisionStreamServer) error
+	// ListMutations returns a list of mutations in a specific revision.
 	ListMutations(context.Context, *ListMutationsRequest) (*ListMutationsResponse, error)
-	// ListMutationsStream is a streaming list of mutations in a specific epoch.
+	// ListMutationsStream is a streaming list of mutations in a specific revision.
 	ListMutationsStream(*ListMutationsRequest, KeyTransparency_ListMutationsStreamServer) error
 	// GetUser returns a user's leaf entry in the Merkle Tree.
 	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
-	// BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same epoch.
+	// BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same revision.
 	BatchGetUser(context.Context, *BatchGetUserRequest) (*BatchGetUserResponse, error)
 	// ListEntryHistory returns a list of historic GetUser values.
 	//
@@ -1503,60 +1503,60 @@ func _KeyTransparency_GetDirectory_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparency_GetEpoch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetEpochRequest)
+func _KeyTransparency_GetRevision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRevisionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyTransparencyServer).GetEpoch(ctx, in)
+		return srv.(KeyTransparencyServer).GetRevision(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/google.keytransparency.v1.KeyTransparency/GetEpoch",
+		FullMethod: "/google.keytransparency.v1.KeyTransparency/GetRevision",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyServer).GetEpoch(ctx, req.(*GetEpochRequest))
+		return srv.(KeyTransparencyServer).GetRevision(ctx, req.(*GetRevisionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparency_GetLatestEpoch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetLatestEpochRequest)
+func _KeyTransparency_GetLatestRevision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLatestRevisionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyTransparencyServer).GetLatestEpoch(ctx, in)
+		return srv.(KeyTransparencyServer).GetLatestRevision(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/google.keytransparency.v1.KeyTransparency/GetLatestEpoch",
+		FullMethod: "/google.keytransparency.v1.KeyTransparency/GetLatestRevision",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencyServer).GetLatestEpoch(ctx, req.(*GetLatestEpochRequest))
+		return srv.(KeyTransparencyServer).GetLatestRevision(ctx, req.(*GetLatestRevisionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparency_GetEpochStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetEpochRequest)
+func _KeyTransparency_GetRevisionStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetRevisionRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(KeyTransparencyServer).GetEpochStream(m, &keyTransparencyGetEpochStreamServer{stream})
+	return srv.(KeyTransparencyServer).GetRevisionStream(m, &keyTransparencyGetRevisionStreamServer{stream})
 }
 
-type KeyTransparency_GetEpochStreamServer interface {
-	Send(*Epoch) error
+type KeyTransparency_GetRevisionStreamServer interface {
+	Send(*Revision) error
 	grpc.ServerStream
 }
 
-type keyTransparencyGetEpochStreamServer struct {
+type keyTransparencyGetRevisionStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *keyTransparencyGetEpochStreamServer) Send(m *Epoch) error {
+func (x *keyTransparencyGetRevisionStreamServer) Send(m *Revision) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -1680,12 +1680,12 @@ var _KeyTransparency_serviceDesc = grpc.ServiceDesc{
 			Handler:    _KeyTransparency_GetDirectory_Handler,
 		},
 		{
-			MethodName: "GetEpoch",
-			Handler:    _KeyTransparency_GetEpoch_Handler,
+			MethodName: "GetRevision",
+			Handler:    _KeyTransparency_GetRevision_Handler,
 		},
 		{
-			MethodName: "GetLatestEpoch",
-			Handler:    _KeyTransparency_GetLatestEpoch_Handler,
+			MethodName: "GetLatestRevision",
+			Handler:    _KeyTransparency_GetLatestRevision_Handler,
 		},
 		{
 			MethodName: "ListMutations",
@@ -1710,8 +1710,8 @@ var _KeyTransparency_serviceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "GetEpochStream",
-			Handler:       _KeyTransparency_GetEpochStream_Handler,
+			StreamName:    "GetRevisionStream",
+			Handler:       _KeyTransparency_GetRevisionStream_Handler,
 			ServerStreams: true,
 		},
 		{

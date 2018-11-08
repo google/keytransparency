@@ -41,7 +41,7 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 -----END EC PRIVATE KEY-----`
 )
 
-// TestMonitor verifies that the monitor correctly verifies transitions between epochs.
+// TestMonitor verifies that the monitor correctly verifies transitions between revisions.
 func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	// setup monitor:
 	privKey, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
@@ -55,17 +55,17 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		t.Fatalf("Couldn't create monitor: %v", err)
 	}
 
-	// Setup a bunch of epochs with data to verify.
+	// Setup a bunch of revisions with data to verify.
 	for _, e := range []struct {
-		epoch       int64
+		revision       int64
 		signers     []*tink.KeysetHandle
 		userUpdates []*tpb.User
 	}{
 		{
-			epoch: 1,
+			revision: 1,
 		},
 		{
-			epoch:   2,
+			revision:   2,
 			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
@@ -77,7 +77,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			},
 		},
 		{
-			epoch:   3,
+			revision:   3,
 			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
@@ -128,7 +128,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	for i := int64(1); i < 4; i++ {
 		mresp, err := store.Get(i)
 		if err != nil {
-			t.Errorf("Could not read monitoring response for epoch %v: %v", i, err)
+			t.Errorf("Could not read monitoring response for revision %v: %v", i, err)
 			continue
 		}
 		for _, err := range mresp.Errors {

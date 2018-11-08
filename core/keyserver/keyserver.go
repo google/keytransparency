@@ -87,7 +87,7 @@ func New(tlog tpb.TrillianLogClient,
 
 // GetUser returns a user's profile and proof that there is only one object for
 // this user and that it is the same one being provided to everyone else.
-// GetUser also supports querying past values by setting the epoch field.
+// GetUser also supports querying past values by setting the revision field.
 func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUserResponse, error) {
 	directoryID := in.GetDirectoryId()
 	if directoryID == "" {
@@ -117,7 +117,7 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 		return nil, err
 	}
 	resp := &pb.GetUserResponse{
-		Epoch: &pb.Epoch{
+		Revision: &pb.Revision{
 			LatestLogRoot: &pb.LogRoot{
 				LogRoot:        sth,
 				LogConsistency: consistencyProof.GetHashes(),
@@ -198,7 +198,7 @@ func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, 
 				},
 			},
 		},
-		Epoch: &pb.Epoch{
+		Revision: &pb.Revision{
 			MapRoot: &pb.MapRoot{
 				MapRoot:      getResp.GetMapRoot(),
 				LogInclusion: logInclusion.GetProof().GetHashes(),
@@ -207,7 +207,7 @@ func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, 
 	}, nil
 }
 
-// BatchGetUser returns a batch of users at the same epoch.
+// BatchGetUser returns a batch of users at the same revision.
 func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not yet implemented")
 }
@@ -230,28 +230,28 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	if err != nil {
 		return nil, err
 	}
-	currentEpoch, err := mapRevisionFor(sth)
+	currentRevision, err := mapRevisionFor(sth)
 	if err != nil {
 		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
 		return nil, err
 	}
 
-	if err := validateListEntryHistoryRequest(in, currentEpoch); err != nil {
-		glog.Errorf("validateListEntryHistoryRequest(%v, %v): %v", in, currentEpoch, err)
+	if err := validateListEntryHistoryRequest(in, currentRevision); err != nil {
+		glog.Errorf("validateListEntryHistoryRequest(%v, %v): %v", in, currentRevision, err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
 	// TODO(gbelvin): fetch all history from trillian at once.
-	// Get all GetUserResponse for all epochs in the range [start, start + in.PageSize].
+	// Get all GetUserResponse for all revisions in the range [start, start + in.PageSize].
 	responses := make([]*pb.GetUserResponse, in.PageSize)
 	for i := range responses {
 		resp, err := s.getUserByRevision(ctx, sth, d, in.UserId, in.Start+int64(i))
 		if err != nil {
-			glog.Errorf("getUser failed for epoch %v: %v", in.Start+int64(i), err)
+			glog.Errorf("getUser failed for revision %v: %v", in.Start+int64(i), err)
 			return nil, status.Errorf(codes.Internal, "GetUser failed")
 		}
 		proto.Merge(resp, &pb.GetUserResponse{
-			Epoch: &pb.Epoch{
+			Revision: &pb.Revision{
 				// TODO(gbelvin): This is redundant and wasteful. Refactor response API.
 				LatestLogRoot: &pb.LogRoot{
 					LogRoot:        sth,
@@ -263,7 +263,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}
 
 	nextStart := in.Start + int64(len(responses))
-	if nextStart > currentEpoch {
+	if nextStart > currentRevision {
 		nextStart = 0
 	}
 
@@ -299,11 +299,11 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
-	// Query for the current epoch.
+	// Query for the current revision.
 	req := &pb.GetUserRequest{
 		DirectoryId: in.DirectoryId,
 		UserId:      in.UserId,
-		//EpochStart: in.GetUserUpdate().EpochStart,
+		//RevisionStart: in.GetUserUpdate().RevisionStart,
 	}
 	resp, err := s.GetUser(ctx, req)
 	if err != nil {
@@ -313,7 +313,7 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 
 	// Catch errors early. Perform mutation verification.
 	// Read at the current value. Assert the following:
-	// - Correct signatures from previous epoch.
+	// - Correct signatures from previous revision.
 	// - Correct signatures internal to the update.
 	// - Hash of current data matches the expectation in the mutation.
 

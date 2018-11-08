@@ -70,7 +70,7 @@ development.
 #### Verify key history
   ```
   keytransparency-client history <email> --insecure
-  Epoch |Timestamp                    |Profile
+  Revision |Timestamp                    |Profile
   4     |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
 

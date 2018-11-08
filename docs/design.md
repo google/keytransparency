@@ -220,15 +220,15 @@ user.
 ### Client Operations
 
 *   `Update key (user_id, public_key_material)`
-*   `Get keys (user_id, epoch_num, app_label_filter)`
-*   `Get key history (user_id, epoch_num, app_label_filter)`
+*   `Get keys (user_id, revision_num, app_label_filter)`
+*   `Get key history (user_id, revision_num, app_label_filter)`
 *   `Invoke account reset (user_id)`
 
 ### Server Operations
 
-*   Advance epoch.
+*   Advance revision.
 
-	Takes all the promises made since the previous epoch and incorporates
+	Takes all the promises made since the previous revision and incorporates
 	them into an updated Merkle Tree. This operation must occur at least every X
 	minutes, but may occur as often as desired.
 
@@ -246,7 +246,7 @@ themselves. User clients will query the server for their own values regularly,
 looking for unknown keys. All the user’s clients should be notified when new
 keys are detected. New keys may or may not actually belong to the user.
 
-When a user comes online, the user must query their own identity for each epoch
+When a user comes online, the user must query their own identity for each revision
 since last doing so. This verifies that the current set of keys belongs to the
 user, and that the user’s identity was not compromised in between the present
 moment and the last check.
@@ -267,7 +267,7 @@ Commitment to an opaque blob.
 ### Public Monitors
 
 Monitors verify that the Key Transparency server has not signed two different
-versions of the sparse tree head for the same epoch.  They also verify any
+versions of the sparse tree head for the same revision.  They also verify any
 public properties of leaf nodes such as signatures and ordering.
 
 ### Gossip Model
@@ -278,7 +278,7 @@ discussion](https://tools.ietf.org/html/draft-linus-trans-gossip-ct-00). A few
 options being considered are:
 
 
-1.  Minimal Gossip where SMH are put in a verifiable map indexed by map/epoch.
+1.  Minimal Gossip where SMH are put in a verifiable map indexed by map/revision.
 1.  Servers and Monitors gossip current CT STH’s to each other.
 1.  Clients randomly query multiple monitors as described in the CONIKS paper.
 

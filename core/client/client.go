@@ -57,7 +57,7 @@ var (
 	// ErrWait occurs when an update has been queued, but no change has been
 	// observed in the user's account yet.
 	ErrWait = status.Errorf(codes.Unavailable, "client: update not present yet - wait some more")
-	// ErrIncomplete occurs when the server indicates that requested epochs
+	// ErrIncomplete occurs when the server indicates that requested revisions
 	// are not available.
 	ErrIncomplete = errors.New("incomplete account history")
 	// ErrLogEmpty occurs when the Log.TreeSize < 1 which indicates
@@ -76,9 +76,9 @@ type Verifier interface {
 	// VerifyGetUserResponse verifies everything about a GetUserResponse.
 	VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
 		in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error)
-	// VerifyEpoch verifies that epoch is correctly signed and included in the append only log.
-	// VerifyEpoch also verifies that epoch.LogRoot is consistent with the last trusted SignedLogRoot.
-	VerifyEpoch(epoch *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
+	// VerifyRevision verifies that revision is correctly signed and included in the append only log.
+	// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
+	VerifyRevision(revision *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
 	// VerifySignedMapRoot verifies the signature on the SignedMapRoot.
 	VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error)
 }
@@ -163,9 +163,9 @@ func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end 
 	}
 	allRoots := make(map[uint64]*types.MapRootV1)
 	allProfiles := make(map[uint64][]byte)
-	epochsWant := end - start + 1
-	for int64(len(allProfiles)) < epochsWant {
-		count := epochsWant - int64(len(allProfiles))
+	revisionsWant := end - start + 1
+	for int64(len(allProfiles)) < revisionsWant {
+		count := revisionsWant - int64(len(allProfiles))
 		profiles, next, err := c.VerifiedListHistory(ctx, userID, start, int32(count))
 		if err != nil {
 			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
@@ -181,37 +181,37 @@ func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end 
 		start = next // Fetch the next block of results.
 	}
 
-	if int64(len(allProfiles)) < epochsWant {
-		glog.Infof("PaginateHistory(): incomplete. Got %v profiles, wanted %v", len(allProfiles), epochsWant)
+	if int64(len(allProfiles)) < revisionsWant {
+		glog.Infof("PaginateHistory(): incomplete. Got %v profiles, wanted %v", len(allProfiles), revisionsWant)
 		return nil, nil, ErrIncomplete
 	}
 
 	return allRoots, allProfiles, nil
 }
 
-// CompressHistory takes a map of data by epoch number.
-// CompressHistory returns only the epochs where the associated data changed.
-// CompressHistory returns an error if the list of epochs is not contiguous.
+// CompressHistory takes a map of data by revision number.
+// CompressHistory returns only the revisions where the associated data changed.
+// CompressHistory returns an error if the list of revisions is not contiguous.
 func CompressHistory(profiles map[uint64][]byte) (map[uint64][]byte, error) {
 	// Sort map roots.
-	epochs := make(uint64Slice, 0, len(profiles))
+	revisions := make(uint64Slice, 0, len(profiles))
 	for e := range profiles {
-		epochs = append(epochs, e)
+		revisions = append(revisions, e)
 	}
-	sort.Sort(epochs)
+	sort.Sort(revisions)
 
 	// Compress profiles that are equal through time.  All
 	// nil profiles before the first profile are ignored.
 	var prevData []byte
-	var prevEpoch uint64
+	var prevRevision uint64
 	ret := make(map[uint64][]byte)
-	for i, e := range epochs {
+	for i, e := range revisions {
 		// Verify that the roots are contiguous
-		if i != 0 && e != prevEpoch+1 {
-			glog.Errorf("Non contiguous history. Got epoch %v, want %v", e, prevEpoch+1)
+		if i != 0 && e != prevRevision+1 {
+			glog.Errorf("Non contiguous history. Got revision %v, want %v", e, prevRevision+1)
 			return nil, ErrNonContiguous
 		}
-		prevEpoch = e
+		prevRevision = e
 
 		// Append to output when data changes.
 		data := profiles[e]
@@ -314,7 +314,7 @@ func (c *Client) WaitForUserUpdate(ctx context.Context, m *entry.Mutation) (*ent
 	}
 }
 
-// waitOnceForUserUpdate waits for the STH to be updated, indicating the next epoch has been created,
+// waitOnceForUserUpdate waits for the STH to be updated, indicating the next revision has been created,
 // it then queries the current value for the user and checks it against the requested mutation.
 // If the current value has not changed, WaitForUpdate returns ErrWait.
 // If the current value has changed, but does not match the requested mutation,
@@ -399,7 +399,7 @@ func (c *Client) WaitForSTHUpdate(ctx context.Context, treeSize int64) error {
 	for {
 		select {
 		case <-time.After(b.Duration()):
-			logRoot, _, err := c.VerifiedGetLatestEpoch(ctx)
+			logRoot, _, err := c.VerifiedGetLatestRevision(ctx)
 			if err != nil {
 				return err
 			}

@@ -37,17 +37,17 @@ message GetStateRequest {
   // directory_id identifies the merkle tree being monitored.
   string directory_id = 3;
 
-  // epoch specifies the revision for which the monitoring results will
-  // be returned (epochs start at 0).
-  int64 epoch = 1;
+  // revision specifies the revision for which the monitoring results will
+  // be returned (revisions start at 0).
+  int64 revision = 1;
 }
 
 // State represents the monitor's evaluation of a Key Transparency directory
-// at a particular epoch.
+// at a particular revision.
 message State {
   // smr contains the map root for the sparse Merkle Tree signed with the
   // monitor's key on success. If the checks were not successful the
-  // smr will be empty. The epochs are encoded into the smr map_revision.
+  // smr will be empty. The revisions are encoded into the smr map_revision.
   trillian.SignedMapRoot smr = 1;
 
   // seen_time contains the time when this particular signed map root was
@@ -64,7 +64,7 @@ message State {
 //
 // - Signed Map Roots can be collected using the GetSignedMapRoot APIs.
 // - Monitor resources are named:
-//   - /monitor/v1/servers/{kt_url}/directories/{directory_id}/states/{epoch}
+//   - /monitor/v1/servers/{kt_url}/directories/{directory_id}/states/{revision}
 //   - /monitor/v1/servers/{kt_url}/directories/{directory_id}/states:latest
 //
 service Monitor {
@@ -72,9 +72,9 @@ service Monitor {
   // observed. Additionally, the response contains extra data necessary to
   // reproduce errors on failure.
   //
-  // Returns the signed map root for the latest epoch the monitor observed. If
+  // Returns the signed map root for the latest revision the monitor observed. If
   // the monitor could not reconstruct the map root given the set of mutations
-  // from the previous to the current epoch it won't sign the map root and
+  // from the previous to the current revision it won't sign the map root and
   // additional data will be provided to reproduce the failure.
   rpc GetState(GetStateRequest) returns (State) {
     option (google.api.http) = {
@@ -85,13 +85,13 @@ service Monitor {
   // GetSignedMapRootByRevision returns the monitor's result for a specific map
   // revision.
   //
-  // Returns the signed map root for the specified epoch the monitor observed.
+  // Returns the signed map root for the specified revision the monitor observed.
   // If the monitor could not reconstruct the map root given the set of
-  // mutations from the previous to the current epoch it won't sign the map
+  // mutations from the previous to the current revision it won't sign the map
   // root and additional data will be provided to reproduce the failure.
   rpc GetStateByRevision(GetStateRequest) returns (State) {
     option (google.api.http) = {
-      get: "/monitor/v1/servers/{kt_url}/directories/{directory_id}/states/{epoch}"
+      get: "/monitor/v1/servers/{kt_url}/directories/{directory_id}/states/{revision}"
     };
   }
 }

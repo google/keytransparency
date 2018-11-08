@@ -42,9 +42,9 @@ type GetStateRequest struct {
 	KtUrl string `protobuf:"bytes,2,opt,name=kt_url,json=ktUrl,proto3" json:"kt_url,omitempty"`
 	// directory_id identifies the merkle tree being monitored.
 	DirectoryId string `protobuf:"bytes,3,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// epoch specifies the revision for which the monitoring results will
-	// be returned (epochs start at 0).
-	Epoch                int64    `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	// revision specifies the revision for which the monitoring results will
+	// be returned (revisions start at 0).
+	Revision                int64    `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -89,19 +89,19 @@ func (m *GetStateRequest) GetDirectoryId() string {
 	return ""
 }
 
-func (m *GetStateRequest) GetEpoch() int64 {
+func (m *GetStateRequest) GetRevision() int64 {
 	if m != nil {
-		return m.Epoch
+		return m.Revision
 	}
 	return 0
 }
 
 // State represents the monitor's evaluation of a Key Transparency directory
-// at a particular epoch.
+// at a particular revision.
 type State struct {
 	// smr contains the map root for the sparse Merkle Tree signed with the
 	// monitor's key on success. If the checks were not successful the
-	// smr will be empty. The epochs are encoded into the smr map_revision.
+	// smr will be empty. The revisions are encoded into the smr map_revision.
 	Smr *trillian.SignedMapRoot `protobuf:"bytes,1,opt,name=smr,proto3" json:"smr,omitempty"`
 	// seen_time contains the time when this particular signed map root was
 	// retrieved and processed.
@@ -181,17 +181,17 @@ type MonitorClient interface {
 	// observed. Additionally, the response contains extra data necessary to
 	// reproduce errors on failure.
 	//
-	// Returns the signed map root for the latest epoch the monitor observed. If
+	// Returns the signed map root for the latest revision the monitor observed. If
 	// the monitor could not reconstruct the map root given the set of mutations
-	// from the previous to the current epoch it won't sign the map root and
+	// from the previous to the current revision it won't sign the map root and
 	// additional data will be provided to reproduce the failure.
 	GetState(ctx context.Context, in *GetStateRequest, opts ...grpc.CallOption) (*State, error)
 	// GetSignedMapRootByRevision returns the monitor's result for a specific map
 	// revision.
 	//
-	// Returns the signed map root for the specified epoch the monitor observed.
+	// Returns the signed map root for the specified revision the monitor observed.
 	// If the monitor could not reconstruct the map root given the set of
-	// mutations from the previous to the current epoch it won't sign the map
+	// mutations from the previous to the current revision it won't sign the map
 	// root and additional data will be provided to reproduce the failure.
 	GetStateByRevision(ctx context.Context, in *GetStateRequest, opts ...grpc.CallOption) (*State, error)
 }
@@ -228,17 +228,17 @@ type MonitorServer interface {
 	// observed. Additionally, the response contains extra data necessary to
 	// reproduce errors on failure.
 	//
-	// Returns the signed map root for the latest epoch the monitor observed. If
+	// Returns the signed map root for the latest revision the monitor observed. If
 	// the monitor could not reconstruct the map root given the set of mutations
-	// from the previous to the current epoch it won't sign the map root and
+	// from the previous to the current revision it won't sign the map root and
 	// additional data will be provided to reproduce the failure.
 	GetState(context.Context, *GetStateRequest) (*State, error)
 	// GetSignedMapRootByRevision returns the monitor's result for a specific map
 	// revision.
 	//
-	// Returns the signed map root for the specified epoch the monitor observed.
+	// Returns the signed map root for the specified revision the monitor observed.
 	// If the monitor could not reconstruct the map root given the set of
-	// mutations from the previous to the current epoch it won't sign the map
+	// mutations from the previous to the current revision it won't sign the map
 	// root and additional data will be provided to reproduce the failure.
 	GetStateByRevision(context.Context, *GetStateRequest) (*State, error)
 }
