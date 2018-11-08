@@ -195,8 +195,8 @@ func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end 
 func CompressHistory(profiles map[uint64][]byte) (map[uint64][]byte, error) {
 	// Sort map roots.
 	revisions := make(uint64Slice, 0, len(profiles))
-	for e := range profiles {
-		revisions = append(revisions, e)
+	for p := range profiles {
+		revisions = append(revisions, p)
 	}
 	sort.Sort(revisions)
 
@@ -205,21 +205,21 @@ func CompressHistory(profiles map[uint64][]byte) (map[uint64][]byte, error) {
 	var prevData []byte
 	var prevRevision uint64
 	ret := make(map[uint64][]byte)
-	for i, e := range revisions {
+	for i, r := range revisions {
 		// Verify that the roots are contiguous
-		if i != 0 && e != prevRevision+1 {
-			glog.Errorf("Non contiguous history. Got revision %v, want %v", e, prevRevision+1)
+		if i != 0 && r != prevRevision+1 {
+			glog.Errorf("Non contiguous history. Got revision %v, want %v", r, prevRevision+1)
 			return nil, ErrNonContiguous
 		}
-		prevRevision = e
+		prevRevision = r
 
 		// Append to output when data changes.
-		data := profiles[e]
+		data := profiles[r]
 		if bytes.Equal(data, prevData) {
 			continue
 		}
 		prevData = data
-		ret[e] = data
+		ret[r] = data
 	}
 	return ret, nil
 }
