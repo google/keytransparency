@@ -224,21 +224,37 @@ message GetLatestEpochRequest {
   int64 last_verified_tree_size = 2;
 }
 
+
+// MapRoot contains the map root and its inclusion proof in the log.
+message MapRoot {
+  // map_root contains the signed map root for the sparse Merkle Tree.
+  trillian.SignedMapRoot map_root = 1;
+  // log_inclusion proves that map_root is part of log_root at
+  // index=map_root.MapRevision.
+  repeated bytes log_inclusion = 2;
+}
+
+// LogRoot contains the latest log root and its consistency proof.
+message LogRoot {
+  // log_root is the latest globally consistent log root.
+  trillian.SignedLogRoot log_root = 1;
+  // log_consistency proves that log_root is consistent with previously seen
+  // roots.
+  repeated bytes log_consistency = 2;
+}
+
 // Epoch represents a snapshot of the entire key directory and
 // a diff of what changed between this revision and the previous revision.
 message Epoch {
   // directory_id is the directory identifier.
   string directory_id = 1;
-  // map_root contains the signed map root for the sparse Merkle Tree.
-  trillian.SignedMapRoot map_root = 2;
-  // log_root is the latest globally consistent log root.
-  trillian.SignedLogRoot log_root = 3;
-  // log_consistency proves that log_root is consistent with previously seen
-  // roots.
-  repeated bytes log_consistency = 4;
-  // log_inclusion proves that map_root is part of log_root at
-  // index=map_root.MapRevision.
-  repeated bytes log_inclusion = 5;
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 5;
+  // latest_log_root contains the most recent log root and its consistency
+  // proof to the client's last seen log root.
+  LogRoot latest_log_root = 6;
+  // Deprecated tag numbers, do not reuse.
+  reserved 2, 3, 4;
 }
 
 // ListMutationsRequest requests the mutations that created a given epoch.

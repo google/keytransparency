@@ -121,17 +121,17 @@ func TestPaginateHistory(t *testing.T) {
 
 	srv := &fakeKeyServer{
 		revisions: map[int64]*pb.GetUserResponse{
-			0:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{0}}}},
-			1:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{1}}}},
-			2:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{2}}}},
-			3:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{3}}}},
-			4:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{4}}}},
-			5:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{5}}}},
-			6:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{6}}}},
-			7:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{7}}}},
-			8:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{8}}}},
-			9:  {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{9}}}},
-			10: {Epoch: &pb.Epoch{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{10}}}},
+			0:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{0}}}}},
+			1:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{1}}}}},
+			2:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{2}}}}},
+			3:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{3}}}}},
+			4:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{4}}}}},
+			5:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{5}}}}},
+			6:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{6}}}}},
+			7:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{7}}}}},
+			8:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{8}}}}},
+			9:  {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{9}}}}},
+			10: {Epoch: &pb.Epoch{MapRoot: &pb.MapRoot{MapRoot: &trillian.SignedMapRoot{MapRoot: []byte{10}}}}},
 		},
 	}
 	s, stop, err := testutil.NewFakeKT(srv)
@@ -290,12 +290,12 @@ func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byt
 
 func (f *fakeVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
 	in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.GetEpoch().MapRoot)
+	smr, err := f.VerifySignedMapRoot(in.GetEpoch().GetMapRoot().GetMapRoot())
 	return smr, &types.LogRootV1{}, err
 }
 
 func (f *fakeVerifier) VerifyEpoch(in *pb.Epoch, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.MapRoot)
+	smr, err := f.VerifySignedMapRoot(in.MapRoot.MapRoot)
 	return &types.LogRootV1{}, smr, err
 }
 
