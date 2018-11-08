@@ -17,10 +17,14 @@ package entry
 import (
 	"testing"
 
-	"github.com/google/keytransparency/core/testutil"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/google/keytransparency/core/testutil"
+
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 const directoryID = "default"
@@ -103,19 +107,25 @@ func TestCreateAndVerify(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SerializeAndSign(): %v", err)
 			}
+
 			// Verify mutation.
-			oldValue, err := FromLeafValue(tc.old)
+			oldSignedEntry, err := FromLeafValue(tc.old)
 			if err != nil {
 				t.Fatalf("FromLeafValue(%v): %v", tc.old, err)
 			}
 			f := New()
-			newEntry, err := f.Mutate(oldValue, update.GetEntryUpdate().GetMutation())
+			newSignedEntry, err := f.Mutate(oldSignedEntry, update.GetEntryUpdate().GetMutation())
 			if err != nil {
 				t.Fatalf("Mutate(%v): %v", update.GetEntryUpdate().GetMutation(), err)
 			}
 
-			if !m.EqualsRequested(newEntry) {
-				t.Errorf("EqualsRequested(): false")
+			var wantEntry pb.Entry
+			if err := proto.Unmarshal(newSignedEntry.GetEntry(), &wantEntry); err != nil {
+				t.Fatalf("Unmarshal(old): %v", err)
+			}
+
+			if !proto.Equal(m.entry, &wantEntry) {
+				t.Errorf("proto.Equals(): false")
 			}
 		})
 	}

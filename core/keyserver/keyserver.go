@@ -102,7 +102,7 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 	}
 
 	// Fetch latest revision.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +118,10 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 	}
 	resp := &pb.GetUserResponse{
 		Epoch: &pb.Epoch{
-			LogRoot:        sth,
-			LogConsistency: consistencyProof.GetHashes(),
+			LatestLogRoot: &pb.LogRoot{
+				LogRoot:        sth,
+				LogConsistency: consistencyProof.GetHashes(),
+			},
 		},
 	}
 	proto.Merge(resp, entryProof)
@@ -197,8 +199,10 @@ func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, 
 			},
 		},
 		Epoch: &pb.Epoch{
-			MapRoot:      getResp.GetMapRoot(),
-			LogInclusion: logInclusion.GetProof().GetHashes(),
+			MapRoot: &pb.MapRoot{
+				MapRoot:      getResp.GetMapRoot(),
+				LogInclusion: logInclusion.GetProof().GetHashes(),
+			},
 		},
 	}, nil
 }
@@ -222,7 +226,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}
 
 	// Fetch latest revision.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -248,9 +252,11 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 		}
 		proto.Merge(resp, &pb.GetUserResponse{
 			Epoch: &pb.Epoch{
-				LogRoot: sth,
 				// TODO(gbelvin): This is redundant and wasteful. Refactor response API.
-				LogConsistency: consistencyProof.GetHashes(),
+				LatestLogRoot: &pb.LogRoot{
+					LogRoot:        sth,
+					LogConsistency: consistencyProof.GetHashes(),
+				},
 			},
 		})
 		responses[i] = resp

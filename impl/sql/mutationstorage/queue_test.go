@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -151,12 +152,21 @@ func TestWatermark(t *testing.T) {
 	}
 }
 
+func mustMarshal(t *testing.T, p proto.Message) []byte {
+	t.Helper()
+	b, err := proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("proto.Marshal(): %v", err)
+	}
+	return b
+}
+
 func TestReadLog(t *testing.T) {
 	ctx := context.Background()
 	logID := int64(5)
 	m := newForTest(ctx, t, logID)
 	for i := byte(0); i < 10; i++ {
-		entry := &pb.EntryUpdate{Mutation: &pb.Entry{Index: []byte{i}}}
+		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
 		if err := m.Send(ctx, directoryID, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
@@ -179,7 +189,11 @@ func TestReadLog(t *testing.T) {
 			t.Fatalf("ReadLog(): len: %v, want %v", got, want)
 		}
 		for i, r := range rows {
-			if got, want := r.Mutation.GetIndex()[0], byte(i); got != want {
+			var e pb.Entry
+			if err := proto.Unmarshal(r.Mutation.Entry, &e); err != nil {
+				t.Errorf("Unmarshal(): %v", err)
+			}
+			if got, want := e.Index[0], byte(i); got != want {
 				t.Errorf("ReadLog()[%v]: %v, want %v", i, got, want)
 			}
 		}

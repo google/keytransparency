@@ -19,26 +19,22 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/tink"
+
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/testutil"
-
-	"github.com/benlaurie/objecthash/go/objecthash"
-	"github.com/google/tink/go/tink"
 
 	tpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-func mustObjectHash(t *testing.T, val interface{}) [sha256.Size]byte {
+func mustMarshal(t *testing.T, p proto.Message) []byte {
 	t.Helper()
-	j, err := objecthash.CommonJSONify(val)
+	data, err := proto.Marshal(p)
 	if err != nil {
-		t.Fatalf("CommonJSONify() err=%v", err)
+		t.Fatalf("proto.Marshal(%#v): %v", p, err)
 	}
-	h, err := objecthash.ObjectHash(j)
-	if err != nil {
-		t.Fatalf("ObjectHash() err=%v", err)
-	}
-	return h
+	return data
 }
 
 func TestCheckMutation(t *testing.T) {
@@ -46,7 +42,7 @@ func TestCheckMutation(t *testing.T) {
 	// make the two entries (entryData1 and entryData2) different, otherwise
 	// it is not possible to test all cases.
 	key := []byte{0}
-	nilHash := mustObjectHash(t, nil)
+	nilHash := sha256.Sum256(nil)
 
 	entryData1 := &tpb.Entry{
 		Index:          key,
@@ -54,20 +50,26 @@ func TestCheckMutation(t *testing.T) {
 		AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
 		Previous:       nilHash[:],
 	}
-	hashEntry1 := mustObjectHash(t, *entryData1)
+	signedEntryData1 := &tpb.SignedEntry{
+		Entry: mustMarshal(t, entryData1),
+	}
 
+	hashEntry1 := sha256.Sum256(signedEntryData1.Entry)
 	entryData2 := &tpb.Entry{
 		Index:          key,
 		Commitment:     []byte{2},
 		AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 		Previous:       hashEntry1[:],
 	}
+	signedEntryData2 := &tpb.SignedEntry{
+		Entry: mustMarshal(t, entryData2),
+	}
 
 	for _, tc := range []struct {
 		desc     string
 		mutation *Mutation
 		signers  []*tink.KeysetHandle
-		old      *tpb.Entry
+		old      *tpb.SignedEntry
 		err      error
 	}{
 		{
@@ -85,7 +87,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			desc: "Second mutation, working case",
-			old:  entryData1,
+			old:  signedEntryData1,
 			mutation: &Mutation{
 				entry: &tpb.Entry{
 					Index:          key,
@@ -98,7 +100,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			desc: "Replayed mutation",
-			old:  entryData2,
+			old:  signedEntryData2,
 			mutation: &Mutation{
 				entry: &tpb.Entry{
 					Index:          key,
@@ -111,7 +113,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			desc: "Large mutation",
-			old:  entryData1,
+			old:  signedEntryData1,
 			mutation: &Mutation{
 				entry: &tpb.Entry{
 					Index: bytes.Repeat(key, mutator.MaxMutationSize),
@@ -121,7 +123,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			desc: "Invalid previous entry hash",
-			old:  entryData2,
+			old:  signedEntryData2,
 			mutation: &Mutation{
 				entry: &tpb.Entry{
 					Index:          key,
@@ -143,7 +145,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			desc: "Very first mutation, missing previous signature",
-			old:  entryData1,
+			old:  signedEntryData1,
 			mutation: &Mutation{
 				entry: &tpb.Entry{
 					Index:          key,
@@ -157,7 +159,7 @@ func TestCheckMutation(t *testing.T) {
 		},
 		{
 			desc: "Very first mutation, successful key change",
-			old:  entryData1,
+			old:  signedEntryData1,
 			mutation: &Mutation{
 				entry: &tpb.Entry{
 					Index:          key,

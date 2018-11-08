@@ -38,6 +38,15 @@ const (
 	directoryID = "directory"
 )
 
+func mustMarshal(t *testing.T, p proto.Message) []byte {
+	t.Helper()
+	b, err := proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("proto.Marshal(%T): %v", p, err)
+	}
+	return b
+}
+
 func genInclusions(start, end int64) []*tpb.MapLeafInclusion {
 	ret := make([]*tpb.MapLeafInclusion, end-start)
 	for i := range ret {
@@ -53,17 +62,6 @@ func genIndexes(start, end int64) [][]byte {
 		indexes = append(indexes, []byte(fmt.Sprintf("key_%v", i)))
 	}
 	return indexes
-}
-
-func genMutations(start, end int64) []*pb.Entry {
-	mutations := make([]*pb.Entry, 0, end-start)
-	for i := start + 1; i <= end; i++ {
-		mutations = append(mutations, &pb.Entry{
-			Index:      []byte(fmt.Sprintf("key_%v", i)),
-			Commitment: []byte(fmt.Sprintf("value_%v", i)),
-		})
-	}
-	return mutations
 }
 
 func TestGetEpochStream(t *testing.T) {
@@ -136,9 +134,11 @@ func TestListMutations(t *testing.T) {
 			for i := source.LowestWatermark + 1; i <= source.HighestWatermark; i++ {
 				fakeLogs[logID][i] = &mutator.LogMessage{
 					ID: i,
-					Mutation: &pb.Entry{
-						Index:      []byte(fmt.Sprintf("key_%v", i)),
-						Commitment: []byte(fmt.Sprintf("value_%v", i)),
+					Mutation: &pb.SignedEntry{
+						Entry: mustMarshal(t, &pb.Entry{
+							Index:      []byte(fmt.Sprintf("key_%v", i)),
+							Commitment: []byte(fmt.Sprintf("value_%v", i)),
+						}),
 					},
 				}
 			}
@@ -195,12 +195,12 @@ func TestListMutations(t *testing.T) {
 			if err != nil {
 				return
 			}
-			mtns := genMutations(tc.start, tc.end)
+			mtns := fakeLogs[0][tc.start+1 : tc.end+1]
 			if got, want := len(resp.Mutations), len(mtns); got != want {
 				t.Fatalf("len(resp.Mutations):%v, want %v", got, want)
 			}
 			for i, mut := range resp.Mutations {
-				if got, want := mut.Mutation, mtns[i]; !proto.Equal(got, want) {
+				if got, want := mut.Mutation, mtns[i].Mutation; !proto.Equal(got, want) {
 					t.Errorf("resp.Mutations[i].Update:%v, want %v", got, want)
 				}
 			}

@@ -82,17 +82,16 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
-		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
-			func(ctx context.Context) error {
-				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-					DirectoryId: env.Directory.DirectoryId,
-					MinBatch:    1,
-					MaxBatch:    100,
-				})
-				return err
-			}); err != nil {
-			log.Errorf("PeriodicallyRun(): %v", err)
-		}
+		sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
+			req := &spb.RunBatchRequest{
+				DirectoryId: env.Directory.DirectoryId,
+				MinBatch:    1,
+				MaxBatch:    100,
+			}
+			if _, err := env.Sequencer.RunBatch(ctx, req); err != nil {
+				log.Errorf("RunBatch(): %v", err)
+			}
+		})
 	}()
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
@@ -163,9 +162,9 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	} {
 		// Check profile.
 		e, err := env.Cli.GetUser(ctx, &pb.GetUserRequest{
-			DirectoryId:   env.Directory.DirectoryId,
-			UserId:        tc.userID,
-			FirstTreeSize: int64(slr.TreeSize),
+			DirectoryId:          env.Directory.DirectoryId,
+			UserId:               tc.userID,
+			LastVerifiedTreeSize: int64(slr.TreeSize),
 		})
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: GetUser(): %v", err)

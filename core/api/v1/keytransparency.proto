@@ -40,9 +40,10 @@ message Committed {
 }
 
 // EntryUpdate contains the user entry update(s).
+// EntryUpdate will be placed in a Log of mutations.
 message EntryUpdate {
   // mutation authorizes the change to entry.
-  Entry mutation = 2;
+  SignedEntry mutation = 2;
   // committed contains the data committed to in mutation.commitment.
   Committed committed = 3;
 }
@@ -61,14 +62,21 @@ message Entry {
   bytes commitment = 6;
   // authorized_keys is the set of keys allowed to sign updates for this entry.
   crypto.tink.Keyset authorized_keys = 7;
-  // previous contains the hash of the previous entry that this mutation is
-  // modifying creating a hash chain of all mutations. The hash used is
-  // CommonJSON in "github.com/benlaurie/objecthash/go/objecthash".
+  // previous contains the SHA256 hash of SignedEntry.Entry the last time it was modified.
   bytes previous = 8;
+  // Deprecated tag numbers, do not reuse.
+  reserved 1, 2, 4, 5;
+}
 
+// SignedEntry is a cryptographically signed Entry.
+// SignedEntry will be storead as a trillian.Map leaf.
+message SignedEntry {
+  // entry contains a serialized Entry.
+  bytes entry = 1;
   // signatures on entry. Must be signed by keys from both previous and
   // current epochs. The first proves ownership of new epoch key, and the
   // second proves that the correct owner is making this change.
+  // The signature scheme is specified by the authorized_keys tink.Keyset.
   repeated bytes signatures = 2;
 }
 
@@ -80,7 +88,7 @@ message MutationProof {
   // mutation contains the information needed to modify the old leaf.
   // The format of a mutation is specific to the particular Mutate function
   // being used.
-  Entry mutation = 1;
+  SignedEntry mutation = 1;
   // leaf_proof contains the leaf and its inclusion proof for a particular map
   // revision.
   trillian.MapLeafInclusion leaf_proof = 2;
@@ -123,9 +131,10 @@ message GetUserRequest {
   // user_id is the user identifier, the format for which is defined by the
   // application.
   string user_id = 2;
-  // last_seen_revision is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 last_seen_revision = 3;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 3;
 }
 
 // Contains the leaf entry for a user at the most recently published epoch.
@@ -156,9 +165,10 @@ message BatchGetUserRequest {
   // user_ids are the user identifiers, the format for which is defined by the
   // application.
   repeated string user_ids = 2;
-  // last_seen_revision is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 last_seen_revision = 3;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 3;
 }
 
 // Contains the leaf entries for a set of users at the most recently published epoch.
@@ -184,9 +194,10 @@ message ListUserRevisionsRequest {
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
   reserved 4;
-  // last_seen_revision is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 last_seen_revision = 5;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 5;
 }
 
 // ListUserRevisionsResponse requests a paginated history of keys for a user.
@@ -249,48 +260,52 @@ message GetEpochRequest {
   string directory_id = 5;
   // epoch specifies the epoch number in which mutations will be returned.
   int64 epoch = 1;
-  // last_seen_revision is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 last_seen_revision = 2;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 2;
 }
 
 // GetLatestEpochRequest identifies a particular epoch.
 message GetLatestEpochRequest {
   // directory_id is the directory for which epochs are being requested.
   string directory_id = 1;
-  // last_seen_revision is the tree_size of the currently trusted log root.
-  // Omitting this field will omit the log consistency proof from the response.
-  int64 last_seen_revision = 2;
-}
-
-// LogRoot contains the latest log root and its consistency proof.
-message LogRoot {
-  // log_root is the latest globally consistent log root.
-  trillian.SignedLogRoot log_root = 3;
-  // log_consistency proves that log_root is consistent with previously seen
-  // roots.
-  repeated bytes log_consistency = 4;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 2;
 }
 
 // MapRoot contains the map root and its inclusion proof in the log.
 message MapRoot {
   // map_root contains the signed map root for the sparse Merkle Tree.
-  trillian.SignedMapRoot map_root = 2;
+  trillian.SignedMapRoot map_root = 1;
   // log_inclusion proves that map_root is part of log_root at
   // index=map_root.MapRevision.
-  repeated bytes log_inclusion = 5;
+  repeated bytes log_inclusion = 2;
 }
 
-// Epoch represents a revision of the entire key directory.
+// LogRoot contains the latest log root and its consistency proof.
+message LogRoot {
+  // log_root is the latest globally consistent log root.
+  trillian.SignedLogRoot log_root = 1;
+  // log_consistency proves that log_root is consistent with previously seen
+  // roots.
+  repeated bytes log_consistency = 2;
+}
+
+// Epoch represents a snapshot of the entire key directory and
 // a diff of what changed between this revision and the previous revision.
 message Epoch {
   // directory_id is the directory identifier.
   string directory_id = 1;
   // map_root contains the map root and its inclusion in the log.
-  MapRoot map_root = 2;
+  MapRoot map_root = 5;
   // latest_log_root contains the most recent log root and its consistency
   // proof to the client's last seen log root.
-  LogRoot latest_log_root = 3;
+  LogRoot latest_log_root = 6;
+  // Deprecated tag numbers, do not reuse.
+  reserved 2, 3, 4;
 }
 
 // ListMutationsRequest requests the mutations that created a given epoch.

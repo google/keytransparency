@@ -93,18 +93,24 @@ func PublicKeyFromPEM(pubPEM string, keyID uint32) *tinkpb.Keyset_Key {
 
 // VerifyKeysetFromPEMs produces a Keyset with pubPEMs.
 func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
+	var primaryKeyID uint32
 	keys := make([]*tinkpb.Keyset_Key, 0, len(pubPEMs))
 	for i, pem := range pubPEMs {
 		if pem == "" {
 			continue
 		}
-		keysetKey := PublicKeyFromPEM(pem, uint32(i+1))
+		keyID := uint32(i + 1)
+		keysetKey := PublicKeyFromPEM(pem, keyID)
 		keys = append(keys, keysetKey)
+		primaryKeyID = keyID
 	}
-	keyset := tink.CreateKeyset(1, keys)
+	keyset := tink.CreateKeyset(primaryKeyID, keys)
 	parsedHandle, err := tink.KeysetHandleWithNoSecret(keyset)
 	if err != nil {
 		panic(fmt.Sprintf("tink.KeysetHandleWithNoSecret(): %v", err))
+	}
+	if err := tink.ValidateKeyset(keyset); err != nil {
+		panic(fmt.Sprintf("tink.ValidateKeyset(): %v", err))
 	}
 	return parsedHandle
 }

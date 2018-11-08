@@ -29,6 +29,8 @@ import (
 
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -66,17 +68,15 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
-		if err := sequencer.PeriodicallyRun(ctx, ticker.C,
-			func(ctx context.Context) error {
-				_, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-					DirectoryId: env.Directory.DirectoryId,
-					MinBatch:    1,
-					MaxBatch:    10,
-				})
-				return err
-			}); err != nil {
-			t.Errorf("PeriodicallyRun(): %v", err)
-		}
+		sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
+			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+				DirectoryId: env.Directory.DirectoryId,
+				MinBatch:    1,
+				MaxBatch:    10,
+			}); err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
+				t.Errorf("RunBatch(): %v", err)
+			}
+		})
 	}()
 
 	// Create lists of signers.

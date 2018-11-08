@@ -16,8 +16,6 @@
 package entry
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
@@ -26,9 +24,9 @@ import (
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
 // Entry or nil if the passes LeafValue was nil.
-func FromLeafValue(value []byte) (*pb.Entry, error) {
+func FromLeafValue(value []byte) (*pb.SignedEntry, error) {
 	if value != nil {
-		entry := new(pb.Entry)
+		entry := new(pb.SignedEntry)
 		if err := proto.Unmarshal(value, entry); err != nil {
 			glog.Warningf("proto.Unmarshal(%v, _): %v", value, err)
 			return nil, err
@@ -41,12 +39,6 @@ func FromLeafValue(value []byte) (*pb.Entry, error) {
 }
 
 // ToLeafValue converts the update object into a serialized object to store in the map.
-func ToLeafValue(update proto.Message) ([]byte, error) {
-	e, ok := update.(*pb.Entry)
-	if !ok {
-		glog.Warning("received proto.Message is not of type *pb.SignedKV.")
-		return nil, fmt.Errorf("updateM.(*pb.SignedKV): _, %v", ok)
-	}
-
-	return proto.Marshal(e)
+func ToLeafValue(update *pb.SignedEntry) ([]byte, error) {
+	return proto.Marshal(update)
 }

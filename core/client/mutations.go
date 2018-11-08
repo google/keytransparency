@@ -44,9 +44,9 @@ func (c *Client) StreamEpochs(ctx context.Context, directoryID string, startEpoc
 	for i := startEpoch; ; {
 		// time out if we exceed the poll period:
 		epoch, err := c.cli.GetEpoch(ctx, &pb.GetEpochRequest{
-			DirectoryId:   directoryID,
-			Epoch:         i,
-			FirstTreeSize: startEpoch,
+			DirectoryId:          directoryID,
+			Epoch:                i,
+			LastVerifiedTreeSize: startEpoch,
 		})
 		// If this epoch was not found, wait and retry.
 		if s, _ := status.FromError(err); s.Code() == codes.NotFound {
@@ -73,7 +73,7 @@ func (c *Client) StreamEpochs(ctx context.Context, directoryID string, startEpoc
 
 // EpochMutations fetches all the mutations in an epoch
 func (c *Client) EpochMutations(ctx context.Context, epoch *pb.Epoch) ([]*pb.MutationProof, error) {
-	mapRoot, err := c.VerifySignedMapRoot(epoch.GetMapRoot())
+	mapRoot, err := c.VerifySignedMapRoot(epoch.GetMapRoot().GetMapRoot())
 	if err != nil {
 		return nil, err
 	}

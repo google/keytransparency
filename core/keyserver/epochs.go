@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -45,7 +46,7 @@ func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochReques
 	}
 
 	// Fetch latest revision.
-	sth, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	sth, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
-	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +100,15 @@ func (s *Server) getEpochByRevision(ctx context.Context, d *directory.Directory,
 	}
 
 	return &pb.Epoch{
-		DirectoryId:    d.DirectoryID,
-		MapRoot:        resp.GetMapRoot(),
-		LogRoot:        logRoot,
-		LogConsistency: logConsistency.GetHashes(),
-		LogInclusion:   logInclusion.GetHashes(),
+		DirectoryId: d.DirectoryID,
+		MapRoot: &pb.MapRoot{
+			MapRoot:      resp.GetMapRoot(),
+			LogInclusion: logInclusion.GetHashes(),
+		},
+		LatestLogRoot: &pb.LogRoot{
+			LogRoot:        logRoot,
+			LogConsistency: logConsistency.GetHashes(),
+		},
 	}, nil
 }
 
@@ -154,7 +159,11 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	mutations := make([]*pb.MutationProof, 0, len(msgs))
 	for _, m := range msgs {
 		mutations = append(mutations, &pb.MutationProof{Mutation: m.Mutation})
-		indexes = append(indexes, m.Mutation.GetIndex())
+		var entry pb.Entry
+		if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
+			return nil, status.Errorf(codes.DataLoss, "could not unmarshal entry")
+		}
+		indexes = append(indexes, entry.GetIndex())
 	}
 	proofs, err := s.inclusionProofs(ctx, d, indexes, in.Epoch-1)
 	if err != nil {
