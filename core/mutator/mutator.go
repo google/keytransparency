@@ -20,8 +20,6 @@ package mutator
 import (
 	"errors"
 
-	"github.com/golang/protobuf/proto"
-
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
@@ -49,13 +47,13 @@ var (
 // Func verifies mutations and transforms values in the map.
 type Func interface {
 	// Mutate verifies that this is a valid mutation for this item and
-	// applies mutation to value.
-	Mutate(value, mutation proto.Message) (proto.Message, error)
+	// applies mutation to value.  Mutate must be idempotent.
+	Mutate(value, mutation *pb.SignedEntry) (*pb.SignedEntry, error)
 }
 
 // LogMessage represents a change to a user, and associated data.
 type LogMessage struct {
 	ID        int64
-	Mutation  *pb.Entry
+	Mutation  *pb.SignedEntry
 	ExtraData *pb.Committed
 }

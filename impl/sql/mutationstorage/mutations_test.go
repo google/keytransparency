@@ -18,7 +18,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"

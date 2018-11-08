@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 
@@ -52,7 +54,11 @@ var (
 // validateUpdateEntryRequest verifies
 // - Commitment in SignedEntryUpdate matches the serialized profile.
 func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
-	entry := in.GetEntryUpdate().GetMutation()
+	signedEntry := in.GetEntryUpdate().GetMutation()
+	var entry pb.Entry
+	if err := proto.Unmarshal(signedEntry.GetEntry(), &entry); err != nil {
+		return err
+	}
 
 	// Verify Index / VRF
 	index, _ := vrfPriv.Evaluate([]byte(in.UserId))

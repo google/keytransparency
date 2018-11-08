@@ -48,27 +48,29 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 )
 
 func TestFromLeafValue(t *testing.T) {
-	entry := &pb.Entry{Commitment: []byte{1, 2}}
-	entryB, err := proto.Marshal(entry)
-	if err != nil {
-		t.Fatalf("proto.Marshal(): %v", err)
+	entry := &pb.SignedEntry{
+		Entry: mustMarshal(t, &pb.Entry{Commitment: []byte{1, 2}}),
 	}
-	for i, tc := range []struct {
+	entryB := mustMarshal(t, entry)
+	for _, tc := range []struct {
+		desc    string
 		leafVal []byte
-		want    *pb.Entry
+		want    *pb.SignedEntry
 		wantErr bool
 	}{
-		{[]byte{}, &pb.Entry{}, false},           // empty leaf bytes -> return 'empty' proto, no error
-		{nil, nil, false},                        // non-existing leaf -> return nil, no error
-		{[]byte{2, 2, 2, 2, 2, 2, 2}, nil, true}, // no valid proto Message
-		{entryB, entry, false},                   // valid leaf
+		{desc: "empty leaf", leafVal: []byte{}, want: &pb.SignedEntry{}},
+		{desc: "nil leaf", leafVal: nil, want: nil},
+		{desc: "invalid", leafVal: []byte{2, 2, 2, 2, 2, 2, 2}, want: nil, wantErr: true},
+		{desc: "valid", leafVal: entryB, want: entry},
 	} {
-		if got, _ := FromLeafValue(tc.leafVal); !proto.Equal(got, tc.want) {
-			t.Errorf("FromLeafValue(%v)=%v, _ , want %v", tc.leafVal, got, tc.want)
-			t.Error(i)
-		}
-		if _, gotErr := FromLeafValue(tc.leafVal); (gotErr != nil) != tc.wantErr {
-			t.Errorf("FromLeafValue(%v)=_, %v", tc.leafVal, gotErr)
-		}
+		t.Run(tc.desc, func(t *testing.T) {
+			got, err := FromLeafValue(tc.leafVal)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("FromLeafValue(%v): %v, wantErr %v", tc.leafVal, err, tc.wantErr)
+			}
+			if !proto.Equal(got, tc.want) {
+				t.Errorf("FromLeafValue(%v): \n%#v, want \n%#v", tc.leafVal, got, tc.want)
+			}
+		})
 	}
 }

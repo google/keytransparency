@@ -52,9 +52,11 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		req := &pb.UpdateEntryRequest{
 			UserId: tc.userID,
 			EntryUpdate: &pb.EntryUpdate{
-				Mutation: &pb.Entry{
-					Index:      tc.index[:],
-					Commitment: tc.commitment,
+				Mutation: &pb.SignedEntry{
+					Entry: mustMarshal(t, &pb.Entry{
+						Index:      tc.index[:],
+						Commitment: tc.commitment,
+					}),
 				},
 				Committed: &pb.Committed{
 					Key:  tc.nonce,
