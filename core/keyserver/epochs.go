@@ -100,11 +100,15 @@ func (s *Server) getEpochByRevision(ctx context.Context, d *directory.Directory,
 	}
 
 	return &pb.Epoch{
-		DirectoryId:    d.DirectoryID,
-		MapRoot:        resp.GetMapRoot(),
-		LogRoot:        logRoot,
-		LogConsistency: logConsistency.GetHashes(),
-		LogInclusion:   logInclusion.GetHashes(),
+		DirectoryId: d.DirectoryID,
+		MapRoot: &pb.MapRoot{
+			MapRoot:      resp.GetMapRoot(),
+			LogInclusion: logInclusion.GetHashes(),
+		},
+		LatestLogRoot: &pb.LogRoot{
+			LogRoot:        logRoot,
+			LogConsistency: logConsistency.GetHashes(),
+		},
 	}, nil
 }
 
