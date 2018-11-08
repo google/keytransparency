@@ -185,7 +185,7 @@ func TestListMutations(t *testing.T) {
 
 			resp, err := e.srv.ListMutations(ctx, &pb.ListMutationsRequest{
 				DirectoryId: directoryID,
-				Revision:       revision,
+				Revision:    revision,
 				PageToken:   tc.token,
 				PageSize:    tc.pageSize,
 			})

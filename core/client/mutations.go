@@ -31,7 +31,7 @@ import (
 // RevisionMutations contains all the mutations needed to advance
 // the map from revision-1 to revision.
 type RevisionMutations struct {
-	Revision     *pb.Revision
+	Revision  *pb.Revision
 	Mutations []*pb.MutationProof
 }
 
@@ -45,7 +45,7 @@ func (c *Client) StreamRevisions(ctx context.Context, directoryID string, startR
 		// time out if we exceed the poll period:
 		revision, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
 			DirectoryId:          directoryID,
-			Revision:                i,
+			Revision:             i,
 			LastVerifiedTreeSize: startRevision,
 		})
 		// If this revision was not found, wait and retry.
@@ -82,7 +82,7 @@ func (c *Client) RevisionMutations(ctx context.Context, revision *pb.Revision) (
 	for {
 		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
 			DirectoryId: revision.GetDirectoryId(),
-			Revision:       int64(mapRoot.Revision),
+			Revision:    int64(mapRoot.Revision),
 			PageToken:   token,
 		})
 		if err != nil {

@@ -91,7 +91,7 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 
 	e, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
 		DirectoryId:          c.directoryID,
-		Revision:                revision,
+		Revision:             revision,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {

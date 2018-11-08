@@ -57,7 +57,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 
 	// Setup a bunch of revisions with data to verify.
 	for _, e := range []struct {
-		revision       int64
+		revision    int64
 		signers     []*tink.KeysetHandle
 		userUpdates []*tpb.User
 	}{
@@ -65,8 +65,8 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			revision: 1,
 		},
 		{
-			revision:   2,
-			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
+			revision: 2,
+			signers:  testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
 					DirectoryId:    env.Directory.DirectoryId,
@@ -77,8 +77,8 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			},
 		},
 		{
-			revision:   3,
-			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
+			revision: 3,
+			signers:  testutil.SignKeysetsFromPEMs(testPrivKey1),
 			userUpdates: []*tpb.User{
 				{
 					DirectoryId:    env.Directory.DirectoryId,
