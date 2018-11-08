@@ -74,7 +74,7 @@ message SignedEntry {
   // entry contains a serialized Entry.
   bytes entry = 1;
   // signatures on entry. Must be signed by keys from both previous and
-  // current epochs. The first proves ownership of new epoch key, and the
+  // current revisions. The first proves ownership of new revision key, and the
   // second proves that the correct owner is making this change.
   // The signature scheme is specified by the authorized_keys tink.Keyset.
   repeated bytes signatures = 2;
@@ -129,10 +129,10 @@ message MapLeaf {
   Committed committed = 3;
 }
 
-// Contains the leaf entry for a user at the most recently published epoch.
+// Contains the leaf entry for a user at the most recently published revision.
 message GetUserResponse {
-  // epoch is the most recently published epoch.
-  Epoch epoch = 1;
+  // revision is the most recently published revision.
+  Revision revision = 1;
   // leaf is the leaf entry for the requested user.
   MapLeaf leaf = 2;
 }
@@ -151,10 +151,10 @@ message BatchGetUserRequest {
 }
 
 // BatchGetUserReponse contains the leaf entries for a set of users at the most
-// recently published epoch.
+// recently published revision.
 message BatchGetUserResponse {
-  // epoch is the most recently published epoch.
-  Epoch epoch = 1;
+  // revision is the most recently published revision.
+  Revision revision = 1;
   // leaves are the leaf entries for the requested users, in the order requested.
   repeated MapLeaf leaves = 2;
 }
@@ -165,7 +165,7 @@ message ListEntryHistoryRequest {
   string directory_id = 6;
   // user_id is the user identifier.
   string user_id = 1;
-  // start is the starting epoch.
+  // start is the starting revision.
   int64 start = 2;
   // page_size is the maximum number of entries to return.
   int32 page_size = 3;
@@ -202,21 +202,21 @@ message UpdateEntryRequest {
   EntryUpdate entry_update = 4;
 }
 
-// GetEpochRequest identifies a particular epoch.
-message GetEpochRequest {
-  // directory_id is the directory for which epochs are being requested.
+// GetRevisionRequest identifies a particular revision.
+message GetRevisionRequest {
+  // directory_id is the directory for which revisions are being requested.
   string directory_id = 5;
-  // epoch specifies the epoch number in which mutations will be returned.
-  int64 epoch = 1;
+  // revision specifies the revision number in which mutations will be returned.
+  int64 revision = 1;
   // last_verified_tree_size is the tree_size of the last log root the client
   // verified. Omitting this field will omit the log consistency proof from the
   // response.
   int64 last_verified_tree_size = 2;
 }
 
-// GetLatestEpochRequest identifies a particular epoch.
-message GetLatestEpochRequest {
-  // directory_id is the directory for which epochs are being requested.
+// GetLatestRevisionRequest identifies a particular revision.
+message GetLatestRevisionRequest {
+  // directory_id is the directory for which revisions are being requested.
   string directory_id = 1;
   // last_verified_tree_size is the tree_size of the last log root the client
   // verified. Omitting this field will omit the log consistency proof from the
@@ -243,9 +243,9 @@ message LogRoot {
   repeated bytes log_consistency = 2;
 }
 
-// Epoch represents a snapshot of the entire key directory and
+// Revision represents a snapshot of the entire key directory and
 // a diff of what changed between this revision and the previous revision.
-message Epoch {
+message Revision {
   // directory_id is the directory identifier.
   string directory_id = 1;
   // map_root contains the map root and its inclusion in the log.
@@ -257,12 +257,12 @@ message Epoch {
   reserved 2, 3, 4;
 }
 
-// ListMutationsRequest requests the mutations that created a given epoch.
+// ListMutationsRequest requests the mutations that created a given revision.
 message ListMutationsRequest {
   // directory_id is the directory identifier.
   string directory_id = 5;
-  // epoch specifies the epoch number.
-  int64 epoch = 1;
+  // revision specifies the revision number.
+  int64 revision = 1;
   // page_token defines the starting point for pagination.
   // To request the next page, pass next_page_token from the previous response.
   // To start at the beginning, simply omit page_token from the request.
@@ -273,7 +273,7 @@ message ListMutationsRequest {
   // TODO(gbelvin): Add field mask.
 }
 
-// ListMutationsResponse contains the mutations that produced an epoch.
+// ListMutationsResponse contains the mutations that produced an revision.
 message ListMutationsResponse {
   // mutations contains the mutation object and the leaf value it operated on.
   repeated MutationProof mutations = 6;
@@ -289,18 +289,18 @@ message ListMutationsResponse {
 //  * Each directory has a single sparse merkle tree, append only log,
 //    and other public key material that is needed to verify server responses.
 //
-// Each Directory has a collection of snapshots called epochs:
-// `/v1/directories/*/epochs/`
-//  * Each Epoch contains the root of the sparse merkle tree and the changes
+// Each Directory has a collection of snapshots called revisions:
+// `/v1/directories/*/revisions/`
+//  * Each Revision contains the root of the sparse merkle tree and the changes
 //  that
-//    occurred that epoch and the previous.
+//    occurred that revision and the previous.
 //
-// Each Epoch has a collection of mutations:
-// `/v1/directories/*/epochs/*/mutations/`.
-//  * Each mutation contains the leafvalue of the previous epoch that it
+// Each Revision has a collection of mutations:
+// `/v1/directories/*/revisions/*/mutations/`.
+//  * Each mutation contains the leafvalue of the previous revision that it
 //  operated on.
-//  * The full set of mutations for an epoch allows the receiver to compute the
-//     Merkle Tree Root of this epoch from the previous epoch.
+//  * The full set of mutations for an revision allows the receiver to compute the
+//     Merkle Tree Root of this revision from the previous revision.
 //
 // Each Directory has a collection of Users:
 // `/v1/directories/*/users/`
@@ -319,41 +319,41 @@ service KeyTransparency {
     };
   }
 
-  // GetEpoch returns a SignedMapRoot by the by the requested revision number
+  // GetRevision returns a SignedMapRoot by the by the requested revision number
   // along with its inclusion proof in the log and the log's consistency proofs.
-  rpc GetEpoch(GetEpochRequest) returns (Epoch) {
+  rpc GetRevision(GetRevisionRequest) returns (Revision) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/epochs/{epoch}"
+      get: "/v1/directories/{directory_id}/revisions/{revision}"
     };
   }
 
-  // GetLatestEpoch returns the latest SignedMapRoot along with its inclusion
+  // GetLatestRevision returns the latest SignedMapRoot along with its inclusion
   // proof in the log and the log's consistency proofs.
-  rpc GetLatestEpoch(GetLatestEpochRequest) returns (Epoch) {
+  rpc GetLatestRevision(GetLatestRevisionRequest) returns (Revision) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/epochs:latest"
+      get: "/v1/directories/{directory_id}/revisions:latest"
     };
   }
 
-  // GetEpochStream streams new epochs from a requested starting point
-  // and continues as new epochs are created.
-  rpc GetEpochStream(GetEpochRequest) returns (stream Epoch) {
+  // GetRevisionStream streams new revisions from a requested starting point
+  // and continues as new revisions are created.
+  rpc GetRevisionStream(GetRevisionRequest) returns (stream Revision) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/epochs:stream"
+      get: "/v1/directories/{directory_id}/revisions:stream"
     };
   }
 
-  // ListMutations returns a list of mutations in a specific epoch.
+  // ListMutations returns a list of mutations in a specific revision.
   rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations"
+      get: "/v1/directories/{directory_id}/revisions/{revision}/mutations"
     };
   }
 
-  // ListMutationsStream is a streaming list of mutations in a specific epoch.
+  // ListMutationsStream is a streaming list of mutations in a specific revision.
   rpc ListMutationsStream(ListMutationsRequest) returns (stream MutationProof) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/epochs/{epoch}/mutations:stream"
+      get: "/v1/directories/{directory_id}/revisions/{revision}/mutations:stream"
     };
   }
 
@@ -364,7 +364,7 @@ service KeyTransparency {
     };
   }
 
-  // BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same epoch.
+  // BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same revision.
   rpc BatchGetUser(BatchGetUserRequest) returns (BatchGetUserResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users:batchGet"

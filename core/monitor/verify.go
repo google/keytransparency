@@ -102,7 +102,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 			errs.AppendStatus(status.Newf(codes.DataLoss, "could not decode leaf: %v", err).WithDetails(mut.GetLeafProof().GetLeaf()))
 		}
 
-		// verify that the provided leaf’s inclusion proof goes to epoch e-1:
+		// verify that the provided leaf’s inclusion proof goes to revision e-1:
 		index := mut.GetLeafProof().GetLeaf().GetIndex()
 		if err := m.mapVerifier.VerifyMapLeafInclusion(oldRoot, mut.GetLeafProof()); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
@@ -162,7 +162,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 }
 
 func (m *Monitor) validateMapRoot(newRoot *types.MapRootV1, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
-	// compute the new root using local intermediate hashes from epoch e
+	// compute the new root using local intermediate hashes from revision e
 	// (above proof hashes):
 	hs2 := merkle.NewHStar2(m.mapVerifier.MapID, m.mapVerifier.Hasher)
 	rootHash, err := hs2.HStar2Nodes([]byte{}, m.mapVerifier.Hasher.BitLen(), mutatedLeaves,

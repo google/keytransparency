@@ -43,7 +43,7 @@ Empty proof for an entry that is not found:
   "smh": {
     "map_head": {
       "realm": "example.com",
-      "epoch": "7573",
+      "revision": "7573",
       "root": "3MQ3sfHl1wT6iCuVvRHFRqTN587J9Npr8rz4OzyB/iE=",
       "issue_time": "2016-09-01T21:06:09.515380163Z"
     },
@@ -123,7 +123,7 @@ https://<host>/v1/users/user_id
   "smh": {
     "map_head": {
       "realm": "example.com",
-      "epoch": "7573",
+      "revision": "7573",
       "root": "3MQ3sfHl1wT6iCuVvRHFRqTN587J9Npr8rz4OzyB/iE=",
       "issue_time": "2016-09-01T21:06:09.515380163Z"
     },

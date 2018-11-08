@@ -44,13 +44,13 @@ message MapMetadata {
 }
 
 
-// CreateEpochRequest contains information needed to create a new epoch.
-message CreateEpochRequest {
+// CreateRevisionRequest contains information needed to create a new revision.
+message CreateRevisionRequest {
   // directory_id is the directory to apply the mutations to.
   string directory_id = 1;
   // deprecated messages. Server now reads messages via source watermarks.
   reserved 2;
-  // revision is the expected revision of the new epoch.
+  // revision is the expected revision of the new revision.
   int64 revision = 3;
   // deprecated map_metadata. Server now reads source watermarks from batch
   // table.
@@ -78,11 +78,11 @@ message PublishBatchRequest {
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
-  // RunBatch reads outstanding mutations and calls CreateEpoch.
+  // RunBatch reads outstanding mutations and calls CreateRevision.
   rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty) {}
-  // CreateEpoch applies the contained mutations to the current map root.
+  // CreateRevision applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
-  rpc CreateEpoch(CreateEpochRequest) returns (google.protobuf.Empty) {}
+  rpc CreateRevision(CreateRevisionRequest) returns (google.protobuf.Empty) {}
   // PublishBatch copies the MapRoots of all known map revisions into the Log
   // of MapRoots.
   rpc PublishBatch(PublishBatchRequest) returns (google.protobuf.Empty) {}

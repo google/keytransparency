@@ -25,10 +25,10 @@ import (
 var (
 	// ErrAlreadyStored is raised if the caller tries storing a response which
 	// has already been stored.
-	ErrAlreadyStored = errors.New("already stored epoch")
-	// ErrNotFound is raised if the caller tries to retrieve data for an epoch
+	ErrAlreadyStored = errors.New("already stored revision")
+	// ErrNotFound is raised if the caller tries to retrieve data for an revision
 	// which has not been processed and stored yet.
-	ErrNotFound = errors.New("data for epoch not found")
+	ErrNotFound = errors.New("data for revision not found")
 )
 
 // Result describes the monitor's attempt to verify the complete transition from
@@ -54,10 +54,10 @@ type Result struct {
 // Interface is the interface that stores and retrieves monitoring results.
 // TODO(gbelvin): make multi-tenant.
 type Interface interface {
-	// Set stores the monitoring result for a specific epoch.
-	Set(epoch int64, r *Result) error
-	// Get retrieves the monitoring result for a specific epoch.
-	Get(epoch int64) (*Result, error)
-	// LatestEpoch returns the highest numbered epoch that has been processed.
-	LatestEpoch() int64
+	// Set stores the monitoring result for a specific revision.
+	Set(revision int64, r *Result) error
+	// Get retrieves the monitoring result for a specific revision.
+	Get(revision int64) (*Result, error)
+	// LatestRevision returns the highest numbered revision that has been processed.
+	LatestRevision() int64
 }

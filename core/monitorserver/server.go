@@ -58,33 +58,33 @@ func New(storage monitorstorage.Interface) *Server {
 // observed. Additionally, the response contains additional data necessary to
 // reproduce errors on failure.
 //
-// Returns the signed map root for the latest epoch the monitor observed. If
+// Returns the signed map root for the latest revision the monitor observed. If
 // the monitor could not reconstruct the map root given the set of mutations
-// from the previous to the current epoch it won't sign the map root and
+// from the previous to the current revision it won't sign the map root and
 // additional data will be provided to reproduce the failure.
 func (s *Server) GetState(ctx context.Context, in *pb.GetStateRequest) (*pb.State, error) {
-	latestEpoch := s.storage.LatestEpoch()
-	if latestEpoch == 0 {
+	latestRevision := s.storage.LatestRevision()
+	if latestRevision == 0 {
 		return nil, ErrNothingProcessed
 	}
-	return s.getResponseByRevision(latestEpoch)
+	return s.getResponseByRevision(latestRevision)
 }
 
 // GetStateByRevision works similar to GetSignedMapRoot but returns
 // the monitor's result for a specific map revision.
 //
-// Returns the signed map root for the specified epoch the monitor observed.
+// Returns the signed map root for the specified revision the monitor observed.
 // If the monitor could not reconstruct the map root given the set of
-// mutations from the previous to the current epoch it won't sign the map root
+// mutations from the previous to the current revision it won't sign the map root
 // and additional data will be provided to reproduce the failure.
 func (s *Server) GetStateByRevision(ctx context.Context, in *pb.GetStateRequest) (*pb.State, error) {
-	return s.getResponseByRevision(in.GetEpoch())
+	return s.getResponseByRevision(in.GetRevision())
 }
 
-func (s *Server) getResponseByRevision(epoch int64) (*pb.State, error) {
-	r, err := s.storage.Get(epoch)
+func (s *Server) getResponseByRevision(revision int64) (*pb.State, error) {
+	r, err := s.storage.Get(revision)
 	if err == monitorstorage.ErrNotFound {
-		return nil, status.Errorf(codes.NotFound, "Could not find monitoring response for epoch %d", epoch)
+		return nil, status.Errorf(codes.NotFound, "Could not find monitoring response for revision %d", revision)
 	}
 
 	errs := monitor.ErrList(r.Errors)

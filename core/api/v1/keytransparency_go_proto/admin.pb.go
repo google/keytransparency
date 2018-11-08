@@ -48,9 +48,9 @@ type Directory struct {
 	Map *trillian.Tree `protobuf:"bytes,3,opt,name=map,proto3" json:"map,omitempty"`
 	// Vrf contains the VRF public key.
 	Vrf *keyspb.PublicKey `protobuf:"bytes,4,opt,name=vrf,proto3" json:"vrf,omitempty"`
-	// min_interval is the minimum time between epochs.
+	// min_interval is the minimum time between revisions.
 	MinInterval *duration.Duration `protobuf:"bytes,5,opt,name=min_interval,json=minInterval,proto3" json:"min_interval,omitempty"`
-	// max_interval is the maximum time between epochs.
+	// max_interval is the maximum time between revisions.
 	MaxInterval *duration.Duration `protobuf:"bytes,6,opt,name=max_interval,json=maxInterval,proto3" json:"max_interval,omitempty"`
 	// Deleted indicates whether the directory has been marked as deleted.
 	// By its presence in a response, this directory has not been garbage
