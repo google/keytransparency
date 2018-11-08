@@ -46,7 +46,7 @@ func (s *Server) GetLatestEpoch(ctx context.Context, in *pb.GetLatestEpochReques
 	}
 
 	// Fetch latest revision.
-	sth, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	sth, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *Server) GetEpoch(ctx context.Context, in *pb.GetEpochRequest) (*pb.Epoc
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
-	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetFirstTreeSize())
+	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
 		return nil, err
 	}

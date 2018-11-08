@@ -162,9 +162,9 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 	} {
 		// Check profile.
 		e, err := env.Cli.GetUser(ctx, &pb.GetUserRequest{
-			DirectoryId:   env.Directory.DirectoryId,
-			UserId:        tc.userID,
-			FirstTreeSize: int64(slr.TreeSize),
+			DirectoryId:          env.Directory.DirectoryId,
+			UserId:               tc.userID,
+			LastVerifiedTreeSize: int64(slr.TreeSize),
 		})
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: GetUser(): %v", err)
