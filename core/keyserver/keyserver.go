@@ -273,6 +273,12 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}, nil
 }
 
+// ListUserRevisions returns a list of revisions covering a period of time.
+func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisionsRequest) (
+	*pb.ListUserRevisionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 // QueueEntryUpdate updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest) (*empty.Empty, error) {

@@ -187,6 +187,48 @@ message ListEntryHistoryResponse {
   int64 next_start = 2;
 }
 
+// ListUserRevisionsRequest gets a list of historical keys for a user.
+message ListUserRevisionsRequest {
+  // directory_id identifies the directory in which the user lives.
+  string directory_id = 1;
+  // user_id is the user identifier.
+  string user_id = 2;
+  // start_revision is the starting epoch.
+  int64 start_revision = 3;
+  // end_revision is the ending epoch.
+  int64 end_revision = 4;
+  // page_size is the maximum number of entries to return. If page_size is
+  // unspecified, the server will decide how to paginate results.
+  int32 page_size = 5;
+  // page_token is a continuation token for paginating through results.
+  string page_token = 6;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 7;
+}
+
+// MapRevision contains a map leaf at a speific revision.
+message MapRevision {
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 1;
+  // map_leaf contains a leaf and its inclusion proof to map_root.
+  MapLeaf map_leaf = 2;
+}
+
+// ListUserRevisionsResponse requests a paginated history of keys for a user.
+message ListUserRevisionsResponse {
+  // latest_log_root contains the lastest log root and its consistency proof.
+  LogRoot latest_log_root = 1;
+  // map_revisions represents the list of keys this user_id has contained over
+  // time. At most page_size results will be returned.
+  repeated MapRevision map_revisions = 2;
+  // next_page_token is a pagination token which will be set if more than
+  // page_size results are available. Clients can pass this value as
+  // the page_token in the next request in order to continue pagination.
+  string next_page_token = 3;
+}
+
 // UpdateEntryRequest updates a user's profile.
 message UpdateEntryRequest {
   // directory_id identifies the directory in which the user lives.
@@ -370,6 +412,15 @@ service KeyTransparency {
   rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users/{user_id}/history"
+    };
+  }
+  // ListUserRevisions returns a list of historic leaf values for a user.
+  //
+  // Clients verify their account history by observing correct values for their
+  // account over time.
+  rpc ListUserRevisions(ListUserRevisionsRequest) returns (ListUserRevisionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/users/{user_id}/revisions"
     };
   }
   // QueueUserUpdate enqueues an update to a user's profile.
