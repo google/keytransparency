@@ -246,6 +246,11 @@ func (f *fakeKeyServer) ListEntryHistory(ctx context.Context, in *pb.ListEntryHi
 	}, nil
 }
 
+func (f *fakeKeyServer) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisionsRequest) (
+	*pb.ListUserRevisionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 func (f *fakeKeyServer) GetDirectory(context.Context, *pb.GetDirectoryRequest) (*pb.Directory, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
