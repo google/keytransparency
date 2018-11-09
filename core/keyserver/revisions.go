@@ -62,7 +62,7 @@ func (s *Server) GetLatestRevision(ctx context.Context, in *pb.GetLatestRevision
 
 // GetRevisionAtTime returns the latest revision at or before a particular point in time.
 func (*Server) GetRevisionAtTime(ctx context.Context, in *pb.GetRevisionAtTimeRequest) (*pb.Revision, error) {
-	return status.Error(codes.Unimplemented, "GetRevisionAtTime is unimplemented")
+	return nil, status.Error(codes.Unimplemented, "GetRevisionAtTime is unimplemented")
 }
 
 // GetRevision returns the requested revision.
