@@ -258,7 +258,7 @@ func (f *fakeKeyServer) GetLatestRevision(context.Context, *pb.GetLatestRevision
 	return nil, status.Error(codes.Unimplemented, "not implemented")	
 }
 
-func (f *fakeKeyServer) GetRevisionAtTime(context.Context, *pb.GetLatestRevisionAtTimeRequest) (*pb.Revision, error) {
+func (f *fakeKeyServer) GetRevisionAtTime(context.Context, *pb.GetRevisionAtTimeRequest) (*pb.Revision, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
