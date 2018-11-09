@@ -420,7 +420,8 @@ service KeyTransparency {
   // account over time.
   rpc ListUserRevisions(ListUserRevisionsRequest) returns (ListUserRevisionsResponse) {
     option (google.api.http) = {
-      get: "/v1/directories/{directory_id}/users/{user_id}/revisions"
+      post: "/v1/directories/{directory_id}/users/{user_id}/revisions"
+      body: "*"
     };
   }
   // QueueUserUpdate enqueues an update to a user's profile.
