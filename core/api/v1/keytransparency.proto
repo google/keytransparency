@@ -129,6 +129,14 @@ message MapLeaf {
   Committed committed = 3;
 }
 
+// BatchMapRevision contains a map leaf at a speific revision.
+message BatchMapRevision {
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 1;
+  // map_leaf contains a leaf and its inclusion proof to map_root.
+  repeated MapLeaf map_leaf = 2;
+}
+
 // Contains the leaf entry for a user at the most recently published revision.
 message GetUserResponse {
   // revision is the most recently published revision.
@@ -185,6 +193,35 @@ message ListEntryHistoryResponse {
   // next_start is the next page token to query for pagination.
   // next_start is 0 when there are no more results to fetch.
   int64 next_start = 2;
+}
+
+// BatchListUserRevisionsRequest contains a list of users and a range of revisions.
+message BatchListUserRevisionsRequest {
+  // directory_id identifies the directory in which the user lives.
+  string directory_id = 1;
+  // user_ids are the user identifiers.
+  repeated string user_ids = 2;
+  // start is the starting revision.
+  int64 start = 3;
+  // page_size is the maximum number of entries to return.
+  int32 page_size = 4;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 5;
+}
+
+// BatchListUserRevisionsResponse
+message BatchListUserRevisionsResponse {
+  // latest_log_root contains the lastest log root and its consistency proof.
+  LogRoot latest_log_root = 1;
+  // map_revisions represents the list of keys this user_id has contained over
+  // time. At most page_size results will be returned.
+  repeated BatchMapRevision map_revisions = 2;
+  // next_page_token is a pagination token which will be set if more than
+  // page_size results are available. Clients can pass this value as
+  // the page_token in the next request in order to continue pagination.
+  string next_page_token = 3;
 }
 
 // UpdateEntryRequest updates a user's profile.
@@ -370,6 +407,13 @@ service KeyTransparency {
   rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users/{user_id}/history"
+    };
+  }
+  // BatchListUserRevisions returns a list of revisions for multiple users.
+  rpc BatchListUserRevisions(BatchListUserRevisionsRequest) returns (BatchListUserRevisionsResponse) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/users:batchListRevisions"
+      body: "*"
     };
   }
   // QueueUserUpdate enqueues an update to a user's profile.
