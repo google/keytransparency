@@ -23,7 +23,6 @@ import (
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	tpb "github.com/google/trillian"
@@ -62,6 +61,7 @@ func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, 
 	return count, high, nil
 }
 
+/*
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
 	directoryID := "directoryID"
@@ -92,6 +92,7 @@ func TestReadMessages(t *testing.T) {
 		}
 	}
 }
+*/
 
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
