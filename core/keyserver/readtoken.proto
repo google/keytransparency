@@ -18,10 +18,25 @@ package google.keytransparency.v1;
 
 option go_package = "github.com/google/keytransparency/core/keyserver/readtoken_go_proto";
 
+import "v1/keytransparency.proto";
+
 // ReadToken can be serialized and handed to users for pagination.
 message ReadToken {
   // shard_id identifies the source for reading.
   int64 shard_id = 1;
   // low_watemark identifies the lowest (exclusive) row to return.
   int64 low_watermark = 2;
+}
+
+// ListUserRevisions token can be serialized and handed to users for pagination
+// when listing revisions.
+message ListUserRevisionsToken {
+  // request is the query being paginated over, used for validation of
+  // subsequent requests. Fields that are allowed to change between requests
+  // (such as page_token or last_verified_tree_size) will not be validated and
+  // should be omitted for brevity.
+  ListUserRevisionsRequest request = 1;
+  // revisions_returned is a running tally of the number of revisions that have
+  // been returned across paginated requests in this query.
+  int64 revisions_returned = 2;
 }

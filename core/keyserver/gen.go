@@ -14,4 +14,4 @@
 
 package keyserver
 
-//go:generate protoc -I=. --go_out=:$GOPATH/src readtoken.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/keytransparency/core/api/ -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/google/tink/proto -I=$GOPATH/src/github.com/googleapis/googleapis/ --go_out=:$GOPATH/src readtoken.proto
