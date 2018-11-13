@@ -218,7 +218,7 @@ message MapRevision {
 
 // ListUserRevisionsResponse requests a paginated history of keys for a user.
 message ListUserRevisionsResponse {
-  // latest_log_root contains the lastest log root and its consistency proof.
+  // latest_log_root contains the latest log root and its consistency proof.
   LogRoot latest_log_root = 1;
   // map_revisions represents the list of keys this user_id has contained over
   // time. At most page_size results will be returned.

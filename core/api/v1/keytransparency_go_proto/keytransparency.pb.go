@@ -51,7 +51,7 @@ func (m *Committed) Reset()         { *m = Committed{} }
 func (m *Committed) String() string { return proto.CompactTextString(m) }
 func (*Committed) ProtoMessage()    {}
 func (*Committed) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{0}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{0}
 }
 func (m *Committed) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Committed.Unmarshal(m, b)
@@ -101,7 +101,7 @@ func (m *EntryUpdate) Reset()         { *m = EntryUpdate{} }
 func (m *EntryUpdate) String() string { return proto.CompactTextString(m) }
 func (*EntryUpdate) ProtoMessage()    {}
 func (*EntryUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{1}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{1}
 }
 func (m *EntryUpdate) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntryUpdate.Unmarshal(m, b)
@@ -156,7 +156,7 @@ func (m *Entry) Reset()         { *m = Entry{} }
 func (m *Entry) String() string { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()    {}
 func (*Entry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{2}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{2}
 }
 func (m *Entry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Entry.Unmarshal(m, b)
@@ -223,7 +223,7 @@ func (m *SignedEntry) Reset()         { *m = SignedEntry{} }
 func (m *SignedEntry) String() string { return proto.CompactTextString(m) }
 func (*SignedEntry) ProtoMessage()    {}
 func (*SignedEntry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{3}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{3}
 }
 func (m *SignedEntry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignedEntry.Unmarshal(m, b)
@@ -278,7 +278,7 @@ func (m *MutationProof) Reset()         { *m = MutationProof{} }
 func (m *MutationProof) String() string { return proto.CompactTextString(m) }
 func (*MutationProof) ProtoMessage()    {}
 func (*MutationProof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{4}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{4}
 }
 func (m *MutationProof) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MutationProof.Unmarshal(m, b)
@@ -325,7 +325,7 @@ func (m *MapperMetadata) Reset()         { *m = MapperMetadata{} }
 func (m *MapperMetadata) String() string { return proto.CompactTextString(m) }
 func (*MapperMetadata) ProtoMessage()    {}
 func (*MapperMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{5}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{5}
 }
 func (m *MapperMetadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MapperMetadata.Unmarshal(m, b)
@@ -372,7 +372,7 @@ func (m *GetUserRequest) Reset()         { *m = GetUserRequest{} }
 func (m *GetUserRequest) String() string { return proto.CompactTextString(m) }
 func (*GetUserRequest) ProtoMessage()    {}
 func (*GetUserRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{6}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{6}
 }
 func (m *GetUserRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetUserRequest.Unmarshal(m, b)
@@ -436,7 +436,7 @@ func (m *MapLeaf) Reset()         { *m = MapLeaf{} }
 func (m *MapLeaf) String() string { return proto.CompactTextString(m) }
 func (*MapLeaf) ProtoMessage()    {}
 func (*MapLeaf) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{7}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{7}
 }
 func (m *MapLeaf) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MapLeaf.Unmarshal(m, b)
@@ -492,7 +492,7 @@ func (m *GetUserResponse) Reset()         { *m = GetUserResponse{} }
 func (m *GetUserResponse) String() string { return proto.CompactTextString(m) }
 func (*GetUserResponse) ProtoMessage()    {}
 func (*GetUserResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{8}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{8}
 }
 func (m *GetUserResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetUserResponse.Unmarshal(m, b)
@@ -546,7 +546,7 @@ func (m *BatchGetUserRequest) Reset()         { *m = BatchGetUserRequest{} }
 func (m *BatchGetUserRequest) String() string { return proto.CompactTextString(m) }
 func (*BatchGetUserRequest) ProtoMessage()    {}
 func (*BatchGetUserRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{9}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{9}
 }
 func (m *BatchGetUserRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchGetUserRequest.Unmarshal(m, b)
@@ -603,7 +603,7 @@ func (m *BatchGetUserResponse) Reset()         { *m = BatchGetUserResponse{} }
 func (m *BatchGetUserResponse) String() string { return proto.CompactTextString(m) }
 func (*BatchGetUserResponse) ProtoMessage()    {}
 func (*BatchGetUserResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{10}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{10}
 }
 func (m *BatchGetUserResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BatchGetUserResponse.Unmarshal(m, b)
@@ -660,7 +660,7 @@ func (m *ListEntryHistoryRequest) Reset()         { *m = ListEntryHistoryRequest
 func (m *ListEntryHistoryRequest) String() string { return proto.CompactTextString(m) }
 func (*ListEntryHistoryRequest) ProtoMessage()    {}
 func (*ListEntryHistoryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{11}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{11}
 }
 func (m *ListEntryHistoryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListEntryHistoryRequest.Unmarshal(m, b)
@@ -731,7 +731,7 @@ func (m *ListEntryHistoryResponse) Reset()         { *m = ListEntryHistoryRespon
 func (m *ListEntryHistoryResponse) String() string { return proto.CompactTextString(m) }
 func (*ListEntryHistoryResponse) ProtoMessage()    {}
 func (*ListEntryHistoryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{12}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{12}
 }
 func (m *ListEntryHistoryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListEntryHistoryResponse.Unmarshal(m, b)
@@ -793,7 +793,7 @@ func (m *ListUserRevisionsRequest) Reset()         { *m = ListUserRevisionsReque
 func (m *ListUserRevisionsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListUserRevisionsRequest) ProtoMessage()    {}
 func (*ListUserRevisionsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{13}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{13}
 }
 func (m *ListUserRevisionsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListUserRevisionsRequest.Unmarshal(m, b)
@@ -877,7 +877,7 @@ func (m *MapRevision) Reset()         { *m = MapRevision{} }
 func (m *MapRevision) String() string { return proto.CompactTextString(m) }
 func (*MapRevision) ProtoMessage()    {}
 func (*MapRevision) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{14}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{14}
 }
 func (m *MapRevision) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MapRevision.Unmarshal(m, b)
@@ -913,7 +913,7 @@ func (m *MapRevision) GetMapLeaf() *MapLeaf {
 
 // ListUserRevisionsResponse requests a paginated history of keys for a user.
 type ListUserRevisionsResponse struct {
-	// latest_log_root contains the lastest log root and its consistency proof.
+	// latest_log_root contains the latest log root and its consistency proof.
 	LatestLogRoot *LogRoot `protobuf:"bytes,1,opt,name=latest_log_root,json=latestLogRoot,proto3" json:"latest_log_root,omitempty"`
 	// map_revisions represents the list of keys this user_id has contained over
 	// time. At most page_size results will be returned.
@@ -931,7 +931,7 @@ func (m *ListUserRevisionsResponse) Reset()         { *m = ListUserRevisionsResp
 func (m *ListUserRevisionsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListUserRevisionsResponse) ProtoMessage()    {}
 func (*ListUserRevisionsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{15}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{15}
 }
 func (m *ListUserRevisionsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListUserRevisionsResponse.Unmarshal(m, b)
@@ -989,7 +989,7 @@ func (m *UpdateEntryRequest) Reset()         { *m = UpdateEntryRequest{} }
 func (m *UpdateEntryRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateEntryRequest) ProtoMessage()    {}
 func (*UpdateEntryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{16}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{16}
 }
 func (m *UpdateEntryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateEntryRequest.Unmarshal(m, b)
@@ -1049,7 +1049,7 @@ func (m *GetRevisionRequest) Reset()         { *m = GetRevisionRequest{} }
 func (m *GetRevisionRequest) String() string { return proto.CompactTextString(m) }
 func (*GetRevisionRequest) ProtoMessage()    {}
 func (*GetRevisionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{17}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{17}
 }
 func (m *GetRevisionRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRevisionRequest.Unmarshal(m, b)
@@ -1107,7 +1107,7 @@ func (m *GetLatestRevisionRequest) Reset()         { *m = GetLatestRevisionReque
 func (m *GetLatestRevisionRequest) String() string { return proto.CompactTextString(m) }
 func (*GetLatestRevisionRequest) ProtoMessage()    {}
 func (*GetLatestRevisionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{18}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{18}
 }
 func (m *GetLatestRevisionRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetLatestRevisionRequest.Unmarshal(m, b)
@@ -1157,7 +1157,7 @@ func (m *MapRoot) Reset()         { *m = MapRoot{} }
 func (m *MapRoot) String() string { return proto.CompactTextString(m) }
 func (*MapRoot) ProtoMessage()    {}
 func (*MapRoot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{19}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{19}
 }
 func (m *MapRoot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MapRoot.Unmarshal(m, b)
@@ -1207,7 +1207,7 @@ func (m *LogRoot) Reset()         { *m = LogRoot{} }
 func (m *LogRoot) String() string { return proto.CompactTextString(m) }
 func (*LogRoot) ProtoMessage()    {}
 func (*LogRoot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{20}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{20}
 }
 func (m *LogRoot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogRoot.Unmarshal(m, b)
@@ -1260,7 +1260,7 @@ func (m *Revision) Reset()         { *m = Revision{} }
 func (m *Revision) String() string { return proto.CompactTextString(m) }
 func (*Revision) ProtoMessage()    {}
 func (*Revision) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{21}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{21}
 }
 func (m *Revision) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Revision.Unmarshal(m, b)
@@ -1323,7 +1323,7 @@ func (m *ListMutationsRequest) Reset()         { *m = ListMutationsRequest{} }
 func (m *ListMutationsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsRequest) ProtoMessage()    {}
 func (*ListMutationsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{22}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{22}
 }
 func (m *ListMutationsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMutationsRequest.Unmarshal(m, b)
@@ -1387,7 +1387,7 @@ func (m *ListMutationsResponse) Reset()         { *m = ListMutationsResponse{} }
 func (m *ListMutationsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListMutationsResponse) ProtoMessage()    {}
 func (*ListMutationsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_keytransparency_8341bd17d81dca64, []int{23}
+	return fileDescriptor_keytransparency_4e99652232e10e59, []int{23}
 }
 func (m *ListMutationsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMutationsResponse.Unmarshal(m, b)
@@ -1954,10 +1954,10 @@ var _KeyTransparency_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("v1/keytransparency.proto", fileDescriptor_keytransparency_8341bd17d81dca64)
+	proto.RegisterFile("v1/keytransparency.proto", fileDescriptor_keytransparency_4e99652232e10e59)
 }
 
-var fileDescriptor_keytransparency_8341bd17d81dca64 = []byte{
+var fileDescriptor_keytransparency_4e99652232e10e59 = []byte{
 	// 1633 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x58, 0xcf, 0x6f, 0x1b, 0xc5,
 	0x17, 0xd7, 0xf8, 0xb7, 0x5f, 0x7e, 0xb9, 0xd3, 0x7c, 0x1b, 0xd7, 0xfd, 0xb6, 0x2a, 0x5b, 0x08,
