@@ -31,7 +31,6 @@ import (
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -200,180 +199,47 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 
 // CreateRevision applies the supplied mutations to the current map revision and creates a new revision.
 func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionRequest) (*empty.Empty, error) {
+	metaProto, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
+	}
+
 	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
 
 	p := beam.NewPipeline()
 	scope := p.Root()
 
 	req := beam.Create(scope, in)
+	meta := beam.Create(scope, metaProto)
 	// Read each logID in parallel.
-	logItems := beam.ParDo(scope, s.readOneLog,
-		beam.ParDo(scope, s.readBatch, req), // KV<logID, source>
+	sourceSlices := beam.ParDo(scope, splitMeta, meta) // KV<logID, source>
+	logItems := beam.ParDo(scope, s.readOneLog, sourceSlices,
 		beam.SideInput{Input: beam.Create(scope, in.DirectoryId)},
 		beam.SideInput{Input: beam.Create(scope, readBatchSize)}) // *ktpb.EntryUpdate
 
-	// Globally combine the KV<logID, source> slices into a single *spb.MapMetadata.
-	// Under the covers this gives all elements the same key, then groups by key.
-	metaSlices := beam.ParDo(scope, mapMeta, sourcesSlices) // *spb.MapMetadata
-	meta := beam.Combine(scope, mergeMeta, metaSlices)      // *spb.MapMetadata
+	keyedMutations := beam.ParDo(scope, mapLogItem, logItems) // KV<index, *ktpb.EntryUpdate>
 
-	// Globally combine all the *ktpb.EntryUpdates into a single []*ktpb.EntryUpdate
-	// TODO(gbelvin): Further split ApplyBatch into parallel steps, so we don't need to do this.
-	groupedLogItems := beam.ParDo(scope, mapLogItem, logItems)              // []*ktpb.EntryUpdate
-	combinedLogItems := beam.Combine(scope, mergeLogItems, groupedLogItems) // []*ktpb.EntryUpdate
+	// Read the map
+	indexes := beam.Combine(scope, &mergeIndexFn{}, beam.DropValue(scope, keyedMutations)) // []index
+	mapLeaves := beam.ParDo(scope, s.readMap, indexes, beam.SideInput{Input: req})         // KV<index, *tpb.MapLeaf>
 
-	//
-	beam.ParDo0(scope, s.ApplyBatch, combinedLogItems, // []*ktpb.EntryUpdate
+	// Align MapLeaves with their mutations and apply mutations.
+	joined := beam.CoGroupByKey(scope, mapLeaves, keyedMutations) // []*tpb.MapLeaf, []*ktpb.EntryUpdate
+	newMapLeaves := beam.ParDo(scope, applyMutation, joined)      // *tpb.MapLeaf
+
+	// Collect all new map leaves.
+	allMapLeaves := beam.Combine(scope, &mergeMapLeavesFn{}, newMapLeaves) // []*tpb.MapLeaf
+
+	// Write to map.
+	beam.ParDo0(scope, s.writeMap, allMapLeaves,
 		beam.SideInput{Input: meta},
 		beam.SideInput{Input: req})
-
-	// TODO(gbelvin): Further split ApplyBatch
-	// 1. Map *ktpb.EntryUpdate to KV<index, EntryUpdate>
-	// 2. DropValue and Combine all indexes
-	// 3. GetMapLeavesAtRevsion(all indexes), emit KV<index, MapLeaf>
-	// 4. CoGroupByKey
-	// 5. ParDo ApplyMutation(key, []EntryUpdate, MapLeaf) emit MapLeaf
-	// 6. Collect []MapLeaf
-	// 7. ParDo WriteMapLeaves
 
 	if err := beamx.Run(ctx, p); err != nil {
 		return nil, err
 	}
 
 	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DirectoryId: in.DirectoryId})
-}
-
-// readBatch emits one KV<logID, source> for each source in the directoryID/Revision batch.
-func (s *Server) readBatch(ctx context.Context, in *spb.CreateRevisionRequest, emit func(logID int64, source *spb.MapMetadata_SourceSlice)) error {
-	glog.Infof("ReadBach for rev %v", in.Revision)
-	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
-	if err != nil {
-		return status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
-	}
-	for logID, source := range meta.Sources {
-		glog.Infof("emit(logID %v, source %v)", logID, source)
-		emit(logID, source)
-	}
-	return nil
-}
-
-// readOneLog reads from source.LowestWatermark to source.HighestWatermark in increments of batchSize, emitting *ktpb.EntryUpdates as it goes.
-func (s *Server) readOneLog(ctx context.Context, logID int64, source *spb.MapMetadata_SourceSlice, directoryID string, batchSize int32,
-	emit func(*ktpb.EntryUpdate)) error {
-	low := source.GetLowestWatermark()
-	high := source.GetHighestWatermark()
-	// Loop until less than batchSize items are returned.
-	for count := batchSize; count == batchSize; {
-		batch, err := s.logs.ReadLog(ctx, directoryID, logID, low, high, batchSize)
-		if err != nil {
-			return status.Errorf(codes.Internal, "ReadLog(): %v", err)
-		}
-		for _, m := range batch {
-			glog.Infof("emit(logID: %v, %v : EntryUpdate)", logID, m.ID)
-			emit(&ktpb.EntryUpdate{
-				Mutation:  m.Mutation,
-				Committed: m.ExtraData,
-			})
-			if m.ID > low {
-				low = m.ID
-			}
-		}
-		count = int32(len(batch))
-		glog.Infof("ReadLog(%v, (%v, %v], %v) count: %v", logID, low, high, batchSize, count)
-	}
-	return nil
-}
-
-// mapLogItem takes an individual entry and emits a list of entries.
-// This allows EntryUpdates to be aggregated.
-func mapLogItem(a *ktpb.EntryUpdate) []*ktpb.EntryUpdate {
-	return []*ktpb.EntryUpdate{a}
-}
-
-// mergeLogItems takes two lists of items and produces a unified list.
-func mergeLogItems(a, b []*ktpb.EntryUpdate) []*ktpb.EntryUpdate {
-	for _, m := range b {
-		a = append(a, m)
-	}
-	glog.Infof("mergeLogItems: %v", a)
-	return a
-}
-
-func mapMeta(logID int64, source *spb.MapMetadata_SourceSlice) *spb.MapMetadata {
-	return &spb.MapMetadata{
-		Sources: map[int64]*spb.MapMetadata_SourceSlice{logID: source},
-	}
-}
-
-func mergeMeta(a, b *spb.MapMetadata) *spb.MapMetadata {
-	for k, v := range b.Sources {
-		a.Sources[k] = v
-	}
-	glog.Infof("mergeMeta: %v", a)
-	return a
-}
-
-// ApplyBatch takes a set of inputs and applies them to a specifc map revision.
-func (s *Server) ApplyBatch(ctx context.Context, msgs []*ktpb.EntryUpdate, meta *spb.MapMetadata, in *spb.CreateRevisionRequest) error {
-	glog.Infof("ApplyBatch: for %v with %d messages", in.DirectoryId, len(msgs))
-	// Fetch verification objects for directoryID.
-	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: in.DirectoryId})
-	if err != nil {
-		return err
-	}
-	mapClient, err := tclient.NewMapClientFromTree(s.tmap, config.Map)
-	if err != nil {
-		return err
-	}
-
-	// Parse mutations using the mutator for this directory.
-	batchSize.Set(float64(len(msgs)), config.DirectoryId)
-	indexes := make([][]byte, 0, len(msgs))
-	for _, m := range msgs {
-		var entry ktpb.Entry
-		if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
-			return err
-		}
-		indexes = append(indexes, entry.Index)
-	}
-	glog.V(2).Infof("CreateRevision: %v mutations, %v indexes", len(msgs), len(indexes))
-
-	// TODO(gbelvin): Fetch map leaves at a specific revision.
-	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
-	if err != nil {
-		return err
-	}
-
-	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(in.DirectoryId, entry.New(), msgs, leaves)
-	if err != nil {
-		return err
-	}
-
-	// Serialize metadata
-	metadata, err := proto.Marshal(meta)
-	if err != nil {
-		return err
-	}
-
-	// Set new leaf values.
-	setResp, err := s.tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
-		MapId:    config.Map.TreeId,
-		Leaves:   newLeaves,
-		Metadata: metadata,
-	})
-	if err != nil {
-		return status.Errorf(codes.Internal, "tmap.SetLeaves(): %v", err)
-	}
-	mapRoot, err := mapClient.VerifySignedMapRoot(setResp.GetMapRoot())
-	if err != nil {
-		return status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
-	}
-	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
-
-	mutationCount.Add(float64(len(msgs)), in.DirectoryId)
-	glog.Infof("CreatedRevision: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
-	return nil
 }
 
 // PublishBatch copies the MapRoots of all known map revisions into the Log of MapRoots.
@@ -434,70 +300,6 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
 	}
 	return &empty.Empty{}, nil
-}
-
-// applyMutations takes the set of mutations and applies them to given leafs.
-// Multiple mutations for the same leaf will be applied to provided leaf.
-// The last valid mutation for each leaf is included in the output.
-// Returns a list of map leaves that should be updated.
-func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.Func,
-	msgs []*ktpb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
-	// Put leaves in a map from index to leaf value.
-	leafMap := make(map[string]*tpb.MapLeaf)
-	for _, l := range leaves {
-		leafMap[string(l.Index)] = l
-	}
-
-	retMap := make(map[string]*tpb.MapLeaf)
-	for _, msg := range msgs {
-		var e ktpb.Entry
-		if err := proto.Unmarshal(msg.Mutation.Entry, &e); err != nil {
-			return nil, err
-		}
-		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
-		if leaf, ok := leafMap[string(e.Index)]; ok {
-			var err error
-			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
-			if err != nil {
-				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
-				mutationFailures.Inc(directoryID, "Unmarshal")
-				continue
-			}
-		}
-
-		newValue, err := mutatorFunc.Mutate(oldValue, msg.Mutation)
-		if err != nil {
-			glog.Warningf("Mutate(): %v", err)
-			mutationFailures.Inc(directoryID, "Mutate")
-			continue // A bad mutation should not make the whole batch fail.
-		}
-		leafValue, err := entry.ToLeafValue(newValue)
-		if err != nil {
-			glog.Warningf("ToLeafValue(): %v", err)
-			mutationFailures.Inc(directoryID, "Marshal")
-			continue
-		}
-		extraData, err := proto.Marshal(msg.Committed)
-		if err != nil {
-			glog.Warningf("proto.Marshal(): %v", err)
-			mutationFailures.Inc(directoryID, "Marshal")
-			continue
-		}
-
-		// Make sure that only ONE MapLeaf is output per index.
-		retMap[string(e.Index)] = &tpb.MapLeaf{
-			Index:     e.Index,
-			LeafValue: leafValue,
-			ExtraData: extraData,
-		}
-	}
-	// Convert return map back into a list.
-	ret := make([]*tpb.MapLeaf, 0, len(retMap))
-	for _, v := range retMap {
-		ret = append(ret, v)
-	}
-	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
-	return ret, nil
 }
 
 // HighWatermarks returns the total count across all logs and the highest watermark for each log.
