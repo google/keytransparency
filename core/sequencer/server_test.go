@@ -59,39 +59,6 @@ func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, 
 	return count, high, nil
 }
 
-/*
-func TestReadMessages(t *testing.T) {
-	ctx := context.Background()
-	directoryID := "directoryID"
-	s := Server{logs: fakeLogs{
-		0: make([]mutator.LogMessage, 10),
-		1: make([]mutator.LogMessage, 20),
-	}}
-
-	for _, tc := range []struct {
-		meta      *spb.MapMetadata
-		batchSize int32
-		want      int
-	}{
-		{batchSize: 1, want: 9, meta: &spb.MapMetadata{Sources: SourcesEntry{
-			0: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 9},
-		}}},
-		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: SourcesEntry{
-			0: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 9},
-			1: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 10},
-		}}},
-	} {
-		msgs, err := s.readMessages(ctx, directoryID, tc.meta, tc.batchSize)
-		if err != nil {
-			t.Errorf("readMessages(): %v", err)
-		}
-		if got := len(msgs); got != tc.want {
-			t.Errorf("readMessages(): len: %v, want %v", got, tc.want)
-		}
-	}
-}
-*/
-
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
 	directoryID := "directoryID"
