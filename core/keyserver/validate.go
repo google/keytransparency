@@ -50,7 +50,7 @@ var (
 	// ErrInvalidPageSize occurs when the page size is < 0.
 	ErrInvalidPageSize = errors.New("Invalid page size")
 	// ErrInvalidEnd occurs when the end revision of the ListUserRevisionsRequest
-	// is specified but not in [start, currentRevision].
+	// is not in [start, currentRevision].
 	ErrInvalidEnd = errors.New("invalid end revision")
 )
 
@@ -105,15 +105,12 @@ func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentRevi
 
 // validateListUserRevisionsRequest checks the bounds on start and end revisions and returns an appropriate number of
 // revisions to return for this request.
-func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, offset, currentRevision int64) (int64, error) {
-	if in.StartRevision < 0 || in.StartRevision > currentRevision {
+func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, offset, newestRevision int64) (int64, error) {
+	if in.StartRevision < 0 || in.StartRevision > newestRevision {
 		return 0, ErrInvalidStart
 	}
-	if in.EndRevision != 0 {
-		if in.EndRevision < in.StartRevision || in.EndRevision > currentRevision {
-			return 0, ErrInvalidEnd
-		}
-		currentRevision = in.EndRevision
+	if in.EndRevision < in.StartRevision || in.EndRevision > newestRevision {
+		return 0, ErrInvalidEnd
 	}
 
 	revisions := int64(in.PageSize)
@@ -125,8 +122,8 @@ func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, offset, c
 	case in.PageSize > maxPageSize:
 		revisions = int64(maxPageSize)
 	}
-	if in.StartRevision+offset+revisions > currentRevision {
-		revisions = currentRevision - (in.StartRevision + offset) + 1
+	if in.StartRevision+offset+revisions > in.EndRevision {
+		revisions = in.EndRevision - (in.StartRevision + offset) + 1
 	}
 	return revisions, nil
 }

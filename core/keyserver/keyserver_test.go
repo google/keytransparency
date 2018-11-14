@@ -148,7 +148,10 @@ func TestLatestRevision(t *testing.T) {
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListEntryHistory(): %v, want %v", err, tc.wantErr)
 			}
-			_, err = e.srv.ListUserRevisions(ctx, &pb.ListUserRevisionsRequest{DirectoryId: directoryID})
+			_, err = e.srv.ListUserRevisions(ctx, &pb.ListUserRevisionsRequest{
+				DirectoryId: directoryID,
+				EndRevision: tc.treeSize - 1,
+			})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListUserRevisions(): %v, want %v", err, tc.wantErr)
 			}

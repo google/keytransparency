@@ -306,20 +306,20 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
-	// Fetch latest revision.
+	// Fetch latest log root & consistency proof.
 	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified)
 	if err != nil {
 		return nil, err
 	}
-	currentRevision, err := mapRevisionFor(sth)
+	newestRevision, err := mapRevisionFor(sth)
 	if err != nil {
 		glog.Errorf("latestRevision(log %v, sth %v): %v", d.LogID, sth, err)
 		return nil, err
 	}
 
-	numRevisions, err := validateListUserRevisionsRequest(in, offset, currentRevision)
+	numRevisions, err := validateListUserRevisionsRequest(in, offset, newestRevision)
 	if err != nil {
-		glog.Errorf("validateListUserRevisionsRequest(%v, %v, %v): %v", in, offset, currentRevision, err)
+		glog.Errorf("validateListUserRevisionsRequest(%v, %v, %v): %v", in, offset, newestRevision, err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
@@ -340,12 +340,8 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	}
 
 	// Add a page token to the response if more revisions can be fetched.
-	end := currentRevision
-	if in.EndRevision != 0 {
-		end = in.EndRevision
-	}
 	token := ""
-	if in.StartRevision+offset+numRevisions < end {
+	if in.StartRevision+offset+numRevisions < in.EndRevision {
 		token, err = EncodeToken(&rtpb.ListUserRevisionsToken{
 			Request:           in,
 			RevisionsReturned: offset + numRevisions,
