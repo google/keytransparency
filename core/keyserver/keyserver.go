@@ -348,7 +348,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	if in.StartRevision+offset+numRevisions < end {
 		token, err = EncodeToken(&rtpb.ListUserRevisionsToken{
 			Request:           in,
-			RevisionsReturned: int64(offset + numRevisions),
+			RevisionsReturned: offset + numRevisions,
 		})
 		if err != nil {
 			glog.Errorf("error encoding page token: %v", err)

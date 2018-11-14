@@ -125,7 +125,7 @@ func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, offset, c
 	case in.PageSize > maxPageSize:
 		revisions = int64(maxPageSize)
 	}
-	if in.StartRevision+offset+int64(revisions) > currentRevision {
+	if in.StartRevision+offset+revisions > currentRevision {
 		revisions = currentRevision - (in.StartRevision + offset) + 1
 	}
 	return revisions, nil
