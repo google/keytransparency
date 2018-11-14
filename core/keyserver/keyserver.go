@@ -313,7 +313,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	}
 	currentRevision, err := mapRevisionFor(sth)
 	if err != nil {
-		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
+		glog.Errorf("latestRevision(log %v, sth %v): %v", d.LogID, sth, err)
 		return nil, err
 	}
 
@@ -339,21 +339,14 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 		}
 	}
 
-	resp := &pb.ListUserRevisionsResponse{
-		LatestLogRoot: &pb.LogRoot{
-			LogRoot:        sth,
-			LogConsistency: consistencyProof.GetHashes(),
-		},
-		MapRevisions: revisions,
-	}
-
 	// Add a page token to the response if more revisions can be fetched.
 	end := currentRevision
 	if in.EndRevision != 0 {
 		end = in.EndRevision
 	}
+	token := ""
 	if in.StartRevision+offset+numRevisions < end {
-		token, err := EncodeToken(&rtpb.ListUserRevisionsToken{
+		token, err = EncodeToken(&rtpb.ListUserRevisionsToken{
 			Request:           in,
 			RevisionsReturned: int64(offset + numRevisions),
 		})
@@ -361,9 +354,15 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 			glog.Errorf("error encoding page token: %v", err)
 			return nil, status.Errorf(codes.Internal, "Error encoding pagination token")
 		}
-		resp.NextPageToken = token
 	}
-	return resp, nil
+	return &pb.ListUserRevisionsResponse{
+		LatestLogRoot: &pb.LogRoot{
+			LogRoot:        sth,
+			LogConsistency: consistencyProof.GetHashes(),
+		},
+		MapRevisions:  revisions,
+		NextPageToken: token,
+	}, nil
 }
 
 // BatchListUserRevisions returns a list of revisions covering a period of time.
