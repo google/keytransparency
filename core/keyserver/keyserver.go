@@ -279,6 +279,12 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
+// BatchListUserRevisions returns a list of revisions covering a period of time.
+func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUserRevisionsRequest) (
+	*pb.BatchListUserRevisionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 // QueueEntryUpdate updates a user's profile. If the user does not exist, a new
 // profile will be created.
 func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest) (*empty.Empty, error) {

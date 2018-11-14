@@ -229,6 +229,43 @@ message ListUserRevisionsResponse {
   string next_page_token = 3;
 }
 
+// BatchListUserRevisionsRequest contains a list of users and a range of revisions.
+message BatchListUserRevisionsRequest {
+  // directory_id identifies the directory in which the users live.
+  string directory_id = 1;
+  // user_ids are the user identifiers.
+  repeated string user_ids = 2;
+  // start_revision is the starting revision.
+  int64 start_revision = 3;
+  // end_revision is the ending epoch.
+  int64 end_revision = 4;
+  // page_size is the maximum number of entries to return. If page_size is
+  // unspecified, the server will decide how to paginate results.
+  int32 page_size = 5;
+  // page_token is a continuation token for paginating through results.
+  string page_token = 6;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 7;
+}
+
+// BatchMapRevision contains a set of map leaves at a speific revision.
+message BatchMapRevision {
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 1;
+  // map_leaves contains multiple leaves and their inclusion proofs to map_root.
+  repeated MapLeaf map_leaves = 2;
+}
+
+// BatchListUserRevisionsResponse contains multiple map leaves across multiple revisions.
+message BatchListUserRevisionsResponse {
+  // latest_log_root contains the lastest log root and its consistency proof.
+  LogRoot latest_log_root = 1;
+  // map_revisions is a list of map revisions.  At most page_size revisions will be returned.
+  repeated BatchMapRevision map_revisions = 2;
+}
+
 // UpdateEntryRequest updates a user's profile.
 message UpdateEntryRequest {
   // directory_id identifies the directory in which the user lives.
@@ -421,6 +458,13 @@ service KeyTransparency {
   rpc ListUserRevisions(ListUserRevisionsRequest) returns (ListUserRevisionsResponse) {
     option (google.api.http) = {
       post: "/v1/directories/{directory_id}/users/{user_id}/revisions"
+      body: "*"
+    };
+  }
+  // BatchListUserRevisions returns a list of revisions for multiple users.
+  rpc BatchListUserRevisions(BatchListUserRevisionsRequest) returns (BatchListUserRevisionsResponse) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/users:batchListRevisions"
       body: "*"
     };
   }
