@@ -251,6 +251,11 @@ func (f *fakeKeyServer) ListUserRevisions(ctx context.Context, in *pb.ListUserRe
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
+func (f *fakeKeyServer) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUserRevisionsRequest) (
+	*pb.BatchListUserRevisionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 func (f *fakeKeyServer) GetDirectory(context.Context, *pb.GetDirectoryRequest) (*pb.Directory, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
