@@ -254,8 +254,8 @@ message BatchListUserRevisionsRequest {
 message BatchMapRevision {
   // map_root contains the map root and its inclusion in the log.
   MapRoot map_root = 1;
-  // map_leaf contains multiple leaves and their inclusion proofs to map_root.
-  repeated MapLeaf map_leaf = 2;
+  // map_leaves contains multiple leaves and their inclusion proofs to map_root.
+  repeated MapLeaf map_leaves = 2;
 }
 
 // BatchListUserRevisionsResponse contains multiple map leaves across multiple revisions.
