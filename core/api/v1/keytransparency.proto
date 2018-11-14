@@ -129,14 +129,6 @@ message MapLeaf {
   Committed committed = 3;
 }
 
-// BatchMapRevision contains a set of map leaves at a speific revision.
-message BatchMapRevision {
-  // map_root contains the map root and its inclusion in the log.
-  MapRoot map_root = 1;
-  // map_leaf contains a leaf and its inclusion proof to map_root.
-  repeated MapLeaf map_leaf = 2;
-}
-
 // Contains the leaf entry for a user at the most recently published revision.
 message GetUserResponse {
   // revision is the most recently published revision.
@@ -195,20 +187,75 @@ message ListEntryHistoryResponse {
   int64 next_start = 2;
 }
 
-// BatchListUserRevisionsRequest contains a list of users and a range of revisions.
-message BatchListUserRevisionsRequest {
+// ListUserRevisionsRequest gets a list of historical keys for a user.
+message ListUserRevisionsRequest {
   // directory_id identifies the directory in which the user lives.
   string directory_id = 1;
-  // user_ids are the user identifiers.
-  repeated string user_ids = 2;
-  // start is the starting revision.
-  int64 start = 3;
-  // page_size is the maximum number of entries to return.
-  int32 page_size = 4;
+  // user_id is the user identifier.
+  string user_id = 2;
+  // start_revision is the starting epoch.
+  int64 start_revision = 3;
+  // end_revision is the ending epoch.
+  int64 end_revision = 4;
+  // page_size is the maximum number of entries to return. If page_size is
+  // unspecified, the server will decide how to paginate results.
+  int32 page_size = 5;
+  // page_token is a continuation token for paginating through results.
+  string page_token = 6;
   // last_verified_tree_size is the tree_size of the last log root the client
   // verified. Omitting this field will omit the log consistency proof from the
   // response.
-  int64 last_verified_tree_size = 5;
+  int64 last_verified_tree_size = 7;
+}
+
+// MapRevision contains a map leaf at a speific revision.
+message MapRevision {
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 1;
+  // map_leaf contains a leaf and its inclusion proof to map_root.
+  MapLeaf map_leaf = 2;
+}
+
+// ListUserRevisionsResponse requests a paginated history of keys for a user.
+message ListUserRevisionsResponse {
+  // latest_log_root contains the latest log root and its consistency proof.
+  LogRoot latest_log_root = 1;
+  // map_revisions represents the list of keys this user_id has contained over
+  // time. At most page_size results will be returned.
+  repeated MapRevision map_revisions = 2;
+  // next_page_token is a pagination token which will be set if more than
+  // page_size results are available. Clients can pass this value as
+  // the page_token in the next request in order to continue pagination.
+  string next_page_token = 3;
+}
+
+// BatchListUserRevisionsRequest contains a list of users and a range of revisions.
+message BatchListUserRevisionsRequest {
+  // directory_id identifies the directory in which the users live.
+  string directory_id = 1;
+  // user_ids are the user identifiers.
+  repeated string user_ids = 2;
+  // start_revision is the starting revision.
+  int64 start_revision = 3;
+  // end_revision is the ending epoch.
+  int64 end_revision = 4;
+  // page_size is the maximum number of entries to return. If page_size is
+  // unspecified, the server will decide how to paginate results.
+  int32 page_size = 5;
+  // page_token is a continuation token for paginating through results.
+  string page_token = 6;
+  // last_verified_tree_size is the tree_size of the last log root the client
+  // verified. Omitting this field will omit the log consistency proof from the
+  // response.
+  int64 last_verified_tree_size = 7;
+}
+
+// BatchMapRevision contains a set of map leaves at a speific revision.
+message BatchMapRevision {
+  // map_root contains the map root and its inclusion in the log.
+  MapRoot map_root = 1;
+  // map_leaf contains multiple leaves and their inclusion proofs to map_root.
+  repeated MapLeaf map_leaf = 2;
 }
 
 // BatchListUserRevisionsResponse contains multiple map leaves across multiple revisions.
@@ -217,10 +264,6 @@ message BatchListUserRevisionsResponse {
   LogRoot latest_log_root = 1;
   // map_revisions is a list of map revisions.  At most page_size revisions will be returned.
   repeated BatchMapRevision map_revisions = 2;
-  // next_page_token is a pagination token which will be set if more than
-  // page_size results are available. Clients can pass this value as
-  // the page_token in the next request in order to continue pagination.
-  string next_page_token = 3;
 }
 
 // UpdateEntryRequest updates a user's profile.
@@ -406,6 +449,16 @@ service KeyTransparency {
   rpc ListEntryHistory(ListEntryHistoryRequest) returns (ListEntryHistoryResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users/{user_id}/history"
+    };
+  }
+  // ListUserRevisions returns a list of historic leaf values for a user.
+  //
+  // Clients verify their account history by observing correct values for their
+  // account over time.
+  rpc ListUserRevisions(ListUserRevisionsRequest) returns (ListUserRevisionsResponse) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/users/{user_id}/revisions"
+      body: "*"
     };
   }
   // BatchListUserRevisions returns a list of revisions for multiple users.
