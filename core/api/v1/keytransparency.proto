@@ -129,7 +129,7 @@ message MapLeaf {
   Committed committed = 3;
 }
 
-// BatchMapRevision contains a map leaf at a speific revision.
+// BatchMapRevision contains a set of map leaves at a speific revision.
 message BatchMapRevision {
   // map_root contains the map root and its inclusion in the log.
   MapRoot map_root = 1;
@@ -211,12 +211,11 @@ message BatchListUserRevisionsRequest {
   int64 last_verified_tree_size = 5;
 }
 
-// BatchListUserRevisionsResponse
+// BatchListUserRevisionsResponse contains multiple map leaves across multiple revisions.
 message BatchListUserRevisionsResponse {
   // latest_log_root contains the lastest log root and its consistency proof.
   LogRoot latest_log_root = 1;
-  // map_revisions represents the list of keys this user_id has contained over
-  // time. At most page_size results will be returned.
+  // map_revisions is a list of map revisions.  At most page_size revisions will be returned.
   repeated BatchMapRevision map_revisions = 2;
   // next_page_token is a pagination token which will be set if more than
   // page_size results are available. Clients can pass this value as
