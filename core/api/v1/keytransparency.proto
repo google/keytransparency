@@ -260,7 +260,7 @@ message BatchMapRevision {
 
 // BatchListUserRevisionsResponse contains multiple map leaves across multiple revisions.
 message BatchListUserRevisionsResponse {
-  // latest_log_root contains the lastest log root and its consistency proof.
+  // latest_log_root contains the latest log root and its consistency proof.
   LogRoot latest_log_root = 1;
   // map_revisions is a list of map revisions.  At most page_size revisions will be returned.
   repeated BatchMapRevision map_revisions = 2;
