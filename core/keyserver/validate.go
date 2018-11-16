@@ -105,7 +105,7 @@ func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentRevi
 
 // validateListUserRevisionsRequest checks the bounds on start and end revisions and returns an appropriate number of
 // revisions to return for this request.
-func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, offset, newestRevision int64) (int64, error) {
+func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, pageStart, newestRevision int64) (int64, error) {
 	if in.StartRevision < 0 || in.StartRevision > newestRevision {
 		return 0, ErrInvalidStart
 	}
@@ -122,8 +122,8 @@ func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, offset, n
 	case in.PageSize > maxPageSize:
 		revisions = int64(maxPageSize)
 	}
-	if in.StartRevision+offset+revisions > in.EndRevision {
-		revisions = in.EndRevision - (in.StartRevision + offset) + 1
+	if pageStart+revisions > in.EndRevision {
+		revisions = in.EndRevision - pageStart + 1
 	}
 	return revisions, nil
 }

@@ -277,7 +277,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 // ListUserRevisions returns a list of revisions covering a period of time.
 func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisionsRequest) (
 	*pb.ListUserRevisionsResponse, error) {
-	offset := int64(0)
+	pageStart := in.StartRevision
 	lastVerified := in.GetLastVerifiedTreeSize()
 	if in.GetPageToken() != "" {
 		token := &rtpb.ListUserRevisionsToken{}
@@ -292,7 +292,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 		if !proto.Equal(in, token.Request) {
 			return nil, status.Errorf(codes.InvalidArgument, "Request fields changed during pagination")
 		}
-		offset = token.RevisionsReturned
+		pageStart += token.RevisionsReturned
 	}
 
 	// Lookup log and map info.
@@ -317,9 +317,9 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 		return nil, err
 	}
 
-	numRevisions, err := validateListUserRevisionsRequest(in, offset, newestRevision)
+	numRevisions, err := validateListUserRevisionsRequest(in, pageStart, newestRevision)
 	if err != nil {
-		glog.Errorf("validateListUserRevisionsRequest(%v, %v, %v): %v", in, offset, newestRevision, err)
+		glog.Errorf("validateListUserRevisionsRequest(%v, %v, %v): %v", in, pageStart, newestRevision, err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 	}
 
@@ -327,7 +327,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	// Get all revisions in the range [start + offset, start + offset + numRevisions].
 	revisions := make([]*pb.MapRevision, numRevisions)
 	for i := range revisions {
-		rev := in.StartRevision + offset + int64(i)
+		rev := pageStart + int64(i)
 		resp, err := s.getUserByRevision(ctx, sth, d, in.UserId, rev)
 		if err != nil {
 			glog.Errorf("getUser failed for revision %v: %v", rev, err)
@@ -341,24 +341,26 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 
 	// Add a page token to the response if more revisions can be fetched.
 	token := ""
-	if in.StartRevision+offset+numRevisions < in.EndRevision {
-		token, err = EncodeToken(&rtpb.ListUserRevisionsToken{
+	if pageStart+numRevisions < in.EndRevision {
+		tokenProto := &rtpb.ListUserRevisionsToken{
 			Request:           in,
-			RevisionsReturned: offset + numRevisions,
-		})
+			RevisionsReturned: (pageStart - in.StartRevision) + numRevisions,
+		}
+		token, err = EncodeToken(tokenProto)
 		if err != nil {
 			glog.Errorf("error encoding page token: %v", err)
 			return nil, status.Errorf(codes.Internal, "Error encoding pagination token")
 		}
 	}
-	return &pb.ListUserRevisionsResponse{
+	resp := &pb.ListUserRevisionsResponse{
 		LatestLogRoot: &pb.LogRoot{
 			LogRoot:        sth,
 			LogConsistency: consistencyProof.GetHashes(),
 		},
 		MapRevisions:  revisions,
 		NextPageToken: token,
-	}, nil
+	}
+	return resp, nil
 }
 
 // BatchListUserRevisions returns a list of revisions covering a period of time.
