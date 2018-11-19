@@ -18,8 +18,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/apache/beam/sdks/go/pkg/beam"
-	"github.com/apache/beam/sdks/go/pkg/beam/x/beamx"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -204,38 +202,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 
-	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
-
-	p := beam.NewPipeline()
-	scope := p.Root()
-
-	req := beam.Create(scope, in)
-	meta := beam.Create(scope, metaProto)
-	// Read each logID in parallel.
-	sourceSlices := beam.ParDo(scope, splitMeta, meta) // KV<logID, source>
-	logItems := beam.ParDo(scope, s.readOneLog, sourceSlices,
-		beam.SideInput{Input: beam.Create(scope, in.DirectoryId)},
-		beam.SideInput{Input: beam.Create(scope, readBatchSize)}) // *ktpb.EntryUpdate
-
-	keyedMutations := beam.ParDo(scope, mapLogItem, logItems) // KV<index, *ktpb.EntryUpdate>
-
-	// Read the map
-	indexes := beam.Combine(scope, &mergeIndexFn{}, beam.DropValue(scope, keyedMutations)) // []index
-	mapLeaves := beam.ParDo(scope, s.readMap, indexes, beam.SideInput{Input: req})         // KV<index, *tpb.MapLeaf>
-
-	// Align MapLeaves with their mutations and apply mutations.
-	joined := beam.CoGroupByKey(scope, mapLeaves, keyedMutations) // []*tpb.MapLeaf, []*ktpb.EntryUpdate
-	newMapLeaves := beam.ParDo(scope, applyMutation, joined)      // *tpb.MapLeaf
-
-	// Collect all new map leaves.
-	allMapLeaves := beam.Combine(scope, &mergeMapLeavesFn{}, newMapLeaves) // []*tpb.MapLeaf
-
-	// Write to map.
-	beam.ParDo0(scope, s.writeMap, allMapLeaves,
-		beam.SideInput{Input: meta},
-		beam.SideInput{Input: req})
-
-	if err := beamx.Run(ctx, p); err != nil {
+	if err := s.createRevisionWithBeam(ctx, in, metaProto); err != nil {
 		return nil, err
 	}
 

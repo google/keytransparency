@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/apache/beam/sdks/go/pkg/beam"
+	"github.com/apache/beam/sdks/go/pkg/beam/x/beamx"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
@@ -31,6 +33,42 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
+func (s *Server) createRevisionWithBeam(ctx context.Context, in *spb.CreateRevisionRequest,
+	metaProto *spb.MapMetadata) error {
+	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
+
+	p := beam.NewPipeline()
+	scope := p.Root()
+
+	req := beam.Create(scope, in)
+	meta := beam.Create(scope, metaProto)
+	// Read each logID in parallel.
+	sourceSlices := beam.ParDo(scope, splitMeta, meta) // KV<logID, source>
+	logItems := beam.ParDo(scope, s.readOneLog, sourceSlices,
+		beam.SideInput{Input: beam.Create(scope, in.DirectoryId)},
+		beam.SideInput{Input: beam.Create(scope, readBatchSize)}) // *ktpb.EntryUpdate
+
+	keyedMutations := beam.ParDo(scope, mapLogItem, logItems) // KV<index, *ktpb.EntryUpdate>
+
+	// Read the map
+	indexes := beam.Combine(scope, &mergeIndexFn{}, beam.DropValue(scope, keyedMutations)) // []index
+	mapLeaves := beam.ParDo(scope, s.readMap, indexes, beam.SideInput{Input: req})         // KV<index, *tpb.MapLeaf>
+
+	// Align MapLeaves with their mutations and apply mutations.
+	joined := beam.CoGroupByKey(scope, mapLeaves, keyedMutations) // []*tpb.MapLeaf, []*ktpb.EntryUpdate
+	newMapLeaves := beam.ParDo(scope, applyMutation, joined)      // *tpb.MapLeaf
+
+	// Collect all new map leaves.
+	allMapLeaves := beam.Combine(scope, &mergeMapLeavesFn{}, newMapLeaves) // []*tpb.MapLeaf
+
+	// Write to map.
+	beam.ParDo0(scope, s.writeMap, allMapLeaves,
+		beam.SideInput{Input: meta},
+		beam.SideInput{Input: req})
+
+	return beamx.Run(ctx, p)
+}
+
 // splitMeta emits one KV<logID, source> for each source in the directoryID/Revision batch.
 func splitMeta(meta *spb.MapMetadata, emit func(logID int64, source *spb.MapMetadata_SourceSlice)) {
 	for logID, source := range meta.Sources {
@@ -39,9 +77,10 @@ func splitMeta(meta *spb.MapMetadata, emit func(logID int64, source *spb.MapMeta
 	}
 }
 
-// readOneLog reads from source.LowestWatermark to source.HighestWatermark in increments of batchSize, emitting *ktpb.EntryUpdates as it goes.
-func (s *Server) readOneLog(ctx context.Context, logID int64, source *spb.MapMetadata_SourceSlice, directoryID string, batchSize int32,
-	emit func(*ktpb.EntryUpdate)) error {
+// readOneLog reads from source.LowestWatermark to source.HighestWatermark in
+// increments of batchSize, emitting *ktpb.EntryUpdates as it goes.
+func (s *Server) readOneLog(ctx context.Context, logID int64, source *spb.MapMetadata_SourceSlice,
+	directoryID string, batchSize int32, emit func(*ktpb.EntryUpdate)) error {
 	low := source.GetLowestWatermark()
 	high := source.GetHighestWatermark()
 	// Loop until less than batchSize items are returned.
