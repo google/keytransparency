@@ -15,6 +15,7 @@
 package sequencer
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -22,10 +23,56 @@ import (
 	"github.com/apache/beam/sdks/go/pkg/beam"
 	"github.com/apache/beam/sdks/go/pkg/beam/transforms/stats"
 	"github.com/apache/beam/sdks/go/pkg/beam/x/beamx"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/keytransparency/core/mutator"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	tpb "github.com/google/trillian"
 )
+
+func TestEmptyRevision(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		in []*tpb.MapLeaf
+	}{
+		{in: []*tpb.MapLeaf{}},
+		{in: []*tpb.MapLeaf{&tpb.MapLeaf{LeafValue: []byte("123")}}},
+		{in: []*tpb.MapLeaf{
+			&tpb.MapLeaf{LeafValue: []byte("abc")},
+			&tpb.MapLeaf{LeafValue: []byte("def")},
+		}},
+	} {
+
+		p := beam.NewPipeline()
+		s := p.Root()
+
+		// Split inputs and then recombine them.
+		leaves := beam.ParDo(s, func(in []*tpb.MapLeaf, emit func(*tpb.MapLeaf)) {
+			for _, l := range tc.in {
+				emit(l)
+			}
+		}, beam.Create(s, tc.in))
+		ranOutput := false
+		beam.ParDo0(s, func(got []*tpb.MapLeaf) error {
+			if !cmp.Equal(got, tc.in,
+				cmp.Comparer(proto.Equal),
+				cmpopts.SortSlices(func(a, b *tpb.MapLeaf) bool { return bytes.Compare(a.LeafValue, b.LeafValue) < 0 })) {
+				return fmt.Errorf("collectMapLeaves(): %v, want %v", got, tc.in)
+			}
+			ranOutput = true
+			return nil
+		}, collectMapLeaves(s, leaves))
+
+		if err := beamx.Run(ctx, p); err != nil {
+			t.Fatalf("beamx.Run(): %v", err)
+		}
+		if !ranOutput {
+			t.Errorf("ranOutput: %v, want true", ranOutput)
+		}
+	}
+}
 
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()

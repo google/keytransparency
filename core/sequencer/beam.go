@@ -58,11 +58,9 @@ func (s *Server) createRevisionWithBeam(ctx context.Context, in *spb.CreateRevis
 	joined := beam.CoGroupByKey(scope, mapLeaves, keyedMutations) // []*tpb.MapLeaf, []*ktpb.EntryUpdate
 	newMapLeaves := beam.ParDo(scope, applyMutation, joined)      // *tpb.MapLeaf
 
-	// Collect all new map leaves.
-	allMapLeaves := beam.Combine(scope, &mergeMapLeavesFn{}, newMapLeaves) // []*tpb.MapLeaf
-
 	// Write to map.
-	beam.ParDo0(scope, s.writeMap, allMapLeaves,
+	beam.ParDo0(scope, s.writeMap,
+		collectMapLeaves(scope, newMapLeaves),
 		beam.SideInput{Input: meta},
 		beam.SideInput{Input: req})
 
@@ -153,6 +151,46 @@ func (s *Server) readMap(ctx context.Context, indexes [][]byte, in *spb.CreateRe
 	return nil
 }
 
+// collectMapLeaves returns a collection with a single element of []*tpb.MapLeaf
+// collectMapLeaves always returns a PCollection with a single element, even if there are no elements in c.
+func collectMapLeaves(s beam.Scope, mapLeaves beam.PCollection) beam.PCollection {
+	s = s.Scope("collectMapLeaves")
+	allLeaves := beam.Combine(s, &mergeMapLeavesFn{}, mapLeaves)
+	emptyList := beam.Create(s, []*tpb.MapLeaf{})
+	twoLists := beam.Flatten(s, allLeaves, emptyList)
+
+	// Combine with an empty PCollection to ensure that the output PCollection is not empty.
+	return beam.Combine(s, MergeMapLeaves, twoLists)
+}
+
+type mergeMapLeavesFn struct{}
+
+func (*mergeMapLeavesFn) CreateAccumulator() []*tpb.MapLeaf { return []*tpb.MapLeaf{} }
+func (*mergeMapLeavesFn) AddInput(list []*tpb.MapLeaf, val *tpb.MapLeaf) []*tpb.MapLeaf {
+	return append(list, val)
+}
+func (*mergeMapLeavesFn) ExtractOutput(list []*tpb.MapLeaf) []*tpb.MapLeaf { return list }
+func (*mergeMapLeavesFn) MergeAccumulators(list [][]*tpb.MapLeaf) []*tpb.MapLeaf {
+	ret := []*tpb.MapLeaf{}
+	for _, l := range list {
+		for _, i := range l {
+			ret = append(ret, i)
+		}
+	}
+	return ret
+}
+
+// MapLeaves is a slice of *tpb.MapLeaf
+type MapLeaves []*tpb.MapLeaf
+
+// MergeMapLeaves takes two MapLeaves and combines them.
+func MergeMapLeaves(a, b MapLeaves) MapLeaves {
+	for _, l := range b {
+		a = append(a, l)
+	}
+	return a
+}
+
 // applyMutation processes all the mutations for a given index and emits the new map leaf.
 func applyMutation(index []byte, getMapLeaf func(**tpb.MapLeaf) bool, getMessage func(**ktpb.EntryUpdate) bool,
 	emit func(*tpb.MapLeaf)) error {
@@ -202,23 +240,6 @@ func applyMutation(index []byte, getMapLeaf func(**tpb.MapLeaf) bool, getMessage
 		ExtraData: extraData,
 	})
 	return nil
-}
-
-type mergeMapLeavesFn struct{}
-
-func (*mergeMapLeavesFn) CreateAccumulator() []*tpb.MapLeaf { return []*tpb.MapLeaf{} }
-func (*mergeMapLeavesFn) AddInput(list []*tpb.MapLeaf, val *tpb.MapLeaf) []*tpb.MapLeaf {
-	return append(list, val)
-}
-func (*mergeMapLeavesFn) ExtractOutput(list []*tpb.MapLeaf) []*tpb.MapLeaf { return list }
-func (*mergeMapLeavesFn) MergeAccumulators(list [][]*tpb.MapLeaf) []*tpb.MapLeaf {
-	ret := []*tpb.MapLeaf{}
-	for _, l := range list {
-		for _, i := range l {
-			ret = append(ret, i)
-		}
-	}
-	return ret
 }
 
 // writeMap takes a list of map leaves and writes them to the Trillian Map.
