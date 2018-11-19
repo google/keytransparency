@@ -17,6 +17,7 @@ package sequencer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -31,6 +32,23 @@ import (
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
+
+func TestDontPanic(t *testing.T) {
+	ctx := context.Background()
+	p := beam.NewPipeline()
+	s := p.Root()
+
+	errDontPanic := errors.New("don't panic")
+	ints := beam.ParDo(s, func(i []byte, e func(int)) error {
+		return errDontPanic
+	}, beam.Impulse(s))
+	beam.ParDo0(s, func(i int) {}, ints)
+
+	// Verify that e is returned through beamx.Run
+	if err := beamx.Run(ctx, p); err != errDontPanic {
+		t.Fatalf("beamx.Run(): %v", err)
+	}
+}
 
 func TestEmptyRevision(t *testing.T) {
 	ctx := context.Background()
