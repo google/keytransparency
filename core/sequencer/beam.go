@@ -40,19 +40,19 @@ func (s *Server) createRevisionWithBeam(ctx context.Context, in *spb.CreateRevis
 	p := beam.NewPipeline()
 	scope := p.Root()
 
-	req := beam.Create(scope, in)
 	meta := beam.Create(scope, metaProto)
+	dirID := beam.Create(scope, in.DirectoryId)
 	// Read each logID in parallel.
 	sourceSlices := beam.ParDo(scope, splitMeta, meta) // KV<logID, source>
 	logItems := beam.ParDo(scope, s.readOneLog, sourceSlices,
-		beam.SideInput{Input: beam.Create(scope, in.DirectoryId)},
+		beam.SideInput{Input: dirID},
 		beam.SideInput{Input: beam.Create(scope, readBatchSize)}) // *ktpb.EntryUpdate
 
 	keyedMutations := beam.ParDo(scope, mapLogItem, logItems) // KV<index, *ktpb.EntryUpdate>
 
 	// Read the map
 	indexes := beam.Combine(scope, &mergeIndexFn{}, beam.DropValue(scope, keyedMutations)) // []index
-	mapLeaves := beam.ParDo(scope, s.readMap, indexes, beam.SideInput{Input: req})         // KV<index, *tpb.MapLeaf>
+	mapLeaves := beam.ParDo(scope, s.readMap, indexes, beam.SideInput{Input: dirID})       // KV<index, *tpb.MapLeaf>
 
 	// Align MapLeaves with their mutations and apply mutations.
 	joined := beam.CoGroupByKey(scope, mapLeaves, keyedMutations) // []*tpb.MapLeaf, []*ktpb.EntryUpdate
@@ -62,7 +62,7 @@ func (s *Server) createRevisionWithBeam(ctx context.Context, in *spb.CreateRevis
 	beam.ParDo0(scope, s.writeMap,
 		collectMapLeaves(scope, newMapLeaves),
 		beam.SideInput{Input: meta},
-		beam.SideInput{Input: req})
+		beam.SideInput{Input: dirID})
 
 	return beamx.Run(ctx, p)
 }
@@ -129,10 +129,10 @@ func (*mergeIndexFn) MergeAccumulators(list [][][]byte) [][]byte {
 }
 
 // readMap queries the Trillian map for a list of leaves and emits KV<index, MapLeaf>
-func (s *Server) readMap(ctx context.Context, indexes [][]byte, in *spb.CreateRevisionRequest,
+func (s *Server) readMap(ctx context.Context, indexes [][]byte, directoryID string,
 	emit func(index []byte, leaf *tpb.MapLeaf)) error {
 	// Fetch verification objects for directoryID.
-	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: in.DirectoryId})
+	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: directoryID})
 	if err != nil {
 		return err
 	}
@@ -243,9 +243,9 @@ func applyMutation(index []byte, getMapLeaf func(**tpb.MapLeaf) bool, getMessage
 }
 
 // writeMap takes a list of map leaves and writes them to the Trillian Map.
-func (s *Server) writeMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata, in *spb.CreateRevisionRequest) error {
-	glog.Infof("writeMap: for %v with %d leaves", in.DirectoryId, len(leaves))
-	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: in.DirectoryId})
+func (s *Server) writeMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata, directoryID string) error {
+	glog.Infof("writeMap: for %v with %d leaves", directoryID, len(leaves))
+	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: directoryID})
 	if err != nil {
 		return err
 	}
