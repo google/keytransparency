@@ -197,12 +197,12 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 
 // CreateRevision applies the supplied mutations to the current map revision and creates a new revision.
 func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionRequest) (*empty.Empty, error) {
-	metaProto, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
+	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 
-	if err := s.createRevisionWithBeam(ctx, in, metaProto); err != nil {
+	if err := createRevisionWithBeam(ctx, in, meta, s, s, s); err != nil {
 		return nil, err
 	}
 

@@ -27,11 +27,125 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/google/keytransparency/core/mutator"
 
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/core/testutil"
+
+	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
+
+var signers = testutil.SignKeysetsFromPEMs(`-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIBoLpoKGPbrFbEzF/ZktBSuGP+Llmx2wVKSkbdAdQ+3JoAoGCCqGSM49
+AwEHoUQDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4hnGbXDPbdFlL1nmayhnqyEfR
+dXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
+-----END EC PRIVATE KEY-----`)
+var authKeys = testutil.VerifyKeysetFromPEMs(`-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4
+hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
+-----END PUBLIC KEY-----`).Keyset()
+
+func makeEntry(t *testing.T, index, userID, data string) *ktpb.EntryUpdate {
+	t.Helper()
+	m := entry.NewMutation([]byte(index), "", userID)
+	m.SetCommitment([]byte(data))
+	m.ReplaceAuthorizedKeys(authKeys)
+	update, err := m.SerializeAndSign(signers)
+	if err != nil {
+		t.Errorf("SerializeAndSign(): %v", err)
+	}
+	return update.EntryUpdate
+
+}
+
+func TestBeamEquivilance(t *testing.T) {
+	ctx := context.Background()
+	in := &spb.CreateRevisionRequest{
+		DirectoryId: "test",
+		Revision:    1,
+	}
+	mr := &emptyMap{}
+	lr := fakeLog{1: {
+		&ktpb.EntryUpdate{},
+		makeEntry(t, "1", "alice", "alpha"),
+		makeEntry(t, "2", "bob", "beta"),
+	}}
+
+	for _, tc := range []struct {
+		desc string
+		meta *spb.MapMetadata
+	}{
+		{desc: "empty", meta: &spb.MapMetadata{}},
+		{desc: "one", meta: &spb.MapMetadata{
+			Sources: map[int64]*spb.MapMetadata_SourceSlice{
+				1: {HighestWatermark: 1},
+			},
+		}},
+		{desc: "two", meta: &spb.MapMetadata{
+			Sources: map[int64]*spb.MapMetadata_SourceSlice{
+				1: {HighestWatermark: 2},
+			},
+		}},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			mw1 := &mapWrites{}
+			if err := createRevisionWithBeam(ctx, in, tc.meta, mw1, mr, lr); err != nil {
+				t.Errorf("createRevisionWithBeam(): %v", err)
+			}
+			mw2 := &mapWrites{}
+			if err := createRevisionWithChannels(ctx, in, tc.meta, mw2, mr, lr); err != nil {
+				t.Errorf("createRevisionWithChannels(): %v", err)
+			}
+			if !mw2.Called {
+				t.Fatalf("MapWriter2 not called")
+
+			}
+			if !cmp.Equal(mw1.Leaves, mw2.Leaves,
+				cmp.Comparer(proto.Equal),
+				cmpopts.SortSlices(func(a, b *tpb.MapLeaf) bool {
+					return bytes.Compare(a.LeafValue, b.LeafValue) < 0
+				}),
+			) {
+				t.Errorf("results differ. beam: %v != channel: %v", mw1.Leaves, mw2.Leaves)
+			}
+		})
+	}
+}
+
+type mapWrites struct {
+	Leaves []*tpb.MapLeaf
+	Called bool
+}
+
+func (m *mapWrites) WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata, directoryID string) error {
+	m.Leaves = leaves
+	m.Called = true
+	return nil
+}
+
+type emptyMap struct{}
+
+func (m *emptyMap) ReadMap(ctx context.Context, indexes [][]byte, directoryID string,
+	emit func(index []byte, leaf *tpb.MapLeaf)) error {
+	for _, i := range indexes {
+		emit(i, &tpb.MapLeaf{
+			Index: i,
+		})
+	}
+	return nil
+}
+
+type fakeLog map[int64][]*ktpb.EntryUpdate
+
+func (l fakeLog) ReadLog(ctx context.Context, logID int64, s *spb.MapMetadata_SourceSlice,
+	directoryID string, batchSize int32, emit func(*ktpb.EntryUpdate)) error {
+	for _, e := range l[logID][s.LowestWatermark+1 : s.HighestWatermark+1] {
+		emit(e)
+	}
+	return nil
+}
 
 func TestDontPanic(t *testing.T) {
 	ctx := context.Background()
@@ -119,7 +233,7 @@ func TestReadMessages(t *testing.T) {
 		meta := beam.Create(scope, tc.meta)
 		// Read each logID in parallel.
 		sourceSlices := beam.ParDo(scope, splitMeta, meta) // KV<logID, source>
-		logItems := beam.ParDo(scope, s.readOneLog, sourceSlices,
+		logItems := beam.ParDo(scope, s.ReadLog, sourceSlices,
 			beam.SideInput{Input: beam.Create(scope, directoryID)},
 			beam.SideInput{Input: beam.Create(scope, tc.batchSize)})
 		count := stats.Sum(scope, beam.DropKey(scope, stats.Count(scope, logItems)))

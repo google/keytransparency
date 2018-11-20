@@ -24,8 +24,9 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func (s *Server) createRevisionWithBeam(ctx context.Context, in *spb.CreateRevisionRequest,
-	metaProto *spb.MapMetadata) error {
+func createRevisionWithBeam(ctx context.Context,
+	in *spb.CreateRevisionRequest, metaProto *spb.MapMetadata,
+	mw MapWriter, mr MapReader, lr LogReader) error {
 	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
 
 	p := beam.NewPipeline()
@@ -35,7 +36,7 @@ func (s *Server) createRevisionWithBeam(ctx context.Context, in *spb.CreateRevis
 	dirID := beam.Create(scope, in.DirectoryId)
 	// Read each logID in parallel.
 	sourceSlices := beam.ParDo(scope, splitMeta, meta) // KV<logID, source>
-	logItems := beam.ParDo(scope, s.readOneLog, sourceSlices,
+	logItems := beam.ParDo(scope, lr.ReadLog, sourceSlices,
 		beam.SideInput{Input: dirID},
 		beam.SideInput{Input: beam.Create(scope, readBatchSize)}) // *ktpb.EntryUpdate
 
@@ -43,14 +44,14 @@ func (s *Server) createRevisionWithBeam(ctx context.Context, in *spb.CreateRevis
 
 	// Read the map
 	indexes := beam.Combine(scope, &mergeIndexFn{}, beam.DropValue(scope, keyedMutations)) // []index
-	mapLeaves := beam.ParDo(scope, s.readMap, indexes, beam.SideInput{Input: dirID})       // KV<index, *tpb.MapLeaf>
+	mapLeaves := beam.ParDo(scope, mr.ReadMap, indexes, beam.SideInput{Input: dirID})      // KV<index, *tpb.MapLeaf>
 
 	// Align MapLeaves with their mutations and apply mutations.
 	joined := beam.CoGroupByKey(scope, mapLeaves, keyedMutations) // []*tpb.MapLeaf, []*ktpb.EntryUpdate
 	newMapLeaves := beam.ParDo(scope, applyMutation, joined)      // *tpb.MapLeaf
 
 	// Write to map.
-	beam.ParDo0(scope, s.writeMap,
+	beam.ParDo0(scope, mw.WriteMap,
 		collectMapLeaves(scope, newMapLeaves),
 		beam.SideInput{Input: meta},
 		beam.SideInput{Input: dirID})

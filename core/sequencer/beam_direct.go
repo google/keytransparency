@@ -18,6 +18,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/golang/glog"
+
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -44,41 +46,67 @@ type joinRow struct {
 	msgs   []*ktpb.EntryUpdate
 }
 
-func (s *Server) createRevision(ctx context.Context,
-	in *spb.CreateRevisionRequest, meta *spb.MapMetadata) error {
+// MapWriter writes to the trillian Map.
+type MapWriter interface {
+	// WriteMap sends leaves to the map for directoryID.
+	WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata, directoryID string) error
+}
+
+// MapReader reads a set of indexes from the map.
+// TODO(gbelivn): Read at a specific map revision.
+type MapReader interface {
+	// ReadMap emits one map leaf for every index requested.
+	ReadMap(ctx context.Context, indexes [][]byte, directoryID string,
+		emit func(index []byte, leaf *tpb.MapLeaf)) error
+}
+
+// LogReader reads log items from a log.
+type LogReader interface {
+	// ReadLog calls emit for every item in the log.
+	ReadLog(ctx context.Context, logID int64, source *spb.MapMetadata_SourceSlice,
+		directoryID string, batchSize int32, emit func(*ktpb.EntryUpdate)) error
+}
+
+func createRevisionWithChannels(ctx context.Context,
+	in *spb.CreateRevisionRequest, meta *spb.MapMetadata,
+	mw MapWriter, mr MapReader, lr LogReader) error {
 	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
 
-	// Read eac logID in parallel.
+	// Read each logID in parallel.
 	logSources := goSplitMeta(meta)
-	logItems := s.goReadOneLog(ctx, logSources, in.DirectoryId, readBatchSize)
+	logItems := goReadOneLog(ctx, logSources, in.DirectoryId, readBatchSize, lr)
 	keyedMutations := goMapLogItems(logItems)
 	keyedMutations1, keyedMutations2 := goTeeMutations(keyedMutations)
 
 	// Read the map.
 	allIndexes := goCombineIndexes(goDropValue(keyedMutations1))
-	mapLeaves := s.goReadMap(ctx, allIndexes, in.DirectoryId)
+	mapLeaves := goReadMap(ctx, allIndexes, in.DirectoryId, mr)
 
 	// Join mutations and map leaves.
 	joined := goJoin(mapLeaves, keyedMutations2)
+
+	// Apply user defined mutation function.
 	newMapLeaves := goApply(joined)
 
 	// Write to map.
 	allMapLeaves := goCombineMapLeaves(newMapLeaves)
-	return s.goWriteMap(ctx, allMapLeaves, meta, in.DirectoryId)
+	return goWriteMap(ctx, allMapLeaves, meta, in.DirectoryId, mw)
 }
 
 func goSplitMeta(meta *spb.MapMetadata) <-chan logSource {
 	metaChan := make(chan logSource)
 	go func() {
 		splitMeta(meta, func(logID int64, source *spb.MapMetadata_SourceSlice) {
-			metaChan <- logSource{LogID: logID, Source: source}
+			ls := logSource{LogID: logID, Source: source}
+			glog.V(2).Infof("LogSource: %v", ls)
+			metaChan <- ls
 		})
 		close(metaChan)
 	}()
 	return metaChan
 }
 
-func (s *Server) goReadOneLog(ctx context.Context, logs <-chan logSource, dirID string, batchSize int32) <-chan *ktpb.EntryUpdate {
+func goReadOneLog(ctx context.Context, logs <-chan logSource, dirID string, batchSize int32, lr LogReader) <-chan *ktpb.EntryUpdate {
 	entries := make(chan *ktpb.EntryUpdate)
 	go func() {
 		var wg sync.WaitGroup
@@ -86,8 +114,11 @@ func (s *Server) goReadOneLog(ctx context.Context, logs <-chan logSource, dirID 
 			wg.Add(1)
 			// Read each log in parallel.
 			go func(l logSource) {
-				if err := s.readOneLog(ctx, l.LogID, l.Source, dirID, batchSize,
-					func(e *ktpb.EntryUpdate) { entries <- e }); err != nil {
+				if err := lr.ReadLog(ctx, l.LogID, l.Source, dirID, batchSize,
+					func(e *ktpb.EntryUpdate) {
+						glog.V(2).Infof("LogItem: %v", e)
+						entries <- e
+					}); err != nil {
 					close(entries)
 				}
 				wg.Done()
@@ -104,6 +135,7 @@ func goMapLogItems(logItems <-chan *ktpb.EntryUpdate) <-chan indexMutation {
 	go func() {
 		for e := range logItems {
 			mapLogItem(e, func(index []byte, update *ktpb.EntryUpdate) {
+				glog.V(2).Infof("LogKV: <%x: _>", index)
 				c <- indexMutation{index: index, mutation: update}
 			})
 		}
@@ -130,6 +162,7 @@ func goDropValue(mutations <-chan indexMutation) <-chan []byte {
 	c := make(chan []byte)
 	go func() {
 		for e := range mutations {
+			glog.V(2).Infof("Index: %x", e.index)
 			c <- e.index
 		}
 		close(c)
@@ -151,12 +184,13 @@ func goCombineIndexes(indexes <-chan []byte) <-chan [][]byte {
 	return c
 }
 
-func (s *Server) goReadMap(ctx context.Context, indexSets <-chan [][]byte, dirID string) <-chan indexLeaf {
+func goReadMap(ctx context.Context, indexSets <-chan [][]byte, dirID string, mr MapReader) <-chan indexLeaf {
 	c := make(chan indexLeaf)
 	go func() {
 		// There should only be one index set.
 		for indexes := range indexSets {
-			s.readMap(ctx, indexes, dirID, func(index []byte, leaf *tpb.MapLeaf) {
+			mr.ReadMap(ctx, indexes, dirID, func(index []byte, leaf *tpb.MapLeaf) {
+				glog.V(2).Infof("ReadMapKV: <%x, %v>", index, leaf)
 				c <- indexLeaf{index: index, leaf: leaf}
 			})
 		}
@@ -188,6 +222,7 @@ func goJoin(leaves <-chan indexLeaf, msgs <-chan indexMutation) <-chan joinRow {
 		}()
 		wg.Wait() // Wait for all indexes and mutations to be collected.
 		for i, msgs := range msgMap {
+			glog.V(2).Infof("JoinedRow: <%x, %v, %v>", []byte(i), leafMap[i], msgs)
 			c <- joinRow{index: []byte(i), leaves: leafMap[i], msgs: msgs}
 		}
 		close(c)
@@ -203,16 +238,23 @@ func goApply(rows <-chan joinRow) <-chan *tpb.MapLeaf {
 			var msgIndex int
 			applyMutation(r.index,
 				func(e **tpb.MapLeaf) bool {
-					*e = r.leaves[leafIndex]
-					leafIndex++
-					return leafIndex < len(r.leaves)
+					if leafIndex < len(r.leaves) {
+						*e = r.leaves[leafIndex]
+						leafIndex++
+						return true
+					}
+					return false
 				},
 				func(e **ktpb.EntryUpdate) bool {
-					*e = r.msgs[msgIndex]
-					msgIndex++
-					return msgIndex < len(r.msgs)
+					if msgIndex < len(r.msgs) {
+						*e = r.msgs[msgIndex]
+						msgIndex++
+						return true
+					}
+					return false
 				},
 				func(l *tpb.MapLeaf) {
+					glog.V(2).Infof("NewMapLeaf: %v", l)
 					c <- l
 				})
 		}
@@ -235,11 +277,10 @@ func goCombineMapLeaves(leaves <-chan *tpb.MapLeaf) <-chan []*tpb.MapLeaf {
 	return c
 }
 
-// Sink all existing chanels.
-func (s *Server) goWriteMap(ctx context.Context, leafSets <-chan []*tpb.MapLeaf, meta *spb.MapMetadata, dirID string) error {
+func goWriteMap(ctx context.Context, leafSets <-chan []*tpb.MapLeaf, meta *spb.MapMetadata, dirID string, mw MapWriter) error {
 	// There should only be one leafSet.
 	for leaves := range leafSets {
-		if err := s.writeMap(ctx, leaves, meta, dirID); err != nil {
+		if err := mw.WriteMap(ctx, leaves, meta, dirID); err != nil {
 			return err
 		}
 	}
