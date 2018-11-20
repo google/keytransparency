@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// To exclude beam dependencies run go with --tag nobeam.
+// +build !nobeam
+
 package sequencer
 
 import (
@@ -24,21 +27,21 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func createRevisionWithBeam(ctx context.Context,
-	in *spb.CreateRevisionRequest, metaProto *spb.MapMetadata,
+// CreateRevisionWithBeam is an implementation of CreateRevFn using beam.
+func CreateRevisionWithBeam(ctx context.Context, directoryID string, rev int64,
+	metaProto *spb.MapMetadata, batchSize int32,
 	mw MapWriter, mr MapReader, lr LogReader) error {
-	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
 
 	p := beam.NewPipeline()
 	scope := p.Root()
 
 	meta := beam.Create(scope, metaProto)
-	dirID := beam.Create(scope, in.DirectoryId)
+	dirID := beam.Create(scope, directoryID)
 	// Read each logID in parallel.
 	sourceSlices := beam.ParDo(scope, splitMeta, meta) // KV<logID, source>
 	logItems := beam.ParDo(scope, lr.ReadLog, sourceSlices,
 		beam.SideInput{Input: dirID},
-		beam.SideInput{Input: beam.Create(scope, readBatchSize)}) // *ktpb.EntryUpdate
+		beam.SideInput{Input: beam.Create(scope, batchSize)}) // *ktpb.EntryUpdate
 
 	keyedMutations := beam.ParDo(scope, mapLogItem, logItems) // KV<index, *ktpb.EntryUpdate>
 

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build !nobeam
+
 package sequencer
 
 import (
@@ -74,11 +76,13 @@ func TestBeamEquivilance(t *testing.T) {
 		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 			mw1 := &mapWrites{}
-			if err := createRevisionWithBeam(ctx, in, tc.meta, mw1, mr, lr); err != nil {
+			if err := CreateRevisionWithBeam(ctx, in.DirectoryId, in.Revision,
+				tc.meta, 1000, mw1, mr, lr); err != nil {
 				t.Errorf("createRevisionWithBeam(): %v", err)
 			}
 			mw2 := &mapWrites{}
-			if err := createRevisionWithChannels(ctx, in, tc.meta, mw2, mr, lr); err != nil {
+			if err := CreateRevisionWithChannels(ctx, in.DirectoryId, in.Revision,
+				tc.meta, 1000, mw2, mr, lr); err != nil {
 				t.Errorf("createRevisionWithChannels(): %v", err)
 			}
 			if !mw2.Called {

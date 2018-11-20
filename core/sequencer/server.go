@@ -100,13 +100,21 @@ type Batcher interface {
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
+// CreateRevFn creates a new map revision given an input batch
+type CreateRevFn func(ctx context.Context, dirID string, rev int64,
+	meta *spb.MapMetadata, batchSize int32,
+	mw MapWriter, mr MapReader, lr LogReader) error
+
+// createRev is the function used to create new revisions.
+
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	ktServer *keyserver.Server
-	batcher  Batcher
-	tmap     tpb.TrillianMapClient
-	tlog     tpb.TrillianLogClient
-	logs     LogsReader
+	ktServer  *keyserver.Server
+	batcher   Batcher
+	tmap      tpb.TrillianMapClient
+	tlog      tpb.TrillianLogClient
+	logs      LogsReader
+	CreateRev CreateRevFn
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -122,11 +130,12 @@ func NewServer(
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
-		ktServer: keyserver.New(nil, nil, logAdmin, mapAdmin, nil, directories, nil, nil),
-		tlog:     tlog,
-		tmap:     tmap,
-		batcher:  batcher,
-		logs:     logs,
+		ktServer:  keyserver.New(nil, nil, logAdmin, mapAdmin, nil, directories, nil, nil),
+		tlog:      tlog,
+		tmap:      tmap,
+		batcher:   batcher,
+		logs:      logs,
+		CreateRev: CreateRevisionWithChannels,
 	}
 }
 
@@ -202,7 +211,8 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 
-	if err := createRevisionWithChannels(ctx, in, meta, s, s, s); err != nil {
+	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
+	if err := s.CreateRev(ctx, in.DirectoryId, in.Revision, meta, readBatchSize, s, s, s); err != nil {
 		return nil, err
 	}
 

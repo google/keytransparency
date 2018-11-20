@@ -67,20 +67,19 @@ type LogReader interface {
 		directoryID string, batchSize int32, emit func(*ktpb.EntryUpdate)) error
 }
 
-func createRevisionWithChannels(ctx context.Context,
-	in *spb.CreateRevisionRequest, meta *spb.MapMetadata,
+// CreateRevisionWithChannels is an implementation of CreateRev without using beam.
+func CreateRevisionWithChannels(ctx context.Context, dirID string, rev int64,
+	meta *spb.MapMetadata, batchSize int32,
 	mw MapWriter, mr MapReader, lr LogReader) error {
-	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
-
 	// Read each logID in parallel.
 	logSources := goSplitMeta(meta)
-	logItems := goReadLog(ctx, logSources, dirID, readBatchSize, lr)
+	logItems := goReadLog(ctx, logSources, dirID, batchSize, lr)
 	keyedMutations := goMapLogItems(logItems)
 	keyedMutations1, keyedMutations2 := goTeeMutations(keyedMutations)
 
 	// Read the map.
 	allIndexes := goCombineIndexes(goDropValue(keyedMutations1))
-	mapLeaves := goReadMap(ctx, allIndexes, in.DirectoryId, mr)
+	mapLeaves := goReadMap(ctx, allIndexes, dirID, mr)
 
 	// Join mutations and map leaves.
 	joined := goJoin(mapLeaves, keyedMutations2)
@@ -90,7 +89,7 @@ func createRevisionWithChannels(ctx context.Context,
 
 	// Write to map.
 	allMapLeaves := goCombineMapLeaves(newMapLeaves)
-	return goWriteMap(ctx, allMapLeaves, meta, in.DirectoryId, mw)
+	return goWriteMap(ctx, allMapLeaves, meta, dirID, mw)
 }
 
 func goSplitMeta(meta *spb.MapMetadata) <-chan logSource {
