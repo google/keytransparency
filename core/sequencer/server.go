@@ -202,7 +202,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 
-	if err := createRevisionWithBeam(ctx, in, meta, s, s, s); err != nil {
+	if err := createRevisionWithChannels(ctx, in, meta, s, s, s); err != nil {
 		return nil, err
 	}
 

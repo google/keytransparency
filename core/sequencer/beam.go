@@ -73,8 +73,5 @@ func collectMapLeaves(s beam.Scope, mapLeaves beam.PCollection) beam.PCollection
 
 // MergeMapLeaves takes two MapLeaves and combines them.
 func MergeMapLeaves(a, b MapLeaves) MapLeaves {
-	for _, l := range b {
-		a = append(a, l)
-	}
-	return a
+	return append(a, b...)
 }

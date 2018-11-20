@@ -74,7 +74,7 @@ func createRevisionWithChannels(ctx context.Context,
 
 	// Read each logID in parallel.
 	logSources := goSplitMeta(meta)
-	logItems := goReadOneLog(ctx, logSources, in.DirectoryId, readBatchSize, lr)
+	logItems := goReadLog(ctx, logSources, dirID, readBatchSize, lr)
 	keyedMutations := goMapLogItems(logItems)
 	keyedMutations1, keyedMutations2 := goTeeMutations(keyedMutations)
 
@@ -106,7 +106,8 @@ func goSplitMeta(meta *spb.MapMetadata) <-chan logSource {
 	return metaChan
 }
 
-func goReadOneLog(ctx context.Context, logs <-chan logSource, dirID string, batchSize int32, lr LogReader) <-chan *ktpb.EntryUpdate {
+func goReadLog(ctx context.Context, logs <-chan logSource, dirID string, batchSize int32,
+	lr LogReader) <-chan *ktpb.EntryUpdate {
 	entries := make(chan *ktpb.EntryUpdate)
 	go func() {
 		var wg sync.WaitGroup
@@ -189,10 +190,12 @@ func goReadMap(ctx context.Context, indexSets <-chan [][]byte, dirID string, mr 
 	go func() {
 		// There should only be one index set.
 		for indexes := range indexSets {
-			mr.ReadMap(ctx, indexes, dirID, func(index []byte, leaf *tpb.MapLeaf) {
+			if err := mr.ReadMap(ctx, indexes, dirID, func(index []byte, leaf *tpb.MapLeaf) {
 				glog.V(2).Infof("ReadMapKV: <%x, %v>", index, leaf)
 				c <- indexLeaf{index: index, leaf: leaf}
-			})
+			}); err != nil {
+				glog.Errorf("ReadMap failed: %v", err)
+			}
 		}
 		close(c)
 	}()
@@ -234,33 +237,42 @@ func goApply(rows <-chan joinRow) <-chan *tpb.MapLeaf {
 	c := make(chan *tpb.MapLeaf)
 	go func() {
 		for r := range rows {
-			var leafIndex int
-			var msgIndex int
-			applyMutation(r.index,
-				func(e **tpb.MapLeaf) bool {
-					if leafIndex < len(r.leaves) {
-						*e = r.leaves[leafIndex]
-						leafIndex++
-						return true
-					}
-					return false
-				},
-				func(e **ktpb.EntryUpdate) bool {
-					if msgIndex < len(r.msgs) {
-						*e = r.msgs[msgIndex]
-						msgIndex++
-						return true
-					}
-					return false
-				},
+			if err := applyMutation(r.index,
+				mapLeafIterator(r.leaves), entryUpdateIterator(r.msgs),
 				func(l *tpb.MapLeaf) {
 					glog.V(2).Infof("NewMapLeaf: %v", l)
 					c <- l
-				})
+				}); err != nil {
+				glog.Warningf("applyMutation failed: %v", err)
+			}
 		}
 		close(c)
 	}()
 	return c
+}
+
+func mapLeafIterator(leaves []*tpb.MapLeaf) func(e **tpb.MapLeaf) bool {
+	var leafIndex int
+	return func(e **tpb.MapLeaf) bool {
+		if leafIndex < len(leaves) {
+			*e = leaves[leafIndex]
+			leafIndex++
+			return true
+		}
+		return false
+	}
+}
+
+func entryUpdateIterator(msgs []*ktpb.EntryUpdate) func(e **ktpb.EntryUpdate) bool {
+	var msgIndex int
+	return func(e **ktpb.EntryUpdate) bool {
+		if msgIndex < len(msgs) {
+			*e = msgs[msgIndex]
+			msgIndex++
+			return true
+		}
+		return false
+	}
 }
 
 func goCombineMapLeaves(leaves <-chan *tpb.MapLeaf) <-chan []*tpb.MapLeaf {
@@ -277,7 +289,8 @@ func goCombineMapLeaves(leaves <-chan *tpb.MapLeaf) <-chan []*tpb.MapLeaf {
 	return c
 }
 
-func goWriteMap(ctx context.Context, leafSets <-chan []*tpb.MapLeaf, meta *spb.MapMetadata, dirID string, mw MapWriter) error {
+func goWriteMap(ctx context.Context, leafSets <-chan []*tpb.MapLeaf,
+	meta *spb.MapMetadata, dirID string, mw MapWriter) error {
 	// There should only be one leafSet.
 	for leaves := range leafSets {
 		if err := mw.WriteMap(ctx, leaves, meta, dirID); err != nil {

@@ -27,40 +27,22 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/testutil"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
 
-var signers = testutil.SignKeysetsFromPEMs(`-----BEGIN EC PRIVATE KEY-----
-MHcCAQEEIBoLpoKGPbrFbEzF/ZktBSuGP+Llmx2wVKSkbdAdQ+3JoAoGCCqGSM49
-AwEHoUQDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4hnGbXDPbdFlL1nmayhnqyEfR
-dXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
------END EC PRIVATE KEY-----`)
-var authKeys = testutil.VerifyKeysetFromPEMs(`-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+xVOdphkfpEtl7OF8oCyvWw31dV4
-hnGbXDPbdFlL1nmayhnqyEfRdXNlpBT2U9hXcSxliKI1rHrAJFDx3ncttA==
------END PUBLIC KEY-----`).Keyset()
-
-func makeEntry(t *testing.T, index, userID, data string) *ktpb.EntryUpdate {
-	t.Helper()
-	m := entry.NewMutation([]byte(index), "", userID)
-	m.SetCommitment([]byte(data))
-	m.ReplaceAuthorizedKeys(authKeys)
-	update, err := m.SerializeAndSign(signers)
-	if err != nil {
-		t.Errorf("SerializeAndSign(): %v", err)
-	}
-	return update.EntryUpdate
-
-}
-
 func TestBeamEquivilance(t *testing.T) {
+	keyset1, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
+	if err != nil {
+		t.Fatalf("tink.NewKeysetHandle(): %v", err)
+	}
+
 	ctx := context.Background()
 	in := &spb.CreateRevisionRequest{
 		DirectoryId: "test",
@@ -69,8 +51,8 @@ func TestBeamEquivilance(t *testing.T) {
 	mr := &emptyMap{}
 	lr := fakeLog{1: {
 		&ktpb.EntryUpdate{},
-		makeEntry(t, "1", "alice", "alpha"),
-		makeEntry(t, "2", "bob", "beta"),
+		logMsg(t, 1, keyset1),
+		logMsg(t, 2, keyset1),
 	}}
 
 	for _, tc := range []struct {
@@ -89,6 +71,7 @@ func TestBeamEquivilance(t *testing.T) {
 			},
 		}},
 	} {
+		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 			mw1 := &mapWrites{}
 			if err := createRevisionWithBeam(ctx, in, tc.meta, mw1, mr, lr); err != nil {
@@ -153,7 +136,7 @@ func TestDontPanic(t *testing.T) {
 	s := p.Root()
 
 	errDontPanic := errors.New("don't panic")
-	ints := beam.ParDo(s, func(i []byte, e func(int)) error {
+	ints := beam.ParDo(s, func(_ []byte, _ func(int)) error {
 		return errDontPanic
 	}, beam.Impulse(s))
 	beam.ParDo0(s, func(i int) {}, ints)
@@ -170,19 +153,19 @@ func TestEmptyRevision(t *testing.T) {
 		in []*tpb.MapLeaf
 	}{
 		{in: []*tpb.MapLeaf{}},
-		{in: []*tpb.MapLeaf{&tpb.MapLeaf{LeafValue: []byte("123")}}},
+		{in: []*tpb.MapLeaf{{LeafValue: []byte("123")}}},
 		{in: []*tpb.MapLeaf{
-			&tpb.MapLeaf{LeafValue: []byte("abc")},
-			&tpb.MapLeaf{LeafValue: []byte("def")},
+			{LeafValue: []byte("abc")},
+			{LeafValue: []byte("def")},
 		}},
 	} {
-
+		tc := tc
 		p := beam.NewPipeline()
 		s := p.Root()
 
 		// Split inputs and then recombine them.
 		leaves := beam.ParDo(s, func(in []*tpb.MapLeaf, emit func(*tpb.MapLeaf)) {
-			for _, l := range tc.in {
+			for _, l := range in {
 				emit(l)
 			}
 		}, beam.Create(s, tc.in))
@@ -227,6 +210,7 @@ func TestReadMessages(t *testing.T) {
 			1: &spb.MapMetadata_SourceSlice{LowestWatermark: 0, HighestWatermark: 10},
 		}}},
 	} {
+		tc := tc
 		p := beam.NewPipeline()
 		scope := p.Root()
 

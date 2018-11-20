@@ -69,13 +69,12 @@ func (s *Server) ReadLog(ctx context.Context, logID int64, source *spb.MapMetada
 
 // mapLogItem takes an individual entry and emits KV<index, mutation>
 // TODO(gbelvin): Make this mapping function part of the mutation interface.
-func mapLogItem(e *ktpb.EntryUpdate, emit func(index []byte, update *ktpb.EntryUpdate)) error {
+func mapLogItem(e *ktpb.EntryUpdate, emit func(index []byte, update *ktpb.EntryUpdate)) {
 	var entry ktpb.Entry
 	if err := proto.Unmarshal(e.GetMutation().GetEntry(), &entry); err != nil {
-		return err
+		glog.Warningf("proto.Unmarshal failed: %v", err)
 	}
 	emit(entry.Index, e)
-	return nil
 }
 
 type mergeIndexFn struct{}
@@ -86,9 +85,7 @@ func (*mergeIndexFn) ExtractOutput(list [][]byte) [][]byte        { return list 
 func (*mergeIndexFn) MergeAccumulators(list [][][]byte) [][]byte {
 	ret := [][]byte{}
 	for _, l := range list {
-		for _, i := range l {
-			ret = append(ret, i)
-		}
+		ret = append(ret, l...)
 	}
 	return ret
 }
@@ -191,7 +188,8 @@ func (*mergeMapLeavesFn) MergeAccumulators(list []MapLeaves) MapLeaves {
 }
 
 // WriteMap takes a list of map leaves and writes them to the Trillian Map.
-func (s *Server) WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata, directoryID string) error {
+func (s *Server) WriteMap(ctx context.Context, leaves []*tpb.MapLeaf,
+	meta *spb.MapMetadata, directoryID string) error {
 	glog.Infof("WriteMap: for %v with %d leaves", directoryID, len(leaves))
 	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: directoryID})
 	if err != nil {
