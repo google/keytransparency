@@ -28,6 +28,27 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
+// TrillianFactory creates verifying clients for Trillian
+type TrillianFactory interface {
+	MapClient(ctx context.Context, dirID string) (TrillianMap, error)
+	LogClient(ctx context.Context, dirID string) (TrillianLog, error)
+}
+
+// TrillianMap communicates with the Trilian map and verifies the responses.
+type TrillianMap interface {
+	GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error)
+	SetLeaves(ctx context.Context, leaves []*tpb.MapLeaf, meatadata []byte) (*types.MapRootV1, error)
+	GetAndVerifyMapRootByRevision(ctx context.Context, rev int64) (*tpb.SignedMapRoot, *types.MapRootV1, error)
+	GetAndVerifyMapLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error)
+}
+
+// TrillianLog communicates with the Trillian log and verifies the responses.
+type TrillianLog interface {
+	WaitForInclusion(ctx context.Context, data []byte) error
+	UpdateRoot(ctx context.Context) (*types.LogRootV1, error)
+	AddSequencedLeaf(ctx context.Context, data []byte, index int64) error
+}
+
 // Trillian contains Trillian gRPC clients and metadata about them.
 type Trillian struct {
 	directories directory.Storage
@@ -38,7 +59,7 @@ type Trillian struct {
 }
 
 // MapClient returns a verifying MapClient
-func (t *Trillian) MapClient(ctx context.Context, dirID string) (*MapClient, error) {
+func (t *Trillian) MapClient(ctx context.Context, dirID string) (TrillianMap, error) {
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
 		glog.Errorf("directories.Read(%v): %v", dirID, err)
@@ -57,7 +78,7 @@ func (t *Trillian) MapClient(ctx context.Context, dirID string) (*MapClient, err
 }
 
 // LogClient returns a verifying LogClient.
-func (t *Trillian) LogClient(ctx context.Context, dirID string) (*tclient.LogClient, error) {
+func (t *Trillian) LogClient(ctx context.Context, dirID string) (TrillianLog, error) {
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
 		glog.Errorf("directories.Read(%v): %v", dirID, err)
