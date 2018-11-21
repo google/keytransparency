@@ -259,8 +259,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	}
 	glog.V(2).Infof("CreateRevision: %v mutations, %v indexes", len(msgs), len(indexes))
 
-	// TODO(gbelvin): Fetch map leaves at a specific revision.
-	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
+	leaves, err := mapClient.GetAndVerifyMapLeavesByRevision(ctx, in.Revision-1, indexes)
 	if err != nil {
 		return nil, err
 	}
