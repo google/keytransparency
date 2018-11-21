@@ -93,6 +93,8 @@ type Batcher interface {
 	WriteBatchSources(ctx context.Context, dirID string, rev int64, meta *spb.MapMetadata) error
 	// ReadBatch returns the batch definitions for a given revision.
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
+	// HighestRev returns the highest defined revision number for directoryID.
+	HighestRev(ctx context.Context, directoryID string) (int64, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
@@ -134,8 +136,27 @@ func NewServer(
 // b) apply the batch to the map
 // c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
+	oustandingRevs, err := s.DefineRevisions(ctx, in.DirectoryId, in.MinBatch, in.MaxBatch)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, rev := range oustandingRevs {
+		if _, err := s.CreateRevision(ctx, &spb.CreateRevisionRequest{
+			DirectoryId: in.DirectoryId,
+			Revision:    rev,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	return &empty.Empty{}, nil
+}
+
+// DefineRevisions examines the oustanding mutations and returns a list of
+// oustanding revisions that have not been applied.
+func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, maxBatch int32) ([]int64, error) {
 	// Get the previous and current high water marks.
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
+	mapClient, err := s.trillian.MapClient(ctx, dirID)
 	if err != nil {
 		return nil, err
 	}
@@ -143,12 +164,29 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err != nil {
 		return nil, err
 	}
+
+	// Collect a list of unapplied revisions.
+	oustanding := []int64{}
+	highestRev, err := s.batcher.HighestRev(ctx, dirID)
+	if err != nil {
+		return nil, err
+	}
+	for rev := int64(latestMapRoot.Revision) + 1; rev <= highestRev; rev++ {
+		oustanding = append(oustanding, rev)
+	}
+
+	// Don't create new revisions if there are ones waiting to be applied.
+	if len(oustanding) > 0 {
+		return oustanding, nil
+	}
+
+	// Query metadata about oustanding mutations.
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
 
-	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
+	count, meta, err := s.HighWatermarks(ctx, dirID, &lastMeta, maxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
@@ -160,20 +198,17 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	// TODO(#1057): If time since last map revision > max timeout, define batch.
 	// TODO(#1047): If time since oldest queue item > max latency has elapsed, define batch.
 	// If count items >= min_batch, define batch.
-	if count >= in.MinBatch {
+	if count >= minBatch {
 		nextRev := int64(latestMapRoot.Revision) + 1
-		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
+		if err := s.batcher.WriteBatchSources(ctx, dirID, nextRev, meta); err != nil {
 			return nil, err
 		}
+		oustanding = append(oustanding, nextRev)
 
-		return s.CreateRevision(ctx, &spb.CreateRevisionRequest{
-			DirectoryId: in.DirectoryId,
-			Revision:    nextRev,
-		})
 	}
-
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
-	return &empty.Empty{}, nil
+
+	return oustanding, nil
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
