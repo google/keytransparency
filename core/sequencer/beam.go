@@ -47,7 +47,9 @@ func CreateRevisionWithBeam(ctx context.Context, directoryID string, rev int64,
 
 	// Read the map
 	indexes := beam.Combine(scope, &mergeIndexFn{}, beam.DropValue(scope, keyedMutations)) // []index
-	mapLeaves := beam.ParDo(scope, mr.ReadMap, indexes, beam.SideInput{Input: dirID})      // KV<index, *tpb.MapLeaf>
+	mapLeaves := beam.ParDo(scope, mr.ReadMap, indexes,
+		beam.SideInput{Input: dirID},
+		beam.SideInput{Input: beam.Create(scope, rev-1)}) // KV<index, *tpb.MapLeaf>
 
 	// Align MapLeaves with their mutations and apply mutations.
 	joined := beam.CoGroupByKey(scope, mapLeaves, keyedMutations) // []*tpb.MapLeaf, []*ktpb.EntryUpdate

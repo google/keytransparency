@@ -91,7 +91,7 @@ func (*mergeIndexFn) MergeAccumulators(list [][][]byte) [][]byte {
 }
 
 // ReadMap queries the Trillian map for a list of leaves and emits KV<index, MapLeaf>
-func (s *Server) ReadMap(ctx context.Context, indexes [][]byte, directoryID string,
+func (s *Server) ReadMap(ctx context.Context, indexes [][]byte, directoryID string, rev int64,
 	emit func(index []byte, leaf *tpb.MapLeaf)) error {
 	// Fetch verification objects for directoryID.
 	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: directoryID})
@@ -102,8 +102,7 @@ func (s *Server) ReadMap(ctx context.Context, indexes [][]byte, directoryID stri
 	if err != nil {
 		return err
 	}
-	// TODO(gbelvin): Fetch map leaves at a specific revision.
-	leaves, err := mapClient.GetAndVerifyMapLeaves(ctx, indexes)
+	leaves, err := mapClient.GetAndVerifyMapLeavesByRevision(ctx, rev, indexes)
 	if err != nil {
 		return err
 	}

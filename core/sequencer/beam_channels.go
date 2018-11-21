@@ -53,10 +53,9 @@ type MapWriter interface {
 }
 
 // MapReader reads a set of indexes from the map.
-// TODO(gbelivn): Read at a specific map revision.
 type MapReader interface {
 	// ReadMap emits one map leaf for every index requested.
-	ReadMap(ctx context.Context, indexes [][]byte, directoryID string,
+	ReadMap(ctx context.Context, indexes [][]byte, directoryID string, rev int64,
 		emit func(index []byte, leaf *tpb.MapLeaf)) error
 }
 
@@ -79,7 +78,7 @@ func CreateRevisionWithChannels(ctx context.Context, dirID string, rev int64,
 
 	// Read the map.
 	allIndexes := goCombineIndexes(goDropValue(keyedMutations1))
-	mapLeaves := goReadMap(ctx, allIndexes, dirID, mr)
+	mapLeaves := goReadMap(ctx, allIndexes, dirID, rev-1, mr)
 
 	// Join mutations and map leaves.
 	joined := goJoin(mapLeaves, keyedMutations2)
@@ -184,15 +183,16 @@ func goCombineIndexes(indexes <-chan []byte) <-chan [][]byte {
 	return c
 }
 
-func goReadMap(ctx context.Context, indexSets <-chan [][]byte, dirID string, mr MapReader) <-chan indexLeaf {
+func goReadMap(ctx context.Context, indexSets <-chan [][]byte, dirID string, rev int64, mr MapReader) <-chan indexLeaf {
 	c := make(chan indexLeaf)
 	go func() {
 		// There should only be one index set.
 		for indexes := range indexSets {
-			if err := mr.ReadMap(ctx, indexes, dirID, func(index []byte, leaf *tpb.MapLeaf) {
-				glog.V(2).Infof("ReadMapKV: <%x, %v>", index, leaf)
-				c <- indexLeaf{index: index, leaf: leaf}
-			}); err != nil {
+			if err := mr.ReadMap(ctx, indexes, dirID, rev,
+				func(index []byte, leaf *tpb.MapLeaf) {
+					glog.V(2).Infof("ReadMapKV: <%x, %v>", index, leaf)
+					c <- indexLeaf{index: index, leaf: leaf}
+				}); err != nil {
 				glog.Errorf("ReadMap failed: %v", err)
 			}
 		}

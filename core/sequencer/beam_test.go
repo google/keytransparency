@@ -106,7 +106,8 @@ type mapWrites struct {
 	Called bool
 }
 
-func (m *mapWrites) WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata, directoryID string) error {
+func (m *mapWrites) WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata,
+	directoryID string) error {
 	m.Leaves = leaves
 	m.Called = true
 	return nil
@@ -114,7 +115,7 @@ func (m *mapWrites) WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *s
 
 type emptyMap struct{}
 
-func (m *emptyMap) ReadMap(ctx context.Context, indexes [][]byte, directoryID string,
+func (m *emptyMap) ReadMap(ctx context.Context, indexes [][]byte, _ string, _ int64,
 	emit func(index []byte, leaf *tpb.MapLeaf)) error {
 	for _, i := range indexes {
 		emit(i, &tpb.MapLeaf{
