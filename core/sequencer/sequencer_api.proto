@@ -44,19 +44,6 @@ message MapMetadata {
   repeated SourceSlice sources = 2;
 }
 
-// CreateRevisionRequest contains information needed to create a new revision.
-message CreateRevisionRequest {
-  // directory_id is the directory to apply the mutations to.
-  string directory_id = 1;
-  // deprecated messages. Server now reads messages via source watermarks.
-  reserved 2;
-  // revision is the expected revision of the new revision.
-  int64 revision = 3;
-  // deprecated map_metadata. Server now reads source watermarks from batch
-  // table.
-  reserved 4;
-}
-
 // RunBatchRequest triggers the sequencing of a batch of mutations for a
 // directory, with the batch size governed by the request parameters.
 message RunBatchRequest {
@@ -71,19 +58,66 @@ message RunBatchRequest {
   int32 max_batch = 3;
 }
 
-// PublishBatchRequest copies all SignedMapHeads into the Log of SignedMapHeads.
-message PublishBatchRequest {
+// DefineRevisionRequest contains information needed to define a new revision.
+message DefineRevisionsRequest {
+  // directory_id is the directory to examine the outstanding mutations for.
   string directory_id = 1;
+  // min_batch is the minimum number of items in a batch.
+  // If less than min_batch items are available, nothing happens.
+  // TODO(#1047): Replace with timeout so items in the log get processed
+  // eventually.
+  int32 min_batch = 2;
+  // max_batch is the maximum number of items in a batch.
+  int32 max_batch = 3;
+}
+
+// DefineRevisionResponse contains information about freshly defined revisions.
+message DefineRevisionsResponse {
+  // outsanding_revisions a list of all the defined revisions which are not yet applied.
+  repeated int64 outstanding_revisions = 1;
+}
+
+// ApplyRevisionRequest contains information needed to create a new revision.
+message ApplyRevisionRequest {
+  // directory_id is the directory to apply the mutations to.
+  string directory_id = 1;
+  // revision is the expected revision of the new revision.
+  int64 revision = 2;
+}
+
+// ApplyRevisionResponse contains stats about the created revision.
+message ApplyRevisionResponse {
+  string directory_id = 1;
+  // The revision this is for.
+  int64 revision = 2;
+  // mutations processed.
+  int64 mutations = 3;
+  // map_leaves written.
+  int64 map_leaves = 4;
+}
+
+// PublishRevisionRequest copies all SignedMapHeads into the Log of SignedMapHeads.
+message PublishRevisionsRequest {
+  string directory_id = 1;
+}
+
+// PublishRevisions
+message PublishRevisionsResponse {
+  // revisions published.
+  repeated int64 revisions = 1;
 }
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
   // RunBatch reads outstanding mutations and calls CreateRevision.
   rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty);
-  // CreateRevision applies the contained mutations to the current map root.
+  // DefineRevision examines the outstanding items in the queue and optionally
+  // commits to one or more revisions.
+  rpc DefineRevisions(DefineRevisionsRequest) returns (DefineRevisionsResponse);
+  // ApplyRevision applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
-  rpc CreateRevision(CreateRevisionRequest) returns (google.protobuf.Empty);
-  // PublishBatch copies the MapRoots of all known map revisions into the Log
+  rpc ApplyRevision(ApplyRevisionRequest) returns (ApplyRevisionResponse);
+  // PublishRevision copies the MapRoots of all known map revisions into the Log
   // of MapRoots.
-  rpc PublishBatch(PublishBatchRequest) returns (google.protobuf.Empty);
+  rpc PublishRevisions(PublishRevisionsRequest) returns (PublishRevisionsResponse);
 }
