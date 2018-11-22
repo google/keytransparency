@@ -100,6 +100,26 @@ type Batcher interface {
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
+// MapWriter writes to the trillian Map.
+type MapWriter interface {
+	// WriteMap sends leaves to the map for directoryID.
+	WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata, directoryID string) error
+}
+
+// MapReader reads a set of indexes from the map.
+type MapReader interface {
+	// ReadMap emits one map leaf for every index requested.
+	ReadMap(ctx context.Context, indexes [][]byte, directoryID string, rev int64,
+		emit func(index []byte, leaf *tpb.MapLeaf)) error
+}
+
+// LogReader reads log items from a log.
+type LogReader interface {
+	// ReadLog calls emit for every item in the log.
+	ReadLog(ctx context.Context, logID int64, source *spb.MapMetadata_SourceSlice,
+		directoryID string, batchSize int32, emit func(*ktpb.EntryUpdate)) error
+}
+
 // CreateRevFn creates a new map revision given an input batch
 type CreateRevFn func(ctx context.Context, dirID string, rev int64,
 	meta *spb.MapMetadata, batchSize int32,
@@ -135,7 +155,7 @@ func NewServer(
 		tmap:      tmap,
 		batcher:   batcher,
 		logs:      logs,
-		CreateRev: CreateRevisionWithChannels,
+		CreateRev: CreateRevisionWithBeam,
 	}
 }
 

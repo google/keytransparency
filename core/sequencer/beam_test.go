@@ -29,111 +29,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
 
 	"github.com/google/keytransparency/core/mutator"
 
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
-
-func TestBeamEquivilance(t *testing.T) {
-	keyset1, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
-	if err != nil {
-		t.Fatalf("tink.NewKeysetHandle(): %v", err)
-	}
-
-	ctx := context.Background()
-	in := &spb.CreateRevisionRequest{
-		DirectoryId: "test",
-		Revision:    1,
-	}
-	mr := &emptyMap{}
-	lr := fakeLog{1: {
-		&ktpb.EntryUpdate{},
-		logMsg(t, 1, keyset1),
-		logMsg(t, 2, keyset1),
-	}}
-
-	for _, tc := range []struct {
-		desc string
-		meta *spb.MapMetadata
-	}{
-		{desc: "empty", meta: &spb.MapMetadata{}},
-		{desc: "one", meta: &spb.MapMetadata{
-			Sources: map[int64]*spb.MapMetadata_SourceSlice{
-				1: {HighestWatermark: 1},
-			},
-		}},
-		{desc: "two", meta: &spb.MapMetadata{
-			Sources: map[int64]*spb.MapMetadata_SourceSlice{
-				1: {HighestWatermark: 2},
-			},
-		}},
-	} {
-		tc := tc
-		t.Run(tc.desc, func(t *testing.T) {
-			mw1 := &mapWrites{}
-			if err := CreateRevisionWithBeam(ctx, in.DirectoryId, in.Revision,
-				tc.meta, 1000, mw1, mr, lr); err != nil {
-				t.Errorf("createRevisionWithBeam(): %v", err)
-			}
-			mw2 := &mapWrites{}
-			if err := CreateRevisionWithChannels(ctx, in.DirectoryId, in.Revision,
-				tc.meta, 1000, mw2, mr, lr); err != nil {
-				t.Errorf("createRevisionWithChannels(): %v", err)
-			}
-			if !mw2.Called {
-				t.Fatalf("MapWriter2 not called")
-
-			}
-			if !cmp.Equal(mw1.Leaves, mw2.Leaves,
-				cmp.Comparer(proto.Equal),
-				cmpopts.SortSlices(func(a, b *tpb.MapLeaf) bool {
-					return bytes.Compare(a.LeafValue, b.LeafValue) < 0
-				}),
-			) {
-				t.Errorf("results differ. beam: %v != channel: %v", mw1.Leaves, mw2.Leaves)
-			}
-		})
-	}
-}
-
-type mapWrites struct {
-	Leaves []*tpb.MapLeaf
-	Called bool
-}
-
-func (m *mapWrites) WriteMap(ctx context.Context, leaves []*tpb.MapLeaf, meta *spb.MapMetadata,
-	directoryID string) error {
-	m.Leaves = leaves
-	m.Called = true
-	return nil
-}
-
-type emptyMap struct{}
-
-func (m *emptyMap) ReadMap(ctx context.Context, indexes [][]byte, _ string, _ int64,
-	emit func(index []byte, leaf *tpb.MapLeaf)) error {
-	for _, i := range indexes {
-		emit(i, &tpb.MapLeaf{
-			Index: i,
-		})
-	}
-	return nil
-}
-
-type fakeLog map[int64][]*ktpb.EntryUpdate
-
-func (l fakeLog) ReadLog(ctx context.Context, logID int64, s *spb.MapMetadata_SourceSlice,
-	directoryID string, batchSize int32, emit func(*ktpb.EntryUpdate)) error {
-	for _, e := range l[logID][s.LowestWatermark+1 : s.HighestWatermark+1] {
-		emit(e)
-	}
-	return nil
-}
 
 func TestDontPanic(t *testing.T) {
 	ctx := context.Background()

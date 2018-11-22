@@ -20,10 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/tink/go/tink"
 )
 
 type fakeLogs map[int64][]mutator.LogMessage
@@ -91,29 +88,5 @@ func TestHighWatermarks(t *testing.T) {
 		if !cmp.Equal(highs, tc.highs) {
 			t.Errorf("HighWatermarks(): %v, want %v", highs, tc.highs)
 		}
-	}
-}
-
-func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate {
-	t.Helper()
-	index := []byte{byte(id)}
-	userID := string(id)
-	m := entry.NewMutation(index, "directory", userID)
-	signers := []*tink.KeysetHandle{signer}
-	pubkey, err := signer.Public()
-	if err != nil {
-		t.Fatalf("Public(): %v", err)
-	}
-	if err := m.ReplaceAuthorizedKeys(pubkey.Keyset()); err != nil {
-		t.Fatalf("ReplaceAuthorizedKeys(): %v", err)
-	}
-	update, err := m.SerializeAndSign(signers)
-	if err != nil {
-		t.Fatalf("SerializeAndSign(): %v", err)
-	}
-
-	return &ktpb.EntryUpdate{
-		Mutation:  update.EntryUpdate.Mutation,
-		Committed: &ktpb.Committed{},
 	}
 }
