@@ -16,8 +16,6 @@ package keyserver
 
 import (
 	"encoding/base64"
-	"math"
-	"sort"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
@@ -44,11 +42,11 @@ func DecodeToken(token string, msg proto.Message) error {
 	return proto.Unmarshal(b, msg)
 }
 
-// SourceMap is a paginator for a map of sources.
-type SourceMap map[int64]*spb.MapMetadata_SourceSlice
+// SourceList is a paginator for a map of sources.
+type SourceList []*spb.MapMetadata_SourceSlice
 
 // ParseToken will return the first token if token is "", otherwise it will try to parse the read token.
-func (s SourceMap) ParseToken(token string) (*rtpb.ReadToken, error) {
+func (s SourceList) ParseToken(token string) (*rtpb.ReadToken, error) {
 	if token == "" {
 		return s.First(), nil
 	}
@@ -60,27 +58,21 @@ func (s SourceMap) ParseToken(token string) (*rtpb.ReadToken, error) {
 }
 
 // First returns the first read parameters for this source.
-func (s SourceMap) First() *rtpb.ReadToken {
+func (s SourceList) First() *rtpb.ReadToken {
 	if len(s) == 0 {
 		// Empty struct means there is nothing else to page through.
 		return &rtpb.ReadToken{}
 	}
-	firstLog := int64(math.MaxInt64)
-	for logID := range s {
-		if logID < firstLog {
-			firstLog = logID
-		}
-	}
 	return &rtpb.ReadToken{
-		ShardId:      firstLog,
-		LowWatermark: s[firstLog].LowestWatermark,
+		ShardId:      0,
+		LowWatermark: s[0].LowestWatermark,
 	}
 }
 
 // Next returns the next read token. Returns an empty struct when the read is finished.
 // lastRow is the (batchSize)th row from the last read, or nil if fewer than
 // batchSize + 1 rows were returned.
-func (s SourceMap) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.ReadToken {
+func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.ReadToken {
 	if lastRow != nil {
 		// There are more items in this shard.
 		return &rtpb.ReadToken{
@@ -100,37 +92,12 @@ func (s SourceMap) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.R
 	}
 }
 
-// NextShard returns the next shardID from the SourceMap.
-// Returns false if there are no more shards or shardID is not in SourceMap.
-func (s SourceMap) NextShard(shardID int64) (int64, bool) {
-	// Sorted list of shardIDs.
-	shardIDs := sortedKeys(s)
-
-	// Index of current shard.
-	i := sort.Search(len(shardIDs), func(i int) bool { return shardIDs[i] >= shardID })
-	if i == -1 {
-		// shardID isn't in SourceMap.
-		return 0, false
-	}
-	if i >= len(shardIDs)-1 {
+// NextShard returns the next shardID from the SourceList.
+// Returns false if there are no more shards or shardID is not in SourceList.
+func (s SourceList) NextShard(shardID int64) (int64, bool) {
+	if shardID >= int64(len(s))-1 {
 		// there are no more shards to iterate over.
 		return 0, false
 	}
-	return shardIDs[i+1], true
+	return shardID + 1, true
 }
-
-// sortedSources returns the map keys, sorted low to high.
-func sortedKeys(sources SourceMap) []int64 {
-	shardIDs := make(int64Slice, 0, len(sources))
-	for id := range sources {
-		shardIDs = append(shardIDs, id)
-	}
-	sort.Sort(shardIDs)
-	return shardIDs
-}
-
-type int64Slice []int64
-
-func (p int64Slice) Len() int           { return len(p) }
-func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

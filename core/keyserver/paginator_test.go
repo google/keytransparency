@@ -21,7 +21,6 @@ import (
 
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	"github.com/google/keytransparency/core/mutator"
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
 func TestEncodeToken(t *testing.T) {
@@ -70,17 +69,17 @@ func TestTokenEncodeDecode(t *testing.T) {
 
 func TestFirst(t *testing.T) {
 	for _, tc := range []struct {
-		s    SourceMap
+		s    SourceList
 		want *rtpb.ReadToken
 	}{
 		{
-			s: SourceMap{
-				2: &spb.MapMetadata_SourceSlice{LowestWatermark: 1, HighestWatermark: 10},
-				3: &spb.MapMetadata_SourceSlice{LowestWatermark: 10, HighestWatermark: 20},
+			s: SourceList{
+				{LogId: 2, LowestWatermark: 1, HighestWatermark: 10},
+				{LogId: 3, LowestWatermark: 10, HighestWatermark: 20},
 			},
-			want: &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
+			want: &rtpb.ReadToken{ShardId: 0, LowWatermark: 1},
 		},
-		{s: SourceMap{}, want: &rtpb.ReadToken{}},
+		{s: SourceList{}, want: &rtpb.ReadToken{}},
 	} {
 		if got := tc.s.First(); !proto.Equal(got, tc.want) {
 			t.Errorf("First(): %v, want %v", got, tc.want)
@@ -89,12 +88,12 @@ func TestFirst(t *testing.T) {
 }
 
 func TestNext(t *testing.T) {
-	a := SourceMap{
-		2: &spb.MapMetadata_SourceSlice{LowestWatermark: 1, HighestWatermark: 10},
-		3: &spb.MapMetadata_SourceSlice{LowestWatermark: 10, HighestWatermark: 20},
+	a := SourceList{
+		{LogId: 2, LowestWatermark: 1, HighestWatermark: 10},
+		{LogId: 3, LowestWatermark: 10, HighestWatermark: 20},
 	}
 	for _, tc := range []struct {
-		s       SourceMap
+		s       SourceList
 		desc    string
 		rt      *rtpb.ReadToken
 		lastRow *mutator.LogMessage
@@ -103,28 +102,28 @@ func TestNext(t *testing.T) {
 		{
 			desc:    "first page",
 			s:       a,
-			rt:      &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{ShardId: 0, LowWatermark: 1},
 			lastRow: &mutator.LogMessage{ID: 6},
-			want:    &rtpb.ReadToken{ShardId: 2, LowWatermark: 6},
+			want:    &rtpb.ReadToken{ShardId: 0, LowWatermark: 6},
 		},
 		{
 			desc:    "next source",
 			s:       a,
-			rt:      &rtpb.ReadToken{ShardId: 2, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{ShardId: 0, LowWatermark: 1},
 			lastRow: nil,
-			want:    &rtpb.ReadToken{ShardId: 3, LowWatermark: 10},
+			want:    &rtpb.ReadToken{ShardId: 1, LowWatermark: 10},
 		},
 		{
 			desc:    "last page",
 			s:       a,
-			rt:      &rtpb.ReadToken{ShardId: 3, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{ShardId: 1, LowWatermark: 1},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},
 		{
 			desc:    "empty",
-			s:       SourceMap{},
-			rt:      &rtpb.ReadToken{ShardId: 3, LowWatermark: 1},
+			s:       SourceList{},
+			rt:      &rtpb.ReadToken{ShardId: 1, LowWatermark: 1},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},

@@ -47,15 +47,15 @@ func TestWriteBatch(t *testing.T) {
 	for _, tc := range []struct {
 		rev     int64
 		wantErr bool
-		sources map[int64]*spb.MapMetadata_SourceSlice
+		sources []*spb.MapMetadata_SourceSlice
 	}{
 		// Tests are cumulative.
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 11}}, wantErr: true},
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{2: {HighestWatermark: 20}}, wantErr: true},
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{}, wantErr: true},
-		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{}},
-		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}, wantErr: true},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 10}}},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 11}}, wantErr: true},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 20}}, wantErr: true},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{}, wantErr: true},
+		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{}},
+		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 10}}, wantErr: true},
 	} {
 		err := m.WriteBatchSources(ctx, domainID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
 		if got, want := err != nil, tc.wantErr; got != want {
@@ -78,13 +78,13 @@ func TestReadBatch(t *testing.T) {
 		rev  int64
 		want *spb.MapMetadata
 	}{
-		{rev: 0, want: &spb.MapMetadata{Sources: map[int64]*spb.MapMetadata_SourceSlice{
-			1: {HighestWatermark: 10},
-			2: {HighestWatermark: 20},
+		{rev: 0, want: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			{LogId: 1, HighestWatermark: 10},
+			{LogId: 2, HighestWatermark: 20},
 		}}},
-		{rev: 1, want: &spb.MapMetadata{Sources: map[int64]*spb.MapMetadata_SourceSlice{
-			1: {HighestWatermark: 11},
-			2: {HighestWatermark: 22},
+		{rev: 1, want: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			{LogId: 1, HighestWatermark: 11},
+			{LogId: 2, HighestWatermark: 22},
 		}}},
 	} {
 		if err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.want); err != nil {

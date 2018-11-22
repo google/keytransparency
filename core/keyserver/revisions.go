@@ -133,17 +133,18 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
-	rt, err := SourceMap(meta.Sources).ParseToken(in.PageToken)
+	rt, err := SourceList(meta.Sources).ParseToken(in.PageToken)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Failed parsing page_token: %v: %v", in.PageToken, err)
 	}
 
 	// Read PageSize + 1 messages from the log to see if there is another page.
 	high := meta.Sources[rt.ShardId].HighestWatermark
-	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize+1)
+	logID := meta.Sources[rt.ShardId].LogId
+	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, logID, rt.LowWatermark, high, in.PageSize+1)
 	if err != nil {
 		glog.Errorf("ListMutations(): ReadLog(%v, log: %v/(%v, %v], batchSize: %v): %v",
-			d.DirectoryID, rt.ShardId, rt.LowWatermark, high, in.PageSize, err)
+			d.DirectoryID, logID, rt.LowWatermark, high, in.PageSize, err)
 		return nil, status.Error(codes.Internal, "Reading mutations range failed")
 	}
 	moreInLogID := len(msgs) == int(in.PageSize+1)
@@ -172,7 +173,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	for i, p := range proofs {
 		mutations[i].LeafProof = p
 	}
-	nextToken, err := EncodeToken(SourceMap(meta.Sources).Next(rt, lastRow))
+	nextToken, err := EncodeToken(SourceList(meta.Sources).Next(rt, lastRow))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed creating next token: %v", err)
 
