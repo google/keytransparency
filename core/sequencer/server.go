@@ -136,12 +136,12 @@ func NewServer(
 // b) apply the batch to the map
 // c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
-	oustandingRevs, err := s.DefineRevisions(ctx, in.DirectoryId, in.MinBatch, in.MaxBatch)
+	outstandingRevs, err := s.DefineRevisions(ctx, in.DirectoryId, in.MinBatch, in.MaxBatch)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, rev := range oustandingRevs {
+	for _, rev := range outstandingRevs {
 		if _, err := s.CreateRevision(ctx, &spb.CreateRevisionRequest{
 			DirectoryId: in.DirectoryId,
 			Revision:    rev,
@@ -152,8 +152,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	return &empty.Empty{}, nil
 }
 
-// DefineRevisions examines the oustanding mutations and returns a list of
-// oustanding revisions that have not been applied.
+// DefineRevisions examines the outstanding mutations and returns a list of
+// outstanding revisions that have not been applied.
 func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, maxBatch int32) ([]int64, error) {
 	// Get the previous and current high water marks.
 	mapClient, err := s.trillian.MapClient(ctx, dirID)
@@ -166,21 +166,21 @@ func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, ma
 	}
 
 	// Collect a list of unapplied revisions.
-	oustanding := []int64{}
+	outstanding := []int64{}
 	highestRev, err := s.batcher.HighestRev(ctx, dirID)
 	if err != nil {
 		return nil, err
 	}
 	for rev := int64(latestMapRoot.Revision) + 1; rev <= highestRev; rev++ {
-		oustanding = append(oustanding, rev)
+		outstanding = append(outstanding, rev)
 	}
 
 	// Don't create new revisions if there are ones waiting to be applied.
-	if len(oustanding) > 0 {
-		return oustanding, nil
+	if len(outstanding) > 0 {
+		return outstanding, nil
 	}
 
-	// Query metadata about oustanding mutations.
+	// Query metadata about outstanding mutations.
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
@@ -203,12 +203,12 @@ func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, ma
 		if err := s.batcher.WriteBatchSources(ctx, dirID, nextRev, meta); err != nil {
 			return nil, err
 		}
-		oustanding = append(oustanding, nextRev)
+		outstanding = append(outstanding, nextRev)
 
 	}
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
 
-	return oustanding, nil
+	return outstanding, nil
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
