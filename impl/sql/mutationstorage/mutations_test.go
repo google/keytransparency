@@ -99,3 +99,34 @@ func TestReadBatch(t *testing.T) {
 		}
 	}
 }
+
+func TestHightestRev(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	m, err := New(db)
+	if err != nil {
+		t.Fatalf("Failed to create mutations: %v", err)
+	}
+
+	domainID := "writebatchtest"
+	for _, tc := range []struct {
+		rev     int64
+		sources map[int64]*spb.MapMetadata_SourceSlice
+	}{
+		// Tests are cumulative.
+		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
+		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{}},
+	} {
+		err := m.WriteBatchSources(ctx, domainID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
+		if err != nil {
+			t.Errorf("WriteBatchSources(%v, %v): err: %v", tc.rev, tc.sources, err)
+		}
+		got, err := m.HighestRev(ctx, domainID)
+		if err != nil {
+			t.Errorf("HighestRev(): %v", err)
+		}
+		if got != tc.rev {
+			t.Errorf("HighestRev(): %v, want %v", got, tc.rev)
+		}
+	}
+}
