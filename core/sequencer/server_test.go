@@ -137,6 +137,7 @@ func TestHighWatermarks(t *testing.T) {
 				{LogId: 1},
 				{LogId: 3, LowestWatermark: 9, HighestWatermark: 9}}}},
 	} {
+		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 			count, next, err := s.HighWatermarks(ctx, directoryID, &tc.last, tc.batchSize)
 			if err != nil {
