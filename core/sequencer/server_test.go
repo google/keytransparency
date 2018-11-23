@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -121,7 +120,7 @@ func TestHighWatermarks(t *testing.T) {
 			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestWatermark: 9}}},
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestWatermark: 9},
+				{LogId: 0, LowestWatermark: 9, HighestWatermark: 9},
 				{LogId: 1, HighestWatermark: 19}}}},
 		// Don't drop existing watermarks.
 		{desc: "keep existing", batchSize: 1, count: 1,
@@ -129,29 +128,25 @@ func TestHighWatermarks(t *testing.T) {
 				{LogId: 1, HighestWatermark: 9}}},
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestWatermark: 1},
-				{LogId: 1, HighestWatermark: 9}}}},
-		// Don't drop pre-existing watermarks.
-		{desc: "keep prexisting", batchSize: 0, count: 0,
+				{LogId: 1, LowestWatermark: 9, HighestWatermark: 9}}}},
+		{desc: "logs that dont move", batchSize: 0, count: 0,
 			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 3, HighestWatermark: 9}}},
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestWatermark: 0},
-				{LogId: 1, HighestWatermark: 0},
-				{LogId: 3, HighestWatermark: 9}}}},
+				{LogId: 0},
+				{LogId: 1},
+				{LogId: 3, LowestWatermark: 9, HighestWatermark: 9}}}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, next, err := s.HighWatermarks(ctx, directoryID, &tc.last, tc.batchSize)
 			if err != nil {
-				t.Errorf("HighWatermarks(): %v", err)
+				t.Fatalf("HighWatermarks(): %v", err)
 			}
 			if count != tc.count {
 				t.Errorf("HighWatermarks(): count: %v, want %v", count, tc.count)
 			}
-			if !cmp.Equal(next, &tc.next,
-				cmpopts.SortSlices(func(a, b *spb.MapMetadata_SourceSlice) bool {
-					return a.LogId < b.LogId
-				})) {
-				t.Errorf("HighWatermarks(): %v, want %v", next, &tc.next)
+			if !cmp.Equal(next, &tc.next) {
+				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, &tc.next))
 			}
 		})
 	}

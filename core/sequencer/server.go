@@ -16,6 +16,7 @@ package sequencer
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/golang/glog"
@@ -420,12 +421,12 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// revision.
 	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
 	// from ranges of watermarks for the verifier's needs.
-	starts := map[int64]int64{}
 	ends := map[int64]int64{}
+	starts := map[int64]int64{}
 	for _, source := range lastMeta.Sources {
-		if starts[source.LogId] < source.LowestWatermark {
-			starts[source.LogId] = source.LowestWatermark
-			ends[source.LogId] = source.LowestWatermark
+		if ends[source.LogId] < source.HighestWatermark {
+			ends[source.LogId] = source.HighestWatermark
+			starts[source.LogId] = source.HighestWatermark
 		}
 	}
 
@@ -436,28 +437,29 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		start := starts[logID]
-		if batchSize <= 0 {
-			continue
-		}
-		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, start, batchSize)
+		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, ends[logID], batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"HighWatermark(%v/%v, start: %v, batch: %v): %v",
-				directoryID, logID, start, batchSize, err)
+				directoryID, logID, ends[logID], batchSize, err)
 		}
+		starts[logID] = ends[logID]
 		ends[logID] = high
 		total += count
 		batchSize -= count
 	}
 
 	meta := &spb.MapMetadata{}
-	for id, end := range ends {
+	for logID, end := range ends {
 		meta.Sources = append(meta.Sources, &spb.MapMetadata_SourceSlice{
-			LogId:            id,
-			LowestWatermark:  starts[id],
+			LogId:            logID,
+			LowestWatermark:  starts[logID],
 			HighestWatermark: end,
 		})
 	}
+	// Deterministic results are nice.
+	sort.Slice(meta.Sources, func(a, b int) bool {
+		return meta.Sources[a].LogId < meta.Sources[b].LogId
+	})
 	return total, meta, nil
 }
