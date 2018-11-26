@@ -49,6 +49,9 @@ var (
 // ReduceMutationFn must be idempotent.
 type ReduceMutationFn func(existingMapLeafValue, mutation *pb.SignedEntry) (*pb.SignedEntry, error)
 
+// MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.
+type MapLogItemFn func(logItem *LogMessage, emit func(index []byte, mutation *pb.EntryUpdate)) error
+
 // LogMessage represents a change to a user, and associated data.
 type LogMessage struct {
 	ID        int64
