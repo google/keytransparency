@@ -82,22 +82,12 @@ func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.
 	}
 
 	// Advance to the next shard.
-	nextIndex, ok := s.NextIndex(rt.SliceIndex)
-	if !ok {
+	if rt.SliceIndex >= int64(len(s))-1 {
+		// there are no more shards to iterate over.
 		return &rtpb.ReadToken{} // Encodes to ""
 	}
 	return &rtpb.ReadToken{
-		SliceIndex:   nextIndex,
-		LowWatermark: s[nextIndex].LowestWatermark,
+		SliceIndex:   rt.SliceIndex + 1,
+		LowWatermark: s[rt.SliceIndex+1].LowestWatermark,
 	}
-}
-
-// NextIndex returns the next shardID from the SourceList.
-// Returns false if there are no more shards or shardID is not in SourceList.
-func (s SourceList) NextIndex(shardID int64) (int64, bool) {
-	if shardID >= int64(len(s))-1 {
-		// there are no more shards to iterate over.
-		return 0, false
-	}
-	return shardID + 1, true
 }

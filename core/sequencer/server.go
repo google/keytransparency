@@ -436,14 +436,14 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, ends[logID], batchSize)
+		low := ends[logID]
+		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"HighWatermark(%v/%v, start: %v, batch: %v): %v",
-				directoryID, logID, ends[logID], batchSize, err)
+				directoryID, logID, low, batchSize, err)
 		}
-		starts[logID] = ends[logID]
-		ends[logID] = high
+		starts[logID], ends[logID] = low, high
 		total += count
 		batchSize -= count
 	}
