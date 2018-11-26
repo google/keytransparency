@@ -93,7 +93,7 @@ func (m *mutations) ReadLog(ctx context.Context, dirID string,
 func MustEncodeToken(t *testing.T, low int64) string {
 	t.Helper()
 	rt := &rtpb.ReadToken{
-		ShardId:      0,
+		SliceIndex:   0,
 		LowWatermark: low,
 	}
 	token, err := EncodeToken(rt)

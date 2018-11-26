@@ -42,7 +42,7 @@ func DecodeToken(token string, msg proto.Message) error {
 	return proto.Unmarshal(b, msg)
 }
 
-// SourceList is a paginator for a map of sources.
+// SourceList is a paginator for a list of source slices.
 type SourceList []*spb.MapMetadata_SourceSlice
 
 // ParseToken will return the first token if token is "", otherwise it will try to parse the read token.
@@ -64,7 +64,7 @@ func (s SourceList) First() *rtpb.ReadToken {
 		return &rtpb.ReadToken{}
 	}
 	return &rtpb.ReadToken{
-		ShardId:      0,
+		SliceIndex:   0,
 		LowWatermark: s[0].LowestWatermark,
 	}
 }
@@ -76,25 +76,25 @@ func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.
 	if lastRow != nil {
 		// There are more items in this shard.
 		return &rtpb.ReadToken{
-			ShardId:      rt.ShardId,
+			SliceIndex:   rt.SliceIndex,
 			LowWatermark: lastRow.ID,
 		}
 	}
 
 	// Advance to the next shard.
-	nextShard, ok := s.NextShard(rt.ShardId)
+	nextIndex, ok := s.NextIndex(rt.SliceIndex)
 	if !ok {
 		return &rtpb.ReadToken{} // Encodes to ""
 	}
 	return &rtpb.ReadToken{
-		ShardId:      nextShard,
-		LowWatermark: s[nextShard].LowestWatermark,
+		SliceIndex:   nextIndex,
+		LowWatermark: s[nextIndex].LowestWatermark,
 	}
 }
 
-// NextShard returns the next shardID from the SourceList.
+// NextIndex returns the next shardID from the SourceList.
 // Returns false if there are no more shards or shardID is not in SourceList.
-func (s SourceList) NextShard(shardID int64) (int64, bool) {
+func (s SourceList) NextIndex(shardID int64) (int64, bool) {
 	if shardID >= int64(len(s))-1 {
 		// there are no more shards to iterate over.
 		return 0, false

@@ -42,7 +42,7 @@ func TestEncodeToken(t *testing.T) {
 }
 
 func TestTokenEncodeDecode(t *testing.T) {
-	rt1 := &rtpb.ReadToken{ShardId: 2, LowWatermark: 5}
+	rt1 := &rtpb.ReadToken{SliceIndex: 2, LowWatermark: 5}
 	rt1Token, err := EncodeToken(rt1)
 	if err != nil {
 		t.Fatalf("EncodeToken(%v): %v", rt1, err)
@@ -77,7 +77,7 @@ func TestFirst(t *testing.T) {
 				{LogId: 2, LowestWatermark: 1, HighestWatermark: 10},
 				{LogId: 3, LowestWatermark: 10, HighestWatermark: 20},
 			},
-			want: &rtpb.ReadToken{ShardId: 0, LowWatermark: 1},
+			want: &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 1},
 		},
 		{s: SourceList{}, want: &rtpb.ReadToken{}},
 	} {
@@ -102,28 +102,28 @@ func TestNext(t *testing.T) {
 		{
 			desc:    "first page",
 			s:       a,
-			rt:      &rtpb.ReadToken{ShardId: 0, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 1},
 			lastRow: &mutator.LogMessage{ID: 6},
-			want:    &rtpb.ReadToken{ShardId: 0, LowWatermark: 6},
+			want:    &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 6},
 		},
 		{
 			desc:    "next source",
 			s:       a,
-			rt:      &rtpb.ReadToken{ShardId: 0, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 1},
 			lastRow: nil,
-			want:    &rtpb.ReadToken{ShardId: 1, LowWatermark: 10},
+			want:    &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 10},
 		},
 		{
 			desc:    "last page",
 			s:       a,
-			rt:      &rtpb.ReadToken{ShardId: 1, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 1},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},
 		{
 			desc:    "empty",
 			s:       SourceList{},
-			rt:      &rtpb.ReadToken{ShardId: 1, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 1},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},
