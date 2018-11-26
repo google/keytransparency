@@ -39,6 +39,19 @@ func New() *Mutator {
 	return &Mutator{}
 }
 
+// MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
+func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.EntryUpdate)) error {
+	var entry pb.Entry
+	if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
+		return err
+	}
+	emit(entry.Index, &pb.EntryUpdate{
+		Mutation:  m.Mutation,
+		Committed: m.ExtraData,
+	})
+	return nil
+}
+
 // Mutate verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
 // application of newSignedEntry to oldSignedEntry.
 func (*Mutator) Mutate(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
