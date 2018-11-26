@@ -111,11 +111,11 @@ func TestHightestRev(t *testing.T) {
 	domainID := "writebatchtest"
 	for _, tc := range []struct {
 		rev     int64
-		sources map[int64]*spb.MapMetadata_SourceSlice
+		sources []*spb.MapMetadata_SourceSlice
 	}{
 		// Tests are cumulative.
-		{rev: 0, sources: map[int64]*spb.MapMetadata_SourceSlice{1: {HighestWatermark: 10}}},
-		{rev: 1, sources: map[int64]*spb.MapMetadata_SourceSlice{}},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 10}}},
+		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{}},
 	} {
 		err := m.WriteBatchSources(ctx, domainID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
 		if err != nil {
