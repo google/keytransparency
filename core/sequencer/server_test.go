@@ -110,7 +110,7 @@ func TestDefineRevisions(t *testing.T) {
 			0: make([]mutator.LogMessage, 10),
 			1: make([]mutator.LogMessage, 20),
 		},
-		factory: &fakeTrillianConn{
+		trillian: &fakeTrillianConn{
 			mc: &fakeMap{latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)}},
 		},
 	}
