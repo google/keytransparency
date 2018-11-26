@@ -265,7 +265,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(directoryID, entry.Mutate, msgs, leaves)
+	newLeaves, err := s.applyMutations(directoryID, entry.MutateFn, msgs, leaves)
 	if err != nil {
 		return nil, err
 	}

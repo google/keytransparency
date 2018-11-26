@@ -30,9 +30,9 @@ import (
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
-// Mutate verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
+// MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
 // application of newSignedEntry to oldSignedEntry.
-func Mutate(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
+func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
 	// Ensure that the mutation size is within bounds.
 	if got, want := proto.Size(newSignedEntry), mutator.MaxMutationSize; got > want {
 		glog.Warningf("mutation is %v bytes, want <= %v", got, want)

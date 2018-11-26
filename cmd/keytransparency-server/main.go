@@ -120,7 +120,7 @@ func main() {
 
 	// Create gRPC server.
 	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
-		entry.Mutate, directories, logs, logs)
+		entry.MutateFn, directories, logs, logs)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(

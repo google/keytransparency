@@ -109,7 +109,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 		}
 
 		// compute the new leaf
-		newValue, err := entry.Mutate(oldLeaf, mut.GetMutation())
+		newValue, err := entry.MutateFn(oldLeaf, mut.GetMutation())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))

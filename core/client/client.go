@@ -128,7 +128,7 @@ func New(ktClient pb.KeyTransparencyClient,
 		Verifier:    ktVerifier,
 		cli:         ktClient,
 		directoryID: directoryID,
-		mutate:      entry.Mutate,
+		mutate:      entry.MutateFn,
 		RetryDelay:  retryDelay,
 	}
 }
