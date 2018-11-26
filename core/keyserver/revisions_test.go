@@ -61,7 +61,7 @@ func TestGetRevisionStream(t *testing.T) {
 	}
 }
 
-type batchStorage map[int64]SourceMap // Map of Revision to Sources
+type batchStorage map[int64]SourceList // Map of Revision to Sources
 
 func (b batchStorage) ReadBatch(ctx context.Context, dirID string, rev int64) (*spb.MapMetadata, error) {
 	return &spb.MapMetadata{Sources: b[rev]}, nil
@@ -93,7 +93,7 @@ func (m *mutations) ReadLog(ctx context.Context, dirID string,
 func MustEncodeToken(t *testing.T, low int64) string {
 	t.Helper()
 	rt := &rtpb.ReadToken{
-		ShardId:      0,
+		SliceIndex:   0,
 		LowWatermark: low,
 	}
 	token, err := EncodeToken(rt)
@@ -106,22 +106,22 @@ func MustEncodeToken(t *testing.T, low int64) string {
 func TestListMutations(t *testing.T) {
 	ctx := context.Background()
 	fakeBatches := batchStorage{
-		1: SourceMap{0: {LowestWatermark: 1, HighestWatermark: 6}},
-		2: SourceMap{0: {LowestWatermark: 6, HighestWatermark: 10}},
+		1: SourceList{{LogId: 0, LowestWatermark: 1, HighestWatermark: 6}},
+		2: SourceList{{LogId: 0, LowestWatermark: 6, HighestWatermark: 10}},
 	}
 
 	fakeLogs := make(mutations)
 	for _, sources := range fakeBatches {
-		for logID, source := range sources {
+		for _, source := range sources {
 			// Extend the log to hold at least source.HighestWatermark
-			extendBy := 1 + source.HighestWatermark - int64(len(fakeLogs[logID]))
+			extendBy := 1 + source.HighestWatermark - int64(len(fakeLogs[source.LogId]))
 			if extendBy > 0 {
-				fakeLogs[logID] = append(fakeLogs[logID], make([]*mutator.LogMessage, extendBy)...)
+				fakeLogs[source.LogId] = append(fakeLogs[source.LogId], make([]*mutator.LogMessage, extendBy)...)
 			}
 			// LowestWatermark is *exclusive*, so we start with the next index.
 			// HighestWatermark is *inclusive*, so we include that one before stopping.
 			for i := source.LowestWatermark + 1; i <= source.HighestWatermark; i++ {
-				fakeLogs[logID][i] = &mutator.LogMessage{
+				fakeLogs[source.LogId][i] = &mutator.LogMessage{
 					ID: i,
 					Mutation: &pb.SignedEntry{
 						Entry: mustMarshal(t, &pb.Entry{

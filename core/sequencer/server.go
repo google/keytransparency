@@ -16,6 +16,7 @@ package sequencer
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/golang/glog"
@@ -67,9 +68,6 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"Number of mutations the signer is attempting to process for directoryid",
 		directoryIDLabel)
 }
-
-// SourcesEntry is a map of SourceSlices by logID.
-type SourcesEntry map[int64]*spb.MapMetadata_SourceSlice
 
 // Watermarks is a map of watermarks by logID.
 type Watermarks map[int64]int64
@@ -155,20 +153,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, err
 	}
 
-	startWatermarks := make(Watermarks)
-	for logID, source := range lastMeta.Sources {
-		startWatermarks[logID] = source.HighestWatermark
-	}
-	count, highs, err := s.HighWatermarks(ctx, in.DirectoryId, startWatermarks, in.MaxBatch)
+	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
-	}
-	meta := &spb.MapMetadata{Sources: make(SourcesEntry)}
-	for logID, high := range highs {
-		meta.Sources[logID] = &spb.MapMetadata_SourceSlice{
-			LowestWatermark:  startWatermarks[logID],
-			HighestWatermark: high,
-		}
 	}
 
 	//
@@ -199,12 +186,12 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb.MapMetadata,
 	batchSize int32) ([]*mutator.LogMessage, error) {
 	msgs := make([]*mutator.LogMessage, 0)
-	for logID, source := range meta.Sources {
+	for _, source := range meta.Sources {
 		low := source.GetLowestWatermark()
 		high := source.GetHighestWatermark()
 		// Loop until less than batchSize items are returned.
 		for count := batchSize; count == batchSize; {
-			batch, err := s.logs.ReadLog(ctx, directoryID, logID, low, high, batchSize)
+			batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, batchSize)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
 			}
@@ -215,7 +202,7 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 				}
 			}
 			count = int32(len(batch))
-			glog.Infof("ReadLog(%v, (%v, %v], %v) count: %v", logID, low, high, batchSize, count)
+			glog.Infof("ReadLog(%v, (%v, %v], %v) count: %v", source.LogId, low, high, batchSize, count)
 		}
 	}
 	return msgs, nil
@@ -423,19 +410,23 @@ func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.ReduceMu
 // HighWatermarks returns the total count across all logs and the highest watermark for each log.
 // batchSize is a limit on the total number of items represented by the returned watermarks.
 // TODO(gbelvin): Block until a minBatchSize has been reached or a timeout has occurred.
-func (s *Server) HighWatermarks(ctx context.Context, directoryID string, starts Watermarks,
-	batchSize int32) (int32, Watermarks, error) {
-	watermarks := make(Watermarks)
+func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMeta *spb.MapMetadata,
+	batchSize int32) (int32, *spb.MapMetadata, error) {
 	var total int32
 
-	// Ensure that we do not lose track of watermarks, even if they are no
+	// Ensure that we do not lose track of end watermarks, even if they are no
 	// longer in the active log list, or if they do not move. The sequencer
 	// needs them to know where to pick up reading for the next map
 	// revision.
-	// TODO(gbelvin): Separate high water marks for the sequencer's needs
-	// from the verifier's needs.
-	for logID, low := range starts {
-		watermarks[logID] = low
+	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
+	// from ranges of watermarks for the verifier's needs.
+	ends := map[int64]int64{}
+	starts := map[int64]int64{}
+	for _, source := range lastMeta.Sources {
+		if ends[source.LogId] < source.HighestWatermark {
+			ends[source.LogId] = source.HighestWatermark
+			starts[source.LogId] = source.HighestWatermark
+		}
 	}
 
 	filterForWritable := false
@@ -445,20 +436,29 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, starts 
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		start := starts[logID]
-		if batchSize <= 0 {
-			watermarks[logID] = start
-			continue
-		}
-		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, start, batchSize)
+		low := ends[logID]
+		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"HighWatermark(%v/%v, start: %v, batch: %v): %v",
-				directoryID, logID, start, batchSize, err)
+				directoryID, logID, low, batchSize, err)
 		}
-		watermarks[logID] = high
+		starts[logID], ends[logID] = low, high
 		total += count
 		batchSize -= count
 	}
-	return total, watermarks, nil
+
+	meta := &spb.MapMetadata{}
+	for logID, end := range ends {
+		meta.Sources = append(meta.Sources, &spb.MapMetadata_SourceSlice{
+			LogId:            logID,
+			LowestWatermark:  starts[logID],
+			HighestWatermark: end,
+		})
+	}
+	// Deterministic results are nice.
+	sort.Slice(meta.Sources, func(a, b int) bool {
+		return meta.Sources[a].LogId < meta.Sources[b].LogId
+	})
+	return total, meta, nil
 }
