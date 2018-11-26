@@ -99,7 +99,7 @@ type Client struct {
 	Verifier
 	cli         pb.KeyTransparencyClient
 	directoryID string
-	mutator     mutator.Func
+	mutate      mutator.ReduceMutationFn
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
 	trustedLock sync.Mutex
@@ -128,7 +128,7 @@ func New(ktClient pb.KeyTransparencyClient,
 		Verifier:    ktVerifier,
 		cli:         ktClient,
 		directoryID: directoryID,
-		mutator:     entry.New(),
+		mutate:      entry.MutateFn,
 		RetryDelay:  retryDelay,
 	}
 }

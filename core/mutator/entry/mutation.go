@@ -125,7 +125,7 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEnt
 	}
 
 	// Sanity check the mutation's correctness.
-	if _, err := New().Mutate(m.prevSignedEntry, mutation); err != nil {
+	if _, err := MutateFn(m.prevSignedEntry, mutation); err != nil {
 		return nil, fmt.Errorf("presign mutation check: %v", err)
 	}
 
