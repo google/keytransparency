@@ -35,6 +35,7 @@ import (
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/directory"
@@ -185,6 +186,13 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		logEnv.Log, mapEnv.Map,
 		mutations, mutations,
 		monitoring.InertMetricFactory{},
+		&mapper.DirectRunner{
+			Args: &mapper.Args{
+				TMap:        mapEnv.Map,
+				MapAdmin:    mapEnv.Admin,
+				Directories: directoryStorage,
+			},
+		},
 	)
 
 	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)

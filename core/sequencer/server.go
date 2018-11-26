@@ -100,6 +100,11 @@ type Batcher interface {
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
+// Runner wraps different mapping run pipelines.
+type Runner interface {
+	RunMapper(ctx context.Context) error
+}
+
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
 	ktServer *keyserver.Server
@@ -107,6 +112,7 @@ type Server struct {
 	tmap     tpb.TrillianMapClient
 	tlog     tpb.TrillianLogClient
 	logs     LogsReader
+	runner   Runner
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -119,6 +125,7 @@ func NewServer(
 	batcher Batcher,
 	logs LogsReader,
 	metricsFactory monitoring.MetricFactory,
+	runner Runner,
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
@@ -127,6 +134,7 @@ func NewServer(
 		tmap:     tmap,
 		batcher:  batcher,
 		logs:     logs,
+		runner:   runner,
 	}
 }
 
@@ -273,6 +281,10 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	// Serialize metadata
 	metadata, err := proto.Marshal(meta)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.runner.RunMapper(ctx); err != nil {
 		return nil, err
 	}
 

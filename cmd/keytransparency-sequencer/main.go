@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
@@ -95,6 +96,12 @@ func main() {
 		tlog, tmap,
 		mutations, mutations,
 		prometheus.MetricFactory{},
+		&mapper.DirectRunner{
+			Args: &mapper.Args{
+				TMap:        tmap,
+				Directories: directoryStorage,
+			},
+		},
 	)
 
 	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)
