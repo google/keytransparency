@@ -184,8 +184,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 // readMessages returns the full set of EntryUpdates defined by sources.
 // batchSize limits the number of messages to read from a log at one time.
 func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb.MapMetadata,
-	batchSize int32) ([]*ktpb.EntryUpdate, error) {
-	msgs := make([]*ktpb.EntryUpdate, 0)
+	batchSize int32) ([]*mutator.LogMessage, error) {
+	msgs := make([]*mutator.LogMessage, 0)
 	for _, source := range meta.Sources {
 		low := source.GetLowestWatermark()
 		high := source.GetHighestWatermark()
@@ -196,10 +196,7 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
 			}
 			for _, m := range batch {
-				msgs = append(msgs, &ktpb.EntryUpdate{
-					Mutation:  m.Mutation,
-					Committed: m.ExtraData,
-				})
+				msgs = append(msgs, m)
 				if m.ID > low {
 					low = m.ID
 				}
@@ -237,12 +234,15 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	// Parse mutations using the mutator for this directory.
 	batchSize.Set(float64(len(msgs)), config.DirectoryId)
 	indexes := make([][]byte, 0, len(msgs))
+	mutations := make([]*ktpb.EntryUpdate, 0, len(msgs))
 	for _, m := range msgs {
-		var entry ktpb.Entry
-		if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
+		if err := entry.MapLogItemFn(m, func(index []byte, mutation *ktpb.EntryUpdate) {
+			indexes = append(indexes, index)
+			mutations = append(mutations, mutation)
+		}); err != nil {
 			return nil, err
 		}
-		indexes = append(indexes, entry.Index)
+
 	}
 	glog.V(2).Infof("CreateRevision: %v mutations, %v indexes", len(msgs), len(indexes))
 
@@ -252,7 +252,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(directoryID, entry.New(), msgs, leaves)
+	newLeaves, err := s.applyMutations(directoryID, entry.New(), mutations, leaves)
 	if err != nil {
 		return nil, err
 	}
