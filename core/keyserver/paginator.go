@@ -74,16 +74,16 @@ func (s SourceList) First() *rtpb.ReadToken {
 // batchSize + 1 rows were returned.
 func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.ReadToken {
 	if lastRow != nil {
-		// There are more items in this shard.
+		// There are more items in this source slice.
 		return &rtpb.ReadToken{
 			SliceIndex:   rt.SliceIndex,
 			LowWatermark: lastRow.ID,
 		}
 	}
 
-	// Advance to the next shard.
+	// Advance to the next slice.
 	if rt.SliceIndex >= int64(len(s))-1 {
-		// there are no more shards to iterate over.
+		// There are no more source slices to iterate over.
 		return &rtpb.ReadToken{} // Encodes to ""
 	}
 	return &rtpb.ReadToken{
