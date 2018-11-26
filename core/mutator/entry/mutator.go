@@ -30,15 +30,6 @@ import (
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
-// Mutator defines mutations to simply replace the current map value with the
-// contents of the mutation.
-type Mutator struct{}
-
-// New creates a new entry mutator.
-func New() *Mutator {
-	return &Mutator{}
-}
-
 // MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
 func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.EntryUpdate)) error {
 	var entry pb.Entry
@@ -52,9 +43,9 @@ func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.En
 	return nil
 }
 
-// Mutate verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
+// MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
 // application of newSignedEntry to oldSignedEntry.
-func (*Mutator) Mutate(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
+func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
 	// Ensure that the mutation size is within bounds.
 	if got, want := proto.Size(newSignedEntry), mutator.MaxMutationSize; got > want {
 		glog.Warningf("mutation is %v bytes, want <= %v", got, want)

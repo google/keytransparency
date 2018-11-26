@@ -56,7 +56,7 @@ type Server struct {
 	tmap        tpb.TrillianMapClient
 	logAdmin    tpb.TrillianAdminClient
 	mapAdmin    tpb.TrillianAdminClient
-	mutator     mutator.Func
+	mutate      mutator.ReduceMutationFn
 	directories directory.Storage
 	logs        MutationLogs
 	batches     BatchReader
@@ -68,7 +68,7 @@ func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	logAdmin tpb.TrillianAdminClient,
 	mapAdmin tpb.TrillianAdminClient,
-	mutator mutator.Func,
+	mutate mutator.ReduceMutationFn,
 	directories directory.Storage,
 	logs MutationLogs,
 	batches BatchReader) *Server {
@@ -77,7 +77,7 @@ func New(tlog tpb.TrillianLogClient,
 		tmap:        tmap,
 		logAdmin:    logAdmin,
 		mapAdmin:    mapAdmin,
-		mutator:     mutator,
+		mutate:      mutate,
 		directories: directories,
 		logs:        logs,
 		batches:     batches,
@@ -336,7 +336,7 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 		glog.Errorf("entry.FromLeafValue: %v", err)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid previous leaf value")
 	}
-	if _, err := s.mutator.Mutate(oldEntry, in.GetEntryUpdate().GetMutation()); err == mutator.ErrReplay {
+	if _, err := s.mutate(oldEntry, in.GetEntryUpdate().GetMutation()); err == mutator.ErrReplay {
 		glog.Warningf("Discarding request due to replay")
 		return nil, status.Errorf(codes.FailedPrecondition,
 			"The request contains a reference to old data. Please regenerate request and try again")
