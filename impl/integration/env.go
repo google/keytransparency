@@ -165,7 +165,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	authz := &authorization.AuthzPolicy{}
 
 	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
-		entry.New(), directoryStorage, mutations, mutations)
+		entry.Mutate, directoryStorage, mutations, mutations)
 	gsvr := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			authorization.UnaryServerInterceptor(map[string]authorization.AuthPair{

@@ -91,7 +91,6 @@ func (e *ErrList) Proto() []*statuspb.Status {
 
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.SignedMapRoot, expectedNewRoot *types.MapRootV1) []error {
 	errs := ErrList{}
-	mutator := entry.New()
 	oldProofNodes := make(map[string][]byte)
 	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
 	glog.Infof("verifyMutations() called with %v mutations.", len(muts))
@@ -110,7 +109,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 		}
 
 		// compute the new leaf
-		newValue, err := mutator.Mutate(oldLeaf, mut.GetMutation())
+		newValue, err := entry.Mutate(oldLeaf, mut.GetMutation())
 		if err != nil {
 			glog.Infof("Mutation did not verify: %v", err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))

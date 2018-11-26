@@ -44,12 +44,10 @@ var (
 	ErrUnauthorized = errors.New("mutation: unauthorized")
 )
 
-// Func verifies mutations and transforms values in the map.
-type Func interface {
-	// Mutate verifies that this is a valid mutation for this item and
-	// applies mutation to value.  Mutate must be idempotent.
-	Mutate(value, mutation *pb.SignedEntry) (*pb.SignedEntry, error)
-}
+// ReduceMutationFn takes the existing mapleaf and a new mutation and returns the new value for that map leaf.
+// ReduceMutationFn verifies that this is a valid mutation for this item.
+// ReduceMutationFn must be idempotent.
+type ReduceMutationFn func(existingMapLeafValue, mutation *pb.SignedEntry) (*pb.SignedEntry, error)
 
 // LogMessage represents a change to a user, and associated data.
 type LogMessage struct {

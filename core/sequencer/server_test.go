@@ -191,7 +191,7 @@ func TestDuplicateMutations(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			directoryID := "test"
-			newLeaves, err := s.applyMutations(directoryID, entry.New(), tc.msgs, tc.leaves)
+			newLeaves, err := s.applyMutations(directoryID, entry.Mutate, tc.msgs, tc.leaves)
 			if err != nil {
 				t.Errorf("applyMutations(): %v", err)
 			}

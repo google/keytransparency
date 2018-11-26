@@ -177,7 +177,7 @@ func TestCheckMutation(t *testing.T) {
 			continue
 		}
 
-		if _, got := New().Mutate(tc.old, m); got != tc.err {
+		if _, got := Mutate(tc.old, m); got != tc.err {
 			t.Errorf("%v Mutate(): %v, want %v", tc.desc, got, tc.err)
 		}
 	}
