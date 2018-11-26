@@ -36,11 +36,12 @@ message MapMetadata {
     // log that has been incorporated into this map revision. The primary keys
     // of logged items MUST be monotonically increasing.
     int64 highest_watermark = 2;
+    // log_id is the ID of the source log.
+    int64 log_id = 3;
   }
   reserved 1;
-  // sources is a map from log source IDs to the (low, high] range of primary
-  // keys in each slice that were used to construct this map revision.
-  map<int64, SourceSlice> sources = 2;
+  // sources is a list of log sources that were used to construct this map revision.
+  repeated SourceSlice sources = 2;
 }
 
 // CreateRevisionRequest contains information needed to create a new revision.

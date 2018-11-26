@@ -17,6 +17,7 @@ linters:
   enable-all: true
   disable:
     - maligned
+    - scopelint
 
 issues:
   exclude:
