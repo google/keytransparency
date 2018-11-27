@@ -46,19 +46,26 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 }
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
-func (m *Mutations) Send(ctx context.Context, directoryID string, update *pb.EntryUpdate) error {
+func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
+	if len(updates) == 0 {
+		return nil
+	}
 	logID, err := m.randLog(ctx, directoryID)
 	if err != nil {
 		return err
 	}
-	mData, err := proto.Marshal(update)
-	if err != nil {
-		return err
+	updateData := [][]byte{}
+	for _, u := range updates {
+		data, err := proto.Marshal(u)
+		if err != nil {
+			return err
+		}
+		updateData = append(updateData, data)
 	}
 	// TODO(gbelvin): Implement retry with backoff for retryable errors if
 	// we get timestamp contention.
-	return m.send(ctx, directoryID, logID, mData, time.Now())
+	return m.send(ctx, time.Now(), directoryID, logID, updateData...)
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
@@ -106,7 +113,7 @@ func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, err
 }
 
 // ts must be greater than all other timestamps currently recorded for directoryID.
-func (m *Mutations) send(ctx context.Context, directoryID string, logID int64, mData []byte, ts time.Time) (ret error) {
+func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string, logID int64, mData ...[]byte) (ret error) {
 	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
@@ -132,10 +139,12 @@ func (m *Mutations) send(ctx context.Context, directoryID string, logID int64, m
 			tsTime, maxTime)
 	}
 
-	if _, err = tx.ExecContext(ctx,
-		`INSERT INTO Queue (DirectoryID, LogID, Time, Mutation) VALUES (?, ?, ?, ?);`,
-		directoryID, logID, tsTime, mData); err != nil {
-		return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
+	for i, data := range mData {
+		if _, err = tx.ExecContext(ctx,
+			`INSERT INTO Queue (DirectoryID, LogID, Time, ID, Mutation) VALUES (?, ?, ?, ?, ?);`,
+			directoryID, logID, tsTime, i, data); err != nil {
+			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
+		}
 	}
 	return tx.Commit()
 }

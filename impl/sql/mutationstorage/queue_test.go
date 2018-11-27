@@ -16,6 +16,7 @@ package mutationstorage
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -79,12 +80,33 @@ func TestRandLog(t *testing.T) {
 func BenchmarkSend(b *testing.B) {
 	ctx := context.Background()
 	logID := int64(1)
-	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
 	m := newForTest(ctx, b, logID)
-	for n := 0; n < b.N; n++ {
-		if err := m.Send(ctx, directoryID, update); err != nil {
-			b.Errorf("Send(): %v", err)
-		}
+
+	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
+	for _, tc := range []struct {
+		batch int
+	}{
+		{batch: 1},
+		{batch: 2},
+		{batch: 4},
+		{batch: 8},
+		{batch: 16},
+		{batch: 32},
+		{batch: 64},
+		{batch: 128},
+		{batch: 256},
+	} {
+		b.Run(fmt.Sprintf("%d", tc.batch), func(b *testing.B) {
+			updates := make([]*pb.EntryUpdate, 0, tc.batch)
+			for range updates {
+				updates = append(updates, update)
+			}
+			for n := 0; n < b.N; n++ {
+				if err := m.Send(ctx, directoryID, updates...); err != nil {
+					b.Errorf("Send(): %v", err)
+				}
+			}
+		})
 	}
 }
 
@@ -110,7 +132,7 @@ func TestSend(t *testing.T) {
 		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
 		{desc: "New", ts: ts3},
 	} {
-		err := m.send(ctx, directoryID, 1, update, tc.ts)
+		err := m.send(ctx, tc.ts, directoryID, 1, update)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
@@ -126,7 +148,7 @@ func TestWatermark(t *testing.T) {
 	startTS := time.Now()
 	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
 		for _, logID := range logIDs {
-			if err := m.send(ctx, directoryID, logID, update, ts); err != nil {
+			if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
 				t.Fatalf("m.send(%v): %v", logID, err)
 			}
 		}

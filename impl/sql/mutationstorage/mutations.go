@@ -38,6 +38,7 @@ var (
 		DirectoryID VARCHAR(30)   NOT NULL,
 		LogID    BIGINT           NOT NULL,
 		Time     BIGINT           NOT NULL,
+		ID       BIGINT           NOT NULL,
 		Mutation BLOB             NOT NULL,
 		PRIMARY KEY(DirectoryID, LogID, Time)
 	);`,
