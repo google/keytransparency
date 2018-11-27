@@ -21,13 +21,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
 
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	tpb "github.com/google/trillian"
 )
 
 type fakeLogs map[int64][]mutator.LogMessage
@@ -148,88 +143,6 @@ func TestHighWatermarks(t *testing.T) {
 			}
 			if !cmp.Equal(next, &tc.next) {
 				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, &tc.next))
-			}
-		})
-	}
-}
-
-func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate {
-	t.Helper()
-	index := []byte{byte(id)}
-	userID := string(id)
-	m := entry.NewMutation(index, "directory", userID)
-	signers := []*tink.KeysetHandle{signer}
-	pubkey, err := signer.Public()
-	if err != nil {
-		t.Fatalf("Public(): %v", err)
-	}
-	if err := m.ReplaceAuthorizedKeys(pubkey.Keyset()); err != nil {
-		t.Fatalf("ReplaceAuthorizedKeys(): %v", err)
-	}
-	update, err := m.SerializeAndSign(signers)
-	if err != nil {
-		t.Fatalf("SerializeAndSign(): %v", err)
-	}
-
-	return &ktpb.EntryUpdate{
-		Mutation:  update.EntryUpdate.Mutation,
-		Committed: &ktpb.Committed{},
-	}
-}
-
-// TestDuplicateMutations verifies that each call to tlog.SetLeaves specifies
-// each mapleaf.Index at most ONCE.
-func TestDuplicateMutations(t *testing.T) {
-
-	keyset1, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
-	if err != nil {
-		t.Fatalf("tink.NewKeysetHandle(): %v", err)
-	}
-	keyset2, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
-	if err != nil {
-		t.Fatalf("tink.NewKeysetHandle(): %v", err)
-	}
-
-	for _, tc := range []struct {
-		desc       string
-		msgs       []*ktpb.EntryUpdate
-		leaves     []*tpb.MapLeaf
-		wantLeaves int
-	}{
-		{
-			desc: "duplicate index, same data",
-			msgs: []*ktpb.EntryUpdate{
-				logMsg(t, 1, keyset1),
-				logMsg(t, 1, keyset1),
-			},
-			wantLeaves: 1,
-		},
-		{
-			desc: "duplicate index, different data",
-			msgs: []*ktpb.EntryUpdate{
-				logMsg(t, 2, keyset1),
-				logMsg(t, 2, keyset2),
-			},
-			wantLeaves: 1,
-		},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			directoryID := "test"
-			newLeaves, err := applyMutations(directoryID, entry.MutateFn, tc.msgs, tc.leaves)
-			if err != nil {
-				t.Errorf("applyMutations(): %v", err)
-			}
-			// Count unique map leaves.
-			counts := make(map[string]int)
-			for _, l := range newLeaves {
-				counts[string(l.Index)]++
-				if c := counts[string(l.Index)]; c > 1 {
-					t.Errorf("Map leaf %x found %v times", l.Index, c)
-				}
-			}
-			// Verify totals.
-			if got, want := len(newLeaves), tc.wantLeaves; got != want {
-				t.Errorf("applyMutations(): len: %v, want %v", got, want)
 			}
 		})
 	}

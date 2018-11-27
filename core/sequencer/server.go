@@ -323,7 +323,7 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 
 	joined := runner.Join(leaves, indexedUpdates)
 
-	retMap := make(map[string]*tpb.MapLeaf)
+	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
 		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
 		if len(j.Leaves) > 0 {
@@ -360,17 +360,11 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 			continue
 		}
 
-		// Make sure that only ONE MapLeaf is output per index.
-		retMap[string(j.Index)] = &tpb.MapLeaf{
+		ret = append(ret, &tpb.MapLeaf{
 			Index:     j.Index,
 			LeafValue: leafValue,
 			ExtraData: extraData,
-		}
-	}
-	// Convert return map back into a list.
-	ret := make([]*tpb.MapLeaf, 0, len(retMap))
-	for _, v := range retMap {
-		ret = append(ret, v)
+		})
 	}
 	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
