@@ -29,8 +29,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/runner"
+
+	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -313,8 +315,11 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 // Returns a list of map leaves that should be updated.
 func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 	msgs []*ktpb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
-
-	// Join MapLeves with Mutations.
+	// Index the updates.
+	indexedUpdates, err := runner.DoMapUpdateFn(mapper.MapUpdateFn, msgs)
+	if err != nil {
+		return nil, err
+	}
 
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[string]*tpb.MapLeaf)
@@ -323,11 +328,7 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 	}
 
 	retMap := make(map[string]*tpb.MapLeaf)
-	for _, msg := range msgs {
-		iu, err := mapper.MapUpdateFn(msg)
-		if err != nil {
-			return nil, err
-		}
+	for _, iu := range indexedUpdates {
 		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
 		if leaf, ok := leafMap[string(iu.Index)]; ok {
 			var err error
@@ -339,7 +340,7 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 			}
 		}
 
-		newValue, err := mutatorFunc(oldValue, msg.Mutation)
+		newValue, err := mutatorFunc(oldValue, iu.Update.Mutation)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
 			mutationFailures.Inc(directoryID, "Mutate")
@@ -351,7 +352,7 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 			mutationFailures.Inc(directoryID, "Marshal")
 			continue
 		}
-		extraData, err := proto.Marshal(msg.Committed)
+		extraData, err := proto.Marshal(iu.Update.Committed)
 		if err != nil {
 			glog.Warningf("proto.Marshal(): %v", err)
 			mutationFailures.Inc(directoryID, "Marshal")
