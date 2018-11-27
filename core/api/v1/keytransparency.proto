@@ -42,6 +42,8 @@ message Committed {
 // EntryUpdate contains the user entry update(s).
 // EntryUpdate will be placed in a Log of mutations.
 message EntryUpdate {
+  // user_id specifies the id for the user whose profile is being updated.
+  string user_id = 1;
   // mutation authorizes the change to entry.
   SignedEntry mutation = 2;
   // committed contains the data committed to in mutation.commitment.
@@ -270,8 +272,8 @@ message BatchListUserRevisionsResponse {
 message UpdateEntryRequest {
   // directory_id identifies the directory in which the user lives.
   string directory_id = 5;
-  // user_id specifies the id for the user whose profile is being updated.
-  string user_id = 1;
+  // Used to be user_id. user_id now lives in EntryUpdate.
+  reserved 1;
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
   reserved 2;
@@ -279,6 +281,14 @@ message UpdateEntryRequest {
   reserved 3;
   // entry_update contains the user submitted update.
   EntryUpdate entry_update = 4;
+}
+
+// BatchQueueUserRequest enqueues multiple changes to user profiles.
+message BatchQueueUserRequest {
+  // directory_id identifies the directory in which the users live.
+  string directory_id = 1;
+  // updates contains user updates.
+  repeated EntryUpdate updates = 2;
 }
 
 // GetRevisionRequest identifies a particular revision.
@@ -474,8 +484,15 @@ service KeyTransparency {
   // update appears after a timeout.
   rpc QueueEntryUpdate(UpdateEntryRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v1/directories/{directory_id}/users/{user_id}:queue"
+      post: "/v1/directories/{directory_id}/users/{entry_update.user_id}:queue"
       body: "entry_update"
+    };
+  }
+  // BatchQueueUser enqueues a list of user profiles.
+  rpc BatchQueueUser(BatchQueueUserRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}:batchqueue"
+      body: "*"
     };
   }
 }
