@@ -23,18 +23,15 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/keytransparency/core/directory"
-	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian/monitoring"
-	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
-	tclient "github.com/google/trillian/client"
 )
 
 const (
@@ -100,10 +97,8 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	ktServer *keyserver.Server
 	batcher  Batcher
-	tmap     tpb.TrillianMapClient
-	tlog     tpb.TrillianLogClient
+	trillian *Trillian
 	logs     LogsReader
 }
 
@@ -120,11 +115,15 @@ func NewServer(
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
-		ktServer: keyserver.New(nil, nil, logAdmin, mapAdmin, nil, directories, nil, nil),
-		tlog:     tlog,
-		tmap:     tmap,
-		batcher:  batcher,
-		logs:     logs,
+		trillian: &Trillian{
+			directories: directories,
+			logAdmin:    logAdmin,
+			mapAdmin:    mapAdmin,
+			tmap:        tmap,
+			tlog:        tlog,
+		},
+		batcher: batcher,
+		logs:    logs,
 	}
 }
 
@@ -136,15 +135,11 @@ func NewServer(
 // c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
 	// Get the previous and current high water marks.
-	directory, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: in.DirectoryId})
+	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
-	mapClient, err := tclient.NewMapClientFromTree(s.tmap, directory.Map)
-	if err != nil {
-		return nil, err
-	}
-	latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	_, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -221,18 +216,14 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 		return nil, err
 	}
 	glog.Infof("CreateRevision: for %v with %d messages", directoryID, len(msgs))
-	// Fetch verification objects for directoryID.
-	config, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: directoryID})
-	if err != nil {
-		return nil, err
-	}
-	mapClient, err := tclient.NewMapClientFromTree(s.tmap, config.Map)
+
+	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
 
 	// Parse mutations using the mutator for this directory.
-	batchSize.Set(float64(len(msgs)), config.DirectoryId)
+	batchSize.Set(float64(len(msgs)), in.DirectoryId)
 	indexes := make([][]byte, 0, len(msgs))
 	mutations := make([]*ktpb.EntryUpdate, 0, len(msgs))
 	for _, m := range msgs {
@@ -264,15 +255,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	}
 
 	// Set new leaf values.
-	setResp, err := s.tmap.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
-		MapId:    config.Map.TreeId,
-		Leaves:   newLeaves,
-		Metadata: metadata,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "tmap.SetLeaves(): %v", err)
-	}
-	mapRoot, err := mapClient.VerifySignedMapRoot(setResp.GetMapRoot())
+	mapRoot, err := mapClient.SetLeaves(ctx, newLeaves, metadata)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
@@ -285,18 +268,12 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 
 // PublishBatch copies the MapRoots of all known map revisions into the Log of MapRoots.
 func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) (*empty.Empty, error) {
-	directory, err := s.ktServer.GetDirectory(ctx, &ktpb.GetDirectoryRequest{DirectoryId: in.DirectoryId})
-	if err != nil {
-		return nil, err
-	}
-
 	// Create verifying log and map clients.
-	trustedRoot := types.LogRootV1{} // TODO(gbelvin): Store and track trustedRoot.
-	logClient, err := tclient.NewFromTree(s.tlog, directory.Log, trustedRoot)
+	logClient, err := s.trillian.LogClient(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
-	mapClient, err := tclient.NewMapClientFromTree(s.tmap, directory.Map)
+	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
@@ -306,38 +283,24 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 	if err != nil {
 		return nil, err
 	}
-	rootResp, err := mapClient.Conn.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: mapClient.MapID})
+	latestRawMapRoot, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
 	if err != nil {
-		return nil, status.Errorf(status.Code(err), "GetSignedMapRoot(%v): %v", mapClient.MapID, err)
-	}
-	latestMapRoot, err := mapClient.VerifySignedMapRoot(rootResp.GetMapRoot())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(%v): %v", mapClient.MapID, err)
+		return nil, status.Errorf(codes.Internal, "GetAndVerifyLatestMapRoot(): %v", err)
 	}
 
 	// Add all unpublished map roots to the log.
 	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
-		resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
-			MapId:    mapClient.MapID,
-			Revision: int64(rev),
-		})
+		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
-			return nil, status.Errorf(codes.Internal,
-				"GetSignedMapRootByRevision(%v, %v): %v",
-				mapClient.MapID, rev, err)
-		}
-		rawMapRoot := resp.GetMapRoot()
-		mapRoot, err := mapClient.VerifySignedMapRoot(rawMapRoot)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
+			return nil, err
 		}
 		if err := logClient.AddSequencedLeaf(ctx, rawMapRoot.GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-			glog.Errorf("AddSequencedLeaf(logID: %v, rev: %v): %v", logClient.LogID, mapRoot.Revision, err)
+			glog.Errorf("AddSequencedLeaf(rev: %v): %v", mapRoot.Revision, err)
 			return nil, err
 		}
 	}
 	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
-	if err := logClient.WaitForInclusion(ctx, rootResp.GetMapRoot().GetMapRoot()); err != nil {
+	if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
 		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
 	}
 	return &empty.Empty{}, nil
