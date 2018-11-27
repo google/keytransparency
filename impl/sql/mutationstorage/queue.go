@@ -46,6 +46,7 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 }
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
+// TODO(gbelvin): Make updates a slice.
 func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
 	if len(updates) == 0 {
@@ -55,7 +56,7 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 	if err != nil {
 		return err
 	}
-	updateData := [][]byte{}
+	updateData := make([][]byte, 0, len(updates))
 	for _, u := range updates {
 		data, err := proto.Marshal(u)
 		if err != nil {
@@ -141,7 +142,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string, 
 
 	for i, data := range mData {
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO Queue (DirectoryID, LogID, Time, ID, Mutation) VALUES (?, ?, ?, ?, ?);`,
+			`INSERT INTO Queue (DirectoryID, LogID, Time, Sequence, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, tsTime, i, data); err != nil {
 			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 		}
