@@ -89,15 +89,142 @@ func New(tlog tpb.TrillianLogClient,
 // this user and that it is the same one being provided to everyone else.
 // GetUser also supports querying past values by setting the revision field.
 func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUserResponse, error) {
-	directoryID := in.GetDirectoryId()
-	if directoryID == "" {
+	resp, err := s.BatchGetUser(ctx, &pb.BatchGetUserRequest{
+		DirectoryId:          in.DirectoryId,
+		UserIds:              []string{in.UserId},
+		LastVerifiedTreeSize: in.LastVerifiedTreeSize,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Leaves) == 0 {
+		return nil, status.Errorf(codes.Internal, "no leaves returned")
+	}
+	return &pb.GetUserResponse{
+		Revision: resp.Revision,
+		Leaf:     resp.Leaves[0],
+	}, nil
+}
+
+// getUserByRevision returns an entry and its proofs.
+// getUserByRevision does NOT populate the following fields:
+// - LogRoot
+// - LogConsistency
+func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory, userID string,
+	rev int64) (*pb.GetUserResponse, error) {
+	resp, err := s.batchGetUserByRevision(ctx, sth, d, []string{userID}, rev)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Leaves) != 1 {
+		return nil, status.Errorf(codes.Internal, "got wrong number of map leaves: %v, want 1", len(resp.Leaves))
+
+	}
+	return &pb.GetUserResponse{
+		Revision: resp.Revision,
+		Leaf:     resp.Leaves[0],
+	}, nil
+}
+
+// batchGetUserByRevision returns entries and proofs for a list of users.
+func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory,
+	userIDs []string, mapRevision int64) (*pb.BatchGetUserResponse, error) {
+	if mapRevision < 0 {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"Revision is %v, want >= 0", mapRevision)
+	}
+
+	indexes := make([][]byte, 0, len(userIDs))
+	proofs := make(map[string][]byte)
+	for _, userID := range userIDs {
+		index, proof, err := s.indexFunc(ctx, d, userID)
+		if err != nil {
+			return nil, err
+		}
+		indexes = append(indexes, index[:])
+		proofs[string(index[:])] = proof
+	}
+
+	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
+		MapId:    d.MapID,
+		Index:    indexes,
+		Revision: mapRevision,
+	})
+	if err != nil {
+		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.MapID, mapRevision, err)
+		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
+	}
+	if got, want := len(getResp.MapLeafInclusion), len(userIDs); got != want {
+		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
+		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
+	}
+	leaves := make([]*pb.MapLeaf, 0, len(getResp.MapLeafInclusion))
+	for _, mapLeafInclusion := range getResp.MapLeafInclusion {
+		if mapLeafInclusion.Leaf == nil {
+			return nil, status.Errorf(codes.Internal, "leaf is nil")
+		}
+		var committed *pb.Committed
+		if mapLeafInclusion.Leaf.LeafValue != nil {
+			extraData := mapLeafInclusion.Leaf.ExtraData
+			if extraData == nil {
+				return nil, status.Errorf(codes.Internal, "Missing commitment data")
+			}
+			committed = &pb.Committed{}
+			if err := proto.Unmarshal(extraData, committed); err != nil {
+				return nil, status.Errorf(codes.Internal, "Cannot read committed value")
+			}
+		}
+		proof, ok := proofs[string(mapLeafInclusion.Leaf.GetIndex())]
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "Returned index %x that was not requested",
+				mapLeafInclusion.Leaf.GetIndex())
+		}
+
+		mapIncl := mapLeafInclusion
+		mapIncl.Leaf.Index = nil     // Remove index from the returned data to force clients verify the VRFProof.
+		mapIncl.Leaf.ExtraData = nil // Remove extra data as it is a duplicate of Committed.
+		leaves = append(leaves, &pb.MapLeaf{
+			VrfProof:     proof,
+			Committed:    committed,
+			MapInclusion: mapIncl,
+		})
+	}
+
+	// SignedMapHead to SignedLogRoot inclusion proof.
+	logInclusion, err := s.tlog.GetInclusionProof(ctx,
+		&tpb.GetInclusionProofRequest{
+			LogId: d.LogID,
+			// SignedMapRoot must be placed in the log at MapRevision.
+			// MapRevisions start at 0. Log leaves start at 0.
+			LeafIndex: mapRevision,
+			TreeSize:  sth.TreeSize, // TODO(gbelvin): Verify sth first.
+		})
+	if err != nil {
+		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", d.LogID, mapRevision, sth.TreeSize, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
+	}
+
+	return &pb.BatchGetUserResponse{
+		Leaves: leaves,
+		Revision: &pb.Revision{
+			MapRoot: &pb.MapRoot{
+				MapRoot:      getResp.GetMapRoot(),
+				LogInclusion: logInclusion.GetProof().GetHashes(),
+			},
+		},
+	}, nil
+}
+
+// BatchGetUser returns a batch of users at the same revision.
+func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
+	if in.DirectoryId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 
 	// Lookup log and map info.
-	d, err := s.directories.Read(ctx, directoryID, false)
+	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
+		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
 	}
 
@@ -112,11 +239,11 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 		return nil, err
 	}
 
-	entryProof, err := s.getUserByRevision(ctx, sth, d, in.UserId, revision)
+	entryProofs, err := s.batchGetUserByRevision(ctx, sth, d, in.UserIds, revision)
 	if err != nil {
 		return nil, err
 	}
-	resp := &pb.GetUserResponse{
+	resp := &pb.BatchGetUserResponse{
 		Revision: &pb.Revision{
 			LatestLogRoot: &pb.LogRoot{
 				LogRoot:        sth,
@@ -124,92 +251,8 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 			},
 		},
 	}
-	proto.Merge(resp, entryProof)
+	proto.Merge(resp, entryProofs)
 	return resp, nil
-}
-
-// getUserByRevision returns an entry and its proofs.
-// getUserByRevision does NOT populate the following fields:
-// - LogRoot
-// - LogConsistency
-func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, d *directory.Directory, userID string,
-	mapRevision int64) (*pb.GetUserResponse, error) {
-	if mapRevision < 0 {
-		return nil, status.Errorf(codes.InvalidArgument,
-			"Revision is %v, want >= 0", mapRevision)
-	}
-
-	index, proof, err := s.indexFunc(ctx, d, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
-		MapId:    d.MapID,
-		Index:    [][]byte{index[:]},
-		Revision: mapRevision,
-	})
-	if err != nil {
-		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.MapID, mapRevision, err)
-		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
-	}
-	if got, want := len(getResp.MapLeafInclusion), 1; got != want {
-		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
-		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
-	}
-	neighbors := getResp.MapLeafInclusion[0].GetInclusion()
-	leaf := getResp.MapLeafInclusion[0].GetLeaf().GetLeafValue()
-	extraData := getResp.MapLeafInclusion[0].GetLeaf().GetExtraData()
-
-	var committed *pb.Committed
-	if leaf != nil {
-		if extraData == nil {
-			return nil, status.Errorf(codes.Internal, "Missing commitment data")
-		}
-		committed = &pb.Committed{}
-		if err := proto.Unmarshal(extraData, committed); err != nil {
-			return nil, status.Errorf(codes.Internal, "Cannot read committed value")
-		}
-	}
-
-	// SignedMapHead to SignedLogRoot inclusion proof.
-	secondTreeSize := sth.GetTreeSize()
-	logInclusion, err := s.tlog.GetInclusionProof(ctx,
-		&tpb.GetInclusionProofRequest{
-			LogId: d.LogID,
-			// SignedMapRoot must be placed in the log at MapRevision.
-			// MapRevisions start at 0. Log leaves start at 0.
-			LeafIndex: mapRevision,
-			TreeSize:  secondTreeSize,
-		})
-	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", d.LogID, mapRevision, secondTreeSize, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
-	}
-
-	return &pb.GetUserResponse{
-		Leaf: &pb.MapLeaf{
-			VrfProof:  proof,
-			Committed: committed,
-			MapInclusion: &tpb.MapLeafInclusion{
-				Inclusion: neighbors,
-				Leaf: &tpb.MapLeaf{
-					LeafValue: leaf,
-				},
-			},
-		},
-		Revision: &pb.Revision{
-			MapRoot: &pb.MapRoot{
-				MapRoot:      getResp.GetMapRoot(),
-				LogInclusion: logInclusion.GetProof().GetHashes(),
-			},
-		},
-	}, nil
-}
-
-// BatchGetUser returns a batch of users at the same revision.
-func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not yet implemented")
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
