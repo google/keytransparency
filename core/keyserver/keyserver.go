@@ -306,7 +306,7 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	// - Index to Key equality in SignedKV.
 	// - Correct profile commitment.
 	// - Correct key formats.
-	if err := validateUpdateEntryRequest(in, vrfPriv); err != nil {
+	if err := validateEntryUpdate(in.GetEntryUpdate(), vrfPriv); err != nil {
 		glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 	}
@@ -314,7 +314,7 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	// Query for the current revision.
 	req := &pb.GetUserRequest{
 		DirectoryId: in.DirectoryId,
-		UserId:      in.UserId,
+		UserId:      in.GetEntryUpdate().UserId,
 		//RevisionStart: in.GetUserUpdate().RevisionStart,
 	}
 	resp, err := s.GetUser(ctx, req)
