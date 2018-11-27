@@ -321,26 +321,27 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 		return nil, err
 	}
 
-	// Put leaves in a map from index to leaf value.
-	leafMap := make(map[string]*tpb.MapLeaf)
-	for _, l := range leaves {
-		leafMap[string(l.Index)] = l
-	}
+	joined := runner.Join(leaves, indexedUpdates)
 
 	retMap := make(map[string]*tpb.MapLeaf)
-	for _, iu := range indexedUpdates {
+	for _, j := range joined {
 		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
-		if leaf, ok := leafMap[string(iu.Index)]; ok {
+		if len(j.Leaves) > 0 {
 			var err error
-			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
+			oldValue, err = entry.FromLeafValue(j.Leaves[0].GetLeafValue())
 			if err != nil {
-				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
+				glog.Warningf("entry.FromLeafValue(): %v", err)
 				mutationFailures.Inc(directoryID, "Unmarshal")
 				continue
 			}
 		}
 
-		newValue, err := mutatorFunc(oldValue, iu.Update.Mutation)
+		if got := len(j.Msgs); got < 1 {
+			continue
+		}
+
+		// TODO(gbelvin): Create an associative function to choose the mutation to apply.
+		newValue, err := mutatorFunc(oldValue, j.Msgs[0].Mutation)
 		if err != nil {
 			glog.Warningf("Mutate(): %v", err)
 			mutationFailures.Inc(directoryID, "Mutate")
@@ -352,7 +353,7 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 			mutationFailures.Inc(directoryID, "Marshal")
 			continue
 		}
-		extraData, err := proto.Marshal(iu.Update.Committed)
+		extraData, err := proto.Marshal(j.Msgs[0].Committed)
 		if err != nil {
 			glog.Warningf("proto.Marshal(): %v", err)
 			mutationFailures.Inc(directoryID, "Marshal")
@@ -360,8 +361,8 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 		}
 
 		// Make sure that only ONE MapLeaf is output per index.
-		retMap[string(iu.Index)] = &tpb.MapLeaf{
-			Index:     iu.Index,
+		retMap[string(j.Index)] = &tpb.MapLeaf{
+			Index:     j.Index,
 			LeafValue: leafValue,
 			ExtraData: extraData,
 		}

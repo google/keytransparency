@@ -19,7 +19,42 @@ import (
 	"github.com/google/keytransparency/core/sequencer/mapper"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tpb "github.com/google/trillian"
 )
+
+// Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexUpdate.
+type Joined struct {
+	Index  []byte
+	Leaves []*tpb.MapLeaf
+	Msgs   []*pb.EntryUpdate
+}
+
+// Join pairs up MapLeaves and IndexUpdates by index.
+func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexUpdate) []*Joined {
+	joinMap := make(map[string]*Joined)
+	for _, l := range leaves {
+		row, ok := joinMap[string(l.Index)]
+		if !ok {
+			row = &Joined{}
+		}
+		row.Index = l.Index
+		row.Leaves = append(row.Leaves, l)
+		joinMap[string(l.Index)] = row
+	}
+	for _, m := range msgs {
+		row, ok := joinMap[string(m.Index)]
+		if !ok {
+			row = &Joined{}
+		}
+		row.Msgs = append(row.Msgs, m.Update)
+		joinMap[string(m.Index)] = row
+	}
+	ret := make([]*Joined, 0, len(joinMap))
+	for _, r := range joinMap {
+		ret = append(ret, r)
+	}
+	return ret
+}
 
 // MapUpdateFn converts an update into an IndexedUpdate.
 type MapUpdateFn func(msg *pb.EntryUpdate) (*mapper.IndexUpdate, error)
