@@ -40,7 +40,7 @@ var (
 		Time     BIGINT           NOT NULL,
 		Sequence BIGINT           NOT NULL,
 		Mutation BLOB             NOT NULL,
-		PRIMARY KEY(DirectoryID, LogID, Time)
+		PRIMARY KEY(DirectoryID, LogID, Time, Sequence)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Logs (
 		DirectoryID VARCHAR(30)   NOT NULL,

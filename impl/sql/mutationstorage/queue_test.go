@@ -98,7 +98,7 @@ func BenchmarkSend(b *testing.B) {
 	} {
 		b.Run(fmt.Sprintf("%d", tc.batch), func(b *testing.B) {
 			updates := make([]*pb.EntryUpdate, 0, tc.batch)
-			for range updates {
+			for i := 0; i < tc.batch; i++ {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
@@ -132,7 +132,7 @@ func TestSend(t *testing.T) {
 		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
 		{desc: "New", ts: ts3},
 	} {
-		err := m.send(ctx, tc.ts, directoryID, 1, update)
+		err := m.send(ctx, tc.ts, directoryID, 1, update, update)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
