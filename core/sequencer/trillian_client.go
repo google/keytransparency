@@ -73,13 +73,13 @@ func (t *Trillian) LogClient(ctx context.Context, dirID string) (*tclient.LogCli
 	return tclient.NewFromTree(t.tlog, logTree, trustedRoot)
 }
 
-// MapClient implements TrillianMap.
-// TODO(gbelvin): Move to Trillian Map client.
+// MapClient interacts with the Trillian Map and verifies its responses.
 type MapClient struct {
 	*tclient.MapClient
 }
 
 // SetLeaves creates a new map revision and returns its verified root.
+// TODO(gbelvin): Move to Trillian Map client.
 func (c *MapClient) SetLeaves(ctx context.Context, leaves []*tpb.MapLeaf, metadata []byte) (*types.MapRootV1, error) {
 	// Set new leaf values.
 	setResp, err := c.Conn.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
