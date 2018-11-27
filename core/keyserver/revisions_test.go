@@ -69,7 +69,7 @@ func (b batchStorage) ReadBatch(ctx context.Context, dirID string, rev int64) (*
 
 type mutations map[int64][]*mutator.LogMessage // Map of logID to Slice of LogMessages
 
-func (m *mutations) Send(ctx context.Context, dirID string, mutation *pb.EntryUpdate) error {
+func (m *mutations) Send(ctx context.Context, dirID string, mutation ...*pb.EntryUpdate) error {
 	return errors.New("unimplemented")
 }
 
