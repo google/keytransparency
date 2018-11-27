@@ -16,6 +16,7 @@ package mutationstorage
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func newForTest(ctx context.Context, t *testing.T, logIDs ...int64) *Mutations {
+func newForTest(ctx context.Context, t testing.TB, logIDs ...int64) *Mutations {
 	m, err := New(newDB(t))
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
@@ -76,6 +77,39 @@ func TestRandLog(t *testing.T) {
 	}
 }
 
+func BenchmarkSend(b *testing.B) {
+	ctx := context.Background()
+	logID := int64(1)
+	m := newForTest(ctx, b, logID)
+
+	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
+	for _, tc := range []struct {
+		batch int
+	}{
+		{batch: 1},
+		{batch: 2},
+		{batch: 4},
+		{batch: 8},
+		{batch: 16},
+		{batch: 32},
+		{batch: 64},
+		{batch: 128},
+		{batch: 256},
+	} {
+		b.Run(fmt.Sprintf("%d", tc.batch), func(b *testing.B) {
+			updates := make([]*pb.EntryUpdate, 0, tc.batch)
+			for i := 0; i < tc.batch; i++ {
+				updates = append(updates, update)
+			}
+			for n := 0; n < b.N; n++ {
+				if err := m.Send(ctx, directoryID, updates...); err != nil {
+					b.Errorf("Send(): %v", err)
+				}
+			}
+		})
+	}
+}
+
 func TestSend(t *testing.T) {
 	ctx := context.Background()
 
@@ -98,7 +132,7 @@ func TestSend(t *testing.T) {
 		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
 		{desc: "New", ts: ts3},
 	} {
-		err := m.send(ctx, directoryID, 1, update, tc.ts)
+		err := m.send(ctx, tc.ts, directoryID, 1, update, update)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
@@ -114,7 +148,7 @@ func TestWatermark(t *testing.T) {
 	startTS := time.Now()
 	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
 		for _, logID := range logIDs {
-			if err := m.send(ctx, directoryID, logID, update, ts); err != nil {
+			if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
 				t.Fatalf("m.send(%v): %v", logID, err)
 			}
 		}
@@ -167,7 +201,7 @@ func TestReadLog(t *testing.T) {
 	m := newForTest(ctx, t, logID)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if err := m.Send(ctx, directoryID, entry); err != nil {
+		if err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
 	}
@@ -177,25 +211,16 @@ func TestReadLog(t *testing.T) {
 		count     int
 	}{
 		{batchSize: 0, count: 0},
-		{batchSize: 1, count: 1},
-		{batchSize: 1, count: 1},
-		{batchSize: 100, count: 10},
+		{batchSize: 1, count: 3},
+		{batchSize: 4, count: 6},
+		{batchSize: 100, count: 30},
 	} {
 		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.batchSize)
 		if err != nil {
-			t.Fatalf("ReadLog(): %v", err)
+			t.Fatalf("ReadLog(%v): %v", tc.batchSize, err)
 		}
 		if got, want := len(rows), tc.count; got != want {
-			t.Fatalf("ReadLog(): len: %v, want %v", got, want)
-		}
-		for i, r := range rows {
-			var e pb.Entry
-			if err := proto.Unmarshal(r.Mutation.Entry, &e); err != nil {
-				t.Errorf("Unmarshal(): %v", err)
-			}
-			if got, want := e.Index[0], byte(i); got != want {
-				t.Errorf("ReadLog()[%v]: %v, want %v", i, got, want)
-			}
+			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.batchSize, got, want)
 		}
 	}
 }

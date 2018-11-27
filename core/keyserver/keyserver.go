@@ -38,7 +38,7 @@ import (
 // MutationLogs provides sets of time ordered message logs.
 type MutationLogs interface {
 	// Send submits an item to a random log.
-	Send(ctx context.Context, directoryID string, mutation *pb.EntryUpdate) error
+	Send(ctx context.Context, directoryID string, mutation ...*pb.EntryUpdate) error
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
 		batchSize int32) ([]*mutator.LogMessage, error)
