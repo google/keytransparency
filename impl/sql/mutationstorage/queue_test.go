@@ -28,7 +28,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func newForTest(ctx context.Context, t *testing.T, logIDs ...int64) *Mutations {
+func newForTest(ctx context.Context, t testing.TB, logIDs ...int64) *Mutations {
 	m, err := New(newDB(t))
 	if err != nil {
 		t.Fatalf("Failed to create Mutations: %v", err)
@@ -73,6 +73,18 @@ func TestRandLog(t *testing.T) {
 				t.Errorf("logs: %v, want %v", got, want)
 			}
 		})
+	}
+}
+
+func BenchmarkSend(b *testing.B) {
+	ctx := context.Background()
+	logID := int64(1)
+	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
+	m := newForTest(ctx, b, logID)
+	for n := 0; n < b.N; n++ {
+		if err := m.Send(ctx, directoryID, update); err != nil {
+			b.Errorf("Send(): %v", err)
+		}
 	}
 }
 
