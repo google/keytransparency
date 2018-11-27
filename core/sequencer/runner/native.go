@@ -16,11 +16,35 @@
 package runner
 
 import (
+	"github.com/golang/glog"
+
+	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/sequencer/mapper"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
 )
+
+// ApplyMutations takes the set of mutations and applies them to given leafs.
+// Returns a list of map leaves that should be updated.
+func ApplyMutations(mutatorFunc mutator.ReduceMutationFn,
+	msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
+	// Index the updates.
+	indexedUpdates, err := DoMapUpdateFn(mapper.MapUpdateFn, msgs)
+	if err != nil {
+		return nil, err
+	}
+
+	joined := Join(leaves, indexedUpdates)
+
+	ret := make([]*tpb.MapLeaf, 0, len(joined))
+	for _, j := range joined {
+		mapper.ReduceFn(mutatorFunc, j.Index, j.Leaves, j.Msgs,
+			func(l *tpb.MapLeaf) { ret = append(ret, l) })
+	}
+	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
+	return ret, nil
+}
 
 // Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexUpdate.
 type Joined struct {

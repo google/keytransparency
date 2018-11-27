@@ -46,7 +46,8 @@ func MapUpdateFn(msg *pb.EntryUpdate) (*IndexUpdate, error) {
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
 // TODO(gbelvin): Move to mutator interface.
-func ReduceFn(mutatorFn mutator.ReduceMutationFn, index []byte, leaves []*tpb.MapLeaf, msgs []*pb.EntryUpdate, emit func(*tpb.MapLeaf)) {
+func ReduceFn(mutatorFn mutator.ReduceMutationFn,
+	index []byte, leaves []*tpb.MapLeaf, msgs []*pb.EntryUpdate, emit func(*tpb.MapLeaf)) {
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
 	if len(leaves) > 0 {
 		var err error

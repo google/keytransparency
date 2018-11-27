@@ -29,7 +29,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -246,7 +245,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := applyMutations(directoryID, entry.MutateFn, mutations, leaves)
+	newLeaves, err := runner.ApplyMutations(entry.MutateFn, mutations, leaves)
 	if err != nil {
 		return nil, err
 	}
@@ -307,29 +306,6 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
 	}
 	return &empty.Empty{}, nil
-}
-
-// applyMutations takes the set of mutations and applies them to given leafs.
-// Multiple mutations for the same leaf will be applied to provided leaf.
-// The last valid mutation for each leaf is included in the output.
-// Returns a list of map leaves that should be updated.
-func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
-	msgs []*ktpb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
-	// Index the updates.
-	indexedUpdates, err := runner.DoMapUpdateFn(mapper.MapUpdateFn, msgs)
-	if err != nil {
-		return nil, err
-	}
-
-	joined := runner.Join(leaves, indexedUpdates)
-
-	ret := make([]*tpb.MapLeaf, 0, len(joined))
-	for _, j := range joined {
-		mapper.ReduceFn(mutatorFunc, j.Index, j.Leaves, j.Msgs,
-			func(l *tpb.MapLeaf) { ret = append(ret, l) })
-	}
-	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
-	return ret, nil
 }
 
 // HighWatermarks returns the total count across all logs and the highest watermark for each log.
