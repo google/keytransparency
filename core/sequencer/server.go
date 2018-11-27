@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	"github.com/google/keytransparency/core/sequencer/mapper"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -312,6 +313,9 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 // Returns a list of map leaves that should be updated.
 func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 	msgs []*ktpb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
+
+	// Join MapLeves with Mutations.
+
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[string]*tpb.MapLeaf)
 	for _, l := range leaves {
@@ -320,12 +324,12 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 
 	retMap := make(map[string]*tpb.MapLeaf)
 	for _, msg := range msgs {
-		var e ktpb.Entry
-		if err := proto.Unmarshal(msg.Mutation.Entry, &e); err != nil {
+		iu, err := mapper.MapUpdateFn(msg)
+		if err != nil {
 			return nil, err
 		}
 		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
-		if leaf, ok := leafMap[string(e.Index)]; ok {
+		if leaf, ok := leafMap[string(iu.Index)]; ok {
 			var err error
 			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
 			if err != nil {
@@ -355,8 +359,8 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 		}
 
 		// Make sure that only ONE MapLeaf is output per index.
-		retMap[string(e.Index)] = &tpb.MapLeaf{
-			Index:     e.Index,
+		retMap[string(iu.Index)] = &tpb.MapLeaf{
+			Index:     iu.Index,
 			LeafValue: leafValue,
 			ExtraData: extraData,
 		}
