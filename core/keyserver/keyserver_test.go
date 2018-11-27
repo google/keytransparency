@@ -89,6 +89,7 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "not initialized", treeSize: 0, wantErr: codes.Internal},
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
+		tc := tc // pin
 		t.Run(tc.desc+" GetUser", func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			defer cancel()

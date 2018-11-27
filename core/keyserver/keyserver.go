@@ -278,11 +278,11 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisionsRequest) (
 	*pb.ListUserRevisionsResponse, error) {
 	pageStart := in.StartRevision
-	lastVerified := in.GetLastVerifiedTreeSize()
-	if in.GetPageToken() != "" {
+	lastVerified := in.LastVerifiedTreeSize
+	if in.PageToken != "" {
 		token := &rtpb.ListUserRevisionsToken{}
-		if err := DecodeToken(in.GetPageToken(), token); err != nil {
-			glog.Errorf("invalid page token %v: %v", in.GetPageToken(), err)
+		if err := DecodeToken(in.PageToken, token); err != nil {
+			glog.Errorf("invalid page token %v: %v", in.PageToken, err)
 			return nil, status.Errorf(codes.InvalidArgument, "Invalid page_token provided")
 		}
 		// last_verified_tree_size and page_token are allowed to change between paginated requests.
@@ -296,7 +296,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	}
 
 	// Lookup log and map info.
-	directoryID := in.GetDirectoryId()
+	directoryID := in.DirectoryId
 	if directoryID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}

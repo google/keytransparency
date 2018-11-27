@@ -116,7 +116,7 @@ func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, pageStart
 	revisions := int64(in.PageSize)
 	switch {
 	case in.PageSize < 0:
-		return 0, fmt.Errorf("Invalid page size")
+		return 0, fmt.Errorf("invalid page size")
 	case in.PageSize == 0:
 		revisions = int64(defaultPageSize)
 	case in.PageSize > maxPageSize:
