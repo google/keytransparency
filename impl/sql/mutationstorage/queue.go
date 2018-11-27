@@ -114,8 +114,10 @@ func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, err
 }
 
 // ts must be greater than all other timestamps currently recorded for directoryID.
-func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string, logID int64, mData ...[]byte) (ret error) {
-	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
+	logID int64, mData ...[]byte) (ret error) {
+	tx, err := m.db.BeginTx(ctx,
+		&sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
@@ -172,6 +174,7 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 }
 
 // ReadLog reads all mutations in logID between (low, high].
+// ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
