@@ -142,7 +142,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string, 
 
 	for i, data := range mData {
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO Queue (DirectoryID, LogID, Time, Sequence, Mutation) VALUES (?, ?, ?, ?, ?);`,
+			`INSERT INTO Queue (DirectoryID, LogID, Time, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, tsTime, i, data); err != nil {
 			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 		}
