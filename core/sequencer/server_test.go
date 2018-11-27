@@ -31,6 +31,8 @@ import (
 	"github.com/google/trillian/types"
 )
 
+const directoryID = "directoryID"
+
 type fakeLogs map[int64][]mutator.LogMessage
 
 func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
@@ -103,7 +105,6 @@ func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, _ int64) (*spb.MapM
 func TestDefineRevisions(t *testing.T) {
 	// Verify that outstanding revisions prevent future revisions from being created.
 	ctx := context.Background()
-	directoryID := "directoryID"
 	mapRev := int64(2)
 	s := Server{
 		logs: fakeLogs{
@@ -141,7 +142,6 @@ func TestDefineRevisions(t *testing.T) {
 
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
-	directoryID := "directoryID"
 	s := Server{logs: fakeLogs{
 		0: make([]mutator.LogMessage, 10),
 		1: make([]mutator.LogMessage, 20),
@@ -172,7 +172,6 @@ func TestReadMessages(t *testing.T) {
 
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
-	directoryID := "directoryID"
 	s := Server{logs: fakeLogs{
 		0: make([]mutator.LogMessage, 10),
 		1: make([]mutator.LogMessage, 20),
