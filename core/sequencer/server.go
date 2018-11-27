@@ -325,46 +325,8 @@ func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 
 	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
-		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
-		if len(j.Leaves) > 0 {
-			var err error
-			oldValue, err = entry.FromLeafValue(j.Leaves[0].GetLeafValue())
-			if err != nil {
-				glog.Warningf("entry.FromLeafValue(): %v", err)
-				mutationFailures.Inc(directoryID, "Unmarshal")
-				continue
-			}
-		}
-
-		if got := len(j.Msgs); got < 1 {
-			continue
-		}
-
-		// TODO(gbelvin): Create an associative function to choose the mutation to apply.
-		newValue, err := mutatorFunc(oldValue, j.Msgs[0].Mutation)
-		if err != nil {
-			glog.Warningf("Mutate(): %v", err)
-			mutationFailures.Inc(directoryID, "Mutate")
-			continue // A bad mutation should not make the whole batch fail.
-		}
-		leafValue, err := entry.ToLeafValue(newValue)
-		if err != nil {
-			glog.Warningf("ToLeafValue(): %v", err)
-			mutationFailures.Inc(directoryID, "Marshal")
-			continue
-		}
-		extraData, err := proto.Marshal(j.Msgs[0].Committed)
-		if err != nil {
-			glog.Warningf("proto.Marshal(): %v", err)
-			mutationFailures.Inc(directoryID, "Marshal")
-			continue
-		}
-
-		ret = append(ret, &tpb.MapLeaf{
-			Index:     j.Index,
-			LeafValue: leafValue,
-			ExtraData: extraData,
-		})
+		mapper.ReduceFn(mutatorFunc, j.Index, j.Leaves, j.Msgs,
+			func(l *tpb.MapLeaf) { ret = append(ret, l) })
 	}
 	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
