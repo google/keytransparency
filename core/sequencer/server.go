@@ -243,7 +243,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(directoryID, entry.MutateFn, mutations, leaves)
+	newLeaves, err := applyMutations(directoryID, entry.MutateFn, mutations, leaves)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +310,7 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 // Multiple mutations for the same leaf will be applied to provided leaf.
 // The last valid mutation for each leaf is included in the output.
 // Returns a list of map leaves that should be updated.
-func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
+func applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
 	msgs []*ktpb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
 	// Put leaves in a map from index to leaf value.
 	leafMap := make(map[string]*tpb.MapLeaf)
