@@ -41,7 +41,7 @@ type Trillian struct {
 func (t *Trillian) MapClient(ctx context.Context, dirID string) (*MapClient, error) {
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", dirID, err)
+		glog.Errorf("directories.Read(%v): %v", dirID, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info for %v", dirID)
 	}
 	mapTree, err := t.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: directory.MapID})
@@ -53,16 +53,14 @@ func (t *Trillian) MapClient(ctx context.Context, dirID string) (*MapClient, err
 	if err != nil {
 		return nil, err
 	}
-	return &MapClient{
-		MapClient: c,
-	}, nil
+	return &MapClient{MapClient: c}, nil
 }
 
 // LogClient returns a verifying LogClient.
 func (t *Trillian) LogClient(ctx context.Context, dirID string) (*tclient.LogClient, error) {
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", dirID, err)
+		glog.Errorf("directories.Read(%v): %v", dirID, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info for %v", dirID)
 	}
 	logTree, err := t.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: directory.LogID})
@@ -70,7 +68,7 @@ func (t *Trillian) LogClient(ctx context.Context, dirID string) (*tclient.LogCli
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log info for %v: %v", dirID, err)
 	}
 
-	// Create verifying log and map clients.
+	// Create verifying log client.
 	trustedRoot := types.LogRootV1{} // TODO(gbelvin): Store and track trustedRoot.
 	return tclient.NewFromTree(t.tlog, logTree, trustedRoot)
 }
