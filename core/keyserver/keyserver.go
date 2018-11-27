@@ -21,7 +21,6 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -285,9 +284,16 @@ func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUse
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-// QueueEntryUpdate updates a user's profile. If the user does not exist, a new
-// profile will be created.
+// QueueEntryUpdate updates a user's profile. If the user does not exist, a new profile will be created.
 func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest) (*empty.Empty, error) {
+	return s.BatchQueueUser(ctx, &pb.BatchQueueUserRequest{
+		DirectoryId: in.DirectoryId,
+		Updates:     []*pb.EntryUpdate{in.EntryUpdate},
+	})
+}
+
+// BatchQueueUser updates a user's profile. If the user does not exist, a new profile will be created.
+func (s *Server) BatchQueueUser(ctx context.Context, in *pb.BatchQueueUserRequest) (*empty.Empty, error) {
 	if in.DirectoryId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
@@ -306,47 +312,19 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	// - Index to Key equality in SignedKV.
 	// - Correct profile commitment.
 	// - Correct key formats.
-	if err := validateEntryUpdate(in.GetEntryUpdate(), vrfPriv); err != nil {
-		glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
+	userIDs := make([]string, 0, len(in.Updates))
+	for _, u := range in.Updates {
+		if err := validateEntryUpdate(u, vrfPriv); err != nil {
+			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
+		}
+		userIDs = append(userIDs, u.UserId)
 	}
 
-	// Query for the current revision.
-	req := &pb.GetUserRequest{
-		DirectoryId: in.DirectoryId,
-		UserId:      in.GetEntryUpdate().UserId,
-		//RevisionStart: in.GetUserUpdate().RevisionStart,
-	}
-	resp, err := s.GetUser(ctx, req)
-	if err != nil {
-		glog.Errorf("GetUser failed: %v", err)
-		return nil, status.Errorf(codes.Internal, "Read failed")
-	}
-
-	// Catch errors early. Perform mutation verification.
-	// Read at the current value. Assert the following:
-	// - Correct signatures from previous revision.
-	// - Correct signatures internal to the update.
-	// - Hash of current data matches the expectation in the mutation.
-
-	// The very first mutation will have resp.LeafProof.MapLeaf.LeafValue=nil.
-	oldLeafB := resp.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
-	oldEntry, err := entry.FromLeafValue(oldLeafB)
-	if err != nil {
-		glog.Errorf("entry.FromLeafValue: %v", err)
-		return nil, status.Errorf(codes.InvalidArgument, "invalid previous leaf value")
-	}
-	if _, err := s.mutate(oldEntry, in.GetEntryUpdate().GetMutation()); err == mutator.ErrReplay {
-		glog.Warningf("Discarding request due to replay")
-		return nil, status.Errorf(codes.FailedPrecondition,
-			"The request contains a reference to old data. Please regenerate request and try again")
-	} else if err != nil {
-		glog.Warningf("Invalid mutation: %v", err)
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
-	}
+	// TODO(gbelvin): Should we validate mutations here? It is expensive in terms of latency.
 
 	// Save mutation to the database.
-	if err := s.logs.Send(ctx, directory.DirectoryID, in.GetEntryUpdate()); err != nil {
+	if err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...); err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}
