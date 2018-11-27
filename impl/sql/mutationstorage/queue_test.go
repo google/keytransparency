@@ -201,7 +201,7 @@ func TestReadLog(t *testing.T) {
 	m := newForTest(ctx, t, logID)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if err := m.Send(ctx, directoryID, entry); err != nil {
+		if err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
 	}
@@ -211,25 +211,16 @@ func TestReadLog(t *testing.T) {
 		count     int
 	}{
 		{batchSize: 0, count: 0},
-		{batchSize: 1, count: 1},
-		{batchSize: 1, count: 1},
-		{batchSize: 100, count: 10},
+		{batchSize: 1, count: 3},
+		{batchSize: 4, count: 6},
+		{batchSize: 100, count: 30},
 	} {
 		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.batchSize)
 		if err != nil {
-			t.Fatalf("ReadLog(): %v", err)
+			t.Fatalf("ReadLog(%v): %v", tc.batchSize, err)
 		}
 		if got, want := len(rows), tc.count; got != want {
-			t.Fatalf("ReadLog(): len: %v, want %v", got, want)
-		}
-		for i, r := range rows {
-			var e pb.Entry
-			if err := proto.Unmarshal(r.Mutation.Entry, &e); err != nil {
-				t.Errorf("Unmarshal(): %v", err)
-			}
-			if got, want := e.Index[0], byte(i); got != want {
-				t.Errorf("ReadLog()[%v]: %v, want %v", i, got, want)
-			}
+			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.batchSize, got, want)
 		}
 	}
 }

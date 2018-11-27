@@ -175,24 +175,48 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT Time, Mutation FROM Queue
+		`SELECT Time, LocalID, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time > ? AND Time <= ?
-		ORDER BY Time ASC
+		ORDER BY Time, LocalID ASC
 		LIMIT ?;`,
 		directoryID, logID, low, high, batchSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	return readQueueMessages(rows)
+	msgs, err := readQueueMessages(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the rest of the LocalIDs in the last row.
+	if len(msgs) > 0 {
+		last := msgs[len(msgs)-1]
+		restRows, err := m.db.QueryContext(ctx,
+			`SELECT Time, LocalID, Mutation FROM Queue
+			WHERE DirectoryID = ? AND LogID = ? AND Time = ? AND LocalID > ?
+			ORDER BY LocalID ASC;`,
+			directoryID, logID, last.ID, last.LocalID)
+		if err != nil {
+			return nil, err
+		}
+		defer restRows.Close()
+		rest, err := readQueueMessages(restRows)
+		if err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, rest...)
+	}
+
+	return msgs, nil
 }
 
 func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
-		var timestamp int64
+		var timestamp, localID int64
 		var mData []byte
-		if err := rows.Scan(&timestamp, &mData); err != nil {
+		if err := rows.Scan(&timestamp, &localID, &mData); err != nil {
 			return nil, err
 		}
 		entryUpdate := new(pb.EntryUpdate)
@@ -201,6 +225,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 		}
 		results = append(results, &mutator.LogMessage{
 			ID:        timestamp,
+			LocalID:   localID,
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,
 		})
