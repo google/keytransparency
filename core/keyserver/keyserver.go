@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -275,7 +276,90 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 // ListUserRevisions returns a list of revisions covering a period of time.
 func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisionsRequest) (
 	*pb.ListUserRevisionsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	pageStart := in.StartRevision
+	lastVerified := in.LastVerifiedTreeSize
+	if in.PageToken != "" {
+		token := &rtpb.ListUserRevisionsToken{}
+		if err := DecodeToken(in.PageToken, token); err != nil {
+			glog.Errorf("invalid page token %v: %v", in.PageToken, err)
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid page_token provided")
+		}
+		// last_verified_tree_size and page_token are allowed to change between paginated requests.
+		// Clear them here both for comparison and for encoding next_page_token in the response.
+		in.LastVerifiedTreeSize = 0
+		in.PageToken = ""
+		if !proto.Equal(in, token.Request) {
+			return nil, status.Errorf(codes.InvalidArgument, "Request fields changed during pagination")
+		}
+		pageStart += token.RevisionsReturned
+	}
+
+	// Lookup log and map info.
+	directoryID := in.DirectoryId
+	if directoryID == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
+	}
+	d, err := s.directories.Read(ctx, directoryID, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+	}
+
+	// Fetch latest log root & consistency proof.
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified)
+	if err != nil {
+		return nil, err
+	}
+	newestRevision, err := mapRevisionFor(sth)
+	if err != nil {
+		glog.Errorf("latestRevision(log %v, sth %v): %v", d.LogID, sth, err)
+		return nil, err
+	}
+
+	numRevisions, err := validateListUserRevisionsRequest(in, pageStart, newestRevision)
+	if err != nil {
+		glog.Errorf("validateListUserRevisionsRequest(%v, %v, %v): %v", in, pageStart, newestRevision, err)
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
+	}
+
+	// TODO(gbelvin): fetch all history from trillian at once.
+	// Get all revisions in the range [start + offset, start + offset + numRevisions].
+	revisions := make([]*pb.MapRevision, numRevisions)
+	for i := range revisions {
+		rev := pageStart + int64(i)
+		resp, err := s.getUserByRevision(ctx, sth, d, in.UserId, rev)
+		if err != nil {
+			glog.Errorf("getUser failed for revision %v: %v", rev, err)
+			return nil, status.Errorf(codes.Internal, "GetUser failed")
+		}
+		revisions[i] = &pb.MapRevision{
+			MapRoot: resp.GetRevision().GetMapRoot(),
+			MapLeaf: resp.GetLeaf(),
+		}
+	}
+
+	// Add a page token to the response if more revisions can be fetched.
+	token := ""
+	if pageStart+numRevisions < in.EndRevision {
+		tokenProto := &rtpb.ListUserRevisionsToken{
+			Request:           in,
+			RevisionsReturned: (pageStart - in.StartRevision) + numRevisions,
+		}
+		token, err = EncodeToken(tokenProto)
+		if err != nil {
+			glog.Errorf("error encoding page token: %v", err)
+			return nil, status.Errorf(codes.Internal, "Error encoding pagination token")
+		}
+	}
+	resp := &pb.ListUserRevisionsResponse{
+		LatestLogRoot: &pb.LogRoot{
+			LogRoot:        sth,
+			LogConsistency: consistencyProof.GetHashes(),
+		},
+		MapRevisions:  revisions,
+		NextPageToken: token,
+	}
+	return resp, nil
 }
 
 // BatchListUserRevisions returns a list of revisions covering a period of time.
