@@ -312,13 +312,11 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	// - Index to Key equality in SignedKV.
 	// - Correct profile commitment.
 	// - Correct key formats.
-	userIDs := make([]string, 0, len(in.Updates))
 	for _, u := range in.Updates {
 		if err := validateEntryUpdate(u, vrfPriv); err != nil {
 			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 			return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 		}
-		userIDs = append(userIDs, u.UserId)
 	}
 
 	// TODO(gbelvin): Should we validate mutations here? It is expensive in terms of latency.
