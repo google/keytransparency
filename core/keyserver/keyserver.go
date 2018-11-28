@@ -235,7 +235,7 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 	}
 	revision, err := mapRevisionFor(sth)
 	if err != nil {
-		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
+		glog.Errorf("latestRevision(log: %v, sth: %v): %v", d.LogID, sth, err)
 		return nil, err
 	}
 
