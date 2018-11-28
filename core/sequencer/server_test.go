@@ -67,15 +67,15 @@ func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, 
 }
 
 type fakeTrillianConn struct {
-	mc TrillianMap
-	lc TrillianLog
+	mc trillianMap
+	lc trillianLog
 }
 
-func (t *fakeTrillianConn) MapClient(_ context.Context, _ string) (TrillianMap, error) {
+func (t *fakeTrillianConn) MapClient(_ context.Context, _ string) (trillianMap, error) {
 	return t.mc, nil
 }
 
-func (t *fakeTrillianConn) LogClient(_ context.Context, _ string) (TrillianLog, error) {
+func (t *fakeTrillianConn) LogClient(_ context.Context, _ string) (trillianLog, error) {
 	return t.lc, nil
 }
 

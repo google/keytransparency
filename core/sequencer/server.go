@@ -100,7 +100,7 @@ type Batcher interface {
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
 	batcher  Batcher
-	trillian TrillianFactory
+	trillian trillianFactory
 	logs     LogsReader
 }
 
