@@ -55,6 +55,7 @@ type MapLogItemFn func(logItem *LogMessage, emit func(index []byte, mutation *pb
 // LogMessage represents a change to a user, and associated data.
 type LogMessage struct {
 	ID        int64
+	LocalID   int64
 	Mutation  *pb.SignedEntry
 	ExtraData *pb.Committed
 }

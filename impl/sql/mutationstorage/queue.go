@@ -46,19 +46,27 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 }
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
-func (m *Mutations) Send(ctx context.Context, directoryID string, update *pb.EntryUpdate) error {
+// TODO(gbelvin): Make updates a slice.
+func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) error {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
+	if len(updates) == 0 {
+		return nil
+	}
 	logID, err := m.randLog(ctx, directoryID)
 	if err != nil {
 		return err
 	}
-	mData, err := proto.Marshal(update)
-	if err != nil {
-		return err
+	updateData := make([][]byte, 0, len(updates))
+	for _, u := range updates {
+		data, err := proto.Marshal(u)
+		if err != nil {
+			return err
+		}
+		updateData = append(updateData, data)
 	}
 	// TODO(gbelvin): Implement retry with backoff for retryable errors if
 	// we get timestamp contention.
-	return m.send(ctx, directoryID, logID, mData, time.Now())
+	return m.send(ctx, time.Now(), directoryID, logID, updateData...)
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
@@ -106,8 +114,10 @@ func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, err
 }
 
 // ts must be greater than all other timestamps currently recorded for directoryID.
-func (m *Mutations) send(ctx context.Context, directoryID string, logID int64, mData []byte, ts time.Time) (ret error) {
-	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
+	logID int64, mData ...[]byte) (ret error) {
+	tx, err := m.db.BeginTx(ctx,
+		&sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
@@ -132,10 +142,12 @@ func (m *Mutations) send(ctx context.Context, directoryID string, logID int64, m
 			tsTime, maxTime)
 	}
 
-	if _, err = tx.ExecContext(ctx,
-		`INSERT INTO Queue (DirectoryID, LogID, Time, Mutation) VALUES (?, ?, ?, ?);`,
-		directoryID, logID, tsTime, mData); err != nil {
-		return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
+	for i, data := range mData {
+		if _, err = tx.ExecContext(ctx,
+			`INSERT INTO Queue (DirectoryID, LogID, Time, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
+			directoryID, logID, tsTime, i, data); err != nil {
+			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
+		}
 	}
 	return tx.Commit()
 }
@@ -162,27 +174,52 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 }
 
 // ReadLog reads all mutations in logID between (low, high].
+// ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT Time, Mutation FROM Queue
+		`SELECT Time, LocalID, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time > ? AND Time <= ?
-		ORDER BY Time ASC
+		ORDER BY Time, LocalID ASC
 		LIMIT ?;`,
 		directoryID, logID, low, high, batchSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	return readQueueMessages(rows)
+	msgs, err := readQueueMessages(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the rest of the LocalIDs in the last row.
+	if len(msgs) > 0 {
+		last := msgs[len(msgs)-1]
+		restRows, err := m.db.QueryContext(ctx,
+			`SELECT Time, LocalID, Mutation FROM Queue
+			WHERE DirectoryID = ? AND LogID = ? AND Time = ? AND LocalID > ?
+			ORDER BY LocalID ASC;`,
+			directoryID, logID, last.ID, last.LocalID)
+		if err != nil {
+			return nil, err
+		}
+		defer restRows.Close()
+		rest, err := readQueueMessages(restRows)
+		if err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, rest...)
+	}
+
+	return msgs, nil
 }
 
 func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
-		var timestamp int64
+		var timestamp, localID int64
 		var mData []byte
-		if err := rows.Scan(&timestamp, &mData); err != nil {
+		if err := rows.Scan(&timestamp, &localID, &mData); err != nil {
 			return nil, err
 		}
 		entryUpdate := new(pb.EntryUpdate)
@@ -191,6 +228,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 		}
 		results = append(results, &mutator.LogMessage{
 			ID:        timestamp,
+			LocalID:   localID,
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,
 		})

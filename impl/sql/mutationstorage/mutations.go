@@ -38,8 +38,9 @@ var (
 		DirectoryID VARCHAR(30)   NOT NULL,
 		LogID    BIGINT           NOT NULL,
 		Time     BIGINT           NOT NULL,
+		LocalID  BIGINT           NOT NULL,
 		Mutation BLOB             NOT NULL,
-		PRIMARY KEY(DirectoryID, LogID, Time)
+		PRIMARY KEY(DirectoryID, LogID, Time, LocalID )
 	);`,
 		`CREATE TABLE IF NOT EXISTS Logs (
 		DirectoryID VARCHAR(30)   NOT NULL,
