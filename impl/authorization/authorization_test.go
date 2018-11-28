@@ -147,7 +147,7 @@ func TestIsAuthorized(t *testing.T) {
 			}
 			req := &pb.UpdateEntryRequest{
 				DirectoryId: tc.directoryID,
-				UserId:      tc.userID,
+				EntryUpdate: &pb.EntryUpdate{UserId: tc.userID},
 			}
 			err = authz.Authorize(sctx, req)
 			if got, want := status.Code(err), tc.wantCode; got != want {
