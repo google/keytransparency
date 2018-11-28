@@ -283,8 +283,8 @@ message UpdateEntryRequest {
   EntryUpdate entry_update = 4;
 }
 
-// BatchQueueUserRequest enqueues multiple changes to user profiles.
-message BatchQueueUserRequest {
+// BatchQueueUserUpdateRequest enqueues multiple changes to user profiles.
+message BatchQueueUserUpdateRequest {
   // directory_id identifies the directory in which the users live.
   string directory_id = 1;
   // updates contains user updates.
@@ -488,10 +488,10 @@ service KeyTransparency {
       body: "entry_update"
     };
   }
-  // BatchQueueUser enqueues a list of user profiles.
-  rpc BatchQueueUser(BatchQueueUserRequest) returns (google.protobuf.Empty) {
+  // BatchQueueUserUpdate enqueues a list of user profiles.
+  rpc BatchQueueUserUpdate(BatchQueueUserUpdateRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v1/directories/{directory_id}:batchqueue"
+      post: "/v1/directories/{directory_id}:batchQueueUpdate"
       body: "*"
     };
   }

@@ -292,7 +292,7 @@ func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (f *fakeKeyServer) BatchQueueUser(context.Context, *pb.BatchQueueUserRequest) (*empty.Empty, error) {
+func (f *fakeKeyServer) BatchQueueUserUpdate(context.Context, *pb.BatchQueueUserUpdateRequest) (*empty.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 

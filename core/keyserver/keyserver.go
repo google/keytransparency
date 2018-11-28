@@ -286,14 +286,14 @@ func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUse
 
 // QueueEntryUpdate updates a user's profile. If the user does not exist, a new profile will be created.
 func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest) (*empty.Empty, error) {
-	return s.BatchQueueUser(ctx, &pb.BatchQueueUserRequest{
+	return s.BatchQueueUserUpdate(ctx, &pb.BatchQueueUserUpdateRequest{
 		DirectoryId: in.DirectoryId,
 		Updates:     []*pb.EntryUpdate{in.EntryUpdate},
 	})
 }
 
-// BatchQueueUser updates a user's profile. If the user does not exist, a new profile will be created.
-func (s *Server) BatchQueueUser(ctx context.Context, in *pb.BatchQueueUserRequest) (*empty.Empty, error) {
+// BatchQueueUserUpdate updates a user's profile. If the user does not exist, a new profile will be created.
+func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUserUpdateRequest) (*empty.Empty, error) {
 	if in.DirectoryId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
