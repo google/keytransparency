@@ -89,6 +89,7 @@ func TestLatestRevision(t *testing.T) {
 		{desc: "not initialized", treeSize: 0, wantErr: codes.Internal},
 		{desc: "log controls revision", treeSize: 2, wantErr: codes.OK, wantRev: 1},
 	} {
+		tc := tc // pin
 		t.Run(tc.desc+" GetUser", func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			defer cancel()
@@ -133,7 +134,7 @@ func TestLatestRevision(t *testing.T) {
 			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
 				Return(&tpb.GetLatestSignedLogRootResponse{
 					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
-				}, err)
+				}, err).Times(2)
 			for i := int64(0); i < tc.treeSize; i++ {
 				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
 					&tpb.GetMapLeavesByRevisionRequest{
@@ -147,14 +148,21 @@ func TestLatestRevision(t *testing.T) {
 								Index: make([]byte, 32),
 							},
 						}},
-					}, nil)
+					}, nil).Times(2)
 				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
-					Return(&tpb.GetInclusionProofResponse{}, nil)
+					Return(&tpb.GetInclusionProofResponse{}, nil).Times(2)
 			}
 
 			_, err = e.srv.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{DirectoryId: directoryID})
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListEntryHistory(): %v, want %v", err, tc.wantErr)
+			}
+			_, err = e.srv.ListUserRevisions(ctx, &pb.ListUserRevisionsRequest{
+				DirectoryId: directoryID,
+				EndRevision: tc.treeSize - 1,
+			})
+			if got, want := status.Code(err), tc.wantErr; got != want {
+				t.Errorf("ListUserRevisions(): %v, want %v", err, tc.wantErr)
 			}
 		})
 	}

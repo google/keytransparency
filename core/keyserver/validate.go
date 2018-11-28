@@ -49,14 +49,16 @@ var (
 	ErrInvalidStart = errors.New("invalid start revision")
 	// ErrInvalidPageSize occurs when the page size is < 0.
 	ErrInvalidPageSize = errors.New("Invalid page size")
+	// ErrInvalidEnd occurs when the end revision of the ListUserRevisionsRequest
+	// is not in [start, currentRevision].
+	ErrInvalidEnd = errors.New("invalid end revision")
 )
 
-// validateUpdateEntryRequest verifies
+// validateEntryUpdate verifies
 // - Commitment in SignedEntryUpdate matches the serialized profile.
-func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
-	signedEntry := in.GetEntryUpdate().GetMutation()
+func validateEntryUpdate(in *pb.EntryUpdate, vrfPriv vrf.PrivateKey) error {
 	var entry pb.Entry
-	if err := proto.Unmarshal(signedEntry.GetEntry(), &entry); err != nil {
+	if err := proto.Unmarshal(in.GetMutation().GetEntry(), &entry); err != nil {
 		return err
 	}
 
@@ -67,7 +69,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	}
 
 	// Verify correct commitment to profile.
-	committed := in.GetEntryUpdate().GetCommitted()
+	committed := in.GetCommitted()
 	if committed == nil {
 		return ErrNoCommitted
 	}
@@ -98,6 +100,31 @@ func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentRevi
 		in.PageSize = int32(currentRevision - in.Start + 1)
 	}
 	return nil
+}
+
+// validateListUserRevisionsRequest checks the bounds on start and end revisions and returns an appropriate number of
+// revisions to return for this request.
+func validateListUserRevisionsRequest(in *pb.ListUserRevisionsRequest, pageStart, newestRevision int64) (int64, error) {
+	if in.StartRevision < 0 || in.StartRevision > newestRevision {
+		return 0, ErrInvalidStart
+	}
+	if in.EndRevision < in.StartRevision || in.EndRevision > newestRevision {
+		return 0, ErrInvalidEnd
+	}
+
+	revisions := int64(in.PageSize)
+	switch {
+	case in.PageSize < 0:
+		return 0, fmt.Errorf("invalid page size")
+	case in.PageSize == 0:
+		revisions = int64(defaultPageSize)
+	case in.PageSize > maxPageSize:
+		revisions = int64(maxPageSize)
+	}
+	if pageStart+revisions > in.EndRevision {
+		revisions = in.EndRevision - pageStart + 1
+	}
+	return revisions, nil
 }
 
 // validateGetRevisionRequest ensures that start revision starts with 1
