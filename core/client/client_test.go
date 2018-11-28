@@ -292,6 +292,10 @@ func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
+func (f *fakeKeyServer) BatchQueueUserUpdate(context.Context, *pb.BatchQueueUserUpdateRequest) (*empty.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 type fakeVerifier struct{}
 
 func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, error) {
