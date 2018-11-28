@@ -197,10 +197,10 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 			// SignedMapRoot must be placed in the log at MapRevision.
 			// MapRevisions start at 0. Log leaves start at 0.
 			LeafIndex: mapRevision,
-			TreeSize:  sth.TreeSize, // TODO(gbelvin): Verify sth first.
+			TreeSize:  sth.TreeSize, // nolint TODO(gbelvin): Verify sth first.
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v, %v, %v): %v", d.LogID, mapRevision, sth.TreeSize, err)
+		glog.Errorf("tlog.GetInclusionProof(%v): %v", d.LogID, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
