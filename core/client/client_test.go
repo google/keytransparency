@@ -288,6 +288,10 @@ func (f *fakeKeyServer) BatchGetUser(context.Context, *pb.BatchGetUserRequest) (
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
+func (f *fakeKeyServer) BatchGetUserIndex(context.Context, *pb.BatchGetUserIndexRequest) (*pb.BatchGetUserIndexResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest) (*empty.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
