@@ -139,6 +139,9 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 
 	indexes := make([][]byte, 0, len(userIDs))
 	_, proofsByIndex, err := s.batchGetUserIndex(ctx, d, userIDs)
+	if err != nil {
+		return nil, err
+	}
 	for index := range proofsByIndex {
 		indexes = append(indexes, []byte(index))
 	}
@@ -254,7 +257,8 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 }
 
 // BatchGetUserIndex returns indexes for users, computed with a verifiable random function.
-func (s *Server) BatchGetUserIndex(ctx context.Context, in *pb.BatchGetUserIndexRequest) (*pb.BatchGetUserIndexResponse, error) {
+func (s *Server) BatchGetUserIndex(ctx context.Context,
+	in *pb.BatchGetUserIndexRequest) (*pb.BatchGetUserIndexResponse, error) {
 	if in.DirectoryId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
@@ -270,7 +274,8 @@ func (s *Server) BatchGetUserIndex(ctx context.Context, in *pb.BatchGetUserIndex
 	return &pb.BatchGetUserIndexResponse{Proofs: proofsByUser}, nil
 }
 
-func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory, userIDs []string) (proofsByUser, proofsByIndex map[string][]byte, err error) {
+func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
+	userIDs []string) (proofsByUser, proofsByIndex map[string][]byte, err error) {
 	proofsByUser = make(map[string][]byte)
 	proofsByIndex = make(map[string][]byte)
 	for _, userID := range userIDs {
