@@ -102,6 +102,7 @@ type Server struct {
 	batcher  Batcher
 	trillian trillianFactory
 	logs     LogsReader
+	loopback spb.KeyTransparencySequencerClient
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -113,6 +114,7 @@ func NewServer(
 	tmap tpb.TrillianMapClient,
 	batcher Batcher,
 	logs LogsReader,
+	loopback spb.KeyTransparencySequencerClient,
 	metricsFactory monitoring.MetricFactory,
 ) *Server {
 	once.Do(func() { createMetrics(metricsFactory) })
@@ -124,8 +126,9 @@ func NewServer(
 			tmap:        tmap,
 			tlog:        tlog,
 		},
-		batcher: batcher,
-		logs:    logs,
+		batcher:  batcher,
+		logs:     logs,
+		loopback: loopback,
 	}
 }
 
@@ -142,7 +145,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	}
 
 	for _, rev := range outstandingRevs {
-		if _, err := s.CreateRevision(ctx, &spb.CreateRevisionRequest{
+		if _, err := s.loopback.CreateRevision(ctx, &spb.CreateRevisionRequest{
 			DirectoryId: in.DirectoryId,
 			Revision:    rev,
 		}); err != nil {
@@ -298,7 +301,7 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 
 	mutationCount.Add(float64(len(msgs)), directoryID)
 	glog.Infof("CreatedRevision: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
-	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DirectoryId: directoryID})
+	return s.loopback.PublishBatch(ctx, &spb.PublishBatchRequest{DirectoryId: directoryID})
 }
 
 // PublishBatch copies the MapRoots of all known map revisions into the Log of MapRoots.
