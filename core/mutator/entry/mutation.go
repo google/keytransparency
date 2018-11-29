@@ -131,8 +131,8 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEnt
 
 	return &pb.UpdateEntryRequest{
 		DirectoryId: m.DirectoryID,
-		UserId:      m.UserID,
 		EntryUpdate: &pb.EntryUpdate{
+			UserId:   m.UserID,
 			Mutation: mutation,
 			Committed: &pb.Committed{
 				Key:  m.nonce,

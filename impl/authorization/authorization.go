@@ -49,7 +49,7 @@ func (a *AuthzPolicy) Authorize(ctx context.Context, m interface{}) error {
 
 	switch t := m.(type) {
 	case *pb.UpdateEntryRequest:
-		return a.checkPermission(sctx, t.DirectoryId, t.UserId)
+		return a.checkPermission(sctx, t.DirectoryId, t.EntryUpdate.UserId)
 		// Can't authorize any other requests
 	default:
 		return status.Errorf(codes.PermissionDenied, "message type %T not recognized", t)

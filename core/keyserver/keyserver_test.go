@@ -110,7 +110,11 @@ func TestLatestRevision(t *testing.T) {
 						Revision: tc.treeSize - 1,
 					}).
 					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{{}},
+						MapLeafInclusion: []*tpb.MapLeafInclusion{{
+							Leaf: &tpb.MapLeaf{
+								Index: make([]byte, 32),
+							},
+						}},
 					}, nil)
 				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil)
@@ -139,7 +143,11 @@ func TestLatestRevision(t *testing.T) {
 						Revision: i,
 					}).
 					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{{}},
+						MapLeafInclusion: []*tpb.MapLeafInclusion{{
+							Leaf: &tpb.MapLeaf{
+								Index: make([]byte, 32),
+							},
+						}},
 					}, nil).Times(2)
 				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil).Times(2)

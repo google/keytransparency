@@ -54,12 +54,11 @@ var (
 	ErrInvalidEnd = errors.New("invalid end revision")
 )
 
-// validateUpdateEntryRequest verifies
+// validateEntryUpdate verifies
 // - Commitment in SignedEntryUpdate matches the serialized profile.
-func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKey) error {
-	signedEntry := in.GetEntryUpdate().GetMutation()
+func validateEntryUpdate(in *pb.EntryUpdate, vrfPriv vrf.PrivateKey) error {
 	var entry pb.Entry
-	if err := proto.Unmarshal(signedEntry.GetEntry(), &entry); err != nil {
+	if err := proto.Unmarshal(in.GetMutation().GetEntry(), &entry); err != nil {
 		return err
 	}
 
@@ -70,7 +69,7 @@ func validateUpdateEntryRequest(in *pb.UpdateEntryRequest, vrfPriv vrf.PrivateKe
 	}
 
 	// Verify correct commitment to profile.
-	committed := in.GetEntryUpdate().GetCommitted()
+	committed := in.GetCommitted()
 	if committed == nil {
 		return ErrNoCommitted
 	}
