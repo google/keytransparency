@@ -50,6 +50,9 @@ type BatchReader interface {
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
+// indexFunc computes an index and proof for directory/user
+type indexFunc func(ctx context.Context, d *directory.Directory, userID string) ([32]byte, []byte, error)
+
 // Server holds internal state for the key server.
 type Server struct {
 	tlog        tpb.TrillianLogClient
@@ -135,14 +138,12 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 	}
 
 	indexes := make([][]byte, 0, len(userIDs))
-	proofs := make(map[string][]byte)
-	for _, userID := range userIDs {
-		index, proof, err := s.indexFunc(ctx, d, userID)
-		if err != nil {
-			return nil, err
-		}
-		indexes = append(indexes, index[:])
-		proofs[string(index[:])] = proof
+	_, proofsByIndex, err := s.batchGetUserIndex(ctx, d, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	for index := range proofsByIndex {
+		indexes = append(indexes, []byte(index))
 	}
 
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
@@ -174,7 +175,7 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 				return nil, status.Errorf(codes.Internal, "Cannot read committed value")
 			}
 		}
-		proof, ok := proofs[string(mapLeafInclusion.Leaf.GetIndex())]
+		proof, ok := proofsByIndex[string(mapLeafInclusion.Leaf.GetIndex())]
 		if !ok {
 			return nil, status.Errorf(codes.Internal, "Returned index %x that was not requested",
 				mapLeafInclusion.Leaf.GetIndex())
@@ -253,6 +254,39 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 	}
 	proto.Merge(resp, entryProofs)
 	return resp, nil
+}
+
+// BatchGetUserIndex returns indexes for users, computed with a verifiable random function.
+func (s *Server) BatchGetUserIndex(ctx context.Context,
+	in *pb.BatchGetUserIndexRequest) (*pb.BatchGetUserIndexResponse, error) {
+	if in.DirectoryId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
+	}
+	d, err := s.directories.Read(ctx, in.DirectoryId, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+	}
+	proofsByUser, _, err := s.batchGetUserIndex(ctx, d, in.UserIds)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.BatchGetUserIndexResponse{Proofs: proofsByUser}, nil
+}
+
+func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
+	userIDs []string) (proofsByUser, proofsByIndex map[string][]byte, err error) {
+	proofsByUser = make(map[string][]byte)
+	proofsByIndex = make(map[string][]byte)
+	for _, userID := range userIDs {
+		index, proof, err := s.indexFunc(ctx, d, userID)
+		if err != nil {
+			return nil, nil, err
+		}
+		proofsByUser[userID] = proof
+		proofsByIndex[string(index[:])] = proof
+	}
+	return proofsByUser, proofsByIndex, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
@@ -495,9 +529,6 @@ func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (
 		MaxInterval: ptypes.DurationProto(directory.MaxInterval),
 	}, nil
 }
-
-// indexFunc computes an index and proof for directory/user
-type indexFunc func(ctx context.Context, d *directory.Directory, userID string) ([32]byte, []byte, error)
 
 // index returns the index and proof for directory/user
 func indexFromVRF(ctx context.Context, d *directory.Directory, userID string) ([32]byte, []byte, error) {
