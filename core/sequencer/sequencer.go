@@ -18,11 +18,9 @@ package sequencer
 import (
 	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/golang/glog"
-	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/directory"
 
@@ -51,43 +49,6 @@ func New(
 		mapAdmin:        mapAdmin,
 		batchSize:       batchSize,
 	}
-}
-
-// RunAndConnect creates a local gRPC server and returns a connected client.
-func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer) (client spb.KeyTransparencySequencerClient, stop func(), startErr error) {
-	server := grpc.NewServer()
-	spb.RegisterKeyTransparencySequencerServer(server, impl)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("error creating TCP listener: %v", err)
-	}
-	defer func() {
-		if startErr != nil {
-			lis.Close()
-		}
-	}()
-
-	go func() {
-		if err := server.Serve(lis); err != nil {
-			glog.Errorf("server exited with error: %v", err)
-		}
-	}()
-
-	addr := lis.Addr().String()
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("error connecting to %v: %v", addr, err)
-	}
-
-	stop = func() {
-		server.GracefulStop()
-		conn.Close()
-		lis.Close()
-	}
-
-	client = spb.NewKeyTransparencySequencerClient(conn)
-	return client, stop, err
 }
 
 // PeriodicallyRun executes f once per tick until ctx is closed.

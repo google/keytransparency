@@ -18,7 +18,18 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"net"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/trillian"
+	"github.com/google/trillian/crypto/keys/der"
+	"github.com/google/trillian/crypto/keyspb"
+	"github.com/google/trillian/monitoring/prometheus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
@@ -26,22 +37,27 @@ import (
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
-	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
-	"github.com/google/trillian"
-	"google.golang.org/grpc"
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
-	"github.com/google/trillian/crypto/keys/der"
-	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/monitoring/prometheus"
+	_ "github.com/google/trillian/crypto/keys/der/proto"
+	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
+	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
 )
 
 var (
+	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
+	certFile    = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
+	listenAddr  = flag.String("addr", ":8080", "The ip:port to serve on")
+	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+
 	serverDBPath = flag.String("db", "db", "Database connection string")
 
 	// Info to connect to the trillian map and log.
-	mapURL    = flag.String("map-url", "", "URL of Trillian Map Server")
-	logURL    = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
+	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+
 	refresh   = flag.Duration("directory-refresh", 5*time.Second, "Time to detect new directory")
 	batchSize = flag.Int("batch-size", 100, "Maximum number of mutations to process per map revision")
 )
@@ -70,10 +86,6 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed to connect to %v: %v", *logURL, err)
 	}
-	tlog := trillian.NewTrillianLogClient(lconn)
-	tmap := trillian.NewTrillianMapClient(mconn)
-	logAdmin := trillian.NewTrillianAdminClient(lconn)
-	mapAdmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Database tables
 	sqldb := openDB()
@@ -88,43 +100,77 @@ func main() {
 		glog.Exitf("Failed to create directory storage object: %v", err)
 	}
 
-	// Create server
-	sequencerServer := sequencer.NewServer(
-		directoryStorage,
-		logAdmin, mapAdmin,
-		tlog, tmap,
-		mutations, mutations,
-		prometheus.MetricFactory{},
+	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
+	if err != nil {
+		glog.Exitf("Failed to load server credentials %v", err)
+	}
+	grpcServer := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
 
-	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)
+	// Listen and create empty grpc client connection.
+	lis, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
-		glog.Errorf("error launching sequencer server: %v", err)
+		glog.Exitf("error creating TCP listener: %v", err)
 	}
-	defer stop()
+	addr := lis.Addr().String()
+	// Non-blocking dial before we start the server.
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	if err != nil {
+		glog.Exitf("error connecting to %v: %v", addr, err)
+	}
+	defer conn.Close()
 
-	signer := sequencer.New(
-		sequencerClient,
-		mapAdmin,
+	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencer.NewServer(
 		directoryStorage,
-		int32(*batchSize))
+		trillian.NewTrillianAdminClient(lconn),
+		trillian.NewTrillianAdminClient(mconn),
+		trillian.NewTrillianLogClient(lconn),
+		trillian.NewTrillianMapClient(mconn),
+		mutations, mutations,
+		spb.NewKeyTransparencySequencerClient(conn),
+		prometheus.MetricFactory{}))
 
-	keygen := func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
-		return der.NewProtoFromSpec(spec)
-	}
-	adminServer := adminserver.New(tlog, tmap, logAdmin, mapAdmin, directoryStorage, mutations, keygen)
+	pb.RegisterKeyTransparencyAdminServer(grpcServer, adminserver.New(
+		trillian.NewTrillianLogClient(lconn),
+		trillian.NewTrillianMapClient(mconn),
+		trillian.NewTrillianAdminClient(lconn),
+		trillian.NewTrillianAdminClient(mconn),
+		directoryStorage,
+		mutations,
+		func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
+			return der.NewProtoFromSpec(spec)
+		}))
+
+	reflection.Register(grpcServer)
+	grpc_prometheus.Register(grpcServer)
+	grpc_prometheus.EnableHandlingTimeHistogram()
+
 	glog.Infof("Signer starting")
 
 	// Run servers
-	httpServer := startHTTPServer(adminServer)
+	httpServer := startHTTPServer(grpcServer, addr,
+		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
+	)
+
+	// Periodically run batch.
+	signer := sequencer.New(
+		spb.NewKeyTransparencySequencerClient(conn),
+		trillian.NewTrillianAdminClient(mconn),
+		directoryStorage,
+		int32(*batchSize))
 
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+	sequencer.PeriodicallyRun(cctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.RunBatchForAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
 		}
 	})
+
+	// Shutdown.
 	httpServer.Shutdown(cctx)
 	glog.Errorf("Signer exiting")
 }
