@@ -1851,7 +1851,7 @@ type KeyTransparencyClient interface {
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
 	// BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same revision.
 	BatchGetUser(ctx context.Context, in *BatchGetUserRequest, opts ...grpc.CallOption) (*BatchGetUserResponse, error)
-	// BatchGetUserIndex returns the VRF proof for a userID.
+	// BatchGetUserIndex returns the VRF proof for a set of userIDs.
 	BatchGetUserIndex(ctx context.Context, in *BatchGetUserIndexRequest, opts ...grpc.CallOption) (*BatchGetUserIndexResponse, error)
 	// ListEntryHistory returns a list of historic GetUser values.
 	//
@@ -2076,7 +2076,7 @@ type KeyTransparencyServer interface {
 	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
 	// BatchGetUser returns a batch of user leaf entries in the Merkle tree at the same revision.
 	BatchGetUser(context.Context, *BatchGetUserRequest) (*BatchGetUserResponse, error)
-	// BatchGetUserIndex returns the VRF proof for a userID.
+	// BatchGetUserIndex returns the VRF proof for a set of userIDs.
 	BatchGetUserIndex(context.Context, *BatchGetUserIndexRequest) (*BatchGetUserIndexResponse, error)
 	// ListEntryHistory returns a list of historic GetUser values.
 	//

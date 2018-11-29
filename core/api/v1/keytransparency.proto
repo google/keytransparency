@@ -153,15 +153,15 @@ message BatchGetUserRequest {
 }
 
 // BatchGetUserIndexRequest identifies a set of users.
-message BatchGetUserIndexRequest{
+message BatchGetUserIndexRequest {
   // directory_id identifies the directory in which the users live.
   string directory_id = 1;
   // user_ids are the user identifiers
-  repeated string user_ids= 2;
+  repeated string user_ids = 2;
 }
 
 // BatchGetUserIndexRequest identifies a single user.
-message BatchGetUserIndexResponse{
+message BatchGetUserIndexResponse {
   // proofs is a map from user_id to its VRF proof.
   // Clients get the index by verifying the VRF proof.
   map<string, bytes> proofs = 1;
@@ -467,7 +467,7 @@ service KeyTransparency {
       get: "/v1/directories/{directory_id}/users:batchGet"
     };
   }
-  // BatchGetUserIndex returns the VRF proof for a userID.
+  // BatchGetUserIndex returns the VRF proof for a set of userIDs.
   rpc BatchGetUserIndex(BatchGetUserIndexRequest) returns (BatchGetUserIndexResponse) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}/users:batchGetIndex"
