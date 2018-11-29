@@ -59,7 +59,7 @@ type Trillian struct {
 }
 
 // MapClient returns a verifying MapClient
-func (t *Trillian) MapClient(ctx context.Context, dirID string) (trillianMap, error) {
+func (t *Trillian) MapClient(ctx context.Context, dirID string) (trillianMap, error) { // nolint
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
 		glog.Errorf("directories.Read(%v): %v", dirID, err)
@@ -78,7 +78,7 @@ func (t *Trillian) MapClient(ctx context.Context, dirID string) (trillianMap, er
 }
 
 // LogClient returns a verifying LogClient.
-func (t *Trillian) LogClient(ctx context.Context, dirID string) (trillianLog, error) {
+func (t *Trillian) LogClient(ctx context.Context, dirID string) (trillianLog, error) { // nolint
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
 		glog.Errorf("directories.Read(%v): %v", dirID, err)
