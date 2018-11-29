@@ -112,3 +112,14 @@ func (m *Mutations) ReadBatch(ctx context.Context, domainID string, rev int64) (
 
 	return &mapMetadata, nil
 }
+
+// HighestRev returns the highest defined revision number for directoryID.
+func (m *Mutations) HighestRev(ctx context.Context, directoryID string) (int64, error) {
+	var rev int64
+	if err := m.db.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(Revision), 0) FROM Batches WHERE DomainID = ?`,
+		directoryID).Scan(&rev); err != nil {
+		return 0, err
+	}
+	return rev, nil
+}

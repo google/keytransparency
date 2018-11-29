@@ -28,7 +28,10 @@ import (
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
+	"github.com/google/trillian/types"
 )
+
+const directoryID = "directoryID"
 
 type fakeLogs map[int64][]mutator.LogMessage
 
@@ -63,9 +66,82 @@ func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, 
 	return count, high, nil
 }
 
+type fakeTrillianFactory struct {
+	tmap trillianMap
+	tlog trillianLog
+}
+
+func (t *fakeTrillianFactory) MapClient(_ context.Context, _ string) (trillianMap, error) {
+	return t.tmap, nil
+}
+
+func (t *fakeTrillianFactory) LogClient(_ context.Context, _ string) (trillianLog, error) {
+	return t.tlog, nil
+}
+
+type fakeMap struct {
+	MapClient
+	latestMapRoot *types.MapRootV1
+}
+
+func (m *fakeMap) GetAndVerifyLatestMapRoot(_ context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error) {
+	return nil, m.latestMapRoot, nil
+}
+
+type fakeBatcher struct {
+	highestRev int64
+}
+
+func (b *fakeBatcher) HighestRev(_ context.Context, _ string) (int64, error) {
+	return b.highestRev, nil
+}
+func (b *fakeBatcher) WriteBatchSources(_ context.Context, _ string, _ int64, _ *spb.MapMetadata) error {
+	return nil
+}
+func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, _ int64) (*spb.MapMetadata, error) {
+	return &spb.MapMetadata{}, nil
+}
+
+func TestDefineRevisions(t *testing.T) {
+	// Verify that outstanding revisions prevent future revisions from being created.
+	ctx := context.Background()
+	mapRev := int64(2)
+	s := Server{
+		logs: fakeLogs{
+			0: make([]mutator.LogMessage, 10),
+			1: make([]mutator.LogMessage, 20),
+		},
+		trillian: &fakeTrillianFactory{
+			tmap: &fakeMap{latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)}},
+		},
+	}
+
+	for _, tc := range []struct {
+		desc       string
+		highestRev int64
+		want       []int64
+	}{
+		// Blocked: Highest Rev > latestMapRoot.Rev
+		{desc: "blocked", highestRev: mapRev + 1, want: []int64{mapRev + 1}},
+		{desc: "unblocked", highestRev: mapRev, want: []int64{mapRev + 1}},
+		{desc: "lagging", highestRev: mapRev + 3, want: []int64{mapRev + 1, mapRev + 2, mapRev + 3}},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			s.batcher = &fakeBatcher{highestRev: tc.highestRev}
+			got, err := s.DefineRevisions(ctx, directoryID, 1, 10)
+			if err != nil {
+				t.Fatalf("DefineRevisions(): %v", err)
+			}
+			if !cmp.Equal(got, tc.want) {
+				t.Errorf("DefineRevisions(): %v, want %v", got, tc.want)
+			}
+		})
+	}
+
+}
+
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
-	directoryID := "directoryID"
 	s := Server{logs: fakeLogs{
 		0: make([]mutator.LogMessage, 10),
 		1: make([]mutator.LogMessage, 20),
@@ -96,7 +172,6 @@ func TestReadMessages(t *testing.T) {
 
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
-	directoryID := "directoryID"
 	s := Server{logs: fakeLogs{
 		0: make([]mutator.LogMessage, 10),
 		1: make([]mutator.LogMessage, 20),
