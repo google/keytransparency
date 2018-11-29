@@ -16,6 +16,7 @@ package sequencer
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -36,6 +37,9 @@ import (
 
 const (
 	directoryIDLabel = "directoryid"
+	logIDLabel       = "logid"
+	definedLabel     = "defined"
+	appliedLabel     = "applied"
 	reasonLabel      = "reason"
 )
 
@@ -45,6 +49,7 @@ var (
 	batchSize        monitoring.Gauge
 	mutationCount    monitoring.Counter
 	mutationFailures monitoring.Counter
+	watermark        monitoring.Gauge
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -64,6 +69,7 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"batch_size",
 		"Number of mutations the signer is attempting to process for directoryid",
 		directoryIDLabel)
+	watermark = mf.NewGauge("watermark", "High Watermark", directoryIDLabel, logIDLabel)
 }
 
 // Watermarks is a map of watermarks by logID.
@@ -219,6 +225,10 @@ func (s *Server) DefineRevisions(ctx context.Context,
 		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
 			return nil, err
 		}
+		for _, s := range meta.Sources {
+			watermark.Set(float64(s.HighestWatermark),
+				in.DirectoryId, fmt.Sprintf("%v", s.LogId), definedLabel)
+		}
 		outstanding = append(outstanding, nextRev)
 
 	}
@@ -312,6 +322,10 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
+	for _, s := range meta.Sources {
+		watermark.Set(float64(s.HighestWatermark),
+			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
+	}
 	mutationCount.Add(float64(len(msgs)), directoryID)
 	glog.Infof("CreatedRevision: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
 	return &spb.ApplyRevisionResponse{
