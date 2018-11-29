@@ -128,11 +128,14 @@ func TestDefineRevisions(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			s.batcher = &fakeBatcher{highestRev: tc.highestRev}
-			got, err := s.DefineRevisions(ctx, directoryID, 1, 10)
+			got, err := s.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
+				DirectoryId: directoryID,
+				MinBatch:    1,
+				MaxBatch:    10})
 			if err != nil {
 				t.Fatalf("DefineRevisions(): %v", err)
 			}
-			if !cmp.Equal(got, tc.want) {
+			if !cmp.Equal(got.OutstandingRevisions, tc.want) {
 				t.Errorf("DefineRevisions(): %v, want %v", got, tc.want)
 			}
 		})

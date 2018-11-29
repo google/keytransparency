@@ -139,27 +139,38 @@ func NewServer(
 // b) apply the batch to the map
 // c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
-	outstandingRevs, err := s.DefineRevisions(ctx, in.DirectoryId, in.MinBatch, in.MaxBatch)
+	defResp, err := s.loopback.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
+		DirectoryId: in.DirectoryId,
+		MinBatch:    in.MinBatch,
+		MaxBatch:    in.MaxBatch})
 	if err != nil {
 		return nil, err
 	}
 
-	for _, rev := range outstandingRevs {
-		if _, err := s.loopback.CreateRevision(ctx, &spb.CreateRevisionRequest{
+	for _, rev := range defResp.OutstandingRevisions {
+		if _, err := s.loopback.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
 			DirectoryId: in.DirectoryId,
 			Revision:    rev,
 		}); err != nil {
-			return nil, err
+			glog.Errorf("ApplyRevision(dir: %v, rev: %v): %v", in.DirectoryId, rev, err)
+			break
 		}
+	}
+
+	publishReq := &spb.PublishRevisionsRequest{DirectoryId: in.DirectoryId}
+	_, err = s.loopback.PublishRevisions(ctx, publishReq)
+	if err != nil {
+		return nil, err
 	}
 	return &empty.Empty{}, nil
 }
 
 // DefineRevisions examines the outstanding mutations and returns a list of
 // outstanding revisions that have not been applied.
-func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, maxBatch int32) ([]int64, error) {
+func (s *Server) DefineRevisions(ctx context.Context,
+	in *spb.DefineRevisionsRequest) (*spb.DefineRevisionsResponse, error) {
 	// Get the previous and current high water marks.
-	mapClient, err := s.trillian.MapClient(ctx, dirID)
+	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +180,7 @@ func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, ma
 	}
 
 	// Collect a list of unapplied revisions.
-	highestRev, err := s.batcher.HighestRev(ctx, dirID)
+	highestRev, err := s.batcher.HighestRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
@@ -180,16 +191,16 @@ func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, ma
 
 	// Don't create new revisions if there are ones waiting to be applied.
 	if len(outstanding) > 0 {
-		return outstanding, nil
+		return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
 	}
 
-	// Query metadata about outstanding mutations.
+	// Query metadatab about outstanding log items.
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
 
-	count, meta, err := s.HighWatermarks(ctx, dirID, &lastMeta, maxBatch)
+	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
@@ -201,9 +212,9 @@ func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, ma
 	// TODO(#1057): If time since last map revision > max timeout, define batch.
 	// TODO(#1047): If time since oldest queue item > max latency has elapsed, define batch.
 	// If count items >= min_batch, define batch.
-	if count >= minBatch {
+	if count >= in.MinBatch {
 		nextRev := int64(latestMapRoot.Revision) + 1
-		if err := s.batcher.WriteBatchSources(ctx, dirID, nextRev, meta); err != nil {
+		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
 			return nil, err
 		}
 		outstanding = append(outstanding, nextRev)
@@ -211,7 +222,7 @@ func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, ma
 	}
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
 
-	return outstanding, nil
+	return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
@@ -241,8 +252,8 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 	return msgs, nil
 }
 
-// CreateRevision applies the supplied mutations to the current map revision and creates a new revision.
-func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionRequest) (*empty.Empty, error) {
+// ApplyRevision applies the supplied mutations to the current map revision and creates a new revision.
+func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest) (*spb.ApplyRevisionResponse, error) {
 	directoryID := in.GetDirectoryId()
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	if err != nil {
@@ -301,11 +312,17 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 
 	mutationCount.Add(float64(len(msgs)), directoryID)
 	glog.Infof("CreatedRevision: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
-	return s.loopback.PublishBatch(ctx, &spb.PublishBatchRequest{DirectoryId: directoryID})
+	return &spb.ApplyRevisionResponse{
+		DirectoryId: in.DirectoryId,
+		Revision:    in.Revision,
+		Mutations:   int64(len(mutations)),
+		MapLeaves:   int64(len(newLeaves)),
+	}, nil
 }
 
-// PublishBatch copies the MapRoots of all known map revisions into the Log of MapRoots.
-func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) (*empty.Empty, error) {
+// PublishRevisions copies the MapRoots of all known map revisions into the Log of MapRoots.
+func (s *Server) PublishRevisions(ctx context.Context,
+	in *spb.PublishRevisionsRequest) (*spb.PublishRevisionsResponse, error) {
 	// Create verifying log and map clients.
 	logClient, err := s.trillian.LogClient(ctx, in.DirectoryId)
 	if err != nil {
@@ -327,6 +344,7 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 	}
 
 	// Add all unpublished map roots to the log.
+	revs := []int64{}
 	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
 		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
@@ -336,12 +354,13 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 			glog.Errorf("AddSequencedLeaf(rev: %v): %v", mapRoot.Revision, err)
 			return nil, err
 		}
+		revs = append(revs, int64(mapRoot.Revision))
 	}
 	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
 	if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
 		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
 	}
-	return &empty.Empty{}, nil
+	return &spb.PublishRevisionsResponse{Revisions: revs}, nil
 }
 
 // applyMutations takes the set of mutations and applies them to given leafs.
