@@ -25,7 +25,8 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func startHTTPServer(grpcServer *grpc.Server, addr string, services ...serverutil.RegisterServiceFromEndpoint) *http.Server {
+func startHTTPServer(grpcServer *grpc.Server, addr string,
+	services ...serverutil.RegisterServiceFromEndpoint) *http.Server {
 	// Wire up gRPC and HTTP servers.
 	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
 	if err != nil {
