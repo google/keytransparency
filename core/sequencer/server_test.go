@@ -66,17 +66,17 @@ func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, 
 	return count, high, nil
 }
 
-type fakeTrillianConn struct {
-	mc trillianMap
-	lc trillianLog
+type fakeTrillianFactory struct {
+	tmap trillianMap
+	tlog trillianLog
 }
 
-func (t *fakeTrillianConn) MapClient(_ context.Context, _ string) (trillianMap, error) {
-	return t.mc, nil
+func (t *fakeTrillianFactory) MapClient(_ context.Context, _ string) (trillianMap, error) {
+	return t.tmap, nil
 }
 
-func (t *fakeTrillianConn) LogClient(_ context.Context, _ string) (trillianLog, error) {
-	return t.lc, nil
+func (t *fakeTrillianFactory) LogClient(_ context.Context, _ string) (trillianLog, error) {
+	return t.tlog, nil
 }
 
 type fakeMap struct {
@@ -111,8 +111,8 @@ func TestDefineRevisions(t *testing.T) {
 			0: make([]mutator.LogMessage, 10),
 			1: make([]mutator.LogMessage, 20),
 		},
-		trillian: &fakeTrillianConn{
-			mc: &fakeMap{latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)}},
+		trillian: &fakeTrillianFactory{
+			tmap: &fakeMap{latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)}},
 		},
 	}
 

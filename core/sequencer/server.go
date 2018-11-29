@@ -166,11 +166,11 @@ func (s *Server) DefineRevisions(ctx context.Context, dirID string, minBatch, ma
 	}
 
 	// Collect a list of unapplied revisions.
-	outstanding := []int64{}
 	highestRev, err := s.batcher.HighestRev(ctx, dirID)
 	if err != nil {
 		return nil, err
 	}
+	outstanding := []int64{}
 	for rev := int64(latestMapRoot.Revision) + 1; rev <= highestRev; rev++ {
 		outstanding = append(outstanding, rev)
 	}
