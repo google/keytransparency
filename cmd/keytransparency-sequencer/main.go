@@ -18,7 +18,10 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"fmt"
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -27,6 +30,8 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring/prometheus"
+	"github.com/google/trillian/util/election2"
+	"github.com/google/trillian/util/election2/etcd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -39,6 +44,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	"github.com/google/keytransparency/core/sequencer/tracker"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	_ "github.com/google/trillian/crypto/keys/der/proto"
@@ -51,6 +57,10 @@ var (
 	certFile    = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 	listenAddr  = flag.String("addr", ":8080", "The ip:port to serve on")
 	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+
+	forceMaster = flag.Bool("force_master", false, "If true, assume master for all logs")
+	etcdServers = flag.String("etcd_servers", "", "A comma-separated list of etcd servers; no etcd registration if empty")
+	lockDir     = flag.String("lock_file_path", "/migrillian/master", "etcd lock file directory path")
 
 	serverDBPath = flag.String("db", "db", "Database connection string")
 
@@ -71,6 +81,34 @@ func openDB() *sql.DB {
 		glog.Exitf("db.Ping(): %v", err)
 	}
 	return db
+}
+
+// getElectionFactory returns an election factory based on flags, and a
+// function which releases the resources associated with the factory.
+func getElectionFactory() (election2.Factory, func()) {
+	if *forceMaster {
+		glog.Warning("Acting as master for all domains")
+		return election2.NoopFactory{}, func() {}
+	}
+	if len(*etcdServers) == 0 {
+		glog.Exit("Either --force_master or --etcd_servers must be supplied")
+	}
+
+	cli, err := etcd.NewClient(strings.Split(*etcdServers, ","), 5*time.Second)
+	if err != nil || cli == nil {
+		glog.Exitf("Failed to create etcd client: %v", err)
+	}
+	closeFn := func() {
+		if err := cli.Close(); err != nil {
+			glog.Warningf("etcd client Close(): %v", err)
+		}
+	}
+
+	hostname, _ := os.Hostname()
+	instanceID := fmt.Sprintf("%s.%d", hostname, os.Getpid())
+	factory := etcd.NewFactory(instanceID, cli, *lockDir)
+
+	return factory, closeFn
 }
 
 func main() {
@@ -155,12 +193,21 @@ func main() {
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
 
+	cli, err := etcd.NewClient(strings.Split(*etcdServers, ","), 5*time.Second)
+	if err != nil || cli == nil {
+		glog.Exitf("Failed to create etcd client: %v", err)
+	}
+
 	// Periodically run batch.
+	electionFactory, closeFactory := getElectionFactory()
+	defer closeFactory()
 	signer := sequencer.New(
 		spb.NewKeyTransparencySequencerClient(conn),
 		trillian.NewTrillianAdminClient(mconn),
 		directoryStorage,
-		int32(*batchSize))
+		int32(*batchSize),
+		tracker.New(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
+	)
 
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
