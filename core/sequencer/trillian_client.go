@@ -37,7 +37,7 @@ type trillianFactory interface {
 // trillianMap communicates with the Trilian map and verifies the responses.
 type trillianMap interface {
 	GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error)
-	SetLeaves(ctx context.Context, leaves []*tpb.MapLeaf, meatadata []byte) (*types.MapRootV1, error)
+	SetLeaves(ctx context.Context, leaves []*tpb.MapLeaf, meta []byte) (*types.MapRootV1, error)
 	GetAndVerifyMapRootByRevision(ctx context.Context, rev int64) (*tpb.SignedMapRoot, *types.MapRootV1, error)
 	GetAndVerifyMapLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error)
 }

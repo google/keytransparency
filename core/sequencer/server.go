@@ -152,6 +152,8 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 			DirectoryId: in.DirectoryId,
 			Revision:    rev,
 		}); err != nil {
+			// Log the error and continue to publish any revsisions this run may have completed.
+			// This revision will be retried on the next execution of RunBatch.
 			glog.Errorf("ApplyRevision(dir: %v, rev: %v): %v", in.DirectoryId, rev, err)
 			break
 		}
@@ -194,7 +196,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 		return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
 	}
 
-	// Query metadatab about outstanding log items.
+	// Query metadata about outstanding log items.
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err

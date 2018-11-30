@@ -96,28 +96,28 @@ message ApplyRevisionResponse {
   int64 map_leaves = 4;
 }
 
-// PublishRevisionRequest copies all SignedMapHeads into the Log of SignedMapHeads.
+// PublishRevisionsRequest copies all available SignedMapRoots into the Log of SignedMapRoots.
 message PublishRevisionsRequest {
   string directory_id = 1;
 }
 
-// PublishRevisions
+// PublishRevisionsResponse contains metrics about the publishing operation.
 message PublishRevisionsResponse {
-  // revisions published.
+  // revisions published to the log of signed map roots.
   repeated int64 revisions = 1;
 }
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
-  // RunBatch reads outstanding mutations and calls CreateRevision.
+  // RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
   rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty);
   // DefineRevision examines the outstanding items in the queue and optionally
-  // commits to one or more revisions.
+  // writes the metadata for one or more revisions to the metadata database.
   rpc DefineRevisions(DefineRevisionsRequest) returns (DefineRevisionsResponse);
   // ApplyRevision applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
   rpc ApplyRevision(ApplyRevisionRequest) returns (ApplyRevisionResponse);
-  // PublishRevision copies the MapRoots of all known map revisions into the Log
+  // PublishRevisions copies the MapRoots of all known map revisions into the Log
   // of MapRoots.
   rpc PublishRevisions(PublishRevisionsRequest) returns (PublishRevisionsResponse);
 }

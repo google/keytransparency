@@ -418,7 +418,7 @@ func (m *ApplyRevisionResponse) GetMapLeaves() int64 {
 	return 0
 }
 
-// PublishRevisionRequest copies all SignedMapHeads into the Log of SignedMapHeads.
+// PublishRevisionsRequest copies all available SignedMapRoots into the Log of SignedMapRoots.
 type PublishRevisionsRequest struct {
 	DirectoryId          string   `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -458,9 +458,9 @@ func (m *PublishRevisionsRequest) GetDirectoryId() string {
 	return ""
 }
 
-// PublishRevisions
+// PublishRevisionsResponse contains metrics about the publishing operation.
 type PublishRevisionsResponse struct {
-	// revisions published.
+	// revisions published to the log of signed map roots.
 	Revisions            []int64  `protobuf:"varint,1,rep,packed,name=revisions,proto3" json:"revisions,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -523,15 +523,15 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type KeyTransparencySequencerClient interface {
-	// RunBatch reads outstanding mutations and calls CreateRevision.
+	// RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
 	RunBatch(ctx context.Context, in *RunBatchRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	// DefineRevision examines the outstanding items in the queue and optionally
-	// commits to one or more revisions.
+	// writes the metadata for one or more revisions to the metadata database.
 	DefineRevisions(ctx context.Context, in *DefineRevisionsRequest, opts ...grpc.CallOption) (*DefineRevisionsResponse, error)
 	// ApplyRevision applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
 	ApplyRevision(ctx context.Context, in *ApplyRevisionRequest, opts ...grpc.CallOption) (*ApplyRevisionResponse, error)
-	// PublishRevision copies the MapRoots of all known map revisions into the Log
+	// PublishRevisions copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
 	PublishRevisions(ctx context.Context, in *PublishRevisionsRequest, opts ...grpc.CallOption) (*PublishRevisionsResponse, error)
 }
@@ -582,15 +582,15 @@ func (c *keyTransparencySequencerClient) PublishRevisions(ctx context.Context, i
 
 // KeyTransparencySequencerServer is the server API for KeyTransparencySequencer service.
 type KeyTransparencySequencerServer interface {
-	// RunBatch reads outstanding mutations and calls CreateRevision.
+	// RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
 	RunBatch(context.Context, *RunBatchRequest) (*empty.Empty, error)
 	// DefineRevision examines the outstanding items in the queue and optionally
-	// commits to one or more revisions.
+	// writes the metadata for one or more revisions to the metadata database.
 	DefineRevisions(context.Context, *DefineRevisionsRequest) (*DefineRevisionsResponse, error)
 	// ApplyRevision applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
 	ApplyRevision(context.Context, *ApplyRevisionRequest) (*ApplyRevisionResponse, error)
-	// PublishRevision copies the MapRoots of all known map revisions into the Log
+	// PublishRevisions copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
 	PublishRevisions(context.Context, *PublishRevisionsRequest) (*PublishRevisionsResponse, error)
 }
