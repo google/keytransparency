@@ -23,6 +23,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/sequencer/tracker"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -34,6 +35,7 @@ type Sequencer struct {
 	mapAdmin        tpb.TrillianAdminClient
 	batchSize       int32
 	sequencerClient spb.KeyTransparencySequencerClient
+	tracker         *tracker.Tracker
 }
 
 // New creates a new instance of the signer.
@@ -42,12 +44,14 @@ func New(
 	mapAdmin tpb.TrillianAdminClient,
 	directories directory.Storage,
 	batchSize int32,
+	tracker *tracker.Tracker,
 ) *Sequencer {
 	return &Sequencer{
 		sequencerClient: sequencerClient,
 		directories:     directories,
 		mapAdmin:        mapAdmin,
 		batchSize:       batchSize,
+		tracker:         tracker,
 	}
 }
 
@@ -72,6 +76,11 @@ func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx co
 	}
 }
 
+// TrackMasterships monitors resources for mastership.
+func (s *Sequencer) TrackMasterships(ctx context.Context) {
+	s.tracker.Run(ctx)
+}
+
 // RunBatchForAllDirectories scans the directories table for new directories and creates new receivers for
 // directories that the sequencer is not currently receiving for.
 func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
@@ -79,17 +88,26 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("admin.List(): %v", err)
 	}
-	// TODO(#565): Implement per-directory leader election here.
 	for _, d := range directories {
 		knownDirectories.Set(1, d.DirectoryID)
+		s.tracker.AddResource(d.DirectoryID)
+	}
+
+	masterships, err := s.tracker.Masterships(ctx)
+	if err != nil {
+		return err
+	}
+
+	for dirID, whileMaster := range masterships {
 		req := &spb.RunBatchRequest{
-			DirectoryId: d.DirectoryID,
+			DirectoryId: dirID,
 			MinBatch:    1,
 			MaxBatch:    s.batchSize,
 		}
-		if _, err := s.sequencerClient.RunBatch(ctx, req); err != nil {
+		if _, err := s.sequencerClient.RunBatch(whileMaster, req); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
