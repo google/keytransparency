@@ -28,6 +28,7 @@ import (
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
+	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
 )
 
@@ -106,6 +107,7 @@ func TestDefineRevisions(t *testing.T) {
 	// Verify that outstanding revisions prevent future revisions from being created.
 	ctx := context.Background()
 	mapRev := int64(2)
+	once.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
 	s := Server{
 		logs: fakeLogs{
 			0: make([]mutator.LogMessage, 10),
