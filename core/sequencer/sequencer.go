@@ -79,6 +79,7 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("admin.List(): %v", err)
 	}
+	// TODO(#565): Implement per-directory leader election here.
 	for _, d := range directories {
 		knownDirectories.Set(1, d.DirectoryID)
 		req := &spb.RunBatchRequest{
