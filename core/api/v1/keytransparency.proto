@@ -172,8 +172,9 @@ message BatchGetUserIndexResponse {
 message BatchGetUserResponse {
   // revision is the most recently published revision.
   Revision revision = 1;
-  // leaves are the leaf entries for the requested users, in the order requested.
-  repeated MapLeaf leaves = 2;
+  // map_leaves_by_user_id is a map from user_id to the map leaf at the most
+  // recently published revision.
+  map<string, MapLeaf> map_leaves_by_user_id = 2;
 }
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
@@ -271,8 +272,9 @@ message BatchListUserRevisionsRequest {
 message BatchMapRevision {
   // map_root contains the map root and its inclusion in the log.
   MapRoot map_root = 1;
-  // map_leaves contains multiple leaves and their inclusion proofs to map_root.
-  repeated MapLeaf map_leaves = 2;
+  // map_leaves_by_user_id contains a mapping from user_id to the map leaf at
+  // this revision.
+  map<string, MapLeaf> map_leaves_by_user_id = 2;
 }
 
 // BatchListUserRevisionsResponse contains multiple map leaves across multiple revisions.

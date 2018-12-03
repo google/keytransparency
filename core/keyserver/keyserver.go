@@ -100,12 +100,16 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Leaves) == 0 {
-		return nil, status.Errorf(codes.Internal, "no leaves returned")
+	if len(resp.MapLeavesByUserId) != 1 {
+		return nil, status.Errorf(codes.Internal, "wrong number of map leaves: %v, want 1", len(resp.MapLeavesByUserId))
+	}
+	leaf, ok := resp.MapLeavesByUserId[in.UserId]
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "wrong leaf returned")
 	}
 	return &pb.GetUserResponse{
 		Revision: resp.Revision,
-		Leaf:     resp.Leaves[0],
+		Leaf:     leaf,
 	}, nil
 }
 
@@ -119,13 +123,16 @@ func (s *Server) getUserByRevision(ctx context.Context, sth *tpb.SignedLogRoot, 
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Leaves) != 1 {
-		return nil, status.Errorf(codes.Internal, "got wrong number of map leaves: %v, want 1", len(resp.Leaves))
-
+	if len(resp.MapLeavesByUserId) != 1 {
+		return nil, status.Errorf(codes.Internal, "wrong number of map leaves: %v, want 1", len(resp.MapLeavesByUserId))
+	}
+	leaf, ok := resp.MapLeavesByUserId[userID]
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "wrong leaf returned")
 	}
 	return &pb.GetUserResponse{
 		Revision: resp.Revision,
-		Leaf:     resp.Leaves[0],
+		Leaf:     leaf,
 	}, nil
 }
 
@@ -138,11 +145,11 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 	}
 
 	indexes := make([][]byte, 0, len(userIDs))
-	_, proofsByIndex, err := s.batchGetUserIndex(ctx, d, userIDs)
+	proofsByUser, usersByIndex, err := s.batchGetUserIndex(ctx, d, userIDs)
 	if err != nil {
 		return nil, err
 	}
-	for index := range proofsByIndex {
+	for index := range usersByIndex {
 		indexes = append(indexes, []byte(index))
 	}
 
@@ -159,7 +166,7 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
 		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
-	leaves := make([]*pb.MapLeaf, 0, len(getResp.MapLeafInclusion))
+	leaves := make(map[string]*pb.MapLeaf)
 	for _, mapLeafInclusion := range getResp.MapLeafInclusion {
 		if mapLeafInclusion.Leaf == nil {
 			return nil, status.Errorf(codes.Internal, "leaf is nil")
@@ -175,7 +182,12 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 				return nil, status.Errorf(codes.Internal, "Cannot read committed value")
 			}
 		}
-		proof, ok := proofsByIndex[string(mapLeafInclusion.Leaf.GetIndex())]
+		user, ok := usersByIndex[string(mapLeafInclusion.Leaf.GetIndex())]
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "Returned index %x that was not requested",
+				mapLeafInclusion.Leaf.GetIndex())
+		}
+		proof, ok := proofsByUser[user]
 		if !ok {
 			return nil, status.Errorf(codes.Internal, "Returned index %x that was not requested",
 				mapLeafInclusion.Leaf.GetIndex())
@@ -184,11 +196,11 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 		mapIncl := mapLeafInclusion
 		mapIncl.Leaf.Index = nil     // Remove index from the returned data to force clients verify the VRFProof.
 		mapIncl.Leaf.ExtraData = nil // Remove extra data as it is a duplicate of Committed.
-		leaves = append(leaves, &pb.MapLeaf{
+		leaves[user] = &pb.MapLeaf{
 			VrfProof:     proof,
 			Committed:    committed,
 			MapInclusion: mapIncl,
-		})
+		}
 	}
 
 	// SignedMapHead to SignedLogRoot inclusion proof.
@@ -206,7 +218,7 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 	}
 
 	return &pb.BatchGetUserResponse{
-		Leaves: leaves,
+		MapLeavesByUserId: leaves,
 		Revision: &pb.Revision{
 			MapRoot: &pb.MapRoot{
 				MapRoot:      getResp.GetMapRoot(),
@@ -275,18 +287,18 @@ func (s *Server) BatchGetUserIndex(ctx context.Context,
 }
 
 func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
-	userIDs []string) (proofsByUser, proofsByIndex map[string][]byte, err error) {
+	userIDs []string) (proofsByUser map[string][]byte, usersByIndex map[string]string, err error) {
 	proofsByUser = make(map[string][]byte)
-	proofsByIndex = make(map[string][]byte)
+	usersByIndex = make(map[string]string)
 	for _, userID := range userIDs {
 		index, proof, err := s.indexFunc(ctx, d, userID)
 		if err != nil {
 			return nil, nil, err
 		}
 		proofsByUser[userID] = proof
-		proofsByIndex[string(index[:])] = proof
+		usersByIndex[string(index[:])] = userID
 	}
-	return proofsByUser, proofsByIndex, nil
+	return proofsByUser, usersByIndex, nil
 }
 
 // ListEntryHistory returns a list of EntryProofs covering a period of time.
