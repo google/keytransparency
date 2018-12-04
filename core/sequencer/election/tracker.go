@@ -78,8 +78,10 @@ func (mt *Tracker) Run(ctx context.Context) {
 		select {
 		case res := <-mt.newResource:
 			if !mt.isWatching(res) {
+				mt.setWatching(res)
 				go func() {
-					if err := mt.watchResource(ctx, res, mt.maxHold); err != nil {
+					defer mt.setNotWatching(res)
+					if err := mt.watchResource(ctx, res); err != nil {
 						glog.Errorf("watchResource(%v): %v", res, err)
 					}
 				}()
@@ -111,9 +113,10 @@ func (mt *Tracker) watchResource(ctx context.Context, res string) error {
 	return nil
 }
 
-// watchOnce waits until it aquires mastership, marks itself as master for res, and then waits until
-// either resign duration has passed or it loses mastership, at which point it marks itself as not master for res.
-// Returns an error if there were probelms with aquiring mastership or resigning.
+// watchOnce waits until it acquires mastership, marks itself as master for res,
+// and then waits until either resign duration has passed or it loses
+// mastership, at which point it marks itself as not master for res.  Returns
+// an error if there were problems with acquiring mastership or resigning.
 func (mt *Tracker) watchOnce(ctx context.Context, e election2.Election, res string) error {
 	mt.setNotMaster(res)
 	if err := e.Await(ctx); err != nil {
