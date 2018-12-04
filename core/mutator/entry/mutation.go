@@ -34,8 +34,8 @@ var nilHash = sha256.Sum256(nil)
 
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
-	DirectoryID, UserID string
-	data, nonce         []byte
+	UserID      string
+	data, nonce []byte
 
 	prevEntry       *pb.Entry
 	prevSignedEntry *pb.SignedEntry
@@ -50,8 +50,7 @@ type Mutation struct {
 // - Finalize the changes and create the mutation with SerializeAndSign.
 func NewMutation(index []byte, directoryID, userID string) *Mutation {
 	return &Mutation{
-		DirectoryID: directoryID,
-		UserID:      userID,
+		UserID: userID,
 		entry: &pb.Entry{
 			Index:    index,
 			Previous: nilHash[:],
@@ -108,7 +107,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEntryRequest, error) {
+func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.EntryUpdate, error) {
 	mutation, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -129,15 +128,12 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.UpdateEnt
 		return nil, fmt.Errorf("presign mutation check: %v", err)
 	}
 
-	return &pb.UpdateEntryRequest{
-		DirectoryId: m.DirectoryID,
-		EntryUpdate: &pb.EntryUpdate{
-			UserId:   m.UserID,
-			Mutation: mutation,
-			Committed: &pb.Committed{
-				Key:  m.nonce,
-				Data: m.data,
-			},
+	return &pb.EntryUpdate{
+		UserId:   m.UserID,
+		Mutation: mutation,
+		Committed: &pb.Committed{
+			Key:  m.nonce,
+			Data: m.data,
 		},
 	}, nil
 }

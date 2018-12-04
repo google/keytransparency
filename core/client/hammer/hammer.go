@@ -223,8 +223,6 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 
 	mutations := make([]*entry.Mutation, 0, len(users))
 	for _, u := range users {
-		callOptions := w.callOptions(u.UserId)
-
 		cctx, cancel := context.WithTimeout(ctx, w.timeout)
 		m, err := w.client.CreateMutation(cctx, u)
 		cancel()
@@ -232,12 +230,13 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 			return err
 		}
 		mutations = append(mutations, m)
-		cctx, cancel = context.WithTimeout(ctx, w.timeout)
-		err = w.client.QueueMutation(cctx, m, w.signers, callOptions...)
-		cancel()
-		if err != nil {
-			return err
-		}
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, w.timeout)
+	err := w.client.BatchQueueUserUpdate(cctx, mutations, w.signers)
+	cancel()
+	if err != nil {
+		return err
 	}
 
 	for _, m := range mutations {
