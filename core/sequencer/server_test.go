@@ -252,7 +252,7 @@ func logMsg(t *testing.T, id int64, signer *tink.KeysetHandle) *ktpb.EntryUpdate
 	}
 
 	return &ktpb.EntryUpdate{
-		Mutation:  update.EntryUpdate.Mutation,
+		Mutation:  update.Mutation,
 		Committed: &ktpb.Committed{},
 	}
 }
