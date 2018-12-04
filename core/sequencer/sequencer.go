@@ -23,7 +23,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/google/keytransparency/core/directory"
-	"github.com/google/keytransparency/core/sequencer/tracker"
+	"github.com/google/keytransparency/core/sequencer/election"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -35,7 +35,7 @@ type Sequencer struct {
 	mapAdmin        tpb.TrillianAdminClient
 	batchSize       int32
 	sequencerClient spb.KeyTransparencySequencerClient
-	tracker         *tracker.Tracker
+	tracker         *election.Tracker
 }
 
 // New creates a new instance of the signer.
@@ -44,7 +44,7 @@ func New(
 	mapAdmin tpb.TrillianAdminClient,
 	directories directory.Storage,
 	batchSize int32,
-	tracker *tracker.Tracker,
+	tracker *election.Tracker,
 ) *Sequencer {
 	return &Sequencer{
 		sequencerClient: sequencerClient,

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tracker
+package election
 
 import (
 	"context"
@@ -49,9 +49,9 @@ type Tracker struct {
 	newResource chan string
 }
 
-// New returns a new mastership tracker
-func New(factory election2.Factory, maxHold time.Duration, metricsFactory monitoring.MetricFactory) *Tracker {
-	once.Do(func() { createMetrics(metricsFactory) })
+// NewTracker returns a new mastership tracker.
+func NewTracker(factory election2.Factory, maxHold time.Duration, metricFactory monitoring.MetricFactory) *Tracker {
+	once.Do(func() { createMetrics(metricFactory) })
 	return &Tracker{
 		factory:     factory,
 		maxHold:     maxHold,
@@ -73,20 +73,24 @@ func (mt *Tracker) Run(ctx context.Context) {
 		select {
 		case res := <-mt.newResource:
 			if !mt.isWatching(res) {
-				go mt.watchResource(ctx, res, mt.maxHold)
+				go func() {
+					if err := mt.watchResource(ctx, res, mt.maxHold); err != nil {
+						glog.Errorf("watchResource(%v): %v", res, err)
+					}
+				}()
 			}
 		case <-ctx.Done():
+			glog.Infof("election: Run() exiting due to expired context: %v", ctx.Err())
 			return
 		}
 	}
 }
 
-// watchResource is a blocking method that runs elections for res and updates mt.masterfor.
-func (mt *Tracker) watchResource(ctx context.Context, res string, resign time.Duration) {
+// watchResource is a blocking method that runs elections for res and updates mt.master.
+func (mt *Tracker) watchResource(ctx context.Context, res string, resign time.Duration) error {
 	e, err := mt.factory.NewElection(ctx, res)
 	if err != nil {
-		glog.Errorf("failed to create election for %v: %v", res, err)
-		return
+		return err
 	}
 	mt.setWatching(res)
 	defer func(ctx context.Context) {
@@ -130,8 +134,7 @@ func (mt *Tracker) watchResource(ctx context.Context, res string, resign time.Du
 			}
 			return nil
 		}(); err != nil {
-			glog.Errorf("watchResource(%v): %v", res, err)
-			return
+			return err
 		}
 	}
 }
@@ -168,7 +171,7 @@ func (mt *Tracker) setNotMaster(res string) {
 	delete(mt.master, res)
 }
 
-// Masterships returns a map of resources to mastership contexts
+// Masterships returns a map of resources to mastership contexts.
 func (mt *Tracker) Masterships(ctx context.Context) (map[string]context.Context, error) {
 	mt.masterMu.RLock()
 	defer mt.masterMu.RUnlock()

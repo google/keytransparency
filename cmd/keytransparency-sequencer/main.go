@@ -43,8 +43,8 @@ import (
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	"github.com/google/keytransparency/core/sequencer/election"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	"github.com/google/keytransparency/core/sequencer/tracker"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	_ "github.com/google/trillian/crypto/keys/der/proto"
@@ -60,7 +60,7 @@ var (
 
 	forceMaster = flag.Bool("force_master", false, "If true, assume master for all logs")
 	etcdServers = flag.String("etcd_servers", "", "A comma-separated list of etcd servers; no etcd registration if empty")
-	lockDir     = flag.String("lock_file_path", "/migrillian/master", "etcd lock file directory path")
+	lockDir     = flag.String("lock_file_path", "/keytransparency/master", "etcd lock file directory path")
 
 	serverDBPath = flag.String("db", "db", "Database connection string")
 
@@ -87,7 +87,7 @@ func openDB() *sql.DB {
 // function which releases the resources associated with the factory.
 func getElectionFactory() (election2.Factory, func()) {
 	if *forceMaster {
-		glog.Warning("Acting as master for all domains")
+		glog.Warning("Acting as master for all directories")
 		return election2.NoopFactory{}, func() {}
 	}
 	if len(*etcdServers) == 0 {
@@ -206,7 +206,7 @@ func main() {
 		trillian.NewTrillianAdminClient(mconn),
 		directoryStorage,
 		int32(*batchSize),
-		tracker.New(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
+		election.NewTracker(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
 	)
 
 	cctx, cancel := context.WithCancel(context.Background())
