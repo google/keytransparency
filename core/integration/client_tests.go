@@ -167,7 +167,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			if err != nil {
 				t.Errorf("VerifiedGetUser(%v): %v, want nil", tc.userID, err)
 			}
-			if got, want := e.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
+			if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
 				t.Errorf("VerifiedGetUser(%v): %s, want %s", tc.userID, got, want)
 			}
 
