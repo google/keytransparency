@@ -129,7 +129,7 @@ func (v *RealVerifier) VerifyMapLeaf(directoryID, userID string,
 
 	if leafValue != nil && !bytes.Equal(index, e.Index) {
 		Vlog.Printf("✗ VRF verification failed.")
-		return fmt.Errorf("Entry.Index: %x, want %x", e.Index, index)
+		return fmt.Errorf("entry has wrong index: %x, want %x", e.Index, index)
 	}
 	Vlog.Printf("✓ VRF verified.")
 
@@ -141,9 +141,9 @@ func (v *RealVerifier) VerifyMapLeaf(directoryID, userID string,
 
 	if err := v.VerifyMapLeafInclusionHash(mapRoot.RootHash, leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
+		return fmt.Errorf("map inclusion proof failed: %v", err)
 	}
-	Vlog.Printf("✓ Sparse tree proof verified.")
+	Vlog.Printf("✓ map inclusion proof verified.")
 	return nil
 }
 

@@ -221,7 +221,7 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, w.timeout)
-	mutations, err := w.client.BatchCreateMutation(ctx, users)
+	mutations, err := w.client.BatchCreateMutation(cctx, users)
 	cancel()
 	if err != nil {
 		return err
