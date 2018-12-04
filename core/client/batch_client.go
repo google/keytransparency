@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
@@ -27,9 +26,10 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// BatchCreate inserts mutations for new users that do not currently have entries.
+// BatchCreateUser inserts mutations for new users that do not currently have entries.
 // Calling BatchCreate for a user that already exists will produce no change.
-func (c *Client) BatchCreate(ctx context.Context, users []*tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
+func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
+	signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
 	// 1. Fetch user indexes
 	userIDs := make([]string, 0, len(users))
 	for _, u := range users {
@@ -58,12 +58,13 @@ func (c *Client) BatchCreate(ctx context.Context, users []*tpb.User, signers []*
 }
 
 // BatchQueueUserUpdate signs an entry.Mutation and sends it to the server.
-func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mutation, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
+func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mutation,
+	signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
 	updates := make([]*pb.EntryUpdate, 0, len(mutations))
 	for _, m := range mutations {
 		update, err := m.SerializeAndSign(signers)
 		if err != nil {
-			return fmt.Errorf("SerializeAndSign(): %v", err)
+			return err
 		}
 		updates = append(updates, update)
 	}
