@@ -38,11 +38,16 @@ func createMetrics(mf monitoring.MetricFactory) {
 		resourceLabel)
 }
 
+type mastership struct {
+	e        election2.Election
+	acquired time.Time
+}
+
 // Tracker tracks mastership of a collection of resources.
 type Tracker struct {
 	factory     election2.Factory
 	maxHold     time.Duration
-	master      map[string]election2.Election
+	master      map[string]mastership
 	masterMu    sync.RWMutex
 	watching    map[string]bool
 	watchingMu  sync.RWMutex
@@ -55,7 +60,7 @@ func NewTracker(factory election2.Factory, maxHold time.Duration, metricFactory 
 	return &Tracker{
 		factory:     factory,
 		maxHold:     maxHold,
-		master:      make(map[string]election2.Election),
+		master:      make(map[string]mastership),
 		watching:    make(map[string]bool),
 		newResource: make(chan string),
 	}
@@ -87,56 +92,50 @@ func (mt *Tracker) Run(ctx context.Context) {
 }
 
 // watchResource is a blocking method that runs elections for res and updates mt.master.
-func (mt *Tracker) watchResource(ctx context.Context, res string, resign time.Duration) error {
+func (mt *Tracker) watchResource(ctx context.Context, res string) error {
 	e, err := mt.factory.NewElection(ctx, res)
 	if err != nil {
 		return err
 	}
-	mt.setWatching(res)
 	defer func(ctx context.Context) {
 		if err := e.Close(ctx); err != nil {
 			glog.Warningf("election.Close(%v): %v", res, err)
 		}
-		mt.setNotWatching(res)
 	}(ctx)
 
-	for {
-		if err := func() error {
-			mt.setNotMaster(res)
-			if err := e.Await(ctx); err != nil {
-				return err
-			}
-			glog.Infof("Obtained mastership for %v", res)
-
-			mt.setMaster(res, e)
-			defer mt.setNotMaster(res)
-
-			mastershipCtx, err := e.WithMastership(ctx)
-			if err != nil {
-				return err
-			}
-
-			select {
-			case <-time.After(resign):
-				glog.Infof("Resigning from %v after %v", res, resign)
-				if err := e.Resign(ctx); err != nil {
-					glog.Errorf("Resign(%v): %v", res, err)
-				}
-			case <-mastershipCtx.Done():
-				glog.Warningf("No longer master for %v", res)
-				// If the master ctx is canceled, exit for loop.
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-				if err := e.Resign(ctx); err != nil {
-					glog.Errorf("Resign(%v): %v", res, err)
-				}
-			}
-			return nil
-		}(); err != nil {
+	for err := error(nil); err == nil; err = ctx.Err() {
+		if err := mt.watchOnce(ctx, e, res); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// watchOnce waits until it aquires mastership, marks itself as master for res, and then waits until
+// either resign duration has passed or it loses mastership, at which point it marks itself as not master for res.
+// Returns an error if there were probelms with aquiring mastership or resigning.
+func (mt *Tracker) watchOnce(ctx context.Context, e election2.Election, res string) error {
+	mt.setNotMaster(res)
+	if err := e.Await(ctx); err != nil {
+		return err
+	}
+	glog.Infof("Obtained mastership for %v", res)
+
+	mt.setMaster(res, mastership{e: e, acquired: time.Now()})
+	defer mt.setNotMaster(res)
+
+	mastershipCtx, err := e.WithMastership(ctx)
+	if err != nil {
+		return err
+	}
+
+	<-mastershipCtx.Done()
+	// We don't know if we got here because we are no longer master or if
+	// the parent context was closed. In either case work being done will
+	// be canceled and we will mark ourselves as not-master until we can
+	// acquire mastership again.
+	glog.Warningf("No longer master for %v", res)
+	return nil
 }
 
 func (mt *Tracker) isWatching(res string) bool {
@@ -157,11 +156,11 @@ func (mt *Tracker) setNotWatching(res string) {
 	delete(mt.watching, res)
 }
 
-func (mt *Tracker) setMaster(res string, e election2.Election) {
+func (mt *Tracker) setMaster(res string, m mastership) {
 	isMaster.Set(1, res)
 	mt.masterMu.Lock()
 	defer mt.masterMu.Unlock()
-	mt.master[res] = e
+	mt.master[res] = m
 }
 
 func (mt *Tracker) setNotMaster(res string) {
@@ -176,8 +175,19 @@ func (mt *Tracker) Masterships(ctx context.Context) (map[string]context.Context,
 	mt.masterMu.RLock()
 	defer mt.masterMu.RUnlock()
 	mastershipCtx := make(map[string]context.Context)
-	for res, e := range mt.master {
-		cctx, err := e.WithMastership(ctx)
+	for res, m := range mt.master {
+		// Resign mastership if we've held it for over maxHold.
+		// Resign before attempting to acquire a mastership lock.
+		// Note that if Materships is not called periodically, we may exceed maxHold.
+		if held := time.Since(m.acquired); held > mt.maxHold {
+			glog.Infof("Resigning from %v after %v", res, held)
+			if err := m.e.Resign(ctx); err != nil {
+				glog.Errorf("Resign failed for resource %v: %v", res, err)
+			}
+			continue
+		}
+
+		cctx, err := m.e.WithMastership(ctx)
 		if err != nil {
 			return nil, err
 		}
