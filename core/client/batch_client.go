@@ -57,7 +57,7 @@ func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
 	return c.BatchQueueUserUpdate(ctx, mutations, signers, opts...)
 }
 
-// BatchQueueUserUpdate signs an entry.Mutation and sends it to the server.
+// BatchQueueUserUpdate signs the mutations and sends them to the server.
 func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mutation,
 	signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
 	updates := make([]*pb.EntryUpdate, 0, len(mutations))
