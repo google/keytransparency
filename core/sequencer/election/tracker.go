@@ -123,13 +123,14 @@ func (mt *Tracker) watchOnce(ctx context.Context, e election2.Election, res stri
 	}
 	glog.Infof("Obtained mastership for %v", res)
 
-	mt.setMaster(res, mastership{e: e, acquired: time.Now()})
-	defer mt.setNotMaster(res)
-
+	// Obtain mastership ctx *before* Masterships runs to avoid racing.
 	mastershipCtx, err := e.WithMastership(ctx)
 	if err != nil {
 		return err
 	}
+
+	mt.setMaster(res, mastership{e: e, acquired: time.Now()})
+	defer mt.setNotMaster(res)
 
 	<-mastershipCtx.Done()
 	// We don't know if we got here because we are no longer master or if
