@@ -98,6 +98,7 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 		return err
 	}
 
+	var lastErr error
 	for dirID, whileMaster := range masterships {
 		req := &spb.RunBatchRequest{
 			DirectoryId: dirID,
@@ -105,9 +106,11 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 			MaxBatch:    s.batchSize,
 		}
 		if _, err := s.sequencerClient.RunBatch(whileMaster, req); err != nil {
+			lastErr = err
+			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
 			return err
 		}
 	}
 
-	return nil
+	return lastErr
 }
