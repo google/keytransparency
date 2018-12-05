@@ -159,6 +159,7 @@ services:
     restart: always
     entrypoint:
       - /go/bin/keytransparency-sequencer
+      - --force_master
       - --db=test:zaphod@tcp(db:3306)/test
       - --addr=0.0.0.0:8080
       - --log-url=log-server:8090
