@@ -93,7 +93,9 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 		s.tracker.AddResource(d.DirectoryID)
 	}
 
-	masterships, err := s.tracker.Masterships(ctx)
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	masterships, err := s.tracker.Masterships(cctx)
 	if err != nil {
 		return err
 	}

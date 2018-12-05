@@ -174,6 +174,7 @@ func (mt *Tracker) setNotMaster(res string) {
 }
 
 // Masterships returns a map of resources to mastership contexts.
+// Callers should cancel ctx when they no longer are actively using mastership.
 func (mt *Tracker) Masterships(ctx context.Context) (map[string]context.Context, error) {
 	mt.masterMu.RLock()
 	defer mt.masterMu.RUnlock()
