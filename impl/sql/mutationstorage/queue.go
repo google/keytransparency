@@ -173,13 +173,13 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 	return count, high, nil
 }
 
-// ReadLog reads all mutations in logID between (low, high].
+// ReadLog reads all mutations in logID between [low, high).
 // ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, LocalID, Mutation FROM Queue
-		WHERE DirectoryID = ? AND LogID = ? AND Time > ? AND Time <= ?
+		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
 		ORDER BY Time, LocalID ASC
 		LIMIT ?;`,
 		directoryID, logID, low, high, batchSize)
