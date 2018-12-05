@@ -169,9 +169,12 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		if err != nil {
 			return fmt.Errorf("gen-test-vectors: GetUser(): %v", err)
 		}
-		_, newslr, err := env.Client.VerifyGetUserResponse(ctx, env.Directory.DirectoryId, tc.userID, *slr, e)
+		newslr, smr, err := env.Client.VerifyRevision(e.Revision, *slr)
 		if err != nil {
-			return fmt.Errorf("gen-test-vectors: VerifyGetUserResponse(): %v", err)
+			return fmt.Errorf("gen-test-vectors: VerifyRevision(): %v", err)
+		}
+		if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, tc.userID, e.Leaf, smr); err != nil {
+			return fmt.Errorf("gen-test-vectors: VerifyMapLeaf(): %v", err)
 		}
 
 		if got, want := e.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {

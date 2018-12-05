@@ -73,9 +73,8 @@ var (
 type Verifier interface {
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
-	// VerifyGetUserResponse verifies everything about a GetUserResponse.
-	VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
-		in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error)
+	// VerifyMapLeaf verifies everything about a MapLeaf.
+	VerifyMapLeaf(directoryID, userID string, in *pb.MapLeaf, smr *types.MapRootV1) error
 	// VerifyRevision verifies that revision is correctly signed and included in the append only log.
 	// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
 	VerifyRevision(revision *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
@@ -151,7 +150,7 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 func (c *Client) GetUser(ctx context.Context, userID string, opts ...grpc.CallOption) (
 	[]byte, *types.LogRootV1, error) {
 	e, slr, err := c.VerifiedGetUser(ctx, userID)
-	return e.GetLeaf().GetCommitted().GetData(), slr, err
+	return e.GetCommitted().GetData(), slr, err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
@@ -271,10 +270,10 @@ func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutati
 	if err != nil {
 		return nil, err
 	}
-	oldLeaf := e.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
+	oldLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetLeaf().GetVrfProof(), u.DirectoryId, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), u.DirectoryId, u.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +337,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 	Vlog.Printf("Got current entry...")
 
 	// Verify.
-	cntLeaf := e.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
+	cntLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	cntValue, err := entry.FromLeafValue(cntLeaf)
 	if err != nil {
 		return m, err

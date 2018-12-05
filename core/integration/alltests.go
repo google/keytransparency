@@ -55,6 +55,8 @@ var AllTests = []NamedTestFn{
 	// Client Tests
 	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate},
 	{Name: "TestListHistory", Fn: TestListHistory},
+	{Name: "TestBatchUpdate", Fn: TestBatchUpdate},
+	{Name: "TestBatchCreate", Fn: TestBatchCreate},
 	// Monitor Tests
 	{Name: "TestMonitor", Fn: TestMonitor},
 }

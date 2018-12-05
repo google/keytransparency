@@ -26,7 +26,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/client"
-	"github.com/google/keytransparency/core/mutator/entry"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -221,19 +220,15 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 		})
 	}
 
-	mutations := make([]*entry.Mutation, 0, len(users))
-	for _, u := range users {
-		cctx, cancel := context.WithTimeout(ctx, w.timeout)
-		m, err := w.client.CreateMutation(cctx, u)
-		cancel()
-		if err != nil {
-			return err
-		}
-		mutations = append(mutations, m)
+	cctx, cancel := context.WithTimeout(ctx, w.timeout)
+	mutations, err := w.client.BatchCreateMutation(cctx, users)
+	cancel()
+	if err != nil {
+		return err
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, w.timeout)
-	err := w.client.BatchQueueUserUpdate(cctx, mutations, w.signers)
+	cctx, cancel = context.WithTimeout(ctx, w.timeout)
+	err = w.client.BatchQueueUserUpdate(cctx, mutations, w.signers)
 	cancel()
 	if err != nil {
 		return err

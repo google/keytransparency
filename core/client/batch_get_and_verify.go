@@ -40,3 +40,32 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 	}
 	return indexByUser, nil
 }
+
+// BatchVerifiedGetUser returns verified leaf values by userID.
+func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (map[string]*pb.MapLeaf, error) {
+	c.trustedLock.Lock()
+	defer c.trustedLock.Unlock()
+	resp, err := c.cli.BatchGetUser(ctx, &pb.BatchGetUserRequest{
+		DirectoryId:          c.directoryID,
+		UserIds:              userIDs,
+		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
+	if err != nil {
+		return nil, err
+	}
+	c.updateTrusted(slr)
+
+	leavesByUserID := make(map[string]*pb.MapLeaf)
+	for userID, leaf := range resp.MapLeavesByUserId {
+		if err := c.VerifyMapLeaf(c.directoryID, userID, leaf, smr); err != nil {
+			return nil, err
+		}
+		leavesByUserID[userID] = leaf
+	}
+	return leavesByUserID, nil
+}
