@@ -98,11 +98,11 @@ func (mt *Tracker) watchResource(ctx context.Context, res string) error {
 	if err != nil {
 		return err
 	}
-	defer func(ctx context.Context) {
+	defer func() {
 		if err := e.Close(ctx); err != nil {
 			glog.Warningf("election.Close(%v): %v", res, err)
 		}
-	}(ctx)
+	}()
 
 	for err := error(nil); err == nil; err = ctx.Err() {
 		if err := mt.watchOnce(ctx, e, res); err != nil {
@@ -174,6 +174,7 @@ func (mt *Tracker) setNotMaster(res string) {
 
 // Masterships returns a map of resources to mastership contexts.
 // Callers should cancel ctx when they no longer are actively using mastership.
+// If Masterships is not called periodically, we may retain masterships for longer than maxHold.
 func (mt *Tracker) Masterships(ctx context.Context) (map[string]context.Context, error) {
 	mt.masterMu.RLock()
 	defer mt.masterMu.RUnlock()
@@ -181,7 +182,6 @@ func (mt *Tracker) Masterships(ctx context.Context) (map[string]context.Context,
 	for res, m := range mt.master {
 		// Resign mastership if we've held it for over maxHold.
 		// Resign before attempting to acquire a mastership lock.
-		// Note that if Materships is not called periodically, we may exceed maxHold.
 		if held := time.Since(m.acquired); held > mt.maxHold {
 			glog.Infof("Resigning from %v after %v", res, held)
 			if err := m.e.Resign(ctx); err != nil {

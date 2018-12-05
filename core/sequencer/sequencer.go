@@ -110,7 +110,6 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 		if _, err := s.sequencerClient.RunBatch(whileMaster, req); err != nil {
 			lastErr = err
 			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
-			return err
 		}
 	}
 
