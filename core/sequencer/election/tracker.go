@@ -77,8 +77,7 @@ func (mt *Tracker) Run(ctx context.Context) {
 	for {
 		select {
 		case res := <-mt.newResource:
-			if !mt.isWatching(res) {
-				mt.setWatching(res)
+			if mt.setWatching(res) {
 				go func() {
 					defer mt.setNotWatching(res)
 					if err := mt.watchResource(ctx, res); err != nil {
@@ -141,16 +140,16 @@ func (mt *Tracker) watchOnce(ctx context.Context, e election2.Election, res stri
 	return nil
 }
 
-func (mt *Tracker) isWatching(res string) bool {
-	mt.watchingMu.RLock()
-	defer mt.watchingMu.RUnlock()
-	return mt.watching[res]
-}
-
-func (mt *Tracker) setWatching(res string) {
+// setWatching sets mt.watching[res] to true.
+// Returns true if it set watching to true.
+func (mt *Tracker) setWatching(res string) bool {
 	mt.watchingMu.Lock()
 	defer mt.watchingMu.Unlock()
-	mt.watching[res] = true
+	if !mt.watching[res] {
+		mt.watching[res] = true
+		return true
+	}
+	return false
 }
 
 func (mt *Tracker) setNotWatching(res string) {
