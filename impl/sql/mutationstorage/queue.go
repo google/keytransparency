@@ -152,7 +152,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	return tx.Commit()
 }
 
-// HighWatermark returns the highest watermark in logID that is less than or
+// HighWatermark returns the highest watermark +1 in logID that is less than or
 // equal to batchSize items greater than start.
 func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID,
 	start int64, batchSize int32) (int32, int64, error) {
@@ -162,15 +162,15 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 		`SELECT COUNT(*), COALESCE(MAX(T1.Time), ?) FROM 
 		(
 			SELECT Q.Time FROM Queue as Q
-			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time > ?
+			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time >= ?
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
-		start, directoryID, logID, start, batchSize).
+		start-1, directoryID, logID, start, batchSize).
 		Scan(&count, &high); err != nil {
 		return 0, 0, err
 	}
-	return count, high, nil
+	return count, high + 1, nil
 }
 
 // ReadLog reads all mutations in logID between [low, high).
