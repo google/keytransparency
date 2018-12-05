@@ -63,22 +63,107 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-// TestEmptyGetAndUpdate verifies set/get semantics.
-func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
-	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
-		defer ticker.Stop()
-		sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
-			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-				DirectoryId: env.Directory.DirectoryId,
-				MinBatch:    1,
-				MaxBatch:    10,
-			}); err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
-				t.Errorf("RunBatch(): %v", err)
+func runSequencer(ctx context.Context, t *testing.T, dirID string, env *Env) {
+	t.Helper()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
+		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+			DirectoryId: dirID,
+			MinBatch:    1,
+			MaxBatch:    10,
+		}); err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
+			t.Errorf("RunBatch(): %v", err)
+		}
+	})
+}
+
+func genUserIDs(count int) []string {
+	userIDs := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		userIDs = append(userIDs, fmt.Sprintf("user %v", i))
+	}
+	return userIDs
+}
+
+// TestBatchCreate verifies that the batch functions are working correctly.
+func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) {
+	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+
+	for _, tc := range []struct {
+		desc    string
+		userIDs []string
+	}{
+		{desc: "zero", userIDs: nil},
+		{desc: "one", userIDs: []string{"test"}},
+		{desc: "100", userIDs: genUserIDs(100)},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Update profiles.
+			users := make([]*tpb.User, 0, len(tc.userIDs))
+			for _, userID := range tc.userIDs {
+				users = append(users, &tpb.User{
+					DirectoryId:    env.Directory.DirectoryId,
+					UserId:         userID,
+					PublicKeyData:  []byte("data!"),
+					AuthorizedKeys: authorizedKeys1,
+				})
+			}
+
+			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
+			defer cancel()
+			if err := env.Client.BatchCreateUser(cctx, users, signers1); err != nil {
+				t.Fatalf("BatchCreateUser(): %v", err)
 			}
 		})
-	}()
+	}
+}
 
+// TestBatchUpdate verifies that the batch functions are working correctly.
+func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) {
+	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+
+	for _, tc := range []struct {
+		desc    string
+		userIDs []string
+	}{
+		{desc: "zero", userIDs: nil},
+		{desc: "one", userIDs: []string{"test"}},
+		{desc: "100", userIDs: genUserIDs(100)},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Update profiles.
+			users := make([]*tpb.User, 0, len(tc.userIDs))
+			for _, userID := range tc.userIDs {
+				users = append(users, &tpb.User{
+					DirectoryId:    env.Directory.DirectoryId,
+					UserId:         userID,
+					PublicKeyData:  []byte("data!"),
+					AuthorizedKeys: authorizedKeys1,
+				})
+			}
+
+			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
+			defer cancel()
+
+			mutations, err := env.Client.BatchCreateMutation(cctx, users)
+			if err != nil {
+				t.Fatalf("BatchCreateMutation(): %v", err)
+			}
+			if err := env.Client.BatchQueueUserUpdate(cctx, mutations, signers1); err != nil {
+				t.Fatalf("BatchQueueUserUpdate(): %v", err)
+			}
+		})
+	}
+}
+
+// TestEmptyGetAndUpdate verifies set/get semantics.
+func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
+	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	signers2 := testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2)
@@ -167,7 +252,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			if err != nil {
 				t.Errorf("VerifiedGetUser(%v): %v, want nil", tc.userID, err)
 			}
-			if got, want := e.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
+			if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
 				t.Errorf("VerifiedGetUser(%v): %s, want %s", tc.userID, got, want)
 			}
 

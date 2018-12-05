@@ -17,6 +17,8 @@ package client
 import (
 	"context"
 
+	"fmt"
+
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 
@@ -72,4 +74,47 @@ func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mu
 	req := &pb.BatchQueueUserUpdateRequest{DirectoryId: c.directoryID, Updates: updates}
 	_, err := c.cli.BatchQueueUserUpdate(ctx, req, opts...)
 	return err
+}
+
+// BatchCreateMutation fetches the current index and value for a list of users and prepares mutations.
+func (c *Client) BatchCreateMutation(ctx context.Context, users []*tpb.User) ([]*entry.Mutation, error) {
+	userIDs := make([]string, 0, len(users))
+	for _, u := range users {
+		userIDs = append(userIDs, u.UserId)
+	}
+
+	leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	mutations := make([]*entry.Mutation, 0, len(users))
+
+	for _, u := range users {
+		leaf, ok := leavesByUserID[u.UserId]
+		if !ok {
+			return nil, fmt.Errorf("no leaf found for %v", u.UserId)
+		}
+		index, err := c.Index(leaf.GetVrfProof(), u.DirectoryId, u.UserId)
+		if err != nil {
+			return nil, err
+		}
+		mutation := entry.NewMutation(index, c.directoryID, u.UserId)
+
+		leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
+		if err := mutation.SetPrevious(leafValue, true); err != nil {
+			return nil, err
+		}
+
+		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
+			return nil, err
+		}
+
+		if len(u.AuthorizedKeys.Key) != 0 {
+			if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
+				return nil, err
+			}
+		}
+		mutations = append(mutations, mutation)
+	}
+	return mutations, nil
 }

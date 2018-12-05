@@ -15,7 +15,7 @@
 package client
 
 import (
-	"context"
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -89,65 +89,62 @@ func (v *RealVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byt
 	return index[:], nil
 }
 
-// VerifyGetUserResponse verifies GetUserResponse:
+// VerifyMapLeaf verifies pb.MapLeaf:
 //  - Verify commitment.
-//  - Verify VRF.
-//  - Verify tree proof.
-//  - Verify signature.
-//  - Verify consistency proof from log.Root().
-//  - Verify inclusion proof.
-// Returns the verified map root and log root.
-func (v *RealVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
-	in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	glog.V(5).Infof("VerifyGetUserResponse(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
+//  - Verify VRF and index.
+//  - Verify map inclusion proof.
+func (v *RealVerifier) VerifyMapLeaf(directoryID, userID string,
+	in *pb.MapLeaf, mapRoot *types.MapRootV1) error {
+	glog.V(5).Infof("VerifyMapLeaf(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
-	signed, err := entry.FromLeafValue(in.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue())
+	leafValue := in.GetMapInclusion().GetLeaf().GetLeafValue()
+	signed, err := entry.FromLeafValue(leafValue)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	var e pb.Entry
 	if err := proto.Unmarshal(signed.GetEntry(), &e); err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// If this is not a proof of absence, verify the connection between
 	// profileData and the commitment in the merkle tree leaf.
-	if in.GetLeaf().GetCommitted() != nil {
+	if in.GetCommitted() != nil {
 		commitment := e.GetCommitment()
-		data := in.GetLeaf().GetCommitted().GetData()
-		nonce := in.GetLeaf().GetCommitted().GetKey()
+		data := in.GetCommitted().GetData()
+		nonce := in.GetCommitted().GetKey()
 		if err := commitments.Verify(userID, commitment, data, nonce); err != nil {
 			Vlog.Printf("✗ Commitment verification failed.")
-			return nil, nil, fmt.Errorf("commitments.Verify(%v, %x, %x, %v): %v", userID, commitment, data, nonce, err)
+			return fmt.Errorf("commitments.Verify(%v, %x, %x, %v): %v", userID, commitment, data, nonce, err)
 		}
 	}
 	Vlog.Printf("✓ Commitment verified.")
 
-	index, err := v.Index(in.GetLeaf().GetVrfProof(), directoryID, userID)
+	index, err := v.Index(in.GetVrfProof(), directoryID, userID)
 	if err != nil {
 		Vlog.Printf("✗ VRF verification failed.")
-		return nil, nil, err
+		return err
+	}
+
+	if leafValue != nil && !bytes.Equal(index, e.Index) {
+		Vlog.Printf("✗ VRF verification failed.")
+		return fmt.Errorf("entry has wrong index: %x, want %x", e.Index, index)
 	}
 	Vlog.Printf("✓ VRF verified.")
 
-	leafProof := in.GetLeaf().GetMapInclusion()
-	if leafProof.GetLeaf() == nil {
-		return nil, nil, ErrNilProof
+	leafProof := in.GetMapInclusion()
+	if leafProof == nil {
+		return ErrNilProof
 	}
 	leafProof.Leaf.Index = index
 
-	if err := v.VerifyMapLeafInclusion(in.GetRevision().GetMapRoot().GetMapRoot(), leafProof); err != nil {
+	if err := v.VerifyMapLeafInclusionHash(mapRoot.RootHash, leafProof); err != nil {
 		Vlog.Printf("✗ Sparse tree proof verification failed.")
-		return nil, nil, fmt.Errorf("VerifyMapLeafInclusion(): %v", err)
+		return fmt.Errorf("map inclusion proof failed: %v", err)
 	}
-	Vlog.Printf("✓ Sparse tree proof verified.")
-
-	logRoot, mapRoot, err := v.VerifyRevision(in.GetRevision(), trusted)
-	if err != nil {
-		return nil, nil, err
-	}
-	return mapRoot, logRoot, nil
+	Vlog.Printf("✓ map inclusion proof verified.")
+	return nil
 }
 
 // VerifyRevision verifies that revision is correctly signed and included in the append only log.
