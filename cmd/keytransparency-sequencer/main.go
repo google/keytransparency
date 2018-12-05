@@ -38,12 +38,12 @@ import (
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/core/sequencer/election"
 	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	"github.com/google/keytransparency/core/sequencer/election"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
@@ -58,7 +58,7 @@ var (
 	listenAddr  = flag.String("addr", ":8080", "The ip:port to serve on")
 	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 
-	forceMaster = flag.Bool("force_master", false, "If true, assume master for all logs")
+	forceMaster = flag.Bool("force_master", false, "If true, assume master for all directories")
 	etcdServers = flag.String("etcd_servers", "", "A comma-separated list of etcd servers; no etcd registration if empty")
 	lockDir     = flag.String("lock_file_path", "/keytransparency/master", "etcd lock file directory path")
 
