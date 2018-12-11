@@ -317,7 +317,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Set new leaf values.
-	mapRoot, err := mapClient.SetLeaves(ctx, newLeaves, metadata)
+	mapRoot, err := mapClient.SetLeavesAtRevision(ctx, in.Revision, newLeaves, metadata)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
