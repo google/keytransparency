@@ -244,8 +244,8 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 	batchSize int32) ([]*mutator.LogMessage, error) {
 	msgs := make([]*mutator.LogMessage, 0)
 	for _, source := range meta.Sources {
-		low := source.GetLowestInclusive()
-		high := source.GetHighestExclusive()
+		low := source.LowestInclusive
+		high := source.HighestExclusive
 		// Loop until less than batchSize items are returned.
 		for count := batchSize; count == batchSize; {
 			batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, batchSize)

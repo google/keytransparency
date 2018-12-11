@@ -159,18 +159,18 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 	var count int32
 	var high int64
 	if err := m.db.QueryRowContext(ctx,
-		`SELECT COUNT(*), COALESCE(MAX(T1.Time), ?) FROM 
+		`SELECT COUNT(*), COALESCE(MAX(T1.Time)+1, ?) FROM 
 		(
 			SELECT Q.Time FROM Queue as Q
 			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time >= ?
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
-		start-1, directoryID, logID, start, batchSize).
+		start, directoryID, logID, start, batchSize).
 		Scan(&count, &high); err != nil {
 		return 0, 0, err
 	}
-	return count, high + 1, nil
+	return count, high, nil
 }
 
 // ReadLog reads all mutations in logID between [low, high).
