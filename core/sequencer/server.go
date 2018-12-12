@@ -106,10 +106,11 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	batcher  Batcher
-	trillian trillianFactory
-	logs     LogsReader
-	loopback spb.KeyTransparencySequencerClient
+	batcher   Batcher
+	trillian  trillianFactory
+	logs      LogsReader
+	loopback  spb.KeyTransparencySequencerClient
+	BatchSize int32
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -133,9 +134,10 @@ func NewServer(
 			tmap:        tmap,
 			tlog:        tlog,
 		},
-		batcher:  batcher,
-		logs:     logs,
-		loopback: loopback,
+		batcher:   batcher,
+		logs:      logs,
+		loopback:  loopback,
+		BatchSize: 10000,
 	}
 }
 
@@ -272,8 +274,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
-	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
-	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, readBatchSize)
+	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, s.BatchSize)
 	if err != nil {
 		return nil, err
 	}
