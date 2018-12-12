@@ -46,7 +46,8 @@ type trillianMap interface {
 type trillianLog interface {
 	WaitForInclusion(ctx context.Context, data []byte) error
 	UpdateRoot(ctx context.Context) (*types.LogRootV1, error)
-	AddSequencedLeaf(ctx context.Context, data []byte, index int64) error
+	AddSequencedLeaves(ctx context.Context, leaves []*tpb.LogLeaf) error
+	HashLeaf([]byte) []byte
 }
 
 // Trillian contains Trillian gRPC clients and metadata about them.
@@ -91,7 +92,23 @@ func (t *Trillian) LogClient(ctx context.Context, dirID string) (trillianLog, er
 
 	// Create verifying log client.
 	trustedRoot := types.LogRootV1{} // TODO(gbelvin): Store and track trustedRoot.
-	return tclient.NewFromTree(t.tlog, logTree, trustedRoot)
+	client, err := tclient.NewFromTree(t.tlog, logTree, trustedRoot)
+	if err != nil {
+		return nil, err
+	}
+	return &LogClient{LogClient: client}, nil
+}
+
+// LogClient interacts with the Trillian log and verifies its responses.
+type LogClient struct {
+	*tclient.LogClient
+}
+
+// HashLeaf returns the MerkleLeafHahs for a leaf value.
+func (c *LogClient) HashLeaf(data []byte) []byte {
+	// HashLeaf will never return an error.
+	leafHash, _ := c.Hasher.HashLeaf(data)
+	return leafHash
 }
 
 // MapClient interacts with the Trillian Map and verifies its responses.
