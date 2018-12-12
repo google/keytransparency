@@ -252,14 +252,15 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
 			}
+			count = int32(len(batch))
+			glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
+				directoryID, source.LogId, low, high, batchSize, count)
 			for _, m := range batch {
 				msgs = append(msgs, m)
 				if m.ID > low {
 					low = m.ID
 				}
 			}
-			count = int32(len(batch))
-			glog.Infof("ReadLog(%v, (%v, %v], %v) count: %v", source.LogId, low, high, batchSize, count)
 		}
 	}
 	return msgs, nil
@@ -327,7 +328,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
 	}
 	mutationCount.Add(float64(len(msgs)), in.DirectoryId)
-	glog.Infof("ApplyRevision(): dir: %v rev: %v root: %x mutations: %v, indexes: %v, newleaves: %v",
+	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
 		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(msgs), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{
 		DirectoryId: in.DirectoryId,
