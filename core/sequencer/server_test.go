@@ -20,16 +20,17 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
+	"github.com/google/trillian/monitoring"
+	"github.com/google/trillian/types"
+
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
-	"github.com/google/trillian/monitoring"
-	"github.com/google/trillian/types"
 )
 
 const directoryID = "directoryID"
@@ -39,7 +40,7 @@ type fakeLogs map[int64][]mutator.LogMessage
 func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
 	batchSize int32) ([]*mutator.LogMessage, error) {
 	refs := make([]*mutator.LogMessage, 0, int(high-low))
-	for i := low + 1; i < high+1; i++ {
+	for i := low; i < high; i++ {
 		l[logID][i].ID = i
 		refs = append(refs, &l[logID][i])
 	}
@@ -60,8 +61,8 @@ func (l fakeLogs) ListLogs(ctx context.Context, directoryID string, writable boo
 func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, start int64,
 	batchSize int32) (int32, int64, error) {
 	high := start + int64(batchSize)
-	if high > int64(len(l[logID]))-1 {
-		high = int64(len(l[logID])) - 1
+	if high > int64(len(l[logID])) {
+		high = int64(len(l[logID]))
 	}
 	count := int32(high - start)
 	return count, high, nil
@@ -158,11 +159,11 @@ func TestReadMessages(t *testing.T) {
 		want      int
 	}{
 		{batchSize: 1, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestWatermark: 0, HighestWatermark: 9},
+			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
 		}}},
 		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestWatermark: 0, HighestWatermark: 9},
-			{LogId: 1, LowestWatermark: 0, HighestWatermark: 10},
+			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
+			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
 		}}},
 	} {
 		msgs, err := s.readMessages(ctx, directoryID, tc.meta, tc.batchSize)
@@ -189,34 +190,34 @@ func TestHighWatermarks(t *testing.T) {
 		last      spb.MapMetadata
 		next      spb.MapMetadata
 	}{
-		{desc: "nobatch", batchSize: 30, count: 28,
+		{desc: "nobatch", batchSize: 30, count: 30,
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestWatermark: 9},
-				{LogId: 1, HighestWatermark: 19}}}},
+				{LogId: 0, HighestExclusive: 10},
+				{LogId: 1, HighestExclusive: 20}}}},
 		{desc: "exactbatch", batchSize: 20, count: 20,
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestWatermark: 9},
-				{LogId: 1, HighestWatermark: 11}}}},
-		{desc: "batchwprev", batchSize: 20, count: 19,
+				{LogId: 0, HighestExclusive: 10},
+				{LogId: 1, HighestExclusive: 10}}}},
+		{desc: "batchwprev", batchSize: 20, count: 20,
 			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestWatermark: 9}}},
+				{LogId: 0, HighestExclusive: 10}}},
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, LowestWatermark: 9, HighestWatermark: 9},
-				{LogId: 1, HighestWatermark: 19}}}},
+				{LogId: 0, LowestInclusive: 10, HighestExclusive: 10},
+				{LogId: 1, HighestExclusive: 20}}}},
 		// Don't drop existing watermarks.
 		{desc: "keep existing", batchSize: 1, count: 1,
 			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 1, HighestWatermark: 9}}},
+				{LogId: 1, HighestExclusive: 10}}},
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestWatermark: 1},
-				{LogId: 1, LowestWatermark: 9, HighestWatermark: 9}}}},
+				{LogId: 0, HighestExclusive: 1},
+				{LogId: 1, LowestInclusive: 10, HighestExclusive: 10}}}},
 		{desc: "logs that dont move", batchSize: 0, count: 0,
 			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 3, HighestWatermark: 9}}},
+				{LogId: 3, HighestExclusive: 10}}},
 			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0},
 				{LogId: 1},
-				{LogId: 3, LowestWatermark: 9, HighestWatermark: 9}}}},
+				{LogId: 3, LowestInclusive: 10, HighestExclusive: 10}}}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, next, err := s.HighWatermarks(ctx, directoryID, &tc.last, tc.batchSize)

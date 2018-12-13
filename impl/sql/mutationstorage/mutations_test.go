@@ -50,12 +50,12 @@ func TestWriteBatch(t *testing.T) {
 		sources []*spb.MapMetadata_SourceSlice
 	}{
 		// Tests are cumulative.
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 10}}},
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 11}}, wantErr: true},
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 20}}, wantErr: true},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 11}}},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 12}}, wantErr: true},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 21}}, wantErr: true},
 		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{}, wantErr: true},
 		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{}},
-		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 10}}, wantErr: true},
+		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 11}}, wantErr: true},
 	} {
 		err := m.WriteBatchSources(ctx, domainID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
 		if got, want := err != nil, tc.wantErr; got != want {
@@ -79,12 +79,12 @@ func TestReadBatch(t *testing.T) {
 		want *spb.MapMetadata
 	}{
 		{rev: 0, want: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 1, HighestWatermark: 10},
-			{LogId: 2, HighestWatermark: 20},
+			{LogId: 1, HighestExclusive: 11},
+			{LogId: 2, HighestExclusive: 21},
 		}}},
 		{rev: 1, want: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 1, HighestWatermark: 11},
-			{LogId: 2, HighestWatermark: 22},
+			{LogId: 1, HighestExclusive: 12},
+			{LogId: 2, HighestExclusive: 23},
 		}}},
 	} {
 		if err := m.WriteBatchSources(ctx, domainID, tc.rev, tc.want); err != nil {
@@ -114,7 +114,7 @@ func TestHightestRev(t *testing.T) {
 		sources []*spb.MapMetadata_SourceSlice
 	}{
 		// Tests are cumulative.
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestWatermark: 10}}},
+		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 11}}},
 		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{}},
 	} {
 		err := m.WriteBatchSources(ctx, domainID, tc.rev, &spb.MapMetadata{Sources: tc.sources})

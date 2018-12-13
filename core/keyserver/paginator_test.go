@@ -19,8 +19,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	"github.com/google/keytransparency/core/mutator"
+
+	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 )
 
 func TestEncodeToken(t *testing.T) {
@@ -74,10 +75,10 @@ func TestFirst(t *testing.T) {
 	}{
 		{
 			s: SourceList{
-				{LogId: 2, LowestWatermark: 1, HighestWatermark: 10},
-				{LogId: 3, LowestWatermark: 10, HighestWatermark: 20},
+				{LogId: 2, LowestInclusive: 2, HighestExclusive: 11},
+				{LogId: 3, LowestInclusive: 11, HighestExclusive: 21},
 			},
-			want: &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 1},
+			want: &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 2},
 		},
 		{s: SourceList{}, want: &rtpb.ReadToken{}},
 	} {
@@ -89,8 +90,8 @@ func TestFirst(t *testing.T) {
 
 func TestNext(t *testing.T) {
 	a := SourceList{
-		{LogId: 2, LowestWatermark: 1, HighestWatermark: 10},
-		{LogId: 3, LowestWatermark: 10, HighestWatermark: 20},
+		{LogId: 2, LowestInclusive: 2, HighestExclusive: 11},
+		{LogId: 3, LowestInclusive: 11, HighestExclusive: 21},
 	}
 	for _, tc := range []struct {
 		s       SourceList
@@ -102,28 +103,28 @@ func TestNext(t *testing.T) {
 		{
 			desc:    "first page",
 			s:       a,
-			rt:      &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 2},
 			lastRow: &mutator.LogMessage{ID: 6},
 			want:    &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 6},
 		},
 		{
 			desc:    "next source",
 			s:       a,
-			rt:      &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{},
 			lastRow: nil,
-			want:    &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 10},
+			want:    &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 11},
 		},
 		{
 			desc:    "last page",
 			s:       a,
-			rt:      &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{SliceIndex: 1},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},
 		{
 			desc:    "empty",
 			s:       SourceList{},
-			rt:      &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 1},
+			rt:      &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 2},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},
