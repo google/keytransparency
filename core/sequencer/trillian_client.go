@@ -37,7 +37,7 @@ type trillianFactory interface {
 // trillianMap communicates with the Trilian map and verifies the responses.
 type trillianMap interface {
 	GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error)
-	SetLeaves(ctx context.Context, leaves []*tpb.MapLeaf, meta []byte) (*types.MapRootV1, error)
+	SetLeavesAtRevision(ctx context.Context, rev int64, leaves []*tpb.MapLeaf, meta []byte) (*types.MapRootV1, error)
 	GetAndVerifyMapRootByRevision(ctx context.Context, rev int64) (*tpb.SignedMapRoot, *types.MapRootV1, error)
 	GetAndVerifyMapLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error)
 }
@@ -116,17 +116,19 @@ type MapClient struct {
 	*tclient.MapClient
 }
 
-// SetLeaves creates a new map revision and returns its verified root.
+// SetLeavesAtRevision creates a new map revision and returns its verified root.
 // TODO(gbelvin): Move to Trillian Map client.
-func (c *MapClient) SetLeaves(ctx context.Context, leaves []*tpb.MapLeaf, metadata []byte) (*types.MapRootV1, error) {
+func (c *MapClient) SetLeavesAtRevision(ctx context.Context, rev int64,
+	leaves []*tpb.MapLeaf, metadata []byte) (*types.MapRootV1, error) {
 	// Set new leaf values.
 	setResp, err := c.Conn.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
 		MapId:    c.MapID,
+		Revision: rev,
 		Leaves:   leaves,
 		Metadata: metadata,
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "tmap.SetLeaves(): %v", err)
+		return nil, err
 	}
 	mapRoot, err := c.VerifySignedMapRoot(setResp.GetMapRoot())
 	if err != nil {
