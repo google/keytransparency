@@ -363,18 +363,13 @@ func (s *Server) PublishRevisions(ctx context.Context,
 
 	// Add all unpublished map roots to the log.
 	revs := []int64{}
-	leaves := []*tpb.LogLeaf{}
+	leaves := make(map[int64][]byte)
 	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
 		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
 			return nil, err
 		}
-		leaves = append(leaves, &tpb.LogLeaf{
-			LeafValue:      rawMapRoot.GetMapRoot(),
-			MerkleLeafHash: logClient.HashLeaf(rawMapRoot.GetMapRoot()),
-			LeafIndex:      int64(mapRoot.Revision),
-		})
-
+		leaves[int64(mapRoot.Revision)] = rawMapRoot.GetMapRoot()
 		revs = append(revs, int64(mapRoot.Revision))
 	}
 	if err := logClient.AddSequencedLeaves(ctx, leaves); err != nil {
