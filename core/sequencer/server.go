@@ -227,7 +227,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, err
 		}
 		for _, source := range meta.Sources {
-			watermark.Set(float64(source.HighestWatermark),
+			watermark.Set(float64(source.HighestExclusive),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId), definedLabel)
 		}
 		outstanding = append(outstanding, nextRev)
@@ -244,8 +244,8 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 	batchSize int32) ([]*mutator.LogMessage, error) {
 	msgs := make([]*mutator.LogMessage, 0)
 	for _, source := range meta.Sources {
-		low := source.GetLowestWatermark()
-		high := source.GetHighestWatermark()
+		low := source.LowestInclusive
+		high := source.HighestExclusive
 		// Loop until less than batchSize items are returned.
 		for count := batchSize; count == batchSize; {
 			batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, batchSize)
@@ -324,7 +324,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	for _, s := range meta.Sources {
-		watermark.Set(float64(s.HighestWatermark),
+		watermark.Set(float64(s.HighestExclusive),
 			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
 	}
 	mutationCount.Add(float64(len(msgs)), in.DirectoryId)
@@ -469,9 +469,9 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	ends := map[int64]int64{}
 	starts := map[int64]int64{}
 	for _, source := range lastMeta.Sources {
-		if ends[source.LogId] < source.HighestWatermark {
-			ends[source.LogId] = source.HighestWatermark
-			starts[source.LogId] = source.HighestWatermark
+		if ends[source.LogId] < source.HighestExclusive {
+			ends[source.LogId] = source.HighestExclusive
+			starts[source.LogId] = source.HighestExclusive
 		}
 	}
 
@@ -498,8 +498,8 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	for logID, end := range ends {
 		meta.Sources = append(meta.Sources, &spb.MapMetadata_SourceSlice{
 			LogId:            logID,
-			LowestWatermark:  starts[logID],
-			HighestWatermark: end,
+			LowestInclusive:  starts[logID],
+			HighestExclusive: end,
 		})
 	}
 	// Deterministic results are nice.

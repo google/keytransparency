@@ -163,13 +163,13 @@ func TestWatermark(t *testing.T) {
 		count     int32
 		want      int64
 	}{
-		{desc: "log1 max", logID: 1, batchSize: 100, want: start + 9, count: 10},
-		{desc: "log2 max", logID: 2, batchSize: 100, want: start + 9, count: 10},
+		{desc: "log1 max", logID: 1, batchSize: 100, want: start + 10, count: 10},
+		{desc: "log2 max", logID: 2, batchSize: 100, want: start + 10, count: 10},
 		{desc: "batch0", logID: 1, batchSize: 0},
 		{desc: "batch0start55", logID: 1, start: 55, batchSize: 0, want: 55},
-		{desc: "batch5", logID: 1, batchSize: 5, want: start + 4, count: 5},
+		{desc: "batch5", logID: 1, batchSize: 5, want: start + 5, count: 5},
 		{desc: "start1", logID: 1, start: start + 2, batchSize: 5, want: start + 7, count: 5},
-		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 9, count: 1},
+		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 10, count: 2},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)

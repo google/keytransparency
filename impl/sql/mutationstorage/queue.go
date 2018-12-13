@@ -152,17 +152,17 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	return tx.Commit()
 }
 
-// HighWatermark returns the highest watermark in logID that is less than or
+// HighWatermark returns the highest watermark +1 in logID that is less than or
 // equal to batchSize items greater than start.
 func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID,
 	start int64, batchSize int32) (int32, int64, error) {
 	var count int32
 	var high int64
 	if err := m.db.QueryRowContext(ctx,
-		`SELECT COUNT(*), COALESCE(MAX(T1.Time), ?) FROM 
+		`SELECT COUNT(*), COALESCE(MAX(T1.Time)+1, ?) FROM 
 		(
 			SELECT Q.Time FROM Queue as Q
-			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time > ?
+			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time >= ?
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
@@ -173,13 +173,13 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 	return count, high, nil
 }
 
-// ReadLog reads all mutations in logID between (low, high].
+// ReadLog reads all mutations in logID between [low, high).
 // ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, LocalID, Mutation FROM Queue
-		WHERE DirectoryID = ? AND LogID = ? AND Time > ? AND Time <= ?
+		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
 		ORDER BY Time, LocalID ASC
 		LIMIT ?;`,
 		directoryID, logID, low, high, batchSize)
