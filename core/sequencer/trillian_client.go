@@ -91,23 +91,7 @@ func (t *Trillian) LogClient(ctx context.Context, dirID string) (trillianLog, er
 
 	// Create verifying log client.
 	trustedRoot := types.LogRootV1{} // TODO(gbelvin): Store and track trustedRoot.
-	client, err := tclient.NewFromTree(t.tlog, logTree, trustedRoot)
-	if err != nil {
-		return nil, err
-	}
-	return &LogClient{LogClient: client}, nil
-}
-
-// LogClient interacts with the Trillian log and verifies its responses.
-type LogClient struct {
-	*tclient.LogClient
-}
-
-// HashLeaf returns the MerkleLeafHahs for a leaf value.
-func (c *LogClient) HashLeaf(data []byte) []byte {
-	// HashLeaf will never return an error.
-	leafHash, _ := c.Hasher.HashLeaf(data)
-	return leafHash
+	return tclient.NewFromTree(t.tlog, logTree, trustedRoot)
 }
 
 // MapClient interacts with the Trillian Map and verifies its responses.
