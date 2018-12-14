@@ -363,17 +363,20 @@ func (s *Server) PublishRevisions(ctx context.Context,
 
 	// Add all unpublished map roots to the log.
 	revs := []int64{}
+	leaves := make(map[int64][]byte)
 	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
 		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
 			return nil, err
 		}
-		if err := logClient.AddSequencedLeaf(ctx, rawMapRoot.GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-			glog.Errorf("AddSequencedLeaf(rev: %v): %v", mapRoot.Revision, err)
-			return nil, err
-		}
+		leaves[int64(mapRoot.Revision)] = rawMapRoot.GetMapRoot()
 		revs = append(revs, int64(mapRoot.Revision))
 	}
+	if err := logClient.AddSequencedLeaves(ctx, leaves); err != nil {
+		glog.Errorf("AddSequencedLeaves(revs: %v): %v", revs, err)
+		return nil, err
+	}
+
 	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
 	if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
 		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)

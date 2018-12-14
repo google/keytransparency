@@ -46,7 +46,7 @@ type trillianMap interface {
 type trillianLog interface {
 	WaitForInclusion(ctx context.Context, data []byte) error
 	UpdateRoot(ctx context.Context) (*types.LogRootV1, error)
-	AddSequencedLeaf(ctx context.Context, data []byte, index int64) error
+	AddSequencedLeaves(ctx context.Context, dataByIndex map[int64][]byte) error
 }
 
 // Trillian contains Trillian gRPC clients and metadata about them.
