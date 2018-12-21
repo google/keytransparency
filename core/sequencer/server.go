@@ -229,7 +229,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, err
 		}
 		for _, source := range meta.Sources {
-			watermark.Set(float64(source.HighestWatermark),
+			watermark.Set(float64(source.HighestExclusive),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId), definedLabel)
 		}
 		outstanding = append(outstanding, nextRev)
@@ -246,8 +246,8 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 	batchSize int32) ([]*mutator.LogMessage, error) {
 	msgs := make([]*mutator.LogMessage, 0)
 	for _, source := range meta.Sources {
-		low := source.GetLowestWatermark()
-		high := source.GetHighestWatermark()
+		low := source.LowestInclusive
+		high := source.HighestExclusive
 		// Loop until less than batchSize items are returned.
 		for count := batchSize; count == batchSize; {
 			batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, batchSize)
@@ -324,7 +324,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	for _, s := range meta.Sources {
-		watermark.Set(float64(s.HighestWatermark),
+		watermark.Set(float64(s.HighestExclusive),
 			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
 	}
 	mutationCount.Add(float64(len(msgs)), in.DirectoryId)
@@ -363,17 +363,20 @@ func (s *Server) PublishRevisions(ctx context.Context,
 
 	// Add all unpublished map roots to the log.
 	revs := []int64{}
+	leaves := make(map[int64][]byte)
 	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
 		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
 			return nil, err
 		}
-		if err := logClient.AddSequencedLeaf(ctx, rawMapRoot.GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-			glog.Errorf("AddSequencedLeaf(rev: %v): %v", mapRoot.Revision, err)
-			return nil, err
-		}
+		leaves[int64(mapRoot.Revision)] = rawMapRoot.GetMapRoot()
 		revs = append(revs, int64(mapRoot.Revision))
 	}
+	if err := logClient.AddSequencedLeaves(ctx, leaves); err != nil {
+		glog.Errorf("AddSequencedLeaves(revs: %v): %v", revs, err)
+		return nil, err
+	}
+
 	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
 	if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
 		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
@@ -461,9 +464,9 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	ends := map[int64]int64{}
 	starts := map[int64]int64{}
 	for _, source := range lastMeta.Sources {
-		if ends[source.LogId] < source.HighestWatermark {
-			ends[source.LogId] = source.HighestWatermark
-			starts[source.LogId] = source.HighestWatermark
+		if ends[source.LogId] < source.HighestExclusive {
+			ends[source.LogId] = source.HighestExclusive
+			starts[source.LogId] = source.HighestExclusive
 		}
 	}
 
@@ -490,8 +493,8 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	for logID, end := range ends {
 		meta.Sources = append(meta.Sources, &spb.MapMetadata_SourceSlice{
 			LogId:            logID,
-			LowestWatermark:  starts[logID],
-			HighestWatermark: end,
+			LowestInclusive:  starts[logID],
+			HighestExclusive: end,
 		})
 	}
 	// Deterministic results are nice.
