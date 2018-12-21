@@ -31,7 +31,7 @@ import (
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/google/trillian/util/election2"
-	"github.com/google/trillian/util/election2/etcd"
+	"github.com/google/trillian/util/etcd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -45,6 +45,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	etcdelect "github.com/google/trillian/util/election2/etcd"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	_ "github.com/google/trillian/crypto/keys/der/proto"
@@ -94,7 +95,7 @@ func getElectionFactory() (election2.Factory, func()) {
 		glog.Exit("Either --force_master or --etcd_servers must be supplied")
 	}
 
-	cli, err := etcd.NewClient(strings.Split(*etcdServers, ","), 5*time.Second)
+	cli, err := etcd.NewClientFromString(*etcdServers)
 	if err != nil || cli == nil {
 		glog.Exitf("Failed to create etcd client: %v", err)
 	}
@@ -106,7 +107,7 @@ func getElectionFactory() (election2.Factory, func()) {
 
 	hostname, _ := os.Hostname()
 	instanceID := fmt.Sprintf("%s.%d", hostname, os.Getpid())
-	factory := etcd.NewFactory(instanceID, cli, *lockDir)
+	factory := etcdelect.NewFactory(instanceID, cli, *lockDir)
 
 	return factory, closeFn
 }
