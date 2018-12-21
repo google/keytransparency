@@ -166,7 +166,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		}
 	}
 
-	publishReq := &spb.PublishRevisionsRequest{DirectoryId: in.DirectoryId}
+	publishReq := &spb.PublishRevisionsRequest{DirectoryId: in.DirectoryId, Block: in.Block}
 	_, err = s.loopback.PublishRevisions(ctx, publishReq)
 	if err != nil {
 		return nil, err
@@ -377,9 +377,10 @@ func (s *Server) PublishRevisions(ctx context.Context,
 		return nil, err
 	}
 
-	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
-	if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
-		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
+	if in.Block {
+		if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
+			return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
+		}
 	}
 	return &spb.PublishRevisionsResponse{Revisions: revs}, nil
 }

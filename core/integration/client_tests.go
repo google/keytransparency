@@ -373,6 +373,7 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 				DirectoryId: directory.DirectoryId,
 				MinBatch:    1,
 				MaxBatch:    1,
+				Block:       true,
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}
