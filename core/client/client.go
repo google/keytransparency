@@ -233,9 +233,6 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 // Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns codes.FailedPrecondition if there was a race condition.
 func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
-	if got, want := u.DirectoryId, c.directoryID; got != want {
-		return nil, fmt.Errorf("u.DirectoryID: %v, want %v", got, want)
-	}
 	// 1. pb.User + ExistingEntry -> Mutation.
 	m, err := c.CreateMutation(ctx, u)
 	if err != nil {
@@ -273,12 +270,12 @@ func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutati
 	oldLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetVrfProof(), u.DirectoryId, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), c.directoryID, u.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	mutation := entry.NewMutation(index, u.DirectoryId, u.UserId)
+	mutation := entry.NewMutation(index, c.directoryID, u.UserId)
 
 	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
 		return nil, err

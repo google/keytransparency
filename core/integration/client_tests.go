@@ -105,7 +105,6 @@ func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) {
 			users := make([]*tpb.User, 0, len(tc.userIDs))
 			for _, userID := range tc.userIDs {
 				users = append(users, &tpb.User{
-					DirectoryId:    env.Directory.DirectoryId,
 					UserId:         userID,
 					PublicKeyData:  []byte("data!"),
 					AuthorizedKeys: authorizedKeys1,
@@ -140,7 +139,6 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) {
 			users := make([]*tpb.User, 0, len(tc.userIDs))
 			for _, userID := range tc.userIDs {
 				users = append(users, &tpb.User{
-					DirectoryId:    env.Directory.DirectoryId,
 					UserId:         userID,
 					PublicKeyData:  []byte("data!"),
 					AuthorizedKeys: authorizedKeys1,
@@ -259,7 +257,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 			// Update profile.
 			if tc.setProfile != nil {
 				u := &tpb.User{
-					DirectoryId:    env.Directory.DirectoryId,
 					UserId:         tc.userID,
 					PublicKeyData:  tc.setProfile,
 					AuthorizedKeys: tc.authorizedKeys,
@@ -354,7 +351,6 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 	} {
 		if p != nil {
 			u := &tpb.User{
-				DirectoryId:    directory.DirectoryId,
 				UserId:         userID,
 				PublicKeyData:  p,
 				AuthorizedKeys: authorizedKeys,

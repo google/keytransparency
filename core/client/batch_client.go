@@ -44,7 +44,7 @@ func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
 
 	mutations := make([]*entry.Mutation, 0, len(users))
 	for _, u := range users {
-		mutation := entry.NewMutation(indexByUser[u.UserId], u.DirectoryId, u.UserId)
+		mutation := entry.NewMutation(indexByUser[u.UserId], c.directoryID, u.UserId)
 
 		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
 			return err
@@ -94,7 +94,7 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*tpb.User) ([]
 		if !ok {
 			return nil, fmt.Errorf("no leaf found for %v", u.UserId)
 		}
-		index, err := c.Index(leaf.GetVrfProof(), u.DirectoryId, u.UserId)
+		index, err := c.Index(leaf.GetVrfProof(), c.directoryID, u.UserId)
 		if err != nil {
 			return nil, err
 		}
