@@ -71,14 +71,14 @@ func SetTimeout(ms int32) {
 // AddKtServer creates a new grpc client to handle connections to the ktURL server and adds it to the global map of clients.
 func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryInfoHash []byte) error {
 	if _, exists := clients[ktURL]; exists {
-		return fmt.Errorf("The KtServer connection for %v already exists", ktURL)
+		return fmt.Errorf("the KtServer connection for %v already exists", ktURL)
 	}
 
 	// TODO Add URL validation here.
 
 	cc, err := dial(ktURL, insecureTLS, ktTLSCertPEM)
 	if err != nil {
-		return fmt.Errorf("Error Dialing %v: %v", ktURL, err)
+		return fmt.Errorf("error dialing %v: %v", ktURL, err)
 	}
 
 	ktClient := pb.NewKeyTransparencyClient(cc)
@@ -87,7 +87,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 	defer cancel()
 	config, err := ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{})
 	if err != nil {
-		return fmt.Errorf("Error getting config: %v", err)
+		return fmt.Errorf("error getting config: %v", err)
 	}
 
 	if len(directoryInfoHash) == 0 {
@@ -95,11 +95,11 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 	} else {
 		cj, err := objecthash.CommonJSONify(config)
 		if err != nil {
-			return fmt.Errorf("CommonJSONify(): %v", err)
+			return fmt.Errorf("commonJSONify(): %v", err)
 		}
 		got, err := objecthash.ObjectHash(cj)
 		if err != nil {
-			return fmt.Errorf("ObjectHash(): %v", err)
+			return fmt.Errorf("objectHash(): %v", err)
 		}
 		if !bytes.Equal(got[:], directoryInfoHash) {
 			return fmt.Errorf("server %v returned a directoryInfoResponse inconsistent with the provided directoryInfoHash",
@@ -109,7 +109,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 
 	client, err := client.NewFromConfig(ktClient, config)
 	if err != nil {
-		return fmt.Errorf("Error adding the KtServer: %v", err)
+		return fmt.Errorf("error adding the KtServer: %v", err)
 	}
 
 	clients[ktURL] = client
@@ -120,7 +120,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 func GetUser(ktURL, userID string) ([]byte, error) {
 	client, exists := clients[ktURL]
 	if !exists {
-		return nil, fmt.Errorf("A connection to %v does not exists. Please call AddKtServer first", ktURL)
+		return nil, fmt.Errorf("a connection to %v does not exist. Please call AddKtServer first", ktURL)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -164,7 +164,7 @@ func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentia
 	case len(ktTLSCertPEM) != 0: // Custom CA Cert.
 		cp := x509.NewCertPool()
 		if !cp.AppendCertsFromPEM(ktTLSCertPEM) {
-			return nil, fmt.Errorf("Failed to append certificates")
+			return nil, fmt.Errorf("failed to append certificates")
 		}
 		creds := credentials.NewTLS(&tls.Config{ServerName: host, RootCAs: cp})
 		return creds, nil
