@@ -40,13 +40,15 @@ type Frontend struct {
 
 // QueueKeyUpdate signs an update and forwards it to the keyserver.
 func (f *Frontend) QueueKeyUpdate(ctx context.Context, in *pb.QueueKeyUpdateRequest) (*empty.Empty, error) {
+	if got, want := in.DirectoryId, f.Client.DirectoryID; got != want {
+		return nil, status.Errorf(codes.InvalidArgument, "wrong directory_id: %v, want %v", got, want)
+	}
 	authorizedKeys, err := f.Signer.Public()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "no public keys for signer: %v", err)
 	}
 
 	u := &tpb.User{
-		DirectoryId:    in.DirectoryId,
 		UserId:         in.UserId,
 		PublicKeyData:  in.KeyData,
 		AuthorizedKeys: authorizedKeys.Keyset(),
