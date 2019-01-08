@@ -41,7 +41,7 @@ type writer struct {
 
 func (m *writer) Write(p []byte) (n int, err error) {
 	if len(m.writers) == 0 {
-		return 0, fmt.Errorf("Tried to use a MultiIoWriter which does not contain any writers")
+		return 0, fmt.Errorf("tried to use a MultiIoWriter which does not contain any writers")
 	}
 	multiError := ""
 	minBytesWritten := len(p)

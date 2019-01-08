@@ -82,7 +82,7 @@ func NewStorage(db *sql.DB) (directory.Storage, error) {
 func (s *storage) create() error {
 	_, err := s.db.Exec(createSQL)
 	if err != nil {
-		return fmt.Errorf("Failed to create commitments tables: %v", err)
+		return fmt.Errorf("failed to create commitments tables: %v", err)
 	}
 	return nil
 }

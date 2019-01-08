@@ -167,7 +167,7 @@ func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end 
 		count := revisionsWant - int64(len(allProfiles))
 		profiles, next, err := c.VerifiedListHistory(ctx, userID, start, int32(count))
 		if err != nil {
-			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
+			return nil, nil, fmt.Errorf("client: VerifiedListHistory(%v, %v): %v", start, count, err)
 		}
 		for r, d := range profiles {
 			allRoots[r.Revision] = r
@@ -255,7 +255,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
 	update, err := m.SerializeAndSign(signers)
 	if err != nil {
-		return fmt.Errorf("SerializeAndSign(): %v", err)
+		return fmt.Errorf("failed SerializeAndSign: %v", err)
 	}
 
 	Vlog.Printf("Sending Update request...")
