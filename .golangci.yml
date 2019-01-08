@@ -1,3 +1,8 @@
+run:
+  skip-file:
+    - ".+\\.pb\\.go"
+    - ".+\\.pb\\.gw\\.go"
+
 linters-settings:
   govet:
     check-shadowing: false
@@ -18,8 +23,11 @@ linters:
   disable:
     - maligned
     - scopelint
+    - gochecknoinits
+    - gochecknoglobals
+    - lll
+    - interfacer
 
 issues:
   exclude:
     - .((os\.)?std(out|err)\..*|.*Close|.*Flush|.*Write|.*Serve|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv).
-  new: true

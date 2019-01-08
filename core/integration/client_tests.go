@@ -364,7 +364,7 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 
 			m, err := env.Client.CreateMutation(cctx, u)
 			if err != nil {
-				return fmt.Errorf("CreateMutation(%v): %v", userID, err)
+				return fmt.Errorf("client.CreateMutation(%v): %v", userID, err)
 			}
 			if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
 				return fmt.Errorf("sequencer.QueueMutation(): %v", err)

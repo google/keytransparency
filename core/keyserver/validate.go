@@ -48,7 +48,7 @@ var (
 	// is not valid (not in [1, currentRevision]).
 	ErrInvalidStart = errors.New("invalid start revision")
 	// ErrInvalidPageSize occurs when the page size is < 0.
-	ErrInvalidPageSize = errors.New("Invalid page size")
+	ErrInvalidPageSize = errors.New("invalid page size")
 	// ErrInvalidEnd occurs when the end revision of the ListUserRevisionsRequest
 	// is not in [start, currentRevision].
 	ErrInvalidEnd = errors.New("invalid end revision")
@@ -89,7 +89,7 @@ func validateListEntryHistoryRequest(in *pb.ListEntryHistoryRequest, currentRevi
 
 	switch {
 	case in.PageSize < 0:
-		return fmt.Errorf("Invalid page size")
+		return fmt.Errorf("invalid page size")
 	case in.PageSize == 0:
 		in.PageSize = defaultPageSize
 	case in.PageSize > maxPageSize:

@@ -74,7 +74,7 @@ func (m *Mutations) createTables() error {
 	for _, stmt := range createStmt {
 		_, err := m.db.Exec(stmt)
 		if err != nil {
-			return fmt.Errorf("Failed to create mutation tables: %v", err)
+			return fmt.Errorf("failed to create mutation tables: %v", err)
 		}
 	}
 	return nil

@@ -54,7 +54,7 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	ctrl := gomock.NewController(t)
 	s, stopFakeServer, err := testonly.NewMockServer(ctrl)
 	if err != nil {
-		return nil, fmt.Errorf("Error starting fake server: %v", err)
+		return nil, fmt.Errorf("error starting fake server: %v", err)
 	}
 	srv := &Server{
 		directories: fakeAdmin,
