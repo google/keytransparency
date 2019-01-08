@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -193,11 +192,6 @@ func main() {
 	httpServer := startHTTPServer(grpcServer, addr,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
-
-	cli, err := etcd.NewClient(strings.Split(*etcdServers, ","), 5*time.Second)
-	if err != nil || cli == nil {
-		glog.Exitf("Failed to create etcd client: %v", err)
-	}
 
 	// Periodically run batch.
 	electionFactory, closeFactory := getElectionFactory()
