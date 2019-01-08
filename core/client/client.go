@@ -97,7 +97,7 @@ type Verifier interface {
 type Client struct {
 	Verifier
 	cli         pb.KeyTransparencyClient
-	directoryID string
+	DirectoryID string
 	mutate      mutator.ReduceMutationFn
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
@@ -126,7 +126,7 @@ func New(ktClient pb.KeyTransparencyClient,
 	return &Client{
 		Verifier:    ktVerifier,
 		cli:         ktClient,
-		directoryID: directoryID,
+		DirectoryID: directoryID,
 		mutate:      entry.MutateFn,
 		RetryDelay:  retryDelay,
 	}
@@ -256,7 +256,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 	}
 
 	Vlog.Printf("Sending Update request...")
-	req := &pb.UpdateEntryRequest{DirectoryId: c.directoryID, EntryUpdate: update}
+	req := &pb.UpdateEntryRequest{DirectoryId: c.DirectoryID, EntryUpdate: update}
 	_, err = c.cli.QueueEntryUpdate(ctx, req, opts...)
 	return err
 }
@@ -270,12 +270,12 @@ func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutati
 	oldLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetVrfProof(), c.directoryID, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), c.DirectoryID, u.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	mutation := entry.NewMutation(index, c.directoryID, u.UserId)
+	mutation := entry.NewMutation(index, c.DirectoryID, u.UserId)
 
 	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
 		return nil, err

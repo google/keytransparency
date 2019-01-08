@@ -44,7 +44,7 @@ func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
 
 	mutations := make([]*entry.Mutation, 0, len(users))
 	for _, u := range users {
-		mutation := entry.NewMutation(indexByUser[u.UserId], c.directoryID, u.UserId)
+		mutation := entry.NewMutation(indexByUser[u.UserId], c.DirectoryID, u.UserId)
 
 		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
 			return err
@@ -71,7 +71,7 @@ func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mu
 		updates = append(updates, update)
 	}
 
-	req := &pb.BatchQueueUserUpdateRequest{DirectoryId: c.directoryID, Updates: updates}
+	req := &pb.BatchQueueUserUpdateRequest{DirectoryId: c.DirectoryID, Updates: updates}
 	_, err := c.cli.BatchQueueUserUpdate(ctx, req, opts...)
 	return err
 }
@@ -94,11 +94,11 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*tpb.User) ([]
 		if !ok {
 			return nil, fmt.Errorf("no leaf found for %v", u.UserId)
 		}
-		index, err := c.Index(leaf.GetVrfProof(), c.directoryID, u.UserId)
+		index, err := c.Index(leaf.GetVrfProof(), c.DirectoryID, u.UserId)
 		if err != nil {
 			return nil, err
 		}
-		mutation := entry.NewMutation(index, c.directoryID, u.UserId)
+		mutation := entry.NewMutation(index, c.DirectoryID, u.UserId)
 
 		leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
 		if err := mutation.SetPrevious(leafValue, true); err != nil {
