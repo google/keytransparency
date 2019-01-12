@@ -232,7 +232,7 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns codes.FailedPrecondition if there was a race condition.
-func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
+func (c *Client) Update(ctx context.Context, u *tpb.User, signers []tink.Signer, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	if got, want := u.DirectoryId, c.directoryID; got != want {
 		return nil, fmt.Errorf("u.DirectoryID: %v, want %v", got, want)
 	}
@@ -252,7 +252,7 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 }
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
-func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
+func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []tink.Signer, opts ...grpc.CallOption) error {
 	update, err := m.SerializeAndSign(signers)
 	if err != nil {
 		return fmt.Errorf("failed SerializeAndSign: %v", err)

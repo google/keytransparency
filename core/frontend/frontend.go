@@ -34,8 +34,8 @@ var _ pb.KeyTransparencyFrontendServer = &Frontend{}
 
 // Frontend implements KeyTransparencyFrontend.
 type Frontend struct {
-	Client client.Client
-	Signer *tink.KeysetHandle
+	Client  client.Client
+	Signers []tink.Signer
 }
 
 // QueueKeyUpdate signs an update and forwards it to the keyserver.
@@ -55,7 +55,7 @@ func (f *Frontend) QueueKeyUpdate(ctx context.Context, in *pb.QueueKeyUpdateRequ
 	if err != nil {
 		return nil, err
 	}
-	if err := f.Client.QueueMutation(ctx, m, []*tink.KeysetHandle{f.Signer}); err != nil {
+	if err := f.Client.QueueMutation(ctx, m, f.Signers); err != nil {
 		return nil, err
 	}
 	return &empty.Empty{}, nil

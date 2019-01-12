@@ -58,7 +58,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	// Setup a bunch of revisions with data to verify.
 	for _, e := range []struct {
 		revision    int64
-		signers     []*tink.KeysetHandle
+		signers     []tink.Signer
 		userUpdates []*tpb.User
 	}{
 		{
