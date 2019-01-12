@@ -20,14 +20,18 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/tink/go/tink"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/client"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
+
+// PublicKeyGetter retrives a public key.
+type PublicKeyGetter interface {
+	PublicKey() *tinkpb.Keyset
+}
 
 // Ensure that Frontend implements KeyTransparencyFrontendServer
 var _ pb.KeyTransparencyFrontendServer = &Frontend{}
@@ -36,20 +40,16 @@ var _ pb.KeyTransparencyFrontendServer = &Frontend{}
 type Frontend struct {
 	Client  client.Client
 	Signers []tink.Signer
+	PubKeys PublicKeyGetter
 }
 
 // QueueKeyUpdate signs an update and forwards it to the keyserver.
 func (f *Frontend) QueueKeyUpdate(ctx context.Context, in *pb.QueueKeyUpdateRequest) (*empty.Empty, error) {
-	authorizedKeys, err := f.Signer.Public()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "no public keys for signer: %v", err)
-	}
-
 	u := &tpb.User{
 		DirectoryId:    in.DirectoryId,
 		UserId:         in.UserId,
 		PublicKeyData:  in.KeyData,
-		AuthorizedKeys: authorizedKeys.Keyset(),
+		AuthorizedKeys: f.PubKeys.PublicKey(),
 	}
 	m, err := f.Client.CreateMutation(ctx, u)
 	if err != nil {
