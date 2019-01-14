@@ -219,7 +219,6 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 	users := make([]*tpb.User, 0, len(req.UserIDs))
 	for _, userID := range req.UserIDs {
 		users = append(users, &tpb.User{
-			DirectoryId:    w.directory.DirectoryId,
 			UserId:         userID,
 			PublicKeyData:  []byte("publickey"),
 			AuthorizedKeys: w.authorizedKeys,

@@ -29,7 +29,7 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLea
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -43,7 +43,7 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLea
 	}
 	c.updateTrusted(slr)
 
-	if err := c.VerifyMapLeaf(c.directoryID, userID, resp.Leaf, smr); err != nil {
+	if err := c.VerifyMapLeaf(c.DirectoryID, userID, resp.Leaf, smr); err != nil {
 		return nil, nil, err
 	}
 
@@ -59,7 +59,7 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
@@ -94,7 +94,7 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		Revision:             revision,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -117,7 +117,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 		Start:                start,
@@ -137,7 +137,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 		if err != nil {
 			return nil, 0, err
 		}
-		if err = c.VerifyMapLeaf(c.directoryID, userID, v.Leaf, smr); err != nil {
+		if err = c.VerifyMapLeaf(c.DirectoryID, userID, v.Leaf, smr); err != nil {
 			return nil, 0, err
 		}
 		Vlog.Printf("Processing entry for %v, revision %v", userID, smr.Revision)

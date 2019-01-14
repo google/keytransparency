@@ -24,8 +24,9 @@ import "tink.proto";
 // User represents plain account information that gets committed to and
 // obfuscated in Entry.
 message User {
-  // directory_id specifies the directory.
-  string directory_id = 1;
+  // Used to be directory_id. The directory is implicit in the public key of
+  // the verifying client.
+  reserved 1;
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
   reserved 2;

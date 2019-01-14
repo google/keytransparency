@@ -197,7 +197,6 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		// Update profile.
 		if tc.setProfile != nil {
 			u := &tpb.User{
-				DirectoryId:    env.Directory.DirectoryId,
 				UserId:         tc.userID,
 				PublicKeyData:  tc.setProfile,
 				AuthorizedKeys: tc.authorizedKeys,

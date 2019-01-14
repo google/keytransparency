@@ -20,6 +20,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/tink/go/tink"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/client"
 
@@ -45,8 +47,10 @@ type Frontend struct {
 
 // QueueKeyUpdate signs an update and forwards it to the keyserver.
 func (f *Frontend) QueueKeyUpdate(ctx context.Context, in *pb.QueueKeyUpdateRequest) (*empty.Empty, error) {
+	if got, want := in.DirectoryId, f.Client.DirectoryID; got != want {
+		return nil, status.Errorf(codes.InvalidArgument, "wrong directory_id: %v, want %v", got, want)
+	}
 	u := &tpb.User{
-		DirectoryId:    in.DirectoryId,
 		UserId:         in.UserId,
 		PublicKeyData:  in.KeyData,
 		AuthorizedKeys: f.PubKeys.PublicKey(),
