@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -107,7 +106,7 @@ func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
 }
 
 // SerializeAndSign produces the mutation.
-func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.EntryUpdate, error) {
+func (m *Mutation) SerializeAndSign(signers []tink.Signer) (*pb.EntryUpdate, error) {
 	mutation, err := m.sign(signers)
 	if err != nil {
 		return nil, err
@@ -139,18 +138,14 @@ func (m *Mutation) SerializeAndSign(signers []*tink.KeysetHandle) (*pb.EntryUpda
 }
 
 // Sign produces the mutation
-func (m *Mutation) sign(signers []*tink.KeysetHandle) (*pb.SignedEntry, error) {
+func (m *Mutation) sign(signers []tink.Signer) (*pb.SignedEntry, error) {
 	entryData, err := proto.Marshal(m.entry)
 	if err != nil {
 		return nil, fmt.Errorf("proto.Marshal(): %v", err)
 	}
 
 	sigs := make([][]byte, 0, len(signers))
-	for _, handle := range signers {
-		signer, err := signature.NewSigner(handle)
-		if err != nil {
-			return nil, err
-		}
+	for _, signer := range signers {
 		sig, err := signer.Sign(entryData)
 		if err != nil {
 			return nil, err
