@@ -68,7 +68,7 @@ func TestCheckMutation(t *testing.T) {
 	for _, tc := range []struct {
 		desc     string
 		mutation *Mutation
-		signers  []*tink.KeysetHandle
+		signers  []tink.Signer
 		old      *tpb.SignedEntry
 		err      error
 	}{

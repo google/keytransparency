@@ -116,8 +116,8 @@ func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
 }
 
 // SignKeysetsFromPEMs produces a slice of keysets, each with one private key.
-func SignKeysetsFromPEMs(privPEMs ...string) []*tink.KeysetHandle {
-	handles := make([]*tink.KeysetHandle, 0, len(privPEMs))
+func SignKeysetsFromPEMs(privPEMs ...string) []tink.Signer {
+	signers := make([]tink.Signer, 0, len(privPEMs))
 	for i, pem := range privPEMs {
 		if pem == "" {
 			continue
@@ -128,7 +128,11 @@ func SignKeysetsFromPEMs(privPEMs ...string) []*tink.KeysetHandle {
 		if err != nil {
 			panic(fmt.Sprintf("testkeysethandle.KeysetHandle(): %v", err))
 		}
-		handles = append(handles, parsedHandle)
+		signer, err := signature.NewSigner(parsedHandle)
+		if err != nil {
+			panic(fmt.Sprintf("testkeysethandle.NewSigner(): %v", err))
+		}
+		signers = append(signers, signer)
 	}
-	return handles
+	return signers
 }
