@@ -31,7 +31,7 @@ import (
 // BatchCreateUser inserts mutations for new users that do not currently have entries.
 // Calling BatchCreate for a user that already exists will produce no change.
 func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
-	signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
+	signers []tink.Signer, opts ...grpc.CallOption) error {
 	// 1. Fetch user indexes
 	userIDs := make([]string, 0, len(users))
 	for _, u := range users {
@@ -61,7 +61,7 @@ func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
 
 // BatchQueueUserUpdate signs the mutations and sends them to the server.
 func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mutation,
-	signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
+	signers []tink.Signer, opts ...grpc.CallOption) error {
 	updates := make([]*pb.EntryUpdate, 0, len(mutations))
 	for _, m := range mutations {
 		update, err := m.SerializeAndSign(signers)

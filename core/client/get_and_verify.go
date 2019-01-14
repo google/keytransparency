@@ -80,7 +80,7 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 		return nil, nil, err
 	}
 	if smr.Revision != wantRevision {
-		return nil, nil, fmt.Errorf("GetLatestRevision(): smr.Revison: %v != slr.TreeSize-1: %v", smr.Revision, slr.TreeSize-1)
+		return nil, nil, fmt.Errorf("map revision is not the most recent. smr.Revison: %v != slr.TreeSize-1: %v", smr.Revision, slr.TreeSize-1)
 	}
 	return slr, smr, nil
 }

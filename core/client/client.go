@@ -167,7 +167,7 @@ func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end 
 		count := revisionsWant - int64(len(allProfiles))
 		profiles, next, err := c.VerifiedListHistory(ctx, userID, start, int32(count))
 		if err != nil {
-			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
+			return nil, nil, fmt.Errorf("client: VerifiedListHistory(%v, %v): %v", start, count, err)
 		}
 		for r, d := range profiles {
 			allRoots[r.Revision] = r
@@ -232,7 +232,7 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns codes.FailedPrecondition if there was a race condition.
-func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
+func (c *Client) Update(ctx context.Context, u *tpb.User, signers []tink.Signer, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	// 1. pb.User + ExistingEntry -> Mutation.
 	m, err := c.CreateMutation(ctx, u)
 	if err != nil {
@@ -249,10 +249,10 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 }
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
-func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
+func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []tink.Signer, opts ...grpc.CallOption) error {
 	update, err := m.SerializeAndSign(signers)
 	if err != nil {
-		return fmt.Errorf("SerializeAndSign(): %v", err)
+		return fmt.Errorf("failed SerializeAndSign: %v", err)
 	}
 
 	Vlog.Printf("Sending Update request...")

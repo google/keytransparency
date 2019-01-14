@@ -111,7 +111,7 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 		setProfile     []byte
 		ctx            context.Context
 		userID         string
-		signers        []*tink.KeysetHandle
+		signers        []tink.Signer
 		authorizedKeys *tinkpb.Keyset
 	}{
 		{

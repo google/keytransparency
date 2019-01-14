@@ -178,7 +178,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		setProfile     []byte
 		opts           []grpc.CallOption
 		userID         string
-		signers        []*tink.KeysetHandle
+		signers        []tink.Signer
 		authorizedKeys *tinkpb.Keyset
 	}{
 		{
@@ -331,7 +331,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 	}
 }
 
-func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []*tink.KeysetHandle,
+func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []tink.Signer,
 	authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that revision, or contains the profile
@@ -360,7 +360,7 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 
 			m, err := env.Client.CreateMutation(cctx, u)
 			if err != nil {
-				return fmt.Errorf("CreateMutation(%v): %v", userID, err)
+				return fmt.Errorf("client.CreateMutation(%v): %v", userID, err)
 			}
 			if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
 				return fmt.Errorf("sequencer.QueueMutation(): %v", err)

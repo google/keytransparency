@@ -21,24 +21,23 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/google/keytransparency/cmd/serverutil"
-	"github.com/google/keytransparency/core/fake"
-	"github.com/google/keytransparency/core/monitor"
-	"github.com/google/keytransparency/core/monitorserver"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
+	"github.com/golang/glog"
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/types"
-
-	"github.com/golang/glog"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/google/keytransparency/cmd/serverutil"
+	"github.com/google/keytransparency/core/fake"
+	"github.com/google/keytransparency/core/monitor"
+	"github.com/google/keytransparency/core/monitorserver"
+
 	mopb "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (

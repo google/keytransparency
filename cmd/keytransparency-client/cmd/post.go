@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 )
 
@@ -81,6 +82,11 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("error connecting: %v", err)
 		}
 
+		signer, err := signature.NewSigner(keyset)
+		if err != nil {
+			return err
+		}
+
 		// Update.
 		authorizedKeys, err := keyset.Public()
 		if err != nil {
@@ -94,7 +100,7 @@ User email MUST match the OAuth account used to authorize the update.
 			PublicKeyData:  profileData,
 			AuthorizedKeys: authorizedKeys.Keyset(),
 		}
-		if _, err := c.Update(ctx, u, []*tink.KeysetHandle{keyset},
+		if _, err := c.Update(ctx, u, []tink.Signer{signer},
 			grpc.PerRPCCredentials(userCreds)); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}

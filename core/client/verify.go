@@ -153,7 +153,7 @@ func (v *RealVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) 
 	mapRoot, err := v.VerifySignedMapRoot(in.GetMapRoot().GetMapRoot())
 	if err != nil {
 		Vlog.Printf("✗ Signed Map Head signature verification failed.")
-		return nil, nil, fmt.Errorf("VerifySignedMapRoot(): %v", err)
+		return nil, nil, err
 	}
 
 	Vlog.Printf("✓ Signed Map Head signature verified.")

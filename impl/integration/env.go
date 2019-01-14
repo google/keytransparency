@@ -199,7 +199,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client, err := client.NewFromConfig(ktClient, directoryPB)
 	if err != nil {
-		return nil, fmt.Errorf("NewFromConfig(): %v", err)
+		return nil, fmt.Errorf("error reading config: %v", err)
 	}
 	// Integration tests manually create revisions immediately, so retry fairly quickly.
 	client.RetryDelay = 10 * time.Millisecond

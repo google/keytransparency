@@ -34,7 +34,7 @@ func TestSerializeAndSign(t *testing.T) {
 		desc    string
 		old     []byte
 		pubKeys *tink.KeysetHandle
-		signers []*tink.KeysetHandle
+		signers []tink.Signer
 		data    []byte
 		want    codes.Code
 	}{
@@ -79,7 +79,7 @@ func TestCreateAndVerify(t *testing.T) {
 		desc    string
 		old     []byte
 		pubKeys *tink.KeysetHandle
-		signers []*tink.KeysetHandle
+		signers []tink.Signer
 		data    []byte
 	}{
 		{
