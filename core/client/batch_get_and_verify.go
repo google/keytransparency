@@ -23,7 +23,7 @@ import (
 // BatchVerifyGetUserIndex fetches and verifies the indexes for a list of users.
 func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) (map[string][]byte, error) {
 	resp, err := c.cli.BatchGetUserIndex(ctx, &pb.BatchGetUserIndexRequest{
-		DirectoryId: c.directoryID,
+		DirectoryId: c.DirectoryID,
 		UserIds:     userIDs,
 	})
 	if err != nil {
@@ -32,7 +32,7 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 
 	indexByUser := make(map[string][]byte)
 	for userID, proof := range resp.Proofs {
-		index, err := c.Index(proof, c.directoryID, userID)
+		index, err := c.Index(proof, c.DirectoryID, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -46,7 +46,7 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.BatchGetUser(ctx, &pb.BatchGetUserRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		UserIds:              userIDs,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -62,7 +62,7 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 
 	leavesByUserID := make(map[string]*pb.MapLeaf)
 	for userID, leaf := range resp.MapLeavesByUserId {
-		if err := c.VerifyMapLeaf(c.directoryID, userID, leaf, smr); err != nil {
+		if err := c.VerifyMapLeaf(c.DirectoryID, userID, leaf, smr); err != nil {
 			return nil, err
 		}
 		leavesByUserID[userID] = leaf
