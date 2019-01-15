@@ -40,7 +40,7 @@ var _ pb.KeyTransparencyFrontendServer = &Frontend{}
 
 // Frontend implements KeyTransparencyFrontend.
 type Frontend struct {
-	Client  client.Client
+	Client  *client.Client
 	Signers []tink.Signer
 	PubKeys PublicKeyGetter
 }

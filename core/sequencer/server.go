@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	once             sync.Once
+	initMetrics      sync.Once
 	knownDirectories monitoring.Gauge
 	batchSize        monitoring.Gauge
 	mutationCount    monitoring.Counter
@@ -125,7 +125,7 @@ func NewServer(
 	loopback spb.KeyTransparencySequencerClient,
 	metricsFactory monitoring.MetricFactory,
 ) *Server {
-	once.Do(func() { createMetrics(metricsFactory) })
+	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
 		trillian: &Trillian{
 			directories: directories,
