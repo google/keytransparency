@@ -250,10 +250,10 @@ func TestDelete(t *testing.T) {
 			t.Fatalf("GetDirectory(): %v", err)
 		}
 		if got, want := directory.Log.Deleted, true; got != want {
-			t.Errorf("Log.Deleted: %v, want %v", got, want)
+			t.Errorf("Log.TreeState: %v, want %v", got, want)
 		}
 		if got, want := directory.Map.Deleted, true; got != want {
-			t.Errorf("Map.Deleted: %v, want %v", got, want)
+			t.Errorf("Map.TreeState: %v, want %v", got, want)
 		}
 		if _, err := svr.GarbageCollect(ctx, &pb.GarbageCollectRequest{
 			Before: ptypes.TimestampNow(),

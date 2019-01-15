@@ -146,7 +146,7 @@ func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*p
 	if err != nil {
 		return nil, err
 	}
-	return trimDirectory(&pb.Directory{
+	return &pb.Directory{
 		DirectoryId: d.DirectoryID,
 		Log:         logTree,
 		Map:         mapTree,
@@ -154,33 +154,7 @@ func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*p
 		MinInterval: ptypes.DurationProto(d.MinInterval),
 		MaxInterval: ptypes.DurationProto(d.MaxInterval),
 		Deleted:     d.Deleted,
-	}), nil
-}
-
-func trimDirectory(d *pb.Directory) *pb.Directory {
-	return &pb.Directory{
-		DirectoryId: d.DirectoryId,
-		Log: &tpb.Tree{
-			TreeId:        d.Log.TreeId,
-			TreeType:      d.Log.TreeType,
-			PublicKey:     d.Log.PublicKey,
-			HashStrategy:  d.Log.HashStrategy,
-			HashAlgorithm: d.Log.HashAlgorithm,
-			Deleted:       d.Log.Deleted,
-		},
-		Map: &tpb.Tree{
-			TreeId:        d.Map.TreeId,
-			TreeType:      d.Map.TreeType,
-			PublicKey:     d.Map.PublicKey,
-			HashStrategy:  d.Map.HashStrategy,
-			HashAlgorithm: d.Map.HashAlgorithm,
-			Deleted:       d.Map.Deleted,
-		},
-		Vrf:         d.Vrf,
-		MinInterval: d.MinInterval,
-		MaxInterval: d.MaxInterval,
-		Deleted:     d.Deleted,
-	}
+	}, nil
 }
 
 // GetDirectory retrieves the directory info for a given directory.
@@ -301,14 +275,14 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		return nil, fmt.Errorf("adminserver: AddLogs(%+v): %v", logIDs, err)
 	}
 
-	d := trimDirectory(&pb.Directory{
+	d := &pb.Directory{
 		DirectoryId: in.GetDirectoryId(),
 		Log:         logTree,
 		Map:         mapTree,
 		Vrf:         vrfPublicPB,
 		MinInterval: in.MinInterval,
 		MaxInterval: in.MaxInterval,
-	})
+	}
 	glog.Infof("Created directory: %+v", d)
 	return d, nil
 }
