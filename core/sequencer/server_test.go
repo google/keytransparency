@@ -108,7 +108,7 @@ func TestDefineRevisions(t *testing.T) {
 	// Verify that outstanding revisions prevent future revisions from being created.
 	ctx := context.Background()
 	mapRev := int64(2)
-	once.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
+	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
 	s := Server{
 		logs: fakeLogs{
 			0: make([]mutator.LogMessage, 10),
