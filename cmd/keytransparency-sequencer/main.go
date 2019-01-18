@@ -43,6 +43,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	dir "github.com/google/keytransparency/core/directory"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	etcdelect "github.com/google/trillian/util/election2/etcd"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -190,8 +191,14 @@ func main() {
 	httpServer := startHTTPServer(grpcServer, addr,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
+	runSequencer(ctx, conn, mconn, directoryStorage)
 
-	// Periodically run batch.
+	// Shutdown.
+	glog.Errorf("Signer exiting")
+}
+
+func runSequencer(ctx context.Context, conn, mconn *grpc.ClientConn,
+	directoryStorage dir.Storage) {
 	electionFactory, closeFactory := getElectionFactory()
 	defer closeFactory()
 	signer := sequencer.New(
@@ -202,15 +209,9 @@ func main() {
 		election.NewTracker(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
 	)
 
-	cctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	sequencer.PeriodicallyRun(cctx, time.Tick(*refresh), func(ctx context.Context) {
+	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.RunBatchForAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
 		}
 	})
-
-	// Shutdown.
-	httpServer.Shutdown(cctx)
-	glog.Errorf("Signer exiting")
 }
