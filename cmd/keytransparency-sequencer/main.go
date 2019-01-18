@@ -188,7 +188,7 @@ func main() {
 
 	// Run servers
 	go serveHTTPMetric(*metricsAddr)
-	httpServer := startHTTPServer(grpcServer, addr,
+	go serveHTTPGateway(ctx, lis, dopts, grpcServer,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
 	runSequencer(ctx, conn, mconn, directoryStorage)
