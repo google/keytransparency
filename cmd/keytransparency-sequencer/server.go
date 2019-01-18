@@ -25,12 +25,13 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func startHTTPServer(grpcServer *grpc.Server, addr string,
-	services ...serverutil.RegisterServiceFromEndpoint) *http.Server {
-	// Wire up gRPC and HTTP servers.
-	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
-	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+func serveHTTPMetric(port string) {
+	metricMux := http.NewServeMux()
+	metricMux.Handle("/metrics", promhttp.Handler())
+
+	glog.Infof("Hosting metrics on %v", port)
+	if err := http.ListenAndServe(port, metricMux); err != nil {
+		glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
 	}
 	gwmux, err := serverutil.GrpcGatewayMux(addr, tcreds, services...)
 	if err != nil {
@@ -38,15 +39,6 @@ func startHTTPServer(grpcServer *grpc.Server, addr string,
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
-
-	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", promhttp.Handler())
-	go func() {
-		glog.Infof("Hosting metrics on %v", *metricsAddr)
-		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
-		}
-	}()
 
 	server := &http.Server{
 		Addr:    addr,

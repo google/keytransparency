@@ -191,6 +191,7 @@ func main() {
 	glog.Infof("Signer starting")
 
 	// Run servers
+	go serveHTTPMetric(*metricsAddr)
 	httpServer := startHTTPServer(grpcServer, addr,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
