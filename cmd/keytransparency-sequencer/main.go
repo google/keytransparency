@@ -114,13 +114,15 @@ func getElectionFactory() (election2.Factory, func()) {
 func main() {
 	flag.Parse()
 	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	// Connect to trillian log and map backends.
-	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
+	mconn, err := grpc.DialContext(ctx, *mapURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 	}
-	lconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
+	lconn, err := grpc.DialContext(ctx, *logURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("Failed to connect to %v: %v", *logURL, err)
 	}
