@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"net/http"
@@ -67,6 +68,7 @@ func openDB() *sql.DB {
 
 func main() {
 	flag.Parse()
+	ctx := context.Background()
 
 	// Open Resources.
 	sqldb := openDB()
@@ -149,7 +151,8 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
 	}
-	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
+	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
+	gwmux, err := serverutil.GrpcGatewayMux(ctx, *addr, dopts,
 		pb.RegisterKeyTransparencyHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
