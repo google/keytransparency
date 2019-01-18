@@ -151,9 +151,15 @@ func main() {
 	if err != nil {
 		glog.Exitf("error creating TCP listener: %v", err)
 	}
-	addr := lis.Addr().String()
+	glog.Infof("Listening on %v", lis.Addr().String())
 	// Non-blocking dial before we start the server.
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "localhost")
+	if err != nil {
+		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+	}
+	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
+	addr := lis.Addr().String()
+	conn, err := grpc.DialContext(ctx, addr, dopts...)
 	if err != nil {
 		glog.Exitf("error connecting to %v: %v", addr, err)
 	}
