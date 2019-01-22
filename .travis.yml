@@ -34,13 +34,12 @@ before_install:
 
 install:
   - gcloud -q components install kubectl
-  - go get -u github.com/alecthomas/gometalinter
-  - gometalinter --install
+  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.12.5
   - go get -t ./...
 
 script:
   - go build ./...
-  - gometalinter ./...
+  - golangci-lint run
   - go test ./... -coverprofile=coverage1.txt
   - go test ./impl/integration/ -coverprofile=coverage2.txt -coverpkg=./...
 
