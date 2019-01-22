@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -44,6 +43,7 @@ import (
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	dir "github.com/google/keytransparency/core/directory"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	etcdelect "github.com/google/trillian/util/election2/etcd"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -115,13 +115,15 @@ func getElectionFactory() (election2.Factory, func()) {
 func main() {
 	flag.Parse()
 	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	// Connect to trillian log and map backends.
-	mconn, err := grpc.Dial(*mapURL, grpc.WithInsecure())
+	mconn, err := grpc.DialContext(ctx, *mapURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("grpc.Dial(%v): %v", *mapURL, err)
 	}
-	lconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
+	lconn, err := grpc.DialContext(ctx, *logURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("Failed to connect to %v: %v", *logURL, err)
 	}
@@ -139,12 +141,7 @@ func main() {
 		glog.Exitf("Failed to create directory storage object: %v", err)
 	}
 
-	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-	if err != nil {
-		glog.Exitf("Failed to load server credentials %v", err)
-	}
 	grpcServer := grpc.NewServer(
-		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
@@ -154,9 +151,15 @@ func main() {
 	if err != nil {
 		glog.Exitf("error creating TCP listener: %v", err)
 	}
-	addr := lis.Addr().String()
+	glog.Infof("Listening on %v", lis.Addr().String())
 	// Non-blocking dial before we start the server.
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "localhost")
+	if err != nil {
+		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+	}
+	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
+	addr := lis.Addr().String()
+	conn, err := grpc.DialContext(ctx, addr, dopts...)
 	if err != nil {
 		glog.Exitf("error connecting to %v: %v", addr, err)
 	}
@@ -190,16 +193,18 @@ func main() {
 	glog.Infof("Signer starting")
 
 	// Run servers
-	httpServer := startHTTPServer(grpcServer, addr,
+	go serveHTTPMetric(*metricsAddr)
+	go serveHTTPGateway(ctx, lis, dopts, grpcServer,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
+	runSequencer(ctx, conn, mconn, directoryStorage)
 
-	cli, err := etcd.NewClient(strings.Split(*etcdServers, ","), 5*time.Second)
-	if err != nil || cli == nil {
-		glog.Exitf("Failed to create etcd client: %v", err)
-	}
+	// Shutdown.
+	glog.Errorf("Signer exiting")
+}
 
-	// Periodically run batch.
+func runSequencer(ctx context.Context, conn, mconn *grpc.ClientConn,
+	directoryStorage dir.Storage) {
 	electionFactory, closeFactory := getElectionFactory()
 	defer closeFactory()
 	signer := sequencer.New(
@@ -210,15 +215,9 @@ func main() {
 		election.NewTracker(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
 	)
 
-	cctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	sequencer.PeriodicallyRun(cctx, time.Tick(*refresh), func(ctx context.Context) {
+	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.RunBatchForAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
 		}
 	})
-
-	// Shutdown.
-	httpServer.Shutdown(cctx)
-	glog.Errorf("Signer exiting")
 }

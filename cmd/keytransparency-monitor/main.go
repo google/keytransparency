@@ -116,7 +116,8 @@ func main() {
 	if err != nil {
 		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
 	}
-	gwmux, err := serverutil.GrpcGatewayMux(*addr, tcreds,
+	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
+	gwmux, err := serverutil.GrpcGatewayMux(ctx, *addr, dopts,
 		mopb.RegisterMonitorHandlerFromEndpoint)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)

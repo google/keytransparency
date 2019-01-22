@@ -15,6 +15,8 @@
 package main
 
 import (
+	"context"
+	"net"
 	"net/http"
 
 	"github.com/google/keytransparency/cmd/serverutil"
@@ -22,43 +24,31 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
-func startHTTPServer(grpcServer *grpc.Server, addr string,
-	services ...serverutil.RegisterServiceFromEndpoint) *http.Server {
-	// Wire up gRPC and HTTP servers.
-	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
-	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+func serveHTTPMetric(addr string) {
+	metricMux := http.NewServeMux()
+	metricMux.Handle("/metrics", promhttp.Handler())
+
+	glog.Infof("Hosting metrics on %v", addr)
+	if err := http.ListenAndServe(addr, metricMux); err != nil {
+		glog.Fatalf("ListenAndServeTLS(%v): %v", addr, err)
 	}
-	gwmux, err := serverutil.GrpcGatewayMux(addr, tcreds, services...)
+}
+
+func serveHTTPGateway(ctx context.Context, lis net.Listener, dopts []grpc.DialOption,
+	grpcServer *grpc.Server, services ...serverutil.RegisterServiceFromEndpoint) {
+	// Wire up gRPC and HTTP servers.
+	gwmux, err := serverutil.GrpcGatewayMux(ctx, lis.Addr().String(), dopts, services...)
 	if err != nil {
 		glog.Exitf("Failed setting up REST proxy: %v", err)
 	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/", gwmux)
 
-	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", promhttp.Handler())
-	go func() {
-		glog.Infof("Hosting metrics on %v", *metricsAddr)
-		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
-		}
-	}()
-
-	server := &http.Server{
-		Addr:    addr,
-		Handler: serverutil.GrpcHandlerFunc(grpcServer, mux),
+	server := &http.Server{Handler: serverutil.GrpcHandlerFunc(grpcServer, mux)}
+	if err := server.ServeTLS(lis, *certFile, *keyFile); err != nil {
+		glog.Errorf("ListenAndServeTLS: %v", err)
 	}
-
-	go func() {
-		glog.Infof("Listening on %v", addr)
-		if err := server.ListenAndServeTLS(*certFile, *keyFile); err != nil {
-			glog.Errorf("ListenAndServeTLS: %v", err)
-		}
-	}()
-	// Return a handle to the http server to callers can call Shutdown().
-	return server
 }
