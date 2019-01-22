@@ -26,13 +26,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-func serveHTTPMetric(port string) {
+func serveHTTPMetric(addr string) {
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/metrics", promhttp.Handler())
 
-	glog.Infof("Hosting metrics on %v", port)
-	if err := http.ListenAndServe(port, metricMux); err != nil {
-		glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
+	glog.Infof("Hosting metrics on %v", addr)
+	if err := http.ListenAndServe(addr, metricMux); err != nil {
+		glog.Fatalf("ListenAndServeTLS(%v): %v", addr, err)
 	}
 }
 
