@@ -148,13 +148,25 @@ func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*p
 	}
 	return &pb.Directory{
 		DirectoryId: d.DirectoryID,
-		Log:         logTree,
-		Map:         mapTree,
+		Log:         trimTree(logTree),
+		Map:         trimTree(mapTree),
 		Vrf:         d.VRF,
 		MinInterval: ptypes.DurationProto(d.MinInterval),
 		MaxInterval: ptypes.DurationProto(d.MaxInterval),
 		Deleted:     d.Deleted,
 	}, nil
+}
+
+func trimTree(t *tpb.Tree) *tpb.Tree {
+	return &tpb.Tree{
+		TreeId:             t.TreeId,
+		TreeType:           t.TreeType,
+		PublicKey:          t.PublicKey,
+		HashStrategy:       t.HashStrategy,
+		HashAlgorithm:      t.HashAlgorithm,
+		SignatureAlgorithm: t.SignatureAlgorithm,
+		Deleted:            t.Deleted,
+	}
 }
 
 // GetDirectory retrieves the directory info for a given directory.
@@ -277,8 +289,8 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 
 	d := &pb.Directory{
 		DirectoryId: in.GetDirectoryId(),
-		Log:         logTree,
-		Map:         mapTree,
+		Log:         trimTree(logTree),
+		Map:         trimTree(mapTree),
 		Vrf:         vrfPublicPB,
 		MinInterval: in.MinInterval,
 		MaxInterval: in.MaxInterval,
