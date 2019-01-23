@@ -18,13 +18,12 @@ package sequencer
 import (
 	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/golang/glog"
-	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/sequencer/election"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -36,6 +35,7 @@ type Sequencer struct {
 	mapAdmin        tpb.TrillianAdminClient
 	batchSize       int32
 	sequencerClient spb.KeyTransparencySequencerClient
+	tracker         *election.Tracker
 }
 
 // New creates a new instance of the signer.
@@ -44,50 +44,15 @@ func New(
 	mapAdmin tpb.TrillianAdminClient,
 	directories directory.Storage,
 	batchSize int32,
+	tracker *election.Tracker,
 ) *Sequencer {
 	return &Sequencer{
 		sequencerClient: sequencerClient,
 		directories:     directories,
 		mapAdmin:        mapAdmin,
 		batchSize:       batchSize,
+		tracker:         tracker,
 	}
-}
-
-// RunAndConnect creates a local gRPC server and returns a connected client.
-func RunAndConnect(ctx context.Context, impl spb.KeyTransparencySequencerServer) (client spb.KeyTransparencySequencerClient, stop func(), startErr error) {
-	server := grpc.NewServer()
-	spb.RegisterKeyTransparencySequencerServer(server, impl)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("error creating TCP listener: %v", err)
-	}
-	defer func() {
-		if startErr != nil {
-			lis.Close()
-		}
-	}()
-
-	go func() {
-		if err := server.Serve(lis); err != nil {
-			glog.Errorf("server exited with error: %v", err)
-		}
-	}()
-
-	addr := lis.Addr().String()
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("error connecting to %v: %v", addr, err)
-	}
-
-	stop = func() {
-		server.GracefulStop()
-		conn.Close()
-		lis.Close()
-	}
-
-	client = spb.NewKeyTransparencySequencerClient(conn)
-	return client, stop, err
 }
 
 // PeriodicallyRun executes f once per tick until ctx is closed.
@@ -111,6 +76,11 @@ func PeriodicallyRun(ctx context.Context, tickch <-chan time.Time, f func(ctx co
 	}
 }
 
+// TrackMasterships monitors resources for mastership.
+func (s *Sequencer) TrackMasterships(ctx context.Context) {
+	s.tracker.Run(ctx)
+}
+
 // RunBatchForAllDirectories scans the directories table for new directories and creates new receivers for
 // directories that the sequencer is not currently receiving for.
 func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
@@ -120,14 +90,28 @@ func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
 	}
 	for _, d := range directories {
 		knownDirectories.Set(1, d.DirectoryID)
+		s.tracker.AddResource(d.DirectoryID)
+	}
+
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	masterships, err := s.tracker.Masterships(cctx)
+	if err != nil {
+		return err
+	}
+
+	var lastErr error
+	for dirID, whileMaster := range masterships {
 		req := &spb.RunBatchRequest{
-			DirectoryId: d.DirectoryID,
+			DirectoryId: dirID,
 			MinBatch:    1,
 			MaxBatch:    s.batchSize,
 		}
-		if _, err := s.sequencerClient.RunBatch(ctx, req); err != nil {
-			return err
+		if _, err := s.sequencerClient.RunBatch(whileMaster, req); err != nil {
+			lastErr = err
+			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
 		}
 	}
-	return nil
+
+	return lastErr
 }

@@ -9,15 +9,12 @@
 package sequencer_go_proto
 
 import (
+	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
 	empty "github.com/golang/protobuf/ptypes/empty"
-	math "math"
-)
-
-import (
-	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -29,7 +26,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type MapMetadata struct {
 	// sources is a list of log sources that were used to construct this map revision.
@@ -74,14 +71,14 @@ func (m *MapMetadata) GetSources() []*MapMetadata_SourceSlice {
 // SourceSlice is the range of inputs that have been included in a map
 // revision.
 type MapMetadata_SourceSlice struct {
-	// lowest_watermark is the lowest primary key (exclusive) of the source
+	// lowest_inclusive is the lowest primary key (inclusive) of the source
 	// log that has been incorporated into this map revision. The primary
 	// keys of logged items MUST be monotonically increasing.
-	LowestWatermark int64 `protobuf:"varint,1,opt,name=lowest_watermark,json=lowestWatermark,proto3" json:"lowest_watermark,omitempty"`
-	// highest_watermark is the highest primary key (inclusive) of the source
+	LowestInclusive int64 `protobuf:"varint,1,opt,name=lowest_inclusive,json=lowestInclusive,proto3" json:"lowest_inclusive,omitempty"`
+	// highest_exclusive is the highest primary key (exclusive) of the source
 	// log that has been incorporated into this map revision. The primary keys
 	// of logged items MUST be monotonically increasing.
-	HighestWatermark int64 `protobuf:"varint,2,opt,name=highest_watermark,json=highestWatermark,proto3" json:"highest_watermark,omitempty"`
+	HighestExclusive int64 `protobuf:"varint,2,opt,name=highest_exclusive,json=highestExclusive,proto3" json:"highest_exclusive,omitempty"`
 	// log_id is the ID of the source log.
 	LogId                int64    `protobuf:"varint,3,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -114,16 +111,16 @@ func (m *MapMetadata_SourceSlice) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_MapMetadata_SourceSlice proto.InternalMessageInfo
 
-func (m *MapMetadata_SourceSlice) GetLowestWatermark() int64 {
+func (m *MapMetadata_SourceSlice) GetLowestInclusive() int64 {
 	if m != nil {
-		return m.LowestWatermark
+		return m.LowestInclusive
 	}
 	return 0
 }
 
-func (m *MapMetadata_SourceSlice) GetHighestWatermark() int64 {
+func (m *MapMetadata_SourceSlice) GetHighestExclusive() int64 {
 	if m != nil {
-		return m.HighestWatermark
+		return m.HighestExclusive
 	}
 	return 0
 }
@@ -131,56 +128,6 @@ func (m *MapMetadata_SourceSlice) GetHighestWatermark() int64 {
 func (m *MapMetadata_SourceSlice) GetLogId() int64 {
 	if m != nil {
 		return m.LogId
-	}
-	return 0
-}
-
-// CreateRevisionRequest contains information needed to create a new revision.
-type CreateRevisionRequest struct {
-	// directory_id is the directory to apply the mutations to.
-	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	// revision is the expected revision of the new revision.
-	Revision             int64    `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *CreateRevisionRequest) Reset()         { *m = CreateRevisionRequest{} }
-func (m *CreateRevisionRequest) String() string { return proto.CompactTextString(m) }
-func (*CreateRevisionRequest) ProtoMessage()    {}
-func (*CreateRevisionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0a5d61b2e27141ee, []int{1}
-}
-
-func (m *CreateRevisionRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CreateRevisionRequest.Unmarshal(m, b)
-}
-func (m *CreateRevisionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CreateRevisionRequest.Marshal(b, m, deterministic)
-}
-func (m *CreateRevisionRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CreateRevisionRequest.Merge(m, src)
-}
-func (m *CreateRevisionRequest) XXX_Size() int {
-	return xxx_messageInfo_CreateRevisionRequest.Size(m)
-}
-func (m *CreateRevisionRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_CreateRevisionRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CreateRevisionRequest proto.InternalMessageInfo
-
-func (m *CreateRevisionRequest) GetDirectoryId() string {
-	if m != nil {
-		return m.DirectoryId
-	}
-	return ""
-}
-
-func (m *CreateRevisionRequest) GetRevision() int64 {
-	if m != nil {
-		return m.Revision
 	}
 	return 0
 }
@@ -196,7 +143,9 @@ type RunBatchRequest struct {
 	// eventually.
 	MinBatch int32 `protobuf:"varint,2,opt,name=min_batch,json=minBatch,proto3" json:"min_batch,omitempty"`
 	// max_batch is the maximum number of items in a batch.
-	MaxBatch             int32    `protobuf:"varint,3,opt,name=max_batch,json=maxBatch,proto3" json:"max_batch,omitempty"`
+	MaxBatch int32 `protobuf:"varint,3,opt,name=max_batch,json=maxBatch,proto3" json:"max_batch,omitempty"`
+	// block until a Signed Log Root has been published which encompases all map roots.
+	Block                bool     `protobuf:"varint,4,opt,name=block,proto3" json:"block,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -206,7 +155,7 @@ func (m *RunBatchRequest) Reset()         { *m = RunBatchRequest{} }
 func (m *RunBatchRequest) String() string { return proto.CompactTextString(m) }
 func (*RunBatchRequest) ProtoMessage()    {}
 func (*RunBatchRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0a5d61b2e27141ee, []int{2}
+	return fileDescriptor_0a5d61b2e27141ee, []int{1}
 }
 
 func (m *RunBatchRequest) XXX_Unmarshal(b []byte) error {
@@ -248,52 +197,377 @@ func (m *RunBatchRequest) GetMaxBatch() int32 {
 	return 0
 }
 
-// PublishBatchRequest copies all SignedMapHeads into the Log of SignedMapHeads.
-type PublishBatchRequest struct {
-	DirectoryId          string   `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+func (m *RunBatchRequest) GetBlock() bool {
+	if m != nil {
+		return m.Block
+	}
+	return false
+}
+
+// DefineRevisionRequest contains information needed to define a new revision.
+type DefineRevisionsRequest struct {
+	// directory_id is the directory to examine the outstanding mutations for.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// min_batch is the minimum number of items in a batch.
+	// If less than min_batch items are available, nothing happens.
+	// TODO(#1047): Replace with timeout so items in the log get processed
+	// eventually.
+	MinBatch int32 `protobuf:"varint,2,opt,name=min_batch,json=minBatch,proto3" json:"min_batch,omitempty"`
+	// max_batch is the maximum number of items in a batch.
+	MaxBatch             int32    `protobuf:"varint,3,opt,name=max_batch,json=maxBatch,proto3" json:"max_batch,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *PublishBatchRequest) Reset()         { *m = PublishBatchRequest{} }
-func (m *PublishBatchRequest) String() string { return proto.CompactTextString(m) }
-func (*PublishBatchRequest) ProtoMessage()    {}
-func (*PublishBatchRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0a5d61b2e27141ee, []int{3}
+func (m *DefineRevisionsRequest) Reset()         { *m = DefineRevisionsRequest{} }
+func (m *DefineRevisionsRequest) String() string { return proto.CompactTextString(m) }
+func (*DefineRevisionsRequest) ProtoMessage()    {}
+func (*DefineRevisionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0a5d61b2e27141ee, []int{2}
 }
 
-func (m *PublishBatchRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PublishBatchRequest.Unmarshal(m, b)
+func (m *DefineRevisionsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DefineRevisionsRequest.Unmarshal(m, b)
 }
-func (m *PublishBatchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PublishBatchRequest.Marshal(b, m, deterministic)
+func (m *DefineRevisionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DefineRevisionsRequest.Marshal(b, m, deterministic)
 }
-func (m *PublishBatchRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PublishBatchRequest.Merge(m, src)
+func (m *DefineRevisionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DefineRevisionsRequest.Merge(m, src)
 }
-func (m *PublishBatchRequest) XXX_Size() int {
-	return xxx_messageInfo_PublishBatchRequest.Size(m)
+func (m *DefineRevisionsRequest) XXX_Size() int {
+	return xxx_messageInfo_DefineRevisionsRequest.Size(m)
 }
-func (m *PublishBatchRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_PublishBatchRequest.DiscardUnknown(m)
+func (m *DefineRevisionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_DefineRevisionsRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_PublishBatchRequest proto.InternalMessageInfo
+var xxx_messageInfo_DefineRevisionsRequest proto.InternalMessageInfo
 
-func (m *PublishBatchRequest) GetDirectoryId() string {
+func (m *DefineRevisionsRequest) GetDirectoryId() string {
 	if m != nil {
 		return m.DirectoryId
 	}
 	return ""
 }
 
+func (m *DefineRevisionsRequest) GetMinBatch() int32 {
+	if m != nil {
+		return m.MinBatch
+	}
+	return 0
+}
+
+func (m *DefineRevisionsRequest) GetMaxBatch() int32 {
+	if m != nil {
+		return m.MaxBatch
+	}
+	return 0
+}
+
+// DefineRevisionResponse contains information about freshly defined revisions.
+type DefineRevisionsResponse struct {
+	// outsanding_revisions a list of all the defined revisions which are not yet applied.
+	OutstandingRevisions []int64  `protobuf:"varint,1,rep,packed,name=outstanding_revisions,json=outstandingRevisions,proto3" json:"outstanding_revisions,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DefineRevisionsResponse) Reset()         { *m = DefineRevisionsResponse{} }
+func (m *DefineRevisionsResponse) String() string { return proto.CompactTextString(m) }
+func (*DefineRevisionsResponse) ProtoMessage()    {}
+func (*DefineRevisionsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0a5d61b2e27141ee, []int{3}
+}
+
+func (m *DefineRevisionsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DefineRevisionsResponse.Unmarshal(m, b)
+}
+func (m *DefineRevisionsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DefineRevisionsResponse.Marshal(b, m, deterministic)
+}
+func (m *DefineRevisionsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DefineRevisionsResponse.Merge(m, src)
+}
+func (m *DefineRevisionsResponse) XXX_Size() int {
+	return xxx_messageInfo_DefineRevisionsResponse.Size(m)
+}
+func (m *DefineRevisionsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DefineRevisionsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DefineRevisionsResponse proto.InternalMessageInfo
+
+func (m *DefineRevisionsResponse) GetOutstandingRevisions() []int64 {
+	if m != nil {
+		return m.OutstandingRevisions
+	}
+	return nil
+}
+
+// ApplyRevisionRequest contains information needed to create a new revision.
+type ApplyRevisionRequest struct {
+	// directory_id is the directory to apply the mutations to.
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// revision is the expected revision of the new revision.
+	Revision             int64    `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ApplyRevisionRequest) Reset()         { *m = ApplyRevisionRequest{} }
+func (m *ApplyRevisionRequest) String() string { return proto.CompactTextString(m) }
+func (*ApplyRevisionRequest) ProtoMessage()    {}
+func (*ApplyRevisionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0a5d61b2e27141ee, []int{4}
+}
+
+func (m *ApplyRevisionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ApplyRevisionRequest.Unmarshal(m, b)
+}
+func (m *ApplyRevisionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ApplyRevisionRequest.Marshal(b, m, deterministic)
+}
+func (m *ApplyRevisionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ApplyRevisionRequest.Merge(m, src)
+}
+func (m *ApplyRevisionRequest) XXX_Size() int {
+	return xxx_messageInfo_ApplyRevisionRequest.Size(m)
+}
+func (m *ApplyRevisionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ApplyRevisionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ApplyRevisionRequest proto.InternalMessageInfo
+
+func (m *ApplyRevisionRequest) GetDirectoryId() string {
+	if m != nil {
+		return m.DirectoryId
+	}
+	return ""
+}
+
+func (m *ApplyRevisionRequest) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
+
+// ApplyRevisionResponse contains stats about the created revision.
+type ApplyRevisionResponse struct {
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// The revision this is for.
+	Revision int64 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	// mutations processed.
+	Mutations int64 `protobuf:"varint,3,opt,name=mutations,proto3" json:"mutations,omitempty"`
+	// map_leaves written.
+	MapLeaves            int64    `protobuf:"varint,4,opt,name=map_leaves,json=mapLeaves,proto3" json:"map_leaves,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ApplyRevisionResponse) Reset()         { *m = ApplyRevisionResponse{} }
+func (m *ApplyRevisionResponse) String() string { return proto.CompactTextString(m) }
+func (*ApplyRevisionResponse) ProtoMessage()    {}
+func (*ApplyRevisionResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0a5d61b2e27141ee, []int{5}
+}
+
+func (m *ApplyRevisionResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ApplyRevisionResponse.Unmarshal(m, b)
+}
+func (m *ApplyRevisionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ApplyRevisionResponse.Marshal(b, m, deterministic)
+}
+func (m *ApplyRevisionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ApplyRevisionResponse.Merge(m, src)
+}
+func (m *ApplyRevisionResponse) XXX_Size() int {
+	return xxx_messageInfo_ApplyRevisionResponse.Size(m)
+}
+func (m *ApplyRevisionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ApplyRevisionResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ApplyRevisionResponse proto.InternalMessageInfo
+
+func (m *ApplyRevisionResponse) GetDirectoryId() string {
+	if m != nil {
+		return m.DirectoryId
+	}
+	return ""
+}
+
+func (m *ApplyRevisionResponse) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
+
+func (m *ApplyRevisionResponse) GetMutations() int64 {
+	if m != nil {
+		return m.Mutations
+	}
+	return 0
+}
+
+func (m *ApplyRevisionResponse) GetMapLeaves() int64 {
+	if m != nil {
+		return m.MapLeaves
+	}
+	return 0
+}
+
+// PublishRevisionsRequest copies all available SignedMapRoots into the Log of SignedMapRoots.
+type PublishRevisionsRequest struct {
+	DirectoryId string `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
+	// block until a Signed Log Root has been published which encompases all map roots.
+	Block                bool     `protobuf:"varint,2,opt,name=block,proto3" json:"block,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *PublishRevisionsRequest) Reset()         { *m = PublishRevisionsRequest{} }
+func (m *PublishRevisionsRequest) String() string { return proto.CompactTextString(m) }
+func (*PublishRevisionsRequest) ProtoMessage()    {}
+func (*PublishRevisionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0a5d61b2e27141ee, []int{6}
+}
+
+func (m *PublishRevisionsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PublishRevisionsRequest.Unmarshal(m, b)
+}
+func (m *PublishRevisionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PublishRevisionsRequest.Marshal(b, m, deterministic)
+}
+func (m *PublishRevisionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PublishRevisionsRequest.Merge(m, src)
+}
+func (m *PublishRevisionsRequest) XXX_Size() int {
+	return xxx_messageInfo_PublishRevisionsRequest.Size(m)
+}
+func (m *PublishRevisionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_PublishRevisionsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PublishRevisionsRequest proto.InternalMessageInfo
+
+func (m *PublishRevisionsRequest) GetDirectoryId() string {
+	if m != nil {
+		return m.DirectoryId
+	}
+	return ""
+}
+
+func (m *PublishRevisionsRequest) GetBlock() bool {
+	if m != nil {
+		return m.Block
+	}
+	return false
+}
+
+// PublishRevisionsResponse contains metrics about the publishing operation.
+type PublishRevisionsResponse struct {
+	// revisions published to the log of signed map roots.
+	Revisions            []int64  `protobuf:"varint,1,rep,packed,name=revisions,proto3" json:"revisions,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *PublishRevisionsResponse) Reset()         { *m = PublishRevisionsResponse{} }
+func (m *PublishRevisionsResponse) String() string { return proto.CompactTextString(m) }
+func (*PublishRevisionsResponse) ProtoMessage()    {}
+func (*PublishRevisionsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0a5d61b2e27141ee, []int{7}
+}
+
+func (m *PublishRevisionsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PublishRevisionsResponse.Unmarshal(m, b)
+}
+func (m *PublishRevisionsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PublishRevisionsResponse.Marshal(b, m, deterministic)
+}
+func (m *PublishRevisionsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PublishRevisionsResponse.Merge(m, src)
+}
+func (m *PublishRevisionsResponse) XXX_Size() int {
+	return xxx_messageInfo_PublishRevisionsResponse.Size(m)
+}
+func (m *PublishRevisionsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_PublishRevisionsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PublishRevisionsResponse proto.InternalMessageInfo
+
+func (m *PublishRevisionsResponse) GetRevisions() []int64 {
+	if m != nil {
+		return m.Revisions
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*MapMetadata)(nil), "google.keytransparency.sequencer.MapMetadata")
 	proto.RegisterType((*MapMetadata_SourceSlice)(nil), "google.keytransparency.sequencer.MapMetadata.SourceSlice")
-	proto.RegisterType((*CreateRevisionRequest)(nil), "google.keytransparency.sequencer.CreateRevisionRequest")
 	proto.RegisterType((*RunBatchRequest)(nil), "google.keytransparency.sequencer.RunBatchRequest")
-	proto.RegisterType((*PublishBatchRequest)(nil), "google.keytransparency.sequencer.PublishBatchRequest")
+	proto.RegisterType((*DefineRevisionsRequest)(nil), "google.keytransparency.sequencer.DefineRevisionsRequest")
+	proto.RegisterType((*DefineRevisionsResponse)(nil), "google.keytransparency.sequencer.DefineRevisionsResponse")
+	proto.RegisterType((*ApplyRevisionRequest)(nil), "google.keytransparency.sequencer.ApplyRevisionRequest")
+	proto.RegisterType((*ApplyRevisionResponse)(nil), "google.keytransparency.sequencer.ApplyRevisionResponse")
+	proto.RegisterType((*PublishRevisionsRequest)(nil), "google.keytransparency.sequencer.PublishRevisionsRequest")
+	proto.RegisterType((*PublishRevisionsResponse)(nil), "google.keytransparency.sequencer.PublishRevisionsResponse")
+}
+
+func init() { proto.RegisterFile("sequencer_api.proto", fileDescriptor_0a5d61b2e27141ee) }
+
+var fileDescriptor_0a5d61b2e27141ee = []byte{
+	// 595 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x54, 0x4f, 0x6f, 0xd3, 0x4e,
+	0x14, 0x94, 0xe3, 0xa4, 0xbf, 0xe4, 0xe5, 0x87, 0x12, 0x96, 0xa4, 0xb5, 0xdc, 0x22, 0x05, 0x9f,
+	0x82, 0x90, 0x1c, 0xd1, 0x4a, 0xd0, 0x72, 0xa3, 0x90, 0x43, 0x80, 0x22, 0xe4, 0xd0, 0x0b, 0x17,
+	0x6b, 0x63, 0x6f, 0x9d, 0x55, 0x6d, 0xaf, 0xf1, 0xae, 0x43, 0x2c, 0x71, 0xe0, 0x80, 0x90, 0x7a,
+	0xe6, 0x3b, 0xf2, 0x39, 0x90, 0xff, 0x26, 0xb8, 0x45, 0xa1, 0x41, 0xe2, 0x94, 0xec, 0xbc, 0x99,
+	0xd9, 0xb7, 0x7e, 0xb3, 0x0b, 0xf7, 0x38, 0xf9, 0x18, 0x11, 0xdf, 0x22, 0xa1, 0x89, 0x03, 0xaa,
+	0x07, 0x21, 0x13, 0x0c, 0x0d, 0x1c, 0xc6, 0x1c, 0x97, 0xe8, 0x97, 0x24, 0x16, 0x21, 0xf6, 0x79,
+	0x80, 0x43, 0xe2, 0x5b, 0xb1, 0x5e, 0x72, 0xd5, 0xfd, 0x8c, 0x31, 0x4a, 0xf9, 0xb3, 0xe8, 0x62,
+	0x44, 0xbc, 0x40, 0xc4, 0x99, 0x5c, 0xfb, 0x21, 0x41, 0xfb, 0x0c, 0x07, 0x67, 0x44, 0x60, 0x1b,
+	0x0b, 0x8c, 0xa6, 0xf0, 0x1f, 0x67, 0x51, 0x68, 0x11, 0xae, 0xd4, 0x06, 0xf2, 0xb0, 0x7d, 0x78,
+	0xa2, 0x6f, 0xda, 0x40, 0x5f, 0xd3, 0xeb, 0xd3, 0x54, 0x3c, 0x75, 0xa9, 0x45, 0x8c, 0xc2, 0x49,
+	0xfd, 0x0c, 0xed, 0x35, 0x1c, 0x3d, 0x84, 0xae, 0xcb, 0x3e, 0x11, 0x2e, 0x4c, 0xea, 0x5b, 0x6e,
+	0xc4, 0xe9, 0x82, 0x28, 0xd2, 0x40, 0x1a, 0xca, 0x46, 0x27, 0xc3, 0x27, 0x05, 0x8c, 0x1e, 0xc1,
+	0xdd, 0x39, 0x75, 0xe6, 0x09, 0x97, 0x2c, 0x0b, 0x6e, 0x2d, 0xe5, 0x76, 0xf3, 0xc2, 0xb8, 0xc0,
+	0x51, 0x1f, 0x76, 0x5c, 0xe6, 0x98, 0xd4, 0x56, 0xe4, 0x94, 0xd1, 0x70, 0x99, 0x33, 0xb1, 0x5f,
+	0xd5, 0x9b, 0x52, 0xb7, 0xa6, 0x7d, 0x95, 0xa0, 0x63, 0x44, 0xfe, 0x29, 0x16, 0xd6, 0xdc, 0x48,
+	0x5a, 0xe7, 0x02, 0x3d, 0x80, 0xff, 0x6d, 0x1a, 0x12, 0x4b, 0xb0, 0x30, 0x4e, 0x64, 0x49, 0x13,
+	0x2d, 0xa3, 0x5d, 0x62, 0x13, 0x1b, 0xed, 0x43, 0xcb, 0xa3, 0xbe, 0x39, 0x4b, 0x64, 0xe9, 0xc6,
+	0x0d, 0xa3, 0xe9, 0xd1, 0xcc, 0x26, 0x2d, 0xe2, 0x65, 0x5e, 0x94, 0xf3, 0x22, 0x5e, 0x66, 0xc5,
+	0x1e, 0x34, 0x66, 0x2e, 0xb3, 0x2e, 0x95, 0xfa, 0x40, 0x1a, 0x36, 0x8d, 0x6c, 0xa1, 0x45, 0xb0,
+	0xfb, 0x92, 0x5c, 0x50, 0x9f, 0x18, 0x64, 0x41, 0x39, 0x65, 0x3e, 0xff, 0x17, 0xcd, 0x68, 0x6f,
+	0x61, 0xef, 0xda, 0xb6, 0x3c, 0x60, 0x3e, 0x27, 0xe8, 0x08, 0xfa, 0x2c, 0x12, 0x5c, 0x60, 0xdf,
+	0xa6, 0xbe, 0x63, 0x86, 0x05, 0x41, 0x91, 0x06, 0xf2, 0x50, 0x36, 0x7a, 0x6b, 0xc5, 0x52, 0xac,
+	0x9d, 0x43, 0xef, 0x79, 0x10, 0xb8, 0x71, 0x81, 0xdc, 0xe2, 0x10, 0x2a, 0x34, 0x8b, 0x3d, 0xf2,
+	0x49, 0x96, 0x6b, 0xed, 0xbb, 0x04, 0xfd, 0x8a, 0x6f, 0xde, 0xe5, 0xdf, 0x19, 0xa3, 0x03, 0x68,
+	0x79, 0x91, 0xc0, 0x22, 0x3d, 0x58, 0x96, 0x8e, 0x15, 0x80, 0xee, 0x03, 0x78, 0x38, 0x30, 0x5d,
+	0x82, 0x17, 0x84, 0xa7, 0xf3, 0x4a, 0xca, 0x38, 0x78, 0x93, 0x02, 0x9a, 0x01, 0x7b, 0xef, 0xa2,
+	0x99, 0x4b, 0xf9, 0x7c, 0x9b, 0xa1, 0x95, 0x39, 0xa8, 0xad, 0xe7, 0xe0, 0x18, 0x94, 0xeb, 0x9e,
+	0xf9, 0x59, 0x0f, 0xa0, 0x55, 0x9d, 0xc2, 0x0a, 0x38, 0xbc, 0xaa, 0x83, 0xf2, 0x9a, 0xc4, 0xef,
+	0xd7, 0xee, 0xe2, 0xb4, 0xb8, 0x8a, 0xe8, 0x1c, 0x9a, 0x45, 0xc8, 0xd1, 0xe3, 0xcd, 0x37, 0xb7,
+	0x72, 0x21, 0xd4, 0xdd, 0x42, 0x52, 0xbc, 0x15, 0xfa, 0x38, 0x79, 0x2b, 0xd0, 0x37, 0x09, 0x3a,
+	0x95, 0xfc, 0xa0, 0xe3, 0xcd, 0xf6, 0x37, 0x27, 0x5d, 0x3d, 0xd9, 0x42, 0x99, 0x7f, 0x9a, 0x2f,
+	0x12, 0xdc, 0xf9, 0x25, 0x20, 0xe8, 0xc9, 0x66, 0xb3, 0x9b, 0x92, 0xaa, 0x3e, 0xbd, 0xb5, 0x2e,
+	0x6f, 0xe1, 0x4a, 0x82, 0x6e, 0x75, 0x74, 0xe8, 0x0f, 0x8e, 0xf4, 0x9b, 0x08, 0xa9, 0xcf, 0xb6,
+	0x91, 0x66, 0xbd, 0x9c, 0x8e, 0x3f, 0xbc, 0x70, 0xa8, 0x98, 0x47, 0x33, 0xdd, 0x62, 0xde, 0x28,
+	0x7f, 0xe7, 0x2b, 0x3e, 0x23, 0x8b, 0x85, 0x64, 0x54, 0x9a, 0xad, 0xfe, 0x99, 0x0e, 0x33, 0xb3,
+	0x39, 0xef, 0xa4, 0x3f, 0x47, 0x3f, 0x03, 0x00, 0x00, 0xff, 0xff, 0xa4, 0xa4, 0x05, 0xf7, 0x61,
+	0x06, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -308,14 +582,17 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type KeyTransparencySequencerClient interface {
-	// RunBatch reads outstanding mutations and calls CreateRevision.
+	// RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
 	RunBatch(ctx context.Context, in *RunBatchRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	// CreateRevision applies the contained mutations to the current map root.
+	// DefineRevision examines the outstanding items in the queue and optionally
+	// writes the metadata for one or more revisions to the metadata database.
+	DefineRevisions(ctx context.Context, in *DefineRevisionsRequest, opts ...grpc.CallOption) (*DefineRevisionsResponse, error)
+	// ApplyRevision applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
-	CreateRevision(ctx context.Context, in *CreateRevisionRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	// PublishBatch copies the MapRoots of all known map revisions into the Log
+	ApplyRevision(ctx context.Context, in *ApplyRevisionRequest, opts ...grpc.CallOption) (*ApplyRevisionResponse, error)
+	// PublishRevisions copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
-	PublishBatch(ctx context.Context, in *PublishBatchRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	PublishRevisions(ctx context.Context, in *PublishRevisionsRequest, opts ...grpc.CallOption) (*PublishRevisionsResponse, error)
 }
 
 type keyTransparencySequencerClient struct {
@@ -335,18 +612,27 @@ func (c *keyTransparencySequencerClient) RunBatch(ctx context.Context, in *RunBa
 	return out, nil
 }
 
-func (c *keyTransparencySequencerClient) CreateRevision(ctx context.Context, in *CreateRevisionRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/google.keytransparency.sequencer.KeyTransparencySequencer/CreateRevision", in, out, opts...)
+func (c *keyTransparencySequencerClient) DefineRevisions(ctx context.Context, in *DefineRevisionsRequest, opts ...grpc.CallOption) (*DefineRevisionsResponse, error) {
+	out := new(DefineRevisionsResponse)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.sequencer.KeyTransparencySequencer/DefineRevisions", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyTransparencySequencerClient) PublishBatch(ctx context.Context, in *PublishBatchRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/google.keytransparency.sequencer.KeyTransparencySequencer/PublishBatch", in, out, opts...)
+func (c *keyTransparencySequencerClient) ApplyRevision(ctx context.Context, in *ApplyRevisionRequest, opts ...grpc.CallOption) (*ApplyRevisionResponse, error) {
+	out := new(ApplyRevisionResponse)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.sequencer.KeyTransparencySequencer/ApplyRevision", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyTransparencySequencerClient) PublishRevisions(ctx context.Context, in *PublishRevisionsRequest, opts ...grpc.CallOption) (*PublishRevisionsResponse, error) {
+	out := new(PublishRevisionsResponse)
+	err := c.cc.Invoke(ctx, "/google.keytransparency.sequencer.KeyTransparencySequencer/PublishRevisions", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -355,14 +641,17 @@ func (c *keyTransparencySequencerClient) PublishBatch(ctx context.Context, in *P
 
 // KeyTransparencySequencerServer is the server API for KeyTransparencySequencer service.
 type KeyTransparencySequencerServer interface {
-	// RunBatch reads outstanding mutations and calls CreateRevision.
+	// RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
 	RunBatch(context.Context, *RunBatchRequest) (*empty.Empty, error)
-	// CreateRevision applies the contained mutations to the current map root.
+	// DefineRevision examines the outstanding items in the queue and optionally
+	// writes the metadata for one or more revisions to the metadata database.
+	DefineRevisions(context.Context, *DefineRevisionsRequest) (*DefineRevisionsResponse, error)
+	// ApplyRevision applies the contained mutations to the current map root.
 	// If this method fails, it must be retried with the same arguments.
-	CreateRevision(context.Context, *CreateRevisionRequest) (*empty.Empty, error)
-	// PublishBatch copies the MapRoots of all known map revisions into the Log
+	ApplyRevision(context.Context, *ApplyRevisionRequest) (*ApplyRevisionResponse, error)
+	// PublishRevisions copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
-	PublishBatch(context.Context, *PublishBatchRequest) (*empty.Empty, error)
+	PublishRevisions(context.Context, *PublishRevisionsRequest) (*PublishRevisionsResponse, error)
 }
 
 func RegisterKeyTransparencySequencerServer(s *grpc.Server, srv KeyTransparencySequencerServer) {
@@ -387,38 +676,56 @@ func _KeyTransparencySequencer_RunBatch_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparencySequencer_CreateRevision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateRevisionRequest)
+func _KeyTransparencySequencer_DefineRevisions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DefineRevisionsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyTransparencySequencerServer).CreateRevision(ctx, in)
+		return srv.(KeyTransparencySequencerServer).DefineRevisions(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/google.keytransparency.sequencer.KeyTransparencySequencer/CreateRevision",
+		FullMethod: "/google.keytransparency.sequencer.KeyTransparencySequencer/DefineRevisions",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencySequencerServer).CreateRevision(ctx, req.(*CreateRevisionRequest))
+		return srv.(KeyTransparencySequencerServer).DefineRevisions(ctx, req.(*DefineRevisionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyTransparencySequencer_PublishBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PublishBatchRequest)
+func _KeyTransparencySequencer_ApplyRevision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyRevisionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyTransparencySequencerServer).PublishBatch(ctx, in)
+		return srv.(KeyTransparencySequencerServer).ApplyRevision(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/google.keytransparency.sequencer.KeyTransparencySequencer/PublishBatch",
+		FullMethod: "/google.keytransparency.sequencer.KeyTransparencySequencer/ApplyRevision",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyTransparencySequencerServer).PublishBatch(ctx, req.(*PublishBatchRequest))
+		return srv.(KeyTransparencySequencerServer).ApplyRevision(ctx, req.(*ApplyRevisionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyTransparencySequencer_PublishRevisions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishRevisionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyTransparencySequencerServer).PublishRevisions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/google.keytransparency.sequencer.KeyTransparencySequencer/PublishRevisions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyTransparencySequencerServer).PublishRevisions(ctx, req.(*PublishRevisionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -432,48 +739,18 @@ var _KeyTransparencySequencer_serviceDesc = grpc.ServiceDesc{
 			Handler:    _KeyTransparencySequencer_RunBatch_Handler,
 		},
 		{
-			MethodName: "CreateRevision",
-			Handler:    _KeyTransparencySequencer_CreateRevision_Handler,
+			MethodName: "DefineRevisions",
+			Handler:    _KeyTransparencySequencer_DefineRevisions_Handler,
 		},
 		{
-			MethodName: "PublishBatch",
-			Handler:    _KeyTransparencySequencer_PublishBatch_Handler,
+			MethodName: "ApplyRevision",
+			Handler:    _KeyTransparencySequencer_ApplyRevision_Handler,
+		},
+		{
+			MethodName: "PublishRevisions",
+			Handler:    _KeyTransparencySequencer_PublishRevisions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "sequencer_api.proto",
-}
-
-func init() { proto.RegisterFile("sequencer_api.proto", fileDescriptor_0a5d61b2e27141ee) }
-
-var fileDescriptor_0a5d61b2e27141ee = []byte{
-	// 442 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x53, 0x5f, 0x6b, 0xd4, 0x40,
-	0x10, 0xe7, 0x92, 0xbb, 0x9a, 0xce, 0x15, 0x1b, 0xb7, 0x54, 0x8e, 0xeb, 0xcb, 0x79, 0x4f, 0x15,
-	0x21, 0xc1, 0x8a, 0xa8, 0xaf, 0x2d, 0x7d, 0xe8, 0x49, 0x41, 0x72, 0x8a, 0x20, 0x48, 0xd8, 0x6c,
-	0xc6, 0x64, 0x69, 0x92, 0x8d, 0xbb, 0x1b, 0xdb, 0x80, 0xdf, 0xca, 0xef, 0xe4, 0xe7, 0x28, 0xd9,
-	0x24, 0xd7, 0x6b, 0x69, 0x39, 0xee, 0x29, 0xc9, 0xfc, 0xfe, 0xcc, 0xce, 0xfe, 0x26, 0x70, 0xa0,
-	0xf0, 0x77, 0x85, 0x05, 0x43, 0x19, 0xd2, 0x92, 0x7b, 0xa5, 0x14, 0x5a, 0x90, 0x59, 0x22, 0x44,
-	0x92, 0xa1, 0x77, 0x85, 0xb5, 0x96, 0xb4, 0x50, 0x25, 0x95, 0x58, 0xb0, 0xda, 0x5b, 0x71, 0xa7,
-	0x47, 0x2d, 0xc3, 0x37, 0xfc, 0xa8, 0xfa, 0xe5, 0x63, 0x5e, 0xea, 0xba, 0x95, 0xcf, 0xff, 0x0f,
-	0x60, 0x7c, 0x49, 0xcb, 0x4b, 0xd4, 0x34, 0xa6, 0x9a, 0x92, 0x25, 0x3c, 0x53, 0xa2, 0x92, 0x0c,
-	0xd5, 0xc4, 0x9a, 0xd9, 0xc7, 0xe3, 0x93, 0x4f, 0xde, 0xa6, 0x06, 0xde, 0x9a, 0xde, 0x5b, 0x1a,
-	0xf1, 0x32, 0xe3, 0x0c, 0x83, 0xde, 0x69, 0xfa, 0x17, 0xc6, 0x6b, 0x75, 0xf2, 0x1a, 0xdc, 0x4c,
-	0x5c, 0xa3, 0xd2, 0xe1, 0x35, 0xd5, 0x28, 0x73, 0x2a, 0xaf, 0x26, 0x83, 0xd9, 0xe0, 0xd8, 0x0e,
-	0xf6, 0xdb, 0xfa, 0xf7, 0xbe, 0x4c, 0xde, 0xc0, 0x8b, 0x94, 0x27, 0xe9, 0x7d, 0xae, 0x65, 0xb8,
-	0x6e, 0x07, 0xdc, 0x91, 0x0f, 0x61, 0x27, 0x13, 0x49, 0xc8, 0xe3, 0x89, 0x6d, 0x18, 0xa3, 0x4c,
-	0x24, 0x17, 0xf1, 0x62, 0xe8, 0x0c, 0x5c, 0x6b, 0x1e, 0xc1, 0xe1, 0x99, 0x44, 0xaa, 0x31, 0xc0,
-	0x3f, 0x5c, 0x71, 0x51, 0x04, 0xcd, 0xf9, 0x95, 0x26, 0xaf, 0x60, 0x2f, 0xe6, 0x12, 0x99, 0x16,
-	0xb2, 0x6e, 0xb4, 0xcd, 0x49, 0x76, 0x83, 0xf1, 0xaa, 0x76, 0x11, 0x93, 0x29, 0x38, 0xb2, 0x53,
-	0x75, 0xd6, 0xab, 0xef, 0xc5, 0xd0, 0xb1, 0x5c, 0x7b, 0x31, 0x74, 0x86, 0xee, 0x68, 0x5e, 0xc0,
-	0x7e, 0x50, 0x15, 0xa7, 0x54, 0xb3, 0x74, 0x0b, 0xf7, 0x23, 0xd8, 0xcd, 0x79, 0x11, 0x46, 0x8d,
-	0xcc, 0xcc, 0x36, 0x0a, 0x9c, 0x9c, 0xb7, 0x36, 0x06, 0xa4, 0x37, 0x1d, 0x68, 0x77, 0x20, 0xbd,
-	0x31, 0xe0, 0xfc, 0x23, 0x1c, 0x7c, 0xa9, 0xa2, 0x8c, 0xab, 0x74, 0xcb, 0x9e, 0x27, 0xff, 0x2c,
-	0x98, 0x7c, 0xc6, 0xfa, 0xeb, 0x5a, 0xa0, 0xcb, 0x3e, 0x4f, 0xf2, 0x0d, 0x9c, 0x7e, 0x0c, 0xf2,
-	0x76, 0x73, 0xfc, 0x0f, 0x46, 0x9e, 0xbe, 0xec, 0x25, 0xfd, 0xc2, 0x79, 0xe7, 0xcd, 0xc2, 0x11,
-	0x0a, 0xcf, 0xef, 0x27, 0x40, 0x3e, 0x6c, 0x36, 0x7f, 0x34, 0xb3, 0x27, 0x5b, 0xfc, 0x84, 0xbd,
-	0xf5, 0x0b, 0x21, 0xef, 0x37, 0x37, 0x78, 0xe4, 0x02, 0x9f, 0xb2, 0x3f, 0x3d, 0xff, 0x71, 0x96,
-	0x70, 0x9d, 0x56, 0x91, 0xc7, 0x44, 0xee, 0x77, 0xbf, 0xd5, 0x03, 0x6b, 0x9f, 0x09, 0x89, 0xfe,
-	0xca, 0xff, 0xee, 0x2d, 0x4c, 0x44, 0xd8, 0xfa, 0xed, 0x98, 0xc7, 0xbb, 0xdb, 0x00, 0x00, 0x00,
-	0xff, 0xff, 0xf8, 0xa6, 0x8e, 0x7e, 0xd0, 0x03, 0x00, 0x00,
 }

@@ -42,6 +42,8 @@ message Committed {
 // EntryUpdate contains the user entry update(s).
 // EntryUpdate will be placed in a Log of mutations.
 message EntryUpdate {
+  // user_id specifies the id for the user whose profile is being updated.
+  string user_id = 1;
   // mutation authorizes the change to entry.
   SignedEntry mutation = 2;
   // committed contains the data committed to in mutation.commitment.
@@ -150,13 +152,29 @@ message BatchGetUserRequest {
   int64 last_verified_tree_size = 3;
 }
 
+// BatchGetUserIndexRequest identifies a set of users.
+message BatchGetUserIndexRequest {
+  // directory_id identifies the directory in which the users live.
+  string directory_id = 1;
+  // user_ids are the user identifiers
+  repeated string user_ids = 2;
+}
+
+// BatchGetUserIndexRequest identifies a single user.
+message BatchGetUserIndexResponse {
+  // proofs is a map from user_id to its VRF proof.
+  // Clients get the index by verifying the VRF proof.
+  map<string, bytes> proofs = 1;
+}
+
 // BatchGetUserResponse contains the leaf entries for a set of users at the most
 // recently published revision.
 message BatchGetUserResponse {
   // revision is the most recently published revision.
   Revision revision = 1;
-  // leaves are the leaf entries for the requested users, in the order requested.
-  repeated MapLeaf leaves = 2;
+  // map_leaves_by_user_id is a map from user_id to the map leaf at the most
+  // recently published revision.
+  map<string, MapLeaf> map_leaves_by_user_id = 2;
 }
 
 // ListEntryHistoryRequest gets a list of historical keys for a user.
@@ -254,8 +272,9 @@ message BatchListUserRevisionsRequest {
 message BatchMapRevision {
   // map_root contains the map root and its inclusion in the log.
   MapRoot map_root = 1;
-  // map_leaves contains multiple leaves and their inclusion proofs to map_root.
-  repeated MapLeaf map_leaves = 2;
+  // map_leaves_by_user_id contains a mapping from user_id to the map leaf at
+  // this revision.
+  map<string, MapLeaf> map_leaves_by_user_id = 2;
 }
 
 // BatchListUserRevisionsResponse contains multiple map leaves across multiple revisions.
@@ -270,8 +289,8 @@ message BatchListUserRevisionsResponse {
 message UpdateEntryRequest {
   // directory_id identifies the directory in which the user lives.
   string directory_id = 5;
-  // user_id specifies the id for the user whose profile is being updated.
-  string user_id = 1;
+  // Used to be user_id. user_id now lives in EntryUpdate.
+  reserved 1;
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
   reserved 2;
@@ -279,6 +298,14 @@ message UpdateEntryRequest {
   reserved 3;
   // entry_update contains the user submitted update.
   EntryUpdate entry_update = 4;
+}
+
+// BatchQueueUserUpdateRequest enqueues multiple changes to user profiles.
+message BatchQueueUserUpdateRequest {
+  // directory_id identifies the directory in which the users live.
+  string directory_id = 1;
+  // updates contains user updates.
+  repeated EntryUpdate updates = 2;
 }
 
 // GetRevisionRequest identifies a particular revision.
@@ -442,6 +469,12 @@ service KeyTransparency {
       get: "/v1/directories/{directory_id}/users:batchGet"
     };
   }
+  // BatchGetUserIndex returns the VRF proof for a set of userIDs.
+  rpc BatchGetUserIndex(BatchGetUserIndexRequest) returns (BatchGetUserIndexResponse) {
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/users:batchGetIndex"
+    };
+  }
   // ListEntryHistory returns a list of historic GetUser values.
   //
   // Clients verify their account history by observing correct values for their
@@ -474,8 +507,15 @@ service KeyTransparency {
   // update appears after a timeout.
   rpc QueueEntryUpdate(UpdateEntryRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v1/directories/{directory_id}/users/{user_id}:queue"
+      post: "/v1/directories/{directory_id}/users/{entry_update.user_id}:queue"
       body: "entry_update"
+    };
+  }
+  // BatchQueueUserUpdate enqueues a list of user profiles.
+  rpc BatchQueueUserUpdate(BatchQueueUserUpdateRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}:batchQueueUpdate"
+      body: "*"
     };
   }
 }

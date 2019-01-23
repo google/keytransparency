@@ -288,7 +288,16 @@ func (f *fakeKeyServer) BatchGetUser(context.Context, *pb.BatchGetUserRequest) (
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
+func (f *fakeKeyServer) BatchGetUserIndex(context.Context,
+	*pb.BatchGetUserIndexRequest) (*pb.BatchGetUserIndexResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 func (f *fakeKeyServer) QueueEntryUpdate(context.Context, *pb.UpdateEntryRequest) (*empty.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
+func (f *fakeKeyServer) BatchQueueUserUpdate(context.Context, *pb.BatchQueueUserUpdateRequest) (*empty.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
@@ -298,10 +307,9 @@ func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byt
 	return make([]byte, 32), nil
 }
 
-func (f *fakeVerifier) VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
-	in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.GetRevision().GetMapRoot().GetMapRoot())
-	return smr, &types.LogRootV1{}, err
+func (f *fakeVerifier) VerifyMapLeaf(directoryID, userID string,
+	in *pb.MapLeaf, smr *types.MapRootV1) error {
+	return nil
 }
 
 func (f *fakeVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {

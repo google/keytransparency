@@ -59,24 +59,22 @@ func TestValidateUpdateEntryRequest(t *testing.T) {
 		{false, userID, index, commitment, nil}, // Incorrect key
 		{true, userID, index, commitment, nonce},
 	} {
-		req := &pb.UpdateEntryRequest{
+		req := &pb.EntryUpdate{
 			UserId: tc.userID,
-			EntryUpdate: &pb.EntryUpdate{
-				Mutation: &pb.SignedEntry{
-					Entry: mustMarshal(t, &pb.Entry{
-						Index:      tc.index[:],
-						Commitment: tc.commitment,
-					}),
-				},
-				Committed: &pb.Committed{
-					Key:  tc.nonce,
-					Data: profileData,
-				},
+			Mutation: &pb.SignedEntry{
+				Entry: mustMarshal(t, &pb.Entry{
+					Index:      tc.index[:],
+					Commitment: tc.commitment,
+				}),
+			},
+			Committed: &pb.Committed{
+				Key:  tc.nonce,
+				Data: profileData,
 			},
 		}
-		err := validateUpdateEntryRequest(req, vrfPriv)
+		err := validateEntryUpdate(req, vrfPriv)
 		if got := err == nil; got != tc.want {
-			t.Errorf("validateUpdateEntryRequest(%v): %v, want %v", req, err, tc.want)
+			t.Errorf("validateEntryUpdate(%v): %v, want %v", req, err, tc.want)
 		}
 	}
 }

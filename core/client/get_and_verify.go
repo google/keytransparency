@@ -25,11 +25,11 @@ import (
 )
 
 // VerifiedGetUser fetches and verifies the results of GetUser.
-func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.GetUserResponse, *types.LogRootV1, error) {
+func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLeaf, *types.LogRootV1, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
-	e, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
-		DirectoryId:          c.directoryID,
+	resp, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
+		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -37,13 +37,17 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.GetUse
 		return nil, nil, err
 	}
 
-	_, slr, err := c.VerifyGetUserResponse(ctx, c.directoryID, userID, c.trusted, e)
+	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
 	if err != nil {
 		return nil, nil, err
 	}
 	c.updateTrusted(slr)
 
-	return e, slr, nil
+	if err := c.VerifyMapLeaf(c.DirectoryID, userID, resp.Leaf, smr); err != nil {
+		return nil, nil, err
+	}
+
+	return resp.Leaf, slr, nil
 }
 
 // VerifiedGetLatestRevision fetches the latest revision from the key server.
@@ -55,7 +59,7 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
@@ -76,7 +80,7 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 		return nil, nil, err
 	}
 	if smr.Revision != wantRevision {
-		return nil, nil, fmt.Errorf("GetLatestRevision(): smr.Revison: %v != slr.TreeSize-1: %v", smr.Revision, slr.TreeSize-1)
+		return nil, nil, fmt.Errorf("map revision is not the most recent. smr.Revison: %v != slr.TreeSize-1: %v", smr.Revision, slr.TreeSize-1)
 	}
 	return slr, smr, nil
 }
@@ -90,7 +94,7 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 	defer c.trustedLock.Unlock()
 
 	e, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		Revision:             revision,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -113,7 +117,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-		DirectoryId:          c.directoryID,
+		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 		Start:                start,
@@ -129,8 +133,11 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	var smr *types.MapRootV1
 	profiles := make(map[*types.MapRootV1][]byte)
 	for _, v := range resp.GetValues() {
-		smr, slr, err = c.VerifyGetUserResponse(ctx, c.directoryID, userID, c.trusted, v)
+		slr, smr, err = c.VerifyRevision(v.Revision, c.trusted)
 		if err != nil {
+			return nil, 0, err
+		}
+		if err = c.VerifyMapLeaf(c.DirectoryID, userID, v.Leaf, smr); err != nil {
 			return nil, 0, err
 		}
 		Vlog.Printf("Processing entry for %v, revision %v", userID, smr.Revision)

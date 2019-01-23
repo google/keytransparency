@@ -1,6 +1,7 @@
 version: "3"
 services:
   # Only works when when replicas = 1 for reach monitored service.
+  # Kubernetes sidecars are needed for replicas > 1. 
   prometheus-to-sd:
     container_name: prometheus-to-sd
     image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
@@ -48,7 +49,7 @@ services:
     image: us.gcr.io/key-transparency/log-server:${TRAVIS_COMMIT}
     build:
       context: ../trillian
-      dockerfile: server/trillian_log_server/Dockerfile
+      dockerfile: examples/deployment/docker/log_server/Dockerfile
     restart: always
     entrypoint:
       - /go/bin/trillian_log_server
@@ -71,7 +72,7 @@ services:
     image: us.gcr.io/key-transparency/log-signer:${TRAVIS_COMMIT}
     build:
       context: ../trillian
-      dockerfile: server/trillian_log_signer/Dockerfile
+      dockerfile: examples/deployment/docker/log_signer/Dockerfile
     restart: always
     entrypoint:
       - /go/bin/trillian_log_signer
@@ -97,7 +98,7 @@ services:
     image: us.gcr.io/key-transparency/map-server:${TRAVIS_COMMIT}
     build:
       context: ../trillian
-      dockerfile: server/trillian_map_server/Dockerfile
+      dockerfile: examples/deployment/docker/map_server/Dockerfile
     restart: always
     entrypoint:
       - /go/bin/trillian_map_server
@@ -158,6 +159,7 @@ services:
     restart: always
     entrypoint:
       - /go/bin/keytransparency-sequencer
+      - --force_master
       - --db=test:zaphod@tcp(db:3306)/test
       - --addr=0.0.0.0:8080
       - --log-url=log-server:8090

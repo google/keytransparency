@@ -16,6 +16,7 @@ package sequencer
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -38,15 +39,20 @@ import (
 
 const (
 	directoryIDLabel = "directoryid"
+	logIDLabel       = "logid"
+	phaseLabel       = "phase"
+	definedLabel     = "defined"
+	appliedLabel     = "applied"
 	reasonLabel      = "reason"
 )
 
 var (
-	once             sync.Once
+	initMetrics      sync.Once
 	knownDirectories monitoring.Gauge
 	batchSize        monitoring.Gauge
 	mutationCount    monitoring.Counter
 	mutationFailures monitoring.Counter
+	watermark        monitoring.Gauge
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -66,6 +72,7 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"batch_size",
 		"Number of mutations the signer is attempting to process for directoryid",
 		directoryIDLabel)
+	watermark = mf.NewGauge("watermark", "High Watermark", directoryIDLabel, logIDLabel, phaseLabel)
 }
 
 // Watermarks is a map of watermarks by logID.
@@ -95,13 +102,17 @@ type Batcher interface {
 	WriteBatchSources(ctx context.Context, dirID string, rev int64, meta *spb.MapMetadata) error
 	// ReadBatch returns the batch definitions for a given revision.
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
+	// HighestRev returns the highest defined revision number for directoryID.
+	HighestRev(ctx context.Context, directoryID string) (int64, error)
 }
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	batcher  Batcher
-	trillian *Trillian
-	logs     LogsReader
+	batcher   Batcher
+	trillian  trillianFactory
+	logs      LogsReader
+	loopback  spb.KeyTransparencySequencerClient
+	BatchSize int32
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -113,9 +124,10 @@ func NewServer(
 	tmap tpb.TrillianMapClient,
 	batcher Batcher,
 	logs LogsReader,
+	loopback spb.KeyTransparencySequencerClient,
 	metricsFactory monitoring.MetricFactory,
 ) *Server {
-	once.Do(func() { createMetrics(metricsFactory) })
+	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
 		trillian: &Trillian{
 			directories: directories,
@@ -124,8 +136,10 @@ func NewServer(
 			tmap:        tmap,
 			tlog:        tlog,
 		},
-		batcher: batcher,
-		logs:    logs,
+		batcher:   batcher,
+		logs:      logs,
+		loopback:  loopback,
+		BatchSize: 10000,
 	}
 }
 
@@ -136,6 +150,38 @@ func NewServer(
 // b) apply the batch to the map
 // c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
+	defResp, err := s.loopback.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
+		DirectoryId: in.DirectoryId,
+		MinBatch:    in.MinBatch,
+		MaxBatch:    in.MaxBatch})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, rev := range defResp.OutstandingRevisions {
+		if _, err := s.loopback.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
+			DirectoryId: in.DirectoryId,
+			Revision:    rev,
+		}); err != nil {
+			// Log the error and continue to publish any revsisions this run may have completed.
+			// This revision will be retried on the next execution of RunBatch.
+			glog.Errorf("ApplyRevision(dir: %v, rev: %v): %v", in.DirectoryId, rev, err)
+			break
+		}
+	}
+
+	publishReq := &spb.PublishRevisionsRequest{DirectoryId: in.DirectoryId, Block: in.Block}
+	_, err = s.loopback.PublishRevisions(ctx, publishReq)
+	if err != nil {
+		return nil, err
+	}
+	return &empty.Empty{}, nil
+}
+
+// DefineRevisions examines the outstanding mutations and returns a list of
+// outstanding revisions that have not been applied.
+func (s *Server) DefineRevisions(ctx context.Context,
+	in *spb.DefineRevisionsRequest) (*spb.DefineRevisionsResponse, error) {
 	// Get the previous and current high water marks.
 	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
 	if err != nil {
@@ -145,6 +191,23 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	if err != nil {
 		return nil, err
 	}
+
+	// Collect a list of unapplied revisions.
+	highestRev, err := s.batcher.HighestRev(ctx, in.DirectoryId)
+	if err != nil {
+		return nil, err
+	}
+	outstanding := []int64{}
+	for rev := int64(latestMapRoot.Revision) + 1; rev <= highestRev; rev++ {
+		outstanding = append(outstanding, rev)
+	}
+
+	// Don't create new revisions if there are ones waiting to be applied.
+	if len(outstanding) > 0 {
+		return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
+	}
+
+	// Query metadata about outstanding log items.
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
@@ -167,15 +230,16 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
 			return nil, err
 		}
+		for _, source := range meta.Sources {
+			watermark.Set(float64(source.HighestExclusive),
+				in.DirectoryId, fmt.Sprintf("%v", source.LogId), definedLabel)
+		}
+		outstanding = append(outstanding, nextRev)
 
-		return s.CreateRevision(ctx, &spb.CreateRevisionRequest{
-			DirectoryId: in.DirectoryId,
-			Revision:    nextRev,
-		})
 	}
-
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
-	return &empty.Empty{}, nil
+
+	return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
@@ -184,40 +248,39 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 	batchSize int32) ([]*mutator.LogMessage, error) {
 	msgs := make([]*mutator.LogMessage, 0)
 	for _, source := range meta.Sources {
-		low := source.GetLowestWatermark()
-		high := source.GetHighestWatermark()
+		low := source.LowestInclusive
+		high := source.HighestExclusive
 		// Loop until less than batchSize items are returned.
 		for count := batchSize; count == batchSize; {
 			batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, batchSize)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
 			}
+			count = int32(len(batch))
+			glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
+				directoryID, source.LogId, low, high, batchSize, count)
 			for _, m := range batch {
 				msgs = append(msgs, m)
 				if m.ID > low {
 					low = m.ID
 				}
 			}
-			count = int32(len(batch))
-			glog.Infof("ReadLog(%v, (%v, %v], %v) count: %v", source.LogId, low, high, batchSize, count)
 		}
 	}
 	return msgs, nil
 }
 
-// CreateRevision applies the supplied mutations to the current map revision and creates a new revision.
-func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionRequest) (*empty.Empty, error) {
-	directoryID := in.GetDirectoryId()
+// ApplyRevision applies the supplied mutations to the current map revision and creates a new revision.
+func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest) (*spb.ApplyRevisionResponse, error) {
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
-	readBatchSize := int32(1000) // TODO(gbelvin): Make configurable.
-	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, readBatchSize)
+	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
+	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, s.BatchSize)
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("CreateRevision: for %v with %d messages", directoryID, len(msgs))
 
 	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
 	if err != nil {
@@ -237,7 +300,6 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 		}
 
 	}
-	glog.V(2).Infof("CreateRevision: %v mutations, %v indexes", len(msgs), len(indexes))
 
 	leaves, err := mapClient.GetAndVerifyMapLeavesByRevision(ctx, in.Revision-1, indexes)
 	if err != nil {
@@ -257,19 +319,30 @@ func (s *Server) CreateRevision(ctx context.Context, in *spb.CreateRevisionReque
 	}
 
 	// Set new leaf values.
-	mapRoot, err := mapClient.SetLeaves(ctx, newLeaves, metadata)
+	mapRoot, err := mapClient.SetLeavesAtRevision(ctx, in.Revision, newLeaves, metadata)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
 	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
-	mutationCount.Add(float64(len(msgs)), directoryID)
-	glog.Infof("CreatedRevision: rev: %v with %v mutations, root: %x", mapRoot.Revision, len(msgs), mapRoot.RootHash)
-	return s.PublishBatch(ctx, &spb.PublishBatchRequest{DirectoryId: directoryID})
+	for _, s := range meta.Sources {
+		watermark.Set(float64(s.HighestExclusive),
+			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
+	}
+	mutationCount.Add(float64(len(msgs)), in.DirectoryId)
+	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
+		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(msgs), len(indexes), len(newLeaves))
+	return &spb.ApplyRevisionResponse{
+		DirectoryId: in.DirectoryId,
+		Revision:    in.Revision,
+		Mutations:   int64(len(mutations)),
+		MapLeaves:   int64(len(newLeaves)),
+	}, nil
 }
 
-// PublishBatch copies the MapRoots of all known map revisions into the Log of MapRoots.
-func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) (*empty.Empty, error) {
+// PublishRevisions copies the MapRoots of all known map revisions into the Log of MapRoots.
+func (s *Server) PublishRevisions(ctx context.Context,
+	in *spb.PublishRevisionsRequest) (*spb.PublishRevisionsResponse, error) {
 	// Create verifying log and map clients.
 	logClient, err := s.trillian.LogClient(ctx, in.DirectoryId)
 	if err != nil {
@@ -291,21 +364,27 @@ func (s *Server) PublishBatch(ctx context.Context, in *spb.PublishBatchRequest) 
 	}
 
 	// Add all unpublished map roots to the log.
+	revs := []int64{}
+	leaves := make(map[int64][]byte)
 	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
 		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
 			return nil, err
 		}
-		if err := logClient.AddSequencedLeaf(ctx, rawMapRoot.GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-			glog.Errorf("AddSequencedLeaf(rev: %v): %v", mapRoot.Revision, err)
-			return nil, err
+		leaves[int64(mapRoot.Revision)] = rawMapRoot.GetMapRoot()
+		revs = append(revs, int64(mapRoot.Revision))
+	}
+	if err := logClient.AddSequencedLeaves(ctx, leaves); err != nil {
+		glog.Errorf("AddSequencedLeaves(revs: %v): %v", revs, err)
+		return nil, err
+	}
+
+	if in.Block {
+		if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
+			return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
 		}
 	}
-	// TODO(gbelvin): Remove wait when batching boundaries are deterministic.
-	if err := logClient.WaitForInclusion(ctx, latestRawMapRoot.GetMapRoot()); err != nil {
-		return nil, status.Errorf(codes.Internal, "WaitForInclusion(): %v", err)
-	}
-	return &empty.Empty{}, nil
+	return &spb.PublishRevisionsResponse{Revisions: revs}, nil
 }
 
 // HighWatermarks returns the total count across all logs and the highest watermark for each log.
@@ -324,9 +403,9 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	ends := map[int64]int64{}
 	starts := map[int64]int64{}
 	for _, source := range lastMeta.Sources {
-		if ends[source.LogId] < source.HighestWatermark {
-			ends[source.LogId] = source.HighestWatermark
-			starts[source.LogId] = source.HighestWatermark
+		if ends[source.LogId] < source.HighestExclusive {
+			ends[source.LogId] = source.HighestExclusive
+			starts[source.LogId] = source.HighestExclusive
 		}
 	}
 
@@ -353,8 +432,8 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	for logID, end := range ends {
 		meta.Sources = append(meta.Sources, &spb.MapMetadata_SourceSlice{
 			LogId:            logID,
-			LowestWatermark:  starts[logID],
-			HighestWatermark: end,
+			LowestInclusive:  starts[logID],
+			HighestExclusive: end,
 		})
 	}
 	// Deterministic results are nice.

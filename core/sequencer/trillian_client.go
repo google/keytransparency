@@ -28,6 +28,27 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
+// trillianFactory creates verifying clients for Trillian
+type trillianFactory interface {
+	MapClient(ctx context.Context, dirID string) (trillianMap, error)
+	LogClient(ctx context.Context, dirID string) (trillianLog, error)
+}
+
+// trillianMap communicates with the Trilian map and verifies the responses.
+type trillianMap interface {
+	GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error)
+	SetLeavesAtRevision(ctx context.Context, rev int64, leaves []*tpb.MapLeaf, meta []byte) (*types.MapRootV1, error)
+	GetAndVerifyMapRootByRevision(ctx context.Context, rev int64) (*tpb.SignedMapRoot, *types.MapRootV1, error)
+	GetAndVerifyMapLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error)
+}
+
+// trillianLog communicates with the Trillian log and verifies the responses.
+type trillianLog interface {
+	WaitForInclusion(ctx context.Context, data []byte) error
+	UpdateRoot(ctx context.Context) (*types.LogRootV1, error)
+	AddSequencedLeaves(ctx context.Context, dataByIndex map[int64][]byte) error
+}
+
 // Trillian contains Trillian gRPC clients and metadata about them.
 type Trillian struct {
 	directories directory.Storage
@@ -38,7 +59,7 @@ type Trillian struct {
 }
 
 // MapClient returns a verifying MapClient
-func (t *Trillian) MapClient(ctx context.Context, dirID string) (*MapClient, error) {
+func (t *Trillian) MapClient(ctx context.Context, dirID string) (trillianMap, error) { // nolint
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
 		glog.Errorf("directories.Read(%v): %v", dirID, err)
@@ -57,7 +78,7 @@ func (t *Trillian) MapClient(ctx context.Context, dirID string) (*MapClient, err
 }
 
 // LogClient returns a verifying LogClient.
-func (t *Trillian) LogClient(ctx context.Context, dirID string) (*tclient.LogClient, error) {
+func (t *Trillian) LogClient(ctx context.Context, dirID string) (trillianLog, error) { // nolint
 	directory, err := t.directories.Read(ctx, dirID, false)
 	if err != nil {
 		glog.Errorf("directories.Read(%v): %v", dirID, err)
@@ -78,17 +99,19 @@ type MapClient struct {
 	*tclient.MapClient
 }
 
-// SetLeaves creates a new map revision and returns its verified root.
+// SetLeavesAtRevision creates a new map revision and returns its verified root.
 // TODO(gbelvin): Move to Trillian Map client.
-func (c *MapClient) SetLeaves(ctx context.Context, leaves []*tpb.MapLeaf, metadata []byte) (*types.MapRootV1, error) {
+func (c *MapClient) SetLeavesAtRevision(ctx context.Context, rev int64,
+	leaves []*tpb.MapLeaf, metadata []byte) (*types.MapRootV1, error) {
 	// Set new leaf values.
 	setResp, err := c.Conn.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
 		MapId:    c.MapID,
+		Revision: rev,
 		Leaves:   leaves,
 		Metadata: metadata,
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "tmap.SetLeaves(): %v", err)
+		return nil, err
 	}
 	mapRoot, err := c.VerifySignedMapRoot(setResp.GetMapRoot())
 	if err != nil {

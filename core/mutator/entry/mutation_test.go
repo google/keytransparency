@@ -34,7 +34,7 @@ func TestSerializeAndSign(t *testing.T) {
 		desc    string
 		old     []byte
 		pubKeys *tink.KeysetHandle
-		signers []*tink.KeysetHandle
+		signers []tink.Signer
 		data    []byte
 		want    codes.Code
 	}{
@@ -79,7 +79,7 @@ func TestCreateAndVerify(t *testing.T) {
 		desc    string
 		old     []byte
 		pubKeys *tink.KeysetHandle
-		signers []*tink.KeysetHandle
+		signers []tink.Signer
 		data    []byte
 	}{
 		{
@@ -113,9 +113,9 @@ func TestCreateAndVerify(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FromLeafValue(%v): %v", tc.old, err)
 			}
-			newSignedEntry, err := MutateFn(oldSignedEntry, update.GetEntryUpdate().GetMutation())
+			newSignedEntry, err := MutateFn(oldSignedEntry, update.GetMutation())
 			if err != nil {
-				t.Fatalf("Mutate(%v): %v", update.GetEntryUpdate().GetMutation(), err)
+				t.Fatalf("Mutate(%v): %v", update.GetMutation(), err)
 			}
 
 			var wantEntry pb.Entry

@@ -18,12 +18,13 @@ spec:
         io.kompose.service: map-server
     spec:
       containers:
-      - command:
-        - /go/bin/trillian_map_server
-        - --mysql_uri=test:zaphod@tcp(db:3306)/test
-        - --rpc_endpoint=0.0.0.0:8090
-        - --http_endpoint=0.0.0.0:8091
-        - --alsologtostderr
+      - name: trillian-mapserver
+        args: [
+        "--mysql_uri=test:zaphod@tcp(db:3306)/test",
+        "--rpc_endpoint=0.0.0.0:8090",
+        "--http_endpoint=0.0.0.0:8091",
+        "--alsologtostderr"
+        ]
         image: us.gcr.io/key-transparency/map-server:latest
         livenessProbe:
          httpGet:

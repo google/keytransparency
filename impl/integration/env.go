@@ -45,6 +45,7 @@ import (
 	"github.com/google/trillian/storage/testdb"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	ttest "github.com/google/trillian/testonly/integration"
 
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
@@ -72,29 +73,28 @@ EeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA==
 )
 
 // Listen opens a random local port and listens on it.
-func Listen() (string, net.Listener, error) {
+func Listen() (net.Listener, *grpc.ClientConn, error) {
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to listen: %v", err)
+		return nil, nil, fmt.Errorf("failed to listen: %v", err)
 	}
-	_, port, err := net.SplitHostPort(lis.Addr().String())
+	addr := lis.Addr().String()
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
-		return "", nil, fmt.Errorf("Failed to parse listener address: %v", err)
+		return nil, nil, fmt.Errorf("error connecting to %v: %v", addr, err)
 	}
-	addr := "localhost:" + port
-	return addr, lis, nil
+	return lis, conn, nil
 }
 
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
 	*integration.Env
-	mapEnv        *ttest.MapEnv
-	logEnv        *ttest.LogEnv
-	admin         *adminserver.Server
-	grpcServer    *grpc.Server
-	grpcCC        *grpc.ClientConn
-	db            *sql.DB
-	stopSequencer func()
+	mapEnv     *ttest.MapEnv
+	logEnv     *ttest.LogEnv
+	admin      *adminserver.Server
+	grpcServer *grpc.Server
+	grpcCC     *grpc.ClientConn
+	db         *sql.DB
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -161,79 +161,70 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	glog.V(5).Infof("Directory: %# v", pretty.Formatter(directoryPB))
 
 	// Common data structures.
-	authFunc := authentication.FakeAuthFunc
 	authz := &authorization.AuthzPolicy{}
 
-	server := keyserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin,
-		entry.MutateFn, directoryStorage, mutations, mutations)
+	lis, cc, err := Listen()
+	if err != nil {
+		return nil, fmt.Errorf("env: Listen(): %v", err)
+	}
+
 	gsvr := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			authorization.UnaryServerInterceptor(map[string]authorization.AuthPair{
 				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": {
-					AuthnFunc: authFunc,
+					AuthnFunc: authentication.FakeAuthFunc,
 					AuthzFunc: authz.Authorize,
 				},
 			}),
 		),
 	)
-	pb.RegisterKeyTransparencyServer(gsvr, server)
 
-	// Sequencer Server.
-	sequencerServer := sequencer.NewServer(
+	pb.RegisterKeyTransparencyServer(gsvr, keyserver.New(
+		logEnv.Log, mapEnv.Map,
+		logEnv.Admin, mapEnv.Admin,
+		entry.MutateFn, directoryStorage,
+		mutations, mutations))
+
+	spb.RegisterKeyTransparencySequencerServer(gsvr, sequencer.NewServer(
 		directoryStorage,
 		logEnv.Admin, mapEnv.Admin,
 		logEnv.Log, mapEnv.Map,
 		mutations, mutations,
+		spb.NewKeyTransparencySequencerClient(cc),
 		monitoring.InertMetricFactory{},
-	)
+	))
 
-	sequencerClient, stop, err := sequencer.RunAndConnect(ctx, sequencerServer)
-	if err != nil {
-		return nil, fmt.Errorf("error launching sequencer server: %v", err)
-	}
-
-	// Serve and listen.
-	addr, lis, err := Listen()
-	if err != nil {
-		return nil, fmt.Errorf("env: Listen(): %v", err)
-	}
 	go gsvr.Serve(lis)
 
-	cc, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("Dial(%v): %v", addr, err)
-	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client, err := client.NewFromConfig(ktClient, directoryPB)
 	if err != nil {
-		return nil, fmt.Errorf("NewFromConfig(): %v", err)
+		return nil, fmt.Errorf("error reading config: %v", err)
 	}
 	// Integration tests manually create revisions immediately, so retry fairly quickly.
 	client.RetryDelay = 10 * time.Millisecond
 	return &Env{
 		Env: &integration.Env{
 			Client:    client,
-			Cli:       ktClient,
-			Sequencer: sequencerClient,
+			Cli:       pb.NewKeyTransparencyClient(cc),
+			Sequencer: spb.NewKeyTransparencySequencerClient(cc),
 			Directory: directoryPB,
 			Timeout:   timeout,
 			CallOpts: func(userID string) []grpc.CallOption {
 				return []grpc.CallOption{grpc.PerRPCCredentials(authentication.GetFakeCredential(userID))}
 			},
 		},
-		mapEnv:        mapEnv,
-		logEnv:        logEnv,
-		admin:         adminSvr,
-		grpcServer:    gsvr,
-		grpcCC:        cc,
-		db:            db,
-		stopSequencer: stop,
+		mapEnv:     mapEnv,
+		logEnv:     logEnv,
+		admin:      adminSvr,
+		grpcServer: gsvr,
+		grpcCC:     cc,
+		db:         db,
 	}, nil
 }
 
 // Close releases resources allocated by NewEnv.
 func (env *Env) Close() {
-	env.stopSequencer()
 	ctx := context.Background()
 	if _, err := env.admin.DeleteDirectory(ctx, &pb.DeleteDirectoryRequest{
 		DirectoryId: env.Directory.DirectoryId,

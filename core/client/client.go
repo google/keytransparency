@@ -73,9 +73,8 @@ var (
 type Verifier interface {
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
-	// VerifyGetUserResponse verifies everything about a GetUserResponse.
-	VerifyGetUserResponse(ctx context.Context, directoryID, userID string, trusted types.LogRootV1,
-		in *pb.GetUserResponse) (*types.MapRootV1, *types.LogRootV1, error)
+	// VerifyMapLeaf verifies everything about a MapLeaf.
+	VerifyMapLeaf(directoryID, userID string, in *pb.MapLeaf, smr *types.MapRootV1) error
 	// VerifyRevision verifies that revision is correctly signed and included in the append only log.
 	// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
 	VerifyRevision(revision *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
@@ -98,7 +97,7 @@ type Verifier interface {
 type Client struct {
 	Verifier
 	cli         pb.KeyTransparencyClient
-	directoryID string
+	DirectoryID string
 	mutate      mutator.ReduceMutationFn
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
@@ -127,7 +126,7 @@ func New(ktClient pb.KeyTransparencyClient,
 	return &Client{
 		Verifier:    ktVerifier,
 		cli:         ktClient,
-		directoryID: directoryID,
+		DirectoryID: directoryID,
 		mutate:      entry.MutateFn,
 		RetryDelay:  retryDelay,
 	}
@@ -151,7 +150,7 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 func (c *Client) GetUser(ctx context.Context, userID string, opts ...grpc.CallOption) (
 	[]byte, *types.LogRootV1, error) {
 	e, slr, err := c.VerifiedGetUser(ctx, userID)
-	return e.GetLeaf().GetCommitted().GetData(), slr, err
+	return e.GetCommitted().GetData(), slr, err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
@@ -168,7 +167,7 @@ func (c *Client) PaginateHistory(ctx context.Context, userID string, start, end 
 		count := revisionsWant - int64(len(allProfiles))
 		profiles, next, err := c.VerifiedListHistory(ctx, userID, start, int32(count))
 		if err != nil {
-			return nil, nil, fmt.Errorf("VerifiedListHistory(%v, %v): %v", start, count, err)
+			return nil, nil, fmt.Errorf("client: VerifiedListHistory(%v, %v): %v", start, count, err)
 		}
 		for r, d := range profiles {
 			allRoots[r.Revision] = r
@@ -233,10 +232,7 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns codes.FailedPrecondition if there was a race condition.
-func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.KeysetHandle, opts ...grpc.CallOption) (*entry.Mutation, error) {
-	if got, want := u.DirectoryId, c.directoryID; got != want {
-		return nil, fmt.Errorf("u.DirectoryID: %v, want %v", got, want)
-	}
+func (c *Client) Update(ctx context.Context, u *tpb.User, signers []tink.Signer, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	// 1. pb.User + ExistingEntry -> Mutation.
 	m, err := c.CreateMutation(ctx, u)
 	if err != nil {
@@ -253,13 +249,14 @@ func (c *Client) Update(ctx context.Context, u *tpb.User, signers []*tink.Keyset
 }
 
 // QueueMutation signs an entry.Mutation and sends it to the server.
-func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []*tink.KeysetHandle, opts ...grpc.CallOption) error {
-	req, err := m.SerializeAndSign(signers)
+func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers []tink.Signer, opts ...grpc.CallOption) error {
+	update, err := m.SerializeAndSign(signers)
 	if err != nil {
-		return fmt.Errorf("SerializeAndSign(): %v", err)
+		return fmt.Errorf("failed SerializeAndSign: %v", err)
 	}
 
 	Vlog.Printf("Sending Update request...")
+	req := &pb.UpdateEntryRequest{DirectoryId: c.DirectoryID, EntryUpdate: update}
 	_, err = c.cli.QueueEntryUpdate(ctx, req, opts...)
 	return err
 }
@@ -270,15 +267,15 @@ func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutati
 	if err != nil {
 		return nil, err
 	}
-	oldLeaf := e.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
+	oldLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetLeaf().GetVrfProof(), u.DirectoryId, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), c.DirectoryID, u.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	mutation := entry.NewMutation(index, u.DirectoryId, u.UserId)
+	mutation := entry.NewMutation(index, c.DirectoryID, u.UserId)
 
 	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
 		return nil, err
@@ -337,7 +334,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 	Vlog.Printf("Got current entry...")
 
 	// Verify.
-	cntLeaf := e.GetLeaf().GetMapInclusion().GetLeaf().GetLeafValue()
+	cntLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	cntValue, err := entry.FromLeafValue(cntLeaf)
 	if err != nil {
 		return m, err

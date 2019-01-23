@@ -21,12 +21,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/client"
-	"github.com/google/keytransparency/core/mutator/entry"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -68,7 +68,7 @@ type Hammer struct {
 	ktCli       pb.KeyTransparencyClient
 	directory   *pb.Directory
 
-	signers        []*tink.KeysetHandle
+	signers        []tink.Signer
 	authorizedKeys *tinkpb.Keyset
 }
 
@@ -90,13 +90,18 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		return nil, fmt.Errorf("keyset.Public() failed: %v", err)
 	}
 
+	signer, err := signature.NewSigner(keyset)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Hammer{
 		callOptions: callOptions,
 		timeout:     timeout,
 		ktCli:       ktCli,
 		directory:   directory,
 
-		signers:        []*tink.KeysetHandle{keyset},
+		signers:        []tink.Signer{signer},
 		authorizedKeys: authorizedKeys.Keyset(),
 	}, nil
 }
@@ -214,30 +219,24 @@ func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
 	users := make([]*tpb.User, 0, len(req.UserIDs))
 	for _, userID := range req.UserIDs {
 		users = append(users, &tpb.User{
-			DirectoryId:    w.directory.DirectoryId,
 			UserId:         userID,
 			PublicKeyData:  []byte("publickey"),
 			AuthorizedKeys: w.authorizedKeys,
 		})
 	}
 
-	mutations := make([]*entry.Mutation, 0, len(users))
-	for _, u := range users {
-		callOptions := w.callOptions(u.UserId)
+	cctx, cancel := context.WithTimeout(ctx, w.timeout)
+	mutations, err := w.client.BatchCreateMutation(cctx, users)
+	cancel()
+	if err != nil {
+		return err
+	}
 
-		cctx, cancel := context.WithTimeout(ctx, w.timeout)
-		m, err := w.client.CreateMutation(cctx, u)
-		cancel()
-		if err != nil {
-			return err
-		}
-		mutations = append(mutations, m)
-		cctx, cancel = context.WithTimeout(ctx, w.timeout)
-		err = w.client.QueueMutation(cctx, m, w.signers, callOptions...)
-		cancel()
-		if err != nil {
-			return err
-		}
+	cctx, cancel = context.WithTimeout(ctx, w.timeout)
+	err = w.client.BatchQueueUserUpdate(cctx, mutations, w.signers)
+	cancel()
+	if err != nil {
+		return err
 	}
 
 	for _, m := range mutations {

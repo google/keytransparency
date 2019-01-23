@@ -139,7 +139,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 
 	// Read PageSize + 1 messages from the log to see if there is another page.
-	high := meta.Sources[rt.SliceIndex].HighestWatermark
+	high := meta.Sources[rt.SliceIndex].HighestExclusive
 	logID := meta.Sources[rt.SliceIndex].LogId
 	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, logID, rt.LowWatermark, high, in.PageSize+1)
 	if err != nil {
@@ -150,8 +150,8 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	moreInLogID := len(msgs) == int(in.PageSize+1)
 	var lastRow *mutator.LogMessage
 	if moreInLogID {
-		msgs = msgs[0:in.PageSize]    // Only return PageSize messages.
-		lastRow = msgs[in.PageSize-1] // Next start is the last row of this batch.
+		lastRow = msgs[in.PageSize] // Next start is the last row of this batch.
+		msgs = msgs[0:in.PageSize]  // Only return PageSize messages.
 	}
 
 	// For each msg, attach the leaf value from the previous map revision.

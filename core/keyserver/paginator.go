@@ -65,7 +65,7 @@ func (s SourceList) First() *rtpb.ReadToken {
 	}
 	return &rtpb.ReadToken{
 		SliceIndex:   0,
-		LowWatermark: s[0].LowestWatermark,
+		LowWatermark: s[0].LowestInclusive,
 	}
 }
 
@@ -88,6 +88,6 @@ func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.
 	}
 	return &rtpb.ReadToken{
 		SliceIndex:   rt.SliceIndex + 1,
-		LowWatermark: s[rt.SliceIndex+1].LowestWatermark,
+		LowWatermark: s[rt.SliceIndex+1].LowestInclusive,
 	}
 }

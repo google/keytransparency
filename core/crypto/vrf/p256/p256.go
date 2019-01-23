@@ -231,7 +231,7 @@ func NewFromWrappedKey(ctx context.Context, wrapped proto.Message) (vrf.PrivateK
 	case *ecdsa.PrivateKey:
 		return NewVRFSigner(key)
 	default:
-		return nil, fmt.Errorf("NewSigner().type: %T, want ecdsa.PrivateKey", key)
+		return nil, fmt.Errorf("wrapped key has wrong type: %T, want ecdsa.PrivateKey", key)
 	}
 }
 
