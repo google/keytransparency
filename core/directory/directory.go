@@ -26,8 +26,8 @@ import (
 // Directory stores configuration information for a single Key Transparency instance.
 type Directory struct {
 	DirectoryID string
-	MapID       int64
-	LogID       int64
+	Map         []byte
+	Log         []byte
 	VRF         *keyspb.PublicKey
 
 	VRFPriv                  proto.Message

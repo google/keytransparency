@@ -138,18 +138,20 @@ func (s *Server) ListDirectories(ctx context.Context, in *pb.ListDirectoriesRequ
 // fetchDirectory converts an adminstorage.Directory object into a pb.Directory object
 // by fetching the relevant info from Trillian.
 func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*pb.Directory, error) {
-	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
+	var logTree tpb.Tree
+	err := proto.Unmarshal(d.Log, &logTree)
 	if err != nil {
 		return nil, err
 	}
-	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.MapID})
+	var mapTree tpb.Tree
+	err = proto.Unmarshal(d.Log, &mapTree)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.Directory{
 		DirectoryId: d.DirectoryID,
-		Log:         trimTree(logTree),
-		Map:         trimTree(mapTree),
+		Log:         &logTree,
+		Map:         &mapTree,
 		Vrf:         d.VRF,
 		MinInterval: ptypes.DurationProto(d.MinInterval),
 		MaxInterval: ptypes.DurationProto(d.MaxInterval),
@@ -266,11 +268,20 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 			err, logTree.TreeId, delLogErr, mapTree.TreeId, delMapErr)
 	}
 
+	mapProto, err := proto.Marshal(trimTree(mapTree))
+	if err != nil {
+		return nil, err
+	}
+	logProto, err := proto.Marshal(trimTree(logTree))
+	if err != nil {
+		return nil, err
+	}
+
 	// Create directory - {log, map} binding.
 	dir := &directory.Directory{
 		DirectoryID: in.GetDirectoryId(),
-		MapID:       mapTree.TreeId,
-		LogID:       logTree.TreeId,
+		Map:         mapProto,
+		Log:         logProto,
 		VRF:         vrfPublicPB,
 		VRFPriv:     wrapped,
 		MinInterval: minInterval,

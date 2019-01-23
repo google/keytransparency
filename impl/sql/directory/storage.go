@@ -34,8 +34,8 @@ const (
 	createSQL = `
 CREATE TABLE IF NOT EXISTS Directories(
   DirectoryId           VARCHAR(40) NOT NULL,
-  MapId                 BIGINT NOT NULL,
-  LogId                 BIGINT NOT NULL,
+  Map                   BLOB NOT NULL,
+  Log                   BLOB NOT NULL,
   VRFPublicKey          MEDIUMBLOB NOT NULL,
   VRFPrivateKey         MEDIUMBLOB NOT NULL,
   MinInterval           BIGINT NOT NULL,
@@ -45,19 +45,19 @@ CREATE TABLE IF NOT EXISTS Directories(
   PRIMARY KEY(DirectoryId)
 );`
 	writeSQL = `INSERT INTO Directories
-(DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds)
+(DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
 	readSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
 FROM Directories WHERE DirectoryId = ? AND Deleted = 0;`
 	readDeletedSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
 FROM Directories WHERE DirectoryId = ?;`
 	listSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Directories WHERE Deleted = 0;`
 	listDeletedSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Directories;`
 	setDeletedSQL = `UPDATE Directories SET Deleted = ?, DeleteTimeSeconds = ? WHERE DirectoryId = ?`
 	deleteSQL     = `DELETE FROM Directories WHERE DirectoryId = ?`
@@ -112,7 +112,7 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*directory.Dire
 		d := &directory.Directory{}
 		if err := rows.Scan(
 			&d.DirectoryID,
-			&d.MapID, &d.LogID,
+			&d.Map, &d.Log,
 			&pubkey, &anyData,
 			&d.MinInterval, &d.MaxInterval,
 			&d.Deleted); err != nil {
@@ -147,7 +147,7 @@ func (s *storage) Write(ctx context.Context, d *directory.Directory) error {
 	defer writeStmt.Close()
 	_, err = writeStmt.ExecContext(ctx,
 		d.DirectoryID,
-		d.MapID, d.LogID,
+		d.Map, d.Log,
 		d.VRF.Der, anyData,
 		d.MinInterval.Nanoseconds(), d.MaxInterval.Nanoseconds(),
 		false,
