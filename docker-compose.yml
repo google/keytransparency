@@ -52,7 +52,7 @@ services:
       dockerfile: examples/deployment/docker/log_server/Dockerfile
     restart: always
     entrypoint:
-      - /go/bin/trillian_log_server
+      - /trillian_log_server
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
@@ -75,7 +75,7 @@ services:
       dockerfile: examples/deployment/docker/log_signer/Dockerfile
     restart: always
     entrypoint:
-      - /go/bin/trillian_log_signer
+      - /trillian_log_signer
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --http_endpoint=0.0.0.0:8091
       - --sequencer_guard_window=0s
@@ -101,7 +101,7 @@ services:
       dockerfile: examples/deployment/docker/map_server/Dockerfile
     restart: always
     entrypoint:
-      - /go/bin/trillian_map_server
+      - /trillian_map_server
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
