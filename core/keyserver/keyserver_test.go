@@ -164,6 +164,14 @@ func TestLatestRevision(t *testing.T) {
 			if got, want := status.Code(err), tc.wantErr; got != want {
 				t.Errorf("ListUserRevisions(): %v, want %v", err, tc.wantErr)
 			}
+			_, err = e.srv.BatchListUserRevisions(ctx, &pb.BatchListUserRevisionsRequest{
+				DirectoryId: directoryID,
+				EndRevision: tc.treeSize - 1,
+				UserIds: []string{""},
+			})
+			if got, want := status.Code(err), tc.wantErr; got != want {
+				t.Errorf("BatchListUserRevisions(): %v, want %v", err, tc.wantErr)
+			)
 		})
 	}
 
