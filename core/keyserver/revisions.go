@@ -53,7 +53,7 @@ func (s *Server) GetLatestRevision(ctx context.Context, in *pb.GetLatestRevision
 
 	currentRevision, err := mapRevisionFor(sth)
 	if err != nil {
-		glog.Errorf("mapRevisionFor(log %v, sth%v): %v", d.LogID, sth, err)
+		glog.Errorf("mapRevisionFor(log %v, sth%v): %v", d.Log.TreeId, sth, err)
 		return nil, err
 	}
 
