@@ -48,6 +48,7 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	if err := fakeAdmin.Write(ctx, &directory.Directory{
 		DirectoryID: directoryID,
 		Map:         &treeMap,
+		Log:         &tpb.Tree{},
 		MinInterval: 1 * time.Second,
 		MaxInterval: 5 * time.Second,
 	}); err != nil {
