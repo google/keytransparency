@@ -91,11 +91,11 @@ func (s *Server) getRevisionByRevision(ctx context.Context, d *directory.Directo
 	}
 	// Get signed map root by revision.
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, &tpb.GetSignedMapRootByRevisionRequest{
-		MapId:    d.MapID,
+		MapId:    d.Map.TreeId,
 		Revision: mapRevision,
 	})
 	if err != nil {
-		glog.Errorf("GetRevision(): GetSignedMapRootByRevision(%v, %v): %v", d.MapID, mapRevision, err)
+		glog.Errorf("GetRevision(): GetSignedMapRootByRevision(%v, %v): %v", d.Map.TreeId, mapRevision, err)
 		return nil, err
 	}
 
@@ -199,13 +199,13 @@ func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRo
 	}
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&tpb.GetInclusionProofRequest{
-			LogId: d.LogID,
+			LogId: d.Log.TreeId,
 			// SignedMapRoot must be in the log at MapRevision.
 			LeafIndex: revision,
 			TreeSize:  secondTreeSize,
 		})
 	if err != nil {
-		glog.Errorf("log.GetInclusionProof(%v, %v, %v): %v", d.LogID, revision, secondTreeSize, err)
+		glog.Errorf("log.GetInclusionProof(%v, %v, %v): %v", d.Log.TreeId, revision, secondTreeSize, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof: %v", err)
 	}
 	return logInclusion.GetProof(), nil
@@ -216,10 +216,10 @@ func (s *Server) latestLogRoot(ctx context.Context, d *directory.Directory) (*tp
 	// Fresh Root.
 	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
 		&tpb.GetLatestSignedLogRootRequest{
-			LogId: d.LogID,
+			LogId: d.Log.TreeId,
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", d.LogID, err)
+		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", d.Log.TreeId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
 	}
 	sth := logRoot.GetSignedLogRoot()
@@ -240,13 +240,13 @@ func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory,
 	if firstTreeSize != 0 {
 		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
 			&tpb.GetConsistencyProofRequest{
-				LogId:          d.LogID,
+				LogId:          d.Log.TreeId,
 				FirstTreeSize:  firstTreeSize,
 				SecondTreeSize: secondTreeSize,
 			})
 		if err != nil {
 			glog.Errorf("latestLogRootProof(): log.GetConsistency(%v, %v, %v): %v",
-				d.LogID, firstTreeSize, secondTreeSize, err)
+				d.Log.TreeId, firstTreeSize, secondTreeSize, err)
 			return nil, nil, status.Errorf(codes.Internal, "Cannot fetch log consistency proof")
 		}
 	}
@@ -270,7 +270,7 @@ func mapRevisionFor(sth *tpb.SignedLogRoot) (int64, error) {
 func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, indexes [][]byte, revision int64) (
 	[]*tpb.MapLeafInclusion, error) {
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
-		MapId:    d.MapID,
+		MapId:    d.Map.TreeId,
 		Index:    indexes,
 		Revision: revision,
 	})
