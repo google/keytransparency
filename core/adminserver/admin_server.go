@@ -138,7 +138,6 @@ func (s *Server) ListDirectories(ctx context.Context, in *pb.ListDirectoriesRequ
 // fetchDirectory converts an adminstorage.Directory object into a pb.Directory object
 // by fetching the relevant info from Trillian.
 func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*pb.Directory, error) {
-
 	return &pb.Directory{
 		DirectoryId: d.DirectoryID,
 		Log:         d.Log,

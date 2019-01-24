@@ -25,7 +25,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/keytransparency/core/directory"
-	"github.com/google/trillian"
+	tpb "github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -109,8 +109,8 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*directory.Dire
 	ret := []*directory.Directory{}
 	for rows.Next() {
 		var pubkey, anyData, mapByte, logByte []byte
-		var logTree trillian.Tree
-		var mapTree trillian.Tree
+		var logTree tpb.Tree
+		var mapTree tpb.Tree
 		d := &directory.Directory{}
 		if err := rows.Scan(
 			&d.DirectoryID,
@@ -155,7 +155,7 @@ func (s *storage) Write(ctx context.Context, d *directory.Directory) error {
 	if err != nil {
 		return err
 	}
-	logTree, err := proto.Marshal(d.Map)
+	logTree, err := proto.Marshal(d.Log)
 	if err != nil {
 		return err
 	}
@@ -194,8 +194,8 @@ func (s *storage) Read(ctx context.Context, directoryID string, showDeleted bool
 	var deletedUnix int64
 	var mapByte []byte
 	var logByte []byte
-	var logTree trillian.Tree
-	var mapTree trillian.Tree
+	var logTree tpb.Tree
+	var mapTree tpb.Tree
 
 	if err := readStmt.QueryRowContext(ctx, directoryID).Scan(
 		&d.DirectoryID,
