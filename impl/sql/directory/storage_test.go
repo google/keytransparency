@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/directory"
-	"github.com/google/trillian"
+	tpb "github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,10 +58,10 @@ func TestList(t *testing.T) {
 			directories: []*directory.Directory{
 				{
 					DirectoryID: "directory1",
-					Map: &trillian.Tree{
+					Map: &tpb.Tree{
 						TreeId: 1,
 					},
-					Log: &trillian.Tree{
+					Log: &tpb.Tree{
 						TreeId: 2,
 					},
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -71,10 +71,10 @@ func TestList(t *testing.T) {
 				},
 				{
 					DirectoryID: "directory2",
-					Map: &trillian.Tree{
+					Map: &tpb.Tree{
 						TreeId: 1,
 					},
-					Log: &trillian.Tree{
+					Log: &tpb.Tree{
 						TreeId: 2,
 					},
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -121,10 +121,10 @@ func TestWriteReadDelete(t *testing.T) {
 			write: true,
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				Map: &trillian.Tree{
+				Map: &tpb.Tree{
 					TreeId: 1,
 				},
-				Log: &trillian.Tree{
+				Log: &tpb.Tree{
 					TreeId: 2,
 				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -138,10 +138,10 @@ func TestWriteReadDelete(t *testing.T) {
 			write: true,
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				Map: &trillian.Tree{
+				Map: &tpb.Tree{
 					TreeId: 1,
 				},
-				Log: &trillian.Tree{
+				Log: &tpb.Tree{
 					TreeId: 2,
 				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -155,10 +155,10 @@ func TestWriteReadDelete(t *testing.T) {
 			desc: "Delete",
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				Map: &trillian.Tree{
+				Map: &tpb.Tree{
 					TreeId: 1,
 				},
-				Log: &trillian.Tree{
+				Log: &tpb.Tree{
 					TreeId: 2,
 				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -175,10 +175,10 @@ func TestWriteReadDelete(t *testing.T) {
 			desc: "Read deleted",
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				Map: &trillian.Tree{
+				Map: &tpb.Tree{
 					TreeId: 1,
 				},
-				Log: &trillian.Tree{
+				Log: &tpb.Tree{
 					TreeId: 2,
 				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -195,10 +195,10 @@ func TestWriteReadDelete(t *testing.T) {
 			desc: "Undelete",
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				Map: &trillian.Tree{
+				Map: &tpb.Tree{
 					TreeId: 1,
 				},
-				Log: &trillian.Tree{
+				Log: &tpb.Tree{
 					TreeId: 2,
 				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -257,6 +257,12 @@ func TestDelete(t *testing.T) {
 		{directoryID: "test"},
 	} {
 		d := &directory.Directory{
+			Map: &tpb.Tree{
+				TreeId: 1,
+			},
+			Log: &tpb.Tree{
+				TreeId: 2,
+			},
 			DirectoryID: tc.directoryID,
 			VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 			VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
