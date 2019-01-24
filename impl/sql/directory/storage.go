@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/google/keytransparency/core/directory"
+	tpb "github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,8 +35,8 @@ const (
 	createSQL = `
 CREATE TABLE IF NOT EXISTS Directories(
   DirectoryId           VARCHAR(40) NOT NULL,
-  MapId                 BIGINT NOT NULL,
-  LogId                 BIGINT NOT NULL,
+  Map                   BLOB NOT NULL,
+  Log                   BLOB NOT NULL,
   VRFPublicKey          MEDIUMBLOB NOT NULL,
   VRFPrivateKey         MEDIUMBLOB NOT NULL,
   MinInterval           BIGINT NOT NULL,
@@ -45,19 +46,19 @@ CREATE TABLE IF NOT EXISTS Directories(
   PRIMARY KEY(DirectoryId)
 );`
 	writeSQL = `INSERT INTO Directories
-(DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds)
+(DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
 	readSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
 FROM Directories WHERE DirectoryId = ? AND Deleted = 0;`
 	readDeletedSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted, DeleteTimeSeconds
 FROM Directories WHERE DirectoryId = ?;`
 	listSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Directories WHERE Deleted = 0;`
 	listDeletedSQL = `
-SELECT DirectoryId, MapId, LogId, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
+SELECT DirectoryId, Map, Log, VRFPublicKey, VRFPrivateKey, MinInterval, MaxInterval, Deleted
 FROM Directories;`
 	setDeletedSQL = `UPDATE Directories SET Deleted = ?, DeleteTimeSeconds = ? WHERE DirectoryId = ?`
 	deleteSQL     = `DELETE FROM Directories WHERE DirectoryId = ?`
@@ -105,14 +106,15 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*directory.Dire
 		return nil, err
 	}
 	defer rows.Close()
-
 	ret := []*directory.Directory{}
 	for rows.Next() {
-		var pubkey, anyData []byte
+		var pubkey, anyData, mapByte, logByte []byte
+		var logTree tpb.Tree
+		var mapTree tpb.Tree
 		d := &directory.Directory{}
 		if err := rows.Scan(
 			&d.DirectoryID,
-			&d.MapID, &d.LogID,
+			&mapByte, &logByte,
 			&pubkey, &anyData,
 			&d.MinInterval, &d.MaxInterval,
 			&d.Deleted); err != nil {
@@ -124,6 +126,16 @@ func (s *storage) List(ctx context.Context, showDeleted bool) ([]*directory.Dire
 		if err != nil {
 			return nil, err
 		}
+		err = proto.Unmarshal(logByte, &logTree)
+		if err != nil {
+			return nil, err
+		}
+		err = proto.Unmarshal(mapByte, &mapTree)
+		if err != nil {
+			return nil, err
+		}
+		d.Map = &mapTree
+		d.Log = &logTree
 		ret = append(ret, d)
 	}
 	return ret, nil
@@ -139,6 +151,14 @@ func (s *storage) Write(ctx context.Context, d *directory.Directory) error {
 	if err != nil {
 		return err
 	}
+	mapTree, err := proto.Marshal(d.Map)
+	if err != nil {
+		return err
+	}
+	logTree, err := proto.Marshal(d.Log)
+	if err != nil {
+		return err
+	}
 	// Prepare SQL.
 	writeStmt, err := s.db.PrepareContext(ctx, writeSQL)
 	if err != nil {
@@ -147,7 +167,7 @@ func (s *storage) Write(ctx context.Context, d *directory.Directory) error {
 	defer writeStmt.Close()
 	_, err = writeStmt.ExecContext(ctx,
 		d.DirectoryID,
-		d.MapID, d.LogID,
+		mapTree, logTree,
 		d.VRF.Der, anyData,
 		d.MinInterval.Nanoseconds(), d.MaxInterval.Nanoseconds(),
 		false,
@@ -172,9 +192,14 @@ func (s *storage) Read(ctx context.Context, directoryID string, showDeleted bool
 	d := &directory.Directory{}
 	var pubkey, anyData []byte
 	var deletedUnix int64
+	var mapByte []byte
+	var logByte []byte
+	var logTree tpb.Tree
+	var mapTree tpb.Tree
+
 	if err := readStmt.QueryRowContext(ctx, directoryID).Scan(
 		&d.DirectoryID,
-		&d.MapID, &d.LogID,
+		&mapByte, &logByte,
 		&pubkey, &anyData,
 		&d.MinInterval, &d.MaxInterval,
 		&d.Deleted,
@@ -184,7 +209,6 @@ func (s *storage) Read(ctx context.Context, directoryID string, showDeleted bool
 	} else if err != nil {
 		return nil, err
 	}
-
 	// Unwrap protos.
 	d.VRF = &keyspb.PublicKey{Der: pubkey}
 	d.VRFPriv, err = unwrapAnyProto(anyData)
@@ -192,6 +216,17 @@ func (s *storage) Read(ctx context.Context, directoryID string, showDeleted bool
 	if err != nil {
 		return nil, err
 	}
+	err = proto.Unmarshal(logByte, &logTree)
+	if err != nil {
+		return nil, err
+	}
+	err = proto.Unmarshal(mapByte, &mapTree)
+	if err != nil {
+		return nil, err
+	}
+	d.Map = &mapTree
+	d.Log = &logTree
+
 	return d, nil
 }
 
