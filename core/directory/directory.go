@@ -20,14 +20,15 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	tpb "github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
 )
 
 // Directory stores configuration information for a single Key Transparency instance.
 type Directory struct {
 	DirectoryID string
-	MapID       int64
-	LogID       int64
+	Map         *tpb.Tree
+	Log         *tpb.Tree
 	VRF         *keyspb.PublicKey
 
 	VRFPriv                  proto.Message

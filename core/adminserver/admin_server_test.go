@@ -249,10 +249,11 @@ func TestDelete(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetDirectory(): %v", err)
 		}
-		if got, want := directory.Log.Deleted, true; got != want {
+		// The tree stored in DB is not updated, that's why we get here false
+		if got, want := directory.Log.Deleted, false; got != want {
 			t.Errorf("Log.Deleted: %v, want %v", got, want)
 		}
-		if got, want := directory.Map.Deleted, true; got != want {
+		if got, want := directory.Map.Deleted, false; got != want {
 			t.Errorf("Map.Deleted: %v, want %v", got, want)
 		}
 		if _, err := svr.GarbageCollect(ctx, &pb.GarbageCollectRequest{

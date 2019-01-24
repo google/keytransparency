@@ -138,18 +138,10 @@ func (s *Server) ListDirectories(ctx context.Context, in *pb.ListDirectoriesRequ
 // fetchDirectory converts an adminstorage.Directory object into a pb.Directory object
 // by fetching the relevant info from Trillian.
 func (s *Server) fetchDirectory(ctx context.Context, d *directory.Directory) (*pb.Directory, error) {
-	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.LogID})
-	if err != nil {
-		return nil, err
-	}
-	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: d.MapID})
-	if err != nil {
-		return nil, err
-	}
 	return &pb.Directory{
 		DirectoryId: d.DirectoryID,
-		Log:         trimTree(logTree),
-		Map:         trimTree(mapTree),
+		Log:         d.Log,
+		Map:         d.Map,
 		Vrf:         d.VRF,
 		MinInterval: ptypes.DurationProto(d.MinInterval),
 		MaxInterval: ptypes.DurationProto(d.MaxInterval),
@@ -266,11 +258,14 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 			err, logTree.TreeId, delLogErr, mapTree.TreeId, delMapErr)
 	}
 
+	trimmedMap := trimTree(mapTree)
+	trimmedLog := trimTree(logTree)
+
 	// Create directory - {log, map} binding.
 	dir := &directory.Directory{
 		DirectoryID: in.GetDirectoryId(),
-		MapID:       mapTree.TreeId,
-		LogID:       logTree.TreeId,
+		Map:         trimmedMap,
+		Log:         trimmedLog,
 		VRF:         vrfPublicPB,
 		VRFPriv:     wrapped,
 		MinInterval: minInterval,
@@ -289,8 +284,8 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 
 	d := &pb.Directory{
 		DirectoryId: in.GetDirectoryId(),
-		Log:         trimTree(logTree),
-		Map:         trimTree(mapTree),
+		Log:         trimmedLog,
+		Map:         trimmedMap,
 		Vrf:         vrfPublicPB,
 		MinInterval: in.MinInterval,
 		MaxInterval: in.MaxInterval,
