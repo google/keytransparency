@@ -1,4 +1,4 @@
-package tinkreader
+package tinkio
 
 import (
 	"crypto/sha256"

@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/client/hammer"
-	"github.com/google/keytransparency/core/crypto/tinkreader"
+	"github.com/google/keytransparency/core/crypto/tinkio"
 	"github.com/google/keytransparency/impl/authentication"
 )
 
@@ -63,12 +63,12 @@ var hammerCmd = &cobra.Command{
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
-		masterKey, err := tinkreader.MasterPBKDF(masterPassword)
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tinkreader.KeysetHandleFromEncryptedReader(
-			&tinkreader.ProtoKeysetFile{File: keysetFile},
+		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
 			log.Fatal(err)

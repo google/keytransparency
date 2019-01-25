@@ -24,7 +24,7 @@ import (
 	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 
-	"github.com/google/keytransparency/core/crypto/tinkreader"
+	"github.com/google/keytransparency/core/crypto/tinkio"
 
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
@@ -64,13 +64,13 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		masterKey, err := tinkreader.MasterPBKDF(masterPassword)
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			return err
 		}
 
-		return tinkreader.WriteKeyset(keyset,
-			&tinkreader.ProtoKeysetFile{File: keysetFile},
+		return tinkio.WriteKeyset(keyset,
+			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 	},
 }
@@ -99,12 +99,12 @@ var listCmd = &cobra.Command{
 The actual keys are not listed, only their corresponding metadata.
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		masterKey, err := tinkreader.MasterPBKDF(masterPassword)
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tinkreader.KeysetHandleFromEncryptedReader(
-			&tinkreader.ProtoKeysetFile{File: keysetFile},
+		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
 			log.Fatal(err)

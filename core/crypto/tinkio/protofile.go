@@ -1,4 +1,5 @@
-package tinkreader
+// Package tinkio provides io helper functions for tink.
+package tinkio
 
 import (
 	"fmt"
