@@ -22,7 +22,9 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client/hammer"
+	"github.com/google/keytransparency/core/crypto/tinkreader"
 	"github.com/google/keytransparency/impl/authentication"
+	"github.com/google/tink/go/insecure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -61,7 +63,10 @@ var hammerCmd = &cobra.Command{
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
-		handle, err := readKeysetFile(keysetFile, masterPassword)
+		handle, err := insecure.KeysetHandle(&tinkreader.EncryptedKeysetReader{
+			File:     keysetFile,
+			Password: masterPassword,
+		})
 		if err != nil {
 			log.Fatal(err)
 		}
