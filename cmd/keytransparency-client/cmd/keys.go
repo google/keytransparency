@@ -20,7 +20,6 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/google/tink/go/insecure"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
@@ -65,11 +64,14 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		masterKey, err := tinkreader.MasterPBKDF(masterPassword)
+		if err != nil {
+			return err
+		}
 
-		return (&tinkreader.EncryptedKeysetWriter{
-			File:     keysetFile,
-			Password: masterPassword,
-		}).Write(keyset.Keyset())
+		return tinkreader.WriteKeyset(keyset,
+			&tinkreader.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 	},
 }
 
@@ -97,10 +99,13 @@ var listCmd = &cobra.Command{
 The actual keys are not listed, only their corresponding metadata.
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		handle, err := insecure.KeysetHandle(&tinkreader.EncryptedKeysetReader{
-			File:     keysetFile,
-			Password: masterPassword,
-		})
+		masterKey, err := tinkreader.MasterPBKDF(masterPassword)
+		if err != nil {
+			log.Fatal(err)
+		}
+		handle, err := tinkreader.KeysetHandleFromEncryptedReader(
+			&tinkreader.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}

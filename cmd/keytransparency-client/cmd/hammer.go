@@ -21,14 +21,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/keytransparency/core/client/hammer"
-	"github.com/google/keytransparency/core/crypto/tinkreader"
-	"github.com/google/keytransparency/impl/authentication"
-	"github.com/google/tink/go/insecure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+
+	"github.com/google/keytransparency/core/client/hammer"
+	"github.com/google/keytransparency/core/crypto/tinkreader"
+	"github.com/google/keytransparency/impl/authentication"
 )
 
 var (
@@ -63,10 +63,13 @@ var hammerCmd = &cobra.Command{
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
-		handle, err := insecure.KeysetHandle(&tinkreader.EncryptedKeysetReader{
-			File:     keysetFile,
-			Password: masterPassword,
-		})
+		masterKey, err := tinkreader.MasterPBKDF(masterPassword)
+		if err != nil {
+			log.Fatal(err)
+		}
+		handle, err := tinkreader.KeysetHandleFromEncryptedReader(
+			&tinkreader.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}

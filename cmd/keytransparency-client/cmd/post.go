@@ -26,7 +26,6 @@ import (
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	"github.com/google/keytransparency/core/crypto/tinkreader"
-	"github.com/google/tink/go/insecure"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 )
@@ -48,10 +47,13 @@ User email MUST match the OAuth account used to authorize the update.
 `,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
-		handle, err := insecure.KeysetHandle(&tinkreader.EncryptedKeysetReader{
-			File:     keysetFile,
-			Password: masterPassword,
-		})
+		masterKey, err := tinkreader.MasterPBKDF(masterPassword)
+		if err != nil {
+			log.Fatal(err)
+		}
+		handle, err := tinkreader.KeysetHandleFromEncryptedReader(
+			&tinkreader.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
