@@ -66,7 +66,7 @@ var createCmd = &cobra.Command{
 
 ./keytransparency-client authorized-keys create-keyset
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		template, err := keyTemplate(keyType)
 		if err != nil {
 			return err
@@ -104,14 +104,14 @@ var listCmd = &cobra.Command{
 
 The actual keys are not listed, only their corresponding metadata.
 `,
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PreRun: func(_ *cobra.Command, _ []string) {
 		handle, err := readKeysetFile(keysetFile, masterPassword)
 		if err != nil {
 			log.Fatal(err)
 		}
 		keyset = handle
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		keysetInfo, err := tink.GetKeysetInfo(keyset.Keyset())
 		if err != nil {
 			return err
