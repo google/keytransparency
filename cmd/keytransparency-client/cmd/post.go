@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/keytransparency/core/crypto/tinkio"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 )
@@ -46,7 +47,13 @@ User email MUST match the OAuth account used to authorize the update.
 `,
 
 	PreRun: func(cmd *cobra.Command, args []string) {
-		handle, err := readKeysetFile(keysetFile, masterPassword)
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
+		if err != nil {
+			log.Fatal(err)
+		}
+		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+			&tinkio.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
