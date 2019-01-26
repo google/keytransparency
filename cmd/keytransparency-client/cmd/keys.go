@@ -15,37 +15,25 @@
 package cmd
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"text/tabwriter"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/google/tink/go/insecure"
 	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/subtle/aead"
 	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/pbkdf2"
+
+	"github.com/google/keytransparency/core/crypto/tinkio"
 
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
-const (
-	keysetFile          = ".keyset"
-	masterKeyLen        = 32
-	masterKeyIterations = 4096
-)
+const keysetFile = ".keyset"
 
 var (
-	// openssl rand -hex 32
-	salt, _           = hex.DecodeString("00afc05d5b131a1dfd140a146b87f2f07826a8d4576cb4feef43f80f0c9b1c2f")
-	masterKeyHashFunc = sha256.New
-	keyType           string
-	masterPassword    string
+	keyType        string
+	masterPassword string
 )
 
 var keyset *tink.KeysetHandle
@@ -76,8 +64,14 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
+		if err != nil {
+			return err
+		}
 
-		return writeKeysetFile(keyset, keysetFile, masterPassword)
+		return tinkio.WriteKeyset(keyset,
+			&tinkio.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 	},
 }
 
@@ -105,7 +99,13 @@ var listCmd = &cobra.Command{
 The actual keys are not listed, only their corresponding metadata.
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		handle, err := readKeysetFile(keysetFile, masterPassword)
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
+		if err != nil {
+			log.Fatal(err)
+		}
+		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+			&tinkio.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -134,88 +134,6 @@ The actual keys are not listed, only their corresponding metadata.
 		}
 		return nil
 	},
-}
-
-// masterPBKDF converts the master password into the master key.
-func masterPBKDF(masterPassword string) (tink.AEAD, error) {
-	if masterPassword == "" {
-		return nil, fmt.Errorf("please provide a master password")
-	}
-	dk := pbkdf2.Key([]byte(masterPassword), salt,
-		masterKeyIterations, masterKeyLen, masterKeyHashFunc)
-	return aead.NewAESGCM(dk)
-}
-
-func encryptKeyset(keyset *tinkpb.Keyset, masterKey tink.AEAD) (*tinkpb.EncryptedKeyset, error) {
-	serializedKeyset, err := proto.Marshal(keyset)
-	if err != nil {
-		return nil, fmt.Errorf("invalid keyset")
-	}
-	encrypted, err := masterKey.Encrypt(serializedKeyset, []byte{})
-	if err != nil {
-		return nil, fmt.Errorf("encrypted failed: %s", err)
-	}
-	// get keyset info
-	info, err := tink.GetKeysetInfo(keyset)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get keyset info: %s", err)
-	}
-	encryptedKeyset := &tinkpb.EncryptedKeyset{
-		EncryptedKeyset: encrypted,
-		KeysetInfo:      info,
-	}
-	return encryptedKeyset, nil
-}
-
-func readKeysetFile(file, password string) (*tink.KeysetHandle, error) {
-	masterKey, err := masterPBKDF(password)
-	if err != nil {
-		return nil, err
-	}
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("reading keystore file %q failed: %v", file, err)
-	}
-
-	encryptedKeyset := new(tinkpb.EncryptedKeyset)
-	if err := proto.Unmarshal(data, encryptedKeyset); err != nil {
-		return nil, fmt.Errorf("could not parse encrypted keyset: %v", err)
-	}
-
-	keyset, err := decryptKeyset(encryptedKeyset, masterKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return insecure.KeysetHandle(keyset)
-}
-
-func decryptKeyset(encryptedKeyset *tinkpb.EncryptedKeyset, masterKey tink.AEAD) (*tinkpb.Keyset, error) {
-	decrypted, err := masterKey.Decrypt(encryptedKeyset.EncryptedKeyset, []byte{})
-	if err != nil {
-		return nil, fmt.Errorf("decryption failed: %s", err)
-	}
-	keyset := new(tinkpb.Keyset)
-	if err := proto.Unmarshal(decrypted, keyset); err != nil {
-		return nil, fmt.Errorf("invalid encrypted keyset")
-	}
-	return keyset, nil
-}
-
-func writeKeysetFile(keyset *tink.KeysetHandle, file, password string) error {
-	masterKey, err := masterPBKDF(password)
-	if err != nil {
-		return err
-	}
-	encryptedKeyset, err := encryptKeyset(keyset.Keyset(), masterKey)
-	if err != nil {
-		return err
-	}
-	serialized, err := proto.Marshal(encryptedKeyset)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(file, serialized, 0600)
 }
 
 func init() {
