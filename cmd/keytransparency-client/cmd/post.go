@@ -46,7 +46,7 @@ and verifies that both the previous and current key-sets are accurate. eg:
 User email MUST match the OAuth account used to authorize the update.
 `,
 
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PreRun: func(_ *cobra.Command, _ []string) {
 		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
@@ -59,7 +59,7 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 		keyset = handle
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		// Validate input.
 		if len(args) < 1 {
 			return fmt.Errorf("user email needs to be provided")
