@@ -300,7 +300,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 		wantErr     bool
 	}{
 		{desc: "negative start", start: -1, end: 1, wantHistory: [][]byte{}, wantErr: true},
-		{desc: "large start", start: 1, end: 1001, wantHistory: [][]byte{}, wantErr: true},
+		{desc: "large end", start: 1, end: 1001, wantHistory: [][]byte{}, wantErr: true},
 		{desc: "single1", start: 3, end: 3, wantHistory: [][]byte{cp(1)}},
 		{desc: "single3", start: 7, end: 7, wantHistory: [][]byte{cp(3)}},
 		{desc: "single3", start: 8, end: 8, wantHistory: [][]byte{cp(3)}},
@@ -396,6 +396,93 @@ func sortHistory(history map[uint64][]byte) [][]byte {
 		profiles = append(profiles, history[k])
 	}
 	return profiles
+}
+
+// TestBatchListUserRevisions verifies that BatchListUserRevisions() in keyserver  works properly.
+func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
+	// Create lists of signers and authorized keys
+	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+
+	if err := env.setupHistoryMultipleUsers(ctx, env.Directory, signers, authorizedKeys); err != nil {
+		t.Fatalf("setupHistoryMultipleUsers failed: %v", err)
+	}
+
+	request := &pb.BatchListUserRevisionsRequest{
+		DirectoryId: env.Directory.DirectoryId,
+	}
+	for _, tc := range []struct {
+		desc        string
+		start, end  int64
+		userIDs     []string
+		wantHistory [][]byte
+		wantErr     bool
+	}{
+		{desc: "negative start", start: -1, end: 1, userIDs: []string{"alice"}, wantHistory: [][]byte{}, wantErr: true},
+		{desc: "large end", start: 1, end: 1001, userIDs: []string{"alice"}, wantHistory: [][]byte{}, wantErr: true},
+		{desc: "single revision", start: 3, end: 3, userIDs: []string{"alice", "bob"}, wantHistory: [][]byte{cp(2), cp(11)}},
+		{desc: "multiple revisions test 1", start: 4, end: 7, userIDs: []string{"carol"},
+                        wantHistory: [][]byte{cp(21), cp(22), cp(22), cp(22)}},
+		{desc: "multiple revisions test 2", start: 7, end: 10, userIDs: []string{"alice", "bob", "carol"},
+			wantHistory: [][]byte{cp(3), cp(12), cp(22), cp(3), cp(13), cp(22), cp(3), cp(13), cp(23), cp(3), cp(13), cp(24)}},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			request.StartRevision = tc.start
+			request.EndRevision = tc.end
+			request.UserIds = tc.userIDs
+			response, err := env.Cli.BatchListUserRevisions(ctx, request)
+			if got := err != nil; got != tc.wantErr {
+				t.Errorf("TestBatchListUserRevisions(%v, %v, %v) failed: %v, wantErr :%v", tc.start, tc.end, tc.userIDs, err, tc.wantErr)
+			}
+			if err != nil {
+				return
+			}
+			var got [][]byte
+			iData := 0
+			for _, rev := range response.MapRevisions {
+				for _, userID := range tc.userIDs {
+					got = append(got,rev.MapLeavesByUserId[userID].GetCommitted().GetData())
+					iData++
+				}
+			}
+			if !reflect.DeepEqual(got, tc.wantHistory) {
+				t.Errorf("TestBatchListUserRevisions(%v, %v, %v): %s, want %s", tc.start, tc.end, tc.userIDs, got, tc.wantHistory)
+			}
+		})
+	}
+}
+
+func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Directory, signers []tink.Signer,
+	authorizedKeys *tinkpb.Keyset) error {
+	// Test setup: 3 different users ("alice", "bob", and "carol") submit profiles in the following order. Specifically, in the i-th submission (i = 0, 1, 2,..., 9), userIDs[i] submits publicKeyData[i].
+	publicKeyData := [][]byte{cp(1), cp(11), cp(2), cp(21), cp(22), cp(12), cp(3), cp(13), cp(23), cp(24)}
+	userIDs := []string{"alice", "bob", "alice", "carol", "carol", "bob", "alice", "bob", "carol", "carol"}
+	for i := 0; i < len(userIDs); i++ {
+		u := &tpb.User{
+			UserId:         userIDs[i],
+			PublicKeyData:  publicKeyData[i],
+			AuthorizedKeys: authorizedKeys,
+		}
+		cctx, cancel := context.WithTimeout(ctx, env.Timeout)
+		defer cancel()
+
+		m, err := env.Client.CreateMutation(cctx, u)
+		if err != nil {
+			return fmt.Errorf("client.CreateMutation(%v): %v", userIDs[i], err)
+		}
+		if err := env.Client.QueueMutation(ctx, m, signers, env.CallOpts(userIDs[i])...); err != nil {
+			return fmt.Errorf("sequencer.QueueMutation(): %v", err)
+		}
+		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+			DirectoryId: directory.DirectoryId,
+			MinBatch:    1,
+			MaxBatch:    1,
+			Block:       true,
+		}); err != nil {
+			return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
+		}
+	}
+	return nil
 }
 
 // uint64Slice satisfies sort.Interface.
