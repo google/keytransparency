@@ -62,7 +62,7 @@ var hammerCmd = &cobra.Command{
 	Short: "Loadtest the server",
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PreRun: func(_ *cobra.Command, _ []string) {
 		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
@@ -75,7 +75,7 @@ var hammerCmd = &cobra.Command{
 		}
 		keyset = handle
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		ktURL := viper.GetString("kt-url")
 		directoryID := viper.GetString("directory")
 		timeout := viper.GetDuration("timeout")
