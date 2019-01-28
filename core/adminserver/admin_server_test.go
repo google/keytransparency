@@ -245,16 +245,6 @@ func TestDelete(t *testing.T) {
 		if _, err := svr.DeleteDirectory(ctx, &pb.DeleteDirectoryRequest{DirectoryId: tc.directoryID}); err != nil {
 			t.Fatalf("DeleteDirectory(): %v", err)
 		}
-		directory, err := svr.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: tc.directoryID, ShowDeleted: true})
-		if err != nil {
-			t.Fatalf("GetDirectory(): %v", err)
-		}
-		if got, want := directory.Log.Deleted, true; got != want {
-			t.Errorf("Log.Deleted: %v, want %v", got, want)
-		}
-		if got, want := directory.Map.Deleted, true; got != want {
-			t.Errorf("Map.Deleted: %v, want %v", got, want)
-		}
 		if _, err := svr.GarbageCollect(ctx, &pb.GarbageCollectRequest{
 			Before: ptypes.TimestampNow(),
 		}); err != nil {

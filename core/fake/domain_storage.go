@@ -50,30 +50,30 @@ func (a *DirectoryStorage) Write(ctx context.Context, d *directory.Directory) er
 }
 
 // Read returns existing directories.
-func (a *DirectoryStorage) Read(ctx context.Context, ID string, showDeleted bool) (*directory.Directory, error) {
-	d, ok := a.directories[ID]
+func (a *DirectoryStorage) Read(ctx context.Context, id string, showDeleted bool) (*directory.Directory, error) {
+	d, ok := a.directories[id]
 	if !ok || d.Deleted && !showDeleted {
-		return nil, status.Errorf(codes.NotFound, "Directory %v not found", ID)
+		return nil, status.Errorf(codes.NotFound, "Directory %v not found", id)
 	}
 	return d, nil
 }
 
 // SetDelete deletes or undeletes a directory.
-func (a *DirectoryStorage) SetDelete(ctx context.Context, ID string, isDeleted bool) error {
-	_, ok := a.directories[ID]
+func (a *DirectoryStorage) SetDelete(ctx context.Context, id string, isDeleted bool) error {
+	_, ok := a.directories[id]
 	if !ok {
-		return status.Errorf(codes.NotFound, "Directory %v not found", ID)
+		return status.Errorf(codes.NotFound, "Directory %v not found", id)
 	}
-	a.directories[ID].Deleted = isDeleted
+	a.directories[id].Deleted = isDeleted
 	return nil
 }
 
 // Delete permanently deletes a directory.
-func (a *DirectoryStorage) Delete(ctx context.Context, ID string) error {
-	_, ok := a.directories[ID]
+func (a *DirectoryStorage) Delete(ctx context.Context, id string) error {
+	_, ok := a.directories[id]
 	if !ok {
-		return status.Errorf(codes.NotFound, "Directory %v not found", ID)
+		return status.Errorf(codes.NotFound, "Directory %v not found", id)
 	}
-	delete(a.directories, ID)
+	delete(a.directories, id)
 	return nil
 }
