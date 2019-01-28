@@ -457,27 +457,27 @@ func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUse
 	pageStart := in.StartRevision
 	lastVerified := in.LastVerifiedTreeSize
 
-	// Lookup log and map info.
-	directoryID := in.DirectoryId
-	if directoryID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
-	}
-	d, err := s.directories.Read(ctx, directoryID, false)
-	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
-	}
+        // Lookup log and map info.
+        directoryID := in.DirectoryId
+        if directoryID == "" {
+                return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
+        }
+        d, err := s.directories.Read(ctx, directoryID, false)
+        if err != nil {
+                glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
+                return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+        }
 
-	// Fetch latest log root & consistency proof.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified)
-	if err != nil {
-		return nil, err
-	}
-	newestRevision, err := mapRevisionFor(sth)
-	if err != nil {
-		glog.Errorf("latestRevision(log %v, sth %v): %v", d.LogID, sth, err)
-		return nil, err
-	}
+        // Fetch latest log root & consistency proof.
+        sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified)
+        if err != nil {
+                return nil, err
+        }
+        newestRevision, err := mapRevisionFor(sth)
+        if err != nil {
+                glog.Errorf("latestRevision(log %v, sth %v): %v", d.Log.TreeId, sth, err)
+                return nil, err
+        }
 
 	numRevisions, err := validateBatchListUserRevisionsRequest(in, pageStart, newestRevision)
 	if err != nil {
