@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mapper contains a transformation pipelines from log messages to map revisions.
+// Package mapper contains a transformation pipeline from log messages to map revisions.
 package mapper
 
 import (
@@ -26,19 +26,19 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-// IndexUpdate is a KV<Index, Update> type.
-type IndexUpdate struct {
+// IndexedUpdate is a KV<Index, Update> type.
+type IndexedUpdate struct {
 	Index  []byte
 	Update *pb.EntryUpdate
 }
 
 // MapUpdateFn converts an update into an IndexedUpdate.
-func MapUpdateFn(msg *pb.EntryUpdate) (*IndexUpdate, error) {
+func MapUpdateFn(msg *pb.EntryUpdate) (*IndexedUpdate, error) {
 	var e pb.Entry
 	if err := proto.Unmarshal(msg.Mutation.Entry, &e); err != nil {
 		return nil, err
 	}
-	return &IndexUpdate{
+	return &IndexedUpdate{
 		Index:  e.Index,
 		Update: msg,
 	}, nil
@@ -48,9 +48,13 @@ func MapUpdateFn(msg *pb.EntryUpdate) (*IndexUpdate, error) {
 // TODO(gbelvin): Move to mutator interface.
 func ReduceFn(mutatorFn mutator.ReduceMutationFn,
 	index []byte, leaves []*tpb.MapLeaf, msgs []*pb.EntryUpdate, emit func(*tpb.MapLeaf)) {
+	if got := len(leaves); got != 1 {
+		glog.Errorf("expected 1 map leaf for index %x, got %v", index, got)
+		return
+	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
+	var err error
 	if len(leaves) > 0 {
-		var err error
 		oldValue, err = entry.FromLeafValue(leaves[0].GetLeafValue())
 		if err != nil {
 			glog.Warningf("entry.FromLeafValue(): %v", err)
@@ -58,11 +62,11 @@ func ReduceFn(mutatorFn mutator.ReduceMutationFn,
 		}
 	}
 
-	if got := len(msgs); got < 1 {
+	if len(msgs) == 0 {
 		return
 	}
 
-	// TODO(gbelvin): Create an associative function to choose the mutation to apply.
+	// TODO(gbelvin): Choose the mutation deterministically, regardless of the messages order.
 	msg := msgs[0]
 	newValue, err := mutatorFn(oldValue, msg.Mutation)
 	if err != nil {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package runner contains methods for running a pipeline.
+// Package runner executes the mapper pipeline.
 package runner
 
 import (
@@ -25,7 +25,7 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-// ApplyMutations takes the set of mutations and applies them to given leafs.
+// ApplyMutations takes the set of mutations and applies them to given leaves.
 // Returns a list of map leaves that should be updated.
 func ApplyMutations(mutatorFunc mutator.ReduceMutationFn,
 	msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
@@ -46,29 +46,28 @@ func ApplyMutations(mutatorFunc mutator.ReduceMutationFn,
 	return ret, nil
 }
 
-// Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexUpdate.
+// Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedUpdate.
 type Joined struct {
 	Index  []byte
 	Leaves []*tpb.MapLeaf
 	Msgs   []*pb.EntryUpdate
 }
 
-// Join pairs up MapLeaves and IndexUpdates by index.
-func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexUpdate) []*Joined {
+// Join pairs up MapLeaves and IndexedUpdates by index.
+func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexedUpdate) []*Joined {
 	joinMap := make(map[string]*Joined)
 	for _, l := range leaves {
 		row, ok := joinMap[string(l.Index)]
 		if !ok {
-			row = &Joined{}
+			row = &Joined{Index: l.Index}
 		}
-		row.Index = l.Index
 		row.Leaves = append(row.Leaves, l)
 		joinMap[string(l.Index)] = row
 	}
 	for _, m := range msgs {
 		row, ok := joinMap[string(m.Index)]
 		if !ok {
-			row = &Joined{}
+			row = &Joined{Index: m.Index}
 		}
 		row.Msgs = append(row.Msgs, m.Update)
 		joinMap[string(m.Index)] = row
@@ -81,11 +80,11 @@ func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexUpdate) []*Joined {
 }
 
 // MapUpdateFn converts an update into an IndexedUpdate.
-type MapUpdateFn func(msg *pb.EntryUpdate) (*mapper.IndexUpdate, error)
+type MapUpdateFn func(msg *pb.EntryUpdate) (*mapper.IndexedUpdate, error)
 
 // DoMapUpdateFn runs the MapUpdateFn on each element of msgs.
-func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*mapper.IndexUpdate, error) {
-	outs := make([]*mapper.IndexUpdate, 0, len(msgs))
+func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*mapper.IndexedUpdate, error) {
+	outs := make([]*mapper.IndexedUpdate, 0, len(msgs))
 	for _, m := range msgs {
 		out, err := fn(m)
 		if err != nil {

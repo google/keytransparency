@@ -29,13 +29,13 @@ func TestJoin(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string
 		leaves []*tpb.MapLeaf
-		msgs   []*mapper.IndexUpdate
+		msgs   []*mapper.IndexedUpdate
 		want   []*Joined
 	}{
 		{
 			desc:   "onerow",
 			leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
-			msgs:   []*mapper.IndexUpdate{{Index: []byte("A"), Update: &pb.EntryUpdate{}}},
+			msgs:   []*mapper.IndexedUpdate{{Index: []byte("A"), Update: &pb.EntryUpdate{}}},
 			want: []*Joined{{
 				Index:  []byte("A"),
 				Leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
