@@ -422,7 +422,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 		{desc: "large end", start: 1, end: 1001, userIDs: []string{"alice"}, wantHistory: [][]byte{}, wantErr: true},
 		{desc: "single revision", start: 3, end: 3, userIDs: []string{"alice", "bob"}, wantHistory: [][]byte{cp(2), cp(11)}},
 		{desc: "multiple revisions test 1", start: 4, end: 7, userIDs: []string{"carol"},
-                        wantHistory: [][]byte{cp(21), cp(22), cp(22), cp(22)}},
+			wantHistory: [][]byte{cp(21), cp(22), cp(22), cp(22)}},
 		{desc: "multiple revisions test 2", start: 7, end: 10, userIDs: []string{"alice", "bob", "carol"},
 			wantHistory: [][]byte{cp(3), cp(12), cp(22), cp(3), cp(13), cp(22), cp(3), cp(13), cp(23), cp(3), cp(13), cp(24)}},
 	} {
@@ -440,7 +440,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 			var got [][]byte
 			for _, rev := range response.MapRevisions {
 				for _, userID := range tc.userIDs {
-					got = append(got,rev.MapLeavesByUserId[userID].GetCommitted().GetData())
+					got = append(got, rev.MapLeavesByUserId[userID].GetCommitted().GetData())
 				}
 			}
 			if !reflect.DeepEqual(got, tc.wantHistory) {
