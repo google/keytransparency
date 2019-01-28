@@ -398,7 +398,7 @@ func sortHistory(history map[uint64][]byte) [][]byte {
 	return profiles
 }
 
-// TestBatchListUserRevisions verifies that BatchListUserRevisions() in keyserver  works properly.
+// TestBatchListUserRevisions verifies that BatchListUserRevisions() in keyserver works properly.
 func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 	// Create lists of signers and authorized keys
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
@@ -438,11 +438,9 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 				return
 			}
 			var got [][]byte
-			iData := 0
 			for _, rev := range response.MapRevisions {
 				for _, userID := range tc.userIDs {
 					got = append(got,rev.MapLeavesByUserId[userID].GetCommitted().GetData())
-					iData++
 				}
 			}
 			if !reflect.DeepEqual(got, tc.wantHistory) {
