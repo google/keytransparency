@@ -23,10 +23,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/directory"
+	tpb "github.com/google/trillian"
+	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/google/trillian/crypto/keyspb"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -58,8 +58,12 @@ func TestList(t *testing.T) {
 			directories: []*directory.Directory{
 				{
 					DirectoryID: "directory1",
-					MapID:       1,
-					LogID:       2,
+					Map: &tpb.Tree{
+						TreeId: 1,
+					},
+					Log: &tpb.Tree{
+						TreeId: 2,
+					},
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 					VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 					MinInterval: 1 * time.Second,
@@ -67,8 +71,12 @@ func TestList(t *testing.T) {
 				},
 				{
 					DirectoryID: "directory2",
-					MapID:       1,
-					LogID:       2,
+					Map: &tpb.Tree{
+						TreeId: 1,
+					},
+					Log: &tpb.Tree{
+						TreeId: 2,
+					},
 					VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 					VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 					MinInterval: 5 * time.Hour,
@@ -113,8 +121,12 @@ func TestWriteReadDelete(t *testing.T) {
 			write: true,
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				MapID:       1,
-				LogID:       2,
+				Map: &tpb.Tree{
+					TreeId: 1,
+				},
+				Log: &tpb.Tree{
+					TreeId: 2,
+				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 				MinInterval: 1 * time.Second,
@@ -126,8 +138,12 @@ func TestWriteReadDelete(t *testing.T) {
 			write: true,
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				MapID:       1,
-				LogID:       2,
+				Map: &tpb.Tree{
+					TreeId: 1,
+				},
+				Log: &tpb.Tree{
+					TreeId: 2,
+				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 				MinInterval: 1 * time.Second,
@@ -139,8 +155,12 @@ func TestWriteReadDelete(t *testing.T) {
 			desc: "Delete",
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				MapID:       1,
-				LogID:       2,
+				Map: &tpb.Tree{
+					TreeId: 1,
+				},
+				Log: &tpb.Tree{
+					TreeId: 2,
+				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 				MinInterval: 1 * time.Second,
@@ -155,8 +175,12 @@ func TestWriteReadDelete(t *testing.T) {
 			desc: "Read deleted",
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				MapID:       1,
-				LogID:       2,
+				Map: &tpb.Tree{
+					TreeId: 1,
+				},
+				Log: &tpb.Tree{
+					TreeId: 2,
+				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 				MinInterval: 1 * time.Second,
@@ -171,8 +195,12 @@ func TestWriteReadDelete(t *testing.T) {
 			desc: "Undelete",
 			d: directory.Directory{
 				DirectoryID: "testdirectory",
-				MapID:       1,
-				LogID:       2,
+				Map: &tpb.Tree{
+					TreeId: 1,
+				},
+				Log: &tpb.Tree{
+					TreeId: 2,
+				},
 				VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 				VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},
 				MinInterval: 1 * time.Second,
@@ -229,6 +257,12 @@ func TestDelete(t *testing.T) {
 		{directoryID: "test"},
 	} {
 		d := &directory.Directory{
+			Map: &tpb.Tree{
+				TreeId: 1,
+			},
+			Log: &tpb.Tree{
+				TreeId: 2,
+			},
 			DirectoryID: tc.directoryID,
 			VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
 			VRFPriv:     &keyspb.PrivateKey{Der: []byte("privkeybytes")},

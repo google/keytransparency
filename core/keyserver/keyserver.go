@@ -154,12 +154,12 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 	}
 
 	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
-		MapId:    d.MapID,
+		MapId:    d.Map.TreeId,
 		Index:    indexes,
 		Revision: mapRevision,
 	})
 	if err != nil {
-		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.MapID, mapRevision, err)
+		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.Map.TreeId, mapRevision, err)
 		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), len(userIDs); got != want {
@@ -206,14 +206,14 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 	// SignedMapHead to SignedLogRoot inclusion proof.
 	logInclusion, err := s.tlog.GetInclusionProof(ctx,
 		&tpb.GetInclusionProofRequest{
-			LogId: d.LogID,
+			LogId: d.Log.TreeId,
 			// SignedMapRoot must be placed in the log at MapRevision.
 			// MapRevisions start at 0. Log leaves start at 0.
 			LeafIndex: mapRevision,
 			TreeSize:  sth.TreeSize, // nolint TODO(gbelvin): Verify sth first.
 		})
 	if err != nil {
-		glog.Errorf("tlog.GetInclusionProof(%v): %v", d.LogID, err)
+		glog.Errorf("tlog.GetInclusionProof(%v): %v", d.Log.TreeId, err)
 		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
 	}
 
@@ -248,7 +248,7 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 	}
 	revision, err := mapRevisionFor(sth)
 	if err != nil {
-		glog.Errorf("latestRevision(log: %v, sth: %v): %v", d.LogID, sth, err)
+		glog.Errorf("latestRevision(log: %v, sth: %v): %v", d.Log.TreeId, sth, err)
 		return nil, err
 	}
 
@@ -321,7 +321,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}
 	currentRevision, err := mapRevisionFor(sth)
 	if err != nil {
-		glog.Errorf("latestRevision(log %v, sth%v): %v", d.LogID, sth, err)
+		glog.Errorf("latestRevision(log %v, sth%v): %v", d.Log.TreeId, sth, err)
 		return nil, err
 	}
 
@@ -401,7 +401,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	}
 	newestRevision, err := mapRevisionFor(sth)
 	if err != nil {
-		glog.Errorf("latestRevision(log %v, sth %v): %v", d.LogID, sth, err)
+		glog.Errorf("latestRevision(log %v, sth %v): %v", d.Log.TreeId, sth, err)
 		return nil, err
 	}
 
@@ -575,21 +575,10 @@ func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (
 		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info for %v", in.DirectoryId)
 	}
 
-	logTree, err := s.logAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: directory.LogID})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal,
-			"Cannot fetch log info for %v: %v", in.DirectoryId, err)
-	}
-	mapTree, err := s.mapAdmin.GetTree(ctx, &tpb.GetTreeRequest{TreeId: directory.MapID})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal,
-			"Cannot fetch map info for %v: %v", in.DirectoryId, err)
-	}
-
 	return &pb.Directory{
 		DirectoryId: directory.DirectoryID,
-		Log:         logTree,
-		Map:         mapTree,
+		Log:         directory.Log,
+		Map:         directory.Map,
 		Vrf:         directory.VRF,
 		MinInterval: ptypes.DurationProto(directory.MinInterval),
 		MaxInterval: ptypes.DurationProto(directory.MaxInterval),
