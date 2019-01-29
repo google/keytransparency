@@ -373,13 +373,11 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}
-		} else {
+		} else if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+			DirectoryId: directory.DirectoryId,
 			// Create an empty revision.
-			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-				DirectoryId: directory.DirectoryId,
-			}); err != nil {
-				return fmt.Errorf("sequencer.RunBatch(empty): %v", err)
-			}
+		}); err != nil {
+			return fmt.Errorf("sequencer.RunBatch(empty): %v", err)
 		}
 	}
 	return nil

@@ -53,7 +53,7 @@ var RootCmd = &cobra.Command{
 	Long: `The key transparency client retrieves and sets keys in the
 key transparency server.  The client verifies all cryptographic proofs the
 server provides to ensure that account data is accurate.`,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(_ *cobra.Command, _ []string) {
 		if verbose {
 			client.Vlog = log.New(os.Stdout, "", log.LstdFlags)
 		}

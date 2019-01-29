@@ -165,7 +165,7 @@ func (m *Monitor) validateMapRoot(newRoot *types.MapRootV1, mutatedLeaves []merk
 	// (above proof hashes):
 	hs2 := merkle.NewHStar2(m.mapVerifier.MapID, m.mapVerifier.Hasher)
 	rootHash, err := hs2.HStar2Nodes([]byte{}, m.mapVerifier.Hasher.BitLen(), mutatedLeaves,
-		func(depth int, index *big.Int) ([]byte, error) {
+		func(depth int, index *big.Int) ([]byte, error) { //nolint:unparam
 			nID := storage.NewNodeIDFromBigInt(depth, index, m.mapVerifier.Hasher.BitLen())
 			if p, ok := oldProofNodes[nID.String()]; ok {
 				return p, nil

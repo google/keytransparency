@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 
 	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/keytransparency/core/crypto/tinkio"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 )
@@ -45,14 +46,20 @@ and verifies that both the previous and current key-sets are accurate. eg:
 User email MUST match the OAuth account used to authorize the update.
 `,
 
-	PreRun: func(cmd *cobra.Command, args []string) {
-		handle, err := readKeysetFile(keysetFile, masterPassword)
+	PreRun: func(_ *cobra.Command, _ []string) {
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
+		if err != nil {
+			log.Fatal(err)
+		}
+		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+			&tinkio.ProtoKeysetFile{File: keysetFile},
+			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
 		keyset = handle
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		// Validate input.
 		if len(args) < 1 {
 			return fmt.Errorf("user email needs to be provided")

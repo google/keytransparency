@@ -28,7 +28,7 @@ var getCmd = &cobra.Command{
 	Short: "Retrieve and verify the current keyset",
 	Long: `Retrieve the user profile from the key server and verify that the
 results are consistent.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return fmt.Errorf("user email needs to be provided")
 		}

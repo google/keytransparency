@@ -20,7 +20,7 @@ account has been active and stable before trusting it.
 
 * [Overview](docs/overview.md)
 * [Design document](docs/design.md)
-* [API](docs/http_apis.md)
+* [API](docs/api.md)
 
 Key Transparency is inspired by [CONIKS](https://eprint.iacr.org/2014/1004.pdf)
 and [Certificate Transparency](https://www.certificate-transparency.org/).

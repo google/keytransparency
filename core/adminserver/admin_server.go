@@ -157,7 +157,6 @@ func trimTree(t *tpb.Tree) *tpb.Tree {
 		HashStrategy:       t.HashStrategy,
 		HashAlgorithm:      t.HashAlgorithm,
 		SignatureAlgorithm: t.SignatureAlgorithm,
-		Deleted:            t.Deleted,
 	}
 }
 
