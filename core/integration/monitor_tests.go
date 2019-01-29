@@ -16,7 +16,9 @@ package integration
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
@@ -115,12 +117,19 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	}
 
 	trusted := types.LogRootV1{}
-	cctx, cancel := context.WithTimeout(ctx, env.Timeout)
-	err = mon.ProcessLoop(cctx, env.Directory.DirectoryId, trusted)
-	if err != context.DeadlineExceeded && status.Code(err) != codes.DeadlineExceeded {
+	cctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = mon.ProcessLoop(cctx, env.Directory.DirectoryId, trusted)
+	}()
+	time.Sleep(env.Timeout)
+	cancel()
+	wg.Wait()
+	if err != context.Canceled && status.Code(err) != codes.Canceled {
 		t.Errorf("Monitor could not process mutations: %v", err)
 	}
-	cancel()
 
 	for i := int64(1); i < 4; i++ {
 		mresp, err := store.Get(i)
