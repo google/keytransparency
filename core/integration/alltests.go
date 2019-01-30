@@ -59,4 +59,5 @@ var AllTests = []NamedTestFn{
 	{Name: "TestBatchCreate", Fn: TestBatchCreate},
 	// Monitor Tests
 	{Name: "TestMonitor", Fn: TestMonitor},
+	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions},
 }

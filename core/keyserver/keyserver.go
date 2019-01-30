@@ -454,7 +454,61 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 // BatchListUserRevisions returns a list of revisions covering a period of time.
 func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUserRevisionsRequest) (
 	*pb.BatchListUserRevisionsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	pageStart := in.StartRevision
+	lastVerified := in.LastVerifiedTreeSize
+
+	// Lookup log and map info.
+	directoryID := in.DirectoryId
+	if directoryID == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
+	}
+	d, err := s.directories.Read(ctx, directoryID, false)
+	if err != nil {
+		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+	}
+
+	// Fetch latest log root & consistency proof.
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified)
+	if err != nil {
+		return nil, err
+	}
+	newestRevision, err := mapRevisionFor(sth)
+	if err != nil {
+		glog.Errorf("latestRevision(log %v, sth %v): %v", d.Log.TreeId, sth, err)
+		return nil, err
+	}
+
+	numRevisions, err := validateBatchListUserRevisionsRequest(in, pageStart, newestRevision)
+	if err != nil {
+		glog.Errorf("validateBatchListUserRevisionsRequest(%v, %v, %v): %v", in, pageStart, newestRevision, err)
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
+	}
+
+	// TODO(gbelvin): fetch all history from trillian at once.
+	// Get all revisions in the range [start + offset, start + offset + numRevisions].
+	revisions := make([]*pb.BatchMapRevision, numRevisions)
+	for i := range revisions {
+		rev := pageStart + int64(i)
+		resp, err := s.batchGetUserByRevision(ctx, sth, d, in.UserIds, rev)
+		if err != nil {
+			glog.Errorf("batchGetUser failed for revision %v: %v", rev, err)
+			return nil, status.Errorf(codes.Internal, "BatchGetUser failed")
+		}
+		revisions[i] = &pb.BatchMapRevision{
+			MapRoot:           resp.GetRevision().GetMapRoot(),
+			MapLeavesByUserId: resp.GetMapLeavesByUserId(),
+		}
+	}
+
+	resp := &pb.BatchListUserRevisionsResponse{
+		LatestLogRoot: &pb.LogRoot{
+			LogRoot:        sth,
+			LogConsistency: consistencyProof.GetHashes(),
+		},
+		MapRevisions: revisions,
+	}
+	return resp, nil
 }
 
 // QueueEntryUpdate updates a user's profile. If the user does not exist, a new profile will be created.
