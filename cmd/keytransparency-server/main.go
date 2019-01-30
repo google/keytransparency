@@ -117,12 +117,9 @@ func main() {
 	}
 	tlog := trillian.NewTrillianLogClient(tconn)
 	tmap := trillian.NewTrillianMapClient(mconn)
-	logAdmin := trillian.NewTrillianAdminClient(tconn)
-	mapAdmin := trillian.NewTrillianAdminClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(tlog, tmap, logAdmin, mapAdmin,
-		entry.MutateFn, directories, logs, logs)
+	ksvr := keyserver.New(tlog, tmap, entry.MutateFn, directories, logs, logs)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(

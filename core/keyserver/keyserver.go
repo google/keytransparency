@@ -57,8 +57,6 @@ type indexFunc func(ctx context.Context, d *directory.Directory, userID string) 
 type Server struct {
 	tlog        tpb.TrillianLogClient
 	tmap        tpb.TrillianMapClient
-	logAdmin    tpb.TrillianAdminClient
-	mapAdmin    tpb.TrillianAdminClient
 	mutate      mutator.ReduceMutationFn
 	directories directory.Storage
 	logs        MutationLogs
@@ -69,8 +67,6 @@ type Server struct {
 // New creates a new instance of the key server.
 func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
-	logAdmin tpb.TrillianAdminClient,
-	mapAdmin tpb.TrillianAdminClient,
 	mutate mutator.ReduceMutationFn,
 	directories directory.Storage,
 	logs MutationLogs,
@@ -78,8 +74,6 @@ func New(tlog tpb.TrillianLogClient,
 	return &Server{
 		tlog:        tlog,
 		tmap:        tmap,
-		logAdmin:    logAdmin,
-		mapAdmin:    mapAdmin,
 		mutate:      mutate,
 		directories: directories,
 		logs:        logs,

@@ -52,8 +52,6 @@ type trillianLog interface {
 // Trillian contains Trillian gRPC clients and metadata about them.
 type Trillian struct {
 	directories directory.Storage
-	logAdmin    tpb.TrillianAdminClient
-	mapAdmin    tpb.TrillianAdminClient
 	tmap        tpb.TrillianMapClient
 	tlog        tpb.TrillianLogClient
 }
