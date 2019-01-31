@@ -26,13 +26,11 @@ import (
 	"github.com/google/keytransparency/core/sequencer/election"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	tpb "github.com/google/trillian"
 )
 
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
 	directories     directory.Storage
-	mapAdmin        tpb.TrillianAdminClient
 	batchSize       int32
 	sequencerClient spb.KeyTransparencySequencerClient
 	tracker         *election.Tracker
@@ -41,7 +39,6 @@ type Sequencer struct {
 // New creates a new instance of the signer.
 func New(
 	sequencerClient spb.KeyTransparencySequencerClient,
-	mapAdmin tpb.TrillianAdminClient,
 	directories directory.Storage,
 	batchSize int32,
 	tracker *election.Tracker,
@@ -49,7 +46,6 @@ func New(
 	return &Sequencer{
 		sequencerClient: sequencerClient,
 		directories:     directories,
-		mapAdmin:        mapAdmin,
 		batchSize:       batchSize,
 		tracker:         tracker,
 	}

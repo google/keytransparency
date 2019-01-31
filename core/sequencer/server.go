@@ -118,8 +118,6 @@ type Server struct {
 // NewServer creates a new KeyTransparencySequencerServer.
 func NewServer(
 	directories directory.Storage,
-	logAdmin tpb.TrillianAdminClient,
-	mapAdmin tpb.TrillianAdminClient,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	batcher Batcher,
@@ -131,8 +129,6 @@ func NewServer(
 	return &Server{
 		trillian: &Trillian{
 			directories: directories,
-			logAdmin:    logAdmin,
-			mapAdmin:    mapAdmin,
 			tmap:        tmap,
 			tlog:        tlog,
 		},
