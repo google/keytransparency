@@ -30,6 +30,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/google/keytransparency/core/sequencer/runner"
+
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -301,7 +303,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := s.applyMutations(in.DirectoryId, entry.MutateFn, mutations, leaves)
+	newLeaves, err := runner.ApplyMutations(entry.MutateFn, mutations, leaves)
 	if err != nil {
 		return nil, err
 	}
@@ -379,70 +381,6 @@ func (s *Server) PublishRevisions(ctx context.Context,
 		}
 	}
 	return &spb.PublishRevisionsResponse{Revisions: revs}, nil
-}
-
-// applyMutations takes the set of mutations and applies them to given leafs.
-// Multiple mutations for the same leaf will be applied to provided leaf.
-// The last valid mutation for each leaf is included in the output.
-// Returns a list of map leaves that should be updated.
-func (s *Server) applyMutations(directoryID string, mutatorFunc mutator.ReduceMutationFn,
-	msgs []*ktpb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
-	// Put leaves in a map from index to leaf value.
-	leafMap := make(map[string]*tpb.MapLeaf)
-	for _, l := range leaves {
-		leafMap[string(l.Index)] = l
-	}
-
-	retMap := make(map[string]*tpb.MapLeaf)
-	for _, msg := range msgs {
-		var e ktpb.Entry
-		if err := proto.Unmarshal(msg.Mutation.Entry, &e); err != nil {
-			return nil, err
-		}
-		var oldValue *ktpb.SignedEntry // If no map leaf was found, oldValue will be nil.
-		if leaf, ok := leafMap[string(e.Index)]; ok {
-			var err error
-			oldValue, err = entry.FromLeafValue(leaf.GetLeafValue())
-			if err != nil {
-				glog.Warningf("entry.FromLeafValue(%v): %v", leaf.GetLeafValue(), err)
-				mutationFailures.Inc(directoryID, "Unmarshal")
-				continue
-			}
-		}
-
-		newValue, err := mutatorFunc(oldValue, msg.Mutation)
-		if err != nil {
-			glog.Warningf("Mutate(): %v", err)
-			mutationFailures.Inc(directoryID, "Mutate")
-			continue // A bad mutation should not make the whole batch fail.
-		}
-		leafValue, err := entry.ToLeafValue(newValue)
-		if err != nil {
-			glog.Warningf("ToLeafValue(): %v", err)
-			mutationFailures.Inc(directoryID, "Marshal")
-			continue
-		}
-		extraData, err := proto.Marshal(msg.Committed)
-		if err != nil {
-			glog.Warningf("proto.Marshal(): %v", err)
-			mutationFailures.Inc(directoryID, "Marshal")
-			continue
-		}
-
-		// Make sure that only ONE MapLeaf is output per index.
-		retMap[string(e.Index)] = &tpb.MapLeaf{
-			Index:     e.Index,
-			LeafValue: leafValue,
-			ExtraData: extraData,
-		}
-	}
-	// Convert return map back into a list.
-	ret := make([]*tpb.MapLeaf, 0, len(retMap))
-	for _, v := range retMap {
-		ret = append(ret, v)
-	}
-	glog.V(2).Infof("applyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
-	return ret, nil
 }
 
 // HighWatermarks returns the total count across all logs and the highest watermark for each log.
