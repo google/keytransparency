@@ -39,8 +39,10 @@ func ApplyMutations(mutatorFunc mutator.ReduceMutationFn,
 
 	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
-		mapper.ReduceFn(mutatorFunc, j.Index, j.Leaves, j.Msgs,
-			func(l *tpb.MapLeaf) { ret = append(ret, l) })
+		if err := mapper.ReduceFn(mutatorFunc, j.Index, j.Leaves, j.Msgs,
+			func(l *tpb.MapLeaf) { ret = append(ret, l) }); err != nil {
+			return nil, err
+		}
 	}
 	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
