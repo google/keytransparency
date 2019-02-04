@@ -51,7 +51,7 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+		handle, err := tink.NewKeysetHandleFromReader(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
