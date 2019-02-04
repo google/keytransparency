@@ -51,8 +51,7 @@ services:
       context: ../trillian
       dockerfile: examples/deployment/docker/log_server/Dockerfile
     restart: always
-    entrypoint:
-      - /go/bin/trillian_log_server
+    command: 
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
@@ -74,8 +73,7 @@ services:
       context: ../trillian
       dockerfile: examples/deployment/docker/log_signer/Dockerfile
     restart: always
-    entrypoint:
-      - /go/bin/trillian_log_signer
+    command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --http_endpoint=0.0.0.0:8091
       - --sequencer_guard_window=0s
@@ -100,8 +98,7 @@ services:
       context: ../trillian
       dockerfile: examples/deployment/docker/map_server/Dockerfile
     restart: always
-    entrypoint:
-      - /go/bin/trillian_map_server
+    command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
       - --http_endpoint=0.0.0.0:8091
@@ -128,8 +125,7 @@ services:
     ports:
       - "443:8080" # json & grpc
       - "8081:8081" # metrics
-    entrypoint:
-      - /go/bin/keytransparency-server
+    command:
       - --addr=0.0.0.0:8080
       - --db=test:zaphod@tcp(db:3306)/test
       - --log-url=log-server:8090
@@ -157,8 +153,7 @@ services:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
     restart: always
-    entrypoint:
-      - /go/bin/keytransparency-sequencer
+    command:
       - --force_master
       - --db=test:zaphod@tcp(db:3306)/test
       - --addr=0.0.0.0:8080
@@ -196,8 +191,7 @@ services:
     build:
       context: ..
       dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile
-    entrypoint:
-      - /go/bin/keytransparency-monitor
+    command:
       - --addr=0.0.0.0:8099
       - --kt-url=server:8080
       - --insecure
