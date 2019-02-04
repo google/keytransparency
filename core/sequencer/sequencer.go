@@ -77,21 +77,21 @@ func (s *Sequencer) TrackMasterships(ctx context.Context) {
 	s.tracker.Run(ctx)
 }
 
-// AddAllDirectoriesForSequencing adds all directories to the set of resources
+// AddAllDirectories adds all directories to the set of resources
 // this sequencer attempts to obtain mastership for.
-func (s *Sequencer) AddAllDirectoriesForSequencing(ctx context.Context) error {
+func (s *Sequencer) AddAllDirectories(ctx context.Context) error {
 	directories, err := s.directories.List(ctx, false /*deleted*/)
 	if err != nil {
 		return fmt.Errorf("admin.List(): %v", err)
 	}
 	for _, d := range directories {
-		s.AddDirectoryForSequencing(d.DirectoryID)
+		s.AddDirectory(d.DirectoryID)
 	}
 	return nil
 }
 
-// AddDirectoryForSequencing adds dirIDs to the set of resources this sequencer attempts to obtain mastership for.
-func (s *Sequencer) AddDirectoryForSequencing(dirIDs ...string) {
+// AddDirectory adds dirIDs to the set of resources this sequencer attempts to obtain mastership for.
+func (s *Sequencer) AddDirectory(dirIDs ...string) {
 	for _, dir := range dirIDs {
 		knownDirectories.Set(1, dir)
 		s.tracker.AddResource(dir)

@@ -213,11 +213,11 @@ func runSequencer(ctx context.Context, conn, mconn *grpc.ClientConn,
 	)
 
 	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
-		if err := signer.AddAllDirectoriesForSequencing(ctx); err != nil {
-			glog.Errorf("PeriodicallyRun(AddAllDirectoriesForSequencing): %v", err)
+		if err := signer.AddAllDirectories(ctx); err != nil {
+			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)
 		}
 		if err := signer.RunBatchForAllMasterships(ctx); err != nil {
-			glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
+			glog.Errorf("PeriodicallyRun(RunBatchForAllMasterships): %v", err)
 		}
 	})
 }
