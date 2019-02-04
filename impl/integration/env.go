@@ -181,13 +181,11 @@ func NewEnv(ctx context.Context) (*Env, error) {
 
 	pb.RegisterKeyTransparencyServer(gsvr, keyserver.New(
 		logEnv.Log, mapEnv.Map,
-		logEnv.Admin, mapEnv.Admin,
 		entry.MutateFn, directoryStorage,
 		mutations, mutations))
 
 	spb.RegisterKeyTransparencySequencerServer(gsvr, sequencer.NewServer(
 		directoryStorage,
-		logEnv.Admin, mapEnv.Admin,
 		logEnv.Log, mapEnv.Map,
 		mutations, mutations,
 		spb.NewKeyTransparencySequencerClient(cc),

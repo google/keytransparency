@@ -167,8 +167,6 @@ func main() {
 
 	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencer.NewServer(
 		directoryStorage,
-		trillian.NewTrillianAdminClient(lconn),
-		trillian.NewTrillianAdminClient(mconn),
 		trillian.NewTrillianLogClient(lconn),
 		trillian.NewTrillianMapClient(mconn),
 		mutations, mutations,
@@ -209,15 +207,17 @@ func runSequencer(ctx context.Context, conn, mconn *grpc.ClientConn,
 	defer closeFactory()
 	signer := sequencer.New(
 		spb.NewKeyTransparencySequencerClient(conn),
-		trillian.NewTrillianAdminClient(mconn),
 		directoryStorage,
 		int32(*batchSize),
 		election.NewTracker(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
 	)
 
 	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
-		if err := signer.RunBatchForAllDirectories(ctx); err != nil {
-			glog.Errorf("PeriodicallyRun(RunBatchForAllDirectories): %v", err)
+		if err := signer.AddAllDirectories(ctx); err != nil {
+			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)
+		}
+		if err := signer.RunBatchForAllMasterships(ctx); err != nil {
+			glog.Errorf("PeriodicallyRun(RunBatchForAllMasterships): %v", err)
 		}
 	})
 }
