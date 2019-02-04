@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -67,7 +68,7 @@ var hammerCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+		handle, err := tink.NewKeysetHandleFromReader(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
