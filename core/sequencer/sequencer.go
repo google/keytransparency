@@ -77,18 +77,29 @@ func (s *Sequencer) TrackMasterships(ctx context.Context) {
 	s.tracker.Run(ctx)
 }
 
-// RunBatchForAllDirectories scans the directories table for new directories and creates new receivers for
-// directories that the sequencer is not currently receiving for.
-func (s *Sequencer) RunBatchForAllDirectories(ctx context.Context) error {
-	directories, err := s.directories.List(ctx, false)
+// AddAllDirectories adds all directories to the set of resources
+// this sequencer attempts to obtain mastership for.
+func (s *Sequencer) AddAllDirectories(ctx context.Context) error {
+	directories, err := s.directories.List(ctx, false /*deleted*/)
 	if err != nil {
 		return fmt.Errorf("admin.List(): %v", err)
 	}
 	for _, d := range directories {
-		knownDirectories.Set(1, d.DirectoryID)
-		s.tracker.AddResource(d.DirectoryID)
+		s.AddDirectory(d.DirectoryID)
 	}
+	return nil
+}
 
+// AddDirectory adds dirIDs to the set of resources this sequencer attempts to obtain mastership for.
+func (s *Sequencer) AddDirectory(dirIDs ...string) {
+	for _, dir := range dirIDs {
+		knownDirectories.Set(1, dir)
+		s.tracker.AddResource(dir)
+	}
+}
+
+// RunBatchForAllMasterships runs RunBatch on all directires this sequencer is currently master for.
+func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context) error {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	masterships, err := s.tracker.Masterships(cctx)
