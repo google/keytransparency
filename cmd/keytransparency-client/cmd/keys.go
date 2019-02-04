@@ -69,9 +69,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		return tinkio.WriteKeyset(keyset,
-			&tinkio.ProtoKeysetFile{File: keysetFile},
-			masterKey)
+		return keyset.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
 	},
 }
 
@@ -103,7 +101,7 @@ The actual keys are not listed, only their corresponding metadata.
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tinkio.KeysetHandleFromEncryptedReader(
+		handle, err := tink.NewKeysetHandleFromReader(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
