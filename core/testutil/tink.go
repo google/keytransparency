@@ -26,7 +26,7 @@ import (
 
 // VerifyKeysetFromPEMs produces a Keyset with pubPEMs.
 func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
-	handle, err := insecure.KeysetHandle(&tinkio.PEMKeyset{PEMs: pubPEMs})
+	handle, err := insecure.KeysetHandle(&tinkio.ECDSAPEMKeyset{PEMs: pubPEMs})
 	if err != nil {
 		panic(fmt.Sprintf("insecure.KeysetHandle(): %v", err))
 	}
@@ -40,7 +40,7 @@ func SignKeysetsFromPEMs(privPEMs ...string) []tink.Signer {
 		if pem == "" {
 			continue
 		}
-		handle, err := insecure.KeysetHandle(&tinkio.PEMKeyset{PEMs: []string{pem}})
+		handle, err := insecure.KeysetHandle(&tinkio.ECDSAPEMKeyset{PEMs: []string{pem}})
 		if err != nil {
 			panic(fmt.Sprintf("insecure.KeysetHandle(): %v", err))
 		}

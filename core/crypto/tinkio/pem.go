@@ -36,15 +36,15 @@ const (
 	hashType     = commonpb.HashType_SHA256
 )
 
-// PEMKeyset converts a set of PEMs into a tink.Keyset.
+// ECDSAPEMKeyset converts a set of PEMs into a tink.Keyset.
 // Implements tink.KeysetReader.
-type PEMKeyset struct {
+type ECDSAPEMKeyset struct {
 	PEMs     []string
 	Password string
 }
 
 // Read returns a (cleartext) Keyset object from a set of PEMs.
-func (p *PEMKeyset) Read() (*tinkpb.Keyset, error) {
+func (p *ECDSAPEMKeyset) Read() (*tinkpb.Keyset, error) {
 	keysetKeys := make([]*tinkpb.Keyset_Key, 0, len(p.PEMs))
 	var primaryKeyID uint32
 	for i, pem := range p.PEMs {
@@ -68,7 +68,7 @@ func (p *PEMKeyset) Read() (*tinkpb.Keyset, error) {
 }
 
 // ReadEncrypted returns an EncryptedKeyset object from disk.
-func (p *PEMKeyset) ReadEncrypted() (*tinkpb.EncryptedKeyset, error) {
+func (p *ECDSAPEMKeyset) ReadEncrypted() (*tinkpb.EncryptedKeyset, error) {
 	return nil, errors.New("tinkio: Unimplemented")
 }
 
