@@ -49,8 +49,8 @@ const (
 var (
 	initMetrics      sync.Once
 	knownDirectories monitoring.Gauge
+	logEntryCount    monitoring.Counter
 	batchSize        monitoring.Gauge
-	mutationCount    monitoring.Counter
 	mutationFailures monitoring.Counter
 	watermark        monitoring.Gauge
 )
@@ -60,9 +60,9 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"known_directories",
 		"Set to 1 for known directories (whether this instance is master or not)",
 		directoryIDLabel)
-	mutationCount = mf.NewCounter(
-		"mutation_count",
-		"Number of mutations the signer has processed for directoryid since process start",
+	logEntryCount = mf.NewCounter(
+		"log_entry_count",
+		"Total number of log entries read since process start. Duplicates are not removed.",
 		directoryIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
@@ -263,6 +263,7 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 			}
 		}
 	}
+	logEntryCount.Add(float64(len(msgs)), directoryID)
 	return msgs, nil
 }
 
@@ -325,7 +326,6 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		watermark.Set(float64(s.HighestExclusive),
 			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
 	}
-	mutationCount.Add(float64(len(msgs)), in.DirectoryId)
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
 		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(msgs), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{
