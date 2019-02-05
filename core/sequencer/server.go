@@ -53,7 +53,6 @@ var (
 	mapLeafCount     monitoring.Counter
 	mapRevisionCount monitoring.Counter
 
-	batchSize        monitoring.Gauge
 	mutationFailures monitoring.Counter
 	watermark        monitoring.Gauge
 )
@@ -79,10 +78,6 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"mutation_failures",
 		"Number of invalid mutations the signer has processed for directoryid since process start",
 		directoryIDLabel, reasonLabel)
-	batchSize = mf.NewGauge(
-		"batch_size",
-		"Number of mutations the signer is attempting to process for directoryid",
-		directoryIDLabel)
 	watermark = mf.NewGauge("watermark", "High Watermark", directoryIDLabel, logIDLabel, phaseLabel)
 }
 
@@ -296,7 +291,6 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Parse mutations using the mutator for this directory.
-	batchSize.Set(float64(len(msgs)), in.DirectoryId)
 	indexes := make([][]byte, 0, len(msgs))
 	mutations := make([]*ktpb.EntryUpdate, 0, len(msgs))
 	for _, m := range msgs {
