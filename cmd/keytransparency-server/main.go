@@ -20,6 +20,14 @@ import (
 	"flag"
 	"net/http"
 
+	"github.com/golang/glog"
+	"github.com/google/trillian"
+	"github.com/google/trillian/monitoring/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
+
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -29,19 +37,12 @@ import (
 	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
-	"github.com/golang/glog"
-	"github.com/google/trillian"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/reflection"
-
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	_ "github.com/google/trillian/crypto/keys/der/proto"
-	"github.com/google/trillian/monitoring/prometheus"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+
+	_ "github.com/google/trillian/crypto/keys/der/proto"
 )
 
 var (

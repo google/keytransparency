@@ -23,13 +23,13 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/google/keytransparency/core/directory"
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian/monitoring"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"

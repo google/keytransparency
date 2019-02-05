@@ -19,17 +19,17 @@ import (
 	"context"
 	"sync"
 
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/core/directory"
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/trillian/monitoring"
-
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/trillian/monitoring"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
+	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
