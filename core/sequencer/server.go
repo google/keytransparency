@@ -40,9 +40,6 @@ import (
 const (
 	directoryIDLabel = "directoryid"
 	logIDLabel       = "logid"
-	phaseLabel       = "phase"
-	definedLabel     = "defined"
-	appliedLabel     = "applied"
 	reasonLabel      = "reason"
 )
 
@@ -52,9 +49,9 @@ var (
 	logEntryCount    monitoring.Counter
 	mapLeafCount     monitoring.Counter
 	mapRevisionCount monitoring.Counter
-
+	watermarkDefined monitoring.Gauge
+	watermarkApplied monitoring.Gauge
 	mutationFailures monitoring.Counter
-	watermark        monitoring.Gauge
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -74,11 +71,18 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"map_revision_count",
 		"Total number of map revisions written since process start.",
 		directoryIDLabel)
+	watermarkDefined = mf.NewGauge(
+		"watermark_defined",
+		"High watermark of each input log that has been defined in the batch table",
+		directoryIDLabel, logIDLabel)
+	watermarkApplied = mf.NewGauge(
+		"watermark_applied",
+		"High watermark of each input log that has been committed in a map revision",
+		directoryIDLabel, logIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
 		"Number of invalid mutations the signer has processed for directoryid since process start",
 		directoryIDLabel, reasonLabel)
-	watermark = mf.NewGauge("watermark", "High Watermark", directoryIDLabel, logIDLabel, phaseLabel)
 }
 
 // Watermarks is a map of watermarks by logID.
@@ -233,8 +237,8 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, err
 		}
 		for _, source := range meta.Sources {
-			watermark.Set(float64(source.HighestExclusive),
-				in.DirectoryId, fmt.Sprintf("%v", source.LogId), definedLabel)
+			watermarkDefined.Set(float64(source.HighestExclusive),
+				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
 		outstanding = append(outstanding, nextRev)
 
@@ -328,8 +332,8 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	for _, s := range meta.Sources {
-		watermark.Set(float64(s.HighestExclusive),
-			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
+		watermarkApplied.Set(float64(s.HighestExclusive),
+			in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
 	mapRevisionCount.Add(1, in.DirectoryId)
