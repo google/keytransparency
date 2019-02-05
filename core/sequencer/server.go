@@ -50,6 +50,8 @@ var (
 	initMetrics      sync.Once
 	knownDirectories monitoring.Gauge
 	logEntryCount    monitoring.Counter
+	mapLeafCount     monitoring.Counter
+
 	batchSize        monitoring.Gauge
 	mutationFailures monitoring.Counter
 	watermark        monitoring.Gauge
@@ -63,6 +65,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 	logEntryCount = mf.NewCounter(
 		"log_entry_count",
 		"Total number of log entries read since process start. Duplicates are not removed.",
+		directoryIDLabel)
+	mapLeafCount = mf.NewCounter(
+		"map_leaf_count",
+		"Total number of map leaves written since process start. Duplicates are not removed.",
 		directoryIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
@@ -326,8 +332,11 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		watermark.Set(float64(s.HighestExclusive),
 			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
 	}
+	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
+	mapRevisionCount.Add(1, directoryId)
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
 		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(msgs), len(indexes), len(newLeaves))
+	mapLeafCount.Add(float64(len(newLeaves)), directoryId)
 	return &spb.ApplyRevisionResponse{
 		DirectoryId: in.DirectoryId,
 		Revision:    in.Revision,
