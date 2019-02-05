@@ -38,6 +38,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
+	"github.com/google/trillian/monitoring/prometheus"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -119,7 +120,8 @@ func main() {
 	tmap := trillian.NewTrillianMapClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(tlog, tmap, entry.MutateFn, directories, logs, logs)
+	ksvr := keyserver.New(tlog, tmap, entry.MutateFn, directories, logs, logs,
+		prometheus.MetricFactory{})
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
