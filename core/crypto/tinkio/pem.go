@@ -22,6 +22,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/testutil"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/crypto/keys/pem"
 
@@ -104,7 +105,7 @@ func unmarshalPEM(pemData, password string) (interface{}, error) {
 
 // privKeyData produces tinkpb.KeyData from a private key.
 func privKeyData(priv *ecdsa.PrivateKey) (*tinkpb.KeyData, error) {
-	privKey := signature.NewECDSAPrivateKey(
+	privKey := testutil.NewECDSAPrivateKey(
 		signature.ECDSASignerKeyVersion,
 		ecdsaPubKeyPB(&priv.PublicKey),
 		priv.D.Bytes())
@@ -130,9 +131,9 @@ func pubKeyData(pub *ecdsa.PublicKey) (*tinkpb.KeyData, error) {
 
 // ecdsaPubKeyPB returns a tink ecdsapb.EcdsaPublicKey
 func ecdsaPubKeyPB(pub *ecdsa.PublicKey) *ecdsapb.EcdsaPublicKey {
-	return signature.NewECDSAPublicKey(
+	return testutil.NewECDSAPublicKey(
 		signature.ECDSAVerifierKeyVersion,
-		signature.NewECDSAParams(
+		testutil.NewECDSAParams(
 			hashType,
 			tinkCurve(pub.Curve),
 			ecdsapb.EcdsaSignatureEncoding_DER),
