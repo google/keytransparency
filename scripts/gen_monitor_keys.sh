@@ -15,8 +15,8 @@
 # limitations under the License.
 
 # Create output directory.
-mkdir -p "${GOPATH}/src/github.com/google/keytransparency/genfiles"
-cd "${GOPATH}/src/github.com/google/keytransparency/genfiles"
+mkdir -p "$(go env GOPATH)/src/github.com/google/keytransparency/genfiles"
+cd "$(go env GOPATH)/src/github.com/google/keytransparency/genfiles"
 
 INTERACTIVE=1
 
