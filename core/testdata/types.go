@@ -26,3 +26,10 @@ type GetUserResponseVector struct {
 	Resp        *pb.GetUserResponse
 	TrustNewLog bool
 }
+
+// BatchListUserRevisionsResponseVector is a captured BatchListUserRevisionsResponse that should verify without errors.
+type BatchListUserRevisionsResponseVector struct {
+	Desc    string
+	UserIDs []string
+	Resp    *pb.BatchListUserRevisionsResponse
+}
