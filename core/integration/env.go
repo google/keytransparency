@@ -31,7 +31,6 @@ import (
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/client"
-	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer"
@@ -88,7 +87,7 @@ func Listen() (net.Listener, *grpc.ClientConn, error) {
 
 // Env holds a complete testing environment for end-to-end tests.
 type Env struct {
-	*integration.Env
+	*EnvClient
 	mapEnv     *ttest.MapEnv
 	logEnv     *ttest.LogEnv
 	admin      *adminserver.Server
@@ -204,7 +203,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	// Integration tests manually create revisions immediately, so retry fairly quickly.
 	client.RetryDelay = 10 * time.Millisecond
 	return &Env{
-		Env: &integration.Env{
+		EnvClient: &EnvClient{
 			Client:    client,
 			Cli:       pb.NewKeyTransparencyClient(cc),
 			Sequencer: spb.NewKeyTransparencySequencerClient(cc),
