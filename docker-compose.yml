@@ -1,4 +1,12 @@
-version: "3"
+version: "3.1"
+secrets:
+  server.key:
+    file: ./genfiles/server.key
+  server.crt:
+    file: ./genfiles/server.crt
+  monitor.key:
+    file: ./genfiles/monitor_sign-key.pem
+
 services:
   # Only works when when replicas = 1 for reach monitored service.
   # Kubernetes sidecars are needed for replicas > 1. 
@@ -130,8 +138,8 @@ services:
       - --db=test:zaphod@tcp(db:3306)/test
       - --log-url=log-server:8090
       - --map-url=map-server:8090
-      - --tls-key=/kt/server.key
-      - --tls-cert=/kt/server.crt
+      - --tls-key=/run/secrets/server.key
+      - --tls-cert=/run/secrets/server.crt
       - --auth-type=insecure-fake
       - --alsologtostderr
       - --v=5
@@ -142,6 +150,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    secrets:
+      - server.key
+      - server.crt
 
   sequencer:
     depends_on:
@@ -196,12 +207,16 @@ services:
       - --kt-url=server:8080
       - --insecure
       - --directoryid=default
-      - --tls-key=/kt/server.key
-      - --tls-cert=/kt/server.crt
-      - --sign-key=/kt/monitor_sign-key.pem
+      - --tls-key=/run/secrets/server.key
+      - --tls-cert=/run/secrets/server.crt
+      - --sign-key=/run/secrets/monitor.key
       - --password=towel
       - --alsologtostderr
       - --v=3
     restart: always
     ports:
     - "8099:8099" # gRPC / HTTPS
+    secrets:
+      - server.key
+      - server.crt
+      - monitor.key
