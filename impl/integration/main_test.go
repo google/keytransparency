@@ -38,12 +38,14 @@ func TestIntegration(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			env, err := integration.NewEnv(ctx)
-
-			if *generate {
-				integration.GenerateTestVectors(ctx, env)
-			}
 			if err != nil {
 				t.Fatalf("Could not create Env: %v", err)
+			}
+			if *generate {
+				err = integration.GenerateTestVectors(ctx, env)
+				if err != nil {
+					t.Fatalf("Could not generate Test vectors: %v", err)
+				}
 			}
 			defer env.Close()
 			func() {
