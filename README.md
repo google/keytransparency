@@ -90,7 +90,7 @@ NB A default for the Key Transparency server URL is being used here. The default
 ### Install
 1. [OpenSSL](https://www.openssl.org/community/binaries.html)
 1. [Docker](https://docs.docker.com/engine/installation/)
-   - Docker Engine 1.13.0+ `docker version -f '{{.Server.APIVersion}}'`
+   - Docker Engine 1.17.6+ `docker version -f '{{.Server.APIVersion}}'`
    - Docker Compose 1.11.0+ `docker-compose --version`
 1. `go get -u github.com/google/keytransparency/...`
 1. `go get -u github.com/google/trillian/...`
