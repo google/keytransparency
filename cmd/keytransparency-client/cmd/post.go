@@ -75,9 +75,7 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("hex.Decode(%v): %v", data, err)
 		}
 		userID := args[0]
-		timeout := viper.GetDuration("timeout")
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+		ctx := context.Background()
 
 		// Create client.
 		userCreds, err := userCreds(ctx)
@@ -107,7 +105,10 @@ User email MUST match the OAuth account used to authorize the update.
 			PublicKeyData:  profileData,
 			AuthorizedKeys: authorizedKeys.Keyset(),
 		}
-		if _, err := c.Update(ctx, u, []tink.Signer{signer},
+		timeout := viper.GetDuration("timeout")
+		cctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		if _, err := c.Update(cctx, u, []tink.Signer{signer},
 			grpc.PerRPCCredentials(userCreds)); err != nil {
 			return fmt.Errorf("update failed: %v", err)
 		}
