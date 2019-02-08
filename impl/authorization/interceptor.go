@@ -35,7 +35,7 @@ func UnaryServerInterceptor(authFuncs map[string]AuthPair) grpc.UnaryServerInter
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		policy, ok := authFuncs[info.FullMethod]
 		if !ok {
-			glog.V(2).Infof("auth interceptor: no hander for %v", info.FullMethod)
+			glog.V(2).Infof("auth interceptor: no handler for %v", info.FullMethod)
 			// If no auth handler was found for this method, invoke the method directly.
 			return handler(ctx, req)
 
@@ -56,7 +56,7 @@ func StreamServerInterceptor(authFuncs map[string]AuthPair) grpc.StreamServerInt
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		policy, ok := authFuncs[info.FullMethod]
 		if !ok {
-			glog.V(2).Infof("auth interceptor: no hander for %v", info.FullMethod)
+			glog.V(2).Infof("auth interceptor: no handler for %v", info.FullMethod)
 			// If no auth handler was found for this method, invoke the method directly.
 			return handler(srv, stream)
 		}
