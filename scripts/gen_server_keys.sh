@@ -44,8 +44,7 @@ cd "$(go env GOPATH)/src/github.com/google/keytransparency/genfiles"
 
 # Generate TLS keys.
 openssl genrsa -des3 -passout pass:xxxx -out server.pass.key 2048
-openssl rsa -passin pass:xxxx -in server.pass.key -out server.key
-chmod 600 server.key
+( umask 377 && openssl rsa -passin pass:xxxx -in server.pass.key -out server.key )
 rm server.pass.key
 openssl req -new \
 	-key server.key \
