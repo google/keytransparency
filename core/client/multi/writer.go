@@ -48,7 +48,7 @@ func (m *writer) Write(p []byte) (n int, err error) {
 	for _, w := range m.writers {
 		n, err = w.Write(p)
 		if err != nil {
-			multiError = multiError + fmt.Sprintf("%v bytes written to %v: %v", n, w, err)
+			multiError += fmt.Sprintf("%v bytes written to %v: %v", n, w, err)
 		}
 		minBytesWritten = min(n, minBytesWritten)
 	}
