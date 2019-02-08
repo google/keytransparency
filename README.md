@@ -40,15 +40,22 @@ development.
 #### Generate a private key
 
   ```sh
-  keytransparency-client authorized-keys create-keyset -p password
-  keytransparency-client authorized-keys list-keyset -p password
+  PASSWORD=[[YOUR-KEYSET-PASSWORD]]
+  keytransparency-client authorized-keys create-keyset --password=${PASSWORD}
+  keytransparency-client authorized-keys list-keyset --password=${PASSWORD}
   ```
+NB A default for the Key Transparency server URL is being used here. The default value is "35.202.56.9:443". The flag `--kt-url` may be used to specify the URL of Key Transparency server explicitly.
+
 
 #### Publish the public key
 1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
 
   ```sh
-  keytransparency-client post user@domain.com --client-secret=client_secret.json --insecure -d 'dGVzdA==' #Base64
+  keytransparency-client post user@domain.com \
+  --client-secret=client_secret.json \
+  --insecure \
+  --password=${PASSWORD} \
+  --data='dGVzdA==' #Base64
   ```
 
 #### Get and verify a public key
@@ -74,6 +81,9 @@ development.
   4        |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
 
+#### Checks
+- [Proof for foo@bar.com](https://35.202.56.9/v1/directories/default/users/foo@bar.com)
+- [Server configuration info](https://35.202.56.9/v1/directories/default)
 
 ## Running the server
 
@@ -106,8 +116,8 @@ Creating keytransparency_monitor_1 ...    done
 
 2. Watch it Run
 - `docker-compose logs --tail=0 --follow`
-- [Proof for foo@bar.com](https://35.202.56.9/v1/directories/default/users/foo@bar.com)
-- [Server configuration info](https://35.202.56.9/v1/directories/default)
+- [Proof for foo@bar.com](https://localhost/v1/directories/default/users/foo@bar.com)
+- [Server configuration info](https://localhost/v1/directories/default)
 
 ## Development and Testing
 Key Transparency and its [Trillian](https://github.com/google/trillian) backend

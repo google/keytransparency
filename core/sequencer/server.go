@@ -23,13 +23,13 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/google/keytransparency/core/directory"
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian/monitoring"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
 	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -40,19 +40,18 @@ import (
 const (
 	directoryIDLabel = "directoryid"
 	logIDLabel       = "logid"
-	phaseLabel       = "phase"
-	definedLabel     = "defined"
-	appliedLabel     = "applied"
 	reasonLabel      = "reason"
 )
 
 var (
 	initMetrics      sync.Once
 	knownDirectories monitoring.Gauge
-	batchSize        monitoring.Gauge
-	mutationCount    monitoring.Counter
+	logEntryCount    monitoring.Counter
+	mapLeafCount     monitoring.Counter
+	mapRevisionCount monitoring.Counter
+	watermarkDefined monitoring.Gauge
+	watermarkApplied monitoring.Gauge
 	mutationFailures monitoring.Counter
-	watermark        monitoring.Gauge
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -60,19 +59,30 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"known_directories",
 		"Set to 1 for known directories (whether this instance is master or not)",
 		directoryIDLabel)
-	mutationCount = mf.NewCounter(
-		"mutation_count",
-		"Number of mutations the signer has processed for directoryid since process start",
+	logEntryCount = mf.NewCounter(
+		"log_entry_count",
+		"Total number of log entries read since process start. Duplicates are not removed.",
 		directoryIDLabel)
+	mapLeafCount = mf.NewCounter(
+		"map_leaf_count",
+		"Total number of map leaves written since process start. Duplicates are not removed.",
+		directoryIDLabel)
+	mapRevisionCount = mf.NewCounter(
+		"map_revision_count",
+		"Total number of map revisions written since process start.",
+		directoryIDLabel)
+	watermarkDefined = mf.NewGauge(
+		"watermark_defined",
+		"High watermark of each input log that has been defined in the batch table",
+		directoryIDLabel, logIDLabel)
+	watermarkApplied = mf.NewGauge(
+		"watermark_applied",
+		"High watermark of each input log that has been committed in a map revision",
+		directoryIDLabel, logIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
 		"Number of invalid mutations the signer has processed for directoryid since process start",
 		directoryIDLabel, reasonLabel)
-	batchSize = mf.NewGauge(
-		"batch_size",
-		"Number of mutations the signer is attempting to process for directoryid",
-		directoryIDLabel)
-	watermark = mf.NewGauge("watermark", "High Watermark", directoryIDLabel, logIDLabel, phaseLabel)
 }
 
 // Watermarks is a map of watermarks by logID.
@@ -227,8 +237,8 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, err
 		}
 		for _, source := range meta.Sources {
-			watermark.Set(float64(source.HighestExclusive),
-				in.DirectoryId, fmt.Sprintf("%v", source.LogId), definedLabel)
+			watermarkDefined.Set(float64(source.HighestExclusive),
+				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
 		outstanding = append(outstanding, nextRev)
 
@@ -263,6 +273,7 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 			}
 		}
 	}
+	logEntryCount.Add(float64(len(msgs)), directoryID)
 	return msgs, nil
 }
 
@@ -284,7 +295,6 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Parse mutations using the mutator for this directory.
-	batchSize.Set(float64(len(msgs)), in.DirectoryId)
 	indexes := make([][]byte, 0, len(msgs))
 	mutations := make([]*ktpb.EntryUpdate, 0, len(msgs))
 	for _, m := range msgs {
@@ -322,10 +332,11 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	for _, s := range meta.Sources {
-		watermark.Set(float64(s.HighestExclusive),
-			in.DirectoryId, fmt.Sprintf("%v", s.LogId), appliedLabel)
+		watermarkApplied.Set(float64(s.HighestExclusive),
+			in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
-	mutationCount.Add(float64(len(msgs)), in.DirectoryId)
+	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
+	mapRevisionCount.Add(1, in.DirectoryId)
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
 		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(msgs), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{

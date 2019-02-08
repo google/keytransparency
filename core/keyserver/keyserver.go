@@ -17,23 +17,42 @@ package keyserver
 
 import (
 	"context"
-
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
-	"github.com/google/keytransparency/core/directory"
-	"github.com/google/keytransparency/core/mutator"
+	"sync"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/trillian/monitoring"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/google/keytransparency/core/crypto/vrf/p256"
+	"github.com/google/keytransparency/core/directory"
+	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
+
+const (
+	directoryIDLabel = "directoryid"
+	logIDLabel       = "logid"
+)
+
+var (
+	initMetrics      sync.Once
+	watermarkWritten monitoring.Gauge
+)
+
+func createMetrics(mf monitoring.MetricFactory) {
+	watermarkWritten = mf.NewGauge(
+		"watermark_written",
+		"High watermark of each input log that has been written",
+		directoryIDLabel, logIDLabel)
+}
 
 // MutationLogs provides sets of time ordered message logs.
 type MutationLogs interface {
@@ -70,7 +89,10 @@ func New(tlog tpb.TrillianLogClient,
 	mutate mutator.ReduceMutationFn,
 	directories directory.Storage,
 	logs MutationLogs,
-	batches BatchReader) *Server {
+	batches BatchReader,
+	metricsFactory monitoring.MetricFactory,
+) *Server {
+	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
 		tlog:        tlog,
 		tmap:        tmap,
