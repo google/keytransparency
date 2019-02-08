@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )

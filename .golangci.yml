@@ -17,6 +17,12 @@ linters-settings:
     min-occurrences: 3
   misspell:
     locale: US
+  depguard:
+    list-type: blacklist
+    packages:
+      - golang.org/x/net/context
+      - github.com/gogo/protobuf/proto
+      - github.com/google/martian/log
 
 linters:
   enable-all: true
