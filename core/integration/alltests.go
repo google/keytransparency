@@ -29,7 +29,7 @@ import (
 )
 
 // Env holds a complete testing environment for end-to-end tests.
-type EnvClient struct {
+type Env struct {
 	Client    *client.Client
 	Cli       pb.KeyTransparencyClient
 	Sequencer spb.KeyTransparencySequencerClient

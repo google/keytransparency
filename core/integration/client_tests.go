@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/testdata"
-	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/trillian/types"
 
 	"github.com/google/keytransparency/core/client"
@@ -503,7 +502,6 @@ func cp(tag int) []byte {
 }
 
 // GenerateTestVectors verifies set/get semantics.
-// TODO(gbelvin): Migrate into core/integration/client_tests to avoid code rot.
 func GenerateTestVectors(ctx context.Context, env *Env) error {
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
@@ -536,7 +534,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 		desc           string
 		wantProfile    []byte
 		setProfile     []byte
-		ctx            context.Context
+		opts           []grpc.CallOption
 		userID         string
 		signers        []tink.Signer
 		authorizedKeys *tinkpb.Keyset
@@ -545,7 +543,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 			desc:           "empty_alice",
 			wantProfile:    nil,
 			setProfile:     []byte("alice-key1"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "alice"),
+			opts:           env.CallOpts("alice"),
 			userID:         "alice",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -554,7 +552,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 			desc:           "bob0_set",
 			wantProfile:    nil,
 			setProfile:     []byte("bob-key1"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
+			opts:           env.CallOpts("bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -563,7 +561,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 			desc:           "set_carol",
 			wantProfile:    nil,
 			setProfile:     []byte("carol-key1"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "carol"),
+			opts:           env.CallOpts("carol"),
 			userID:         "carol",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -572,7 +570,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 			desc:           "bob1_get",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     nil,
-			ctx:            context.Background(),
+			opts:           env.CallOpts("bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -581,7 +579,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 			desc:           "bob1_set",
 			wantProfile:    []byte("bob-key1"),
 			setProfile:     []byte("bob-key2"),
-			ctx:            authentication.WithOutgoingFakeAuth(ctx, "bob"),
+			opts:           env.CallOpts("bob"),
 			userID:         "bob",
 			signers:        signers1,
 			authorizedKeys: authorizedKeys1,
@@ -628,7 +626,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 				PublicKeyData:  tc.setProfile,
 				AuthorizedKeys: tc.authorizedKeys,
 			}
-			cctx, cancel := context.WithTimeout(tc.ctx, env.Timeout)
+			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
 			_, err := env.Client.Update(cctx, u, tc.signers)
 			if err != nil {
