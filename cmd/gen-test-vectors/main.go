@@ -31,7 +31,6 @@ import (
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/integration"
-	"github.com/google/martian/log"
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/types"
 
@@ -89,7 +88,7 @@ func GenerateTestVectors(ctx context.Context, env *integration.Env) error {
 				MaxBatch:    100,
 			}
 			if _, err := env.Sequencer.RunBatch(ctx, req); err != nil {
-				log.Errorf("RunBatch(): %v", err)
+				glog.Errorf("RunBatch(): %v", err)
 			}
 		})
 	}()
