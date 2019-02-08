@@ -36,4 +36,4 @@ linters:
 
 issues:
   exclude:
-    - .((os\.)?std(out|err)\..*|.*Close|.*Flush|.*Write|.*Serve|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv).
+    - .((os\.)?std(out|err)\..*|.*Close|.*Flush|.*Write|.*Serve|os\.(Un)?Setenv).
