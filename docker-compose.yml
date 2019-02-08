@@ -41,7 +41,6 @@ services:
       MYSQL_PASSWORD: zaphod
       MYSQL_USER: test
       MYSQL_DATABASE: test
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
 
   log-server:
     depends_on:

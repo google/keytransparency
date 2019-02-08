@@ -1,0 +1,8 @@
+# Development configuration
+# docker-compose up will automatically find and apply this configuration
+
+version: "3"
+services:
+  db:
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
