@@ -133,7 +133,7 @@ services:
       - --tls-cert=/kt/server.crt
       - --auth-type=insecure-fake
       - --alsologtostderr
-      - --v=5
+      - --v=1
     labels:
       kompose.service.type: LoadBalancer
     healthcheck:
