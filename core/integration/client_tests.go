@@ -26,15 +26,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/keytransparency/core/testdata"
-	"github.com/google/trillian/types"
-
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/trillian/types"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/google/martian/log"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -513,7 +512,7 @@ func GenerateTestVectors(ctx context.Context, env *Env) error {
 				MaxBatch:    100,
 			}
 			if _, err := env.Sequencer.RunBatch(ctx, req); err != nil {
-				log.Errorf("RunBatch(): %v", err)
+				glog.Errorf("RunBatch(): %v", err)
 			}
 		})
 	}()
