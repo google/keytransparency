@@ -16,14 +16,15 @@
 package keysets
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/google/tink/go/insecure"
-	"github.com/google/tink/go/tink"
+	"github.com/google/tink/go/insecurecleartextkeyset"
+	"github.com/google/tink/go/keyset"
 )
 
 const (
@@ -44,19 +45,19 @@ type Storage struct {
 	db *sql.DB
 }
 
-type keyset struct {
+type keysetRow struct {
 	InstanceID  int64
 	DirectoryID string
 	KeySet      []byte
 }
 
 // newKeyset converts a tpb.KeySet to keyset.
-func newKeyset(instance int64, directoryID string, k *tink.KeysetHandle) (*keyset, error) {
+func newKeyset(instance int64, directoryID string, k *keyset.Handle) (*keysetRow, error) {
 	serializedKeyset, err := proto.Marshal(k.Keyset())
 	if err != nil {
 		return nil, err
 	}
-	return &keyset{
+	return &keysetRow{
 		InstanceID:  instance,
 		DirectoryID: directoryID,
 		KeySet:      serializedKeyset,
@@ -64,8 +65,8 @@ func newKeyset(instance int64, directoryID string, k *tink.KeysetHandle) (*keyse
 }
 
 // Proto converts a keyset to a tpb.KeySet proto.
-func (k *keyset) Proto() (*tink.KeysetHandle, error) {
-	return insecure.KeysetHandleFromSerializedProto(k.KeySet)
+func (k *keysetRow) Proto() (*keyset.Handle, error) {
+	return insecurecleartextkeyset.Read(keyset.NewBinaryReader(bytes.NewBuffer(k.KeySet)))
 }
 
 // New returns a storage.KeySets client backed by an SQL table.
@@ -78,14 +79,14 @@ func New(db *sql.DB) (*Storage, error) {
 	return s, db.Ping()
 }
 
-// Get returns a stored keyset.
-func (s *Storage) Get(ctx context.Context, instance int64, directoryID string) (*tink.KeysetHandle, error) {
+// Get returns a stored keysetRow.
+func (s *Storage) Get(ctx context.Context, instance int64, directoryID string) (*keyset.Handle, error) {
 	readStmt, err := s.db.PrepareContext(ctx, getSQL)
 	if err != nil {
 		return nil, err
 	}
 	defer readStmt.Close()
-	r := keyset{}
+	r := keysetRow{}
 	if err := readStmt.QueryRowContext(ctx, instance, directoryID).Scan(
 		&r.InstanceID,
 		&r.DirectoryID,
@@ -97,7 +98,7 @@ func (s *Storage) Get(ctx context.Context, instance int64, directoryID string) (
 }
 
 // Set saves a keyset.
-func (s *Storage) Set(ctx context.Context, instance int64, directoryID string, k *tink.KeysetHandle) error {
+func (s *Storage) Set(ctx context.Context, instance int64, directoryID string, k *keyset.Handle) error {
 	r, err := newKeyset(instance, directoryID, k)
 	if err != nil {
 		return err

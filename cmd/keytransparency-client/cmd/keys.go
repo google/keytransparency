@@ -17,11 +17,9 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"os"
-	"text/tabwriter"
 
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 
 	"github.com/google/keytransparency/core/crypto/tinkio"
@@ -36,7 +34,7 @@ var (
 	masterPassword string
 )
 
-var keyset *tink.KeysetHandle
+var ks *keyset.Handle
 
 // keysCmd represents the authorized-keys command.
 var keysCmd = &cobra.Command{
@@ -60,7 +58,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		keyset, err = tink.NewKeysetHandle(template)
+		ks, err = keyset.NewHandle(template)
 		if err != nil {
 			return err
 		}
@@ -69,7 +67,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		return keyset.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
+		return ks.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
 	},
 }
 
@@ -101,36 +99,17 @@ The actual keys are not listed, only their corresponding metadata.
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tink.NewKeysetHandleFromReader(
+		handle, err := keyset.Read(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
-		keyset = handle
+		ks = handle
 	},
-	RunE: func(_ *cobra.Command, _ []string) error {
-		keysetInfo, err := tink.GetKeysetInfo(keyset.Keyset())
-		if err != nil {
-			return err
-		}
-
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
-
+	Run: func(_ *cobra.Command, _ []string) {
 		// List signing keys.
-		fmt.Fprintln(w, "My Keys:")
-		fmt.Fprintln(w, "  ID\tStatus\tType")
-		for _, info := range keysetInfo.GetKeyInfo() {
-			fmt.Fprintf(w, "  %v\t%v\t%v\t\n", info.KeyId, info.Status, info.TypeUrl)
-		}
-
-		// Tink keysets do not currently support adding public keys without also having the private key.
-		fmt.Fprintln(w, "\nOther Authorized Keys: none")
-
-		if err := w.Flush(); err != nil {
-			return nil
-		}
-		return nil
+		fmt.Printf("My Authorized Keys:\n%v\n", ks.String())
 	},
 }
 

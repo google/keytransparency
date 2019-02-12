@@ -20,14 +20,16 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/tink/go/keyset"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	"github.com/google/keytransparency/core/crypto/tinkio"
-	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
+
+	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 var (
@@ -51,13 +53,13 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tink.NewKeysetHandleFromReader(
+		handle, err := keyset.Read(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
-		keyset = handle
+		ks = handle
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
 		// Validate input.
@@ -87,13 +89,13 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("error connecting: %v", err)
 		}
 
-		signer, err := signature.NewSigner(keyset)
+		signer, err := signature.NewSigner(ks)
 		if err != nil {
 			return err
 		}
 
 		// Update.
-		authorizedKeys, err := keyset.Public()
+		authorizedKeys, err := ks.Public()
 		if err != nil {
 			return fmt.Errorf("store.PublicKeys() failed: %v", err)
 		}

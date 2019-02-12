@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,7 +34,7 @@ func TestSerializeAndSign(t *testing.T) {
 	for _, tc := range []struct {
 		desc    string
 		old     []byte
-		pubKeys *tink.KeysetHandle
+		pubKeys *keyset.Handle
 		signers []tink.Signer
 		data    []byte
 		want    codes.Code
@@ -78,7 +79,7 @@ func TestCreateAndVerify(t *testing.T) {
 	for _, tc := range []struct {
 		desc    string
 		old     []byte
-		pubKeys *tink.KeysetHandle
+		pubKeys *keyset.Handle
 		signers []tink.Signer
 		data    []byte
 	}{

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -97,7 +98,7 @@ func (m *Mutation) SetCommitment(data []byte) error {
 // pubkeys must contain at least one key.
 func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
 	// Make sure that pubkeys is a valid keyset.
-	if _, err := tink.KeysetHandleWithNoSecret(pubkeys); err != nil {
+	if _, err := keyset.NewHandleWithNoSecrets(pubkeys); err != nil {
 		return err
 	}
 

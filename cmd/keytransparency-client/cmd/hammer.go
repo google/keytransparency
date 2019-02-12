@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -30,6 +29,7 @@ import (
 	"github.com/google/keytransparency/core/client/hammer"
 	"github.com/google/keytransparency/core/crypto/tinkio"
 	"github.com/google/keytransparency/impl/authentication"
+	"github.com/google/tink/go/keyset"
 )
 
 var (
@@ -68,13 +68,13 @@ var hammerCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tink.NewKeysetHandleFromReader(
+		handle, err := keyset.Read(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
-		keyset = handle
+		ks = handle
 	},
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ktURL := viper.GetString("kt-url")
@@ -86,7 +86,7 @@ var hammerCmd = &cobra.Command{
 		ctx := context.Background()
 
 		h, err := hammer.New(ctx, dial, callOptions,
-			ktURL, directoryID, timeout, keyset)
+			ktURL, directoryID, timeout, ks)
 		if err != nil {
 			return err
 		}
