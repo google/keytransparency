@@ -102,7 +102,7 @@ func BenchmarkSend(b *testing.B) {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
-				if err := m.Send(ctx, directoryID, updates...); err != nil {
+				if _, err := m.Send(ctx, directoryID, updates...); err != nil {
 					b.Errorf("Send(): %v", err)
 				}
 			}
@@ -201,7 +201,7 @@ func TestReadLog(t *testing.T) {
 	m := newForTest(ctx, t, logID)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
+		if _, err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
 	}

@@ -212,6 +212,8 @@ func runSequencer(ctx context.Context, conn, mconn *grpc.ClientConn,
 		election.NewTracker(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
 	)
 
+	go signer.TrackMasterships(ctx)
+
 	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.AddAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)

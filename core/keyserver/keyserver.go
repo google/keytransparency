@@ -17,6 +17,7 @@ package keyserver
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/golang/glog"
@@ -54,10 +55,16 @@ func createMetrics(mf monitoring.MetricFactory) {
 		directoryIDLabel, logIDLabel)
 }
 
+// WriteWatermark is the metadata that Send creates.
+type WriteWatermark struct {
+	LogID     int64
+	Watermark int64
+}
+
 // MutationLogs provides sets of time ordered message logs.
 type MutationLogs interface {
 	// Send submits an item to a random log.
-	Send(ctx context.Context, directoryID string, mutation ...*pb.EntryUpdate) error
+	Send(ctx context.Context, directoryID string, mutation ...*pb.EntryUpdate) (*WriteWatermark, error)
 	// ReadLog returns the messages in the (low, high] range stored in the specified log.
 	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
 		batchSize int32) ([]*mutator.LogMessage, error)
@@ -562,13 +569,18 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 		}
 	}
 
-	// TODO(gbelvin): Should we validate mutations here? It is expensive in terms of latency.
+	// TODO(#1177): Verify parts of the mutation that don't reference the current map value here.
 
 	// Save mutation to the database.
-	if err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...); err != nil {
+	wm, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
+	if err != nil {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(codes.Internal, "Mutation write error")
 	}
+	if wm != nil {
+		watermarkWritten.Set(float64(wm.Watermark), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
+	}
+
 	return &empty.Empty{}, nil
 }
 

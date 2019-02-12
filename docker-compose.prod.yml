@@ -1,0 +1,8 @@
+# Production configuration
+# docker-compose up -f docker-compose.yml docker-compose.prod.yml
+
+version: "3"
+services:
+  db:
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
