@@ -17,7 +17,6 @@ package integration
 import (
 	"context"
 	"flag"
-	"fmt"
 	"testing"
 
 	"github.com/google/keytransparency/core/integration"
@@ -32,13 +31,6 @@ var (
 func TestIntegration(t *testing.T) {
 	// We can only run the integration tests if there is a MySQL instance available.
 	testdb.SkipIfNoMySQL(t)
-	flag.Parse()
-	if *generate {
-		err := runGenerateTestVectors()
-		if err != nil {
-			t.Fatalf("Could not generate Test vectors: %v", err)
-		}
-	}
 	for _, test := range integration.AllTests {
 		t.Run(test.Name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -62,13 +54,19 @@ func TestIntegration(t *testing.T) {
 	}
 }
 
-func runGenerateTestVectors() error {
+func TestGenerateVectors(t *testing.T) {
+	flag.Parse()
+	if !*generate {
+		t.Skip("Test vector generation not requested")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env, err := NewEnv(ctx)
 	if err != nil {
-		return fmt.Errorf("Could not create Env: %v", err)
+		t.Fatalf("could not create Env: %v", err)
 	}
 	defer env.Close()
-	return integration.GenerateTestVectors(ctx, env.Env)
+	if err := integration.GenerateTestVectors(ctx, env.Env); err != nil {
+		t.Errorf("GenerateTestVectors(): %v", err)
+	}
 }
