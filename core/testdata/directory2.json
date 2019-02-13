@@ -1,7 +1,7 @@
 {
 	"directoryId": "integration",
 	"log": {
-		"treeId": "3308825863212495230",
+		"treeId": "7292877033170035663",
 		"treeType": "PREORDERED_LOG",
 		"hashStrategy": "RFC6962_SHA256",
 		"hashAlgorithm": "SHA256",
@@ -11,7 +11,7 @@
 		}
 	},
 	"map": {
-		"treeId": "5264600963011926950",
+		"treeId": "1085579931436099142",
 		"treeType": "MAP",
 		"hashStrategy": "CONIKS_SHA256",
 		"hashAlgorithm": "SHA256",

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/core/testdata"
 	"google.golang.org/grpc"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -45,7 +46,9 @@ type CallOptions func(userID string) []grpc.CallOption
 // and a function that performs the test, given a test environment.
 type NamedTestFn struct {
 	Name string
-	Fn   func(context.Context, *Env, *testing.T)
+	Fn   func(context.Context, *Env, *testing.T) []testdata.ResponseVector
+	DirectoryFilename string
+	RespFilename string
 }
 
 // AllTests contains all the integration tests.
@@ -53,11 +56,11 @@ type NamedTestFn struct {
 // This is done so that tests can be run in different environments in a portable way.
 var AllTests = []NamedTestFn{
 	// Client Tests
-	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate},
+	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate, DirectoryFilename: "directory.json", RespFilename: "getentryresponse.json"},
 	{Name: "TestListHistory", Fn: TestListHistory},
 	{Name: "TestBatchUpdate", Fn: TestBatchUpdate},
 	{Name: "TestBatchCreate", Fn: TestBatchCreate},
+	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions, DirectoryFilename: "directory2.json", RespFilename: "batchlistuserrevisionsresponse.json"},
 	// Monitor Tests
 	{Name: "TestMonitor", Fn: TestMonitor},
-	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions},
 }
