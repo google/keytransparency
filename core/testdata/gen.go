@@ -14,4 +14,4 @@
 
 package testdata
 
-//go:generate go run ../../cmd/gen-test-vectors/main.go --testdata=.
+//go:generate go test ../../impl/integration --generate

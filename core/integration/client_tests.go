@@ -17,16 +17,23 @@ package integration
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/trillian/types"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -491,4 +498,172 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 // cp creates a dummy profile using the passed tag.
 func cp(tag int) []byte {
 	return []byte(fmt.Sprintf("bar%v", tag))
+}
+
+// GenerateTestVectors verifies set/get semantics.
+func GenerateTestVectors(ctx context.Context, env *Env) error {
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
+			req := &spb.RunBatchRequest{
+				DirectoryId: env.Directory.DirectoryId,
+				MinBatch:    1,
+				MaxBatch:    100,
+			}
+			if _, err := env.Sequencer.RunBatch(ctx, req); err != nil {
+				glog.Errorf("RunBatch(): %v", err)
+			}
+		})
+	}()
+	testdataDir := "."
+	// Create lists of signers.
+	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
+
+	// Create lists of authorized keys
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+
+	// Collect a list of valid GetUserResponses
+	getUserResps := make([]testdata.GetUserResponseVector, 0)
+
+	// Start with an empty trusted log root
+	slr := &types.LogRootV1{}
+
+	for _, tc := range []struct {
+		desc           string
+		wantProfile    []byte
+		setProfile     []byte
+		opts           []grpc.CallOption
+		userID         string
+		signers        []tink.Signer
+		authorizedKeys *tinkpb.Keyset
+	}{
+		{
+			desc:           "empty_alice",
+			wantProfile:    nil,
+			setProfile:     []byte("alice-key1"),
+			opts:           env.CallOpts("alice"),
+			userID:         "alice",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "bob0_set",
+			wantProfile:    nil,
+			setProfile:     []byte("bob-key1"),
+			opts:           env.CallOpts("bob"),
+			userID:         "bob",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "set_carol",
+			wantProfile:    nil,
+			setProfile:     []byte("carol-key1"),
+			opts:           env.CallOpts("carol"),
+			userID:         "carol",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "bob1_get",
+			wantProfile:    []byte("bob-key1"),
+			setProfile:     nil,
+			opts:           env.CallOpts("bob"),
+			userID:         "bob",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+		{
+			desc:           "bob1_set",
+			wantProfile:    []byte("bob-key1"),
+			setProfile:     []byte("bob-key2"),
+			opts:           env.CallOpts("bob"),
+			userID:         "bob",
+			signers:        signers1,
+			authorizedKeys: authorizedKeys1,
+		},
+	} {
+		// Check profile.
+		e, err := env.Cli.GetUser(ctx, &pb.GetUserRequest{
+			DirectoryId:          env.Directory.DirectoryId,
+			UserId:               tc.userID,
+			LastVerifiedTreeSize: int64(slr.TreeSize),
+		})
+		if err != nil {
+			return fmt.Errorf("gen-test-vectors: GetUser(): %v", err)
+		}
+		newslr, smr, err := env.Client.VerifyRevision(e.Revision, *slr)
+		if err != nil {
+			return fmt.Errorf("gen-test-vectors: VerifyRevision(): %v", err)
+		}
+		if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, tc.userID, e.Leaf, smr); err != nil {
+			return fmt.Errorf("gen-test-vectors: VerifyMapLeaf(): %v", err)
+		}
+
+		if got, want := e.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
+			return fmt.Errorf("gen-test-vectors: VerifiedGetUser(%v): %s, want %s", tc.userID, got, want)
+		}
+
+		// Update the trusted root on the first revision, then let it fall behind
+		// every few revisions to make consistency proofs more interesting.
+		trust := newslr.TreeSize%5 == 1
+		if trust {
+			slr = newslr
+		}
+		getUserResps = append(getUserResps, testdata.GetUserResponseVector{
+			Desc:        tc.desc,
+			UserID:      tc.userID,
+			Resp:        e,
+			TrustNewLog: trust,
+		})
+
+		// Update profile.
+		if tc.setProfile != nil {
+			u := &tpb.User{
+				UserId:         tc.userID,
+				PublicKeyData:  tc.setProfile,
+				AuthorizedKeys: tc.authorizedKeys,
+			}
+			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
+			defer cancel()
+			_, err := env.Client.Update(cctx, u, tc.signers)
+			if err != nil {
+				return fmt.Errorf("gen-test-vectors: Update(%v): %v", tc.userID, err)
+			}
+		}
+	}
+
+	if err := SaveTestVectors(testdataDir, env, getUserResps); err != nil {
+		return fmt.Errorf("gen-test-vectors: SaveTestVectors(): %v", err)
+	}
+	return nil
+}
+
+// SaveTestVectors generates test vectors for interoprability testing.
+func SaveTestVectors(dir string, env *Env, resps []testdata.GetUserResponseVector) error {
+	marshaler := &jsonpb.Marshaler{
+		Indent: "\t",
+	}
+	// Output all key material needed to verify the test vectors.
+	directoryFile := dir + "/directory.json"
+	f, err := os.Create(directoryFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := marshaler.Marshal(f, env.Directory); err != nil {
+		return fmt.Errorf("gen-test-vectors: jsonpb.Marshal(): %v", err)
+	}
+
+	// Save list of responses
+	respFile := dir + "/getentryresponse.json"
+	out, err := json.MarshalIndent(resps, "", "\t")
+	if err != nil {
+		return fmt.Errorf("gen-test-vectors: json.Marshal(): %v", err)
+	}
+	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
+		return fmt.Errorf("gen-test-vectors: WriteFile(%v): %v", respFile, err)
+	}
+	return nil
 }
