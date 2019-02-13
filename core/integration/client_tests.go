@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -27,13 +28,13 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian/types"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -68,6 +69,10 @@ AwEHoUQDQgAEJKDbR4uyhSMXW80x02NtYRUFlMQbLOA+tLe/MbwZ69SRdG6Rx92f
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJKDbR4uyhSMXW80x02NtYRUFlMQb
 LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
+)
+
+var (
+	testdataDir = flag.String("testdata", "../../core/testdata", "The directory in which to place the generated test data")
 )
 
 func runSequencer(ctx context.Context, t *testing.T, dirID string, env *Env) {
@@ -416,6 +421,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 	request := &pb.BatchListUserRevisionsRequest{
 		DirectoryId: env.Directory.DirectoryId,
 	}
+	responseVec := make([]testdata.ResponseVector, 0)
 	for _, tc := range []struct {
 		desc        string
 		start, end  int64
@@ -442,6 +448,11 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 			if err != nil {
 				return
 			}
+			responseVec = append(responseVec, testdata.ResponseVector{
+				Desc:                       tc.desc,
+				UserIDs:                    tc.userIDs,
+				BatchListUserRevisionsResp: response,
+			})
 			var got [][]byte
 			for _, rev := range response.MapRevisions {
 				for _, userID := range tc.userIDs {
@@ -452,6 +463,9 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 				t.Errorf("TestBatchListUserRevisions(%v, %v, %v): %s, want %s", tc.start, tc.end, tc.userIDs, got, tc.wantHistory)
 			}
 		})
+	}
+	if err := SaveTestVectors(*testdataDir, "directory2.json", "batchlistuserrevisionsresponse.json", env, responseVec); err != nil {
+		fmt.Println("gen-test-vectors: SaveTestVectors(): %v", err)
 	}
 }
 
@@ -484,6 +498,34 @@ func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Dir
 		}); err != nil {
 			return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 		}
+	}
+	return nil
+}
+
+// SaveTestVectors generates test vectors for interoprability testing.
+func SaveTestVectors(dir string, directoryFilename string, responseFilename string, env *Env, resps []testdata.ResponseVector) error {
+	marshaler := &jsonpb.Marshaler{
+		Indent: "\t",
+	}
+	// Output all key material needed to verify the test vectors.
+	directoryFile := dir + "/" + directoryFilename
+	f, err := os.Create(directoryFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := marshaler.Marshal(f, env.Directory); err != nil {
+		return fmt.Errorf("gen-test-vectors: jsonpb.Marshal(): %v", err)
+	}
+
+	// Save list of responses
+	respFile := dir + "/" + responseFilename
+	out, err := json.MarshalIndent(resps, "", "\t")
+	if err != nil {
+		return fmt.Errorf("gen-test-vectors: json.Marshal(): %v", err)
+	}
+	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
+		return fmt.Errorf("gen-test-vectors: WriteFile(%v): %v", respFile, err)
 	}
 	return nil
 }
