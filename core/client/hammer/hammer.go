@@ -21,6 +21,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/tink"
 	"golang.org/x/time/rate"
@@ -74,7 +75,7 @@ type Hammer struct {
 
 // New returns a new hammer job
 func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
-	ktAddr, directoryID string, timeout time.Duration, keyset *tink.KeysetHandle) (*Hammer, error) {
+	ktAddr, directoryID string, timeout time.Duration, keyset *keyset.Handle) (*Hammer, error) {
 	ktCli, err := dial(ctx, ktAddr)
 	if err != nil {
 		return nil, err

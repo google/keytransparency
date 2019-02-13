@@ -21,8 +21,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -39,7 +39,7 @@ func TestWriteRead(t *testing.T) {
 		t.Fatalf("Failed to create keysets.Storage")
 	}
 
-	ks, err := tink.NewKeysetHandle(signature.ECDSAP256KeyTemplate())
+	ks, err := keyset.NewHandle(signature.ECDSAP256KeyTemplate())
 	if err != nil {
 		t.Fatalf("tink.GenerateNew(): %v", err)
 	}

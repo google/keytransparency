@@ -17,7 +17,7 @@ package fake
 import (
 	"context"
 
-	"github.com/google/tink/go/tink"
+	"github.com/google/tink/go/keyset"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -30,18 +30,18 @@ type keyID struct {
 
 // KeySets implements storage.UserManagerTable in memory.
 type KeySets struct {
-	keysets map[keyID]*tink.KeysetHandle
+	keysets map[keyID]*keyset.Handle
 }
 
 // NewKeySets produces a fake implementation of storage.UserManagerTable.
 func NewKeySets() *KeySets {
 	return &KeySets{
-		keysets: make(map[keyID]*tink.KeysetHandle),
+		keysets: make(map[keyID]*keyset.Handle),
 	}
 }
 
 // Get returns the requested keyset.
-func (k *KeySets) Get(ctx context.Context, instance int64, directoryID string) (*tink.KeysetHandle, error) {
+func (k *KeySets) Get(ctx context.Context, instance int64, directoryID string) (*keyset.Handle, error) {
 	ks, ok := k.keysets[keyID{
 		instance:    instance,
 		directoryID: directoryID,
