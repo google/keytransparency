@@ -45,10 +45,10 @@ type CallOptions func(userID string) []grpc.CallOption
 // NamedTestFn is a binding between a readable test name (used for a Go subtest)
 // and a function that performs the test, given a test environment.
 type NamedTestFn struct {
-	Name string
-	Fn   func(context.Context, *Env, *testing.T) []testdata.ResponseVector
+	Name              string
+	Fn                func(context.Context, *Env, *testing.T) []testdata.ResponseVector
 	DirectoryFilename string
-	RespFilename string
+	RespFilename      string
 }
 
 // AllTests contains all the integration tests.

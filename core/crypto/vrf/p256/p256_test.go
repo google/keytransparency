@@ -207,7 +207,7 @@ func TestProofToHash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile(%v): %v", respFile, err)
 	}
-	var getUserResponses []testdata.GetUserResponseVector
+	var getUserResponses []testdata.ResponseVector
 	if err := json.Unmarshal(b, &getUserResponses); err != nil {
 		t.Fatalf("Unmarshal(): %v", err)
 	}

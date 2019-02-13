@@ -302,17 +302,17 @@ func CheckProfile(ctx context.Context, env *Env, userID string, wantProfile []by
 		LastVerifiedTreeSize: int64(slr.TreeSize),
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("GetUser(%v): %v, want nil", userID, err)
+		return nil, nil, fmt.Errorf("getUser(%v): %v, want nil", userID, err)
 	}
 	newslr, smr, err := env.Client.VerifyRevision(e.Revision, *slr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("VerifyRevision() for user %v: %v, want nil", userID, err)
+		return nil, nil, fmt.Errorf("verifyRevision() for user %v: %v, want nil", userID, err)
 	}
 	if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, userID, e.Leaf, smr); err != nil {
-		return nil, nil, fmt.Errorf("VerifyMapLeaf() for user %v: %v, want nil", userID, err)
+		return nil, nil, fmt.Errorf("verifyMapLeaf() for user %v: %v, want nil", userID, err)
 	}
 	if got, want := e.GetLeaf().GetCommitted().GetData(), wantProfile; !bytes.Equal(got, want) {
-		return nil, nil, fmt.Errorf("VerifiedGetUser(%v): %s, want %s", userID, got, want)
+		return nil, nil, fmt.Errorf("verifiedGetUser(%v): %s, want %s", userID, got, want)
 	}
 	return e, newslr, nil
 }
