@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -90,19 +90,19 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 //   authorized_key set should exist.
 //   3. Signatures with no matching keys are simply ignored.
 func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data []byte, sigs [][]byte) error {
-	keyset := prevAuthz
+	ks := prevAuthz
 	if prevAuthz == nil {
-		keyset = authz
+		ks = authz
 	}
 
-	handle, err := tink.KeysetHandleWithNoSecret(keyset)
+	handle, err := keyset.NewHandleWithNoSecrets(ks)
 	if err != nil {
 		return fmt.Errorf("tink.KeysetHanldeWithNoSecret(new): %v", err)
 	}
 
 	verifier, err := signature.NewVerifier(handle)
 	if err != nil {
-		return fmt.Errorf("signature.NewVerifier(%v): %v", keyset, err)
+		return fmt.Errorf("signature.NewVerifier(%v): %v", ks, err)
 	}
 
 	for _, sig := range sigs {
