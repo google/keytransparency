@@ -34,8 +34,6 @@ var (
 	masterPassword string
 )
 
-var ks *keyset.Handle
-
 // keysCmd represents the authorized-keys command.
 var keysCmd = &cobra.Command{
 	Use:   "authorized-keys",
@@ -58,7 +56,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		ks, err = keyset.NewHandle(template)
+		handle, err := keyset.NewHandle(template)
 		if err != nil {
 			return err
 		}
@@ -67,7 +65,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		return ks.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
+		return handle.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
 	},
 }
 
@@ -94,7 +92,7 @@ var listCmd = &cobra.Command{
 
 The actual keys are not listed, only their corresponding metadata.
 `,
-	PreRun: func(_ *cobra.Command, _ []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
@@ -105,11 +103,8 @@ The actual keys are not listed, only their corresponding metadata.
 		if err != nil {
 			log.Fatal(err)
 		}
-		ks = handle
-	},
-	Run: func(_ *cobra.Command, _ []string) {
 		// List signing keys.
-		fmt.Printf("My Authorized Keys:\n%v\n", ks.String())
+		fmt.Printf("My Authorized Keys:\n%v\n", handle.String())
 	},
 }
 

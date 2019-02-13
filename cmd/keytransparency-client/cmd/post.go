@@ -48,7 +48,14 @@ and verifies that both the previous and current key-sets are accurate. eg:
 User email MUST match the OAuth account used to authorize the update.
 `,
 
-	PreRun: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, args []string) error {
+		// Validate input.
+		if len(args) < 1 {
+			return fmt.Errorf("user email needs to be provided")
+		}
+		if data == "" {
+			return fmt.Errorf("no key data provided")
+		}
 		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
@@ -58,16 +65,6 @@ User email MUST match the OAuth account used to authorize the update.
 			masterKey)
 		if err != nil {
 			log.Fatal(err)
-		}
-		ks = handle
-	},
-	RunE: func(_ *cobra.Command, args []string) error {
-		// Validate input.
-		if len(args) < 1 {
-			return fmt.Errorf("user email needs to be provided")
-		}
-		if data == "" {
-			return fmt.Errorf("no key data provided")
 		}
 		if !viper.IsSet("client-secret") {
 			return fmt.Errorf("no client secret provided")
@@ -89,13 +86,13 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("error connecting: %v", err)
 		}
 
-		signer, err := signature.NewSigner(ks)
+		signer, err := signature.NewSigner(handle)
 		if err != nil {
 			return err
 		}
 
 		// Update.
-		authorizedKeys, err := ks.Public()
+		authorizedKeys, err := handle.Public()
 		if err != nil {
 			return fmt.Errorf("store.PublicKeys() failed: %v", err)
 		}
