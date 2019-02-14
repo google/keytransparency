@@ -50,7 +50,7 @@ func TestVerifyGetUserResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile(%v): %v", respFile, err)
 	}
-	var getUserResponses []testdata.GetUserResponseVector
+	var getUserResponses []testdata.ResponseVector
 	if err := json.Unmarshal(b, &getUserResponses); err != nil {
 		t.Fatalf("Unmarshal(): %v", err)
 	}
@@ -58,15 +58,15 @@ func TestVerifyGetUserResponse(t *testing.T) {
 	trusted := &types.LogRootV1{}
 	for _, tc := range getUserResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			slr, smr, err := v.VerifyRevision(tc.Resp.Revision, *trusted)
+			slr, smr, err := v.VerifyRevision(tc.GetUserResp.Revision, *trusted)
 			if err != nil {
 				t.Errorf("VerifyRevision(): %v", err)
 			}
 			if err == nil && tc.TrustNewLog {
 				trusted = slr
 			}
-			if err := v.VerifyMapLeaf(directoryPB.DirectoryId, tc.UserID,
-				tc.Resp.Leaf, smr); err != nil {
+			if err := v.VerifyMapLeaf(directoryPB.DirectoryId, tc.UserIDs[0],
+				tc.GetUserResp.Leaf, smr); err != nil {
 				t.Errorf("VerifyMapLeaf(): %v)", err)
 			}
 		})

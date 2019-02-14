@@ -16,15 +16,22 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/keytransparency/core/integration"
+	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/storage/testdb"
 )
 
 var (
-	generate = flag.Bool("generate", false, "Defines if test vectors should be generated")
+	generate    = flag.Bool("generate", true, "Defines if test vectors should be generated")
+	testdataDir = flag.String("testdata", "../../core/testdata", "The directory in which to place the generated test data")
 )
 
 // TestIntegration runs all KeyTransparency integration tests.
@@ -48,25 +55,41 @@ func TestIntegration(t *testing.T) {
 				// canceling the master context.
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				test.Fn(ctx, env.Env, t)
+				resps := test.Fn(ctx, env.Env, t)
+				if *generate && resps != nil {
+					if err = SaveTestVectors(*testdataDir, test.DirectoryFilename, test.RespFilename, env.Env, resps); err != nil {
+						t.Fatalf("saveTestVectors() failed: %v", err)
+					}
+				}
 			}()
 		})
 	}
 }
 
-func TestGenerateVectors(t *testing.T) {
-	flag.Parse()
-	if !*generate {
-		t.Skip("Test vector generation not requested")
+// SaveTestVectors generates test vectors for interoprability testing.
+func SaveTestVectors(dir, directoryFilename, responseFilename string, env *integration.Env, resps []testdata.ResponseVector) error {
+	marshaler := &jsonpb.Marshaler{
+		Indent: "\t",
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env, err := NewEnv(ctx)
+	// Output all key material needed to verify the test vectors.
+	directoryFile := dir + "/" + directoryFilename
+	f, err := os.Create(directoryFile)
 	if err != nil {
-		t.Fatalf("could not create Env: %v", err)
+		return err
 	}
-	defer env.Close()
-	if err := integration.GenerateTestVectors(ctx, env.Env); err != nil {
-		t.Errorf("GenerateTestVectors(): %v", err)
+	defer f.Close()
+	if err := marshaler.Marshal(f, env.Directory); err != nil {
+		return fmt.Errorf("jsonpb.Marshal(): %v", err)
 	}
+
+	// Save list of responses
+	respFile := dir + "/" + responseFilename
+	out, err := json.MarshalIndent(resps, "", "\t")
+	if err != nil {
+		return fmt.Errorf("json.Marshal(): %v", err)
+	}
+	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
+		return fmt.Errorf("writeFile(%v): %v", respFile, err)
+	}
+	return nil
 }
