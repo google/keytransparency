@@ -66,7 +66,7 @@ func TestVerifyGetUserResponse(t *testing.T) {
 				trusted = slr
 			}
 			if err := v.VerifyMapLeaf(directoryPB.DirectoryId, tc.UserIDs[0],
-				tc.Resp.Leaf, smr); err != nil {
+				tc.GetUserResp.Leaf, smr); err != nil {
 				t.Errorf("VerifyMapLeaf(): %v)", err)
 			}
 		})
