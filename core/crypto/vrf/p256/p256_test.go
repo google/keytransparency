@@ -213,7 +213,7 @@ func TestProofToHash(t *testing.T) {
 	}
 	for _, tc := range getUserResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			_, err := pk.ProofToHash([]byte(tc.UserID), tc.Resp.GetLeaf().GetVrfProof())
+			_, err := pk.ProofToHash([]byte(tc.UserIDs[0]), tc.GetUserResp.GetLeaf().GetVrfProof())
 			if err != nil {
 				t.Errorf("ProofToHash(%v): %v)", tc.Desc, err)
 			}

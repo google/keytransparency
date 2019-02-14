@@ -90,7 +90,7 @@ func SaveTestVectors(dir string, directoryFilename string, responseFilename stri
 		return fmt.Errorf("json.Marshal(): %v", err)
 	}
 	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
-		return fmt.Errorf("WriteFile(%v): %v", respFile, err)
+		return fmt.Errorf("writeFile(%v): %v", respFile, err)
 	}
 	return nil
 }
