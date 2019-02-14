@@ -57,8 +57,7 @@ func TestIntegration(t *testing.T) {
 				defer cancel()
 				resps := test.Fn(ctx, env.Env, t)
 				if *generate && resps != nil {
-					err = SaveTestVectors(*testdataDir, test.DirectoryFilename, test.RespFilename, env.Env, resps)
-					if err != nil {
+					if err = SaveTestVectors(*testdataDir, test.DirectoryFilename, test.RespFilename, env.Env, resps); err != nil {
 						t.Fatalf("saveTestVectors() failed: %v", err)
 					}
 				}
@@ -68,7 +67,7 @@ func TestIntegration(t *testing.T) {
 }
 
 // SaveTestVectors generates test vectors for interoprability testing.
-func SaveTestVectors(dir string, directoryFilename string, responseFilename string, env *integration.Env, resps []testdata.ResponseVector) error {
+func SaveTestVectors(dir, directoryFilename, responseFilename string, env *integration.Env, resps []testdata.ResponseVector) error {
 	marshaler := &jsonpb.Marshaler{
 		Indent: "\t",
 	}
