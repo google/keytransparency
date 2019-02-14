@@ -62,7 +62,7 @@ func createMetrics(mf monitoring.MetricFactory) {
 	logEntryCount = mf.NewCounter(
 		"log_entry_count",
 		"Total number of log entries read since process start. Duplicates are not removed.",
-		directoryIDLabel)
+		directoryIDLabel, logIDLabel)
 	mapLeafCount = mf.NewCounter(
 		"map_leaf_count",
 		"Total number of map leaves written since process start. Duplicates are not removed.",
@@ -265,6 +265,7 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 			count = int32(len(batch))
 			glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
 				directoryID, source.LogId, low, high, batchSize, count)
+			logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
 			for _, m := range batch {
 				msgs = append(msgs, m)
 				if m.ID > low {
@@ -273,7 +274,6 @@ func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb
 			}
 		}
 	}
-	logEntryCount.Add(float64(len(msgs)), directoryID)
 	return msgs, nil
 }
 
