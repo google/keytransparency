@@ -270,8 +270,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 			}
 			getUserResps = append(getUserResps, testdata.ResponseVector{
 				Desc:        tc.desc,
-				UserIDs:     []string{tc.userID},
-				GetUserResp: e,
+				UserID:      tc.userID,
+				Resp:        e,
 				TrustNewLog: trust,
 			})
 
