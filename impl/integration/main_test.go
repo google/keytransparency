@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	generate    = flag.Bool("generate", true, "Defines if test vectors should be generated")
+	generate    = flag.Bool("generate", false, "Defines if test vectors should be generated")
 	testdataDir = flag.String("testdata", "../../core/testdata", "The directory in which to place the generated test data")
 )
 
