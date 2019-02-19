@@ -22,7 +22,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/keyset"
-	"github.com/google/tink/go/signature"
 	"github.com/google/tink/go/testutil"
 	"github.com/google/trillian/crypto/keys/pem"
 
@@ -106,14 +105,14 @@ func unmarshalPEM(pemData, password string) (interface{}, error) {
 // privKeyData produces tinkpb.KeyData from a private key.
 func privKeyData(priv *ecdsa.PrivateKey) (*tinkpb.KeyData, error) {
 	privKey := testutil.NewECDSAPrivateKey(
-		signature.ECDSASignerKeyVersion,
+		testutil.ECDSASignerKeyVersion,
 		ecdsaPubKeyPB(&priv.PublicKey),
 		priv.D.Bytes())
 	serializedKey, err := proto.Marshal(privKey)
 	if err != nil {
 		return nil, fmt.Errorf("proto.Marshal(): %v", err)
 	}
-	return testutil.NewKeyData(signature.ECDSASignerTypeURL,
+	return testutil.NewKeyData(testutil.ECDSASignerTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PRIVATE), nil
 }
@@ -124,7 +123,7 @@ func pubKeyData(pub *ecdsa.PublicKey) (*tinkpb.KeyData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("proto.Marshal(): %v", err)
 	}
-	return testutil.NewKeyData(signature.ECDSAVerifierTypeURL,
+	return testutil.NewKeyData(testutil.ECDSAVerifierTypeURL,
 		serializedKey,
 		tinkpb.KeyData_ASYMMETRIC_PUBLIC), nil
 }
@@ -132,7 +131,7 @@ func pubKeyData(pub *ecdsa.PublicKey) (*tinkpb.KeyData, error) {
 // ecdsaPubKeyPB returns a tink ecdsapb.EcdsaPublicKey
 func ecdsaPubKeyPB(pub *ecdsa.PublicKey) *ecdsapb.EcdsaPublicKey {
 	return testutil.NewECDSAPublicKey(
-		signature.ECDSAVerifierKeyVersion,
+		testutil.ECDSAVerifierKeyVersion,
 		testutil.NewECDSAParams(
 			hashType,
 			tinkCurve(pub.Curve),
