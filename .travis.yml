@@ -4,6 +4,9 @@ go:
 dist: trusty
 services:
 - docker-ce
+
+go_import_path: github.com/google/keytransparency
+
 cache:
   directories:
   - "$HOME/gcloud/"
