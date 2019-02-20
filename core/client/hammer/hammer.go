@@ -35,7 +35,7 @@ import (
 )
 
 // DialFunc returns a connected grpc client for Key Transparency.
-type DialFunc func(ctx context.Context, addr string, opts ...grpc.DialOption) (pb.KeyTransparencyClient, error)
+type DialFunc func(ctx context.Context) (pb.KeyTransparencyClient, error)
 
 // CallOptions returns PerRPCCredentials for the requested user.
 type CallOptions func(userID string) []grpc.CallOption
@@ -75,8 +75,8 @@ type Hammer struct {
 
 // New returns a new hammer job
 func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
-	ktAddr, directoryID string, timeout time.Duration, keyset *keyset.Handle) (*Hammer, error) {
-	ktCli, err := dial(ctx, ktAddr)
+	directoryID string, timeout time.Duration, keyset *keyset.Handle) (*Hammer, error) {
+	ktCli, err := dial(ctx)
 	if err != nil {
 		return nil, err
 	}
