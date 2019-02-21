@@ -28,6 +28,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
+	tpb "github.com/google/trillian"
 )
 
 // MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
@@ -40,6 +41,46 @@ func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.En
 		Mutation:  m.Mutation,
 		Committed: m.ExtraData,
 	})
+	return nil
+}
+
+// ReduceFn decides which of multiple updates can be applied in this revision.
+func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit func(*tpb.MapLeaf)) error {
+	if got := len(leaves); got > 1 {
+		return fmt.Errorf("expected 0 or 1 map leaf for index %x, got %v", index, got)
+	}
+	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
+	var err error
+	if len(leaves) > 0 {
+		oldValue, err = FromLeafValue(leaves[0].GetLeafValue())
+		if err != nil {
+			return fmt.Errorf("entry.FromLeafValue(): %v", err)
+		}
+	}
+
+	if len(msgs) == 0 {
+		return fmt.Errorf("no msgs for index %x", index)
+	}
+
+	// TODO(gbelvin): Choose the mutation deterministically, regardless of the messages order.
+	// (optional): Select the mutation based on it's correctness.
+	msg := msgs[0]
+	newValue, err := MutateFn(oldValue, msg.Mutation)
+	if err != nil {
+		glog.Warningf("Mutate(): %v", err)
+		return nil // A bad mutation should not make the whole batch to fail.
+	}
+	leafValue, err := ToLeafValue(newValue)
+	if err != nil {
+		glog.Warningf("ToLeafValue(): %v", err)
+		return nil // A bad mutation should not cause the entire pipeline to fail.
+	}
+	extraData, err := proto.Marshal(msg.Committed)
+	if err != nil {
+		glog.Warningf("proto.Marshal(): %v", err)
+		return nil
+	}
+	emit(&tpb.MapLeaf{Index: index, LeafValue: leafValue, ExtraData: extraData})
 	return nil
 }
 

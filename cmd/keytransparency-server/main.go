@@ -121,7 +121,7 @@ func main() {
 	tmap := trillian.NewTrillianMapClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(tlog, tmap, entry.MutateFn, directories, logs, logs,
+	ksvr := keyserver.New(tlog, tmap, entry.ReduceFn, directories, logs, logs,
 		prometheus.MetricFactory{})
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),

@@ -313,7 +313,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := runner.ApplyMutations(entry.MutateFn, mutations, leaves)
+	newLeaves, err := runner.ApplyMutations(entry.ReduceFn, mutations, leaves)
 	if err != nil {
 		return nil, err
 	}
