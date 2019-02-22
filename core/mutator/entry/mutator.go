@@ -64,21 +64,25 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 }
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
-func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit func(*tpb.MapLeaf)) error {
+func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf,
+	emit func(*tpb.MapLeaf), emitErr func(error)) {
 	if got := len(leaves); got > 1 {
-		return fmt.Errorf("expected 0 or 1 map leaf for index %x, got %v", index, got)
+		emitErr(fmt.Errorf("expected 0 or 1 map leaf for index %x, got %v", index, got))
+		return // A bad index should not cause the whole batch to fail.
 	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
 	var err error
 	if len(leaves) > 0 {
 		oldValue, err = FromLeafValue(leaves[0].GetLeafValue())
 		if err != nil {
-			return fmt.Errorf("entry.FromLeafValue(): %v", err)
+			emitErr(fmt.Errorf("entry.FromLeafValue(): %v", err))
+			return // A bad index should not cause the whole batch to fail.
 		}
 	}
 
 	if len(msgs) == 0 {
-		return fmt.Errorf("no msgs for index %x", index)
+		emitErr(fmt.Errorf("no msgs for index %x", index))
+		return // A bad index should not cause the whole batch to fail.
 	}
 
 	// Filter for mutations that are valid.
@@ -86,7 +90,7 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit 
 	for i, msg := range msgs {
 		newValue, err := MutateFn(oldValue, msg.Mutation)
 		if err != nil {
-			glog.Warningf("ReduceFn(%x, msg %d/%d): %v", index, i, len(msgs)-1, err)
+			emitErr(fmt.Errorf("entry: ReduceFn(%x, msg %d/%d): %v", index, i, len(msgs)-1, err))
 			continue
 		}
 		newEntries = append(newEntries, &pb.EntryUpdate{
@@ -95,7 +99,8 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit 
 		})
 	}
 	if len(newEntries) == 0 {
-		return nil // No valid mutations for one index not cause the whole batch to fail.
+		emitErr(fmt.Errorf("entry: no valid mutations for index %x", index))
+		return // No valid mutations for one index not cause the whole batch to fail.
 	}
 	// Choose the mutation deterministically, regardless of the messages order.
 	sort.Slice(newEntries, func(i, j int) bool {
@@ -108,16 +113,15 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit 
 	// Convert to MapLeaf
 	leafValue, err := ToLeafValue(e.Mutation)
 	if err != nil {
-		glog.Warningf("ToLeafValue(): %v", err)
-		return nil // A bad mutation should not cause the entire pipeline to fail.
+		emitErr(fmt.Errorf("entry: ToLeafValue(): %v", err))
+		return // A bad mutation should not cause the entire pipeline to fail.
 	}
 	extraData, err := proto.Marshal(e.Committed)
 	if err != nil {
-		glog.Warningf("proto.Marshal(): %v", err)
-		return nil
+		emitErr(fmt.Errorf("entry: proto.Marshal(): %v", err))
+		return // A bad mutation should not cause the entire pipeline to fail.
 	}
 	emit(&tpb.MapLeaf{Index: index, LeafValue: leafValue, ExtraData: extraData})
-	return nil
 }
 
 // MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
