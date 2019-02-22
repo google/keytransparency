@@ -17,14 +17,15 @@ package entry
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
-
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/tink/go/keyset"
-	"github.com/google/tink/go/signature"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/keyset"
+	"github.com/google/tink/go/signature"
+
+	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"

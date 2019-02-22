@@ -109,7 +109,8 @@ func TestCheckMutation(t *testing.T) {
 					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
-			err: mutator.ErrReplay,
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2),
+			err:     mutator.ErrReplay,
 		},
 		{
 			desc: "Large mutation",
@@ -132,16 +133,19 @@ func TestCheckMutation(t *testing.T) {
 					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
-			err: mutator.ErrPreviousHash,
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2),
+			err:     mutator.ErrPreviousHash,
 		},
 		{
 			desc: "Very first mutation, invalid previous entry hash",
 			mutation: &Mutation{
 				entry: &tpb.Entry{
-					Previous: nil,
+					Previous:       nil,
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
-			err: mutator.ErrPreviousHash,
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey2),
+			err:     mutator.ErrPreviousHash,
 		},
 		{
 			desc: "Very first mutation, missing previous signature",
@@ -168,7 +172,7 @@ func TestCheckMutation(t *testing.T) {
 					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey2).Keyset(),
 				},
 			},
-			signers: testutil.SignKeysetsFromPEMs(testPrivKey1),
+			signers: testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2),
 		},
 	} {
 		m, err := tc.mutation.sign(tc.signers)

@@ -20,6 +20,9 @@ package mutator
 import (
 	"errors"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
@@ -41,7 +44,7 @@ var (
 	ErrInvalidSig = errors.New("mutation: invalid signature")
 	// ErrUnauthorized occurs when the mutation has not been signed by a key in the
 	// previous entry.
-	ErrUnauthorized = errors.New("mutation: unauthorized")
+	ErrUnauthorized = status.Errorf(codes.PermissionDenied, "mutation: unauthorized")
 )
 
 // VerifyMutationFn verifies that a mutation is internally consistent.
