@@ -17,14 +17,15 @@ package entry
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
-
-	"github.com/google/keytransparency/core/mutator"
-	"github.com/google/tink/go/keyset"
-	"github.com/google/tink/go/signature"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/keyset"
+	"github.com/google/tink/go/signature"
+
+	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
@@ -42,6 +43,23 @@ func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.En
 		Committed: m.ExtraData,
 	})
 	return nil
+}
+
+// IsValidEntry checks the internal consistency and correctness of a mutation.
+func IsValidEntry(signedEntry *pb.SignedEntry) error {
+	// Ensure that the mutation size is within bounds.
+	if got, want := proto.Size(signedEntry), mutator.MaxMutationSize; got > want {
+		glog.Warningf("mutation is %v bytes, want <= %v", got, want)
+		return mutator.ErrSize
+	}
+
+	newEntry := pb.Entry{}
+	if err := proto.Unmarshal(signedEntry.GetEntry(), &newEntry); err != nil {
+		return fmt.Errorf("proto.Unmarshal(): %v", err)
+	}
+
+	ks := newEntry.GetAuthorizedKeys()
+	return verifyKeys(ks, signedEntry.GetEntry(), signedEntry.GetSignatures())
 }
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
@@ -87,10 +105,8 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit 
 // MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
 // application of newSignedEntry to oldSignedEntry.
 func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
-	// Ensure that the mutation size is within bounds.
-	if got, want := proto.Size(newSignedEntry), mutator.MaxMutationSize; got > want {
-		glog.Warningf("mutation is %v bytes, want <= %v", got, want)
-		return nil, mutator.ErrSize
+	if err := IsValidEntry(newSignedEntry); err != nil {
+		return nil, err
 	}
 
 	newEntry := pb.Entry{}
@@ -98,6 +114,7 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
 	}
 	oldEntry := pb.Entry{}
+	// oldSignedEntry may be nil, resulting an empty oldEntry struct.
 	if err := proto.Unmarshal(oldSignedEntry.GetEntry(), &oldEntry); err != nil {
 		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
 	}
@@ -107,8 +124,7 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 	prevEntryHash := sha256.Sum256(oldSignedEntry.GetEntry())
 	if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
 		// Check if this mutation is a replay.
-		if oldSignedEntry != nil &&
-			bytes.Equal(oldSignedEntry.Entry, newSignedEntry.Entry) {
+		if bytes.Equal(oldSignedEntry.GetEntry(), newSignedEntry.Entry) {
 			glog.Warningf("mutation is a replay of an old one")
 			return nil, mutator.ErrReplay
 		}
@@ -116,8 +132,13 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 		return nil, mutator.ErrPreviousHash
 	}
 
-	if err := verifyKeys(oldEntry.GetAuthorizedKeys(), newEntry.GetAuthorizedKeys(),
-		newSignedEntry.Entry, newSignedEntry.GetSignatures()); err != nil {
+	if oldSignedEntry == nil {
+		// Skip verificaion checks if there is no previous oldSignedEntry.
+		return newSignedEntry, nil
+	}
+
+	ks := oldEntry.GetAuthorizedKeys()
+	if err := verifyKeys(ks, newSignedEntry.Entry, newSignedEntry.GetSignatures()); err != nil {
 		return nil, err
 	}
 
@@ -126,16 +147,12 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 
 // verifyKeys verifies both old and new authorized keys based on the following
 // criteria:
-//   1. At least one signature with a key in the previous entry should exist.
-//   2. If prevAuthz is nil, at least one signature with a key from the new
-//   authorized_key set should exist.
-//   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data []byte, sigs [][]byte) error {
-	ks := prevAuthz
-	if prevAuthz == nil {
-		ks = authz
+//   1. At least one signature with a key in the entry should exist.
+//   2. Signatures with no matching keys are simply ignored.
+func verifyKeys(ks *tinkpb.Keyset, data []byte, sigs [][]byte) error {
+	if ks == nil {
+		return errors.New("entry: nil keyset")
 	}
-
 	handle, err := keyset.NewHandleWithNoSecrets(ks)
 	if err != nil {
 		return fmt.Errorf("tink.KeysetHanldeWithNoSecret(new): %v", err)

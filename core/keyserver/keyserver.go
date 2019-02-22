@@ -81,19 +81,19 @@ type indexFunc func(ctx context.Context, d *directory.Directory, userID string) 
 
 // Server holds internal state for the key server.
 type Server struct {
-	tlog        tpb.TrillianLogClient
-	tmap        tpb.TrillianMapClient
-	mutate      mutator.ReduceMutationFn
-	directories directory.Storage
-	logs        MutationLogs
-	batches     BatchReader
-	indexFunc   indexFunc
+	tlog           tpb.TrillianLogClient
+	tmap           tpb.TrillianMapClient
+	verifyMutation mutator.VerifyMutationFn
+	directories    directory.Storage
+	logs           MutationLogs
+	batches        BatchReader
+	indexFunc      indexFunc
 }
 
 // New creates a new instance of the key server.
 func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
-	mutate mutator.ReduceMutationFn,
+	verifyMutation mutator.VerifyMutationFn,
 	directories directory.Storage,
 	logs MutationLogs,
 	batches BatchReader,
@@ -101,13 +101,13 @@ func New(tlog tpb.TrillianLogClient,
 ) *Server {
 	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
-		tlog:        tlog,
-		tmap:        tmap,
-		mutate:      mutate,
-		directories: directories,
-		logs:        logs,
-		batches:     batches,
-		indexFunc:   indexFromVRF,
+		tlog:           tlog,
+		tmap:           tmap,
+		verifyMutation: verifyMutation,
+		directories:    directories,
+		logs:           logs,
+		batches:        batches,
+		indexFunc:      indexFromVRF,
 	}
 }
 
@@ -563,13 +563,15 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	// - Correct profile commitment.
 	// - Correct key formats.
 	for _, u := range in.Updates {
-		if err := validateEntryUpdate(u, vrfPriv); err != nil {
+		if err := s.verifyMutation(u.Mutation); err != nil {
+			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
+		}
+		if err = validateEntryUpdate(u, vrfPriv); err != nil {
 			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 			return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 		}
 	}
-
-	// TODO(#1177): Verify parts of the mutation that don't reference the current map value here.
 
 	// Save mutation to the database.
 	wm, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
