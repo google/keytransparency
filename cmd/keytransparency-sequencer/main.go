@@ -195,13 +195,13 @@ func main() {
 	go serveHTTPGateway(ctx, lis, dopts, grpcServer,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
-	runSequencer(ctx, conn, mconn, directoryStorage)
+	runSequencer(ctx, conn, directoryStorage)
 
 	// Shutdown.
 	glog.Errorf("Signer exiting")
 }
 
-func runSequencer(ctx context.Context, conn, mconn *grpc.ClientConn,
+func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	directoryStorage dir.Storage) {
 	electionFactory, closeFactory := getElectionFactory()
 	defer closeFactory()
