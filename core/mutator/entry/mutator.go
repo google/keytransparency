@@ -43,47 +43,59 @@ func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.En
 	return nil
 }
 
+// IsValidEntry checks the internal consistency and correctness of a mutation.
+func IsValidEntry(signedEntry *pb.SignedEntry) error {
+	// Ensure that the mutation size is within bounds.
+	if got, want := proto.Size(signedEntry), mutator.MaxMutationSize; got > want {
+		glog.Warningf("mutation is %v bytes, want <= %v", got, want)
+		return mutator.ErrSize
+	}
+
+	newEntry := pb.Entry{}
+	if err := proto.Unmarshal(signedEntry.GetEntry(), &newEntry); err != nil {
+		return fmt.Errorf("proto.Unmarshal(): %v", err)
+	}
+
+	ks := newEntry.GetAuthorizedKeys()
+	return verifyKeys(ks, signedEntry.GetEntry(), signedEntry.GetSignatures())
+}
+
 // MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
 // application of newSignedEntry to oldSignedEntry.
-func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry, fullCheck bool) (*pb.SignedEntry, error) {
-	// Ensure that the mutation size is within bounds.
-	if got, want := proto.Size(newSignedEntry), mutator.MaxMutationSize; got > want {
-		glog.Warningf("mutation is %v bytes, want <= %v", got, want)
-		return nil, mutator.ErrSize
+func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
+	if err := IsValidEntry(newSignedEntry); err != nil {
+		return nil, err
 	}
 
 	newEntry := pb.Entry{}
 	if err := proto.Unmarshal(newSignedEntry.GetEntry(), &newEntry); err != nil {
 		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
 	}
-
-	ks := newEntry.GetAuthorizedKeys()
-
-	if fullCheck {
-		oldEntry := pb.Entry{}
-		if err := proto.Unmarshal(oldSignedEntry.GetEntry(), &oldEntry); err != nil {
-			return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
-		}
-
-		// Verify pointer to previous data.  The very first entry will have
-		// oldSignedEntry=nil, so its hash is the Sha256 value of nil.
-		prevEntryHash := sha256.Sum256(oldSignedEntry.GetEntry())
-		if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
-			// Check if this mutation is a replay.
-			if oldSignedEntry != nil &&
-				bytes.Equal(oldSignedEntry.Entry, newSignedEntry.Entry) {
-				glog.Warningf("mutation is a replay of an old one")
-				return nil, mutator.ErrReplay
-			}
-			glog.Warningf("previous entry hash: %x, want %x", got, want)
-			return nil, mutator.ErrPreviousHash
-		}
-
-		if oldEntry.GetAuthorizedKeys() == nil {
-			ks = oldEntry.GetAuthorizedKeys()
-		}
+	oldEntry := pb.Entry{}
+	// oldSignedEntry may be nil, resulting an empty oldEntry struct.
+	if err := proto.Unmarshal(oldSignedEntry.GetEntry(), &oldEntry); err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
 	}
 
+	// Verify pointer to previous data.  The very first entry will have
+	// oldSignedEntry=nil, so its hash is the Sha256 value of nil.
+	prevEntryHash := sha256.Sum256(oldSignedEntry.GetEntry())
+	if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
+		// Check if this mutation is a replay.
+		if bytes.Equal(oldSignedEntry.GetEntry(), newSignedEntry.Entry) {
+			glog.Warningf("mutation is a replay of an old one")
+			return nil, mutator.ErrReplay
+		}
+		glog.Warningf("previous entry hash: %x, want %x", got, want)
+		return nil, mutator.ErrPreviousHash
+	}
+
+	if oldSignedEntry == nil {
+		// Skip verificaion checks if there is no previous oldSignedEntry.
+		return newSignedEntry, nil
+	}
+
+	ks := oldEntry.GetAuthorizedKeys()
 	if err := verifyKeys(ks, newSignedEntry.Entry, newSignedEntry.GetSignatures()); err != nil {
 		return nil, err
 	}
