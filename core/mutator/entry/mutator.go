@@ -108,6 +108,9 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 //   1. At least one signature with a key in the entry should exist.
 //   2. Signatures with no matching keys are simply ignored.
 func verifyKeys(ks *tinkpb.Keyset, data []byte, sigs [][]byte) error {
+	if ks == nil {
+		return errors.New("entry: nil keyset")
+	}
 	handle, err := keyset.NewHandleWithNoSecrets(ks)
 	if err != nil {
 		return fmt.Errorf("tink.KeysetHanldeWithNoSecret(new): %v", err)
