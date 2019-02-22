@@ -19,12 +19,9 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"github.com/google/keytransparency/core/crypto/commitments"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
@@ -113,18 +110,8 @@ func (m *Mutation) SerializeAndSign(signers []tink.Signer) (*pb.EntryUpdate, err
 		return nil, err
 	}
 
-	// Check authorization.
-	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(), m.entry.GetAuthorizedKeys(),
-		mutation.Entry, mutation.Signatures); err != nil {
-		return nil, status.Errorf(codes.PermissionDenied,
-			"verifyKeys(oldKeys: %v, newKeys: %v, sigs: %v): %v",
-			len(m.prevEntry.GetAuthorizedKeys().GetKey()),
-			len(m.entry.GetAuthorizedKeys().GetKey()),
-			len(mutation.GetSignatures()), err)
-	}
-
 	// Sanity check the mutation's correctness.
-	if _, err := MutateFn(m.prevSignedEntry, mutation); err != nil {
+	if _, err := MutateFn(m.prevSignedEntry, mutation, true); err != nil {
 		return nil, fmt.Errorf("presign mutation check: %v", err)
 	}
 

@@ -563,13 +563,16 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	// - Correct profile commitment.
 	// - Correct key formats.
 	for _, u := range in.Updates {
-		if err := validateEntryUpdate(u, vrfPriv); err != nil {
+		_, err := s.mutate(u.Mutation, u.Mutation, false)
+		if err != nil {
+			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
+		}
+		if err = validateEntryUpdate(u, vrfPriv); err != nil {
 			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 			return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 		}
 	}
-
-	// TODO(#1177): Verify parts of the mutation that don't reference the current map value here.
 
 	// Save mutation to the database.
 	wm, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
