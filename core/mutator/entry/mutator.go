@@ -86,7 +86,7 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit 
 	newValue, err := MutateFn(oldValue, msg.Mutation)
 	if err != nil {
 		glog.Warningf("Mutate(): %v", err)
-		return nil // A bad mutation should not make the whole batch to fail.
+		return nil // A bad mutation should not cause the whole batch to fail.
 	}
 	leafValue, err := ToLeafValue(newValue)
 	if err != nil {
