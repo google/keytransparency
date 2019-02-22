@@ -64,7 +64,6 @@ var hammerCmd = &cobra.Command{
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
 	RunE: func(_ *cobra.Command, _ []string) error {
-		ktURL := viper.GetString("kt-url")
 		directoryID := viper.GetString("directory")
 		timeout := viper.GetDuration("timeout")
 
@@ -79,12 +78,11 @@ var hammerCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		log.Printf("Hammering %v/directories/%v: with %v timeout", ktURL, directoryID, timeout)
+		log.Printf("Hammering %v: with %v timeout", directoryID, timeout)
 
 		ctx := context.Background()
 
-		h, err := hammer.New(ctx, dial, callOptions,
-			ktURL, directoryID, timeout, handle)
+		h, err := hammer.New(ctx, dial, callOptions, directoryID, timeout, handle)
 		if err != nil {
 			return err
 		}
