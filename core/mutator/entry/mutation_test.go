@@ -114,7 +114,7 @@ func TestCreateAndVerify(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FromLeafValue(%v): %v", tc.old, err)
 			}
-			newSignedEntry, err := MutateFn(oldSignedEntry, update.GetMutation(), true)
+			newSignedEntry, err := MutateFn(oldSignedEntry, update.GetMutation())
 			if err != nil {
 				t.Fatalf("Mutate(%v): %v", update.GetMutation(), err)
 			}
