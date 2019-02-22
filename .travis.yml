@@ -1,22 +1,17 @@
 language: go
 go:
 - 1.x
-dist: trusty
-services:
-- docker-ce
+dist: xenial
+
+go_import_path: github.com/google/keytransparency
+
 cache:
   directories:
   - "$HOME/gcloud/"
 env:
   global:
-  - DOCKER_COMPOSE_VERSION="1.13.0"
   - PATH=$PATH:${HOME}/google-cloud-sdk/bin
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-
-addons:
-  apt:
-    packages:
-    - python3-pip
 
 before_install:
   - |
@@ -47,7 +42,6 @@ after_success:
   - bash <(curl -s https://codecov.io/bash)
 
 before_deploy:
-  - pip3 install -U --user docker-compose
   - docker --version
   - docker-compose --version
   - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
