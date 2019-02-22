@@ -34,7 +34,6 @@ type Mutation struct {
 	UserID      string
 	data, nonce []byte
 
-	prevEntry       *pb.Entry
 	prevSignedEntry *pb.SignedEntry
 	entry           *pb.Entry
 	signedEntry     *pb.SignedEntry
