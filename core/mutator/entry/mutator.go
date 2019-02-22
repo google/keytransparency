@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -80,20 +81,37 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emit 
 		return fmt.Errorf("no msgs for index %x", index)
 	}
 
-	// TODO(gbelvin): Choose the mutation deterministically, regardless of the messages order.
-	// (optional): Select the mutation based on it's correctness.
-	msg := msgs[0]
-	newValue, err := MutateFn(oldValue, msg.Mutation)
-	if err != nil {
-		glog.Warningf("Mutate(): %v", err)
-		return nil // A bad mutation should not cause the whole batch to fail.
+	// Filter for mutations that are valid.
+	newEntries := make([]*pb.EntryUpdate, 0, len(msgs))
+	for i, msg := range msgs {
+		newValue, err := MutateFn(oldValue, msg.Mutation)
+		if err != nil {
+			glog.Warningf("ReduceFn(%x, msg %d/%d): %v", index, i, len(msgs)-1, err)
+			continue
+		}
+		newEntries = append(newEntries, &pb.EntryUpdate{
+			Mutation:  newValue,
+			Committed: msg.Committed,
+		})
 	}
-	leafValue, err := ToLeafValue(newValue)
+	if len(newEntries) == 0 {
+		return nil // No valid mutations for one index not cause the whole batch to fail.
+	}
+	// Choose the mutation deterministically, regardless of the messages order.
+	sort.Slice(newEntries, func(i, j int) bool {
+		iHash := sha256.Sum256(newEntries[i].GetMutation().GetEntry())
+		jHash := sha256.Sum256(newEntries[j].GetMutation().GetEntry())
+		return bytes.Compare(iHash[:], jHash[:]) < 0
+	})
+	e := newEntries[0]
+
+	// Convert to MapLeaf
+	leafValue, err := ToLeafValue(e.Mutation)
 	if err != nil {
 		glog.Warningf("ToLeafValue(): %v", err)
 		return nil // A bad mutation should not cause the entire pipeline to fail.
 	}
-	extraData, err := proto.Marshal(msg.Committed)
+	extraData, err := proto.Marshal(e.Committed)
 	if err != nil {
 		glog.Warningf("proto.Marshal(): %v", err)
 		return nil
