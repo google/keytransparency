@@ -69,7 +69,7 @@ func ReduceFn(mutatorFn mutator.ReduceMutationFn,
 	// TODO(gbelvin): Choose the mutation deterministically, regardless of the messages order.
 	// (optional): Select the mutation based on it's correctness.
 	msg := msgs[0]
-	newValue, err := mutatorFn(oldValue, msg.Mutation)
+	newValue, err := mutatorFn(oldValue, msg.Mutation, true)
 	if err != nil {
 		glog.Warningf("Mutate(): %v", err)
 		return nil // A bad mutation should not make the whole batch to fail.

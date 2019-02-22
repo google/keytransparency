@@ -45,7 +45,7 @@ func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.En
 
 // MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the
 // application of newSignedEntry to oldSignedEntry.
-func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, error) {
+func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry, fullCheck bool) (*pb.SignedEntry, error) {
 	// Ensure that the mutation size is within bounds.
 	if got, want := proto.Size(newSignedEntry), mutator.MaxMutationSize; got > want {
 		glog.Warningf("mutation is %v bytes, want <= %v", got, want)
@@ -56,27 +56,35 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 	if err := proto.Unmarshal(newSignedEntry.GetEntry(), &newEntry); err != nil {
 		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
 	}
-	oldEntry := pb.Entry{}
-	if err := proto.Unmarshal(oldSignedEntry.GetEntry(), &oldEntry); err != nil {
-		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
-	}
 
-	// Verify pointer to previous data.  The very first entry will have
-	// oldSignedEntry=nil, so its hash is the Sha256 value of nil.
-	prevEntryHash := sha256.Sum256(oldSignedEntry.GetEntry())
-	if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
-		// Check if this mutation is a replay.
-		if oldSignedEntry != nil &&
-			bytes.Equal(oldSignedEntry.Entry, newSignedEntry.Entry) {
-			glog.Warningf("mutation is a replay of an old one")
-			return nil, mutator.ErrReplay
+	ks := newEntry.GetAuthorizedKeys()
+
+	if fullCheck {
+		oldEntry := pb.Entry{}
+		if err := proto.Unmarshal(oldSignedEntry.GetEntry(), &oldEntry); err != nil {
+			return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
 		}
-		glog.Warningf("previous entry hash: %x, want %x", got, want)
-		return nil, mutator.ErrPreviousHash
+
+		// Verify pointer to previous data.  The very first entry will have
+		// oldSignedEntry=nil, so its hash is the Sha256 value of nil.
+		prevEntryHash := sha256.Sum256(oldSignedEntry.GetEntry())
+		if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
+			// Check if this mutation is a replay.
+			if oldSignedEntry != nil &&
+				bytes.Equal(oldSignedEntry.Entry, newSignedEntry.Entry) {
+				glog.Warningf("mutation is a replay of an old one")
+				return nil, mutator.ErrReplay
+			}
+			glog.Warningf("previous entry hash: %x, want %x", got, want)
+			return nil, mutator.ErrPreviousHash
+		}
+
+		if oldEntry.GetAuthorizedKeys() == nil {
+			ks = oldEntry.GetAuthorizedKeys()
+		}
 	}
 
-	if err := verifyKeys(oldEntry.GetAuthorizedKeys(), newEntry.GetAuthorizedKeys(),
-		newSignedEntry.Entry, newSignedEntry.GetSignatures()); err != nil {
+	if err := verifyKeys(ks, newSignedEntry.Entry, newSignedEntry.GetSignatures()); err != nil {
 		return nil, err
 	}
 
@@ -85,16 +93,9 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 
 // verifyKeys verifies both old and new authorized keys based on the following
 // criteria:
-//   1. At least one signature with a key in the previous entry should exist.
-//   2. If prevAuthz is nil, at least one signature with a key from the new
-//   authorized_key set should exist.
-//   3. Signatures with no matching keys are simply ignored.
-func verifyKeys(prevAuthz, authz *tinkpb.Keyset, data []byte, sigs [][]byte) error {
-	ks := prevAuthz
-	if prevAuthz == nil {
-		ks = authz
-	}
-
+//   1. At least one signature with a key in the entry should exist.
+//   2. Signatures with no matching keys are simply ignored.
+func verifyKeys(ks *tinkpb.Keyset, data []byte, sigs [][]byte) error {
 	handle, err := keyset.NewHandleWithNoSecrets(ks)
 	if err != nil {
 		return fmt.Errorf("tink.KeysetHanldeWithNoSecret(new): %v", err)
