@@ -121,6 +121,7 @@ func init() {
 
 	postCmd.PersistentFlags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 	postCmd.PersistentFlags().StringP("secret", "s", "", "Path to client secret json")
+	postCmd.Flags().StringVarP(&keysetFile, "keyset-file", "kf", defaultKeysetFile, "Keyset file name and path")
 	if err := viper.BindPFlag("client-secret", postCmd.PersistentFlags().Lookup("secret")); err != nil {
 		log.Fatalf("%v", err)
 	}
