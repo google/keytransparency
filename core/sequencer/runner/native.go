@@ -16,6 +16,8 @@
 package runner
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 
 	"github.com/google/keytransparency/core/mutator"
@@ -45,7 +47,7 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 
 	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
-		reduceFn(j.Index, j.Msgs, j.Leaves,
+		reduceFn(j.Msgs, j.Leaves,
 			func(e *pb.EntryUpdate) {
 				mapLeaf, err := entry.ToMapLeaf(j.Index, e)
 				if err != nil {
@@ -53,7 +55,7 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 				}
 				ret = append(ret, mapLeaf)
 			},
-			emitErr,
+			func(err error) { emitErr(fmt.Errorf("reduceFn on index %x: %v", j.Index, err)) },
 		)
 	}
 	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))

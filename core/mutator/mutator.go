@@ -55,7 +55,7 @@ type VerifyMutationFn func(mutation *pb.SignedEntry) error
 // idempotent, commutative, and associative. i.e. must produce the same output
 // regardless of input order or grouping, and it must be safe to run multiple
 // times.
-type ReduceMutationFn func(index []byte, msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error))
 
 // MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.

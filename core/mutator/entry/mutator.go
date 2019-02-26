@@ -63,10 +63,10 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 }
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
-func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+func ReduceFn(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error)) {
 	if got := len(leaves); got > 1 {
-		emitErr(fmt.Errorf("expected 0 or 1 map leaf for index %x, got %v", index, got))
+		emitErr(fmt.Errorf("expected 0 or 1 map leaf for got %v", got))
 		return // A bad index should not cause the whole batch to fail.
 	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
@@ -75,7 +75,7 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	}
 
 	if len(msgs) == 0 {
-		emitErr(fmt.Errorf("no msgs for index %x", index))
+		emitErr(errors.New("no msgs"))
 		return // A bad index should not cause the whole batch to fail.
 	}
 
@@ -84,7 +84,7 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	for i, msg := range msgs {
 		newValue, err := MutateFn(oldValue, msg.Mutation)
 		if err != nil {
-			emitErr(fmt.Errorf("entry: ReduceFn(%x, msg %d/%d): %v", index, i, len(msgs)-1, err))
+			emitErr(fmt.Errorf("entry: ReduceFn(msg %d/%d): %v", i, len(msgs)-1, err))
 			continue
 		}
 		newEntries = append(newEntries, &pb.EntryUpdate{
@@ -93,8 +93,8 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 		})
 	}
 	if len(newEntries) == 0 {
-		emitErr(fmt.Errorf("entry: no valid mutations for index %x", index))
-		return // No valid mutations for one index not cause the whole batch to fail.
+		emitErr(errors.New("entry: no valid mutations"))
+		return // No valid mutations for one index should not cause the whole batch to fail.
 	}
 	// Choose the mutation deterministically, regardless of the messages order.
 	sort.Slice(newEntries, func(i, j int) bool {
