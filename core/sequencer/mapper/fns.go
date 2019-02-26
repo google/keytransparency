@@ -19,6 +19,8 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	"github.com/google/keytransparency/core/mutator/entry"
+	tpb "github.com/google/trillian"
 )
 
 // IndexedUpdate is a KV<Index, Update> type.
@@ -27,10 +29,19 @@ type IndexedUpdate struct {
 	Update *pb.EntryUpdate
 }
 
+// MapMapLeaf converts a map leaf into an IndexedUpdate.
+func MapMapLeafFn(leaf *tpb.MapLeaf) (*IndexedUpdate, error) {
+	entryUpdate, err := entry.FromMapLeaf(leaf)
+	if err != nil {
+		return nil, err
+	}
+	return MapUpdateFn(entryUpdate)
+}
+
 // MapUpdateFn converts an update into an IndexedUpdate.
 func MapUpdateFn(msg *pb.EntryUpdate) (*IndexedUpdate, error) {
 	var e pb.Entry
-	if err := proto.Unmarshal(msg.Mutation.Entry, &e); err != nil {
+	if err := proto.Unmarshal(msg.GetMutation().GetEntry(), &e); err != nil {
 		return nil, err
 	}
 	return &IndexedUpdate{

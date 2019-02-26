@@ -22,23 +22,22 @@ import (
 	"github.com/google/keytransparency/core/sequencer/mapper"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tpb "github.com/google/trillian"
 )
 
 func TestJoin(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string
-		leaves []*tpb.MapLeaf
+		leaves []*mapper.IndexedUpdate
 		msgs   []*mapper.IndexedUpdate
 		want   []*Joined
 	}{
 		{
 			desc:   "onerow",
-			leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
+			leaves: []*mapper.IndexedUpdate{{Index: []byte("A"), Update: &pb.EntryUpdate{UserId: "bob"}}},
 			msgs:   []*mapper.IndexedUpdate{{Index: []byte("A"), Update: &pb.EntryUpdate{}}},
 			want: []*Joined{{
 				Index:  []byte("A"),
-				Leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
+				Leaves: []*pb.EntryUpdate{{UserId: "bob"}},
 				Msgs:   []*pb.EntryUpdate{{}},
 			}},
 		},

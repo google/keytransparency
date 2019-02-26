@@ -16,11 +16,42 @@
 package entry
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tpb "github.com/google/trillian"
 )
+
+func FromMapLeaf(leaf *tpb.MapLeaf) (*pb.EntryUpdate, error) {
+	mutation, err := FromLeafValue(leaf.GetLeafValue())
+	if err != nil {
+		return nil, err
+	}
+	var committed pb.Committed
+	if err := proto.Unmarshal(leaf.GetExtraData(), &committed); err != nil {
+		return nil, err
+	}
+	return &pb.EntryUpdate{
+		Mutation:  mutation,
+		Committed: &committed,
+	}, nil
+}
+
+func ToMapLeaf(index []byte, e *pb.EntryUpdate) (*tpb.MapLeaf, error) {
+	// Convert to MapLeaf
+	leafValue, err := ToLeafValue(e.Mutation)
+	if err != nil {
+		return nil, fmt.Errorf("entry: ToLeafValue(): %v", err)
+	}
+	extraData, err := proto.Marshal(e.Committed)
+	if err != nil {
+		return nil, fmt.Errorf("entry: proto.Marshal(): %v", err)
+	}
+	return &tpb.MapLeaf{Index: index, LeafValue: leafValue, ExtraData: extraData}, nil
+}
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
 // Entry or nil if the passes LeafValue was nil.

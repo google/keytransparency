@@ -30,7 +30,6 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
-	tpb "github.com/google/trillian"
 )
 
 // MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
@@ -64,20 +63,15 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 }
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
-func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf,
-	emit func(*tpb.MapLeaf), emitErr func(error)) {
+func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+	emit func(*pb.EntryUpdate), emitErr func(error)) {
 	if got := len(leaves); got > 1 {
 		emitErr(fmt.Errorf("expected 0 or 1 map leaf for index %x, got %v", index, got))
 		return // A bad index should not cause the whole batch to fail.
 	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
-	var err error
 	if len(leaves) > 0 {
-		oldValue, err = FromLeafValue(leaves[0].GetLeafValue())
-		if err != nil {
-			emitErr(fmt.Errorf("entry.FromLeafValue(): %v", err))
-			return // A bad index should not cause the whole batch to fail.
-		}
+		oldValue = leaves[0].Mutation
 	}
 
 	if len(msgs) == 0 {
@@ -108,20 +102,7 @@ func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf,
 		jHash := sha256.Sum256(newEntries[j].GetMutation().GetEntry())
 		return bytes.Compare(iHash[:], jHash[:]) < 0
 	})
-	e := newEntries[0]
-
-	// Convert to MapLeaf
-	leafValue, err := ToLeafValue(e.Mutation)
-	if err != nil {
-		emitErr(fmt.Errorf("entry: ToLeafValue(): %v", err))
-		return // A bad mutation should not cause the entire pipeline to fail.
-	}
-	extraData, err := proto.Marshal(e.Committed)
-	if err != nil {
-		emitErr(fmt.Errorf("entry: proto.Marshal(): %v", err))
-		return // A bad mutation should not cause the entire pipeline to fail.
-	}
-	emit(&tpb.MapLeaf{Index: index, LeafValue: leafValue, ExtraData: extraData})
+	emit(newEntries[0])
 }
 
 // MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the

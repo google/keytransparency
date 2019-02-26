@@ -19,6 +19,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/mapper"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -35,12 +36,23 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 		return nil, err
 	}
 
-	joined := Join(leaves, indexedUpdates)
+	indexedLeaves, err := DoMapMapLeafFn(mapper.MapMapLeafFn, leaves)
+	if err != nil {
+		return nil, err
+	}
+
+	joined := Join(indexedLeaves, indexedUpdates)
 
 	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
 		reduceFn(j.Index, j.Msgs, j.Leaves,
-			func(l *tpb.MapLeaf) { ret = append(ret, l) },
+			func(e *pb.EntryUpdate) {
+				mapLeaf, err := entry.ToMapLeaf(j.Index, e)
+				if err != nil {
+					emitErr(err)
+				}
+				ret = append(ret, mapLeaf)
+			},
 			emitErr,
 		)
 	}
@@ -51,19 +63,19 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 // Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedUpdate.
 type Joined struct {
 	Index  []byte
-	Leaves []*tpb.MapLeaf
+	Leaves []*pb.EntryUpdate
 	Msgs   []*pb.EntryUpdate
 }
 
 // Join pairs up MapLeaves and IndexedUpdates by index.
-func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexedUpdate) []*Joined {
+func Join(leaves []*mapper.IndexedUpdate, msgs []*mapper.IndexedUpdate) []*Joined {
 	joinMap := make(map[string]*Joined)
 	for _, l := range leaves {
 		row, ok := joinMap[string(l.Index)]
 		if !ok {
 			row = &Joined{Index: l.Index}
 		}
-		row.Leaves = append(row.Leaves, l)
+		row.Leaves = append(row.Leaves, l.Update)
 		joinMap[string(l.Index)] = row
 	}
 	for _, m := range msgs {
@@ -88,6 +100,21 @@ type MapUpdateFn func(msg *pb.EntryUpdate) (*mapper.IndexedUpdate, error)
 func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*mapper.IndexedUpdate, error) {
 	outs := make([]*mapper.IndexedUpdate, 0, len(msgs))
 	for _, m := range msgs {
+		out, err := fn(m)
+		if err != nil {
+			return nil, err
+		}
+		outs = append(outs, out)
+	}
+	return outs, nil
+}
+
+// MapMapLeafFn converts an update into an IndexedUpdate.
+type MapMapLeafFn func(*tpb.MapLeaf) (*mapper.IndexedUpdate, error)
+
+func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf) ([]*mapper.IndexedUpdate, error) {
+	outs := make([]*mapper.IndexedUpdate, 0, len(leaves))
+	for _, m := range leaves {
 		out, err := fn(m)
 		if err != nil {
 			return nil, err
