@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -29,6 +30,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
+	tpb "github.com/google/trillian"
 )
 
 // MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
@@ -59,6 +61,67 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 
 	ks := newEntry.GetAuthorizedKeys()
 	return verifyKeys(ks, signedEntry.GetEntry(), signedEntry.GetSignatures())
+}
+
+// ReduceFn decides which of multiple updates can be applied in this revision.
+func ReduceFn(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf,
+	emit func(*tpb.MapLeaf), emitErr func(error)) {
+	if got := len(leaves); got > 1 {
+		emitErr(fmt.Errorf("expected 0 or 1 map leaf for index %x, got %v", index, got))
+		return // A bad index should not cause the whole batch to fail.
+	}
+	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
+	var err error
+	if len(leaves) > 0 {
+		oldValue, err = FromLeafValue(leaves[0].GetLeafValue())
+		if err != nil {
+			emitErr(fmt.Errorf("entry.FromLeafValue(): %v", err))
+			return // A bad index should not cause the whole batch to fail.
+		}
+	}
+
+	if len(msgs) == 0 {
+		emitErr(fmt.Errorf("no msgs for index %x", index))
+		return // A bad index should not cause the whole batch to fail.
+	}
+
+	// Filter for mutations that are valid.
+	newEntries := make([]*pb.EntryUpdate, 0, len(msgs))
+	for i, msg := range msgs {
+		newValue, err := MutateFn(oldValue, msg.Mutation)
+		if err != nil {
+			emitErr(fmt.Errorf("entry: ReduceFn(%x, msg %d/%d): %v", index, i, len(msgs)-1, err))
+			continue
+		}
+		newEntries = append(newEntries, &pb.EntryUpdate{
+			Mutation:  newValue,
+			Committed: msg.Committed,
+		})
+	}
+	if len(newEntries) == 0 {
+		emitErr(fmt.Errorf("entry: no valid mutations for index %x", index))
+		return // No valid mutations for one index not cause the whole batch to fail.
+	}
+	// Choose the mutation deterministically, regardless of the messages order.
+	sort.Slice(newEntries, func(i, j int) bool {
+		iHash := sha256.Sum256(newEntries[i].GetMutation().GetEntry())
+		jHash := sha256.Sum256(newEntries[j].GetMutation().GetEntry())
+		return bytes.Compare(iHash[:], jHash[:]) < 0
+	})
+	e := newEntries[0]
+
+	// Convert to MapLeaf
+	leafValue, err := ToLeafValue(e.Mutation)
+	if err != nil {
+		emitErr(fmt.Errorf("entry: ToLeafValue(): %v", err))
+		return // A bad mutation should not cause the entire pipeline to fail.
+	}
+	extraData, err := proto.Marshal(e.Committed)
+	if err != nil {
+		emitErr(fmt.Errorf("entry: proto.Marshal(): %v", err))
+		return // A bad mutation should not cause the entire pipeline to fail.
+	}
+	emit(&tpb.MapLeaf{Index: index, LeafValue: leafValue, ExtraData: extraData})
 }
 
 // MutateFn verifies that newSignedEntry is a valid mutation for oldSignedEntry and returns the

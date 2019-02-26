@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tpb "github.com/google/trillian"
 )
 
 var (
@@ -50,10 +51,13 @@ var (
 // VerifyMutationFn verifies that a mutation is internally consistent.
 type VerifyMutationFn func(mutation *pb.SignedEntry) error
 
-// ReduceMutationFn takes the existing mapleaf and a new mutation and returns the new value for that map leaf.
-// ReduceMutationFn verifies that this is a valid mutation for this item.
-// ReduceMutationFn must be idempotent.
-type ReduceMutationFn func(existingMapLeafValue, mutation *pb.SignedEntry) (*pb.SignedEntry, error)
+// ReduceMutationFn takes all the mutations for an index and an auxiliary input
+// of existing mapleaf(s) returns a new map leaf.  ReduceMutationFn must be
+// idempotent, commutative, and associative. i.e. must produce the same output
+// regardless of input order or grouping, and it must be safe to run multiple
+// times.
+type ReduceMutationFn func(index []byte, msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf,
+	emit func(*tpb.MapLeaf), emitErr func(error))
 
 // MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.
 type MapLogItemFn func(logItem *LogMessage, emit func(index []byte, mutation *pb.EntryUpdate)) error

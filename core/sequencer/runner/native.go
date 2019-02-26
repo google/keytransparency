@@ -27,8 +27,8 @@ import (
 
 // ApplyMutations takes the set of mutations and applies them to given leaves.
 // Returns a list of map leaves that should be updated.
-func ApplyMutations(mutatorFunc mutator.ReduceMutationFn,
-	msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf) ([]*tpb.MapLeaf, error) {
+func ApplyMutations(reduceFn mutator.ReduceMutationFn,
+	msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emitErr func(error)) ([]*tpb.MapLeaf, error) {
 	// Index the updates.
 	indexedUpdates, err := DoMapUpdateFn(mapper.MapUpdateFn, msgs)
 	if err != nil {
@@ -39,10 +39,10 @@ func ApplyMutations(mutatorFunc mutator.ReduceMutationFn,
 
 	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
-		if err := mapper.ReduceFn(mutatorFunc, j.Index, j.Leaves, j.Msgs,
-			func(l *tpb.MapLeaf) { ret = append(ret, l) }); err != nil {
-			return nil, err
-		}
+		reduceFn(j.Index, j.Msgs, j.Leaves,
+			func(l *tpb.MapLeaf) { ret = append(ret, l) },
+			emitErr,
+		)
 	}
 	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
