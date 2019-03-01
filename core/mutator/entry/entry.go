@@ -16,6 +16,7 @@
 package entry
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/golang/glog"
@@ -25,32 +26,61 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func FromMapLeaf(leaf *tpb.MapLeaf) (*pb.EntryUpdate, error) {
-	mutation, err := FromLeafValue(leaf.GetLeafValue())
-	if err != nil {
-		return nil, err
-	}
-	var committed pb.Committed
-	if err := proto.Unmarshal(leaf.GetExtraData(), &committed); err != nil {
-		return nil, err
-	}
-	return &pb.EntryUpdate{
-		Mutation:  mutation,
-		Committed: &committed,
-	}, nil
+// IndexedValue is a KV<Index, Value> type.
+type IndexedValue struct {
+	Index []byte
+	Value *pb.EntryUpdate
 }
 
-func ToMapLeaf(index []byte, e *pb.EntryUpdate) (*tpb.MapLeaf, error) {
+// Unmarshal parses the contents of leaf and places them in the receiver.
+func (iv *IndexedValue) Unmarshal(leaf *tpb.MapLeaf) error {
+	if iv == nil {
+		return errors.New("entry: nil receiver")
+	}
+
+	mutation, err := FromLeafValue(leaf.GetLeafValue())
+	if err != nil {
+		return err
+	}
+
+	// Don't set committed if there was no data for it.
+	var committed *pb.Committed // nil
+	if leaf.GetExtraData() != nil {
+		val := &pb.Committed{}
+		if err := proto.Unmarshal(leaf.ExtraData, val); err != nil {
+			return err
+		}
+		committed = val
+	}
+	if mutation == nil && committed == nil {
+		*iv = IndexedValue{}
+		return nil
+	}
+	*iv = IndexedValue{
+		Index: leaf.GetIndex(),
+		Value: &pb.EntryUpdate{
+			Mutation:  mutation,
+			Committed: committed,
+		},
+	}
+	return nil
+}
+
+// Marshal converts IndexedValue to a Trillian Map Leaf.
+func (iv *IndexedValue) Marshal() (*tpb.MapLeaf, error) {
+	if iv == nil {
+		return nil, errors.New("entry: nil receiver")
+	}
 	// Convert to MapLeaf
-	leafValue, err := ToLeafValue(e.Mutation)
+	leafValue, err := ToLeafValue(iv.Value.GetMutation())
 	if err != nil {
 		return nil, fmt.Errorf("entry: ToLeafValue(): %v", err)
 	}
-	extraData, err := proto.Marshal(e.Committed)
+	extraData, err := proto.Marshal(iv.Value.GetCommitted())
 	if err != nil {
 		return nil, fmt.Errorf("entry: proto.Marshal(): %v", err)
 	}
-	return &tpb.MapLeaf{Index: index, LeafValue: leafValue, ExtraData: extraData}, nil
+	return &tpb.MapLeaf{Index: iv.Index, LeafValue: leafValue, ExtraData: extraData}, nil
 }
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
