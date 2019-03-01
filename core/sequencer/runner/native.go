@@ -47,7 +47,7 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 
 	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
-		reduceFn(j.Msgs, j.Leaves,
+		reduceFn(j.Values1, j.Values2,
 			func(e *pb.EntryUpdate) {
 				mapLeaf, err := (&entry.IndexedValue{Index: j.Index, Value: e}).Marshal()
 				if err != nil {
@@ -64,9 +64,9 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 
 // Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedValue.
 type Joined struct {
-	Index  []byte
-	Leaves []*pb.EntryUpdate
-	Msgs   []*pb.EntryUpdate
+	Index   []byte
+	Values1 []*pb.EntryUpdate
+	Values2 []*pb.EntryUpdate
 }
 
 // Join pairs up MapLeaves and IndexedValue by index.
@@ -77,7 +77,7 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 		if !ok {
 			row = &Joined{Index: l.Index}
 		}
-		row.Leaves = append(row.Leaves, l.Value)
+		row.Values1 = append(row.Values1, l.Value)
 		joinMap[string(l.Index)] = row
 	}
 	for _, m := range msgs {
@@ -85,7 +85,7 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 		if !ok {
 			row = &Joined{Index: m.Index}
 		}
-		row.Msgs = append(row.Msgs, m.Value)
+		row.Values2 = append(row.Values2, m.Value)
 		joinMap[string(m.Index)] = row
 	}
 	ret := make([]*Joined, 0, len(joinMap))

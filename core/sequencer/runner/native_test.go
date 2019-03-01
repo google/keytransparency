@@ -35,9 +35,9 @@ func TestJoin(t *testing.T) {
 			leaves: []*entry.IndexedValue{{Index: []byte("A"), Value: &pb.EntryUpdate{UserId: "bob"}}},
 			msgs:   []*entry.IndexedValue{{Index: []byte("A"), Value: &pb.EntryUpdate{}}},
 			want: []*Joined{{
-				Index:  []byte("A"),
-				Leaves: []*pb.EntryUpdate{{UserId: "bob"}},
-				Msgs:   []*pb.EntryUpdate{{}},
+				Index:   []byte("A"),
+				Values1: []*pb.EntryUpdate{{UserId: "bob"}},
+				Values2: []*pb.EntryUpdate{{}},
 			}},
 		},
 	} {
