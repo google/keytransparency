@@ -135,7 +135,8 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 	}{
 		{desc: "zero", userIDs: nil},
 		{desc: "one", userIDs: []string{"test"}},
-		{desc: "100", userIDs: genUserIDs(100)},
+		// TODO: Increase batch size once google/trillian#1396 is fixed.
+		{desc: "10", userIDs: genUserIDs(10)},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Update profiles.
@@ -148,14 +149,11 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 				})
 			}
 
-			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
-			defer cancel()
-
-			mutations, err := env.Client.BatchCreateMutation(cctx, users)
+			mutations, err := env.Client.BatchCreateMutation(ctx, users)
 			if err != nil {
 				t.Fatalf("BatchCreateMutation(): %v", err)
 			}
-			if err := env.Client.BatchQueueUserUpdate(cctx, mutations, signers1); err != nil {
+			if err := env.Client.BatchQueueUserUpdate(ctx, mutations, signers1); err != nil {
 				t.Fatalf("BatchQueueUserUpdate(): %v", err)
 			}
 		})
