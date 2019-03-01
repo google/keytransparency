@@ -16,11 +16,72 @@
 package entry
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tpb "github.com/google/trillian"
 )
+
+// IndexedValue is a KV<Index, Value> type.
+type IndexedValue struct {
+	Index []byte
+	Value *pb.EntryUpdate
+}
+
+// Unmarshal parses the contents of leaf and places them in the receiver.
+func (iv *IndexedValue) Unmarshal(leaf *tpb.MapLeaf) error {
+	if iv == nil {
+		return errors.New("entry: nil receiver")
+	}
+
+	mutation, err := FromLeafValue(leaf.GetLeafValue())
+	if err != nil {
+		return err
+	}
+
+	// Don't set committed if there was no data for it.
+	var committed *pb.Committed // nil
+	if leaf.GetExtraData() != nil {
+		val := &pb.Committed{}
+		if err := proto.Unmarshal(leaf.ExtraData, val); err != nil {
+			return err
+		}
+		committed = val
+	}
+	if mutation == nil && committed == nil {
+		*iv = IndexedValue{}
+		return nil
+	}
+	*iv = IndexedValue{
+		Index: leaf.GetIndex(),
+		Value: &pb.EntryUpdate{
+			Mutation:  mutation,
+			Committed: committed,
+		},
+	}
+	return nil
+}
+
+// Marshal converts IndexedValue to a Trillian Map Leaf.
+func (iv *IndexedValue) Marshal() (*tpb.MapLeaf, error) {
+	if iv == nil {
+		return nil, errors.New("entry: nil receiver")
+	}
+	// Convert to MapLeaf
+	leafValue, err := ToLeafValue(iv.Value.GetMutation())
+	if err != nil {
+		return nil, fmt.Errorf("entry: ToLeafValue(): %v", err)
+	}
+	extraData, err := proto.Marshal(iv.Value.GetCommitted())
+	if err != nil {
+		return nil, fmt.Errorf("entry: proto.Marshal(): %v", err)
+	}
+	return &tpb.MapLeaf{Index: iv.Index, LeafValue: leafValue, ExtraData: extraData}, nil
+}
 
 // FromLeafValue takes a trillian.MapLeaf.LeafValue and returns and instantiated
 // Entry or nil if the passes LeafValue was nil.

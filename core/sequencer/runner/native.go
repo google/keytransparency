@@ -16,9 +16,12 @@
 package runner
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/mapper"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -35,35 +38,46 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 		return nil, err
 	}
 
-	joined := Join(leaves, indexedUpdates)
+	indexedLeaves, err := DoMapMapLeafFn(mapper.MapMapLeafFn, leaves)
+	if err != nil {
+		return nil, err
+	}
+
+	joined := Join(indexedLeaves, indexedUpdates)
 
 	ret := make([]*tpb.MapLeaf, 0, len(joined))
 	for _, j := range joined {
-		reduceFn(j.Index, j.Msgs, j.Leaves,
-			func(l *tpb.MapLeaf) { ret = append(ret, l) },
-			emitErr,
+		reduceFn(j.Values1, j.Values2,
+			func(e *pb.EntryUpdate) {
+				mapLeaf, err := (&entry.IndexedValue{Index: j.Index, Value: e}).Marshal()
+				if err != nil {
+					emitErr(err)
+				}
+				ret = append(ret, mapLeaf)
+			},
+			func(err error) { emitErr(fmt.Errorf("reduceFn on index %x: %v", j.Index, err)) },
 		)
 	}
 	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
 	return ret, nil
 }
 
-// Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedUpdate.
+// Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedValue.
 type Joined struct {
-	Index  []byte
-	Leaves []*tpb.MapLeaf
-	Msgs   []*pb.EntryUpdate
+	Index   []byte
+	Values1 []*pb.EntryUpdate
+	Values2 []*pb.EntryUpdate
 }
 
-// Join pairs up MapLeaves and IndexedUpdates by index.
-func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexedUpdate) []*Joined {
+// Join pairs up MapLeaves and IndexedValue by index.
+func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 	joinMap := make(map[string]*Joined)
 	for _, l := range leaves {
 		row, ok := joinMap[string(l.Index)]
 		if !ok {
 			row = &Joined{Index: l.Index}
 		}
-		row.Leaves = append(row.Leaves, l)
+		row.Values1 = append(row.Values1, l.Value)
 		joinMap[string(l.Index)] = row
 	}
 	for _, m := range msgs {
@@ -71,7 +85,7 @@ func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexedUpdate) []*Joined {
 		if !ok {
 			row = &Joined{Index: m.Index}
 		}
-		row.Msgs = append(row.Msgs, m.Update)
+		row.Values2 = append(row.Values2, m.Value)
 		joinMap[string(m.Index)] = row
 	}
 	ret := make([]*Joined, 0, len(joinMap))
@@ -81,13 +95,28 @@ func Join(leaves []*tpb.MapLeaf, msgs []*mapper.IndexedUpdate) []*Joined {
 	return ret
 }
 
-// MapUpdateFn converts an update into an IndexedUpdate.
-type MapUpdateFn func(msg *pb.EntryUpdate) (*mapper.IndexedUpdate, error)
+// MapUpdateFn converts an update into an IndexedValue.
+type MapUpdateFn func(msg *pb.EntryUpdate) (*entry.IndexedValue, error)
 
 // DoMapUpdateFn runs the MapUpdateFn on each element of msgs.
-func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*mapper.IndexedUpdate, error) {
-	outs := make([]*mapper.IndexedUpdate, 0, len(msgs))
+func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*entry.IndexedValue, error) {
+	outs := make([]*entry.IndexedValue, 0, len(msgs))
 	for _, m := range msgs {
+		out, err := fn(m)
+		if err != nil {
+			return nil, err
+		}
+		outs = append(outs, out)
+	}
+	return outs, nil
+}
+
+// MapMapLeafFn converts an update into an IndexedValue.
+type MapMapLeafFn func(*tpb.MapLeaf) (*entry.IndexedValue, error)
+
+func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf) ([]*entry.IndexedValue, error) {
+	outs := make([]*entry.IndexedValue, 0, len(leaves))
+	for _, m := range leaves {
 		out, err := fn(m)
 		if err != nil {
 			return nil, err

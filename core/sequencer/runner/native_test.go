@@ -18,28 +18,26 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-
-	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tpb "github.com/google/trillian"
 )
 
 func TestJoin(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string
-		leaves []*tpb.MapLeaf
-		msgs   []*mapper.IndexedUpdate
+		leaves []*entry.IndexedValue
+		msgs   []*entry.IndexedValue
 		want   []*Joined
 	}{
 		{
 			desc:   "onerow",
-			leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
-			msgs:   []*mapper.IndexedUpdate{{Index: []byte("A"), Update: &pb.EntryUpdate{}}},
+			leaves: []*entry.IndexedValue{{Index: []byte("A"), Value: &pb.EntryUpdate{UserId: "bob"}}},
+			msgs:   []*entry.IndexedValue{{Index: []byte("A"), Value: &pb.EntryUpdate{}}},
 			want: []*Joined{{
-				Index:  []byte("A"),
-				Leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
-				Msgs:   []*pb.EntryUpdate{{}},
+				Index:   []byte("A"),
+				Values1: []*pb.EntryUpdate{{UserId: "bob"}},
+				Values2: []*pb.EntryUpdate{{}},
 			}},
 		},
 	} {
