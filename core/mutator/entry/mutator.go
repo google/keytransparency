@@ -71,7 +71,7 @@ func ReduceFn(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
 	if len(leaves) > 0 {
-		oldValue = leaves[0].Mutation
+		oldValue = leaves[0].GetMutation()
 	}
 
 	if len(msgs) == 0 {

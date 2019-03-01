@@ -17,35 +17,29 @@ package mapper
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	"github.com/google/keytransparency/core/mutator/entry"
 	tpb "github.com/google/trillian"
 )
 
-// IndexedUpdate is a KV<Index, Update> type.
-type IndexedUpdate struct {
-	Index  []byte
-	Update *pb.EntryUpdate
-}
-
-// MapMapLeaf converts a map leaf into an IndexedUpdate.
-func MapMapLeafFn(leaf *tpb.MapLeaf) (*IndexedUpdate, error) {
-	entryUpdate, err := entry.FromMapLeaf(leaf)
-	if err != nil {
+// MapMapLeaf converts a map leaf into an entry.IndexedValue.
+func MapMapLeafFn(leaf *tpb.MapLeaf) (*entry.IndexedValue, error) {
+	iv := &entry.IndexedValue{}
+	if err := iv.Unmarshal(leaf); err != nil {
 		return nil, err
 	}
-	return MapUpdateFn(entryUpdate)
+	return iv, nil
 }
 
-// MapUpdateFn converts an update into an IndexedUpdate.
-func MapUpdateFn(msg *pb.EntryUpdate) (*IndexedUpdate, error) {
+// MapUpdateFn converts an update into an entry.IndexedValue.
+func MapUpdateFn(msg *pb.EntryUpdate) (*entry.IndexedValue, error) {
 	var e pb.Entry
 	if err := proto.Unmarshal(msg.GetMutation().GetEntry(), &e); err != nil {
 		return nil, err
 	}
-	return &IndexedUpdate{
-		Index:  e.Index,
-		Update: msg,
+	return &entry.IndexedValue{
+		Index: e.Index,
+		Value: msg,
 	}, nil
 }

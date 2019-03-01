@@ -49,7 +49,7 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 	for _, j := range joined {
 		reduceFn(j.Msgs, j.Leaves,
 			func(e *pb.EntryUpdate) {
-				mapLeaf, err := entry.ToMapLeaf(j.Index, e)
+				mapLeaf, err := (&entry.IndexedValue{Index: j.Index, Value: e}).Marshal()
 				if err != nil {
 					emitErr(err)
 				}
@@ -62,22 +62,22 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 	return ret, nil
 }
 
-// Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedUpdate.
+// Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedValue.
 type Joined struct {
 	Index  []byte
 	Leaves []*pb.EntryUpdate
 	Msgs   []*pb.EntryUpdate
 }
 
-// Join pairs up MapLeaves and IndexedUpdates by index.
-func Join(leaves []*mapper.IndexedUpdate, msgs []*mapper.IndexedUpdate) []*Joined {
+// Join pairs up MapLeaves and IndexedValue by index.
+func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 	joinMap := make(map[string]*Joined)
 	for _, l := range leaves {
 		row, ok := joinMap[string(l.Index)]
 		if !ok {
 			row = &Joined{Index: l.Index}
 		}
-		row.Leaves = append(row.Leaves, l.Update)
+		row.Leaves = append(row.Leaves, l.Value)
 		joinMap[string(l.Index)] = row
 	}
 	for _, m := range msgs {
@@ -85,7 +85,7 @@ func Join(leaves []*mapper.IndexedUpdate, msgs []*mapper.IndexedUpdate) []*Joine
 		if !ok {
 			row = &Joined{Index: m.Index}
 		}
-		row.Msgs = append(row.Msgs, m.Update)
+		row.Msgs = append(row.Msgs, m.Value)
 		joinMap[string(m.Index)] = row
 	}
 	ret := make([]*Joined, 0, len(joinMap))
@@ -95,12 +95,12 @@ func Join(leaves []*mapper.IndexedUpdate, msgs []*mapper.IndexedUpdate) []*Joine
 	return ret
 }
 
-// MapUpdateFn converts an update into an IndexedUpdate.
-type MapUpdateFn func(msg *pb.EntryUpdate) (*mapper.IndexedUpdate, error)
+// MapUpdateFn converts an update into an IndexedValue.
+type MapUpdateFn func(msg *pb.EntryUpdate) (*entry.IndexedValue, error)
 
 // DoMapUpdateFn runs the MapUpdateFn on each element of msgs.
-func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*mapper.IndexedUpdate, error) {
-	outs := make([]*mapper.IndexedUpdate, 0, len(msgs))
+func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*entry.IndexedValue, error) {
+	outs := make([]*entry.IndexedValue, 0, len(msgs))
 	for _, m := range msgs {
 		out, err := fn(m)
 		if err != nil {
@@ -111,11 +111,11 @@ func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*mapper.IndexedUpd
 	return outs, nil
 }
 
-// MapMapLeafFn converts an update into an IndexedUpdate.
-type MapMapLeafFn func(*tpb.MapLeaf) (*mapper.IndexedUpdate, error)
+// MapMapLeafFn converts an update into an IndexedValue.
+type MapMapLeafFn func(*tpb.MapLeaf) (*entry.IndexedValue, error)
 
-func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf) ([]*mapper.IndexedUpdate, error) {
-	outs := make([]*mapper.IndexedUpdate, 0, len(leaves))
+func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf) ([]*entry.IndexedValue, error) {
+	outs := make([]*entry.IndexedValue, 0, len(leaves))
 	for _, m := range leaves {
 		out, err := fn(m)
 		if err != nil {
