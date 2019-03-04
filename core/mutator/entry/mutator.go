@@ -63,7 +63,7 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 }
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
-func ReduceFn(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error)) {
 	if got := len(leaves); got > 1 {
 		emitErr(fmt.Errorf("expected 0 or 1 map leaf for got %v", got))
@@ -82,14 +82,14 @@ func ReduceFn(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	// Filter for mutations that are valid.
 	newEntries := make([]*pb.EntryUpdate, 0, len(msgs))
 	for i, msg := range msgs {
-		newValue, err := MutateFn(oldValue, msg.Mutation)
+		newValue, err := MutateFn(oldValue, msg.GetMutation())
 		if err != nil {
 			emitErr(fmt.Errorf("entry: ReduceFn(msg %d/%d): %v", i, len(msgs)-1, err))
 			continue
 		}
 		newEntries = append(newEntries, &pb.EntryUpdate{
 			Mutation:  newValue,
-			Committed: msg.Committed,
+			Committed: msg.GetCommitted(),
 		})
 	}
 	if len(newEntries) == 0 {
