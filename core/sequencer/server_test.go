@@ -275,8 +275,12 @@ func TestRaceCondition(t *testing.T) {
 	mapRev := int64(0)
 	for i, data := range []string{"data1", "data2"} {
 		m := entry.NewMutation(index, directoryID, userID)
-		m.SetCommitment([]byte(data))
-		m.ReplaceAuthorizedKeys(authorizedKeys.Keyset())
+		if err := m.SetCommitment([]byte(data)); err != nil {
+			t.Fatalf("%v", err)
+		}
+		if err := m.ReplaceAuthorizedKeys(authorizedKeys.Keyset()); err != nil {
+			t.Fatalf("%v", err)
+		}
 		update, err := m.SerializeAndSign([]tink.Signer{signer})
 		if err != nil {
 			t.Fatalf("SerializeAndSign(): %v", err)
@@ -293,7 +297,7 @@ func TestRaceCondition(t *testing.T) {
 		batcher: &fakeBatcher{
 			highestRev: mapRev,
 			batches: map[int64]*spb.MapMetadata{
-				1: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+				1: {Sources: []*spb.MapMetadata_SourceSlice{
 					{LogId: 0, HighestExclusive: 2},
 				}},
 			},
