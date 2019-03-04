@@ -119,8 +119,18 @@ type fakeMapConn struct {
 	tpb.TrillianMapClient
 }
 
-func (m *fakeMapConn) GetLeavesByRevision(_ context.Context, _ *tpb.GetMapLeavesByRevisionRequest, _ ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
+func (m *fakeMapConn) GetLeavesByRevision(_ context.Context, in *tpb.GetMapLeavesByRevisionRequest, _ ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
+	set := make(map[string]bool)
+	for _, i := range in.Index {
+		if set[string(i)] {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"map.GetLeaves(): index %x requested more than once", i)
+		}
+		set[string(i)] = true
+	}
+
+	// Return a unique error here so the test can verify success.
+	return nil, status.Errorf(codes.Unimplemented, "Success! No Duplicates")
 }
 
 func TestDefineRevisions(t *testing.T) {
@@ -258,7 +268,7 @@ func TestDuplicateUpdates(t *testing.T) {
 	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
 	ks, err := keyset.NewHandle(signature.ECDSAP256KeyTemplate())
 	if err != nil {
-		t.Fatalf("signature.NewHandle(): %v", err)
+		t.Fatalf("keyset.NewHandle(): %v", err)
 	}
 	signer, err := signature.NewSigner(ks)
 	if err != nil {
@@ -276,10 +286,10 @@ func TestDuplicateUpdates(t *testing.T) {
 	for i, data := range []string{"data1", "data2"} {
 		m := entry.NewMutation(index, directoryID, userID)
 		if err := m.SetCommitment([]byte(data)); err != nil {
-			t.Fatalf("%v", err)
+			t.Fatalf("SetCommitment(): %v", err)
 		}
 		if err := m.ReplaceAuthorizedKeys(authorizedKeys.Keyset()); err != nil {
-			t.Fatalf("%v", err)
+			t.Fatalf("ReplaceAuthorizedKeys(): %v", err)
 		}
 		update, err := m.SerializeAndSign([]tink.Signer{signer})
 		if err != nil {
@@ -297,9 +307,7 @@ func TestDuplicateUpdates(t *testing.T) {
 		batcher: &fakeBatcher{
 			highestRev: mapRev,
 			batches: map[int64]*spb.MapMetadata{
-				1: {Sources: []*spb.MapMetadata_SourceSlice{
-					{LogId: 0, HighestExclusive: 2},
-				}},
+				1: {Sources: []*spb.MapMetadata_SourceSlice{{LogId: 0, HighestExclusive: 2}}},
 			},
 		},
 		trillian: &fakeTrillianFactory{
