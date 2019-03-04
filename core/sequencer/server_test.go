@@ -16,14 +16,19 @@ package sequencer
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/tink/go/keyset"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -88,16 +93,22 @@ func (m *fakeMap) GetAndVerifyLatestMapRoot(_ context.Context) (*tpb.SignedMapRo
 
 type fakeBatcher struct {
 	highestRev int64
+	batches    map[int64]*spb.MapMetadata
 }
 
 func (b *fakeBatcher) HighestRev(_ context.Context, _ string) (int64, error) {
 	return b.highestRev, nil
 }
-func (b *fakeBatcher) WriteBatchSources(_ context.Context, _ string, _ int64, _ *spb.MapMetadata) error {
+func (b *fakeBatcher) WriteBatchSources(_ context.Context, _ string, rev int64, meta *spb.MapMetadata) error {
+	b.batches[rev] = meta
 	return nil
 }
-func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, _ int64) (*spb.MapMetadata, error) {
-	return &spb.MapMetadata{}, nil
+func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, rev int64) (*spb.MapMetadata, error) {
+	meta, ok := b.batches[rev]
+	if !ok {
+		return nil, fmt.Errorf("batch %v not found", rev)
+	}
+	return meta, nil
 }
 
 func TestDefineRevisions(t *testing.T) {
@@ -126,7 +137,7 @@ func TestDefineRevisions(t *testing.T) {
 		{desc: "lagging", highestRev: mapRev + 3, want: []int64{mapRev + 1, mapRev + 2, mapRev + 3}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			s.batcher = &fakeBatcher{highestRev: tc.highestRev}
+			s.batcher = &fakeBatcher{highestRev: tc.highestRev, batches: make(map[int64]*spb.MapMetadata)}
 			got, err := s.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
 				DirectoryId: directoryID,
 				MinBatch:    1,
@@ -227,5 +238,59 @@ func TestHighWatermarks(t *testing.T) {
 				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, &tc.next))
 			}
 		})
+	}
+}
+
+func TestRaceCondition(t *testing.T) {
+	ctx := context.Background()
+	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
+	ks, err := keyset.NewHandle(signature.ECDSAP256KeyTemplate())
+	if err != nil {
+		t.Fatalf("signature.NewHandle(): %v", err)
+	}
+	signer, err := signature.NewSigner(ks)
+	if err != nil {
+		t.Fatalf("signature.NewSigner(): %v", err)
+	}
+	authorizedKeys, err := ks.Public()
+	if err != nil {
+		t.Fatalf("Failed to setup tink keyset: %v", err)
+	}
+
+	index := []byte("index")
+	userID := "userID"
+	log0 := []mutator.LogMessage{}
+	mapRev := int64(0)
+	for i, data := range []string{"data1", "data2"} {
+		m := entry.NewMutation(index, directoryID, userID)
+		m.SetCommitment([]byte(data))
+		m.ReplaceAuthorizedKeys(authorizedKeys.Keyset())
+		update, err := m.SerializeAndSign([]tink.Signer{signer})
+		if err != nil {
+			t.Fatalf("SerializeAndSign(): %v", err)
+		}
+		log0 = append(log0, mutator.LogMessage{ID: int64(i), Mutation: update.Mutation, ExtraData: update.Committed})
+	}
+
+	s := Server{
+		logs: fakeLogs{0: log0},
+		batcher: &fakeBatcher{
+			highestRev: mapRev,
+			batches: map[int64]*spb.MapMetadata{
+				1: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+					{LogId: 0, HighestExclusive: 2},
+				}},
+			},
+		},
+		trillian: &fakeTrillianFactory{
+			tmap: &fakeMap{latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)}},
+		},
+	}
+
+	if _, err := s.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
+		DirectoryId: directoryID,
+		Revision:    1,
+	}); err != nil {
+		t.Fatalf("ApplyRevision(): %v", err)
 	}
 }
