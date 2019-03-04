@@ -299,7 +299,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	for _, iv := range indexedValues {
 		groupByIndex[string(iv.Index)] = true
 	}
-	indexes := make([][]byte, 0, len(indexedValues))
+	indexes := make([][]byte, 0, len(groupByIndex))
 	for i := range groupByIndex {
 		indexes = append(indexes, []byte(i))
 	}
