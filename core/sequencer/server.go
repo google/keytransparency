@@ -295,9 +295,13 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Collect Indexes.
-	indexes := make([][]byte, 0, len(indexedValues))
+	groupByIndex := make(map[string]bool)
 	for _, iv := range indexedValues {
-		indexes = append(indexes, iv.Index)
+		groupByIndex[string(iv.Index)] = true
+	}
+	indexes := make([][]byte, 0, len(indexedValues))
+	for i := range groupByIndex {
+		indexes = append(indexes, []byte(i))
 	}
 
 	// Read Map.
