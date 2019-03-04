@@ -26,12 +26,16 @@ import (
 	"github.com/google/tink/go/tink"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
+	tclient "github.com/google/trillian/client"
 )
 
 const directoryID = "directoryID"
@@ -109,6 +113,14 @@ func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, rev int64) (*spb.Ma
 		return nil, fmt.Errorf("batch %v not found", rev)
 	}
 	return meta, nil
+}
+
+type fakeMapConn struct {
+	tpb.TrillianMapClient
+}
+
+func (m *fakeMapConn) GetLeavesByRevision(_ context.Context, _ *tpb.GetMapLeavesByRevisionRequest, _ ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "unimplemented")
 }
 
 func TestDefineRevisions(t *testing.T) {
@@ -269,7 +281,11 @@ func TestRaceCondition(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SerializeAndSign(): %v", err)
 		}
-		log0 = append(log0, mutator.LogMessage{ID: int64(i), Mutation: update.Mutation, ExtraData: update.Committed})
+		log0 = append(log0, mutator.LogMessage{
+			ID:        int64(i),
+			Mutation:  update.Mutation,
+			ExtraData: update.Committed},
+		)
 	}
 
 	s := Server{
@@ -283,14 +299,17 @@ func TestRaceCondition(t *testing.T) {
 			},
 		},
 		trillian: &fakeTrillianFactory{
-			tmap: &fakeMap{latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)}},
+			tmap: &fakeMap{
+				MapClient:     MapClient{&tclient.MapClient{Conn: &fakeMapConn{}}},
+				latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)},
+			},
 		},
 	}
 
 	if _, err := s.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
 		DirectoryId: directoryID,
 		Revision:    1,
-	}); err != nil {
+	}); status.Code(err) != codes.Unimplemented {
 		t.Fatalf("ApplyRevision(): %v", err)
 	}
 }
