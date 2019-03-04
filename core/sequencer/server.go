@@ -32,7 +32,6 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -289,31 +288,30 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
+	// Map Log Items
+	indexedValues, err := runner.DoMapLogItemsFn(entry.MapLogItemFn, msgs)
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse mutations using the mutator for this directory.
-	indexes := make([][]byte, 0, len(msgs))
-	mutations := make([]*ktpb.EntryUpdate, 0, len(msgs))
-	for _, m := range msgs {
-		if err := entry.MapLogItemFn(m, func(index []byte, mutation *ktpb.EntryUpdate) {
-			indexes = append(indexes, index)
-			mutations = append(mutations, mutation)
-		}); err != nil {
-			return nil, err
-		}
-
+	// Collect Indexes.
+	indexes := make([][]byte, 0, len(indexedValues))
+	for _, iv := range indexedValues {
+		indexes = append(indexes, iv.Index)
 	}
 
+	// Read Map.
+	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
+	if err != nil {
+		return nil, err
+	}
 	leaves, err := mapClient.GetAndVerifyMapLeavesByRevision(ctx, in.Revision-1, indexes)
 	if err != nil {
 		return nil, err
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := runner.ApplyMutations(entry.ReduceFn, mutations, leaves,
+	newLeaves, err := runner.ApplyMutations(entry.ReduceFn, indexedValues, leaves,
 		func(err error) { glog.Warning(err); mutationFailures.Inc(err.Error()) },
 	)
 	if err != nil {
@@ -344,7 +342,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	return &spb.ApplyRevisionResponse{
 		DirectoryId: in.DirectoryId,
 		Revision:    in.Revision,
-		Mutations:   int64(len(mutations)),
+		Mutations:   int64(len(indexedValues)),
 		MapLeaves:   int64(len(newLeaves)),
 	}, nil
 }
