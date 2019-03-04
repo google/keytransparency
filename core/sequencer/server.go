@@ -294,9 +294,11 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
-	// Group By Index.
 	// Collect Indexes.
-	indexes := [][]byte{}
+	indexes := make([][]byte, 0, len(indexedValues))
+	for _, iv := range indexedValues {
+		indexes = append(indexes, iv.Index)
+	}
 
 	// Read Map.
 	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
