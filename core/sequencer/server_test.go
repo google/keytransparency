@@ -253,7 +253,7 @@ func TestHighWatermarks(t *testing.T) {
 	}
 }
 
-func TestRaceCondition(t *testing.T) {
+func TestDuplicateUpdates(t *testing.T) {
 	ctx := context.Background()
 	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
 	ks, err := keyset.NewHandle(signature.ECDSAP256KeyTemplate())
