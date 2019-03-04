@@ -31,12 +31,7 @@ import (
 // ApplyMutations takes the set of mutations and applies them to given leaves.
 // Returns a list of map leaves that should be updated.
 func ApplyMutations(reduceFn mutator.ReduceMutationFn,
-	msgs []*pb.EntryUpdate, leaves []*tpb.MapLeaf, emitErr func(error)) ([]*tpb.MapLeaf, error) {
-	// Index the updates.
-	indexedUpdates, err := DoMapUpdateFn(mapper.MapUpdateFn, msgs)
-	if err != nil {
-		return nil, err
-	}
+	indexedUpdates []*entry.IndexedValue, leaves []*tpb.MapLeaf, emitErr func(error)) ([]*tpb.MapLeaf, error) {
 
 	indexedLeaves, err := DoMapMapLeafFn(mapper.MapMapLeafFn, leaves)
 	if err != nil {
@@ -58,7 +53,7 @@ func ApplyMutations(reduceFn mutator.ReduceMutationFn,
 			func(err error) { emitErr(fmt.Errorf("reduceFn on index %x: %v", j.Index, err)) },
 		)
 	}
-	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(msgs), len(leaves))
+	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(indexedUpdates), len(leaves))
 	return ret, nil
 }
 
@@ -95,18 +90,15 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 	return ret
 }
 
-// MapUpdateFn converts an update into an IndexedValue.
-type MapUpdateFn func(msg *pb.EntryUpdate) (*entry.IndexedValue, error)
-
-// DoMapUpdateFn runs the MapUpdateFn on each element of msgs.
-func DoMapUpdateFn(fn MapUpdateFn, msgs []*pb.EntryUpdate) ([]*entry.IndexedValue, error) {
+// DoMapLogItemsFn runs the MapLogItemsFn on each element of msgs.
+func DoMapLogItemsFn(fn mutator.MapLogItemFn, msgs []*mutator.LogMessage) ([]*entry.IndexedValue, error) {
 	outs := make([]*entry.IndexedValue, 0, len(msgs))
 	for _, m := range msgs {
-		out, err := fn(m)
-		if err != nil {
+		if err := fn(m, func(index []byte, value *pb.EntryUpdate) {
+			outs = append(outs, &entry.IndexedValue{Index: index, Value: value})
+		}); err != nil {
 			return nil, err
 		}
-		outs = append(outs, out)
 	}
 	return outs, nil
 }
