@@ -63,7 +63,7 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 }
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
-func ReduceFn(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error)) {
 	if got := len(leaves); got > 1 {
 		emitErr(fmt.Errorf("expected 0 or 1 map leaf for got %v", got))
