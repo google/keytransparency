@@ -23,6 +23,8 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
+func fakeMetricFn(label string) {}
+
 func TestJoin(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string
@@ -42,7 +44,7 @@ func TestJoin(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got := Join(tc.leaves, tc.msgs)
+			got := Join(tc.leaves, tc.msgs, fakeMetricFn)
 			if !cmp.Equal(got, tc.want) {
 				t.Errorf("Join(): %v, want %v\n diff: %v",
 					got, tc.want, cmp.Diff(got, tc.want))

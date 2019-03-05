@@ -43,6 +43,8 @@ import (
 
 const directoryID = "directoryID"
 
+func fakeMetric(_ string) {}
+
 type fakeLogs map[int64][]mutator.LogMessage
 
 func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
@@ -200,8 +202,8 @@ func TestReadMessages(t *testing.T) {
 			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
 		}}},
 	} {
-		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta)
-		logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize)
+		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta, fakeMetric)
+		logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize, fakeMetric)
 		if err != nil {
 			t.Errorf("readMessages(): %v", err)
 		}
