@@ -289,10 +289,9 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Map Log Items
-	indexedValues, err := runner.DoMapLogItemsFn(entry.MapLogItemFn, msgs)
-	if err != nil {
-		return nil, err
-	}
+	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, msgs,
+		func(err error) { glog.Warning(err); mutationFailures.Inc(err.Error()) },
+	)
 
 	// Collect Indexes.
 	groupByIndex := make(map[string]bool)

@@ -33,16 +33,17 @@ import (
 )
 
 // MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
-func MapLogItemFn(m *mutator.LogMessage, emit func(index []byte, mutation *pb.EntryUpdate)) error {
+func MapLogItemFn(m *mutator.LogMessage,
+	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(error)) {
 	var entry pb.Entry
 	if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
-		return err
+		emitErr(err)
+		return
 	}
 	emit(entry.Index, &pb.EntryUpdate{
 		Mutation:  m.Mutation,
 		Committed: m.ExtraData,
 	})
-	return nil
 }
 
 // IsValidEntry checks the internal consistency and correctness of a mutation.
