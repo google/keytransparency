@@ -121,8 +121,12 @@ func DoReadFn(ctx context.Context, fn ReadSliceFn, slices []*spb.MapMetadata_Sou
 	return outs, nil
 }
 
+// MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.
+type MapLogItemFn func(logItem *mutator.LogMessage,
+	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(error))
+
 // DoMapLogItemsFn runs the MapLogItemsFn on each element of msgs.
-func DoMapLogItemsFn(fn mutator.MapLogItemFn, msgs []*mutator.LogMessage, emitErr func(error)) []*entry.IndexedValue {
+func DoMapLogItemsFn(fn MapLogItemFn, msgs []*mutator.LogMessage, emitErr func(error)) []*entry.IndexedValue {
 	outs := make([]*entry.IndexedValue, 0, len(msgs))
 	for _, m := range msgs {
 		fn(m,

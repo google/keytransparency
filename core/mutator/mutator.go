@@ -58,10 +58,6 @@ type VerifyMutationFn func(mutation *pb.SignedEntry) error
 type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error))
 
-// MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.
-type MapLogItemFn func(logItem *LogMessage,
-	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(error))
-
 // LogMessage represents a change to a user, and associated data.
 type LogMessage struct {
 	ID        int64
