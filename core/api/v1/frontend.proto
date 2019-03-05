@@ -44,7 +44,7 @@ service KeyTransparencyFrontend {
   rpc QueueKeyUpdate(QueueKeyUpdateRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/v1/directories/{directory_id}/users/{user_id}"
-      body: "key_data"
+      body: "*"
     };
   }
 }
