@@ -98,7 +98,7 @@ func DoMapLogItemsFn(fn mutator.MapLogItemFn, msgs []*mutator.LogMessage, emitEr
 			func(index []byte, value *pb.EntryUpdate) {
 				outs = append(outs, &entry.IndexedValue{Index: index, Value: value})
 			},
-			func(err error) { emitErr(fmt.Errorf("DoMapLogItems: %v", err)) },
+			func(err error) { emitErr(fmt.Errorf("mapLogItemFn: %v", err)) },
 		)
 	}
 	return outs
