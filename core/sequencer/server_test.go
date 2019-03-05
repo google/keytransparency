@@ -33,9 +33,9 @@ import (
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-
 	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/runner"
+
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 	tclient "github.com/google/trillian/client"
