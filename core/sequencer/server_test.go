@@ -34,6 +34,8 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
+	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/runner"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 	tclient "github.com/google/trillian/client"
@@ -198,11 +200,12 @@ func TestReadMessages(t *testing.T) {
 			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
 		}}},
 	} {
-		msgs, err := s.readMessages(ctx, directoryID, tc.meta, tc.batchSize)
-		if err != nil {
-			t.Errorf("readMessages(): %v", err)
-		}
-		if got := len(msgs); got != tc.want {
+
+		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta)
+		logItems := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize,
+			func(err error) { t.Errorf("readMessages(): %v", err) },
+		)
+		if got := len(logItems); got != tc.want {
 			t.Errorf("readMessages(): len: %v, want %v", got, tc.want)
 		}
 	}

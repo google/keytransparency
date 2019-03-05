@@ -16,6 +16,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/golang/glog"
@@ -91,8 +92,29 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 	return ret
 }
 
+// ReadSliceFn emits the log messages referenced by slice.
+type ReadSliceFn func(ctx context.Context, slice *spb.MapMetadata_SourceSlice,
+	directoryID string, chunkSize int32,
+	emit func(*mutator.LogMessage), emitErr func(error))
+
+// DoReadFn runs ReadSliceFn on every source slice and collects the outputs.
+func DoReadFn(ctx context.Context, fn ReadSliceFn, slices []*spb.MapMetadata_SourceSlice,
+	directoryID string, chunkSize int32,
+	emitErr func(error)) []*mutator.LogMessage {
+	outs := make([]*mutator.LogMessage, 0, len(slices))
+	for _, s := range slices {
+		fn(ctx, s, directoryID, chunkSize,
+			func(msg *mutator.LogMessage) { outs = append(outs, msg) },
+			emitErr,
+		)
+	}
+	return outs
+}
+
+// MapMetaFn emits a source slice for every map slice.
 type MapMetaFn func(meta *spb.MapMetadata, emit func(*spb.MapMetadata_SourceSlice))
 
+// DoMapMetaFn runs MapMetaFn on meta and collects the outputs.
 func DoMapMetaFn(fn MapMetaFn, meta *spb.MapMetadata) []*spb.MapMetadata_SourceSlice {
 	outs := make([]*spb.MapMetadata_SourceSlice, 0, 1)
 	fn(meta,
