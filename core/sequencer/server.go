@@ -327,6 +327,10 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
+	// Verify that we are still master.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	// Set new leaf values.
 	mapRoot, err := mapClient.SetLeavesAtRevision(ctx, in.Revision, newLeaves, metadata)
 	if err != nil {
