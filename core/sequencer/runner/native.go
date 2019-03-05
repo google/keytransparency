@@ -91,16 +91,17 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 }
 
 // DoMapLogItemsFn runs the MapLogItemsFn on each element of msgs.
-func DoMapLogItemsFn(fn mutator.MapLogItemFn, msgs []*mutator.LogMessage) ([]*entry.IndexedValue, error) {
+func DoMapLogItemsFn(fn mutator.MapLogItemFn, msgs []*mutator.LogMessage, emitErr func(error)) []*entry.IndexedValue {
 	outs := make([]*entry.IndexedValue, 0, len(msgs))
 	for _, m := range msgs {
-		if err := fn(m, func(index []byte, value *pb.EntryUpdate) {
-			outs = append(outs, &entry.IndexedValue{Index: index, Value: value})
-		}); err != nil {
-			return nil, err
-		}
+		fn(m,
+			func(index []byte, value *pb.EntryUpdate) {
+				outs = append(outs, &entry.IndexedValue{Index: index, Value: value})
+			},
+			func(err error) { emitErr(fmt.Errorf("DoMapLogItems: %v", err)) },
+		)
 	}
-	return outs, nil
+	return outs
 }
 
 // MapMapLeafFn converts an update into an IndexedValue.
