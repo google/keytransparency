@@ -325,9 +325,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	joined := runner.Join(indexedLeaves, indexedValues)
 
 	// Apply mutations to values.
-	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined,
-		func(err error) { glog.Warning(err); mutationFailures.Inc(err.Error()) },
-	)
+	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined, emitErrFn)
 	glog.V(2).Infof("DoReduceFn reduced %v values on %v indexes", len(indexedValues), len(joined))
 
 	// Map IndexedValues
