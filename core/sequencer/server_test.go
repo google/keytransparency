@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -119,6 +120,8 @@ type fakeMapConn struct {
 	tpb.TrillianMapClient
 }
 
+var errSuccess = status.Errorf(codes.Unimplemented, "Success! No Duplicates. Shortcut return")
+
 func (m *fakeMapConn) GetLeavesByRevision(_ context.Context, in *tpb.GetMapLeavesByRevisionRequest, _ ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
 	set := make(map[string]bool)
 	for _, i := range in.Index {
@@ -130,7 +133,7 @@ func (m *fakeMapConn) GetLeavesByRevision(_ context.Context, in *tpb.GetMapLeave
 	}
 
 	// Return a unique error here so the test can verify success.
-	return nil, status.Errorf(codes.Unimplemented, "Success! No Duplicates")
+	return nil, errSuccess
 }
 
 func TestDefineRevisions(t *testing.T) {
@@ -321,7 +324,7 @@ func TestDuplicateUpdates(t *testing.T) {
 	if _, err := s.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
 		DirectoryId: directoryID,
 		Revision:    1,
-	}); status.Code(err) != codes.Unimplemented {
+	}); !strings.Contains(status.Convert(err).Message(), errSuccess.Error()) {
 		t.Fatalf("ApplyRevision(): %v", err)
 	}
 }
