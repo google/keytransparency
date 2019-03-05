@@ -252,7 +252,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 // chunkSize limits the number of messages to read from a log at one time.
 func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
 	directoryID string, chunkSize int32,
-	emit func(*mutator.LogMessage), emitErr func(error)) {
+	emit func(*mutator.LogMessage)) error {
 
 	low := source.LowestInclusive
 	high := source.HighestExclusive
@@ -260,8 +260,7 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 	for count := chunkSize; count == chunkSize; {
 		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize)
 		if err != nil {
-			emitErr(fmt.Errorf("logs.ReadLog(): %v", err))
-			return
+			return fmt.Errorf("logs.ReadLog(): %v", err)
 		}
 		count = int32(len(batch))
 		glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
@@ -274,6 +273,7 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 			}
 		}
 	}
+	return nil
 }
 
 // ApplyRevision applies the supplied mutations to the current map revision and creates a new revision.
@@ -285,9 +285,11 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
 
 	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta)
-	logItems := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize,
-		func(err error) { glog.Warning(err); mutationFailures.Inc(err.Error()) },
-	)
+	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize)
+	if err != nil {
+		mutationFailures.Inc(err.Error())
+		return nil, err
+	}
 
 	emitErrFn := func(err error) { glog.Warning(err); mutationFailures.Inc(in.DirectoryId, err.Error()) }
 	// Map Log Items

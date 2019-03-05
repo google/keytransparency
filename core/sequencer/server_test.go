@@ -202,9 +202,10 @@ func TestReadMessages(t *testing.T) {
 	} {
 
 		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta)
-		logItems := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize,
-			func(err error) { t.Errorf("readMessages(): %v", err) },
-		)
+		logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize)
+		if err != nil {
+			t.Errorf("readMessages(): %v", err)
+		}
 		if got := len(logItems); got != tc.want {
 			t.Errorf("readMessages(): len: %v, want %v", got, tc.want)
 		}

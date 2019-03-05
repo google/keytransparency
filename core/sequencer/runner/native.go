@@ -95,20 +95,20 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 // ReadSliceFn emits the log messages referenced by slice.
 type ReadSliceFn func(ctx context.Context, slice *spb.MapMetadata_SourceSlice,
 	directoryID string, chunkSize int32,
-	emit func(*mutator.LogMessage), emitErr func(error))
+	emit func(*mutator.LogMessage)) error
 
 // DoReadFn runs ReadSliceFn on every source slice and collects the outputs.
 func DoReadFn(ctx context.Context, fn ReadSliceFn, slices []*spb.MapMetadata_SourceSlice,
-	directoryID string, chunkSize int32,
-	emitErr func(error)) []*mutator.LogMessage {
+	directoryID string, chunkSize int32) ([]*mutator.LogMessage, error) {
 	outs := make([]*mutator.LogMessage, 0, len(slices))
 	for _, s := range slices {
-		fn(ctx, s, directoryID, chunkSize,
+		if err := fn(ctx, s, directoryID, chunkSize,
 			func(msg *mutator.LogMessage) { outs = append(outs, msg) },
-			emitErr,
-		)
+		); err != nil {
+			return nil, err
+		}
 	}
-	return outs
+	return outs, nil
 }
 
 // MapMetaFn emits a source slice for every map slice.
@@ -117,9 +117,7 @@ type MapMetaFn func(meta *spb.MapMetadata, emit func(*spb.MapMetadata_SourceSlic
 // DoMapMetaFn runs MapMetaFn on meta and collects the outputs.
 func DoMapMetaFn(fn MapMetaFn, meta *spb.MapMetadata) []*spb.MapMetadata_SourceSlice {
 	outs := make([]*spb.MapMetadata_SourceSlice, 0, 1)
-	fn(meta,
-		func(slice *spb.MapMetadata_SourceSlice) { outs = append(outs, slice) },
-	)
+	fn(meta, func(slice *spb.MapMetadata_SourceSlice) { outs = append(outs, slice) })
 	return outs
 }
 
