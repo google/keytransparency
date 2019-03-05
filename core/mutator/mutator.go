@@ -50,14 +50,6 @@ var (
 // VerifyMutationFn verifies that a mutation is internally consistent.
 type VerifyMutationFn func(mutation *pb.SignedEntry) error
 
-// ReduceMutationFn takes all the mutations for an index and an auxiliary input
-// of existing mapleaf(s) returns a new map leaf.  ReduceMutationFn must be
-// idempotent, commutative, and associative. i.e. must produce the same output
-// regardless of input order or grouping, and it must be safe to run multiple
-// times.
-type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
-	emit func(*pb.EntryUpdate), emitErr func(error))
-
 // MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.
 type MapLogItemFn func(logItem *LogMessage,
 	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(error))
