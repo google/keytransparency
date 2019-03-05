@@ -25,6 +25,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer/mapper"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
 
@@ -88,6 +89,16 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 		ret = append(ret, r)
 	}
 	return ret
+}
+
+type MapMetaFn func(meta *spb.MapMetadata, emit func(*spb.MapMetadata_SourceSlice))
+
+func DoMapMetaFn(fn MapMetaFn, meta *spb.MapMetadata) []*spb.MapMetadata_SourceSlice {
+	outs := make([]*spb.MapMetadata_SourceSlice, 0, 1)
+	fn(meta,
+		func(slice *spb.MapMetadata_SourceSlice) { outs = append(outs, slice) },
+	)
+	return outs
 }
 
 // DoMapLogItemsFn runs the MapLogItemsFn on each element of msgs.
