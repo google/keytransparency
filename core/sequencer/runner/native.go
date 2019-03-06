@@ -88,10 +88,10 @@ func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf) ([]*entry.IndexedVal
 }
 
 // ReduceMutationFn takes all the mutations for an index and an auxiliary input
-// of existing mapleaf(s) returns a new map leaf.  ReduceMutationFn must be
-// idempotent, commutative, and associative. i.e. must produce the same output
-// regardless of input order or grouping, and it must be safe to run multiple
-// times.
+// of existing mapleaf(s) and emits a new value for the index.
+// ReduceMutationFn must be  idempotent, commutative, and associative.  i.e.
+// must produce the same output  regardless of input order or grouping,
+// and it must be safe to run multiple times.
 type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error))
 
@@ -111,6 +111,7 @@ func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error)
 }
 
 // DoMarshalIndexedValues executes Marshal on each IndexedValue
+// If marshal fails, it will emit an error and continue with a subset of ivs.
 func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr func(error)) []*tpb.MapLeaf {
 	ret := make([]*tpb.MapLeaf, 0, len(ivs))
 	for _, iv := range ivs {

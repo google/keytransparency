@@ -249,7 +249,6 @@ func (s *Server) DefineRevisions(ctx context.Context,
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
-
 // batchSize limits the number of messages to read from a log at one time.
 func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb.MapMetadata,
 	batchSize int32) ([]*mutator.LogMessage, error) {
@@ -314,7 +313,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
-	// Map Map Leaves
+	// Convert Trillian map leaves into indexed KT updates.
 	indexedLeaves, err := runner.DoMapMapLeafFn(mapper.MapMapLeafFn, leaves)
 	if err != nil {
 		return nil, err
@@ -327,7 +326,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined, emitErrFn)
 	glog.V(2).Infof("DoReduceFn reduced %v values on %v indexes", len(indexedValues), len(joined))
 
-	// Map IndexedValues
+	// Marshal new indexed values back into Trillian Map leaves.
 	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn)
 
 	// Serialize metadata
