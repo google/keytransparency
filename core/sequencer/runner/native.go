@@ -117,6 +117,7 @@ func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr func(error)) []*t
 		mapLeaf, err := iv.Marshal()
 		if err != nil {
 			emitErr(err)
+			continue
 		}
 		ret = append(ret, mapLeaf)
 	}
