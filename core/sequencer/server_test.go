@@ -325,10 +325,11 @@ func TestDuplicateUpdates(t *testing.T) {
 		},
 	}
 
-	if _, err := s.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
+	_, err = s.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
 		DirectoryId: directoryID,
 		Revision:    1,
-	}); !strings.Contains(status.Convert(err).Message(), errSuccess.Error()) {
-		t.Fatalf("ApplyRevision(): %v", err)
+	})
+	if got, want := status.Convert(err).Message(), status.Convert(errSuccess).Message(); !strings.Contains(got, want) {
+		t.Fatalf("ApplyRevision(): %v, want\n%v", got, want)
 	}
 }
