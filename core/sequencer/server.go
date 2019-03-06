@@ -288,10 +288,9 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
+	emitErrFn := func(err error) { glog.Warning(err); mutationFailures.Inc(in.DirectoryId, err.Error()) }
 	// Map Log Items
-	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, msgs,
-		func(err error) { glog.Warning(err); mutationFailures.Inc(err.Error()) },
-	)
+	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, msgs, emitErrFn)
 
 	// Collect Indexes.
 	groupByIndex := make(map[string]bool)
@@ -314,9 +313,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Apply mutations to values.
-	newLeaves, err := runner.ApplyMutations(entry.ReduceFn, indexedValues, leaves,
-		func(err error) { glog.Warning(err); mutationFailures.Inc(err.Error()) },
-	)
+	newLeaves, err := runner.ApplyMutations(entry.ReduceFn, indexedValues, leaves, emitErrFn)
 	if err != nil {
 		return nil, err
 	}
