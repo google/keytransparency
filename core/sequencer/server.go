@@ -17,6 +17,7 @@ package sequencer
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"sync"
 
@@ -44,14 +45,16 @@ const (
 )
 
 var (
-	initMetrics      sync.Once
-	knownDirectories monitoring.Gauge
-	logEntryCount    monitoring.Counter
-	mapLeafCount     monitoring.Counter
-	mapRevisionCount monitoring.Counter
-	watermarkDefined monitoring.Gauge
-	watermarkApplied monitoring.Gauge
-	mutationFailures monitoring.Counter
+	initMetrics       sync.Once
+	knownDirectories  monitoring.Gauge
+	logEntryCount     monitoring.Counter
+	logEntryUnapplied monitoring.Gauge
+	mapLeafCount      monitoring.Counter
+	mapRevisionCount  monitoring.Counter
+	watermarkWritten  monitoring.Gauge
+	watermarkDefined  monitoring.Gauge
+	watermarkApplied  monitoring.Gauge
+	mutationFailures  monitoring.Counter
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -63,6 +66,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"log_entry_count",
 		"Total number of log entries read since process start. Duplicates are not removed.",
 		directoryIDLabel, logIDLabel)
+	logEntryUnapplied = mf.NewGauge(
+		"log_entry_unapplied",
+		"Total number of log entries still to be processed in the queue.",
+		directoryIDLabel)
 	mapLeafCount = mf.NewCounter(
 		"map_leaf_count",
 		"Total number of map leaves written since process start. Duplicates are not removed.",
@@ -71,6 +78,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"map_revision_count",
 		"Total number of map revisions written since process start.",
 		directoryIDLabel)
+	watermarkWritten = mf.NewGauge(
+		"watermark_written",
+		"High watermark of each input log that has been written",
+		directoryIDLabel, logIDLabel)
 	watermarkDefined = mf.NewGauge(
 		"watermark_defined",
 		"High watermark of each input log that has been defined in the batch table",
@@ -208,18 +219,28 @@ func (s *Server) DefineRevisions(ctx context.Context,
 		outstanding = append(outstanding, rev)
 	}
 
-	// Don't create new revisions if there are ones waiting to be applied.
-	if len(outstanding) > 0 {
-		return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
-	}
-
-	// Query metadata about outstanding log items.
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
 		return nil, err
 	}
 
-	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
+	// Query metadata about outstanding log items.
+	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, math.MaxInt32)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
+	}
+	logEntryUnapplied.Set(float64(count), in.DirectoryId)
+	for _, source := range meta.Sources {
+		watermarkWritten.Set(float64(source.HighestExclusive), in.DirectoryId, fmt.Sprintf("%v", source.LogId))
+	}
+
+	// Don't create new revisions if there are ones waiting to be applied.
+	if len(outstanding) > 0 {
+		return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
+	}
+
+	// Fetch the highest watermark in.MaxBatch items greater than the last.
+	count, meta, err = s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
