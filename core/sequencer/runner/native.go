@@ -16,12 +16,14 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
 
@@ -58,8 +60,41 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue) []*Joined {
 	return ret
 }
 
+// MapMetaFn emits a source slice for every map slice.
+type MapMetaFn func(meta *spb.MapMetadata, emit func(*spb.MapMetadata_SourceSlice))
+
+// DoMapMetaFn runs MapMetaFn on meta and collects the outputs.
+func DoMapMetaFn(fn MapMetaFn, meta *spb.MapMetadata) []*spb.MapMetadata_SourceSlice {
+	outs := make([]*spb.MapMetadata_SourceSlice, 0, len(meta.GetSources()))
+	fn(meta, func(slice *spb.MapMetadata_SourceSlice) { outs = append(outs, slice) })
+	return outs
+}
+
+// ReadSliceFn emits the log messages referenced by slice.
+type ReadSliceFn func(ctx context.Context, slice *spb.MapMetadata_SourceSlice,
+	directoryID string, chunkSize int32,
+	emit func(*mutator.LogMessage)) error
+
+// DoReadFn runs ReadSliceFn on every source slice and collects the outputs.
+func DoReadFn(ctx context.Context, fn ReadSliceFn, slices []*spb.MapMetadata_SourceSlice,
+	directoryID string, chunkSize int32) ([]*mutator.LogMessage, error) {
+	outs := make([]*mutator.LogMessage, 0, len(slices))
+	for _, s := range slices {
+		if err := fn(ctx, s, directoryID, chunkSize,
+			func(msg *mutator.LogMessage) { outs = append(outs, msg) },
+		); err != nil {
+			return nil, err
+		}
+	}
+	return outs, nil
+}
+
+// MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.
+type MapLogItemFn func(logItem *mutator.LogMessage,
+	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(error))
+
 // DoMapLogItemsFn runs the MapLogItemsFn on each element of msgs.
-func DoMapLogItemsFn(fn mutator.MapLogItemFn, msgs []*mutator.LogMessage, emitErr func(error)) []*entry.IndexedValue {
+func DoMapLogItemsFn(fn MapLogItemFn, msgs []*mutator.LogMessage, emitErr func(error)) []*entry.IndexedValue {
 	outs := make([]*entry.IndexedValue, 0, len(msgs))
 	for _, m := range msgs {
 		fn(m,

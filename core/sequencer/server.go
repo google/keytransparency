@@ -249,32 +249,31 @@ func (s *Server) DefineRevisions(ctx context.Context,
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
-// batchSize limits the number of messages to read from a log at one time.
-func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb.MapMetadata,
-	batchSize int32) ([]*mutator.LogMessage, error) {
-	msgs := make([]*mutator.LogMessage, 0)
-	for _, source := range meta.Sources {
-		low := source.LowestInclusive
-		high := source.HighestExclusive
-		// Loop until less than batchSize items are returned.
-		for count := batchSize; count == batchSize; {
-			batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, batchSize)
-			if err != nil {
-				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
-			}
-			count = int32(len(batch))
-			glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
-				directoryID, source.LogId, low, high, batchSize, count)
-			logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
-			for _, m := range batch {
-				msgs = append(msgs, m)
-				if m.ID > low {
-					low = m.ID
-				}
+// chunkSize limits the number of messages to read from a log at one time.
+func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
+	directoryID string, chunkSize int32,
+	emit func(*mutator.LogMessage)) error {
+
+	low := source.LowestInclusive
+	high := source.HighestExclusive
+	// Loop until less than chunkSize items are returned.
+	for count := chunkSize; count == chunkSize; {
+		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize)
+		if err != nil {
+			return fmt.Errorf("logs.ReadLog(): %v", err)
+		}
+		count = int32(len(batch))
+		glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
+			directoryID, source.LogId, low, high, chunkSize, count)
+		logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
+		for _, m := range batch {
+			emit(m)
+			if m.ID > low {
+				low = m.ID
 			}
 		}
 	}
-	return msgs, nil
+	return nil
 }
 
 // ApplyRevision applies the supplied mutations to the current map revision and creates a new revision.
@@ -284,14 +283,17 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
-	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, s.BatchSize)
+
+	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta)
+	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize)
 	if err != nil {
+		mutationFailures.Inc(err.Error())
 		return nil, err
 	}
 
 	emitErrFn := func(err error) { glog.Warning(err); mutationFailures.Inc(in.DirectoryId, err.Error()) }
 	// Map Log Items
-	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, msgs, emitErrFn)
+	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, logItems, emitErrFn)
 
 	// Collect Indexes.
 	groupByIndex := make(map[string]bool)
@@ -349,7 +351,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
 	mapRevisionCount.Add(1, in.DirectoryId)
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
-		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(msgs), len(indexes), len(newLeaves))
+		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(logItems), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{
 		DirectoryId: in.DirectoryId,
 		Revision:    in.Revision,

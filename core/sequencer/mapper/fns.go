@@ -20,8 +20,16 @@ import (
 	"github.com/google/keytransparency/core/mutator/entry"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
+
+// MapMetaFn emits the source slices referenced by meta.
+func MapMetaFn(meta *spb.MapMetadata, emit func(*spb.MapMetadata_SourceSlice)) {
+	for _, source := range meta.Sources {
+		emit(source)
+	}
+}
 
 // MapMapLeaf converts a map leaf into an entry.IndexedValue.
 func MapMapLeafFn(leaf *tpb.MapLeaf) (*entry.IndexedValue, error) {

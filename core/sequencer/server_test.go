@@ -33,6 +33,8 @@ import (
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/runner"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -198,11 +200,12 @@ func TestReadMessages(t *testing.T) {
 			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
 		}}},
 	} {
-		msgs, err := s.readMessages(ctx, directoryID, tc.meta, tc.batchSize)
+		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta)
+		logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize)
 		if err != nil {
 			t.Errorf("readMessages(): %v", err)
 		}
-		if got := len(msgs); got != tc.want {
+		if got := len(logItems); got != tc.want {
 			t.Errorf("readMessages(): len: %v, want %v", got, tc.want)
 		}
 	}
@@ -321,10 +324,11 @@ func TestDuplicateUpdates(t *testing.T) {
 		},
 	}
 
-	if _, err := s.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
+	_, err = s.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
 		DirectoryId: directoryID,
 		Revision:    1,
-	}); !strings.Contains(status.Convert(err).Message(), errSuccess.Error()) {
-		t.Fatalf("ApplyRevision(): %v", err)
+	})
+	if got, want := status.Convert(err).Message(), status.Convert(errSuccess).Message(); !strings.Contains(got, want) {
+		t.Fatalf("ApplyRevision(): %v, want\n%v", got, want)
 	}
 }
