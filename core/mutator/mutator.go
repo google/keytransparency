@@ -18,8 +18,6 @@
 package mutator
 
 import (
-	"errors"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -31,17 +29,17 @@ var (
 	MaxMutationSize = 16 * 1024
 	// ErrReplay occurs when two mutations acting on the same entry & revision
 	// occur.
-	ErrReplay = errors.New("mutation replay")
+	ErrReplay = status.Errorf(codes.FailedPrecondition, "mutation replay")
 	// ErrSize occurs when the mutation size is larger than the allowed upper
 	// bound.
-	ErrSize = errors.New("mutation: too large")
+	ErrSize = status.Errorf(codes.InvalidArgument, "mutation: too large")
 	// ErrPreviousHash occurs when the mutation the hash of the previous
 	// entry provided in the mutation does not match the previous entry
 	// itself.
-	ErrPreviousHash = errors.New("mutation: previous entry hash does not match the hash provided in the mutation")
+	ErrPreviousHash = status.Errorf(codes.InvalidArgument, "mutation: previous entry hash does not match the hash provided in the mutation")
 	// ErrInvalidSig occurs when either the current or previous update entry
 	// signature verification fails.
-	ErrInvalidSig = errors.New("mutation: invalid signature")
+	ErrInvalidSig = status.Errorf(codes.InvalidArgument, "mutation: invalid signature")
 	// ErrUnauthorized occurs when the mutation has not been signed by a key in the
 	// previous entry.
 	ErrUnauthorized = status.Errorf(codes.PermissionDenied, "mutation: unauthorized")
