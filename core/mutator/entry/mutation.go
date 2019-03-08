@@ -15,6 +15,7 @@
 package entry
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 
@@ -70,7 +71,7 @@ func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
 		return err
 	}
 	if copyPrevious {
-		m.entry.AuthorizedKeys = prevEntry.GetAuthorizedKeys()
+		m.entry.AuthorizedKeyset = prevEntry.GetAuthorizedKeyset()
 		m.entry.Commitment = prevEntry.GetCommitment()
 	}
 	return nil
@@ -92,7 +93,11 @@ func (m *Mutation) SetCommitment(data []byte) error {
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
 func (m *Mutation) ReplaceAuthorizedKeys(handle *keyset.Handle) error {
-	m.entry.AuthorizedKeys = handle.Keyset()
+	var b bytes.Buffer
+	if err := handle.WriteWithNoSecrets(keyset.NewBinaryWriter(&b)); err != nil {
+		return nil
+	}
+	m.entry.AuthorizedKeyset = b.Bytes()
 	return nil
 }
 
