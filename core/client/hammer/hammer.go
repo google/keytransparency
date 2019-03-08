@@ -29,9 +29,7 @@ import (
 
 	"github.com/google/keytransparency/core/client"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 // DialFunc returns a connected grpc client for Key Transparency.
@@ -70,7 +68,7 @@ type Hammer struct {
 	directory   *pb.Directory
 
 	signers        []tink.Signer
-	authorizedKeys *tinkpb.Keyset
+	authorizedKeys *keyset.Handle
 }
 
 // New returns a new hammer job
@@ -103,7 +101,7 @@ func New(ctx context.Context, dial DialFunc, callOptions CallOptions,
 		directory:   directory,
 
 		signers:        []tink.Signer{signer},
-		authorizedKeys: authorizedKeys.Keyset(),
+		authorizedKeys: authorizedKeys,
 	}, nil
 }
 
@@ -217,10 +215,10 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 
 // writeOp queues many user mutations, waits, and then verifies them all.
 func (w *worker) writeOp(ctx context.Context, req *reqArgs) error {
-	users := make([]*tpb.User, 0, len(req.UserIDs))
+	users := make([]*client.User, 0, len(req.UserIDs))
 	for _, userID := range req.UserIDs {
-		users = append(users, &tpb.User{
-			UserId:         userID,
+		users = append(users, &client.User{
+			UserID:         userID,
 			PublicKeyData:  []byte("publickey"),
 			AuthorizedKeys: w.authorizedKeys,
 		})

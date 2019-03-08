@@ -29,15 +29,14 @@ import (
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian/types"
 
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 const (
@@ -92,7 +91,7 @@ func genUserIDs(count int) []string {
 func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	for _, tc := range []struct {
 		desc    string
@@ -104,10 +103,10 @@ func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Update profiles.
-			users := make([]*tpb.User, 0, len(tc.userIDs))
+			users := make([]*client.User, 0, len(tc.userIDs))
 			for _, userID := range tc.userIDs {
-				users = append(users, &tpb.User{
-					UserId:         userID,
+				users = append(users, &client.User{
+					UserID:         userID,
 					PublicKeyData:  []byte("data!"),
 					AuthorizedKeys: authorizedKeys1,
 				})
@@ -127,7 +126,7 @@ func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	for _, tc := range []struct {
 		desc    string
@@ -140,10 +139,10 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Update profiles.
-			users := make([]*tpb.User, 0, len(tc.userIDs))
+			users := make([]*client.User, 0, len(tc.userIDs))
 			for _, userID := range tc.userIDs {
-				users = append(users, &tpb.User{
-					UserId:         userID,
+				users = append(users, &client.User{
+					UserID:         userID,
 					PublicKeyData:  []byte("data!"),
 					AuthorizedKeys: authorizedKeys1,
 				})
@@ -171,9 +170,9 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 	signers3 := testutil.SignKeysetsFromPEMs("", testPrivKey2)
 
 	// Create lists of authorized keys
-	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
-	authorizedKeys2 := testutil.VerifyKeysetFromPEMs(testPubKey1, testPubKey2).Keyset()
-	authorizedKeys3 := testutil.VerifyKeysetFromPEMs("", testPubKey2).Keyset()
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
+	authorizedKeys2 := testutil.VerifyKeysetFromPEMs(testPubKey1, testPubKey2)
+	authorizedKeys3 := testutil.VerifyKeysetFromPEMs("", testPubKey2)
 
 	// Collect a list of valid GetUserResponses
 	getUserResps := make([]testdata.ResponseVector, 0)
@@ -188,7 +187,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 		opts           []grpc.CallOption
 		userID         string
 		signers        []tink.Signer
-		authorizedKeys *tinkpb.Keyset
+		authorizedKeys *keyset.Handle
 	}{
 		{
 			desc:           "empty_alice",
@@ -275,8 +274,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 
 			// Update profile.
 			if tc.setProfile != nil {
-				u := &tpb.User{
-					UserId:         tc.userID,
+				u := &client.User{
+					UserID:         tc.userID,
 					PublicKeyData:  tc.setProfile,
 					AuthorizedKeys: tc.authorizedKeys,
 				}
@@ -322,7 +321,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 
 	// Create lists of signers and authorized keys
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	if err := env.setupHistory(ctx, env.Directory, userID, signers, authorizedKeys, opts); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
@@ -368,7 +367,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 }
 
 func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []tink.Signer,
-	authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
+	authorizedKeys *keyset.Handle, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that revision, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -386,8 +385,8 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 		nil, cp(5), cp(7), nil,
 	} {
 		if p != nil {
-			u := &tpb.User{
-				UserId:         userID,
+			u := &client.User{
+				UserID:         userID,
 				PublicKeyData:  p,
 				AuthorizedKeys: authorizedKeys,
 			}
@@ -436,7 +435,7 @@ func sortHistory(history map[uint64][]byte) [][]byte {
 func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
 	// Create lists of signers and authorized keys
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	if err := env.setupHistoryMultipleUsers(ctx, env.Directory, signers, authorizedKeys); err != nil {
 		t.Fatalf("setupHistoryMultipleUsers failed: %v", err)
@@ -492,13 +491,13 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []t
 }
 
 func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Directory, signers []tink.Signer,
-	authorizedKeys *tinkpb.Keyset) error {
+	authorizedKeys *keyset.Handle) error {
 	// Test setup: 3 different users ("alice", "bob", and "carol") submit profiles in the following order. Specifically, in the i-th submission (i = 0, 1, 2,..., 9), userIDs[i] submits publicKeyData[i].
 	publicKeyData := [][]byte{cp(1), cp(11), cp(2), cp(21), cp(22), cp(12), cp(3), cp(13), cp(23), cp(24)}
 	userIDs := []string{"alice", "bob", "alice", "carol", "carol", "bob", "alice", "bob", "carol", "carol"}
 	for i := 0; i < len(userIDs); i++ {
-		u := &tpb.User{
-			UserId:         userIDs[i],
+		u := &client.User{
+			UserID:         userIDs[i],
 			PublicKeyData:  publicKeyData[i],
 			AuthorizedKeys: authorizedKeys,
 		}

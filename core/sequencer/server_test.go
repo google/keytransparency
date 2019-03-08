@@ -291,7 +291,7 @@ func TestDuplicateUpdates(t *testing.T) {
 		if err := m.SetCommitment([]byte(data)); err != nil {
 			t.Fatalf("SetCommitment(): %v", err)
 		}
-		if err := m.ReplaceAuthorizedKeys(authorizedKeys.Keyset()); err != nil {
+		if err := m.ReplaceAuthorizedKeys(authorizedKeys); err != nil {
 			t.Fatalf("ReplaceAuthorizedKeys(): %v", err)
 		}
 		update, err := m.SerializeAndSign([]tink.Signer{signer})

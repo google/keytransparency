@@ -19,20 +19,19 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/client"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 // PublicKeyGetter retrives a public key.
 type PublicKeyGetter interface {
-	PublicKey() *tinkpb.Keyset
+	PublicKey() *keyset.Handle
 }
 
 // Ensure that Frontend implements KeyTransparencyFrontendServer
@@ -50,8 +49,8 @@ func (f *Frontend) QueueKeyUpdate(ctx context.Context, in *pb.QueueKeyUpdateRequ
 	if got, want := in.DirectoryId, f.Client.DirectoryID; got != want {
 		return nil, status.Errorf(codes.InvalidArgument, "wrong directory_id: %v, want %v", got, want)
 	}
-	u := &tpb.User{
-		UserId:         in.UserId,
+	u := &client.User{
+		UserID:         in.UserId,
 		PublicKeyData:  in.KeyData,
 		AuthorizedKeys: f.PubKeys.PublicKey(),
 	}

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/testdata"
@@ -32,7 +33,6 @@ import (
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/types"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
@@ -62,7 +62,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []testdata.Respons
 	for _, e := range []struct {
 		revision    int64
 		signers     []tink.Signer
-		userUpdates []*tpb.User
+		userUpdates []*client.User
 	}{
 		{
 			revision: 1,
@@ -70,27 +70,27 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []testdata.Respons
 		{
 			revision: 2,
 			signers:  testutil.SignKeysetsFromPEMs(testPrivKey1),
-			userUpdates: []*tpb.User{
+			userUpdates: []*client.User{
 				{
-					UserId:         "alice@test.com",
+					UserID:         "alice@test.com",
 					PublicKeyData:  []byte("alice-key1"),
-					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
 				},
 			},
 		},
 		{
 			revision: 3,
 			signers:  testutil.SignKeysetsFromPEMs(testPrivKey1),
-			userUpdates: []*tpb.User{
+			userUpdates: []*client.User{
 				{
-					UserId:         "bob@test.com",
+					UserID:         "bob@test.com",
 					PublicKeyData:  []byte("bob-key1"),
-					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
 				},
 				{
-					UserId:         "carol@test.com",
+					UserID:         "carol@test.com",
 					PublicKeyData:  []byte("carol-key1"),
-					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
 				},
 			},
 		},
@@ -101,10 +101,10 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []testdata.Respons
 			defer cancel()
 			m, err := env.Client.CreateMutation(cctx, u)
 			if err != nil {
-				t.Fatalf("CreateMutation(%v): %v", u.UserId, err)
+				t.Fatalf("CreateMutation(%v): %v", u.UserID, err)
 			}
 			if err := env.Client.QueueMutation(ctx, m, e.signers,
-				env.CallOpts(u.UserId)...); err != nil {
+				env.CallOpts(u.UserID)...); err != nil {
 				t.Errorf("QueueMutation(): %v", err)
 			}
 		}

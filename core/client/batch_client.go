@@ -24,18 +24,17 @@ import (
 
 	"github.com/google/keytransparency/core/mutator/entry"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // BatchCreateUser inserts mutations for new users that do not currently have entries.
 // Calling BatchCreate for a user that already exists will produce no change.
-func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
+func (c *Client) BatchCreateUser(ctx context.Context, users []*User,
 	signers []tink.Signer, opts ...grpc.CallOption) error {
 	// 1. Fetch user indexes
 	userIDs := make([]string, 0, len(users))
 	for _, u := range users {
-		userIDs = append(userIDs, u.UserId)
+		userIDs = append(userIDs, u.UserID)
 	}
 	indexByUser, err := c.BatchVerifyGetUserIndex(ctx, userIDs)
 	if err != nil {
@@ -44,12 +43,12 @@ func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
 
 	mutations := make([]*entry.Mutation, 0, len(users))
 	for _, u := range users {
-		mutation := entry.NewMutation(indexByUser[u.UserId], c.DirectoryID, u.UserId)
+		mutation := entry.NewMutation(indexByUser[u.UserID], c.DirectoryID, u.UserID)
 
 		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
 			return err
 		}
-		if len(u.AuthorizedKeys.Key) != 0 {
+		if u.AuthorizedKeys != nil {
 			if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
 				return err
 			}
@@ -77,10 +76,10 @@ func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mu
 }
 
 // BatchCreateMutation fetches the current index and value for a list of users and prepares mutations.
-func (c *Client) BatchCreateMutation(ctx context.Context, users []*tpb.User) ([]*entry.Mutation, error) {
+func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*entry.Mutation, error) {
 	userIDs := make([]string, 0, len(users))
 	for _, u := range users {
-		userIDs = append(userIDs, u.UserId)
+		userIDs = append(userIDs, u.UserID)
 	}
 
 	leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
@@ -90,15 +89,15 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*tpb.User) ([]
 	mutations := make([]*entry.Mutation, 0, len(users))
 
 	for _, u := range users {
-		leaf, ok := leavesByUserID[u.UserId]
+		leaf, ok := leavesByUserID[u.UserID]
 		if !ok {
-			return nil, fmt.Errorf("no leaf found for %v", u.UserId)
+			return nil, fmt.Errorf("no leaf found for %v", u.UserID)
 		}
-		index, err := c.Index(leaf.GetVrfProof(), c.DirectoryID, u.UserId)
+		index, err := c.Index(leaf.GetVrfProof(), c.DirectoryID, u.UserID)
 		if err != nil {
 			return nil, err
 		}
-		mutation := entry.NewMutation(index, c.DirectoryID, u.UserId)
+		mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
 
 		leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
 		if err := mutation.SetPrevious(leafValue, true); err != nil {
@@ -109,7 +108,7 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*tpb.User) ([]
 			return nil, err
 		}
 
-		if len(u.AuthorizedKeys.Key) != 0 {
+		if u.AuthorizedKeys != nil {
 			if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
 				return nil, err
 			}

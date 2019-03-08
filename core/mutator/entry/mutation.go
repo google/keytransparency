@@ -24,7 +24,6 @@ import (
 	"github.com/google/tink/go/tink"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 var nilHash = sha256.Sum256(nil)
@@ -92,13 +91,8 @@ func (m *Mutation) SetCommitment(data []byte) error {
 
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
-func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
-	// Make sure that pubkeys is a valid keyset.
-	if _, err := keyset.NewHandleWithNoSecrets(pubkeys); err != nil {
-		return err
-	}
-
-	m.entry.AuthorizedKeys = pubkeys
+func (m *Mutation) ReplaceAuthorizedKeys(handle *keyset.Handle) error {
+	m.entry.AuthorizedKeys = handle.Keyset()
 	return nil
 }
 

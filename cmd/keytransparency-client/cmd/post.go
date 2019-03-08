@@ -27,9 +27,8 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/crypto/tinkio"
-
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 var (
@@ -99,10 +98,10 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
-		u := &tpb.User{
-			UserId:         userID,
+		u := &client.User{
+			UserID:         userID,
 			PublicKeyData:  profileData,
-			AuthorizedKeys: authorizedKeys.Keyset(),
+			AuthorizedKeys: authorizedKeys,
 		}
 		timeout := viper.GetDuration("timeout")
 		cctx, cancel := context.WithTimeout(ctx, timeout)
