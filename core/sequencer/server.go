@@ -17,7 +17,6 @@ package sequencer
 import (
 	"context"
 	"fmt"
-	"math"
 	"sort"
 	"sync"
 
@@ -160,6 +159,33 @@ func NewServer(
 	}
 }
 
+func (s *Server) UnsequencedMetric(ctx context.Context, directoryID string) error {
+	maxCount := int32(10000)
+	// Get the previous and current high water marks.
+	mapClient, err := s.trillian.MapClient(ctx, directoryID)
+	if err != nil {
+		return err
+	}
+	_, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return err
+	}
+	var lastMeta spb.MapMetadata
+	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
+		return err
+	}
+	// Query metadata about outstanding log items.
+	count, meta, err := s.HighWatermarks(ctx, directoryID, &lastMeta, maxCount)
+	if err != nil {
+		return status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
+	}
+	logEntryUnapplied.Set(float64(count), directoryID)
+	for _, source := range meta.Sources {
+		watermarkWritten.Set(float64(source.HighestExclusive), directoryID, fmt.Sprintf("%v", source.LogId))
+	}
+	return nil
+}
+
 // RunBatch runs the full sequence of steps (for one directory) nessesary to get a
 // mutation from the log integrated into the map. This consists of a series of
 // idempotent steps:
@@ -219,28 +245,18 @@ func (s *Server) DefineRevisions(ctx context.Context,
 		outstanding = append(outstanding, rev)
 	}
 
-	var lastMeta spb.MapMetadata
-	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
-		return nil, err
-	}
-
-	// Query metadata about outstanding log items.
-	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, math.MaxInt32)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
-	}
-	logEntryUnapplied.Set(float64(count), in.DirectoryId)
-	for _, source := range meta.Sources {
-		watermarkWritten.Set(float64(source.HighestExclusive), in.DirectoryId, fmt.Sprintf("%v", source.LogId))
-	}
-
 	// Don't create new revisions if there are ones waiting to be applied.
 	if len(outstanding) > 0 {
 		return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
 	}
 
-	// Fetch the highest watermark in.MaxBatch items greater than the last.
-	count, meta, err = s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
+	// Query metadata about outstanding log items.
+	var lastMeta spb.MapMetadata
+	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
+		return nil, err
+	}
+
+	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
