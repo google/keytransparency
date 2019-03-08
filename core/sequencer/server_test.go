@@ -200,7 +200,6 @@ func TestReadMessages(t *testing.T) {
 			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
 		}}},
 	} {
-
 		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta)
 		logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize)
 		if err != nil {

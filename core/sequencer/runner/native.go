@@ -65,7 +65,7 @@ type MapMetaFn func(meta *spb.MapMetadata, emit func(*spb.MapMetadata_SourceSlic
 
 // DoMapMetaFn runs MapMetaFn on meta and collects the outputs.
 func DoMapMetaFn(fn MapMetaFn, meta *spb.MapMetadata) []*spb.MapMetadata_SourceSlice {
-	outs := make([]*spb.MapMetadata_SourceSlice, 0, 1)
+	outs := make([]*spb.MapMetadata_SourceSlice, 0, len(meta.GetSources()))
 	fn(meta, func(slice *spb.MapMetadata_SourceSlice) { outs = append(outs, slice) })
 	return outs
 }
