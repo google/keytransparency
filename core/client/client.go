@@ -27,7 +27,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian"
 
@@ -82,6 +81,14 @@ type Verifier interface {
 	VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error)
 }
 
+// ReduceMutationFn takes all the mutations for an index and an auxiliary input
+// of existing mapleaf(s) returns a new map leaf.  ReduceMutationFn must be
+// idempotent, commutative, and associative. i.e. must produce the same output
+// regardless of input order or grouping, and it must be safe to run multiple
+// times.
+type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+	emit func(*pb.EntryUpdate), emitErr func(error))
+
 // Client is a helper library for issuing updates to the key server.
 // Client Responsibilities
 // - Trust Model:
@@ -98,7 +105,7 @@ type Client struct {
 	Verifier
 	cli         pb.KeyTransparencyClient
 	DirectoryID string
-	reduce      mutator.ReduceMutationFn
+	reduce      ReduceMutationFn
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
 	trustedLock sync.Mutex

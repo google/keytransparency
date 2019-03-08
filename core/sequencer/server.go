@@ -315,11 +315,21 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
-	// Apply mutations to values.
-	newLeaves, err := runner.ApplyMutations(entry.ReduceFn, indexedValues, leaves, emitErrFn)
+	// Convert Trillian map leaves into indexed KT updates.
+	indexedLeaves, err := runner.DoMapMapLeafFn(mapper.MapMapLeafFn, leaves)
 	if err != nil {
 		return nil, err
 	}
+
+	// GroupByIndex.
+	joined := runner.Join(indexedLeaves, indexedValues)
+
+	// Apply mutations to values.
+	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined, emitErrFn)
+	glog.V(2).Infof("DoReduceFn reduced %v values on %v indexes", len(indexedValues), len(joined))
+
+	// Marshal new indexed values back into Trillian Map leaves.
+	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn)
 
 	// Serialize metadata
 	metadata, err := proto.Marshal(meta)

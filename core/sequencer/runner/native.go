@@ -19,45 +19,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/glog"
-
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/keytransparency/core/sequencer/mapper"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
-
-// ApplyMutations takes the set of mutations and applies them to given leaves.
-// Returns a list of map leaves that should be updated.
-func ApplyMutations(reduceFn mutator.ReduceMutationFn,
-	indexedUpdates []*entry.IndexedValue, leaves []*tpb.MapLeaf, emitErr func(error)) ([]*tpb.MapLeaf, error) {
-
-	indexedLeaves, err := DoMapMapLeafFn(mapper.MapMapLeafFn, leaves)
-	if err != nil {
-		return nil, err
-	}
-
-	joined := Join(indexedLeaves, indexedUpdates)
-
-	ret := make([]*tpb.MapLeaf, 0, len(joined))
-	for _, j := range joined {
-		reduceFn(j.Values1, j.Values2,
-			func(e *pb.EntryUpdate) {
-				mapLeaf, err := (&entry.IndexedValue{Index: j.Index, Value: e}).Marshal()
-				if err != nil {
-					emitErr(err)
-				}
-				ret = append(ret, mapLeaf)
-			},
-			func(err error) { emitErr(fmt.Errorf("reduceFn on index %x: %v", j.Index, err)) },
-		)
-	}
-	glog.V(2).Infof("ApplyMutations applied %v mutations to %v leaves", len(indexedUpdates), len(leaves))
-	return ret, nil
-}
 
 // Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedValue.
 type Joined struct {
@@ -152,4 +120,42 @@ func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf) ([]*entry.IndexedVal
 		outs = append(outs, out)
 	}
 	return outs, nil
+}
+
+// ReduceMutationFn takes all the mutations for an index and an auxiliary input
+// of existing mapleaf(s) and emits a new value for the index.
+// ReduceMutationFn must be  idempotent, commutative, and associative.  i.e.
+// must produce the same output  regardless of input order or grouping,
+// and it must be safe to run multiple times.
+type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+	emit func(*pb.EntryUpdate), emitErr func(error))
+
+// DoReduceFn takes the set of mutations and applies them to given leaves.
+// Returns a list of key value pairs that should be written to the map.
+func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error)) []*entry.IndexedValue {
+	ret := make([]*entry.IndexedValue, 0, len(joined))
+	for _, j := range joined {
+		reduceFn(j.Values1, j.Values2,
+			func(e *pb.EntryUpdate) {
+				ret = append(ret, &entry.IndexedValue{Index: j.Index, Value: e})
+			},
+			func(err error) { emitErr(fmt.Errorf("reduceFn on index %x: %v", j.Index, err)) },
+		)
+	}
+	return ret
+}
+
+// DoMarshalIndexedValues executes Marshal on each IndexedValue
+// If marshal fails, it will emit an error and continue with a subset of ivs.
+func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr func(error)) []*tpb.MapLeaf {
+	ret := make([]*tpb.MapLeaf, 0, len(ivs))
+	for _, iv := range ivs {
+		mapLeaf, err := iv.Marshal()
+		if err != nil {
+			emitErr(err)
+			continue
+		}
+		ret = append(ret, mapLeaf)
+	}
+	return ret
 }

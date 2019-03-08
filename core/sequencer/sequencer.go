@@ -100,6 +100,7 @@ func (s *Sequencer) AddDirectory(dirIDs ...string) {
 
 // RunBatchForAllMasterships runs RunBatch on all directires this sequencer is currently master for.
 func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context) error {
+	glog.Infof("RunBatchForAllMasterships")
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	masterships, err := s.tracker.Masterships(cctx)
