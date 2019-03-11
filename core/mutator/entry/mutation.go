@@ -15,6 +15,7 @@
 package entry
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/google/tink/go/tink"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 var nilHash = sha256.Sum256(nil)
@@ -71,7 +71,7 @@ func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
 		return err
 	}
 	if copyPrevious {
-		m.entry.AuthorizedKeys = prevEntry.GetAuthorizedKeys()
+		m.entry.AuthorizedKeyset = prevEntry.GetAuthorizedKeyset()
 		m.entry.Commitment = prevEntry.GetCommitment()
 	}
 	return nil
@@ -92,13 +92,12 @@ func (m *Mutation) SetCommitment(data []byte) error {
 
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
-func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
-	// Make sure that pubkeys is a valid keyset.
-	if _, err := keyset.NewHandleWithNoSecrets(pubkeys); err != nil {
-		return err
+func (m *Mutation) ReplaceAuthorizedKeys(handle *keyset.Handle) error {
+	var b bytes.Buffer
+	if err := handle.WriteWithNoSecrets(keyset.NewBinaryWriter(&b)); err != nil {
+		return nil
 	}
-
-	m.entry.AuthorizedKeys = pubkeys
+	m.entry.AuthorizedKeyset = b.Bytes()
 	return nil
 }
 

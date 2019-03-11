@@ -64,7 +64,7 @@ func TestSerializeAndSign(t *testing.T) {
 			if err := m.SetCommitment(tc.data); err != nil {
 				t.Fatalf("SetCommitment(%v): %v", tc.data, err)
 			}
-			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
+			if err := m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
 			_, err := m.SerializeAndSign(tc.signers)
@@ -101,7 +101,7 @@ func TestCreateAndVerify(t *testing.T) {
 			if err := m.SetCommitment(tc.data); err != nil {
 				t.Fatalf("SetCommitment(%v): %v", tc.data, err)
 			}
-			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
+			if err := m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
 			update, err := m.SerializeAndSign(tc.signers)

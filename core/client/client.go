@@ -40,7 +40,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
@@ -239,7 +238,7 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns codes.FailedPrecondition if there was a race condition.
-func (c *Client) Update(ctx context.Context, u *tpb.User, signers []tink.Signer, opts ...grpc.CallOption) (*entry.Mutation, error) {
+func (c *Client) Update(ctx context.Context, u *User, signers []tink.Signer, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	// 1. pb.User + ExistingEntry -> Mutation.
 	m, err := c.CreateMutation(ctx, u)
 	if err != nil {
@@ -269,20 +268,20 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 }
 
 // CreateMutation fetches the current index and value for a user and prepares a mutation.
-func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
-	e, _, err := c.VerifiedGetUser(ctx, u.UserId)
+func (c *Client) CreateMutation(ctx context.Context, u *User) (*entry.Mutation, error) {
+	e, _, err := c.VerifiedGetUser(ctx, u.UserID)
 	if err != nil {
 		return nil, err
 	}
 	oldLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetVrfProof(), c.DirectoryID, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), c.DirectoryID, u.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	mutation := entry.NewMutation(index, c.DirectoryID, u.UserId)
+	mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
 
 	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
 		return nil, err
@@ -292,7 +291,7 @@ func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutati
 		return nil, err
 	}
 
-	if len(u.AuthorizedKeys.Key) != 0 {
+	if u.AuthorizedKeys != nil {
 		if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
 			return nil, err
 		}

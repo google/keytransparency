@@ -29,7 +29,6 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
 // MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
@@ -59,7 +58,11 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 		return fmt.Errorf("proto.Unmarshal(): %v", err)
 	}
 
-	ks := newEntry.GetAuthorizedKeys()
+	ks, err := keyset.ReadWithNoSecrets(keyset.NewBinaryReader(
+		bytes.NewBuffer(newEntry.GetAuthorizedKeyset())))
+	if err != nil {
+		return err
+	}
 	return verifyKeys(ks, signedEntry.GetEntry(), signedEntry.GetSignatures())
 }
 
@@ -141,8 +144,12 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 		return newSignedEntry, nil
 	}
 
-	ks := oldEntry.GetAuthorizedKeys()
-	if err := verifyKeys(ks, newSignedEntry.Entry, newSignedEntry.GetSignatures()); err != nil {
+	handle, err := keyset.ReadWithNoSecrets(keyset.NewBinaryReader(
+		bytes.NewBuffer(oldEntry.GetAuthorizedKeyset())))
+	if err != nil {
+		return nil, err
+	}
+	if err := verifyKeys(handle, newSignedEntry.Entry, newSignedEntry.GetSignatures()); err != nil {
 		return nil, err
 	}
 
@@ -153,18 +160,13 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 // criteria:
 //   1. At least one signature with a key in the entry should exist.
 //   2. Signatures with no matching keys are simply ignored.
-func verifyKeys(ks *tinkpb.Keyset, data []byte, sigs [][]byte) error {
-	if ks == nil {
+func verifyKeys(handle *keyset.Handle, data []byte, sigs [][]byte) error {
+	if handle == nil {
 		return errors.New("entry: nil keyset")
 	}
-	handle, err := keyset.NewHandleWithNoSecrets(ks)
-	if err != nil {
-		return fmt.Errorf("tink.KeysetHanldeWithNoSecret(new): %v", err)
-	}
-
 	verifier, err := signature.NewVerifier(handle)
 	if err != nil {
-		return fmt.Errorf("signature.NewVerifier(%v): %v", ks, err)
+		return fmt.Errorf("signature.NewVerifier(%v): %v", handle, err)
 	}
 
 	for _, sig := range sigs {

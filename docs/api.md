@@ -289,7 +289,7 @@ Entry is placed in the verifiable map as leaf data.
 | ----- | ---- | ----- | ----------- |
 | index | [bytes](#bytes) |  | index is the location of this leaf in the sparse merkle tree. |
 | commitment | [bytes](#bytes) |  | commitment is a cryptographic commitment to arbitrary data. |
-| authorized_keys | [google.crypto.tink.Keyset](#google.crypto.tink.Keyset) |  | authorized_keys is the set of keys allowed to sign updates for this entry. |
+| authorized_keyset | [bytes](#bytes) |  | authorized_keys is the tink keyset that validates the signatures on the next entry. |
 | previous | [bytes](#bytes) |  | previous contains the SHA256 hash of SignedEntry.Entry the last time it was modified. |
 
 
