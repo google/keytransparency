@@ -111,6 +111,14 @@ message PublishRevisionsResponse {
   repeated int64 revisions = 1;
 }
 
+// UpdateMetricsRequest is empty. 
+message UpdateMetricsRequest{
+}
+
+// UpdateMetricsResponse is empty.
+message UpdateMetricsResponse{
+}
+
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
   // RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
@@ -124,4 +132,6 @@ service KeyTransparencySequencer {
   // PublishRevisions copies the MapRoots of all known map revisions into the Log
   // of MapRoots.
   rpc PublishRevisions(PublishRevisionsRequest) returns (PublishRevisionsResponse);
+  // UpdateMetrics will update various counters on the server. Call periodically.
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
 }
