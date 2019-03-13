@@ -349,7 +349,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 			in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
-	mapRevisionCount.Add(1, in.DirectoryId)
+	mapRevisionCount.Inc(in.DirectoryId)
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
 		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(logItems), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{
