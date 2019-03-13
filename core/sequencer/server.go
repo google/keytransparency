@@ -128,11 +128,12 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	batcher   Batcher
-	trillian  trillianFactory
-	logs      LogsReader
-	loopback  spb.KeyTransparencySequencerClient
-	BatchSize int32
+	directories directory.Storage
+	batcher     Batcher
+	trillian    trillianFactory
+	logs        LogsReader
+	loopback    spb.KeyTransparencySequencerClient
+	BatchSize   int32
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -147,6 +148,7 @@ func NewServer(
 ) *Server {
 	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
+		directories: directories,
 		trillian: &Trillian{
 			directories: directories,
 			tmap:        tmap,
@@ -159,7 +161,23 @@ func NewServer(
 	}
 }
 
-func (s *Server) UnsequencedMetric(ctx context.Context, directoryID string) error {
+func (s *Server) UpdateMetrics(ctx context.Context, _ *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
+	directories, err := s.directories.List(ctx, false /*deleted*/)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "admin.List(): %v", err)
+	}
+	var retErr error
+	for _, d := range directories {
+		if err := s.unappliedMetric(ctx, d.DirectoryID); err != nil {
+			glog.Errorf("unappliedMetric(): %v", err)
+			retErr = err
+		}
+	}
+	return &spb.UpdateMetricsResponse{}, retErr
+}
+
+// unappliedMetric updates the log_entryunapplied metric for directoryID
+func (s *Server) unappliedMetric(ctx context.Context, directoryID string) error {
 	maxCount := int32(10000)
 	// Get the previous and current high water marks.
 	mapClient, err := s.trillian.MapClient(ctx, directoryID)

@@ -86,7 +86,6 @@ func (s *Sequencer) AddAllDirectories(ctx context.Context) error {
 	}
 	for _, d := range directories {
 		s.AddDirectory(d.DirectoryID)
-		s.UnsequencedMetric(ctx, d.DirectoryID)
 	}
 	return nil
 }
