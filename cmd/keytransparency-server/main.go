@@ -89,7 +89,7 @@ func main() {
 		authFunc = authentication.FakeAuthFunc
 	case "google":
 		var err error
-		gauth, err := authentication.NewGoogleAuth()
+		gauth, err := authentication.NewGoogleAuth(ctx)
 		if err != nil {
 			glog.Exitf("Failed to create authentication library instance: %v", err)
 		}
