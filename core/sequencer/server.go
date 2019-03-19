@@ -41,6 +41,7 @@ const (
 	directoryIDLabel = "directoryid"
 	logIDLabel       = "logid"
 	reasonLabel      = "reason"
+	fnLabel          = "fn"
 )
 
 var (
@@ -48,6 +49,7 @@ var (
 	knownDirectories monitoring.Gauge
 	logEntryCount    monitoring.Counter
 	mapLeafCount     monitoring.Counter
+	fnCount          monitoring.Counter
 	mapRevisionCount monitoring.Counter
 	watermarkDefined monitoring.Gauge
 	watermarkApplied monitoring.Gauge
@@ -67,6 +69,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"map_leaf_count",
 		"Total number of map leaves written since process start. Duplicates are not removed.",
 		directoryIDLabel)
+	fnCount = mf.NewCounter(
+		"fn_count",
+		"Total number of mapping operations that have run since process start",
+		directoryIDLabel, fnLabel)
 	mapRevisionCount = mf.NewCounter(
 		"map_revision_count",
 		"Total number of map revisions written since process start.",
@@ -284,8 +290,10 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
 
-	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta)
-	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize)
+	incMetricFn := func(label string) { fnCount.Inc(in.DirectoryId, label) }
+
+	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta, incMetricFn)
+	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize, incMetricFn)
 	if err != nil {
 		mutationFailures.Inc(err.Error())
 		return nil, err
@@ -293,7 +301,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 
 	emitErrFn := func(err error) { glog.Warning(err); mutationFailures.Inc(in.DirectoryId, err.Error()) }
 	// Map Log Items
-	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, logItems, emitErrFn)
+	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, logItems, emitErrFn, incMetricFn)
 
 	// Collect Indexes.
 	groupByIndex := make(map[string]bool)
@@ -316,20 +324,20 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Convert Trillian map leaves into indexed KT updates.
-	indexedLeaves, err := runner.DoMapMapLeafFn(mapper.MapMapLeafFn, leaves)
+	indexedLeaves, err := runner.DoMapMapLeafFn(mapper.MapMapLeafFn, leaves, incMetricFn)
 	if err != nil {
 		return nil, err
 	}
 
 	// GroupByIndex.
-	joined := runner.Join(indexedLeaves, indexedValues)
+	joined := runner.Join(indexedLeaves, indexedValues, incMetricFn)
 
 	// Apply mutations to values.
-	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined, emitErrFn)
+	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined, emitErrFn, incMetricFn)
 	glog.V(2).Infof("DoReduceFn reduced %v values on %v indexes", len(indexedValues), len(joined))
 
 	// Marshal new indexed values back into Trillian Map leaves.
-	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn)
+	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn, incMetricFn)
 
 	// Serialize metadata
 	metadata, err := proto.Marshal(meta)
@@ -345,11 +353,10 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
 
 	for _, s := range meta.Sources {
-		watermarkApplied.Set(float64(s.HighestExclusive),
-			in.DirectoryId, fmt.Sprintf("%v", s.LogId))
+		watermarkApplied.Set(float64(s.HighestExclusive), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
-	mapRevisionCount.Add(1, in.DirectoryId)
+	mapRevisionCount.Inc(in.DirectoryId)
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
 		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(logItems), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{
