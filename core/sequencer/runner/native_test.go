@@ -23,14 +23,13 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-func fakeMetricFn(label string) {}
-
 func TestJoin(t *testing.T) {
 	for _, tc := range []struct {
-		desc   string
-		leaves []*entry.IndexedValue
-		msgs   []*entry.IndexedValue
-		want   []*Joined
+		desc       string
+		leaves     []*entry.IndexedValue
+		msgs       []*entry.IndexedValue
+		want       []*Joined
+		wantMetric map[string]int
 	}{
 		{
 			desc:   "onerow",
@@ -41,13 +40,24 @@ func TestJoin(t *testing.T) {
 				Values1: []*pb.EntryUpdate{{UserId: "bob"}},
 				Values2: []*pb.EntryUpdate{{}},
 			}},
+			wantMetric: map[string]int{
+				"Join1": 1,
+				"Join2": 1,
+			},
 		},
 	} {
+		metrics := make(map[string]int)
 		t.Run(tc.desc, func(t *testing.T) {
-			got := Join(tc.leaves, tc.msgs, fakeMetricFn)
+			got := Join(tc.leaves, tc.msgs,
+				func(label string) { metrics[label]++ },
+			)
 			if !cmp.Equal(got, tc.want) {
 				t.Errorf("Join(): %v, want %v\n diff: %v",
 					got, tc.want, cmp.Diff(got, tc.want))
+			}
+			if !cmp.Equal(metrics, tc.wantMetric) {
+				t.Errorf("metrics: %v, want %v\n diff: %v",
+					metrics, tc.wantMetric, cmp.Diff(metrics, tc.wantMetric))
 			}
 		})
 	}
