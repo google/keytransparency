@@ -119,6 +119,7 @@ func DoMapLogItemsFn(fn MapLogItemFn, msgs []*mutator.LogMessage,
 // MapMapLeafFn converts an update into an IndexedValue.
 type MapMapLeafFn func(*tpb.MapLeaf) (*entry.IndexedValue, error)
 
+// DoMapMapLeafFn runs MapMapLeafFn on each MapLeaf.
 func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf, incFn IncMetricFn) ([]*entry.IndexedValue, error) {
 	outs := make([]*entry.IndexedValue, 0, len(leaves))
 	for _, m := range leaves {
