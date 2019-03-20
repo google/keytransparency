@@ -46,7 +46,8 @@ func TestGoogleAuthn(t *testing.T) {
 	if *accessToken == "" {
 		t.Skip()
 	}
-	a, err := NewGoogleAuth()
+	ctx := context.Background()
+	a, err := NewGoogleAuth(ctx)
 	if err != nil {
 		t.Fatalf("Failed to create GoogleAuth: %v", err)
 	}
@@ -62,7 +63,6 @@ func TestGoogleAuthn(t *testing.T) {
 	token.SetAuthHeader(r)
 
 	// Convert http request into grpc header.
-	ctx := context.Background()
 	ctx, err = runtime.AnnotateContext(ctx, mux, r)
 	if err != nil {
 		t.Errorf("Error annotating context: %v", err)
