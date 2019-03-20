@@ -34,6 +34,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer/runner"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	ktstatus "github.com/google/keytransparency/core/sequencer/status"
 	tpb "github.com/google/trillian"
 )
 

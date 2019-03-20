@@ -41,6 +41,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	ktstatus "github.com/google/keytransparency/core/sequencer/status"
 )
 
 // TODO: Public keys of trusted monitors.
@@ -86,7 +87,7 @@ type Verifier interface {
 // regardless of input order or grouping, and it must be safe to run multiple
 // times.
 type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
-	emit func(*pb.EntryUpdate), emitErr func(error))
+	emit func(*pb.EntryUpdate), emitErr func(*ktstatus.Status))
 
 // Client is a helper library for issuing updates to the key server.
 // Client Responsibilities

@@ -21,6 +21,8 @@ import (
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/core/sequencer/codes"
+	"github.com/google/keytransparency/core/sequencer/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -29,6 +31,14 @@ import (
 
 // IncMetricFn increments a metric
 type IncMetricFn func(label string)
+
+// ErrFn logs the error and increments a counter.
+type ErrFn func(err *status.Status)
+
+// WrapErrFn returns an ErrFn that will wrap its input with the message.
+func WrapErrFn(emitErr ErrFn, msg string) ErrFn {
+	return func(err *status.Status) { emitErr(status.Wrap(err, msg)) }
+}
 
 // Joined is the result of a CoGroupByKey on []*MapLeaf and []*IndexedValue.
 type Joined struct {
@@ -98,11 +108,11 @@ func DoReadFn(ctx context.Context, fn ReadSliceFn, slices []*spb.MapMetadata_Sou
 
 // MapLogItemFn takes a log item and emits 0 or more KV<index, mutations> pairs.
 type MapLogItemFn func(logItem *mutator.LogMessage,
-	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(error))
+	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(*status.Status))
 
 // DoMapLogItemsFn runs the MapLogItemsFn on each element of msgs.
 func DoMapLogItemsFn(fn MapLogItemFn, msgs []*mutator.LogMessage,
-	emitErr func(error), incFn IncMetricFn) []*entry.IndexedValue {
+	emitErr ErrFn, incFn IncMetricFn) []*entry.IndexedValue {
 	outs := make([]*entry.IndexedValue, 0, len(msgs))
 	for _, m := range msgs {
 		incFn("MapLogItemFn")
@@ -110,7 +120,7 @@ func DoMapLogItemsFn(fn MapLogItemFn, msgs []*mutator.LogMessage,
 			func(index []byte, value *pb.EntryUpdate) {
 				outs = append(outs, &entry.IndexedValue{Index: index, Value: value})
 			},
-			func(err error) { emitErr(fmt.Errorf("mapLogItemFn: %v", err)) },
+			WrapErrFn(emitErr, "mapLogItemFn"),
 		)
 	}
 	return outs
@@ -139,11 +149,11 @@ func DoMapMapLeafFn(fn MapMapLeafFn, leaves []*tpb.MapLeaf, incFn IncMetricFn) (
 // must produce the same output  regardless of input order or grouping,
 // and it must be safe to run multiple times.
 type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
-	emit func(*pb.EntryUpdate), emitErr func(error))
+	emit func(*pb.EntryUpdate), emitErr func(*status.Status))
 
 // DoReduceFn takes the set of mutations and applies them to given leaves.
 // Returns a list of key value pairs that should be written to the map.
-func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error),
+func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr ErrFn,
 	incFn IncMetricFn) []*entry.IndexedValue {
 	ret := make([]*entry.IndexedValue, 0, len(joined))
 	for _, j := range joined {
@@ -152,7 +162,7 @@ func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error)
 			func(e *pb.EntryUpdate) {
 				ret = append(ret, &entry.IndexedValue{Index: j.Index, Value: e})
 			},
-			func(err error) { emitErr(fmt.Errorf("reduceFn on index %x: %v", j.Index, err)) },
+			WrapErrFn(emitErr, fmt.Sprintf("reduceFn on index %x", j.Index)),
 		)
 	}
 	return ret
@@ -160,13 +170,13 @@ func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error)
 
 // DoMarshalIndexedValues executes Marshal on each IndexedValue
 // If marshal fails, it will emit an error and continue with a subset of ivs.
-func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr func(error), incFn IncMetricFn) []*tpb.MapLeaf {
+func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr ErrFn, incFn IncMetricFn) []*tpb.MapLeaf {
 	ret := make([]*tpb.MapLeaf, 0, len(ivs))
 	for _, iv := range ivs {
 		incFn("MarshalIndexedValue")
 		mapLeaf, err := iv.Marshal()
 		if err != nil {
-			emitErr(err)
+			emitErr(status.Newf(codes.Marshal, "%v", err))
 			continue
 		}
 		ret = append(ret, mapLeaf)

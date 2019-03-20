@@ -18,8 +18,8 @@
 package mutator
 
 import (
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/google/keytransparency/core/sequencer/codes"
+	"github.com/google/keytransparency/core/sequencer/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -29,17 +29,14 @@ var (
 	MaxMutationSize = 16 * 1024
 	// ErrReplay occurs when two mutations acting on the same entry & revision
 	// occur.
-	ErrReplay = status.Errorf(codes.FailedPrecondition, "mutation replay")
+	ErrReplay = status.Errorf(codes.Replay, "mutation replay")
 	// ErrSize occurs when the mutation size is larger than the allowed upper
 	// bound.
-	ErrSize = status.Errorf(codes.InvalidArgument, "mutation: too large")
+	ErrSize = status.Errorf(codes.TooLarge, "mutation: too large")
 	// ErrPreviousHash occurs when the mutation the hash of the previous
 	// entry provided in the mutation does not match the previous entry
 	// itself.
-	ErrPreviousHash = status.Errorf(codes.InvalidArgument, "mutation: previous entry hash does not match the hash provided in the mutation")
-	// ErrInvalidSig occurs when either the current or previous update entry
-	// signature verification fails.
-	ErrInvalidSig = status.Errorf(codes.InvalidArgument, "mutation: invalid signature")
+	ErrPreviousHash = status.Errorf(codes.PreviousHash, "mutation: previous entry hash does not match the hash provided in the mutation")
 	// ErrUnauthorized occurs when the mutation has not been signed by a key in the
 	// previous entry.
 	ErrUnauthorized = status.Errorf(codes.PermissionDenied, "mutation: unauthorized")

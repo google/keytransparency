@@ -17,7 +17,6 @@ package entry
 import (
 	"bytes"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"sort"
 
@@ -27,16 +26,18 @@ import (
 	"github.com/google/tink/go/signature"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/sequencer/codes"
+	"github.com/google/keytransparency/core/sequencer/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // MapLogItemFn maps elements from *mutator.LogMessage to KV<index, *pb.EntryUpdate>.
 func MapLogItemFn(m *mutator.LogMessage,
-	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(error)) {
+	emit func(index []byte, mutation *pb.EntryUpdate), emitErr func(*status.Status)) {
 	var entry pb.Entry
 	if err := proto.Unmarshal(m.Mutation.Entry, &entry); err != nil {
-		emitErr(err)
+		emitErr(status.Newf(codes.Unmarshal, "%v", err))
 		return
 	}
 	emit(entry.Index, &pb.EntryUpdate{
@@ -68,9 +69,9 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 
 // ReduceFn decides which of multiple updates can be applied in this revision.
 func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
-	emit func(*pb.EntryUpdate), emitErr func(error)) {
+	emit func(*pb.EntryUpdate), emitErr func(*status.Status)) {
 	if got := len(leaves); got > 1 {
-		emitErr(fmt.Errorf("expected 0 or 1 map leaf for got %v", got))
+		emitErr(status.Newf(codes.TooManyMapLeaves, "expected 0 or 1 map leaf for got %v", got))
 		return // A bad index should not cause the whole batch to fail.
 	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
@@ -79,7 +80,7 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	}
 
 	if len(msgs) == 0 {
-		emitErr(errors.New("no msgs"))
+		emitErr(status.Newf(codes.NoMsgs, "no msgs"))
 		return // A bad index should not cause the whole batch to fail.
 	}
 
@@ -88,7 +89,8 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	for i, msg := range msgs {
 		newValue, err := MutateFn(oldValue, msg.GetMutation())
 		if err != nil {
-			emitErr(fmt.Errorf("entry: ReduceFn(msg %d/%d): %v", i, len(msgs)-1, err))
+			s := status.Convert(err)
+			emitErr(status.Wrapf(s, "ReduceFn(msg %d/%d)", i, len(msgs)-1))
 			continue
 		}
 		newEntries = append(newEntries, &pb.EntryUpdate{
@@ -97,7 +99,7 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 		})
 	}
 	if len(newEntries) == 0 {
-		emitErr(errors.New("entry: no valid mutations"))
+		emitErr(status.New(codes.NoValidMutations, "no valid mutations"))
 		return // No valid mutations for one index should not cause the whole batch to fail.
 	}
 	// Choose the mutation deterministically, regardless of the messages order.
@@ -162,11 +164,11 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 //   2. Signatures with no matching keys are simply ignored.
 func verifyKeys(handle *keyset.Handle, data []byte, sigs [][]byte) error {
 	if handle == nil {
-		return errors.New("entry: nil keyset")
+		return status.Errorf(codes.NilKeyset, "nil keyset")
 	}
 	verifier, err := signature.NewVerifier(handle)
 	if err != nil {
-		return fmt.Errorf("signature.NewVerifier(%v): %v", handle, err)
+		return status.Errorf(codes.NewVerifier, "signature.NewVerifier(%v): %v", handle, err)
 	}
 
 	for _, sig := range sigs {
