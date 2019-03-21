@@ -21,9 +21,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-
-	"github.com/google/tink/go/insecurecleartextkeyset"
 	"github.com/google/tink/go/keyset"
 )
 
@@ -52,21 +49,21 @@ type keysetRow struct {
 }
 
 // newKeyset converts a tpb.KeySet to keyset.
-func newKeyset(instance int64, directoryID string, k *keyset.Handle) (*keysetRow, error) {
-	serializedKeyset, err := proto.Marshal(k.Keyset())
-	if err != nil {
+func newKeyset(instance int64, directoryID string, handle *keyset.Handle) (*keysetRow, error) {
+	var serializedKeyset bytes.Buffer
+	if err := handle.WriteWithNoSecrets(keyset.NewBinaryWriter(&serializedKeyset)); err != nil {
 		return nil, err
 	}
 	return &keysetRow{
 		InstanceID:  instance,
 		DirectoryID: directoryID,
-		KeySet:      serializedKeyset,
+		KeySet:      serializedKeyset.Bytes(),
 	}, nil
 }
 
 // Proto converts a keyset to a tpb.KeySet proto.
 func (k *keysetRow) Proto() (*keyset.Handle, error) {
-	return insecurecleartextkeyset.Read(keyset.NewBinaryReader(bytes.NewBuffer(k.KeySet)))
+	return keyset.ReadWithNoSecrets(keyset.NewBinaryReader(bytes.NewBuffer(k.KeySet)))
 }
 
 // New returns a storage.KeySets client backed by an SQL table.

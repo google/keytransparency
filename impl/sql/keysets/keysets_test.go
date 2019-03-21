@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/testkeyset"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -43,6 +43,7 @@ func TestWriteRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tink.GenerateNew(): %v", err)
 	}
+	ksPub := ks.Public()
 	for _, tc := range []struct {
 		desc         string
 		instanceID   int64
@@ -75,7 +76,7 @@ func TestWriteRead(t *testing.T) {
 		},
 	} {
 		if tc.write {
-			err := keysets.Set(ctx, tc.instanceID, tc.directoryID, ks)
+			err := keysets.Set(ctx, tc.instanceID, tc.directoryID, ksPub)
 			if got, want := err != nil, tc.wantWriteErr; got != want {
 				t.Errorf("Set(%v): %v, wantErr %v", tc.instanceID, err, want)
 			}
@@ -88,8 +89,9 @@ func TestWriteRead(t *testing.T) {
 			if err != nil {
 				continue
 			}
-			if got, want := gotKs.Keyset(), ks.Keyset(); !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
-				t.Errorf("Read(%v): %v, want %v", tc.instanceID, got, want)
+
+			if !proto.Equal(testkeyset.KeysetMaterial(gotKs), testkeyset.KeysetMaterial(ksPub)) {
+				t.Errorf("Read(%v): %v, want %v", tc.instanceID, gotKs, ksPub)
 			}
 		}
 	}
