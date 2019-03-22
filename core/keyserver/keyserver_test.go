@@ -17,7 +17,6 @@ package keyserver
 import (
 	"context"
 	"fmt"
-	"github.com/google/trillian/types"
 	"testing"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian/testonly"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -183,4 +183,3 @@ func mustMarshalRoot(t *testing.T, lr *types.LogRootV1) *tpb.SignedLogRoot {
 		LogRoot: rootBytes,
 	}
 }
-

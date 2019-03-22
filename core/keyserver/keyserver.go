@@ -18,7 +18,6 @@ package keyserver
 import (
 	"context"
 	"fmt"
-	"github.com/google/trillian/types"
 	"sync"
 
 	"github.com/golang/glog"
@@ -26,6 +25,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/trillian/monitoring"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
