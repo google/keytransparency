@@ -18,6 +18,7 @@ package keyserver
 import (
 	"context"
 	"fmt"
+	"github.com/google/trillian/types"
 	"sync"
 
 	"github.com/golang/glog"
@@ -167,6 +168,13 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 			"Revision is %v, want >= 0", mapRevision)
 	}
 
+	var root types.LogRootV1
+	// TODO(gbelvin): Verify sth first.
+	if err := root.UnmarshalBinary(sth.GetLogRoot()); err != nil {
+		glog.Errorf("batchGetUserByRevision: root did not unmarshal: %v", err)
+		return nil, status.Errorf(codes.Internal, "cannot unmarshal log root")
+	}
+
 	indexes := make([][]byte, 0, len(userIDs))
 	proofsByUser, usersByIndex, err := s.batchGetUserIndex(ctx, d, userIDs)
 	if err != nil {
@@ -233,7 +241,7 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 			// SignedMapRoot must be placed in the log at MapRevision.
 			// MapRevisions start at 0. Log leaves start at 0.
 			LeafIndex: mapRevision,
-			TreeSize:  sth.TreeSize, // nolint TODO(gbelvin): Verify sth first.
+			TreeSize:  int64(root.TreeSize),
 		})
 	if err != nil {
 		glog.Errorf("tlog.GetInclusionProof(%v): %v", d.Log.TreeId, err)

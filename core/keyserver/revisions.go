@@ -16,6 +16,7 @@ package keyserver
 
 import (
 	"context"
+	"github.com/google/trillian/types"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -193,7 +194,12 @@ func (*Server) ListMutationsStream(in *pb.ListMutationsRequest, stream pb.KeyTra
 func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRoot *tpb.SignedLogRoot, revision int64) (
 	*tpb.Proof, error) {
 	// Inclusion proof.
-	secondTreeSize := logRoot.GetTreeSize()
+	// TODO(gbelvin): Verify root.
+	var root types.LogRootV1
+	if err := root.UnmarshalBinary(logRoot.GetLogRoot()); err != nil {
+		return nil, status.Errorf(codes.Internal, "keyserver: Failed to unmarshal log root: %v", err)
+	}
+	secondTreeSize := int64(root.TreeSize)
 	if revision >= secondTreeSize {
 		return nil, status.Errorf(codes.NotFound, "keyserver: Revision %v has not been released yet", revision)
 	}
@@ -234,8 +240,13 @@ func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory,
 	if err != nil {
 		return nil, nil, err
 	}
+	// TODO(gbelvin): Verify root.
+	var root types.LogRootV1
+	if err := root.UnmarshalBinary(sth.GetLogRoot()); err != nil {
+		return nil, nil, status.Errorf(codes.Internal, "latestLogRootProof: Failed to unmarshal log root: %v", err)
+	}
 	// Consistency proof.
-	secondTreeSize := sth.GetTreeSize()
+	secondTreeSize := int64(root.TreeSize)
 	var logConsistency *tpb.GetConsistencyProofResponse
 	if firstTreeSize != 0 {
 		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
@@ -256,7 +267,12 @@ func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory,
 // mapRevisionFor returns the latest map revision, given the latest sth.
 // The log is the authoritative source of the latest revision.
 func mapRevisionFor(sth *tpb.SignedLogRoot) (int64, error) {
-	treeSize := sth.GetTreeSize()
+	// TODO(gbelvin): Verify root.
+	var root types.LogRootV1
+	if err := root.UnmarshalBinary(sth.GetLogRoot()); err != nil {
+		return 0, status.Errorf(codes.Internal, "mapRevisionFor: Failed to unmarshal log root: %v", err)
+	}
+	treeSize := int64(root.TreeSize)
 	// TreeSize = max_index + 1 because the log starts at index 0.
 	maxIndex := treeSize - 1
 

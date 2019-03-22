@@ -17,6 +17,7 @@ package keyserver
 import (
 	"context"
 	"fmt"
+	"github.com/google/trillian/types"
 	"testing"
 	"time"
 
@@ -104,7 +105,7 @@ func TestLatestRevision(t *testing.T) {
 			defer e.Close()
 			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
 				Return(&tpb.GetLatestSignedLogRootResponse{
-					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+					SignedLogRoot: mustMarshalRoot(t, &types.LogRootV1{TreeSize: uint64(tc.treeSize)}),
 				}, err)
 			if tc.wantErr == codes.OK {
 				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
@@ -137,7 +138,7 @@ func TestLatestRevision(t *testing.T) {
 			defer e.Close()
 			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
 				Return(&tpb.GetLatestSignedLogRootResponse{
-					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+					SignedLogRoot: mustMarshalRoot(t, &types.LogRootV1{TreeSize: uint64(tc.treeSize)}),
 				}, err).Times(2)
 			for i := int64(0); i < tc.treeSize; i++ {
 				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
@@ -170,5 +171,16 @@ func TestLatestRevision(t *testing.T) {
 			}
 		})
 	}
-
 }
+
+func mustMarshalRoot(t *testing.T, lr *types.LogRootV1) *tpb.SignedLogRoot {
+	t.Helper()
+	rootBytes, err := lr.MarshalBinary()
+	if err != nil {
+		t.Fatalf("Failed to marshal root in test: %v", err)
+	}
+	return &tpb.SignedLogRoot{
+		LogRoot: rootBytes,
+	}
+}
+
