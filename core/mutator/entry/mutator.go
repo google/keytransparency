@@ -18,13 +18,14 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/mutator"
 
@@ -55,7 +56,7 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 
 	newEntry := pb.Entry{}
 	if err := proto.Unmarshal(signedEntry.GetEntry(), &newEntry); err != nil {
-		return fmt.Errorf("proto.Unmarshal(): %v", err)
+		return status.Errorf(codes.InvalidArgument, "proto.Unmarshal(): %v", err)
 	}
 
 	ks, err := keyset.ReadWithNoSecrets(keyset.NewBinaryReader(
@@ -70,7 +71,7 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error)) {
 	if got := len(leaves); got > 1 {
-		emitErr(fmt.Errorf("expected 0 or 1 map leaf for got %v", got))
+		emitErr(status.Errorf(codes.Internal, "expected 0 or 1 map leaf for got %v", got))
 		return // A bad index should not cause the whole batch to fail.
 	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
@@ -88,7 +89,8 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	for i, msg := range msgs {
 		newValue, err := MutateFn(oldValue, msg.GetMutation())
 		if err != nil {
-			emitErr(fmt.Errorf("entry: ReduceFn(msg %d/%d): %v", i, len(msgs)-1, err))
+			s := status.Convert(err)
+			emitErr(status.Errorf(s.Code(), "entry: ReduceFn(msg %d/%d): %v", i, len(msgs)-1, s.Message()))
 			continue
 		}
 		newEntries = append(newEntries, &pb.EntryUpdate{
@@ -118,12 +120,12 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 
 	newEntry := pb.Entry{}
 	if err := proto.Unmarshal(newSignedEntry.GetEntry(), &newEntry); err != nil {
-		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
+		return nil, status.Errorf(codes.InvalidArgument, "proto.Unmarshal(): %v", err)
 	}
 	oldEntry := pb.Entry{}
 	// oldSignedEntry may be nil, resulting an empty oldEntry struct.
 	if err := proto.Unmarshal(oldSignedEntry.GetEntry(), &oldEntry); err != nil {
-		return nil, fmt.Errorf("proto.Unmarshal(): %v", err)
+		return nil, status.Errorf(codes.InvalidArgument, "proto.Unmarshal(): %v", err)
 	}
 
 	// Verify pointer to previous data.  The very first entry will have
@@ -166,7 +168,7 @@ func verifyKeys(handle *keyset.Handle, data []byte, sigs [][]byte) error {
 	}
 	verifier, err := signature.NewVerifier(handle)
 	if err != nil {
-		return fmt.Errorf("signature.NewVerifier(%v): %v", handle, err)
+		return status.Errorf(codes.InvalidArgument, "signature.NewVerifier(%v): %v", handle, err)
 	}
 
 	for _, sig := range sigs {
