@@ -21,6 +21,8 @@ import (
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -35,6 +37,13 @@ type Joined struct {
 	Index   []byte
 	Values1 []*pb.EntryUpdate
 	Values2 []*pb.EntryUpdate
+}
+
+func wrapErrFn(emitErr func(error), msg string) func(error) {
+	return func(err error) {
+		s := status.Convert(err)
+		emitErr(status.Errorf(s.Code(), "%v: %v", msg, s.Message()))
+	}
 }
 
 // Join pairs up MapLeaves and IndexedValue by index.
@@ -110,7 +119,7 @@ func DoMapLogItemsFn(fn MapLogItemFn, msgs []*mutator.LogMessage,
 			func(index []byte, value *pb.EntryUpdate) {
 				outs = append(outs, &entry.IndexedValue{Index: index, Value: value})
 			},
-			func(err error) { emitErr(fmt.Errorf("mapLogItemFn: %v", err)) },
+			wrapErrFn(emitErr, "mapLogItemFn"),
 		)
 	}
 	return outs
@@ -152,7 +161,7 @@ func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error)
 			func(e *pb.EntryUpdate) {
 				ret = append(ret, &entry.IndexedValue{Index: j.Index, Value: e})
 			},
-			func(err error) { emitErr(fmt.Errorf("reduceFn on index %x: %v", j.Index, err)) },
+			wrapErrFn(emitErr, fmt.Sprintf("reduceFn on index %x", j.Index)),
 		)
 	}
 	return ret
@@ -166,7 +175,7 @@ func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr func(error), incF
 		incFn("MarshalIndexedValue")
 		mapLeaf, err := iv.Marshal()
 		if err != nil {
-			emitErr(err)
+			emitErr(status.Errorf(codes.Internal, "MarshalIndexedValue(): %v", err))
 			continue
 		}
 		ret = append(ret, mapLeaf)
