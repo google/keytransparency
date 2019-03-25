@@ -96,7 +96,7 @@ func TestIndexedValue(t *testing.T) {
 		want    *IndexedValue
 		wantErr bool
 	}{
-		{desc: "empty leaf", mapLeaf: &tpb.MapLeaf{}, want: &IndexedValue{}},
+		{desc: "empty leaf", mapLeaf: &tpb.MapLeaf{Index: []byte("index")}, want: &IndexedValue{Index: []byte("index")}},
 		{desc: "invalid", mapLeaf: &tpb.MapLeaf{LeafValue: []byte{2, 2, 2, 2, 2, 2}}, want: &IndexedValue{}, wantErr: true},
 		{desc: "valid", mapLeaf: leaf, want: iv},
 	} {

@@ -53,7 +53,7 @@ func (iv *IndexedValue) Unmarshal(leaf *tpb.MapLeaf) error {
 		committed = val
 	}
 	if mutation == nil && committed == nil {
-		*iv = IndexedValue{}
+		*iv = IndexedValue{Index: leaf.GetIndex()}
 		return nil
 	}
 	*iv = IndexedValue{
