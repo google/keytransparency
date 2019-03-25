@@ -214,6 +214,13 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 
 	go signer.TrackMasterships(ctx)
 
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+		if _, err := spb.NewKeyTransparencySequencerClient(conn).
+			UpdateMetrics(ctx, &spb.UpdateMetricsRequest{}); err != nil {
+			glog.Errorf("UpdateMetrics(): %v", err)
+		}
+	})
+
 	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.AddAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)
