@@ -45,15 +45,17 @@ const (
 )
 
 var (
-	initMetrics      sync.Once
-	knownDirectories monitoring.Gauge
-	logEntryCount    monitoring.Counter
-	mapLeafCount     monitoring.Counter
-	fnCount          monitoring.Counter
-	mapRevisionCount monitoring.Counter
-	watermarkDefined monitoring.Gauge
-	watermarkApplied monitoring.Gauge
-	mutationFailures monitoring.Counter
+	initMetrics       sync.Once
+	knownDirectories  monitoring.Gauge
+	logEntryCount     monitoring.Counter
+	logEntryUnapplied monitoring.Gauge
+	mapLeafCount      monitoring.Counter
+	fnCount           monitoring.Counter
+	mapRevisionCount  monitoring.Counter
+	watermarkWritten  monitoring.Gauge
+	watermarkDefined  monitoring.Gauge
+	watermarkApplied  monitoring.Gauge
+	mutationFailures  monitoring.Counter
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -65,6 +67,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"log_entry_count",
 		"Total number of log entries read since process start. Duplicates are not removed.",
 		directoryIDLabel, logIDLabel)
+	logEntryUnapplied = mf.NewGauge(
+		"log_entry_unapplied",
+		"Total number of log entries still to be processed in the queue.",
+		directoryIDLabel)
 	mapLeafCount = mf.NewCounter(
 		"map_leaf_count",
 		"Total number of map leaves written since process start. Duplicates are not removed.",
@@ -77,6 +83,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"map_revision_count",
 		"Total number of map revisions written since process start.",
 		directoryIDLabel)
+	watermarkWritten = mf.NewGauge(
+		"watermark_written",
+		"High watermark of each input log that has been written",
+		directoryIDLabel, logIDLabel)
 	watermarkDefined = mf.NewGauge(
 		"watermark_defined",
 		"High watermark of each input log that has been defined in the batch table",
@@ -124,11 +134,12 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	batcher   Batcher
-	trillian  trillianFactory
-	logs      LogsReader
-	loopback  spb.KeyTransparencySequencerClient
-	BatchSize int32
+	directories directory.Storage
+	batcher     Batcher
+	trillian    trillianFactory
+	logs        LogsReader
+	loopback    spb.KeyTransparencySequencerClient
+	BatchSize   int32
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -143,6 +154,7 @@ func NewServer(
 ) *Server {
 	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
+		directories: directories,
 		trillian: &Trillian{
 			directories: directories,
 			tmap:        tmap,
@@ -153,6 +165,49 @@ func NewServer(
 		loopback:  loopback,
 		BatchSize: 10000,
 	}
+}
+
+func (s *Server) UpdateMetrics(ctx context.Context, _ *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
+	directories, err := s.directories.List(ctx, false /*deleted*/)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "admin.List(): %v", err)
+	}
+	var retErr error
+	for _, d := range directories {
+		if err := s.unappliedMetric(ctx, d.DirectoryID); err != nil {
+			glog.Errorf("unappliedMetric(): %v", err)
+			retErr = err
+		}
+	}
+	return &spb.UpdateMetricsResponse{}, retErr
+}
+
+// unappliedMetric updates the log_entryunapplied metric for directoryID
+func (s *Server) unappliedMetric(ctx context.Context, directoryID string) error {
+	maxCount := int32(10000)
+	// Get the previous and current high water marks.
+	mapClient, err := s.trillian.MapClient(ctx, directoryID)
+	if err != nil {
+		return err
+	}
+	_, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return err
+	}
+	var lastMeta spb.MapMetadata
+	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
+		return err
+	}
+	// Query metadata about outstanding log items.
+	count, meta, err := s.HighWatermarks(ctx, directoryID, &lastMeta, maxCount)
+	if err != nil {
+		return status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
+	}
+	logEntryUnapplied.Set(float64(count), directoryID)
+	for _, source := range meta.Sources {
+		watermarkWritten.Set(float64(source.HighestExclusive), directoryID, fmt.Sprintf("%v", source.LogId))
+	}
+	return nil
 }
 
 // RunBatch runs the full sequence of steps (for one directory) nessesary to get a
