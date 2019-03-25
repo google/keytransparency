@@ -71,7 +71,7 @@ func IsValidEntry(signedEntry *pb.SignedEntry) error {
 func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error)) {
 	if got := len(leaves); got > 1 {
-		emitErr(status.Errorf(codes.Internal, "expected 0 or 1 map leaf for got %v", got))
+		emitErr(status.Errorf(codes.Internal, "got %v map leaves, want 0 or 1", got))
 		return // A bad index should not cause the whole batch to fail.
 	}
 	var oldValue *pb.SignedEntry // If no map leaf was found, oldValue will be nil.
