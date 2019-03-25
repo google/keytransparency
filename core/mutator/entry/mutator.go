@@ -90,7 +90,7 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 		newValue, err := MutateFn(oldValue, msg.GetMutation())
 		if err != nil {
 			s := status.Convert(err)
-			emitErr(status.Errorf(s.Code(), "entry: ReduceFn(msg %d/%d): %v", i, len(msgs)-1, s.Message()))
+			emitErr(status.Errorf(s.Code(), "entry: ReduceFn(msg %d/%d): %v", i+1, len(msgs), s.Message()))
 			continue
 		}
 		newEntries = append(newEntries, &pb.EntryUpdate{
