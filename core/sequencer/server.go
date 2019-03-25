@@ -354,7 +354,10 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
-	emitErrFn := func(err error) { glog.Warning(err); mutationFailures.Inc(in.DirectoryId, err.Error()) }
+	emitErrFn := func(err error) {
+		glog.Warning(err)
+		mutationFailures.Inc(in.DirectoryId, status.Code(err).String())
+	}
 	// Map Log Items
 	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, logItems, emitErrFn, incMetricFn)
 
