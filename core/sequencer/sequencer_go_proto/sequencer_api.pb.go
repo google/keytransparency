@@ -14,6 +14,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -733,6 +735,26 @@ type KeyTransparencySequencerServer interface {
 	PublishRevisions(context.Context, *PublishRevisionsRequest) (*PublishRevisionsResponse, error)
 	// UpdateMetrics will update various counters on the server. Call periodically.
 	UpdateMetrics(context.Context, *UpdateMetricsRequest) (*UpdateMetricsResponse, error)
+}
+
+// UnimplementedKeyTransparencySequencerServer can be embedded to have forward compatible implementations.
+type UnimplementedKeyTransparencySequencerServer struct {
+}
+
+func (*UnimplementedKeyTransparencySequencerServer) RunBatch(ctx context.Context, req *RunBatchRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunBatch not implemented")
+}
+func (*UnimplementedKeyTransparencySequencerServer) DefineRevisions(ctx context.Context, req *DefineRevisionsRequest) (*DefineRevisionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DefineRevisions not implemented")
+}
+func (*UnimplementedKeyTransparencySequencerServer) ApplyRevision(ctx context.Context, req *ApplyRevisionRequest) (*ApplyRevisionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ApplyRevision not implemented")
+}
+func (*UnimplementedKeyTransparencySequencerServer) PublishRevisions(ctx context.Context, req *PublishRevisionsRequest) (*PublishRevisionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PublishRevisions not implemented")
+}
+func (*UnimplementedKeyTransparencySequencerServer) UpdateMetrics(ctx context.Context, req *UpdateMetricsRequest) (*UpdateMetricsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateMetrics not implemented")
 }
 
 func RegisterKeyTransparencySequencerServer(s *grpc.Server, srv KeyTransparencySequencerServer) {

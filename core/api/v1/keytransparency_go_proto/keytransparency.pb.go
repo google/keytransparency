@@ -17,6 +17,8 @@ import (
 	trillian "github.com/google/trillian"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -2224,6 +2226,53 @@ type KeyTransparencyServer interface {
 	QueueEntryUpdate(context.Context, *UpdateEntryRequest) (*empty.Empty, error)
 	// BatchQueueUserUpdate enqueues a list of user profiles.
 	BatchQueueUserUpdate(context.Context, *BatchQueueUserUpdateRequest) (*empty.Empty, error)
+}
+
+// UnimplementedKeyTransparencyServer can be embedded to have forward compatible implementations.
+type UnimplementedKeyTransparencyServer struct {
+}
+
+func (*UnimplementedKeyTransparencyServer) GetDirectory(ctx context.Context, req *GetDirectoryRequest) (*Directory, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDirectory not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) GetRevision(ctx context.Context, req *GetRevisionRequest) (*Revision, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRevision not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) GetLatestRevision(ctx context.Context, req *GetLatestRevisionRequest) (*Revision, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLatestRevision not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) GetRevisionStream(req *GetRevisionRequest, srv KeyTransparency_GetRevisionStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetRevisionStream not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) ListMutations(ctx context.Context, req *ListMutationsRequest) (*ListMutationsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMutations not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) ListMutationsStream(req *ListMutationsRequest, srv KeyTransparency_ListMutationsStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method ListMutationsStream not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) GetUser(ctx context.Context, req *GetUserRequest) (*GetUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) BatchGetUser(ctx context.Context, req *BatchGetUserRequest) (*BatchGetUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchGetUser not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) BatchGetUserIndex(ctx context.Context, req *BatchGetUserIndexRequest) (*BatchGetUserIndexResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchGetUserIndex not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) ListEntryHistory(ctx context.Context, req *ListEntryHistoryRequest) (*ListEntryHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListEntryHistory not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) ListUserRevisions(ctx context.Context, req *ListUserRevisionsRequest) (*ListUserRevisionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListUserRevisions not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) BatchListUserRevisions(ctx context.Context, req *BatchListUserRevisionsRequest) (*BatchListUserRevisionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchListUserRevisions not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) QueueEntryUpdate(ctx context.Context, req *UpdateEntryRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueueEntryUpdate not implemented")
+}
+func (*UnimplementedKeyTransparencyServer) BatchQueueUserUpdate(ctx context.Context, req *BatchQueueUserUpdateRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchQueueUserUpdate not implemented")
 }
 
 func RegisterKeyTransparencyServer(s *grpc.Server, srv KeyTransparencyServer) {

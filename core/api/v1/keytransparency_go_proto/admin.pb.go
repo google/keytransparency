@@ -21,6 +21,8 @@ import (
 	keyspb "github.com/google/trillian/crypto/keyspb"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -689,6 +691,29 @@ type KeyTransparencyAdminServer interface {
 	// Fully delete soft-deleted directories that have been soft-deleted before
 	// the specified timestamp.
 	GarbageCollect(context.Context, *GarbageCollectRequest) (*GarbageCollectResponse, error)
+}
+
+// UnimplementedKeyTransparencyAdminServer can be embedded to have forward compatible implementations.
+type UnimplementedKeyTransparencyAdminServer struct {
+}
+
+func (*UnimplementedKeyTransparencyAdminServer) ListDirectories(ctx context.Context, req *ListDirectoriesRequest) (*ListDirectoriesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDirectories not implemented")
+}
+func (*UnimplementedKeyTransparencyAdminServer) GetDirectory(ctx context.Context, req *GetDirectoryRequest) (*Directory, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDirectory not implemented")
+}
+func (*UnimplementedKeyTransparencyAdminServer) CreateDirectory(ctx context.Context, req *CreateDirectoryRequest) (*Directory, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateDirectory not implemented")
+}
+func (*UnimplementedKeyTransparencyAdminServer) DeleteDirectory(ctx context.Context, req *DeleteDirectoryRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDirectory not implemented")
+}
+func (*UnimplementedKeyTransparencyAdminServer) UndeleteDirectory(ctx context.Context, req *UndeleteDirectoryRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UndeleteDirectory not implemented")
+}
+func (*UnimplementedKeyTransparencyAdminServer) GarbageCollect(ctx context.Context, req *GarbageCollectRequest) (*GarbageCollectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GarbageCollect not implemented")
 }
 
 func RegisterKeyTransparencyAdminServer(s *grpc.Server, srv KeyTransparencyAdminServer) {
