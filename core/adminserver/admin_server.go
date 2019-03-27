@@ -83,7 +83,13 @@ var (
 type LogsAdmin interface {
 	// AddLogs creates and adds new logs for writing to a directory.
 	AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error
+	// SetWritable enables or disables new writes from going to logID.
+	SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error
+	// ListLogs returns a list of logs, optionally filtered by the writable bit.
+	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 }
+
+var _ pb.KeyTransparencyAdminServer = &Server{}
 
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
@@ -381,6 +387,39 @@ func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequ
 func (s *Server) UndeleteDirectory(ctx context.Context, in *pb.UndeleteDirectoryRequest) (
 	*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+}
+
+// ListInputLogs returns a list of input logs for a directory.
+func (s *Server) ListInputLogs(ctx context.Context, in *pb.ListInputLogsRequest) (*pb.ListInputLogsResponse, error) {
+	logIDs, err := s.logsAdmin.ListLogs(ctx, in.GetDirectoryId(), in.GetFilterWritable())
+	if err != nil {
+		s := status.Convert(err)
+		return nil, status.Errorf(s.Code(), "adminserver: ListLogs(): %v", s.Message())
+	}
+	inputLogs := make([]*pb.InputLog, 0, len(logIDs))
+	for _, logID := range logIDs {
+		inputLogs = append(inputLogs, &pb.InputLog{LogId: logID, Writable: true})
+	}
+
+	return &pb.ListInputLogsResponse{Logs: inputLogs}, nil
+}
+
+// CreateInputLog returns a the created log.
+func (s *Server) CreateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
+	if err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), in.GetLogId()); err != nil {
+		s := status.Convert(err)
+		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", in.GetLogId(), s.Message())
+	}
+	return &pb.InputLog{LogId: in.GetLogId(), Writable: true}, nil
+}
+
+// UpdateInputLog updates the write bit for an input log.
+func (s *Server) UpdateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
+	if err := s.logsAdmin.SetWritable(ctx, in.GetDirectoryId(), in.GetLogId(), in.GetWritable()); err != nil {
+		s := status.Convert(err)
+		return nil, status.Errorf(s.Code(), "adminserver: SetWritable(): %v", s.Message())
+	}
+	return in, nil
 }
 
 // GarbageCollect looks for directories that have been deleted before the specified timestamp and fully deletes them.
