@@ -93,6 +93,25 @@ message UndeleteDirectoryRequest {
   string directory_id = 1;
 }
 
+message ListInputLogsRequest {
+  string directory_id = 1;
+  // filter_writable will only return writable logs when set.
+  string filter_writable = 2; 
+}
+
+message ListInputLogsResponse {
+  repeated InputLog logs = 1;
+}
+
+// InputLog is an input log for a directory.  
+message InputLog {
+  string directory_id = 1;
+  int64 log_id = 2;
+  // writable controls whether new log items will be sent to this log.
+  // writable is not set by ListInputLogs.
+  bool writable = 3;
+}
+
 // GarbageCollect request.
 message GarbageCollectRequest {
   // Soft-deleted directories with a deleted timestamp before this will be fully
@@ -146,6 +165,24 @@ service KeyTransparencyAdmin {
   rpc UndeleteDirectory(UndeleteDirectoryRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/directories/{directory_id}:undelete"
+    };
+  }
+  // ListInputLogs returns a list of input logs for a directory.
+  rpc ListInputLogs(ListInputLogsRequest) returns (ListInputLogsResponse) {
+    option (google.api.http) = {
+      get: "/v1/directories/{directory_id}/inputlogs"
+    };
+  }
+  // CreateInputLog returns a the created log.
+  rpc CreateInputLog(InputLog) returns (InputLog) {
+    option (google.api.http) = {
+      post: "/v1/directories/{directory_id}/inputlogs/{log_id}"
+    };
+  }
+  // UpdateInputLog updates the write bit for an input log.
+  rpc UpdateInputLog(InputLog) returns (InputLog) {
+    option (google.api.http) = {
+      put: "/v1/directories/{directory_id}/inputlogs/{log_id}"
     };
   }
   // Fully delete soft-deleted directories that have been soft-deleted before
