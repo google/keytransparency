@@ -874,7 +874,7 @@ ListDirectories response contains directories.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | directory_id | [string](#string) |  |  |
-| filter_writable | [string](#string) |  | filter_writable will only return writable logs when set. |
+| filter_writable | [bool](#bool) |  | filter_writable will only return writable logs when set. |
 
 
 

@@ -96,7 +96,7 @@ message UndeleteDirectoryRequest {
 message ListInputLogsRequest {
   string directory_id = 1;
   // filter_writable will only return writable logs when set.
-  string filter_writable = 2; 
+  bool filter_writable = 2; 
 }
 
 message ListInputLogsResponse {
