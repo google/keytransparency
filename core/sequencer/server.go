@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -56,6 +57,7 @@ var (
 	watermarkDefined  monitoring.Gauge
 	watermarkApplied  monitoring.Gauge
 	mutationFailures  monitoring.Counter
+	fnLatency         monitoring.Histogram
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -99,6 +101,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"mutation_failures",
 		"Number of invalid mutations the signer has processed for directoryid since process start",
 		directoryIDLabel, reasonLabel)
+	fnLatency = mf.NewHistogram(
+		"apply_revision_latency",
+		"Latency of sequencer apply revision operation in seconds",
+		directoryIDLabel, fnLabel)
 }
 
 // Watermarks is a map of watermarks by logID.
@@ -339,7 +345,10 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 
 // ApplyRevision applies the supplied mutations to the current map revision and creates a new revision.
 func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest) (*spb.ApplyRevisionResponse, error) {
+	start := time.Now()
+	defer func() { fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ApplyRevision") }()
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
+	fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ReadBatch")
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
@@ -376,7 +385,9 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	if err != nil {
 		return nil, err
 	}
+	verifyLeafStart := time.Now()
 	leaves, err := mapClient.GetAndVerifyMapLeavesByRevision(ctx, in.Revision-1, indexes)
+	fnLatency.Observe(time.Since(verifyLeafStart).Seconds(), in.DirectoryId, "GetAndVerifyMapLeavesByRevision")
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +415,9 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Set new leaf values.
+	setRevisionStart := time.Now()
 	mapRoot, err := mapClient.SetLeavesAtRevision(ctx, in.Revision, newLeaves, metadata)
+	fnLatency.Observe(time.Since(setRevisionStart).Seconds(), in.DirectoryId, "SetLeavesAtRevision")
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
