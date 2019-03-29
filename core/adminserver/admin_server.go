@@ -89,7 +89,7 @@ type LogsAdmin interface {
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 }
 
-var _ pb.KeyTransparencyAdminServer = &Server{}
+var _ pb.KeyTransparencyAdminServer = &Server{} // Ensure *Server satisfies the AdminServer interface.
 
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
