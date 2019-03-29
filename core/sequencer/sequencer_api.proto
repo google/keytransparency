@@ -111,7 +111,7 @@ message PublishRevisionsResponse {
   repeated int64 revisions = 1;
 }
 
-// UpdateMetricsRequest is empty. 
+// UpdateMetricsRequest is empty.
 message UpdateMetricsRequest{
 }
 
