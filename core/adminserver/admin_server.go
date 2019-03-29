@@ -392,7 +392,8 @@ func (s *Server) ListInputLogs(ctx context.Context, in *pb.ListInputLogsRequest)
 
 // CreateInputLog returns the created log.
 func (s *Server) CreateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
-	if s := status.Convert(s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), in.GetLogId())); s.Code() != codes.OK {
+	err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), in.GetLogId())
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", in.GetLogId(), s.Message())
 	}
 	return &pb.InputLog{LogId: in.GetLogId(), Writable: true}, nil
@@ -400,7 +401,8 @@ func (s *Server) CreateInputLog(ctx context.Context, in *pb.InputLog) (*pb.Input
 
 // UpdateInputLog updates the write bit for an input log.
 func (s *Server) UpdateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
-	if s := status.Convert(s.logsAdmin.SetWritable(ctx, in.GetDirectoryId(), in.GetLogId(), in.GetWritable())); s.Code() != codes.OK {
+	err := s.logsAdmin.SetWritable(ctx, in.GetDirectoryId(), in.GetLogId(), in.GetWritable())
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: SetWritable(): %v", s.Message())
 	}
 	return in, nil
