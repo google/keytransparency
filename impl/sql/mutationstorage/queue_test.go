@@ -52,6 +52,7 @@ func TestSetWritable(t *testing.T) {
 	}{
 		{desc: "one row", logIDs: []int64{10}, wantLogIDs: []int64{10}},
 		{desc: "one row disabled", logIDs: []int64{10}, set: map[int64]bool{10: false}, wantCode: codes.NotFound},
+		{desc: "one row enabled", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: false, 2: false}, wantLogIDs: []int64{3}},
 		{desc: "multi", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: true, 2: false}, wantLogIDs: []int64{1, 3}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
