@@ -20,5 +20,3 @@ package api
 
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --go_out=,plugins=grpc:$GOPATH/src monitor/v1/monitor.proto
 //go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --grpc-gateway_out=logtostderr=true:$GOPATH/src monitor/v1/monitor.proto
-
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis -I=$GOPATH/src/github.com/google/tink/proto --go_out=:$GOPATH/src type/type.proto

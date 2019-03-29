@@ -30,6 +30,15 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
+// SetWritable enables or disables new writes from going to logID.
+func (m *Mutations) SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error {
+	glog.Errorf("mutationstorage: SetWritable(%v, %v, enabled: %v)", directoryID, logID, enabled)
+	_, err := m.db.ExecContext(ctx,
+		`UPDATE Logs SET Enabled = ? WHERE DirectoryID = ? AND LogID = ?;`,
+		enabled, directoryID, logID)
+	return err
+}
+
 // AddLogs creates and adds new logs for writing to a directory.
 func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error {
 	glog.Infof("mutationstorage: AddLog(%v, %v)", directoryID, logIDs)

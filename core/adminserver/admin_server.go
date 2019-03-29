@@ -83,7 +83,13 @@ var (
 type LogsAdmin interface {
 	// AddLogs creates and adds new logs for writing to a directory.
 	AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error
+	// SetWritable enables or disables new writes from going to logID.
+	SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error
+	// ListLogs returns a list of logs, optionally filtered by the writable bit.
+	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 }
+
+var _ pb.KeyTransparencyAdminServer = &Server{} // Ensure *Server satisfies the AdminServer interface.
 
 // Server implements pb.KeyTransparencyAdminServer
 type Server struct {
@@ -175,7 +181,7 @@ func privKeyOrGen(ctx context.Context, privKey *any.Any, keygen keys.ProtoGenera
 	if privKey != nil {
 		var keyProto ptypes.DynamicAny
 		if err := ptypes.UnmarshalAny(privKey, &keyProto); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal privatekey: %v", err)
+			return nil, status.Errorf(codes.InvalidArgument, "failed to unmarshal privatekey: %v", err)
 		}
 		return keyProto.Message, nil
 	}
@@ -212,12 +218,12 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 
 	// Generate VRF key.
 	wrapped, err := privKeyOrGen(ctx, in.GetVrfPrivateKey(), s.keygen)
-	if err != nil {
-		return nil, fmt.Errorf("adminserver: keygen(): %v", err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: keygen(): %v", s.Message())
 	}
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, wrapped)
-	if err != nil {
-		return nil, fmt.Errorf("adminserver: NewFromWrappedKey(): %v", err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: NewFromWrappedKey(): %v", s.Message())
 	}
 	vrfPublicPB, err := der.ToPublicProto(vrfPriv.Public())
 	if err != nil {
@@ -227,8 +233,8 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 	// Create Trillian keys.
 	logTreeArgs := treeConfig(logArgs, in.GetLogPrivateKey(), in.GetDirectoryId())
 	logTree, err := client.CreateAndInitTree(ctx, logTreeArgs, s.logAdmin, s.tmap, s.tlog)
-	if err != nil {
-		return nil, fmt.Errorf("adminserver: CreateTree(log): %v", err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: CreateTree(log): %v", s.Message())
 	}
 	mapTreeArgs := treeConfig(mapArgs, in.GetMapPrivateKey(), in.GetDirectoryId())
 	mapTree, err := client.CreateAndInitTree(ctx, mapTreeArgs, s.mapAdmin, s.tmap, s.tlog)
@@ -240,12 +246,12 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v", err)
 	}
 	minInterval, err := ptypes.Duration(in.MinInterval)
-	if err != nil {
-		return nil, fmt.Errorf("adminserver: Duration(%v): %v", in.MinInterval, err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: Duration(%v): %v", in.MinInterval, s.Message())
 	}
 	maxInterval, err := ptypes.Duration(in.MaxInterval)
-	if err != nil {
-		return nil, fmt.Errorf("adminserver: Duration(%v): %v", in.MaxInterval, err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: Duration(%v): %v", in.MaxInterval, s.Message())
 	}
 
 	// Initialize log with first map root.
@@ -270,15 +276,15 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		MinInterval: minInterval,
 		MaxInterval: maxInterval,
 	}
-	if err := s.directories.Write(ctx, dir); err != nil {
-		return nil, fmt.Errorf("adminserver: directories.Write(): %v", err)
+	if s := status.Convert(s.directories.Write(ctx, dir)); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: directories.Write(): %v", s.Message())
 	}
 
 	// Create initial logs for writing.
 	// TODO(#1063): Additional logs can be added at a later point to support increased server load.
 	logIDs := []int64{1, 2}
-	if err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), logIDs...); err != nil {
-		return nil, fmt.Errorf("adminserver: AddLogs(%+v): %v", logIDs, err)
+	if s := status.Convert(s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), logIDs...)); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", logIDs, s.Message())
 	}
 
 	d := &pb.Directory{
@@ -303,29 +309,29 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	trustedRoot := types.LogRootV1{} // Automatically trust the first observed log root.
 
 	logClient, err := client.NewFromTree(s.tlog, logTree, trustedRoot)
-	if err != nil {
-		return fmt.Errorf("adminserver: could not create log client: %v", err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return status.Errorf(s.Code(), "adminserver: could not create log client: %v", s.Message())
 	}
 
 	// Wait for the latest log root to become available.
 	logRoot, err := logClient.UpdateRoot(ctx)
-	if err != nil {
-		return fmt.Errorf("adminserver: UpdateRoot(): %v", err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return status.Errorf(s.Code(), "adminserver: UpdateRoot(): %v", s.Message())
 	}
 
 	req := &tpb.GetSignedMapRootByRevisionRequest{MapId: mapID, Revision: 0}
 	// TODO(gbelvin): does this need to be in a retry loop?
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, req)
-	if err != nil {
-		return fmt.Errorf("adminserver: GetSignedMapRootByRevision(%v,0): %v", mapID, err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return status.Errorf(s.Code(), "adminserver: GetSignedMapRootByRevision(%v,0): %v", mapID, s.Message())
 	}
 	mapVerifier, err := client.NewMapVerifierFromTree(mapTree)
-	if err != nil {
-		return fmt.Errorf("adminserver: NewMapVerifierFromTree(): %v", err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return status.Errorf(s.Code(), "adminserver: NewMapVerifierFromTree(): %v", s.Message())
 	}
 	mapRoot, err := mapVerifier.VerifySignedMapRoot(resp.GetMapRoot())
-	if err != nil {
-		return fmt.Errorf("adminserver: VerifySignedMapRoot(): %v", err)
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return status.Errorf(s.Code(), "adminserver: VerifySignedMapRoot(): %v", s.Message())
 	}
 
 	// If the tree is empty and the map is empty,
@@ -336,8 +342,8 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 
 	glog.Infof("Initializing Trillian Log %v with empty map root", logID)
 
-	if err := logClient.AddSequencedLeafAndWait(ctx, resp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-		return fmt.Errorf("adminserver: log.AddSequencedLeaf(%v): %v", mapRoot.Revision, err)
+	if s := status.Convert(logClient.AddSequencedLeafAndWait(ctx, resp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision))); s.Code() != codes.OK {
+		return status.Errorf(s.Code(), "adminserver: log.AddSequencedLeaf(%v): %v", mapRoot.Revision, s.Message())
 	}
 	return nil
 }
@@ -368,6 +374,38 @@ func (s *Server) DeleteDirectory(ctx context.Context, in *pb.DeleteDirectoryRequ
 func (s *Server) UndeleteDirectory(ctx context.Context, in *pb.UndeleteDirectoryRequest) (
 	*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+}
+
+// ListInputLogs returns a list of input logs for a directory.
+func (s *Server) ListInputLogs(ctx context.Context, in *pb.ListInputLogsRequest) (*pb.ListInputLogsResponse, error) {
+	logIDs, err := s.logsAdmin.ListLogs(ctx, in.GetDirectoryId(), in.GetFilterWritable())
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: ListLogs(): %v", s.Message())
+	}
+	inputLogs := make([]*pb.InputLog, 0, len(logIDs))
+	for _, logID := range logIDs {
+		inputLogs = append(inputLogs, &pb.InputLog{LogId: logID, Writable: true})
+	}
+
+	return &pb.ListInputLogsResponse{Logs: inputLogs}, nil
+}
+
+// CreateInputLog returns the created log.
+func (s *Server) CreateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
+	err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), in.GetLogId())
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", in.GetLogId(), s.Message())
+	}
+	return &pb.InputLog{LogId: in.GetLogId(), Writable: true}, nil
+}
+
+// UpdateInputLog updates the write bit for an input log.
+func (s *Server) UpdateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
+	err := s.logsAdmin.SetWritable(ctx, in.GetDirectoryId(), in.GetLogId(), in.GetWritable())
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: SetWritable(): %v", s.Message())
+	}
+	return in, nil
 }
 
 // GarbageCollect looks for directories that have been deleted before the specified timestamp and fully deletes them.

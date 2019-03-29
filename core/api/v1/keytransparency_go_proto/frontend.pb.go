@@ -16,6 +16,8 @@ import (
 	empty "github.com/golang/protobuf/ptypes/empty"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -156,6 +158,14 @@ func (c *keyTransparencyFrontendClient) QueueKeyUpdate(ctx context.Context, in *
 type KeyTransparencyFrontendServer interface {
 	// Enqueues an update to a user's identity keys.
 	QueueKeyUpdate(context.Context, *QueueKeyUpdateRequest) (*empty.Empty, error)
+}
+
+// UnimplementedKeyTransparencyFrontendServer can be embedded to have forward compatible implementations.
+type UnimplementedKeyTransparencyFrontendServer struct {
+}
+
+func (*UnimplementedKeyTransparencyFrontendServer) QueueKeyUpdate(ctx context.Context, req *QueueKeyUpdateRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueueKeyUpdate not implemented")
 }
 
 func RegisterKeyTransparencyFrontendServer(s *grpc.Server, srv KeyTransparencyFrontendServer) {
