@@ -390,7 +390,7 @@ func (s *Server) ListInputLogs(ctx context.Context, in *pb.ListInputLogsRequest)
 	return &pb.ListInputLogsResponse{Logs: inputLogs}, nil
 }
 
-// CreateInputLog returns a the created log.
+// CreateInputLog returns the created log.
 func (s *Server) CreateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
 	if s := status.Convert(s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), in.GetLogId())); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", in.GetLogId(), s.Message())
