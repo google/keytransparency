@@ -218,13 +218,11 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 
 	// Generate VRF key.
 	wrapped, err := privKeyOrGen(ctx, in.GetVrfPrivateKey(), s.keygen)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: keygen(): %v", s.Message())
 	}
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, wrapped)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: NewFromWrappedKey(): %v", s.Message())
 	}
 	vrfPublicPB, err := der.ToPublicProto(vrfPriv.Public())
@@ -235,8 +233,7 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 	// Create Trillian keys.
 	logTreeArgs := treeConfig(logArgs, in.GetLogPrivateKey(), in.GetDirectoryId())
 	logTree, err := client.CreateAndInitTree(ctx, logTreeArgs, s.logAdmin, s.tmap, s.tlog)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: CreateTree(log): %v", s.Message())
 	}
 	mapTreeArgs := treeConfig(mapArgs, in.GetMapPrivateKey(), in.GetDirectoryId())
@@ -249,13 +246,11 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		return nil, status.Errorf(codes.Internal, "adminserver: CreateAndInitTree(map): %v", err)
 	}
 	minInterval, err := ptypes.Duration(in.MinInterval)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: Duration(%v): %v", in.MinInterval, s.Message())
 	}
 	maxInterval, err := ptypes.Duration(in.MaxInterval)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: Duration(%v): %v", in.MaxInterval, s.Message())
 	}
 
@@ -281,16 +276,14 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 		MinInterval: minInterval,
 		MaxInterval: maxInterval,
 	}
-	if err := s.directories.Write(ctx, dir); err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(s.directories.Write(ctx, dir)); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: directories.Write(): %v", s.Message())
 	}
 
 	// Create initial logs for writing.
 	// TODO(#1063): Additional logs can be added at a later point to support increased server load.
 	logIDs := []int64{1, 2}
-	if err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), logIDs...); err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), logIDs...)); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", logIDs, s.Message())
 	}
 
@@ -316,33 +309,28 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 	trustedRoot := types.LogRootV1{} // Automatically trust the first observed log root.
 
 	logClient, err := client.NewFromTree(s.tlog, logTree, trustedRoot)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return status.Errorf(s.Code(), "adminserver: could not create log client: %v", s.Message())
 	}
 
 	// Wait for the latest log root to become available.
 	logRoot, err := logClient.UpdateRoot(ctx)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return status.Errorf(s.Code(), "adminserver: UpdateRoot(): %v", s.Message())
 	}
 
 	req := &tpb.GetSignedMapRootByRevisionRequest{MapId: mapID, Revision: 0}
 	// TODO(gbelvin): does this need to be in a retry loop?
 	resp, err := s.tmap.GetSignedMapRootByRevision(ctx, req)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return status.Errorf(s.Code(), "adminserver: GetSignedMapRootByRevision(%v,0): %v", mapID, s.Message())
 	}
 	mapVerifier, err := client.NewMapVerifierFromTree(mapTree)
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return status.Errorf(s.Code(), "adminserver: NewMapVerifierFromTree(): %v", s.Message())
 	}
 	mapRoot, err := mapVerifier.VerifySignedMapRoot(resp.GetMapRoot())
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return status.Errorf(s.Code(), "adminserver: VerifySignedMapRoot(): %v", s.Message())
 	}
 
@@ -354,8 +342,7 @@ func (s *Server) initialize(ctx context.Context, logTree, mapTree *tpb.Tree) err
 
 	glog.Infof("Initializing Trillian Log %v with empty map root", logID)
 
-	if err := logClient.AddSequencedLeafAndWait(ctx, resp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision)); err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(logClient.AddSequencedLeafAndWait(ctx, resp.GetMapRoot().GetMapRoot(), int64(mapRoot.Revision))); s.Code() != codes.OK {
 		return status.Errorf(s.Code(), "adminserver: log.AddSequencedLeaf(%v): %v", mapRoot.Revision, s.Message())
 	}
 	return nil
@@ -392,8 +379,7 @@ func (s *Server) UndeleteDirectory(ctx context.Context, in *pb.UndeleteDirectory
 // ListInputLogs returns a list of input logs for a directory.
 func (s *Server) ListInputLogs(ctx context.Context, in *pb.ListInputLogsRequest) (*pb.ListInputLogsResponse, error) {
 	logIDs, err := s.logsAdmin.ListLogs(ctx, in.GetDirectoryId(), in.GetFilterWritable())
-	if err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(err); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: ListLogs(): %v", s.Message())
 	}
 	inputLogs := make([]*pb.InputLog, 0, len(logIDs))
@@ -406,8 +392,7 @@ func (s *Server) ListInputLogs(ctx context.Context, in *pb.ListInputLogsRequest)
 
 // CreateInputLog returns a the created log.
 func (s *Server) CreateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
-	if err := s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), in.GetLogId()); err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), in.GetLogId())); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", in.GetLogId(), s.Message())
 	}
 	return &pb.InputLog{LogId: in.GetLogId(), Writable: true}, nil
@@ -415,8 +400,7 @@ func (s *Server) CreateInputLog(ctx context.Context, in *pb.InputLog) (*pb.Input
 
 // UpdateInputLog updates the write bit for an input log.
 func (s *Server) UpdateInputLog(ctx context.Context, in *pb.InputLog) (*pb.InputLog, error) {
-	if err := s.logsAdmin.SetWritable(ctx, in.GetDirectoryId(), in.GetLogId(), in.GetWritable()); err != nil {
-		s := status.Convert(err)
+	if s := status.Convert(s.logsAdmin.SetWritable(ctx, in.GetDirectoryId(), in.GetLogId(), in.GetWritable())); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: SetWritable(): %v", s.Message())
 	}
 	return in, nil
