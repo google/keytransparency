@@ -96,14 +96,14 @@ message UndeleteDirectoryRequest {
 message ListInputLogsRequest {
   string directory_id = 1;
   // filter_writable will only return writable logs when set.
-  bool filter_writable = 2; 
+  bool filter_writable = 2;
 }
 
 message ListInputLogsResponse {
   repeated InputLog logs = 1;
 }
 
-// InputLog is an input log for a directory.  
+// InputLog is an input log for a directory.
 message InputLog {
   string directory_id = 1;
   int64 log_id = 2;
