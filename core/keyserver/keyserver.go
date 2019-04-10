@@ -269,7 +269,7 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, err
 	}
 
 	// Fetch latest revision.
