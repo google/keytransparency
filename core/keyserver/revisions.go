@@ -247,6 +247,9 @@ func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory,
 	}
 	// Consistency proof.
 	secondTreeSize := int64(root.TreeSize)
+	if secondTreeSize < firstTreeSize {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "latestLogRootProof: latest log root is smaller than firstTreeSize")
+	}
 	var logConsistency *tpb.GetConsistencyProofResponse
 	if firstTreeSize != 0 {
 		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
