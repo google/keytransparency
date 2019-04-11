@@ -208,7 +208,6 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	signer := sequencer.New(
 		spb.NewKeyTransparencySequencerClient(conn),
 		directoryStorage,
-		int32(*batchSize),
 		election.NewTracker(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
 	)
 
@@ -225,7 +224,7 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 		if err := signer.AddAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)
 		}
-		if err := signer.RunBatchForAllMasterships(ctx); err != nil {
+		if err := signer.RunBatchForAllMasterships(ctx, int32(*batchSize)); err != nil {
 			glog.Errorf("PeriodicallyRun(RunBatchForAllMasterships): %v", err)
 		}
 	})
