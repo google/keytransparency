@@ -31,7 +31,6 @@ import (
 // Sequencer processes mutations and sends them to the trillian map.
 type Sequencer struct {
 	directories     directory.Storage
-	batchSize       int32
 	sequencerClient spb.KeyTransparencySequencerClient
 	tracker         *election.Tracker
 }
@@ -40,13 +39,11 @@ type Sequencer struct {
 func New(
 	sequencerClient spb.KeyTransparencySequencerClient,
 	directories directory.Storage,
-	batchSize int32,
 	tracker *election.Tracker,
 ) *Sequencer {
 	return &Sequencer{
 		sequencerClient: sequencerClient,
 		directories:     directories,
-		batchSize:       batchSize,
 		tracker:         tracker,
 	}
 }
@@ -99,7 +96,7 @@ func (s *Sequencer) AddDirectory(dirIDs ...string) {
 }
 
 // RunBatchForAllMasterships runs RunBatch on all directires this sequencer is currently master for.
-func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context) error {
+func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int32) error {
 	glog.Infof("RunBatchForAllMasterships")
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -113,7 +110,7 @@ func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context) error {
 		req := &spb.RunBatchRequest{
 			DirectoryId: dirID,
 			MinBatch:    1,
-			MaxBatch:    s.batchSize,
+			MaxBatch:    batchSize,
 		}
 		if _, err := s.sequencerClient.RunBatch(whileMaster, req); err != nil {
 			lastErr = err
