@@ -5,4 +5,5 @@
 # https://git-scm.com/docs/gitignore#_pattern_format
 
 # Default
-*				@gdbelvin
+*				@google/keytransparency
+core/crypto			@gdbelvin @thaidn @benbenoy
