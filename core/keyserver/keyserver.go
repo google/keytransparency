@@ -51,7 +51,7 @@ var (
 
 func createMetrics(mf monitoring.MetricFactory) {
 	watermarkWritten = mf.NewGauge(
-		"watermark_written",
+		"keyserver_watermark_written",
 		"High watermark of each input log that has been written",
 		directoryIDLabel, logIDLabel)
 }
