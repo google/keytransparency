@@ -114,7 +114,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 			glog.Infof("Mutation did not verify: %v", err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))
 		}
-		leafNodeID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapVerifier.Hasher.BitLen())
+		leafNodeID := storage.NewNodeIDFromPrefixSuffix(index, storage.EmptySuffix, m.mapVerifier.Hasher.BitLen())
 		leaf, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Infof("Failed to serialize: %v", err)
