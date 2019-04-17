@@ -189,13 +189,13 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 		Index:    indexes,
 		Revision: mapRevision,
 	})
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.Map.TreeId, mapRevision, err)
-		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
+		return nil, status.Errorf(st.Code(), "Failed fetching map leaf")
 	}
 	if got, want := len(getResp.MapLeafInclusion), len(userIDs); got != want {
 		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
-		return nil, status.Errorf(codes.Internal, "Failed fetching map leaf")
+		return nil, status.Errorf(codes.Internal, "Wrong number of map leaves returned")
 	}
 	leaves := make(map[string]*pb.MapLeaf)
 	for _, mapLeafInclusion := range getResp.MapLeafInclusion {
@@ -243,9 +243,9 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 			LeafIndex: mapRevision,
 			TreeSize:  int64(root.TreeSize),
 		})
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("tlog.GetInclusionProof(%v): %v", d.Log.TreeId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof")
+		return nil, status.Errorf(st.Code(), "Cannot fetch log inclusion proof")
 	}
 
 	return &pb.BatchGetUserResponse{
@@ -306,9 +306,9 @@ func (s *Server) BatchGetUserIndex(ctx context.Context,
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info")
 	}
 	proofsByUser, _, err := s.batchGetUserIndex(ctx, d, in.UserIds)
 	if err != nil {
@@ -340,9 +340,9 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 	d, err := s.directories.Read(ctx, directoryID, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info")
 	}
 
 	// Fetch latest revision.
@@ -366,9 +366,9 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	responses := make([]*pb.GetUserResponse, in.PageSize)
 	for i := range responses {
 		resp, err := s.getUserByRevision(ctx, sth, d, in.UserId, in.Start+int64(i))
-		if err != nil {
+		if st := status.Convert(err); st.Code() != codes.OK {
 			glog.Errorf("getUser failed for revision %v: %v", in.Start+int64(i), err)
-			return nil, status.Errorf(codes.Internal, "GetUser failed")
+			return nil, status.Errorf(st.Code(), "GetUser failed")
 		}
 		proto.Merge(resp, &pb.GetUserResponse{
 			Revision: &pb.Revision{
@@ -420,9 +420,9 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 	d, err := s.directories.Read(ctx, directoryID, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info")
 	}
 
 	// Fetch latest log root & consistency proof.
@@ -448,9 +448,9 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	for i := range revisions {
 		rev := pageStart + int64(i)
 		resp, err := s.getUserByRevision(ctx, sth, d, in.UserId, rev)
-		if err != nil {
+		if st := status.Convert(err); st.Code() != codes.OK {
 			glog.Errorf("getUser failed for revision %v: %v", rev, err)
-			return nil, status.Errorf(codes.Internal, "GetUser failed")
+			return nil, status.Errorf(st.Code(), "GetUser failed")
 		}
 		revisions[i] = &pb.MapRevision{
 			MapRoot: resp.GetRevision().GetMapRoot(),
@@ -466,9 +466,9 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 			RevisionsReturned: (pageStart - in.StartRevision) + numRevisions,
 		}
 		token, err = EncodeToken(tokenProto)
-		if err != nil {
+		if st := status.Convert(err); st.Code() != codes.OK {
 			glog.Errorf("error encoding page token: %v", err)
-			return nil, status.Errorf(codes.Internal, "Error encoding pagination token")
+			return nil, status.Errorf(st.Code(), "Error encoding pagination token")
 		}
 	}
 	resp := &pb.ListUserRevisionsResponse{
@@ -494,9 +494,9 @@ func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUse
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 	d, err := s.directories.Read(ctx, directoryID, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("adminstorage.Read(%v): %v", directoryID, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info")
 	}
 
 	// Fetch latest log root & consistency proof.
@@ -522,9 +522,9 @@ func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUse
 	for i := range revisions {
 		rev := pageStart + int64(i)
 		resp, err := s.batchGetUserByRevision(ctx, sth, d, in.UserIds, rev)
-		if err != nil {
+		if st := status.Convert(err); st.Code() != codes.OK {
 			glog.Errorf("batchGetUser failed for revision %v: %v", rev, err)
-			return nil, status.Errorf(codes.Internal, "BatchGetUser failed")
+			return nil, status.Errorf(st.Code(), "BatchGetUser failed")
 		}
 		revisions[i] = &pb.BatchMapRevision{
 			MapRoot:           resp.GetRevision().GetMapRoot(),
@@ -557,9 +557,9 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	}
 	// Lookup log and map info.
 	directory, err := s.directories.Read(ctx, in.DirectoryId, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info")
 	}
 	vrfPriv, err := p256.NewFromWrappedKey(ctx, directory.VRFPriv)
 	if err != nil {
@@ -583,9 +583,9 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 
 	// Save mutation to the database.
 	wm, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("mutations.Write failed: %v", err)
-		return nil, status.Errorf(codes.Internal, "Mutation write error")
+		return nil, status.Errorf(st.Code(), "Mutation write error")
 	}
 	if wm != nil {
 		watermarkWritten.Set(float64(wm.Watermark), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
@@ -605,12 +605,9 @@ func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 	directory, err := s.directories.Read(ctx, in.DirectoryId, false)
-	if status.Code(err) == codes.NotFound {
+	if st := status.Convert(err); st.Code() == codes.NotFound {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.NotFound, "Directory %v not found", in.DirectoryId)
-	} else if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info for %v", in.DirectoryId)
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info for %v", in.DirectoryId)
 	}
 
 	return &pb.Directory{
