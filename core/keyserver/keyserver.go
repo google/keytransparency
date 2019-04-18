@@ -605,7 +605,7 @@ func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
 	directory, err := s.directories.Read(ctx, in.DirectoryId, false)
-	if st := status.Convert(err); st.Code() == codes.NotFound {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(st.Code(), "Cannot fetch directory info for %v", in.DirectoryId)
 	}
