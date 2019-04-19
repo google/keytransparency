@@ -46,18 +46,20 @@ const (
 )
 
 var (
-	initMetrics       sync.Once
-	knownDirectories  monitoring.Gauge
-	logEntryCount     monitoring.Counter
-	logEntryUnapplied monitoring.Gauge
-	mapLeafCount      monitoring.Counter
-	fnCount           monitoring.Counter
-	mapRevisionCount  monitoring.Counter
-	watermarkWritten  monitoring.Gauge
-	watermarkDefined  monitoring.Gauge
-	watermarkApplied  monitoring.Gauge
-	mutationFailures  monitoring.Counter
-	fnLatency         monitoring.Histogram
+	initMetrics        sync.Once
+	knownDirectories   monitoring.Gauge
+	logEntryCount      monitoring.Counter
+	logEntryUnapplied  monitoring.Gauge
+	mapLeafCount       monitoring.Counter
+	fnCount            monitoring.Counter
+	mapRevisionCount   monitoring.Counter
+	watermarkWritten   monitoring.Gauge
+	watermarkDefined   monitoring.Gauge
+	watermarkApplied   monitoring.Gauge
+	mutationFailures   monitoring.Counter
+	fnLatency          monitoring.Histogram
+	logRootTrail       monitoring.Gauge
+	unappliedRevisions monitoring.Gauge
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -105,6 +107,14 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"apply_revision_latency",
 		"Latency of sequencer apply revision operation in seconds",
 		directoryIDLabel, fnLabel)
+	logRootTrail = mf.NewGauge(
+		"log_root_trail",
+		"How many revisions have not been published to the log",
+	)
+	unappliedRevisions = mf.NewGauge(
+		"unapplied_revisions",
+		"How many revisions have been defined but haven't been applied to the map",
+	)
 }
 
 // Watermarks is a map of watermarks by logID.
@@ -140,12 +150,13 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	directories directory.Storage
-	batcher     Batcher
-	trillian    trillianFactory
-	logs        LogsReader
-	loopback    spb.KeyTransparencySequencerClient
-	BatchSize   int32
+	directories         directory.Storage
+	batcher             Batcher
+	trillian            trillianFactory
+	logs                LogsReader
+	loopback            spb.KeyTransparencySequencerClient
+	BatchSize           int32
+	LogPublishBatchSize uint64
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -166,10 +177,11 @@ func NewServer(
 			tmap:        tmap,
 			tlog:        tlog,
 		},
-		batcher:   batcher,
-		logs:      logs,
-		loopback:  loopback,
-		BatchSize: 10000,
+		batcher:             batcher,
+		logs:                logs,
+		loopback:            loopback,
+		BatchSize:           10000,
+		LogPublishBatchSize: 10,
 	}
 }
 
@@ -231,16 +243,24 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, err
 	}
 
+	unappliedRevisions.Set(float64(len(defResp.OutstandingRevisions)))
+
+	var handledCount uint64
 	for _, rev := range defResp.OutstandingRevisions {
-		if _, err := s.loopback.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
-			DirectoryId: in.DirectoryId,
-			Revision:    rev,
-		}); err != nil {
+		if handledCount == s.LogPublishBatchSize {
+			// Only handle up to LogPublishBatchSize revisions per batch.
+			glog.Errorf("RunBatch - Too many outstanding revisions to apply: %d", len(defResp.OutstandingRevisions))
+			break
+		}
+		revReq := &spb.ApplyRevisionRequest{DirectoryId: in.DirectoryId, Revision: rev}
+		_, err := s.loopback.ApplyRevision(ctx, revReq)
+		if err != nil {
 			// Log the error and continue to publish any revsisions this run may have completed.
 			// This revision will be retried on the next execution of RunBatch.
 			glog.Errorf("ApplyRevision(dir: %v, rev: %v): %v", in.DirectoryId, rev, err)
 			break
 		}
+		handledCount++
 	}
 
 	publishReq := &spb.PublishRevisionsRequest{DirectoryId: in.DirectoryId, Block: in.Block}
@@ -464,7 +484,16 @@ func (s *Server) PublishRevisions(ctx context.Context,
 	// Add all unpublished map roots to the log.
 	revs := []int64{}
 	leaves := make(map[int64][]byte)
-	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
+
+	end := latestMapRoot.Revision
+	if batch := logRoot.TreeSize + s.LogPublishBatchSize; batch < end {
+		// Only publish up to LogPublishBatchSize log roots at a time.
+		// TODO: add a metric for delta between log and map roots.
+		glog.Errorf("PublishRevisions has too many revisions to catch up on: %d", latestMapRoot.Revision-logRoot.TreeSize)
+		end = batch
+	}
+	logRootTrail.Set(float64(latestMapRoot.Revision - logRoot.TreeSize))
+	for rev := logRoot.TreeSize - 1; rev <= end; rev++ {
 		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
 			return nil, err
