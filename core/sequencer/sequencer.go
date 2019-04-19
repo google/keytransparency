@@ -121,7 +121,7 @@ func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int
 	return lastErr
 }
 
-func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context, batchSize int32) error {
+func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context) error {
 	glog.Infof("PublishLogForAllMasterships")
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
