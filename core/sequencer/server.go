@@ -255,18 +255,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		revReq := &spb.ApplyRevisionRequest{DirectoryId: in.DirectoryId, Revision: rev}
 		_, err := s.loopback.ApplyRevision(ctx, revReq)
 		if err != nil {
-			// Log the error and continue to publish any revsisions this run may have completed.
-			// This revision will be retried on the next execution of RunBatch.
-			glog.Errorf("ApplyRevision(dir: %v, rev: %v): %v", in.DirectoryId, rev, err)
-			break
+			return nil, err
 		}
 		handledCount++
-	}
-
-	publishReq := &spb.PublishRevisionsRequest{DirectoryId: in.DirectoryId, Block: in.Block}
-	_, err = s.loopback.PublishRevisions(ctx, publishReq)
-	if err != nil {
-		return nil, err
 	}
 	return &empty.Empty{}, nil
 }
