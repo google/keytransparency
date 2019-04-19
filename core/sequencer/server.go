@@ -243,7 +243,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, err
 	}
 
-	unappliedRevisions.Set(len(defResp.OutstandingRevisions))
+	unappliedRevisions.Set(float64(len(defResp.OutstandingRevisions)))
 
 	var handledCount uint64
 	for _, rev := range defResp.OutstandingRevisions {
