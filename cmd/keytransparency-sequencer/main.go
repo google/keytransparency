@@ -233,7 +233,7 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 		if err := signer.AddAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)
 		}
-		if err := signer.PublishRevisionsForAllMasterships(ctx); err != nil {
+		if err := signer.PublishLogForAllMasterships(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(PublishRevisionsForAllMasterships): %v", err)
 		}
 	})
