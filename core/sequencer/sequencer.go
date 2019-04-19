@@ -133,7 +133,7 @@ func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context) error {
 	var lastErr error
 	for dirID, whileMaster := range masterships {
 		publishReq := &spb.PublishRevisionsRequest{DirectoryId: dirID}
-		if _, err = s.sequencerClient.PublishRevisions(ctx, publishReq); err != nil {
+		if _, err = s.sequencerClient.PublishRevisions(whileMaster, publishReq); err != nil {
 			lastErr = err
 			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
 		}
