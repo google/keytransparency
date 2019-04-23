@@ -126,7 +126,7 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 		return nil, logTopLevelErr("GetUser", err)
 	}
 	if leafCnt := len(resp.MapLeavesByUserId); leafCnt != 1 {
-		err := status.Errorf(codes.Internal, "wrong number of map leaves: %v, want 1", len(resp.MapLeavesByUserId))
+		err := status.Errorf(codes.Internal, "wrong number of map leaves: %v, want 1", leafCnt)
 		return nil, logTopLevelErr("GetUser", err)
 	}
 	leaf, ok := resp.MapLeavesByUserId[in.UserId]
