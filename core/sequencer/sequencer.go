@@ -120,3 +120,24 @@ func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int
 
 	return lastErr
 }
+
+func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context) error {
+	glog.Infof("PublishLogForAllMasterships")
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	masterships, err := s.tracker.Masterships(cctx)
+	if err != nil {
+		return err
+	}
+
+	var lastErr error
+	for dirID, whileMaster := range masterships {
+		publishReq := &spb.PublishRevisionsRequest{DirectoryId: dirID}
+		if _, err = s.sequencerClient.PublishRevisions(whileMaster, publishReq); err != nil {
+			lastErr = err
+			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
+		}
+	}
+
+	return lastErr
+}
