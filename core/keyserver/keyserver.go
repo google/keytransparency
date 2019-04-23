@@ -281,7 +281,7 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 	}
 	revision, err := mapRevisionFor(sth)
 	if err != nil {
-		errStr := fmt.sprintf("BatchGetUser - latestRevision(log: %v, sth: %v)", d.Log.TreeId, sth)
+		errStr := fmt.Sprintf("BatchGetUser - latestRevision(log: %v, sth: %v)", d.Log.TreeId, sth)
 		return nil, logTopLevelErr(errStr, err)
 	}
 
@@ -309,7 +309,7 @@ func (s *Server) BatchGetUserIndex(ctx context.Context,
 	}
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if st := status.Convert(err); st.Code() != codes.OK {
-		errStr := fmt.sprintf("BatchGetUserIndex - adminstorage.Read(%v)", in.DirectoryId)
+		errStr := fmt.Sprintf("BatchGetUserIndex - adminstorage.Read(%v)", in.DirectoryId)
 		return nil, logTopLevelErr(errStr, status.Errorf(st.Code(), "Cannot fetch directory info"))
 	}
 	proofsByUser, _, err := s.batchGetUserIndex(ctx, d, in.UserIds)
