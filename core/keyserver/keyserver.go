@@ -116,25 +116,28 @@ func New(tlog tpb.TrillianLogClient,
 // this user and that it is the same one being provided to everyone else.
 // GetUser also supports querying past values by setting the revision field.
 func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUserResponse, error) {
-	resp, err := s.BatchGetUser(ctx, &pb.BatchGetUserRequest{
+	req := &pb.BatchGetUserRequest{
 		DirectoryId:          in.DirectoryId,
 		UserIds:              []string{in.UserId},
 		LastVerifiedTreeSize: in.LastVerifiedTreeSize,
-	})
-	if err != nil {
-		return nil, err
 	}
-	if len(resp.MapLeavesByUserId) != 1 {
-		return nil, status.Errorf(codes.Internal, "wrong number of map leaves: %v, want 1", len(resp.MapLeavesByUserId))
+	resp, err := s.BatchGetUser(ctx, req)
+	if err != nil {
+		return nil, logTopLevelErr("GetUser", err)
+	}
+	if leafCnt := len(resp.MapLeavesByUserId); leafCnt != 1 {
+		err := status.Errorf(codes.Internal, "wrong number of map leaves: %v, want 1", len(resp.MapLeavesByUserId))
+		return nil, logTopLevelErr("GetUser", err)
 	}
 	leaf, ok := resp.MapLeavesByUserId[in.UserId]
 	if !ok {
-		return nil, status.Errorf(codes.Internal, "wrong leaf returned")
+		return nil, logTopLevelErr("GetUser", status.Errorf(codes.Internal, "wrong leaf returned"))
 	}
-	return &pb.GetUserResponse{
+	ret := &pb.GetUserResponse{
 		Revision: resp.Revision,
 		Leaf:     leaf,
-	}, nil
+	}
+	return ret, nil
 }
 
 // getUserByRevision returns an entry and its proofs.
@@ -268,32 +271,30 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 	// Lookup log and map info.
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if err != nil {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, err
+		return nil, logTopLevelErr("BatchGetUser", err)
 	}
 
 	// Fetch latest revision.
 	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
 	if err != nil {
-		return nil, err
+		return nil, logTopLevelErr("BatchGetUser", err)
 	}
 	revision, err := mapRevisionFor(sth)
 	if err != nil {
-		glog.Errorf("latestRevision(log: %v, sth: %v): %v", d.Log.TreeId, sth, err)
-		return nil, err
+		errStr := fmt.sprintf("BatchGetUser - latestRevision(log: %v, sth: %v)", d.Log.TreeId, sth)
+		return nil, logTopLevelErr(errStr, err)
 	}
 
 	entryProofs, err := s.batchGetUserByRevision(ctx, sth, d, in.UserIds, revision)
 	if err != nil {
-		return nil, err
+		return nil, logTopLevelErr("BatchGetUser", err)
+	}
+	logRoot := &pb.LogRoot{
+		LogRoot:        sth,
+		LogConsistency: consistencyProof.GetHashes(),
 	}
 	resp := &pb.BatchGetUserResponse{
-		Revision: &pb.Revision{
-			LatestLogRoot: &pb.LogRoot{
-				LogRoot:        sth,
-				LogConsistency: consistencyProof.GetHashes(),
-			},
-		},
+		Revision: &pb.Revision{LatestLogRoot: logRoot},
 	}
 	proto.Merge(resp, entryProofs)
 	return resp, nil
@@ -303,16 +304,17 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 func (s *Server) BatchGetUserIndex(ctx context.Context,
 	in *pb.BatchGetUserIndexRequest) (*pb.BatchGetUserIndexResponse, error) {
 	if in.DirectoryId == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
+		err := status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
+		return nil, logTopLevelErr("BatchGetUserIndex", err)
 	}
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
 	if st := status.Convert(err); st.Code() != codes.OK {
-		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(st.Code(), "Cannot fetch directory info")
+		errStr := fmt.sprintf("BatchGetUserIndex - adminstorage.Read(%v)", in.DirectoryId)
+		return nil, logTopLevelErr(errStr, status.Errorf(st.Code(), "Cannot fetch directory info"))
 	}
 	proofsByUser, _, err := s.batchGetUserIndex(ctx, d, in.UserIds)
 	if err != nil {
-		return nil, err
+		return nil, logTopLevelErr("BatchGetUserIndex", err)
 	}
 	return &pb.BatchGetUserIndexResponse{Proofs: proofsByUser}, nil
 }
@@ -628,4 +630,11 @@ func indexFromVRF(ctx context.Context, d *directory.Directory, userID string) ([
 	}
 	index, proof := vrfPriv.Evaluate([]byte(userID))
 	return index, proof, nil
+}
+
+func logTopLevelErr(rpcName string, err error) error {
+	if err != nil {
+		glog.Errorf("%v: %v", rpcName, err)
+	}
+	return err
 }
