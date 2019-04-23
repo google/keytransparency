@@ -78,7 +78,7 @@ func runSequencer(ctx context.Context, t *testing.T, dirID string, env *Env) {
 		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
 			t.Errorf("RunBatch(): %v", err)
 		}
-		_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId:dirID})
+		_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: dirID})
 		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
 			t.Errorf("PublishRevisions(): %v", err)
 		}
