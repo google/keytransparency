@@ -69,12 +69,18 @@ func runSequencer(ctx context.Context, t *testing.T, dirID string, env *Env) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
-		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+		req := &spb.RunBatchRequest{
 			DirectoryId: dirID,
 			MinBatch:    1,
 			MaxBatch:    10,
-		}); err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
+		}
+		_, err := env.Sequencer.RunBatch(ctx, req)
+		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
 			t.Errorf("RunBatch(): %v", err)
+		}
+		_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: dirID})
+		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
+			t.Errorf("PublishRevisions(): %v", err)
 		}
 	})
 }
