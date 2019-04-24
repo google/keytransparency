@@ -108,7 +108,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []testdata.Respons
 				t.Errorf("QueueMutation(): %v", err)
 			}
 		}
-		batchReq :=  &spb.RunBatchRequest{
+		batchReq := &spb.RunBatchRequest{
 			DirectoryId: env.Directory.DirectoryId,
 			MinBatch:    int32(len(e.userUpdates)),
 			MaxBatch:    int32(len(e.userUpdates)) * 2,
