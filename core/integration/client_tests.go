@@ -529,7 +529,7 @@ func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Dir
 		}); err != nil {
 			return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 		}
-		pubRevReq := &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId, Block:true}
+		pubRevReq := &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId, Block: true}
 		_, err = env.Sequencer.PublishRevisions(ctx, pubRevReq)
 		if err != nil {
 			return fmt.Errorf("sequencer.PublishRevisions(%v): %v", i, err)
