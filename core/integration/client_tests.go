@@ -414,6 +414,10 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
 			}
+			_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId})
+			if err != nil {
+				return fmt.Errorf("sequencer.PublishRevisions(%v): %v", i, err)
+			}
 		} else if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 			DirectoryId: directory.DirectoryId,
 			// Create an empty revision.
@@ -524,6 +528,10 @@ func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Dir
 			Block:       true,
 		}); err != nil {
 			return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
+		}
+		_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId})
+		if err != nil {
+			return fmt.Errorf("sequencer.PublishRevisions(%v): %v", i, err)
 		}
 	}
 	return nil
