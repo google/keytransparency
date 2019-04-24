@@ -108,12 +108,19 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []testdata.Respons
 				t.Errorf("QueueMutation(): %v", err)
 			}
 		}
-		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+		batchReq := &spb.RunBatchRequest{
 			DirectoryId: env.Directory.DirectoryId,
 			MinBatch:    int32(len(e.userUpdates)),
 			MaxBatch:    int32(len(e.userUpdates)) * 2,
-		}); err != nil {
+		}
+		if _, err := env.Sequencer.RunBatch(ctx, batchReq); err != nil {
 			t.Errorf("sequencer.RunBatch(): %v", err)
+		}
+		pubReq := &spb.PublishRevisionsRequest{
+			DirectoryId: env.Directory.DirectoryId,
+		}
+		if _, err := env.Sequencer.PublishRevisions(ctx, pubReq); err != nil {
+			t.Errorf("sequencer.PublishRevisions(): %v", err)
 		}
 	}
 
