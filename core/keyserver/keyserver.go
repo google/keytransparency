@@ -596,7 +596,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	}
 	if wm != nil {
 		watermarkWritten.Set(float64(wm.Watermark), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
-		sequencerQueueWritten.Add(len(in.Updates), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
+		sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
 	}
 
 	return &empty.Empty{}, nil
