@@ -45,8 +45,8 @@ const (
 )
 
 var (
-	initMetrics      sync.Once
-	watermarkWritten monitoring.Gauge
+	initMetrics           sync.Once
+	watermarkWritten      monitoring.Gauge
 	sequencerQueueWritten monitoring.Counter
 )
 
