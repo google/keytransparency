@@ -45,14 +45,19 @@ const (
 )
 
 var (
-	initMetrics      sync.Once
-	watermarkWritten monitoring.Gauge
+	initMetrics           sync.Once
+	watermarkWritten      monitoring.Gauge
+	sequencerQueueWritten monitoring.Counter
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
 	watermarkWritten = mf.NewGauge(
 		"keyserver_watermark_written",
 		"High watermark of each input log that has been written",
+		directoryIDLabel, logIDLabel)
+	sequencerQueueWritten = mf.NewCounter(
+		"keyserver_queue_written",
+		"Counter for each queue row that has been written",
 		directoryIDLabel, logIDLabel)
 }
 
@@ -591,6 +596,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	}
 	if wm != nil {
 		watermarkWritten.Set(float64(wm.Watermark), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
+		sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
 	}
 
 	return &empty.Empty{}, nil
