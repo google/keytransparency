@@ -132,7 +132,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 	meta, err := s.batches.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	if st := status.Convert(err); st.Code() != codes.OK {
-		return nil, status.Errorf(st.Code(), "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
+		return nil, status.Errorf(st.Code(), "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, st.Message())
 	}
 	rt, err := SourceList(meta.Sources).ParseToken(in.PageToken)
 	if err != nil {
@@ -176,7 +176,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 	nextToken, err := EncodeToken(SourceList(meta.Sources).Next(rt, lastRow))
 	if st := status.Convert(err); st.Code() != codes.OK {
-		return nil, status.Errorf(st.Code(), "Failed creating next token: %v", err)
+		return nil, status.Errorf(st.Code(), "Failed creating next token: %v", st.Message())
 
 	}
 	return &pb.ListMutationsResponse{
