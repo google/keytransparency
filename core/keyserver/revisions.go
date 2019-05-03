@@ -41,9 +41,9 @@ var (
 func (s *Server) GetLatestRevision(ctx context.Context, in *pb.GetLatestRevisionRequest) (*pb.Revision, error) {
 	// Lookup log and map info.
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("GetLatestRevision(): adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info: %v", st.Message())
 	}
 
 	// Fetch latest revision.
@@ -70,9 +70,9 @@ func (s *Server) GetRevision(ctx context.Context, in *pb.GetRevisionRequest) (*p
 
 	// Lookup log and map info.
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("GetRevision(): adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info %v", st.Message())
 	}
 
 	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
@@ -126,13 +126,13 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 	// Lookup log and map info.
 	d, err := s.directories.Read(ctx, in.DirectoryId, false)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("ListMutations(): adminstorage.Read(%v): %v", in.DirectoryId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info")
+		return nil, status.Errorf(st.Code(), "Cannot fetch directory info: %v", st.Message())
 	}
 	meta, err := s.batches.ReadBatch(ctx, in.DirectoryId, in.Revision)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		return nil, status.Errorf(st.Code(), "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 	rt, err := SourceList(meta.Sources).ParseToken(in.PageToken)
 	if err != nil {
@@ -143,10 +143,10 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	high := meta.Sources[rt.SliceIndex].HighestExclusive
 	logID := meta.Sources[rt.SliceIndex].LogId
 	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, logID, rt.LowWatermark, high, in.PageSize+1)
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("ListMutations(): ReadLog(%v, log: %v/(%v, %v], batchSize: %v): %v",
 			d.DirectoryID, logID, rt.LowWatermark, high, in.PageSize, err)
-		return nil, status.Error(codes.Internal, "Reading mutations range failed")
+		return nil, status.Errorf(st.Code(), "Reading mutations range failed: %v", st.Message())
 	}
 	moreInLogID := len(msgs) == int(in.PageSize+1)
 	var lastRow *mutator.LogMessage
@@ -175,8 +175,8 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 		mutations[i].LeafProof = p
 	}
 	nextToken, err := EncodeToken(SourceList(meta.Sources).Next(rt, lastRow))
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed creating next token: %v", err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		return nil, status.Errorf(st.Code(), "Failed creating next token: %v", err)
 
 	}
 	return &pb.ListMutationsResponse{
@@ -210,9 +210,9 @@ func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRo
 			LeafIndex: revision,
 			TreeSize:  secondTreeSize,
 		})
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("log.GetInclusionProof(%v, %v, %v): %v", d.Log.TreeId, revision, secondTreeSize, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch log inclusion proof: %v", err)
+		return nil, status.Errorf(st.Code(), "Cannot fetch log inclusion proof: %v", st.Message())
 	}
 	return logInclusion.GetProof(), nil
 
@@ -224,9 +224,9 @@ func (s *Server) latestLogRoot(ctx context.Context, d *directory.Directory) (*tp
 		&tpb.GetLatestSignedLogRootRequest{
 			LogId: d.Log.TreeId,
 		})
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", d.Log.TreeId, err)
-		return nil, status.Errorf(codes.Internal, "Cannot fetch SignedLogRoot")
+		return nil, status.Errorf(st.Code(), "Cannot fetch SignedLogRoot: %v", st.Message())
 	}
 	sth := logRoot.GetSignedLogRoot()
 	return sth, nil
@@ -258,10 +258,10 @@ func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory,
 				FirstTreeSize:  firstTreeSize,
 				SecondTreeSize: secondTreeSize,
 			})
-		if err != nil {
+		if st := status.Convert(err); st.Code() != codes.OK {
 			glog.Errorf("latestLogRootProof(): log.GetConsistency(%v, %v, %v): %v",
 				d.Log.TreeId, firstTreeSize, secondTreeSize, err)
-			return nil, nil, status.Errorf(codes.Internal, "Cannot fetch log consistency proof")
+			return nil, nil, status.Errorf(st.Code(), "Cannot fetch log consistency proof: %v", st.Message())
 		}
 	}
 	return sth, logConsistency.GetProof(), nil
@@ -293,9 +293,9 @@ func (s *Server) inclusionProofs(ctx context.Context, d *directory.Directory, in
 		Index:    indexes,
 		Revision: revision,
 	})
-	if err != nil {
+	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("inclusionProofs(): GetLeavesByRevision(): %v", err)
-		return nil, status.Error(codes.Internal, "Failed fetching map leaf")
+		return nil, status.Errorf(st.Code(), "Failed fetching map leaf: %v", st.Message())
 	}
 	if got, want := len(getResp.GetMapLeafInclusion()), len(indexes); got != want {
 		glog.Errorf("inclusionProofs(): GetLeavesByRevision() len: %v, want %v", got, want)
