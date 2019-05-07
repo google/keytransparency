@@ -218,53 +218,18 @@ func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRo
 
 }
 
-func (s *Server) latestLogRoot(ctx context.Context, d *directory.Directory) (*tpb.SignedLogRoot, error) {
-	// Fresh Root.
-	logRoot, err := s.tlog.GetLatestSignedLogRoot(ctx,
+func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory, firstTreeSize int64) (
+	*tpb.SignedLogRoot, *tpb.Proof, error) {
+	resp, err := s.tlog.GetLatestSignedLogRoot(ctx,
 		&tpb.GetLatestSignedLogRootRequest{
-			LogId: d.Log.TreeId,
+			LogId:         d.Log.TreeId,
+			FirstTreeSize: firstTreeSize,
 		})
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("tlog.GetLatestSignedLogRoot(%v): %v", d.Log.TreeId, err)
-		return nil, status.Errorf(st.Code(), "Cannot fetch SignedLogRoot: %v", st.Message())
+		return nil, nil, status.Errorf(st.Code(), "Cannot fetch SignedLogRoot: %v", st.Message())
 	}
-	sth := logRoot.GetSignedLogRoot()
-	return sth, nil
-}
-
-// latestLogRootProof returns the latest SignedLogRoot and it's consistency proof.
-func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory, firstTreeSize int64) (
-	*tpb.SignedLogRoot, *tpb.Proof, error) {
-
-	sth, err := s.latestLogRoot(ctx, d)
-	if err != nil {
-		return nil, nil, err
-	}
-	// TODO(gbelvin): Verify root.
-	var root types.LogRootV1
-	if err := root.UnmarshalBinary(sth.GetLogRoot()); err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "latestLogRootProof: Failed to unmarshal log root: %v", err)
-	}
-	// Consistency proof.
-	secondTreeSize := int64(root.TreeSize)
-	if secondTreeSize < firstTreeSize {
-		return nil, nil, status.Errorf(codes.InvalidArgument, "latestLogRootProof: latest log root is smaller than firstTreeSize")
-	}
-	var logConsistency *tpb.GetConsistencyProofResponse
-	if firstTreeSize != 0 {
-		logConsistency, err = s.tlog.GetConsistencyProof(ctx,
-			&tpb.GetConsistencyProofRequest{
-				LogId:          d.Log.TreeId,
-				FirstTreeSize:  firstTreeSize,
-				SecondTreeSize: secondTreeSize,
-			})
-		if st := status.Convert(err); st.Code() != codes.OK {
-			glog.Errorf("latestLogRootProof(): log.GetConsistency(%v, %v, %v): %v",
-				d.Log.TreeId, firstTreeSize, secondTreeSize, err)
-			return nil, nil, status.Errorf(st.Code(), "Cannot fetch log consistency proof: %v", st.Message())
-		}
-	}
-	return sth, logConsistency.GetProof(), nil
+	return resp.GetSignedLogRoot(), resp.GetProof(), nil
 }
 
 // mapRevisionFor returns the latest map revision, given the latest sth.
