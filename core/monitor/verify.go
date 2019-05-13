@@ -92,7 +92,7 @@ func (e *ErrList) Proto() []*statuspb.Status {
 func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.SignedMapRoot, expectedNewRoot *types.MapRootV1) []error {
 	errs := ErrList{}
 	oldProofNodes := make(map[string][]byte)
-	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
+	newLeaves := make([]*merkle.HStar2LeafHash, 0, len(muts))
 	glog.Infof("verifyMutations() called with %v mutations.", len(muts))
 
 	for _, mut := range muts {
@@ -128,7 +128,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 		if err != nil {
 			errs.appendErr(err)
 		}
-		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
+		newLeaves = append(newLeaves, &merkle.HStar2LeafHash{
 			Index:    leafNodeID.BigInt(),
 			LeafHash: leafHash,
 		})
@@ -160,7 +160,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 	return errs
 }
 
-func (m *Monitor) validateMapRoot(newRoot *types.MapRootV1, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
+func (m *Monitor) validateMapRoot(newRoot *types.MapRootV1, mutatedLeaves []*merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
 	// compute the new root using local intermediate hashes from revision e
 	// (above proof hashes):
 	hs2 := merkle.NewHStar2(m.mapVerifier.MapID, m.mapVerifier.Hasher)
