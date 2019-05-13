@@ -579,6 +579,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	// - Index to Key equality in SignedKV.
 	// - Correct profile commitment.
 	// - Correct key formats.
+	_, tdone := monitoring.StartSpan(ctx, "BatchQueueUserUpdate.verify")
 	for _, u := range in.Updates {
 		if err := s.verifyMutation(u.Mutation); err != nil {
 			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
@@ -589,6 +590,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 			return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
 		}
 	}
+	tdone()
 
 	// Save mutation to the database.
 	wm, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
