@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
@@ -82,18 +83,18 @@ type BatchReader interface {
 	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
 }
 
-// indexFunc computes an index and proof for directory/user
-type indexFunc func(ctx context.Context, d *directory.Directory, userID string) ([32]byte, []byte, error)
+// NewFromWrappedKeyFunc returns a vrf private key from a proto.
+type NewFromWrappedKeyFunc func(context.Context, proto.Message) (vrf.PrivateKey, error)
 
 // Server holds internal state for the key server.
 type Server struct {
-	tlog           tpb.TrillianLogClient
-	tmap           tpb.TrillianMapClient
-	verifyMutation mutator.VerifyMutationFn
-	directories    directory.Storage
-	logs           MutationLogs
-	batches        BatchReader
-	indexFunc      indexFunc
+	tlog              tpb.TrillianLogClient
+	tmap              tpb.TrillianMapClient
+	verifyMutation    mutator.VerifyMutationFn
+	directories       directory.Storage
+	logs              MutationLogs
+	batches           BatchReader
+	newFromWrappedKey NewFromWrappedKeyFunc
 }
 
 // New creates a new instance of the key server.
@@ -107,13 +108,13 @@ func New(tlog tpb.TrillianLogClient,
 ) *Server {
 	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
-		tlog:           tlog,
-		tmap:           tmap,
-		verifyMutation: verifyMutation,
-		directories:    directories,
-		logs:           logs,
-		batches:        batches,
-		indexFunc:      indexFromVRF,
+		tlog:              tlog,
+		tmap:              tmap,
+		verifyMutation:    verifyMutation,
+		directories:       directories,
+		logs:              logs,
+		batches:           batches,
+		newFromWrappedKey: p256.NewFromWrappedKey,
 	}
 }
 
@@ -328,11 +329,12 @@ func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
 	userIDs []string) (proofsByUser map[string][]byte, usersByIndex map[string]string, err error) {
 	proofsByUser = make(map[string][]byte)
 	usersByIndex = make(map[string]string)
+	vrfPriv, err := s.newFromWrappedKey(ctx, d.VRFPriv)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, userID := range userIDs {
-		index, proof, err := s.indexFunc(ctx, d, userID)
-		if err != nil {
-			return nil, nil, err
-		}
+		index, proof := vrfPriv.Evaluate([]byte(userID))
 		proofsByUser[userID] = proof
 		usersByIndex[string(index[:])] = userID
 	}
@@ -568,7 +570,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 		glog.Errorf("adminstorage.Read(%v): %v", in.DirectoryId, err)
 		return nil, status.Errorf(st.Code(), "Cannot fetch directory info")
 	}
-	vrfPriv, err := p256.NewFromWrappedKey(ctx, directory.VRFPriv)
+	vrfPriv, err := s.newFromWrappedKey(ctx, directory.VRFPriv)
 	if err != nil {
 		return nil, err
 	}
@@ -626,16 +628,6 @@ func (s *Server) GetDirectory(ctx context.Context, in *pb.GetDirectoryRequest) (
 		MinInterval: ptypes.DurationProto(directory.MinInterval),
 		MaxInterval: ptypes.DurationProto(directory.MaxInterval),
 	}, nil
-}
-
-// index returns the index and proof for directory/user
-func indexFromVRF(ctx context.Context, d *directory.Directory, userID string) ([32]byte, []byte, error) {
-	vrfPriv, err := p256.NewFromWrappedKey(ctx, d.VRFPriv)
-	if err != nil {
-		return [32]byte{}, nil, err
-	}
-	index, proof := vrfPriv.Evaluate([]byte(userID))
-	return index, proof, nil
 }
 
 func logTopLevelErr(rpcName string, err error) error {

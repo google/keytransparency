@@ -16,11 +16,14 @@ package keyserver
 
 import (
 	"context"
+	"crypto"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian/testonly"
@@ -33,6 +36,18 @@ import (
 )
 
 const mapID = int64(2)
+
+type fakeVRF struct{}
+
+func (*fakeVRF) Evaluate(m []byte) (index [32]byte, proof []byte) {
+	return [32]byte{}, []byte("")
+}
+
+func (*fakeVRF) Public() crypto.PublicKey { return nil }
+
+func fakeNewFromWrappedKey(_ context.Context, _ proto.Message) (vrf.PrivateKey, error) {
+	return &fakeVRF{}, nil
+}
 
 type miniEnv struct {
 	s              *testonly.MockServer
@@ -62,12 +77,10 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 		return nil, fmt.Errorf("error starting fake server: %v", err)
 	}
 	srv := &Server{
-		directories: fakeAdmin,
-		tlog:        s.LogClient,
-		tmap:        s.MapClient,
-		indexFunc: func(context.Context, *directory.Directory, string) ([32]byte, []byte, error) {
-			return [32]byte{}, []byte(""), nil
-		},
+		directories:       fakeAdmin,
+		tlog:              s.LogClient,
+		tmap:              s.MapClient,
+		newFromWrappedKey: fakeNewFromWrappedKey,
 	}
 	return &miniEnv{
 		s:              s,
