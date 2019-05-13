@@ -99,7 +99,6 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 		})
 	}
 	if len(newEntries) == 0 {
-		emitErr(errors.New("entry: no valid mutations"))
 		return // No valid mutations for one index should not cause the whole batch to fail.
 	}
 	// Choose the mutation deterministically, regardless of the messages order.
