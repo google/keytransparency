@@ -18,6 +18,7 @@ package keyserver
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/golang/glog"
@@ -327,16 +328,44 @@ func (s *Server) BatchGetUserIndex(ctx context.Context,
 
 func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
 	userIDs []string) (proofsByUser map[string][]byte, usersByIndex map[string]string, err error) {
-	proofsByUser = make(map[string][]byte)
-	usersByIndex = make(map[string]string)
 	vrfPriv, err := s.newFromWrappedKey(ctx, d.VRFPriv)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, userID := range userIDs {
-		index, proof := vrfPriv.Evaluate([]byte(userID))
-		proofsByUser[userID] = proof
-		usersByIndex[string(index[:])] = userID
+
+	type result struct {
+		userID string
+		index  [32]byte
+		proof  []byte
+	}
+	uIDs := make(chan string)
+	results := make(chan result)
+	go func() {
+		defer close(uIDs)
+		for _, userID := range userIDs {
+			uIDs <- userID
+		}
+	}()
+	go func() {
+		defer close(results)
+		var wg sync.WaitGroup
+		for w := 1; w < (runtime.NumCPU() - 1); w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for userID := range uIDs {
+					index, proof := vrfPriv.Evaluate([]byte(userID))
+					results <- result{userID, index, proof}
+				}
+			}()
+		}
+		wg.Wait()
+	}()
+	proofsByUser = make(map[string][]byte)
+	usersByIndex = make(map[string]string)
+	for r := range results {
+		proofsByUser[r.userID] = r.proof
+		usersByIndex[string(r.index[:])] = r.userID
 	}
 	return proofsByUser, usersByIndex, nil
 }
