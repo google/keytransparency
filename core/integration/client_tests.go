@@ -262,7 +262,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 			// Check profile.
 			e, newslr, err := CheckProfile(ctx, env, tc.userID, tc.wantProfile, slr)
 			if err != nil {
-				t.Errorf("%v", err)
+				t.Fatalf("%v", err)
 			}
 
 			// Update the trusted root on the first revision, then let it fall behind
