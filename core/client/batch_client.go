@@ -16,6 +16,8 @@ package client
 
 import (
 	"context"
+	"runtime"
+	"sync"
 
 	"fmt"
 
@@ -86,34 +88,71 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*ent
 	if err != nil {
 		return nil, err
 	}
+
+	type result struct {
+		m   *entry.Mutation
+		err error
+	}
+	uChan := make(chan *User)
+	rChan := make(chan result)
+
+	// Allocate
+	go func() {
+		defer close(uChan)
+		for _, u := range users {
+			uChan <- u
+		}
+	}()
+	// Workerpool
+	go func() {
+		defer close(rChan)
+		var wg sync.WaitGroup
+		for w := 1; w < (runtime.NumCPU() - 1); w++ {
+			wg.Add(1)
+			go func(id int, uChan <-chan *User, rChan chan<- result) {
+				defer wg.Done()
+				for u := range uChan {
+					m, err := c.createMutation(u, leavesByUserID[u.UserID])
+					rChan <- result{m: m, err: err}
+				}
+			}(w, uChan, rChan)
+		}
+		wg.Wait()
+	}()
+	// Collect
 	mutations := make([]*entry.Mutation, 0, len(users))
-
-	for _, u := range users {
-		leaf, ok := leavesByUserID[u.UserID]
-		if !ok {
-			return nil, fmt.Errorf("no leaf found for %v", u.UserID)
+	for r := range rChan {
+		if r.err != nil {
+			return nil, r.err
 		}
-		index, err := c.Index(leaf.GetVrfProof(), c.DirectoryID, u.UserID)
-		if err != nil {
-			return nil, err
-		}
-		mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
-
-		leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
-		if err := mutation.SetPrevious(leafValue, true); err != nil {
-			return nil, err
-		}
-
-		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
-			return nil, err
-		}
-
-		if u.AuthorizedKeys != nil {
-			if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
-				return nil, err
-			}
-		}
-		mutations = append(mutations, mutation)
+		mutations = append(mutations, r.m)
 	}
 	return mutations, nil
+}
+
+func (c *Client) createMutation(u *User, leaf *pb.MapLeaf) (*entry.Mutation, error) {
+	if leaf == nil {
+		return nil, fmt.Errorf("no leaf found for %v", u.UserID)
+	}
+	index, err := c.Index(leaf.GetVrfProof(), c.DirectoryID, u.UserID)
+	if err != nil {
+		return nil, err
+	}
+	mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
+
+	leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
+	if err := mutation.SetPrevious(leafValue, true); err != nil {
+		return nil, err
+	}
+
+	if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
+		return nil, err
+	}
+
+	if u.AuthorizedKeys != nil {
+		if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
+			return nil, err
+		}
+	}
+	return mutation, nil
 }
