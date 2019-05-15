@@ -109,13 +109,13 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*ent
 		var wg sync.WaitGroup
 		for w := 1; w < (runtime.NumCPU() - 1); w++ {
 			wg.Add(1)
-			go func(id int, uChan <-chan *User, rChan chan<- result) {
+			go func(uChan <-chan *User, rChan chan<- result) {
 				defer wg.Done()
 				for u := range uChan {
 					m, err := c.createMutation(u, leavesByUserID[u.UserID])
 					rChan <- result{m: m, err: err}
 				}
-			}(w, uChan, rChan)
+			}(uChan, rChan)
 		}
 		wg.Wait()
 	}()
