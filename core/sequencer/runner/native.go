@@ -18,6 +18,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"sync"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -153,25 +155,44 @@ type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 // DoReduceFn takes the set of mutations and applies them to given leaves.
 // Returns a list of key value pairs that should be written to the map.
 func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error),
-	incFn IncMetricFn) []*entry.IndexedValue {
-	ret := make([]*entry.IndexedValue, 0, len(joined))
-	for _, j := range joined {
-		incFn("ReduceFn")
-		reduceFn(j.Values1, j.Values2,
-			func(e *pb.EntryUpdate) {
-				ret = append(ret, &entry.IndexedValue{Index: j.Index, Value: e})
-			},
-			wrapErrFn(emitErr, fmt.Sprintf("reduceFn on index %x", j.Index)),
-		)
-	}
+	incFn IncMetricFn) <-chan *entry.IndexedValue {
+	inputs := make(chan *Joined)
+	ret := make(chan *entry.IndexedValue)
+
+	go func() {
+		defer close(inputs)
+		for _, j := range joined {
+			inputs <- j
+		}
+	}()
+	go func() {
+		defer close(ret)
+		var wg sync.WaitGroup
+		defer wg.Wait()
+		for w := 1; w < runtime.NumCPU(); w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := range inputs {
+					incFn("ReduceFn")
+					reduceFn(j.Values1, j.Values2,
+						func(e *pb.EntryUpdate) {
+							ret <- &entry.IndexedValue{Index: j.Index, Value: e}
+						},
+						wrapErrFn(emitErr, fmt.Sprintf("reduceFn on index %x", j.Index)),
+					)
+				}
+			}()
+		}
+	}()
 	return ret
 }
 
 // DoMarshalIndexedValues executes Marshal on each IndexedValue
 // If marshal fails, it will emit an error and continue with a subset of ivs.
-func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr func(error), incFn IncMetricFn) []*tpb.MapLeaf {
+func DoMarshalIndexedValues(ivs <-chan *entry.IndexedValue, emitErr func(error), incFn IncMetricFn) []*tpb.MapLeaf {
 	ret := make([]*tpb.MapLeaf, 0, len(ivs))
-	for _, iv := range ivs {
+	for iv := range ivs {
 		incFn("MarshalIndexedValue")
 		mapLeaf, err := iv.Marshal()
 		if err != nil {
