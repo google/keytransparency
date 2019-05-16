@@ -48,9 +48,10 @@ func TestJoin(t *testing.T) {
 	} {
 		metrics := make(map[string]int)
 		t.Run(tc.desc, func(t *testing.T) {
-			got := Join(tc.leaves, tc.msgs,
-				func(label string) { metrics[label]++ },
-			)
+			got := make([]*Joined, 0)
+			for g := range Join(tc.leaves, tc.msgs, func(label string) { metrics[label]++ }) {
+				got = append(got, g)
+			}
 			if !cmp.Equal(got, tc.want) {
 				t.Errorf("Join(): %v, want %v\n diff: %v",
 					got, tc.want, cmp.Diff(got, tc.want))

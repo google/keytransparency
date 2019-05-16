@@ -161,7 +161,6 @@ type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 func DoReduceFn(reduceFn ReduceMutationFn, joined <-chan *Joined, emitErr func(error),
 	incFn IncMetricFn) <-chan *entry.IndexedValue {
 	ret := make(chan *entry.IndexedValue)
-
 	go func() {
 		defer close(ret)
 		var wg sync.WaitGroup
