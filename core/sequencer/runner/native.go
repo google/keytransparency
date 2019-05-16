@@ -49,7 +49,7 @@ func wrapErrFn(emitErr func(error), msg string) func(error) {
 }
 
 // Join pairs up MapLeaves and IndexedValue by index.
-func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue, incFn IncMetricFn) []*Joined {
+func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue, incFn IncMetricFn) <-chan *Joined {
 	joinMap := make(map[string]*Joined)
 	for _, l := range leaves {
 		incFn("Join1")
@@ -69,10 +69,14 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue, incFn IncMet
 		row.Values2 = append(row.Values2, m.Value)
 		joinMap[string(m.Index)] = row
 	}
-	ret := make([]*Joined, 0, len(joinMap))
-	for _, r := range joinMap {
-		ret = append(ret, r)
-	}
+
+	ret := make(chan *Joined)
+	go func() {
+		defer close(ret)
+		for _, r := range joinMap {
+			ret <- r
+		}
+	}()
 	return ret
 }
 
@@ -154,17 +158,10 @@ type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 
 // DoReduceFn takes the set of mutations and applies them to given leaves.
 // Returns a list of key value pairs that should be written to the map.
-func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error),
+func DoReduceFn(reduceFn ReduceMutationFn, joined <-chan *Joined, emitErr func(error),
 	incFn IncMetricFn) <-chan *entry.IndexedValue {
-	inputs := make(chan *Joined)
 	ret := make(chan *entry.IndexedValue)
 
-	go func() {
-		defer close(inputs)
-		for _, j := range joined {
-			inputs <- j
-		}
-	}()
 	go func() {
 		defer close(ret)
 		var wg sync.WaitGroup
@@ -173,7 +170,7 @@ func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error)
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for j := range inputs {
+				for j := range joined {
 					incFn("ReduceFn")
 					reduceFn(j.Values1, j.Values2,
 						func(e *pb.EntryUpdate) {
