@@ -18,6 +18,7 @@ package keyserver
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/golang/glog"
@@ -327,16 +328,44 @@ func (s *Server) BatchGetUserIndex(ctx context.Context,
 
 func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
 	userIDs []string) (proofsByUser map[string][]byte, usersByIndex map[string]string, err error) {
-	proofsByUser = make(map[string][]byte)
-	usersByIndex = make(map[string]string)
 	vrfPriv, err := s.newFromWrappedKey(ctx, d.VRFPriv)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, userID := range userIDs {
-		index, proof := vrfPriv.Evaluate([]byte(userID))
-		proofsByUser[userID] = proof
-		usersByIndex[string(index[:])] = userID
+
+	type result struct {
+		userID string
+		index  [32]byte
+		proof  []byte
+	}
+	uIDs := make(chan string)
+	results := make(chan result)
+	go func() {
+		defer close(uIDs)
+		for _, userID := range userIDs {
+			uIDs <- userID
+		}
+	}()
+	go func() {
+		defer close(results)
+		var wg sync.WaitGroup
+		defer wg.Wait() // Wait before closing results
+		for w := 0; w < runtime.NumCPU(); w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for userID := range uIDs {
+					index, proof := vrfPriv.Evaluate([]byte(userID))
+					results <- result{userID, index, proof}
+				}
+			}()
+		}
+	}()
+	proofsByUser = make(map[string][]byte)
+	usersByIndex = make(map[string]string)
+	for r := range results {
+		proofsByUser[r.userID] = r.proof
+		usersByIndex[string(r.index[:])] = r.userID
 	}
 	return proofsByUser, usersByIndex, nil
 }
@@ -580,15 +609,37 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	// - Correct profile commitment.
 	// - Correct key formats.
 	_, tdone := monitoring.StartSpan(ctx, "BatchQueueUserUpdate.verify")
-	for _, u := range in.Updates {
-		if err := s.verifyMutation(u.Mutation); err != nil {
-			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid mutation")
+	updates := make(chan *pb.EntryUpdate)
+	errors := make(chan error)
+	go func() {
+		defer close(updates)
+		for _, u := range in.Updates {
+			updates <- u
 		}
-		if err = validateEntryUpdate(u, vrfPriv); err != nil {
-			glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid request")
+	}()
+	go func() {
+		defer close(errors)
+		var wg sync.WaitGroup
+		defer wg.Wait() // Wait before closing errors
+		for w := 0; w < runtime.NumCPU(); w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for u := range updates {
+					if err := s.verifyMutation(u.Mutation); err != nil {
+						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
+						errors <- status.Errorf(codes.InvalidArgument, "Invalid mutation")
+					}
+					if err = validateEntryUpdate(u, vrfPriv); err != nil {
+						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
+						errors <- status.Errorf(codes.InvalidArgument, "Invalid request")
+					}
+				}
+			}()
 		}
+	}()
+	for e := range errors {
+		return nil, e
 	}
 	tdone()
 
