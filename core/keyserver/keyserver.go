@@ -610,7 +610,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	// - Correct key formats.
 	_, tdone := monitoring.StartSpan(ctx, "BatchQueueUserUpdate.verify")
 	updates := make(chan *pb.EntryUpdate)
-	results := make(chan error)
+	errors := make(chan error)
 	go func() {
 		defer close(updates)
 		for _, u := range in.Updates {
@@ -618,9 +618,9 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 		}
 	}()
 	go func() {
-		defer close(results)
+		defer close(errors)
 		var wg sync.WaitGroup
-		defer wg.Wait() // Wait before closing results
+		defer wg.Wait() // Wait before closing errors
 		for w := 1; w < runtime.NumCPU(); w++ {
 			wg.Add(1)
 			go func() {
@@ -628,17 +628,17 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 				for u := range updates {
 					if err := s.verifyMutation(u.Mutation); err != nil {
 						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-						results <- status.Errorf(codes.InvalidArgument, "Invalid mutation")
+						errors <- status.Errorf(codes.InvalidArgument, "Invalid mutation")
 					}
 					if err = validateEntryUpdate(u, vrfPriv); err != nil {
 						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-						results <- status.Errorf(codes.InvalidArgument, "Invalid request")
+						errors <- status.Errorf(codes.InvalidArgument, "Invalid request")
 					}
 				}
 			}()
 		}
 	}()
-	for e := range results {
+	for e := range errors {
 		return nil, e
 	}
 	tdone()
