@@ -349,6 +349,7 @@ func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
 	go func() {
 		defer close(results)
 		var wg sync.WaitGroup
+		defer wg.Wait() // Wait before closing results
 		for w := 1; w < runtime.NumCPU(); w++ {
 			wg.Add(1)
 			go func() {
@@ -359,7 +360,6 @@ func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
 				}
 			}()
 		}
-		wg.Wait()
 	}()
 	proofsByUser = make(map[string][]byte)
 	usersByIndex = make(map[string]string)
@@ -620,6 +620,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	go func() {
 		defer close(results)
 		var wg sync.WaitGroup
+		defer wg.Wait() // Wait before closing results
 		for w := 1; w < runtime.NumCPU(); w++ {
 			wg.Add(1)
 			go func() {
@@ -636,7 +637,6 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 				}
 			}()
 		}
-		wg.Wait()
 	}()
 	for e := range results {
 		return nil, e
