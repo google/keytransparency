@@ -124,13 +124,9 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 		// BUG(gdbelvin): Proto serializations are not idempotent.
 		// - Upgrade the hasher to use ObjectHash.
 		// - Use deep compare between the tree and the computed value.
-		leafHash, err := m.mapVerifier.Hasher.HashLeaf(m.mapVerifier.MapID, index, leaf)
-		if err != nil {
-			errs.appendErr(err)
-		}
 		newLeaves = append(newLeaves, &merkle.HStar2LeafHash{
 			Index:    leafNodeID.BigInt(),
-			LeafHash: leafHash,
+			LeafHash: m.mapVerifier.Hasher.HashLeaf(m.mapVerifier.MapID, index, leaf),
 		})
 
 		// store the proof hashes locally to recompute the tree below:
