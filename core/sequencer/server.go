@@ -419,7 +419,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 
 	// Marshal new indexed values back into Trillian Map leaves.
 	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn, incMetricFn)
-	fnLatency.Observe(time.Since(computeStart).Seconds(), in.DirectoryId, "Compute")
+	fnLatency.Observe(time.Since(computeStart).Seconds(), in.DirectoryId, "ProcessMutations")
 
 	// Serialize metadata
 	metadata, err := proto.Marshal(meta)
