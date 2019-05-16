@@ -18,6 +18,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"sync"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -47,7 +49,7 @@ func wrapErrFn(emitErr func(error), msg string) func(error) {
 }
 
 // Join pairs up MapLeaves and IndexedValue by index.
-func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue, incFn IncMetricFn) []*Joined {
+func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue, incFn IncMetricFn) <-chan *Joined {
 	joinMap := make(map[string]*Joined)
 	for _, l := range leaves {
 		incFn("Join1")
@@ -67,10 +69,14 @@ func Join(leaves []*entry.IndexedValue, msgs []*entry.IndexedValue, incFn IncMet
 		row.Values2 = append(row.Values2, m.Value)
 		joinMap[string(m.Index)] = row
 	}
-	ret := make([]*Joined, 0, len(joinMap))
-	for _, r := range joinMap {
-		ret = append(ret, r)
-	}
+
+	ret := make(chan *Joined)
+	go func() {
+		defer close(ret)
+		for _, r := range joinMap {
+			ret <- r
+		}
+	}()
 	return ret
 }
 
@@ -151,27 +157,39 @@ type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error))
 
 // DoReduceFn takes the set of mutations and applies them to given leaves.
-// Returns a list of key value pairs that should be written to the map.
-func DoReduceFn(reduceFn ReduceMutationFn, joined []*Joined, emitErr func(error),
-	incFn IncMetricFn) []*entry.IndexedValue {
-	ret := make([]*entry.IndexedValue, 0, len(joined))
-	for _, j := range joined {
-		incFn("ReduceFn")
-		reduceFn(j.Values1, j.Values2,
-			func(e *pb.EntryUpdate) {
-				ret = append(ret, &entry.IndexedValue{Index: j.Index, Value: e})
-			},
-			wrapErrFn(emitErr, fmt.Sprintf("reduceFn on index %x", j.Index)),
-		)
-	}
+// Returns a channel of key value pairs that should be written to the map.
+func DoReduceFn(reduceFn ReduceMutationFn, joined <-chan *Joined, emitErr func(error),
+	incFn IncMetricFn) <-chan *entry.IndexedValue {
+	ret := make(chan *entry.IndexedValue)
+	go func() {
+		defer close(ret)
+		var wg sync.WaitGroup
+		defer wg.Wait()
+		// TODO(gbelvin): Configurable number of workers.
+		for w := 0; w < runtime.NumCPU(); w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := range joined {
+					incFn("ReduceFn")
+					reduceFn(j.Values1, j.Values2,
+						func(e *pb.EntryUpdate) {
+							ret <- &entry.IndexedValue{Index: j.Index, Value: e}
+						},
+						wrapErrFn(emitErr, fmt.Sprintf("reduceFn on index %x", j.Index)),
+					)
+				}
+			}()
+		}
+	}()
 	return ret
 }
 
 // DoMarshalIndexedValues executes Marshal on each IndexedValue
 // If marshal fails, it will emit an error and continue with a subset of ivs.
-func DoMarshalIndexedValues(ivs []*entry.IndexedValue, emitErr func(error), incFn IncMetricFn) []*tpb.MapLeaf {
+func DoMarshalIndexedValues(ivs <-chan *entry.IndexedValue, emitErr func(error), incFn IncMetricFn) []*tpb.MapLeaf {
 	ret := make([]*tpb.MapLeaf, 0, len(ivs))
-	for _, iv := range ivs {
+	for iv := range ivs {
 		incFn("MarshalIndexedValue")
 		mapLeaf, err := iv.Marshal()
 		if err != nil {
