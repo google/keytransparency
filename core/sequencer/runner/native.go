@@ -157,7 +157,7 @@ type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 	emit func(*pb.EntryUpdate), emitErr func(error))
 
 // DoReduceFn takes the set of mutations and applies them to given leaves.
-// Returns a list of key value pairs that should be written to the map.
+// Returns a channel of key value pairs that should be written to the map.
 func DoReduceFn(reduceFn ReduceMutationFn, joined <-chan *Joined, emitErr func(error),
 	incFn IncMetricFn) <-chan *entry.IndexedValue {
 	ret := make(chan *entry.IndexedValue)
@@ -165,6 +165,7 @@ func DoReduceFn(reduceFn ReduceMutationFn, joined <-chan *Joined, emitErr func(e
 		defer close(ret)
 		var wg sync.WaitGroup
 		defer wg.Wait()
+		// TODO: Configurable number of worker threads.
 		for w := 0; w < runtime.NumCPU(); w++ {
 			wg.Add(1)
 			go func() {

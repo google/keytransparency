@@ -403,7 +403,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 
-	reduceStart := time.Now()
+	computeStart := time.Now()
 	// Convert Trillian map leaves into indexed KT updates.
 	indexedLeaves, err := runner.DoMapMapLeafFn(mapper.MapMapLeafFn, leaves, incMetricFn)
 	if err != nil {
@@ -419,7 +419,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 
 	// Marshal new indexed values back into Trillian Map leaves.
 	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn, incMetricFn)
-	fnLatency.Observe(time.Since(reduceStart).Seconds(), in.DirectoryId, "JoinAndReduce")
+	fnLatency.Observe(time.Since(computeStart).Seconds(), in.DirectoryId, "Compute")
 
 	// Serialize metadata
 	metadata, err := proto.Marshal(meta)
