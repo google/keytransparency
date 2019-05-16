@@ -350,7 +350,7 @@ func (s *Server) batchGetUserIndex(ctx context.Context, d *directory.Directory,
 		defer close(results)
 		var wg sync.WaitGroup
 		defer wg.Wait() // Wait before closing results
-		for w := 1; w < runtime.NumCPU(); w++ {
+		for w := 0; w < runtime.NumCPU(); w++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -621,7 +621,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 		defer close(errors)
 		var wg sync.WaitGroup
 		defer wg.Wait() // Wait before closing errors
-		for w := 1; w < runtime.NumCPU(); w++ {
+		for w := 0; w < runtime.NumCPU(); w++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()

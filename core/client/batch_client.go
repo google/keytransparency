@@ -108,7 +108,7 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*ent
 		defer close(rChan)
 		var wg sync.WaitGroup
 		defer wg.Wait() // Wait before closing rChan
-		for w := 1; w < runtime.NumCPU(); w++ {
+		for w := 0; w < runtime.NumCPU(); w++ {
 			wg.Add(1)
 			go func(uChan <-chan *User, rChan chan<- result) {
 				defer wg.Done()
