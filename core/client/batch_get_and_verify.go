@@ -60,12 +60,10 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 	}
 	c.updateTrusted(slr)
 
-	leavesByUserID := make(map[string]*pb.MapLeaf)
 	for userID, leaf := range resp.MapLeavesByUserId {
 		if err := c.VerifyMapLeaf(c.DirectoryID, userID, leaf, smr); err != nil {
 			return nil, err
 		}
-		leavesByUserID[userID] = leaf
 	}
-	return leavesByUserID, nil
+	return resp.MapLeavesByUserId, nil
 }
