@@ -42,20 +42,49 @@ func (c *Client) BatchCreateUser(ctx context.Context, users []*User,
 	if err != nil {
 		return err
 	}
-
+	type result struct {
+		m   *entry.Mutation
+		err error
+	}
+	uChan := make(chan *User)
+	rChan := make(chan result)
+	go func() {
+		defer close(uChan)
+		for _, u := range users {
+			uChan <- u
+		}
+	}()
+	go func() {
+		defer close(rChan)
+		var wg sync.WaitGroup
+		defer wg.Wait() // Wait before closing rChan
+		for w := 0; w < runtime.NumCPU(); w++ {
+			wg.Add(1)
+			go func(uChan <-chan *User, rChan chan<- result) {
+				defer wg.Done()
+				for u := range uChan {
+					mutation := entry.NewMutation(indexByUser[u.UserID], c.DirectoryID, u.UserID)
+					if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
+						rChan <- result{err: err}
+						continue
+					}
+					if u.AuthorizedKeys != nil {
+						if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
+							rChan <- result{err: err}
+							continue
+						}
+					}
+					rChan <- result{m: mutation}
+				}
+			}(uChan, rChan)
+		}
+	}()
 	mutations := make([]*entry.Mutation, 0, len(users))
-	for _, u := range users {
-		mutation := entry.NewMutation(indexByUser[u.UserID], c.DirectoryID, u.UserID)
-
-		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
-			return err
+	for r := range rChan {
+		if r.err != nil {
+			return r.err
 		}
-		if u.AuthorizedKeys != nil {
-			if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
-				return err
-			}
-		}
-		mutations = append(mutations, mutation)
+		mutations = append(mutations, r.m)
 	}
 	return c.BatchQueueUserUpdate(ctx, mutations, signers, opts...)
 }
