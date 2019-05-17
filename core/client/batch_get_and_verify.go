@@ -16,6 +16,10 @@ package client
 
 import (
 	"context"
+	"runtime"
+	"sync"
+
+	"github.com/google/trillian/monitoring"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -60,9 +64,48 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 	}
 	c.updateTrusted(slr)
 
-	for userID, leaf := range resp.MapLeavesByUserId {
-		if err := c.VerifyMapLeaf(c.DirectoryID, userID, leaf, smr); err != nil {
-			return nil, err
+	_, spanEnd := monitoring.StartSpan(ctx, "VerifyBatchGetUser")
+	defer spanEnd()
+
+	type proof struct {
+		userID string
+		leaf   *pb.MapLeaf
+	}
+	proofs := make(chan proof)
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		defer close(proofs)
+		for userID, leaf := range resp.MapLeavesByUserId {
+			select {
+			case proofs <- proof{userID, leaf}:
+			case <-done:
+				return
+			}
+		}
+	}()
+	errors := make(chan error)
+	go func() {
+		defer close(errors)
+		var wg sync.WaitGroup
+		defer wg.Wait()
+		for w := 0; w < runtime.NumCPU(); w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for p := range proofs {
+					select {
+					case errors <- c.VerifyMapLeaf(c.DirectoryID, p.userID, p.leaf, smr):
+					case <-done:
+						return
+					}
+				}
+			}()
+		}
+	}()
+	for err := range errors {
+		if err != nil {
+			return nil, err // Done will be closed by deferred call.
 		}
 	}
 	return resp.MapLeavesByUserId, nil
