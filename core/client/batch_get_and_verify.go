@@ -33,9 +33,10 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 		return nil, err
 	}
 
-	_, spanEnd := monitoring.StartSpan(ctx, "VerifyBatchGetUserIndex")
+	_, spanEnd := monitoring.StartSpan(ctx, "BatchVerifyGetUserIndex.Verify")
 	defer spanEnd()
 
+	// Proof producer
 	type proof struct {
 		userID string
 		proof  []byte
@@ -47,37 +48,42 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 		defer close(proofs)
 		for UID, p := range resp.GetProofs() {
 			select {
-			case proofs <- proof{UID, p}:
+			case proofs <- proof{userID: UID, proof: p}:
 			case <-done:
 				return
 			}
 		}
 	}()
+
+	// Proof verifier
 	type result struct {
 		userID string
 		index  []byte
 		err    error
 	}
 	results := make(chan result)
+	var wg sync.WaitGroup
 	go func() {
-		defer close(results)
-		var wg sync.WaitGroup
-		defer wg.Wait()
-		for w := 0; w < runtime.NumCPU(); w++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for p := range proofs {
-					index, err := c.Index(p.proof, c.DirectoryID, p.userID)
-					select {
-					case results <- result{userID: p.userID, index: index, err: err}:
-					case <-done:
-						return
-					}
-				}
-			}()
-		}
+		wg.Wait()
+		close(results)
 	}()
+	for w := 0; w < runtime.NumCPU(); w++ {
+		wg.Add(1)
+		// Proof verifier worker
+		go func() {
+			defer wg.Done()
+			for p := range proofs {
+				index, err := c.Index(p.proof, c.DirectoryID, p.userID)
+				select {
+				case results <- result{userID: p.userID, index: index, err: err}:
+				case <-done:
+					return
+				}
+			}
+		}()
+	}
+
+	// Result consumer
 	indexByUser := make(map[string][]byte)
 	for r := range results {
 		if r.err != nil {
