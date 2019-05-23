@@ -6,16 +6,18 @@ require (
 	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/mock v1.3.1 // indirect
+	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.3.1
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
+	github.com/google/go-cmp v0.2.0
 	github.com/google/tink v1.2.1-0.20190523150020-6495d823d968
 	github.com/google/trillian v1.2.2-0.20190523160340-d074d79f9323
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.9.0
 	github.com/kr/pretty v0.1.0
+	github.com/kylelemons/godebug v1.1.0
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/prometheus/client_golang v0.9.3
