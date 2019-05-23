@@ -193,16 +193,33 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 	for index := range usersByIndex {
 		indexes = append(indexes, []byte(index))
 	}
-
-	getResp, err := s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
-		MapId:    d.Map.TreeId,
-		Index:    indexes,
-		Revision: mapRevision,
-	})
-	if st := status.Convert(err); st.Code() != codes.OK {
-		glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.Map.TreeId, mapRevision, err)
-		return nil, status.Errorf(st.Code(), "Failed fetching map leaf")
+	var getResp *tpb.GetMapLeavesResponse
+	if len(indexes) == 1 {
+		resp, err := s.tmap.GetLeafByRevision(ctx, &tpb.GetMapLeafByRevisionRequest{
+			MapId:    d.Map.TreeId,
+			Index:    indexes[0],
+			Revision: mapRevision,
+		})
+		getResp = &tpb.GetMapLeavesResponse{
+			MapRoot:          resp.GetMapRoot(),
+			MapLeafInclusion: []*tpb.MapLeafInclusion{resp.GetMapLeafInclusion()},
+		}
+		if st := status.Convert(err); st.Code() != codes.OK {
+			glog.Errorf("GetLeafByRevision(%v, rev: %v): %v", d.Map.TreeId, mapRevision, err)
+			return nil, status.Errorf(st.Code(), "Failed fetching map leaf")
+		}
+	} else {
+		getResp, err = s.tmap.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
+			MapId:    d.Map.TreeId,
+			Index:    indexes,
+			Revision: mapRevision,
+		})
+		if st := status.Convert(err); st.Code() != codes.OK {
+			glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.Map.TreeId, mapRevision, err)
+			return nil, status.Errorf(st.Code(), "Failed fetching map leaf")
+		}
 	}
+
 	if got, want := len(getResp.MapLeafInclusion), len(userIDs); got != want {
 		glog.Errorf("GetLeavesByRevision() len: %v, want %v", got, want)
 		return nil, status.Errorf(codes.Internal, "Wrong number of map leaves returned")
