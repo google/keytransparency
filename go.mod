@@ -15,6 +15,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.9.0
 	github.com/kr/pretty v0.1.0
+	github.com/lib/pq v1.1.1 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/prometheus/client_golang v0.9.3
 	github.com/spf13/cobra v0.0.4
