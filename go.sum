@@ -43,6 +43,8 @@ github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ
 github.com/google/certificate-transparency-go v1.0.21 h1:Yf1aXowfZ2nuboBsg7iYGLmwsOARdV86pfH3g95wXmE=
 github.com/google/certificate-transparency-go v1.0.21/go.mod h1:QeJfpSbVSfYc7RgB3gJFj9cbuQMMchQxrWXz8Ruopmg=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
+github.com/google/tink v1.2.1-0.20190523150020-6495d823d968 h1:3P4TOKsvMmO5ZyE1CPGDiechVe/uxSSjydlSctvcpRg=
+github.com/google/tink v1.2.1-0.20190523150020-6495d823d968/go.mod h1:eu7D8x3z2rMO7fyvHVhMx8yoFH+vH8EZR1uO3hjEIhQ=
 github.com/google/tink v1.2.2 h1:NbhoLgm7oNZFSD2RzN6B4jStW7FChkbzo/r69Jc1kzI=
 github.com/google/tink v1.2.2/go.mod h1:eu7D8x3z2rMO7fyvHVhMx8yoFH+vH8EZR1uO3hjEIhQ=
 github.com/google/trillian v1.2.1 h1:MolbIOUOz4kOsbXMtBMv63fX68hdkT99bfDtPOXRPYw=

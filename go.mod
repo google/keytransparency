@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.3.1
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
-	github.com/google/tink v1.2.2
+	github.com/google/tink v1.2.1-0.20190523150020-6495d823d968
 	github.com/google/trillian v1.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
