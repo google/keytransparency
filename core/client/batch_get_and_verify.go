@@ -114,9 +114,10 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 	}
 	c.updateTrusted(slr)
 
-	_, spanEnd := monitoring.StartSpan(ctx, "VerifyBatchGetUser")
+	_, spanEnd := monitoring.StartSpan(ctx, "BatchVerifiedGetUser")
 	defer spanEnd()
 
+	// Proof producer
 	type proof struct {
 		userID string
 		leaf   *pb.MapLeaf
@@ -134,28 +135,32 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 			}
 		}
 	}()
+
+	// Verifier workers
 	errors := make(chan error)
+	var wg sync.WaitGroup
 	go func() {
-		defer close(errors)
-		var wg sync.WaitGroup
-		defer wg.Wait()
-		for w := 0; w < runtime.NumCPU(); w++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for p := range proofs {
-					select {
-					case errors <- c.VerifyMapLeaf(c.DirectoryID, p.userID, p.leaf, smr):
-					case <-done:
-						return
-					}
-				}
-			}()
-		}
+		wg.Wait()
+		close(errors)
 	}()
+	for w := 0; w < runtime.NumCPU(); w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for p := range proofs {
+				select {
+				case errors <- c.VerifyMapLeaf(c.DirectoryID, p.userID, p.leaf, smr):
+				case <-done:
+					return
+				}
+			}
+		}()
+	}
+
+	// Consume verification outputs
 	for err := range errors {
 		if err != nil {
-			return nil, err // Done will be closed by deferred call.
+			return nil, err // done will be closed by deferred call.
 		}
 	}
 	return resp.MapLeavesByUserId, nil
