@@ -54,6 +54,8 @@ github.com/google/trillian v1.2.1 h1:MolbIOUOz4kOsbXMtBMv63fX68hdkT99bfDtPOXRPYw
 github.com/google/trillian v1.2.1/go.mod h1:YPmUVn5NGwgnDUgqlVyFGMTgaWlnSvH7W5p+NdOG8UA=
 github.com/google/trillian v1.2.2-0.20190523160340-d074d79f9323 h1:CV1/HwMKKSyqHUBC3bRQP8WTOgA3ro/vhjqlZk8f8P0=
 github.com/google/trillian v1.2.2-0.20190523160340-d074d79f9323/go.mod h1:YPmUVn5NGwgnDUgqlVyFGMTgaWlnSvH7W5p+NdOG8UA=
+github.com/google/trillian v1.2.2-0.20190524132942-bbaabdb62893 h1:y26y8caji3DdlcenfA5E//fjrKZ4tPW5+bwoQYA882M=
+github.com/google/trillian v1.2.2-0.20190524132942-bbaabdb62893/go.mod h1:YPmUVn5NGwgnDUgqlVyFGMTgaWlnSvH7W5p+NdOG8UA=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 h1:Iju5GlWwrvL6UBg4zJJt3btmonfrMlCDdsejg4CZE7c=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.0/go.mod h1:FiyG127CGDf3tlThmgyCl78X/SZQqEOJBCDaAfeWzPs=
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 h1:Ovs26xHkKqVztRpIrF/92BcuyuQ/YW4NSIpoGtfXNho=
