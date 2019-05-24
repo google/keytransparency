@@ -214,14 +214,13 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	go signer.TrackMasterships(ctx)
 
 	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
-		signer.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
-			if _, err := spb.NewKeyTransparencySequencerClient(conn).
-				UpdateMetrics(ctx, &spb.UpdateMetricsRequest{DirectoryId: dirID}); err != nil {
-				glog.Errorf("UpdateMetrics(): %v", err)
-				return err
-			}
-			return nil
-		})
+		if err := signer.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
+			_, err := spb.NewKeyTransparencySequencerClient(conn).
+				UpdateMetrics(ctx, &spb.UpdateMetricsRequest{DirectoryId: dirID})
+			return err
+		}); err != nil {
+			glog.Errorf("UpdateMetrics(): %v", err)
+		}
 	})
 
 	if err := signer.AddAllDirectories(ctx); err != nil {
