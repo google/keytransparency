@@ -95,50 +95,51 @@ func (s *Sequencer) AddDirectory(dirIDs ...string) {
 	}
 }
 
-// RunBatchForAllMasterships runs RunBatch on all directires this sequencer is currently master for.
-func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int32) error {
-	glog.Infof("RunBatchForAllMasterships")
+// ForAllMasterships runs f once for all directories this server is master for.
+func (s *Sequencer) ForAllMasterships(ctx context.Context, f func(ctx context.Context, dirID string) error) error {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	masterships, err := s.tracker.Masterships(cctx)
 	if err != nil {
 		return err
 	}
-
 	var lastErr error
-	for dirID, whileMaster := range masterships {
+	for dirID, mastershipCtx := range masterships {
+		if err := f(mastershipCtx, dirID); err != nil {
+			lastErr = err
+		}
+	}
+	return lastErr
+}
+
+// RunBatchForAllMasterships runs RunBatch on all directires this sequencer is currently master for.
+func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int32) error {
+	glog.Infof("RunBatchForAllMasterships")
+	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 		req := &spb.RunBatchRequest{
 			DirectoryId: dirID,
 			MinBatch:    1,
 			MaxBatch:    batchSize,
 		}
-		if _, err := s.sequencerClient.RunBatch(whileMaster, req); err != nil {
-			lastErr = err
+		_, err := s.sequencerClient.RunBatch(ctx, req)
+		if err != nil {
 			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
+			return err
 		}
-	}
-
-	return lastErr
+		return nil
+	})
 }
 
 // PublishLogForAllMasterships run PublishRevisions on all directories this sequencer is currently master for.
 func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context) error {
 	glog.Infof("PublishLogForAllMasterships")
-	cctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	masterships, err := s.tracker.Masterships(cctx)
-	if err != nil {
-		return err
-	}
-
-	var lastErr error
-	for dirID, whileMaster := range masterships {
+	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 		publishReq := &spb.PublishRevisionsRequest{DirectoryId: dirID}
-		if _, err = s.sequencerClient.PublishRevisions(whileMaster, publishReq); err != nil {
-			lastErr = err
+		_, err := s.sequencerClient.PublishRevisions(ctx, publishReq)
+		if err != nil {
 			glog.Errorf("PublishRevisions for %v failed: %v", dirID, err)
+			return err
 		}
-	}
-
-	return lastErr
+		return nil
+	})
 }
