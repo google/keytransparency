@@ -33,7 +33,7 @@ before_install:
 install:
   - gcloud -q components install kubectl
   - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.16.0
-  - go get -t ./...
+  - if [ "$GO111MODULE" = "auto" ]; then go get -t -v ./... ; fi
 
 script:
   - go build ./...
