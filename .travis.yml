@@ -8,6 +8,7 @@ go_import_path: github.com/google/keytransparency
 cache:
   directories:
   - "$HOME/gcloud/"
+  - "$HOME/gopath/pkg/mod"
 env:
   global:
   - PATH=$PATH:${HOME}/google-cloud-sdk/bin
