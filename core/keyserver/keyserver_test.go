@@ -121,18 +121,18 @@ func TestLatestRevision(t *testing.T) {
 					SignedLogRoot: mustMarshalRoot(t, &types.LogRootV1{TreeSize: uint64(tc.treeSize)}),
 				}, err)
 			if tc.wantErr == codes.OK {
-				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
-					&tpb.GetMapLeavesByRevisionRequest{
+				e.s.Map.EXPECT().GetLeafByRevision(gomock.Any(),
+					&tpb.GetMapLeafByRevisionRequest{
 						MapId:    mapID,
-						Index:    [][]byte{make([]byte, 32)},
+						Index:    make([]byte, 32),
 						Revision: tc.treeSize - 1,
 					}).
-					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{{
+					Return(&tpb.GetMapLeafResponse{
+						MapLeafInclusion: &tpb.MapLeafInclusion{
 							Leaf: &tpb.MapLeaf{
 								Index: make([]byte, 32),
 							},
-						}},
+						},
 					}, nil)
 				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil)
@@ -154,18 +154,18 @@ func TestLatestRevision(t *testing.T) {
 					SignedLogRoot: mustMarshalRoot(t, &types.LogRootV1{TreeSize: uint64(tc.treeSize)}),
 				}, err).Times(2)
 			for i := int64(0); i < tc.treeSize; i++ {
-				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
-					&tpb.GetMapLeavesByRevisionRequest{
+				e.s.Map.EXPECT().GetLeafByRevision(gomock.Any(),
+					&tpb.GetMapLeafByRevisionRequest{
 						MapId:    mapID,
-						Index:    [][]byte{make([]byte, 32)},
+						Index:    make([]byte, 32),
 						Revision: i,
 					}).
-					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{{
+					Return(&tpb.GetMapLeafResponse{
+						MapLeafInclusion: &tpb.MapLeafInclusion{
 							Leaf: &tpb.MapLeaf{
 								Index: make([]byte, 32),
 							},
-						}},
+						},
 					}, nil).Times(2)
 				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil).Times(2)
