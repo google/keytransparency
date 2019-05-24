@@ -17,7 +17,9 @@ package sequencer
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -95,50 +97,59 @@ func (s *Sequencer) AddDirectory(dirIDs ...string) {
 	}
 }
 
-// RunBatchForAllMasterships runs RunBatch on all directires this sequencer is currently master for.
-func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int32) error {
-	glog.Infof("RunBatchForAllMasterships")
+// ForAllMasterships runs f once for all directories this server is master for.
+func (s *Sequencer) ForAllMasterships(ctx context.Context, f func(ctx context.Context, dirID string) error) error {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	masterships, err := s.tracker.Masterships(cctx)
 	if err != nil {
 		return err
 	}
+	var errs []error
+	for dirID, mastershipCtx := range masterships {
+		if err := f(mastershipCtx, dirID); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) != 0 {
+		msgs := make([]string, 0, len(errs))
+		for i, err := range errs {
+			msgs = append(msgs, fmt.Sprintf("%d: %v", i, err))
+		}
+		return errors.New(strings.Join(msgs, ", "))
+	}
+	return nil
+}
 
-	var lastErr error
-	for dirID, whileMaster := range masterships {
+// RunBatchForAllMasterships runs KeyTransparencySequencerClient.RunBatch on all
+// directories this sequencer is currently master for.
+func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int32) error {
+	glog.Infof("RunBatchForAllMasterships")
+	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 		req := &spb.RunBatchRequest{
 			DirectoryId: dirID,
 			MinBatch:    1,
 			MaxBatch:    batchSize,
 		}
-		if _, err := s.sequencerClient.RunBatch(whileMaster, req); err != nil {
-			lastErr = err
+		if _, err := s.sequencerClient.RunBatch(ctx, req); err != nil {
 			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
+			return err
 		}
-	}
-
-	return lastErr
+		return nil
+	})
 }
 
-// PublishLogForAllMasterships run PublishRevisions on all directories this sequencer is currently master for.
+// PublishLogForAllMasterships runs KeyTransparencySequencer.PublishRevisions on
+// all directories this sequencer is currently master for.
 func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context) error {
 	glog.Infof("PublishLogForAllMasterships")
-	cctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	masterships, err := s.tracker.Masterships(cctx)
-	if err != nil {
-		return err
-	}
-
-	var lastErr error
-	for dirID, whileMaster := range masterships {
+	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 		publishReq := &spb.PublishRevisionsRequest{DirectoryId: dirID}
-		if _, err = s.sequencerClient.PublishRevisions(whileMaster, publishReq); err != nil {
-			lastErr = err
+		_, err := s.sequencerClient.PublishRevisions(ctx, publishReq)
+		if err != nil {
 			glog.Errorf("PublishRevisions for %v failed: %v", dirID, err)
+			return err
 		}
-	}
-
-	return lastErr
+		return nil
+	})
 }
