@@ -38,7 +38,7 @@ install:
 
 script:
   - go build ./...
-  - golangci-lint run
+  - golangci-lint run --deadline=5m
   - go test ./... -coverprofile=coverage1.txt
   - go test ./impl/integration/ -coverprofile=coverage2.txt -coverpkg=./...
 

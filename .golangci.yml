@@ -1,5 +1,6 @@
 run:
   timeout: 5m
+
 linters-settings:
   govet:
     check-shadowing: false
