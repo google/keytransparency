@@ -216,7 +216,7 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 		})
 		if st := status.Convert(err); st.Code() != codes.OK {
 			glog.Errorf("GetLeavesByRevision(%v, rev: %v): %v", d.Map.TreeId, mapRevision, err)
-			return nil, status.Errorf(st.Code(), "Failed fetching map leaf")
+			return nil, status.Errorf(st.Code(), "Failed fetching map leaves")
 		}
 	}
 
