@@ -17,7 +17,9 @@ package sequencer
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -103,13 +105,20 @@ func (s *Sequencer) ForAllMasterships(ctx context.Context, f func(ctx context.Co
 	if err != nil {
 		return err
 	}
-	var lastErr error
+	var errs []error
 	for dirID, mastershipCtx := range masterships {
 		if err := f(mastershipCtx, dirID); err != nil {
-			lastErr = err
+			errs = append(errs, err)
 		}
 	}
-	return lastErr
+	if len(errs) != 0 {
+		msgs := make([]string, 0, len(errs))
+		for i, err := range errs {
+			msgs = append(msgs, fmt.Sprintf("%d: %v", i, err))
+		}
+		return errors.New(strings.Join(msgs, ", "))
+	}
+	return nil
 }
 
 // RunBatchForAllMasterships runs RunBatch on all directires this sequencer is currently master for.
