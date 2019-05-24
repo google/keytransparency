@@ -131,8 +131,7 @@ func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int
 			MinBatch:    1,
 			MaxBatch:    batchSize,
 		}
-		_, err := s.sequencerClient.RunBatch(ctx, req)
-		if err != nil {
+		if _, err := s.sequencerClient.RunBatch(ctx, req); err != nil {
 			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
 			return err
 		}
