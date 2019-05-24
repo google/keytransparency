@@ -122,7 +122,7 @@ func (s *Sequencer) ForAllMasterships(ctx context.Context, f func(ctx context.Co
 }
 
 // RunBatchForAllMasterships runs KeyTransparencySequencerClient.RunBatch on all
-// directires this sequencer is currently master for.
+// directories this sequencer is currently master for.
 func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int32) error {
 	glog.Infof("RunBatchForAllMasterships")
 	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
@@ -139,7 +139,7 @@ func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context, batchSize int
 	})
 }
 
-// PublishLogForAllMasterships run KeyTransparencySequencer.PublishRevisions on
+// PublishLogForAllMasterships runs KeyTransparencySequencer.PublishRevisions on
 // all directories this sequencer is currently master for.
 func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context) error {
 	glog.Infof("PublishLogForAllMasterships")
