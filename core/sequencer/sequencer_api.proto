@@ -113,6 +113,7 @@ message PublishRevisionsResponse {
 
 // UpdateMetricsRequest is empty.
 message UpdateMetricsRequest{
+  string directory_id = 1;
 }
 
 // UpdateMetricsResponse is empty.

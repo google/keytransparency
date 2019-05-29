@@ -185,19 +185,12 @@ func NewServer(
 	}
 }
 
-func (s *Server) UpdateMetrics(ctx context.Context, _ *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
-	directories, err := s.directories.List(ctx, false /*deleted*/)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "admin.List(): %v", err)
+func (s *Server) UpdateMetrics(ctx context.Context, in *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
+	if err := s.unappliedMetric(ctx, in.DirectoryId); err != nil {
+		glog.Errorf("unappliedMetric(%v): %v", in.DirectoryId, err)
+		return nil, err
 	}
-	var retErr error
-	for _, d := range directories {
-		if err := s.unappliedMetric(ctx, d.DirectoryID); err != nil {
-			glog.Errorf("unappliedMetric(): %v", err)
-			retErr = err
-		}
-	}
-	return &spb.UpdateMetricsResponse{}, retErr
+	return &spb.UpdateMetricsResponse{}, nil
 }
 
 // unappliedMetric updates the log_entryunapplied metric for directoryID
