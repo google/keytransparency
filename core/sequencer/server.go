@@ -187,7 +187,7 @@ func NewServer(
 
 func (s *Server) UpdateMetrics(ctx context.Context, in *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
 	if err := s.unappliedMetric(ctx, in.DirectoryId); err != nil {
-		glog.Errorf("unappliedMetric(): %v", err)
+		glog.Errorf("unappliedMetric(%v): %v", in.DirectoryId, err)
 		return nil, err
 	}
 	return &spb.UpdateMetricsResponse{}, nil
