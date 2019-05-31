@@ -63,6 +63,7 @@ jobs:
         - go get github.com/google/trillian/server/trillian_log_server
         - go get github.com/google/trillian/server/trillian_log_signer
         - go get github.com/google/trillian/server/trillian_map_server
+      script: true
       before_deploy:
         - docker --version
         - docker-compose --version
