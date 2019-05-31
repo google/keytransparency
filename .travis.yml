@@ -51,7 +51,7 @@ after_success:
 jobs:
   include:
     - stage: deploy
-      if: branch = master
+      if: head_branch = master
       env:
         - GO111MODULE=auto
       install: 
