@@ -390,7 +390,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 	verifyLeafStart := time.Now()
-	leaves, err := mapClient.GetAndVerifyMapLeavesByRevision(ctx, in.Revision-1, indexes)
+	leaves, err := mapClient.GetMapLeavesByRevisionNoProof(ctx, in.Revision-1, indexes)
 	fnLatency.Observe(time.Since(verifyLeafStart).Seconds(), in.DirectoryId, "GetAndVerifyMapLeavesByRevision")
 	if err != nil {
 		return nil, err

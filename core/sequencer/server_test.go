@@ -126,7 +126,7 @@ type fakeMapConn struct {
 
 var errSuccess = status.Errorf(codes.Unimplemented, "Success! No Duplicates. Shortcut return")
 
-func (m *fakeMapConn) GetLeavesByRevision(_ context.Context, in *tpb.GetMapLeavesByRevisionRequest, _ ...grpc.CallOption) (*tpb.GetMapLeavesResponse, error) {
+func (m *fakeMapConn) GetLeavesByRevisionNoProof(_ context.Context, in *tpb.GetMapLeavesByRevisionRequest, _ ...grpc.CallOption) (*tpb.MapLeaves, error) {
 	set := make(map[string]bool)
 	for _, i := range in.Index {
 		if set[string(i)] {
