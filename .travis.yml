@@ -48,14 +48,10 @@ after_success:
   - bash <(curl -s https://codecov.io/bash)
 
 
-stages:
-  - test
-  - name: deploy
-    if: branch = master
-
 jobs:
   include:
     - stage: deploy
+      if: branch = master
       env:
         - GO111MODULE=auto
       install: 
