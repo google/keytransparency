@@ -18,7 +18,7 @@ require (
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
 	github.com/google/go-cmp v0.2.0
 	github.com/google/tink v1.2.1-0.20190523150020-6495d823d968
-	github.com/google/trillian v1.2.2-0.20190524132942-bbaabdb62893
+	github.com/google/trillian v1.2.2-0.20190603160524-0cfa53f919f3
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0

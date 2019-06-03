@@ -66,6 +66,8 @@ github.com/google/tink v1.2.1-0.20190523150020-6495d823d968 h1:3P4TOKsvMmO5ZyE1C
 github.com/google/tink v1.2.1-0.20190523150020-6495d823d968/go.mod h1:eu7D8x3z2rMO7fyvHVhMx8yoFH+vH8EZR1uO3hjEIhQ=
 github.com/google/trillian v1.2.2-0.20190524132942-bbaabdb62893 h1:y26y8caji3DdlcenfA5E//fjrKZ4tPW5+bwoQYA882M=
 github.com/google/trillian v1.2.2-0.20190524132942-bbaabdb62893/go.mod h1:YPmUVn5NGwgnDUgqlVyFGMTgaWlnSvH7W5p+NdOG8UA=
+github.com/google/trillian v1.2.2-0.20190603160524-0cfa53f919f3 h1:/rXJK62GtZrsjz2a9W2QIUiwN+OCxtWHsXxx3v996i0=
+github.com/google/trillian v1.2.2-0.20190603160524-0cfa53f919f3/go.mod h1:YPmUVn5NGwgnDUgqlVyFGMTgaWlnSvH7W5p+NdOG8UA=
 github.com/googleapis/gax-go v2.0.2+incompatible h1:silFMLAnr330+NRuag/VjIGF7TLp/LBrV2CJKFLWEww=
 github.com/googleapis/gax-go v2.0.2+incompatible/go.mod h1:SFVmujtThgffbyetf+mdk2eWhX2bMyUtNHzFKcPA9HY=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
