@@ -145,9 +145,6 @@ func (c *MapClient) GetAndVerifyMapRootByRevision(ctx context.Context,
 // GetMapLeavesByRevisionNoProof returns the requested map leaves at a specific revision.
 // indexes may not contain duplicates.
 func (c *MapClient) GetMapLeavesByRevisionNoProof(ctx context.Context, revision int64, indexes [][]byte) ([]*tpb.MapLeaf, error) {
-	if err := hasDuplicates(indexes); err != nil {
-		return nil, err
-	}
 	getResp, err := c.Conn.GetLeavesByRevisionNoProof(ctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    c.MapID,
 		Index:    indexes,
@@ -158,16 +155,4 @@ func (c *MapClient) GetMapLeavesByRevisionNoProof(ctx context.Context, revision 
 		return nil, status.Errorf(s.Code(), "GetLeavesByRevisionNoProof(): %v", s.Message())
 	}
 	return getResp.Leaves, nil
-}
-
-// hasDuplicates returns an error if there are duplicates in indexes.
-func hasDuplicates(indexes [][]byte) error {
-	set := make(map[string]bool)
-	for _, i := range indexes {
-		if set[string(i)] {
-			return status.Errorf(codes.InvalidArgument, "index %x requested more than once", i)
-		}
-		set[string(i)] = true
-	}
-	return nil
 }
