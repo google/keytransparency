@@ -23,7 +23,7 @@ import (
 type ResponseVector struct {
 	Desc                       string
 	UserID                     string
-	Resp                       *pb.GetUserResponse
+	GetUserResp                *pb.GetUserResponse
 	TrustNewLog                bool
 	UserIDs                    []string
 	BatchListUserRevisionsResp *pb.BatchListUserRevisionsResponse

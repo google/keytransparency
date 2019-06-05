@@ -56,11 +56,11 @@ type NamedTestFn struct {
 // This is done so that tests can be run in different environments in a portable way.
 var AllTests = []NamedTestFn{
 	// Client Tests
-	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate, DirectoryFilename: "directory.json", RespFilename: "getentryresponse.json"},
+	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate, DirectoryFilename: "directory_get_and_update.json", RespFilename: "get_and_update.json"},
 	{Name: "TestListHistory", Fn: TestListHistory},
 	{Name: "TestBatchUpdate", Fn: TestBatchUpdate},
 	{Name: "TestBatchCreate", Fn: TestBatchCreate},
-	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions, DirectoryFilename: "directory2.json", RespFilename: "batchlistuserrevisionsresponse.json"},
+	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions, DirectoryFilename: "directory_batch_list_user_revisions.json", RespFilename: "batch_list_user_revisions.json"},
 	// Monitor Tests
 	{Name: "TestMonitor", Fn: TestMonitor},
 }
