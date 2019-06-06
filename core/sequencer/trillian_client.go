@@ -39,7 +39,7 @@ type trillianMap interface {
 	GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error)
 	SetLeavesAtRevision(ctx context.Context, rev int64, leaves []*tpb.MapLeaf, meta []byte) (*types.MapRootV1, error)
 	GetAndVerifyMapRootByRevision(ctx context.Context, rev int64) (*tpb.SignedMapRoot, *types.MapRootV1, error)
-	GetAndVerifyMapLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error)
+	GetMapLeavesByRevisionNoProof(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error)
 }
 
 // trillianLog communicates with the Trillian log and verifies the responses.
@@ -140,4 +140,19 @@ func (c *MapClient) GetAndVerifyMapRootByRevision(ctx context.Context,
 		return nil, nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
 	return rawMapRoot, mapRoot, nil
+}
+
+// GetMapLeavesByRevisionNoProof returns the requested map leaves at a specific revision.
+// indexes may not contain duplicates.
+func (c *MapClient) GetMapLeavesByRevisionNoProof(ctx context.Context, revision int64, indexes [][]byte) ([]*tpb.MapLeaf, error) {
+	getResp, err := c.Conn.GetLeavesByRevisionNoProof(ctx, &tpb.GetMapLeavesByRevisionRequest{
+		MapId:    c.MapID,
+		Index:    indexes,
+		Revision: revision,
+	})
+	if err != nil {
+		s := status.Convert(err)
+		return nil, status.Errorf(s.Code(), "GetLeavesByRevisionNoProof(): %v", s.Message())
+	}
+	return getResp.Leaves, nil
 }
