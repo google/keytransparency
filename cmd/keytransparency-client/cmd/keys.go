@@ -117,6 +117,6 @@ func init() {
 	keysCmd.PersistentFlags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 
 	createCmd.Flags().StringVar(&keyType, "key-type", "P256", "Type of keys to generate: [P256, P384, P521]")
-	createCmd.Flags().StringVarP(&keysetFile, "keyset-file", "kf", defaultKeysetFile, "Keyset file name and path")
-	listCmd.Flags().StringVarP(&keysetFile, "keyset-file", "kf", defaultKeysetFile, "Keyset file name and path")
+	createCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
+	listCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
 }
