@@ -57,6 +57,7 @@ type NamedTestFn struct {
 var AllTests = []NamedTestFn{
 	// Client Tests
 	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate, DirectoryFilename: "directory_get_and_update.json", RespFilename: "get_and_update.json"},
+	{Name: "TestBatchGetUser", Fn: TestBatchGetUser, DirectoryFilename: "directory_batch_get_user.json", RespFilename: "batch_get_user.json"},
 	{Name: "TestListHistory", Fn: TestListHistory},
 	{Name: "TestBatchUpdate", Fn: TestBatchUpdate},
 	{Name: "TestBatchCreate", Fn: TestBatchCreate},

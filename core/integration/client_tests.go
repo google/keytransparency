@@ -320,6 +320,105 @@ func CheckProfile(ctx context.Context, env *Env, userID string, wantProfile []by
 	return e, newslr, nil
 }
 
+// TestBatchGetUser tests fetching multiple users in a single request.
+func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
+	batchResps := make([]testdata.ResponseVector, 0)
+
+	users := []*client.User{
+		{
+			UserID:         "bob",
+			PublicKeyData:  []byte("bob-key"),
+			AuthorizedKeys: authorizedKeys1,
+		},
+		{
+			UserID:         "carol",
+			PublicKeyData:  []byte("carol-key"),
+			AuthorizedKeys: authorizedKeys1,
+		},
+	}
+	cctx, cancel := context.WithTimeout(ctx, env.Timeout)
+	defer cancel()
+	if err := env.Client.BatchCreateUser(cctx, users, signers1); err != nil {
+		t.Fatalf("BatchCreateUser(): %v", err)
+	}
+	if err := env.Client.WaitForRevision(cctx, 1); err != nil {
+		t.Fatalf("WaitForSTHUpdate(): %v", err)
+	}
+
+	for _, tc := range []struct {
+		desc         string
+		wantProfiles map[string][]byte
+	}{
+		{
+			desc: "single empty",
+			wantProfiles: map[string][]byte{
+				"alice": nil,
+			},
+		},
+		{
+			desc: "multi empty",
+			wantProfiles: map[string][]byte{
+				"alice": nil,
+				"zelda": nil,
+			},
+		},
+		{
+			desc: "single full",
+			wantProfiles: map[string][]byte{
+				"bob": []byte("bob-key"),
+			},
+		},
+		{
+			desc: "multi full",
+			wantProfiles: map[string][]byte{
+				"bob":   []byte("bob-key"),
+				"carol": []byte("carol-key"),
+			},
+		},
+		{
+			desc: "multi mixed",
+			wantProfiles: map[string][]byte{
+				"alice": nil,
+				"bob":   []byte("bob-key"),
+			},
+		}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			userIDs := make([]string, 0)
+			for userID := range tc.wantProfiles {
+				userIDs = append(userIDs, userID)
+			}
+			resp, err := env.Cli.BatchGetUser(cctx, &pb.BatchGetUserRequest{
+				DirectoryId: env.Directory.DirectoryId,
+				UserIds:     userIDs,
+			})
+			if err != nil {
+				t.Fatalf("BatchGetUser(): %v", err)
+			}
+			_, smr, err := env.Client.VerifyRevision(resp.Revision, types.LogRootV1{})
+			if err != nil {
+				t.Fatalf("VerifyRevision(): %v", nil)
+			}
+			for userID, leaf := range resp.MapLeavesByUserId {
+				if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, userID, leaf, smr); err != nil {
+					t.Fatalf("VerifyMapLeaf(%v): %v", userID, err)
+				}
+				if got, want := leaf.GetCommitted().GetData(), tc.wantProfiles[userID]; !bytes.Equal(got, want) {
+					t.Fatalf("key mismatch for %s: %s, want %s", userID, got, want)
+				}
+			}
+			batchResps = append(batchResps, testdata.ResponseVector{
+				Desc:             tc.desc,
+				UserIDs:          userIDs,
+				BatchGetUserResp: resp,
+			})
+		})
+	}
+	return batchResps
+}
+
 // TestListHistory verifies that repeated history values get collapsed properly.
 func TestListHistory(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
 	userID := "bob"
