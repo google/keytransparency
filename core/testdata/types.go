@@ -27,4 +27,5 @@ type ResponseVector struct {
 	TrustNewLog                bool
 	UserIDs                    []string
 	BatchListUserRevisionsResp *pb.BatchListUserRevisionsResponse
+	BatchGetUserResp           *pb.BatchGetUserResponse
 }
