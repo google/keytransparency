@@ -100,7 +100,7 @@ go get -u github.com/google/keytransparency/...
 go get -u github.com/google/trillian/...
 cd $(go env GOPATH)/src/github.com/google/keytransparency
 ./scripts/prepare_server.sh -f
-docker-compose up -f docker-compose.yml docker-compose.prod.yml
+docker-compose -f docker-compose.yml docker-compose.prod.yml up
 ```
 
 2. Watch it Run
