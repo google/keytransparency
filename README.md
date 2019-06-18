@@ -45,7 +45,7 @@ development.
   keytransparency-client authorized-keys list-keyset --password=${PASSWORD}
   ```
 The `create-keyset` command will create a `.keyset` file in the user's working directory.
-To specify custom directory use `--keyset-file` or `--kf` shortcut.
+To specify custom directory use `--keyset-file` or `-k` shortcut.
 
 NB A default for the Key Transparency server URL is being used here. The default value is "35.202.56.9:443". The flag `--kt-url` may be used to specify the URL of Key Transparency server explicitly.
 
