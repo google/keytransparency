@@ -13,9 +13,7 @@ env:
   global:
   - PATH=$PATH:${HOME}/google-cloud-sdk/bin
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-  matrix:
   - GO111MODULE=on
-  - GO111MODULE=auto
 
 before_install:
   - |
