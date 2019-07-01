@@ -164,6 +164,7 @@ func NewServer(
 	directories directory.Storage,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
+	twrite tpb.TrillianMapWriteClient,
 	batcher Batcher,
 	logs LogsReader,
 	loopback spb.KeyTransparencySequencerClient,
@@ -176,6 +177,7 @@ func NewServer(
 			directories: directories,
 			tmap:        tmap,
 			tlog:        tlog,
+			twrite:      twrite,
 		},
 		batcher:             batcher,
 		logs:                logs,
@@ -385,13 +387,13 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Read Map.
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
+	mapClient, err := s.trillian.MapWriteClient(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
 	verifyLeafStart := time.Now()
-	leaves, err := mapClient.GetMapLeavesByRevisionNoProof(ctx, in.Revision-1, indexes)
-	fnLatency.Observe(time.Since(verifyLeafStart).Seconds(), in.DirectoryId, "GetAndVerifyMapLeavesByRevision")
+	leaves, err := mapClient.GetLeavesByRevision(ctx, in.Revision-1, indexes)
+	fnLatency.Observe(time.Since(verifyLeafStart).Seconds(), in.DirectoryId, "GetLeavesByRevision")
 	if err != nil {
 		return nil, err
 	}
@@ -422,20 +424,20 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 
 	// Set new leaf values.
 	setRevisionStart := time.Now()
-	mapRoot, err := mapClient.SetLeavesAtRevision(ctx, in.Revision, newLeaves, metadata)
-	fnLatency.Observe(time.Since(setRevisionStart).Seconds(), in.DirectoryId, "SetLeavesAtRevision")
+	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves, metadata)
+	fnLatency.Observe(time.Since(setRevisionStart).Seconds(), in.DirectoryId, "WriteLeaves")
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
+		return nil, err
 	}
-	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
+	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
 
 	for _, s := range meta.Sources {
 		watermarkApplied.Set(float64(s.HighestExclusive), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
 	mapRevisionCount.Inc(in.DirectoryId)
-	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
-		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(logItems), len(indexes), len(newLeaves))
+	glog.Infof("ApplyRevision(): dir: %v, rev: %v, mutations: %v, indexes: %v, newleaves: %v",
+		in.DirectoryId, in.Revision, len(logItems), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{
 		DirectoryId: in.DirectoryId,
 		Revision:    in.Revision,

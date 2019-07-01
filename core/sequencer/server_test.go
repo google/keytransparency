@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
+	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/sequencer/mapper"
@@ -70,14 +71,17 @@ func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, 
 }
 
 type fakeTrillianFactory struct {
-	tmap trillianMap
-	tlog trillianLog
+	tmap   trillianMap
+	tlog   trillianLog
+	twrite *MapWriteClient
 }
 
 func (t *fakeTrillianFactory) MapClient(_ context.Context, _ string) (trillianMap, error) {
 	return t.tmap, nil
 }
-
+func (t *fakeTrillianFactory) MapWriteClient(_ context.Context, _ string) (*MapWriteClient, error) {
+	return t.twrite, nil
+}
 func (t *fakeTrillianFactory) LogClient(_ context.Context, _ string) (trillianLog, error) {
 	return t.tlog, nil
 }
@@ -89,6 +93,15 @@ type fakeMap struct {
 
 func (m *fakeMap) GetAndVerifyLatestMapRoot(_ context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error) {
 	return nil, m.latestMapRoot, nil
+}
+
+type fakeWrite struct{}
+
+func (m *fakeWrite) GetLeavesByRevision(ctx context.Context, in *tpb.GetMapLeavesByRevisionRequest, opts ...grpc.CallOption) (*tpb.MapLeaves, error) {
+	return nil, nil
+}
+func (m *fakeWrite) WriteLeaves(ctx context.Context, in *tpb.WriteMapLeavesRequest, opts ...grpc.CallOption) (*tpb.WriteMapLeavesResponse, error) {
+	return nil, nil
 }
 
 type fakeBatcher struct {
