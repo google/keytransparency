@@ -186,7 +186,7 @@ func NewServer(
 }
 
 func (s *Server) UpdateMetrics(ctx context.Context, in *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
-	if err := s.unappliedMetric(ctx, in.DirectoryId); err != nil {
+	if err := s.unappliedMetric(ctx, in.DirectoryId, in.MaxUnappliedCount); err != nil {
 		glog.Errorf("unappliedMetric(%v): %v", in.DirectoryId, err)
 		return nil, err
 	}
@@ -194,8 +194,7 @@ func (s *Server) UpdateMetrics(ctx context.Context, in *spb.UpdateMetricsRequest
 }
 
 // unappliedMetric updates the log_entryunapplied metric for directoryID
-func (s *Server) unappliedMetric(ctx context.Context, directoryID string) error {
-	maxCount := int32(10000)
+func (s *Server) unappliedMetric(ctx context.Context, directoryID string, maxCount int32) error {
 	// Get the previous and current high water marks.
 	mapClient, err := s.trillian.MapClient(ctx, directoryID)
 	if err != nil {
