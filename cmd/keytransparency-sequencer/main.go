@@ -169,6 +169,7 @@ func main() {
 		directoryStorage,
 		trillian.NewTrillianLogClient(lconn),
 		trillian.NewTrillianMapClient(mconn),
+		trillian.NewTrillianMapWriteClient(mconn),
 		mutations, mutations,
 		spb.NewKeyTransparencySequencerClient(conn),
 		prometheus.MetricFactory{}))
