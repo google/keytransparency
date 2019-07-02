@@ -36,7 +36,10 @@ func request_KeyTransparencyAdmin_ListDirectories_0(ctx context.Context, marshal
 	var protoReq ListDirectoriesRequest
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdmin_ListDirectories_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_KeyTransparencyAdmin_ListDirectories_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -71,7 +74,10 @@ func request_KeyTransparencyAdmin_GetDirectory_0(ctx context.Context, marshaler 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdmin_GetDirectory_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_KeyTransparencyAdmin_GetDirectory_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -177,7 +183,10 @@ func request_KeyTransparencyAdmin_ListInputLogs_0(ctx context.Context, marshaler
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "directory_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdmin_ListInputLogs_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_KeyTransparencyAdmin_ListInputLogs_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -223,7 +232,10 @@ func request_KeyTransparencyAdmin_CreateInputLog_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "log_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdmin_CreateInputLog_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_KeyTransparencyAdmin_CreateInputLog_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -269,7 +281,10 @@ func request_KeyTransparencyAdmin_UpdateInputLog_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "log_id", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_KeyTransparencyAdmin_UpdateInputLog_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_KeyTransparencyAdmin_UpdateInputLog_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -480,21 +495,21 @@ func RegisterKeyTransparencyAdminHandlerClient(ctx context.Context, mux *runtime
 }
 
 var (
-	pattern_KeyTransparencyAdmin_ListDirectories_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "directories"}, ""))
+	pattern_KeyTransparencyAdmin_ListDirectories_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "directories"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_KeyTransparencyAdmin_GetDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, ""))
+	pattern_KeyTransparencyAdmin_GetDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_KeyTransparencyAdmin_CreateDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "directories"}, ""))
+	pattern_KeyTransparencyAdmin_CreateDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "directories"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_KeyTransparencyAdmin_DeleteDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, ""))
+	pattern_KeyTransparencyAdmin_DeleteDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_KeyTransparencyAdmin_UndeleteDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, "undelete"))
+	pattern_KeyTransparencyAdmin_UndeleteDirectory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "directories", "directory_id"}, "undelete", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_KeyTransparencyAdmin_ListInputLogs_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "inputlogs"}, ""))
+	pattern_KeyTransparencyAdmin_ListInputLogs_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "directories", "directory_id", "inputlogs"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_KeyTransparencyAdmin_CreateInputLog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "inputlogs", "log_id"}, ""))
+	pattern_KeyTransparencyAdmin_CreateInputLog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "inputlogs", "log_id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_KeyTransparencyAdmin_UpdateInputLog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "inputlogs", "log_id"}, ""))
+	pattern_KeyTransparencyAdmin_UpdateInputLog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "inputlogs", "log_id"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
