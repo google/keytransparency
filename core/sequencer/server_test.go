@@ -20,6 +20,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
@@ -248,7 +249,7 @@ func TestHighWatermarks(t *testing.T) {
 			if count != tc.count {
 				t.Errorf("HighWatermarks(): count: %v, want %v", count, tc.count)
 			}
-			if !cmp.Equal(next, &tc.next) {
+			if !proto.Equal(next, tc.next) {
 				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, &tc.next))
 			}
 		})
