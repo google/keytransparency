@@ -20,6 +20,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
@@ -208,47 +209,47 @@ func TestHighWatermarks(t *testing.T) {
 		desc      string
 		batchSize int32
 		count     int32
-		last      spb.MapMetadata
-		next      spb.MapMetadata
+		last      *spb.MapMetadata
+		next      *spb.MapMetadata
 	}{
 		{desc: "nobatch", batchSize: 30, count: 30,
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 10},
 				{LogId: 1, HighestExclusive: 20}}}},
 		{desc: "exactbatch", batchSize: 20, count: 20,
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 10},
 				{LogId: 1, HighestExclusive: 10}}}},
 		{desc: "batchwprev", batchSize: 20, count: 20,
-			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 10}}},
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, LowestInclusive: 10, HighestExclusive: 10},
 				{LogId: 1, HighestExclusive: 20}}}},
 		// Don't drop existing watermarks.
 		{desc: "keep existing", batchSize: 1, count: 1,
-			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 1, HighestExclusive: 10}}},
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 1},
 				{LogId: 1, LowestInclusive: 10, HighestExclusive: 10}}}},
 		{desc: "logs that dont move", batchSize: 0, count: 0,
-			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 3, HighestExclusive: 10}}},
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0},
 				{LogId: 1},
 				{LogId: 3, LowestInclusive: 10, HighestExclusive: 10}}}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			count, next, err := s.HighWatermarks(ctx, directoryID, &tc.last, tc.batchSize)
+			count, next, err := s.HighWatermarks(ctx, directoryID, tc.last, tc.batchSize)
 			if err != nil {
 				t.Fatalf("HighWatermarks(): %v", err)
 			}
 			if count != tc.count {
 				t.Errorf("HighWatermarks(): count: %v, want %v", count, tc.count)
 			}
-			if !cmp.Equal(next, &tc.next) {
+			if !proto.Equal(next, tc.next) {
 				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, &tc.next))
 			}
 		})

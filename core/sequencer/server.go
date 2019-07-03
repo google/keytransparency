@@ -516,7 +516,7 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// from ranges of watermarks for the verifier's needs.
 	ends := map[int64]int64{}
 	starts := map[int64]int64{}
-	for _, source := range lastMeta.Sources {
+	for _, source := range lastMeta.GetSources() {
 		if ends[source.LogId] < source.HighestExclusive {
 			ends[source.LogId] = source.HighestExclusive
 			starts[source.LogId] = source.HighestExclusive
