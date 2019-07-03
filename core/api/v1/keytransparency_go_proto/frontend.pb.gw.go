@@ -136,7 +136,7 @@ func RegisterKeyTransparencyFrontendHandlerClient(ctx context.Context, mux *runt
 }
 
 var (
-	pattern_KeyTransparencyFrontend_QueueKeyUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "users", "user_id"}, ""))
+	pattern_KeyTransparencyFrontend_QueueKeyUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "directories", "directory_id", "users", "user_id"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
