@@ -154,9 +154,9 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 
 // GetUser returns an entry if it exists, and nil if it does not.
 func (c *Client) GetUser(ctx context.Context, userID string, opts ...grpc.CallOption) (
-	[]byte, *types.LogRootV1, error) {
-	e, slr, err := c.VerifiedGetUser(ctx, userID)
-	return e.GetCommitted().GetData(), slr, err
+	*types.MapRootV1, []byte, error) {
+	smr, e, err := c.VerifiedGetUser(ctx, userID)
+	return smr, e.GetCommitted().GetData(), err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
@@ -269,7 +269,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 
 // CreateMutation fetches the current index and value for a user and prepares a mutation.
 func (c *Client) CreateMutation(ctx context.Context, u *User) (*entry.Mutation, error) {
-	e, _, err := c.VerifiedGetUser(ctx, u.UserID)
+	_, e, err := c.VerifiedGetUser(ctx, u.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +333,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 	}
 
 	// GetUser.
-	e, _, err := c.VerifiedGetUser(ctx, m.UserID)
+	_, e, err := c.VerifiedGetUser(ctx, m.UserID)
 	if err != nil {
 		return m, err
 	}
