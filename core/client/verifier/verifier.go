@@ -26,6 +26,7 @@ import (
 	"github.com/google/trillian/types"
 	"github.com/kr/pretty"
 
+	"github.com/google/keytransparency/core/client/tracker"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -42,11 +43,17 @@ var (
 	ErrNilProof = errors.New("nil proof")
 )
 
+type LogTracker interface {
+	LastVerifiedTreeSize() int64
+	VerifyRoot(root *pb.LogRoot) (*types.LogRootV1, error)
+}
+
 // Verifier is a client helper library for verifying request and responses.
 type Verifier struct {
-	vrf vrf.PublicKey
-	*tclient.MapVerifier
-	*tclient.LogVerifier
+	vrf     vrf.PublicKey
+	mv      *tclient.MapVerifier
+	lv      *tclient.LogVerifier
+	lt      LogTracker
 	verbose *log.Logger
 }
 
@@ -55,10 +62,11 @@ func New(vrf vrf.PublicKey,
 	mapVerifier *tclient.MapVerifier,
 	logVerifier *tclient.LogVerifier) *Verifier {
 	return &Verifier{
-		vrf:         vrf,
-		MapVerifier: mapVerifier,
-		LogVerifier: logVerifier,
-		verbose:     log.New(ioutil.Discard, "", 0),
+		vrf:     vrf,
+		mv:      mapVerifier,
+		lv:      logVerifier,
+		lt:      tracker.New(logVerifier),
+		verbose: log.New(ioutil.Discard, "", 0),
 	}
 }
 
@@ -142,7 +150,7 @@ func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	}
 	leafProof.Leaf.Index = index
 
-	if err := v.VerifyMapLeafInclusionHash(mapRoot.RootHash, leafProof); err != nil {
+	if err := v.mv.VerifyMapLeafInclusionHash(mapRoot.RootHash, leafProof); err != nil {
 		v.verbose.Printf("✗ Sparse tree proof verification failed.")
 		return fmt.Errorf("map inclusion proof failed: %v", err)
 	}
@@ -150,16 +158,20 @@ func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	return nil
 }
 
+func (v *Verifier) LastVerifiedTreeSize() int64 {
+	return v.lt.LastVerifiedTreeSize()
+}
+
 // VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-func (v *Verifier) VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error) {
+func (v *Verifier) VerifyLogRoot(slr *pb.LogRoot) (*types.LogRootV1, error) {
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	return v.VerifyRoot(&trusted, slr.GetLogRoot(), slr.GetLogConsistency())
+	return v.lt.VerifyRoot(slr)
 }
 
 // VerifyMapRevision verifies that the map revision is correctly signed and included in the append only log.
 func (v *Verifier) VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error) {
-	mapRoot, err := v.VerifySignedMapRoot(smr.GetMapRoot())
+	mapRoot, err := v.mv.VerifySignedMapRoot(smr.GetMapRoot())
 	if err != nil {
 		v.verbose.Printf("✗ Signed Map Head signature verification failed.")
 		return nil, err
@@ -169,7 +181,7 @@ func (v *Verifier) VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*typ
 	// Verify inclusion proof.
 	b := smr.GetMapRoot().GetMapRoot()
 	leafIndex := int64(mapRoot.Revision)
-	if err := v.VerifyInclusionAtIndex(lr, b, leafIndex, smr.GetLogInclusion()); err != nil {
+	if err := v.lv.VerifyInclusionAtIndex(lr, b, leafIndex, smr.GetLogInclusion()); err != nil {
 		return nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%x, %v, _): %v", b, leafIndex, err)
 	}
 	v.verbose.Printf("✓ Log inclusion proof verified.")
