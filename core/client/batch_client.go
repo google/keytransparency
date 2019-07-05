@@ -84,7 +84,7 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*ent
 		userIDs = append(userIDs, u.UserID)
 	}
 
-	leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
+	_, leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
 	if err != nil {
 		return nil, err
 	}
