@@ -79,6 +79,13 @@ func (m *Mutation) SetPrevious(rev uint64, oldValue []byte, copyPrevious bool) e
 	return nil
 }
 
+// PrevRevision returns the revision of the previous signed entry.
+// Clients should wait until a new revision > PrevRevision has been
+// published before attempting to verify that a mutation has succeeded.
+func (m *Mutation) PrevRevision() int64 {
+	return int64(m.prevRev)
+}
+
 // SetCommitment updates entry to be a commitment to data.
 func (m *Mutation) SetCommitment(data []byte) error {
 	// Commit to profile.

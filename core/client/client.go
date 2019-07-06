@@ -328,7 +328,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		return nil, fmt.Errorf("nil mutation")
 	}
 	// Wait for STH to change.
-	if err := c.WaitForSTHUpdate(ctx, int64(c.trusted.TreeSize)+1); err != nil {
+	if err := c.WaitForSTHUpdate(ctx, m.PrevRevision()+1); err != nil {
 		return m, err
 	}
 
