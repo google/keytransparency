@@ -125,7 +125,7 @@ func GetUser(ktURL, userID string) ([]byte, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	entry, _, err := client.GetUser(ctx, userID)
+	_, entry, err := client.GetUser(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("client.GetUser(%v): %v", userID, err)
 	}
