@@ -34,6 +34,7 @@ type Mutation struct {
 	UserID      string
 	data, nonce []byte
 
+	prevRev         uint64
 	prevSignedEntry *pb.SignedEntry
 	entry           *pb.Entry
 	signedEntry     *pb.SignedEntry
@@ -56,11 +57,12 @@ func NewMutation(index []byte, directoryID, userID string) *Mutation {
 
 // SetPrevious sets the previous hash.
 // If copyPrevious is true, AuthorizedKeys and Commitment are also copied.
-func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
+func (m *Mutation) SetPrevious(rev uint64, oldValue []byte, copyPrevious bool) error {
 	prevSignedEntry, err := FromLeafValue(oldValue)
 	if err != nil {
 		return err
 	}
+	m.prevRev = rev
 	m.prevSignedEntry = prevSignedEntry
 
 	hash := sha256.Sum256(prevSignedEntry.GetEntry())

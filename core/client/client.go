@@ -269,7 +269,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 
 // CreateMutation fetches the current index and value for a user and prepares a mutation.
 func (c *Client) CreateMutation(ctx context.Context, u *User) (*entry.Mutation, error) {
-	_, e, err := c.VerifiedGetUser(ctx, u.UserID)
+	smr, e, err := c.VerifiedGetUser(ctx, u.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func (c *Client) CreateMutation(ctx context.Context, u *User) (*entry.Mutation, 
 
 	mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
 
-	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
+	if err := mutation.SetPrevious(smr.Revision, oldLeaf, true); err != nil {
 		return nil, err
 	}
 
@@ -333,7 +333,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 	}
 
 	// GetUser.
-	_, e, err := c.VerifiedGetUser(ctx, m.UserID)
+	smr, e, err := c.VerifiedGetUser(ctx, m.UserID)
 	if err != nil {
 		return m, err
 	}
@@ -358,7 +358,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		// To break the tie between two devices that are fighting
 		// each other, this error should be propagated back to the user.
 		copyPreviousLeafData := false
-		if err := m.SetPrevious(cntLeaf, copyPreviousLeafData); err != nil {
+		if err := m.SetPrevious(smr.Revision, cntLeaf, copyPreviousLeafData); err != nil {
 			return nil, fmt.Errorf("waitforupdate: SetPrevious(): %v", err)
 		}
 		return m, ErrRetry

@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/google/tink/go/tink"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -84,7 +85,7 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*ent
 		userIDs = append(userIDs, u.UserID)
 	}
 
-	_, leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
+	smr, leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +114,7 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*ent
 			go func(uChan <-chan *User, rChan chan<- result) {
 				defer wg.Done()
 				for u := range uChan {
-					m, err := c.createMutation(u, leavesByUserID[u.UserID])
+					m, err := c.createMutation(smr, leavesByUserID[u.UserID], u)
 					rChan <- result{m: m, err: err}
 				}
 			}(uChan, rChan)
@@ -130,7 +131,7 @@ func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*ent
 	return mutations, nil
 }
 
-func (c *Client) createMutation(u *User, leaf *pb.MapLeaf) (*entry.Mutation, error) {
+func (c *Client) createMutation(smr *types.MapRootV1, leaf *pb.MapLeaf, u *User) (*entry.Mutation, error) {
 	if leaf == nil {
 		return nil, fmt.Errorf("no leaf found for %v", u.UserID)
 	}
@@ -141,7 +142,7 @@ func (c *Client) createMutation(u *User, leaf *pb.MapLeaf) (*entry.Mutation, err
 	mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
 
 	leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
-	if err := mutation.SetPrevious(leafValue, true); err != nil {
+	if err := mutation.SetPrevious(smr.Revision, leafValue, true); err != nil {
 		return nil, err
 	}
 
