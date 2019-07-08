@@ -18,13 +18,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/keytransparency/core/integration"
-	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/storage/testdb"
 
 	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
@@ -49,20 +48,18 @@ func TestIntegration(t *testing.T) {
 			}
 
 			defer env.Close()
-			func() {
-				// Cancel the test function context (and thus
-				// exit any background sequencer loops)
-				// *before* shutting down the server and
-				// canceling the master context.
-				ctx, cancel := context.WithCancel(ctx)
-				defer cancel()
-				resps := test.Fn(ctx, env.Env, t)
-				if *generate && resps != nil {
-					if err = SaveTestVectors(*testdataDir, test.name, env.Env, resps); err != nil {
-						t.Fatalf("saveTestVectors() failed: %v", err)
-					}
+			ctx, cancel = context.WithCancel(ctx)
+			resps := test.Fn(ctx, env.Env, t)
+			// Cancel the test function context (and thus exit any
+			// background sequencer loops) *before* shutting down
+			// the server and canceling the master context.
+			cancel()
+
+			if *generate {
+				if err = SaveTestVectors(*testdataDir, test.Name, env.Env, resps); err != nil {
+					t.Fatalf("saveTestVectors() failed: %v", err)
 				}
-			}()
+			}
 		})
 	}
 }
