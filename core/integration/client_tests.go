@@ -25,7 +25,6 @@ import (
 
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian/types"
 
@@ -35,6 +34,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
@@ -94,7 +94,7 @@ func genUserIDs(count int) []string {
 }
 
 // TestBatchCreate verifies that the batch functions are working correctly.
-func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
@@ -129,7 +129,7 @@ func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 }
 
 // TestBatchUpdate verifies that the batch functions are working correctly.
-func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
@@ -167,7 +167,7 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []testdata.Res
 }
 
 // TestEmptyGetAndUpdate verifies set/get semantics.
-func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 
 	// Create lists of signers.
@@ -181,7 +181,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 	authorizedKeys3 := testutil.VerifyKeysetFromPEMs("", testPubKey2)
 
 	// Collect a list of valid GetUserResponses
-	getUserResps := make([]testdata.ResponseVector, 0)
+	transcript := []*tpb.Unary{}
 
 	// Start with an empty trusted log root
 	slr := &types.LogRootV1{}
@@ -271,11 +271,18 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 			if trust {
 				slr = newslr
 			}
-			getUserResps = append(getUserResps, testdata.ResponseVector{
-				Desc:        tc.desc,
-				UserID:      tc.userID,
-				GetUserResp: e,
-				TrustNewLog: trust,
+			transcript = append(transcript, &tpb.Unary{
+				Desc: tc.desc,
+				LastVerifiedLogRoot: &pb.LogRootRequest{
+					TreeSize: int64(slr.TreeSize),
+					RootHash: slr.RootHash,
+				},
+				ReqRespPair: &tpb.Unary_GetUser{GetUser: &tpb.GetUser{
+					Request: &pb.GetUserRequest{
+						UserId: tc.userID,
+					},
+					Response: e,
+				}},
 			})
 
 			// Update profile.
@@ -294,7 +301,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []testda
 			}
 		})
 	}
-	return getUserResps
+	return transcript
 }
 
 // CheckProfile verifies that the retrieved profile of userID is correct.
@@ -321,11 +328,11 @@ func CheckProfile(ctx context.Context, env *Env, userID string, wantProfile []by
 }
 
 // TestBatchGetUser tests fetching multiple users in a single request.
-func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
-	batchResps := make([]testdata.ResponseVector, 0)
+	transcript := []*tpb.Unary{}
 
 	users := []*client.User{
 		{
@@ -397,7 +404,8 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []testdata.Re
 			if err != nil {
 				t.Fatalf("BatchGetUser(): %v", err)
 			}
-			_, smr, err := env.Client.VerifyRevision(resp.Revision, types.LogRootV1{})
+			slr := types.LogRootV1{}
+			_, smr, err := env.Client.VerifyRevision(resp.Revision, slr)
 			if err != nil {
 				t.Fatalf("VerifyRevision(): %v", nil)
 			}
@@ -409,18 +417,26 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []testdata.Re
 					t.Fatalf("key mismatch for %s: %s, want %s", userID, got, want)
 				}
 			}
-			batchResps = append(batchResps, testdata.ResponseVector{
-				Desc:             tc.desc,
-				UserIDs:          userIDs,
-				BatchGetUserResp: resp,
+			transcript = append(transcript, &tpb.Unary{
+				Desc: tc.desc,
+				LastVerifiedLogRoot: &pb.LogRootRequest{
+					TreeSize: int64(slr.TreeSize),
+					RootHash: slr.RootHash,
+				},
+				ReqRespPair: &tpb.Unary_BatchGetUser{&tpb.BatchGetUser{
+					Request: &pb.BatchGetUserRequest{
+						UserIds: userIDs,
+					},
+					Response: resp,
+				}},
 			})
 		})
 	}
-	return batchResps
+	return transcript
 }
 
 // TestListHistory verifies that repeated history values get collapsed properly.
-func TestListHistory(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+func TestListHistory(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary {
 	userID := "bob"
 	opts := env.CallOpts(userID)
 
@@ -541,7 +557,7 @@ func sortHistory(history map[uint64][]byte) [][]byte {
 }
 
 // TestBatchListUserRevisions verifies that BatchListUserRevisions() in keyserver works properly.
-func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary {
 	// Create lists of signers and authorized keys
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1)
@@ -553,7 +569,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []t
 	request := &pb.BatchListUserRevisionsRequest{
 		DirectoryId: env.Directory.DirectoryId,
 	}
-	responseVec := make([]testdata.ResponseVector, 0)
+	transcript := []*tpb.Unary{}
 	for _, tc := range []struct {
 		desc        string
 		start, end  int64
@@ -580,10 +596,12 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []t
 			if err != nil {
 				return
 			}
-			responseVec = append(responseVec, testdata.ResponseVector{
-				Desc:                       tc.desc,
-				UserIDs:                    tc.userIDs,
-				BatchListUserRevisionsResp: response,
+			transcript = append(transcript, &tpb.Unary{
+				Desc: tc.desc,
+				ReqRespPair: &tpb.Unary_BatchListUserRevisions{&tpb.BatchListUserRevisions{
+					Request:  request,
+					Response: response,
+				}},
 			})
 			var got [][]byte
 			for _, rev := range response.MapRevisions {
@@ -596,7 +614,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []t
 			}
 		})
 	}
-	return responseVec
+	return transcript
 }
 
 func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Directory, signers []tink.Signer,

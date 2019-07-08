@@ -21,10 +21,12 @@ import (
 
 // ResponseVector is a captured response that should verify without errors.
 type ResponseVector struct {
-	Desc                       string
-	UserID                     string
+	Desc   string
+	Method string
+
+	GetUserReq                 *pb.GetUserRequest
 	GetUserResp                *pb.GetUserResponse
-	TrustNewLog                bool
+	LogRootRequest             *pb.LogRootRequest
 	UserIDs                    []string
 	BatchListUserRevisionsResp *pb.BatchListUserRevisionsResponse
 	BatchGetUserResp           *pb.BatchGetUserResponse

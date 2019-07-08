@@ -16,7 +16,6 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -27,6 +26,8 @@ import (
 	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/storage/testdb"
+
+	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
 )
 
 var (
@@ -57,7 +58,7 @@ func TestIntegration(t *testing.T) {
 				defer cancel()
 				resps := test.Fn(ctx, env.Env, t)
 				if *generate && resps != nil {
-					if err = SaveTestVectors(*testdataDir, test.DirectoryFilename, test.RespFilename, env.Env, resps); err != nil {
+					if err = SaveTestVectors(*testdataDir, test.name, env.Env, resps); err != nil {
 						t.Fatalf("saveTestVectors() failed: %v", err)
 					}
 				}
@@ -67,29 +68,23 @@ func TestIntegration(t *testing.T) {
 }
 
 // SaveTestVectors generates test vectors for interoprability testing.
-func SaveTestVectors(dir, directoryFilename, responseFilename string, env *integration.Env, resps []testdata.ResponseVector) error {
-	marshaler := &jsonpb.Marshaler{
-		Indent: "\t",
+func SaveTestVectors(testDataDir, testName string, env *integration.Env, rpcs []*tpb.Unary) error {
+	t := &tpb.Transcript{
+		Description: testName,
+		Directory:   env.Directory,
+		Rpcs:        rpcs,
 	}
+	marshaler := &jsonpb.Marshaler{Indent: "\t"}
+
 	// Output all key material needed to verify the test vectors.
-	directoryFile := dir + "/" + directoryFilename
-	f, err := os.Create(directoryFile)
+	testFile := path.Join(testDataDir, testName)
+	f, err := os.Create(testFile)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	if err := marshaler.Marshal(f, env.Directory); err != nil {
+	if err := marshaler.Marshal(f, t); err != nil {
 		return fmt.Errorf("jsonpb.Marshal(): %v", err)
-	}
-
-	// Save list of responses
-	respFile := dir + "/" + responseFilename
-	out, err := json.MarshalIndent(resps, "", "\t")
-	if err != nil {
-		return fmt.Errorf("json.Marshal(): %v", err)
-	}
-	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
-		return fmt.Errorf("writeFile(%v): %v", respFile, err)
 	}
 	return nil
 }
