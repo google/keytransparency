@@ -28,24 +28,26 @@ import (
 func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLeaf, *types.LogRootV1, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
-	resp, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
+	req := &pb.GetUserRequest{
 		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
-	})
+	}
+	resp, err := c.cli.GetUser(ctx, req)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
+	if err := c.VerifyGetUser(c.trusted, req, resp); err != nil {
+		return nil, nil, err
+	}
+
+	// TODO(gbelvin): Refactor updating the SLR into a separate tracker package.
+	slr, _, err := c.VerifyRevision(resp.Revision, c.trusted)
 	if err != nil {
 		return nil, nil, err
 	}
 	c.updateTrusted(slr)
-
-	if err := c.VerifyMapLeaf(c.DirectoryID, userID, resp.Leaf, smr); err != nil {
-		return nil, nil, err
-	}
 
 	return resp.Leaf, slr, nil
 }

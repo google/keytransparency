@@ -55,19 +55,14 @@ func TestVerifyGetUserResponse(t *testing.T) {
 		t.Fatalf("Unmarshal(): %v", err)
 	}
 
-	trusted := &types.LogRootV1{}
 	for _, tc := range getUserResponses {
 		t.Run(tc.Desc, func(t *testing.T) {
-			slr, smr, err := v.VerifyRevision(tc.GetUserResp.Revision, *trusted)
-			if err != nil {
-				t.Errorf("VerifyRevision(): %v", err)
+			trusted := &types.LogRootV1{
+				TreeSize: uint64(tc.LogRootRequest.GetTreeSize()),
+				RootHash: tc.LogRootRequest.GetRootHash(),
 			}
-			if err == nil && tc.TrustNewLog {
-				trusted = slr
-			}
-			if err := v.VerifyMapLeaf(directoryPB.DirectoryId, tc.UserID,
-				tc.GetUserResp.Leaf, smr); err != nil {
-				t.Errorf("VerifyMapLeaf(): %v)", err)
+			if err := v.VerifyGetUser(trusted, tc.GetUserReq, tc.GetUserResp); err != nil {
+				t.Errorf("VerifyGetUser(): %v)", err)
 			}
 		})
 	}

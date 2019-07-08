@@ -303,6 +303,9 @@ func (f *fakeKeyServer) BatchQueueUserUpdate(context.Context, *pb.BatchQueueUser
 
 type fakeVerifier struct{}
 
+func (f *fakeVerifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
+	return nil
+}
 func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, error) {
 	return make([]byte, 32), nil
 }
