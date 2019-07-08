@@ -29,6 +29,7 @@
     - [ListUserRevisionsRequest](#google.keytransparency.v1.ListUserRevisionsRequest)
     - [ListUserRevisionsResponse](#google.keytransparency.v1.ListUserRevisionsResponse)
     - [LogRoot](#google.keytransparency.v1.LogRoot)
+    - [LogRootRequest](#google.keytransparency.v1.LogRootRequest)
     - [MapLeaf](#google.keytransparency.v1.MapLeaf)
     - [MapRevision](#google.keytransparency.v1.MapRevision)
     - [MapRoot](#google.keytransparency.v1.MapRoot)
@@ -503,6 +504,22 @@ LogRoot contains the latest log root and its consistency proof.
 | ----- | ---- | ----- | ----------- |
 | log_root | [trillian.SignedLogRoot](#trillian.SignedLogRoot) |  | log_root is the latest globally consistent log root. |
 | log_consistency | [bytes](#bytes) | repeated | log_consistency proves that log_root is consistent with previously seen roots. |
+
+
+
+
+
+
+<a name="google.keytransparency.v1.LogRootRequest"></a>
+
+### LogRootRequest
+LogRootRequest contains the information needed to requetst and verify LogRoot.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| root_hash | [bytes](#bytes) |  | root_hash is the log root hash. |
+| tree_size | [int64](#int64) |  | tree_size is the tree_size of the last log root the client verified. |
 
 
 

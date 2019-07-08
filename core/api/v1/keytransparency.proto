@@ -338,6 +338,15 @@ message MapRoot {
   repeated bytes log_inclusion = 2;
 }
 
+// LogRootRequest contains the information needed to requetst and verify LogRoot.
+message LogRootRequest {
+  // root_hash is the log root hash.
+  bytes root_hash = 1;
+  // tree_size is the tree_size of the last log root the client
+  // verified.
+  int64 tree_size = 2;
+}
+
 // LogRoot contains the latest log root and its consistency proof.
 message LogRoot {
   // log_root is the latest globally consistent log root.
