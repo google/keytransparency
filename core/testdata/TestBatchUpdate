@@ -1,0 +1,31 @@
+{
+	"description": "TestBatchUpdate",
+	"directory": {
+		"directoryId": "integration",
+		"log": {
+			"treeId": "8590110771636397970",
+			"treeType": "PREORDERED_LOG",
+			"hashStrategy": "RFC6962_SHA256",
+			"hashAlgorithm": "SHA256",
+			"signatureAlgorithm": "ECDSA",
+			"publicKey": {
+				"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqGXPnhMIclRmYHSmAnCMmfDUJ9iNBMmFxR/wHJdL12AuVUkgcuhbEp2hy5ETs7bfFc2P95IYFlmbiuHMq3UY/A=="
+			}
+		},
+		"map": {
+			"treeId": "2565558140128162455",
+			"treeType": "MAP",
+			"hashStrategy": "CONIKS_SHA256",
+			"hashAlgorithm": "SHA256",
+			"signatureAlgorithm": "ECDSA",
+			"publicKey": {
+				"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWLHm0TLYaTzENpPkBl2E79ySqJI+EW51VpoWh7wqY3OjSJcft4zgEeNeHYEb/T2jBFH4eYg4iSN7D/VYaJxJRA=="
+			}
+		},
+		"vrf": {
+			"der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF2Pm2kKya+JBun1QRmKQMcoMOIBNWp8fjECkJX+/hNWdV1UKb12W+yXcX2MqN7ZMX77hS9mLus/WaE0NS370mA=="
+		},
+		"minInterval": "0.100s",
+		"maxInterval": "216000s"
+	}
+}
