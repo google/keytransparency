@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/keytransparency/core/client/verifier"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/trillian"
 
@@ -67,8 +68,8 @@ var (
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
-// Verifier is used to verify specific outputs from Key Transparency.
-type Verifier interface {
+// VerifierInterface is used to verify specific outputs from Key Transparency.
+type VerifierInterface interface {
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
 	// VerifyMapLeaf verifies everything about a MapLeaf.
@@ -101,7 +102,7 @@ type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	Verifier
+	VerifierInterface
 	cli         pb.KeyTransparencyClient
 	DirectoryID string
 	reduce      ReduceMutationFn
@@ -112,7 +113,7 @@ type Client struct {
 
 // NewFromConfig creates a new client from a config
 func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Directory) (*Client, error) {
-	ktVerifier, err := NewVerifierFromDirectory(config)
+	ktVerifier, err := verifier.NewFromDirectory(config)
 	if err != nil {
 		return nil, err
 	}
@@ -128,13 +129,13 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Directory) (*Cl
 func New(ktClient pb.KeyTransparencyClient,
 	directoryID string,
 	retryDelay time.Duration,
-	ktVerifier *RealVerifier) *Client {
+	ktVerifier VerifierInterface) *Client {
 	return &Client{
-		Verifier:    ktVerifier,
-		cli:         ktClient,
-		DirectoryID: directoryID,
-		reduce:      entry.ReduceFn,
-		RetryDelay:  retryDelay,
+		VerifierInterface: ktVerifier,
+		cli:               ktClient,
+		DirectoryID:       directoryID,
+		reduce:            entry.ReduceFn,
+		RetryDelay:        retryDelay,
 	}
 }
 

@@ -201,8 +201,8 @@ func TestPaginateHistory(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			c := Client{
-				Verifier: &fakeVerifier{},
-				cli:      s.Client,
+				VerifierInterface: &fakeVerifier{},
+				cli:               s.Client,
 			}
 
 			_, values, err := c.PaginateHistory(ctx, userID, tc.start, tc.end)
