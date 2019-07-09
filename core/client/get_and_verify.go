@@ -25,7 +25,7 @@ import (
 )
 
 // VerifiedGetUser fetches and verifies the results of GetUser.
-func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLeaf, *types.LogRootV1, error) {
+func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.MapRootV1, *pb.MapLeaf, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	req := &pb.GetUserRequest{
@@ -43,13 +43,13 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLea
 	}
 
 	// TODO(gbelvin): Refactor updating the SLR into a separate tracker package.
-	slr, _, err := c.VerifyRevision(resp.Revision, c.trusted)
+	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
 	if err != nil {
 		return nil, nil, err
 	}
 	c.updateTrusted(slr)
 
-	return resp.Leaf, slr, nil
+	return smr, resp.Leaf, nil
 }
 
 // VerifiedGetLatestRevision fetches the latest revision from the key server.

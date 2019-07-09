@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/google/trillian/monitoring"
+	"github.com/google/trillian/types"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -96,7 +97,10 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 }
 
 // BatchVerifiedGetUser returns verified leaf values by userID.
-func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (map[string]*pb.MapLeaf, error) {
+// Returns the MapRoot (revision) at which the values were fetched. This could be any MapRoot.
+// TODO(gbelvin): Verify that the returned map root is indeed the latest map root.
+func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (
+	*types.MapRootV1, map[string]*pb.MapLeaf, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	req := &pb.BatchGetUserRequest{
@@ -106,16 +110,16 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 	}
 	resp, err := c.cli.BatchGetUser(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := c.VerifyBatchGetUser(c.trusted, req, resp); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	slr, _, err := c.VerifyRevision(resp.Revision, c.trusted)
+	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	c.updateTrusted(slr)
 
@@ -123,5 +127,5 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 	for userID, leaf := range resp.MapLeavesByUserId {
 		leavesByUserID[userID] = leaf
 	}
-	return leavesByUserID, nil
+	return smr, leavesByUserID, nil
 }
