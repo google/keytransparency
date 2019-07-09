@@ -74,7 +74,7 @@ func SaveTestVectors(testDataDir, testName string, env *integration.Env, rpcs []
 	marshaler := &jsonpb.Marshaler{Indent: "\t"}
 
 	// Output all key material needed to verify the test vectors.
-	testFile := path.Join(testDataDir, testName)
+	testFile := path.Join(testDataDir, fmt.Sprintf("%v.json", testName))
 	f, err := os.Create(testFile)
 	if err != nil {
 		return err

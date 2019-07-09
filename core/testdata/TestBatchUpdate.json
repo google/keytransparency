@@ -1,9 +1,9 @@
 {
-	"description": "TestMonitor",
+	"description": "TestBatchUpdate",
 	"directory": {
 		"directoryId": "integration",
 		"log": {
-			"treeId": "6509326580909477417",
+			"treeId": "2044804233237106855",
 			"treeType": "PREORDERED_LOG",
 			"hashStrategy": "RFC6962_SHA256",
 			"hashAlgorithm": "SHA256",
@@ -13,7 +13,7 @@
 			}
 		},
 		"map": {
-			"treeId": "3866883288346374210",
+			"treeId": "3030478735049432802",
 			"treeType": "MAP",
 			"hashStrategy": "CONIKS_SHA256",
 			"hashAlgorithm": "SHA256",
