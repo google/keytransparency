@@ -53,13 +53,11 @@ func TestCheckMutation(t *testing.T) {
 	// make the two entries (entryData1 and entryData2) different, otherwise
 	// it is not possible to test all cases.
 	key := []byte{0}
-	nilHash := sha256.Sum256(nil)
 
 	entryData1 := &tpb.Entry{
 		Index:            key,
 		Commitment:       []byte{1},
 		AuthorizedKeyset: keysetBytes(testPubKey1),
-		Previous:         nilHash[:],
 	}
 	signedEntryData1 := &tpb.SignedEntry{
 		Entry: mustMarshal(t, entryData1),
@@ -70,7 +68,6 @@ func TestCheckMutation(t *testing.T) {
 		Index:            key,
 		Commitment:       []byte{2},
 		AuthorizedKeyset: keysetBytes(testPubKey2),
-		Previous:         hashEntry1[:],
 	}
 	signedEntryData2 := &tpb.SignedEntry{
 		Entry: mustMarshal(t, entryData2),
@@ -90,7 +87,6 @@ func TestCheckMutation(t *testing.T) {
 				entry: &tpb.Entry{
 					Index:            key,
 					Commitment:       []byte{2},
-					Previous:         nilHash[:],
 					AuthorizedKeyset: keysetBytes(testPubKey1),
 				},
 			},
@@ -116,7 +112,6 @@ func TestCheckMutation(t *testing.T) {
 				entry: &tpb.Entry{
 					Index:            key,
 					Commitment:       []byte{2},
-					Previous:         hashEntry1[:],
 					AuthorizedKeyset: keysetBytes(testPubKey2),
 				},
 			},
@@ -140,7 +135,7 @@ func TestCheckMutation(t *testing.T) {
 				entry: &tpb.Entry{
 					Index:            key,
 					Commitment:       []byte{2},
-					Previous:         nil,
+					Previous:         []byte("invalidhash"),
 					AuthorizedKeyset: keysetBytes(testPubKey2),
 				},
 			},
@@ -151,7 +146,7 @@ func TestCheckMutation(t *testing.T) {
 			desc: "Very first mutation, invalid previous entry hash",
 			mutation: &Mutation{
 				entry: &tpb.Entry{
-					Previous:         nil,
+					Previous:         []byte("invalidhash"),
 					AuthorizedKeyset: keysetBytes(testPubKey2),
 				},
 			},
@@ -165,7 +160,6 @@ func TestCheckMutation(t *testing.T) {
 				entry: &tpb.Entry{
 					Index:            key,
 					Commitment:       []byte{2},
-					Previous:         hashEntry1[:],
 					AuthorizedKeyset: keysetBytes(testPubKey2),
 				},
 			},
@@ -179,21 +173,20 @@ func TestCheckMutation(t *testing.T) {
 				entry: &tpb.Entry{
 					Index:            key,
 					Commitment:       []byte{2},
-					Previous:         hashEntry1[:],
 					AuthorizedKeyset: keysetBytes(testPubKey2),
 				},
 			},
 			signers: testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2),
 		},
 	} {
-		m, err := tc.mutation.sign(tc.signers)
-		if err != nil {
-			t.Errorf("mutation.sign(%v): %v", tc.signers, err)
-			continue
-		}
-
-		if _, got := MutateFn(tc.old, m); got != tc.err {
-			t.Errorf("%v Mutate(): %v, want %v", tc.desc, got, tc.err)
-		}
+		t.Run(tc.desc, func(t *testing.T) {
+			m, err := tc.mutation.sign(tc.signers)
+			if err != nil {
+				t.Fatalf("mutation.sign(%v): %v", tc.signers, err)
+			}
+			if _, got := MutateFn(tc.old, m); got != tc.err {
+				t.Errorf("%v Mutate(): %v, want %v", tc.desc, got, tc.err)
+			}
+		})
 	}
 }
