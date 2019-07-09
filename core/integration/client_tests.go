@@ -260,6 +260,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.U
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
+			reqSLR := *slr
 			e, newslr, err := CheckProfile(ctx, env, tc.userID, tc.wantProfile, slr)
 			if err != nil {
 				t.Fatalf("%v", err)
@@ -274,12 +275,14 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.U
 			transcript = append(transcript, &tpb.Unary{
 				Desc: tc.desc,
 				LastVerifiedLogRoot: &pb.LogRootRequest{
-					TreeSize: int64(slr.TreeSize),
-					RootHash: slr.RootHash,
+					TreeSize: int64(reqSLR.TreeSize),
+					RootHash: reqSLR.RootHash,
 				},
 				ReqRespPair: &tpb.Unary_GetUser{GetUser: &tpb.GetUser{
 					Request: &pb.GetUserRequest{
-						UserId: tc.userID,
+						DirectoryId:          env.Directory.DirectoryId,
+						UserId:               tc.userID,
+						LastVerifiedTreeSize: int64(reqSLR.TreeSize),
 					},
 					Response: e,
 				}},
