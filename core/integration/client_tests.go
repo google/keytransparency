@@ -426,12 +426,14 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary 
 					TreeSize: int64(slr.TreeSize),
 					RootHash: slr.RootHash,
 				},
-				ReqRespPair: &tpb.Unary_BatchGetUser{&tpb.BatchGetUser{
-					Request: &pb.BatchGetUserRequest{
-						UserIds: userIDs,
+				ReqRespPair: &tpb.Unary_BatchGetUser{
+					BatchGetUser: &tpb.BatchGetUser{
+						Request: &pb.BatchGetUserRequest{
+							UserIds: userIDs,
+						},
+						Response: resp,
 					},
-					Response: resp,
-				}},
+				},
 			})
 		})
 	}
@@ -601,10 +603,12 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []*
 			}
 			transcript = append(transcript, &tpb.Unary{
 				Desc: tc.desc,
-				ReqRespPair: &tpb.Unary_BatchListUserRevisions{&tpb.BatchListUserRevisions{
-					Request:  request,
-					Response: response,
-				}},
+				ReqRespPair: &tpb.Unary_BatchListUserRevisions{
+					BatchListUserRevisions: &tpb.BatchListUserRevisions{
+						Request:  request,
+						Response: response,
+					},
+				},
 			})
 			var got [][]byte
 			for _, rev := range response.MapRevisions {
