@@ -26,6 +26,7 @@ import (
 	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
 )
 
+// packagePath returns the on-disk path of *this* package.
 func packagePath() (string, error) {
 	basePkg := "github.com/google/keytransparency/core/testdata"
 	p, err := build.Default.Import(basePkg, "", build.FindOnly)
