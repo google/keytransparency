@@ -155,9 +155,9 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 
 // GetUser returns an entry if it exists, and nil if it does not.
 func (c *Client) GetUser(ctx context.Context, userID string, opts ...grpc.CallOption) (
-	[]byte, *types.LogRootV1, error) {
-	e, slr, err := c.VerifiedGetUser(ctx, userID)
-	return e.GetCommitted().GetData(), slr, err
+	*types.MapRootV1, []byte, error) {
+	smr, e, err := c.VerifiedGetUser(ctx, userID)
+	return smr, e.GetCommitted().GetData(), err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
@@ -270,7 +270,7 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 
 // CreateMutation fetches the current index and value for a user and prepares a mutation.
 func (c *Client) CreateMutation(ctx context.Context, u *User) (*entry.Mutation, error) {
-	e, _, err := c.VerifiedGetUser(ctx, u.UserID)
+	smr, e, err := c.VerifiedGetUser(ctx, u.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func (c *Client) CreateMutation(ctx context.Context, u *User) (*entry.Mutation, 
 
 	mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
 
-	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
+	if err := mutation.SetPrevious(smr.Revision, oldLeaf, true); err != nil {
 		return nil, err
 	}
 
@@ -329,12 +329,12 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		return nil, fmt.Errorf("nil mutation")
 	}
 	// Wait for STH to change.
-	if err := c.WaitForSTHUpdate(ctx, int64(c.trusted.TreeSize)+1); err != nil {
+	if err := c.WaitForSTHUpdate(ctx, m.MinApplyRevision()); err != nil {
 		return m, err
 	}
 
 	// GetUser.
-	e, _, err := c.VerifiedGetUser(ctx, m.UserID)
+	smr, e, err := c.VerifiedGetUser(ctx, m.UserID)
 	if err != nil {
 		return m, err
 	}
@@ -359,7 +359,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		// To break the tie between two devices that are fighting
 		// each other, this error should be propagated back to the user.
 		copyPreviousLeafData := false
-		if err := m.SetPrevious(cntLeaf, copyPreviousLeafData); err != nil {
+		if err := m.SetPrevious(smr.Revision, cntLeaf, copyPreviousLeafData); err != nil {
 			return nil, fmt.Errorf("waitforupdate: SetPrevious(): %v", err)
 		}
 		return m, ErrRetry

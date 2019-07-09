@@ -34,6 +34,7 @@ type Mutation struct {
 	UserID      string
 	data, nonce []byte
 
+	prevRev         uint64
 	prevSignedEntry *pb.SignedEntry
 	entry           *pb.Entry
 	signedEntry     *pb.SignedEntry
@@ -56,11 +57,13 @@ func NewMutation(index []byte, directoryID, userID string) *Mutation {
 
 // SetPrevious sets the previous hash.
 // If copyPrevious is true, AuthorizedKeys and Commitment are also copied.
-func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
+// oldValueRevision is the map revision that oldValue was fetched at.
+func (m *Mutation) SetPrevious(oldValueRevision uint64, oldValue []byte, copyPrevious bool) error {
 	prevSignedEntry, err := FromLeafValue(oldValue)
 	if err != nil {
 		return err
 	}
+	m.prevRev = oldValueRevision
 	m.prevSignedEntry = prevSignedEntry
 
 	hash := sha256.Sum256(prevSignedEntry.GetEntry())
@@ -75,6 +78,14 @@ func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
 		m.entry.Commitment = prevEntry.GetCommitment()
 	}
 	return nil
+}
+
+// MinApplyRevision returns the minimum revision that a client can reasonably
+// expect this mutation to be applied in.  Clients should wait until a current
+// map revision > MinApplyRevision before attempting to verify that a mutation
+// has succeeded.
+func (m *Mutation) MinApplyRevision() int64 {
+	return int64(m.prevRev) + 1
 }
 
 // SetCommitment updates entry to be a commitment to data.

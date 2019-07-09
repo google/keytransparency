@@ -25,7 +25,7 @@ import (
 )
 
 // VerifiedGetUser fetches and verifies the results of GetUser.
-func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLeaf, *types.LogRootV1, error) {
+func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.MapRootV1, *pb.MapLeaf, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
@@ -47,7 +47,7 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*pb.MapLea
 		return nil, nil, err
 	}
 
-	return resp.Leaf, slr, nil
+	return smr, resp.Leaf, nil
 }
 
 // VerifiedGetLatestRevision fetches the latest revision from the key server.
