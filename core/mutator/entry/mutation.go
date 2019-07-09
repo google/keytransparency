@@ -80,11 +80,12 @@ func (m *Mutation) SetPrevious(oldValueRevision uint64, oldValue []byte, copyPre
 	return nil
 }
 
-// PrevRevision returns the revision of the previous signed entry.
-// Clients should wait until a new revision > PrevRevision has been
-// published before attempting to verify that a mutation has succeeded.
-func (m *Mutation) PrevRevision() int64 {
-	return int64(m.prevRev)
+// MinApplyRevision returns the minimum revision that a client can reasonably
+// expect this mutation to be applied in.  Clients should wait until a current
+// map revision > MinApplyRevision before attempting to verify that a mutation
+// has succeeded.
+func (m *Mutation) MinApplyRevision() int64 {
+	return int64(m.prevRev) + 1
 }
 
 // SetCommitment updates entry to be a commitment to data.
