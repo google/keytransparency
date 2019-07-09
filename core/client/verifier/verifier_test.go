@@ -28,6 +28,7 @@ import (
 func TestTranscripts(t *testing.T) {
 	for _, name := range []string{
 		"TestEmptyGetAndUpdate",
+		"TestBatchGetUser",
 	} {
 		t.Run(name, func(t *testing.T) {
 			transcript, err := testdata.ReadTranscript(name)
@@ -56,6 +57,10 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 			switch pair := rpc.ReqRespPair.(type) {
 			case *tpb.Unary_GetUser:
 				if err := v.VerifyGetUser(trusted, pair.GetUser.Request, pair.GetUser.Response); err != nil {
+					t.Errorf("VerifyGetUser(): %v)", err)
+				}
+			case *tpb.Unary_BatchGetUser:
+				if err := v.VerifyBatchGetUser(trusted, pair.BatchGetUser.Request, pair.BatchGetUser.Response); err != nil {
 					t.Errorf("VerifyGetUser(): %v)", err)
 				}
 

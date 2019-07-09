@@ -71,6 +71,7 @@ var (
 // VerifierInterface is used to verify specific outputs from Key Transparency.
 type VerifierInterface interface {
 	VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
+	VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
 	// VerifyMapLeaf verifies everything about a MapLeaf.

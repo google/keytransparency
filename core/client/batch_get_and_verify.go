@@ -19,8 +19,9 @@ import (
 	"runtime"
 	"sync"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/trillian/monitoring"
+
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // BatchVerifyGetUserIndex fetches and verifies the indexes for a list of users.
@@ -98,16 +99,21 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (map[string]*pb.MapLeaf, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
-	resp, err := c.cli.BatchGetUser(ctx, &pb.BatchGetUserRequest{
+	req := &pb.BatchGetUserRequest{
 		DirectoryId:          c.DirectoryID,
 		UserIds:              userIDs,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
-	})
+	}
+	resp, err := c.cli.BatchGetUser(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
+	if err := c.VerifyBatchGetUser(c.trusted, req, resp); err != nil {
+		return nil, err
+	}
+
+	slr, _, err := c.VerifyRevision(resp.Revision, c.trusted)
 	if err != nil {
 		return nil, err
 	}
@@ -115,9 +121,6 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 
 	leavesByUserID := make(map[string]*pb.MapLeaf)
 	for userID, leaf := range resp.MapLeavesByUserId {
-		if err := c.VerifyMapLeaf(c.DirectoryID, userID, leaf, smr); err != nil {
-			return nil, err
-		}
 		leavesByUserID[userID] = leaf
 	}
 	return leavesByUserID, nil

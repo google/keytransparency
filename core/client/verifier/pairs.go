@@ -30,3 +30,17 @@ func (v *Verifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest
 	}
 	return nil
 }
+
+func (v *Verifier) VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
+	_, smr, err := v.VerifyRevision(resp.Revision, trusted)
+	if err != nil {
+		return err
+	}
+	for userID, leaf := range resp.MapLeavesByUserId {
+		if err := v.VerifyMapLeaf(req.DirectoryId, userID, leaf, smr); err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
