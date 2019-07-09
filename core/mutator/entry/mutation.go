@@ -57,12 +57,13 @@ func NewMutation(index []byte, directoryID, userID string) *Mutation {
 
 // SetPrevious sets the previous hash.
 // If copyPrevious is true, AuthorizedKeys and Commitment are also copied.
-func (m *Mutation) SetPrevious(rev uint64, oldValue []byte, copyPrevious bool) error {
+// oldValueRevision is the map revision that oldValue was fetched at.
+func (m *Mutation) SetPrevious(oldValueRevision uint64, oldValue []byte, copyPrevious bool) error {
 	prevSignedEntry, err := FromLeafValue(oldValue)
 	if err != nil {
 		return err
 	}
-	m.prevRev = rev
+	m.prevRev = oldValueRevision
 	m.prevSignedEntry = prevSignedEntry
 
 	hash := sha256.Sum256(prevSignedEntry.GetEntry())

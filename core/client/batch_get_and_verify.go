@@ -96,6 +96,8 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 }
 
 // BatchVerifiedGetUser returns verified leaf values by userID.
+// Returns the MapRoot (revision) at which the values were fetched. This could be any MapRoot.
+// TODO(gbelvin): Verify that the returned map root is indeed the latest map root.
 func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (
 	*types.MapRootV1, map[string]*pb.MapLeaf, error) {
 	c.trustedLock.Lock()
