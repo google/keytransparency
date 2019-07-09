@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2019 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package verifier
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -40,27 +42,28 @@ var (
 	ErrNilProof = errors.New("nil proof")
 )
 
-// RealVerifier is a client helper library for verifying request and responses.
-// Implements Verifier.
-type RealVerifier struct {
+// Verifier is a client helper library for verifying request and responses.
+type Verifier struct {
 	vrf vrf.PublicKey
 	*tclient.MapVerifier
 	*tclient.LogVerifier
+	verbose *log.Logger
 }
 
-// NewVerifier creates a new instance of the client verifier.
-func NewVerifier(vrf vrf.PublicKey,
+// New creates a new instance of the client verifier.
+func New(vrf vrf.PublicKey,
 	mapVerifier *tclient.MapVerifier,
-	logVerifier *tclient.LogVerifier) *RealVerifier {
-	return &RealVerifier{
+	logVerifier *tclient.LogVerifier) *Verifier {
+	return &Verifier{
 		vrf:         vrf,
 		MapVerifier: mapVerifier,
 		LogVerifier: logVerifier,
+		verbose:     log.New(ioutil.Discard, "", 0),
 	}
 }
 
-// NewVerifierFromDirectory creates a new instance of the client verifier from a config.
-func NewVerifierFromDirectory(config *pb.Directory) (*RealVerifier, error) {
+// NewFromDirectory creates a new instance of the client verifier from a config.
+func NewFromDirectory(config *pb.Directory) (*Verifier, error) {
 	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
 		return nil, err
@@ -77,11 +80,11 @@ func NewVerifierFromDirectory(config *pb.Directory) (*RealVerifier, error) {
 		return nil, fmt.Errorf("error parsing vrf public key: %v", err)
 	}
 
-	return NewVerifier(vrfPubKey, mapVerifier, logVerifier), nil
+	return New(vrfPubKey, mapVerifier, logVerifier), nil
 }
 
 // Index computes the index from a VRF proof.
-func (v *RealVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, error) {
+func (v *Verifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, error) {
 	index, err := v.vrf.ProofToHash([]byte(userID), vrfProof)
 	if err != nil {
 		return nil, fmt.Errorf("vrf.ProofToHash(): %v", err)
@@ -93,7 +96,7 @@ func (v *RealVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byt
 //  - Verify commitment.
 //  - Verify VRF and index.
 //  - Verify map inclusion proof.
-func (v *RealVerifier) VerifyMapLeaf(directoryID, userID string,
+func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	in *pb.MapLeaf, mapRoot *types.MapRootV1) error {
 	glog.V(5).Infof("VerifyMapLeaf(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
 
@@ -115,23 +118,23 @@ func (v *RealVerifier) VerifyMapLeaf(directoryID, userID string,
 		data := in.GetCommitted().GetData()
 		nonce := in.GetCommitted().GetKey()
 		if err := commitments.Verify(userID, commitment, data, nonce); err != nil {
-			Vlog.Printf("✗ Commitment verification failed.")
+			v.verbose.Printf("✗ Commitment verification failed.")
 			return fmt.Errorf("commitments.Verify(%v, %x, %x, %v): %v", userID, commitment, data, nonce, err)
 		}
 	}
-	Vlog.Printf("✓ Commitment verified.")
+	v.verbose.Printf("✓ Commitment verified.")
 
 	index, err := v.Index(in.GetVrfProof(), directoryID, userID)
 	if err != nil {
-		Vlog.Printf("✗ VRF verification failed.")
+		v.verbose.Printf("✗ VRF verification failed.")
 		return err
 	}
 
 	if leafValue != nil && !bytes.Equal(index, e.Index) {
-		Vlog.Printf("✗ VRF verification failed.")
+		v.verbose.Printf("✗ VRF verification failed.")
 		return fmt.Errorf("entry has wrong index: %x, want %x", e.Index, index)
 	}
-	Vlog.Printf("✓ VRF verified.")
+	v.verbose.Printf("✓ VRF verified.")
 
 	leafProof := in.GetMapInclusion()
 	if leafProof == nil {
@@ -140,23 +143,23 @@ func (v *RealVerifier) VerifyMapLeaf(directoryID, userID string,
 	leafProof.Leaf.Index = index
 
 	if err := v.VerifyMapLeafInclusionHash(mapRoot.RootHash, leafProof); err != nil {
-		Vlog.Printf("✗ Sparse tree proof verification failed.")
+		v.verbose.Printf("✗ Sparse tree proof verification failed.")
 		return fmt.Errorf("map inclusion proof failed: %v", err)
 	}
-	Vlog.Printf("✓ map inclusion proof verified.")
+	v.verbose.Printf("✓ map inclusion proof verified.")
 	return nil
 }
 
 // VerifyRevision verifies that revision is correctly signed and included in the append only log.
 // VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-func (v *RealVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
+func (v *Verifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
 	mapRoot, err := v.VerifySignedMapRoot(in.GetMapRoot().GetMapRoot())
 	if err != nil {
-		Vlog.Printf("✗ Signed Map Head signature verification failed.")
+		v.verbose.Printf("✗ Signed Map Head signature verification failed.")
 		return nil, nil, err
 	}
 
-	Vlog.Printf("✓ Signed Map Head signature verified.")
+	v.verbose.Printf("✓ Signed Map Head signature verified.")
 
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
@@ -174,6 +177,6 @@ func (v *RealVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) 
 	if err := v.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetMapRoot().GetLogInclusion()); err != nil {
 		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%x, %v, _): %v", b, leafIndex, err)
 	}
-	Vlog.Printf("✓ Log inclusion proof verified.")
+	v.verbose.Printf("✓ Log inclusion proof verified.")
 	return logRoot, mapRoot, nil
 }
