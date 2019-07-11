@@ -29,6 +29,7 @@ message Transcript {
 
 message Unary {
    string desc = 1;
+   bool trust_new_log = 2;
    oneof req_resp_pair {
       GetUser get_user = 4;
       BatchGetUser batch_get_user = 5;
