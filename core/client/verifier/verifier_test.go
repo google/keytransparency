@@ -47,17 +47,17 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 		t.Fatal(err)
 	}
 
-	trusted := &types.LogRootV1{}
 	for _, rpc := range transcript.Actions {
 		t.Run(rpc.Desc, func(t *testing.T) {
+			trusted := types.LogRootV1{
+				TreeSize: uint64(rpc.LastVerifiedLogRoot.GetTreeSize()),
+				RootHash: rpc.LastVerifiedLogRoot.GetRootHash(),
+			}
 			switch pair := rpc.ReqRespPair.(type) {
 			case *tpb.Action_GetUser:
-				slr, smr, err := v.VerifyRevision(pair.GetUser.Response.Revision, *trusted)
+				_, smr, err := v.VerifyRevision(pair.GetUser.Response.Revision, trusted)
 				if err != nil {
-					t.Errorf("VerifyRevision(): %v", err)
-				}
-				if err == nil && rpc.TrustNewLog {
-					trusted = slr
+					t.Fatalf("VerifyRevision(): %v", err)
 				}
 				if err := v.VerifyMapLeaf(
 					transcript.Directory.DirectoryId,
