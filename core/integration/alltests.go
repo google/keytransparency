@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client"
-	"github.com/google/keytransparency/core/testdata"
 	"google.golang.org/grpc"
 
+	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
@@ -45,10 +45,8 @@ type CallOptions func(userID string) []grpc.CallOption
 // NamedTestFn is a binding between a readable test name (used for a Go subtest)
 // and a function that performs the test, given a test environment.
 type NamedTestFn struct {
-	Name              string
-	Fn                func(context.Context, *Env, *testing.T) []testdata.ResponseVector
-	DirectoryFilename string
-	RespFilename      string
+	Name string
+	Fn   func(context.Context, *Env, *testing.T) []*tpb.Unary
 }
 
 // AllTests contains all the integration tests.
@@ -56,12 +54,12 @@ type NamedTestFn struct {
 // This is done so that tests can be run in different environments in a portable way.
 var AllTests = []NamedTestFn{
 	// Client Tests
-	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate, DirectoryFilename: "directory_get_and_update.json", RespFilename: "get_and_update.json"},
-	{Name: "TestBatchGetUser", Fn: TestBatchGetUser, DirectoryFilename: "directory_batch_get_user.json", RespFilename: "batch_get_user.json"},
+	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate},
+	{Name: "TestBatchGetUser", Fn: TestBatchGetUser},
 	{Name: "TestListHistory", Fn: TestListHistory},
 	{Name: "TestBatchUpdate", Fn: TestBatchUpdate},
 	{Name: "TestBatchCreate", Fn: TestBatchCreate},
-	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions, DirectoryFilename: "directory_batch_list_user_revisions.json", RespFilename: "batch_list_user_revisions.json"},
+	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions},
 	// Monitor Tests
 	{Name: "TestMonitor", Fn: TestMonitor},
 }
