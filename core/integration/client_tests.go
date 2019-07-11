@@ -34,9 +34,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 const (

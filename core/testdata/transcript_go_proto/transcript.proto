@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package google.keytransparency.transcript;
 
-option go_package = "github.com/google/keytransparency/core/api/transcript_go_proto";
+option go_package = "github.com/google/keytransparency/core/testdata/transcript_go_proto";
 
 import "v1/keytransparency.proto";
 import "v1/admin.proto";

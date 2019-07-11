@@ -32,8 +32,8 @@ import (
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/types"
 
-	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 const (

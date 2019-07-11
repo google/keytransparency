@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 
-	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 // packagePath returns the on-disk path of *this* package.

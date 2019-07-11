@@ -23,7 +23,7 @@ import (
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/storage/testdb"
 
-	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 var generate = flag.Bool("generate", false, "Defines if test vectors should be generated")

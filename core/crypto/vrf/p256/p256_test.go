@@ -28,7 +28,7 @@ import (
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 
-	tpb "github.com/google/keytransparency/core/api/transcript_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 )
 
