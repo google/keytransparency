@@ -199,10 +199,11 @@ func TestProofToHash(t *testing.T) {
 			case *tpb.Action_GetUser:
 				userID := pair.GetUser.Request.UserId
 				vrfProof := pair.GetUser.Response.GetLeaf().GetVrfProof()
-				_, err := pk.ProofToHash([]byte(userID), vrfProof)
-				if err != nil {
-					t.Errorf("ProofToHash(%v): %v)", rpc.Desc, err)
+				if _, err := pk.ProofToHash([]byte(userID), vrfProof); err != nil {
+					t.Errorf("ProofToHash(): %v)", err)
 				}
+			default:
+				t.Fatalf("Unknown ReqRespPair: %T", pair)
 			}
 		})
 	}

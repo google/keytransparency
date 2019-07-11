@@ -67,7 +67,7 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 				}
 
 			default:
-				t.Errorf("Unknown ReqRespPair: %T", pair)
+				t.Fatalf("Unknown ReqRespPair: %T", pair)
 			}
 		})
 	}
