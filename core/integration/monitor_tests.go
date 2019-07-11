@@ -45,7 +45,7 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 )
 
 // TestMonitor verifies that the monitor correctly verifies transitions between revisions.
-func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Unary {
+func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	// setup monitor:
 	privKey, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
 	if err != nil {

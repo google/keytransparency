@@ -193,10 +193,10 @@ func TestProofToHash(t *testing.T) {
 		t.Fatalf("NewVRFVerifier failure: %v", err)
 	}
 
-	for _, rpc := range transcript.Rpcs {
+	for _, rpc := range transcript.Actions {
 		t.Run(rpc.Desc, func(t *testing.T) {
 			switch pair := rpc.ReqRespPair.(type) {
-			case *tpb.Unary_GetUser:
+			case *tpb.Action_GetUser:
 				userID := pair.GetUser.Request.UserId
 				vrfProof := pair.GetUser.Response.GetLeaf().GetVrfProof()
 				_, err := pk.ProofToHash([]byte(userID), vrfProof)

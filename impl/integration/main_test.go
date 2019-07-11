@@ -49,12 +49,12 @@ func TestIntegration(t *testing.T) {
 				// canceling the master context.
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				resps := test.Fn(ctx, env.Env, t)
+				actions := test.Fn(ctx, env.Env, t)
 				if *generate {
 					if testdata.WriteTranscript(test.Name, &tpb.Transcript{
 						Description: test.Name,
 						Directory:   env.Env.Directory,
-						Rpcs:        resps,
+						Actions:     actions,
 					}); err != nil {
 						t.Fatalf("WriteTranscript() failed: %v", err)
 					}

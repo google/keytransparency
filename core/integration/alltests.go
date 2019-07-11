@@ -46,7 +46,7 @@ type CallOptions func(userID string) []grpc.CallOption
 // and a function that performs the test, given a test environment.
 type NamedTestFn struct {
 	Name string
-	Fn   func(context.Context, *Env, *testing.T) []*tpb.Unary
+	Fn   func(context.Context, *Env, *testing.T) []*tpb.Action
 }
 
 // AllTests contains all the integration tests.

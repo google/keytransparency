@@ -48,10 +48,10 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 	}
 
 	trusted := &types.LogRootV1{}
-	for _, rpc := range transcript.Rpcs {
+	for _, rpc := range transcript.Actions {
 		t.Run(rpc.Desc, func(t *testing.T) {
 			switch pair := rpc.ReqRespPair.(type) {
-			case *tpb.Unary_GetUser:
+			case *tpb.Action_GetUser:
 				slr, smr, err := v.VerifyRevision(pair.GetUser.Response.Revision, *trusted)
 				if err != nil {
 					t.Errorf("VerifyRevision(): %v", err)

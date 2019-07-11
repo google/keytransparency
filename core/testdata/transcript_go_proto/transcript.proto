@@ -27,12 +27,12 @@ message Transcript {
    string description = 1;
    // directory contains public keys and other information needed to verify the rpcs.
    v1.Directory directory = 2;
-   // rpcs are the individual request, response pairs.
-   repeated Unary rpcs = 3;
+   // actions are the individual request, response pairs.
+   repeated Action actions = 3;
 }
 
-// Unary rpcs have one request and one response.
-message Unary {
+// Action contains one request and one response.
+message Action {
    string desc = 1;
    // trust_new_log controls the client verifier state.
    // If true, the client records the resp.LatestLogRoot and uses it
