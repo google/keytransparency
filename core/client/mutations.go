@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -72,21 +73,17 @@ func (c *Client) StreamRevisions(ctx context.Context, directoryID string, startR
 }
 
 // RevisionMutations fetches all the mutations in an revision
-func (c *Client) RevisionMutations(ctx context.Context, revision *pb.Revision) ([]*pb.MutationProof, error) {
-	mapRoot, err := c.VerifySignedMapRoot(revision.GetMapRoot().GetMapRoot())
-	if err != nil {
-		return nil, err
-	}
+func (c *Client) RevisionMutations(ctx context.Context, mapRoot *types.MapRootV1) ([]*pb.MutationProof, error) {
 	mutations := []*pb.MutationProof{}
 	token := ""
 	for {
 		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
-			DirectoryId: revision.GetDirectoryId(),
+			DirectoryId: c.DirectoryID,
 			Revision:    int64(mapRoot.Revision),
 			PageToken:   token,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("list mutations on %v: %v", revision.GetDirectoryId(), err)
+			return nil, fmt.Errorf("list mutations on %v: %v", c.DirectoryID, err)
 		}
 		mutations = append(mutations, resp.GetMutations()...)
 		token = resp.GetNextPageToken()
