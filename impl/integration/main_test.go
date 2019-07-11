@@ -51,7 +51,7 @@ func TestIntegration(t *testing.T) {
 				defer cancel()
 				actions := test.Fn(ctx, env.Env, t)
 				if *generate {
-					if testdata.WriteTranscript(test.Name, &tpb.Transcript{
+					if err := testdata.WriteTranscript(test.Name, &tpb.Transcript{
 						Description: test.Name,
 						Directory:   env.Env.Directory,
 						Actions:     actions,
