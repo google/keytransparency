@@ -14,4 +14,4 @@
 
 package transcript_go_proto
 
-//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/keytransparency/core/api -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/ -I=$GOPATH/src/github.com/google/tink/proto --go_out=,plugins=grpc:$GOPATH/src transcript.proto
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/keytransparency/core/api -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/  --go_out=,plugins=grpc:$GOPATH/src transcript.proto
