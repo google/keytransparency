@@ -62,7 +62,7 @@ func ReadTranscript(testName string) (*tpb.Transcript, error) {
 	return &transcript, nil
 }
 
-// WriteTranscript saves the transcript to the files in this package.
+// WriteTranscript saves the transcript to the testdata directory.
 func WriteTranscript(testName string, t *tpb.Transcript) error {
 	marshaler := &jsonpb.Marshaler{Indent: "\t"}
 
