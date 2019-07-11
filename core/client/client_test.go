@@ -312,11 +312,10 @@ func (f *fakeVerifier) VerifyMapLeaf(directoryID, userID string,
 	return nil
 }
 
-func (f *fakeVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.MapRoot.MapRoot)
-	return &types.LogRootV1{}, smr, err
+func (f *fakeVerifier) VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error) {
+	return &types.LogRootV1{}, nil
 }
 
-func (f *fakeVerifier) VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error) {
-	return &types.MapRootV1{Revision: uint64(smr.MapRoot[0])}, nil
+func (f *fakeVerifier) VerifyMapRevision(logRoot *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error) {
+	return &types.MapRootV1{Revision: uint64(smr.MapRoot.MapRoot[0])}, nil
 }

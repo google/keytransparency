@@ -309,7 +309,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 
 // CheckProfile verifies that the retrieved profile of userID is correct.
 func CheckProfile(ctx context.Context, env *Env, userID string, wantProfile []byte, slr *types.LogRootV1) (*pb.GetUserResponse, *types.LogRootV1, error) {
-	e, err := env.Cli.GetUser(ctx, &pb.GetUserRequest{
+	resp, err := env.Cli.GetUser(ctx, &pb.GetUserRequest{
 		DirectoryId:          env.Directory.DirectoryId,
 		UserId:               userID,
 		LastVerifiedTreeSize: int64(slr.TreeSize),
@@ -317,17 +317,23 @@ func CheckProfile(ctx context.Context, env *Env, userID string, wantProfile []by
 	if err != nil {
 		return nil, nil, fmt.Errorf("getUser(%v): %v, want nil", userID, err)
 	}
-	newslr, smr, err := env.Client.VerifyRevision(e.Revision, *slr)
+
+	lr, err := env.Client.VerifyLogRoot(*slr, resp.Revision.GetLatestLogRoot())
 	if err != nil {
-		return nil, nil, fmt.Errorf("verifyRevision() for user %v: %v, want nil", userID, err)
+		return nil, nil, err
 	}
-	if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, userID, e.Leaf, smr); err != nil {
+	mr, err := env.Client.VerifyMapRevision(lr, resp.Revision.GetMapRoot())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, userID, resp.Leaf, mr); err != nil {
 		return nil, nil, fmt.Errorf("verifyMapLeaf() for user %v: %v, want nil", userID, err)
 	}
-	if got, want := e.GetLeaf().GetCommitted().GetData(), wantProfile; !bytes.Equal(got, want) {
+	if got, want := resp.GetLeaf().GetCommitted().GetData(), wantProfile; !bytes.Equal(got, want) {
 		return nil, nil, fmt.Errorf("verifiedGetUser(%v): %s, want %s", userID, got, want)
 	}
-	return e, newslr, nil
+	return resp, lr, nil
 }
 
 // TestBatchGetUser tests fetching multiple users in a single request.
@@ -408,12 +414,16 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 				t.Fatalf("BatchGetUser(): %v", err)
 			}
 			slr := types.LogRootV1{}
-			_, smr, err := env.Client.VerifyRevision(resp.Revision, slr)
+			lr, err := env.Client.VerifyLogRoot(slr, resp.Revision.GetLatestLogRoot())
 			if err != nil {
-				t.Fatalf("VerifyRevision(): %v", nil)
+				t.Fatalf("VerifyLogRoot(): %v", err)
+			}
+			mr, err := env.Client.VerifyMapRevision(lr, resp.Revision.GetMapRoot())
+			if err != nil {
+				t.Fatalf("VerifyMapRevision(): %v", err)
 			}
 			for userID, leaf := range resp.MapLeavesByUserId {
-				if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, userID, leaf, smr); err != nil {
+				if err := env.Client.VerifyMapLeaf(env.Directory.DirectoryId, userID, leaf, mr); err != nil {
 					t.Fatalf("VerifyMapLeaf(%v): %v", userID, err)
 				}
 				if got, want := leaf.GetCommitted().GetData(), tc.wantProfiles[userID]; !bytes.Equal(got, want) {

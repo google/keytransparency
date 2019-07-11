@@ -111,11 +111,15 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (
 		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
+	lr, err := c.VerifyLogRoot(c.trusted, resp.Revision.GetLatestLogRoot())
 	if err != nil {
 		return nil, nil, err
 	}
-	c.updateTrusted(slr)
+	c.updateTrusted(lr)
+	smr, err := c.VerifyMapRevision(lr, resp.Revision.GetMapRoot())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	leavesByUserID := make(map[string]*pb.MapLeaf)
 	for userID, leaf := range resp.MapLeavesByUserId {

@@ -150,33 +150,28 @@ func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	return nil
 }
 
-// VerifyRevision verifies that revision is correctly signed and included in the append only log.
-// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-func (v *Verifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	mapRoot, err := v.VerifySignedMapRoot(in.GetMapRoot().GetMapRoot())
-	if err != nil {
-		v.verbose.Printf("✗ Signed Map Head signature verification failed.")
-		return nil, nil, err
-	}
-
-	v.verbose.Printf("✓ Signed Map Head signature verified.")
-
+// VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
+func (v *Verifier) VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error) {
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	logRoot, err := v.VerifyRoot(&trusted,
-		in.GetLatestLogRoot().GetLogRoot(),
-		in.GetLatestLogRoot().GetLogConsistency())
+	return v.VerifyRoot(&trusted, slr.GetLogRoot(), slr.GetLogConsistency())
+}
+
+// VerifyMapRevision verifies that the map revision is correctly signed and included in the append only log.
+func (v *Verifier) VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error) {
+	mapRoot, err := v.VerifySignedMapRoot(smr.GetMapRoot())
 	if err != nil {
-		return nil, nil, fmt.Errorf("logVerifier: VerifyRoot(%v -> %v, %v): %v",
-			trusted, in.GetLatestLogRoot(), in.GetLatestLogRoot().GetLogConsistency(), err)
+		v.verbose.Printf("✗ Signed Map Head signature verification failed.")
+		return nil, err
 	}
+	v.verbose.Printf("✓ Signed Map Head signature verified.")
 
 	// Verify inclusion proof.
-	b := in.GetMapRoot().GetMapRoot().GetMapRoot()
+	b := smr.GetMapRoot().GetMapRoot()
 	leafIndex := int64(mapRoot.Revision)
-	if err := v.VerifyInclusionAtIndex(logRoot, b, leafIndex, in.GetMapRoot().GetLogInclusion()); err != nil {
-		return nil, nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%x, %v, _): %v", b, leafIndex, err)
+	if err := v.VerifyInclusionAtIndex(lr, b, leafIndex, smr.GetLogInclusion()); err != nil {
+		return nil, fmt.Errorf("logVerifier: VerifyInclusionAtIndex(%x, %v, _): %v", b, leafIndex, err)
 	}
 	v.verbose.Printf("✓ Log inclusion proof verified.")
-	return logRoot, mapRoot, nil
+	return mapRoot, nil
 }

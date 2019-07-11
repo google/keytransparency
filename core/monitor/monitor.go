@@ -127,9 +127,14 @@ func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted t
 	defer cancel()
 
 	for pair := range pairs {
-		_, mapRootB, err := m.cli.VerifyRevision(pair.B, trusted)
+		lr, err := m.cli.VerifyLogRoot(trusted, pair.B.GetLatestLogRoot())
 		if err != nil {
-			glog.Errorf("Invalid Revision %v: %v", mapRootB.Revision, err)
+			glog.Errorf("Invalid LogRoot %v: %v", pair.B, err)
+			return err
+		}
+		mapRootB, err := m.cli.VerifyMapRevision(lr, pair.B.GetMapRoot())
+		if err != nil {
+			glog.Errorf("Invalid MapRoot %v: %v", pair.B, err)
 			return err
 		}
 

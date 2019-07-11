@@ -73,9 +73,10 @@ type VerifierInterface interface {
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
 	// VerifyMapLeaf verifies everything about a MapLeaf.
 	VerifyMapLeaf(directoryID, userID string, in *pb.MapLeaf, smr *types.MapRootV1) error
-	// VerifyRevision verifies that revision is correctly signed and included in the append only log.
-	// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-	VerifyRevision(revision *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
+	// VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
+	VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error)
+	// VerifyMapRevision verifies that the map revision is correctly signed and included in the log.
+	VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error)
 }
 
 // ReduceMutationFn takes all the mutations for an index and an auxiliary input

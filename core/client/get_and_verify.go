@@ -37,17 +37,20 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.Map
 		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
+	lr, err := c.VerifyLogRoot(c.trusted, resp.Revision.GetLatestLogRoot())
 	if err != nil {
 		return nil, nil, err
 	}
-	c.updateTrusted(slr)
-
-	if err := c.VerifyMapLeaf(c.DirectoryID, userID, resp.Leaf, smr); err != nil {
+	c.updateTrusted(lr)
+	mr, err := c.VerifyMapRevision(lr, resp.Revision.GetMapRoot())
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := c.VerifyMapLeaf(c.DirectoryID, userID, resp.Leaf, mr); err != nil {
 		return nil, nil, err
 	}
 
-	return smr, resp.Leaf, nil
+	return mr, resp.Leaf, nil
 }
 
 // VerifiedGetLatestRevision fetches the latest revision from the key server.
@@ -58,7 +61,7 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 
-	e, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
+	resp, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
 		DirectoryId:          c.DirectoryID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
@@ -66,23 +69,26 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyRevision(e, c.trusted)
+	lr, err := c.VerifyLogRoot(c.trusted, resp.GetLatestLogRoot())
 	if err != nil {
 		return nil, nil, err
 	}
-	// At this point, the SignedLogRoot has been verified as consistent.
-	c.updateTrusted(slr)
+	c.updateTrusted(lr)
+	mr, err := c.VerifyMapRevision(lr, resp.GetMapRoot())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Also check that the map revision returned is the latest one.
 	// TreeSize - 1 == mapRoot.Revision.
-	wantRevision, err := mapRevisionFor(slr)
+	wantRevision, err := mapRevisionFor(lr)
 	if err != nil {
 		return nil, nil, err
 	}
-	if smr.Revision != wantRevision {
-		return nil, nil, fmt.Errorf("map revision is not the most recent. smr.Revison: %v != slr.TreeSize-1: %v", smr.Revision, slr.TreeSize-1)
+	if mr.Revision != wantRevision {
+		return nil, nil, fmt.Errorf("map revision is not the most recent. smr.Revison: %v != slr.TreeSize-1: %v", mr.Revision, lr.TreeSize-1)
 	}
-	return slr, smr, nil
+	return lr, mr, nil
 }
 
 // VerifiedGetRevision fetches the requested revision from the key server.
@@ -93,7 +99,7 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 
-	e, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
+	resp, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
 		DirectoryId:          c.DirectoryID,
 		Revision:             revision,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
@@ -102,13 +108,17 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyRevision(e, c.trusted)
+	lr, err := c.VerifyLogRoot(c.trusted, resp.GetLatestLogRoot())
+	if err != nil {
+		return nil, nil, err
+	}
+	c.updateTrusted(lr)
+	mr, err := c.VerifyMapRevision(lr, resp.GetMapRoot())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	c.updateTrusted(slr)
-	return slr, smr, nil
+	return lr, mr, nil
 }
 
 // VerifiedListHistory performs one list history operation, verifies and returns the results.
@@ -129,23 +139,26 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 
 	// The roots are only updated once per API call.
 	// TODO(gbelvin): Remove the redundancy inside the responses.
-	var slr *types.LogRootV1
-	var smr *types.MapRootV1
+	var lr *types.LogRootV1
 	profiles := make(map[*types.MapRootV1][]byte)
 	for _, v := range resp.GetValues() {
-		slr, smr, err = c.VerifyRevision(v.Revision, c.trusted)
+		if lr == nil {
+			lr, err = c.VerifyLogRoot(c.trusted, v.GetRevision().GetLatestLogRoot())
+			if err != nil {
+				return nil, 0, err
+			}
+			c.updateTrusted(lr)
+		}
+		mr, err := c.VerifyMapRevision(lr, v.GetRevision().GetMapRoot())
 		if err != nil {
 			return nil, 0, err
 		}
-		if err = c.VerifyMapLeaf(c.DirectoryID, userID, v.Leaf, smr); err != nil {
+		if err := c.VerifyMapLeaf(c.DirectoryID, userID, v.Leaf, mr); err != nil {
 			return nil, 0, err
 		}
-		Vlog.Printf("Processing entry for %v, revision %v", userID, smr.Revision)
-		glog.V(2).Infof("Processing entry for %v, revision %v", userID, smr.Revision)
-		profiles[smr] = v.GetLeaf().GetCommitted().GetData()
-	}
-	if slr != nil {
-		c.updateTrusted(slr)
+		Vlog.Printf("Processing entry for %v, revision %v", userID, mr.Revision)
+		glog.V(2).Infof("Processing entry for %v, revision %v", userID, mr.Revision)
+		profiles[mr] = v.GetLeaf().GetCommitted().GetData()
 	}
 	return profiles, resp.NextStart, nil
 }
