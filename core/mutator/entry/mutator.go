@@ -127,17 +127,19 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 		return nil, status.Errorf(codes.InvalidArgument, "proto.Unmarshal(): %v", err)
 	}
 
-	// Verify pointer to previous data.  The very first entry will have
-	// oldSignedEntry=nil, so its hash is the Sha256 value of nil.
-	prevEntryHash := sha256.Sum256(oldSignedEntry.GetEntry())
-	if got, want := prevEntryHash[:], newEntry.GetPrevious(); !bytes.Equal(got, want) {
-		// Check if this mutation is a replay.
-		if bytes.Equal(oldSignedEntry.GetEntry(), newSignedEntry.Entry) {
-			glog.Warningf("mutation is a replay of an old one")
-			return nil, mutator.ErrReplay
+	// Check if this mutation is a replay.
+	if bytes.Equal(oldSignedEntry.GetEntry(), newSignedEntry.Entry) {
+		glog.Warningf("mutation is a replay of an old one")
+		return nil, mutator.ErrReplay
+	}
+
+	// Verify check-set semantics if Previous has been explicitly set.
+	if want := newEntry.GetPrevious(); want != nil {
+		prevEntryHash := sha256.Sum256(oldSignedEntry.GetEntry())
+		if got := prevEntryHash[:]; !bytes.Equal(got, want) {
+			glog.Warningf("previous entry hash: %x, want %x", got, want)
+			return nil, mutator.ErrPreviousHash
 		}
-		glog.Warningf("previous entry hash: %x, want %x", got, want)
-		return nil, mutator.ErrPreviousHash
 	}
 
 	if oldSignedEntry == nil {
