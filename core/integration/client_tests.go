@@ -260,6 +260,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
+			reqSLR := *slr
 			e, newslr, err := CheckProfile(ctx, env, tc.userID, tc.wantProfile, slr)
 			if err != nil {
 				t.Fatalf("%v", err)
@@ -272,10 +273,17 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 				slr = newslr
 			}
 			transcript = append(transcript, &tpb.Action{
-				Desc:        tc.desc,
-				TrustNewLog: trust,
+				Desc: tc.desc,
+				LastVerifiedLogRoot: &pb.LogRootRequest{
+					TreeSize: int64(reqSLR.TreeSize),
+					RootHash: reqSLR.RootHash,
+				},
 				ReqRespPair: &tpb.Action_GetUser{GetUser: &tpb.GetUser{
-					Request:  &pb.GetUserRequest{UserId: tc.userID},
+					Request: &pb.GetUserRequest{
+						DirectoryId:          env.Directory.DirectoryId,
+						UserId:               tc.userID,
+						LastVerifiedTreeSize: int64(reqSLR.TreeSize),
+					},
 					Response: e,
 				}},
 			})
@@ -399,7 +407,8 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			if err != nil {
 				t.Fatalf("BatchGetUser(): %v", err)
 			}
-			_, smr, err := env.Client.VerifyRevision(resp.Revision, types.LogRootV1{})
+			slr := types.LogRootV1{}
+			_, smr, err := env.Client.VerifyRevision(resp.Revision, slr)
 			if err != nil {
 				t.Fatalf("VerifyRevision(): %v", nil)
 			}
@@ -413,6 +422,10 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			}
 			transcript = append(transcript, &tpb.Action{
 				Desc: tc.desc,
+				LastVerifiedLogRoot: &pb.LogRootRequest{
+					TreeSize: int64(slr.TreeSize),
+					RootHash: slr.RootHash,
+				},
 				ReqRespPair: &tpb.Action_BatchGetUser{
 					BatchGetUser: &tpb.BatchGetUser{
 						Request:  &pb.BatchGetUserRequest{UserIds: userIDs},

@@ -34,10 +34,9 @@ message Transcript {
 // Action contains one request and one response.
 message Action {
    string desc = 1;
-   // trust_new_log controls the client verifier state.
-   // If true, the client records the resp.LatestLogRoot and uses it
-   // for the next rpc's request.last_verified_tree_size.
-   bool trust_new_log = 2;
+   reserved 2;  // was trust_new_log
+   // last_verified_log_root encodes the client verifier state.
+   v1.LogRootRequest last_verified_log_root = 3;
    oneof req_resp_pair {
       GetUser get_user = 4;
       BatchGetUser batch_get_user = 5;
