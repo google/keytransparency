@@ -42,24 +42,21 @@ func TestIntegration(t *testing.T) {
 			}
 
 			defer env.Close()
-			func() {
-				// Cancel the test function context (and thus
-				// exit any background sequencer loops)
-				// *before* shutting down the server and
-				// canceling the master context.
-				ctx, cancel := context.WithCancel(ctx)
-				defer cancel()
-				actions := test.Fn(ctx, env.Env, t)
-				if *generate {
-					if err := testdata.WriteTranscript(test.Name, &tpb.Transcript{
-						Description: test.Name,
-						Directory:   env.Env.Directory,
-						Actions:     actions,
-					}); err != nil {
-						t.Fatalf("WriteTranscript() failed: %v", err)
-					}
+			cctx, cancel := context.WithCancel(ctx)
+			actions := test.Fn(cctx, env.Env, t)
+			// Cancel the test function context (and thus exit any
+			// background sequencer loops) *before* shutting down
+			// the server and canceling the master context.
+			cancel()
+			if *generate {
+				if err := testdata.WriteTranscript(test.Name, &tpb.Transcript{
+					Description: test.Name,
+					Directory:   env.Env.Directory,
+					Actions:     actions,
+				}); err != nil {
+					t.Fatalf("WriteTranscript() failed: %v", err)
 				}
-			}()
+			}
 		})
 	}
 }
