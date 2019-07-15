@@ -272,7 +272,7 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 		})
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("tlog.GetInclusionProof(%v): %v", d.Log.TreeId, err)
-		return nil, status.Errorf(st.Code(), "Cannot fetch log inclusion proof: %v", st.Message())
+		return nil, status.Errorf(st.Code(), "caannot fetch log inclusion proof: %v", st.Message())
 	}
 
 	return &pb.BatchGetUserResponse{
