@@ -513,13 +513,13 @@ LogRoot contains the latest log root and its consistency proof.
 <a name="google.keytransparency.v1.LogRootRequest"></a>
 
 ### LogRootRequest
-LogRootRequest contains the information needed to requetst and verify LogRoot.
+LogRootRequest contains the information needed to request and verify LogRoot.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | root_hash | [bytes](#bytes) |  | root_hash is the log root hash. |
-| tree_size | [int64](#int64) |  | tree_size is the tree_size of the last log root the client verified. |
+| tree_size | [int64](#int64) |  | tree_size is the tree size of the last log root the client verified. |
 
 
 

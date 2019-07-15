@@ -1551,12 +1551,11 @@ func (m *MapRoot) GetLogInclusion() [][]byte {
 	return nil
 }
 
-// LogRootRequest contains the information needed to requetst and verify LogRoot.
+// LogRootRequest contains the information needed to request and verify LogRoot.
 type LogRootRequest struct {
 	// root_hash is the log root hash.
 	RootHash []byte `protobuf:"bytes,1,opt,name=root_hash,json=rootHash,proto3" json:"root_hash,omitempty"`
-	// tree_size is the tree_size of the last log root the client
-	// verified.
+	// tree_size is the tree size of the last log root the client verified.
 	TreeSize             int64    `protobuf:"varint,2,opt,name=tree_size,json=treeSize,proto3" json:"tree_size,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
