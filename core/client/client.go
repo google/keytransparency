@@ -29,7 +29,6 @@ import (
 
 	"github.com/google/keytransparency/core/client/verifier"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/trillian"
 
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
@@ -77,8 +76,6 @@ type VerifierInterface interface {
 	// VerifyRevision verifies that revision is correctly signed and included in the append only log.
 	// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
 	VerifyRevision(revision *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
-	// VerifySignedMapRoot verifies the signature on the SignedMapRoot.
-	VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error)
 }
 
 // ReduceMutationFn takes all the mutations for an index and an auxiliary input

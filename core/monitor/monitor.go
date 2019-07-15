@@ -133,7 +133,7 @@ func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted t
 			return err
 		}
 
-		mutations, err := m.cli.RevisionMutations(ctx, pair.B)
+		mutations, err := m.cli.RevisionMutations(ctx, mapRootB)
 		if err != nil {
 			return err
 		}
