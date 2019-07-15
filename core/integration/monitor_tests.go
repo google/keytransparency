@@ -23,7 +23,6 @@ import (
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
-	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
@@ -34,6 +33,7 @@ import (
 	"github.com/google/trillian/types"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 const (
@@ -45,7 +45,7 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 )
 
 // TestMonitor verifies that the monitor correctly verifies transitions between revisions.
-func TestMonitor(ctx context.Context, env *Env, t *testing.T) []testdata.ResponseVector {
+func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	// setup monitor:
 	privKey, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
 	if err != nil {
