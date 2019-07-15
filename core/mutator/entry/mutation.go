@@ -27,8 +27,6 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-var nilHash = sha256.Sum256(nil)
-
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
 	UserID      string
@@ -49,13 +47,17 @@ func NewMutation(index []byte, directoryID, userID string) *Mutation {
 	return &Mutation{
 		UserID: userID,
 		entry: &pb.Entry{
-			Index:    index,
-			Previous: nilHash[:],
+			Index: index,
 		},
 	}
 }
 
-// SetPrevious sets the previous hash.
+// SetPrevious adds a check-set constraint on the mutation which is useful when performing a get-modify-set operation.
+//
+// If Previous is set, the server will verify that the *current* value matches the Previous hash in this mutation.
+// If the hash is missmatched, the server will not apply the mutation.
+// If Previous is unset, the server will not perform this check.
+//
 // If copyPrevious is true, AuthorizedKeys and Commitment are also copied.
 // oldValueRevision is the map revision that oldValue was fetched at.
 func (m *Mutation) SetPrevious(oldValueRevision uint64, oldValue []byte, copyPrevious bool) error {
