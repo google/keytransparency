@@ -320,9 +320,10 @@ func (f *fakeVerifier) VerifyMapRevision(logRoot *types.LogRootV1, smr *pb.MapRo
 	return &types.MapRootV1{Revision: uint64(smr.MapRoot.MapRoot[0])}, nil
 }
 
-func (f *fakeVerifier) VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
+func (f *fakeVerifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
 	return nil
 }
-func (f *fakeVerifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
+
+func (f *fakeVerifier) VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
 	return nil
 }

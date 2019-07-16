@@ -80,7 +80,10 @@ type VerifierInterface interface {
 	//
 	// Pair Verifiers
 	//
+
+	// VerifyGetUser verifies the request and response to the GetUser API.
 	VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
+	// VerifyBatchGetUser verifies the request and response to the BatchGetUser API.
 	VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
 }
 

@@ -33,7 +33,7 @@ func (v *Verifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest
 	return v.VerifyMapLeaf(req.DirectoryId, req.UserId, resp.Leaf, mr)
 }
 
-// VerifyBatchGetUser verifies that the retrieved profile of userID is correct.
+// VerifyBatchGetUser verifies that the retrieved profiles are correct.
 func (v *Verifier) VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
 	lr, err := v.VerifyLogRoot(trusted, resp.Revision.GetLatestLogRoot())
 	if err != nil {
