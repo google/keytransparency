@@ -311,7 +311,7 @@ func (f *fakeVerifier) LastVerifiedLogRoot() *pb.LogRootRequest {
 	return &pb.LogRootRequest{}
 }
 
-func (f *fakeVerifier) VerifyLogRoot(slr *pb.LogRoot) (*types.LogRootV1, error) {
+func (f *fakeVerifier) VerifyLogRoot(req *pb.LogRootRequest, slr *pb.LogRoot) (*types.LogRootV1, error) {
 	return &types.LogRootV1{}, nil
 }
 

@@ -16,9 +16,11 @@
 package tracker
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/types"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -46,6 +48,10 @@ func NewFromSaved(lv *tclient.LogVerifier, lr types.LogRootV1) *LogTracker {
 // and it blocks further requests until VerifyRoot is called.
 func (l *LogTracker) LastVerifiedLogRoot() *pb.LogRootRequest {
 	l.mu.Lock()
+	return l.logRootRequest()
+}
+
+func (l *LogTracker) logRootRequest() *pb.LogRootRequest {
 	return &pb.LogRootRequest{
 		TreeSize: int64(l.trusted.TreeSize),
 		RootHash: l.trusted.RootHash,
@@ -54,8 +60,13 @@ func (l *LogTracker) LastVerifiedLogRoot() *pb.LogRootRequest {
 
 // VerifyLogRoot verifies root and updates the trusted root if it is newer.
 // VerifyLogRoot unblocks the next call to LastVerifiedTreeSize.
-// It is a run-time error if LastVerifiedTreeSize has not previously been called.
-func (l *LogTracker) VerifyLogRoot(root *pb.LogRoot) (*types.LogRootV1, error) {
+// req must come from LastVerifiedLogRoot()
+// It is a run-time error to call VerifyLogRoot more than once per call to LastVerifiedLogRoot.
+func (l *LogTracker) VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error) {
+	if want := l.logRootRequest(); !proto.Equal(req, want) {
+		return nil, fmt.Errorf("unexpected request %v, want %v", req, want)
+	}
+
 	defer l.mu.Unlock()
 	logRoot, err := l.v.VerifyRoot(&l.trusted,
 		root.GetLogRoot(),

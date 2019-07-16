@@ -47,7 +47,7 @@ var (
 
 type LogTracker interface {
 	LastVerifiedLogRoot() *pb.LogRootRequest
-	VerifyLogRoot(root *pb.LogRoot) (*types.LogRootV1, error)
+	VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error)
 }
 
 // Verifier is a client helper library for verifying request and responses.
@@ -168,10 +168,10 @@ func (v *Verifier) LastVerifiedLogRoot() *pb.LogRootRequest {
 }
 
 // VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-func (v *Verifier) VerifyLogRoot(slr *pb.LogRoot) (*types.LogRootV1, error) {
+func (v *Verifier) VerifyLogRoot(req *pb.LogRootRequest, slr *pb.LogRoot) (*types.LogRootV1, error) {
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	return v.lt.VerifyLogRoot(slr)
+	return v.lt.VerifyLogRoot(req, slr)
 }
 
 // VerifyMapRevision verifies that the map revision is correctly signed and included in the append only log.

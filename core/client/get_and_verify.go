@@ -26,17 +26,18 @@ import (
 
 // VerifiedGetUser fetches and verifies the results of GetUser.
 func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.MapRootV1, *pb.MapLeaf, error) {
+	logReq := c.LastVerifiedLogRoot()
 	req := &pb.GetUserRequest{
 		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
-		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
+		LastVerifiedTreeSize: logReq.TreeSize,
 	}
 	resp, err := c.cli.GetUser(ctx, req)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	lr, err := c.VerifyLogRoot(resp.Revision.GetLatestLogRoot())
+	lr, err := c.VerifyLogRoot(logReq, resp.Revision.GetLatestLogRoot())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -55,15 +56,16 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.Map
 // It also verifies the consistency from the last seen revision.
 // Returns the latest log root and the latest map root.
 func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV1, *types.MapRootV1, error) {
+	logReq := c.LastVerifiedLogRoot()
 	resp, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
 		DirectoryId:          c.DirectoryID,
-		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
+		LastVerifiedTreeSize: logReq.TreeSize,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	lr, err := c.VerifyLogRoot(resp.GetLatestLogRoot())
+	lr, err := c.VerifyLogRoot(logReq, resp.GetLatestLogRoot())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -88,17 +90,18 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 // It also verifies the consistency of the latest log root against the last seen log root.
 // Returns the requested map root.
 func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*types.MapRootV1, error) {
+	logReq := c.LastVerifiedLogRoot()
 	req := &pb.GetRevisionRequest{
 		DirectoryId:          c.DirectoryID,
 		Revision:             revision,
-		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
+		LastVerifiedTreeSize: logReq.TreeSize,
 	}
 	resp, err := c.cli.GetRevision(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	lr, err := c.VerifyLogRoot(resp.GetLatestLogRoot())
+	lr, err := c.VerifyLogRoot(logReq, resp.GetLatestLogRoot())
 	if err != nil {
 		return nil, err
 	}
@@ -113,10 +116,11 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 // VerifiedListHistory performs one list history operation, verifies and returns the results.
 func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start int64, count int32) (
 	map[*types.MapRootV1][]byte, int64, error) {
+	logReq := c.LastVerifiedLogRoot()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
 		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
-		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
+		LastVerifiedTreeSize: logReq.TreeSize,
 		Start:                start,
 		PageSize:             count,
 	})
@@ -130,7 +134,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	profiles := make(map[*types.MapRootV1][]byte)
 	for _, v := range resp.GetValues() {
 		if lr == nil {
-			lr, err = c.VerifyLogRoot(v.GetRevision().GetLatestLogRoot())
+			lr, err = c.VerifyLogRoot(logReq, v.GetRevision().GetLatestLogRoot())
 			if err != nil {
 				return nil, 0, err
 			}
