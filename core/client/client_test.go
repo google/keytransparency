@@ -307,17 +307,21 @@ func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byt
 	return make([]byte, 32), nil
 }
 
-func (f *fakeVerifier) VerifyMapLeaf(directoryID, userID string,
-	in *pb.MapLeaf, smr *types.MapRootV1) error {
-	return nil
+func (f *fakeVerifier) LastVerifiedTreeSize() int64 {
+	return 0
 }
 
-func (f *fakeVerifier) VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error) {
+func (f *fakeVerifier) VerifyLogRoot(slr *pb.LogRoot) (*types.LogRootV1, error) {
 	return &types.LogRootV1{}, nil
 }
 
 func (f *fakeVerifier) VerifyMapRevision(logRoot *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error) {
 	return &types.MapRootV1{Revision: uint64(smr.MapRoot.MapRoot[0])}, nil
+}
+
+func (f *fakeVerifier) VerifyMapLeaf(directoryID, userID string,
+	in *pb.MapLeaf, smr *types.MapRootV1) error {
+	return nil
 }
 
 func (f *fakeVerifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
