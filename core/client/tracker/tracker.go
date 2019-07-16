@@ -17,7 +17,6 @@ package tracker
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -34,7 +33,6 @@ type UpdateTrustedPredicate func(cntRoot, newRoot types.LogRootV1) bool
 // LogTracker keeps a continuous series of consistent log roots.
 type LogTracker struct {
 	trusted       types.LogRootV1
-	mu            sync.Mutex
 	v             *tclient.LogVerifier
 	updateTrusted UpdateTrustedPredicate
 }
@@ -52,7 +50,6 @@ func NewFromSaved(lv *tclient.LogVerifier, lr types.LogRootV1) *LogTracker {
 // LastVerifiedLogRoot retrieves the tree size of the latest log root
 // and it blocks further requests until VerifyRoot is called.
 func (l *LogTracker) LastVerifiedLogRoot() *pb.LogRootRequest {
-	l.mu.Lock()
 	return l.logRootRequest()
 }
 
@@ -66,13 +63,12 @@ func (l *LogTracker) logRootRequest() *pb.LogRootRequest {
 // VerifyLogRoot verifies root and updates the trusted root if it is newer.
 // VerifyLogRoot unblocks the next call to LastVerifiedTreeSize.
 // req must come from LastVerifiedLogRoot()
-// It is a run-time error to call VerifyLogRoot more than once per call to LastVerifiedLogRoot.
 func (l *LogTracker) VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error) {
 	if want := l.logRootRequest(); !proto.Equal(req, want) {
+		glog.Warningf("logtracker: unexpected logRootRequest: %v, want %v", req, want)
 		return nil, fmt.Errorf("unexpected request %v, want %v", req, want)
 	}
 
-	defer l.mu.Unlock()
 	logRoot, err := l.v.VerifyRoot(&l.trusted,
 		root.GetLogRoot(),
 		root.GetLogConsistency())
