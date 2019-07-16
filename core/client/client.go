@@ -77,6 +77,14 @@ type VerifierInterface interface {
 	VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error)
 	// VerifyMapRevision verifies that the map revision is correctly signed and included in the log.
 	VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error)
+	//
+	// Pair Verifiers
+	//
+
+	// VerifyGetUser verifies the request and response to the GetUser API.
+	VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
+	// VerifyBatchGetUser verifies the request and response to the BatchGetUser API.
+	VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
 }
 
 // ReduceMutationFn takes all the mutations for an index and an auxiliary input
