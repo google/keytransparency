@@ -61,13 +61,14 @@ type Verifier struct {
 
 // New creates a new instance of the client verifier.
 func New(vrf vrf.PublicKey,
-	mapVerifier *tclient.MapVerifier,
-	logVerifier *tclient.LogVerifier) *Verifier {
+	mv *tclient.MapVerifier,
+	lv *tclient.LogVerifier,
+	lt LogTracker) *Verifier {
 	return &Verifier{
 		vrf:     vrf,
-		mv:      mapVerifier,
-		lv:      logVerifier,
-		lt:      tracker.New(logVerifier),
+		mv:      mv,
+		lv:      lv,
+		lt:      lt,
 		verbose: log.New(ioutil.Discard, "", 0),
 	}
 }
@@ -90,7 +91,7 @@ func NewFromDirectory(config *pb.Directory) (*Verifier, error) {
 		return nil, fmt.Errorf("error parsing vrf public key: %v", err)
 	}
 
-	return New(vrfPubKey, mapVerifier, logVerifier), nil
+	return New(vrfPubKey, mapVerifier, logVerifier, tracker.New(logVerifier)), nil
 }
 
 // Index computes the index from a VRF proof.
@@ -163,13 +164,13 @@ func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	return nil
 }
 
+// LastVerifiedLogRoot returns a LogRootRequest for making an RPC
 func (v *Verifier) LastVerifiedLogRoot() *pb.LogRootRequest {
 	return v.lt.LastVerifiedLogRoot()
 }
 
 // VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
 func (v *Verifier) VerifyLogRoot(req *pb.LogRootRequest, slr *pb.LogRoot) (*types.LogRootV1, error) {
-	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
 	return v.lt.VerifyLogRoot(req, slr)
 }
