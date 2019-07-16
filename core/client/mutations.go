@@ -44,23 +44,7 @@ func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out c
 	wait := time.NewTicker(c.RetryDelay).C
 	for i := startRevision; ; {
 		// time out if we exceed the poll period:
-		c.trustedLock.Lock()
-		revision, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
-			DirectoryId:          c.DirectoryID,
-			Revision:             i,
-			LastVerifiedTreeSize: int64(c.trusted.TreeSize),
-		})
-
-		lr, err := c.VerifyLogRoot(c.trusted, revision.GetLatestLogRoot())
-		if err != nil {
-			return err
-		}
-		c.updateTrusted(lr)
-		c.trustedLock.Unlock()
-		mapRoot, err := c.VerifyMapRevision(lr, revision.GetMapRoot())
-		if err != nil {
-			return err
-		}
+		mr, err := c.VerifiedGetRevision(ctx, i)
 
 		// If this revision was not found, wait and retry.
 		if s, _ := status.FromError(err); s.Code() == codes.NotFound {
@@ -72,14 +56,14 @@ func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out c
 				continue
 			}
 		} else if err != nil {
-			glog.Warningf("GetRevision(%v): %v", err)
+			glog.Warningf("GetRevision(%v): %v", i, err)
 			return err
 		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case out <- mapRoot:
+		case out <- mr:
 			i++
 		}
 	}
