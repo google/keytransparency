@@ -226,9 +226,6 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 	// Collect a list of valid GetUserResponses
 	transcript := []*tpb.Action{}
 
-	// Start with an empty trusted log root
-	slr := &types.LogRootV1{}
-
 	for _, tc := range []struct {
 		desc           string
 		wantProfile    []byte
@@ -303,17 +300,17 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			reqSLR := *slr
+			logReq := cli.LastVerifiedLogRoot()
 			req := &pb.GetUserRequest{
 				DirectoryId:          env.Directory.DirectoryId,
 				UserId:               tc.userID,
-				LastVerifiedTreeSize: int64(slr.TreeSize),
+				LastVerifiedTreeSize: logReq.TreeSize,
 			}
 			resp, err := env.Cli.GetUser(ctx, req)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := env.Client.VerifyGetUser(*slr, req, resp); err != nil {
+			if err := cli.VerifyGetUser(logReq, req, resp); err != nil {
 				t.Fatal(err)
 			}
 			if got, want := resp.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
@@ -321,11 +318,8 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 			}
 
 			transcript = append(transcript, &tpb.Action{
-				Desc: tc.desc,
-				LastVerifiedLogRoot: &pb.LogRootRequest{
-					TreeSize: int64(reqSLR.TreeSize),
-					RootHash: reqSLR.RootHash,
-				},
+				Desc:                tc.desc,
+				LastVerifiedLogRoot: logReq,
 				ReqRespPair: &tpb.Action_GetUser{GetUser: &tpb.GetUser{
 					Request:  req,
 					Response: resp,
@@ -426,17 +420,17 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			for userID := range tc.wantProfiles {
 				userIDs = append(userIDs, userID)
 			}
-			slr := types.LogRootV1{}
+			logReq := cli.LastVerifiedLogRoot()
 			req := &pb.BatchGetUserRequest{
 				DirectoryId:          env.Directory.DirectoryId,
 				UserIds:              userIDs,
-				LastVerifiedTreeSize: int64(slr.TreeSize),
+				LastVerifiedTreeSize: logReq.TreeSize,
 			}
 			resp, err := env.Cli.BatchGetUser(cctx, req)
 			if err != nil {
 				t.Fatalf("BatchGetUser(): %v", err)
 			}
-			if err := env.Client.VerifyBatchGetUser(slr, req, resp); err != nil {
+			if err := cli.VerifyBatchGetUser(logReq, req, resp); err != nil {
 				t.Fatal(err)
 			}
 			for userID, leaf := range resp.MapLeavesByUserId {
@@ -446,11 +440,8 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			}
 
 			transcript = append(transcript, &tpb.Action{
-				Desc: tc.desc,
-				LastVerifiedLogRoot: &pb.LogRootRequest{
-					TreeSize: int64(slr.TreeSize),
-					RootHash: slr.RootHash,
-				},
+				Desc:                tc.desc,
+				LastVerifiedLogRoot: logReq,
 				ReqRespPair: &tpb.Action_BatchGetUser{
 					BatchGetUser: &tpb.BatchGetUser{
 						Request:  req,
