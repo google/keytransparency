@@ -24,7 +24,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/types"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -85,10 +84,8 @@ func main() {
 		glog.Exitf("Failed to initialize monitor: %v", err)
 	}
 
-	// TODO(gbelvin): persist trusted roots
-	trusted := types.LogRootV1{}
 	go func() {
-		if err := mon.ProcessLoop(ctx, trusted); err != nil {
+		if err := mon.ProcessLoop(ctx, 0); err != nil {
 			glog.Errorf("ProcessLoop: %v", err)
 		}
 	}()
