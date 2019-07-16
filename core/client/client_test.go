@@ -307,8 +307,8 @@ func (f *fakeVerifier) Index(vrfProof []byte, directoryID, userID string) ([]byt
 	return make([]byte, 32), nil
 }
 
-func (f *fakeVerifier) LastVerifiedTreeSize() int64 {
-	return 0
+func (f *fakeVerifier) LastVerifiedLogRoot() *pb.LogRootRequest {
+	return &pb.LogRootRequest{}
 }
 
 func (f *fakeVerifier) VerifyLogRoot(slr *pb.LogRoot) (*types.LogRootV1, error) {

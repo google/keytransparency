@@ -42,11 +42,14 @@ func NewFromSaved(lv *tclient.LogVerifier, lr types.LogRootV1) *LogTracker {
 	return &LogTracker{v: lv, trusted: lr}
 }
 
-// LastVerifiedTreeSize retrieves the tree size of the latest log root
+// LastVerifiedLogRoot retrieves the tree size of the latest log root
 // and it blocks further requests until VerifyRoot is called.
-func (l *LogTracker) LastVerifiedTreeSize() int64 {
+func (l *LogTracker) LastVerifiedLogRoot() *pb.LogRootRequest {
 	l.mu.Lock()
-	return int64(l.trusted.TreeSize)
+	return &pb.LogRootRequest{
+		TreeSize: int64(l.trusted.TreeSize),
+		RootHash: l.trusted.RootHash,
+	}
 }
 
 // VerifyLogRoot verifies root and updates the trusted root if it is newer.

@@ -29,7 +29,7 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.Map
 	req := &pb.GetUserRequest{
 		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
-		LastVerifiedTreeSize: c.LastVerifiedTreeSize(),
+		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
 	}
 	resp, err := c.cli.GetUser(ctx, req)
 	if err != nil {
@@ -57,7 +57,7 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.Map
 func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV1, *types.MapRootV1, error) {
 	resp, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
 		DirectoryId:          c.DirectoryID,
-		LastVerifiedTreeSize: c.LastVerifiedTreeSize(),
+		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -91,7 +91,7 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 	req := &pb.GetRevisionRequest{
 		DirectoryId:          c.DirectoryID,
 		Revision:             revision,
-		LastVerifiedTreeSize: c.LastVerifiedTreeSize(),
+		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
 	}
 	resp, err := c.cli.GetRevision(ctx, req)
 	if err != nil {
@@ -116,7 +116,7 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
 		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
-		LastVerifiedTreeSize: c.LastVerifiedTreeSize(),
+		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
 		Start:                start,
 		PageSize:             count,
 	})

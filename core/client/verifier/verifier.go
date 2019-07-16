@@ -46,7 +46,7 @@ var (
 )
 
 type LogTracker interface {
-	LastVerifiedTreeSize() int64
+	LastVerifiedLogRoot() *pb.LogRootRequest
 	VerifyLogRoot(root *pb.LogRoot) (*types.LogRootV1, error)
 }
 
@@ -163,8 +163,8 @@ func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	return nil
 }
 
-func (v *Verifier) LastVerifiedTreeSize() int64 {
-	return v.lt.LastVerifiedTreeSize()
+func (v *Verifier) LastVerifiedLogRoot() *pb.LogRootRequest {
+	return v.lt.LastVerifiedLogRoot()
 }
 
 // VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.

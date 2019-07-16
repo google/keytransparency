@@ -103,7 +103,7 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (
 	resp, err := c.cli.BatchGetUser(ctx, &pb.BatchGetUserRequest{
 		DirectoryId:          c.DirectoryID,
 		UserIds:              userIDs,
-		LastVerifiedTreeSize: c.LastVerifiedTreeSize(),
+		LastVerifiedTreeSize: c.LastVerifiedLogRoot().TreeSize,
 	})
 	if err != nil {
 		return nil, nil, err

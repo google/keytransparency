@@ -56,7 +56,7 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 			})
 			switch pair := rpc.ReqRespPair.(type) {
 			case *tpb.Action_GetUser:
-				v.LastVerifiedTreeSize()
+				v.LastVerifiedLogRoot()
 				if err := v.VerifyGetUser(trusted, pair.GetUser.Request, pair.GetUser.Response); err != nil {
 					t.Errorf("VerifyGetUser(): %v", err)
 				}
