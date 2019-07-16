@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/trillian"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/storage"
 	"github.com/google/trillian/types"
@@ -89,7 +88,7 @@ func (e *ErrList) Proto() []*statuspb.Status {
 	return errs
 }
 
-func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.SignedMapRoot, expectedNewRoot *types.MapRootV1) []error {
+func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot *types.MapRootV1) []error {
 	errs := ErrList{}
 	oldProofNodes := make(map[string][]byte)
 	newLeaves := make([]*merkle.HStar2LeafHash, 0, len(muts))
@@ -103,7 +102,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 
 		// verify that the provided leaf’s inclusion proof goes to revision e-1:
 		index := mut.GetLeafProof().GetLeaf().GetIndex()
-		if err := m.mapVerifier.VerifyMapLeafInclusion(oldRoot, mut.GetLeafProof()); err != nil {
+		if err := m.mapVerifier.VerifyMapLeafInclusionHash(oldRoot.RootHash, mut.GetLeafProof()); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid  map inclusion proof: %v", err).WithDetails(mut.GetLeafProof()))
 		}

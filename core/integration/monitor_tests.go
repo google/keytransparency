@@ -30,7 +30,6 @@ import (
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/types"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
@@ -124,13 +123,12 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 		}
 	}
 
-	trusted := types.LogRootV1{}
 	cctx, cancel := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err = mon.ProcessLoop(cctx, env.Directory.DirectoryId, trusted)
+		err = mon.ProcessLoop(cctx, 0)
 	}()
 	time.Sleep(env.Timeout)
 	cancel()

@@ -94,8 +94,8 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 
 // VerifiedGetRevision fetches the requested revision from the key server.
 // It also verifies the consistency of the latest log root against the last seen log root.
-// Returns the latest log root and the requested map root.
-func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*types.LogRootV1, *types.MapRootV1, error) {
+// Returns the requested map root.
+func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*types.MapRootV1, error) {
 	// Only one method should attempt to update the trusted root at time.
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
@@ -106,20 +106,20 @@ func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*type
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	lr, err := c.VerifyLogRoot(c.trusted, resp.GetLatestLogRoot())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	c.updateTrusted(lr)
 	mr, err := c.VerifyMapRevision(lr, resp.GetMapRoot())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return lr, mr, nil
+	return mr, nil
 }
 
 // VerifiedListHistory performs one list history operation, verifies and returns the results.
