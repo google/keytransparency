@@ -49,10 +49,10 @@ func (l *LogTracker) LastVerifiedTreeSize() int64 {
 	return int64(l.trusted.TreeSize)
 }
 
-// VerifyRoot verifies root and updates the trusted root if it is newer.
-// VerifyRoot unblocks the next call to LastVerifiedTreeSize.
+// VerifyLogRoot verifies root and updates the trusted root if it is newer.
+// VerifyLogRoot unblocks the next call to LastVerifiedTreeSize.
 // It is a run-time error if LastVerifiedTreeSize has not previously been called.
-func (l *LogTracker) VerifyRoot(root *pb.LogRoot) (*types.LogRootV1, error) {
+func (l *LogTracker) VerifyLogRoot(root *pb.LogRoot) (*types.LogRootV1, error) {
 	defer l.mu.Unlock()
 	logRoot, err := l.v.VerifyRoot(&l.trusted,
 		root.GetLogRoot(),

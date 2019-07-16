@@ -47,7 +47,7 @@ var (
 
 type LogTracker interface {
 	LastVerifiedTreeSize() int64
-	VerifyRoot(root *pb.LogRoot) (*types.LogRootV1, error)
+	VerifyLogRoot(root *pb.LogRoot) (*types.LogRootV1, error)
 }
 
 // Verifier is a client helper library for verifying request and responses.
@@ -171,7 +171,7 @@ func (v *Verifier) LastVerifiedTreeSize() int64 {
 func (v *Verifier) VerifyLogRoot(slr *pb.LogRoot) (*types.LogRootV1, error) {
 	// Verify consistency proof between root and newroot.
 	// TODO(gdbelvin): Gossip root.
-	return v.lt.VerifyRoot(slr)
+	return v.lt.VerifyLogRoot(slr)
 }
 
 // VerifyMapRevision verifies that the map revision is correctly signed and included in the append only log.

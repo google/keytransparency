@@ -68,12 +68,9 @@ var (
 
 // VerifierInterface is used to verify specific outputs from Key Transparency.
 type VerifierInterface interface {
+	verifier.LogTracker
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
-	// LastVerifiedTreeSize retrieves the tree size of the latest verified log root
-	LastVerifiedTreeSize() int64
-	// VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-	VerifyLogRoot(slr *pb.LogRoot) (*types.LogRootV1, error)
 	// VerifyMapRevision verifies that the map revision is correctly signed and included in the log.
 	VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error)
 	// VerifyMapLeaf verifies everything about a MapLeaf.
