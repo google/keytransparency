@@ -324,10 +324,10 @@ func (f *fakeVerifier) VerifyMapLeaf(directoryID, userID string,
 	return nil
 }
 
-func (f *fakeVerifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
+func (f *fakeVerifier) VerifyGetUser(logReq *pb.LogRootRequest, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
 	return nil
 }
 
-func (f *fakeVerifier) VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
+func (f *fakeVerifier) VerifyBatchGetUser(logReq *pb.LogRootRequest, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
 	return nil
 }

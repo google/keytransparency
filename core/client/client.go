@@ -80,9 +80,9 @@ type VerifierInterface interface {
 	//
 
 	// VerifyGetUser verifies the request and response to the GetUser API.
-	VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
+	VerifyGetUser(logReq *pb.LogRootRequest, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
 	// VerifyBatchGetUser verifies the request and response to the BatchGetUser API.
-	VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
+	VerifyBatchGetUser(logReq *pb.LogRootRequest, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
 }
 
 // ReduceMutationFn takes all the mutations for an index and an auxiliary input
