@@ -55,9 +55,13 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 			}
 			switch pair := rpc.ReqRespPair.(type) {
 			case *tpb.Action_GetUser:
-				_, smr, err := v.VerifyRevision(pair.GetUser.Response.Revision, trusted)
+				lr, err := v.VerifyLogRoot(trusted, pair.GetUser.Response.Revision.GetLatestLogRoot())
 				if err != nil {
-					t.Fatalf("VerifyRevision(): %v", err)
+					t.Fatalf("VerifyLogRoot(): %v", err)
+				}
+				smr, err := v.VerifyMapRevision(lr, pair.GetUser.Response.Revision.GetMapRoot())
+				if err != nil {
+					t.Fatalf("VerifyMapRevision(): %v", err)
 				}
 				if err := v.VerifyMapLeaf(
 					transcript.Directory.DirectoryId,
