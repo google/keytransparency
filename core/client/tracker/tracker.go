@@ -27,21 +27,26 @@ import (
 	tclient "github.com/google/trillian/client"
 )
 
+// UpdateTrustedPredicate return a bool indicating whether the local reference
+// for the latest SignedLogRoot should be updated.
+type UpdateTrustedPredicate func(cntRoot, newRoot types.LogRootV1) bool
+
 // LogTracker keeps a continuous series of consistent log roots.
 type LogTracker struct {
-	trusted types.LogRootV1
-	mu      sync.Mutex
-	v       *tclient.LogVerifier
+	trusted       types.LogRootV1
+	mu            sync.Mutex
+	v             *tclient.LogVerifier
+	updateTrusted UpdateTrustedPredicate
 }
 
 // New creates a log tracker from no trusted root.
 func New(lv *tclient.LogVerifier) *LogTracker {
-	return &LogTracker{v: lv}
+	return NewFromSaved(lv, types.LogRootV1{})
 }
 
 // NewFromSaved creates a log tracker from a previously saved trusted root.
 func NewFromSaved(lv *tclient.LogVerifier, lr types.LogRootV1) *LogTracker {
-	return &LogTracker{v: lv, trusted: lr}
+	return &LogTracker{v: lv, trusted: lr, updateTrusted: isNewer}
 }
 
 // LastVerifiedLogRoot retrieves the tree size of the latest log root
@@ -74,19 +79,25 @@ func (l *LogTracker) VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*t
 	if err != nil {
 		return nil, err
 	}
-	l.updateTrusted(logRoot)
+	if l.updateTrusted(l.trusted, *logRoot) {
+		l.trusted = *logRoot
+		glog.Infof("Trusted root updated to TreeSize %v", l.trusted.TreeSize)
+	}
 	return logRoot, nil
 }
 
-// updateTrusted sets the local reference for the latest SignedLogRoot
-// if newTrusted is newer than the current stored root.
-func (l *LogTracker) updateTrusted(newRoot *types.LogRootV1) bool {
-	if newRoot.TimestampNanos <= l.trusted.TimestampNanos ||
-		newRoot.TreeSize < l.trusted.TreeSize {
+// SetUpdatePredicate allows tests to have finer grained control over when
+// the trusted root is updated.
+func (l *LogTracker) SetUpdatePredicate(f UpdateTrustedPredicate) {
+	l.updateTrusted = f
+}
+
+// isNewer returns true when newRoot is newer than cntRoot.
+func isNewer(cntRoot, newRoot types.LogRootV1) bool {
+	if newRoot.TimestampNanos <= cntRoot.TimestampNanos ||
+		newRoot.TreeSize < cntRoot.TreeSize {
 		// The new root is older than the one we currently have.
 		return false
 	}
-	l.trusted = *newRoot
-	glog.Infof("Trusted root updated to TreeSize %v", l.trusted.TreeSize)
 	return true
 }
