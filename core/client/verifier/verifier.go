@@ -25,6 +25,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/types"
 	"github.com/kr/pretty"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/client/tracker"
 	"github.com/google/keytransparency/core/crypto/commitments"
@@ -106,6 +108,9 @@ func (v *Verifier) Index(vrfProof []byte, directoryID, userID string) ([]byte, e
 //  - Verify map inclusion proof.
 func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	in *pb.MapLeaf, mapRoot *types.MapRootV1) error {
+	if mapRoot == nil {
+		return status.Errorf(codes.Internal, "nil MapRoot")
+	}
 	glog.V(5).Infof("VerifyMapLeaf(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
 
 	// Unpack the merkle tree leaf value.
