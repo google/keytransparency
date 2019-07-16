@@ -88,7 +88,7 @@ func main() {
 	// TODO(gbelvin): persist trusted roots
 	trusted := types.LogRootV1{}
 	go func() {
-		if err := mon.ProcessLoop(ctx, *directoryID, trusted); err != nil {
+		if err := mon.ProcessLoop(ctx, trusted); err != nil {
 			glog.Errorf("ProcessLoop: %v", err)
 		}
 	}()

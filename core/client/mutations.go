@@ -39,13 +39,13 @@ type RevisionMutations struct {
 // StreamRevisions repeatedly fetches revisions and sends them to out until GetRevision
 // returns an error other than NotFound or until ctx.Done is closed.  When
 // GetRevision returns NotFound, it waits one pollPeriod before trying again.
-func (c *Client) StreamRevisions(ctx context.Context, directoryID string, startRevision int64, out chan<- *pb.Revision) error {
+func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out chan<- *pb.Revision) error {
 	defer close(out)
 	wait := time.NewTicker(c.RetryDelay).C
 	for i := startRevision; ; {
 		// time out if we exceed the poll period:
 		revision, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
-			DirectoryId:          directoryID,
+			DirectoryId:          c.DirectoryID,
 			Revision:             i,
 			LastVerifiedTreeSize: startRevision,
 		})
@@ -59,7 +59,7 @@ func (c *Client) StreamRevisions(ctx context.Context, directoryID string, startR
 				continue
 			}
 		} else if err != nil {
-			glog.Warningf("GetRevision(%v,%v): %v", directoryID, i, err)
+			glog.Warningf("GetRevision(%v): %v", err)
 			return err
 		}
 

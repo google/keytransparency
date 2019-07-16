@@ -108,15 +108,15 @@ func RevisionPairs(ctx context.Context, revisions <-chan *pb.Revision, pairs cha
 }
 
 // ProcessLoop continuously fetches mutations and processes them.
-func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted types.LogRootV1) error {
+func (m *Monitor) ProcessLoop(ctx context.Context, trusted types.LogRootV1) error {
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
 	revisions := make(chan *pb.Revision)
 	pairs := make(chan RevisionPair)
 
 	go func(ctx context.Context) {
-		err := m.cli.StreamRevisions(ctx, directoryID, int64(trusted.TreeSize), revisions)
-		glog.Errorf("StreamRevisions(%v): %v", directoryID, err)
+		err := m.cli.StreamRevisions(ctx, int64(trusted.TreeSize), revisions)
+		glog.Errorf("StreamRevisions(%v): %v", err)
 		errc <- err
 	}(cctx)
 	go func(ctx context.Context) {
