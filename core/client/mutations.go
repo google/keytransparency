@@ -39,16 +39,29 @@ type RevisionMutations struct {
 // StreamRevisions repeatedly fetches revisions and sends them to out until GetRevision
 // returns an error other than NotFound or until ctx.Done is closed.  When
 // GetRevision returns NotFound, it waits one pollPeriod before trying again.
-func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out chan<- *pb.Revision) error {
+func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out chan<- *types.MapRootV1) error {
 	defer close(out)
 	wait := time.NewTicker(c.RetryDelay).C
 	for i := startRevision; ; {
 		// time out if we exceed the poll period:
+		c.trustedLock.Lock()
 		revision, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
 			DirectoryId:          c.DirectoryID,
 			Revision:             i,
-			LastVerifiedTreeSize: startRevision,
+			LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 		})
+
+		lr, err := c.VerifyLogRoot(c.trusted, revision.GetLatestLogRoot())
+		if err != nil {
+			return err
+		}
+		c.updateTrusted(lr)
+		c.trustedLock.Unlock()
+		mapRoot, err := c.VerifyMapRevision(lr, revision.GetMapRoot())
+		if err != nil {
+			return err
+		}
+
 		// If this revision was not found, wait and retry.
 		if s, _ := status.FromError(err); s.Code() == codes.NotFound {
 			glog.Infof("Waiting for a new revision to appear")
@@ -66,7 +79,7 @@ func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out c
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case out <- revision:
+		case out <- mapRoot:
 			i++
 		}
 	}
