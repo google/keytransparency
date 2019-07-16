@@ -36,14 +36,15 @@ type RevisionMutations struct {
 	Mutations []*pb.MutationProof
 }
 
-// StreamRevisions repeatedly fetches revisions and sends them to out until GetRevision
-// returns an error other than NotFound or until ctx.Done is closed.  When
-// GetRevision returns NotFound, it waits one pollPeriod before trying again.
+// StreamRevisions repeatedly fetches revisions and sends them to out until
+// GetRevision returns an error other than NotFound or until ctx.Done is
+// closed.  When GetRevision returns NotFound, it waits one pollPeriod before
+// trying again.
 func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out chan<- *types.MapRootV1) error {
 	defer close(out)
-	wait := time.NewTicker(c.RetryDelay).C
+	wait := time.NewTicker(c.RetryDelay)
+	defer wait.Stop()
 	for i := startRevision; ; {
-		// time out if we exceed the poll period:
 		mr, err := c.VerifiedGetRevision(ctx, i)
 
 		// If this revision was not found, wait and retry.
@@ -52,7 +53,7 @@ func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out c
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-wait:
+			case <-wait.C:
 				continue
 			}
 		} else if err != nil {

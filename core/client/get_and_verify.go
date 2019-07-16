@@ -94,7 +94,7 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 
 // VerifiedGetRevision fetches the requested revision from the key server.
 // It also verifies the consistency of the latest log root against the last seen log root.
-// Returns the latest log root and the requested map root.
+// Returns the requested map root.
 func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*types.MapRootV1, error) {
 	// Only one method should attempt to update the trusted root at time.
 	c.trustedLock.Lock()
