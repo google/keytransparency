@@ -19,13 +19,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/monitorstorage"
 	"github.com/google/trillian"
-
 	"github.com/google/trillian/types"
-
-	"github.com/golang/glog"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tclient "github.com/google/trillian/client"
