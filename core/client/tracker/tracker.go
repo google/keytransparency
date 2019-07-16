@@ -32,8 +32,14 @@ type LogTracker struct {
 	v       *tclient.LogVerifier
 }
 
+// New creates a log tracker from no trusted root.
 func New(lv *tclient.LogVerifier) *LogTracker {
 	return &LogTracker{v: lv}
+}
+
+// NewFromSaved creates a log tracker from a previously saved trusted root.
+func NewFromSaved(lv *tclient.LogVerifier, lr types.LogRootV1) *LogTracker {
+	return &LogTracker{v: lv, trusted: lr}
 }
 
 // LastVerifiedTreeSize retrieves the tree size of the latest log root
