@@ -28,11 +28,12 @@ import (
 func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.MapRootV1, *pb.MapLeaf, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
-	resp, err := c.cli.GetUser(ctx, &pb.GetUserRequest{
+	req := &pb.GetUserRequest{
 		DirectoryId:          c.DirectoryID,
 		UserId:               userID,
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
-	})
+	}
+	resp, err := c.cli.GetUser(ctx, req)
 	if err != nil {
 		return nil, nil, err
 	}
