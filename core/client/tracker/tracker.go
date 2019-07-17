@@ -23,27 +23,32 @@ import (
 	"github.com/google/trillian/types"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tclient "github.com/google/trillian/client"
+	tpb "github.com/google/trillian"
 )
 
 // UpdateTrustedPredicate return a bool indicating whether the local reference
 // for the latest SignedLogRoot should be updated.
 type UpdateTrustedPredicate func(cntRoot, newRoot types.LogRootV1) bool
 
+// LogRootVerifier verifies trillian Log Root.
+type LogRootVerifier interface {
+	VerifyRoot(trusted *types.LogRootV1, newRoot *tpb.SignedLogRoot, consistency [][]byte) (*types.LogRootV1, error)
+}
+
 // LogTracker keeps a continuous series of consistent log roots.
 type LogTracker struct {
 	trusted       types.LogRootV1
-	v             *tclient.LogVerifier
+	v             LogRootVerifier
 	updateTrusted UpdateTrustedPredicate
 }
 
 // New creates a log tracker from no trusted root.
-func New(lv *tclient.LogVerifier) *LogTracker {
+func New(lv LogRootVerifier) *LogTracker {
 	return NewFromSaved(lv, types.LogRootV1{})
 }
 
 // NewFromSaved creates a log tracker from a previously saved trusted root.
-func NewFromSaved(lv *tclient.LogVerifier, lr types.LogRootV1) *LogTracker {
+func NewFromSaved(lv LogRootVerifier, lr types.LogRootV1) *LogTracker {
 	return &LogTracker{v: lv, trusted: lr, updateTrusted: isNewer}
 }
 
