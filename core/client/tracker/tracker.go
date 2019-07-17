@@ -16,11 +16,11 @@
 package tracker
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/types"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
@@ -71,7 +71,7 @@ func (l *LogTracker) logRootRequest() *pb.LogRootRequest {
 func (l *LogTracker) VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error) {
 	if want := l.logRootRequest(); !proto.Equal(req, want) {
 		glog.Warningf("logtracker: unexpected logRootRequest: %v, want %v", req, want)
-		return nil, fmt.Errorf("unexpected request %v, want %v", req, want)
+		return nil, status.Errorf(codes.InvalidArgument, "out of order VerifyLogRoot(%v, _), want %v", req, want)
 	}
 
 	logRoot, err := l.v.VerifyRoot(&l.trusted,
@@ -95,10 +95,13 @@ func (l *LogTracker) SetUpdatePredicate(f UpdateTrustedPredicate) {
 
 // isNewer returns true when newRoot is newer than cntRoot.
 func isNewer(cntRoot, newRoot types.LogRootV1) bool {
-	if newRoot.TimestampNanos <= cntRoot.TimestampNanos ||
-		newRoot.TreeSize < cntRoot.TreeSize {
-		// The new root is older than the one we currently have.
-		return false
+	if newRoot.TreeSize > cntRoot.TreeSize {
+		return true
 	}
-	return true
+	if newRoot.TreeSize == cntRoot.TreeSize &&
+		newRoot.TimestampNanos > cntRoot.TimestampNanos {
+		return true
+	}
+	// The new root is older or smaller than the one we currently have.
+	return false
 }
