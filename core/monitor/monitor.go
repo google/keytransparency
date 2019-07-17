@@ -36,7 +36,6 @@ import (
 // and for verifying its responses.
 type Monitor struct {
 	cli         *client.Client
-	logVerifier *tclient.LogVerifier
 	mapVerifier *tclient.MapVerifier
 	signer      *tcrypto.Signer
 	store       monitorstorage.Interface
@@ -47,10 +46,6 @@ func NewFromDirectory(cli pb.KeyTransparencyClient,
 	config *pb.Directory,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
-	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
-	if err != nil {
-		return nil, fmt.Errorf("could not initialize log verifier: %v", err)
-	}
 	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize map verifier: %v", err)
@@ -61,18 +56,16 @@ func NewFromDirectory(cli pb.KeyTransparencyClient,
 		return nil, fmt.Errorf("could not create kt client: %v", err)
 	}
 
-	return New(ktClient, logVerifier, mapVerifier, signer, store)
+	return New(ktClient, mapVerifier, signer, store)
 }
 
 // New creates a new instance of the monitor.
 func New(cli *client.Client,
-	logVerifier *tclient.LogVerifier,
 	mapVerifier *tclient.MapVerifier,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	return &Monitor{
 		cli:         cli,
-		logVerifier: logVerifier,
 		mapVerifier: mapVerifier,
 		signer:      signer,
 		store:       store,
