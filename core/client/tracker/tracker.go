@@ -16,6 +16,8 @@
 package tracker
 
 import (
+	"sync"
+
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/types"
@@ -30,7 +32,7 @@ import (
 // for the latest SignedLogRoot should be updated.
 type UpdateTrustedPredicate func(cntRoot, newRoot types.LogRootV1) bool
 
-// LogRootVerifier verifies trillian Log Root.
+// LogRootVerifier verifies a Trillian Log Root.
 type LogRootVerifier interface {
 	VerifyRoot(trusted *types.LogRootV1, newRoot *tpb.SignedLogRoot, consistency [][]byte) (*types.LogRootV1, error)
 }
@@ -40,6 +42,7 @@ type LogTracker struct {
 	trusted       types.LogRootV1
 	v             LogRootVerifier
 	updateTrusted UpdateTrustedPredicate
+	mu            sync.RWMutex
 }
 
 // New creates a log tracker from no trusted root.
@@ -52,9 +55,10 @@ func NewFromSaved(lv LogRootVerifier, lr types.LogRootV1) *LogTracker {
 	return &LogTracker{v: lv, trusted: lr, updateTrusted: isNewer}
 }
 
-// LastVerifiedLogRoot retrieves the tree size of the latest log root
-// and it blocks further requests until VerifyRoot is called.
+// LastVerifiedLogRoot retrieves the tree size of the latest log root.
 func (l *LogTracker) LastVerifiedLogRoot() *pb.LogRootRequest {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	return l.logRootRequest()
 }
 
@@ -66,9 +70,11 @@ func (l *LogTracker) logRootRequest() *pb.LogRootRequest {
 }
 
 // VerifyLogRoot verifies root and updates the trusted root if it is newer.
-// VerifyLogRoot unblocks the next call to LastVerifiedTreeSize.
-// req must come from LastVerifiedLogRoot()
+// req must be equal to the most recent value from LastVerifiedLogRoot().
+// If two clients race to VerifyLogRoot at the same time, if one of them updates the root, the other will fail.
 func (l *LogTracker) VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if want := l.logRootRequest(); !proto.Equal(req, want) {
 		glog.Warningf("logtracker: unexpected logRootRequest: %v, want %v", req, want)
 		return nil, status.Errorf(codes.InvalidArgument, "out of order VerifyLogRoot(%v, _), want %v", req, want)
