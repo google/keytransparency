@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package tracker verifies consistency proofs
+// Package tracker tracks log roots verifies consistency proofs between them.
 package tracker
 
 import (
@@ -28,16 +28,17 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-// UpdateTrustedPredicate return a bool indicating whether the local reference
+// UpdateTrustedPredicate returns a bool indicating whether the local reference
 // for the latest SignedLogRoot should be updated.
 type UpdateTrustedPredicate func(cntRoot, newRoot types.LogRootV1) bool
 
 // LogRootVerifier verifies a Trillian Log Root.
 type LogRootVerifier interface {
-	VerifyRoot(trusted *types.LogRootV1, newRoot *tpb.SignedLogRoot, consistency [][]byte) (*types.LogRootV1, error)
+	// VerifyRoot checks the signature of newRoot and the consistency proof if trusted.TreeSize != 0.
+	VerifyRoot(trusted *types.LogRootV1, newRoot *tpb.SignedLogRoot, proof [][]byte) (*types.LogRootV1, error)
 }
 
-// LogTracker keeps a continuous series of consistent log roots.
+// LogTracker tracks a series of consistent log roots.
 type LogTracker struct {
 	trusted       types.LogRootV1
 	v             LogRootVerifier
@@ -70,14 +71,14 @@ func (l *LogTracker) logRootRequest() *pb.LogRootRequest {
 }
 
 // VerifyLogRoot verifies root and updates the trusted root if it is newer.
-// req must be equal to the most recent value from LastVerifiedLogRoot().
+// state must be equal to the most recent value from LastVerifiedLogRoot().
 // If two clients race to VerifyLogRoot at the same time, if one of them updates the root, the other will fail.
-func (l *LogTracker) VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error) {
+func (l *LogTracker) VerifyLogRoot(state *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if want := l.logRootRequest(); !proto.Equal(req, want) {
-		glog.Warningf("logtracker: unexpected logRootRequest: %v, want %v", req, want)
-		return nil, status.Errorf(codes.InvalidArgument, "out of order VerifyLogRoot(%v, _), want %v", req, want)
+	if want := l.logRootRequest(); !proto.Equal(state, want) {
+		glog.Warningf("logtracker: unexpected logRootRequest: %v, want %v", state, want)
+		return nil, status.Errorf(codes.InvalidArgument, "out of order VerifyLogRoot(%v, _), want %v", state, want)
 	}
 
 	logRoot, err := l.v.VerifyRoot(&l.trusted,
@@ -93,8 +94,8 @@ func (l *LogTracker) VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*t
 	return logRoot, nil
 }
 
-// SetUpdatePredicate allows tests to have finer grained control over when
-// the trusted root is updated.
+// SetUpdatePredicate allows relying parties to have finer grained control over when the trusted root is updated.
+// It is legal to set the predicate at any time, but it makes the most sense to do so before any other calls.
 func (l *LogTracker) SetUpdatePredicate(f UpdateTrustedPredicate) {
 	l.updateTrusted = f
 }

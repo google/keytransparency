@@ -45,12 +45,15 @@ var (
 	ErrNilProof = errors.New("nil proof")
 )
 
+// LogTracker tracks a series of consistent log roots.
 type LogTracker interface {
+	// LastVerifiedLogRoot retrieves the tree size of the latest log root.
 	LastVerifiedLogRoot() *pb.LogRootRequest
+	// VerifyLogRoot verifies root and updates the trusted root if it is newer.
 	VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error)
 }
 
-// Verifier is a client helper library for verifying request and responses.
+// Verifier is a client helper library for verifying requests and responses.
 type Verifier struct {
 	vrf     vrf.PublicKey
 	mv      *tclient.MapVerifier
