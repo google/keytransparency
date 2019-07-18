@@ -210,6 +210,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 
 	cli, logTracker := NewClientWithTracker(t, env)
 	logTracker.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
+		// Only update occasionally in order to produce interesting consistency proofs.
 		return newRoot.TreeSize%5 == 1
 	})
 
@@ -354,6 +355,7 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 
 	cli, logTracker := NewClientWithTracker(t, env)
 	logTracker.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
+		// Only update occasionally in order to produce interesting consistency proofs.
 		return newRoot.TreeSize%5 == 1
 	})
 

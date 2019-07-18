@@ -50,7 +50,7 @@ type LogTracker interface {
 	// LastVerifiedLogRoot retrieves the tree size of the latest log root.
 	LastVerifiedLogRoot() *pb.LogRootRequest
 	// VerifyLogRoot verifies root and updates the trusted root if it is newer.
-	VerifyLogRoot(req *pb.LogRootRequest, root *pb.LogRoot) (*types.LogRootV1, error)
+	VerifyLogRoot(state *pb.LogRootRequest, newRoot *pb.LogRoot) (*types.LogRootV1, error)
 }
 
 // Verifier is a client helper library for verifying requests and responses.
