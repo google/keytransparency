@@ -1,8 +1,7 @@
 FROM golang:1.12 as build
 
 WORKDIR /go/src/github.com/google/keytransparency
-COPY go.mod .
-COPY go.sum .
+COPY go.mod go.sum ./
 
 ENV GO111MODULE=on
 RUN go mod download
