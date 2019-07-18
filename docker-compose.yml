@@ -30,10 +30,7 @@ services:
       - 9090:9090
 
   db:
-    image: us.gcr.io/key-transparency/db
-    build:
-      context: ../trillian
-      dockerfile: examples/deployment/docker/db_server/Dockerfile
+    image: gcr.io/trillian-opensource-ci/db_server
     restart: always
     ports:
       - "3306"
