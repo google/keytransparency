@@ -100,6 +100,7 @@ type Server struct {
 }
 
 // New creates a new instance of the key server.
+// revisionPageSize sets the maximum number of map revision to return per list API.
 func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	verifyMutation mutator.VerifyMutationFn,
