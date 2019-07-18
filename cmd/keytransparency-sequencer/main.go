@@ -169,6 +169,7 @@ func main() {
 		directoryStorage,
 		trillian.NewTrillianLogClient(lconn),
 		trillian.NewTrillianMapClient(mconn),
+		trillian.NewTrillianMapWriteClient(mconn),
 		mutations, mutations,
 		spb.NewKeyTransparencySequencerClient(conn),
 		prometheus.MetricFactory{}))
@@ -195,31 +196,52 @@ func main() {
 	go serveHTTPGateway(ctx, lis, dopts, grpcServer,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)
-	runSequencer(ctx, conn, mconn, directoryStorage)
+	runSequencer(ctx, conn, directoryStorage)
 
 	// Shutdown.
 	glog.Errorf("Signer exiting")
 }
 
-func runSequencer(ctx context.Context, conn, mconn *grpc.ClientConn,
+func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	directoryStorage dir.Storage) {
 	electionFactory, closeFactory := getElectionFactory()
 	defer closeFactory()
 	signer := sequencer.New(
 		spb.NewKeyTransparencySequencerClient(conn),
 		directoryStorage,
-		int32(*batchSize),
 		election.NewTracker(electionFactory, 1*time.Hour, prometheus.MetricFactory{}),
 	)
 
 	go signer.TrackMasterships(ctx)
 
-	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+		if err := signer.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
+			_, err := spb.NewKeyTransparencySequencerClient(conn).
+				UpdateMetrics(ctx, &spb.UpdateMetricsRequest{
+					DirectoryId:       dirID,
+					MaxUnappliedCount: 100000,
+				})
+			return err
+		}); err != nil {
+			glog.Errorf("UpdateMetrics(): %v", err)
+		}
+	})
+
+	if err := signer.AddAllDirectories(ctx); err != nil {
+		glog.Errorf("runSequencer(AddAllDirectories): %v", err)
+	}
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.AddAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)
 		}
-		if err := signer.RunBatchForAllMasterships(ctx); err != nil {
+		if err := signer.RunBatchForAllMasterships(ctx, int32(*batchSize)); err != nil {
 			glog.Errorf("PeriodicallyRun(RunBatchForAllMasterships): %v", err)
+		}
+	})
+
+	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+		if err := signer.PublishLogForAllMasterships(ctx); err != nil {
+			glog.Errorf("PeriodicallyRun(PublishRevisionsForAllMasterships): %v", err)
 		}
 	})
 }

@@ -18,36 +18,47 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-
-	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/mutator/entry"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tpb "github.com/google/trillian"
 )
 
 func TestJoin(t *testing.T) {
 	for _, tc := range []struct {
-		desc   string
-		leaves []*tpb.MapLeaf
-		msgs   []*mapper.IndexedUpdate
-		want   []*Joined
+		desc       string
+		leaves     []*entry.IndexedValue
+		msgs       []*entry.IndexedValue
+		want       []*Joined
+		wantMetric map[string]int
 	}{
 		{
 			desc:   "onerow",
-			leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
-			msgs:   []*mapper.IndexedUpdate{{Index: []byte("A"), Update: &pb.EntryUpdate{}}},
+			leaves: []*entry.IndexedValue{{Index: []byte("A"), Value: &pb.EntryUpdate{UserId: "bob"}}},
+			msgs:   []*entry.IndexedValue{{Index: []byte("A"), Value: &pb.EntryUpdate{}}},
 			want: []*Joined{{
-				Index:  []byte("A"),
-				Leaves: []*tpb.MapLeaf{{Index: []byte("A")}},
-				Msgs:   []*pb.EntryUpdate{{}},
+				Index:   []byte("A"),
+				Values1: []*pb.EntryUpdate{{UserId: "bob"}},
+				Values2: []*pb.EntryUpdate{{}},
 			}},
+			wantMetric: map[string]int{
+				"Join1": 1,
+				"Join2": 1,
+			},
 		},
 	} {
+		metrics := make(map[string]int)
 		t.Run(tc.desc, func(t *testing.T) {
-			got := Join(tc.leaves, tc.msgs)
+			got := make([]*Joined, 0)
+			for g := range Join(tc.leaves, tc.msgs, func(label string) { metrics[label]++ }) {
+				got = append(got, g)
+			}
 			if !cmp.Equal(got, tc.want) {
 				t.Errorf("Join(): %v, want %v\n diff: %v",
 					got, tc.want, cmp.Diff(got, tc.want))
+			}
+			if !cmp.Equal(metrics, tc.wantMetric) {
+				t.Errorf("metrics: %v, want %v\n diff: %v",
+					metrics, tc.wantMetric, cmp.Diff(metrics, tc.wantMetric))
 			}
 		})
 	}

@@ -62,7 +62,7 @@ func TestTokenEncodeDecode(t *testing.T) {
 				t.Errorf("DecodeToken(%v): %v", tc.token, err)
 			}
 			if !proto.Equal(&got, tc.want) {
-				t.Errorf("DecodeToken(%v): %v, want %v", tc.token, got, tc.want)
+				t.Errorf("DecodeToken(%v): %v, want %v", tc.token, &got, tc.want)
 			}
 		})
 	}

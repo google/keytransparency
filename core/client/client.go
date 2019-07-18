@@ -27,9 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/client/verifier"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/trillian"
 
 	"github.com/google/trillian/client/backoff"
 	"github.com/google/trillian/types"
@@ -41,7 +40,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
@@ -69,18 +67,33 @@ var (
 	Vlog = log.New(ioutil.Discard, "", 0)
 )
 
-// Verifier is used to verify specific outputs from Key Transparency.
-type Verifier interface {
+// VerifierInterface is used to verify specific outputs from Key Transparency.
+type VerifierInterface interface {
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
 	// VerifyMapLeaf verifies everything about a MapLeaf.
 	VerifyMapLeaf(directoryID, userID string, in *pb.MapLeaf, smr *types.MapRootV1) error
-	// VerifyRevision verifies that revision is correctly signed and included in the append only log.
-	// VerifyRevision also verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-	VerifyRevision(revision *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error)
-	// VerifySignedMapRoot verifies the signature on the SignedMapRoot.
-	VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error)
+	// VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
+	VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error)
+	// VerifyMapRevision verifies that the map revision is correctly signed and included in the log.
+	VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error)
+	//
+	// Pair Verifiers
+	//
+
+	// VerifyGetUser verifies the request and response to the GetUser API.
+	VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
+	// VerifyBatchGetUser verifies the request and response to the BatchGetUser API.
+	VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
 }
+
+// ReduceMutationFn takes all the mutations for an index and an auxiliary input
+// of existing mapleaf(s) returns a new map leaf.  ReduceMutationFn must be
+// idempotent, commutative, and associative. i.e. must produce the same output
+// regardless of input order or grouping, and it must be safe to run multiple
+// times.
+type ReduceMutationFn func(msgs []*pb.EntryUpdate, leaves []*pb.EntryUpdate,
+	emit func(*pb.EntryUpdate), emitErr func(error))
 
 // Client is a helper library for issuing updates to the key server.
 // Client Responsibilities
@@ -95,10 +108,10 @@ type Verifier interface {
 // - - Periodically query own keys. Do they match the private keys I have?
 // - - Sign key update requests.
 type Client struct {
-	Verifier
+	VerifierInterface
 	cli         pb.KeyTransparencyClient
 	DirectoryID string
-	mutate      mutator.ReduceMutationFn
+	reduce      ReduceMutationFn
 	RetryDelay  time.Duration
 	trusted     types.LogRootV1
 	trustedLock sync.Mutex
@@ -106,7 +119,7 @@ type Client struct {
 
 // NewFromConfig creates a new client from a config
 func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Directory) (*Client, error) {
-	ktVerifier, err := NewVerifierFromDirectory(config)
+	ktVerifier, err := verifier.NewFromDirectory(config)
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +135,13 @@ func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Directory) (*Cl
 func New(ktClient pb.KeyTransparencyClient,
 	directoryID string,
 	retryDelay time.Duration,
-	ktVerifier *RealVerifier) *Client {
+	ktVerifier VerifierInterface) *Client {
 	return &Client{
-		Verifier:    ktVerifier,
-		cli:         ktClient,
-		DirectoryID: directoryID,
-		mutate:      entry.MutateFn,
-		RetryDelay:  retryDelay,
+		VerifierInterface: ktVerifier,
+		cli:               ktClient,
+		DirectoryID:       directoryID,
+		reduce:            entry.ReduceFn,
+		RetryDelay:        retryDelay,
 	}
 }
 
@@ -148,9 +161,9 @@ func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
 
 // GetUser returns an entry if it exists, and nil if it does not.
 func (c *Client) GetUser(ctx context.Context, userID string, opts ...grpc.CallOption) (
-	[]byte, *types.LogRootV1, error) {
-	e, slr, err := c.VerifiedGetUser(ctx, userID)
-	return e.GetCommitted().GetData(), slr, err
+	*types.MapRootV1, []byte, error) {
+	smr, e, err := c.VerifiedGetUser(ctx, userID)
+	return smr, e.GetCommitted().GetData(), err
 }
 
 // PaginateHistory iteratively calls ListHistory to satisfy the start and end requirements.
@@ -232,7 +245,7 @@ func (m uint64Slice) Less(i, j int) bool { return m[i] < m[j] }
 
 // Update creates and submits a mutation for a user, and waits for it to appear.
 // Returns codes.FailedPrecondition if there was a race condition.
-func (c *Client) Update(ctx context.Context, u *tpb.User, signers []tink.Signer, opts ...grpc.CallOption) (*entry.Mutation, error) {
+func (c *Client) Update(ctx context.Context, u *User, signers []tink.Signer, opts ...grpc.CallOption) (*entry.Mutation, error) {
 	// 1. pb.User + ExistingEntry -> Mutation.
 	m, err := c.CreateMutation(ctx, u)
 	if err != nil {
@@ -262,22 +275,22 @@ func (c *Client) QueueMutation(ctx context.Context, m *entry.Mutation, signers [
 }
 
 // CreateMutation fetches the current index and value for a user and prepares a mutation.
-func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutation, error) {
-	e, _, err := c.VerifiedGetUser(ctx, u.UserId)
+func (c *Client) CreateMutation(ctx context.Context, u *User) (*entry.Mutation, error) {
+	smr, e, err := c.VerifiedGetUser(ctx, u.UserID)
 	if err != nil {
 		return nil, err
 	}
 	oldLeaf := e.GetMapInclusion().GetLeaf().GetLeafValue()
 	Vlog.Printf("Got current entry...")
 
-	index, err := c.Index(e.GetVrfProof(), c.DirectoryID, u.UserId)
+	index, err := c.Index(e.GetVrfProof(), c.DirectoryID, u.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	mutation := entry.NewMutation(index, c.DirectoryID, u.UserId)
+	mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
 
-	if err := mutation.SetPrevious(oldLeaf, true); err != nil {
+	if err := mutation.SetPrevious(smr.Revision, oldLeaf, true); err != nil {
 		return nil, err
 	}
 
@@ -285,7 +298,7 @@ func (c *Client) CreateMutation(ctx context.Context, u *tpb.User) (*entry.Mutati
 		return nil, err
 	}
 
-	if len(u.AuthorizedKeys.Key) != 0 {
+	if u.AuthorizedKeys != nil {
 		if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
 			return nil, err
 		}
@@ -322,12 +335,12 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		return nil, fmt.Errorf("nil mutation")
 	}
 	// Wait for STH to change.
-	if err := c.WaitForSTHUpdate(ctx, int64(c.trusted.TreeSize)+1); err != nil {
+	if err := c.WaitForSTHUpdate(ctx, m.MinApplyRevision()); err != nil {
 		return m, err
 	}
 
 	// GetUser.
-	e, _, err := c.VerifiedGetUser(ctx, m.UserID)
+	smr, e, err := c.VerifiedGetUser(ctx, m.UserID)
 	if err != nil {
 		return m, err
 	}
@@ -352,7 +365,7 @@ func (c *Client) waitOnceForUserUpdate(ctx context.Context, m *entry.Mutation) (
 		// To break the tie between two devices that are fighting
 		// each other, this error should be propagated back to the user.
 		copyPreviousLeafData := false
-		if err := m.SetPrevious(cntLeaf, copyPreviousLeafData); err != nil {
+		if err := m.SetPrevious(smr.Revision, cntLeaf, copyPreviousLeafData); err != nil {
 			return nil, fmt.Errorf("waitforupdate: SetPrevious(): %v", err)
 		}
 		return m, ErrRetry

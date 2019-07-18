@@ -201,8 +201,8 @@ func TestPaginateHistory(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			c := Client{
-				Verifier: &fakeVerifier{},
-				cli:      s.Client,
+				VerifierInterface: &fakeVerifier{},
+				cli:               s.Client,
 			}
 
 			_, values, err := c.PaginateHistory(ctx, userID, tc.start, tc.end)
@@ -312,11 +312,18 @@ func (f *fakeVerifier) VerifyMapLeaf(directoryID, userID string,
 	return nil
 }
 
-func (f *fakeVerifier) VerifyRevision(in *pb.Revision, trusted types.LogRootV1) (*types.LogRootV1, *types.MapRootV1, error) {
-	smr, err := f.VerifySignedMapRoot(in.MapRoot.MapRoot)
-	return &types.LogRootV1{}, smr, err
+func (f *fakeVerifier) VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error) {
+	return &types.LogRootV1{}, nil
 }
 
-func (f *fakeVerifier) VerifySignedMapRoot(smr *trillian.SignedMapRoot) (*types.MapRootV1, error) {
-	return &types.MapRootV1{Revision: uint64(smr.MapRoot[0])}, nil
+func (f *fakeVerifier) VerifyMapRevision(logRoot *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error) {
+	return &types.MapRootV1{Revision: uint64(smr.MapRoot.MapRoot[0])}, nil
+}
+
+func (f *fakeVerifier) VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
+	return nil
+}
+
+func (f *fakeVerifier) VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
+	return nil
 }

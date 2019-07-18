@@ -31,15 +31,14 @@ import (
 // trillianFactory creates verifying clients for Trillian
 type trillianFactory interface {
 	MapClient(ctx context.Context, dirID string) (trillianMap, error)
+	MapWriteClient(ctx context.Context, dirID string) (*MapWriteClient, error)
 	LogClient(ctx context.Context, dirID string) (trillianLog, error)
 }
 
 // trillianMap communicates with the Trilian map and verifies the responses.
 type trillianMap interface {
 	GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error)
-	SetLeavesAtRevision(ctx context.Context, rev int64, leaves []*tpb.MapLeaf, meta []byte) (*types.MapRootV1, error)
 	GetAndVerifyMapRootByRevision(ctx context.Context, rev int64) (*tpb.SignedMapRoot, *types.MapRootV1, error)
-	GetAndVerifyMapLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error)
 }
 
 // trillianLog communicates with the Trillian log and verifies the responses.
@@ -54,6 +53,21 @@ type Trillian struct {
 	directories directory.Storage
 	tmap        tpb.TrillianMapClient
 	tlog        tpb.TrillianLogClient
+	twrite      tpb.TrillianMapWriteClient
+}
+
+// MapWriteClient returns a connection to the map write API.
+func (t *Trillian) MapWriteClient(ctx context.Context, dirID string) (*MapWriteClient, error) {
+	directory, err := t.directories.Read(ctx, dirID, false)
+	if err != nil {
+		glog.Errorf("directories.Read(%v): %v", dirID, err)
+		return nil, status.Errorf(codes.Internal, "Cannot fetch directory info for %v", dirID)
+	}
+
+	return &MapWriteClient{
+		MapID:  directory.Map.TreeId,
+		twrite: t.twrite,
+	}, nil
 }
 
 // MapClient returns a verifying MapClient
@@ -82,6 +96,30 @@ func (t *Trillian) LogClient(ctx context.Context, dirID string) (trillianLog, er
 	// Create verifying log client.
 	trustedRoot := types.LogRootV1{} // TODO(gbelvin): Store and track trustedRoot.
 	return tclient.NewFromTree(t.tlog, directory.Log, trustedRoot)
+}
+
+type MapWriteClient struct {
+	MapID  int64
+	twrite tpb.TrillianMapWriteClient
+}
+
+func (c *MapWriteClient) GetLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error) {
+	mapLeaves, err := c.twrite.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
+		MapId:    c.MapID,
+		Revision: rev,
+		Index:    indexes,
+	})
+	return mapLeaves.GetLeaves(), err
+}
+
+func (c *MapWriteClient) WriteLeaves(ctx context.Context, rev int64, leaves []*tpb.MapLeaf, metadata []byte) error {
+	_, err := c.twrite.WriteLeaves(ctx, &tpb.WriteMapLeavesRequest{
+		MapId:          c.MapID,
+		Leaves:         leaves,
+		ExpectRevision: rev,
+		Metadata:       metadata,
+	})
+	return err
 }
 
 // MapClient interacts with the Trillian Map and verifies its responses.
@@ -140,4 +178,19 @@ func (c *MapClient) GetAndVerifyMapRootByRevision(ctx context.Context,
 		return nil, nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
 	}
 	return rawMapRoot, mapRoot, nil
+}
+
+// GetMapLeavesByRevisionNoProof returns the requested map leaves at a specific revision.
+// indexes may not contain duplicates.
+func (c *MapClient) GetMapLeavesByRevisionNoProof(ctx context.Context, revision int64, indexes [][]byte) ([]*tpb.MapLeaf, error) {
+	getResp, err := c.Conn.GetLeavesByRevisionNoProof(ctx, &tpb.GetMapLeavesByRevisionRequest{
+		MapId:    c.MapID,
+		Index:    indexes,
+		Revision: revision,
+	})
+	if err != nil {
+		s := status.Convert(err)
+		return nil, status.Errorf(s.Code(), "GetLeavesByRevisionNoProof(): %v", s.Message())
+	}
+	return getResp.Leaves, nil
 }

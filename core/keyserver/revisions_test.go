@@ -135,15 +135,15 @@ func TestListMutations(t *testing.T) {
 		token      string
 		pageSize   int32
 		start, end int64
-		wantNext   rtpb.ReadToken
+		wantNext   *rtpb.ReadToken
 		wantErr    bool
 	}{
-		{desc: "exact page", pageSize: 6, start: 2, end: 7},
-		{desc: "large page", pageSize: 10, start: 2, end: 7},
-		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: rtpb.ReadToken{LowWatermark: 6}},
-		{desc: "large page with token", token: MustEncodeToken(t, 3), pageSize: 10, start: 3, end: 7},
+		{desc: "exact page", pageSize: 6, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
+		{desc: "large page", pageSize: 10, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
+		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: &rtpb.ReadToken{LowWatermark: 6}},
+		{desc: "large page with token", token: MustEncodeToken(t, 3), pageSize: 10, start: 3, end: 7, wantNext: &rtpb.ReadToken{}},
 		{desc: "small page with token", token: MustEncodeToken(t, 3), pageSize: 2, start: 3, end: 5,
-			wantNext: rtpb.ReadToken{LowWatermark: 5}},
+			wantNext: &rtpb.ReadToken{LowWatermark: 5}},
 		{desc: "invalid page token", token: "some_token", pageSize: 0, wantErr: true},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -194,8 +194,8 @@ func TestListMutations(t *testing.T) {
 			if err := DecodeToken(resp.NextPageToken, &npt); err != nil {
 				t.Errorf("DecodeToken(): %v", err)
 			}
-			if !proto.Equal(&npt, &tc.wantNext) {
-				t.Errorf("resp.NextPageToken:%v-> %v, want %v", resp.NextPageToken, npt, tc.wantNext)
+			if !proto.Equal(&npt, tc.wantNext) {
+				t.Errorf("resp.NextPageToken:%v-> %v, want %v", resp.NextPageToken, &npt, tc.wantNext)
 			}
 		})
 	}

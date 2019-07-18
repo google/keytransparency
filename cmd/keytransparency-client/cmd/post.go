@@ -27,9 +27,8 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/crypto/tinkio"
-
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 )
 
 var (
@@ -99,10 +98,10 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
-		u := &tpb.User{
-			UserId:         userID,
+		u := &client.User{
+			UserID:         userID,
 			PublicKeyData:  profileData,
-			AuthorizedKeys: authorizedKeys.Keyset(),
+			AuthorizedKeys: authorizedKeys,
 		}
 		timeout := viper.GetDuration("timeout")
 		cctx, cancel := context.WithTimeout(ctx, timeout)
@@ -121,6 +120,7 @@ func init() {
 
 	postCmd.PersistentFlags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 	postCmd.PersistentFlags().StringP("secret", "s", "", "Path to client secret json")
+	postCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
 	if err := viper.BindPFlag("client-secret", postCmd.PersistentFlags().Lookup("secret")); err != nil {
 		log.Fatalf("%v", err)
 	}

@@ -15,29 +15,24 @@
 package entry
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"github.com/google/keytransparency/core/crypto/commitments"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
-
-var nilHash = sha256.Sum256(nil)
 
 // Mutation provides APIs for manipulating entries.
 type Mutation struct {
 	UserID      string
 	data, nonce []byte
 
-	prevEntry       *pb.Entry
+	prevRev         uint64
 	prevSignedEntry *pb.SignedEntry
 	entry           *pb.Entry
 	signedEntry     *pb.SignedEntry
@@ -52,19 +47,25 @@ func NewMutation(index []byte, directoryID, userID string) *Mutation {
 	return &Mutation{
 		UserID: userID,
 		entry: &pb.Entry{
-			Index:    index,
-			Previous: nilHash[:],
+			Index: index,
 		},
 	}
 }
 
-// SetPrevious sets the previous hash.
+// SetPrevious adds a check-set constraint on the mutation which is useful when performing a get-modify-set operation.
+//
+// If Previous is set, the server will verify that the *current* value matches the Previous hash in this mutation.
+// If the hash is missmatched, the server will not apply the mutation.
+// If Previous is unset, the server will not perform this check.
+//
 // If copyPrevious is true, AuthorizedKeys and Commitment are also copied.
-func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
+// oldValueRevision is the map revision that oldValue was fetched at.
+func (m *Mutation) SetPrevious(oldValueRevision uint64, oldValue []byte, copyPrevious bool) error {
 	prevSignedEntry, err := FromLeafValue(oldValue)
 	if err != nil {
 		return err
 	}
+	m.prevRev = oldValueRevision
 	m.prevSignedEntry = prevSignedEntry
 
 	hash := sha256.Sum256(prevSignedEntry.GetEntry())
@@ -75,10 +76,18 @@ func (m *Mutation) SetPrevious(oldValue []byte, copyPrevious bool) error {
 		return err
 	}
 	if copyPrevious {
-		m.entry.AuthorizedKeys = prevEntry.GetAuthorizedKeys()
+		m.entry.AuthorizedKeyset = prevEntry.GetAuthorizedKeyset()
 		m.entry.Commitment = prevEntry.GetCommitment()
 	}
 	return nil
+}
+
+// MinApplyRevision returns the minimum revision that a client can reasonably
+// expect this mutation to be applied in.  Clients should wait until a current
+// map revision > MinApplyRevision before attempting to verify that a mutation
+// has succeeded.
+func (m *Mutation) MinApplyRevision() int64 {
+	return int64(m.prevRev) + 1
 }
 
 // SetCommitment updates entry to be a commitment to data.
@@ -96,13 +105,12 @@ func (m *Mutation) SetCommitment(data []byte) error {
 
 // ReplaceAuthorizedKeys sets authorized keys to pubkeys.
 // pubkeys must contain at least one key.
-func (m *Mutation) ReplaceAuthorizedKeys(pubkeys *tinkpb.Keyset) error {
-	// Make sure that pubkeys is a valid keyset.
-	if _, err := keyset.NewHandleWithNoSecrets(pubkeys); err != nil {
-		return err
+func (m *Mutation) ReplaceAuthorizedKeys(handle *keyset.Handle) error {
+	var b bytes.Buffer
+	if err := handle.WriteWithNoSecrets(keyset.NewBinaryWriter(&b)); err != nil {
+		return nil
 	}
-
-	m.entry.AuthorizedKeys = pubkeys
+	m.entry.AuthorizedKeyset = b.Bytes()
 	return nil
 }
 
@@ -113,19 +121,9 @@ func (m *Mutation) SerializeAndSign(signers []tink.Signer) (*pb.EntryUpdate, err
 		return nil, err
 	}
 
-	// Check authorization.
-	if err := verifyKeys(m.prevEntry.GetAuthorizedKeys(), m.entry.GetAuthorizedKeys(),
-		mutation.Entry, mutation.Signatures); err != nil {
-		return nil, status.Errorf(codes.PermissionDenied,
-			"verifyKeys(oldKeys: %v, newKeys: %v, sigs: %v): %v",
-			len(m.prevEntry.GetAuthorizedKeys().GetKey()),
-			len(m.entry.GetAuthorizedKeys().GetKey()),
-			len(mutation.GetSignatures()), err)
-	}
-
 	// Sanity check the mutation's correctness.
 	if _, err := MutateFn(m.prevSignedEntry, mutation); err != nil {
-		return nil, fmt.Errorf("presign mutation check: %v", err)
+		return nil, err
 	}
 
 	return &pb.EntryUpdate{

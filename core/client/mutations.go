@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -35,58 +36,52 @@ type RevisionMutations struct {
 	Mutations []*pb.MutationProof
 }
 
-// StreamRevisions repeatedly fetches revisions and sends them to out until GetRevision
-// returns an error other than NotFound or until ctx.Done is closed.  When
-// GetRevision returns NotFound, it waits one pollPeriod before trying again.
-func (c *Client) StreamRevisions(ctx context.Context, directoryID string, startRevision int64, out chan<- *pb.Revision) error {
+// StreamRevisions repeatedly fetches revisions and sends them to out until
+// GetRevision returns an error other than NotFound or until ctx.Done is
+// closed.  When GetRevision returns NotFound, it waits one pollPeriod before
+// trying again.
+func (c *Client) StreamRevisions(ctx context.Context, startRevision int64, out chan<- *types.MapRootV1) error {
 	defer close(out)
-	wait := time.NewTicker(c.RetryDelay).C
+	wait := time.NewTicker(c.RetryDelay)
+	defer wait.Stop()
 	for i := startRevision; ; {
-		// time out if we exceed the poll period:
-		revision, err := c.cli.GetRevision(ctx, &pb.GetRevisionRequest{
-			DirectoryId:          directoryID,
-			Revision:             i,
-			LastVerifiedTreeSize: startRevision,
-		})
+		mr, err := c.VerifiedGetRevision(ctx, i)
+
 		// If this revision was not found, wait and retry.
 		if s, _ := status.FromError(err); s.Code() == codes.NotFound {
 			glog.Infof("Waiting for a new revision to appear")
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-wait:
+			case <-wait.C:
 				continue
 			}
 		} else if err != nil {
-			glog.Warningf("GetRevision(%v,%v): %v", directoryID, i, err)
+			glog.Warningf("GetRevision(%v): %v", i, err)
 			return err
 		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case out <- revision:
+		case out <- mr:
 			i++
 		}
 	}
 }
 
 // RevisionMutations fetches all the mutations in an revision
-func (c *Client) RevisionMutations(ctx context.Context, revision *pb.Revision) ([]*pb.MutationProof, error) {
-	mapRoot, err := c.VerifySignedMapRoot(revision.GetMapRoot().GetMapRoot())
-	if err != nil {
-		return nil, err
-	}
+func (c *Client) RevisionMutations(ctx context.Context, mapRoot *types.MapRootV1) ([]*pb.MutationProof, error) {
 	mutations := []*pb.MutationProof{}
 	token := ""
 	for {
 		resp, err := c.cli.ListMutations(ctx, &pb.ListMutationsRequest{
-			DirectoryId: revision.GetDirectoryId(),
+			DirectoryId: c.DirectoryID,
 			Revision:    int64(mapRoot.Revision),
 			PageToken:   token,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("list mutations on %v: %v", revision.GetDirectoryId(), err)
+			return nil, fmt.Errorf("list mutations on %v: %v", c.DirectoryID, err)
 		}
 		mutations = append(mutations, resp.GetMutations()...)
 		token = resp.GetNextPageToken()

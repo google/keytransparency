@@ -55,6 +55,7 @@ func init() {
 	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1000, "Number of parallel workers. Best when workers = QPS * timeout")
 	hammerCmd.Flags().IntVar(&maxOperations, "operations", 10000, "Number of operations")
 	hammerCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
+	hammerCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
 }
 
 // hammerCmd represents the post command

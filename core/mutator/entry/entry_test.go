@@ -19,7 +19,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/google/go-cmp/cmp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tpb "github.com/google/trillian"
 )
 
 const (
@@ -70,6 +72,42 @@ func TestFromLeafValue(t *testing.T) {
 			}
 			if !proto.Equal(got, tc.want) {
 				t.Errorf("FromLeafValue(%v): \n%#v, want \n%#v", tc.leafVal, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIndexedValue(t *testing.T) {
+	iv := &IndexedValue{
+		Index: []byte("index"),
+		Value: &pb.EntryUpdate{
+			Mutation:  &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Commitment: []byte{1, 2}})},
+			Committed: &pb.Committed{},
+		},
+	}
+	leaf, err := iv.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal failed: %v", err)
+	}
+
+	for _, tc := range []struct {
+		desc    string
+		mapLeaf *tpb.MapLeaf
+		want    *IndexedValue
+		wantErr bool
+	}{
+		{desc: "empty leaf", mapLeaf: &tpb.MapLeaf{Index: []byte("index")}, want: &IndexedValue{Index: []byte("index")}},
+		{desc: "invalid", mapLeaf: &tpb.MapLeaf{LeafValue: []byte{2, 2, 2, 2, 2, 2}}, want: &IndexedValue{}, wantErr: true},
+		{desc: "valid", mapLeaf: leaf, want: iv},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := &IndexedValue{}
+			if err := got.Unmarshal(tc.mapLeaf); (err != nil) != tc.wantErr {
+				t.Fatalf("Unmarshal(%v): %v, wantErr %v", tc.mapLeaf, err, tc.wantErr)
+			}
+			if !cmp.Equal(got, tc.want, cmp.Comparer(proto.Equal)) {
+				t.Errorf("Unmarshal(%v): \n%#v, want \n%#v, diff:\n%v",
+					tc.mapLeaf, got, tc.want, cmp.Diff(got, tc.want))
 			}
 		})
 	}

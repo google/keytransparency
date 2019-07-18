@@ -25,7 +25,6 @@ option go_package = "github.com/google/keytransparency/core/api/v1/keytransparen
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "tink.proto";
 import "trillian.proto";
 import "trillian_map_api.proto";
 import "v1/admin.proto";
@@ -62,12 +61,12 @@ message Entry {
   bytes index = 3;
   // commitment is a cryptographic commitment to arbitrary data.
   bytes commitment = 6;
-  // authorized_keys is the set of keys allowed to sign updates for this entry.
-  crypto.tink.Keyset authorized_keys = 7;
+  // authorized_keys is the tink keyset that validates the signatures on the next entry.
+  bytes authorized_keyset = 9;
   // previous contains the SHA256 hash of SignedEntry.Entry the last time it was modified.
   bytes previous = 8;
   // Deprecated tag numbers, do not reuse.
-  reserved 1, 2, 4, 5;
+  reserved 1, 2, 4, 5, 7;
 }
 
 // SignedEntry is a cryptographically signed Entry.
@@ -337,6 +336,14 @@ message MapRoot {
   // log_inclusion proves that map_root is part of log_root at
   // index=map_root.MapRevision.
   repeated bytes log_inclusion = 2;
+}
+
+// LogRootRequest contains the information needed to request and verify LogRoot.
+message LogRootRequest {
+  // root_hash is the root hash of the last log root the client verified.
+  bytes root_hash = 1;
+  // tree_size is the tree size of the last log root the client verified.
+  int64 tree_size = 2;
 }
 
 // LogRoot contains the latest log root and its consistency proof.

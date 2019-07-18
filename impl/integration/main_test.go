@@ -16,23 +16,17 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
-	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/storage/testdb"
+
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
-var (
-	generate    = flag.Bool("generate", false, "Defines if test vectors should be generated")
-	testdataDir = flag.String("testdata", "../../core/testdata", "The directory in which to place the generated test data")
-)
+var generate = flag.Bool("generate", false, "Defines if test vectors should be generated")
 
 // TestIntegration runs all KeyTransparency integration tests.
 func TestIntegration(t *testing.T) {
@@ -48,48 +42,21 @@ func TestIntegration(t *testing.T) {
 			}
 
 			defer env.Close()
-			func() {
-				// Cancel the test function context (and thus
-				// exit any background sequencer loops)
-				// *before* shutting down the server and
-				// canceling the master context.
-				ctx, cancel := context.WithCancel(ctx)
-				defer cancel()
-				resps := test.Fn(ctx, env.Env, t)
-				if *generate && resps != nil {
-					if err = SaveTestVectors(*testdataDir, test.DirectoryFilename, test.RespFilename, env.Env, resps); err != nil {
-						t.Fatalf("saveTestVectors() failed: %v", err)
-					}
+			cctx, cancel := context.WithCancel(ctx)
+			actions := test.Fn(cctx, env.Env, t)
+			// Cancel the test function context (and thus exit any
+			// background sequencer loops) *before* shutting down
+			// the server and canceling the master context.
+			cancel()
+			if *generate {
+				if err := testdata.WriteTranscript(test.Name, &tpb.Transcript{
+					Description: test.Name,
+					Directory:   env.Env.Directory,
+					Actions:     actions,
+				}); err != nil {
+					t.Fatalf("WriteTranscript() failed: %v", err)
 				}
-			}()
+			}
 		})
 	}
-}
-
-// SaveTestVectors generates test vectors for interoprability testing.
-func SaveTestVectors(dir, directoryFilename, responseFilename string, env *integration.Env, resps []testdata.ResponseVector) error {
-	marshaler := &jsonpb.Marshaler{
-		Indent: "\t",
-	}
-	// Output all key material needed to verify the test vectors.
-	directoryFile := dir + "/" + directoryFilename
-	f, err := os.Create(directoryFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if err := marshaler.Marshal(f, env.Directory); err != nil {
-		return fmt.Errorf("jsonpb.Marshal(): %v", err)
-	}
-
-	// Save list of responses
-	respFile := dir + "/" + responseFilename
-	out, err := json.MarshalIndent(resps, "", "\t")
-	if err != nil {
-		return fmt.Errorf("json.Marshal(): %v", err)
-	}
-	if err := ioutil.WriteFile(respFile, out, 0666); err != nil {
-		return fmt.Errorf("writeFile(%v): %v", respFile, err)
-	}
-	return nil
 }

@@ -1,27 +1,27 @@
 language: go
 go:
 - 1.x
-dist: trusty
+dist: xenial
+
+go_import_path: github.com/google/keytransparency
+
 services:
 - docker-ce
 cache:
   directories:
   - "$HOME/gcloud/"
+  - "$HOME/gopath/pkg/mod"
 env:
   global:
   - DOCKER_COMPOSE_VERSION="1.13.0"
   - PATH=$PATH:${HOME}/google-cloud-sdk/bin
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-
-addons:
-  apt:
-    packages:
-    - python3-pip
+  - GO111MODULE=on
 
 before_install:
   - |
     if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
-        mkdir -p $HOME/gcloud 
+        mkdir -p $HOME/gcloud
         wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud
         cd $HOME/gcloud
         tar xzf google-cloud-sdk.tar.gz;
@@ -31,18 +31,22 @@ before_install:
   - source "$HOME/gcloud/google-cloud-sdk/path.bash.inc"
   - gcloud -q components update
   - gcloud -q version
+addons:
+  apt:
+    packages:
+    - python3-pip
 
 install:
   - gcloud -q components install kubectl
-  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.13.2
   - pip3 install -U --user docker-compose
-  - go get -t ./...
   - docker --version
   - docker-compose --version
+  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.16.0
+  - if [ "$GO111MODULE" = "auto" ]; then go get -t -v ./... ; fi
 
 script:
   - go build ./...
-  - golangci-lint run
+  - golangci-lint run --deadline=5m
   - go test ./... -coverprofile=coverage1.txt
   - go test ./impl/integration/ -coverprofile=coverage2.txt -coverpkg=./...
   - ./scripts/integration.sh

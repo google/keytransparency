@@ -1,7 +1,7 @@
 # Key Transparency
 
 [![GoDoc](https://godoc.org/github.com/google/keytransparency?status.svg)](https://godoc.org/github.com/google/keytransparency)
-[![Build Status](https://travis-ci.org/google/keytransparency.svg?branch=master)](https://travis-ci.org/google/keytransparency)
+[![Build Status](https://travis-ci.com/google/keytransparency.svg?branch=master)](https://travis-ci.com/google/keytransparency)
 [![Go Report Card](https://goreportcard.com/badge/github.com/google/keytransparency)](https://goreportcard.com/report/github.com/google/keytransparency)
 [![codecov](https://codecov.io/gh/google/keytransparency/branch/master/graph/badge.svg)](https://codecov.io/gh/google/keytransparency)
 
@@ -44,6 +44,9 @@ development.
   keytransparency-client authorized-keys create-keyset --password=${PASSWORD}
   keytransparency-client authorized-keys list-keyset --password=${PASSWORD}
   ```
+The `create-keyset` command will create a `.keyset` file in the user's working directory.
+To specify custom directory use `--keyset-file` or `-k` shortcut.
+
 NB A default for the Key Transparency server URL is being used here. The default value is "35.202.56.9:443". The flag `--kt-url` may be used to specify the URL of Key Transparency server explicitly.
 
 

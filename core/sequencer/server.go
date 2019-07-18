@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -30,9 +31,9 @@ import (
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
-	ktpb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -41,17 +42,24 @@ const (
 	directoryIDLabel = "directoryid"
 	logIDLabel       = "logid"
 	reasonLabel      = "reason"
+	fnLabel          = "fn"
 )
 
 var (
-	initMetrics      sync.Once
-	knownDirectories monitoring.Gauge
-	logEntryCount    monitoring.Counter
-	mapLeafCount     monitoring.Counter
-	mapRevisionCount monitoring.Counter
-	watermarkDefined monitoring.Gauge
-	watermarkApplied monitoring.Gauge
-	mutationFailures monitoring.Counter
+	initMetrics        sync.Once
+	knownDirectories   monitoring.Gauge
+	logEntryCount      monitoring.Counter
+	logEntryUnapplied  monitoring.Gauge
+	mapLeafCount       monitoring.Counter
+	fnCount            monitoring.Counter
+	mapRevisionCount   monitoring.Counter
+	watermarkWritten   monitoring.Gauge
+	watermarkDefined   monitoring.Gauge
+	watermarkApplied   monitoring.Gauge
+	mutationFailures   monitoring.Counter
+	fnLatency          monitoring.Histogram
+	logRootTrail       monitoring.Gauge
+	unappliedRevisions monitoring.Gauge
 )
 
 func createMetrics(mf monitoring.MetricFactory) {
@@ -63,14 +71,26 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"log_entry_count",
 		"Total number of log entries read since process start. Duplicates are not removed.",
 		directoryIDLabel, logIDLabel)
+	logEntryUnapplied = mf.NewGauge(
+		"log_entry_unapplied",
+		"Total number of log entries still to be processed in the queue.",
+		directoryIDLabel)
 	mapLeafCount = mf.NewCounter(
 		"map_leaf_count",
 		"Total number of map leaves written since process start. Duplicates are not removed.",
 		directoryIDLabel)
+	fnCount = mf.NewCounter(
+		"fn_count",
+		"Total number of mapping operations that have run since process start",
+		directoryIDLabel, fnLabel)
 	mapRevisionCount = mf.NewCounter(
 		"map_revision_count",
 		"Total number of map revisions written since process start.",
 		directoryIDLabel)
+	watermarkWritten = mf.NewGauge(
+		"watermark_written",
+		"High watermark of each input log that has been written",
+		directoryIDLabel, logIDLabel)
 	watermarkDefined = mf.NewGauge(
 		"watermark_defined",
 		"High watermark of each input log that has been defined in the batch table",
@@ -83,6 +103,18 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"mutation_failures",
 		"Number of invalid mutations the signer has processed for directoryid since process start",
 		directoryIDLabel, reasonLabel)
+	fnLatency = mf.NewHistogram(
+		"apply_revision_latency",
+		"Latency of sequencer apply revision operation in seconds",
+		directoryIDLabel, fnLabel)
+	logRootTrail = mf.NewGauge(
+		"log_root_trail",
+		"How many revisions have not been published to the log",
+	)
+	unappliedRevisions = mf.NewGauge(
+		"unapplied_revisions",
+		"How many revisions have been defined but haven't been applied to the map",
+	)
 }
 
 // Watermarks is a map of watermarks by logID.
@@ -118,11 +150,13 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	batcher   Batcher
-	trillian  trillianFactory
-	logs      LogsReader
-	loopback  spb.KeyTransparencySequencerClient
-	BatchSize int32
+	directories         directory.Storage
+	batcher             Batcher
+	trillian            trillianFactory
+	logs                LogsReader
+	loopback            spb.KeyTransparencySequencerClient
+	BatchSize           int32
+	LogPublishBatchSize uint64
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -130,6 +164,7 @@ func NewServer(
 	directories directory.Storage,
 	tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
+	twrite tpb.TrillianMapWriteClient,
 	batcher Batcher,
 	logs LogsReader,
 	loopback spb.KeyTransparencySequencerClient,
@@ -137,16 +172,54 @@ func NewServer(
 ) *Server {
 	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
+		directories: directories,
 		trillian: &Trillian{
 			directories: directories,
 			tmap:        tmap,
 			tlog:        tlog,
+			twrite:      twrite,
 		},
-		batcher:   batcher,
-		logs:      logs,
-		loopback:  loopback,
-		BatchSize: 10000,
+		batcher:             batcher,
+		logs:                logs,
+		loopback:            loopback,
+		BatchSize:           10000,
+		LogPublishBatchSize: 10,
 	}
+}
+
+func (s *Server) UpdateMetrics(ctx context.Context, in *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
+	if err := s.unappliedMetric(ctx, in.DirectoryId, in.MaxUnappliedCount); err != nil {
+		glog.Errorf("unappliedMetric(%v): %v", in.DirectoryId, err)
+		return nil, err
+	}
+	return &spb.UpdateMetricsResponse{}, nil
+}
+
+// unappliedMetric updates the log_entryunapplied metric for directoryID
+func (s *Server) unappliedMetric(ctx context.Context, directoryID string, maxCount int32) error {
+	// Get the previous and current high water marks.
+	mapClient, err := s.trillian.MapClient(ctx, directoryID)
+	if err != nil {
+		return err
+	}
+	_, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return err
+	}
+	var lastMeta spb.MapMetadata
+	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
+		return err
+	}
+	// Query metadata about outstanding log items.
+	count, meta, err := s.HighWatermarks(ctx, directoryID, &lastMeta, maxCount)
+	if err != nil {
+		return status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
+	}
+	logEntryUnapplied.Set(float64(count), directoryID)
+	for _, source := range meta.Sources {
+		watermarkWritten.Set(float64(source.HighestExclusive), directoryID, fmt.Sprintf("%v", source.LogId))
+	}
+	return nil
 }
 
 // RunBatch runs the full sequence of steps (for one directory) nessesary to get a
@@ -164,22 +237,21 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, err
 	}
 
+	unappliedRevisions.Set(float64(len(defResp.OutstandingRevisions)))
+
+	var handledCount uint64
 	for _, rev := range defResp.OutstandingRevisions {
-		if _, err := s.loopback.ApplyRevision(ctx, &spb.ApplyRevisionRequest{
-			DirectoryId: in.DirectoryId,
-			Revision:    rev,
-		}); err != nil {
-			// Log the error and continue to publish any revsisions this run may have completed.
-			// This revision will be retried on the next execution of RunBatch.
-			glog.Errorf("ApplyRevision(dir: %v, rev: %v): %v", in.DirectoryId, rev, err)
+		if handledCount == s.LogPublishBatchSize {
+			// Only handle up to LogPublishBatchSize revisions per batch.
+			glog.Errorf("RunBatch - Too many outstanding revisions to apply: %d", len(defResp.OutstandingRevisions))
 			break
 		}
-	}
-
-	publishReq := &spb.PublishRevisionsRequest{DirectoryId: in.DirectoryId, Block: in.Block}
-	_, err = s.loopback.PublishRevisions(ctx, publishReq)
-	if err != nil {
-		return nil, err
+		revReq := &spb.ApplyRevisionRequest{DirectoryId: in.DirectoryId, Revision: rev}
+		_, err := s.loopback.ApplyRevision(ctx, revReq)
+		if err != nil {
+			return nil, err
+		}
+		handledCount++
 	}
 	return &empty.Empty{}, nil
 }
@@ -249,74 +321,99 @@ func (s *Server) DefineRevisions(ctx context.Context,
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
-// batchSize limits the number of messages to read from a log at one time.
-func (s *Server) readMessages(ctx context.Context, directoryID string, meta *spb.MapMetadata,
-	batchSize int32) ([]*mutator.LogMessage, error) {
-	msgs := make([]*mutator.LogMessage, 0)
-	for _, source := range meta.Sources {
-		low := source.LowestInclusive
-		high := source.HighestExclusive
-		// Loop until less than batchSize items are returned.
-		for count := batchSize; count == batchSize; {
-			batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, batchSize)
-			if err != nil {
-				return nil, status.Errorf(codes.Internal, "ReadLog(): %v", err)
-			}
-			count = int32(len(batch))
-			glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
-				directoryID, source.LogId, low, high, batchSize, count)
-			logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
-			for _, m := range batch {
-				msgs = append(msgs, m)
-				if m.ID > low {
-					low = m.ID
-				}
+// chunkSize limits the number of messages to read from a log at one time.
+func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
+	directoryID string, chunkSize int32,
+	emit func(*mutator.LogMessage)) error {
+
+	low := source.LowestInclusive
+	high := source.HighestExclusive
+	// Loop until less than chunkSize items are returned.
+	for count := chunkSize; count == chunkSize; {
+		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize)
+		if err != nil {
+			return fmt.Errorf("logs.ReadLog(): %v", err)
+		}
+		count = int32(len(batch))
+		glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
+			directoryID, source.LogId, low, high, chunkSize, count)
+		logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
+		for _, m := range batch {
+			emit(m)
+			if m.ID > low {
+				low = m.ID
 			}
 		}
 	}
-	return msgs, nil
+	return nil
 }
 
 // ApplyRevision applies the supplied mutations to the current map revision and creates a new revision.
 func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest) (*spb.ApplyRevisionResponse, error) {
+	start := time.Now()
+	defer func() { fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ApplyRevision") }()
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
+	fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ReadBatch")
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
 	}
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
-	msgs, err := s.readMessages(ctx, in.DirectoryId, meta, s.BatchSize)
+
+	incMetricFn := func(label string) { fnCount.Inc(in.DirectoryId, label) }
+
+	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta, incMetricFn)
+	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize, incMetricFn)
+	if err != nil {
+		mutationFailures.Inc(err.Error())
+		return nil, err
+	}
+
+	emitErrFn := func(err error) {
+		glog.Warning(err)
+		mutationFailures.Inc(in.DirectoryId, status.Code(err).String())
+	}
+	// Map Log Items
+	indexedValues := runner.DoMapLogItemsFn(entry.MapLogItemFn, logItems, emitErrFn, incMetricFn)
+
+	// Collect Indexes.
+	groupByIndex := make(map[string]bool)
+	for _, iv := range indexedValues {
+		groupByIndex[string(iv.Index)] = true
+	}
+	indexes := make([][]byte, 0, len(groupByIndex))
+	for i := range groupByIndex {
+		indexes = append(indexes, []byte(i))
+	}
+
+	// Read Map.
+	mapClient, err := s.trillian.MapWriteClient(ctx, in.DirectoryId)
+	if err != nil {
+		return nil, err
+	}
+	verifyLeafStart := time.Now()
+	leaves, err := mapClient.GetLeavesByRevision(ctx, in.Revision-1, indexes)
+	fnLatency.Observe(time.Since(verifyLeafStart).Seconds(), in.DirectoryId, "GetLeavesByRevision")
 	if err != nil {
 		return nil, err
 	}
 
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
+	computeStart := time.Now()
+	// Convert Trillian map leaves into indexed KT updates.
+	indexedLeaves, err := runner.DoMapMapLeafFn(mapper.MapMapLeafFn, leaves, incMetricFn)
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse mutations using the mutator for this directory.
-	indexes := make([][]byte, 0, len(msgs))
-	mutations := make([]*ktpb.EntryUpdate, 0, len(msgs))
-	for _, m := range msgs {
-		if err := entry.MapLogItemFn(m, func(index []byte, mutation *ktpb.EntryUpdate) {
-			indexes = append(indexes, index)
-			mutations = append(mutations, mutation)
-		}); err != nil {
-			return nil, err
-		}
-
-	}
-
-	leaves, err := mapClient.GetAndVerifyMapLeavesByRevision(ctx, in.Revision-1, indexes)
-	if err != nil {
-		return nil, err
-	}
+	// GroupByIndex.
+	joined := runner.Join(indexedLeaves, indexedValues, incMetricFn)
 
 	// Apply mutations to values.
-	newLeaves, err := runner.ApplyMutations(entry.MutateFn, mutations, leaves)
-	if err != nil {
-		return nil, err
-	}
+	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined, emitErrFn, incMetricFn)
+	glog.V(2).Infof("DoReduceFn reduced %v values on %v indexes", len(indexedValues), len(joined))
+
+	// Marshal new indexed values back into Trillian Map leaves.
+	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn, incMetricFn)
+	fnLatency.Observe(time.Since(computeStart).Seconds(), in.DirectoryId, "ProcessMutations")
 
 	// Serialize metadata
 	metadata, err := proto.Marshal(meta)
@@ -325,24 +422,25 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	}
 
 	// Set new leaf values.
-	mapRoot, err := mapClient.SetLeavesAtRevision(ctx, in.Revision, newLeaves, metadata)
+	setRevisionStart := time.Now()
+	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves, metadata)
+	fnLatency.Observe(time.Since(setRevisionStart).Seconds(), in.DirectoryId, "WriteLeaves")
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
+		return nil, err
 	}
-	glog.V(2).Infof("CreateRevision: SetLeaves:{Revision: %v}", mapRoot.Revision)
+	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
 
 	for _, s := range meta.Sources {
-		watermarkApplied.Set(float64(s.HighestExclusive),
-			in.DirectoryId, fmt.Sprintf("%v", s.LogId))
+		watermarkApplied.Set(float64(s.HighestExclusive), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
-	mapRevisionCount.Add(1, in.DirectoryId)
-	glog.Infof("ApplyRevision(): dir: %v, rev: %v, root: %x, mutations: %v, indexes: %v, newleaves: %v",
-		in.DirectoryId, mapRoot.Revision, mapRoot.RootHash, len(msgs), len(indexes), len(newLeaves))
+	mapRevisionCount.Inc(in.DirectoryId)
+	glog.Infof("ApplyRevision(): dir: %v, rev: %v, mutations: %v, indexes: %v, newleaves: %v",
+		in.DirectoryId, in.Revision, len(logItems), len(indexes), len(newLeaves))
 	return &spb.ApplyRevisionResponse{
 		DirectoryId: in.DirectoryId,
 		Revision:    in.Revision,
-		Mutations:   int64(len(mutations)),
+		Mutations:   int64(len(indexedValues)),
 		MapLeaves:   int64(len(newLeaves)),
 	}, nil
 }
@@ -373,7 +471,16 @@ func (s *Server) PublishRevisions(ctx context.Context,
 	// Add all unpublished map roots to the log.
 	revs := []int64{}
 	leaves := make(map[int64][]byte)
-	for rev := logRoot.TreeSize - 1; rev <= latestMapRoot.Revision; rev++ {
+
+	end := latestMapRoot.Revision
+	if batch := logRoot.TreeSize + s.LogPublishBatchSize; batch < end {
+		// Only publish up to LogPublishBatchSize log roots at a time.
+		// TODO: add a metric for delta between log and map roots.
+		glog.Errorf("PublishRevisions has too many revisions to catch up on: %d", latestMapRoot.Revision-logRoot.TreeSize)
+		end = batch
+	}
+	logRootTrail.Set(float64(latestMapRoot.Revision - logRoot.TreeSize))
+	for rev := logRoot.TreeSize - 1; rev <= end; rev++ {
 		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
 		if err != nil {
 			return nil, err
@@ -409,7 +516,7 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// from ranges of watermarks for the verifier's needs.
 	ends := map[int64]int64{}
 	starts := map[int64]int64{}
-	for _, source := range lastMeta.Sources {
+	for _, source := range lastMeta.GetSources() {
 		if ends[source.LogId] < source.HighestExclusive {
 			ends[source.LogId] = source.HighestExclusive
 			starts[source.LogId] = source.HighestExclusive
