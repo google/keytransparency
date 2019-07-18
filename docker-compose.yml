@@ -42,7 +42,7 @@ services:
       MYSQL_USER: test
       MYSQL_DATABASE: test
 
-    log-server:
+  log-server:
     depends_on:
       - db
     image: us.gcr.io/trillian/log-server:latest
