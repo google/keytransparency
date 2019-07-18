@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"log"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/google/keytransparency/core/client/verifier"
@@ -69,22 +68,21 @@ var (
 
 // VerifierInterface is used to verify specific outputs from Key Transparency.
 type VerifierInterface interface {
+	verifier.LogTracker
 	// Index computes the index of a userID from a VRF proof, obtained from the server.
 	Index(vrfProof []byte, directoryID, userID string) ([]byte, error)
-	// VerifyMapLeaf verifies everything about a MapLeaf.
-	VerifyMapLeaf(directoryID, userID string, in *pb.MapLeaf, smr *types.MapRootV1) error
-	// VerifyLogRoot verifies that revision.LogRoot is consistent with the last trusted SignedLogRoot.
-	VerifyLogRoot(trusted types.LogRootV1, slr *pb.LogRoot) (*types.LogRootV1, error)
 	// VerifyMapRevision verifies that the map revision is correctly signed and included in the log.
 	VerifyMapRevision(lr *types.LogRootV1, smr *pb.MapRoot) (*types.MapRootV1, error)
+	// VerifyMapLeaf verifies everything about a MapLeaf.
+	VerifyMapLeaf(directoryID, userID string, in *pb.MapLeaf, smr *types.MapRootV1) error
 	//
 	// Pair Verifiers
 	//
 
 	// VerifyGetUser verifies the request and response to the GetUser API.
-	VerifyGetUser(trusted types.LogRootV1, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
+	VerifyGetUser(logReq *pb.LogRootRequest, req *pb.GetUserRequest, resp *pb.GetUserResponse) error
 	// VerifyBatchGetUser verifies the request and response to the BatchGetUser API.
-	VerifyBatchGetUser(trusted types.LogRootV1, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
+	VerifyBatchGetUser(logReq *pb.LogRootRequest, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error
 }
 
 // ReduceMutationFn takes all the mutations for an index and an auxiliary input
@@ -113,8 +111,6 @@ type Client struct {
 	DirectoryID string
 	reduce      ReduceMutationFn
 	RetryDelay  time.Duration
-	trusted     types.LogRootV1
-	trustedLock sync.Mutex
 }
 
 // NewFromConfig creates a new client from a config
@@ -143,20 +139,6 @@ func New(ktClient pb.KeyTransparencyClient,
 		reduce:            entry.ReduceFn,
 		RetryDelay:        retryDelay,
 	}
-}
-
-// updateTrusted sets the local reference for the latest SignedLogRoot if
-// newTrusted is correctly signed and newer than the current stored root.
-// updateTrusted should be called while c.trustedLock has been acquired.
-func (c *Client) updateTrusted(newTrusted *types.LogRootV1) {
-	if newTrusted.TimestampNanos <= c.trusted.TimestampNanos ||
-		newTrusted.TreeSize < c.trusted.TreeSize {
-		// Valid root, but it's older than the one we currently have.
-		return
-	}
-	c.trusted = *newTrusted
-	glog.Infof("Trusted root updated to TreeSize %v", c.trusted.TreeSize)
-	Vlog.Printf("✓ Log root updated.")
 }
 
 // GetUser returns an entry if it exists, and nil if it does not.

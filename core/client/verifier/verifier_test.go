@@ -17,6 +17,7 @@ package verifier
 import (
 	"testing"
 
+	"github.com/google/keytransparency/core/client/tracker"
 	"github.com/google/keytransparency/core/testdata"
 	"github.com/google/trillian/types"
 
@@ -49,13 +50,14 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 
 	for _, rpc := range transcript.Actions {
 		t.Run(rpc.Desc, func(t *testing.T) {
-			trusted := types.LogRootV1{
+			v.lt = tracker.NewFromSaved(v.lv, types.LogRootV1{
 				TreeSize: uint64(rpc.LastVerifiedLogRoot.GetTreeSize()),
 				RootHash: rpc.LastVerifiedLogRoot.GetRootHash(),
-			}
+			})
 			switch pair := rpc.ReqRespPair.(type) {
 			case *tpb.Action_GetUser:
-				if err := v.VerifyGetUser(trusted, pair.GetUser.Request, pair.GetUser.Response); err != nil {
+				logReq := v.LastVerifiedLogRoot()
+				if err := v.VerifyGetUser(logReq, pair.GetUser.Request, pair.GetUser.Response); err != nil {
 					t.Errorf("VerifyGetUser(): %v", err)
 				}
 
