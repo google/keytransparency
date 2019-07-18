@@ -121,8 +121,9 @@ func main() {
 	tmap := trillian.NewTrillianMapClient(mconn)
 
 	// Create gRPC server.
+	var revisionPageSize int32 = 10
 	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, directories, logs, logs,
-		prometheus.MetricFactory{})
+		prometheus.MetricFactory{}, revisionPageSize)
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
