@@ -100,22 +100,20 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 // TODO(gbelvin): Verify that the returned map root is indeed the latest map root.
 func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (
 	*types.MapRootV1, map[string]*pb.MapLeaf, error) {
-	c.trustedLock.Lock()
-	defer c.trustedLock.Unlock()
+	logReq := c.LastVerifiedLogRoot()
 	resp, err := c.cli.BatchGetUser(ctx, &pb.BatchGetUserRequest{
 		DirectoryId:          c.DirectoryID,
 		UserIds:              userIDs,
-		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
+		LastVerifiedTreeSize: logReq.TreeSize,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	lr, err := c.VerifyLogRoot(c.trusted, resp.Revision.GetLatestLogRoot())
+	lr, err := c.VerifyLogRoot(logReq, resp.Revision.GetLatestLogRoot())
 	if err != nil {
 		return nil, nil, err
 	}
-	c.updateTrusted(lr)
 	smr, err := c.VerifyMapRevision(lr, resp.Revision.GetMapRoot())
 	if err != nil {
 		return nil, nil, err
