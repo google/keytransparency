@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright 2019 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package testdata contains data and data types for interoperability testing.
-package testdata
+package transcript_go_proto
 
-import (
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-)
-
-// GetUserResponseVector is a captured GetUserResponse that should verify without errors.
-type GetUserResponseVector struct {
-	Desc        string
-	UserID      string
-	Resp        *pb.GetUserResponse
-	TrustNewLog bool
-}
+//go:generate protoc -I=. -I=$GOPATH/src/github.com/google/keytransparency/core/api -I=$GOPATH/src/github.com/google/trillian/ -I=$GOPATH/src/github.com/googleapis/googleapis/  --go_out=,plugins=grpc:$GOPATH/src transcript.proto

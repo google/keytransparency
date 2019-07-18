@@ -21,8 +21,8 @@ import (
 
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/monitorstorage"
-
 	"github.com/google/trillian"
+
 	"github.com/google/trillian/types"
 
 	"github.com/golang/glog"
@@ -36,7 +36,6 @@ import (
 // and for verifying its responses.
 type Monitor struct {
 	cli         *client.Client
-	logVerifier *tclient.LogVerifier
 	mapVerifier *tclient.MapVerifier
 	signer      *tcrypto.Signer
 	store       monitorstorage.Interface
@@ -47,10 +46,6 @@ func NewFromDirectory(cli pb.KeyTransparencyClient,
 	config *pb.Directory,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
-	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
-	if err != nil {
-		return nil, fmt.Errorf("could not initialize log verifier: %v", err)
-	}
 	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize map verifier: %v", err)
@@ -61,18 +56,16 @@ func NewFromDirectory(cli pb.KeyTransparencyClient,
 		return nil, fmt.Errorf("could not create kt client: %v", err)
 	}
 
-	return New(ktClient, logVerifier, mapVerifier, signer, store)
+	return New(ktClient, mapVerifier, signer, store)
 }
 
 // New creates a new instance of the monitor.
 func New(cli *client.Client,
-	logVerifier *tclient.LogVerifier,
 	mapVerifier *tclient.MapVerifier,
 	signer *tcrypto.Signer,
 	store monitorstorage.Interface) (*Monitor, error) {
 	return &Monitor{
 		cli:         cli,
-		logVerifier: logVerifier,
 		mapVerifier: mapVerifier,
 		signer:      signer,
 		store:       store,
@@ -81,13 +74,13 @@ func New(cli *client.Client,
 
 // RevisionPair is two adjacent revisions.
 type RevisionPair struct {
-	A, B *pb.Revision
+	A, B *types.MapRootV1
 }
 
 // RevisionPairs consumes revisions (0, 1, 2) and produces pairs (0,1), (1,2).
-func RevisionPairs(ctx context.Context, revisions <-chan *pb.Revision, pairs chan<- RevisionPair) error {
+func RevisionPairs(ctx context.Context, revisions <-chan *types.MapRootV1, pairs chan<- RevisionPair) error {
 	defer close(pairs)
-	var revisionA *pb.Revision
+	var revisionA *types.MapRootV1
 	for revision := range revisions {
 		if revisionA == nil {
 			revisionA = revision
@@ -108,15 +101,15 @@ func RevisionPairs(ctx context.Context, revisions <-chan *pb.Revision, pairs cha
 }
 
 // ProcessLoop continuously fetches mutations and processes them.
-func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted types.LogRootV1) error {
+func (m *Monitor) ProcessLoop(ctx context.Context, startRev int64) error {
 	cctx, cancel := context.WithCancel(ctx)
 	errc := make(chan error)
-	revisions := make(chan *pb.Revision)
+	revisions := make(chan *types.MapRootV1)
 	pairs := make(chan RevisionPair)
 
 	go func(ctx context.Context) {
-		err := m.cli.StreamRevisions(ctx, directoryID, int64(trusted.TreeSize), revisions)
-		glog.Errorf("StreamRevisions(%v): %v", directoryID, err)
+		err := m.cli.StreamRevisions(ctx, startRev, revisions)
+		glog.Errorf("StreamRevisions(%v): %v", startRev, err)
 		errc <- err
 	}(cctx)
 	go func(ctx context.Context) {
@@ -127,12 +120,6 @@ func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted t
 	defer cancel()
 
 	for pair := range pairs {
-		_, mapRootB, err := m.cli.VerifyRevision(pair.B, trusted)
-		if err != nil {
-			glog.Errorf("Invalid Revision %v: %v", mapRootB.Revision, err)
-			return err
-		}
-
 		mutations, err := m.cli.RevisionMutations(ctx, pair.B)
 		if err != nil {
 			return err
@@ -141,24 +128,24 @@ func (m *Monitor) ProcessLoop(ctx context.Context, directoryID string, trusted t
 		var smr *trillian.SignedMapRoot
 		var errList []error
 
-		if errs := m.verifyMutations(mutations, pair.A.GetMapRoot().GetMapRoot(), mapRootB); len(errs) > 0 {
-			glog.Errorf("Invalid Revision %v Mutations: %v", mapRootB.Revision, errs)
+		if errs := m.verifyMutations(mutations, pair.A, pair.B); len(errs) > 0 {
+			glog.Errorf("Invalid Revision %v Mutations: %v", pair.B.Revision, errs)
 			errList = errs
 		} else {
 			// Sign if successful.
-			smr, err = m.signer.SignMapRoot(mapRootB)
+			smr, err = m.signer.SignMapRoot(pair.B)
 			if err != nil {
 				return err
 			}
 		}
 
 		// Save result.
-		if err := m.store.Set(int64(mapRootB.Revision), &monitorstorage.Result{
+		if err := m.store.Set(int64(pair.B.Revision), &monitorstorage.Result{
 			Smr:    smr,
 			Seen:   time.Now(),
 			Errors: errList,
 		}); err != nil {
-			return fmt.Errorf("monitorstorage.Set(%v, _): %v", mapRootB.Revision, err)
+			return fmt.Errorf("monitorstorage.Set(%v, _): %v", pair.B.Revision, err)
 		}
 	}
 	errA := <-errc

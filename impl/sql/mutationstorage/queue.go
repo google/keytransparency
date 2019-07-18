@@ -22,12 +22,22 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
+
+// SetWritable enables or disables new writes from going to logID.
+func (m *Mutations) SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error {
+	glog.Errorf("mutationstorage: SetWritable(%v, %v, enabled: %v)", directoryID, logID, enabled)
+	_, err := m.db.ExecContext(ctx,
+		`UPDATE Logs SET Enabled = ? WHERE DirectoryID = ? AND LogID = ?;`,
+		enabled, directoryID, logID)
+	return err
+}
 
 // AddLogs creates and adds new logs for writing to a directory.
 func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error {
@@ -46,27 +56,32 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 }
 
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
+// Returns the logID/watermark pair that was written, or nil if nothing was written.
 // TODO(gbelvin): Make updates a slice.
-func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) error {
+func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) (*keyserver.WriteWatermark, error) {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
 	if len(updates) == 0 {
-		return nil
+		return nil, nil
 	}
 	logID, err := m.randLog(ctx, directoryID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	updateData := make([][]byte, 0, len(updates))
 	for _, u := range updates {
 		data, err := proto.Marshal(u)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		updateData = append(updateData, data)
 	}
 	// TODO(gbelvin): Implement retry with backoff for retryable errors if
 	// we get timestamp contention.
-	return m.send(ctx, time.Now(), directoryID, logID, updateData...)
+	ts := time.Now()
+	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
+		return nil, err
+	}
+	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts.UnixNano()}, nil
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.

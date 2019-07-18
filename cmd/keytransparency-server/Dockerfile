@@ -1,13 +1,15 @@
-FROM golang:1
+FROM golang:1.12 as build
 
-ADD ./keytransparency /go/src/github.com/google/keytransparency
-ADD ./trillian /go/src/github.com/google/trillian
-WORKDIR /go/src/github.com/google/keytransparency 
+WORKDIR /go/src/github.com/google/keytransparency
+COPY . .
 
+ENV GO111MODULE=on
 RUN go get -tags="mysql" ./cmd/keytransparency-server
 
-# Specify mandatory flags via the docker command-line or using docker-compose.
-# See the README.md file on how to use docker-compose.
-ENTRYPOINT ["/go/bin/keytransparency-server"]
+FROM gcr.io/distroless/base
+
+COPY --from=build /go/bin/keytransparency-server /
+
+ENTRYPOINT ["/keytransparency-server"]
 
 EXPOSE 8080

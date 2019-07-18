@@ -19,14 +19,15 @@ import (
 	"fmt"
 
 	"github.com/google/keytransparency/core/crypto/tinkio"
-	"github.com/google/tink/go/insecure"
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/testkeyset"
 	"github.com/google/tink/go/tink"
 )
 
 // VerifyKeysetFromPEMs produces a Keyset with pubPEMs.
-func VerifyKeysetFromPEMs(pubPEMs ...string) *tink.KeysetHandle {
-	handle, err := insecure.KeysetHandle(&tinkio.ECDSAPEMKeyset{PEMs: pubPEMs})
+func VerifyKeysetFromPEMs(pubPEMs ...string) *keyset.Handle {
+	handle, err := testkeyset.Read(&tinkio.ECDSAPEMKeyset{PEMs: pubPEMs})
 	if err != nil {
 		panic(fmt.Sprintf("insecure.KeysetHandle(): %v", err))
 	}
@@ -40,7 +41,7 @@ func SignKeysetsFromPEMs(privPEMs ...string) []tink.Signer {
 		if pem == "" {
 			continue
 		}
-		handle, err := insecure.KeysetHandle(&tinkio.ECDSAPEMKeyset{PEMs: []string{pem}})
+		handle, err := testkeyset.Read(&tinkio.ECDSAPEMKeyset{PEMs: []string{pem}})
 		if err != nil {
 			panic(fmt.Sprintf("insecure.KeysetHandle(): %v", err))
 		}

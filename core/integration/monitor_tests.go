@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/testutil"
@@ -29,10 +30,9 @@ import (
 
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/google/trillian/types"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 const (
@@ -44,7 +44,7 @@ amFdON6OhjYnBmJWe4fVnbxny0PfpkvXtg==
 )
 
 // TestMonitor verifies that the monitor correctly verifies transitions between revisions.
-func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
+func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	// setup monitor:
 	privKey, err := pem.UnmarshalPrivateKey(monitorPrivKey, "")
 	if err != nil {
@@ -61,7 +61,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 	for _, e := range []struct {
 		revision    int64
 		signers     []tink.Signer
-		userUpdates []*tpb.User
+		userUpdates []*client.User
 	}{
 		{
 			revision: 1,
@@ -69,27 +69,27 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 		{
 			revision: 2,
 			signers:  testutil.SignKeysetsFromPEMs(testPrivKey1),
-			userUpdates: []*tpb.User{
+			userUpdates: []*client.User{
 				{
-					UserId:         "alice@test.com",
+					UserID:         "alice@test.com",
 					PublicKeyData:  []byte("alice-key1"),
-					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
 				},
 			},
 		},
 		{
 			revision: 3,
 			signers:  testutil.SignKeysetsFromPEMs(testPrivKey1),
-			userUpdates: []*tpb.User{
+			userUpdates: []*client.User{
 				{
-					UserId:         "bob@test.com",
+					UserID:         "bob@test.com",
 					PublicKeyData:  []byte("bob-key1"),
-					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
 				},
 				{
-					UserId:         "carol@test.com",
+					UserID:         "carol@test.com",
 					PublicKeyData:  []byte("carol-key1"),
-					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset(),
+					AuthorizedKeys: testutil.VerifyKeysetFromPEMs(testPubKey1),
 				},
 			},
 		},
@@ -100,29 +100,35 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			defer cancel()
 			m, err := env.Client.CreateMutation(cctx, u)
 			if err != nil {
-				t.Fatalf("CreateMutation(%v): %v", u.UserId, err)
+				t.Fatalf("CreateMutation(%v): %v", u.UserID, err)
 			}
 			if err := env.Client.QueueMutation(ctx, m, e.signers,
-				env.CallOpts(u.UserId)...); err != nil {
+				env.CallOpts(u.UserID)...); err != nil {
 				t.Errorf("QueueMutation(): %v", err)
 			}
 		}
-		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+		batchReq := &spb.RunBatchRequest{
 			DirectoryId: env.Directory.DirectoryId,
 			MinBatch:    int32(len(e.userUpdates)),
 			MaxBatch:    int32(len(e.userUpdates)) * 2,
-		}); err != nil {
+		}
+		if _, err := env.Sequencer.RunBatch(ctx, batchReq); err != nil {
 			t.Errorf("sequencer.RunBatch(): %v", err)
+		}
+		pubReq := &spb.PublishRevisionsRequest{
+			DirectoryId: env.Directory.DirectoryId,
+		}
+		if _, err := env.Sequencer.PublishRevisions(ctx, pubReq); err != nil {
+			t.Errorf("sequencer.PublishRevisions(): %v", err)
 		}
 	}
 
-	trusted := types.LogRootV1{}
 	cctx, cancel := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err = mon.ProcessLoop(cctx, env.Directory.DirectoryId, trusted)
+		err = mon.ProcessLoop(cctx, 0)
 	}()
 	time.Sleep(env.Timeout)
 	cancel()
@@ -141,4 +147,5 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) {
 			t.Errorf("Got error: %v", err)
 		}
 	}
+	return nil
 }

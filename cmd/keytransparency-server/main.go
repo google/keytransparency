@@ -89,7 +89,7 @@ func main() {
 		authFunc = authentication.FakeAuthFunc
 	case "google":
 		var err error
-		gauth, err := authentication.NewGoogleAuth()
+		gauth, err := authentication.NewGoogleAuth(ctx)
 		if err != nil {
 			glog.Exitf("Failed to create authentication library instance: %v", err)
 		}
@@ -121,7 +121,7 @@ func main() {
 	tmap := trillian.NewTrillianMapClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(tlog, tmap, entry.MutateFn, directories, logs, logs,
+	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, directories, logs, logs,
 		prometheus.MetricFactory{})
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),

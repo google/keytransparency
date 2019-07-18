@@ -17,6 +17,8 @@ import (
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	status "google.golang.org/genproto/googleapis/rpc/status"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status1 "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -273,6 +275,17 @@ type MonitorServer interface {
 	// mutations from the previous to the current revision it won't sign the map
 	// root and additional data will be provided to reproduce the failure.
 	GetStateByRevision(context.Context, *GetStateRequest) (*State, error)
+}
+
+// UnimplementedMonitorServer can be embedded to have forward compatible implementations.
+type UnimplementedMonitorServer struct {
+}
+
+func (*UnimplementedMonitorServer) GetState(ctx context.Context, req *GetStateRequest) (*State, error) {
+	return nil, status1.Errorf(codes.Unimplemented, "method GetState not implemented")
+}
+func (*UnimplementedMonitorServer) GetStateByRevision(ctx context.Context, req *GetStateRequest) (*State, error) {
+	return nil, status1.Errorf(codes.Unimplemented, "method GetStateByRevision not implemented")
 }
 
 func RegisterMonitorServer(s *grpc.Server, srv MonitorServer) {

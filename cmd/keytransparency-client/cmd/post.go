@@ -20,14 +20,15 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/tink/go/keyset"
+	"github.com/google/tink/go/signature"
+	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
+	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/crypto/tinkio"
-	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
 )
 
 var (
@@ -46,19 +47,6 @@ and verifies that both the previous and current key-sets are accurate. eg:
 User email MUST match the OAuth account used to authorize the update.
 `,
 
-	PreRun: func(_ *cobra.Command, _ []string) {
-		masterKey, err := tinkio.MasterPBKDF(masterPassword)
-		if err != nil {
-			log.Fatal(err)
-		}
-		handle, err := tink.NewKeysetHandleFromReader(
-			&tinkio.ProtoKeysetFile{File: keysetFile},
-			masterKey)
-		if err != nil {
-			log.Fatal(err)
-		}
-		keyset = handle
-	},
 	RunE: func(_ *cobra.Command, args []string) error {
 		// Validate input.
 		if len(args) < 1 {
@@ -66,6 +54,16 @@ User email MUST match the OAuth account used to authorize the update.
 		}
 		if data == "" {
 			return fmt.Errorf("no key data provided")
+		}
+		masterKey, err := tinkio.MasterPBKDF(masterPassword)
+		if err != nil {
+			log.Fatal(err)
+		}
+		handle, err := keyset.Read(
+			&tinkio.ProtoKeysetFile{File: keysetFile},
+			masterKey)
+		if err != nil {
+			log.Fatal(err)
 		}
 		if !viper.IsSet("client-secret") {
 			return fmt.Errorf("no client secret provided")
@@ -87,23 +85,23 @@ User email MUST match the OAuth account used to authorize the update.
 			return fmt.Errorf("error connecting: %v", err)
 		}
 
-		signer, err := signature.NewSigner(keyset)
+		signer, err := signature.NewSigner(handle)
 		if err != nil {
 			return err
 		}
 
 		// Update.
-		authorizedKeys, err := keyset.Public()
+		authorizedKeys, err := handle.Public()
 		if err != nil {
 			return fmt.Errorf("store.PublicKeys() failed: %v", err)
 		}
 		if err != nil {
 			return fmt.Errorf("updateKeys() failed: %v", err)
 		}
-		u := &tpb.User{
-			UserId:         userID,
+		u := &client.User{
+			UserID:         userID,
 			PublicKeyData:  profileData,
-			AuthorizedKeys: authorizedKeys.Keyset(),
+			AuthorizedKeys: authorizedKeys,
 		}
 		timeout := viper.GetDuration("timeout")
 		cctx, cancel := context.WithTimeout(ctx, timeout)
@@ -122,6 +120,7 @@ func init() {
 
 	postCmd.PersistentFlags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 	postCmd.PersistentFlags().StringP("secret", "s", "", "Path to client secret json")
+	postCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
 	if err := viper.BindPFlag("client-secret", postCmd.PersistentFlags().Lookup("secret")); err != nil {
 		log.Fatalf("%v", err)
 	}

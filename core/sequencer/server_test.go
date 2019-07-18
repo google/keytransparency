@@ -16,20 +16,27 @@ package sequencer
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
+	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/runner"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
 
 const directoryID = "directoryID"
+
+func fakeMetric(_ string) {}
 
 type fakeLogs map[int64][]mutator.LogMessage
 
@@ -65,14 +72,17 @@ func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, 
 }
 
 type fakeTrillianFactory struct {
-	tmap trillianMap
-	tlog trillianLog
+	tmap   trillianMap
+	tlog   trillianLog
+	twrite *MapWriteClient
 }
 
 func (t *fakeTrillianFactory) MapClient(_ context.Context, _ string) (trillianMap, error) {
 	return t.tmap, nil
 }
-
+func (t *fakeTrillianFactory) MapWriteClient(_ context.Context, _ string) (*MapWriteClient, error) {
+	return t.twrite, nil
+}
 func (t *fakeTrillianFactory) LogClient(_ context.Context, _ string) (trillianLog, error) {
 	return t.tlog, nil
 }
@@ -86,18 +96,33 @@ func (m *fakeMap) GetAndVerifyLatestMapRoot(_ context.Context) (*tpb.SignedMapRo
 	return nil, m.latestMapRoot, nil
 }
 
+type fakeWrite struct{}
+
+func (m *fakeWrite) GetLeavesByRevision(ctx context.Context, in *tpb.GetMapLeavesByRevisionRequest, opts ...grpc.CallOption) (*tpb.MapLeaves, error) {
+	return nil, nil
+}
+func (m *fakeWrite) WriteLeaves(ctx context.Context, in *tpb.WriteMapLeavesRequest, opts ...grpc.CallOption) (*tpb.WriteMapLeavesResponse, error) {
+	return nil, nil
+}
+
 type fakeBatcher struct {
 	highestRev int64
+	batches    map[int64]*spb.MapMetadata
 }
 
 func (b *fakeBatcher) HighestRev(_ context.Context, _ string) (int64, error) {
 	return b.highestRev, nil
 }
-func (b *fakeBatcher) WriteBatchSources(_ context.Context, _ string, _ int64, _ *spb.MapMetadata) error {
+func (b *fakeBatcher) WriteBatchSources(_ context.Context, _ string, rev int64, meta *spb.MapMetadata) error {
+	b.batches[rev] = meta
 	return nil
 }
-func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, _ int64) (*spb.MapMetadata, error) {
-	return &spb.MapMetadata{}, nil
+func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, rev int64) (*spb.MapMetadata, error) {
+	meta, ok := b.batches[rev]
+	if !ok {
+		return nil, fmt.Errorf("batch %v not found", rev)
+	}
+	return meta, nil
 }
 
 func TestDefineRevisions(t *testing.T) {
@@ -126,7 +151,7 @@ func TestDefineRevisions(t *testing.T) {
 		{desc: "lagging", highestRev: mapRev + 3, want: []int64{mapRev + 1, mapRev + 2, mapRev + 3}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			s.batcher = &fakeBatcher{highestRev: tc.highestRev}
+			s.batcher = &fakeBatcher{highestRev: tc.highestRev, batches: make(map[int64]*spb.MapMetadata)}
 			got, err := s.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
 				DirectoryId: directoryID,
 				MinBatch:    1,
@@ -162,11 +187,12 @@ func TestReadMessages(t *testing.T) {
 			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
 		}}},
 	} {
-		msgs, err := s.readMessages(ctx, directoryID, tc.meta, tc.batchSize)
+		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta, fakeMetric)
+		logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, directoryID, tc.batchSize, fakeMetric)
 		if err != nil {
 			t.Errorf("readMessages(): %v", err)
 		}
-		if got := len(msgs); got != tc.want {
+		if got := len(logItems); got != tc.want {
 			t.Errorf("readMessages(): len: %v, want %v", got, tc.want)
 		}
 	}
@@ -183,47 +209,47 @@ func TestHighWatermarks(t *testing.T) {
 		desc      string
 		batchSize int32
 		count     int32
-		last      spb.MapMetadata
-		next      spb.MapMetadata
+		last      *spb.MapMetadata
+		next      *spb.MapMetadata
 	}{
 		{desc: "nobatch", batchSize: 30, count: 30,
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 10},
 				{LogId: 1, HighestExclusive: 20}}}},
 		{desc: "exactbatch", batchSize: 20, count: 20,
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 10},
 				{LogId: 1, HighestExclusive: 10}}}},
 		{desc: "batchwprev", batchSize: 20, count: 20,
-			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 10}}},
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, LowestInclusive: 10, HighestExclusive: 10},
 				{LogId: 1, HighestExclusive: 20}}}},
 		// Don't drop existing watermarks.
 		{desc: "keep existing", batchSize: 1, count: 1,
-			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 1, HighestExclusive: 10}}},
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, HighestExclusive: 1},
 				{LogId: 1, LowestInclusive: 10, HighestExclusive: 10}}}},
 		{desc: "logs that dont move", batchSize: 0, count: 0,
-			last: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 3, HighestExclusive: 10}}},
-			next: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0},
 				{LogId: 1},
 				{LogId: 3, LowestInclusive: 10, HighestExclusive: 10}}}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			count, next, err := s.HighWatermarks(ctx, directoryID, &tc.last, tc.batchSize)
+			count, next, err := s.HighWatermarks(ctx, directoryID, tc.last, tc.batchSize)
 			if err != nil {
 				t.Fatalf("HighWatermarks(): %v", err)
 			}
 			if count != tc.count {
 				t.Errorf("HighWatermarks(): count: %v, want %v", count, tc.count)
 			}
-			if !cmp.Equal(next, &tc.next) {
+			if !proto.Equal(next, tc.next) {
 				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, &tc.next))
 			}
 		})

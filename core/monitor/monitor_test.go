@@ -18,8 +18,7 @@ import (
 	"context"
 	"testing"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	tpb "github.com/google/trillian"
+	"github.com/google/trillian/types"
 )
 
 func TestRevisionPairs(t *testing.T) {
@@ -32,10 +31,10 @@ func TestRevisionPairs(t *testing.T) {
 	}{
 		{in: []byte{0, 1, 2}, out: []struct{ a, b byte }{{0, 1}, {1, 2}}},
 	} {
-		revisions := make(chan *pb.Revision, len(tc.in)+1)
+		revisions := make(chan *types.MapRootV1, len(tc.in)+1)
 		pairs := make(chan RevisionPair, len(tc.out)+1)
 		for _, i := range tc.in {
-			revisions <- &pb.Revision{MapRoot: &pb.MapRoot{MapRoot: &tpb.SignedMapRoot{MapRoot: []byte{i}}}}
+			revisions <- &types.MapRootV1{RootHash: []byte{i}}
 		}
 		close(revisions)
 		if err := RevisionPairs(ctx, revisions, pairs); err != nil {
@@ -43,10 +42,10 @@ func TestRevisionPairs(t *testing.T) {
 		}
 		for i, p := range tc.out {
 			pair := <-pairs
-			if got, want := pair.A.MapRoot.MapRoot.MapRoot[0], p.a; got != want {
+			if got, want := pair.A.RootHash[0], p.a; got != want {
 				t.Errorf("pairs[%v].A.Revision %v, want %v", i, got, want)
 			}
-			if got, want := pair.B.MapRoot.MapRoot.MapRoot[0], p.b; got != want {
+			if got, want := pair.B.RootHash[0], p.b; got != want {
 				t.Errorf("pairs[%v].B.Revision %v, want %v", i, got, want)
 			}
 		}

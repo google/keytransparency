@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/mutator/entry"
-	"github.com/google/trillian"
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/storage"
 	"github.com/google/trillian/types"
@@ -89,10 +88,10 @@ func (e *ErrList) Proto() []*statuspb.Status {
 	return errs
 }
 
-func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.SignedMapRoot, expectedNewRoot *types.MapRootV1) []error {
+func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot, expectedNewRoot *types.MapRootV1) []error {
 	errs := ErrList{}
 	oldProofNodes := make(map[string][]byte)
-	newLeaves := make([]merkle.HStar2LeafHash, 0, len(muts))
+	newLeaves := make([]*merkle.HStar2LeafHash, 0, len(muts))
 	glog.Infof("verifyMutations() called with %v mutations.", len(muts))
 
 	for _, mut := range muts {
@@ -103,7 +102,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 
 		// verify that the provided leaf’s inclusion proof goes to revision e-1:
 		index := mut.GetLeafProof().GetLeaf().GetIndex()
-		if err := m.mapVerifier.VerifyMapLeafInclusion(oldRoot, mut.GetLeafProof()); err != nil {
+		if err := m.mapVerifier.VerifyMapLeafInclusionHash(oldRoot.RootHash, mut.GetLeafProof()); err != nil {
 			glog.Infof("VerifyMapInclusionProof(%x): %v", index, err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid  map inclusion proof: %v", err).WithDetails(mut.GetLeafProof()))
 		}
@@ -114,7 +113,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 			glog.Infof("Mutation did not verify: %v", err)
 			errs.AppendStatus(status.Newf(codes.DataLoss, "invalid mutation: %v", err).WithDetails(mut.GetMutation()))
 		}
-		leafNodeID := storage.NewNodeIDFromPrefixSuffix(index, storage.Suffix{}, m.mapVerifier.Hasher.BitLen())
+		leafNodeID := storage.NewNodeIDFromPrefixSuffix(index, storage.EmptySuffix, m.mapVerifier.Hasher.BitLen())
 		leaf, err := entry.ToLeafValue(newValue)
 		if err != nil {
 			glog.Infof("Failed to serialize: %v", err)
@@ -124,13 +123,9 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 		// BUG(gdbelvin): Proto serializations are not idempotent.
 		// - Upgrade the hasher to use ObjectHash.
 		// - Use deep compare between the tree and the computed value.
-		leafHash, err := m.mapVerifier.Hasher.HashLeaf(m.mapVerifier.MapID, index, leaf)
-		if err != nil {
-			errs.appendErr(err)
-		}
-		newLeaves = append(newLeaves, merkle.HStar2LeafHash{
+		newLeaves = append(newLeaves, &merkle.HStar2LeafHash{
 			Index:    leafNodeID.BigInt(),
-			LeafHash: leafHash,
+			LeafHash: m.mapVerifier.Hasher.HashLeaf(m.mapVerifier.MapID, index, leaf),
 		})
 
 		// store the proof hashes locally to recompute the tree below:
@@ -160,7 +155,7 @@ func (m *Monitor) verifyMutations(muts []*pb.MutationProof, oldRoot *trillian.Si
 	return errs
 }
 
-func (m *Monitor) validateMapRoot(newRoot *types.MapRootV1, mutatedLeaves []merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
+func (m *Monitor) validateMapRoot(newRoot *types.MapRootV1, mutatedLeaves []*merkle.HStar2LeafHash, oldProofNodes map[string][]byte) error {
 	// compute the new root using local intermediate hashes from revision e
 	// (above proof hashes):
 	hs2 := merkle.NewHStar2(m.mapVerifier.MapID, m.mapVerifier.Hasher)

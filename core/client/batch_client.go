@@ -16,26 +16,28 @@ package client
 
 import (
 	"context"
+	"runtime"
+	"sync"
 
 	"fmt"
 
 	"github.com/google/tink/go/tink"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/mutator/entry"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // BatchCreateUser inserts mutations for new users that do not currently have entries.
 // Calling BatchCreate for a user that already exists will produce no change.
-func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
+func (c *Client) BatchCreateUser(ctx context.Context, users []*User,
 	signers []tink.Signer, opts ...grpc.CallOption) error {
 	// 1. Fetch user indexes
 	userIDs := make([]string, 0, len(users))
 	for _, u := range users {
-		userIDs = append(userIDs, u.UserId)
+		userIDs = append(userIDs, u.UserID)
 	}
 	indexByUser, err := c.BatchVerifyGetUserIndex(ctx, userIDs)
 	if err != nil {
@@ -44,12 +46,12 @@ func (c *Client) BatchCreateUser(ctx context.Context, users []*tpb.User,
 
 	mutations := make([]*entry.Mutation, 0, len(users))
 	for _, u := range users {
-		mutation := entry.NewMutation(indexByUser[u.UserId], c.DirectoryID, u.UserId)
+		mutation := entry.NewMutation(indexByUser[u.UserID], c.DirectoryID, u.UserID)
 
 		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
 			return err
 		}
-		if len(u.AuthorizedKeys.Key) != 0 {
+		if u.AuthorizedKeys != nil {
 			if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
 				return err
 			}
@@ -77,44 +79,81 @@ func (c *Client) BatchQueueUserUpdate(ctx context.Context, mutations []*entry.Mu
 }
 
 // BatchCreateMutation fetches the current index and value for a list of users and prepares mutations.
-func (c *Client) BatchCreateMutation(ctx context.Context, users []*tpb.User) ([]*entry.Mutation, error) {
+func (c *Client) BatchCreateMutation(ctx context.Context, users []*User) ([]*entry.Mutation, error) {
 	userIDs := make([]string, 0, len(users))
 	for _, u := range users {
-		userIDs = append(userIDs, u.UserId)
+		userIDs = append(userIDs, u.UserID)
 	}
 
-	leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
+	smr, leavesByUserID, err := c.BatchVerifiedGetUser(ctx, userIDs)
 	if err != nil {
 		return nil, err
 	}
+
+	type result struct {
+		m   *entry.Mutation
+		err error
+	}
+	uChan := make(chan *User)
+	rChan := make(chan result)
+
+	// Allocate
+	go func() {
+		defer close(uChan)
+		for _, u := range users {
+			uChan <- u
+		}
+	}()
+	// Workerpool
+	go func() {
+		defer close(rChan)
+		var wg sync.WaitGroup
+		defer wg.Wait() // Wait before closing rChan
+		for w := 0; w < runtime.NumCPU(); w++ {
+			wg.Add(1)
+			go func(uChan <-chan *User, rChan chan<- result) {
+				defer wg.Done()
+				for u := range uChan {
+					m, err := c.createMutation(smr, leavesByUserID[u.UserID], u)
+					rChan <- result{m: m, err: err}
+				}
+			}(uChan, rChan)
+		}
+	}()
+	// Collect
 	mutations := make([]*entry.Mutation, 0, len(users))
-
-	for _, u := range users {
-		leaf, ok := leavesByUserID[u.UserId]
-		if !ok {
-			return nil, fmt.Errorf("no leaf found for %v", u.UserId)
+	for r := range rChan {
+		if r.err != nil {
+			return nil, r.err
 		}
-		index, err := c.Index(leaf.GetVrfProof(), c.DirectoryID, u.UserId)
-		if err != nil {
-			return nil, err
-		}
-		mutation := entry.NewMutation(index, c.DirectoryID, u.UserId)
-
-		leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
-		if err := mutation.SetPrevious(leafValue, true); err != nil {
-			return nil, err
-		}
-
-		if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
-			return nil, err
-		}
-
-		if len(u.AuthorizedKeys.Key) != 0 {
-			if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
-				return nil, err
-			}
-		}
-		mutations = append(mutations, mutation)
+		mutations = append(mutations, r.m)
 	}
 	return mutations, nil
+}
+
+func (c *Client) createMutation(smr *types.MapRootV1, leaf *pb.MapLeaf, u *User) (*entry.Mutation, error) {
+	if leaf == nil {
+		return nil, fmt.Errorf("no leaf found for %v", u.UserID)
+	}
+	index, err := c.Index(leaf.GetVrfProof(), c.DirectoryID, u.UserID)
+	if err != nil {
+		return nil, err
+	}
+	mutation := entry.NewMutation(index, c.DirectoryID, u.UserID)
+
+	leafValue := leaf.MapInclusion.GetLeaf().GetLeafValue()
+	if err := mutation.SetPrevious(smr.Revision, leafValue, true); err != nil {
+		return nil, err
+	}
+
+	if err := mutation.SetCommitment(u.PublicKeyData); err != nil {
+		return nil, err
+	}
+
+	if u.AuthorizedKeys != nil {
+		if err := mutation.ReplaceAuthorizedKeys(u.AuthorizedKeys); err != nil {
+			return nil, err
+		}
+	}
+	return mutation, nil
 }

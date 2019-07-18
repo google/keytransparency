@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,7 +34,7 @@ func TestSerializeAndSign(t *testing.T) {
 	for _, tc := range []struct {
 		desc    string
 		old     []byte
-		pubKeys *tink.KeysetHandle
+		pubKeys *keyset.Handle
 		signers []tink.Signer
 		data    []byte
 		want    codes.Code
@@ -57,13 +58,13 @@ func TestSerializeAndSign(t *testing.T) {
 			userID := "alice"
 
 			m := NewMutation(index, directoryID, userID)
-			if err := m.SetPrevious(tc.old, true); err != nil {
+			if err := m.SetPrevious(0, tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}
 			if err := m.SetCommitment(tc.data); err != nil {
 				t.Fatalf("SetCommitment(%v): %v", tc.data, err)
 			}
-			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
+			if err := m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
 			_, err := m.SerializeAndSign(tc.signers)
@@ -78,7 +79,7 @@ func TestCreateAndVerify(t *testing.T) {
 	for _, tc := range []struct {
 		desc    string
 		old     []byte
-		pubKeys *tink.KeysetHandle
+		pubKeys *keyset.Handle
 		signers []tink.Signer
 		data    []byte
 	}{
@@ -94,13 +95,13 @@ func TestCreateAndVerify(t *testing.T) {
 			userID := "alice"
 
 			m := NewMutation(index, directoryID, userID)
-			if err := m.SetPrevious(tc.old, true); err != nil {
+			if err := m.SetPrevious(0, tc.old, true); err != nil {
 				t.Fatalf("NewMutation(%v): %v", tc.old, err)
 			}
 			if err := m.SetCommitment(tc.data); err != nil {
 				t.Fatalf("SetCommitment(%v): %v", tc.data, err)
 			}
-			if err := m.ReplaceAuthorizedKeys(tc.pubKeys.Keyset()); err != nil {
+			if err := m.ReplaceAuthorizedKeys(tc.pubKeys); err != nil {
 				t.Fatalf("ReplaceAuthorizedKeys(%v): %v", tc.pubKeys, err)
 			}
 			update, err := m.SerializeAndSign(tc.signers)

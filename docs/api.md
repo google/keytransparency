@@ -29,6 +29,7 @@
     - [ListUserRevisionsRequest](#google.keytransparency.v1.ListUserRevisionsRequest)
     - [ListUserRevisionsResponse](#google.keytransparency.v1.ListUserRevisionsResponse)
     - [LogRoot](#google.keytransparency.v1.LogRoot)
+    - [LogRootRequest](#google.keytransparency.v1.LogRootRequest)
     - [MapLeaf](#google.keytransparency.v1.MapLeaf)
     - [MapRevision](#google.keytransparency.v1.MapRevision)
     - [MapRoot](#google.keytransparency.v1.MapRoot)
@@ -50,8 +51,11 @@
     - [GarbageCollectRequest](#google.keytransparency.v1.GarbageCollectRequest)
     - [GarbageCollectResponse](#google.keytransparency.v1.GarbageCollectResponse)
     - [GetDirectoryRequest](#google.keytransparency.v1.GetDirectoryRequest)
+    - [InputLog](#google.keytransparency.v1.InputLog)
     - [ListDirectoriesRequest](#google.keytransparency.v1.ListDirectoriesRequest)
     - [ListDirectoriesResponse](#google.keytransparency.v1.ListDirectoriesResponse)
+    - [ListInputLogsRequest](#google.keytransparency.v1.ListInputLogsRequest)
+    - [ListInputLogsResponse](#google.keytransparency.v1.ListInputLogsResponse)
     - [UndeleteDirectoryRequest](#google.keytransparency.v1.UndeleteDirectoryRequest)
   
   
@@ -289,7 +293,7 @@ Entry is placed in the verifiable map as leaf data.
 | ----- | ---- | ----- | ----------- |
 | index | [bytes](#bytes) |  | index is the location of this leaf in the sparse merkle tree. |
 | commitment | [bytes](#bytes) |  | commitment is a cryptographic commitment to arbitrary data. |
-| authorized_keys | [google.crypto.tink.Keyset](#google.crypto.tink.Keyset) |  | authorized_keys is the set of keys allowed to sign updates for this entry. |
+| authorized_keyset | [bytes](#bytes) |  | authorized_keys is the tink keyset that validates the signatures on the next entry. |
 | previous | [bytes](#bytes) |  | previous contains the SHA256 hash of SignedEntry.Entry the last time it was modified. |
 
 
@@ -500,6 +504,22 @@ LogRoot contains the latest log root and its consistency proof.
 | ----- | ---- | ----- | ----------- |
 | log_root | [trillian.SignedLogRoot](#trillian.SignedLogRoot) |  | log_root is the latest globally consistent log root. |
 | log_consistency | [bytes](#bytes) | repeated | log_consistency proves that log_root is consistent with previously seen roots. |
+
+
+
+
+
+
+<a name="google.keytransparency.v1.LogRootRequest"></a>
+
+### LogRootRequest
+LogRootRequest contains the information needed to request and verify LogRoot.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| root_hash | [bytes](#bytes) |  | root_hash is the root hash of the last log root the client verified. |
+| tree_size | [int64](#int64) |  | tree_size is the tree size of the last log root the client verified. |
 
 
 
@@ -814,6 +834,23 @@ GetDirectoryRequest specifies the directory to retrieve information for.
 
 
 
+<a name="google.keytransparency.v1.InputLog"></a>
+
+### InputLog
+InputLog is an input log for a directory.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| directory_id | [string](#string) |  |  |
+| log_id | [int64](#int64) |  |  |
+| writable | [bool](#bool) |  | writable controls whether new log items will be sent to this log. writable is not set by ListInputLogs. |
+
+
+
+
+
+
 <a name="google.keytransparency.v1.ListDirectoriesRequest"></a>
 
 ### ListDirectoriesRequest
@@ -839,6 +876,37 @@ ListDirectories response contains directories.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | directories | [Directory](#google.keytransparency.v1.Directory) | repeated |  |
+
+
+
+
+
+
+<a name="google.keytransparency.v1.ListInputLogsRequest"></a>
+
+### ListInputLogsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| directory_id | [string](#string) |  |  |
+| filter_writable | [bool](#bool) |  | filter_writable will only return writable logs when set. |
+
+
+
+
+
+
+<a name="google.keytransparency.v1.ListInputLogsResponse"></a>
+
+### ListInputLogsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| logs | [InputLog](#google.keytransparency.v1.InputLog) | repeated |  |
 
 
 
@@ -883,6 +951,9 @@ The KeyTransparencyAdmin API provides the following resources:
 | CreateDirectory | [CreateDirectoryRequest](#google.keytransparency.v1.CreateDirectoryRequest) | [Directory](#google.keytransparency.v1.Directory) | CreateDirectory creates a new Trillian log/map pair. A unique directoryId must be provided. To create a new directory with the same name as a previously deleted directory, a user must wait X days until the directory is garbage collected. |
 | DeleteDirectory | [DeleteDirectoryRequest](#google.keytransparency.v1.DeleteDirectoryRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | DeleteDirectory marks a directory as deleted. Directories will be garbage collected after X days. |
 | UndeleteDirectory | [UndeleteDirectoryRequest](#google.keytransparency.v1.UndeleteDirectoryRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | UndeleteDirectory marks a previously deleted directory as active if it has not already been garbage collected. |
+| ListInputLogs | [ListInputLogsRequest](#google.keytransparency.v1.ListInputLogsRequest) | [ListInputLogsResponse](#google.keytransparency.v1.ListInputLogsResponse) | ListInputLogs returns a list of input logs for a directory. |
+| CreateInputLog | [InputLog](#google.keytransparency.v1.InputLog) | [InputLog](#google.keytransparency.v1.InputLog) | CreateInputLog returns a the created log. |
+| UpdateInputLog | [InputLog](#google.keytransparency.v1.InputLog) | [InputLog](#google.keytransparency.v1.InputLog) | UpdateInputLog updates the write bit for an input log. |
 | GarbageCollect | [GarbageCollectRequest](#google.keytransparency.v1.GarbageCollectRequest) | [GarbageCollectResponse](#google.keytransparency.v1.GarbageCollectResponse) | Fully delete soft-deleted directories that have been soft-deleted before the specified timestamp. |
 
  

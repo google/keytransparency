@@ -16,8 +16,12 @@ package client
 
 import (
 	"context"
+	"runtime"
+	"sync"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	"github.com/google/trillian/monitoring"
+	"github.com/google/trillian/types"
 )
 
 // BatchVerifyGetUserIndex fetches and verifies the indexes for a list of users.
@@ -30,19 +34,72 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 		return nil, err
 	}
 
-	indexByUser := make(map[string][]byte)
-	for userID, proof := range resp.Proofs {
-		index, err := c.Index(proof, c.DirectoryID, userID)
-		if err != nil {
-			return nil, err
+	_, spanEnd := monitoring.StartSpan(ctx, "BatchVerifyGetUserIndex.Verify")
+	defer spanEnd()
+
+	// Proof producer
+	type proof struct {
+		userID string
+		proof  []byte
+	}
+	proofs := make(chan proof)
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		defer close(proofs)
+		for UID, p := range resp.GetProofs() {
+			select {
+			case proofs <- proof{userID: UID, proof: p}:
+			case <-done:
+				return
+			}
 		}
-		indexByUser[userID] = index
+	}()
+
+	// Proof verifier
+	type result struct {
+		userID string
+		index  []byte
+		err    error
+	}
+	results := make(chan result)
+	var wg sync.WaitGroup
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	for w := 0; w < runtime.NumCPU(); w++ {
+		wg.Add(1)
+		// Proof verifier worker
+		go func() {
+			defer wg.Done()
+			for p := range proofs {
+				index, err := c.Index(p.proof, c.DirectoryID, p.userID)
+				select {
+				case results <- result{userID: p.userID, index: index, err: err}:
+				case <-done:
+					return
+				}
+			}
+		}()
+	}
+
+	// Result consumer
+	indexByUser := make(map[string][]byte)
+	for r := range results {
+		if r.err != nil {
+			return nil, r.err // Done will be closed by deferred call.
+		}
+		indexByUser[r.userID] = r.index
 	}
 	return indexByUser, nil
 }
 
 // BatchVerifiedGetUser returns verified leaf values by userID.
-func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (map[string]*pb.MapLeaf, error) {
+// Returns the MapRoot (revision) at which the values were fetched. This could be any MapRoot.
+// TODO(gbelvin): Verify that the returned map root is indeed the latest map root.
+func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (
+	*types.MapRootV1, map[string]*pb.MapLeaf, error) {
 	c.trustedLock.Lock()
 	defer c.trustedLock.Unlock()
 	resp, err := c.cli.BatchGetUser(ctx, &pb.BatchGetUserRequest{
@@ -51,21 +108,25 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (ma
 		LastVerifiedTreeSize: int64(c.trusted.TreeSize),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	slr, smr, err := c.VerifyRevision(resp.Revision, c.trusted)
+	lr, err := c.VerifyLogRoot(c.trusted, resp.Revision.GetLatestLogRoot())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	c.updateTrusted(slr)
+	c.updateTrusted(lr)
+	smr, err := c.VerifyMapRevision(lr, resp.Revision.GetMapRoot())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	leavesByUserID := make(map[string]*pb.MapLeaf)
 	for userID, leaf := range resp.MapLeavesByUserId {
 		if err := c.VerifyMapLeaf(c.DirectoryID, userID, leaf, smr); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		leavesByUserID[userID] = leaf
 	}
-	return leavesByUserID, nil
+	return smr, leavesByUserID, nil
 }

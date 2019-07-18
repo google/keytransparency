@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -30,6 +29,7 @@ import (
 	"github.com/google/keytransparency/core/client/hammer"
 	"github.com/google/keytransparency/core/crypto/tinkio"
 	"github.com/google/keytransparency/impl/authentication"
+	"github.com/google/tink/go/keyset"
 )
 
 var (
@@ -55,6 +55,7 @@ func init() {
 	hammerCmd.Flags().IntVar(&maxWorkers, "workers", 1000, "Number of parallel workers. Best when workers = QPS * timeout")
 	hammerCmd.Flags().IntVar(&maxOperations, "operations", 10000, "Number of operations")
 	hammerCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
+	hammerCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
 }
 
 // hammerCmd represents the post command
@@ -63,30 +64,26 @@ var hammerCmd = &cobra.Command{
 	Short: "Loadtest the server",
 	Long:  `Sends update requests for user_1 through user_n using a select number of workers in parallel.`,
 
-	PreRun: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
+		directoryID := viper.GetString("directory")
+		timeout := viper.GetDuration("timeout")
+
 		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tink.NewKeysetHandleFromReader(
+		handle, err := keyset.Read(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
-		keyset = handle
-	},
-	RunE: func(_ *cobra.Command, _ []string) error {
-		ktURL := viper.GetString("kt-url")
-		directoryID := viper.GetString("directory")
-		timeout := viper.GetDuration("timeout")
 
-		log.Printf("Hammering %v/directories/%v: with %v timeout", ktURL, directoryID, timeout)
+		log.Printf("Hammering %v: with %v timeout", directoryID, timeout)
 
 		ctx := context.Background()
 
-		h, err := hammer.New(ctx, dial, callOptions,
-			ktURL, directoryID, timeout, keyset)
+		h, err := hammer.New(ctx, dial, callOptions, directoryID, timeout, handle)
 		if err != nil {
 			return err
 		}

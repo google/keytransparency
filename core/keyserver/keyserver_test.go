@@ -16,14 +16,18 @@ package keyserver
 
 import (
 	"context"
+	"crypto"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian/testonly"
+	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -32,6 +36,18 @@ import (
 )
 
 const mapID = int64(2)
+
+type fakeVRF struct{}
+
+func (*fakeVRF) Evaluate(m []byte) (index [32]byte, proof []byte) {
+	return [32]byte{}, []byte("")
+}
+
+func (*fakeVRF) Public() crypto.PublicKey { return nil }
+
+func fakeNewFromWrappedKey(_ context.Context, _ proto.Message) (vrf.PrivateKey, error) {
+	return &fakeVRF{}, nil
+}
 
 type miniEnv struct {
 	s              *testonly.MockServer
@@ -61,12 +77,10 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 		return nil, fmt.Errorf("error starting fake server: %v", err)
 	}
 	srv := &Server{
-		directories: fakeAdmin,
-		tlog:        s.LogClient,
-		tmap:        s.MapClient,
-		indexFunc: func(context.Context, *directory.Directory, string) ([32]byte, []byte, error) {
-			return [32]byte{}, []byte(""), nil
-		},
+		directories:       fakeAdmin,
+		tlog:              s.LogClient,
+		tmap:              s.MapClient,
+		newFromWrappedKey: fakeNewFromWrappedKey,
 	}
 	return &miniEnv{
 		s:              s,
@@ -104,21 +118,21 @@ func TestLatestRevision(t *testing.T) {
 			defer e.Close()
 			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
 				Return(&tpb.GetLatestSignedLogRootResponse{
-					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+					SignedLogRoot: mustMarshalRoot(t, &types.LogRootV1{TreeSize: uint64(tc.treeSize)}),
 				}, err)
 			if tc.wantErr == codes.OK {
-				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
-					&tpb.GetMapLeavesByRevisionRequest{
+				e.s.Map.EXPECT().GetLeafByRevision(gomock.Any(),
+					&tpb.GetMapLeafByRevisionRequest{
 						MapId:    mapID,
-						Index:    [][]byte{make([]byte, 32)},
+						Index:    make([]byte, 32),
 						Revision: tc.treeSize - 1,
 					}).
-					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{{
+					Return(&tpb.GetMapLeafResponse{
+						MapLeafInclusion: &tpb.MapLeafInclusion{
 							Leaf: &tpb.MapLeaf{
 								Index: make([]byte, 32),
 							},
-						}},
+						},
 					}, nil)
 				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil)
@@ -137,21 +151,21 @@ func TestLatestRevision(t *testing.T) {
 			defer e.Close()
 			e.s.Log.EXPECT().GetLatestSignedLogRoot(gomock.Any(), gomock.Any()).
 				Return(&tpb.GetLatestSignedLogRootResponse{
-					SignedLogRoot: &tpb.SignedLogRoot{TreeSize: tc.treeSize},
+					SignedLogRoot: mustMarshalRoot(t, &types.LogRootV1{TreeSize: uint64(tc.treeSize)}),
 				}, err).Times(2)
 			for i := int64(0); i < tc.treeSize; i++ {
-				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
-					&tpb.GetMapLeavesByRevisionRequest{
+				e.s.Map.EXPECT().GetLeafByRevision(gomock.Any(),
+					&tpb.GetMapLeafByRevisionRequest{
 						MapId:    mapID,
-						Index:    [][]byte{make([]byte, 32)},
+						Index:    make([]byte, 32),
 						Revision: i,
 					}).
-					Return(&tpb.GetMapLeavesResponse{
-						MapLeafInclusion: []*tpb.MapLeafInclusion{{
+					Return(&tpb.GetMapLeafResponse{
+						MapLeafInclusion: &tpb.MapLeafInclusion{
 							Leaf: &tpb.MapLeaf{
 								Index: make([]byte, 32),
 							},
-						}},
+						},
 					}, nil).Times(2)
 				e.s.Log.EXPECT().GetInclusionProof(gomock.Any(), gomock.Any()).
 					Return(&tpb.GetInclusionProofResponse{}, nil).Times(2)
@@ -170,5 +184,15 @@ func TestLatestRevision(t *testing.T) {
 			}
 		})
 	}
+}
 
+func mustMarshalRoot(t *testing.T, lr *types.LogRootV1) *tpb.SignedLogRoot {
+	t.Helper()
+	rootBytes, err := lr.MarshalBinary()
+	if err != nil {
+		t.Fatalf("Failed to marshal root in test: %v", err)
+	}
+	return &tpb.SignedLogRoot{
+		LogRoot: rootBytes,
+	}
 }

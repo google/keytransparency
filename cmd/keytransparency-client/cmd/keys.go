@@ -17,11 +17,9 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"os"
-	"text/tabwriter"
 
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
-	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 
 	"github.com/google/keytransparency/core/crypto/tinkio"
@@ -29,14 +27,13 @@ import (
 	tinkpb "github.com/google/tink/proto/tink_go_proto"
 )
 
-const keysetFile = ".keyset"
+const defaultKeysetFile = ".keyset"
 
 var (
 	keyType        string
 	masterPassword string
+	keysetFile     string
 )
-
-var keyset *tink.KeysetHandle
 
 // keysCmd represents the authorized-keys command.
 var keysCmd = &cobra.Command{
@@ -60,7 +57,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		keyset, err = tink.NewKeysetHandle(template)
+		handle, err := keyset.NewHandle(template)
 		if err != nil {
 			return err
 		}
@@ -69,7 +66,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		return keyset.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
+		return handle.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
 	},
 }
 
@@ -96,41 +93,19 @@ var listCmd = &cobra.Command{
 
 The actual keys are not listed, only their corresponding metadata.
 `,
-	PreRun: func(_ *cobra.Command, _ []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		masterKey, err := tinkio.MasterPBKDF(masterPassword)
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := tink.NewKeysetHandleFromReader(
+		handle, err := keyset.Read(
 			&tinkio.ProtoKeysetFile{File: keysetFile},
 			masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
-		keyset = handle
-	},
-	RunE: func(_ *cobra.Command, _ []string) error {
-		keysetInfo, err := tink.GetKeysetInfo(keyset.Keyset())
-		if err != nil {
-			return err
-		}
-
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
-
 		// List signing keys.
-		fmt.Fprintln(w, "My Keys:")
-		fmt.Fprintln(w, "  ID\tStatus\tType")
-		for _, info := range keysetInfo.GetKeyInfo() {
-			fmt.Fprintf(w, "  %v\t%v\t%v\t\n", info.KeyId, info.Status, info.TypeUrl)
-		}
-
-		// Tink keysets do not currently support adding public keys without also having the private key.
-		fmt.Fprintln(w, "\nOther Authorized Keys: none")
-
-		if err := w.Flush(); err != nil {
-			return nil
-		}
-		return nil
+		fmt.Printf("My Authorized Keys:\n%v\n", handle.String())
 	},
 }
 
@@ -142,4 +117,6 @@ func init() {
 	keysCmd.PersistentFlags().StringVarP(&masterPassword, "password", "p", "", "The master key to the local keyset")
 
 	createCmd.Flags().StringVar(&keyType, "key-type", "P256", "Type of keys to generate: [P256, P384, P521]")
+	createCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
+	listCmd.Flags().StringVarP(&keysetFile, "keyset-file", "k", defaultKeysetFile, "Keyset file name and path")
 }

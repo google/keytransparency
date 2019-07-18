@@ -44,20 +44,16 @@ services:
       dockerfile: examples/deployment/docker/db_server/Dockerfile
     restart: always
     ports:
-      - "3306:3306"
+      - "3306"
     environment:
       MYSQL_PASSWORD: zaphod
       MYSQL_USER: test
       MYSQL_DATABASE: test
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
 
-  log-server:
+    log-server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/log-server:${TRAVIS_COMMIT}
-    build:
-      context: ../trillian
-      dockerfile: examples/deployment/docker/log_server/Dockerfile
+    image: us.gcr.io/trillian/log-server:latest
     restart: always
     command: 
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -76,10 +72,7 @@ services:
   log-signer:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/log-signer:${TRAVIS_COMMIT}
-    build:
-      context: ../trillian
-      dockerfile: examples/deployment/docker/log_signer/Dockerfile
+    image: us.gcr.io/trillian/log-signer:latest
     restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -101,10 +94,7 @@ services:
   map-server:
     depends_on:
       - db
-    image: us.gcr.io/key-transparency/map-server:${TRAVIS_COMMIT}
-    build:
-      context: ../trillian
-      dockerfile: examples/deployment/docker/map_server/Dockerfile
+    image: us.gcr.io/trillian/map-server:latest
     restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -127,8 +117,8 @@ services:
       - map-server
     image: us.gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
     build:
-      context: ..
-      dockerfile: ./keytransparency/cmd/keytransparency-server/Dockerfile
+      context: .
+      dockerfile: ./cmd/keytransparency-server/Dockerfile
     restart: always
     ports:
       - "443:8080" # json & grpc
@@ -161,8 +151,8 @@ services:
       - map-server
     image: us.gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
     build:
-      context: ..
-      dockerfile: ./keytransparency/cmd/keytransparency-sequencer/Dockerfile
+      context: .
+      dockerfile: ./cmd/keytransparency-sequencer/Dockerfile
     restart: always
     command:
       - --force_master
@@ -205,8 +195,8 @@ services:
       - sequencer
     image: us.gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
     build:
-      context: ..
-      dockerfile: ./keytransparency/cmd/keytransparency-monitor/Dockerfile
+      context: .
+      dockerfile: ./cmd/keytransparency-monitor/Dockerfile
     command:
       - --addr=0.0.0.0:8099
       - --kt-url=server:8080

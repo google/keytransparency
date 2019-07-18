@@ -26,6 +26,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 // Env holds a complete testing environment for end-to-end tests.
@@ -45,7 +46,7 @@ type CallOptions func(userID string) []grpc.CallOption
 // and a function that performs the test, given a test environment.
 type NamedTestFn struct {
 	Name string
-	Fn   func(context.Context, *Env, *testing.T)
+	Fn   func(context.Context, *Env, *testing.T) []*tpb.Action
 }
 
 // AllTests contains all the integration tests.
@@ -54,10 +55,11 @@ type NamedTestFn struct {
 var AllTests = []NamedTestFn{
 	// Client Tests
 	{Name: "TestEmptyGetAndUpdate", Fn: TestEmptyGetAndUpdate},
+	{Name: "TestBatchGetUser", Fn: TestBatchGetUser},
 	{Name: "TestListHistory", Fn: TestListHistory},
 	{Name: "TestBatchUpdate", Fn: TestBatchUpdate},
 	{Name: "TestBatchCreate", Fn: TestBatchCreate},
+	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions},
 	// Monitor Tests
 	{Name: "TestMonitor", Fn: TestMonitor},
-	{Name: "TestBatchListUserRevisions", Fn: TestBatchListUserRevisions},
 }

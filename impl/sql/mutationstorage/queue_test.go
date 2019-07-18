@@ -40,6 +40,53 @@ func newForTest(ctx context.Context, t testing.TB, logIDs ...int64) *Mutations {
 	return m
 }
 
+func TestSetWritable(t *testing.T) {
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		desc       string
+		logIDs     []int64
+		set        map[int64]bool
+		wantLogIDs []int64
+		wantCode   codes.Code
+	}{
+		{desc: "one row", logIDs: []int64{10}, wantLogIDs: []int64{10}},
+		{desc: "one row disabled", logIDs: []int64{10}, set: map[int64]bool{10: false}, wantCode: codes.NotFound},
+		{desc: "one row enabled", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: false, 2: false}, wantLogIDs: []int64{3}},
+		{desc: "multi", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: true, 2: false}, wantLogIDs: []int64{1, 3}},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			m := newForTest(ctx, t, tc.logIDs...)
+			wantLogs := make(map[int64]bool)
+			for _, logID := range tc.wantLogIDs {
+				wantLogs[logID] = true
+			}
+
+			for logID, enabled := range tc.set {
+				if err := m.SetWritable(ctx, directoryID, logID, enabled); err != nil {
+					t.Errorf("SetWritable(): %v", err)
+				}
+			}
+
+			logs := make(map[int64]bool)
+			// Run enough times to ensure that random sampling will get us all logs.
+			for i := 0; i < 10*len(tc.logIDs); i++ {
+				log, err := m.randLog(ctx, directoryID)
+				if status.Code(err) != tc.wantCode {
+					t.Errorf("randLog(): %v, want %v", err, tc.wantCode)
+				}
+				if err != nil {
+					break
+				}
+				logs[log] = true
+			}
+			if got, want := logs, wantLogs; !cmp.Equal(got, want) {
+				t.Errorf("randLog(): %v, want %v", got, want)
+			}
+		})
+	}
+}
+
 func TestRandLog(t *testing.T) {
 	ctx := context.Background()
 
@@ -102,7 +149,7 @@ func BenchmarkSend(b *testing.B) {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
-				if err := m.Send(ctx, directoryID, updates...); err != nil {
+				if _, err := m.Send(ctx, directoryID, updates...); err != nil {
 					b.Errorf("Send(): %v", err)
 				}
 			}
@@ -201,7 +248,7 @@ func TestReadLog(t *testing.T) {
 	m := newForTest(ctx, t, logID)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
+		if _, err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
 	}

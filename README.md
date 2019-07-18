@@ -1,7 +1,7 @@
 # Key Transparency
 
 [![GoDoc](https://godoc.org/github.com/google/keytransparency?status.svg)](https://godoc.org/github.com/google/keytransparency)
-[![Build Status](https://travis-ci.org/google/keytransparency.svg?branch=master)](https://travis-ci.org/google/keytransparency)
+[![Build Status](https://travis-ci.com/google/keytransparency.svg?branch=master)](https://travis-ci.com/google/keytransparency)
 [![Go Report Card](https://goreportcard.com/badge/github.com/google/keytransparency)](https://goreportcard.com/report/github.com/google/keytransparency)
 [![codecov](https://codecov.io/gh/google/keytransparency/branch/master/graph/badge.svg)](https://codecov.io/gh/google/keytransparency)
 
@@ -44,6 +44,9 @@ development.
   keytransparency-client authorized-keys create-keyset --password=${PASSWORD}
   keytransparency-client authorized-keys list-keyset --password=${PASSWORD}
   ```
+The `create-keyset` command will create a `.keyset` file in the user's working directory.
+To specify custom directory use `--keyset-file` or `-k` shortcut.
+
 NB A default for the Key Transparency server URL is being used here. The default value is "35.202.56.9:443". The flag `--kt-url` may be used to specify the URL of Key Transparency server explicitly.
 
 
@@ -87,35 +90,20 @@ NB A default for the Key Transparency server URL is being used here. The default
 
 ## Running the server
 
-### Install
 1. [OpenSSL](https://www.openssl.org/community/binaries.html)
 1. [Docker](https://docs.docker.com/engine/installation/)
    - Docker Engine 1.17.6+ `docker version -f '{{.Server.APIVersion}}'`
    - Docker Compose 1.11.0+ `docker-compose --version`
-1. `go get -u github.com/google/keytransparency/...`
-1. `go get -u github.com/google/trillian/...`
-1. `./scripts/prepare_server.sh -f`
 
-### Run
-1. Run Key Transparency
-
-  ```sh
-$ cd $GOPATH/src/github.com/google/keytransparency
-$ docker-compose up -d
-Creating keytransparency_db_1 ...         done
-Creating keytransparency_map_server_1 ... done
-Creating keytransparency_log_server_1 ... done
-Creating keytransparency_log_server_1 ... done
-Creating keytransparency_server_1 ...     done
-Creating keytransparency_sequencer_1 ...  done
-Creating keytransparency_monitor_1 ...    done
-Creating keytransparency_init_1 ...       done
-Creating keytransparency_prometheus_1 ... done
-Creating keytransparency_monitor_1 ...    done
-  ```
+```sh
+go get -u github.com/google/keytransparency/...
+go get -u github.com/google/trillian/...
+cd $(go env GOPATH)/src/github.com/google/keytransparency
+./scripts/prepare_server.sh -f
+docker-compose -f docker-compose.yml docker-compose.prod.yml up
+```
 
 2. Watch it Run
-- `docker-compose logs --tail=0 --follow`
 - [Proof for foo@bar.com](https://localhost/v1/directories/default/users/foo@bar.com)
 - [Server configuration info](https://localhost/v1/directories/default)
 
@@ -124,6 +112,7 @@ Key Transparency and its [Trillian](https://github.com/google/trillian) backend
 use a [MySQL database](https://github.com/google/trillian/blob/master/README.md#mysql-setup),
 which must be setup in order for the Key Transparency tests to work.
 
+`docker-compose up -d db` will launch the database in the background.
 
 ### Directory structure
 

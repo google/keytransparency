@@ -26,16 +26,17 @@ import (
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testutil"
+	"github.com/google/trillian/types"
 
+	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	tpb "github.com/google/keytransparency/core/api/type/type_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
+	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
 const (
@@ -68,12 +69,18 @@ func runSequencer(ctx context.Context, t *testing.T, dirID string, env *Env) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
-		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
+		req := &spb.RunBatchRequest{
 			DirectoryId: dirID,
 			MinBatch:    1,
 			MaxBatch:    10,
-		}); err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
+		}
+		_, err := env.Sequencer.RunBatch(ctx, req)
+		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
 			t.Errorf("RunBatch(): %v", err)
+		}
+		_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: dirID})
+		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
+			t.Errorf("PublishRevisions(): %v", err)
 		}
 	})
 }
@@ -87,10 +94,10 @@ func genUserIDs(count int) []string {
 }
 
 // TestBatchCreate verifies that the batch functions are working correctly.
-func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) {
+func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	for _, tc := range []struct {
 		desc    string
@@ -102,10 +109,10 @@ func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Update profiles.
-			users := make([]*tpb.User, 0, len(tc.userIDs))
+			users := make([]*client.User, 0, len(tc.userIDs))
 			for _, userID := range tc.userIDs {
-				users = append(users, &tpb.User{
-					UserId:         userID,
+				users = append(users, &client.User{
+					UserID:         userID,
 					PublicKeyData:  []byte("data!"),
 					AuthorizedKeys: authorizedKeys1,
 				})
@@ -118,13 +125,14 @@ func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) {
 			}
 		})
 	}
+	return nil
 }
 
 // TestBatchUpdate verifies that the batch functions are working correctly.
-func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) {
+func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	for _, tc := range []struct {
 		desc    string
@@ -132,45 +140,51 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) {
 	}{
 		{desc: "zero", userIDs: nil},
 		{desc: "one", userIDs: []string{"test"}},
-		{desc: "100", userIDs: genUserIDs(100)},
+		// TODO: Increase batch size once google/trillian#1396 is fixed.
+		{desc: "10", userIDs: genUserIDs(10)},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Update profiles.
-			users := make([]*tpb.User, 0, len(tc.userIDs))
+			users := make([]*client.User, 0, len(tc.userIDs))
 			for _, userID := range tc.userIDs {
-				users = append(users, &tpb.User{
-					UserId:         userID,
+				users = append(users, &client.User{
+					UserID:         userID,
 					PublicKeyData:  []byte("data!"),
 					AuthorizedKeys: authorizedKeys1,
 				})
 			}
 
-			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
-			defer cancel()
-
-			mutations, err := env.Client.BatchCreateMutation(cctx, users)
+			mutations, err := env.Client.BatchCreateMutation(ctx, users)
 			if err != nil {
 				t.Fatalf("BatchCreateMutation(): %v", err)
 			}
-			if err := env.Client.BatchQueueUserUpdate(cctx, mutations, signers1); err != nil {
+			if err := env.Client.BatchQueueUserUpdate(ctx, mutations, signers1); err != nil {
 				t.Fatalf("BatchQueueUserUpdate(): %v", err)
 			}
 		})
 	}
+	return nil
 }
 
 // TestEmptyGetAndUpdate verifies set/get semantics.
-func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
+func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	signers2 := testutil.SignKeysetsFromPEMs(testPrivKey1, testPrivKey2)
 	signers3 := testutil.SignKeysetsFromPEMs("", testPrivKey2)
 
 	// Create lists of authorized keys
-	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
-	authorizedKeys2 := testutil.VerifyKeysetFromPEMs(testPubKey1, testPubKey2).Keyset()
-	authorizedKeys3 := testutil.VerifyKeysetFromPEMs("", testPubKey2).Keyset()
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
+	authorizedKeys2 := testutil.VerifyKeysetFromPEMs(testPubKey1, testPubKey2)
+	authorizedKeys3 := testutil.VerifyKeysetFromPEMs("", testPubKey2)
+
+	// Collect a list of valid GetUserResponses
+	transcript := []*tpb.Action{}
+
+	// Start with an empty trusted log root
+	slr := &types.LogRootV1{}
 
 	for _, tc := range []struct {
 		desc           string
@@ -179,7 +193,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 		opts           []grpc.CallOption
 		userID         string
 		signers        []tink.Signer
-		authorizedKeys *tinkpb.Keyset
+		authorizedKeys *keyset.Handle
 	}{
 		{
 			desc:           "empty_alice",
@@ -246,48 +260,169 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			// Check profile.
-			e, _, err := env.Client.VerifiedGetUser(ctx, tc.userID)
-			if err != nil {
-				t.Errorf("VerifiedGetUser(%v): %v, want nil", tc.userID, err)
+			reqSLR := *slr
+			req := &pb.GetUserRequest{
+				DirectoryId:          env.Directory.DirectoryId,
+				UserId:               tc.userID,
+				LastVerifiedTreeSize: int64(slr.TreeSize),
 			}
-			if got, want := e.GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
+			resp, err := env.Cli.GetUser(ctx, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := env.Client.VerifyGetUser(*slr, req, resp); err != nil {
+				t.Fatal(err)
+			}
+			if got, want := resp.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
 				t.Errorf("VerifiedGetUser(%v): %s, want %s", tc.userID, got, want)
 			}
 
+			transcript = append(transcript, &tpb.Action{
+				Desc: tc.desc,
+				LastVerifiedLogRoot: &pb.LogRootRequest{
+					TreeSize: int64(reqSLR.TreeSize),
+					RootHash: reqSLR.RootHash,
+				},
+				ReqRespPair: &tpb.Action_GetUser{GetUser: &tpb.GetUser{
+					Request:  req,
+					Response: resp,
+				}},
+			})
+
 			// Update profile.
 			if tc.setProfile != nil {
-				u := &tpb.User{
-					UserId:         tc.userID,
+				u := &client.User{
+					UserID:         tc.userID,
 					PublicKeyData:  tc.setProfile,
 					AuthorizedKeys: tc.authorizedKeys,
 				}
 				cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 				defer cancel()
-
-				m, err := env.Client.CreateMutation(cctx, u)
+				_, err := env.Client.Update(cctx, u, tc.signers)
 				if err != nil {
-					t.Fatalf("CreateMutation(%v): %v", tc.userID, err)
-				}
-				if err := env.Client.QueueMutation(cctx, m, tc.signers, tc.opts...); err != nil {
-					t.Fatalf("QueueMutation(%v): %v", tc.userID, err)
-				}
-
-				if _, err := env.Client.WaitForUserUpdate(cctx, m); err != nil {
-					t.Errorf("WaitForUserUpdate(%v): %v, want nil", m, err)
+					t.Errorf("Update(%v): %v", tc.userID, err)
 				}
 			}
 		})
 	}
+	return transcript
+}
+
+// TestBatchGetUser tests fetching multiple users in a single request.
+func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
+	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
+	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
+	transcript := []*tpb.Action{}
+
+	users := []*client.User{
+		{
+			UserID:         "bob",
+			PublicKeyData:  []byte("bob-key"),
+			AuthorizedKeys: authorizedKeys1,
+		},
+		{
+			UserID:         "carol",
+			PublicKeyData:  []byte("carol-key"),
+			AuthorizedKeys: authorizedKeys1,
+		},
+	}
+	cctx, cancel := context.WithTimeout(ctx, env.Timeout)
+	defer cancel()
+	if err := env.Client.BatchCreateUser(cctx, users, signers1); err != nil {
+		t.Fatalf("BatchCreateUser(): %v", err)
+	}
+	if err := env.Client.WaitForRevision(cctx, 1); err != nil {
+		t.Fatalf("WaitForSTHUpdate(): %v", err)
+	}
+
+	for _, tc := range []struct {
+		desc         string
+		wantProfiles map[string][]byte
+	}{
+		{
+			desc: "single empty",
+			wantProfiles: map[string][]byte{
+				"alice": nil,
+			},
+		},
+		{
+			desc: "multi empty",
+			wantProfiles: map[string][]byte{
+				"alice": nil,
+				"zelda": nil,
+			},
+		},
+		{
+			desc: "single full",
+			wantProfiles: map[string][]byte{
+				"bob": []byte("bob-key"),
+			},
+		},
+		{
+			desc: "multi full",
+			wantProfiles: map[string][]byte{
+				"bob":   []byte("bob-key"),
+				"carol": []byte("carol-key"),
+			},
+		},
+		{
+			desc: "multi mixed",
+			wantProfiles: map[string][]byte{
+				"alice": nil,
+				"bob":   []byte("bob-key"),
+			},
+		}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			userIDs := make([]string, 0)
+			for userID := range tc.wantProfiles {
+				userIDs = append(userIDs, userID)
+			}
+			slr := types.LogRootV1{}
+			req := &pb.BatchGetUserRequest{
+				DirectoryId:          env.Directory.DirectoryId,
+				UserIds:              userIDs,
+				LastVerifiedTreeSize: int64(slr.TreeSize),
+			}
+			resp, err := env.Cli.BatchGetUser(cctx, req)
+			if err != nil {
+				t.Fatalf("BatchGetUser(): %v", err)
+			}
+			if err := env.Client.VerifyBatchGetUser(slr, req, resp); err != nil {
+				t.Fatal(err)
+			}
+			for userID, leaf := range resp.MapLeavesByUserId {
+				if got, want := leaf.GetCommitted().GetData(), tc.wantProfiles[userID]; !bytes.Equal(got, want) {
+					t.Fatalf("key mismatch for %s: %s, want %s", userID, got, want)
+				}
+			}
+
+			transcript = append(transcript, &tpb.Action{
+				Desc: tc.desc,
+				LastVerifiedLogRoot: &pb.LogRootRequest{
+					TreeSize: int64(slr.TreeSize),
+					RootHash: slr.RootHash,
+				},
+				ReqRespPair: &tpb.Action_BatchGetUser{
+					BatchGetUser: &tpb.BatchGetUser{
+						Request:  req,
+						Response: resp,
+					},
+				},
+			})
+		})
+	}
+	return transcript
 }
 
 // TestListHistory verifies that repeated history values get collapsed properly.
-func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
+func TestListHistory(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	userID := "bob"
 	opts := env.CallOpts(userID)
 
 	// Create lists of signers and authorized keys
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	if err := env.setupHistory(ctx, env.Directory, userID, signers, authorizedKeys, opts); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
@@ -329,10 +464,11 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) {
 			}
 		})
 	}
+	return nil
 }
 
 func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []tink.Signer,
-	authorizedKeys *tinkpb.Keyset, opts []grpc.CallOption) error {
+	authorizedKeys *keyset.Handle, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that revision, or contains the profile
 	// that the user is submitting. The user profile history contains the
@@ -350,8 +486,8 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 		nil, cp(5), cp(7), nil,
 	} {
 		if p != nil {
-			u := &tpb.User{
-				UserId:         userID,
+			u := &client.User{
+				UserID:         userID,
 				PublicKeyData:  p,
 				AuthorizedKeys: authorizedKeys,
 			}
@@ -372,6 +508,10 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 				Block:       true,
 			}); err != nil {
 				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
+			}
+			_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId, Block: true})
+			if err != nil {
+				return fmt.Errorf("sequencer.PublishRevisions(%v): %v", i, err)
 			}
 		} else if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
 			DirectoryId: directory.DirectoryId,
@@ -397,10 +537,10 @@ func sortHistory(history map[uint64][]byte) [][]byte {
 }
 
 // TestBatchListUserRevisions verifies that BatchListUserRevisions() in keyserver works properly.
-func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
+func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	// Create lists of signers and authorized keys
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
-	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1).Keyset()
+	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
 	if err := env.setupHistoryMultipleUsers(ctx, env.Directory, signers, authorizedKeys); err != nil {
 		t.Fatalf("setupHistoryMultipleUsers failed: %v", err)
@@ -409,6 +549,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 	request := &pb.BatchListUserRevisionsRequest{
 		DirectoryId: env.Directory.DirectoryId,
 	}
+	transcript := []*tpb.Action{}
 	for _, tc := range []struct {
 		desc        string
 		start, end  int64
@@ -435,6 +576,15 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 			if err != nil {
 				return
 			}
+			transcript = append(transcript, &tpb.Action{
+				Desc: tc.desc,
+				ReqRespPair: &tpb.Action_BatchListUserRevisions{
+					BatchListUserRevisions: &tpb.BatchListUserRevisions{
+						Request:  request,
+						Response: response,
+					},
+				},
+			})
 			var got [][]byte
 			for _, rev := range response.MapRevisions {
 				for _, userID := range tc.userIDs {
@@ -446,16 +596,17 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) {
 			}
 		})
 	}
+	return transcript
 }
 
 func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Directory, signers []tink.Signer,
-	authorizedKeys *tinkpb.Keyset) error {
+	authorizedKeys *keyset.Handle) error {
 	// Test setup: 3 different users ("alice", "bob", and "carol") submit profiles in the following order. Specifically, in the i-th submission (i = 0, 1, 2,..., 9), userIDs[i] submits publicKeyData[i].
 	publicKeyData := [][]byte{cp(1), cp(11), cp(2), cp(21), cp(22), cp(12), cp(3), cp(13), cp(23), cp(24)}
 	userIDs := []string{"alice", "bob", "alice", "carol", "carol", "bob", "alice", "bob", "carol", "carol"}
 	for i := 0; i < len(userIDs); i++ {
-		u := &tpb.User{
-			UserId:         userIDs[i],
+		u := &client.User{
+			UserID:         userIDs[i],
 			PublicKeyData:  publicKeyData[i],
 			AuthorizedKeys: authorizedKeys,
 		}
@@ -476,6 +627,11 @@ func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Dir
 			Block:       true,
 		}); err != nil {
 			return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
+		}
+		pubRevReq := &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId, Block: true}
+		_, err = env.Sequencer.PublishRevisions(ctx, pubRevReq)
+		if err != nil {
+			return fmt.Errorf("sequencer.PublishRevisions(%v): %v", i, err)
 		}
 	}
 	return nil

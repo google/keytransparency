@@ -17,7 +17,6 @@ package authentication
 import (
 	"context"
 	"log"
-	"net/http"
 	"strings"
 
 	"golang.org/x/oauth2"
@@ -43,8 +42,8 @@ type GAuth struct {
 }
 
 // NewGoogleAuth creates a new authenticator for Google users.
-func NewGoogleAuth() (*GAuth, error) {
-	googleService, err := gAPI.New(http.DefaultClient)
+func NewGoogleAuth(ctx context.Context) (*GAuth, error) {
+	googleService, err := gAPI.NewService(ctx)
 	if err != nil {
 		return nil, err
 	}

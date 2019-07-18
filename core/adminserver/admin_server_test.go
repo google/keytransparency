@@ -81,9 +81,9 @@ func (e *miniEnv) Close() {
 
 type fakeQueueAdmin struct{}
 
-func (fakeQueueAdmin) AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error {
-	return nil
-}
+func (fakeQueueAdmin) AddLogs(_ context.Context, _ string, _ ...int64) error          { return nil }
+func (fakeQueueAdmin) SetWritable(_ context.Context, _ string, _ int64, _ bool) error { return nil }
+func (fakeQueueAdmin) ListLogs(_ context.Context, _ string, _ bool) ([]int64, error)  { return nil, nil }
 
 func TestCreateDirectory(t *testing.T) {
 	for _, tc := range []struct {
