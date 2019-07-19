@@ -52,7 +52,7 @@ func NewFromDirectory(cli pb.KeyTransparencyClient,
 	}
 
 	ktClient, err := client.NewFromConfig(cli, config,
-		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.NewSynchronous(lv) },
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create kt client: %v", err)

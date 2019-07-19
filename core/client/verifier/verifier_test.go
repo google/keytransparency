@@ -45,7 +45,7 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 	t.Helper()
 
 	v, err := NewFromDirectory(transcript.Directory,
-		func(lv *tclient.LogVerifier) LogTracker { return tracker.New(lv) },
+		func(lv *tclient.LogVerifier) LogTracker { return tracker.NewSynchronous(lv) },
 	)
 	if err != nil {
 		t.Fatal(err)

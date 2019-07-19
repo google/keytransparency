@@ -201,7 +201,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 
 	ktClient := pb.NewKeyTransparencyClient(cc)
 	client, err := client.NewFromConfig(ktClient, directoryPB,
-		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.NewSynchronous(lv) },
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error reading config: %v", err)

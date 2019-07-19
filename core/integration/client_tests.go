@@ -175,7 +175,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 
 	cli, err := client.NewFromConfig(env.Cli, env.Directory,
 		func(lv *tclient.LogVerifier) verifier.LogTracker {
-			t := tracker.New(lv)
+			t := tracker.NewSynchronous(lv)
 			t.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
 				// Only update occasionally in order to produce interesting consistency proofs.
 				return newRoot.TreeSize%5 == 1
@@ -328,7 +328,7 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 
 	cli, err := client.NewFromConfig(env.Cli, env.Directory,
 		func(lv *tclient.LogVerifier) verifier.LogTracker {
-			t := tracker.New(lv)
+			t := tracker.NewSynchronous(lv)
 			t.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
 				// Only update occasionally in order to produce interesting consistency proofs.
 				return newRoot.TreeSize%5 == 1

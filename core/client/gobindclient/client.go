@@ -111,7 +111,7 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 	}
 
 	client, err := client.NewFromConfig(ktClient, config,
-		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.NewSynchronous(lv) },
 	)
 	if err != nil {
 		return fmt.Errorf("error adding the KtServer: %v", err)

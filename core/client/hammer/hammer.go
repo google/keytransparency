@@ -204,7 +204,7 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 	for i := 0; i < n; i++ {
 		// Give each worker its own client.
 		client, err := client.NewFromConfig(h.ktCli, h.directory,
-			func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+			func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.NewSynchronous(lv) },
 		)
 		if err != nil {
 			return nil, err

@@ -46,8 +46,8 @@ type LogTracker struct {
 	mu            sync.RWMutex
 }
 
-// New creates a log tracker from no trusted root.
-func New(lv LogRootVerifier) *LogTracker {
+// NewSynchronous creates a log tracker from no trusted root.
+func NewSynchronous(lv LogRootVerifier) *LogTracker {
 	return NewFromSaved(lv, types.LogRootV1{})
 }
 

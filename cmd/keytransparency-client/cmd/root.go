@@ -223,7 +223,7 @@ func GetClient(ctx context.Context) (*client.Client, error) {
 	}
 
 	return client.NewFromConfig(ktCli, config,
-		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.NewSynchronous(lv) },
 	)
 }
 
