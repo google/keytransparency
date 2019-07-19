@@ -53,8 +53,9 @@ var (
 	certFile     = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
-	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
-	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	mapURL           = flag.String("map-url", "", "URL of Trillian Map Server")
+	logURL           = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
+	revisionPageSize = flag.Int("revision-page-size", 10, "Max number of revisions to return at once")
 )
 
 func openDB() *sql.DB {
@@ -122,7 +123,7 @@ func main() {
 
 	// Create gRPC server.
 	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, directories, logs, logs,
-		prometheus.MetricFactory{})
+		prometheus.MetricFactory{}, int32(*revisionPageSize))
 	grpcServer := grpc.NewServer(
 		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(

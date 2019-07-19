@@ -185,6 +185,7 @@ message ListEntryHistoryRequest {
   // start is the starting revision.
   int64 start = 2;
   // page_size is the maximum number of entries to return.
+  // The server can return fewer entries than requested.
   int32 page_size = 3;
   // Used to be app_id. Applications can define their own hierarchy for user_id
   // if desired.
