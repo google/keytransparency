@@ -1,7 +1,7 @@
 language: go
 go:
 - 1.x
-dist: xenial
+dist: bionic
 
 go_import_path: github.com/google/keytransparency
 
@@ -30,6 +30,7 @@ before_install:
   - source "$HOME/gcloud/google-cloud-sdk/path.bash.inc"
   - gcloud -q components update
   - gcloud -q version
+  - wget --version
 
 install:
   - gcloud -q components install kubectl
