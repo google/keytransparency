@@ -184,6 +184,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		entry.IsValidEntry, directoryStorage,
 		mutations, mutations,
 		monitoring.InertMetricFactory{},
+		10, /*Revisions per page */
 	))
 
 	spb.RegisterKeyTransparencySequencerServer(gsvr, sequencer.NewServer(
