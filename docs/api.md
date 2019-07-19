@@ -396,7 +396,7 @@ ListEntryHistoryRequest gets a list of historical keys for a user.
 | directory_id | [string](#string) |  | directory_id identifies the directory in which the user lives. |
 | user_id | [string](#string) |  | user_id is the user identifier. |
 | start | [int64](#int64) |  | start is the starting revision. |
-| page_size | [int32](#int32) |  | page_size is the maximum number of entries to return. |
+| page_size | [int32](#int32) |  | page_size is the maximum number of entries to return. The server can return fewer entries than requested. |
 | last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 

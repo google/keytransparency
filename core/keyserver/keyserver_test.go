@@ -81,6 +81,7 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 		tlog:              s.LogClient,
 		tmap:              s.MapClient,
 		newFromWrappedKey: fakeNewFromWrappedKey,
+		revisionPageSize:  10,
 	}
 	return &miniEnv{
 		s:              s,

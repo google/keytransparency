@@ -757,6 +757,7 @@ type ListEntryHistoryRequest struct {
 	// start is the starting revision.
 	Start int64 `protobuf:"varint,2,opt,name=start,proto3" json:"start,omitempty"`
 	// page_size is the maximum number of entries to return.
+	// The server can return fewer entries than requested.
 	PageSize int32 `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	// last_verified_tree_size is the tree_size of the last log root the client
 	// verified. Omitting this field will omit the log consistency proof from the
