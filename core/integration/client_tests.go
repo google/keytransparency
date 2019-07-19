@@ -23,11 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/client/tracker"
 	"github.com/google/keytransparency/core/client/verifier"
-	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/testutil"
 	"github.com/google/trillian/types"
@@ -171,48 +169,23 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action 
 	return nil
 }
 
-func NewClientWithTracker(t *testing.T, env *Env) (*client.Client, *tracker.LogTracker) {
-	t.Helper()
-
-	config := env.Directory
-	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	mapVerifier, err := tclient.NewMapVerifierFromTree(config.GetMap())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// VRF key
-	vrfPubKey, err := p256.NewVRFVerifierFromRawKey(config.GetVrf().GetDer())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	logTracker := tracker.New(logVerifier)
-
-	verifier := verifier.New(vrfPubKey, mapVerifier, logVerifier, logTracker)
-
-	minInterval, err := ptypes.Duration(config.MinInterval)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cli := client.New(env.Cli, config.DirectoryId, minInterval, verifier)
-	return cli, logTracker
-}
-
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
 
-	cli, logTracker := NewClientWithTracker(t, env)
-	logTracker.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
-		// Only update occasionally in order to produce interesting consistency proofs.
-		return newRoot.TreeSize%5 == 1
-	})
+	cli, err := client.NewFromConfig(env.Cli, env.Directory,
+		func(lv *tclient.LogVerifier) verifier.LogTracker {
+			t := tracker.New(lv)
+			t.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
+				// Only update occasionally in order to produce interesting consistency proofs.
+				return newRoot.TreeSize%5 == 1
+			})
+			return t
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create lists of signers.
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
@@ -353,11 +326,19 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 	transcript := []*tpb.Action{}
 
-	cli, logTracker := NewClientWithTracker(t, env)
-	logTracker.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
-		// Only update occasionally in order to produce interesting consistency proofs.
-		return newRoot.TreeSize%5 == 1
-	})
+	cli, err := client.NewFromConfig(env.Cli, env.Directory,
+		func(lv *tclient.LogVerifier) verifier.LogTracker {
+			t := tracker.New(lv)
+			t.SetUpdatePredicate(func(_, newRoot types.LogRootV1) bool {
+				// Only update occasionally in order to produce interesting consistency proofs.
+				return newRoot.TreeSize%5 == 1
+			})
+			return t
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	users := []*client.User{
 		{

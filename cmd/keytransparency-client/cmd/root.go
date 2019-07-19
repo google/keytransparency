@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/core/client/tracker"
+	"github.com/google/keytransparency/core/client/verifier"
 	"github.com/google/keytransparency/impl/authentication"
 
 	"github.com/google/trillian"
@@ -39,6 +41,7 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 var (
@@ -219,7 +222,9 @@ func GetClient(ctx context.Context) (*client.Client, error) {
 		return nil, fmt.Errorf("config: %v", err)
 	}
 
-	return client.NewFromConfig(ktCli, config)
+	return client.NewFromConfig(ktCli, config,
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+	)
 }
 
 // config selects a source for and returns the client configuration.

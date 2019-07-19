@@ -114,8 +114,9 @@ type Client struct {
 }
 
 // NewFromConfig creates a new client from a config
-func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Directory) (*Client, error) {
-	ktVerifier, err := verifier.NewFromDirectory(config)
+func NewFromConfig(ktClient pb.KeyTransparencyClient, config *pb.Directory,
+	trackerFactory verifier.LogTrackerFactory) (*Client, error) {
+	ktVerifier, err := verifier.NewFromDirectory(config, trackerFactory)
 	if err != nil {
 		return nil, err
 	}

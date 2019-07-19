@@ -21,6 +21,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/core/client/tracker"
+	"github.com/google/keytransparency/core/client/verifier"
 	"github.com/google/keytransparency/core/monitorstorage"
 	"github.com/google/trillian"
 	"github.com/google/trillian/types"
@@ -49,7 +51,9 @@ func NewFromDirectory(cli pb.KeyTransparencyClient,
 		return nil, fmt.Errorf("could not initialize map verifier: %v", err)
 	}
 
-	ktClient, err := client.NewFromConfig(cli, config)
+	ktClient, err := client.NewFromConfig(cli, config,
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create kt client: %v", err)
 	}

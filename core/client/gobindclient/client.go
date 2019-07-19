@@ -29,12 +29,15 @@ import (
 
 	"github.com/google/keytransparency/core/client"
 	"github.com/google/keytransparency/core/client/multi"
+	"github.com/google/keytransparency/core/client/tracker"
+	"github.com/google/keytransparency/core/client/verifier"
 
 	"github.com/benlaurie/objecthash/go/objecthash"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 var (
@@ -107,7 +110,9 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 		}
 	}
 
-	client, err := client.NewFromConfig(ktClient, config)
+	client, err := client.NewFromConfig(ktClient, config,
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+	)
 	if err != nil {
 		return fmt.Errorf("error adding the KtServer: %v", err)
 	}

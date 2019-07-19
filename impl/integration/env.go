@@ -31,6 +31,8 @@ import (
 
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/core/client/tracker"
+	"github.com/google/keytransparency/core/client/verifier"
 	"github.com/google/keytransparency/core/integration"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
@@ -46,6 +48,7 @@ import (
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	tclient "github.com/google/trillian/client"
 	ttest "github.com/google/trillian/testonly/integration"
 
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
@@ -197,7 +200,9 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	go gsvr.Serve(lis)
 
 	ktClient := pb.NewKeyTransparencyClient(cc)
-	client, err := client.NewFromConfig(ktClient, directoryPB)
+	client, err := client.NewFromConfig(ktClient, directoryPB,
+		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error reading config: %v", err)
 	}

@@ -28,8 +28,11 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/google/keytransparency/core/client"
+	"github.com/google/keytransparency/core/client/tracker"
+	"github.com/google/keytransparency/core/client/verifier"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tclient "github.com/google/trillian/client"
 )
 
 // DialFunc returns a connected grpc client for Key Transparency.
@@ -200,7 +203,9 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 	workers := make([]worker, 0, n)
 	for i := 0; i < n; i++ {
 		// Give each worker its own client.
-		client, err := client.NewFromConfig(h.ktCli, h.directory)
+		client, err := client.NewFromConfig(h.ktCli, h.directory,
+			func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.New(lv) },
+		)
 		if err != nil {
 			return nil, err
 		}
