@@ -96,9 +96,11 @@ type Server struct {
 	logs              MutationLogs
 	batches           BatchReader
 	newFromWrappedKey NewFromWrappedKeyFunc
+	revisionPageSize  int32
 }
 
 // New creates a new instance of the key server.
+// revisionPageSize sets the maximum number of map revision to return per list API.
 func New(tlog tpb.TrillianLogClient,
 	tmap tpb.TrillianMapClient,
 	verifyMutation mutator.VerifyMutationFn,
@@ -106,6 +108,7 @@ func New(tlog tpb.TrillianLogClient,
 	logs MutationLogs,
 	batches BatchReader,
 	metricsFactory monitoring.MetricFactory,
+	revisionPageSize int32,
 ) *Server {
 	initMetrics.Do(func() { createMetrics(metricsFactory) })
 	return &Server{
@@ -116,6 +119,7 @@ func New(tlog tpb.TrillianLogClient,
 		logs:              logs,
 		batches:           batches,
 		newFromWrappedKey: p256.NewFromWrappedKey,
+		revisionPageSize:  revisionPageSize,
 	}
 }
 
@@ -418,6 +422,9 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 
 	// TODO(gbelvin): fetch all history from trillian at once.
 	// Get all GetUserResponse for all revisions in the range [start, start + in.PageSize].
+	if in.PageSize > s.revisionPageSize {
+		in.PageSize = s.revisionPageSize
+	}
 	responses := make([]*pb.GetUserResponse, in.PageSize)
 	for i := range responses {
 		resp, err := s.getUserByRevision(ctx, sth, d, in.UserId, in.Start+int64(i))
