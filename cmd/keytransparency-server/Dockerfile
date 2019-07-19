@@ -12,7 +12,6 @@ RUN go get -tags="mysql" ./cmd/keytransparency-server
 FROM gcr.io/distroless/base
 
 COPY --from=build /go/bin/keytransparency-server /
-ADD ./genfiles/* /kt/
 
 ENTRYPOINT ["/keytransparency-server"]
 

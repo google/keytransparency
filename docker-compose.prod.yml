@@ -1,7 +1,7 @@
 # Production configuration
 # docker-compose up -f docker-compose.yml docker-compose.prod.yml
 
-version: "3"
+version: "3.1"
 services:
   db:
     environment:

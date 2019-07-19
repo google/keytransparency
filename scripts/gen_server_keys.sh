@@ -23,7 +23,7 @@ while getopts d:a:s: option; do
 	d) COMMONNAME=${OPTARG};;
 	a) ADDRESS=${OPTARG};;
 	s) SAN_DNS=${OPTARG};;
-	*) echo "usage: ./generate.sh -d <domain> -a <ip_address> -s <san_extension_DNS>"; exit 1;;
+	*) echo "usage: ./gen_server_keys.sh -d <domain> -a <ip_address> -s <san_extension_DNS>"; exit 1;;
     esac
 done
 
@@ -39,13 +39,12 @@ fi
 SANEXT="[SAN]\nbasicConstraints=CA:TRUE\nsubjectAltName=@alt_names\n\n${ALTNAMES}"
 
 # Create output directory.
-mkdir -p "${GOPATH}/src/github.com/google/keytransparency/genfiles"
-cd "${GOPATH}/src/github.com/google/keytransparency/genfiles"
+mkdir -p "$(go env GOPATH)/src/github.com/google/keytransparency/genfiles"
+cd "$(go env GOPATH)/src/github.com/google/keytransparency/genfiles"
 
 # Generate TLS keys.
 openssl genrsa -des3 -passout pass:xxxx -out server.pass.key 2048
-openssl rsa -passin pass:xxxx -in server.pass.key -out server.key
-chmod 600 server.key
+( umask 377 && openssl rsa -passin pass:xxxx -in server.pass.key -out server.key )
 rm server.pass.key
 openssl req -new \
 	-key server.key \
