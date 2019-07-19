@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/google/keytransparency/core/client/tracker"
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/keytransparency/core/crypto/vrf"
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
@@ -52,6 +51,10 @@ type LogTracker interface {
 	// VerifyLogRoot verifies root and updates the trusted root if it is newer.
 	VerifyLogRoot(state *pb.LogRootRequest, newRoot *pb.LogRoot) (*types.LogRootV1, error)
 }
+
+// LogTrackerFactory allows the caller of NewFromDirectory to supply different
+// tracker implementations.  eg. no-op, single-synchronous-head, and multi-head tracking.
+type LogTrackerFactory func(*tclient.LogVerifier) LogTracker
 
 // Verifier is a client helper library for verifying requests and responses.
 type Verifier struct {
@@ -77,7 +80,7 @@ func New(vrf vrf.PublicKey,
 }
 
 // NewFromDirectory creates a new instance of the client verifier from a config.
-func NewFromDirectory(config *pb.Directory) (*Verifier, error) {
+func NewFromDirectory(config *pb.Directory, f LogTrackerFactory) (*Verifier, error) {
 	logVerifier, err := tclient.NewLogVerifierFromTree(config.GetLog())
 	if err != nil {
 		return nil, err
@@ -94,7 +97,9 @@ func NewFromDirectory(config *pb.Directory) (*Verifier, error) {
 		return nil, fmt.Errorf("error parsing vrf public key: %v", err)
 	}
 
-	return New(vrfPubKey, mapVerifier, logVerifier, tracker.New(logVerifier)), nil
+	tracker := f(logVerifier)
+
+	return New(vrfPubKey, mapVerifier, logVerifier, tracker), nil
 }
 
 // Index computes the index from a VRF proof.
