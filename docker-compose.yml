@@ -29,7 +29,7 @@ services:
     depends_on:
       - server
       - sequencer
-    image: us.gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+    image: gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
     build:
       context: .
       dockerfile: deploy/prometheus/Dockerfile
@@ -38,10 +38,7 @@ services:
       - 9090:9090
 
   db:
-    image: us.gcr.io/key-transparency/db
-    build:
-      context: ../trillian
-      dockerfile: examples/deployment/docker/db_server/Dockerfile
+    image: gcr.io/trillian-opensource-ci/db_server:latest
     restart: always
     ports:
       - "3306"
@@ -50,10 +47,10 @@ services:
       MYSQL_USER: test
       MYSQL_DATABASE: test
 
-    log-server:
+  log-server:
     depends_on:
       - db
-    image: us.gcr.io/trillian/log-server:latest
+    image: gcr.io/trillian-opensource-ci/log_server:latest
     restart: always
     command: 
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -72,7 +69,7 @@ services:
   log-signer:
     depends_on:
       - db
-    image: us.gcr.io/trillian/log-signer:latest
+    image: gcr.io/trillian-opensource-ci/log_signer:latest
     restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -94,7 +91,7 @@ services:
   map-server:
     depends_on:
       - db
-    image: us.gcr.io/trillian/map-server:latest
+    image: gcr.io/trillian-opensource-ci/map_server:latest
     restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -115,7 +112,7 @@ services:
       - db
       - log-server
       - map-server
-    image: us.gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+    image: gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
     build:
       context: .
       dockerfile: ./cmd/keytransparency-server/Dockerfile
@@ -132,7 +129,7 @@ services:
       - --tls-cert=/run/secrets/server.crt
       - --auth-type=insecure-fake
       - --alsologtostderr
-      - --v=5
+      - --v=1
     labels:
       kompose.service.type: LoadBalancer
     healthcheck:
@@ -149,7 +146,7 @@ services:
       - db
       - log-server
       - map-server
-    image: us.gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
+    image: gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
     build:
       context: .
       dockerfile: ./cmd/keytransparency-sequencer/Dockerfile
@@ -177,7 +174,7 @@ services:
       - server.crt
 
   init:
-    image: us.gcr.io/key-transparency/init:latest
+    image: gcr.io/key-transparency/init:latest
     restart: "on-failure"
     deploy:
       restart_policy:
@@ -193,7 +190,7 @@ services:
     depends_on:
       - server
       - sequencer
-    image: us.gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
+    image: gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
     build:
       context: .
       dockerfile: ./cmd/keytransparency-monitor/Dockerfile
