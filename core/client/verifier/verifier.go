@@ -52,6 +52,8 @@ type LogTracker interface {
 	VerifyLogRoot(state *pb.LogRootRequest, newRoot *pb.LogRoot) (*types.LogRootV1, error)
 }
 
+// LogTrackerFactory allows the caller of NewFromDirectory to supply different
+// tracker implementations.  eg. no-op, single-syncronous-head, and multi-head tracking.
 type LogTrackerFactory func(*tclient.LogVerifier) LogTracker
 
 // Verifier is a client helper library for verifying requests and responses.
