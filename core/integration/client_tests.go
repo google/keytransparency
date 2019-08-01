@@ -284,7 +284,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := cli.VerifyGetUser(logReq, req, resp); err != nil {
+			if err := cli.VerifyGetUser(req, resp); err != nil {
 				t.Fatal(err)
 			}
 			if got, want := resp.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
@@ -412,7 +412,7 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			if err != nil {
 				t.Fatalf("BatchGetUser(): %v", err)
 			}
-			if err := cli.VerifyBatchGetUser(logReq, req, resp); err != nil {
+			if err := cli.VerifyBatchGetUser(req, resp); err != nil {
 				t.Fatal(err)
 			}
 			for userID, leaf := range resp.MapLeavesByUserId {

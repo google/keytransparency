@@ -19,8 +19,8 @@ import (
 )
 
 // VerifyGetUser verifies that the retrieved profile of userID is correct.
-func (v *Verifier) VerifyGetUser(logReq *pb.LogRootRequest, req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
-	lr, err := v.VerifyLogRoot(logReq, resp.Revision.GetLatestLogRoot())
+func (v *Verifier) VerifyGetUser(req *pb.GetUserRequest, resp *pb.GetUserResponse) error {
+	lr, err := v.VerifyLogRoot(req.GetLastVerified(), resp.GetRevision().GetLatestLogRoot())
 	if err != nil {
 		return err
 	}
@@ -32,8 +32,8 @@ func (v *Verifier) VerifyGetUser(logReq *pb.LogRootRequest, req *pb.GetUserReque
 }
 
 // VerifyBatchGetUser verifies that the retrieved profiles are correct.
-func (v *Verifier) VerifyBatchGetUser(logReq *pb.LogRootRequest, req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
-	lr, err := v.VerifyLogRoot(logReq, resp.Revision.GetLatestLogRoot())
+func (v *Verifier) VerifyBatchGetUser(req *pb.BatchGetUserRequest, resp *pb.BatchGetUserResponse) error {
+	lr, err := v.VerifyLogRoot(req.GetLastVerified(), resp.GetRevision().GetLatestLogRoot())
 	if err != nil {
 		return err
 	}
