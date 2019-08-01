@@ -139,7 +139,7 @@ BatchGetUserRequest contains multiple user_ids to fetch.
 | ----- | ---- | ----- | ----------- |
 | directory_id | [string](#string) |  | directory_id identifies the directory in which the users live. |
 | user_ids | [string](#string) | repeated | user_ids are the user identifiers, the format for which is defined by the application. |
-| last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
+| last_verified | [LogRootRequest](#google.keytransparency.v1.LogRootRequest) |  | last_verified is the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 
 
@@ -193,7 +193,7 @@ BatchListUserRevisionsRequest contains a list of users and a range of revisions.
 | end_revision | [int64](#int64) |  | end_revision is the ending epoch. |
 | page_size | [int32](#int32) |  | page_size is the maximum number of entries to return. If page_size is unspecified, the server will decide how to paginate results. |
 | page_token | [string](#string) |  | page_token is a continuation token for paginating through results. |
-| last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
+| last_verified | [LogRootRequest](#google.keytransparency.v1.LogRootRequest) |  | last_verified is the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 
 
@@ -328,7 +328,7 @@ GetLatestRevisionRequest identifies a particular revision.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | directory_id | [string](#string) |  | directory_id is the directory for which revisions are being requested. |
-| last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
+| last_verified | [LogRootRequest](#google.keytransparency.v1.LogRootRequest) |  | last_verified is the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 
 
@@ -345,7 +345,7 @@ GetRevisionRequest identifies a particular revision.
 | ----- | ---- | ----- | ----------- |
 | directory_id | [string](#string) |  | directory_id is the directory for which revisions are being requested. |
 | revision | [int64](#int64) |  | revision specifies the revision number in which mutations will be returned. |
-| last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
+| last_verified | [LogRootRequest](#google.keytransparency.v1.LogRootRequest) |  | last_verified is the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 
 
@@ -362,7 +362,7 @@ Gets the leaf entry for a user.
 | ----- | ---- | ----- | ----------- |
 | directory_id | [string](#string) |  | directory_id identifies the directory in which the user lives. |
 | user_id | [string](#string) |  | user_id is the user identifier, the format for which is defined by the application. |
-| last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
+| last_verified | [LogRootRequest](#google.keytransparency.v1.LogRootRequest) |  | last_verified is the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 
 
@@ -397,7 +397,7 @@ ListEntryHistoryRequest gets a list of historical keys for a user.
 | user_id | [string](#string) |  | user_id is the user identifier. |
 | start | [int64](#int64) |  | start is the starting revision. |
 | page_size | [int32](#int32) |  | page_size is the maximum number of entries to return. The server can return fewer entries than requested. |
-| last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
+| last_verified | [LogRootRequest](#google.keytransparency.v1.LogRootRequest) |  | last_verified is the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 
 
@@ -470,7 +470,7 @@ ListUserRevisionsRequest gets a list of historical keys for a user.
 | end_revision | [int64](#int64) |  | end_revision is the ending epoch. |
 | page_size | [int32](#int32) |  | page_size is the maximum number of entries to return. If page_size is unspecified, the server will decide how to paginate results. |
 | page_token | [string](#string) |  | page_token is a continuation token for paginating through results. |
-| last_verified_tree_size | [int64](#int64) |  | last_verified_tree_size is the tree_size of the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
+| last_verified | [LogRootRequest](#google.keytransparency.v1.LogRootRequest) |  | last_verified is the last log root the client verified. Omitting this field will omit the log consistency proof from the response. |
 
 
 
