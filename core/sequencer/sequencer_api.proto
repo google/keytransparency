@@ -112,14 +112,13 @@ message PublishRevisionsResponse {
 }
 
 // UpdateMetricsRequest is empty.
-message UpdateMetricsRequest{
+message UpdateMetricsRequest {
   string directory_id = 1;
   int32 max_unapplied_count = 2;
 }
 
 // UpdateMetricsResponse is empty.
-message UpdateMetricsResponse{
-}
+message UpdateMetricsResponse {}
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
