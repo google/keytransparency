@@ -276,9 +276,9 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 			// Check profile.
 			logReq := cli.LastVerifiedLogRoot()
 			req := &pb.GetUserRequest{
-				DirectoryId:          env.Directory.DirectoryId,
-				UserId:               tc.userID,
-				LastVerifiedTreeSize: logReq.TreeSize,
+				DirectoryId:  env.Directory.DirectoryId,
+				UserId:       tc.userID,
+				LastVerified: logReq,
 			}
 			resp, err := env.Cli.GetUser(ctx, req)
 			if err != nil {
@@ -405,9 +405,9 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			}
 			logReq := cli.LastVerifiedLogRoot()
 			req := &pb.BatchGetUserRequest{
-				DirectoryId:          env.Directory.DirectoryId,
-				UserIds:              userIDs,
-				LastVerifiedTreeSize: logReq.TreeSize,
+				DirectoryId:  env.Directory.DirectoryId,
+				UserIds:      userIDs,
+				LastVerified: logReq,
 			}
 			resp, err := env.Cli.BatchGetUser(cctx, req)
 			if err != nil {

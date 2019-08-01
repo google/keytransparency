@@ -19,9 +19,10 @@ import (
 	"runtime"
 	"sync"
 
-	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
+
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
 // BatchVerifyGetUserIndex fetches and verifies the indexes for a list of users.
@@ -102,9 +103,9 @@ func (c *Client) BatchVerifiedGetUser(ctx context.Context, userIDs []string) (
 	*types.MapRootV1, map[string]*pb.MapLeaf, error) {
 	logReq := c.LastVerifiedLogRoot()
 	resp, err := c.cli.BatchGetUser(ctx, &pb.BatchGetUserRequest{
-		DirectoryId:          c.DirectoryID,
-		UserIds:              userIDs,
-		LastVerifiedTreeSize: logReq.TreeSize,
+		DirectoryId:  c.DirectoryID,
+		UserIds:      userIDs,
+		LastVerified: logReq,
 	})
 	if err != nil {
 		return nil, nil, err
