@@ -292,8 +292,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 			}
 
 			transcript = append(transcript, &tpb.Action{
-				Desc:                tc.desc,
-				LastVerifiedLogRoot: logReq,
+				Desc: tc.desc,
 				ReqRespPair: &tpb.Action_GetUser{GetUser: &tpb.GetUser{
 					Request:  req,
 					Response: resp,
@@ -423,8 +422,7 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			}
 
 			transcript = append(transcript, &tpb.Action{
-				Desc:                tc.desc,
-				LastVerifiedLogRoot: logReq,
+				Desc: tc.desc,
 				ReqRespPair: &tpb.Action_BatchGetUser{
 					BatchGetUser: &tpb.BatchGetUser{
 						Request:  req,
