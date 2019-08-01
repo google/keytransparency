@@ -34,9 +34,7 @@ message Transcript {
 // Action contains one request and one response.
 message Action {
   string desc = 1;
-  reserved 2; // was trust_new_log
-  // last_verified_log_root encodes the client verifier state.
-  v1.LogRootRequest last_verified_log_root = 3;
+  reserved 2, 3;
   oneof req_resp_pair {
     GetUser get_user = 4;
     BatchGetUser batch_get_user = 5;
