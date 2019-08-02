@@ -18,6 +18,7 @@ package keyserver
 import (
 	"context"
 	"fmt"
+	"log"
 	"runtime"
 	"sync"
 
@@ -128,9 +129,9 @@ func New(tlog tpb.TrillianLogClient,
 // GetUser also supports querying past values by setting the revision field.
 func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUserResponse, error) {
 	req := &pb.BatchGetUserRequest{
-		DirectoryId:          in.DirectoryId,
-		UserIds:              []string{in.UserId},
-		LastVerifiedTreeSize: in.LastVerifiedTreeSize,
+		DirectoryId:  in.DirectoryId,
+		UserIds:      []string{in.UserId},
+		LastVerified: in.LastVerified,
 	}
 	resp, err := s.BatchGetUser(ctx, req)
 	if err != nil {
@@ -292,6 +293,7 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 
 // BatchGetUser returns a batch of users at the same revision.
 func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
+	log.Printf("XXXX, BatchGetUser")
 	if in.DirectoryId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
@@ -303,7 +305,7 @@ func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (
 	}
 
 	// Fetch latest revision.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerified().GetTreeSize())
 	if err != nil {
 		return nil, logTopLevelErr("BatchGetUser", err)
 	}
@@ -405,7 +407,7 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 	}
 
 	// Fetch latest revision.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, in.GetLastVerified().GetTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -459,16 +461,16 @@ func (s *Server) ListEntryHistory(ctx context.Context, in *pb.ListEntryHistoryRe
 func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisionsRequest) (
 	*pb.ListUserRevisionsResponse, error) {
 	pageStart := in.StartRevision
-	lastVerified := in.LastVerifiedTreeSize
+	lastVerified := in.LastVerified
 	if in.PageToken != "" {
 		token := &rtpb.ListUserRevisionsToken{}
 		if err := DecodeToken(in.PageToken, token); err != nil {
 			glog.Errorf("invalid page token %v: %v", in.PageToken, err)
 			return nil, status.Errorf(codes.InvalidArgument, "Invalid page_token provided")
 		}
-		// last_verified_tree_size and page_token are allowed to change between paginated requests.
+		// last_verified and page_token are allowed to change between paginated requests.
 		// Clear them here both for comparison and for encoding next_page_token in the response.
-		in.LastVerifiedTreeSize = 0
+		in.LastVerified = nil
 		in.PageToken = ""
 		if !proto.Equal(in, token.Request) {
 			return nil, status.Errorf(codes.InvalidArgument, "Request fields changed during pagination")
@@ -488,7 +490,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 	}
 
 	// Fetch latest log root & consistency proof.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified)
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified.GetTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -548,7 +550,7 @@ func (s *Server) ListUserRevisions(ctx context.Context, in *pb.ListUserRevisions
 func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUserRevisionsRequest) (
 	*pb.BatchListUserRevisionsResponse, error) {
 	pageStart := in.StartRevision
-	lastVerified := in.LastVerifiedTreeSize
+	lastVerified := in.LastVerified
 
 	// Lookup log and map info.
 	directoryID := in.DirectoryId
@@ -562,7 +564,7 @@ func (s *Server) BatchListUserRevisions(ctx context.Context, in *pb.BatchListUse
 	}
 
 	// Fetch latest log root & consistency proof.
-	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified)
+	sth, consistencyProof, err := s.latestLogRootProof(ctx, d, lastVerified.GetTreeSize())
 	if err != nil {
 		return nil, err
 	}

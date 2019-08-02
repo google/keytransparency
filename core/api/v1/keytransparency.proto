@@ -108,10 +108,10 @@ message GetUserRequest {
   // user_id is the user identifier, the format for which is defined by the
   // application.
   string user_id = 2;
-  // last_verified_tree_size is the tree_size of the last log root the client
-  // verified. Omitting this field will omit the log consistency proof from the
-  // response.
-  int64 last_verified_tree_size = 3;
+  // last_verified is the last log root the client verified.
+  // Omitting this field will omit the log consistency proof from the response.
+  LogRootRequest last_verified = 4;
+  reserved 3;
 }
 
 // Leaf entry for a user.
@@ -145,10 +145,10 @@ message BatchGetUserRequest {
   // user_ids are the user identifiers, the format for which is defined by the
   // application.
   repeated string user_ids = 2;
-  // last_verified_tree_size is the tree_size of the last log root the client
-  // verified. Omitting this field will omit the log consistency proof from the
-  // response.
-  int64 last_verified_tree_size = 3;
+  // last_verified is the last log root the client verified.
+  // Omitting this field will omit the log consistency proof from the response.
+  LogRootRequest last_verified = 4;
+  reserved 3;
 }
 
 // BatchGetUserIndexRequest identifies a set of users.
@@ -187,13 +187,10 @@ message ListEntryHistoryRequest {
   // page_size is the maximum number of entries to return.
   // The server can return fewer entries than requested.
   int32 page_size = 3;
-  // Used to be app_id. Applications can define their own hierarchy for user_id
-  // if desired.
-  reserved 4;
-  // last_verified_tree_size is the tree_size of the last log root the client
-  // verified. Omitting this field will omit the log consistency proof from the
-  // response.
-  int64 last_verified_tree_size = 5;
+  // last_verified is the last log root the client verified.
+  // Omitting this field will omit the log consistency proof from the response.
+  LogRootRequest last_verified = 7;
+  reserved 4, 5;
 }
 
 // ListEntryHistoryResponse requests a paginated history of keys for a user.
@@ -220,10 +217,10 @@ message ListUserRevisionsRequest {
   int32 page_size = 5;
   // page_token is a continuation token for paginating through results.
   string page_token = 6;
-  // last_verified_tree_size is the tree_size of the last log root the client
-  // verified. Omitting this field will omit the log consistency proof from the
-  // response.
-  int64 last_verified_tree_size = 7;
+  // last_verified is the last log root the client verified.
+  // Omitting this field will omit the log consistency proof from the response.
+  LogRootRequest last_verified = 8;
+  reserved 7;
 }
 
 // MapRevision contains a map leaf at a speific revision.
@@ -262,10 +259,10 @@ message BatchListUserRevisionsRequest {
   int32 page_size = 5;
   // page_token is a continuation token for paginating through results.
   string page_token = 6;
-  // last_verified_tree_size is the tree_size of the last log root the client
-  // verified. Omitting this field will omit the log consistency proof from the
-  // response.
-  int64 last_verified_tree_size = 7;
+  // last_verified is the last log root the client verified.
+  // Omitting this field will omit the log consistency proof from the response.
+  LogRootRequest last_verified = 8;
+  reserved 7;
 }
 
 // BatchMapRevision contains a set of map leaves at a speific revision.
@@ -314,20 +311,20 @@ message GetRevisionRequest {
   string directory_id = 5;
   // revision specifies the revision number in which mutations will be returned.
   int64 revision = 1;
-  // last_verified_tree_size is the tree_size of the last log root the client
-  // verified. Omitting this field will omit the log consistency proof from the
-  // response.
-  int64 last_verified_tree_size = 2;
+  // last_verified is the last log root the client verified.
+  // Omitting this field will omit the log consistency proof from the response.
+  LogRootRequest last_verified = 4;
+  reserved 2, 3;
 }
 
 // GetLatestRevisionRequest identifies a particular revision.
 message GetLatestRevisionRequest {
   // directory_id is the directory for which revisions are being requested.
   string directory_id = 1;
-  // last_verified_tree_size is the tree_size of the last log root the client
-  // verified. Omitting this field will omit the log consistency proof from the
-  // response.
-  int64 last_verified_tree_size = 2;
+  // last_verified is the last log root the client verified.
+  // Omitting this field will omit the log consistency proof from the response.
+  LogRootRequest last_verified = 3;
+  reserved 2;
 }
 
 // MapRoot contains the map root and its inclusion proof in the log.

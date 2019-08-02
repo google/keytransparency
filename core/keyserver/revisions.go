@@ -47,7 +47,7 @@ func (s *Server) GetLatestRevision(ctx context.Context, in *pb.GetLatestRevision
 	}
 
 	// Fetch latest revision.
-	sth, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
+	sth, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerified().GetTreeSize())
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (s *Server) GetRevision(ctx context.Context, in *pb.GetRevisionRequest) (*p
 		return nil, status.Errorf(st.Code(), "Cannot fetch directory info %v", st.Message())
 	}
 
-	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerifiedTreeSize())
+	logRoot, logConsistency, err := s.latestLogRootProof(ctx, d, in.GetLastVerified().GetTreeSize())
 	if err != nil {
 		return nil, err
 	}

@@ -276,15 +276,15 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 			// Check profile.
 			logReq := cli.LastVerifiedLogRoot()
 			req := &pb.GetUserRequest{
-				DirectoryId:          env.Directory.DirectoryId,
-				UserId:               tc.userID,
-				LastVerifiedTreeSize: logReq.TreeSize,
+				DirectoryId:  env.Directory.DirectoryId,
+				UserId:       tc.userID,
+				LastVerified: logReq,
 			}
 			resp, err := env.Cli.GetUser(ctx, req)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := cli.VerifyGetUser(logReq, req, resp); err != nil {
+			if err := cli.VerifyGetUser(req, resp); err != nil {
 				t.Fatal(err)
 			}
 			if got, want := resp.GetLeaf().GetCommitted().GetData(), tc.wantProfile; !bytes.Equal(got, want) {
@@ -292,8 +292,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 			}
 
 			transcript = append(transcript, &tpb.Action{
-				Desc:                tc.desc,
-				LastVerifiedLogRoot: logReq,
+				Desc: tc.desc,
 				ReqRespPair: &tpb.Action_GetUser{GetUser: &tpb.GetUser{
 					Request:  req,
 					Response: resp,
@@ -405,15 +404,15 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			}
 			logReq := cli.LastVerifiedLogRoot()
 			req := &pb.BatchGetUserRequest{
-				DirectoryId:          env.Directory.DirectoryId,
-				UserIds:              userIDs,
-				LastVerifiedTreeSize: logReq.TreeSize,
+				DirectoryId:  env.Directory.DirectoryId,
+				UserIds:      userIDs,
+				LastVerified: logReq,
 			}
 			resp, err := env.Cli.BatchGetUser(cctx, req)
 			if err != nil {
 				t.Fatalf("BatchGetUser(): %v", err)
 			}
-			if err := cli.VerifyBatchGetUser(logReq, req, resp); err != nil {
+			if err := cli.VerifyBatchGetUser(req, resp); err != nil {
 				t.Fatal(err)
 			}
 			for userID, leaf := range resp.MapLeavesByUserId {
@@ -423,8 +422,7 @@ func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action
 			}
 
 			transcript = append(transcript, &tpb.Action{
-				Desc:                tc.desc,
-				LastVerifiedLogRoot: logReq,
+				Desc: tc.desc,
 				ReqRespPair: &tpb.Action_BatchGetUser{
 					BatchGetUser: &tpb.BatchGetUser{
 						Request:  req,

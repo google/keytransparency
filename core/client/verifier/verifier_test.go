@@ -53,14 +53,13 @@ func RunTranscriptTest(t *testing.T, transcript *tpb.Transcript) {
 
 	for _, rpc := range transcript.Actions {
 		t.Run(rpc.Desc, func(t *testing.T) {
-			v.lt = tracker.NewFromSaved(v.lv, types.LogRootV1{
-				TreeSize: uint64(rpc.LastVerifiedLogRoot.GetTreeSize()),
-				RootHash: rpc.LastVerifiedLogRoot.GetRootHash(),
-			})
 			switch pair := rpc.ReqRespPair.(type) {
 			case *tpb.Action_GetUser:
-				logReq := v.LastVerifiedLogRoot()
-				if err := v.VerifyGetUser(logReq, pair.GetUser.Request, pair.GetUser.Response); err != nil {
+				v.lt = tracker.NewFromSaved(v.lv, types.LogRootV1{
+					TreeSize: uint64(pair.GetUser.Request.LastVerified.GetTreeSize()),
+					RootHash: pair.GetUser.Request.LastVerified.GetRootHash(),
+				})
+				if err := v.VerifyGetUser(pair.GetUser.Request, pair.GetUser.Response); err != nil {
 					t.Errorf("VerifyGetUser(): %v", err)
 				}
 

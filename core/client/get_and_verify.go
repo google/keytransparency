@@ -28,9 +28,9 @@ import (
 func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.MapRootV1, *pb.MapLeaf, error) {
 	logReq := c.LastVerifiedLogRoot()
 	req := &pb.GetUserRequest{
-		DirectoryId:          c.DirectoryID,
-		UserId:               userID,
-		LastVerifiedTreeSize: logReq.TreeSize,
+		DirectoryId:  c.DirectoryID,
+		UserId:       userID,
+		LastVerified: logReq,
 	}
 	resp, err := c.cli.GetUser(ctx, req)
 	if err != nil {
@@ -58,8 +58,8 @@ func (c *Client) VerifiedGetUser(ctx context.Context, userID string) (*types.Map
 func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV1, *types.MapRootV1, error) {
 	logReq := c.LastVerifiedLogRoot()
 	resp, err := c.cli.GetLatestRevision(ctx, &pb.GetLatestRevisionRequest{
-		DirectoryId:          c.DirectoryID,
-		LastVerifiedTreeSize: logReq.TreeSize,
+		DirectoryId:  c.DirectoryID,
+		LastVerified: logReq,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -92,9 +92,9 @@ func (c *Client) VerifiedGetLatestRevision(ctx context.Context) (*types.LogRootV
 func (c *Client) VerifiedGetRevision(ctx context.Context, revision int64) (*types.MapRootV1, error) {
 	logReq := c.LastVerifiedLogRoot()
 	req := &pb.GetRevisionRequest{
-		DirectoryId:          c.DirectoryID,
-		Revision:             revision,
-		LastVerifiedTreeSize: logReq.TreeSize,
+		DirectoryId:  c.DirectoryID,
+		Revision:     revision,
+		LastVerified: logReq,
 	}
 	resp, err := c.cli.GetRevision(ctx, req)
 	if err != nil {
@@ -118,11 +118,11 @@ func (c *Client) VerifiedListHistory(ctx context.Context, userID string, start i
 	map[*types.MapRootV1][]byte, int64, error) {
 	logReq := c.LastVerifiedLogRoot()
 	resp, err := c.cli.ListEntryHistory(ctx, &pb.ListEntryHistoryRequest{
-		DirectoryId:          c.DirectoryID,
-		UserId:               userID,
-		LastVerifiedTreeSize: logReq.TreeSize,
-		Start:                start,
-		PageSize:             count,
+		DirectoryId:  c.DirectoryID,
+		UserId:       userID,
+		LastVerified: logReq,
+		Start:        start,
+		PageSize:     count,
 	})
 	if err != nil {
 		return nil, 0, err
