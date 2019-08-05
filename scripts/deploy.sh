@@ -35,6 +35,7 @@ gcloud --quiet auth configure-docker
 
 
 echo "Generating keys..."
+rm -f ./genfiles/*
 ./scripts/prepare_server.sh -f
 # kubectl exits with 1 if kt-secret does not exist
 kubectl get secret kt-secrets
