@@ -129,13 +129,13 @@ func (k PrivateKey) Evaluate(m []byte) (index [32]byte, proof []byte) {
 	Hx, Hy := H1(m)
 
 	// VRF_k(m) = [k]H
-	sHx, sHy := params.ScalarMult(Hx, Hy, k.D.Bytes())
+	sHx, sHy := curve.ScalarMult(Hx, Hy, k.D.Bytes())
 	vrf := elliptic.Marshal(curve, sHx, sHy) // 65 bytes.
 
 	// G is the base point
 	// s = H2(G, H, [k]G, VRF, [r]G, [r]H)
-	rGx, rGy := params.ScalarBaseMult(r)
-	rHx, rHy := params.ScalarMult(Hx, Hy, r)
+	rGx, rGy := curve.ScalarBaseMult(r)
+	rHx, rHy := curve.ScalarMult(Hx, Hy, r)
 	var b bytes.Buffer
 	b.Write(elliptic.Marshal(curve, params.Gx, params.Gy))
 	b.Write(elliptic.Marshal(curve, Hx, Hy))
@@ -183,16 +183,16 @@ func (pk *PublicKey) ProofToHash(m, proof []byte) (index [32]byte, err error) {
 	}
 
 	// [t]G + [s]([k]G) = [t+ks]G
-	tGx, tGy := params.ScalarBaseMult(t)
-	ksGx, ksGy := params.ScalarMult(pk.X, pk.Y, s)
-	tksGx, tksGy := params.Add(tGx, tGy, ksGx, ksGy)
+	tGx, tGy := curve.ScalarBaseMult(t)
+	ksGx, ksGy := curve.ScalarMult(pk.X, pk.Y, s)
+	tksGx, tksGy := curve.Add(tGx, tGy, ksGx, ksGy)
 
 	// H = H1(m)
 	// [t]H + [s]VRF = [t+ks]H
 	Hx, Hy := H1(m)
-	tHx, tHy := params.ScalarMult(Hx, Hy, t)
-	sHx, sHy := params.ScalarMult(uHx, uHy, s)
-	tksHx, tksHy := params.Add(tHx, tHy, sHx, sHy)
+	tHx, tHy := curve.ScalarMult(Hx, Hy, t)
+	sHx, sHy := curve.ScalarMult(uHx, uHy, s)
+	tksHx, tksHy := curve.Add(tHx, tHy, sHx, sHy)
 
 	//   H2(G, H, [k]G, VRF, [t]G + [s]([k]G), [t]H + [s]VRF)
 	// = H2(G, H, [k]G, VRF, [t+ks]G, [t+ks]H)
