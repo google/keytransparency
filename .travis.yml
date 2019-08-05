@@ -16,6 +16,30 @@ env:
   - PATH=$PATH:${HOME}/google-cloud-sdk/bin
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
   - GO111MODULE=on
+  - GOPROXY=https://proxy.golang.org
+
+jobs:
+  include:
+    - name: "build"
+      script: go build ./...
+    - name: "lint"
+      install: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.16.0
+      script: golangci-lint run --deadline=5m
+    - name: "coverage"
+      script:
+      - go test ./... -coverprofile=coverage1.txt
+      - go test ./impl/integration/ -coverprofile=coverage2.txt -coverpkg=./...
+      after_success: bash <(curl -s https://codecov.io/bash)
+    - name: "docker integration test"
+      install: skip
+      script: ./scripts/integration.sh
+    - stage: deploy
+      if: branch = master AND type != pull_request
+      install:
+      - gcloud -q components install kubectl
+      - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
+        -in client_secrets.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
+      script: ./scripts/deploy.sh
 
 before_install:
   - |
@@ -31,34 +55,5 @@ before_install:
   - gcloud -q components update
   - gcloud -q version
   - wget --version
-
-install:
-  - gcloud -q components install kubectl
   - docker --version
   - docker-compose --version
-  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.16.0
-  - if [ "$GO111MODULE" = "auto" ]; then go get -t -v ./... ; fi
-
-script:
-  - go build ./...
-  - golangci-lint run --deadline=5m
-  - go test ./... -coverprofile=coverage1.txt
-  - go test ./impl/integration/ -coverprofile=coverage2.txt -coverpkg=./...
-  - ./scripts/integration.sh
-
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
-
-before_deploy:
-  - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
-    -in client_secrets.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
-  - go get github.com/google/trillian/server/trillian_log_server
-  - go get github.com/google/trillian/server/trillian_log_signer
-  - go get github.com/google/trillian/server/trillian_map_server
-
-deploy:
-  skip_cleanup: true
-  provider: script
-  script: ./scripts/deploy.sh
-  on:
-    branch: master
