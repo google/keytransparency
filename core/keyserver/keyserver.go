@@ -654,7 +654,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 						errors <- status.Errorf(codes.InvalidArgument, "Invalid mutation")
 					}
-					if err = validateEntryUpdate(u, vrfPriv); err != nil {
+					if err := validateEntryUpdate(u, vrfPriv); err != nil {
 						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
 						errors <- status.Errorf(codes.InvalidArgument, "Invalid request")
 					}
