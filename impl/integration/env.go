@@ -98,6 +98,7 @@ type Env struct {
 	grpcServer *grpc.Server
 	grpcCC     *grpc.ClientConn
 	db         *sql.DB
+	dbDone     func(context.Context)
 }
 
 func vrfKeyGen(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
@@ -119,7 +120,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	timeout := 6 * time.Second
 	directoryID := "integration"
 
-	db, err := testdb.NewTrillianDB(ctx)
+	db, dbDone, err := testdb.NewTrillianDB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to open database: %v", err)
 	}
@@ -226,6 +227,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		grpcServer: gsvr,
 		grpcCC:     cc,
 		db:         db,
+		dbDone:     dbDone,
 	}, nil
 }
 
@@ -241,5 +243,6 @@ func (env *Env) Close() {
 	env.grpcServer.Stop()
 	env.mapEnv.Close()
 	env.logEnv.Close()
+	env.dbDone(ctx)
 	env.db.Close()
 }
