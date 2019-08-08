@@ -68,11 +68,6 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 )
 
 func runBatchAndPublish(ctx context.Context, env *Env, mn, mx int32, block bool) error {
-	rbReq := &spb.RunBatchRequest{
-		DirectoryId: env.Directory.DirectoryId,
-		MinBatch:    mn,
-		MaxBatch:    mx,
-	}
 	convert := func(err error, prefix string) error {
 		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
 			st := status.Convert(err)
@@ -80,6 +75,16 @@ func runBatchAndPublish(ctx context.Context, env *Env, mn, mx int32, block bool)
 		}
 		return err
 	}
+
+	drReq := &spb.DefineRevisionsRequest{
+		DirectoryId: env.Directory.DirectoryId,
+		MinBatch:    mn,
+		MaxBatch:    mx,
+	}
+	if _, err := env.Sequencer.DefineRevisions(ctx, drReq); err != nil {
+		return convert(err, "DefineRevisions()")
+	}
+	rbReq := &spb.RunBatchRequest{DirectoryId: env.Directory.DirectoryId}
 	if _, err := env.Sequencer.RunBatch(ctx, rbReq); err != nil {
 		return convert(err, "RunBatch()")
 	}

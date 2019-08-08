@@ -239,7 +239,12 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	})
 
 	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
-		if err := signer.RunBatchForAllMasterships(ctx, int32(*batchSize)); err != nil {
+		if err := signer.DefineRevisionsForAllMasterships(ctx, int32(*batchSize)); err != nil {
+			glog.Errorf("PeriodicallyRun(DefineRevisionsForAllMasterships): %v", err)
+		}
+	})
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+		if err := signer.RunBatchForAllMasterships(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(RunBatchForAllMasterships): %v", err)
 		}
 	})
