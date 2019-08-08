@@ -15,7 +15,7 @@ require (
 	github.com/go-toolsmith/typep v1.0.0 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/mock v1.3.1
-	github.com/golang/protobuf v1.3.2-0.20190517061210-b285ee9cfc6c
+	github.com/golang/protobuf v1.3.2
 	github.com/google/go-cmp v0.3.0
 	github.com/google/tink v1.2.1-0.20190523150020-6495d823d968
 	github.com/google/trillian v1.2.2-0.20190628151111-5e2c3d733100
@@ -42,6 +42,6 @@ require (
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/tools v0.0.0-20190628222527-fb37f6ba8261 // indirect
 	google.golang.org/api v0.7.0
-	google.golang.org/genproto v0.0.0-20190627203621-eb59cef1c072
+	google.golang.org/genproto v0.0.0-20190801165951-fa694d86fc64
 	google.golang.org/grpc v1.21.1
 )
