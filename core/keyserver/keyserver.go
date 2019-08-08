@@ -18,7 +18,6 @@ package keyserver
 import (
 	"context"
 	"fmt"
-	"log"
 	"runtime"
 	"sync"
 
@@ -293,7 +292,6 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 
 // BatchGetUser returns a batch of users at the same revision.
 func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
-	log.Printf("XXXX, BatchGetUser")
 	if in.DirectoryId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
