@@ -26,6 +26,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.9.5
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
+	github.com/jhump/protoreflect v1.5.0 // indirect
 	github.com/kr/pretty v0.1.0
 	github.com/kylelemons/godebug v1.1.0
 	github.com/lib/pq v1.2.0 // indirect
@@ -45,7 +46,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20190804053845-51ab0e2deafa // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-	golang.org/x/tools v0.0.0-20190807223507-b346f7fd45de // indirect
+	golang.org/x/tools v0.0.0-20190808195139-e713427fea3f // indirect
 	google.golang.org/api v0.7.0
 	google.golang.org/genproto v0.0.0-20190801165951-fa694d86fc64
 	google.golang.org/grpc v1.22.1
