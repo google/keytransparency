@@ -17,6 +17,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.3.2
+	github.com/golangci/ineffassign v0.0.0-20190609212857-42439a7714cc // indirect
 	github.com/google/certificate-transparency-go v1.0.22-0.20190627171427-aedc8d1c5ab6 // indirect
 	github.com/google/go-cmp v0.3.1
 	github.com/google/tink v1.2.1-0.20190523150020-6495d823d968
