@@ -21,7 +21,7 @@ require (
 	github.com/google/certificate-transparency-go v1.0.22-0.20190627171427-aedc8d1c5ab6 // indirect
 	github.com/google/go-cmp v0.3.1
 	github.com/google/tink v1.2.1-0.20190523150020-6495d823d968
-	github.com/google/trillian v1.3.0
+	github.com/google/trillian v1.3.1
 	github.com/gostaticanalysis/analysisutil v0.0.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -35,7 +35,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.11.0
 	github.com/mwitkow/go-proto-validators v0.1.0 // indirect
 	github.com/prometheus/client_golang v1.1.0
-	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/go v0.0.0-20190704215121-7189cc372560 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
