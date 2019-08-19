@@ -18,7 +18,6 @@ package keyserver
 import (
 	"context"
 	"fmt"
-	"log"
 	"runtime"
 	"sync"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -293,7 +293,6 @@ func (s *Server) batchGetUserByRevision(ctx context.Context, sth *tpb.SignedLogR
 
 // BatchGetUser returns a batch of users at the same revision.
 func (s *Server) BatchGetUser(ctx context.Context, in *pb.BatchGetUserRequest) (*pb.BatchGetUserResponse, error) {
-	log.Printf("XXXX, BatchGetUser")
 	if in.DirectoryId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Please specify a directory_id")
 	}
@@ -635,37 +634,24 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	// - Correct profile commitment.
 	// - Correct key formats.
 	_, tdone := monitoring.StartSpan(ctx, "BatchQueueUserUpdate.verify")
-	updates := make(chan *pb.EntryUpdate)
-	errors := make(chan error)
-	go func() {
-		defer close(updates)
-		for _, u := range in.Updates {
-			updates <- u
-		}
-	}()
-	go func() {
-		defer close(errors)
-		var wg sync.WaitGroup
-		defer wg.Wait() // Wait before closing errors
-		for w := 0; w < runtime.NumCPU(); w++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for u := range updates {
-					if err := s.verifyMutation(u.Mutation); err != nil {
-						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-						errors <- status.Errorf(codes.InvalidArgument, "Invalid mutation")
-					}
-					if err = validateEntryUpdate(u, vrfPriv); err != nil {
-						glog.Warningf("Invalid UpdateEntryRequest: %v", err)
-						errors <- status.Errorf(codes.InvalidArgument, "Invalid request")
-					}
-				}
-			}()
-		}
-	}()
-	for e := range errors {
-		return nil, e
+	g, _ := errgroup.WithContext(ctx)
+	for _, u := range in.Updates {
+		u := u // https://golang.org/doc/faq#closures_and_goroutines
+		g.Go(func() error {
+			if err := s.verifyMutation(u.Mutation); err != nil {
+				glog.Warningf("Invalid UpdateEntryRequest: %v", err)
+				return status.Errorf(codes.InvalidArgument, "Invalid mutation")
+			}
+			if err := validateEntryUpdate(u, vrfPriv); err != nil {
+				glog.Warningf("Invalid UpdateEntryRequest: %v", err)
+				return status.Errorf(codes.InvalidArgument, "Invalid request")
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	tdone()
 
