@@ -65,10 +65,6 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 	}
 	results := make(chan result)
 	var wg sync.WaitGroup
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
 	for w := 0; w < runtime.NumCPU(); w++ {
 		wg.Add(1)
 		// Proof verifier worker
@@ -84,6 +80,10 @@ func (c *Client) BatchVerifyGetUserIndex(ctx context.Context, userIDs []string) 
 			}
 		}()
 	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
 	// Result consumer
 	indexByUser := make(map[string][]byte)
