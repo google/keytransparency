@@ -3,8 +3,7 @@ FROM golang:1.12 as build
 WORKDIR /go/src/github.com/google/keytransparency
 COPY go.mod go.sum ./
 
-ENV GO111MODULE=on \
-    GOPROXY=https://proxy.golang.org
+ENV GO111MODULE=on
 RUN go mod download
 COPY . .
 
