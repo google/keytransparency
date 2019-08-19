@@ -33,6 +33,8 @@ gcloud --quiet config set container/cluster ${CLUSTER_NAME_CI}
 gcloud --quiet container clusters get-credentials ${CLUSTER_NAME_CI}
 gcloud --quiet auth configure-docker
 
+# Test current directory before deleting anything
+test $(basename $(pwd)) == "keytransparency" || exit
 
 echo "Generating keys..."
 rm -f ./genfiles/*
