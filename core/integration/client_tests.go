@@ -75,7 +75,8 @@ func runBatchAndPublish(ctx context.Context, env *Env, mn, mx int32, block bool)
 	}
 	convert := func(err error, prefix string) error {
 		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
-			return fmt.Errorf("%v: %v", prefix, err)
+			st := status.Convert(err)
+			return status.Errorf(st.Code(), "%v: %v", prefix, err)
 		}
 		return err
 	}
