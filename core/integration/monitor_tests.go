@@ -106,9 +106,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 			}
 		}
 
-		err := runBatchAndPublish(ctx,
-			int32(len(e.userUpdates)), int32(len(e.userUpdates))*2,
-			false, env)
+		err := runBatchAndPublish(ctx, env, int32(len(e.userUpdates)), int32(len(e.userUpdates))*2, false)
 		if err != nil {
 			t.Errorf("runBatchAndPublish(): %v", err)
 		}

@@ -67,7 +67,7 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func runBatchAndPublish(ctx context.Context, mn, mx int32, block bool, env *Env) error {
+func runBatchAndPublish(ctx context.Context, env *Env, mn, mx int32, block bool) error {
 	rbReq := &spb.RunBatchRequest{
 		DirectoryId: env.Directory.DirectoryId,
 		MinBatch:    mn,
@@ -95,7 +95,7 @@ func runSequencer(ctx context.Context, t *testing.T, env *Env) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
-		err := runBatchAndPublish(ctx, 1, 10, false, env)
+		err := runBatchAndPublish(ctx, env, 1, 10, false)
 		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
 			t.Error(err)
 		}
@@ -520,7 +520,7 @@ func (env *Env) setupHistory(ctx context.Context, userID string, signers []tink.
 		nil, cp(5), cp(7), nil,
 	} {
 		if p == nil { // Create an empty revision.
-			if err := runBatchAndPublish(ctx, 0, 0, false, env); err != nil {
+			if err := runBatchAndPublish(ctx, env, 0, 0, false); err != nil {
 				return fmt.Errorf("runBatchAndPublish(empty): %v", err)
 			}
 			continue
@@ -540,7 +540,7 @@ func (env *Env) setupHistory(ctx context.Context, userID string, signers []tink.
 		if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
 			return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 		}
-		if err := runBatchAndPublish(ctx, 1, 1, true, env); err != nil {
+		if err := runBatchAndPublish(ctx, env, 1, 1, true); err != nil {
 			return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
 		}
 	}
@@ -644,7 +644,7 @@ func (env *Env) setupHistoryMultipleUsers(ctx context.Context, signers []tink.Si
 		if err := env.Client.QueueMutation(ctx, m, signers, env.CallOpts(userIDs[i])...); err != nil {
 			return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 		}
-		if err := runBatchAndPublish(ctx, 1, 1, true, env); err != nil {
+		if err := runBatchAndPublish(ctx, env, 1, 1, true); err != nil {
 			return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
 		}
 	}
