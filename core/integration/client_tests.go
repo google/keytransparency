@@ -516,30 +516,29 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 		cp(4), cp(5), cp(5), nil, nil, nil, nil, cp(6),
 		nil, cp(5), cp(7), nil,
 	} {
-		if p != nil {
-			u := &client.User{
-				UserID:         userID,
-				PublicKeyData:  p,
-				AuthorizedKeys: authorizedKeys,
-			}
-			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
-			defer cancel()
-
-			m, err := env.Client.CreateMutation(cctx, u)
-			if err != nil {
-				return fmt.Errorf("client.CreateMutation(%v): %v", userID, err)
-			}
-			if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
-				return fmt.Errorf("sequencer.QueueMutation(): %v", err)
-			}
-			if err := runBatchAndPublish(ctx, directory.DirectoryId, 1, 1, true, env); err != nil {
-				return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
-			}
-		} else {
-			// Create an empty revision.
+		if p == nil { // Create an empty revision.
 			if err := runBatchAndPublish(ctx, directory.DirectoryId, 0, 0, false, env); err != nil {
 				return fmt.Errorf("runBatchAndPublish(empty): %v", err)
 			}
+			continue
+		}
+		u := &client.User{
+			UserID:         userID,
+			PublicKeyData:  p,
+			AuthorizedKeys: authorizedKeys,
+		}
+		cctx, cancel := context.WithTimeout(ctx, env.Timeout)
+		defer cancel()
+
+		m, err := env.Client.CreateMutation(cctx, u)
+		if err != nil {
+			return fmt.Errorf("client.CreateMutation(%v): %v", userID, err)
+		}
+		if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
+			return fmt.Errorf("sequencer.QueueMutation(): %v", err)
+		}
+		if err := runBatchAndPublish(ctx, directory.DirectoryId, 1, 1, true, env); err != nil {
+			return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
 		}
 	}
 	return nil
