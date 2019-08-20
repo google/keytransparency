@@ -56,8 +56,8 @@ message RunBatchRequest {
   int32 min_batch = 2;
   // max_batch is the maximum number of items in a batch.
   int32 max_batch = 3;
-  // block until a Signed Log Root has been published which encompases all map roots.
-  bool block = 4;
+  // Deprecated tags, do not reuse.
+  reserved 4;
 }
 
 // DefineRevisionRequest contains information needed to define a new revision.
