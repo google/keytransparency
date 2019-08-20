@@ -67,9 +67,9 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
-func runBatchAndPublish(ctx context.Context, dirID string, mn, mx int32, block bool, env *Env) error {
+func runBatchAndPublish(ctx context.Context, mn, mx int32, block bool, env *Env) error {
 	rbReq := &spb.RunBatchRequest{
-		DirectoryId: dirID,
+		DirectoryId: env.Directory.DirectoryId,
 		MinBatch:    mn,
 		MaxBatch:    mx,
 	}
@@ -82,17 +82,20 @@ func runBatchAndPublish(ctx context.Context, dirID string, mn, mx int32, block b
 	if _, err := env.Sequencer.RunBatch(ctx, rbReq); err != nil {
 		return convert(err, "RunBatch()")
 	}
-	prReq := &spb.PublishRevisionsRequest{DirectoryId: dirID, Block: block}
+	prReq := &spb.PublishRevisionsRequest{
+		DirectoryId: env.Directory.DirectoryId,
+		Block:       block,
+	}
 	_, err := env.Sequencer.PublishRevisions(ctx, prReq)
 	return convert(err, "PublishRevisions()")
 }
 
-func runSequencer(ctx context.Context, t *testing.T, dirID string, env *Env) {
+func runSequencer(ctx context.Context, t *testing.T, env *Env) {
 	t.Helper()
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
-		err := runBatchAndPublish(ctx, dirID, 1, 10, false, env)
+		err := runBatchAndPublish(ctx, 1, 10, false, env)
 		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
 			t.Error(err)
 		}
@@ -109,7 +112,7 @@ func genUserIDs(count int) []string {
 
 // TestBatchCreate verifies that the batch functions are working correctly.
 func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
-	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	go runSequencer(ctx, t, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
@@ -144,7 +147,7 @@ func TestBatchCreate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action 
 
 // TestBatchUpdate verifies that the batch functions are working correctly.
 func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
-	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	go runSequencer(ctx, t, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
@@ -182,7 +185,7 @@ func TestBatchUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action 
 
 // TestEmptyGetAndUpdate verifies set/get semantics.
 func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
-	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	go runSequencer(ctx, t, env)
 
 	cli, err := client.NewFromConfig(env.Cli, env.Directory,
 		func(lv *tclient.LogVerifier) verifier.LogTracker {
@@ -331,7 +334,7 @@ func TestEmptyGetAndUpdate(ctx context.Context, env *Env, t *testing.T) []*tpb.A
 
 // TestBatchGetUser tests fetching multiple users in a single request.
 func TestBatchGetUser(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
-	go runSequencer(ctx, t, env.Directory.DirectoryId, env)
+	go runSequencer(ctx, t, env)
 	signers1 := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys1 := testutil.VerifyKeysetFromPEMs(testPubKey1)
 	transcript := []*tpb.Action{}
@@ -455,7 +458,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) []*tpb.Action 
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
-	if err := env.setupHistory(ctx, env.Directory, userID, signers, authorizedKeys, opts); err != nil {
+	if err := env.setupHistory(ctx, userID, signers, authorizedKeys, opts); err != nil {
 		t.Fatalf("setupHistory failed: %v", err)
 	}
 
@@ -498,7 +501,7 @@ func TestListHistory(ctx context.Context, env *Env, t *testing.T) []*tpb.Action 
 	return nil
 }
 
-func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userID string, signers []tink.Signer,
+func (env *Env) setupHistory(ctx context.Context, userID string, signers []tink.Signer,
 	authorizedKeys *keyset.Handle, opts []grpc.CallOption) error {
 	// Setup. Each profile entry is either nil, to indicate that the user
 	// did not submit a new profile in that revision, or contains the profile
@@ -517,7 +520,7 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 		nil, cp(5), cp(7), nil,
 	} {
 		if p == nil { // Create an empty revision.
-			if err := runBatchAndPublish(ctx, directory.DirectoryId, 0, 0, false, env); err != nil {
+			if err := runBatchAndPublish(ctx, 0, 0, false, env); err != nil {
 				return fmt.Errorf("runBatchAndPublish(empty): %v", err)
 			}
 			continue
@@ -537,7 +540,7 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 		if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
 			return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 		}
-		if err := runBatchAndPublish(ctx, directory.DirectoryId, 1, 1, true, env); err != nil {
+		if err := runBatchAndPublish(ctx, 1, 1, true, env); err != nil {
 			return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
 		}
 	}
@@ -563,7 +566,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []*
 	signers := testutil.SignKeysetsFromPEMs(testPrivKey1)
 	authorizedKeys := testutil.VerifyKeysetFromPEMs(testPubKey1)
 
-	if err := env.setupHistoryMultipleUsers(ctx, env.Directory, signers, authorizedKeys); err != nil {
+	if err := env.setupHistoryMultipleUsers(ctx, signers, authorizedKeys); err != nil {
 		t.Fatalf("setupHistoryMultipleUsers failed: %v", err)
 	}
 
@@ -620,7 +623,7 @@ func TestBatchListUserRevisions(ctx context.Context, env *Env, t *testing.T) []*
 	return transcript
 }
 
-func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Directory, signers []tink.Signer,
+func (env *Env) setupHistoryMultipleUsers(ctx context.Context, signers []tink.Signer,
 	authorizedKeys *keyset.Handle) error {
 	// Test setup: 3 different users ("alice", "bob", and "carol") submit profiles in the following order. Specifically, in the i-th submission (i = 0, 1, 2,..., 9), userIDs[i] submits publicKeyData[i].
 	publicKeyData := [][]byte{cp(1), cp(11), cp(2), cp(21), cp(22), cp(12), cp(3), cp(13), cp(23), cp(24)}
@@ -641,7 +644,7 @@ func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Dir
 		if err := env.Client.QueueMutation(ctx, m, signers, env.CallOpts(userIDs[i])...); err != nil {
 			return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 		}
-		if err := runBatchAndPublish(ctx, directory.DirectoryId, 1, 1, true, env); err != nil {
+		if err := runBatchAndPublish(ctx, 1, 1, true, env); err != nil {
 			return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
 		}
 	}
