@@ -67,23 +67,34 @@ LOA+tLe/MbwZ69SRdG6Rx92f9tbC6dz7UVsyI7vIjS+961sELA6FeR91lA==
 -----END PUBLIC KEY-----`
 )
 
+func runBatchAndPublish(ctx context.Context, dirID string, mn, mx int32, block bool, env *Env) error {
+	rbReq := &spb.RunBatchRequest{
+		DirectoryId: dirID,
+		MinBatch:    mn,
+		MaxBatch:    mx,
+	}
+	convert := func(err error, prefix string) error {
+		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
+			return fmt.Errorf("%v: %v", prefix, err)
+		}
+		return err
+	}
+	if _, err := env.Sequencer.RunBatch(ctx, rbReq); err != nil {
+		return convert(err, "RunBatch()")
+	}
+	prReq := &spb.PublishRevisionsRequest{DirectoryId: dirID, Block: block}
+	_, err := env.Sequencer.PublishRevisions(ctx, prReq)
+	return convert(err, "PublishRevisions()")
+}
+
 func runSequencer(ctx context.Context, t *testing.T, dirID string, env *Env) {
 	t.Helper()
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	sequencer.PeriodicallyRun(ctx, ticker.C, func(ctx context.Context) {
-		req := &spb.RunBatchRequest{
-			DirectoryId: dirID,
-			MinBatch:    1,
-			MaxBatch:    10,
-		}
-		_, err := env.Sequencer.RunBatch(ctx, req)
+		err := runBatchAndPublish(ctx, dirID, 1, 10, false, env)
 		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
-			t.Errorf("RunBatch(): %v", err)
-		}
-		_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: dirID})
-		if err != nil && err != context.Canceled && status.Code(err) != codes.Canceled {
-			t.Errorf("PublishRevisions(): %v", err)
+			t.Error(err)
 		}
 	})
 }
@@ -521,22 +532,14 @@ func (env *Env) setupHistory(ctx context.Context, directory *pb.Directory, userI
 			if err := env.Client.QueueMutation(ctx, m, signers, opts...); err != nil {
 				return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 			}
-			if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-				DirectoryId: directory.DirectoryId,
-				MinBatch:    1,
-				MaxBatch:    1,
-			}); err != nil {
-				return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
+			if err := runBatchAndPublish(ctx, directory.DirectoryId, 1, 1, true, env); err != nil {
+				return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
 			}
-			_, err = env.Sequencer.PublishRevisions(ctx, &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId, Block: true})
-			if err != nil {
-				return fmt.Errorf("sequencer.PublishRevisions(%v): %v", i, err)
-			}
-		} else if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-			DirectoryId: directory.DirectoryId,
+		} else {
 			// Create an empty revision.
-		}); err != nil {
-			return fmt.Errorf("sequencer.RunBatch(empty): %v", err)
+			if err := runBatchAndPublish(ctx, directory.DirectoryId, 0, 0, false, env); err != nil {
+				return fmt.Errorf("runBatchAndPublish(empty): %v", err)
+			}
 		}
 	}
 	return nil
@@ -639,17 +642,8 @@ func (env *Env) setupHistoryMultipleUsers(ctx context.Context, directory *pb.Dir
 		if err := env.Client.QueueMutation(ctx, m, signers, env.CallOpts(userIDs[i])...); err != nil {
 			return fmt.Errorf("sequencer.QueueMutation(): %v", err)
 		}
-		if _, err := env.Sequencer.RunBatch(ctx, &spb.RunBatchRequest{
-			DirectoryId: directory.DirectoryId,
-			MinBatch:    1,
-			MaxBatch:    1,
-		}); err != nil {
-			return fmt.Errorf("sequencer.RunBatch(%v): %v", i, err)
-		}
-		pubRevReq := &spb.PublishRevisionsRequest{DirectoryId: directory.DirectoryId, Block: true}
-		_, err = env.Sequencer.PublishRevisions(ctx, pubRevReq)
-		if err != nil {
-			return fmt.Errorf("sequencer.PublishRevisions(%v): %v", i, err)
+		if err := runBatchAndPublish(ctx, directory.DirectoryId, 1, 1, true, env); err != nil {
+			return fmt.Errorf("runBatchAndPublish(%v): %v", i, err)
 		}
 	}
 	return nil
