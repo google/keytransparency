@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/integration/storagetest"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	_ "github.com/mattn/go-sqlite3"
@@ -33,6 +34,18 @@ func newDB(t testing.TB) *sql.DB {
 		t.Fatalf("sql.Open(): %v", err)
 	}
 	return db
+}
+
+func TestBatchIntegration(t *testing.T) {
+	storageFactory := func(context.Context, *testing.T) storagetest.Batcher {
+		m, err := New(newDB(t))
+		if err != nil {
+			t.Fatalf("Failed to create mutations: %v", err)
+		}
+		return m
+	}
+
+	storagetest.RunBatchStorageTests(t, storageFactory)
 }
 
 func TestWriteBatch(t *testing.T) {
