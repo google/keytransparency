@@ -181,6 +181,7 @@ func main() {
 		trillian.NewTrillianAdminClient(mconn),
 		directoryStorage,
 		mutations,
+		mutations,
 		func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 			return der.NewProtoFromSpec(spec)
 		}))

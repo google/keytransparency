@@ -147,7 +147,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
 	}
-	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, directoryStorage, mutations, vrfKeyGen)
+	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, directoryStorage, mutations, mutations, vrfKeyGen)
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	directoryPB, err := adminSvr.CreateDirectory(cctx, &pb.CreateDirectoryRequest{
