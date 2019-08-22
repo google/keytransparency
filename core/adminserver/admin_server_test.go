@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/fake"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/storage/testdb"
@@ -64,7 +65,7 @@ func newMiniEnv(ctx context.Context, t *testing.T) (*miniEnv, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error starting fake server: %v", err)
 	}
-	srv := New(s.LogClient, s.MapClient, s.AdminClient, s.AdminClient, fakeDirectories, nil, vrfKeyGen)
+	srv := New(s.LogClient, s.MapClient, s.AdminClient, s.AdminClient, fakeDirectories, nil, fakeBatcher{}, vrfKeyGen)
 
 	return &miniEnv{
 		ms:             s,
@@ -84,6 +85,12 @@ type fakeQueueAdmin struct{}
 func (fakeQueueAdmin) AddLogs(_ context.Context, _ string, _ ...int64) error          { return nil }
 func (fakeQueueAdmin) SetWritable(_ context.Context, _ string, _ int64, _ bool) error { return nil }
 func (fakeQueueAdmin) ListLogs(_ context.Context, _ string, _ bool) ([]int64, error)  { return nil, nil }
+
+type fakeBatcher struct{}
+
+func (fakeBatcher) WriteBatchSources(_ context.Context, _ string, _ int64, _ *spb.MapMetadata) error {
+	return nil
+}
 
 func TestCreateDirectory(t *testing.T) {
 	for _, tc := range []struct {
@@ -171,7 +178,7 @@ func TestCreateRead(t *testing.T) {
 		t.Fatalf("Failed to create trillian log server: %v", err)
 	}
 
-	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, fakeBatcher{}, vrfKeyGen)
 
 	for _, tc := range []struct {
 		directoryID              string
@@ -223,7 +230,7 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("Failed to create trillian log server: %v", err)
 	}
 
-	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, fakeBatcher{}, vrfKeyGen)
 
 	for _, tc := range []struct {
 		directoryID              string
@@ -277,7 +284,7 @@ func TestListDirectories(t *testing.T) {
 		t.Fatalf("Failed to create trillian log server: %v", err)
 	}
 
-	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, vrfKeyGen)
+	svr := New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, storage, fakeQueueAdmin{}, fakeBatcher{}, vrfKeyGen)
 
 	for _, tc := range []struct {
 		directoryIDs []string
