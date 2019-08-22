@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Batcher writes batch definitions to storage.
@@ -37,5 +39,9 @@ func RunBatchStorageTests(t *testing.T, storageFactory BatchStorageFactory) {
 type BatchTests struct{}
 
 func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, b Batcher) {
-
+	_, err := b.ReadBatch(ctx, "nodir", 0)
+	st := status.Convert(err)
+	if got, want := st.Code(), codes.NotFound; got != want {
+		t.Errorf("ReadBatch(): %v, want %v", err, want)
+	}
 }
