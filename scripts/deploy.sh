@@ -51,9 +51,6 @@ docker-compose push
 
 echo "Tagging docker images..."
 gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/prometheus:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/log-server:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/log-server:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/log-signer:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/log-signer:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/map-server:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/map-server:latest
 gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-server:latest
 gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:latest
 gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:latest
