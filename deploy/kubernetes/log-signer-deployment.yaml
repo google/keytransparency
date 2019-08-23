@@ -29,7 +29,7 @@ spec:
         "--force_master=true",
         "--alsologtostderr"
         ]
-        image: us.gcr.io/key-transparency/log-signer:latest
+        image: gcr.io/key-transparency/log-signer:latest
         livenessProbe:
          httpGet:
            path: /metrics
