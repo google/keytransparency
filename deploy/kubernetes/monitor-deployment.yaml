@@ -30,7 +30,7 @@ spec:
         - --password=towel
         - --alsologtostderr
         - --v=3
-        image: us.gcr.io/key-transparency/keytransparency-monitor:latest
+        image: gcr.io/key-transparency/keytransparency-monitor:latest
         name: monitor
         ports:
         - containerPort: 8099
