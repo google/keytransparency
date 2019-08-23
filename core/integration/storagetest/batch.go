@@ -31,6 +31,7 @@ func RunBatchStorageTests(t *testing.T, storageFactory BatchStorageFactory) {
 	ctx := context.Background()
 	b := &BatchTests{}
 	for name, f := range map[string]BatchStorageTest{
+		// TODO(gbelvin): Discover test methods via reflection.
 		"TestNotFound":   b.TestNotFound,
 		"TestWriteBatch": b.TestWriteBatch,
 		"TestReadBatch":  b.TestReadBatch,
