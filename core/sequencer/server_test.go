@@ -152,6 +152,8 @@ func TestDefineRevisions(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			s.batcher = &fakeBatcher{highestRev: tc.highestRev, batches: make(map[int64]*spb.MapMetadata)}
+			s.batcher.WriteBatchSources(ctx, directoryID, tc.highestRev, new(spb.MapMetadata))
+
 			got, err := s.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
 				DirectoryId: directoryID,
 				MinBatch:    1,
