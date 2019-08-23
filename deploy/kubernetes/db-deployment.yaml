@@ -27,7 +27,7 @@ spec:
           value: "yes"
         - name: MYSQL_USER
           value: test
-        image: us.gcr.io/key-transparency/db
+        image: gcr.io/key-transparency/db
         name: db
         ports:
         - containerPort: 3306

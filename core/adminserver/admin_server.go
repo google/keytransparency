@@ -38,6 +38,7 @@ import (
 	"github.com/google/trillian/types"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
 
@@ -89,6 +90,12 @@ type LogsAdmin interface {
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 }
 
+// Batcher writes batch definitions to storage.
+type Batcher interface {
+	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
+	WriteBatchSources(ctx context.Context, dirID string, rev int64, meta *spb.MapMetadata) error
+}
+
 var _ pb.KeyTransparencyAdminServer = &Server{} // Ensure *Server satisfies the AdminServer interface.
 
 // Server implements pb.KeyTransparencyAdminServer
@@ -99,6 +106,7 @@ type Server struct {
 	mapAdmin    tpb.TrillianAdminClient
 	directories directory.Storage
 	logsAdmin   LogsAdmin
+	batcher     Batcher
 	keygen      keys.ProtoGenerator
 }
 
@@ -109,6 +117,7 @@ func New(
 	logAdmin, mapAdmin tpb.TrillianAdminClient,
 	directories directory.Storage,
 	logsAdmin LogsAdmin,
+	batcher Batcher,
 	keygen keys.ProtoGenerator,
 ) *Server {
 	return &Server{
@@ -118,6 +127,7 @@ func New(
 		mapAdmin:    mapAdmin,
 		directories: directories,
 		logsAdmin:   logsAdmin,
+		batcher:     batcher,
 		keygen:      keygen,
 	}
 }
@@ -285,6 +295,11 @@ func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequ
 	logIDs := []int64{1, 2}
 	if s := status.Convert(s.logsAdmin.AddLogs(ctx, in.GetDirectoryId(), logIDs...)); s.Code() != codes.OK {
 		return nil, status.Errorf(s.Code(), "adminserver: AddLogs(%+v): %v", logIDs, s.Message())
+	}
+	// Initialize the batches table.
+	err = s.batcher.WriteBatchSources(ctx, in.GetDirectoryId(), 0, new(spb.MapMetadata))
+	if s := status.Convert(err); s.Code() != codes.OK {
+		return nil, status.Errorf(s.Code(), "adminserver: WriteBatchSources(): %v", s.Message())
 	}
 
 	d := &pb.Directory{

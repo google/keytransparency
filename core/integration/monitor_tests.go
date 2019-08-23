@@ -31,7 +31,6 @@ import (
 	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
 )
 
@@ -94,7 +93,6 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 			},
 		},
 	} {
-
 		for _, u := range e.userUpdates {
 			cctx, cancel := context.WithTimeout(ctx, env.Timeout)
 			defer cancel()
@@ -107,19 +105,10 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 				t.Errorf("QueueMutation(): %v", err)
 			}
 		}
-		batchReq := &spb.RunBatchRequest{
-			DirectoryId: env.Directory.DirectoryId,
-			MinBatch:    int32(len(e.userUpdates)),
-			MaxBatch:    int32(len(e.userUpdates)) * 2,
-		}
-		if _, err := env.Sequencer.RunBatch(ctx, batchReq); err != nil {
-			t.Errorf("sequencer.RunBatch(): %v", err)
-		}
-		pubReq := &spb.PublishRevisionsRequest{
-			DirectoryId: env.Directory.DirectoryId,
-		}
-		if _, err := env.Sequencer.PublishRevisions(ctx, pubReq); err != nil {
-			t.Errorf("sequencer.PublishRevisions(): %v", err)
+
+		err := runBatchAndPublish(ctx, env, int32(len(e.userUpdates)), int32(len(e.userUpdates))*2, false)
+		if err != nil {
+			t.Errorf("runBatchAndPublish(): %v", err)
 		}
 	}
 
