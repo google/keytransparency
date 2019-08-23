@@ -31,7 +31,10 @@ func RunBatchStorageTests(t *testing.T, storageFactory BatchStorageFactory) {
 	ctx := context.Background()
 	b := &BatchTests{}
 	for name, f := range map[string]BatchStorageTest{
-		"TestNotFound": b.TestNotFound,
+		"TestNotFound":   b.TestNotFound,
+		"TestWriteBatch": b.TestWriteBatch,
+		"TestReadBatch":  b.TestReadBatch,
+		"TestHighestRev": b.TestHighestRev,
 	} {
 		ms := storageFactory(ctx, t)
 		t.Run(name, func(t *testing.T) { f(ctx, t, ms) })
@@ -72,7 +75,7 @@ func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, b Batcher) 
 	}
 }
 
-func TestReadBatch(ctx context.Context, t *testing.T, b Batcher) {
+func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, b Batcher) {
 	domainID := "readbatchtest"
 	for _, tc := range []struct {
 		rev  int64
@@ -100,7 +103,7 @@ func TestReadBatch(ctx context.Context, t *testing.T, b Batcher) {
 	}
 }
 
-func TestHightestRev(ctx context.Context, t *testing.T, b Batcher) {
+func (*BatchTests) TestHighestRev(ctx context.Context, t *testing.T, b Batcher) {
 	domainID := "writebatchtest"
 	for _, tc := range []struct {
 		rev     int64
