@@ -22,6 +22,8 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
@@ -101,7 +103,9 @@ func (m *Mutations) ReadBatch(ctx context.Context, domainID string, rev int64) (
 	var sourceData []byte
 	if err := m.db.QueryRowContext(ctx,
 		`SELECT Sources FROM Batches WHERE DomainID = ? AND Revision = ?;`,
-		domainID, rev).Scan(&sourceData); err != nil {
+		domainID, rev).Scan(&sourceData); err == sql.ErrNoRows {
+		return nil, status.Errorf(codes.NotFound, "revision %v not found", rev)
+	} else if err != nil {
 		return nil, err
 	}
 

@@ -29,6 +29,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+const directoryID = "default"
+
 func newForTest(ctx context.Context, t testing.TB, logIDs ...int64) *Mutations {
 	m, err := New(newDB(t))
 	if err != nil {
