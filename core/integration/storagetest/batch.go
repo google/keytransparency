@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/sequencer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -13,14 +14,7 @@ import (
 )
 
 // Batcher writes batch definitions to storage.
-type Batcher interface {
-	// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
-	WriteBatchSources(ctx context.Context, dirID string, rev int64, meta *spb.MapMetadata) error
-	// ReadBatch returns the batch definitions for a given revision.
-	ReadBatch(ctx context.Context, directoryID string, rev int64) (*spb.MapMetadata, error)
-	// HighestRev returns the highest defined revision number for directoryID.
-	HighestRev(ctx context.Context, directoryID string) (int64, error)
-}
+type Batcher = sequencer.Batcher
 
 type BatchStorageFactory func(ctx context.Context, t *testing.T) Batcher
 
