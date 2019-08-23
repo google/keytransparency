@@ -260,7 +260,6 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 // outstanding revisions that have not been applied.
 func (s *Server) DefineRevisions(ctx context.Context,
 	in *spb.DefineRevisionsRequest) (*spb.DefineRevisionsResponse, error) {
-	// Get the previous and current high water marks.
 	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
@@ -286,12 +285,12 @@ func (s *Server) DefineRevisions(ctx context.Context,
 	}
 
 	// Query metadata about outstanding log items.
-	var lastMeta spb.MapMetadata
-	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
+	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, highestRev)
+	if err != nil {
 		return nil, err
 	}
 
-	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, &lastMeta, in.MaxBatch)
+	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, lastMeta, in.MaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
@@ -304,7 +303,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 	// TODO(#1047): If time since oldest queue item > max latency has elapsed, define batch.
 	// If count items >= min_batch, define batch.
 	if count >= in.MinBatch {
-		nextRev := int64(latestMapRoot.Revision) + 1
+		nextRev := highestRev + 1
 		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
 			return nil, err
 		}
@@ -313,7 +312,6 @@ func (s *Server) DefineRevisions(ctx context.Context,
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
 		outstanding = append(outstanding, nextRev)
-
 	}
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
 
