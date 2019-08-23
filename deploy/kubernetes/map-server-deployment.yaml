@@ -25,7 +25,7 @@ spec:
         "--http_endpoint=0.0.0.0:8091",
         "--alsologtostderr"
         ]
-        image: us.gcr.io/key-transparency/map-server:latest
+        image: gcr.io/key-transparency/map-server:latest
         livenessProbe:
          httpGet:
            path: /metrics
