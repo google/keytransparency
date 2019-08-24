@@ -69,8 +69,9 @@ var (
 	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
 
-	refresh   = flag.Duration("directory-refresh", 5*time.Second, "Time to detect new directory")
-	batchSize = flag.Int("batch-size", 100, "Maximum number of mutations to process per map revision")
+	dirRefresh = flag.Duration("directory-refresh", 5*time.Second, "Time to detect new directory")
+	refresh    = flag.Duration("refresh", 5*time.Second, "Time between map revision construction runs")
+	batchSize  = flag.Int("batch-size", 100, "Maximum number of mutations to process per map revision")
 )
 
 func openDB() *sql.DB {
@@ -231,10 +232,13 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	if err := signer.AddAllDirectories(ctx); err != nil {
 		glog.Errorf("runSequencer(AddAllDirectories): %v", err)
 	}
-	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*dirRefresh), func(ctx context.Context) {
 		if err := signer.AddAllDirectories(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(AddAllDirectories): %v", err)
 		}
+	})
+
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.RunBatchForAllMasterships(ctx, int32(*batchSize)); err != nil {
 			glog.Errorf("PeriodicallyRun(RunBatchForAllMasterships): %v", err)
 		}
