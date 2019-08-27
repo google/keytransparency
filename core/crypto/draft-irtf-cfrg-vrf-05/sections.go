@@ -1,3 +1,3 @@
 package vrf
 
-func Nonce()
+func Nonce() {}

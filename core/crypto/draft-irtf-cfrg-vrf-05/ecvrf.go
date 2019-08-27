@@ -2,24 +2,36 @@ package vrf
 
 import (
 	"crypto/elliptic"
+	"math/big"
 )
 
 // PublicKey holds a public VRF key.
 type PublicKey struct {
-	*ecdsa.PublicKey
+	elliptic.Curve
+	X, Y *big.Int
 }
 
 // PrivateKey holds a private VRF key.
 type PrivateKey struct {
-	*ecdsa.PrivateKey
+	PublicKey
+	x *big.Int
+}
+
+// Public returns the public key corresponding to priv.
+func (priv *PrivateKey) Public() *PublicKey {
+	return &priv.PublicKey
+}
+
+func NewKey(curve elliptic.Curve, SK []byte) *PrivateKey {
+	Yx, Yy := curve.ScalarBaseMult(SK)
+	return &PrivateKey{
+		x:         new(big.Int).SetBytes(SK), // Use SK to derive the VRF secret scalar x
+		PublicKey: PublicKey{X: Yx, Y: Yy},   // VRF public key Y = x*B
+	}
 }
 
 type ECVRF struct {
-	// E - elliptic curve (EC) defined over F
-	// F - finite field
-	// 2n - length, in octets, of a field element in F, rounded up to the
-	// nearest even integer
-	E elliptic.Curve
+	ECVRFSuite
 
 	// ptLen - length, in octets, of an EC point encoded as an octet string
 
@@ -35,14 +47,7 @@ type ECVRF struct {
 
 	// B - generator of group G
 
-	// Hash - cryptographic hash function
-	Hash hash.Hash
-
 	// hLen - output length in octets of Hash; must be at least 2n
-
-	// suite is a single nonzero octet specifying the ECVRF
-	// ciphersuite, which determines the above options
-	suite byte
 
 	//  Elliptic curve operations are written in additive notation, with
 	// P+Q denoting point addition and x*P denoting scalar multiplication
@@ -50,10 +55,6 @@ type ECVRF struct {
 	// x^y - a raised to the power b
 	// x*y - a multiplied by b
 	// || - octet string concatenation
-
-	// HashToCurve is a collision resistant hash of strings to an EC point;
-	// options described in Section 5.4.1 and specified in Section 5.5.
-	HashToCurve func(suite byte, Y, alpha []byte)
 
 	// ECVRF_nonce_generation - derives a pseudorandom nonce from SK and
 	// the input as part of ECVRF proving.  Specified in Section 5.5
@@ -82,15 +83,15 @@ type ECVRF struct {
 // SK - VRF private key
 // alpha - input alpha, an octet string
 // Returns pi - VRF proof, octet string of length ptLen+n+qLen
-func (v *ECVRF) Prove(SK PrivateKey, alpha string) []byte {
+func (v *ECVRF) Prove(SK PrivateKey, alpha []byte) []byte {
 	// 1.  Use SK to derive the VRF secret scalar x and the VRF public key Y = x*B
-	x := SK.D
-	PK := SK.Public()
+	Y := SK.Public()
 
 	// 2.  H = ECVRF_hash_to_curve(suite_string, Y, alpha_string)
-	H := v.HashToCurve(v.suite, Y, alpha)
+	Hx, Hy := v.HashToCurve(Y, alpha)
 
 	// 3.  h_string = point_to_string(H)
+	hStr := v.Point2String(v.E, Hx, Hy)
 
 	// 4.  Gamma = x*H
 
@@ -102,4 +103,5 @@ func (v *ECVRF) Prove(SK PrivateKey, alpha string) []byte {
 
 	// 8.  pi_string = point_to_string(Gamma) || int_to_string(c, n) ||
 	//     int_to_string(s, qLen)
+	return nil
 }
