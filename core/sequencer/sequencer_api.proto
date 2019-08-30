@@ -44,15 +44,6 @@ message MapMetadata {
   repeated SourceSlice sources = 2;
 }
 
-// RunBatchRequest triggers the sequencing of a batch of mutations for a
-// directory, with the batch size governed by the request parameters.
-message RunBatchRequest {
-  // directory_id is the directory to run for.
-  string directory_id = 1;
-  // Deprecated tags, do not reuse.
-  reserved 2, 3, 4;
-}
-
 // DefineRevisionsRequest contains information needed to define new revisions.
 message DefineRevisionsRequest {
   // directory_id is the directory to examine the outstanding mutations for.
@@ -92,6 +83,12 @@ message GetDefinedRevisionsResponse {
   int64 highest_applied = 1;
   // highest_defined is the highest defined revision after this call.
   int64 highest_defined = 2;
+}
+
+// ApplyRevisionsRequest triggers applying revisions to the directory's map.
+message ApplyRevisionsRequest {
+  // directory_id is the directory to apply revisions for.
+  string directory_id = 1;
 }
 
 // ApplyRevisionRequest contains information needed to create a new revision.
@@ -137,14 +134,14 @@ message UpdateMetricsResponse {}
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
-  // RunBatch figures out the outstanding revisions, and applies the
-  // corresponding mutations the to the map.
-  rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty);
   // DefineRevisions returns the info on defined/applied revisions, after
   // optionally defining a new revision of outstanding mutations.
   rpc DefineRevisions(DefineRevisionsRequest) returns (DefineRevisionsResponse);
   // GetDefinedRevisions returns the range of defined and unapplied revisions.
   rpc GetDefinedRevisions(GetDefinedRevisionsRequest) returns (GetDefinedRevisionsResponse);
+  // ApplyRevisions figures out the outstanding revisions, and applies the
+  // corresponding mutations the to the map.
+  rpc ApplyRevisions(ApplyRevisionsRequest) returns (google.protobuf.Empty);
   // ApplyRevision applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
   rpc ApplyRevision(ApplyRevisionRequest) returns (ApplyRevisionResponse);
