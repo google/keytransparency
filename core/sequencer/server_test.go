@@ -125,7 +125,7 @@ func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, rev int64) (*spb.Ma
 	return meta, nil
 }
 
-func TestDefineRevisions(t *testing.T) {
+func TestDefiningRevisions(t *testing.T) {
 	// Verify that outstanding revisions prevent future revisions from being created.
 	ctx := context.Background()
 	mapRev := int64(2)
@@ -168,18 +168,31 @@ func TestDefineRevisions(t *testing.T) {
 			s.batcher = &fakeBatcher{highestRev: tc.highestRev, batches: make(map[int64]*spb.MapMetadata)}
 			s.batcher.WriteBatchSources(ctx, directoryID, tc.highestRev, &tc.meta)
 
-			got, err := s.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
+			gdrResp, err := s.GetDefinedRevisions(ctx,
+				&spb.GetDefinedRevisionsRequest{DirectoryId: directoryID})
+			if err != nil {
+				t.Fatalf("GetDefinedRevisions(): %v", err)
+			}
+			gdrWant := &spb.GetDefinedRevisionsResponse{
+				HighestApplied: mapRev,
+				HighestDefined: tc.highestRev,
+			}
+			if got, want := gdrResp, gdrWant; !proto.Equal(got, want) {
+				t.Errorf("GetDefinedRevisions(): %v, want %v", got, want)
+			}
+
+			drResp, err := s.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
 				DirectoryId: directoryID,
 				MinBatch:    1,
 				MaxBatch:    10})
 			if err != nil {
 				t.Fatalf("DefineRevisions(): %v", err)
 			}
-			want := &spb.DefineRevisionsResponse{
+			drWant := &spb.DefineRevisionsResponse{
 				HighestApplied: mapRev,
 				HighestDefined: tc.wantNew,
 			}
-			if !proto.Equal(got, want) {
+			if got, want := drResp, drWant; !proto.Equal(got, want) {
 				t.Errorf("DefineRevisions(): %v, want %v", got, want)
 			}
 		})

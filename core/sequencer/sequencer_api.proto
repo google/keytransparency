@@ -49,15 +49,8 @@ message MapMetadata {
 message RunBatchRequest {
   // directory_id is the directory to run for.
   string directory_id = 1;
-  // min_batch is the minimum number of items in a batch.
-  // If less than min_batch items are available, nothing happens.
-  // TODO(#1047): Replace with timeout so items in the log get processed
-  // eventually.
-  int32 min_batch = 2;
-  // max_batch is the maximum number of items in a batch.
-  int32 max_batch = 3;
   // Deprecated tags, do not reuse.
-  reserved 4;
+  reserved 2, 3, 4;
 }
 
 // DefineRevisionsRequest contains information needed to define new revisions.
@@ -83,6 +76,22 @@ message DefineRevisionsResponse {
 
   // Deprecated tags, do not reuse.
   reserved 1;
+}
+
+// GetDefinedRevisionsRequest contains information needed to request the set of
+// defined/applied revisions.
+message GetDefinedRevisionsRequest {
+  // directory_id is the directory to examine the revisions for.
+  string directory_id = 1;
+}
+
+// GetDefinedRevisionResponse contains info about defined/applied revisions.
+message GetDefinedRevisionsResponse {
+  // highest_applied is the current map revision, which is also the highest map
+  // revision that has been applied.
+  int64 highest_applied = 1;
+  // highest_defined is the highest defined revision after this call.
+  int64 highest_defined = 2;
 }
 
 // ApplyRevisionRequest contains information needed to create a new revision.
@@ -128,11 +137,14 @@ message UpdateMetricsResponse {}
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
-  // RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
+  // RunBatch figures out the outstanding revisions, and applies the
+  // corresponding mutations the to the map.
   rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty);
-  // DefineRevisions examines the outstanding items in the queue and optionally
-  // writes the metadata for one or more revisions to the metadata database.
+  // DefineRevisions returns the info on defined/applied revisions, after
+  // optionally defining a new revision of outstanding mutations.
   rpc DefineRevisions(DefineRevisionsRequest) returns (DefineRevisionsResponse);
+  // GetDefinedRevisions returns the range of defined and unapplied revisions.
+  rpc GetDefinedRevisions(GetDefinedRevisionsRequest) returns (GetDefinedRevisionsResponse);
   // ApplyRevision applies the contained mutations to the current map root.
   // If this method fails, it must be retried with the same arguments.
   rpc ApplyRevision(ApplyRevisionRequest) returns (ApplyRevisionResponse);

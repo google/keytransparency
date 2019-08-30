@@ -222,17 +222,13 @@ func (s *Server) unappliedMetric(ctx context.Context, directoryID string, maxCou
 	return nil
 }
 
-// RunBatch runs the full sequence of steps (for one directory) nessesary to get a
-// mutation from the log integrated into the map. This consists of a series of
-// idempotent steps:
-// a) assign a batch of mutations from the logs to a map revision
-// b) apply the batch to the map
-// c) publish existing map roots to a log of SignedMapRoots.
+// RunBatch builds multiple outstanding revisions of a single directory's map
+// by integrating the corresponding mutations.
+//
+// TODO(pavelkalinnikov): Name it properly.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
-	resp, err := s.loopback.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
-		DirectoryId: in.DirectoryId,
-		MinBatch:    in.MinBatch,
-		MaxBatch:    in.MaxBatch})
+	resp, err := s.loopback.GetDefinedRevisions(ctx,
+		&spb.GetDefinedRevisionsRequest{DirectoryId: in.DirectoryId})
 	if err != nil {
 		return nil, err
 	}
@@ -257,41 +253,33 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 	return &empty.Empty{}, nil
 }
 
-// DefineRevisions examines the outstanding mutations and returns a list of
-// outstanding revisions that have not been applied.
+// DefineRevisions returns the set of outstanding revisions that have not been
+// applied, after optionally defining a new revision of outstanding mutations.
 func (s *Server) DefineRevisions(ctx context.Context,
 	in *spb.DefineRevisionsRequest) (*spb.DefineRevisionsResponse, error) {
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
-	if err != nil {
-		return nil, err
-	}
-	_, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Collect a list of unapplied revisions.
-	highestRev, err := s.batcher.HighestRev(ctx, in.DirectoryId)
+	revs, err := s.GetDefinedRevisions(ctx,
+		&spb.GetDefinedRevisionsRequest{DirectoryId: in.DirectoryId})
 	if err != nil {
 		return nil, err
 	}
 
 	resp := &spb.DefineRevisionsResponse{
-		HighestApplied: int64(latestMapRoot.Revision),
-		HighestDefined: highestRev,
+		HighestApplied: revs.HighestApplied,
+		HighestDefined: revs.HighestDefined,
 	}
 	// Don't create new revisions if there are ones waiting to be applied, or the
 	// highest defined revision is lagging behind for some reason.
 	if resp.HighestDefined != resp.HighestApplied {
 		return resp, nil
 	}
+	// TODO(#1056): Allow going ahead to some extent.
 
 	// Query metadata about outstanding log items.
-	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, highestRev)
+	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, resp.HighestDefined)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "ReadBatch(): %v", err)
 	}
-
+	// Advance the watermarks forward, to define a new batch.
 	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, lastMeta, in.MaxBatch)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
@@ -308,7 +296,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 		resp.HighestDefined++
 		nextRev := resp.HighestDefined
 		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
-			return nil, err
+			return nil, status.Errorf(codes.Internal, "WriteBatchSources(): %v", err)
 		}
 		for _, source := range meta.Sources {
 			watermarkDefined.Set(float64(source.HighestExclusive),
@@ -318,6 +306,30 @@ func (s *Server) DefineRevisions(ctx context.Context,
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
 
 	return resp, nil
+}
+
+// GetDefinedRevisions returns the range of defined and unapplied revisions.
+func (s *Server) GetDefinedRevisions(ctx context.Context,
+	in *spb.GetDefinedRevisionsRequest) (*spb.GetDefinedRevisionsResponse, error) {
+	// Get the last processed revision number.
+	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
+	if err != nil {
+		return nil, err
+	}
+	_, root, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Get the highest defined revision number.
+	// TODO(pavelkalinnikov): Run this in parallel with getting the root.
+	rev, err := s.batcher.HighestRev(ctx, in.DirectoryId)
+	if err != nil {
+		return nil, err
+	}
+	return &spb.GetDefinedRevisionsResponse{
+		HighestApplied: int64(root.Revision),
+		HighestDefined: rev,
+	}, nil
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.
