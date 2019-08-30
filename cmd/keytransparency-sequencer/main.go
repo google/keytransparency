@@ -244,8 +244,8 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 		}
 	})
 	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
-		if err := signer.RunBatchForAllMasterships(ctx); err != nil {
-			glog.Errorf("PeriodicallyRun(RunBatchForAllMasterships): %v", err)
+		if err := signer.ApplyRevisionsForAllMasterships(ctx); err != nil {
+			glog.Errorf("PeriodicallyRun(ApplyRevisionsForAllMasterships): %v", err)
 		}
 	})
 
