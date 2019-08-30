@@ -75,8 +75,18 @@ message DefineRevisionsRequest {
 
 // DefineRevisionResponse contains information about freshly defined revisions.
 message DefineRevisionsResponse {
-  // outsanding_revisions a list of all the defined revisions which are not yet applied.
-  repeated int64 outstanding_revisions = 1;
+  // map_revision is the current map revision that was fully applied. Any
+  // unapplied revisions are greater than map_revision.
+  int64 map_revision = 2;
+  // old_defined is the last defined revision before this call. Any newly
+  // defined revisions are greater than old_defined.
+  int64 old_defined = 3;
+  // new_defined is the last defined revision after this call. No new revisions
+  // are defined if new_defined <= old_defined.
+  int64 new_defined = 4;
+
+  // Deprecated tags, do not reuse.
+  reserved 1;
 }
 
 // ApplyRevisionRequest contains information needed to create a new revision.

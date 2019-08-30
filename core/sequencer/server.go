@@ -229,7 +229,7 @@ func (s *Server) unappliedMetric(ctx context.Context, directoryID string, maxCou
 // b) apply the batch to the map
 // c) publish existing map roots to a log of SignedMapRoots.
 func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
-	defResp, err := s.loopback.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
+	resp, err := s.loopback.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
 		DirectoryId: in.DirectoryId,
 		MinBatch:    in.MinBatch,
 		MaxBatch:    in.MaxBatch})
@@ -237,21 +237,21 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, err
 	}
 
-	unappliedRevisions.Set(float64(len(defResp.OutstandingRevisions)))
+	cnt := resp.NewDefined - resp.MapRevision
+	unappliedRevisions.Set(float64(cnt))
+	if cnt < 0 {
+		cnt = 0
+	}
 
-	var handledCount uint64
-	for _, rev := range defResp.OutstandingRevisions {
-		if handledCount == s.LogPublishBatchSize {
-			// Only handle up to LogPublishBatchSize revisions per batch.
-			glog.Errorf("RunBatch - Too many outstanding revisions to apply: %d", len(defResp.OutstandingRevisions))
-			break
-		}
-		revReq := &spb.ApplyRevisionRequest{DirectoryId: in.DirectoryId, Revision: rev}
-		_, err := s.loopback.ApplyRevision(ctx, revReq)
-		if err != nil {
+	if mx := int64(s.LogPublishBatchSize); cnt > mx {
+		glog.Warningf("RunBatch: too many outstanding revisions: %d; applying %d", cnt, mx)
+		cnt = mx
+	}
+	for rev, last := resp.MapRevision+1, resp.MapRevision+cnt; rev <= last; rev++ {
+		req := &spb.ApplyRevisionRequest{DirectoryId: in.DirectoryId, Revision: rev}
+		if _, err := s.loopback.ApplyRevision(ctx, req); err != nil {
 			return nil, err
 		}
-		handledCount++
 	}
 	return &empty.Empty{}, nil
 }
@@ -274,14 +274,15 @@ func (s *Server) DefineRevisions(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	outstanding := []int64{}
-	for rev := int64(latestMapRoot.Revision) + 1; rev <= highestRev; rev++ {
-		outstanding = append(outstanding, rev)
-	}
 
+	resp := &spb.DefineRevisionsResponse{
+		MapRevision: int64(latestMapRoot.Revision),
+		OldDefined:  highestRev,
+		NewDefined:  highestRev,
+	}
 	// Don't create new revisions if there are ones waiting to be applied.
-	if len(outstanding) > 0 {
-		return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
+	if resp.OldDefined > resp.MapRevision {
+		return resp, nil
 	}
 
 	// Query metadata about outstanding log items.
@@ -311,11 +312,11 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			watermarkDefined.Set(float64(source.HighestExclusive),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
-		outstanding = append(outstanding, nextRev)
+		resp.NewDefined = nextRev
 	}
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
 
-	return &spb.DefineRevisionsResponse{OutstandingRevisions: outstanding}, nil
+	return resp, nil
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.

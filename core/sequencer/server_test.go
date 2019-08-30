@@ -143,12 +143,12 @@ func TestDefineRevisions(t *testing.T) {
 	for _, tc := range []struct {
 		desc       string
 		highestRev int64
-		want       []int64
+		wantNew    int64
 	}{
 		// Blocked: Highest Rev > latestMapRoot.Rev
-		{desc: "blocked", highestRev: mapRev + 1, want: []int64{mapRev + 1}},
-		{desc: "unblocked", highestRev: mapRev, want: []int64{mapRev + 1}},
-		{desc: "lagging", highestRev: mapRev + 3, want: []int64{mapRev + 1, mapRev + 2, mapRev + 3}},
+		{desc: "blocked", highestRev: mapRev + 1, wantNew: mapRev + 1},
+		{desc: "unblocked", highestRev: mapRev, wantNew: mapRev + 1},
+		{desc: "lagging", highestRev: mapRev + 3, wantNew: mapRev + 3},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			s.batcher = &fakeBatcher{highestRev: tc.highestRev, batches: make(map[int64]*spb.MapMetadata)}
@@ -161,8 +161,13 @@ func TestDefineRevisions(t *testing.T) {
 			if err != nil {
 				t.Fatalf("DefineRevisions(): %v", err)
 			}
-			if !cmp.Equal(got.OutstandingRevisions, tc.want) {
-				t.Errorf("DefineRevisions(): %v, want %v", got, tc.want)
+			want := &spb.DefineRevisionsResponse{
+				MapRevision: mapRev,
+				OldDefined:  tc.highestRev,
+				NewDefined:  tc.wantNew,
+			}
+			if !proto.Equal(got, want) {
+				t.Errorf("DefineRevisions(): %v, want %v", proto.CompactTextString(got), proto.CompactTextString(want))
 			}
 		})
 	}
