@@ -127,10 +127,12 @@ func (s *Sequencer) ForAllMasterships(ctx context.Context, f func(ctx context.Co
 func (s *Sequencer) DefineRevisionsForAllMasterships(ctx context.Context, batchSize int32) error {
 	glog.Infof("DefineRevisionsForAllMasterships")
 	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
+		// TODO(pavelkalinnikov): Make these parameters configurable.
 		req := &spb.DefineRevisionsRequest{
-			DirectoryId: dirID,
-			MinBatch:    1,
-			MaxBatch:    batchSize,
+			DirectoryId:  dirID,
+			MinBatch:     1,
+			MaxBatch:     batchSize,
+			MaxUnapplied: 1,
 		}
 		if _, err := s.sequencerClient.DefineRevisions(ctx, req); err != nil {
 			glog.Errorf("DefineRevisions for %v failed: %v", dirID, err)

@@ -241,12 +241,11 @@ func (s *Server) DefineRevisions(ctx context.Context,
 	if resp.HighestDefined < resp.HighestApplied {
 		return resp, nil
 	}
-	// Allow at most one pending revision, which enables applying a revision and
-	// defining the next one simultaneously.
-	if resp.HighestDefined > resp.HighestApplied+1 {
+	// Allow at most MaxUnapplied pending revisions. Having MaxUnapplied != 0
+	// enables applying a revision and defining the next one simultaneously.
+	if resp.HighestDefined > resp.HighestApplied+int64(in.MaxUnapplied) {
 		return resp, nil
 	}
-	// TODO(#1056): Make the gap size configurable.
 
 	// Query metadata about outstanding log items.
 	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, resp.HighestDefined)
