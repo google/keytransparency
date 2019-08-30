@@ -222,37 +222,6 @@ func (s *Server) unappliedMetric(ctx context.Context, directoryID string, maxCou
 	return nil
 }
 
-// RunBatch builds multiple outstanding revisions of a single directory's map
-// by integrating the corresponding mutations.
-//
-// TODO(pavelkalinnikov): Name it properly.
-func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.Empty, error) {
-	resp, err := s.loopback.GetDefinedRevisions(ctx,
-		&spb.GetDefinedRevisionsRequest{DirectoryId: in.DirectoryId})
-	if err != nil {
-		return nil, err
-	}
-
-	cnt := resp.HighestDefined - resp.HighestApplied
-	unappliedRevisions.Set(float64(cnt))
-	if cnt < 0 {
-		cnt = 0
-	}
-
-	if mx := int64(s.LogPublishBatchSize); cnt > mx {
-		glog.Warningf("RunBatch: too many outstanding revisions: %d; applying %d", cnt, mx)
-		cnt = mx
-	}
-	for i := int64(1); i <= cnt; i++ {
-		req := &spb.ApplyRevisionRequest{
-			DirectoryId: in.DirectoryId, Revision: resp.HighestApplied + i}
-		if _, err := s.loopback.ApplyRevision(ctx, req); err != nil {
-			return nil, err
-		}
-	}
-	return &empty.Empty{}, nil
-}
-
 // DefineRevisions returns the set of outstanding revisions that have not been
 // applied, after optionally defining a new revision of outstanding mutations.
 func (s *Server) DefineRevisions(ctx context.Context,
@@ -330,6 +299,35 @@ func (s *Server) GetDefinedRevisions(ctx context.Context,
 		HighestApplied: int64(root.Revision),
 		HighestDefined: rev,
 	}, nil
+}
+
+// ApplyRevisions builds multiple outstanding revisions of a single directory's
+// map by integrating the corresponding mutations.
+func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsRequest) (*empty.Empty, error) {
+	resp, err := s.loopback.GetDefinedRevisions(ctx,
+		&spb.GetDefinedRevisionsRequest{DirectoryId: in.DirectoryId})
+	if err != nil {
+		return nil, err
+	}
+
+	cnt := resp.HighestDefined - resp.HighestApplied
+	unappliedRevisions.Set(float64(cnt))
+	if cnt < 0 {
+		cnt = 0
+	}
+
+	if mx := int64(s.LogPublishBatchSize); cnt > mx {
+		glog.Warningf("ApplyRevisions: too many outstanding revisions: %d; applying %d", cnt, mx)
+		cnt = mx
+	}
+	for i := int64(1); i <= cnt; i++ {
+		req := &spb.ApplyRevisionRequest{
+			DirectoryId: in.DirectoryId, Revision: resp.HighestApplied + i}
+		if _, err := s.loopback.ApplyRevision(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return &empty.Empty{}, nil
 }
 
 // readMessages returns the full set of EntryUpdates defined by sources.

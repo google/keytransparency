@@ -84,9 +84,9 @@ func runBatchAndPublish(ctx context.Context, env *Env, mn, mx int32, block bool)
 	if _, err := env.Sequencer.DefineRevisions(ctx, drReq); err != nil {
 		return convert(err, "DefineRevisions()")
 	}
-	rbReq := &spb.RunBatchRequest{DirectoryId: env.Directory.DirectoryId}
-	if _, err := env.Sequencer.RunBatch(ctx, rbReq); err != nil {
-		return convert(err, "RunBatch()")
+	arReq := &spb.ApplyRevisionsRequest{DirectoryId: env.Directory.DirectoryId}
+	if _, err := env.Sequencer.ApplyRevisions(ctx, arReq); err != nil {
+		return convert(err, "ApplyRevisions()")
 	}
 	prReq := &spb.PublishRevisionsRequest{
 		DirectoryId: env.Directory.DirectoryId,

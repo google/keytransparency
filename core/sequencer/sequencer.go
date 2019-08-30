@@ -140,14 +140,15 @@ func (s *Sequencer) DefineRevisionsForAllMasterships(ctx context.Context, batchS
 	})
 }
 
-// RunBatchForAllMasterships runs KeyTransparencySequencerClient.RunBatch on
-// all directories that this sequencer is currently master for.
-func (s *Sequencer) RunBatchForAllMasterships(ctx context.Context) error {
-	glog.Infof("RunBatchForAllMasterships")
+// ApplyRevisionsForAllMasterships runs KeyTransparencySequencerClient's
+// ApplyRevisions method on all directories that this sequencer is currently
+// master for.
+func (s *Sequencer) ApplyRevisionsForAllMasterships(ctx context.Context) error {
+	glog.Infof("ApplyRevisionsForAllMasterships")
 	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
-		req := &spb.RunBatchRequest{DirectoryId: dirID}
-		if _, err := s.sequencerClient.RunBatch(ctx, req); err != nil {
-			glog.Errorf("RunBatch for %v failed: %v", dirID, err)
+		req := &spb.ApplyRevisionsRequest{DirectoryId: dirID}
+		if _, err := s.sequencerClient.ApplyRevisions(ctx, req); err != nil {
+			glog.Errorf("ApplyRevisions for %v failed: %v", dirID, err)
 			return err
 		}
 		return nil
