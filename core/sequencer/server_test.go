@@ -150,6 +150,7 @@ func TestDefineRevisions(t *testing.T) {
 		{desc: "blocked", highestRev: mapRev + 1, wantNew: mapRev + 1},
 		{desc: "unblocked", highestRev: mapRev, wantNew: mapRev + 1},
 		{desc: "lagging", highestRev: mapRev + 3, wantNew: mapRev + 3},
+		{desc: "skewed", highestRev: mapRev - 1, wantNew: mapRev - 1},
 		{desc: "almost_drained", highestRev: mapRev,
 			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, LowestInclusive: 0, HighestExclusive: 9},

@@ -280,8 +280,9 @@ func (s *Server) DefineRevisions(ctx context.Context,
 		OldDefined:  highestRev,
 		NewDefined:  highestRev,
 	}
-	// Don't create new revisions if there are ones waiting to be applied.
-	if resp.OldDefined > resp.MapRevision {
+	// Don't create new revisions if there are ones waiting to be applied, or the
+	// highest defined revision is lagging behind for some reason.
+	if resp.OldDefined != resp.MapRevision {
 		return resp, nil
 	}
 
