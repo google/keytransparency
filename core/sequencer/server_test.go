@@ -147,7 +147,8 @@ func TestDefiningRevisions(t *testing.T) {
 		wantNew    int64
 	}{
 		// Blocked: Highest Rev > latestMapRoot.Rev
-		{desc: "blocked", highestRev: mapRev + 1, wantNew: mapRev + 1},
+		{desc: "alomost-blocked", highestRev: mapRev + 1, wantNew: mapRev + 2},
+		{desc: "blocked", highestRev: mapRev + 2, wantNew: mapRev + 2},
 		{desc: "unblocked", highestRev: mapRev, wantNew: mapRev + 1},
 		{desc: "lagging", highestRev: mapRev + 3, wantNew: mapRev + 3},
 		{desc: "skewed", highestRev: mapRev - 1, wantNew: mapRev - 1},
