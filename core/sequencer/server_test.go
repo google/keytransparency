@@ -176,12 +176,11 @@ func TestDefineRevisions(t *testing.T) {
 				t.Fatalf("DefineRevisions(): %v", err)
 			}
 			want := &spb.DefineRevisionsResponse{
-				MapRevision: mapRev,
-				OldDefined:  tc.highestRev,
-				NewDefined:  tc.wantNew,
+				HighestApplied: mapRev,
+				HighestDefined: tc.wantNew,
 			}
 			if !proto.Equal(got, want) {
-				t.Errorf("DefineRevisions(): %v, want %v", proto.CompactTextString(got), proto.CompactTextString(want))
+				t.Errorf("DefineRevisions(): %v, want %v", got, want)
 			}
 		})
 	}

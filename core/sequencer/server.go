@@ -237,7 +237,7 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		return nil, err
 	}
 
-	cnt := resp.NewDefined - resp.MapRevision
+	cnt := resp.HighestDefined - resp.HighestApplied
 	unappliedRevisions.Set(float64(cnt))
 	if cnt < 0 {
 		cnt = 0
@@ -247,8 +247,9 @@ func (s *Server) RunBatch(ctx context.Context, in *spb.RunBatchRequest) (*empty.
 		glog.Warningf("RunBatch: too many outstanding revisions: %d; applying %d", cnt, mx)
 		cnt = mx
 	}
-	for rev, last := resp.MapRevision+1, resp.MapRevision+cnt; rev <= last; rev++ {
-		req := &spb.ApplyRevisionRequest{DirectoryId: in.DirectoryId, Revision: rev}
+	for i := int64(1); i <= cnt; i++ {
+		req := &spb.ApplyRevisionRequest{
+			DirectoryId: in.DirectoryId, Revision: resp.HighestApplied + i}
 		if _, err := s.loopback.ApplyRevision(ctx, req); err != nil {
 			return nil, err
 		}
@@ -276,13 +277,12 @@ func (s *Server) DefineRevisions(ctx context.Context,
 	}
 
 	resp := &spb.DefineRevisionsResponse{
-		MapRevision: int64(latestMapRoot.Revision),
-		OldDefined:  highestRev,
-		NewDefined:  highestRev,
+		HighestApplied: int64(latestMapRoot.Revision),
+		HighestDefined: highestRev,
 	}
 	// Don't create new revisions if there are ones waiting to be applied, or the
 	// highest defined revision is lagging behind for some reason.
-	if resp.OldDefined != resp.MapRevision {
+	if resp.HighestDefined != resp.HighestApplied {
 		return resp, nil
 	}
 
@@ -305,7 +305,8 @@ func (s *Server) DefineRevisions(ctx context.Context,
 	// TODO(#1047): If time since oldest queue item > max latency has elapsed, define batch.
 	// If count items >= min_batch, define batch.
 	if count >= in.MinBatch {
-		nextRev := highestRev + 1
+		resp.HighestDefined++
+		nextRev := resp.HighestDefined
 		if err := s.batcher.WriteBatchSources(ctx, in.DirectoryId, nextRev, meta); err != nil {
 			return nil, err
 		}
@@ -313,7 +314,6 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			watermarkDefined.Set(float64(source.HighestExclusive),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
-		resp.NewDefined = nextRev
 	}
 	// TODO(#1056): If count items == max_batch, should we define the next batch immediately?
 

@@ -60,7 +60,7 @@ message RunBatchRequest {
   reserved 4;
 }
 
-// DefineRevisionRequest contains information needed to define a new revision.
+// DefineRevisionsRequest contains information needed to define new revisions.
 message DefineRevisionsRequest {
   // directory_id is the directory to examine the outstanding mutations for.
   string directory_id = 1;
@@ -73,17 +73,13 @@ message DefineRevisionsRequest {
   int32 max_batch = 3;
 }
 
-// DefineRevisionResponse contains information about freshly defined revisions.
+// DefineRevisionsResponse contains information about defined/applied revisions.
 message DefineRevisionsResponse {
-  // map_revision is the current map revision that was fully applied. Any
-  // unapplied revisions are greater than map_revision.
-  int64 map_revision = 2;
-  // old_defined is the last defined revision before this call. Any newly
-  // defined revisions are greater than old_defined.
-  int64 old_defined = 3;
-  // new_defined is the last defined revision after this call. No new revisions
-  // are defined if new_defined <= old_defined.
-  int64 new_defined = 4;
+  // highest_applied is the current map revision, which is also the highest map
+  // revision that has been applied.
+  int64 highest_applied = 2;
+  // highest_defined is the highest defined revision after this call.
+  int64 highest_defined = 3;
 
   // Deprecated tags, do not reuse.
   reserved 1;
@@ -134,7 +130,7 @@ message UpdateMetricsResponse {}
 service KeyTransparencySequencer {
   // RunBatch calls DefineRevisions, ApplyRevision, and PublishRevisions successively.
   rpc RunBatch(RunBatchRequest) returns (google.protobuf.Empty);
-  // DefineRevision examines the outstanding items in the queue and optionally
+  // DefineRevisions examines the outstanding items in the queue and optionally
   // writes the metadata for one or more revisions to the metadata database.
   rpc DefineRevisions(DefineRevisionsRequest) returns (DefineRevisionsResponse);
   // ApplyRevision applies the contained mutations to the current map root.
