@@ -22,8 +22,8 @@ func (priv *PrivateKey) Public() *PublicKey {
 	return &priv.PublicKey
 }
 
-func NewKey(curve elliptic.Curve, SK []byte) *PrivateKey {
-	Yx, Yy := curve.ScalarBaseMult(SK)
+func (v *ECVRF) NewKey(SK []byte) *PrivateKey {
+	Yx, Yy := v.EC.ScalarBaseMult(SK)
 	return &PrivateKey{
 		x:         new(big.Int).SetBytes(SK), // Use SK to derive the VRF secret scalar x
 		PublicKey: PublicKey{X: Yx, Y: Yy},   // VRF public key Y = x*B
@@ -32,22 +32,6 @@ func NewKey(curve elliptic.Curve, SK []byte) *PrivateKey {
 
 type ECVRF struct {
 	ECVRFSuite
-
-	// ptLen - length, in octets, of an EC point encoded as an octet string
-
-	// G - subgroup of E of large prime order
-
-	// q - prime order of group G
-
-	// qLen - length of q in octets, i.e., smallest integer such that
-	// 2^(8qLen)>q (note that in the typical case, qLen equals 2n or is
-	// close to 2n)
-
-	// cofactor - number of points on E divided by q
-
-	// B - generator of group G
-
-	// hLen - output length in octets of Hash; must be at least 2n
 
 	//  Elliptic curve operations are written in additive notation, with
 	// P+Q denoting point addition and x*P denoting scalar multiplication
@@ -85,13 +69,13 @@ type ECVRF struct {
 // Returns pi - VRF proof, octet string of length ptLen+n+qLen
 func (v *ECVRF) Prove(SK PrivateKey, alpha []byte) []byte {
 	// 1.  Use SK to derive the VRF secret scalar x and the VRF public key Y = x*B
-	Y := SK.Public()
+	//Y := SK.Public()
 
 	// 2.  H = ECVRF_hash_to_curve(suite_string, Y, alpha_string)
-	Hx, Hy := v.HashToCurve(Y, alpha)
+	//Hx, Hy := v.HashToCurve(&v.ECVRFSuite, Y, alpha)
 
 	// 3.  h_string = point_to_string(H)
-	hStr := v.Point2String(v.E, Hx, Hy)
+	//hStr := v.Point2String(v.EC, Hx, Hy)
 
 	// 4.  Gamma = x*H
 

@@ -6,6 +6,11 @@ import (
 
 var zero big.Int
 
+func HashToCurveTAI(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int) {
+	Hx, Hy, _ = HashToCurveTryAndIncrement(v, Y, alpha) // Section 5.4.1.1.
+	return
+}
+
 // HashToCurveTryAndIncrement implements HashToCurve in a simple and generic
 // way that works for any elliptic curve.
 //
@@ -23,12 +28,12 @@ var zero big.Int
 // - `alpha` - value to be hashed, an octet string
 // Output:
 // - `H` - hashed value, a finite EC point in G
-// - `ctr` - integer, number of attempts to find a valid curve point
-func (v *ECVRFSuite) HashToCurveTryAndIncrement(Y *PublicKey, alpha []byte) (Hx, Hy *big.Int, ctr int) {
+// - `ctr` - integer, number of suite byte, attempts to find a valid curve point
+func HashToCurveTryAndIncrement(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int, ctr uint) {
 	// 1.  ctr = 0
 	ctr = 0
 	// 2.  PK_string = point_to_string(Y)
-	pk := v.Point2String(v.E, Y.X, Y.Y)
+	pk := v.Point2String(v.EC, Y.X, Y.Y)
 
 	// 3.  one_string = 0x01 = int_to_string(1, 1), a single octet with value 1
 	one := []byte{0x01}
@@ -50,7 +55,7 @@ func (v *ECVRFSuite) HashToCurveTryAndIncrement(Y *PublicKey, alpha []byte) (Hx,
 		h.Write(ctrString)
 		hashString := h.Sum(nil)
 		// C.  H = arbitrary_string_to_point(hash_string)
-		Hx, Hy, err := v.ArbitraryString2Point(v.E, hashString)
+		Hx, Hy = v.ArbitraryString2Point(v.EC, hashString)
 		// D.  If H is not "INVALID" and cofactor > 1, set H = cofactor * H
 		// Cofactor for prime ordered curves is 1.
 		ctr++

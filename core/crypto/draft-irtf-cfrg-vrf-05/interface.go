@@ -4,6 +4,7 @@ type Interface interface {
 	// A VRF comes with a key generation algorithm that generates a public
 	// VRF key PK and private VRF key SK.
 	//Generate() ([]byte, []byte) // SK, PK
+	NewKey(SK []byte) *PrivateKey
 
 	// The prover hashes an input alpha using the private VRF key SK.
 	// Returns VRF hash output beta.
