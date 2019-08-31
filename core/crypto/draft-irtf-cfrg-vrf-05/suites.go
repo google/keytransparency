@@ -49,10 +49,10 @@ type ECVRFSuite struct {
 	EC elliptic.Curve
 	// suite is a single nonzero octet specifying the ECVRF
 	// ciphersuite, which determines the options below.
-	suite       byte
-	Hash        crypto.Hash
-	Conversions // Type conversions
-	//nonce func()
+	suite         byte
+	Hash          crypto.Hash
+	Conversions   // Type conversions
+	GenerateNonce func(hash crypto.Hash, SK *PrivateKey, h []byte) (k *big.Int)
 	// HashToCurve is a collision resistant hash of strings to an EC point;
 	// options described in Section 5.4.1 and specified in Section 5.5.
 	// HashToCurveTryAndIncrement takes in the VRF input alpha and converts
@@ -91,8 +91,8 @@ func ECVRF_P256_SHA256_TAI() *ECVRF {
 			// ArbitraryString2Point returns string_to_point(0x02 || h_string)
 			ArbitraryString2Point: ArbitraryString2Point,
 		},
-		// nonce: // Section 5.4.2.1.
-		HashToCurve: HashToCurveTAI, // Section 5.4.1.1.
+		HashToCurve:   HashToCurveTAI,       // Section 5.4.1.1.
+		GenerateNonce: GenerateNonceRFC6979, // Section 5.4.2.1.
 	}}
 }
 

@@ -22,11 +22,11 @@ func (priv *PrivateKey) Public() *PublicKey {
 	return &priv.PublicKey
 }
 
-func (v *ECVRF) NewKey(SK []byte) *PrivateKey {
+func (v *ECVRF) NewKey(curve elliptic.Curve, SK []byte) *PrivateKey {
 	Yx, Yy := v.EC.ScalarBaseMult(SK)
 	return &PrivateKey{
-		x:         new(big.Int).SetBytes(SK), // Use SK to derive the VRF secret scalar x
-		PublicKey: PublicKey{X: Yx, Y: Yy},   // VRF public key Y = x*B
+		x:         new(big.Int).SetBytes(SK),             // Use SK to derive the VRF secret scalar x
+		PublicKey: PublicKey{Curve: curve, X: Yx, Y: Yy}, // VRF public key Y = x*B
 	}
 }
 

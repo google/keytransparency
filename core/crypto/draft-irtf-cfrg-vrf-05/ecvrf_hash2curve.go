@@ -6,11 +6,6 @@ import (
 
 var zero big.Int
 
-func HashToCurveTAI(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int) {
-	Hx, Hy, _ = HashToCurveTryAndIncrement(v, Y, alpha) // Section 5.4.1.1.
-	return
-}
-
 // HashToCurveTryAndIncrement implements HashToCurve in a simple and generic
 // way that works for any elliptic curve.
 //
@@ -62,4 +57,9 @@ func HashToCurveTryAndIncrement(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, 
 	}
 	// 6.  Output H
 	return Hx, Hy, ctr - 1
+}
+
+func HashToCurveTAI(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int) {
+	Hx, Hy, _ = HashToCurveTryAndIncrement(v, Y, alpha) // Drop ctr
+	return
 }
