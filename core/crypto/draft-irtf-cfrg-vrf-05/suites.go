@@ -88,11 +88,8 @@ func ECVRF_P256_SHA256_TAI() *ECVRF {
 			// string does not decode to an EC point.
 			String2Point: SECG1Decode, // Section 2.3.4 of [SECG1]
 
-			// ArbitraryString2Point (h_string) = string_to_point(0x02
-			// || h_string) (where 0x02 is a single octet with value 2,
-			// 0x02=int_to_string(2, 1)).  The input h_string is a 32-octet
-			// string and the output is either an EC point or "INVALID".
-			ArbitraryString2Point: ArbitraryString2Point, // string_to_point(0x02 || h_string)
+			// ArbitraryString2Point returns string_to_point(0x02 || h_string)
+			ArbitraryString2Point: ArbitraryString2Point,
 		},
 		// nonce: // Section 5.4.2.1.
 		HashToCurve: HashToCurveTAI, // Section 5.4.1.1.

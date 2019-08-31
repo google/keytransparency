@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/elliptic"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 )
 
@@ -56,6 +57,8 @@ func SECG1EncodeCompressed(curve elliptic.Curve, x, y *big.Int) []byte {
 }
 
 // SECG1Decode decodes a point, given as a 32-octet string.
+// TODO(gbelvin): This spec is inconsistent. h is 33 bytes long because it is
+// prepended with The compressed point type (0x02).
 //
 // https://tools.ietf.org/html/rfc8032#section-5.1.3
 func SECG1Decode(curve elliptic.Curve, h []byte) (x, y *big.Int) {
@@ -67,6 +70,9 @@ func SECG1Decode(curve elliptic.Curve, h []byte) (x, y *big.Int) {
 // Attempts to interpret an arbitrary string as a compressed elliptic code point.
 // The input h is a 32-octet string.  Returns either an EC point or "INVALID".
 func ArbitraryString2Point(curve elliptic.Curve, h []byte) (x, y *big.Int) {
+	if got, want := len(h), 32; got != want {
+		panic(fmt.Sprintf("len(h): %v, want %v", got, want))
+	}
 	var b bytes.Buffer
 	b.Write([]byte{0x02})
 	b.Write(h[:])
