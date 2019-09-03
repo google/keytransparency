@@ -236,12 +236,16 @@ func (s *Server) DefineRevisions(ctx context.Context,
 		HighestApplied: revs.HighestApplied,
 		HighestDefined: revs.HighestDefined,
 	}
-	// Don't create new revisions if there are ones waiting to be applied, or the
-	// highest defined revision is lagging behind for some reason.
-	if resp.HighestDefined != resp.HighestApplied {
+	// Do nothing if the highest defined revision is lagging behind for some
+	// reason. It will catch up later.
+	if resp.HighestDefined < resp.HighestApplied {
 		return resp, nil
 	}
-	// TODO(#1056): Allow going ahead to some extent.
+	// Allow at most MaxUnapplied pending revisions. Having MaxUnapplied != 0
+	// enables applying a revision and defining the next one simultaneously.
+	if resp.HighestDefined > resp.HighestApplied+int64(in.MaxUnapplied) {
+		return resp, nil
+	}
 
 	// Query metadata about outstanding log items.
 	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, resp.HighestDefined)

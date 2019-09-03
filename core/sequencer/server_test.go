@@ -144,10 +144,11 @@ func TestDefiningRevisions(t *testing.T) {
 		desc       string
 		highestRev int64
 		meta       spb.MapMetadata
+		maxGap     int32
 		wantNew    int64
 	}{
-		// Blocked: Highest Rev > latestMapRoot.Rev
-		{desc: "blocked", highestRev: mapRev + 1, wantNew: mapRev + 1},
+		{desc: "alomost-blocked", highestRev: mapRev + 1, maxGap: 1, wantNew: mapRev + 2},
+		{desc: "blocked", highestRev: mapRev + 2, wantNew: mapRev + 2},
 		{desc: "unblocked", highestRev: mapRev, wantNew: mapRev + 1},
 		{desc: "lagging", highestRev: mapRev + 3, wantNew: mapRev + 3},
 		{desc: "skewed", highestRev: mapRev - 1, wantNew: mapRev - 1},
@@ -182,9 +183,10 @@ func TestDefiningRevisions(t *testing.T) {
 			}
 
 			drResp, err := s.DefineRevisions(ctx, &spb.DefineRevisionsRequest{
-				DirectoryId: directoryID,
-				MinBatch:    1,
-				MaxBatch:    10})
+				DirectoryId:  directoryID,
+				MinBatch:     1,
+				MaxBatch:     10,
+				MaxUnapplied: tc.maxGap})
 			if err != nil {
 				t.Fatalf("DefineRevisions(): %v", err)
 			}

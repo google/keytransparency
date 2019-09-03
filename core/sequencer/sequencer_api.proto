@@ -55,6 +55,9 @@ message DefineRevisionsRequest {
   int32 min_batch = 2;
   // max_batch is the maximum number of items in a batch.
   int32 max_batch = 3;
+  // max_unapplied is the maximum number of revisions that can be defined ahead
+  // of applied revisions.
+  int32 max_unapplied = 4;
 }
 
 // DefineRevisionsResponse contains information about defined/applied revisions.
