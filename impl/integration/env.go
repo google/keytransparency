@@ -119,7 +119,8 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	timeout := 6 * time.Second
 	directoryID := "integration"
 
-	db, err := testdb.NewTrillianDB(ctx)
+	db, done, err := testdb.NewTrillianDB(ctx)
+	defer done(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("env: failed to open database: %v", err)
 	}

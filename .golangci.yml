@@ -31,6 +31,7 @@ linters:
     - gochecknoglobals
     - lll
     - interfacer
+    - funlen
 
 issues:
   exclude:
