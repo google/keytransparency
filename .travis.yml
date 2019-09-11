@@ -27,12 +27,12 @@ jobs:
       script: golangci-lint run --deadline=7m
     - name: "coverage"
       script:
-      - go test ./... -coverprofile=coverage1.txt
-      - go test ./impl/integration/ -coverprofile=coverage2.txt -coverpkg=./...
+      - go test ./... -v -coverprofile=coverage1.txt
+      - go test ./impl/integration/ -v -coverprofile=coverage2.txt -coverpkg=./...
       after_success: bash <(curl -s https://codecov.io/bash)
     - name: "race"
       script:
-      - go test -race ./...
+      - go test -race ./... -v
     - name: "docker integration test"
       install: skip
       script: ./scripts/integration.sh
