@@ -16,12 +16,12 @@ import (
 // Batcher writes batch definitions to storage.
 type Batcher = sequencer.Batcher
 
-type BatchStorageFactory func(ctx context.Context, t *testing.T) Batcher
+type BatchStorageFactory func(ctx context.Context, t *testing.T, dirID string) Batcher
 
-type BatchStorageTest func(ctx context.Context, t *testing.T, b Batcher)
+type BatchStorageTest func(ctx context.Context, t *testing.T, f BatchStorageFactory)
 
 // RunBatchStorageTests runs all the batch storage tests against the provided map storage implementation.
-func RunBatchStorageTests(t *testing.T, storageFactory BatchStorageFactory) {
+func RunBatchStorageTests(t *testing.T, factory BatchStorageFactory) {
 	ctx := context.Background()
 	b := &BatchTests{}
 	for name, f := range map[string]BatchStorageTest{
@@ -31,15 +31,15 @@ func RunBatchStorageTests(t *testing.T, storageFactory BatchStorageFactory) {
 		"TestReadBatch":  b.TestReadBatch,
 		"TestHighestRev": b.TestHighestRev,
 	} {
-		ms := storageFactory(ctx, t)
-		t.Run(name, func(t *testing.T) { f(ctx, t, ms) })
+		t.Run(name, func(t *testing.T) { f(ctx, t, factory) })
 	}
 }
 
 // BatchTests is a suite of tests to run against
 type BatchTests struct{}
 
-func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, b Batcher) {
+func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, f BatchStorageFactory) {
+	b := f(ctx, t, "testnotfounddir")
 	_, err := b.ReadBatch(ctx, "nodir", 0)
 	st := status.Convert(err)
 	if got, want := st.Code(), codes.NotFound; got != want {
@@ -47,8 +47,9 @@ func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, b Batcher) {
 	}
 }
 
-func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, b Batcher) {
+func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, f BatchStorageFactory) {
 	domainID := "writebatchtest"
+	b := f(ctx, t, domainID)
 	for _, tc := range []struct {
 		rev     int64
 		wantErr bool
@@ -70,8 +71,9 @@ func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, b Batcher) 
 	}
 }
 
-func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, b Batcher) {
+func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, f BatchStorageFactory) {
 	domainID := "readbatchtest"
+	b := f(ctx, t, domainID)
 	for _, tc := range []struct {
 		rev  int64
 		want *spb.MapMetadata
@@ -98,8 +100,9 @@ func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, b Batcher) {
 	}
 }
 
-func (*BatchTests) TestHighestRev(ctx context.Context, t *testing.T, b Batcher) {
+func (*BatchTests) TestHighestRev(ctx context.Context, t *testing.T, f BatchStorageFactory) {
 	domainID := "writebatchtest"
+	b := f(ctx, t, domainID)
 	for _, tc := range []struct {
 		rev     int64
 		sources []*spb.MapMetadata_SourceSlice
