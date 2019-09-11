@@ -32,7 +32,7 @@ func newDB(t testing.TB) *sql.DB {
 }
 
 func TestBatchIntegration(t *testing.T) {
-	storageFactory := func(context.Context, *testing.T) storagetest.Batcher {
+	storageFactory := func(context.Context, *testing.T, string) storagetest.Batcher {
 		m, err := New(newDB(t))
 		if err != nil {
 			t.Fatalf("Failed to create mutations: %v", err)
