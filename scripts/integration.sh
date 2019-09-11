@@ -23,4 +23,5 @@ go run ./cmd/keytransparency-client post foo@bar.com \
 	--password=${PASSWORD} \
 	--kt-url=localhost:443 \
 	--verbose \
+	--timeout=2m \
 	--logtostderr
