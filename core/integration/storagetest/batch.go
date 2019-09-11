@@ -39,8 +39,9 @@ func RunBatchStorageTests(t *testing.T, factory BatchStorageFactory) {
 type BatchTests struct{}
 
 func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, f BatchStorageFactory) {
-	b := f(ctx, t, "testnotfounddir")
-	_, err := b.ReadBatch(ctx, "nodir", 0)
+	domainID := "testnotfounddir"
+	b := f(ctx, t, domainID)
+	_, err := b.ReadBatch(ctx, domainID, 0)
 	st := status.Convert(err)
 	if got, want := st.Code(), codes.NotFound; got != want {
 		t.Errorf("ReadBatch(): %v, want %v", err, want)
