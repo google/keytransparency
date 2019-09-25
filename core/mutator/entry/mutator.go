@@ -87,6 +87,10 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	// Filter for mutations that are valid.
 	newEntries := make([]*pb.EntryUpdate, 0, len(msgs))
 	for i, msg := range msgs {
+		// Skip if there is no change in data.
+		if len(leaves) > 0 && bytes.Equal(leaves[0].GetCommitted().GetData(), msg.GetCommitted().GetData()) {
+			continue
+		}
 		newValue, err := MutateFn(oldValue, msg.GetMutation())
 		if err != nil {
 			s := status.Convert(err)
