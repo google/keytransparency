@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	ktsql "github.com/google/keytransparency/impl/sql"
 )
 
 // SetWritable enables or disables new writes from going to logID.
@@ -113,19 +114,19 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 	var logIDs []int64
 	rows, err := m.db.QueryContext(ctx, query, directoryID)
 	if err != nil {
-		return nil, dbErrorf(err, "Query writable logs")
+		return nil, ktsql.Errorf(err, "Query writable logs")
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		var logID int64
 		if err := rows.Scan(&logID); err != nil {
-			return nil, dbErrorf(err, "Query writable logs")
+			return nil, ktsql.Errorf(err, "Query writable logs")
 		}
 		logIDs = append(logIDs, logID)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, dbErrorf(err, "rows.Err()")
+		return nil, ktsql.Errorf(err, "rows.Err()")
 	}
 	if len(logIDs) == 0 {
 		return nil, status.Errorf(codes.NotFound, "no log found for directory %v", directoryID)
@@ -139,7 +140,7 @@ func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, err
 	writable := true
 	logIDs, err := m.ListLogs(ctx, directoryID, writable)
 	if err != nil {
-		return 0, dbErrorf(err, "ListLogs")
+		return 0, ktsql.Errorf(err, "ListLogs")
 	}
 
 	// Return a random log.
@@ -151,12 +152,12 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	logID int64, mData ...[]byte) (ret error) {
 	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
-		return dbErrorf(err, "BeginTx")
+		return ktsql.Errorf(err, "BeginTx")
 	}
 	defer func() {
 		if ret != nil {
 			if err := tx.Rollback(); err != nil {
-				ret = dbErrorf(err, "%v, and could not rollback", ret)
+				ret = ktsql.Errorf(err, "%v, and could not rollback", ret)
 			}
 		}
 	}()
@@ -165,7 +166,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	if err := tx.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTime); err != nil {
-		return dbErrorf(err, "could not find max timestamp")
+		return ktsql.Errorf(err, "could not find max timestamp")
 	}
 	tsTime := ts.UnixNano()
 	if tsTime <= maxTime {
@@ -178,10 +179,10 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		if _, err = tx.ExecContext(ctx,
 			`INSERT INTO Queue (DirectoryID, LogID, Time, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, tsTime, i, data); err != nil {
-			return dbErrorf(err, "failed inserting into queue")
+			return ktsql.Errorf(err, "failed inserting into queue")
 		}
 	}
-	return dbErrorf(tx.Commit(), "commit")
+	return ktsql.Errorf(tx.Commit(), "commit")
 }
 
 // HighWatermark returns the highest watermark +1 in logID that is less than or

@@ -23,9 +23,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// dbErrorf tries to extract a meaningful error code from err,
-// the err returned from the database.
-func dbErrorf(err error, format string, a ...interface{}) error {
+// Errorf tries to extract a meaningful error code from err, the err returned from the database.
+func Errorf(err error, format string, a ...interface{}) error {
 	if err == nil {
 		return nil
 	}

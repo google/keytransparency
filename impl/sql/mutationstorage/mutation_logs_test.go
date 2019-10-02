@@ -59,7 +59,6 @@ func TestLogsAdminIntegration(t *testing.T) {
 
 func TestRandLog(t *testing.T) {
 	ctx := context.Background()
-	directoryID := "TestRandLog"
 
 	for _, tc := range []struct {
 		desc     string
@@ -76,6 +75,7 @@ func TestRandLog(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
+			directoryID := fmt.Sprintf("%v-%v", "TestRandLog", tc.desc)
 			m, done := newForTest(ctx, t, directoryID, tc.send...)
 			defer done(ctx)
 			logs := make(map[int64]bool)
