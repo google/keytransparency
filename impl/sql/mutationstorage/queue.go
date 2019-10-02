@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/trillian/client/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -84,10 +85,13 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 		}
 		updateData = append(updateData, data)
 	}
-	// TODO(gbelvin): Implement retry with backoff for retryable errors if
-	// we get timestamp contention.
-	ts := time.Now()
-	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
+
+	b := backoff.Backoff{Min: time.Microsecond, Max: time.Second, Factor: 1.2, Jitter: true}
+	var ts time.Time
+	if err := b.Retry(ctx, func() error {
+		ts = time.Now()
+		return m.send(ctx, ts, directoryID, logID, updateData...)
+	}); err != nil {
 		return nil, err
 	}
 	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts}, nil
