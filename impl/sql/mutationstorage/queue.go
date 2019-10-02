@@ -73,8 +73,13 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 	if len(updates) == 0 {
 		return nil, nil
 	}
-	logID, err := m.randLog(ctx, directoryID)
-	if err != nil {
+	b := backoff.Backoff{Min: time.Microsecond, Max: time.Second, Factor: 1.2, Jitter: true}
+	var logID int64
+	if err := b.Retry(ctx, func() error {
+		var err error
+		logID, err = m.randLog(ctx, directoryID)
+		return err
+	}); err != nil {
 		return nil, err
 	}
 	updateData := make([][]byte, 0, len(updates))
@@ -86,7 +91,7 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 		updateData = append(updateData, data)
 	}
 
-	b := backoff.Backoff{Min: time.Microsecond, Max: time.Second, Factor: 1.2, Jitter: true}
+	b.Reset()
 	var ts time.Time
 	if err := b.Retry(ctx, func() error {
 		ts = time.Now()
@@ -108,19 +113,19 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 	var logIDs []int64
 	rows, err := m.db.QueryContext(ctx, query, directoryID)
 	if err != nil {
-		return nil, err
+		return nil, dbErrorf(err, "Query writable logs")
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		var logID int64
 		if err := rows.Scan(&logID); err != nil {
-			return nil, err
+			return nil, dbErrorf(err, "Query writable logs")
 		}
 		logIDs = append(logIDs, logID)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, dbErrorf(err, "rows.Err()")
 	}
 	if len(logIDs) == 0 {
 		return nil, status.Errorf(codes.NotFound, "no log found for directory %v", directoryID)
@@ -134,7 +139,7 @@ func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, err
 	writable := true
 	logIDs, err := m.ListLogs(ctx, directoryID, writable)
 	if err != nil {
-		return 0, err
+		return 0, dbErrorf(err, "ListLogs")
 	}
 
 	// Return a random log.
@@ -144,15 +149,14 @@ func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, err
 // ts must be greater than all other timestamps currently recorded for directoryID.
 func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	logID int64, mData ...[]byte) (ret error) {
-	tx, err := m.db.BeginTx(ctx,
-		&sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
-		return err
+		return dbErrorf(err, "BeginTx")
 	}
 	defer func() {
 		if ret != nil {
 			if err := tx.Rollback(); err != nil {
-				ret = status.Errorf(codes.Internal, "%v, and could not rollback: %v", ret, err)
+				ret = dbErrorf(err, "%v, and could not rollback", ret)
 			}
 		}
 	}()
@@ -161,7 +165,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	if err := tx.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTime); err != nil {
-		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
+		return dbErrorf(err, "could not find max timestamp")
 	}
 	tsTime := ts.UnixNano()
 	if tsTime <= maxTime {
@@ -174,10 +178,10 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		if _, err = tx.ExecContext(ctx,
 			`INSERT INTO Queue (DirectoryID, LogID, Time, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, tsTime, i, data); err != nil {
-			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
+			return dbErrorf(err, "failed inserting into queue")
 		}
 	}
-	return tx.Commit()
+	return dbErrorf(tx.Commit(), "commit")
 }
 
 // HighWatermark returns the highest watermark +1 in logID that is less than or
