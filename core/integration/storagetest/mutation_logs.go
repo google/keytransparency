@@ -84,3 +84,22 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		}
 	}
 }
+
+func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T, newForTest QueueStorageFactory) {
+	directoryID := "TestConcurrentWrites"
+	logID := int64(5)
+	m := newForTest(ctx, t, directoryID, logID)
+	for i, concurrency := range []int{1, 2, 4, 8, 16, 32, 64, 512} {
+		var g errgroup.Group
+		entry := makeEntryUpdate(t, i)
+		for i := 0; i < concurrency; i++ {
+			g.Go(func() error {
+				_, err := m.Send(ctx, directoryID, entry)
+				return err
+			})
+		}
+		if err := g.Wait(); err != nil {
+			t.Errorf("concurrency: %d, err: %v", concurrency, err)
+		}
+	}
+}
