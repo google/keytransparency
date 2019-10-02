@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mutationstorage
+package sql
 
 import (
 	"fmt"
 
-	"github.com/mattn/go-sqlite3"
+	"github.com/VividCortex/mysqlerr"
+	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -32,12 +33,10 @@ func dbErrorf(err error, format string, a ...interface{}) error {
 	if st, ok := status.FromError(err); ok {
 		return status.Errorf(st.Code(), "%v: %v", msg, st.Message())
 	}
-	if sqliteErr, ok := err.(sqlite3.Error); ok {
+	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 		code := codes.OK
-		switch sqliteErr.Code {
-		case sqlite3.ErrBusy:
-			fallthrough
-		case sqlite3.ErrLocked:
+		switch mysqlErr.Number {
+		case mysqlerr.ER_LOCK_DEADLOCK:
 			code = codes.Aborted
 		default:
 			code = codes.Internal

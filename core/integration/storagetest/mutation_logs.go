@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/keyserver"
+	"golang.org/x/sync/errgroup"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -85,13 +86,14 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	}
 }
 
-func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T, newForTest QueueStorageFactory) {
+func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T, newForTest MutationLogsFactory) {
 	directoryID := "TestConcurrentWrites"
 	logID := int64(5)
-	m := newForTest(ctx, t, directoryID, logID)
-	for i, concurrency := range []int{1, 2, 4, 8, 16, 32, 64, 512} {
+	m, done := newForTest(ctx, t, directoryID, logID)
+	defer done(ctx)
+	for i, concurrency := range []int{1, 2, 4, 8, 16, 32, 64} {
 		var g errgroup.Group
-		entry := makeEntryUpdate(t, i)
+		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{byte(i)}})}}
 		for i := 0; i < concurrency; i++ {
 			g.Go(func() error {
 				_, err := m.Send(ctx, directoryID, entry)
