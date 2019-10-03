@@ -249,8 +249,8 @@ func (s *Server) DefineRevisions(ctx context.Context,
 
 	// Query metadata about outstanding log items.
 	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, resp.HighestDefined)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(): %v", err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		return nil, status.Errorf(st.Code(), "ReadBatch(): %v", st.Message())
 	}
 	// Advance the watermarks forward, to define a new batch.
 	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, lastMeta, in.MaxBatch)
@@ -299,7 +299,7 @@ func (s *Server) GetDefinedRevisions(ctx context.Context,
 	unappliedRevisions.Set(float64(highestDefined - highestApplied))
 	return &spb.GetDefinedRevisionsResponse{
 		HighestApplied: highestApplied,
-		HighestDefined: rev,
+		HighestDefined: highestDefined,
 	}, nil
 }
 
@@ -318,29 +318,26 @@ func (s *Server) highestAppliedRev(ctx context.Context, dirID string) (int64, er
 // ApplyRevisions builds multiple outstanding revisions of a single directory's
 // map by integrating the corresponding mutations.
 func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsRequest) (*empty.Empty, error) {
-	resp, err := s.loopback.GetDefinedRevisions(ctx,
-		&spb.GetDefinedRevisionsRequest{DirectoryId: in.DirectoryId})
+	highestApplied, err := s.highestAppliedRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
 
-	cnt := resp.HighestDefined - resp.HighestApplied
-	unappliedRevisions.Set(float64(cnt))
-	if cnt < 0 {
-		cnt = 0
-	}
-
-	if mx := int64(s.LogPublishBatchSize); cnt > mx {
-		glog.Warningf("ApplyRevisions: too many outstanding revisions: %d; applying %d", cnt, mx)
-		cnt = mx
-	}
-	for i := int64(1); i <= cnt; i++ {
+	for i := int64(1); i < int64(s.LogPublishBatchSize); i++ {
 		req := &spb.ApplyRevisionRequest{
-			DirectoryId: in.DirectoryId, Revision: resp.HighestApplied + i}
-		if _, err := s.loopback.ApplyRevision(ctx, req); err != nil {
+			DirectoryId: in.DirectoryId,
+			Revision:    highestApplied + i,
+		}
+		_, err := s.loopback.ApplyRevision(ctx, req)
+		if st := status.Convert(err); st.Code() == codes.NotFound {
+			unappliedRevisions.Set(0) // Outstanding revisions = 0
+			return &empty.Empty{}, nil
+		} else if err != nil {
 			return nil, err
 		}
+
 	}
+	glog.Warningf("ApplyRevisions: too many outstanding revisions; applied %d", s.LogPublishBatchSize)
 	return &empty.Empty{}, nil
 }
 
@@ -377,8 +374,8 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	defer func() { fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ApplyRevision") }()
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ReadBatch")
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		return nil, status.Errorf(st.Code(), "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, st.Message())
 	}
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
 
