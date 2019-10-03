@@ -7,7 +7,7 @@ ENV GO111MODULE=on
 RUN go mod download
 COPY . .
 
-RUN go get -tags="mysql" ./cmd/keytransparency-monitor
+RUN go get ./cmd/keytransparency-monitor
 
 FROM gcr.io/distroless/base
 

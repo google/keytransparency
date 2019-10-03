@@ -39,7 +39,6 @@ import (
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/sequencer/election"
 	"github.com/google/keytransparency/impl/sql/directory"
-	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -48,6 +47,7 @@ import (
 	etcdelect "github.com/google/trillian/util/election2/etcd"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
+	_ "github.com/go-sql-driver/mysql" // Set database engine.
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
@@ -75,7 +75,7 @@ var (
 )
 
 func openDB() *sql.DB {
-	db, err := sql.Open(engine.DriverName, *serverDBPath)
+	db, err := sql.Open("mysql", *serverDBPath)
 	if err != nil {
 		glog.Exitf("sql.Open(): %v", err)
 	}
