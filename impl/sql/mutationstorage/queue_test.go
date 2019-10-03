@@ -21,17 +21,15 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/integration/storagetest"
+	"github.com/google/keytransparency/core/keyserver"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	_ "github.com/mattn/go-sqlite3"
 )
-
-func queueFactory(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) storagetest.Queuer {
-	return newForTest(ctx, t, dirID, logIDs...)
-}
 
 func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) *Mutations {
 	m, err := New(newDB(t))
@@ -45,7 +43,17 @@ func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64
 }
 
 func TestQueueIntegration(t *testing.T) {
-	storagetest.RunQueueStorageTests(t, queueFactory)
+	storagetest.RunQueueStorageTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs {
+			return newForTest(ctx, t, dirID, logIDs...)
+		})
+}
+
+func TestQueueAdminIntegration(t *testing.T) {
+	storagetest.RunQueueAdminTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin {
+			return newForTest(ctx, t, dirID, logIDs...)
+		})
 }
 
 func TestRandLog(t *testing.T) {
