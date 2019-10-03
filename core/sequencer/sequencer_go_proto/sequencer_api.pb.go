@@ -765,8 +765,8 @@ type KeyTransparencySequencerClient interface {
 	// ApplyRevisions figures out the outstanding revisions, and applies the
 	// corresponding mutations the to the map.
 	ApplyRevisions(ctx context.Context, in *ApplyRevisionsRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	// ApplyRevision applies the contained mutations to the current map root.
-	// If this method fails, it must be retried with the same arguments.
+	// ApplyRevision applies the mutations for the supplied revision.
+	// If the revision does not exist, this must return `NotFound`.
 	ApplyRevision(ctx context.Context, in *ApplyRevisionRequest, opts ...grpc.CallOption) (*ApplyRevisionResponse, error)
 	// PublishRevisions copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
@@ -847,8 +847,8 @@ type KeyTransparencySequencerServer interface {
 	// ApplyRevisions figures out the outstanding revisions, and applies the
 	// corresponding mutations the to the map.
 	ApplyRevisions(context.Context, *ApplyRevisionsRequest) (*empty.Empty, error)
-	// ApplyRevision applies the contained mutations to the current map root.
-	// If this method fails, it must be retried with the same arguments.
+	// ApplyRevision applies the mutations for the supplied revision.
+	// If the revision does not exist, this must return `NotFound`.
 	ApplyRevision(context.Context, *ApplyRevisionRequest) (*ApplyRevisionResponse, error)
 	// PublishRevisions copies the MapRoots of all known map revisions into the Log
 	// of MapRoots.
