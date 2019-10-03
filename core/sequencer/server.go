@@ -323,7 +323,8 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 		return nil, err
 	}
 
-	for i := int64(1); i < int64(s.LogPublishBatchSize); i++ {
+	i := int64(1)
+	for ; i <= int64(s.LogPublishBatchSize); i++ {
 		req := &spb.ApplyRevisionRequest{
 			DirectoryId: in.DirectoryId,
 			Revision:    highestApplied + i,
@@ -331,13 +332,13 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 		_, err := s.loopback.ApplyRevision(ctx, req)
 		if st := status.Convert(err); st.Code() == codes.NotFound {
 			unappliedRevisions.Set(0) // Outstanding revisions = 0
-			return &empty.Empty{}, nil
+			break
 		} else if err != nil {
 			return nil, err
 		}
 
 	}
-	glog.Warningf("ApplyRevisions: too many outstanding revisions; applied %d", s.LogPublishBatchSize)
+	glog.Warningf("ApplyRevisions: applied %d revision(s) [%d, %d]", i-1, highestApplied+1, highestApplied+i-1)
 	return &empty.Empty{}, nil
 }
 
