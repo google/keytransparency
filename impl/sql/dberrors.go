@@ -33,7 +33,7 @@ func Errorf(err error, format string, a ...interface{}) error {
 		return status.Errorf(st.Code(), "%v: %v", msg, st.Message())
 	}
 	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-		code := codes.OK
+		var code codes.Code
 		switch mysqlErr.Number {
 		case mysqlerr.ER_LOCK_DEADLOCK:
 			code = codes.Aborted
