@@ -291,10 +291,12 @@ func (s *Server) GetDefinedRevisions(ctx context.Context,
 	}
 	// Get the highest defined revision number.
 	// TODO(pavelkalinnikov): Run this in parallel with getting the root.
-	rev, err := s.batcher.HighestRev(ctx, in.DirectoryId)
+	highestDefined, err := s.batcher.HighestRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
+
+	unappliedRevisions.Set(float64(highestDefined - highestApplied))
 	return &spb.GetDefinedRevisionsResponse{
 		HighestApplied: highestApplied,
 		HighestDefined: rev,
