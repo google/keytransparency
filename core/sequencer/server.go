@@ -285,11 +285,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 func (s *Server) GetDefinedRevisions(ctx context.Context,
 	in *spb.GetDefinedRevisionsRequest) (*spb.GetDefinedRevisionsResponse, error) {
 	// Get the last processed revision number.
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
-	if err != nil {
-		return nil, err
-	}
-	_, root, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	highestApplied, err := s.highestAppliedRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
@@ -300,9 +296,21 @@ func (s *Server) GetDefinedRevisions(ctx context.Context,
 		return nil, err
 	}
 	return &spb.GetDefinedRevisionsResponse{
-		HighestApplied: int64(root.Revision),
+		HighestApplied: highestApplied,
 		HighestDefined: rev,
 	}, nil
+}
+
+func (s *Server) highestAppliedRev(ctx context.Context, dirID string) (int64, error) {
+	mapClient, err := s.trillian.MapClient(ctx, dirID)
+	if err != nil {
+		return 0, err
+	}
+	_, root, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return int64(root.Revision), nil
 }
 
 // ApplyRevisions builds multiple outstanding revisions of a single directory's
