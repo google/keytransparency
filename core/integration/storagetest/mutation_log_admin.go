@@ -24,38 +24,44 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type QueueAdminFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin
+type LogsAdminFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin
 
-type QueueAdminTest func(ctx context.Context, t *testing.T, f QueueAdminFactory)
-
-// RunQueueAdminTests runs all the queue admin tests against the provided storage implementation.
-func RunQueueAdminTests(t *testing.T, factory QueueAdminFactory) {
+// RunLogsAdminTests runs all the queue admin tests against the provided storage implementation.
+func RunLogsAdminTests(t *testing.T, factory LogsAdminFactory) {
 	ctx := context.Background()
-	b := &QueueAdminTests{}
-	for name, f := range map[string]QueueAdminTest{
+	b := &logsAdminTests{}
+	for name, f := range map[string]func(ctx context.Context, t *testing.T, f LogsAdminFactory){
 		// TODO(gbelvin): Discover test methods via reflection.
 		"TestSetWritable": b.TestSetWritable,
+		"TestListLogs":    b.TestListLogs,
 	} {
 		t.Run(name, func(t *testing.T) { f(ctx, t, factory) })
 	}
 }
 
-// QueueTests is a suite of tests to run against
-type QueueAdminTests struct{}
+type logsAdminTests struct{}
 
-func (QueueAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f QueueAdminFactory) {
+func (logsAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f LogsAdminFactory) {
 	directoryID := "TestSetWritable"
+	m := f(ctx, t, directoryID, 1)
+	if st := status.Convert(m.SetWritable(ctx, directoryID, 2, true)); st.Code() != codes.NotFound {
+		t.Errorf("SetWritable(non-existant logid): %v, want %v", st, codes.NotFound)
+	}
+}
+
+func (logsAdminTests) TestListLogs(ctx context.Context, t *testing.T, f LogsAdminFactory) {
+	directoryID := "TestListLogs"
 	for _, tc := range []struct {
-		desc       string
-		logIDs     []int64
-		set        map[int64]bool
-		wantLogIDs []int64
-		wantCode   codes.Code
+		desc        string
+		logIDs      []int64
+		setWritable map[int64]bool // Explicitly call SetWritable with true or false for each log in this map.
+		wantLogIDs  []int64
+		wantCode    codes.Code
 	}{
 		{desc: "one row", logIDs: []int64{10}, wantLogIDs: []int64{10}},
-		{desc: "one row disabled", logIDs: []int64{10}, set: map[int64]bool{10: false}, wantCode: codes.NotFound},
-		{desc: "one row enabled", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: false, 2: false}, wantLogIDs: []int64{3}},
-		{desc: "multi", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: true, 2: false}, wantLogIDs: []int64{1, 3}},
+		{desc: "one row disabled", logIDs: []int64{10}, setWritable: map[int64]bool{10: false}, wantCode: codes.NotFound},
+		{desc: "one row enabled", logIDs: []int64{1, 2, 3}, setWritable: map[int64]bool{1: false, 2: false}, wantLogIDs: []int64{3}},
+		{desc: "multi", logIDs: []int64{1, 2, 3}, setWritable: map[int64]bool{1: true, 2: false}, wantLogIDs: []int64{1, 3}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			m := f(ctx, t, directoryID, tc.logIDs...)
@@ -64,7 +70,7 @@ func (QueueAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f Queu
 				wantLogs[logID] = true
 			}
 
-			for logID, enabled := range tc.set {
+			for logID, enabled := range tc.setWritable {
 				if err := m.SetWritable(ctx, directoryID, logID, enabled); err != nil {
 					t.Errorf("SetWritable(): %v", err)
 				}

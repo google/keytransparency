@@ -42,15 +42,15 @@ func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64
 	return m
 }
 
-func TestQueueIntegration(t *testing.T) {
-	storagetest.RunQueueStorageTests(t,
+func TestMutationLogsIntegration(t *testing.T) {
+	storagetest.RunMutationLogsTests(t,
 		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs {
 			return newForTest(ctx, t, dirID, logIDs...)
 		})
 }
 
-func TestQueueAdminIntegration(t *testing.T) {
-	storagetest.RunQueueAdminTests(t,
+func TestLogsAdminIntegration(t *testing.T) {
+	storagetest.RunLogsAdminTests(t,
 		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin {
 			return newForTest(ctx, t, dirID, logIDs...)
 		})

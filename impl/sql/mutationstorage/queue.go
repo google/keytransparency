@@ -33,9 +33,16 @@ import (
 // SetWritable enables or disables new writes from going to logID.
 func (m *Mutations) SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error {
 	glog.Errorf("mutationstorage: SetWritable(%v, %v, enabled: %v)", directoryID, logID, enabled)
-	_, err := m.db.ExecContext(ctx,
+	result, err := m.db.ExecContext(ctx,
 		`UPDATE Logs SET Enabled = ? WHERE DirectoryID = ? AND LogID = ?;`,
 		enabled, directoryID, logID)
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return status.Errorf(codes.NotFound, "log %d not found for directory %v", logID, directoryID)
+	}
 	return err
 }
 
