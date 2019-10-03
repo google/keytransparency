@@ -25,15 +25,13 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-type QueueStorageFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs
+type MutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs
 
-type QueueStorageTest func(ctx context.Context, t *testing.T, f QueueStorageFactory)
-
-// RunQueueStorageTests runs all the queue tests against the provided storage implementation.
-func RunQueueStorageTests(t *testing.T, factory QueueStorageFactory) {
+// RunMutationLogsTests runs all the queue tests against the provided storage implementation.
+func RunMutationLogsTests(t *testing.T, factory MutationLogsFactory) {
 	ctx := context.Background()
-	b := &QueueTests{}
-	for name, f := range map[string]QueueStorageTest{
+	b := &mutationLogsTests{}
+	for name, f := range map[string]func(ctx context.Context, t *testing.T, f MutationLogsFactory){
 		// TODO(gbelvin): Discover test methods via reflection.
 		"TestReadLog": b.TestReadLog,
 	} {
@@ -41,8 +39,7 @@ func RunQueueStorageTests(t *testing.T, factory QueueStorageFactory) {
 	}
 }
 
-// QueueTests is a suite of tests to run against
-type QueueTests struct{}
+type mutationLogsTests struct{}
 
 func mustMarshal(t *testing.T, p proto.Message) []byte {
 	t.Helper()
@@ -53,10 +50,12 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 	return b
 }
 
-func (QueueTests) TestReadLog(ctx context.Context, t *testing.T, newForTest QueueStorageFactory) {
+// TestReadLog ensures that reads from the queue happen in atomic units of batch size.
+func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest MutationLogsFactory) {
 	directoryID := "TestReadLog"
-	logID := int64(5)
+	logID := int64(5) // Any log ID.
 	m := newForTest(ctx, t, directoryID, logID)
+	// Write ten batches, three entries each.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
 		if _, err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
@@ -65,20 +64,21 @@ func (QueueTests) TestReadLog(ctx context.Context, t *testing.T, newForTest Queu
 	}
 
 	for _, tc := range []struct {
-		batchSize int32
-		count     int
+		limit int32
+		count int
 	}{
-		{batchSize: 0, count: 0},
-		{batchSize: 1, count: 3},
-		{batchSize: 4, count: 6},
-		{batchSize: 100, count: 30},
+		{limit: 0, count: 0},
+		{limit: 1, count: 3},    // We asked for 1 item, which gets us into the first batch, so we return 3 items.
+		{limit: 3, count: 3},    // We asked for 1 item, which gets us into the first batch, so we return 3 items.
+		{limit: 4, count: 6},    // Reading 4 items gets us into the second batch of size 3
+		{limit: 100, count: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.batchSize)
+		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.limit)
 		if err != nil {
-			t.Fatalf("ReadLog(%v): %v", tc.batchSize, err)
+			t.Fatalf("ReadLog(%v): %v", tc.limit, err)
 		}
 		if got, want := len(rows), tc.count; got != want {
-			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.batchSize, got, want)
+			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.limit, got, want)
 		}
 	}
 }
