@@ -26,15 +26,29 @@ linters-settings:
       - github.com/google/martian/log
 
 linters:
-  enable-all: true
-  disable:
-    - maligned
-    - scopelint
-    - gochecknoinits
-    - gochecknoglobals
-    - lll
-    - interfacer
-    - funlen
+  enable: 
+     - deadcode
+     - depguard
+     - dogsled
+     - dupl
+     - errcheck
+     - goconst
+     - gocritic
+     - gocyclo
+     - gofmt
+     - goimports
+     - golint
+     - gosec
+     - ineffassign
+     - misspell
+     - nakedret
+     - prealloc
+     - structcheck
+     - typecheck
+     - unconvert
+     - unparam
+     - unused
+     - varcheck
 
 issues:
   exclude:
