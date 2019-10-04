@@ -38,7 +38,6 @@ func UnaryServerInterceptor(authFuncs map[string]AuthPair) grpc.UnaryServerInter
 			glog.V(2).Infof("auth interceptor: no handler for %v", info.FullMethod)
 			// If no auth handler was found for this method, invoke the method directly.
 			return handler(ctx, req)
-
 		}
 		newCtx, err := policy.AuthnFunc(ctx)
 		if err != nil {

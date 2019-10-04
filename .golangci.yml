@@ -49,6 +49,7 @@ linters:
      - unparam
      - unused
      - varcheck
+     - whitespace
 
 issues:
   exclude:

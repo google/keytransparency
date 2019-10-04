@@ -48,7 +48,6 @@ func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID, low, h
 		refs = append(refs, &l[logID][i])
 	}
 	return refs, nil
-
 }
 
 func (l fakeLogs) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
@@ -199,7 +198,6 @@ func TestDefiningRevisions(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestReadMessages(t *testing.T) {

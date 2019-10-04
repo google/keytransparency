@@ -115,7 +115,6 @@ func initConfig() {
 			fmt.Println("Using config file:", viper.ConfigFileUsed())
 		}
 	}
-
 }
 
 // getTokenFromWeb uses config to request a Token.  Returns the retrieved Token.
