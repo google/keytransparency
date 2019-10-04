@@ -36,6 +36,9 @@ func (m *Mutations) SetWritable(ctx context.Context, directoryID string, logID i
 	result, err := m.db.ExecContext(ctx,
 		`UPDATE Logs SET Enabled = ? WHERE DirectoryID = ? AND LogID = ?;`,
 		enabled, directoryID, logID)
+	if err != nil {
+		return err
+	}
 	rows, err := result.RowsAffected()
 	if err != nil {
 		return err

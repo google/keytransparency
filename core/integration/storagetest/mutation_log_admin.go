@@ -45,7 +45,7 @@ func (logsAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f LogsA
 	directoryID := "TestSetWritable"
 	m := f(ctx, t, directoryID, 1)
 	if st := status.Convert(m.SetWritable(ctx, directoryID, 2, true)); st.Code() != codes.NotFound {
-		t.Errorf("SetWritable(non-existant logid): %v, want %v", st, codes.NotFound)
+		t.Errorf("SetWritable(non-existent logid): %v, want %v", st, codes.NotFound)
 	}
 }
 
