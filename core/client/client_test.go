@@ -213,7 +213,6 @@ func TestPaginateHistory(t *testing.T) {
 				t.Errorf("PaginateHistory().values: \n%#v, want \n%#v, diff: \n%v",
 					got, want, pretty.Compare(got, want))
 			}
-
 		})
 	}
 }

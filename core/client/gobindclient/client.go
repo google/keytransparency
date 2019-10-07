@@ -139,7 +139,6 @@ func GetUser(ktURL, userID string) ([]byte, error) {
 }
 
 func dial(ktURL string, insecureTLS bool, ktTLSCertPEM []byte) (*grpc.ClientConn, error) {
-
 	creds, err := transportCreds(ktURL, insecureTLS, ktTLSCertPEM)
 	if err != nil {
 		return nil, err
@@ -153,7 +152,6 @@ func dial(ktURL string, insecureTLS bool, ktTLSCertPEM []byte) (*grpc.ClientConn
 }
 
 func transportCreds(ktURL string, insecure bool, ktTLSCertPEM []byte) (credentials.TransportCredentials, error) {
-
 	host, _, err := net.SplitHostPort(ktURL)
 	if err != nil {
 		return nil, err
