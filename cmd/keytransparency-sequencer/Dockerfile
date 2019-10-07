@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
-RUN go get -tags="mysql" ./cmd/keytransparency-sequencer
+RUN go get ./cmd/keytransparency-sequencer
 
 FROM gcr.io/distroless/base
 

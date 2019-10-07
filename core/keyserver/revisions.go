@@ -81,7 +81,6 @@ func (s *Server) GetRevision(ctx context.Context, in *pb.GetRevisionRequest) (*p
 	}
 
 	return s.getRevisionByRevision(ctx, d, logRoot, logConsistency, in.GetRevision())
-
 }
 
 func (s *Server) getRevisionByRevision(ctx context.Context, d *directory.Directory,
@@ -177,7 +176,6 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	nextToken, err := EncodeToken(SourceList(meta.Sources).Next(rt, lastRow))
 	if st := status.Convert(err); st.Code() != codes.OK {
 		return nil, status.Errorf(st.Code(), "Failed creating next token: %v", st.Message())
-
 	}
 	return &pb.ListMutationsResponse{
 		Mutations:     mutations,
@@ -215,7 +213,6 @@ func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRo
 		return nil, status.Errorf(st.Code(), "Cannot fetch log inclusion proof: %v", st.Message())
 	}
 	return logInclusion.GetProof(), nil
-
 }
 
 func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory, firstTreeSize int64) (

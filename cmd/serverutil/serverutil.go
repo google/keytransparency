@@ -44,7 +44,6 @@ type RegisterServiceFromEndpoint func(context.Context, *runtime.ServeMux, string
 // GrpcGatewayMux registers multiple gRPC services with a gRPC ServeMux
 func GrpcGatewayMux(ctx context.Context, addr string, dopts []grpc.DialOption,
 	services ...RegisterServiceFromEndpoint) (*runtime.ServeMux, error) {
-
 	gwmux := runtime.NewServeMux()
 	for _, s := range services {
 		if err := s(ctx, gwmux, addr, dopts); err != nil {
