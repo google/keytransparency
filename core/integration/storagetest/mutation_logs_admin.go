@@ -88,7 +88,7 @@ func (logsAdminTests) TestListLogs(ctx context.Context, t *testing.T, f LogsAdmi
 				logs[log] = true
 			}
 			if got, want := logs, wantLogs; !cmp.Equal(got, want) {
-				t.Errorf("randLog(): %v, want %v", got, want)
+				t.Errorf("ListLogs(): %v, want %v", got, want)
 			}
 		})
 	}

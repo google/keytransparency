@@ -27,7 +27,7 @@ import (
 
 type MutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs
 
-// RunMutationLogsTests runs all the queue tests against the provided storage implementation.
+// RunMutationLogsTests runs all the tests against the provided storage implementation.
 func RunMutationLogsTests(t *testing.T, factory MutationLogsFactory) {
 	ctx := context.Background()
 	b := &mutationLogsTests{}
@@ -50,7 +50,7 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 	return b
 }
 
-// TestReadLog ensures that reads from the queue happen in atomic units of batch size.
+// TestReadLog ensures that reads happen in atomic units of batch size.
 func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest MutationLogsFactory) {
 	directoryID := "TestReadLog"
 	logID := int64(5) // Any log ID.
@@ -69,8 +69,8 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	}{
 		{limit: 0, count: 0},
 		{limit: 1, count: 3},    // We asked for 1 item, which gets us into the first batch, so we return 3 items.
-		{limit: 3, count: 3},    // We asked for 1 item, which gets us into the first batch, so we return 3 items.
-		{limit: 4, count: 6},    // Reading 4 items gets us into the second batch of size 3
+		{limit: 3, count: 3},    // We asked for 3 items, which gets us through the first batch, so we return 3 items.
+		{limit: 4, count: 6},    // Reading 4 items gets us into the second batch of size 3.
 		{limit: 100, count: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
 		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.limit)

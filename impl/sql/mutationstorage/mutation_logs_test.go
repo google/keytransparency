@@ -34,7 +34,7 @@ import (
 func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) *Mutations {
 	m, err := New(newDB(t))
 	if err != nil {
-		t.Fatalf("Failed to create mutations: %v", err)
+		t.Fatalf("Failed to create mutation storage: %v", err)
 	}
 	if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
