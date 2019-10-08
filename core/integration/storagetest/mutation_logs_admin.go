@@ -26,7 +26,7 @@ import (
 
 type LogsAdminFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin
 
-// RunLogsAdminTests runs all the queue admin tests against the provided storage implementation.
+// RunLogsAdminTests runs all the admin tests against the provided storage implementation.
 func RunLogsAdminTests(t *testing.T, factory LogsAdminFactory) {
 	ctx := context.Background()
 	b := &logsAdminTests{}

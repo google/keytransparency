@@ -77,7 +77,7 @@ type MutationLogs interface {
 	Send(ctx context.Context, directoryID string, mutation ...*pb.EntryUpdate) (*WriteWatermark, error)
 	// ReadLog returns the messages in the (low, high] range stored in the
 	// specified log. ReadLog always returns complete units of the original
-	// batchs sent via Send, and will return  more items than limit if
+	// batches sent via Send, and will return  more items than limit if
 	// needed to do so.
 	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
 		limit int32) ([]*mutator.LogMessage, error)
