@@ -20,8 +20,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/adminserver"
+	"github.com/google/keytransparency/core/integration/storagetest"
+	"github.com/google/keytransparency/core/keyserver"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -29,68 +31,34 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const directoryID = "default"
-
-func newForTest(ctx context.Context, t testing.TB, logIDs ...int64) *Mutations {
+func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) *Mutations {
 	m, err := New(newDB(t))
 	if err != nil {
-		t.Fatalf("Failed to create Mutations: %v", err)
+		t.Fatalf("Failed to create mutation storage: %v", err)
 	}
-	if err := m.AddLogs(ctx, directoryID, logIDs...); err != nil {
+	if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
 	return m
 }
 
-func TestSetWritable(t *testing.T) {
-	ctx := context.Background()
-
-	for _, tc := range []struct {
-		desc       string
-		logIDs     []int64
-		set        map[int64]bool
-		wantLogIDs []int64
-		wantCode   codes.Code
-	}{
-		{desc: "one row", logIDs: []int64{10}, wantLogIDs: []int64{10}},
-		{desc: "one row disabled", logIDs: []int64{10}, set: map[int64]bool{10: false}, wantCode: codes.NotFound},
-		{desc: "one row enabled", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: false, 2: false}, wantLogIDs: []int64{3}},
-		{desc: "multi", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: true, 2: false}, wantLogIDs: []int64{1, 3}},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			m := newForTest(ctx, t, tc.logIDs...)
-			wantLogs := make(map[int64]bool)
-			for _, logID := range tc.wantLogIDs {
-				wantLogs[logID] = true
-			}
-
-			for logID, enabled := range tc.set {
-				if err := m.SetWritable(ctx, directoryID, logID, enabled); err != nil {
-					t.Errorf("SetWritable(): %v", err)
-				}
-			}
-
-			logs := make(map[int64]bool)
-			// Run enough times to ensure that random sampling will get us all logs.
-			for i := 0; i < 10*len(tc.logIDs); i++ {
-				log, err := m.randLog(ctx, directoryID)
-				if status.Code(err) != tc.wantCode {
-					t.Errorf("randLog(): %v, want %v", err, tc.wantCode)
-				}
-				if err != nil {
-					break
-				}
-				logs[log] = true
-			}
-			if got, want := logs, wantLogs; !cmp.Equal(got, want) {
-				t.Errorf("randLog(): %v, want %v", got, want)
-			}
+func TestMutationLogsIntegration(t *testing.T) {
+	storagetest.RunMutationLogsTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs {
+			return newForTest(ctx, t, dirID, logIDs...)
 		})
-	}
+}
+
+func TestLogsAdminIntegration(t *testing.T) {
+	storagetest.RunLogsAdminTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin {
+			return newForTest(ctx, t, dirID, logIDs...)
+		})
 }
 
 func TestRandLog(t *testing.T) {
 	ctx := context.Background()
+	directoryID := "TestRandLog"
 
 	for _, tc := range []struct {
 		desc     string
@@ -107,7 +75,7 @@ func TestRandLog(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			m := newForTest(ctx, t, tc.send...)
+			m := newForTest(ctx, t, directoryID, tc.send...)
 			logs := make(map[int64]bool)
 			for i := 0; i < 10*len(tc.wantLogs); i++ {
 				logID, err := m.randLog(ctx, directoryID)
@@ -128,8 +96,9 @@ func TestRandLog(t *testing.T) {
 
 func BenchmarkSend(b *testing.B) {
 	ctx := context.Background()
+	directoryID := "BenchmarkSend"
 	logID := int64(1)
-	m := newForTest(ctx, b, logID)
+	m := newForTest(ctx, b, directoryID, logID)
 
 	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
 	for _, tc := range []struct {
@@ -162,7 +131,8 @@ func BenchmarkSend(b *testing.B) {
 func TestSend(t *testing.T) {
 	ctx := context.Background()
 
-	m := newForTest(ctx, t, 1, 2)
+	directoryID := "TestSend"
+	m := newForTest(ctx, t, directoryID, 1, 2)
 	update := []byte("bar")
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
@@ -190,8 +160,9 @@ func TestSend(t *testing.T) {
 
 func TestWatermark(t *testing.T) {
 	ctx := context.Background()
+	directoryID := "TestWatermark"
 	logIDs := []int64{1, 2}
-	m := newForTest(ctx, t, logIDs...)
+	m := newForTest(ctx, t, directoryID, logIDs...)
 	update := []byte("bar")
 
 	startTS := time.Now()
@@ -232,44 +203,5 @@ func TestWatermark(t *testing.T) {
 				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)
 			}
 		})
-	}
-}
-
-func mustMarshal(t *testing.T, p proto.Message) []byte {
-	t.Helper()
-	b, err := proto.Marshal(p)
-	if err != nil {
-		t.Fatalf("proto.Marshal(): %v", err)
-	}
-	return b
-}
-
-func TestReadLog(t *testing.T) {
-	ctx := context.Background()
-	logID := int64(5)
-	m := newForTest(ctx, t, logID)
-	for i := byte(0); i < 10; i++ {
-		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if _, err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
-			t.Fatalf("Send(): %v", err)
-		}
-	}
-
-	for _, tc := range []struct {
-		batchSize int32
-		count     int
-	}{
-		{batchSize: 0, count: 0},
-		{batchSize: 1, count: 3},
-		{batchSize: 4, count: 6},
-		{batchSize: 100, count: 30},
-	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.batchSize)
-		if err != nil {
-			t.Fatalf("ReadLog(%v): %v", tc.batchSize, err)
-		}
-		if got, want := len(rows), tc.count; got != want {
-			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.batchSize, got, want)
-		}
 	}
 }
