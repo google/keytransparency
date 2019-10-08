@@ -323,11 +323,12 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 		return nil, err
 	}
 
-	i := int64(1)
-	for ; i <= int64(s.LogPublishBatchSize); i++ {
+	firstRev := highestApplied + int64(1)
+	rev := firstRev
+	for ; rev <= (highestApplied + int64(s.LogPublishBatchSize)); rev++ {
 		req := &spb.ApplyRevisionRequest{
 			DirectoryId: in.DirectoryId,
-			Revision:    highestApplied + i,
+			Revision:    rev,
 		}
 		_, err := s.loopback.ApplyRevision(ctx, req)
 		if st := status.Convert(err); st.Code() == codes.NotFound {
@@ -336,9 +337,8 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 		} else if err != nil {
 			return nil, err
 		}
-
 	}
-	glog.Warningf("ApplyRevisions: applied %d revision(s) [%d, %d]", i-1, highestApplied+1, highestApplied+i-1)
+	glog.Infof("ApplyRevisions: applied revision(s) [%d, %d]", firstRev, rev-1)
 	return &empty.Empty{}, nil
 }
 
