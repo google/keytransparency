@@ -88,8 +88,16 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	newEntries := make([]*pb.EntryUpdate, 0, len(msgs))
 	for i, msg := range msgs {
 		// Skip if there is no change in data.
-		if len(leaves) > 0 && bytes.Equal(leaves[0].GetCommitted().GetData(), msg.GetCommitted().GetData()) {
-			continue
+		if len(leaves) > 0 {
+			isEqual, err := isEntryUpdateEqual(leaves[0], msg)
+			if err != nil {
+				s := status.Convert(err)
+				emitErr(status.Errorf(s.Code(), "entry: isEntryUpdateEqual failed: %v", s.Message()))
+				continue
+			}
+			if isEqual {
+				continue
+			}
 		}
 		newValue, err := MutateFn(oldValue, msg.GetMutation())
 		if err != nil {
@@ -182,4 +190,21 @@ func verifyKeys(handle *keyset.Handle, data []byte, sigs [][]byte) error {
 		}
 	}
 	return mutator.ErrUnauthorized
+}
+
+// isEntryUpdateEqual checks whether two EntryUpdates (for the same index) are
+// equal. They are considered equal if they share the same data and authorized keyset.
+func isEntryUpdateEqual(e1, e2 *pb.EntryUpdate) (bool, error) {
+	if !bytes.Equal(e1.GetCommitted().GetData(), e2.GetCommitted().GetData()) {
+		return false, nil
+	}
+	entry1 := pb.Entry{}
+	if err := proto.Unmarshal(e1.GetMutation().GetEntry(), &entry1); err != nil {
+		return false, status.Errorf(codes.InvalidArgument, "proto.Unmarshal(): %v", err)
+	}
+	entry2 := pb.Entry{}
+	if err := proto.Unmarshal(e2.GetMutation().GetEntry(), &entry2); err != nil {
+		return false, status.Errorf(codes.InvalidArgument, "proto.Unmarshal(): %v", err)
+	}
+	return bytes.Equal(entry1.GetAuthorizedKeyset(), entry2.GetAuthorizedKeyset()), nil
 }
