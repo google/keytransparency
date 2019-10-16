@@ -127,27 +127,6 @@ type MapClient struct {
 	*tclient.MapClient
 }
 
-// SetLeavesAtRevision creates a new map revision and returns its verified root.
-// TODO(gbelvin): Move to Trillian Map client.
-func (c *MapClient) SetLeavesAtRevision(ctx context.Context, rev int64,
-	leaves []*tpb.MapLeaf, metadata []byte) (*types.MapRootV1, error) {
-	// Set new leaf values.
-	setResp, err := c.Conn.SetLeaves(ctx, &tpb.SetMapLeavesRequest{
-		MapId:    c.MapID,
-		Revision: rev,
-		Leaves:   leaves,
-		Metadata: metadata,
-	})
-	if err != nil {
-		return nil, err
-	}
-	mapRoot, err := c.VerifySignedMapRoot(setResp.GetMapRoot())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "VerifySignedMapRoot(): %v", err)
-	}
-	return mapRoot, nil
-}
-
 // GetAndVerifyLatestMapRoot verifies and returns the latest map root.
 func (c *MapClient) GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error) {
 	rootResp, err := c.Conn.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: c.MapID})
