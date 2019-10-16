@@ -135,8 +135,8 @@ func TestSend(t *testing.T) {
 	m := newForTest(ctx, t, directoryID, 1, 2)
 	update := []byte("bar")
 	ts1 := time.Now()
-	ts2 := ts1.Add(time.Duration(1))
-	ts3 := ts2.Add(time.Duration(1))
+	ts2 := ts1.Add(time.Microsecond)
+	ts3 := ts2.Add(time.Microsecond)
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
@@ -165,8 +165,9 @@ func TestWatermark(t *testing.T) {
 	m := newForTest(ctx, t, directoryID, logIDs...)
 	update := []byte("bar")
 
-	startTS := time.Now()
-	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
+	startTS := time.Date(1990, 2, 3, 4 /*hour*/, 5, 6, 7, time.UTC)
+	// Add an item to both logs every 1 millisecond for 10 milliseconds.
+	for ts := startTS; ts.Before(startTS.Add(10 * time.Microsecond)); ts = ts.Add(time.Microsecond) {
 		for _, logID := range logIDs {
 			if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
 				t.Fatalf("m.send(%v): %v", logID, err)
@@ -174,30 +175,30 @@ func TestWatermark(t *testing.T) {
 		}
 	}
 
-	start := startTS.UnixNano()
+	start := startTS
 	for _, tc := range []struct {
 		desc      string
 		logID     int64
-		start     int64
+		start     time.Time
 		batchSize int32
 		count     int32
-		want      int64
+		want      time.Time
 	}{
-		{desc: "log1 max", logID: 1, batchSize: 100, want: start + 10, count: 10},
-		{desc: "log2 max", logID: 2, batchSize: 100, want: start + 10, count: 10},
+		{desc: "log1 max", logID: 1, batchSize: 100, want: start.Add(10 * time.Microsecond), count: 10},
+		{desc: "log2 max", logID: 2, batchSize: 100, want: start.Add(10 * time.Microsecond), count: 10},
 		{desc: "batch0", logID: 1, batchSize: 0},
-		{desc: "batch0start55", logID: 1, start: 55, batchSize: 0, want: 55},
-		{desc: "batch5", logID: 1, batchSize: 5, want: start + 5, count: 5},
-		{desc: "start1", logID: 1, start: start + 2, batchSize: 5, want: start + 7, count: 5},
-		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 10, count: 2},
+		{desc: "keephighwatermark", logID: 1, start: startTS.Add(55 * time.Microsecond), batchSize: 0, want: startTS.Add(55 * time.Microsecond)},
+		{desc: "batch5", logID: 1, batchSize: 5, want: start.Add(5 * time.Microsecond), count: 5},
+		{desc: "start1", logID: 1, start: start.Add(2 * time.Microsecond), batchSize: 5, want: start.Add(7 * time.Microsecond), count: 5},
+		{desc: "start8", logID: 1, start: start.Add(8 * time.Microsecond), batchSize: 5, want: start.Add(10 * time.Microsecond), count: 2},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
+			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, watermark(tc.start), tc.batchSize)
 			if err != nil {
 				t.Errorf("highWatermark(): %v", err)
 			}
-			if got != tc.want {
-				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got, tc.want)
+			if want := watermark(tc.want); got != want {
+				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got, want)
 			}
 			if count != tc.count {
 				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)

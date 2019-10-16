@@ -21,6 +21,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/keyserver"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -33,7 +35,8 @@ func RunMutationLogsTests(t *testing.T, factory MutationLogsFactory) {
 	b := &mutationLogsTests{}
 	for name, f := range map[string]func(ctx context.Context, t *testing.T, f MutationLogsFactory){
 		// TODO(gbelvin): Discover test methods via reflection.
-		"TestReadLog": b.TestReadLog,
+		"TestReadLog":              b.TestReadLog,
+		"TestReadLogHighWatermark": b.TestReadLogHighWatermark,
 	} {
 		t.Run(name, func(t *testing.T) { f(ctx, t, factory) })
 	}
@@ -48,6 +51,19 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 		t.Fatalf("proto.Marshal(): %v", err)
 	}
 	return b
+}
+
+// TestReadLogHighWatermark ensures that erroneous values for high watermark return errors.
+func (mutationLogsTests) TestReadLogHighWatermark(ctx context.Context, t *testing.T, newForTest MutationLogsFactory) {
+	directoryID := "TestReadLogHighWatermark"
+	logID := int64(5) // Any log ID.
+	m := newForTest(ctx, t, directoryID, logID)
+	limit := int32(2)
+	_, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), limit)
+	st := status.Convert(err)
+	if got, want := st.Code(), codes.InvalidArgument; got != want {
+		t.Errorf("ReadLog(high > now): %v, want %v", err, want)
+	}
 }
 
 // TestReadLog ensures that reads happen in atomic units of batch size.
@@ -73,7 +89,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		{limit: 4, count: 6},    // Reading 4 items gets us into the second batch of size 3.
 		{limit: 100, count: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.limit)
+		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano()/int64(time.Microsecond), tc.limit)
 		if err != nil {
 			t.Fatalf("ReadLog(%v): %v", tc.limit, err)
 		}

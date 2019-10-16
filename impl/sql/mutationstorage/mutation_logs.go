@@ -91,7 +91,11 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
 		return nil, err
 	}
-	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts.UnixNano()}, nil
+	return &keyserver.WriteWatermark{LogID: logID, Watermark: watermark(ts)}, nil
+}
+
+func watermark(ts time.Time) int64 {
+	return ts.UnixNano() / int64(time.Microsecond)
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
@@ -160,10 +164,10 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		directoryID, logID).Scan(&maxTime); err != nil {
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
-	tsTime := ts.UnixNano()
+	tsTime := watermark(ts)
 	if tsTime <= maxTime {
 		return status.Errorf(codes.Aborted,
-			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
+			"current timestamp: %v, want > max_timestamp of queued mutations: %v",
 			tsTime, maxTime)
 	}
 
@@ -202,6 +206,9 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 // ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
+	if high > watermark(time.Now().Add(time.Minute)) {
+		return nil, status.Errorf(codes.InvalidArgument, "high: %v, want <= (now + 1 minute)", high)
+	}
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, LocalID, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
