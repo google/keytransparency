@@ -18,7 +18,9 @@ import (
 	"encoding/base64"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/sequencer/metadata"
 
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -63,9 +65,13 @@ func (s SourceList) First() *rtpb.ReadToken {
 		// Empty struct means there is nothing else to page through.
 		return &rtpb.ReadToken{}
 	}
+	st, err := ptypes.TimestampProto(metadata.NewSource(s[0]).StartTime())
+	if err != nil {
+		panic("invalid timestamp")
+	}
 	return &rtpb.ReadToken{
-		SliceIndex:   0,
-		LowWatermark: s[0].LowestInclusive,
+		SliceIndex: 0,
+		StartTime:  st,
 	}
 }
 
@@ -75,9 +81,13 @@ func (s SourceList) First() *rtpb.ReadToken {
 func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.ReadToken {
 	if lastRow != nil {
 		// There are more items in this source slice.
+		st, err := ptypes.TimestampProto(lastRow.ID)
+		if err != nil {
+			panic("invalid timestamp")
+		}
 		return &rtpb.ReadToken{
-			SliceIndex:   rt.SliceIndex,
-			LowWatermark: lastRow.ID,
+			SliceIndex: rt.SliceIndex,
+			StartTime:  st,
 		}
 	}
 
@@ -86,8 +96,13 @@ func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.
 		// There are no more source slices to iterate over.
 		return &rtpb.ReadToken{} // Encodes to ""
 	}
+
+	st, err := ptypes.TimestampProto(metadata.NewSource(s[rt.SliceIndex+1]).StartTime())
+	if err != nil {
+		panic("invalid timestamp")
+	}
 	return &rtpb.ReadToken{
-		SliceIndex:   rt.SliceIndex + 1,
-		LowWatermark: s[rt.SliceIndex+1].LowestInclusive,
+		SliceIndex: rt.SliceIndex + 1,
+		StartTime:  st,
 	}
 }

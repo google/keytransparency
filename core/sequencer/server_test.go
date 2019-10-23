@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
@@ -38,14 +39,17 @@ const directoryID = "directoryID"
 
 func fakeMetric(_ string) {}
 
+// fakeLogs are indexed by logID, and nanoseconds from time 0
 type fakeLogs map[int64][]mutator.LogMessage
 
-func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 	batchSize int32) ([]*mutator.LogMessage, error) {
-	refs := make([]*mutator.LogMessage, 0, int(high-low))
-	for i := low; i < high; i++ {
-		l[logID][i].ID = i
-		refs = append(refs, &l[logID][i])
+	lowNanos := low.UnixNano()
+	highNanos := high.UnixNano()
+	refs := make([]*mutator.LogMessage, 0, int(highNanos-lowNanos))
+	for i := low; i.Before(high); i = i.Add(time.Nanosecond) {
+		l[logID][i.UnixNano()].ID = i
+		refs = append(refs, &l[logID][i.UnixNano()])
 	}
 	return refs, nil
 }

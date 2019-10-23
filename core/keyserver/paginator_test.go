@@ -16,11 +16,13 @@ package keyserver
 
 import (
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
 	"github.com/google/keytransparency/core/mutator"
 
+	tpb "github.com/golang/protobuf/ptypes/timestamp"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 )
 
@@ -43,7 +45,7 @@ func TestEncodeToken(t *testing.T) {
 }
 
 func TestTokenEncodeDecode(t *testing.T) {
-	rt1 := &rtpb.ReadToken{SliceIndex: 2, LowWatermark: 5}
+	rt1 := &rtpb.ReadToken{SliceIndex: 2, StartTime: &tpb.Timestamp{Nanos: 5}}
 	rt1Token, err := EncodeToken(rt1)
 	if err != nil {
 		t.Fatalf("EncodeToken(%v): %v", rt1, err)
@@ -78,7 +80,7 @@ func TestFirst(t *testing.T) {
 				{LogId: 2, LowestInclusive: 2, HighestExclusive: 11},
 				{LogId: 3, LowestInclusive: 11, HighestExclusive: 21},
 			},
-			want: &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 2},
+			want: &rtpb.ReadToken{SliceIndex: 0, StartTime: &tpb.Timestamp{Nanos: 2}},
 		},
 		{s: SourceList{}, want: &rtpb.ReadToken{}},
 	} {
@@ -103,16 +105,16 @@ func TestNext(t *testing.T) {
 		{
 			desc:    "first page",
 			s:       a,
-			rt:      &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 2},
-			lastRow: &mutator.LogMessage{ID: 6},
-			want:    &rtpb.ReadToken{SliceIndex: 0, LowWatermark: 6},
+			rt:      &rtpb.ReadToken{SliceIndex: 0, StartTime: &tpb.Timestamp{Nanos: 2}},
+			lastRow: &mutator.LogMessage{ID: time.Unix(0, 6)},
+			want:    &rtpb.ReadToken{SliceIndex: 0, StartTime: &tpb.Timestamp{Nanos: 6}},
 		},
 		{
 			desc:    "next source",
 			s:       a,
 			rt:      &rtpb.ReadToken{},
 			lastRow: nil,
-			want:    &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 11},
+			want:    &rtpb.ReadToken{SliceIndex: 1, StartTime: &tpb.Timestamp{Nanos: 11}},
 		},
 		{
 			desc:    "last page",
@@ -124,7 +126,7 @@ func TestNext(t *testing.T) {
 		{
 			desc:    "empty",
 			s:       SourceList{},
-			rt:      &rtpb.ReadToken{SliceIndex: 1, LowWatermark: 2},
+			rt:      &rtpb.ReadToken{SliceIndex: 1, StartTime: &tpb.Timestamp{Nanos: 2}},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},

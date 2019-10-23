@@ -32,6 +32,7 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -134,7 +135,7 @@ type LogsReader interface {
 	// ReadLog returns the lowest messages in the (low, high] range stored in the
 	// specified log, up to batchSize.  Paginate by setting low to the
 	// highest LogMessage returned in the previous page.
-	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
@@ -339,8 +340,9 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
 	directoryID string, chunkSize int32,
 	emit func(*mutator.LogMessage)) error {
-	low := source.LowestInclusive
-	high := source.HighestExclusive
+	ss := metadata.NewSource(source)
+	low := ss.StartTime()
+	high := ss.EndTime()
 	// Loop until less than chunkSize items are returned.
 	for count := chunkSize; count == chunkSize; {
 		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize)
@@ -353,7 +355,7 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 		logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
 		for _, m := range batch {
 			emit(m)
-			if m.ID > low {
+			if m.ID.After(low) {
 				low = m.ID
 			}
 		}

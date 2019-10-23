@@ -73,7 +73,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		{limit: 4, count: 6},    // Reading 4 items gets us into the second batch of size 3.
 		{limit: 100, count: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.limit)
+		rows, err := m.ReadLog(ctx, directoryID, logID, time.Time{}, time.Now(), tc.limit)
 		if err != nil {
 			t.Fatalf("ReadLog(%v): %v", tc.limit, err)
 		}

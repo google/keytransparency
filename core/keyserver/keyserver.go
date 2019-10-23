@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -79,7 +80,7 @@ type MutationLogs interface {
 	// specified log. ReadLog always returns complete units of the original
 	// batches sent via Send, and will return  more items than limit if
 	// needed to do so.
-	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 		limit int32) ([]*mutator.LogMessage, error)
 }
 
