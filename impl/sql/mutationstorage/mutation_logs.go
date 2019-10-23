@@ -206,9 +206,6 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 // ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
-	if high > watermark(time.Now().Add(time.Minute)) {
-		return nil, status.Errorf(codes.InvalidArgument, "high: %v, want <= (now + 1 minute)", high)
-	}
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, LocalID, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
