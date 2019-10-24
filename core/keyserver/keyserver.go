@@ -68,7 +68,7 @@ func createMetrics(mf monitoring.MetricFactory) {
 // WriteWatermark is the metadata that Send creates.
 type WriteWatermark struct {
 	LogID     int64
-	Watermark int64
+	Watermark time.Time
 }
 
 // MutationLogs provides sets of time ordered message logs.
@@ -667,7 +667,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 		return nil, status.Errorf(st.Code(), "Mutation write error")
 	}
 	if wm != nil {
-		watermarkWritten.Set(float64(wm.Watermark), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
+		watermarkWritten.Set(float64(wm.Watermark.UnixNano()), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
 		sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
 	}
 

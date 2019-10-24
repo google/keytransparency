@@ -90,7 +90,7 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
 		return nil, err
 	}
-	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts.UnixNano()}, nil
+	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts}, nil
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
