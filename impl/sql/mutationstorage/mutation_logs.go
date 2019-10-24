@@ -153,23 +153,23 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		}
 	}()
 
-	var maxTime int64
+	var maxTime sql.NullTime
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
+		`SELECT MAX(Time) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTime); err != nil {
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
-	tsTime := ts.UnixNano()
-	if tsTime <= maxTime {
+
+	if ts.Before(maxTime.Time) || ts.Equal(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
 			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
-			tsTime, maxTime)
+			ts, maxTime)
 	}
 
 	for i, data := range mData {
 		if _, err = tx.ExecContext(ctx,
 			`INSERT INTO Queue (DirectoryID, LogID, Time, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
-			directoryID, logID, tsTime, i, data); err != nil {
+			directoryID, logID, ts, i, data); err != nil {
 			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 		}
 	}
@@ -181,7 +181,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID int64,
 	start time.Time, batchSize int32) (int32, time.Time, error) {
 	var count int32
-	var high int64
+	var high time.Time
 	if err := m.db.QueryRowContext(ctx,
 		`SELECT COUNT(*), COALESCE(MAX(T1.Time)+1, ?) FROM 
 		(
@@ -194,7 +194,7 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 		Scan(&count, &high); err != nil {
 		return 0, time.Time{}, err
 	}
-	return count, time.Unix(0, high), nil
+	return count, high, nil
 }
 
 // ReadLog reads all mutations in logID between [low, high).
