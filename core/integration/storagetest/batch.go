@@ -27,7 +27,7 @@ import (
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
-// batchStorageFactory   returns a new database object, and a function for cleaning it up.
+// batchStorageFactory returns a new database object, and a function for cleaning it up.
 type batchStorageFactory func(ctx context.Context, t *testing.T, dirID string) (sequencer.Batcher, func(context.Context))
 
 type BatchStorageTest func(ctx context.Context, t *testing.T, f batchStorageFactory)

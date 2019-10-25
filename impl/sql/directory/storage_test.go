@@ -43,8 +43,8 @@ func newStorage(ctx context.Context, t *testing.T) (directory.Storage, func(cont
 
 func TestList(t *testing.T) {
 	ctx := context.Background()
-	s, closeF := newStorage(ctx, t)
-	defer closeF(ctx)
+	s, done := newStorage(ctx, t)
+	defer done(ctx)
 	for _, tc := range []struct {
 		directories []*directory.Directory
 		readDeleted bool
@@ -100,8 +100,8 @@ func TestList(t *testing.T) {
 
 func TestWriteReadDelete(t *testing.T) {
 	ctx := context.Background()
-	s, closeF := newStorage(ctx, t)
-	defer closeF(ctx)
+	s, done := newStorage(ctx, t)
+	defer done(ctx)
 	for _, tc := range []struct {
 		desc                 string
 		d                    directory.Directory
@@ -244,8 +244,8 @@ func TestWriteReadDelete(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	ctx := context.Background()
-	s, closeF := newStorage(ctx, t)
-	defer closeF(ctx)
+	s, done := newStorage(ctx, t)
+	defer done(ctx)
 	for _, tc := range []struct {
 		directoryID string
 	}{

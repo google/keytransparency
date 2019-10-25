@@ -25,7 +25,7 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// mutationLogsFactory  returns a new database object, and a function for cleaning it up.
+// mutationLogsFactory returns a new database object, and a function for cleaning it up.
 type mutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context))
 
 // RunMutationLogsTests runs all the tests against the provided storage implementation.
