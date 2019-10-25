@@ -22,8 +22,11 @@ import (
 func TestNewForTest(t *testing.T) {
 	ctx := context.Background()
 	db, done := NewForTest(ctx, t)
-	defer done(ctx)
 	if err := db.Ping(); err != nil {
 		t.Error(err)
 	}
+	done(ctx)
+	// Verify that the databse was really closed by looking for the
+	// error in the logs when running the test with -v
+	done(ctx)
 }
