@@ -17,23 +17,22 @@ package testdb
 import (
 	"context"
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql" // mysql driver
+	ktsql "github.com/google/keytransparency/impl/sql"
 )
 
-func NewForTest(ctx context.Context, t testing.TB) (*sql.DB, func(context.Context)) {
-	config := mysql.NewConfig()
-	config.User = "root"
-	config.Net = "tcp"
-	config.Addr = "127.0.0.1"
+var dataSourceURI = flag.String("test_mysql_uri", "root@tcp(127.0.0.1)/", "The MySQL uri to use when running tests")
 
-	db, err := sql.Open("mysql", config.FormatDSN())
+// NewForTest creates a temporary database for testing, and deletes it in the close function.
+func NewForTest(ctx context.Context, t testing.TB) (*sql.DB, func(context.Context)) {
+	db, err := ktsql.Open(*dataSourceURI)
 	if err != nil {
-		t.Fatalf("sql.Open(): %v", err)
+		t.Fatal(err)
 	}
 
 	dbName := fmt.Sprintf("test_%v", time.Now().UnixNano())
@@ -43,8 +42,7 @@ func NewForTest(ctx context.Context, t testing.TB) (*sql.DB, func(context.Contex
 
 	// Open test database
 	db.Close()
-	config.DBName = dbName
-	db, err = sql.Open("mysql", config.FormatDSN())
+	db, err = ktsql.Open(*dataSourceURI + dbName)
 	if err != nil {
 		t.Fatal(err)
 	}
