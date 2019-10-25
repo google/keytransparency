@@ -23,11 +23,13 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/mutator"
 
+	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -74,26 +76,31 @@ func (m *mutations) Send(ctx context.Context, dirID string, mutation ...*pb.Entr
 }
 
 func (m *mutations) ReadLog(ctx context.Context, dirID string,
-	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
+	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
 	logShard := (*m)[logID]
-	if low > int64(len(logShard)) {
+	if low.UnixNano() > int64(len(logShard)) {
 		return nil, fmt.Errorf("invalid argument: low: %v, want <= max watermark: %v", low, len(logShard))
 	}
-	count := high - low
+	count := high.UnixNano() - low.UnixNano()
 	if count > int64(batchSize) {
 		count = int64(batchSize)
 	}
-	if low+count > int64(len(logShard)) {
-		count = int64(len(logShard)) - low + 1
+	if low.UnixNano()+count > int64(len(logShard)) {
+		count = int64(len(logShard)) - low.UnixNano() + 1
 	}
-	return logShard[low : low+count], nil
+	return logShard[low.UnixNano() : low.UnixNano()+count], nil
 }
 
-func MustEncodeToken(t *testing.T, low int64) string {
+func MustEncodeToken(t *testing.T, low time.Time) string {
 	t.Helper()
+
+	st, err := ptypes.TimestampProto(low)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rt := &rtpb.ReadToken{
-		SliceIndex:   0,
-		LowWatermark: low,
+		SliceIndex: 0,
+		StartTime:  st,
 	}
 	token, err := EncodeToken(rt)
 	if err != nil {
@@ -118,7 +125,7 @@ func TestListMutations(t *testing.T) {
 			}
 			for i := source.LowestInclusive; i < source.HighestExclusive; i++ {
 				fakeLogs[source.LogId][i] = &mutator.LogMessage{
-					ID: i,
+					ID: time.Unix(0, i*int64(time.Nanosecond)),
 					Mutation: &pb.SignedEntry{
 						Entry: mustMarshal(t, &pb.Entry{
 							Index:      []byte(fmt.Sprintf("key_%v", i)),
@@ -140,10 +147,10 @@ func TestListMutations(t *testing.T) {
 	}{
 		{desc: "exact page", pageSize: 6, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
 		{desc: "large page", pageSize: 10, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
-		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: &rtpb.ReadToken{LowWatermark: 6}},
-		{desc: "large page with token", token: MustEncodeToken(t, 3), pageSize: 10, start: 3, end: 7, wantNext: &rtpb.ReadToken{}},
-		{desc: "small page with token", token: MustEncodeToken(t, 3), pageSize: 2, start: 3, end: 5,
-			wantNext: &rtpb.ReadToken{LowWatermark: 5}},
+		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: &rtpb.ReadToken{StartTime: &protopb.Timestamp{Nanos: 6}}},
+		{desc: "large page with token", token: MustEncodeToken(t, time.Unix(0, 3)), pageSize: 10, start: 3, end: 7, wantNext: &rtpb.ReadToken{}},
+		{desc: "small page with token", token: MustEncodeToken(t, time.Unix(0, 3)), pageSize: 2, start: 3, end: 5,
+			wantNext: &rtpb.ReadToken{StartTime: &protopb.Timestamp{Nanos: 5}}},
 		{desc: "invalid page token", token: "some_token", pageSize: 0, wantErr: true},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

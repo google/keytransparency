@@ -65,20 +65,20 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 
 	for _, tc := range []struct {
 		limit int32
-		count int
+		want  int
 	}{
-		{limit: 0, count: 0},
-		{limit: 1, count: 3},    // We asked for 1 item, which gets us into the first batch, so we return 3 items.
-		{limit: 3, count: 3},    // We asked for 3 items, which gets us through the first batch, so we return 3 items.
-		{limit: 4, count: 6},    // Reading 4 items gets us into the second batch of size 3.
-		{limit: 100, count: 30}, // Reading all the items gets us the 30 items we wrote.
+		{limit: 0, want: 0},
+		{limit: 1, want: 3},    // We asked for 1 item, which gets us into the first batch, so we return 3 items.
+		{limit: 3, want: 3},    // We asked for 3 items, which gets us through the first batch, so we return 3 items.
+		{limit: 4, want: 6},    // Reading 4 items gets us into the second batch of size 3.
+		{limit: 100, want: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.limit)
+		rows, err := m.ReadLog(ctx, directoryID, logID, time.Time{}, time.Now(), tc.limit)
 		if err != nil {
 			t.Fatalf("ReadLog(%v): %v", tc.limit, err)
 		}
-		if got, want := len(rows), tc.count; got != want {
-			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.limit, got, want)
+		if got := len(rows); got != tc.want {
+			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.limit, got, tc.want)
 		}
 	}
 }

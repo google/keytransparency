@@ -32,6 +32,7 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -124,8 +125,8 @@ type Watermarks map[int64]int64
 type LogsReader interface {
 	// HighWatermark returns the number of items and the highest primary
 	// key up to batchSize items after start (exclusive).
-	HighWatermark(ctx context.Context, directoryID string, logID, start int64,
-		batchSize int32) (count int32, watermark int64, err error)
+	HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
+		batchSize int32) (count int32, watermark time.Time, err error)
 
 	// ListLogs returns the logIDs associated with directoryID that have their write bits set,
 	// or all logIDs associated with directoryID if writable is false.
@@ -134,7 +135,7 @@ type LogsReader interface {
 	// ReadLog returns the lowest messages in the (low, high] range stored in the
 	// specified log, up to batchSize.  Paginate by setting low to the
 	// highest LogMessage returned in the previous page.
-	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
@@ -339,8 +340,9 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
 	directoryID string, chunkSize int32,
 	emit func(*mutator.LogMessage)) error {
-	low := source.LowestInclusive
-	high := source.HighestExclusive
+	ss := metadata.Source(source)
+	low := ss.StartTime()
+	high := ss.EndTime()
 	// Loop until less than chunkSize items are returned.
 	for count := chunkSize; count == chunkSize; {
 		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize)
@@ -353,7 +355,7 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 		logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
 		for _, m := range batch {
 			emit(m)
-			if m.ID > low {
+			if m.ID.After(low) {
 				low = m.ID
 			}
 		}
@@ -527,8 +529,8 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// revision.
 	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
 	// from ranges of watermarks for the verifier's needs.
-	ends := map[int64]int64{}
-	starts := map[int64]int64{}
+	ends := make(map[int64]int64)
+	starts := make(map[int64]int64)
 	for _, source := range lastMeta.GetSources() {
 		if ends[source.LogId] < source.HighestExclusive {
 			ends[source.LogId] = source.HighestExclusive
@@ -543,14 +545,14 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		low := ends[logID]
+		low := time.Unix(0, ends[logID])
 		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"HighWatermark(%v/%v, start: %v, batch: %v): %v",
 				directoryID, logID, low, batchSize, err)
 		}
-		starts[logID], ends[logID] = low, high
+		starts[logID], ends[logID] = low.UnixNano(), high.UnixNano()
 		total += count
 		batchSize -= count
 	}

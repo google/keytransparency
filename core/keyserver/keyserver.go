@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -67,7 +68,7 @@ func createMetrics(mf monitoring.MetricFactory) {
 // WriteWatermark is the metadata that Send creates.
 type WriteWatermark struct {
 	LogID     int64
-	Watermark int64
+	Watermark time.Time
 }
 
 // MutationLogs provides sets of time ordered message logs.
@@ -79,7 +80,7 @@ type MutationLogs interface {
 	// specified log. ReadLog always returns complete units of the original
 	// batches sent via Send, and will return  more items than limit if
 	// needed to do so.
-	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 		limit int32) ([]*mutator.LogMessage, error)
 }
 
@@ -666,7 +667,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 		return nil, status.Errorf(st.Code(), "Mutation write error")
 	}
 	if wm != nil {
-		watermarkWritten.Set(float64(wm.Watermark), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
+		watermarkWritten.Set(float64(wm.Watermark.UnixNano()), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
 		sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
 	}
 

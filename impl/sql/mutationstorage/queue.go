@@ -32,7 +32,6 @@ import (
 
 // SetWritable enables or disables new writes from going to logID.
 func (m *Mutations) SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error {
-	glog.Errorf("mutationstorage: SetWritable(%v, %v, enabled: %v)", directoryID, logID, enabled)
 	result, err := m.db.ExecContext(ctx,
 		`UPDATE Logs SET Enabled = ? WHERE DirectoryID = ? AND LogID = ?;`,
 		enabled, directoryID, logID)
@@ -91,7 +90,7 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
 		return nil, err
 	}
-	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts.UnixNano()}, nil
+	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts}, nil
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
@@ -179,8 +178,8 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 
 // HighWatermark returns the highest watermark +1 in logID that is less than or
 // equal to batchSize items greater than start.
-func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID,
-	start int64, batchSize int32) (int32, int64, error) {
+func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID int64,
+	start time.Time, batchSize int32) (int32, time.Time, error) {
 	var count int32
 	var high int64
 	if err := m.db.QueryRowContext(ctx,
@@ -191,23 +190,23 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
-		start, directoryID, logID, start, batchSize).
+		start.UnixNano(), directoryID, logID, start.UnixNano(), batchSize).
 		Scan(&count, &high); err != nil {
-		return 0, 0, err
+		return 0, time.Time{}, err
 	}
-	return count, high, nil
+	return count, time.Unix(0, high), nil
 }
 
 // ReadLog reads all mutations in logID between [low, high).
 // ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
-	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
+	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, LocalID, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
 		ORDER BY Time, LocalID ASC
 		LIMIT ?;`,
-		directoryID, logID, low, high, batchSize)
+		directoryID, logID, low.UnixNano(), high.UnixNano(), batchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +223,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 			`SELECT Time, LocalID, Mutation FROM Queue
 			WHERE DirectoryID = ? AND LogID = ? AND Time = ? AND LocalID > ?
 			ORDER BY LocalID ASC;`,
-			directoryID, logID, last.ID, last.LocalID)
+			directoryID, logID, last.ID.UnixNano(), last.LocalID)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +251,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 			return nil, err
 		}
 		results = append(results, &mutator.LogMessage{
-			ID:        timestamp,
+			ID:        time.Unix(0, timestamp),
 			LocalID:   localID,
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,
