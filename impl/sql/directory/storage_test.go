@@ -16,40 +16,35 @@ package directory
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/directory"
-	tpb "github.com/google/trillian"
+	"github.com/google/keytransparency/impl/sql/testdb"
 	"github.com/google/trillian/crypto/keyspb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	_ "github.com/mattn/go-sqlite3"
+	tpb "github.com/google/trillian"
 )
 
-func newStorage(t *testing.T) (s directory.Storage, close func()) {
+func newStorage(ctx context.Context, t *testing.T) (directory.Storage, func(context.Context)) {
 	t.Helper()
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, done := testdb.NewForTest(ctx, t)
+	s, err := NewStorage(db)
 	if err != nil {
-		t.Fatalf("sql.Open(): %v", err)
-	}
-	closeFunc := func() { db.Close() }
-	s, err = NewStorage(db)
-	if err != nil {
-		closeFunc()
+		done(ctx)
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}
-	return s, closeFunc
+	return s, done
 }
 
 func TestList(t *testing.T) {
 	ctx := context.Background()
-	s, closeF := newStorage(t)
-	defer closeF()
+	s, closeF := newStorage(ctx, t)
+	defer closeF(ctx)
 	for _, tc := range []struct {
 		directories []*directory.Directory
 		readDeleted bool
@@ -105,8 +100,8 @@ func TestList(t *testing.T) {
 
 func TestWriteReadDelete(t *testing.T) {
 	ctx := context.Background()
-	s, closeF := newStorage(t)
-	defer closeF()
+	s, closeF := newStorage(ctx, t)
+	defer closeF(ctx)
 	for _, tc := range []struct {
 		desc                 string
 		d                    directory.Directory
@@ -249,8 +244,8 @@ func TestWriteReadDelete(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	ctx := context.Background()
-	s, closeF := newStorage(t)
-	defer closeF()
+	s, closeF := newStorage(ctx, t)
+	defer closeF(ctx)
 	for _, tc := range []struct {
 		directoryID string
 	}{
