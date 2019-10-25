@@ -86,7 +86,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	}
 }
 
-func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T, newForTest MutationLogsFactory) {
+func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
 	directoryID := "TestConcurrentWrites"
 	logID := int64(5)
 	m, done := newForTest(ctx, t, directoryID, logID)
