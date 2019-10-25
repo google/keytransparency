@@ -65,7 +65,7 @@ func (s SourceList) First() *rtpb.ReadToken {
 		// Empty struct means there is nothing else to page through.
 		return &rtpb.ReadToken{}
 	}
-	st, err := ptypes.TimestampProto(metadata.NewSource(s[0]).StartTime())
+	st, err := ptypes.TimestampProto(metadata.Source(s[0]).StartTime())
 	if err != nil {
 		panic("invalid timestamp")
 	}
@@ -97,7 +97,7 @@ func (s SourceList) Next(rt *rtpb.ReadToken, lastRow *mutator.LogMessage) *rtpb.
 		return &rtpb.ReadToken{} // Encodes to ""
 	}
 
-	st, err := ptypes.TimestampProto(metadata.NewSource(s[rt.SliceIndex+1]).StartTime())
+	st, err := ptypes.TimestampProto(metadata.Source(s[rt.SliceIndex+1]).StartTime())
 	if err != nil {
 		panic("invalid timestamp")
 	}

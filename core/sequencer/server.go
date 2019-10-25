@@ -340,7 +340,7 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
 	directoryID string, chunkSize int32,
 	emit func(*mutator.LogMessage)) error {
-	ss := metadata.NewSource(source)
+	ss := metadata.Source(source)
 	low := ss.StartTime()
 	high := ss.EndTime()
 	// Loop until less than chunkSize items are returned.

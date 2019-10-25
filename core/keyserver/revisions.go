@@ -141,7 +141,7 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 
 	// Read PageSize + 1 messages from the log to see if there is another page.
-	high := metadata.NewSource(meta.Sources[rt.SliceIndex]).EndTime()
+	high := metadata.Source(meta.Sources[rt.SliceIndex]).EndTime()
 	logID := meta.Sources[rt.SliceIndex].LogId
 	low, err := ptypes.Timestamp(rt.StartTime)
 	if err != nil {

@@ -20,8 +20,8 @@ import (
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
-// NewSource returns a wrapper
-func NewSource(s *spb.MapMetadata_SourceSlice) SourceSlice {
+// Source returns a wrapper for SourceSlice
+func Source(s *spb.MapMetadata_SourceSlice) SourceSlice {
 	return SourceSlice{s: s}
 }
 
