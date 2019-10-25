@@ -13,6 +13,9 @@ func Open(dsn string) (*sql.DB, error) {
 		return nil, err
 	}
 
+	// MySQL flags that affect storage logic.
+	cfg.ClientFoundRows = true // Return number of matching rows instead of rows changed
+
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, err
