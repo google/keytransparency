@@ -11,26 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package mutationstorage
+
+package testdb
 
 import (
 	"context"
 	"testing"
-
-	"github.com/google/keytransparency/core/integration/storagetest"
-	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/impl/sql/testdb"
 )
 
-func TestBatchIntegration(t *testing.T) {
-	storageFactory := func(ctx context.Context, t *testing.T, _ string) (sequencer.Batcher, func(context.Context)) {
-		db, done := testdb.NewForTest(ctx, t)
-		m, err := New(db)
-		if err != nil {
-			t.Fatalf("Failed to create mutations: %v", err)
-		}
-		return m, done
+func TestNewForTest(t *testing.T) {
+	ctx := context.Background()
+	db, done := NewForTest(ctx, t)
+	defer done(ctx)
+	if err := db.Ping(); err != nil {
+		t.Error(err)
 	}
-
-	storagetest.RunBatchStorageTests(t, storageFactory)
 }

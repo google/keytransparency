@@ -24,6 +24,7 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/impl/sql/testdb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -31,27 +32,28 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) *Mutations {
-	m, err := New(newDB(t))
+func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) (*Mutations, func(context.Context)) {
+	db, done := testdb.NewForTest(ctx, t)
+	m, err := New(db)
 	if err != nil {
 		t.Fatalf("Failed to create mutation storage: %v", err)
 	}
 	if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
-	return m
+	return m, done
 }
 
 func TestMutationLogsIntegration(t *testing.T) {
 	storagetest.RunMutationLogsTests(t,
-		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs {
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context)) {
 			return newForTest(ctx, t, dirID, logIDs...)
 		})
 }
 
 func TestLogsAdminIntegration(t *testing.T) {
 	storagetest.RunLogsAdminTests(t,
-		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin {
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (adminserver.LogsAdmin, func(context.Context)) {
 			return newForTest(ctx, t, dirID, logIDs...)
 		})
 }
@@ -75,7 +77,8 @@ func TestRandLog(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			m := newForTest(ctx, t, directoryID, tc.send...)
+			m, done := newForTest(ctx, t, directoryID, tc.send...)
+			defer done(ctx)
 			logs := make(map[int64]bool)
 			for i := 0; i < 10*len(tc.wantLogs); i++ {
 				logID, err := m.randLog(ctx, directoryID)
@@ -98,7 +101,8 @@ func BenchmarkSend(b *testing.B) {
 	ctx := context.Background()
 	directoryID := "BenchmarkSend"
 	logID := int64(1)
-	m := newForTest(ctx, b, directoryID, logID)
+	m, done := newForTest(ctx, b, directoryID, logID)
+	defer done(ctx)
 
 	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
 	for _, tc := range []struct {
@@ -132,7 +136,8 @@ func TestSend(t *testing.T) {
 	ctx := context.Background()
 
 	directoryID := "TestSend"
-	m := newForTest(ctx, t, directoryID, 1, 2)
+	m, done := newForTest(ctx, t, directoryID, 1, 2)
+	defer done(ctx)
 	update := []byte("bar")
 	ts1 := time.Now()
 	ts2 := ts1.Add(time.Duration(1))
@@ -162,7 +167,8 @@ func TestWatermark(t *testing.T) {
 	ctx := context.Background()
 	directoryID := "TestWatermark"
 	logIDs := []int64{1, 2}
-	m := newForTest(ctx, t, directoryID, logIDs...)
+	m, done := newForTest(ctx, t, directoryID, logIDs...)
+	defer done(ctx)
 	update := []byte("bar")
 
 	start := time.Now()

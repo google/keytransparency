@@ -25,7 +25,7 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-type MutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs
+type MutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context))
 
 // RunMutationLogsTests runs all the tests against the provided storage implementation.
 func RunMutationLogsTests(t *testing.T, factory MutationLogsFactory) {
@@ -54,7 +54,8 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest MutationLogsFactory) {
 	directoryID := "TestReadLog"
 	logID := int64(5) // Any log ID.
-	m := newForTest(ctx, t, directoryID, logID)
+	m, done := newForTest(ctx, t, directoryID, logID)
+	defer done(ctx)
 	// Write ten batches, three entries each.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
