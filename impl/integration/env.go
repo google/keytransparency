@@ -53,7 +53,6 @@ import (
 
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
-	_ "github.com/mattn/go-sqlite3"               // Use sqlite database for testing.
 )
 
 var (

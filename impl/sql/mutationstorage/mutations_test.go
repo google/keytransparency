@@ -15,29 +15,21 @@ package mutationstorage
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/google/keytransparency/core/integration/storagetest"
-
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/impl/sql/testdb"
 )
 
-func newDB(t testing.TB) *sql.DB {
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
-		t.Fatalf("sql.Open(): %v", err)
-	}
-	return db
-}
-
 func TestBatchIntegration(t *testing.T) {
-	storageFactory := func(context.Context, *testing.T, string) storagetest.Batcher {
-		m, err := New(newDB(t))
+	storageFactory := func(ctx context.Context, t *testing.T, _ string) (sequencer.Batcher, func(context.Context)) {
+		db, done := testdb.NewForTest(ctx, t)
+		m, err := New(db)
 		if err != nil {
 			t.Fatalf("Failed to create mutations: %v", err)
 		}
-		return m
+		return m, done
 	}
 
 	storagetest.RunBatchStorageTests(t, storageFactory)

@@ -25,13 +25,14 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-type MutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs
+// mutationLogsFactory returns a new database object, and a function for cleaning it up.
+type mutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context))
 
 // RunMutationLogsTests runs all the tests against the provided storage implementation.
-func RunMutationLogsTests(t *testing.T, factory MutationLogsFactory) {
+func RunMutationLogsTests(t *testing.T, factory mutationLogsFactory) {
 	ctx := context.Background()
 	b := &mutationLogsTests{}
-	for name, f := range map[string]func(ctx context.Context, t *testing.T, f MutationLogsFactory){
+	for name, f := range map[string]func(ctx context.Context, t *testing.T, f mutationLogsFactory){
 		// TODO(gbelvin): Discover test methods via reflection.
 		"TestReadLog": b.TestReadLog,
 	} {
@@ -51,10 +52,11 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 }
 
 // TestReadLog ensures that reads happen in atomic units of batch size.
-func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest MutationLogsFactory) {
+func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
 	directoryID := "TestReadLog"
 	logID := int64(5) // Any log ID.
-	m := newForTest(ctx, t, directoryID, logID)
+	m, done := newForTest(ctx, t, directoryID, logID)
+	defer done(ctx)
 	// Write ten batches, three entries each.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
