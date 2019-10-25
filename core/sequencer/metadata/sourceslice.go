@@ -30,16 +30,12 @@ type SourceSlice struct {
 	s *spb.MapMetadata_SourceSlice
 }
 
-func nanos2Time(nanos int64) time.Time {
-	return time.Unix(0, nanos)
-}
-
 // StartTime returns LowestInclusive as a time.Time
 func (s SourceSlice) StartTime() time.Time {
-	return nanos2Time(s.s.GetLowestInclusive())
+	return time.Unix(0, s.s.GetLowestInclusive())
 }
 
 // EndTime returns HighestExclusive as a time.Time
 func (s SourceSlice) EndTime() time.Time {
-	return nanos2Time(s.s.GetHighestExclusive())
+	return time.Unix(0, s.s.GetHighestExclusive())
 }

@@ -44,9 +44,7 @@ type fakeLogs map[int64][]mutator.LogMessage
 
 func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 	batchSize int32) ([]*mutator.LogMessage, error) {
-	lowNanos := low.UnixNano()
-	highNanos := high.UnixNano()
-	refs := make([]*mutator.LogMessage, 0, int(highNanos-lowNanos))
+	refs := make([]*mutator.LogMessage, 0)
 	for i := low; i.Before(high); i = i.Add(time.Nanosecond) {
 		l[logID][i.UnixNano()].ID = i
 		refs = append(refs, &l[logID][i.UnixNano()])
