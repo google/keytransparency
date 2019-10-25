@@ -27,12 +27,13 @@ import (
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
-type BatchStorageFactory func(ctx context.Context, t *testing.T, dirID string) (sequencer.Batcher, func(context.Context))
+// batchStorageFactory   returns a new database object, and a function for cleaning it up.
+type batchStorageFactory func(ctx context.Context, t *testing.T, dirID string) (sequencer.Batcher, func(context.Context))
 
-type BatchStorageTest func(ctx context.Context, t *testing.T, f BatchStorageFactory)
+type BatchStorageTest func(ctx context.Context, t *testing.T, f batchStorageFactory)
 
 // RunBatchStorageTests runs all the batch storage tests against the provided map storage implementation.
-func RunBatchStorageTests(t *testing.T, factory BatchStorageFactory) {
+func RunBatchStorageTests(t *testing.T, factory batchStorageFactory) {
 	ctx := context.Background()
 	b := &BatchTests{}
 	for name, f := range map[string]BatchStorageTest{
@@ -49,7 +50,7 @@ func RunBatchStorageTests(t *testing.T, factory BatchStorageFactory) {
 // BatchTests is a suite of tests to run against
 type BatchTests struct{}
 
-func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, f BatchStorageFactory) {
+func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, f batchStorageFactory) {
 	domainID := "testnotfounddir"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)
@@ -60,7 +61,7 @@ func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, f BatchStorag
 	}
 }
 
-func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, f BatchStorageFactory) {
+func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, f batchStorageFactory) {
 	domainID := "writebatchtest"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)
@@ -85,7 +86,7 @@ func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, f BatchStor
 	}
 }
 
-func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, f BatchStorageFactory) {
+func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, f batchStorageFactory) {
 	domainID := "readbatchtest"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)
@@ -115,7 +116,7 @@ func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, f BatchStora
 	}
 }
 
-func (*BatchTests) TestHighestRev(ctx context.Context, t *testing.T, f BatchStorageFactory) {
+func (*BatchTests) TestHighestRev(ctx context.Context, t *testing.T, f batchStorageFactory) {
 	domainID := "writebatchtest"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)

@@ -26,9 +26,10 @@ import (
 	ktsql "github.com/google/keytransparency/impl/sql"
 )
 
-var dataSourceURI = flag.String("test_mysql_uri", "root@tcp(127.0.0.1)/", "The MySQL uri to use when running tests")
+var dataSourceURI = flag.String("test_mysql_uri", "root@tcp(127.0.0.1)/", "The MySQL URI to use when running tests")
 
-// NewForTest creates a temporary database for testing, and deletes it in the close function.
+// NewForTest creates a temporary database.
+// Returns a function for deleting the database.
 func NewForTest(ctx context.Context, t testing.TB) (*sql.DB, func(context.Context)) {
 	db, err := ktsql.Open(*dataSourceURI)
 	if err != nil {

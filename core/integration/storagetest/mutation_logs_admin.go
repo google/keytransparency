@@ -24,13 +24,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type LogsAdminFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (adminserver.LogsAdmin, func(context.Context))
+// logAdminFactory returns a new database object, and a function for cleaning it up.
+type logAdminFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (adminserver.LogsAdmin, func(context.Context))
 
 // RunLogsAdminTests runs all the admin tests against the provided storage implementation.
-func RunLogsAdminTests(t *testing.T, factory LogsAdminFactory) {
+func RunLogsAdminTests(t *testing.T, factory logAdminFactory) {
 	ctx := context.Background()
 	b := &logsAdminTests{}
-	for name, f := range map[string]func(ctx context.Context, t *testing.T, f LogsAdminFactory){
+	for name, f := range map[string]func(ctx context.Context, t *testing.T, f logAdminFactory){
 		// TODO(gbelvin): Discover test methods via reflection.
 		"TestSetWritable": b.TestSetWritable,
 		"TestListLogs":    b.TestListLogs,
@@ -41,7 +42,7 @@ func RunLogsAdminTests(t *testing.T, factory LogsAdminFactory) {
 
 type logsAdminTests struct{}
 
-func (logsAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f LogsAdminFactory) {
+func (logsAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f logAdminFactory) {
 	directoryID := "TestSetWritable"
 	m, done := f(ctx, t, directoryID, 1)
 	defer done(ctx)
@@ -50,7 +51,7 @@ func (logsAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f LogsA
 	}
 }
 
-func (logsAdminTests) TestListLogs(ctx context.Context, t *testing.T, f LogsAdminFactory) {
+func (logsAdminTests) TestListLogs(ctx context.Context, t *testing.T, f logAdminFactory) {
 	directoryID := "TestListLogs"
 	for _, tc := range []struct {
 		desc        string
