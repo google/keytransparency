@@ -29,7 +29,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) (*Mutations, func(context.Context)) {
