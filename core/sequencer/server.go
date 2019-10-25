@@ -125,8 +125,8 @@ type Watermarks map[int64]int64
 type LogsReader interface {
 	// HighWatermark returns the number of items and the highest primary
 	// key up to batchSize items after start (exclusive).
-	HighWatermark(ctx context.Context, directoryID string, logID, start int64,
-		batchSize int32) (count int32, watermark int64, err error)
+	HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
+		batchSize int32) (count int32, watermark time.Time, err error)
 
 	// ListLogs returns the logIDs associated with directoryID that have their write bits set,
 	// or all logIDs associated with directoryID if writable is false.
@@ -529,8 +529,8 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// revision.
 	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
 	// from ranges of watermarks for the verifier's needs.
-	ends := map[int64]int64{}
-	starts := map[int64]int64{}
+	ends := make(map[int64]int64)
+	starts := make(map[int64]int64)
 	for _, source := range lastMeta.GetSources() {
 		if ends[source.LogId] < source.HighestExclusive {
 			ends[source.LogId] = source.HighestExclusive
@@ -545,14 +545,14 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		low := ends[logID]
+		low := time.Unix(0, ends[logID])
 		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"HighWatermark(%v/%v, start: %v, batch: %v): %v",
 				directoryID, logID, low, batchSize, err)
 		}
-		starts[logID], ends[logID] = low, high
+		starts[logID], ends[logID] = low.UnixNano(), high.UnixNano()
 		total += count
 		batchSize -= count
 	}

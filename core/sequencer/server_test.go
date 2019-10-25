@@ -62,14 +62,14 @@ func (l fakeLogs) ListLogs(ctx context.Context, directoryID string, writable boo
 	return logIDs, nil
 }
 
-func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, start int64,
-	batchSize int32) (int32, int64, error) {
-	high := start + int64(batchSize)
+func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
+	batchSize int32) (int32, time.Time, error) {
+	high := start.UnixNano() + int64(batchSize)
 	if high > int64(len(l[logID])) {
 		high = int64(len(l[logID]))
 	}
-	count := int32(high - start)
-	return count, high, nil
+	count := int32(high - start.UnixNano())
+	return count, time.Unix(0, high), nil
 }
 
 type fakeTrillianFactory struct {

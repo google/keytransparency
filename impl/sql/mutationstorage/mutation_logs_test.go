@@ -165,8 +165,8 @@ func TestWatermark(t *testing.T) {
 	m := newForTest(ctx, t, directoryID, logIDs...)
 	update := []byte("bar")
 
-	startTS := time.Now()
-	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
+	start := time.Now()
+	for ts := start; ts.Before(start.Add(10)); ts = ts.Add(1) {
 		for _, logID := range logIDs {
 			if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
 				t.Fatalf("m.send(%v): %v", logID, err)
@@ -174,30 +174,29 @@ func TestWatermark(t *testing.T) {
 		}
 	}
 
-	start := startTS.UnixNano()
 	for _, tc := range []struct {
 		desc      string
 		logID     int64
-		start     int64
+		start     time.Time
 		batchSize int32
 		count     int32
-		want      int64
+		want      time.Time
 	}{
-		{desc: "log1 max", logID: 1, batchSize: 100, want: start + 10, count: 10},
-		{desc: "log2 max", logID: 2, batchSize: 100, want: start + 10, count: 10},
-		{desc: "batch0", logID: 1, batchSize: 0},
-		{desc: "batch0start55", logID: 1, start: 55, batchSize: 0, want: 55},
-		{desc: "batch5", logID: 1, batchSize: 5, want: start + 5, count: 5},
-		{desc: "start1", logID: 1, start: start + 2, batchSize: 5, want: start + 7, count: 5},
-		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 10, count: 2},
+		{desc: "log1 max", logID: 1, batchSize: 100, want: start.Add(10), count: 10},
+		{desc: "log2 max", logID: 2, batchSize: 100, want: start.Add(10), count: 10},
+		{desc: "batch0", logID: 1, batchSize: 0, start: time.Unix(0, 0), want: time.Unix(0, 0)},
+		{desc: "batch0start55", logID: 1, start: time.Unix(0, 55), batchSize: 0, want: time.Unix(0, 55)},
+		{desc: "batch5", logID: 1, batchSize: 5, want: start.Add(5), count: 5},
+		{desc: "start1", logID: 1, start: start.Add(2), batchSize: 5, want: start.Add(7), count: 5},
+		{desc: "start8", logID: 1, start: start.Add(8), batchSize: 5, want: start.Add(10), count: 2},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
 			if err != nil {
 				t.Errorf("highWatermark(): %v", err)
 			}
-			if got != tc.want {
-				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got, tc.want)
+			if !got.Equal(tc.want) {
+				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got.UnixNano(), tc.want)
 			}
 			if count != tc.count {
 				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)
