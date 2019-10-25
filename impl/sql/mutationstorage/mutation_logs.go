@@ -160,10 +160,10 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
 
+	ts = ts.Truncate(time.Microsecond)
 	if ts.Before(maxTime.Time) || ts.Equal(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
-			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
-			ts, maxTime)
+			"current timestamp: %v, want > max-timestamp of queued mutations: %v", ts, maxTime)
 	}
 
 	for i, data := range mData {
