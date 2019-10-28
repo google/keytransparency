@@ -160,6 +160,8 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
 
+	// The Timestamp column has a maximum fidelity of microseconds.
+	// See https://dev.mysql.com/doc/refman/8.0/en/fractional-seconds.html
 	ts = ts.Truncate(time.Microsecond)
 	if ts.Before(maxTime.Time) || ts.Equal(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
@@ -190,7 +192,7 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
-		start.UnixNano(), directoryID, logID, start.UnixNano(), batchSize).
+		start, directoryID, logID, start, batchSize).
 		Scan(&count, &high); err != nil {
 		return 0, time.Time{}, err
 	}
@@ -206,7 +208,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
 		ORDER BY Time, LocalID ASC
 		LIMIT ?;`,
-		directoryID, logID, low.UnixNano(), high.UnixNano(), batchSize)
+		directoryID, logID, low, high, batchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +225,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 			`SELECT Time, LocalID, Mutation FROM Queue
 			WHERE DirectoryID = ? AND LogID = ? AND Time = ? AND LocalID > ?
 			ORDER BY LocalID ASC;`,
-			directoryID, logID, last.ID.UnixNano(), last.LocalID)
+			directoryID, logID, last.ID, last.LocalID)
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +243,8 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
-		var timestamp, localID int64
+		var timestamp time.Time
+		var localID int64
 		var mData []byte
 		if err := rows.Scan(&timestamp, &localID, &mData); err != nil {
 			return nil, err
@@ -251,7 +254,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 			return nil, err
 		}
 		results = append(results, &mutator.LogMessage{
-			ID:        time.Unix(0, timestamp),
+			ID:        timestamp,
 			LocalID:   localID,
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,

@@ -39,7 +39,7 @@ var (
 		`CREATE TABLE IF NOT EXISTS Queue (
 		DirectoryID VARCHAR(30)   NOT NULL,
 		LogID    BIGINT           NOT NULL,
-		Time     DATETIME         NOT NULL,
+		Time     DATETIME(6)      NOT NULL,
 		LocalID  BIGINT           NOT NULL,
 		Mutation BLOB             NOT NULL,
 		PRIMARY KEY(DirectoryID, LogID, Time, LocalID )
