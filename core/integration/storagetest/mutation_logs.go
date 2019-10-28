@@ -51,6 +51,9 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 	return b
 }
 
+// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+var minWatermark = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+
 // TestReadLog ensures that reads happen in atomic units of batch size.
 func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
 	directoryID := "TestReadLog"
@@ -75,7 +78,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		{limit: 4, want: 6},    // Reading 4 items gets us into the second batch of size 3.
 		{limit: 100, want: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, time.Time{}, time.Now(), tc.limit)
+		rows, err := m.ReadLog(ctx, directoryID, logID, minWatermark, time.Now(), tc.limit)
 		if err != nil {
 			t.Fatalf("ReadLog(%v): %v", tc.limit, err)
 		}
