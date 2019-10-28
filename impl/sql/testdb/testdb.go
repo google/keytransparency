@@ -18,7 +18,6 @@ package testdb
 import (
 	"context"
 	"database/sql"
-	"flag"
 	"fmt"
 	"log"
 	"testing"
@@ -27,11 +26,12 @@ import (
 	ktsql "github.com/google/keytransparency/impl/sql"
 )
 
-var dataSourceURI = flag.String("test_mysql_uri", "root@tcp(127.0.0.1)/", "The MySQL URI to use when running tests")
+var dataSourceURI = flag.String("test_kt_uri", "root@tcp(127.0.0.1)/", "The MySQL URI to use when running tests")
 
 // NewForTest creates a temporary database.
 // Returns a function for deleting the database.
 func NewForTest(ctx context.Context, t testing.TB) (*sql.DB, func(context.Context)) {
+	t.Helper()
 	db, err := ktsql.Open(*dataSourceURI)
 	if err != nil {
 		t.Fatal(err)

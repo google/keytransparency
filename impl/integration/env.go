@@ -20,6 +20,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net"
+	"testing"
 	"time"
 
 	"github.com/golang/glog"
@@ -41,10 +42,10 @@ import (
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
+	"github.com/google/keytransparency/impl/sql/testdb"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring"
-	"github.com/google/trillian/storage/testdb"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -115,14 +116,11 @@ func keyFromPEM(p string) *any.Any {
 }
 
 // NewEnv sets up common resources for tests.
-func NewEnv(ctx context.Context) (*Env, error) {
+func NewEnv(ctx context.Context, t testing.TB) (*Env, error) {
 	timeout := 6 * time.Second
 	directoryID := "integration"
 
-	db, dbDone, err := testdb.NewTrillianDB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("env: failed to open database: %v", err)
-	}
+	db, dbDone := testdb.NewForTest(ctx, t)
 
 	// Map server
 	mapEnv, err := ttest.NewMapEnv(ctx, false)
