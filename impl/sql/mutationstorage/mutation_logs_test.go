@@ -139,8 +139,8 @@ func TestSend(t *testing.T) {
 	defer done(ctx)
 	update := []byte("bar")
 	ts1 := time.Now()
-	ts2 := ts1.Add(time.Duration(1 * time.Microsecond))
-	ts3 := ts2.Add(time.Duration(1 * time.Microsecond))
+	ts2 := ts1.Add(1 * time.Microsecond)
+	ts3 := ts2.Add(1 * time.Microsecond)
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
