@@ -36,11 +36,7 @@ func TestIntegration(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			env, err := NewEnv(ctx, t)
-			if err != nil {
-				t.Fatalf("Could not create Env: %v", err)
-			}
-
+			env := NewEnv(ctx, t)
 			defer env.Close()
 			cctx, cancel := context.WithCancel(ctx)
 			actions := test.Fn(cctx, env.Env, t)
