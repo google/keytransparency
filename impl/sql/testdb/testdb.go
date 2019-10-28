@@ -18,6 +18,7 @@ package testdb
 import (
 	"context"
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"testing"
