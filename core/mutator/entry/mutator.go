@@ -89,13 +89,7 @@ func ReduceFn(leaves []*pb.EntryUpdate, msgs []*pb.EntryUpdate,
 	for i, msg := range msgs {
 		// Skip if there is no change in data.
 		if len(leaves) > 0 {
-			isEqual, err := isEntryUpdateEqual(leaves[0], msg)
-			if err != nil {
-				s := status.Convert(err)
-				emitErr(status.Errorf(s.Code(), "entry: isEntryUpdateEqual failed: %v", s.Message()))
-				continue
-			}
-			if isEqual {
+			if isEqual, _ := isEntryUpdateEqual(leaves[0], msg); isEqual {
 				continue
 			}
 		}
