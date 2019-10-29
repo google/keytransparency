@@ -138,7 +138,7 @@ func TestSend(t *testing.T) {
 	m, done := newForTest(ctx, t, directoryID, 1, 2)
 	defer done(ctx)
 	update := []byte("bar")
-	ts1 := time.Now()
+	ts1 := time.Now().Truncate(time.Microsecond)
 	ts2 := ts1.Add(1 * time.Microsecond)
 	ts3 := ts2.Add(1 * time.Microsecond)
 
@@ -173,7 +173,7 @@ func TestWatermark(t *testing.T) {
 	defer done(ctx)
 	update := []byte("bar")
 
-	start := time.Now()
+	start := time.Now().Truncate(time.Microsecond)
 	for ts := start; ts.Before(start.Add(10 * time.Microsecond)); ts = ts.Add(1 * time.Microsecond) {
 		logID := int64(1)
 		if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
