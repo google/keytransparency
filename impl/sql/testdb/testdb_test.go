@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2019 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build mysql
-
-package engine
+package testdb
 
 import (
-	_ "github.com/go-sql-driver/mysql" // Set database engine.
+	"context"
+	"testing"
 )
 
-// DriverName contains the SQLite driver name to be used when connecting to db.
-var DriverName = "mysql"
+func TestNewForTest(t *testing.T) {
+	ctx := context.Background()
+	db, done := NewForTest(ctx, t)
+	if err := db.Ping(); err != nil {
+		t.Error(err)
+	}
+	done(ctx)
+	// Verify that the databse was really closed by looking for the
+	// error in the logs when running the test with -v
+	done(ctx)
+}

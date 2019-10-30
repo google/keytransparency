@@ -54,7 +54,6 @@ func (a *AuthzPolicy) Authorize(ctx context.Context, m interface{}) error {
 	default:
 		return status.Errorf(codes.PermissionDenied, "message type %T not recognized", t)
 	}
-
 }
 
 func (a *AuthzPolicy) checkPermission(sctx *authentication.SecurityContext, directoryID, userID string) error {

@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"net/http"
 
@@ -34,10 +33,10 @@ import (
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/directory"
-	"github.com/google/keytransparency/impl/sql/engine"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	ktsql "github.com/google/keytransparency/impl/sql"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -58,23 +57,15 @@ var (
 	revisionPageSize = flag.Int("revision-page-size", 10, "Max number of revisions to return at once")
 )
 
-func openDB() *sql.DB {
-	db, err := sql.Open(engine.DriverName, *serverDBPath)
-	if err != nil {
-		glog.Exitf("sql.Open(): %v", err)
-	}
-	if err := db.Ping(); err != nil {
-		glog.Exitf("db.Ping(): %v", err)
-	}
-	return db
-}
-
 func main() {
 	flag.Parse()
 	ctx := context.Background()
 
 	// Open Resources.
-	sqldb := openDB()
+	sqldb, err := ktsql.Open(*serverDBPath)
+	if err != nil {
+		glog.Exit(err)
+	}
 	defer sqldb.Close()
 
 	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)

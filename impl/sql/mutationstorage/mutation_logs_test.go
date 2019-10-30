@@ -20,77 +20,46 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/adminserver"
+	"github.com/google/keytransparency/core/integration/storagetest"
+	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/impl/sql/testdb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	_ "github.com/mattn/go-sqlite3"
 )
 
-const directoryID = "default"
-
-func newForTest(ctx context.Context, t testing.TB, logIDs ...int64) *Mutations {
-	m, err := New(newDB(t))
+func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) (*Mutations, func(context.Context)) {
+	db, done := testdb.NewForTest(ctx, t)
+	m, err := New(db)
 	if err != nil {
-		t.Fatalf("Failed to create Mutations: %v", err)
+		t.Fatalf("Failed to create mutation storage: %v", err)
 	}
-	if err := m.AddLogs(ctx, directoryID, logIDs...); err != nil {
+	if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
-	return m
+	return m, done
 }
 
-func TestSetWritable(t *testing.T) {
-	ctx := context.Background()
-
-	for _, tc := range []struct {
-		desc       string
-		logIDs     []int64
-		set        map[int64]bool
-		wantLogIDs []int64
-		wantCode   codes.Code
-	}{
-		{desc: "one row", logIDs: []int64{10}, wantLogIDs: []int64{10}},
-		{desc: "one row disabled", logIDs: []int64{10}, set: map[int64]bool{10: false}, wantCode: codes.NotFound},
-		{desc: "one row enabled", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: false, 2: false}, wantLogIDs: []int64{3}},
-		{desc: "multi", logIDs: []int64{1, 2, 3}, set: map[int64]bool{1: true, 2: false}, wantLogIDs: []int64{1, 3}},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			m := newForTest(ctx, t, tc.logIDs...)
-			wantLogs := make(map[int64]bool)
-			for _, logID := range tc.wantLogIDs {
-				wantLogs[logID] = true
-			}
-
-			for logID, enabled := range tc.set {
-				if err := m.SetWritable(ctx, directoryID, logID, enabled); err != nil {
-					t.Errorf("SetWritable(): %v", err)
-				}
-			}
-
-			logs := make(map[int64]bool)
-			// Run enough times to ensure that random sampling will get us all logs.
-			for i := 0; i < 10*len(tc.logIDs); i++ {
-				log, err := m.randLog(ctx, directoryID)
-				if status.Code(err) != tc.wantCode {
-					t.Errorf("randLog(): %v, want %v", err, tc.wantCode)
-				}
-				if err != nil {
-					break
-				}
-				logs[log] = true
-			}
-			if got, want := logs, wantLogs; !cmp.Equal(got, want) {
-				t.Errorf("randLog(): %v, want %v", got, want)
-			}
+func TestMutationLogsIntegration(t *testing.T) {
+	storagetest.RunMutationLogsTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context)) {
+			return newForTest(ctx, t, dirID, logIDs...)
 		})
-	}
+}
+
+func TestLogsAdminIntegration(t *testing.T) {
+	storagetest.RunLogsAdminTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (adminserver.LogsAdmin, func(context.Context)) {
+			return newForTest(ctx, t, dirID, logIDs...)
+		})
 }
 
 func TestRandLog(t *testing.T) {
 	ctx := context.Background()
+	directoryID := "TestRandLog"
 
 	for _, tc := range []struct {
 		desc     string
@@ -107,7 +76,8 @@ func TestRandLog(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			m := newForTest(ctx, t, tc.send...)
+			m, done := newForTest(ctx, t, directoryID, tc.send...)
+			defer done(ctx)
 			logs := make(map[int64]bool)
 			for i := 0; i < 10*len(tc.wantLogs); i++ {
 				logID, err := m.randLog(ctx, directoryID)
@@ -128,8 +98,10 @@ func TestRandLog(t *testing.T) {
 
 func BenchmarkSend(b *testing.B) {
 	ctx := context.Background()
+	directoryID := "BenchmarkSend"
 	logID := int64(1)
-	m := newForTest(ctx, b, logID)
+	m, done := newForTest(ctx, b, directoryID, logID)
+	defer done(ctx)
 
 	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
 	for _, tc := range []struct {
@@ -162,11 +134,13 @@ func BenchmarkSend(b *testing.B) {
 func TestSend(t *testing.T) {
 	ctx := context.Background()
 
-	m := newForTest(ctx, t, 1, 2)
+	directoryID := "TestSend"
+	m, done := newForTest(ctx, t, directoryID, 1, 2)
+	defer done(ctx)
 	update := []byte("bar")
-	ts1 := time.Now()
-	ts2 := ts1.Add(time.Duration(1))
-	ts3 := ts2.Add(time.Duration(1))
+	ts1 := time.Now().Truncate(time.Microsecond)
+	ts2 := ts1.Add(1 * time.Microsecond)
+	ts3 := ts2.Add(1 * time.Microsecond)
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
@@ -188,88 +162,52 @@ func TestSend(t *testing.T) {
 	}
 }
 
+// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+var minWatermark = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func TestWatermark(t *testing.T) {
 	ctx := context.Background()
+	directoryID := "TestWatermark"
 	logIDs := []int64{1, 2}
-	m := newForTest(ctx, t, logIDs...)
+	m, done := newForTest(ctx, t, directoryID, logIDs...)
+	defer done(ctx)
 	update := []byte("bar")
 
-	startTS := time.Now()
-	for ts := startTS; ts.Before(startTS.Add(10)); ts = ts.Add(1) {
-		for _, logID := range logIDs {
-			if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
-				t.Fatalf("m.send(%v): %v", logID, err)
-			}
+	start := time.Now().Truncate(time.Microsecond)
+	for ts := start; ts.Before(start.Add(10 * time.Microsecond)); ts = ts.Add(1 * time.Microsecond) {
+		logID := int64(1)
+		if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
+			t.Fatalf("m.send(%v): %v", logID, err)
 		}
 	}
 
-	start := startTS.UnixNano()
 	for _, tc := range []struct {
 		desc      string
 		logID     int64
-		start     int64
+		start     time.Time
 		batchSize int32
 		count     int32
-		want      int64
+		want      time.Time
 	}{
-		{desc: "log1 max", logID: 1, batchSize: 100, want: start + 10, count: 10},
-		{desc: "log2 max", logID: 2, batchSize: 100, want: start + 10, count: 10},
-		{desc: "batch0", logID: 1, batchSize: 0},
-		{desc: "batch0start55", logID: 1, start: 55, batchSize: 0, want: 55},
-		{desc: "batch5", logID: 1, batchSize: 5, want: start + 5, count: 5},
-		{desc: "start1", logID: 1, start: start + 2, batchSize: 5, want: start + 7, count: 5},
-		{desc: "start8", logID: 1, start: start + 8, batchSize: 5, want: start + 10, count: 2},
+		{desc: "log1 max", logID: 1, batchSize: 100, start: start, want: start.Add(10 * time.Microsecond), count: 10},
+		{desc: "log2 empty", logID: 2, batchSize: 100, start: start, want: start},
+		{desc: "batch0", logID: 1, batchSize: 0, start: minWatermark, want: minWatermark},
+		{desc: "batch0start55", logID: 1, start: minWatermark.Add(55 * time.Microsecond), batchSize: 0, want: minWatermark.Add(55 * time.Microsecond)},
+		{desc: "batch5", logID: 1, start: start, batchSize: 5, want: start.Add(5 * time.Microsecond), count: 5},
+		{desc: "start1", logID: 1, start: start.Add(2 * time.Microsecond), batchSize: 5, want: start.Add(7 * time.Microsecond), count: 5},
+		{desc: "start8", logID: 1, start: start.Add(8 * time.Microsecond), batchSize: 5, want: start.Add(10 * time.Microsecond), count: 2},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
 			if err != nil {
 				t.Errorf("highWatermark(): %v", err)
 			}
-			if got != tc.want {
+			if !got.Equal(tc.want) {
 				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got, tc.want)
 			}
 			if count != tc.count {
 				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)
 			}
 		})
-	}
-}
-
-func mustMarshal(t *testing.T, p proto.Message) []byte {
-	t.Helper()
-	b, err := proto.Marshal(p)
-	if err != nil {
-		t.Fatalf("proto.Marshal(): %v", err)
-	}
-	return b
-}
-
-func TestReadLog(t *testing.T) {
-	ctx := context.Background()
-	logID := int64(5)
-	m := newForTest(ctx, t, logID)
-	for i := byte(0); i < 10; i++ {
-		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if _, err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
-			t.Fatalf("Send(): %v", err)
-		}
-	}
-
-	for _, tc := range []struct {
-		batchSize int32
-		count     int
-	}{
-		{batchSize: 0, count: 0},
-		{batchSize: 1, count: 3},
-		{batchSize: 4, count: 6},
-		{batchSize: 100, count: 30},
-	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, 0, time.Now().UnixNano(), tc.batchSize)
-		if err != nil {
-			t.Fatalf("ReadLog(%v): %v", tc.batchSize, err)
-		}
-		if got, want := len(rows), tc.count; got != want {
-			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.batchSize, got, want)
-		}
 	}
 }
