@@ -163,7 +163,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	// The Timestamp column has a maximum fidelity of microseconds.
 	// See https://dev.mysql.com/doc/refman/8.0/en/fractional-seconds.html
 	ts = ts.Truncate(time.Microsecond)
-	if ts.Before(maxTime.Time) || ts.Equal(maxTime.Time) {
+	if !ts.After(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
 			"current timestamp: %v, want > max-timestamp of queued mutations: %v", ts, maxTime)
 	}
@@ -196,9 +196,9 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 		Scan(&count, &high); err != nil {
 		return 0, start, err
 	}
-	if !high.Valid {
+	if count == 0 {
 		// When there are no rows, return the start time as the highest timestamp.
-		return count, start, nil
+		return 0, start, nil
 	}
 	return count, high.Time.Add(1 * time.Microsecond), nil
 }
