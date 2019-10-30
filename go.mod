@@ -28,7 +28,6 @@ require (
 	github.com/kylelemons/godebug v1.1.0
 	github.com/lyft/protoc-gen-validate v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
-	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/mwitkow/go-proto-validators v0.1.0 // indirect
 	github.com/prometheus/client_golang v1.1.0
 	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect

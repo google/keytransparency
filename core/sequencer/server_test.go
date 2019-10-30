@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
@@ -38,17 +39,17 @@ const directoryID = "directoryID"
 
 func fakeMetric(_ string) {}
 
+// fakeLogs are indexed by logID, and nanoseconds from time 0
 type fakeLogs map[int64][]mutator.LogMessage
 
-func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 	batchSize int32) ([]*mutator.LogMessage, error) {
-	refs := make([]*mutator.LogMessage, 0, int(high-low))
-	for i := low; i < high; i++ {
-		l[logID][i].ID = i
-		refs = append(refs, &l[logID][i])
+	refs := make([]*mutator.LogMessage, 0)
+	for i := low; i.Before(high); i = i.Add(time.Nanosecond) {
+		l[logID][i.UnixNano()].ID = i
+		refs = append(refs, &l[logID][i.UnixNano()])
 	}
 	return refs, nil
-
 }
 
 func (l fakeLogs) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
@@ -61,14 +62,14 @@ func (l fakeLogs) ListLogs(ctx context.Context, directoryID string, writable boo
 	return logIDs, nil
 }
 
-func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID, start int64,
-	batchSize int32) (int32, int64, error) {
-	high := start + int64(batchSize)
+func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
+	batchSize int32) (int32, time.Time, error) {
+	high := start.UnixNano() + int64(batchSize)
 	if high > int64(len(l[logID])) {
 		high = int64(len(l[logID]))
 	}
-	count := int32(high - start)
-	return count, high, nil
+	count := int32(high - start.UnixNano())
+	return count, time.Unix(0, high), nil
 }
 
 type fakeTrillianFactory struct {
@@ -199,7 +200,6 @@ func TestDefiningRevisions(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestReadMessages(t *testing.T) {

@@ -19,12 +19,14 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/sequencer/metadata"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
@@ -81,7 +83,6 @@ func (s *Server) GetRevision(ctx context.Context, in *pb.GetRevisionRequest) (*p
 	}
 
 	return s.getRevisionByRevision(ctx, d, logRoot, logConsistency, in.GetRevision())
-
 }
 
 func (s *Server) getRevisionByRevision(ctx context.Context, d *directory.Directory,
@@ -140,12 +141,16 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 
 	// Read PageSize + 1 messages from the log to see if there is another page.
-	high := meta.Sources[rt.SliceIndex].HighestExclusive
+	high := metadata.Source(meta.Sources[rt.SliceIndex]).EndTime()
 	logID := meta.Sources[rt.SliceIndex].LogId
-	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, logID, rt.LowWatermark, high, in.PageSize+1)
+	low, err := ptypes.Timestamp(rt.StartTime)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid start timestamp: %v", err)
+	}
+	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, logID, low, high, in.PageSize+1)
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("ListMutations(): ReadLog(%v, log: %v/(%v, %v], batchSize: %v): %v",
-			d.DirectoryID, logID, rt.LowWatermark, high, in.PageSize, err)
+			d.DirectoryID, logID, low, high, in.PageSize, err)
 		return nil, status.Errorf(st.Code(), "Reading mutations range failed: %v", st.Message())
 	}
 	moreInLogID := len(msgs) == int(in.PageSize+1)
@@ -177,7 +182,6 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	nextToken, err := EncodeToken(SourceList(meta.Sources).Next(rt, lastRow))
 	if st := status.Convert(err); st.Code() != codes.OK {
 		return nil, status.Errorf(st.Code(), "Failed creating next token: %v", st.Message())
-
 	}
 	return &pb.ListMutationsResponse{
 		Mutations:     mutations,
@@ -215,7 +219,6 @@ func (s *Server) logInclusion(ctx context.Context, d *directory.Directory, logRo
 		return nil, status.Errorf(st.Code(), "Cannot fetch log inclusion proof: %v", st.Message())
 	}
 	return logInclusion.GetProof(), nil
-
 }
 
 func (s *Server) latestLogRootProof(ctx context.Context, d *directory.Directory, firstTreeSize int64) (

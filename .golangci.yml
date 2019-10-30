@@ -1,5 +1,5 @@
 service:
-  golangci-lint-version: 1.18.x
+  golangci-lint-version: 1.19.x
 
 run:
   timeout: 5m
@@ -26,15 +26,30 @@ linters-settings:
       - github.com/google/martian/log
 
 linters:
-  enable-all: true
-  disable:
-    - maligned
-    - scopelint
-    - gochecknoinits
-    - gochecknoglobals
-    - lll
-    - interfacer
-    - funlen
+  enable: 
+     - deadcode
+     - depguard
+     - dogsled
+     - dupl
+     - errcheck
+     - goconst
+     - gocritic
+     - gocyclo
+     - gofmt
+     - goimports
+     - golint
+     - gosec
+     - ineffassign
+     - misspell
+     - nakedret
+     - prealloc
+     - structcheck
+     - typecheck
+     - unconvert
+     - unparam
+     - unused
+     - varcheck
+     - whitespace
 
 issues:
   exclude:

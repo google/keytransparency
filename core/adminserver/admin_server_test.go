@@ -261,7 +261,6 @@ func TestDelete(t *testing.T) {
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Fatalf("GetDirectory(): %v, want %v", got, want)
 		}
-
 	}
 }
 
