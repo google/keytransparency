@@ -153,23 +153,25 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		}
 	}()
 
-	var maxTime int64
+	var maxTime sql.NullTime
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
+		`SELECT MAX(Time) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTime); err != nil {
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
-	tsTime := ts.UnixNano()
-	if tsTime <= maxTime {
+
+	// The Timestamp column has a maximum fidelity of microseconds.
+	// See https://dev.mysql.com/doc/refman/8.0/en/fractional-seconds.html
+	ts = ts.Truncate(time.Microsecond)
+	if !ts.After(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
-			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
-			tsTime, maxTime)
+			"current timestamp: %v, want > max-timestamp of queued mutations: %v", ts, maxTime)
 	}
 
 	for i, data := range mData {
 		if _, err = tx.ExecContext(ctx,
 			`INSERT INTO Queue (DirectoryID, LogID, Time, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
-			directoryID, logID, tsTime, i, data); err != nil {
+			directoryID, logID, ts, i, data); err != nil {
 			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 		}
 	}
@@ -181,20 +183,24 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID int64,
 	start time.Time, batchSize int32) (int32, time.Time, error) {
 	var count int32
-	var high int64
+	var high sql.NullTime
 	if err := m.db.QueryRowContext(ctx,
-		`SELECT COUNT(*), COALESCE(MAX(T1.Time)+1, ?) FROM 
+		`SELECT COUNT(*), MAX(T1.Time) FROM
 		(
 			SELECT Q.Time FROM Queue as Q
 			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time >= ?
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
-		start.UnixNano(), directoryID, logID, start.UnixNano(), batchSize).
+		directoryID, logID, start, batchSize).
 		Scan(&count, &high); err != nil {
-		return 0, time.Time{}, err
+		return 0, start, err
 	}
-	return count, time.Unix(0, high), nil
+	if count == 0 {
+		// When there are no rows, return the start time as the highest timestamp.
+		return 0, start, nil
+	}
+	return count, high.Time.Add(1 * time.Microsecond), nil
 }
 
 // ReadLog reads all mutations in logID between [low, high).
@@ -206,7 +212,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
 		ORDER BY Time, LocalID ASC
 		LIMIT ?;`,
-		directoryID, logID, low.UnixNano(), high.UnixNano(), batchSize)
+		directoryID, logID, low, high, batchSize)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +229,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 			`SELECT Time, LocalID, Mutation FROM Queue
 			WHERE DirectoryID = ? AND LogID = ? AND Time = ? AND LocalID > ?
 			ORDER BY LocalID ASC;`,
-			directoryID, logID, last.ID.UnixNano(), last.LocalID)
+			directoryID, logID, last.ID, last.LocalID)
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +247,8 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
-		var timestamp, localID int64
+		var timestamp time.Time
+		var localID int64
 		var mData []byte
 		if err := rows.Scan(&timestamp, &localID, &mData); err != nil {
 			return nil, err
@@ -251,7 +258,7 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 			return nil, err
 		}
 		results = append(results, &mutator.LogMessage{
-			ID:        time.Unix(0, timestamp),
+			ID:        timestamp,
 			LocalID:   localID,
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,
