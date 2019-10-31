@@ -76,10 +76,12 @@ type MapMetadata_SourceSlice struct {
 	// lowest_inclusive is the lowest primary key (inclusive) of the source
 	// log that has been incorporated into this map revision. The primary
 	// keys of logged items MUST be monotonically increasing.
+	// Defined in terms of microseconds from the Unix epoch.
 	LowestInclusive int64 `protobuf:"varint,1,opt,name=lowest_inclusive,json=lowestInclusive,proto3" json:"lowest_inclusive,omitempty"`
 	// highest_exclusive is the highest primary key (exclusive) of the source
 	// log that has been incorporated into this map revision. The primary keys
 	// of logged items MUST be monotonically increasing.
+	// Defined in terms of microseconds from the Unix epoch.
 	HighestExclusive int64 `protobuf:"varint,2,opt,name=highest_exclusive,json=highestExclusive,proto3" json:"highest_exclusive,omitempty"`
 	// log_id is the ID of the source log.
 	LogId                int64    `protobuf:"varint,3,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
