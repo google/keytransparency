@@ -65,17 +65,12 @@ func createMetrics(mf monitoring.MetricFactory) {
 		directoryIDLabel, logIDLabel)
 }
 
-// WriteWatermark is the metadata that Send creates.
-type WriteWatermark struct {
-	LogID     int64
-	Watermark time.Time
-}
-
 // MutationLogs provides sets of time ordered message logs.
 type MutationLogs interface {
 	// Send submits the whole group of mutations atomically to a random log.
 	// TODO(gbelvin): Create a batch level object to make it clear that this a batch of updates.
-	Send(ctx context.Context, directoryID string, mutation ...*pb.EntryUpdate) (*WriteWatermark, error)
+	// Returns the logID and timestamp that the mutation batch got written at.
+	Send(ctx context.Context, directoryID string, mutation ...*pb.EntryUpdate) (int64, time.Time, error)
 	// ReadLog returns the messages in the (low, high] range stored in the
 	// specified log. ReadLog always returns complete units of the original
 	// batches sent via Send, and will return  more items than limit if
@@ -661,16 +656,13 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	tdone()
 
 	// Save mutation to the database.
-	wm, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
+	wmLogID, wmTime, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(st.Code(), "Mutation write error")
 	}
-	if wm != nil {
-		watermarkWritten.Set(float64(wm.Watermark.UnixNano()), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
-		sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wm.LogID))
-	}
-
+	watermarkWritten.Set(float64(wmTime.UnixNano()), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
+	sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
 	return &empty.Empty{}, nil
 }
 

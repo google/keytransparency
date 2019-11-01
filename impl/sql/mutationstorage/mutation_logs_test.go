@@ -123,7 +123,7 @@ func BenchmarkSend(b *testing.B) {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
-				if _, err := m.Send(ctx, directoryID, updates...); err != nil {
+				if _, _, err := m.Send(ctx, directoryID, updates...); err != nil {
 					b.Errorf("Send(): %v", err)
 				}
 			}
