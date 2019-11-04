@@ -16,7 +16,6 @@ package keyserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -27,7 +26,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/integration/memory"
 
 	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -55,6 +55,20 @@ func genIndexes(start, end int64) [][]byte {
 	return indexes
 }
 
+func genSignedEntries(t *testing.T, start, end int64) []*pb.SignedEntry {
+	t.Helper()
+	entries := make([]*pb.SignedEntry, 0)
+	for i := start; i < end; i++ {
+		entries = append(entries, &pb.SignedEntry{
+			Entry: mustMarshal(t, &pb.Entry{
+				Index:      []byte(fmt.Sprintf("key_%v", i)),
+				Commitment: []byte(fmt.Sprintf("value_%v", i)),
+			}),
+		})
+	}
+	return entries
+}
+
 func TestGetRevisionStream(t *testing.T) {
 	srv := &Server{}
 	err := srv.GetRevisionStream(nil, nil)
@@ -67,36 +81,6 @@ type batchStorage map[int64]SourceList // Map of Revision to Sources
 
 func (b batchStorage) ReadBatch(ctx context.Context, dirID string, rev int64) (*spb.MapMetadata, error) {
 	return &spb.MapMetadata{Sources: b[rev]}, nil
-}
-
-type mutations map[int64][]*mutator.LogMessage // Map of logID to Slice of LogMessages
-
-func (m *mutations) Send(ctx context.Context, dirID string, _ int64, mutation ...*pb.EntryUpdate) (time.Time, error) {
-	return time.Time{}, errors.New("unimplemented")
-}
-
-func (m *mutations) ListLogs(ctx context.Context, dirID string, _ bool) ([]int64, error) {
-	logIDs := []int64{}
-	for id := range *m {
-		logIDs = append(logIDs, id)
-	}
-	return logIDs, nil
-}
-
-func (m *mutations) ReadLog(ctx context.Context, dirID string,
-	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
-	logShard := (*m)[logID]
-	if low.UnixNano() > int64(len(logShard)) {
-		return nil, fmt.Errorf("invalid argument: low: %v, want <= max watermark: %v", low, len(logShard))
-	}
-	count := high.UnixNano() - low.UnixNano()
-	if count > int64(batchSize) {
-		count = int64(batchSize)
-	}
-	if low.UnixNano()+count > int64(len(logShard)) {
-		count = int64(len(logShard)) - low.UnixNano() + 1
-	}
-	return logShard[low.UnixNano() : low.UnixNano()+count], nil
 }
 
 func MustEncodeToken(t *testing.T, low time.Time) string {
@@ -119,30 +103,16 @@ func MustEncodeToken(t *testing.T, low time.Time) string {
 
 func TestListMutations(t *testing.T) {
 	ctx := context.Background()
+	logID := int64(0)
+	fakeLogs := memory.NewMutationLog()
+	start := time.Unix(0, 0)
+	for i := int64(0); i < 10; i++ {
+		fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), genSignedEntries(t, i, i+1))
+	}
+
 	fakeBatches := batchStorage{
 		1: SourceList{{LogId: 0, LowestInclusive: 2, HighestExclusive: 7}},
 		2: SourceList{{LogId: 0, LowestInclusive: 7, HighestExclusive: 11}},
-	}
-
-	fakeLogs := make(mutations)
-	for _, sources := range fakeBatches {
-		for _, source := range sources {
-			extendBy := source.HighestExclusive - int64(len(fakeLogs[source.LogId]))
-			if extendBy > 0 {
-				fakeLogs[source.LogId] = append(fakeLogs[source.LogId], make([]*mutator.LogMessage, extendBy)...)
-			}
-			for i := source.LowestInclusive; i < source.HighestExclusive; i++ {
-				fakeLogs[source.LogId][i] = &mutator.LogMessage{
-					ID: time.Unix(0, i*int64(time.Nanosecond)),
-					Mutation: &pb.SignedEntry{
-						Entry: mustMarshal(t, &pb.Entry{
-							Index:      []byte(fmt.Sprintf("key_%v", i)),
-							Commitment: []byte(fmt.Sprintf("value_%v", i)),
-						}),
-					},
-				}
-			}
-		}
 	}
 
 	for _, tc := range []struct {
@@ -195,14 +165,15 @@ func TestListMutations(t *testing.T) {
 			if err != nil {
 				return
 			}
-			mtns := fakeLogs[0][tc.start:tc.end]
-			if got, want := len(resp.Mutations), len(mtns); got != want {
-				t.Fatalf("len(resp.Mutations):%v, want %v", got, want)
+
+			got := []*pb.SignedEntry{}
+			for _, m := range resp.Mutations {
+				got = append(got, m.Mutation)
 			}
-			for i, mut := range resp.Mutations {
-				if got, want := mut.Mutation, mtns[i].Mutation; !proto.Equal(got, want) {
-					t.Errorf("resp.Mutations[i].Update:%v, want %v", got, want)
-				}
+
+			if want := genSignedEntries(t, tc.start, tc.end); !cmp.Equal(
+				got, want, cmp.Comparer(proto.Equal)) {
+				t.Errorf("got: %v, want: %v, diff: \n%v", got, want, cmp.Diff(got, want))
 			}
 
 			var npt rtpb.ReadToken
