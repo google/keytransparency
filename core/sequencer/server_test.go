@@ -17,7 +17,6 @@ package sequencer
 import (
 	"context"
 	"fmt"
-	"sort"
 	"testing"
 	"time"
 
@@ -27,10 +26,11 @@ import (
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc"
 
-	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/integration/memory"
 	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
+	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -41,39 +41,6 @@ func fakeMetric(_ string) {}
 
 func init() {
 	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
-}
-
-// fakeLogs are indexed by logID, and nanoseconds from time 0
-type fakeLogs map[int64][]mutator.LogMessage
-
-func (l fakeLogs) ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
-	batchSize int32) ([]*mutator.LogMessage, error) {
-	refs := make([]*mutator.LogMessage, 0)
-	for i := low; i.Before(high); i = i.Add(time.Nanosecond) {
-		l[logID][i.UnixNano()].ID = i
-		refs = append(refs, &l[logID][i.UnixNano()])
-	}
-	return refs, nil
-}
-
-func (l fakeLogs) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
-	logIDs := make([]int64, 0, len(l))
-	for logID := range l {
-		logIDs = append(logIDs, logID)
-	}
-	// sort logsIDs for test repeatability.
-	sort.Slice(logIDs, func(i, j int) bool { return logIDs[i] < logIDs[j] })
-	return logIDs, nil
-}
-
-func (l fakeLogs) HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
-	batchSize int32) (int32, time.Time, error) {
-	high := start.UnixNano() + int64(batchSize)
-	if high > int64(len(l[logID])) {
-		high = int64(len(l[logID]))
-	}
-	count := int32(high - start.UnixNano())
-	return count, time.Unix(0, high), nil
 }
 
 type fakeTrillianFactory struct {
@@ -134,11 +101,20 @@ func TestDefiningRevisions(t *testing.T) {
 	// Verify that outstanding revisions prevent future revisions from being created.
 	ctx := context.Background()
 	mapRev := int64(2)
+	dirID := "foobar"
+	fakeLogs := memory.NewMutationLog()
+	start := time.Unix(0, 0)
+	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
+		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < msgs; i++ {
+			fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+		}
+	}
+
 	s := Server{
-		logs: fakeLogs{
-			0: make([]mutator.LogMessage, 10),
-			1: make([]mutator.LogMessage, 20),
-		},
+		logs: fakeLogs,
 		trillian: &fakeTrillianFactory{
 			tmap: &fakeMap{latestMapRoot: &types.MapRootV1{Revision: uint64(mapRev)}},
 		},
@@ -207,10 +183,18 @@ func TestDefiningRevisions(t *testing.T) {
 
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
-	s := Server{logs: fakeLogs{
-		0: make([]mutator.LogMessage, 10),
-		1: make([]mutator.LogMessage, 20),
-	}}
+	fakeLogs := memory.NewMutationLog()
+	dirID := "TestReadMessages"
+	start := time.Unix(0, 0)
+	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
+		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < msgs; i++ {
+			fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+		}
+	}
+	s := Server{logs: fakeLogs}
 
 	for _, tc := range []struct {
 		meta      *spb.MapMetadata
@@ -241,10 +225,18 @@ func TestReadMessages(t *testing.T) {
 
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
-	s := Server{logs: fakeLogs{
-		0: make([]mutator.LogMessage, 10),
-		1: make([]mutator.LogMessage, 20),
-	}}
+	fakeLogs := memory.NewMutationLog()
+	dirID := "TestHighWatermark"
+	start := time.Unix(0, 0)
+	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
+		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < msgs; i++ {
+			fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+		}
+	}
+	s := Server{logs: fakeLogs}
 
 	for _, tc := range []struct {
 		desc      string
@@ -291,7 +283,7 @@ func TestHighWatermarks(t *testing.T) {
 				t.Errorf("HighWatermarks(): count: %v, want %v", count, tc.count)
 			}
 			if !proto.Equal(next, tc.next) {
-				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, &tc.next))
+				t.Errorf("HighWatermarks(): diff(-got, +want): %v", cmp.Diff(next, tc.next, cmp.Comparer(proto.Equal)))
 			}
 		})
 	}

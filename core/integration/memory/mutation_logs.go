@@ -48,6 +48,16 @@ func (m MutationLog) AddLogs(ctx context.Context, directoryID string, logIDs ...
 	return nil
 }
 
+// AddLogs to the mutation database.
+func (m MutationLog) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
+	logIDs := []int64{}
+	for logID := range m {
+		logIDs = append(logIDs, logID)
+	}
+	sort.Slice(logIDs, func(a, b int) bool { return logIDs[a] < logIDs[b] })
+	return logIDs, nil
+}
+
 // Send a batch of mutations to a random log.
 func (m MutationLog) Send(ctx context.Context, dirID string, mutation ...*pb.EntryUpdate) (int64, time.Time, error) {
 	// Select a random logID
@@ -88,8 +98,8 @@ func (m MutationLog) ReadLog(ctx context.Context, dirID string,
 	if len(logShard) == 0 || batchSize == 0 {
 		return nil, nil
 	}
-	start := int(sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(low) }))
-	end := int(sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(high) }))
+	start := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(low) })
+	end := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(high) })
 	// If the search is unsuccessful, i will be equal to len(logShard).
 	if start == len(logShard) && logShard[start].time.Before(low) {
 		return nil, fmt.Errorf("invalid argument: low: %v, want <= max watermark: %v", low, logShard[start].time)
@@ -104,4 +114,19 @@ func (m MutationLog) ReadLog(ctx context.Context, dirID string,
 		}
 	}
 	return out, nil
+}
+
+// HighWatermark returns the highest timestamp batchSize items beyond start.
+func (m MutationLog) HighWatermark(_ context.Context, _ string, logID int64, start time.Time,
+	batchSize int32) (int32, time.Time, error) {
+	logShard := m[logID]
+	i := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(start) })
+
+	count := int32(0)
+	high := start // Preserve start time if there are no rows to process
+	for ; i < len(logShard) && count < batchSize; i++ {
+		high = logShard[i].time.Add(time.Nanosecond) // Returns exclusive n + 1
+		count += int32(len(logShard[i].msgs))
+	}
+	return count, high, nil
 }
