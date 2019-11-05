@@ -26,9 +26,9 @@ import (
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc"
 
-	"github.com/google/keytransparency/core/integration/memory"
 	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/runner"
+	"github.com/google/keytransparency/impl/memory"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"

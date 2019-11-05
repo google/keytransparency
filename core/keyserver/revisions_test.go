@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/keytransparency/core/integration/memory"
+	"github.com/google/keytransparency/impl/memory"
 
 	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
