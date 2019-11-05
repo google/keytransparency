@@ -22,7 +22,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -67,20 +66,20 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 // Returns the logID/watermark pair that was written, or nil if nothing was written.
 // TODO(gbelvin): Make updates a slice.
-func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) (*keyserver.WriteWatermark, error) {
+func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) (int64, time.Time, error) {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
 	if len(updates) == 0 {
-		return nil, nil
+		return 0, time.Time{}, nil
 	}
 	logID, err := m.randLog(ctx, directoryID)
 	if err != nil {
-		return nil, err
+		return 0, time.Time{}, err
 	}
 	updateData := make([][]byte, 0, len(updates))
 	for _, u := range updates {
 		data, err := proto.Marshal(u)
 		if err != nil {
-			return nil, err
+			return 0, time.Time{}, err
 		}
 		updateData = append(updateData, data)
 	}
@@ -88,9 +87,9 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 	// we get timestamp contention.
 	ts := time.Now()
 	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
-		return nil, err
+		return 0, time.Time{}, err
 	}
-	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts}, nil
+	return logID, ts, nil
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
