@@ -39,6 +39,10 @@ const directoryID = "directoryID"
 
 func fakeMetric(_ string) {}
 
+func init() {
+	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
+}
+
 // fakeLogs are indexed by logID, and nanoseconds from time 0
 type fakeLogs map[int64][]mutator.LogMessage
 
@@ -130,7 +134,6 @@ func TestDefiningRevisions(t *testing.T) {
 	// Verify that outstanding revisions prevent future revisions from being created.
 	ctx := context.Background()
 	mapRev := int64(2)
-	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
 	s := Server{
 		logs: fakeLogs{
 			0: make([]mutator.LogMessage, 10),
