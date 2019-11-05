@@ -102,14 +102,14 @@ func TestDefiningRevisions(t *testing.T) {
 	ctx := context.Background()
 	mapRev := int64(2)
 	dirID := "foobar"
-	fakeLogs := memory.NewMutationLog()
+	fakeLogs := memory.NewMutationLogs()
 	start := time.Unix(0, 0)
 	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
 		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+			fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
 		}
 	}
 
@@ -183,7 +183,7 @@ func TestDefiningRevisions(t *testing.T) {
 
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
-	fakeLogs := memory.NewMutationLog()
+	fakeLogs := memory.NewMutationLogs()
 	dirID := "TestReadMessages"
 	start := time.Unix(0, 0)
 	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
@@ -191,7 +191,7 @@ func TestReadMessages(t *testing.T) {
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+			fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
 		}
 	}
 	s := Server{logs: fakeLogs}
@@ -225,7 +225,7 @@ func TestReadMessages(t *testing.T) {
 
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
-	fakeLogs := memory.NewMutationLog()
+	fakeLogs := memory.NewMutationLogs()
 	dirID := "TestHighWatermark"
 	start := time.Unix(0, 0)
 	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
@@ -233,7 +233,7 @@ func TestHighWatermarks(t *testing.T) {
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+			fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
 		}
 	}
 	s := Server{logs: fakeLogs}

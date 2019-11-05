@@ -26,7 +26,7 @@ import (
 func TestMutationLogsIntegration(t *testing.T) {
 	storagetest.RunMutationLogsTests(t,
 		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context)) {
-			m := NewMutationLog()
+			m := NewMutationLogs()
 			if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 				t.Fatal(err)
 			}

@@ -104,10 +104,10 @@ func MustEncodeToken(t *testing.T, low time.Time) string {
 func TestListMutations(t *testing.T) {
 	ctx := context.Background()
 	logID := int64(0)
-	fakeLogs := memory.NewMutationLog()
+	fakeLogs := memory.NewMutationLogs()
 	start := time.Unix(0, 0)
 	for i := int64(0); i < 10; i++ {
-		fakeLogs.SendAt(logID, start.Add(time.Duration(i)*time.Nanosecond), genSignedEntries(t, i, i+1))
+		fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), genSignedEntries(t, i, i+1))
 	}
 
 	fakeBatches := batchStorage{
