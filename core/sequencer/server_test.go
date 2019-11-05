@@ -21,16 +21,18 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc"
 
-	"github.com/google/keytransparency/core/sequencer/mapper"
-	"github.com/google/keytransparency/core/sequencer/runner"
 	"github.com/google/keytransparency/impl/memory"
 
+	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/runner"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -41,6 +43,15 @@ func fakeMetric(_ string) {}
 
 func init() {
 	initMetrics.Do(func() { createMetrics(monitoring.InertMetricFactory{}) })
+}
+
+func timestamp(t *testing.T, ts time.Time) *protopb.Timestamp {
+	t.Helper()
+	ret, err := ptypes.TimestampProto(ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ret
 }
 
 type fakeTrillianFactory struct {
@@ -103,13 +114,17 @@ func TestDefiningRevisions(t *testing.T) {
 	mapRev := int64(2)
 	dirID := "foobar"
 	fakeLogs := memory.NewMutationLogs()
-	start := time.Unix(0, 0)
+	idx := make([]time.Time, 0, 30)
 	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
 		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+			_, ts, err := fakeLogs.Send(ctx, dirID, &pb.EntryUpdate{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			idx = append(idx, ts)
 		}
 	}
 
@@ -140,13 +155,14 @@ func TestDefiningRevisions(t *testing.T) {
 			wantNew: mapRev + 1},
 		{desc: "drained", highestRev: mapRev,
 			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, LowestInclusive: 0, HighestExclusive: 10},
-				{LogId: 1, LowestInclusive: 0, HighestExclusive: 20},
+				{LogId: 0, LowestInclusive: 0, HighestExclusive: idx[29].Add(time.Second).UnixNano()},
+				{LogId: 1, LowestInclusive: 0, HighestExclusive: idx[29].Add(time.Second).UnixNano()},
 			}},
 			wantNew: mapRev},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			s.batcher = &fakeBatcher{highestRev: tc.highestRev, batches: make(map[int64]*spb.MapMetadata)}
+			t.Logf("meta: %v", tc.meta)
 			s.batcher.WriteBatchSources(ctx, directoryID, tc.highestRev, &tc.meta)
 
 			gdrResp, err := s.GetDefinedRevisions(ctx,
@@ -158,6 +174,7 @@ func TestDefiningRevisions(t *testing.T) {
 				HighestApplied: mapRev,
 				HighestDefined: tc.highestRev,
 			}
+			t.Logf("gdrGot: %v", gdrResp)
 			if got, want := gdrResp, gdrWant; !proto.Equal(got, want) {
 				t.Errorf("GetDefinedRevisions(): %v, want %v", got, want)
 			}
@@ -185,13 +202,17 @@ func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
 	fakeLogs := memory.NewMutationLogs()
 	dirID := "TestReadMessages"
-	start := time.Unix(0, 0)
+	idx := make([]time.Time, 0, 30)
 	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
 		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+			_, ts, err := fakeLogs.Send(ctx, dirID, &pb.EntryUpdate{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			idx = append(idx, ts)
 		}
 	}
 	s := Server{logs: fakeLogs}
@@ -202,14 +223,15 @@ func TestReadMessages(t *testing.T) {
 		want      int
 	}{
 		{batchSize: 1, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
+			{LogId: 0, LowestInclusive: idx[1].UnixNano(), HighestExclusive: idx[10].UnixNano()},
+			{LogId: 1, LowestInclusive: idx[1].UnixNano(), HighestExclusive: idx[10].UnixNano()},
 		}}},
 		{batchSize: 10000, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
 		}}},
 		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
-			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
+			{LogId: 0, LowestInclusive: idx[1].UnixNano(), HighestExclusive: idx[20].UnixNano()},
+			{LogId: 1, LowestInclusive: idx[1].UnixNano(), HighestExclusive: idx[20].UnixNano()},
 		}}},
 	} {
 		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta, fakeMetric)
@@ -227,13 +249,17 @@ func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
 	fakeLogs := memory.NewMutationLogs()
 	dirID := "TestHighWatermark"
-	start := time.Unix(0, 0)
+	idx := make([]time.Time, 0, 30)
 	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
 		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), []*pb.SignedEntry{{}})
+			_, ts, err := fakeLogs.Send(ctx, dirID, &pb.EntryUpdate{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			idx = append(idx, ts)
 		}
 	}
 	s := Server{logs: fakeLogs}
@@ -247,15 +273,15 @@ func TestHighWatermarks(t *testing.T) {
 	}{
 		{desc: "nobatch", batchSize: 30, count: 30,
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestExclusive: 10},
-				{LogId: 1, HighestExclusive: 20}}}},
+				{LogId: 0, HighestExclusive: idx[29].UnixNano()},
+				{LogId: 1, HighestExclusive: idx[29].UnixNano()}}}},
 		{desc: "exactbatch", batchSize: 20, count: 20,
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestExclusive: 10},
-				{LogId: 1, HighestExclusive: 10}}}},
+				{LogId: 0, HighestExclusive: idx[10].UnixNano()},
+				{LogId: 1, HighestExclusive: idx[10].UnixNano()}}}},
 		{desc: "batchwprev", batchSize: 20, count: 20,
 			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestExclusive: 10}}},
+				{LogId: 0, HighestExclusive: idx[10].UnixNano()}}},
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				{LogId: 0, LowestInclusive: 10, HighestExclusive: 10},
 				{LogId: 1, HighestExclusive: 20}}}},
