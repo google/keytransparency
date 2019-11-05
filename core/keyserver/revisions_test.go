@@ -55,18 +55,28 @@ func genIndexes(start, end int64) [][]byte {
 	return indexes
 }
 
-func genSignedEntries(t *testing.T, start, end int64) []*pb.SignedEntry {
+func genEntryUpdates(t *testing.T, start, end int64) []*pb.EntryUpdate {
 	t.Helper()
-	entries := make([]*pb.SignedEntry, 0)
+	entries := make([]*pb.EntryUpdate, 0)
 	for i := start; i < end; i++ {
-		entries = append(entries, &pb.SignedEntry{
-			Entry: mustMarshal(t, &pb.Entry{
-				Index:      []byte(fmt.Sprintf("key_%v", i)),
-				Commitment: []byte(fmt.Sprintf("value_%v", i)),
-			}),
+		entries = append(entries, &pb.EntryUpdate{
+			Mutation: &pb.SignedEntry{
+				Entry: mustMarshal(t, &pb.Entry{
+					Index: []byte(fmt.Sprintf("key_%v", i)),
+				}),
+			},
 		})
 	}
 	return entries
+}
+
+func timestamp(t *testing.T, ts time.Time) *protopb.Timestamp {
+	t.Helper()
+	ret, err := ptypes.TimestampProto(ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ret
 }
 
 func TestGetRevisionStream(t *testing.T) {
@@ -103,16 +113,20 @@ func MustEncodeToken(t *testing.T, low time.Time) string {
 
 func TestListMutations(t *testing.T) {
 	ctx := context.Background()
-	logID := int64(0)
+	dirID := "TestListMutations"
 	fakeLogs := memory.NewMutationLogs()
-	start := time.Unix(0, 0)
-	for i := int64(0); i < 10; i++ {
-		fakeLogs.SendAt(t, logID, start.Add(time.Duration(i)*time.Nanosecond), genSignedEntries(t, i, i+1))
+	idx := make([]time.Time, 0, 12)
+	for i := int64(0); i < 12; i++ {
+		_, ts, err := fakeLogs.Send(ctx, dirID, genEntryUpdates(t, i, i+1)...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		idx = append(idx, ts)
 	}
 
 	fakeBatches := batchStorage{
-		1: SourceList{{LogId: 0, LowestInclusive: 2, HighestExclusive: 7}},
-		2: SourceList{{LogId: 0, LowestInclusive: 7, HighestExclusive: 11}},
+		1: SourceList{{LogId: 0, LowestInclusive: idx[2].UnixNano(), HighestExclusive: idx[7].UnixNano()}},
+		2: SourceList{{LogId: 0, LowestInclusive: idx[7].UnixNano(), HighestExclusive: idx[11].UnixNano()}},
 	}
 
 	for _, tc := range []struct {
@@ -123,12 +137,12 @@ func TestListMutations(t *testing.T) {
 		wantNext   *rtpb.ReadToken
 		wantErr    bool
 	}{
-		{desc: "exact page", pageSize: 6, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
+		{desc: "first page", pageSize: 6, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
 		{desc: "large page", pageSize: 10, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
-		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: &rtpb.ReadToken{StartTime: &protopb.Timestamp{Nanos: 6}}},
-		{desc: "large page with token", token: MustEncodeToken(t, time.Unix(0, 3)), pageSize: 10, start: 3, end: 7, wantNext: &rtpb.ReadToken{}},
-		{desc: "small page with token", token: MustEncodeToken(t, time.Unix(0, 3)), pageSize: 2, start: 3, end: 5,
-			wantNext: &rtpb.ReadToken{StartTime: &protopb.Timestamp{Nanos: 5}}},
+		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: &rtpb.ReadToken{StartTime: timestamp(t, idx[6])}},
+		{desc: "large page with token", token: MustEncodeToken(t, idx[3]), pageSize: 10, start: 3, end: 7, wantNext: &rtpb.ReadToken{}},
+		{desc: "small page with token", token: MustEncodeToken(t, idx[3]), pageSize: 2, start: 3, end: 5,
+			wantNext: &rtpb.ReadToken{StartTime: timestamp(t, idx[5])}},
 		{desc: "invalid page token", token: "some_token", pageSize: 0, wantErr: true},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -166,12 +180,12 @@ func TestListMutations(t *testing.T) {
 				return
 			}
 
-			got := []*pb.SignedEntry{}
+			got := []*pb.EntryUpdate{}
 			for _, m := range resp.Mutations {
-				got = append(got, m.Mutation)
+				got = append(got, &pb.EntryUpdate{Mutation: m.Mutation})
 			}
 
-			if want := genSignedEntries(t, tc.start, tc.end); !cmp.Equal(
+			if want := genEntryUpdates(t, tc.start, tc.end); !cmp.Equal(
 				got, want, cmp.Comparer(proto.Equal)) {
 				t.Errorf("got: %v, want: %v, diff: \n%v", got, want, cmp.Diff(got, want))
 			}
