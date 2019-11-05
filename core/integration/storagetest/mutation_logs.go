@@ -63,7 +63,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	// Write ten batches, three entries each.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if _, _, err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
+		if _, _, err := m.Send(ctx, directoryID, logID, entry, entry, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
 	}

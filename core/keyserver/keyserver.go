@@ -70,7 +70,7 @@ type MutationLogs interface {
 	// Send submits the whole group of mutations atomically to a random log.
 	// TODO(gbelvin): Create a batch level object to make it clear that this a batch of updates.
 	// Returns the logID and timestamp that the mutation batch got written at.
-	Send(ctx context.Context, directoryID string, mutation ...*pb.EntryUpdate) (int64, time.Time, error)
+	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (int64, time.Time, error)
 	// ReadLog returns the messages in the (low, high] range stored in the
 	// specified log. ReadLog always returns complete units of the original
 	// batches sent via Send, and will return  more items than limit if
@@ -610,6 +610,7 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	return s.BatchQueueUserUpdate(ctx, &pb.BatchQueueUserUpdateRequest{
 		DirectoryId: in.DirectoryId,
 		Updates:     []*pb.EntryUpdate{in.EntryUpdate},
+		LogId:       in.GetLogId(),
 	})
 }
 
@@ -656,7 +657,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	tdone()
 
 	// Save mutation to the database.
-	wmLogID, wmTime, err := s.logs.Send(ctx, directory.DirectoryID, in.Updates...)
+	wmLogID, wmTime, err := s.logs.Send(ctx, directory.DirectoryID, in.GetLogId(), in.Updates...)
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(st.Code(), "Mutation write error")
