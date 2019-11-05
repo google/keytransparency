@@ -33,3 +33,14 @@ func TestMutationLogsIntegration(t *testing.T) {
 			return m, func(context.Context) {}
 		})
 }
+
+func TestMutationLogsReaderIntegration(t *testing.T) {
+	storagetest.RunMutationLogsReaderTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (storagetest.LogsReadWriter, func(context.Context)) {
+			m := NewMutationLogs()
+			if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
+				t.Fatal(err)
+			}
+			return m, func(context.Context) {}
+		})
+}
