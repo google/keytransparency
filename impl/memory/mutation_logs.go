@@ -17,14 +17,16 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
-	"testing"
 	"time"
 
 	"github.com/google/keytransparency/core/mutator"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
+
+var clock time.Time = time.Unix(10, 0)
 
 // NewMutationLogs creates a new fake MutationLogs.
 func NewMutationLogs() MutationLogs {
@@ -67,21 +69,18 @@ func (m MutationLogs) Send(_ context.Context, _ string, mutation ...*pb.EntryUpd
 		logID = i // Go enumerates maps in a random order.
 		break
 	}
-	ts := time.Now()
+
+	clock = clock.Add(time.Second)
+	ts := clock
 	// Only save the Merkle tree bits.
 	entries := make([]*pb.SignedEntry, 0, len(mutation))
 	for _, i := range mutation {
 		entries = append(entries, i.Mutation)
 	}
-	m.SendAt(nil /* testing.T */, logID, ts, entries)
-	return logID, ts, nil
-}
 
-// SendAt is a test-only API that writes a batch of mutations at a given timestamp.
-func (m MutationLogs) SendAt(t *testing.T, logID int64, ts time.Time, entries []*pb.SignedEntry) {
 	logShard := m[logID]
 	if len(logShard) > 0 && logShard[len(logShard)-1].time.After(ts) {
-		t.Fatalf("inserting mutation entry %v out of order", ts)
+		return 0, time.Time{}, fmt.Errorf("inserting mutation entry %v out of order", ts)
 	}
 
 	// Convert []SignedEntry into []LogMessage for storage.
@@ -90,10 +89,11 @@ func (m MutationLogs) SendAt(t *testing.T, logID int64, ts time.Time, entries []
 		msgs = append(msgs, &mutator.LogMessage{ID: ts, Mutation: e})
 	}
 	m[logID] = append(logShard, batch{time: ts, msgs: msgs})
+	return logID, ts, nil
 }
 
 // ReadLog returns mutations between [low, high).  Always returns complete batches.
-// ReadLog will return more items than batchSize if nessesary to return a complete batch.
+// ReadLog will return more items than batchSize if necessary to return a complete batch.
 func (m MutationLogs) ReadLog(_ context.Context, _ string,
 	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
 	logShard := m[logID]
