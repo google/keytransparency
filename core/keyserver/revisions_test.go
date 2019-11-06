@@ -114,10 +114,11 @@ func MustEncodeToken(t *testing.T, low time.Time) string {
 func TestListMutations(t *testing.T) {
 	ctx := context.Background()
 	dirID := "TestListMutations"
+	logID := int64(0)
 	fakeLogs := memory.NewMutationLogs()
 	idx := make([]time.Time, 0, 12)
 	for i := int64(0); i < 12; i++ {
-		_, ts, err := fakeLogs.Send(ctx, dirID, genEntryUpdates(t, i, i+1)...)
+		ts, err := fakeLogs.Send(ctx, dirID, logID, genEntryUpdates(t, i, i+1)...)
 		if err != nil {
 			t.Fatal(err)
 		}

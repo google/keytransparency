@@ -100,7 +100,7 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 	idx := make([]time.Time, 0, 10)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{i}}}
-		_, ts, err := m.Send(ctx, directoryID, entry)
+		ts, err := m.Send(ctx, directoryID, logID, entry)
 		if err != nil {
 			t.Fatalf("Send(): %v", err)
 		}

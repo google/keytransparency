@@ -26,7 +26,7 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-var clock time.Time = time.Unix(10, 0)
+var clock = time.Unix(10, 0) // Start our clock at an arbitrary, non-zero place.
 
 // NewMutationLogs creates a new fake MutationLogs.
 func NewMutationLogs() MutationLogs {
@@ -62,14 +62,7 @@ func (m MutationLogs) ListLogs(_ context.Context, _ string, writable bool) ([]in
 }
 
 // Send stores a batch of mutations in a random logID.
-func (m MutationLogs) Send(_ context.Context, _ string, mutation ...*pb.EntryUpdate) (int64, time.Time, error) {
-	// Select a random logID.
-	var logID int64
-	for i := range m {
-		logID = i // Go enumerates maps in a random order.
-		break
-	}
-
+func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ...*pb.EntryUpdate) (time.Time, error) {
 	clock = clock.Add(time.Second)
 	ts := clock
 	// Only save the Merkle tree bits.
@@ -80,7 +73,7 @@ func (m MutationLogs) Send(_ context.Context, _ string, mutation ...*pb.EntryUpd
 
 	logShard := m[logID]
 	if len(logShard) > 0 && logShard[len(logShard)-1].time.After(ts) {
-		return 0, time.Time{}, fmt.Errorf("inserting mutation entry %v out of order", ts)
+		return time.Time{}, fmt.Errorf("inserting mutation entry %v out of order", ts)
 	}
 
 	// Convert []SignedEntry into []LogMessage for storage.
@@ -89,7 +82,7 @@ func (m MutationLogs) Send(_ context.Context, _ string, mutation ...*pb.EntryUpd
 		msgs = append(msgs, &mutator.LogMessage{ID: ts, Mutation: e})
 	}
 	m[logID] = append(logShard, batch{time: ts, msgs: msgs})
-	return logID, ts, nil
+	return ts, nil
 }
 
 // ReadLog returns mutations between [low, high).  Always returns complete batches.
