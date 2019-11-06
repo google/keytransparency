@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/keyserver"
@@ -57,45 +56,6 @@ func TestLogsAdminIntegration(t *testing.T) {
 		})
 }
 
-func TestRandLog(t *testing.T) {
-	ctx := context.Background()
-	directoryID := "TestRandLog"
-
-	for _, tc := range []struct {
-		desc     string
-		send     []int64
-		wantCode codes.Code
-		wantLogs map[int64]bool
-	}{
-		{desc: "no rows", wantCode: codes.NotFound, wantLogs: map[int64]bool{}},
-		{desc: "one row", send: []int64{10}, wantLogs: map[int64]bool{10: true}},
-		{desc: "second", send: []int64{1, 2, 3}, wantLogs: map[int64]bool{
-			1: true,
-			2: true,
-			3: true,
-		}},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			m, done := newForTest(ctx, t, directoryID, tc.send...)
-			defer done(ctx)
-			logs := make(map[int64]bool)
-			for i := 0; i < 10*len(tc.wantLogs); i++ {
-				logID, err := m.randLog(ctx, directoryID)
-				if got, want := status.Code(err), tc.wantCode; got != want {
-					t.Errorf("randLog(): %v, want %v", got, want)
-				}
-				if err != nil {
-					break
-				}
-				logs[logID] = true
-			}
-			if got, want := logs, tc.wantLogs; !cmp.Equal(got, want) {
-				t.Errorf("logs: %v, want %v", got, want)
-			}
-		})
-	}
-}
-
 func BenchmarkSend(b *testing.B) {
 	ctx := context.Background()
 	directoryID := "BenchmarkSend"
@@ -123,7 +83,7 @@ func BenchmarkSend(b *testing.B) {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
-				if _, _, err := m.Send(ctx, directoryID, updates...); err != nil {
+				if _, err := m.Send(ctx, directoryID, logID, updates...); err != nil {
 					b.Errorf("Send(): %v", err)
 				}
 			}

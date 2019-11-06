@@ -17,7 +17,6 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
-	"math/rand"
 	"time"
 
 	"github.com/golang/glog"
@@ -66,20 +65,16 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 // Returns the logID/watermark pair that was written, or nil if nothing was written.
 // TODO(gbelvin): Make updates a slice.
-func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) (int64, time.Time, error) {
+func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, updates ...*pb.EntryUpdate) (time.Time, error) {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
 	if len(updates) == 0 {
-		return 0, time.Time{}, nil
-	}
-	logID, err := m.randLog(ctx, directoryID)
-	if err != nil {
-		return 0, time.Time{}, err
+		return time.Time{}, nil
 	}
 	updateData := make([][]byte, 0, len(updates))
 	for _, u := range updates {
 		data, err := proto.Marshal(u)
 		if err != nil {
-			return 0, time.Time{}, err
+			return time.Time{}, err
 		}
 		updateData = append(updateData, data)
 	}
@@ -87,9 +82,9 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb
 	// we get timestamp contention.
 	ts := time.Now()
 	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
-		return 0, time.Time{}, err
+		return time.Time{}, err
 	}
-	return logID, ts, nil
+	return ts, nil
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
@@ -121,19 +116,6 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 		return nil, status.Errorf(codes.NotFound, "no log found for directory %v", directoryID)
 	}
 	return logIDs, nil
-}
-
-// randLog returns a random, enabled log for directoryID.
-func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, error) {
-	// TODO(gbelvin): Cache these results.
-	writable := true
-	logIDs, err := m.ListLogs(ctx, directoryID, writable)
-	if err != nil {
-		return 0, err
-	}
-
-	// Return a random log.
-	return logIDs[rand.Intn(len(logIDs))], nil
 }
 
 // ts must be greater than all other timestamps currently recorded for directoryID.
