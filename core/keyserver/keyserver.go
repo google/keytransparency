@@ -658,7 +658,8 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	}
 	tdone()
 
-	// Save mutation to the database.
+	// Pick a random logID.  Note, this effectively picks a random QoS. See issue #1377.
+	// TODO(gbelvin): Define an explicit QoS / Load ballancing API.
 	wmLogID, err := s.randLog(ctx, directory.DirectoryID)
 	if st := status.Convert(err); st.Code() != codes.OK {
 		return nil, status.Errorf(st.Code(), "Could not pick a log to write to: %v", err)
