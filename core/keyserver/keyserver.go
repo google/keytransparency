@@ -18,6 +18,7 @@ package keyserver
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"runtime"
 	"sync"
 	"time"
@@ -77,6 +78,8 @@ type MutationLogs interface {
 	// needed to do so.
 	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 		limit int32) ([]*mutator.LogMessage, error)
+	// ListLogs returns a list of logs, optionally filtered by the writable bit.
+	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 }
 
 // BatchReader reads batch definitions.
@@ -610,7 +613,6 @@ func (s *Server) QueueEntryUpdate(ctx context.Context, in *pb.UpdateEntryRequest
 	return s.BatchQueueUserUpdate(ctx, &pb.BatchQueueUserUpdateRequest{
 		DirectoryId: in.DirectoryId,
 		Updates:     []*pb.EntryUpdate{in.EntryUpdate},
-		LogId:       in.GetLogId(),
 	})
 }
 
@@ -657,7 +659,10 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	tdone()
 
 	// Save mutation to the database.
-	wmLogID := in.GetLogId()
+	wmLogID, err := s.randLog(ctx, directory.DirectoryID)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		return nil, status.Errorf(st.Code(), "Could not pick a log to write to: %v", err)
+	}
 	wmTime, err := s.logs.Send(ctx, directory.DirectoryID, wmLogID, in.Updates...)
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("mutations.Write failed: %v", err)
@@ -666,6 +671,18 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	watermarkWritten.Set(float64(wmTime.UnixNano()), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
 	sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
 	return &empty.Empty{}, nil
+}
+
+func (s *Server) randLog(ctx context.Context, directoryID string) (int64, error) {
+	// TODO(gbelvin): Cache these results.
+	writable := true
+	logIDs, err := s.logs.ListLogs(ctx, directoryID, writable)
+	if err != nil {
+		return 0, err
+	}
+
+	// Return a random log.
+	return logIDs[rand.Intn(len(logIDs))], nil
 }
 
 // GetDirectory returns all info tied to the specified directory.

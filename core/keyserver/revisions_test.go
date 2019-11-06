@@ -75,6 +75,14 @@ func (m *mutations) Send(ctx context.Context, dirID string, _ int64, mutation ..
 	return time.Time{}, errors.New("unimplemented")
 }
 
+func (m *mutations) ListLogs(ctx context.Context, dirID string, _ bool) ([]int64, error) {
+	logIDs := []int64{}
+	for id := range *m {
+		logIDs = append(logIDs, id)
+	}
+	return logIDs, nil
+}
+
 func (m *mutations) ReadLog(ctx context.Context, dirID string,
 	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
 	logShard := (*m)[logID]
