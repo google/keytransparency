@@ -220,6 +220,9 @@ func TestReadMessages(t *testing.T) {
 		{batchSize: 1, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
 		}}},
+		{batchSize: 10000, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
+		}}},
 		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
 			{LogId: 1, LowestInclusive: 1, HighestExclusive: 11},
@@ -231,7 +234,7 @@ func TestReadMessages(t *testing.T) {
 			t.Errorf("readMessages(): %v", err)
 		}
 		if got := len(logItems); got != tc.want {
-			t.Errorf("readMessages(): len: %v, want %v", got, tc.want)
+			t.Errorf("readMessages(%v): len: %v, want %v", tc.meta, got, tc.want)
 		}
 	}
 }
