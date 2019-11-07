@@ -97,14 +97,11 @@ func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, rev int64) (*spb.Ma
 	return meta, nil
 }
 
-func TestDefiningRevisions(t *testing.T) {
-	// Verify that outstanding revisions prevent future revisions from being created.
-	ctx := context.Background()
-	mapRev := int64(2)
-	dirID := "foobar"
+func setupLogs(ctx context.Context, t *testing.T, dirID string, logLengths map[int64]int) (memory.MutationLogs, map[int64][]time.Time) {
+	t.Helper()
 	fakeLogs := memory.NewMutationLogs()
 	idx := make(map[int64][]time.Time)
-	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
+	for logID, msgs := range logLengths {
 		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
 			t.Fatal(err)
 		}
@@ -116,7 +113,15 @@ func TestDefiningRevisions(t *testing.T) {
 			idx[logID] = append(idx[logID], ts)
 		}
 	}
+	return fakeLogs, idx
+}
 
+func TestDefiningRevisions(t *testing.T) {
+	// Verify that outstanding revisions prevent future revisions from being created.
+	ctx := context.Background()
+	mapRev := int64(2)
+	dirID := "foobar"
+	fakeLogs, idx := setupLogs(ctx, t, dirID, map[int64]int{0: 10, 1: 20})
 	s := Server{
 		logs: fakeLogs,
 		trillian: &fakeTrillianFactory{
@@ -144,8 +149,8 @@ func TestDefiningRevisions(t *testing.T) {
 			wantNew: mapRev + 1},
 		{desc: "drained", highestRev: mapRev,
 			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, LowestInclusive: 0, HighestExclusive: idx[0][9].Add(time.Second).UnixNano()},
-				{LogId: 1, LowestInclusive: 0, HighestExclusive: idx[1][19].Add(time.Second).UnixNano()},
+				{LogId: 0, LowestInclusive: 0, HighestExclusive: idx[0][9].Add(1).UnixNano()},
+				{LogId: 1, LowestInclusive: 0, HighestExclusive: idx[1][19].Add(1).UnixNano()},
 			}},
 			wantNew: mapRev},
 	} {
@@ -187,21 +192,8 @@ func TestDefiningRevisions(t *testing.T) {
 
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
-	fakeLogs := memory.NewMutationLogs()
 	dirID := "TestReadMessages"
-	idx := make(map[int64][]time.Time)
-	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
-		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
-			t.Fatal(err)
-		}
-		for i := 0; i < msgs; i++ {
-			ts, err := fakeLogs.Send(ctx, dirID, logID, &pb.EntryUpdate{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			idx[logID] = append(idx[logID], ts)
-		}
-	}
+	fakeLogs, idx := setupLogs(ctx, t, dirID, map[int64]int{0: 10, 1: 20})
 	s := Server{logs: fakeLogs}
 
 	for _, tc := range []struct {
@@ -213,7 +205,7 @@ func TestReadMessages(t *testing.T) {
 			{LogId: 0, LowestInclusive: idx[0][1].UnixNano(), HighestExclusive: idx[0][9].Add(1).UnixNano()},
 		}}},
 		{batchSize: 10000, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestInclusive: 1, HighestExclusive: 10},
+			{LogId: 0, LowestInclusive: idx[0][1].UnixNano(), HighestExclusive: idx[0][9].Add(1).UnixNano()},
 		}}},
 		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 			{LogId: 0, LowestInclusive: idx[0][1].UnixNano(), HighestExclusive: idx[0][9].Add(1).UnixNano()},
@@ -233,21 +225,8 @@ func TestReadMessages(t *testing.T) {
 
 func TestHighWatermarks(t *testing.T) {
 	ctx := context.Background()
-	fakeLogs := memory.NewMutationLogs()
 	dirID := "TestHighWatermark"
-	idx := make(map[int64][]time.Time)
-	for logID, msgs := range map[int64]int{0: 10, 1: 20} {
-		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
-			t.Fatal(err)
-		}
-		for i := 0; i < msgs; i++ {
-			ts, err := fakeLogs.Send(ctx, dirID, logID, &pb.EntryUpdate{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			idx[logID] = append(idx[logID], ts)
-		}
-	}
+	fakeLogs, idx := setupLogs(ctx, t, dirID, map[int64]int{0: 10, 1: 20})
 	s := Server{logs: fakeLogs}
 
 	for _, tc := range []struct {

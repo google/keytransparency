@@ -118,6 +118,7 @@ func TestListMutations(t *testing.T) {
 	fakeLogs := memory.NewMutationLogs()
 	idx := make([]time.Time, 0, 12)
 	for i := int64(0); i < 12; i++ {
+		// Send one entry.
 		ts, err := fakeLogs.Send(ctx, dirID, logID, genEntryUpdates(t, i, i+1)...)
 		if err != nil {
 			t.Fatal(err)

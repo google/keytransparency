@@ -62,7 +62,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	logID := int64(5) // Any log ID.
 	m, done := newForTest(ctx, t, directoryID, logID)
 	defer done(ctx)
-	// Write ten batches, three entries each.
+	// Write ten batches.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
 		if _, err := m.Send(ctx, directoryID, logID, entry, entry, entry); err != nil {
@@ -96,7 +96,7 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 	logID := int64(5) // Any log ID.
 	m, done := newForTest(ctx, t, directoryID, logID)
 	defer done(ctx)
-	// Write ten batches, three entries each.
+	// Write ten batches.
 	idx := make([]time.Time, 0, 10)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{i}}}

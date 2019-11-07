@@ -41,6 +41,7 @@ type batch struct {
 // MutationLogs is a fake, in-memory implementation of a keyserver.MutationLogss.
 // All requests are presumed to be for the same domainID.
 // TODO(gbelvin): Support multiple domainIDs, if tests call for it.
+// MutationLogs is NOT threadsafe.
 type MutationLogs map[int64][]batch // Map of logID to Slice of LogMessages
 
 // AddLogs adds logIDs to the mutation database.
@@ -61,7 +62,7 @@ func (m MutationLogs) ListLogs(_ context.Context, _ string, writable bool) ([]in
 	return logIDs, nil
 }
 
-// Send stores a batch of mutations in a random logID.
+// Send stores a batch of mutations in a given logID.
 func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ...*pb.EntryUpdate) (time.Time, error) {
 	clock = clock.Add(time.Second)
 	ts := clock
