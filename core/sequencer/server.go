@@ -132,7 +132,7 @@ type LogsReader interface {
 	// or all logIDs associated with directoryID if writable is false.
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 
-	// ReadLog returns the lowest messages in the (low, high] range stored in the specified log, up to batchSize.
+	// ReadLog returns the lowest messages in the [low, high) range stored in the specified log, up to batchSize.
 	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
@@ -342,7 +342,7 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 	low := ss.StartTime()
 	high := ss.EndTime()
 	for moreToRead := true; moreToRead; {
-		// Request one more item than chunksize so we can find the next page token
+		// Request one more item than chunkSize so we can find the next page token.
 		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize+1)
 		if err != nil {
 			return fmt.Errorf("logs.ReadLog(): %v", err)
@@ -351,8 +351,8 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 			directoryID, source.LogId, low, high, chunkSize, len(batch))
 		moreToRead = int32(len(batch)) == (chunkSize + 1)
 		if moreToRead {
-			low = batch[chunkSize].ID  // Use the last row as the start of the next read.
-			batch = batch[0:chunkSize] // Don't emit the next page token.
+			low = batch[chunkSize].ID // Use the last row as the start of the next read.
+			batch = batch[:chunkSize] // Don't emit the next page token.
 		}
 		logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
 		for _, m := range batch {
