@@ -338,7 +338,7 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
 	directoryID string, chunkSize int32,
 	emit func(*mutator.LogMessage)) error {
-	ss := metadata.Source(source)
+	ss := metadata.FromProto(source)
 	low := ss.StartTime()
 	high := ss.EndTime()
 	for moreToRead := true; moreToRead; {
@@ -531,6 +531,7 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	ends := make(map[int64]int64)
 	starts := make(map[int64]int64)
 	for _, source := range lastMeta.GetSources() {
+		// Save the highest watermark if the same LogId appears multiple times.
 		if ends[source.LogId] < source.HighestExclusive {
 			ends[source.LogId] = source.HighestExclusive
 			starts[source.LogId] = source.HighestExclusive
