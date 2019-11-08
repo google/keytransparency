@@ -22,10 +22,10 @@ import (
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/sequencer/metadata"
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 
 	tpb "github.com/golang/protobuf/ptypes/timestamp"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
 func newSourceSlice(t *testing.T, logID int64, low, high time.Time) *spb.MapMetadata_SourceSlice {

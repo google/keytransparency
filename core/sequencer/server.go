@@ -63,6 +63,13 @@ var (
 	unappliedRevisions monitoring.Gauge
 )
 
+// zero is the time to use for the beginning edge of new watermarks.
+// When getting the watermark for a new log that is not in the lastMeta set,
+// we need to pick a lower bound starting point for reading.  time.Time{} is
+// not a valid choice here because it is too low to represent with metadata.New()
+// so we need to pick a different, low sentinel value that the tests know about.
+var zero = time.Unix(0, 0)
+
 func createMetrics(mf monitoring.MetricFactory) {
 	knownDirectories = mf.NewGauge(
 		"known_directories",
@@ -528,13 +535,13 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// revision.
 	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
 	// from ranges of watermarks for the verifier's needs.
-	ends := make(map[int64]int64)
-	starts := make(map[int64]int64)
+	ends := make(map[int64]time.Time)
+	starts := make(map[int64]time.Time)
 	for _, source := range lastMeta.GetSources() {
-		// Save the highest watermark if the same LogId appears multiple times.
-		if ends[source.LogId] < source.HighestExclusive {
-			ends[source.LogId] = source.HighestExclusive
-			starts[source.LogId] = source.HighestExclusive
+		highest := metadata.FromProto(source).EndTime()
+		if ends[source.LogId].Before(highest) {
+			ends[source.LogId] = highest
+			starts[source.LogId] = highest
 		}
 	}
 
@@ -545,25 +552,28 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		low := time.Unix(0, ends[logID])
+		low, ok := ends[logID]
+		if !ok {
+			low = zero // Here be dragons. See comment on zero.
+		}
 		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
 				"HighWatermark(%v/%v, start: %v, batch: %v): %v",
 				directoryID, logID, low, batchSize, err)
 		}
-		starts[logID], ends[logID] = low.UnixNano(), high.UnixNano()
+		starts[logID], ends[logID] = low, high
 		total += count
 		batchSize -= count
 	}
 
 	meta := &spb.MapMetadata{}
 	for logID, end := range ends {
-		meta.Sources = append(meta.Sources, &spb.MapMetadata_SourceSlice{
-			LogId:            logID,
-			LowestInclusive:  starts[logID],
-			HighestExclusive: end,
-		})
+		src, err := metadata.New(logID, starts[logID], end)
+		if err != nil {
+			return 0, nil, err
+		}
+		meta.Sources = append(meta.Sources, src.Proto())
 	}
 	// Deterministic results are nice.
 	sort.Slice(meta.Sources, func(a, b int) bool {

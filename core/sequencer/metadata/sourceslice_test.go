@@ -27,10 +27,11 @@ func TestValidateTime(t *testing.T) {
 		{ts: time.Date(1, 0, 0, 0, 0, 0, 0, time.UTC), valid: false},
 		{ts: time.Date(1000, 0, 0, 0, 0, 0, 0, time.UTC), valid: false},
 		{ts: time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC), valid: true},
+		{ts: time.Date(200000, 0, 0, 0, 0, 0, 0, time.UTC), valid: false},
 	} {
 		err := validateTime(tc.ts)
 		if got := err == nil; got != tc.valid {
-			t.Errorf("validateTimestamp(%v): %v, want valid: %v", tc.ts, err, tc.valid)
+			t.Errorf("validateTime(%v): %v, want valid: %v", tc.ts, err, tc.valid)
 		}
 	}
 }
