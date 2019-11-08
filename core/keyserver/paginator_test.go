@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-
 	"github.com/google/keytransparency/core/mutator"
 
 	tpb "github.com/golang/protobuf/ptypes/timestamp"
