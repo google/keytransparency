@@ -108,15 +108,18 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 	}
 
 	for _, tc := range []struct {
-		low, high int
+		low, high time.Time
 		want      []byte
 	}{
-		{low: 0, high: 0, want: []byte{}},
-		{low: 0, high: 1, want: []byte{0}},
-		{low: 0, high: 9, want: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8}},
-		{low: 1, high: 9, want: []byte{1, 2, 3, 4, 5, 6, 7, 8}},
+		{low: idx[0], high: idx[0], want: []byte{}},
+		{low: idx[0], high: idx[1], want: []byte{0}},
+		{low: idx[0], high: idx[9], want: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8}},
+		{low: idx[1], high: idx[9], want: []byte{1, 2, 3, 4, 5, 6, 7, 8}},
+		// Ensure that adding 1 correctly modifies the range semantics.
+		{low: idx[0].Add(1), high: idx[9], want: []byte{1, 2, 3, 4, 5, 6, 7, 8}},
+		{low: idx[0].Add(1), high: idx[9].Add(1), want: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}},
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, idx[tc.low], idx[tc.high], 100)
+		rows, err := m.ReadLog(ctx, directoryID, logID, tc.low, tc.high, 100)
 		if err != nil {
 			t.Fatalf("ReadLog(): %v", err)
 		}

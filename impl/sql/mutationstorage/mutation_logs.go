@@ -28,6 +28,10 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
+// quantum is the fidelity of the Timestamp column.
+// See https://dev.mysql.com/doc/refman/8.0/en/fractional-seconds.html
+const quantum = time.Microsecond
+
 // SetWritable enables or disables new writes from going to logID.
 func (m *Mutations) SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error {
 	result, err := m.db.ExecContext(ctx,
@@ -141,9 +145,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
 
-	// The Timestamp column has a maximum fidelity of microseconds.
-	// See https://dev.mysql.com/doc/refman/8.0/en/fractional-seconds.html
-	ts = ts.Truncate(time.Microsecond)
+	ts = ts.Truncate(quantum)
 	if !ts.After(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
 			"current timestamp: %v, want > max-timestamp of queued mutations: %v", ts, maxTime)
@@ -188,6 +190,10 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 // ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
+	// Advance the low and high marks to the next highest quantum to preserve read semantics.
+	low = low.Add(quantum - 1).Truncate(quantum)
+	high = high.Add(quantum - 1).Truncate(quantum)
+
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, LocalID, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
