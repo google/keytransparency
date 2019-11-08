@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package metadata helps enforce a consistent standard of meaning around the map metadata object.
 package metadata
 
 import (
@@ -24,6 +25,7 @@ import (
 
 var minTime = time.Unix(0, math.MinInt64) // 1677-09-21 00:12:43.145224192
 var maxTime = time.Unix(0, math.MaxInt64) // 2262-04-11 23:47:16.854775807
+const nanosPerQuantum = int64(time.Microsecond / time.Nanosecond)
 
 // validateTime determines whether a timestamp is valid.
 // Valid timestamps can be represented by an int64 number of microseconds from the epoch.
@@ -50,8 +52,8 @@ func New(logID int64, low, high time.Time) (*SourceSlice, error) {
 	}
 	return &SourceSlice{s: &spb.MapMetadata_SourceSlice{
 		LogId:            logID,
-		LowestInclusive:  low.UnixNano(),
-		HighestExclusive: high.UnixNano(),
+		LowestInclusive:  low.UnixNano() / nanosPerQuantum,
+		HighestExclusive: high.UnixNano() / nanosPerQuantum,
 	}}, nil
 }
 
@@ -69,12 +71,12 @@ type SourceSlice struct {
 
 // StartTime returns LowestInclusive as a time.Time
 func (s SourceSlice) StartTime() time.Time {
-	return time.Unix(0, s.s.GetLowestInclusive())
+	return time.Unix(0, s.s.GetLowestInclusive()*nanosPerQuantum)
 }
 
 // EndTime returns HighestExclusive as a time.Time
 func (s SourceSlice) EndTime() time.Time {
-	return time.Unix(0, s.s.GetHighestExclusive())
+	return time.Unix(0, s.s.GetHighestExclusive()*nanosPerQuantum)
 }
 
 // Proto returns the proto representation of SourceSlice
