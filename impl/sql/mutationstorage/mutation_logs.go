@@ -165,6 +165,7 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 // equal to batchSize items greater than start.
 func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID int64,
 	start time.Time, batchSize int32) (int32, time.Time, error) {
+	startQuery := start.Add(quantum - 1).Truncate(quantum)
 	var count int32
 	var high sql.NullTime
 	if err := m.db.QueryRowContext(ctx,
@@ -175,7 +176,7 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
-		directoryID, logID, start, batchSize).
+		directoryID, logID, startQuery, batchSize).
 		Scan(&count, &high); err != nil {
 		return 0, start, err
 	}

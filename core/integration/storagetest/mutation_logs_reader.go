@@ -79,11 +79,10 @@ func (mutationLogsReaderTests) TestHighWatermark(ctx context.Context, t *testing
 	}{
 		{desc: "log1 max", logID: 1, batchSize: 100, start: idx[0], want: idx[9].Add(1), count: 10},
 		{desc: "log2 empty", logID: 2, batchSize: 100, start: idx[0], want: idx[0]},
-		{desc: "batch0", logID: 1, batchSize: 0, start: minWatermark, want: minWatermark},
-		{desc: "batch0start55", logID: 1, start: minWatermark.Add(55 * time.Microsecond), batchSize: 0, want: minWatermark.Add(55 * time.Microsecond)},
-		{desc: "batch5", logID: 1, start: idx[0], batchSize: 5, want: idx[4].Add(1), count: 5},
-		{desc: "start1", logID: 1, start: idx[2], batchSize: 5, want: idx[6].Add(1), count: 5},
-		{desc: "start8", logID: 1, start: idx[8], batchSize: 5, want: idx[9].Add(1), count: 2},
+		{desc: "preserve start", logID: 1, batchSize: 0, start: time.Date(1, 2, 3, 4, 5, 6, 7, time.UTC), want: time.Date(1, 2, 3, 4, 5, 6, 7, time.UTC)},
+		{desc: "batch", logID: 1, start: idx[2], batchSize: 5, want: idx[6].Add(1), count: 5},
+		// Ensure that adding 1 correctly modifies the range semantics.
+		{desc: "+1", logID: 1, start: idx[2].Add(1), batchSize: 5, want: idx[7].Add(1), count: 5},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
