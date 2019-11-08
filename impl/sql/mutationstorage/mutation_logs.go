@@ -181,7 +181,7 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 		// When there are no rows, return the start time as the highest timestamp.
 		return 0, start, nil
 	}
-	return count, high.Time.Add(1 * time.Microsecond), nil
+	return count, high.Time.Add(1), nil
 }
 
 // ReadLog reads all mutations in logID between [low, high).
