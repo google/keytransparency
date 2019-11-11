@@ -84,7 +84,7 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, u
 	}
 	// TODO(gbelvin): Implement retry with backoff for retryable errors if
 	// we get timestamp contention.
-	ts := time.Now()
+	ts := time.Now().Truncate(quantum)
 	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
 		return time.Time{}, err
 	}
@@ -145,7 +145,6 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
 
-	ts = ts.Truncate(quantum)
 	if !ts.After(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
 			"current timestamp: %v, want > max-timestamp of queued mutations: %v", ts, maxTime)
