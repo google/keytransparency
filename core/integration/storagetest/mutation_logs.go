@@ -16,6 +16,7 @@ package storagetest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -70,7 +71,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		}
 	}
 
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		limit int32
 		want  int
 	}{
@@ -80,13 +81,15 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		{limit: 4, want: 6},    // Reading 4 items gets us into the second batch of size 3.
 		{limit: 100, want: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, minWatermark, time.Now(), tc.limit)
-		if err != nil {
-			t.Fatalf("ReadLog(%v): %v", tc.limit, err)
-		}
-		if got := len(rows); got != tc.want {
-			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.limit, got, tc.want)
-		}
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			rows, err := m.ReadLog(ctx, directoryID, logID, minWatermark, time.Now(), tc.limit)
+			if err != nil {
+				t.Fatalf("ReadLog(%v): %v", tc.limit, err)
+			}
+			if got := len(rows); got != tc.want {
+				t.Fatalf("ReadLog(%v): len: %v, want %v", tc.limit, got, tc.want)
+			}
+		})
 	}
 }
 
@@ -107,7 +110,7 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 		idx = append(idx, ts)
 	}
 
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		low, high time.Time
 		want      []byte
 	}{
@@ -119,17 +122,19 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 		{low: idx[0].Add(1), high: idx[9], want: []byte{1, 2, 3, 4, 5, 6, 7, 8}},
 		{low: idx[0].Add(1), high: idx[9].Add(1), want: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}},
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, tc.low, tc.high, 100)
-		if err != nil {
-			t.Fatalf("ReadLog(): %v", err)
-		}
-		got := make([]byte, 0, len(rows))
-		for _, r := range rows {
-			i := r.Mutation.Entry[0]
-			got = append(got, i)
-		}
-		if !cmp.Equal(got, tc.want) {
-			t.Fatalf("ReadLog(%v,%v): got %v, want %v", tc.low, tc.high, got, tc.want)
-		}
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			rows, err := m.ReadLog(ctx, directoryID, logID, tc.low, tc.high, 100)
+			if err != nil {
+				t.Fatalf("ReadLog(): %v", err)
+			}
+			got := make([]byte, 0, len(rows))
+			for _, r := range rows {
+				i := r.Mutation.Entry[0]
+				got = append(got, i)
+			}
+			if !cmp.Equal(got, tc.want) {
+				t.Fatalf("ReadLog(%v,%v): got %v, want %v", tc.low, tc.high, got, tc.want)
+			}
+		})
 	}
 }
