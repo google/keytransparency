@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/sequencer"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -52,48 +53,124 @@ func RunMutationLogsReaderTests(t *testing.T, factory logsRWFactory) {
 type mutationLogsReaderTests struct{}
 
 // TestHighWatermark ensures that reads respect the low inclusive, high exclusive API.
+// nolint:gocyclo
 func (mutationLogsReaderTests) TestHighWatermark(ctx context.Context, t *testing.T, newForTest logsRWFactory) {
 	directoryID := "TestHighWatermark"
-	logIDs := []int64{1, 2}
-	m, done := newForTest(ctx, t, directoryID, logIDs...)
+	logID := int64(1)
+	m, done := newForTest(ctx, t, directoryID, logID)
 	defer done(ctx)
-	update := &pb.EntryUpdate{}
 
-	idx := []time.Time{}
-	for i := 0; i < 10; i++ {
-		logID := int64(1)
-		ts, err := m.Send(ctx, directoryID, logID, update)
+	// Setup the test by writing 10 items to the mutation log and
+	// collecting the reported high water mark after each write.
+	sent := []time.Time{} // Timesttamps that Send reported.
+	hwm := []time.Time{}  // High water marks collected after each Send.
+	maxIndex := 9
+	for i := 0; i <= maxIndex; i++ {
+		ts, err := m.Send(ctx, directoryID, logID,
+			&pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{byte(i)}}})
 		if err != nil {
-			t.Fatalf("m.Send(%v): %v", logID, err)
+			t.Fatalf("Send(%v): %v", logID, err)
 		}
-		idx = append(idx, ts)
+		count, wm, err := m.HighWatermark(ctx, directoryID, logID, minWatermark, 100 /*batchSize*/)
+		if err != nil {
+			t.Fatalf("HighWatermark(): %v", err)
+		}
+		if want := int32(i) + 1; count != want {
+			t.Fatalf("HighWatermark(): count %v, want %v", count, want)
+		}
+		sent = append(sent, ts)
+		hwm = append(hwm, wm)
 	}
 
+	arbitraryTime := time.Date(1, 2, 3, 4, 5, 6, 7, time.UTC)
+	// Tests that query HighWatermarks with varying parameters and validate results directly.
 	for _, tc := range []struct {
-		desc      string
-		logID     int64
-		start     time.Time
-		batchSize int32
-		count     int32
-		want      time.Time
+		desc  string
+		start time.Time
+		batch int32
+		want  time.Time
 	}{
-		{desc: "log1 max", logID: 1, batchSize: 100, start: idx[0], want: idx[9].Add(1), count: 10},
-		{desc: "log2 empty", logID: 2, batchSize: 100, start: idx[0], want: idx[0]},
-		{desc: "preserve start", logID: 1, batchSize: 0, start: time.Date(1, 2, 3, 4, 5, 6, 7, time.UTC), want: time.Date(1, 2, 3, 4, 5, 6, 7, time.UTC)},
-		{desc: "batch", logID: 1, start: idx[2], batchSize: 5, want: idx[6].Add(1), count: 5},
-		// Ensure that adding 1 correctly modifies the range semantics.
-		{desc: "+1", logID: 1, start: idx[2].Add(1), batchSize: 5, want: idx[7].Add(1), count: 5},
+		// Verify that high watermarks preserves the starting time when batch size is 0.
+		{desc: "preserve start batch 0", start: arbitraryTime, batch: 0, want: arbitraryTime},
+		// Verify that high watermarks preserves the starting time when there are no rows in the result.
+		{desc: "preserve start rows 0", start: sent[maxIndex].Add(time.Second), batch: 1, want: sent[maxIndex].Add(time.Second)},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
+			count, got, err := m.HighWatermark(ctx, directoryID, logID, tc.start, tc.batch)
 			if err != nil {
-				t.Errorf("highWatermark(): %v", err)
+				t.Errorf("HighWatermark(): %v", err)
 			}
 			if !got.Equal(tc.want) {
-				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got, tc.want)
+				t.Errorf("HighWatermark(%v, %v) high: %v, want %v", tc.start, tc.batch, got, tc.want)
 			}
-			if count != tc.count {
-				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)
+			if count != 0 {
+				t.Errorf("HighWatermark(): count %v, want 0", count)
+			}
+		})
+	}
+
+	// Tests that use the watermarks defined during setup.
+	for _, tc := range []struct {
+		desc     string
+		readHigh time.Time
+		want     []byte
+	}{
+		// Verify that highwatermark can retrieve all the data written so far.
+		{desc: "all", readHigh: hwm[maxIndex], want: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+		// Verify that data retrieved at highwatermark doesn't change when more data is written.
+		{desc: "stable", readHigh: hwm[2], want: []byte{0, 1, 2}},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			low := minWatermark
+			rows, err := m.ReadLog(ctx, directoryID, logID, low, tc.readHigh, 100)
+			if err != nil {
+				t.Fatalf("ReadLog(): %v", err)
+			}
+			got := make([]byte, 0, len(rows))
+			for _, r := range rows {
+				i := r.Mutation.Entry[0]
+				got = append(got, i)
+			}
+			if !cmp.Equal(got, tc.want) {
+				t.Fatalf("ReadLog(%v,%v): got %v, want %v", low, tc.readHigh, got, tc.want)
+			}
+		})
+	}
+
+	// Tests that query HighWatermarks with varying parameters and validate results using ReadLog.
+	for _, tc := range []struct {
+		desc  string
+		start time.Time
+		batch int32
+		want  []byte
+	}{
+		// Verify that limiting batch size controls the number of items returned.
+		{desc: "limit batch", start: sent[0], batch: 2, want: []byte{0, 1}},
+		// Verify that advancing start by 1 with the same batch size advances the results by one.
+		{desc: "start 1", start: sent[1], batch: 2, want: []byte{1, 2}},
+		// Verify that watermarks in between primary keys resolve correctly.
+		{desc: "start 0.1", start: sent[0].Add(1), batch: 2, want: []byte{1, 2}},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			count, wm, err := m.HighWatermark(ctx, directoryID, logID, tc.start, tc.batch)
+			if err != nil {
+				t.Errorf("HighWatermark(): %v", err)
+			}
+			if want := int32(len(tc.want)); count != want {
+				t.Errorf("HighWatermark() count: %v, want %v", count, want)
+			}
+
+			rows, err := m.ReadLog(ctx, directoryID, logID, tc.start, wm, tc.batch)
+			if err != nil {
+				t.Fatalf("ReadLog(): %v", err)
+			}
+			got := make([]byte, 0, len(rows))
+			for _, r := range rows {
+				i := r.Mutation.Entry[0]
+				got = append(got, i)
+			}
+			if !cmp.Equal(got, tc.want) {
+				t.Fatalf("ReadLog(%v,%v): got %v, want %v", tc.start, wm, got, tc.want)
 			}
 		})
 	}
