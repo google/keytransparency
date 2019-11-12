@@ -323,6 +323,7 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 		glog.Warningf("ApplyRevisions: too many outstanding revisions: %d; applying %d", cnt, mx)
 		cnt = mx
 	}
+	glog.Infof("Applying revisions %d-%d", resp.HighestApplied+1, resp.HighestApplied+cnt)
 	for i := int64(1); i <= cnt; i++ {
 		req := &spb.ApplyRevisionRequest{
 			DirectoryId: in.DirectoryId, Revision: resp.HighestApplied + i}
@@ -502,6 +503,7 @@ func (s *Server) PublishRevisions(ctx context.Context,
 		leaves[int64(mapRoot.Revision)] = rawMapRoot.GetMapRoot()
 		revs = append(revs, int64(mapRoot.Revision))
 	}
+	glog.Infof("Publishing revisions %d-%d", logRoot.TreeSize-1, end)
 	if err := logClient.AddSequencedLeaves(ctx, leaves); err != nil {
 		glog.Errorf("AddSequencedLeaves(revs: %v): %v", revs, err)
 		return nil, err
