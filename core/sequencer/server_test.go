@@ -26,11 +26,12 @@ import (
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc"
 
+	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/metadata"
+	"github.com/google/keytransparency/core/sequencer/runner"
 	"github.com/google/keytransparency/impl/memory"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	"github.com/google/keytransparency/core/sequencer/mapper"
-	"github.com/google/keytransparency/core/sequencer/runner"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -116,6 +117,15 @@ func setupLogs(ctx context.Context, t *testing.T, dirID string, logLengths map[i
 	return fakeLogs, idx
 }
 
+func newSource(t *testing.T, logID int64, low, high time.Time) *spb.MapMetadata_SourceSlice {
+	t.Helper()
+	s, err := metadata.New(logID, low, high)
+	if err != nil {
+		t.Fatalf("Invalid source: %v", err)
+	}
+	return s.Proto()
+}
+
 func TestDefiningRevisions(t *testing.T) {
 	// Verify that outstanding revisions prevent future revisions from being created.
 	ctx := context.Background()
@@ -143,14 +153,14 @@ func TestDefiningRevisions(t *testing.T) {
 		{desc: "skewed", highestRev: mapRev - 1, wantNew: mapRev - 1},
 		{desc: "almost_drained", highestRev: mapRev,
 			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, LowestInclusive: 0, HighestExclusive: 9},
-				{LogId: 1, LowestInclusive: 0, HighestExclusive: 20},
+				newSource(t, 0, zero.Add(0*time.Microsecond), zero.Add(9*time.Microsecond)),
+				newSource(t, 1, zero.Add(0*time.Microsecond), zero.Add(20*time.Microsecond)),
 			}},
 			wantNew: mapRev + 1},
 		{desc: "drained", highestRev: mapRev,
 			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, LowestInclusive: 0, HighestExclusive: idx[0][9].Add(1).UnixNano()},
-				{LogId: 1, LowestInclusive: 0, HighestExclusive: idx[1][19].Add(1).UnixNano()},
+				newSource(t, 0, zero, idx[0][9].Add(1)),
+				newSource(t, 1, zero, idx[1][19].Add(1)),
 			}},
 			wantNew: mapRev},
 	} {
@@ -202,14 +212,14 @@ func TestReadMessages(t *testing.T) {
 		want      int
 	}{
 		{batchSize: 1, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestInclusive: idx[0][1].UnixNano(), HighestExclusive: idx[0][9].Add(1).UnixNano()},
+			newSource(t, 0, idx[0][1], idx[0][9].Add(1)),
 		}}},
 		{batchSize: 10000, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestInclusive: idx[0][1].UnixNano(), HighestExclusive: idx[0][9].Add(1).UnixNano()},
+			newSource(t, 0, idx[0][1], idx[0][9].Add(1)),
 		}}},
 		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 0, LowestInclusive: idx[0][1].UnixNano(), HighestExclusive: idx[0][9].Add(1).UnixNano()},
-			{LogId: 1, LowestInclusive: idx[1][1].UnixNano(), HighestExclusive: idx[1][10].Add(1).UnixNano()},
+			newSource(t, 0, idx[0][1], idx[0][9].Add(1)),
+			newSource(t, 1, idx[1][1], idx[1][10].Add(1)),
 		}}},
 	} {
 		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta, fakeMetric)
@@ -238,34 +248,42 @@ func TestHighWatermarks(t *testing.T) {
 	}{
 		{desc: "nobatch", batchSize: 30, count: 30,
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestExclusive: idx[0][9].Add(1).UnixNano()},
-				{LogId: 1, HighestExclusive: idx[1][19].Add(1).UnixNano()}}}},
+				newSource(t, 0, zero, idx[0][9].Add(1)),
+				newSource(t, 1, zero, idx[1][19].Add(1)),
+			}}},
 		{desc: "exactbatch", batchSize: 20, count: 20,
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestExclusive: idx[0][9].Add(1).UnixNano()},
-				{LogId: 1, HighestExclusive: idx[1][9].Add(1).UnixNano()}}}},
+				newSource(t, 0, zero, idx[0][9].Add(1)),
+				newSource(t, 1, zero, idx[1][9].Add(1)),
+			}}},
 		{desc: "batchwprev", batchSize: 20, count: 20,
 			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestExclusive: idx[0][9].Add(2).UnixNano()}}},
+				newSource(t, 0, zero, idx[0][9].Add(2)),
+			}},
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				// Nothing to read from log 1, preserve watermark of log 1.
-				{LogId: 0, LowestInclusive: idx[0][9].Add(2).UnixNano(), HighestExclusive: idx[0][9].Add(2).UnixNano()},
-				{LogId: 1, HighestExclusive: idx[1][19].Add(1).UnixNano()}}}},
+				newSource(t, 0, idx[0][9].Add(2), idx[0][9].Add(2)),
+				newSource(t, 1, zero, idx[1][19].Add(1)),
+			}}},
 		// Don't drop existing watermarks.
 		{desc: "keep existing", batchSize: 1, count: 1,
 			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 1, HighestExclusive: 10}}},
+				newSource(t, 1, zero, zero.Add(10)),
+			}},
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0, HighestExclusive: idx[0][0].Add(1).UnixNano()},
+				newSource(t, 0, zero, idx[0][0].Add(1)),
 				// No reads from log 1, but don't drop the watermark.
-				{LogId: 1, LowestInclusive: 10, HighestExclusive: 10}}}},
+				newSource(t, 1, zero.Add(10), zero.Add(10)),
+			}}},
 		{desc: "logs that dont move", batchSize: 0, count: 0,
 			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 3, HighestExclusive: 10}}},
+				newSource(t, 3, zero, zero.Add(10*time.Microsecond)),
+			}},
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				{LogId: 0},
-				{LogId: 1},
-				{LogId: 3, LowestInclusive: 10, HighestExclusive: 10}}}},
+				newSource(t, 0, zero, zero),
+				newSource(t, 1, zero, zero),
+				newSource(t, 3, zero.Add(10*time.Microsecond), zero.Add(10*time.Microsecond)),
+			}}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, next, err := s.HighWatermarks(ctx, directoryID, tc.last, tc.batchSize)
