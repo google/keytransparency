@@ -17,6 +17,7 @@ package runner
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/mutator/entry"
 
@@ -52,7 +53,7 @@ func TestJoin(t *testing.T) {
 			for g := range Join(tc.leaves, tc.msgs, func(label string) { metrics[label]++ }) {
 				got = append(got, g)
 			}
-			if !cmp.Equal(got, tc.want) {
+			if !cmp.Equal(got, tc.want, cmp.Comparer(proto.Equal)) {
 				t.Errorf("Join(): %v, want %v\n diff: %v",
 					got, tc.want, cmp.Diff(got, tc.want))
 			}

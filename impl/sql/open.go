@@ -17,6 +17,7 @@ package sql
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -30,6 +31,8 @@ func Open(dsn string) (*sql.DB, error) {
 
 	// MySQL flags that affect storage logic.
 	cfg.ClientFoundRows = true // Return number of matching rows instead of rows changed.
+	cfg.ParseTime = true       // Parse time values to time.Time
+	cfg.Loc = time.UTC
 
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {

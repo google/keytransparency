@@ -31,10 +31,12 @@ message MapMetadata {
     // lowest_inclusive is the lowest primary key (inclusive) of the source
     // log that has been incorporated into this map revision. The primary
     // keys of logged items MUST be monotonically increasing.
+    // Defined in terms of microseconds from the Unix epoch.
     int64 lowest_inclusive = 1;
     // highest_exclusive is the highest primary key (exclusive) of the source
     // log that has been incorporated into this map revision. The primary keys
     // of logged items MUST be monotonically increasing.
+    // Defined in terms of microseconds from the Unix epoch.
     int64 highest_exclusive = 2;
     // log_id is the ID of the source log.
     int64 log_id = 3;

@@ -20,6 +20,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net"
+	"testing"
 	"time"
 
 	"github.com/golang/glog"
@@ -41,10 +42,10 @@ import (
 	"github.com/google/keytransparency/impl/authorization"
 	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
+	"github.com/google/keytransparency/impl/sql/testdb"
 	"github.com/google/trillian/crypto/keys/der"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring"
-	"github.com/google/trillian/storage/testdb"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -115,19 +116,17 @@ func keyFromPEM(p string) *any.Any {
 }
 
 // NewEnv sets up common resources for tests.
-func NewEnv(ctx context.Context) (*Env, error) {
+func NewEnv(ctx context.Context, t testing.TB) *Env {
+	t.Helper()
 	timeout := 6 * time.Second
 	directoryID := "integration"
 
-	db, dbDone, err := testdb.NewTrillianDB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("env: failed to open database: %v", err)
-	}
+	db, dbDone := testdb.NewForTest(ctx, t)
 
 	// Map server
 	mapEnv, err := ttest.NewMapEnv(ctx, false)
 	if err != nil {
-		return nil, fmt.Errorf("env: failed to create trillian map server: %v", err)
+		t.Fatalf("env: failed to create trillian map server: %v", err)
 	}
 
 	// Log server
@@ -135,17 +134,17 @@ func NewEnv(ctx context.Context) (*Env, error) {
 	unused := ""
 	logEnv, err := ttest.NewLogEnv(ctx, numSequencers, unused)
 	if err != nil {
-		return nil, fmt.Errorf("env: failed to create trillian log server: %v", err)
+		t.Fatalf("env: failed to create trillian log server: %v", err)
 	}
 
 	// Configure directory, which creates new map and log trees.
 	directoryStorage, err := directory.NewStorage(db)
 	if err != nil {
-		return nil, fmt.Errorf("env: failed to create directory storage: %v", err)
+		t.Fatalf("env: failed to create directory storage: %v", err)
 	}
 	mutations, err := mutationstorage.New(db)
 	if err != nil {
-		return nil, fmt.Errorf("env: Failed to create mutations object: %v", err)
+		t.Fatalf("env: Failed to create mutations object: %v", err)
 	}
 	adminSvr := adminserver.New(logEnv.Log, mapEnv.Map, logEnv.Admin, mapEnv.Admin, directoryStorage, mutations, mutations, vrfKeyGen)
 	cctx, cancel := context.WithTimeout(ctx, timeout)
@@ -159,7 +158,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		MapPrivateKey: keyFromPEM(mapPriv),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("env: CreateDirectory(): %v", err)
+		t.Fatalf("env: CreateDirectory(): %v", err)
 	}
 	glog.V(5).Infof("Directory: %# v", pretty.Formatter(directoryPB))
 
@@ -168,7 +167,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 
 	lis, cc, err := Listen()
 	if err != nil {
-		return nil, fmt.Errorf("env: Listen(): %v", err)
+		t.Fatalf("env: Listen(): %v", err)
 	}
 
 	gsvr := grpc.NewServer(
@@ -205,7 +204,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.NewSynchronous(lv) },
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error reading config: %v", err)
+		t.Fatalf("error reading config: %v", err)
 	}
 	// Integration tests manually create revisions immediately, so retry fairly quickly.
 	client.RetryDelay = 10 * time.Millisecond
@@ -227,7 +226,7 @@ func NewEnv(ctx context.Context) (*Env, error) {
 		grpcCC:     cc,
 		dbDone:     dbDone,
 		db:         db,
-	}, nil
+	}
 }
 
 // Close releases resources allocated by NewEnv.

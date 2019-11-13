@@ -16,10 +16,12 @@ package storagetest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/keyserver"
 	"golang.org/x/sync/errgroup"
 
@@ -35,7 +37,8 @@ func RunMutationLogsTests(t *testing.T, factory mutationLogsFactory) {
 	b := &mutationLogsTests{}
 	for name, f := range map[string]func(ctx context.Context, t *testing.T, f mutationLogsFactory){
 		// TODO(gbelvin): Discover test methods via reflection.
-		"TestReadLog": b.TestReadLog,
+		"TestReadLog":      b.TestReadLog,
+		"TestReadLogExact": b.TestReadLogExact,
 	} {
 		t.Run(name, func(t *testing.T) { f(ctx, t, factory) })
 	}
@@ -52,21 +55,24 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 	return b
 }
 
+// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+var minWatermark = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+
 // TestReadLog ensures that reads happen in atomic units of batch size.
 func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
 	directoryID := "TestReadLog"
 	logID := int64(5) // Any log ID.
 	m, done := newForTest(ctx, t, directoryID, logID)
 	defer done(ctx)
-	// Write ten batches, three entries each.
+	// Write ten batches.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if _, err := m.Send(ctx, directoryID, entry, entry, entry); err != nil {
+		if _, err := m.Send(ctx, directoryID, logID, entry, entry, entry); err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
 	}
 
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		limit int32
 		want  int
 	}{
@@ -76,13 +82,61 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		{limit: 4, want: 6},    // Reading 4 items gets us into the second batch of size 3.
 		{limit: 100, want: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
-		rows, err := m.ReadLog(ctx, directoryID, logID, time.Time{}, time.Now(), tc.limit)
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			rows, err := m.ReadLog(ctx, directoryID, logID, minWatermark, time.Now(), tc.limit)
+			if err != nil {
+				t.Fatalf("ReadLog(%v): %v", tc.limit, err)
+			}
+			if got := len(rows); got != tc.want {
+				t.Fatalf("ReadLog(%v): len: %v, want %v", tc.limit, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestReadLogExact ensures that reads respect the low inclusive, high exclusive API.
+func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
+	directoryID := "TestReadLogExact"
+	logID := int64(5) // Any log ID.
+	m, done := newForTest(ctx, t, directoryID, logID)
+	defer done(ctx)
+	// Write ten batches.
+	idx := make([]time.Time, 0, 10)
+	for i := byte(0); i < 10; i++ {
+		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{i}}}
+		ts, err := m.Send(ctx, directoryID, logID, entry)
 		if err != nil {
-			t.Fatalf("ReadLog(%v): %v", tc.limit, err)
+			t.Fatalf("Send(): %v", err)
 		}
-		if got := len(rows); got != tc.want {
-			t.Fatalf("ReadLog(%v): len: %v, want %v", tc.limit, got, tc.want)
-		}
+		idx = append(idx, ts)
+	}
+
+	for i, tc := range []struct {
+		low, high time.Time
+		want      []byte
+	}{
+		{low: idx[0], high: idx[0], want: []byte{}},
+		{low: idx[0], high: idx[1], want: []byte{0}},
+		{low: idx[0], high: idx[9], want: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8}},
+		{low: idx[1], high: idx[9], want: []byte{1, 2, 3, 4, 5, 6, 7, 8}},
+		// Ensure that adding 1 correctly modifies the range semantics.
+		{low: idx[0].Add(1), high: idx[9], want: []byte{1, 2, 3, 4, 5, 6, 7, 8}},
+		{low: idx[0].Add(1), high: idx[9].Add(1), want: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}},
+	} {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			rows, err := m.ReadLog(ctx, directoryID, logID, tc.low, tc.high, 100)
+			if err != nil {
+				t.Fatalf("ReadLog(): %v", err)
+			}
+			got := make([]byte, 0, len(rows))
+			for _, r := range rows {
+				i := r.Mutation.Entry[0]
+				got = append(got, i)
+			}
+			if !cmp.Equal(got, tc.want) {
+				t.Fatalf("ReadLog(%v,%v): got %v, want %v", tc.low, tc.high, got, tc.want)
+			}
+		})
 	}
 }
 
@@ -96,7 +150,7 @@ func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T,
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{byte(i)}})}}
 		for i := 0; i < concurrency; i++ {
 			g.Go(func() error {
-				_, err := m.Send(ctx, directoryID, entry)
+				_, err := m.Send(ctx, directoryID, logID, entry)
 				return err
 			})
 		}

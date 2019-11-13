@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/keyserver"
@@ -57,43 +56,11 @@ func TestLogsAdminIntegration(t *testing.T) {
 		})
 }
 
-func TestRandLog(t *testing.T) {
-	ctx := context.Background()
-
-	for _, tc := range []struct {
-		desc     string
-		send     []int64
-		wantCode codes.Code
-		wantLogs map[int64]bool
-	}{
-		{desc: "no rows", wantCode: codes.NotFound, wantLogs: map[int64]bool{}},
-		{desc: "one row", send: []int64{10}, wantLogs: map[int64]bool{10: true}},
-		{desc: "second", send: []int64{1, 2, 3}, wantLogs: map[int64]bool{
-			1: true,
-			2: true,
-			3: true,
-		}},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			directoryID := fmt.Sprintf("%v-%v", "TestRandLog", tc.desc)
-			m, done := newForTest(ctx, t, directoryID, tc.send...)
-			defer done(ctx)
-			logs := make(map[int64]bool)
-			for i := 0; i < 10*len(tc.wantLogs); i++ {
-				logID, err := m.randLog(ctx, directoryID)
-				if got, want := status.Code(err), tc.wantCode; got != want {
-					t.Errorf("randLog(): %v, want %v", got, want)
-				}
-				if err != nil {
-					break
-				}
-				logs[logID] = true
-			}
-			if got, want := logs, tc.wantLogs; !cmp.Equal(got, want) {
-				t.Errorf("logs: %v, want %v", got, want)
-			}
+func TestMutationLogsReaderIntegration(t *testing.T) {
+	storagetest.RunMutationLogsReaderTests(t,
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (storagetest.LogsReadWriter, func(context.Context)) {
+			return newForTest(ctx, t, dirID, logIDs...)
 		})
-	}
 }
 
 func BenchmarkSend(b *testing.B) {
@@ -123,7 +90,7 @@ func BenchmarkSend(b *testing.B) {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
-				if _, err := m.Send(ctx, directoryID, updates...); err != nil {
+				if _, err := m.Send(ctx, directoryID, logID, updates...); err != nil {
 					b.Errorf("Send(): %v", err)
 				}
 			}
@@ -138,9 +105,9 @@ func TestSend(t *testing.T) {
 	m, done := newForTest(ctx, t, directoryID, 1, 2)
 	defer done(ctx)
 	update := []byte("bar")
-	ts1 := time.Now()
-	ts2 := ts1.Add(time.Duration(1))
-	ts3 := ts2.Add(time.Duration(1))
+	ts1 := time.Now().Truncate(time.Microsecond)
+	ts2 := ts1.Add(1 * time.Microsecond)
+	ts3 := ts2.Add(1 * time.Microsecond)
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
@@ -159,53 +126,5 @@ func TestSend(t *testing.T) {
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}
-	}
-}
-
-func TestWatermark(t *testing.T) {
-	ctx := context.Background()
-	directoryID := "TestWatermark"
-	logIDs := []int64{1, 2}
-	m, done := newForTest(ctx, t, directoryID, logIDs...)
-	defer done(ctx)
-	update := []byte("bar")
-
-	start := time.Now()
-	for ts := start; ts.Before(start.Add(10)); ts = ts.Add(1) {
-		for _, logID := range logIDs {
-			if err := m.send(ctx, ts, directoryID, logID, update); err != nil {
-				t.Fatalf("m.send(%v): %v", logID, err)
-			}
-		}
-	}
-
-	for _, tc := range []struct {
-		desc      string
-		logID     int64
-		start     time.Time
-		batchSize int32
-		count     int32
-		want      time.Time
-	}{
-		{desc: "log1 max", logID: 1, batchSize: 100, want: start.Add(10), count: 10},
-		{desc: "log2 max", logID: 2, batchSize: 100, want: start.Add(10), count: 10},
-		{desc: "batch0", logID: 1, batchSize: 0, start: time.Unix(0, 0), want: time.Unix(0, 0)},
-		{desc: "batch0start55", logID: 1, start: time.Unix(0, 55), batchSize: 0, want: time.Unix(0, 55)},
-		{desc: "batch5", logID: 1, batchSize: 5, want: start.Add(5), count: 5},
-		{desc: "start1", logID: 1, start: start.Add(2), batchSize: 5, want: start.Add(7), count: 5},
-		{desc: "start8", logID: 1, start: start.Add(8), batchSize: 5, want: start.Add(10), count: 2},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			count, got, err := m.HighWatermark(ctx, directoryID, tc.logID, tc.start, tc.batchSize)
-			if err != nil {
-				t.Errorf("highWatermark(): %v", err)
-			}
-			if !got.Equal(tc.want) {
-				t.Errorf("highWatermark(%v) high: %v, want %v", tc.start, got.UnixNano(), tc.want)
-			}
-			if count != tc.count {
-				t.Errorf("highWatermark(%v) count: %v, want %v", tc.start, count, tc.count)
-			}
-		})
 	}
 }
