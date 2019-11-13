@@ -46,8 +46,11 @@ func TestTimeToProto(t *testing.T) {
 		low, high time.Time
 		want      *spb.MapMetadata_SourceSlice
 	}{
-		{low: time.Unix(0, 0), high: time.Unix(1, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 0, HighestExclusive: 1000000}},
-		{low: time.Unix(0, 1), high: time.Unix(1, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1, HighestExclusive: 1000000}},
+		{low: time.Unix(0, 0), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 0}},
+		{low: time.Unix(0, 1), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1}},
+		{low: time.Unix(0, 1000), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1}},
+		{low: time.Unix(1, 0), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000}},
+		{low: time.Unix(1, 0), high: time.Unix(1, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000, HighestExclusive: 1000000}},
 	} {
 		ss, err := New(logID, tc.low, tc.high)
 		if err != nil {
