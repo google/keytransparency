@@ -16,6 +16,10 @@ package metadata
 import (
 	"testing"
 	"time"
+
+	"github.com/golang/protobuf/proto"
+
+	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
 func TestValidateTime(t *testing.T) {
@@ -32,6 +36,28 @@ func TestValidateTime(t *testing.T) {
 		err := validateTime(tc.ts)
 		if got := err == nil; got != tc.valid {
 			t.Errorf("validateTime(%v): %v, want valid: %v", tc.ts, err, tc.valid)
+		}
+	}
+}
+
+func TestTimeToProto(t *testing.T) {
+	logID := int64(1)
+	for _, tc := range []struct {
+		low, high time.Time
+		want      *spb.MapMetadata_SourceSlice
+	}{
+		{low: time.Unix(0, 0), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 0}},
+		{low: time.Unix(0, 1), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1}},
+		{low: time.Unix(0, 1000), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1}},
+		{low: time.Unix(1, 0), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000}},
+		{low: time.Unix(1, 0), high: time.Unix(1, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000, HighestExclusive: 1000000}},
+	} {
+		ss, err := New(logID, tc.low, tc.high)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := ss.Proto(); !proto.Equal(got, tc.want) {
+			t.Errorf("New().Proto(): %v, want %v", got, tc.want)
 		}
 	}
 }
