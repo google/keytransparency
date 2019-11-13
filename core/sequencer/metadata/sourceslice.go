@@ -25,7 +25,8 @@ import (
 
 var minTime = time.Unix(0, math.MinInt64) // 1677-09-21 00:12:43.145224192
 var maxTime = time.Unix(0, math.MaxInt64) // 2262-04-11 23:47:16.854775807
-const nanosPerQuantum = int64(time.Microsecond / time.Nanosecond)
+const quantum = time.Microsecond
+const nanosPerQuantum = int64(quantum / time.Nanosecond)
 
 // validateTime determines whether a timestamp is valid.
 // Valid timestamps can be represented by an int64 number of microseconds from the epoch.
@@ -52,8 +53,8 @@ func New(logID int64, low, high time.Time) (*SourceSlice, error) {
 	}
 	return &SourceSlice{s: &spb.MapMetadata_SourceSlice{
 		LogId:            logID,
-		LowestInclusive:  low.UnixNano() / nanosPerQuantum,
-		HighestExclusive: high.UnixNano() / nanosPerQuantum,
+		LowestInclusive:  low.Add(quantum-1).Truncate(quantum).UnixNano() / nanosPerQuantum,
+		HighestExclusive: high.Add(quantum-1).Truncate(quantum).UnixNano() / nanosPerQuantum,
 	}}, nil
 }
 
