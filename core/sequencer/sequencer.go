@@ -125,7 +125,6 @@ func (s *Sequencer) ForAllMasterships(ctx context.Context, f func(ctx context.Co
 // DefineRevisions method on all directories that this sequencer is currently
 // master for.
 func (s *Sequencer) DefineRevisionsForAllMasterships(ctx context.Context, batchSize int32) error {
-	glog.Infof("DefineRevisionsForAllMasterships")
 	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 		// TODO(pavelkalinnikov): Make these parameters configurable.
 		req := &spb.DefineRevisionsRequest{
@@ -146,7 +145,6 @@ func (s *Sequencer) DefineRevisionsForAllMasterships(ctx context.Context, batchS
 // ApplyRevisions method on all directories that this sequencer is currently
 // master for.
 func (s *Sequencer) ApplyRevisionsForAllMasterships(ctx context.Context) error {
-	glog.Infof("ApplyRevisionsForAllMasterships")
 	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 		req := &spb.ApplyRevisionsRequest{DirectoryId: dirID}
 		if _, err := s.sequencerClient.ApplyRevisions(ctx, req); err != nil {
@@ -160,7 +158,6 @@ func (s *Sequencer) ApplyRevisionsForAllMasterships(ctx context.Context) error {
 // PublishLogForAllMasterships runs KeyTransparencySequencer.PublishRevisions on
 // all directories this sequencer is currently master for.
 func (s *Sequencer) PublishLogForAllMasterships(ctx context.Context) error {
-	glog.Infof("PublishLogForAllMasterships")
 	return s.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 		publishReq := &spb.PublishRevisionsRequest{DirectoryId: dirID}
 		_, err := s.sequencerClient.PublishRevisions(ctx, publishReq)
