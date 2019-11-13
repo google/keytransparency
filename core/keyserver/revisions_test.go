@@ -32,6 +32,7 @@ import (
 	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
+	"github.com/google/keytransparency/core/sequencer/metadata"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -87,6 +88,15 @@ func TestGetRevisionStream(t *testing.T) {
 	}
 }
 
+func newSource(t *testing.T, logID int64, low, high time.Time) *spb.MapMetadata_SourceSlice {
+	t.Helper()
+	s, err := metadata.New(logID, low, high)
+	if err != nil {
+		t.Fatalf("Invalid source: %v", err)
+	}
+	return s.Proto()
+}
+
 type batchStorage map[int64]SourceList // Map of Revision to Sources
 
 func (b batchStorage) ReadBatch(ctx context.Context, dirID string, rev int64) (*spb.MapMetadata, error) {
@@ -127,8 +137,8 @@ func TestListMutations(t *testing.T) {
 	}
 
 	fakeBatches := batchStorage{
-		1: SourceList{{LogId: 0, LowestInclusive: idx[2].UnixNano(), HighestExclusive: idx[7].UnixNano()}},
-		2: SourceList{{LogId: 0, LowestInclusive: idx[7].UnixNano(), HighestExclusive: idx[11].UnixNano()}},
+		1: SourceList{newSource(t, 0, idx[2], idx[7])},
+		2: SourceList{newSource(t, 0, idx[7], idx[11])},
 	}
 
 	for _, tc := range []struct {
