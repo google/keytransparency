@@ -386,7 +386,6 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta, incMetricFn)
 	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize, incMetricFn)
 	if err != nil {
-		mutationFailures.Inc(err.Error())
 		return nil, err
 	}
 
