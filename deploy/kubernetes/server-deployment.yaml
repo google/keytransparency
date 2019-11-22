@@ -18,6 +18,10 @@ spec:
       labels:
         io.kompose.service: server
     spec:
+      volumes:
+       - name: secrets
+         secret:
+           secretName: kt-secrets
       containers:
       - command:
         - /keytransparency-server
@@ -25,8 +29,8 @@ spec:
         - --db=test:zaphod@tcp(db:3306)/test
         - --log-url=log-server:8090
         - --map-url=map-server:8090
-        - --tls-key=/kt/server.key
-        - --tls-cert=/kt/server.crt
+        - --tls-key=/run/secrets/server.key
+        - --tls-cert=/run/secrets/server.crt
         - --auth-type=insecure-fake
         - --alsologtostderr
         - --v=5
@@ -40,6 +44,10 @@ spec:
         - containerPort: 8080
         - containerPort: 8081
         resources: {}
+        volumeMounts:
+        - name: secrets
+          mountPath: "/run/secrets"
+          readOnly: true
       - name: prometheus-to-sd
         image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
         command:

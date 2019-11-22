@@ -17,6 +17,10 @@ spec:
       labels:
         io.kompose.service: sequencer
     spec:
+      volumes:
+       - name: secrets
+         secret:
+           secretName: kt-secrets
       containers:
       - command:
         - /keytransparency-sequencer
@@ -25,6 +29,8 @@ spec:
         - --addr=0.0.0.0:8080
         - --log-url=log-server:8090
         - --map-url=map-server:8090
+        - --tls-key=/run/secrets/server.key
+        - --tls-cert=/run/secrets/server.crt
         - --alsologtostderr
         - --v=5
         image: gcr.io/key-transparency/keytransparency-sequencer:latest
@@ -37,6 +43,10 @@ spec:
         - containerPort: 8080
         - containerPort: 8081
         resources: {}
+        volumeMounts:
+        - name: secrets
+          mountPath: "/run/secrets"
+          readOnly: true
       - name: prometheus-to-sd
         image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
         command:
