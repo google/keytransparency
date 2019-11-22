@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - command:
-        - /go/bin/keytransparency-server
+        - /keytransparency-server
         - --addr=0.0.0.0:8080
         - --db=test:zaphod@tcp(db:3306)/test
         - --log-url=log-server:8090
