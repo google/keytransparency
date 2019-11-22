@@ -32,7 +32,7 @@ development.
 ## Key Transparency Client
 
 ### Setup
-1. Install [Go 1.10](https://golang.org/doc/install).
+1. Install [Go 1.13](https://golang.org/doc/install).
 2. `go get github.com/google/keytransparency/cmd/keytransparency-client `
 
 ### Client operations
