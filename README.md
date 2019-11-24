@@ -32,8 +32,8 @@ development.
 ## Key Transparency Client
 
 ### Setup
-1. Install [Go 1.10](https://golang.org/doc/install).
-2. `go get -u github.com/google/keytransparency/cmd/keytransparency-client `
+1. Install [Go 1.13](https://golang.org/doc/install).
+2. `go get github.com/google/keytransparency/cmd/keytransparency-client `
 
 ### Client operations
 
@@ -96,8 +96,8 @@ NB A default for the Key Transparency server URL is being used here. The default
    - Docker Compose 1.11.0+ `docker-compose --version`
 
 ```sh
-go get -u github.com/google/keytransparency/...
-go get -u github.com/google/trillian/...
+go get github.com/google/keytransparency/...
+go get github.com/google/trillian/...
 cd $(go env GOPATH)/src/github.com/google/keytransparency
 ./scripts/prepare_server.sh -f
 docker-compose -f docker-compose.yml docker-compose.prod.yml up
