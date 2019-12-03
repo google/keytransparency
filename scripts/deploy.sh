@@ -36,13 +36,12 @@ gcloud --quiet auth configure-docker
 # Test current directory before deleting anything
 test $(basename $(pwd)) == "keytransparency" || exit 1
 
-echo "Generating keys..."
-rm -f ./genfiles/*
-./scripts/prepare_server.sh -f
 # kubectl exits with 1 if kt-secret does not exist
-kubectl get secret kt-secrets
-if [ $? -ne 0 ]; then
-  kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key
+if ! kubectl get secret kt-secrets; then
+  echo "Generating keys..."
+  rm -f ./genfiles/*
+  ./scripts/prepare_server.sh -f
+  kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key --from-file=genfiles/monitor_sign-key.pem
 fi
 
 echo "Building docker images..."

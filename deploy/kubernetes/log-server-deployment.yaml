@@ -25,7 +25,7 @@ spec:
         "--http_endpoint=0.0.0.0:8091",
         "--alsologtostderr"
         ]
-        image: gcr.io/key-transparency/log-server:latest
+        image: gcr.io/trillian-opensource-ci/log_server:latest
         livenessProbe:
          httpGet:
            path: /metrics
