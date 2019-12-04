@@ -10,6 +10,10 @@ if ! kubectl get secret kt-secrets; then
   kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key --from-file=genfiles/monitor_sign-key.pem
 fi
 
+# Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689
+n=0; until ((n >= 60)); do kubectl -n default get serviceaccount default -o name && break; n=$((n + 1)); sleep 1; done; ((n < 60))
+
+
 kubectl apply -k deploy/kubernetes/overlays/local 
 TIMEOUT=2m
 timeout ${TIMEOUT} kubectl rollout status deployment/db
