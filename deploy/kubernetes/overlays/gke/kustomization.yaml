@@ -1,4 +1,4 @@
-resources:
+bases:
 - ../../base
 patchesStrategicMerge:
 - log-server-stackdriver-prometheus-sidecar.yaml
