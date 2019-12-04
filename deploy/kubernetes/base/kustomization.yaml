@@ -4,6 +4,7 @@ commonLabels:
 resources:
 - db-deployment.yaml
 - db-service.yaml
+- init-pod.yaml
 - log-server-deployment.yaml
 - log-server-service.yaml
 - log-signer-deployment.yaml
