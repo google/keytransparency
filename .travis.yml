@@ -33,9 +33,12 @@ jobs:
     - name: "race"
       script:
       - go test -race ./... -v
-    - name: "docker integration test"
+    - name: "docker-compose test"
       install: skip
-      script: ./scripts/integration.sh
+      script: ./scripts/docker-compose_test.sh
+    - name: "kubernetes test"
+      install: skip
+      script: ./scripts/kubernetes_test.sh
     - stage: deploy
       if: branch = master AND type != pull_request
       install:
