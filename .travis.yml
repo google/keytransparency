@@ -37,7 +37,11 @@ jobs:
       install: skip
       script: ./scripts/docker-compose_test.sh
     - name: "kubernetes test"
-      install: skip
+      install:
+      - gcloud -q components install kubectl
+      - go get sigs.k8s.io/kind@v0.6.1
+      - kind create cluster
+      - kubectl cluster-info --context kind-kind
       script: ./scripts/kubernetes_test.sh
     - stage: deploy
       if: branch = master AND type != pull_request
