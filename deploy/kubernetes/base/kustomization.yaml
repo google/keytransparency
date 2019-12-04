@@ -1,0 +1,21 @@
+commonLabels:
+  app: keytransparency
+
+resources:
+- db-deployment.yaml
+- db-service.yaml
+- log-server-deployment.yaml
+- log-server-service.yaml
+- log-signer-deployment.yaml
+- log-signer-service.yaml
+- map-server-deployment.yaml
+- map-server-service.yaml
+- monitor-deployment.yaml
+- monitor-service.yaml
+- prometheus-deployment.yaml
+- prometheus-service.yaml
+- sequencer-deployment.yaml
+- sequencer-service.yaml
+- server-deployment.yaml
+- server-service.yaml
+
