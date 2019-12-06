@@ -16,13 +16,14 @@ package main
 
 import (
 	"context"
+	"crypto"
 	"crypto/tls"
 	"flag"
 	"net"
 	"net/http"
 
 	"github.com/golang/glog"
-	"github.com/google/trillian/crypto"
+	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
@@ -75,7 +76,7 @@ func main() {
 	if err != nil {
 		glog.Exitf("Could not create signer from %v: %v", *signingKey, err)
 	}
-	signer := crypto.NewSHA256Signer(key)
+	signer := tcrypto.NewSigner(0, key, crypto.SHA256)
 	store := fake.NewMonitorStorage()
 
 	// Create monitoring background process.
