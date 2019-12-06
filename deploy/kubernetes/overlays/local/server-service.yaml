@@ -10,5 +10,5 @@ spec:
   - name: "metrics"
     port: 8081
     nodePort: 30081
-  type: LoadBalancer
+  type: NodePort
 
